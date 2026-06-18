@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same branch / PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint, typecheck, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+        continue-on-error: false
+
+      - name: Build
+        run: pnpm build
+
+      # Tests will be enabled when we have test files (currently zero).
+      # - name: Test
+      #   run: pnpm test
+
+      # Delete tests will be enabled at v0.0.6 (when feature modules exist).
+      # - name: Delete tests
+      #   run: |
+      #     for feature in $(ls apps/template/packages/ 2>/dev/null); do
+      #       if [ -f "apps/template/packages/$feature/tests/delete.test.ts" ]; then
+      #         pnpm test:delete --feature=$feature
+      #       fi
+      #     done

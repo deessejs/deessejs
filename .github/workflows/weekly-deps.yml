@@ -1,0 +1,62 @@
+name: Weekly deps check
+
+on:
+  # Every Monday at 08:00 UTC
+  schedule:
+    - cron: '0 8 * * 1'
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  check-outdated:
+    name: Scan for outdated dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The script exits 1 when outdated, which is informational — never
+      # a failure. We capture the output and let the workflow succeed.
+      - name: Run check:outdated
+        id: check
+        continue-on-error: true
+        run: |
+          set +e
+          pnpm check:outdated --json > report.json 2>&1
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: outdated-report
+          path: report.json
+          retention-days: 90
+          if-no-files-found: ignore
+
+      - name: Summarize
+        if: always() && hashFiles('report.json') != ''
+        run: |
+          echo "### 📦 Weekly deps check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat report.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
