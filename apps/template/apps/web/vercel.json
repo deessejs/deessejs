@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "fluid": true,
+  "functions": {
+    "apps/web/app/api/[[...route]]/route.ts": {
+      "maxDuration": 1800,
+      "memory": 2048
+    }
+  }
+}
