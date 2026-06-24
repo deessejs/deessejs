@@ -106,3 +106,23 @@ tabs={[
 - Doing it now without a concrete consumer = work without validation.
 
 **Trigger condition**: when we start wiring apps/docs to shadcn components (theme switch to shadcn.css, packages/ui globals.css import). That's when the promotion becomes necessary, not before.
+
+### 5. Theme preset — `black` (not `neutral`) for apps/docs public
+
+**Decision**: use the `black` Fumadocs preset for apps/docs (`@import 'fumadocs-ui/css/black.css'`), not the default `neutral`.
+
+**Why**:
+- Confirmed 2026-06-24 by user. The `black` preset has light bg = hsl(0, 0%, 98%) (almost white) and dark bg = hsl(0, 0%, 0%) (PURE black). Neutral is grey-er (light 96%, dark 7%).
+- Matches [[DESIGN.md §0]] "agentic" positioning: "dev-tool native", "terminal/code aesthetics", "restrained neutrals dominate; primary color is a punctuation accent".
+- Stark black/white contrast embodies "Apple restraint + agentic" wedge better than neutral's middle-grey mush.
+- Stand-out choice vs competitors (most docs use neutral-like greys).
+
+**Risks acknowledged**:
+- Pure black/white can feel "intimidating" to non-dev visitors. Mitigate by reserving pure black for dark mode (most docs read in light by default) and ensuring callout colors stay readable.
+- The 11 Fumadocs presets available: `neutral` (default), `black`, `vitepress`, `dusk`, `catppuccin`, `ocean`, `purple`, `solar`, `emerald`, `ruby`, `aspen`, plus `shadcn` (adopts custom tokens).
+
+**Fallback**: if `black` proves too stark after visual review → revert to `neutral`. Single-line CSS import change.
+
+**For embedded docs** (apps/template/apps/docs, apps/lite/apps/docs — later): `neutral` likely better, since cloned-by-buyers sites prioritize comfortable reading over brand edge. Re-evaluate when those surfaces are scaffolded.
+
+**See**: [[reference-fumadocs-api#7. CSS variables and theme presets]] for the full preset inventory and the `--color-fd-*` token list that each preset defines.
