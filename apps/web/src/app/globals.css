@@ -1,2 +1,14 @@
+/* Tailwind v4 must be imported first — this activates the framework's
+   package-aware CSS resolver, which is required for the @workspace/ui
+   subpath import below to resolve in dev mode (Turbopack processes
+   this file through @tailwindcss/postcss directly, which uses a
+   different resolver than the production bundler). */
+@import "tailwindcss";
+
 /* Design system — single source of truth */
 @import "@workspace/ui/globals.css";
+
+@theme inline {
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
