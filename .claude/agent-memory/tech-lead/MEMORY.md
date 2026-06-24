@@ -35,3 +35,5 @@
 - [apps/web pages inventory (2026-06-23)](project-apps-web-pages-inventory.md) — pointer to canonical doc at documents/internal/architecture/03-web-app/pages.md; M1 = 27 elements; Hono mount is the critical blocker
 - [Resend SDK reference](reference-resend-sdk-details.md) — resend@6.14, Node SDK, 5 req/sec default, idempotencyKey, `react:` shortcut, Hono officially supported
 - [supastarter mailing pattern](reference-supastarter-mailing-pattern.md) — packages/mail + apps/mail-preview + provider switch + Wrapper + BaseMailProps; closest reference architecture
+- [apps/docs stack decision (2026-06-24)](project-apps-docs-stack-decision.md) — Fumadocs + shared packages/ui; supersedes Nextra/supastarter default; v0 scope deferred
+- [Fumadocs API reference](reference-fumadocs-api.md) — architecture, key APIs, scaffold file map, gotchas for apps/docs
