@@ -46,13 +46,24 @@ metadata:
 - **Our differentiator:** "TurboStarter ships web + mobile. DeesseJS ships web + docs + blog + CLI + SDK as first-class. Different kinds of completeness."
 - Counter in Buyer's Guide: web-first vs. multi-app is a tradeoff, not a feature.
 
-**Nexty / nextforge (🟢 low — below band)**
-- URL: https://nexty.dev/ / https://nextforge.dev
+**Nexty (🟢 low — below band) — DO NOT CONFLATE WITH NextForge**
+- URL: https://nexty.dev/
 - Pricing: $188 (Pro tier, single SKU, currently June 2026 promo — regular $256)
 - Their positioning: multi-modal demos, $188 lowest in Next.js band
 - Their edge: chat / t2i / i2i / video demos
 - **Our differentiator:** "Nexty has multi-modal demos. DeesseJS has multi-modal demos AND real orgs AND real RBAC." Exploitable gap: zero mentions of "orgs / teams / RBAC / multi-tenant" in their marketing.
 - Counter in Buyer's Guide: same demo polish, beat them on the org story.
+
+**NextForge / vercel/next-forge (🔴 HIGH threat — Vercel halo, free, MIT)**
+- URL: https://www.next-forge.com/ · repo: https://github.com/vercel/next-forge
+- Pricing: **FREE (MIT license, forever, no paid tier)**
+- Creator: Hayden Bleasel — hired by Vercel, now MTS @ OpenAI (potential CoI risk)
+- Their positioning: "Production-grade Turborepo template for Next.js apps" — Fast, Cheap, Opinionated, Modern, Safe
+- Their edge: **Vercel halo** (first search result on Google for "Next.js SaaS template"), 7.1k stars, 367 releases, free, official template
+- Their AI story: `packages/ai` (Vercel AI SDK), `npx skills add vercel/next-forge`, AI Agent Rules for Cursor/Copilot, single-tenant chatbot example
+- **Our differentiator:** "NextForge is a free template you download once. DeesseJS is an agent system with per-tenant LLM metering + Stripe metered usage + a Cloud. Free gets you features. Paid gets you a business model."
+- Counter in Buyer's Guide: don't attack the free template (loses on optics). Reframe: "if you want to charge your users for what your agents do, you need a system, not a template."
+- Full deep-dive: [[competitor-nextforge]]
 
 **Non-competitors (do not engage in comparison page):**
 - mrrobot (no paid product in band)

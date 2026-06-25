@@ -3,10 +3,10 @@ import { ArrowRight, BookOpen } from "lucide-react"
 import { Badge } from "@workspace/ui/components/ui/badge"
 import { Button } from "@workspace/ui/components/ui/button"
 
-// Hero uses the editorial frame: max-w-7xl + border-x + border-foreground/15.
-// Section padding follows the 8/16/32 three-step vertical rhythm.
+// Plain max-w-7xl container — the parent <main> provides the outer
+// border-x frame, so each section's inner div just constrains width.
 const bodyContainerClass =
-  "mx-auto w-full max-w-7xl border-x border-foreground/15 px-4 sm:px-6 lg:px-8"
+  "mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"
 const sectionPadding = "py-16 md:py-24 lg:py-32"
 
 /**

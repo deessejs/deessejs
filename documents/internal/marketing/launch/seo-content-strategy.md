@@ -37,13 +37,16 @@ Each page structure:
 
 ### DeesseJS comparison page priority order
 
+**⚠️ UPDATED 2026-06-24:** NextForge (vercel/next-forge, MIT, free) is now the default Google result for "Next.js SaaS template". `/vs/next-forge` jumps to #1 priority — anyone comparing free templates to paid systems is high-intent traffic.
+
 | Priority | Page | Why |
 |---|---|---|
-| **1** | `/vs/supastarter` | Highest brand awareness, most search volume, most traffic to compare |
-| **2** | `/vs/shipfast` | Second most searched, very different positioning (no agentic) |
-| **3** | `/vs/makerkit` | Third, AI-adjacent but not agentic |
-| **4** | `/vs/turbostarter` | Fourth, AI tools but no billing integration |
-| **5** | `/vs/saasrock` | Fifth, Remix stack, different audience |
+| **1** | `/vs/next-forge` | **NEW #1.** Default search result, Vercel halo, free/OSS comparison captures high-intent buyers weighing "free vs paid" |
+| **2** | `/vs/supastarter` | Highest brand awareness in paid tier, but second to NextForge for actual search traffic |
+| **3** | `/vs/shipfast` | Second most searched paid competitor, very different positioning (no agentic) |
+| **4** | `/vs/makerkit` | AI-adjacent but not agentic, MCP server as differentiator |
+| **5** | `/vs/turbostarter` | AI tools in roadmap but no billing integration |
+| **6** | `/vs/saasrock` | Remix stack, different audience |
 
 ### The comparison page template
 

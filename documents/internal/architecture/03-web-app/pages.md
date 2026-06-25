@@ -93,6 +93,27 @@ Priority legend:
 
 ---
 
+## Surface: Admin (global) — `app/(app)/admin/` — session + role-gate admin
+
+| Page | URL | Priority | Feature |
+|---|---|---|---|
+| Admin home (overview) | `/admin` | M2 | 21 |
+| Users list (search/filter/paginate) | `/admin/users` | M2 | 21 |
+| New user form | `/admin/users/new` | M2 | 21 |
+| User detail (profile + memberships) | `/admin/users/[userId]` | M2 | 21 |
+| Edit user | `/admin/users/[userId]/edit` | M2 | 21 |
+| Set user password | `/admin/users/[userId]/password` | M2 | 21 |
+| User sessions (with revoke) | `/admin/users/[userId]/sessions` | M2 | 21 |
+| (Impersonation banner lives in `(app)/layout.tsx`, not here) | — | M2 | 21 |
+
+**Layout**: `app/(app)/admin/layout.tsx` — inherits the `(app)` auth gate + `AppHeader`. Adds a **role gate** (`session.user.role === 'admin'`) and an admin sidebar. Non-admins get `notFound()` (not `redirect()`) — the existence of `/admin/*` is hidden from non-operators.
+
+**Scope**: GLOBAL. This admin operates on the `user` table, not on the `member` table. Org-scoped admin (member management, transfer ownership, org settings) lives at `/[orgSlug]/admin/*` when that surface ships in M3+.
+
+**See [`./admin.md`](./admin.md) for the full spec** — route map, role gate, impersonation banner, endpoints → UI mapping, self-protection guard, build order.
+
+---
+
 ## Surface: Admin org — `app/(app)/[orgSlug]/admin/` — session + RBAC owner/admin
 
 | Page | URL | Priority | Feature |
@@ -216,9 +237,14 @@ Priority legend:
 ## Cross-references
 
 - [`./README.md`](./README.md) — surface map (the 1-pager overview)
+- [`./admin.md`](./admin.md) — full spec for the `/admin/*` surface (route map, role gate, impersonation banner, endpoints → UI mapping, self-protection guard, build order)
 - [`../11-packages/api/hosting.md`](../11-packages/api/hosting.md) — Hono mount in Next.js (critical path)
 - [`../11-packages/api/structure.md`](../11-packages/api/structure.md) — the API the web app calls
+- [`../11-packages/auth/admin.md`](../11-packages/auth/admin.md) — admin plugin deep dive (endpoints, config, role ambiguity)
+- [`../11-packages/auth/impersonation.md`](../11-packages/auth/impersonation.md) — impersonation flow (banner, security)
 - [`../11-packages/auth/integrations.md`](../11-packages/auth/integrations.md) — Better Auth wiring
+- [`../11-packages/auth/decisions/0002-admin-plugin-config.md`](../11-packages/auth/decisions/0002-admin-plugin-config.md) — admin plugin config ADR
+- [`../10-decisions/0015-admin-routes-flat-vs-org-scoped.md`](../10-decisions/0015-admin-routes-flat-vs-org-scoped.md) — `/admin/*` flat layout ADR
 - [`../11-packages/mail/`](../11-packages/mail/) — transactional emails
 - [`../../product/features/01-auth-and-identity.md`](../../product/features/01-auth-and-identity.md) → `13-onboarding.md` → `21-admin-dashboard.md` — feature specs
 - [supastarter Project structure](https://supastarter.dev/docs/nextjs/codebase/structure) — closest reference architecture

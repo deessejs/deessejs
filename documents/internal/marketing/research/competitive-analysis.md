@@ -1,10 +1,10 @@
 # DeesseJS — Competitive Analysis
 
-> **Status:** Updated from adversarial competitor research (2026-06-22). Based on PH pages, competitor websites, and blog analysis.
+> **Status:** Updated from adversarial competitor research (2026-06-22) + NextForge deep-dive (2026-06-24). Based on PH pages, competitor websites, blog analysis, and direct fresh-fetched GitHub/docs data.
 >
-> **Coverage:** supastarter (strong), ShipFast (medium), MakerKit (medium), SaasRock (medium), TurboStarter (weak — limited data).
+> **Coverage:** supastarter (strong), ShipFast (medium), MakerKit (medium), SaasRock (medium), TurboStarter (weak — limited data), **NextForge (strong — direct fetch, 2026-06-24)**.
 >
-> **Research method:** 15 sources fetched, 60 claims extracted, 25 verified adversarially, 10 confirmed. 15 claims refuted. All claims in this doc are confirmed unless marked ⚠️ (hypothesis).
+> **Research method:** 15 sources fetched, 60 claims extracted, 25 verified adversarially, 10 confirmed. 15 claims refuted. NextForge claims verified via `fresh` CLI direct fetch (README, official site, changelog v6, AI chatbot example, PR #371). All claims in this doc are confirmed unless marked ⚠️ (hypothesis).
 
 ---
 
@@ -12,7 +12,9 @@
 
 DeesseJS's competitive advantage is **not** "more features" or "cheaper." It's **category ownership**: no competitor ships agentic primitives (tool-calling against a wired system, per-tenant LLM metering, usage-based billing) as a primary positioning claim.
 
-The positioning space is open. All competitors optimize AI for the *developer* (Cursor, Claude Code, Codex integration). DeesseJS optimizes the system for *AI agents*.
+The positioning space is open. All competitors optimize AI for the *developer* (Cursor, Claude Code, Codex integration). DeesseJS optimizes the system for *AI agents*. **NextForge (v6, 2026-03) introduced an `npx skills` agent skill + AI Agent Rules for Cursor/Copilot, narrowing the "agent-aware" gap — but they ship no per-tenant metering and no usage-based billing, so the wedge survives.**
+
+The positioning space is also open on **business model**. Every other competitor sells you features. DeesseJS is the only one selling you a way to *charge your users for what your agents do*. That is the Vercel-immune claim.
 
 **The counter-message for each competitor** is already in the positioning — you don't attack, you differentiate.
 
@@ -139,27 +141,86 @@ The positioning space is open. All competitors optimize AI for the *developer* (
 
 **DeesseJS counter-message:** "TurboStarter has tool-calling on the roadmap. DeesseJS ships it today, with billing integration."
 
+### NextForge / vercel/next-forge
+
+> **Added 2026-06-24** via direct fresh-fetch of GitHub README, official site, Vercel template page, and v6 changelog. Highest-confidence competitor data in this doc (verified primary sources, not third-party reviews).
+
+**Website:** https://www.next-forge.com/ · repo: https://github.com/vercel/next-forge
+**Price:** **Free (MIT license, forever, no paid tier)**
+**Framework:** Next.js + Turborepo + Bun (default)
+**Creator:** Hayden Bleasel (originally hired by Vercel; **now Member of Technical Staff @ OpenAI** per LinkedIn)
+**Repo owner:** Vercel (the `vercel/next-forge` GitHub org)
+**GitHub:** 7,102 stars · 660 forks · 70 contributors · 367 releases · last push 2026-05-28
+**Current version:** v6.0.2 (v6 released 2026-03-13)
+**Key differentiator (their claim):** "Production-grade Turborepo template for Next.js apps." Philosophy: Fast · Cheap · Opinionated · Modern · Safe.
+
+**Stack:**
+- Auth: **Clerk** (not Better Auth)
+- DB: Prisma + Neon
+- Payments: Stripe (subscription; no metered usage for LLM costs)
+- Email: Resend + React Email
+- Analytics: GA + PostHog
+- Observability: Sentry + BetterStack
+- Security: Arcjet (rate limiting + secure headers)
+- CMS: BaseHub
+- Docs: Mintlify (not Fumadocs)
+- AI: Vercel AI SDK (`packages/ai`: `streamText`, `useChat`, `models.chat`)
+
+**What they do well:**
+- **Vercel halo** — official template, first search result on Google for "Next.js SaaS template"
+- **Vercel AI SDK integration** via `packages/ai` (multi-step `tool-loop-agent` available)
+- **`npx skills add vercel/next-forge`** — installable agent skill (added in v6, 2026-03)
+- AI Agent Rules for Cursor + Copilot (PR #371)
+- 7 apps (`web`, `app`, `api`, `docs`, `email`, `storybook`, `studio`) and 18+ packages
+- Active maintenance: 367 releases, 70 contributors
+- Live demo URLs for every app
+- Documentation site on Mintlify
+- Graceful degradation: optional integrations silently no-op when env vars missing
+- Bun default + pnpm/npm/yarn support
+- Migration guides for swapping providers (Appwrite, Convex, Novu)
+
+**What they don't do:**
+- ❌ **Per-tenant LLM metering** — single `model: models.chat`, no per-org cost tracking
+- ❌ **Usage-based billing for LLM costs** — Stripe is subscription-only
+- ❌ **Tenant-aware tool-calling contract** — tools are app-local, not part of a multi-tenant system
+- ❌ **Human-in-the-loop checkpoints**
+- ❌ **MCP server** (uses Vercel AI SDK tool-calling instead)
+- ❌ No managed/Cloud variant
+- ❌ No paid tier (free forever, but also no commercial-grade support)
+- ❌ No per-tenant rate limits (Arcjet is app-level)
+- ❌ No agent-cost chargeback mechanism
+
+**DeesseJS counter-message:** "NextForge is a free template you download once. DeesseJS is an agent system with per-tenant LLM metering, Stripe metered usage, and a managed Cloud — so you can charge your users for what your agents do. Free gets you features. Paid gets you a business model."
+
+**Risk to NextForge:** Primary maintainer Hayden Bleasel moved from Vercel to OpenAI (LinkedIn, 2026). Vercel still owns the repo but the creator is now at a competitor. Future maintenance velocity is uncertain.
+
 ---
 
 ## §2 — The Competitive Comparison Table
 
-| Feature | supastarter | ShipFast | MakerKit | SaasRock | TurboStarter | DeesseJS |
-|---|---|---|---|---|---|---|
-| **Price (one-time)** | €349–€1,499 | $249–$349 | $299–$999 | $99–$999 | ~$299 ⚠️ | $249–$899 |
-| **Framework** | Next.js | Next.js | Next.js | Remix | Next.js | Next.js |
-| **Agentic primitives (tool-calling)** | Dev-side | None | Dev-side | None | Partial ⚠️ | Built-in |
-| **Per-tenant LLM metering** | No | No | No | No | No | Yes |
-| **Usage-based billing (Stripe)** | Per-seat | Per-seat | Per-seat | Per-seat | No | Per-seat + metered |
-| **Multi-tenancy** | Optional | Optional | Optional | Built-in | Optional | Built-in |
-| **Free tier / Lite** | No | No | No | No | No | Yes (Lite) |
-| **Managed (Cloud)** | No | No | No | No | No | Yes (M8+) |
-| **MCP server** | No | No | Yes | No | Yes | Yes |
-| **AGENTS.md** | No | No | No | No | No | Yes |
-| **Per-tenant rate limits** | No | No | No | No | No | Yes |
-| **Human-in-the-loop checkpoints** | No | No | No | No | No | Yes |
-| **PH launches** | 2 | 5+ ⚠️ | 1 ⚠️ | 1 ⚠️ | Unknown | Planned |
-| **/showcase page** | Yes | Unknown | Unknown | Yes | Unknown | Yes (M4) |
-| **SEO comparison pages** | Yes | No | Yes ⚠️ | Unknown | No | Yes (M4) |
+> **Updated 2026-06-24:** NextForge column added. All NextForge cells verified via direct fetch.
+
+| Feature | supastarter | ShipFast | MakerKit | SaasRock | TurboStarter | **NextForge** | DeesseJS |
+|---|---|---|---|---|---|---|---|
+| **Price (one-time)** | €349–€1,499 | $249–$349 | $299–$999 | $99–$999 | ~$299 ⚠️ | **Free (MIT)** | $249–$899 |
+| **License** | Proprietary | Proprietary | Proprietary | Proprietary | Proprietary | **MIT** | Proprietary |
+| **Framework** | Next.js | Next.js | Next.js | Remix | Next.js | **Next.js + Turborepo + Bun** | Next.js |
+| **Vercel halo** | No | No | No | No | No | **YES (official)** | No |
+| **Agentic primitives (tool-calling)** | Dev-side | None | Dev-side | None | Partial ⚠️ | **AI SDK + skill** | Built-in |
+| **Per-tenant LLM metering** | No | No | No | No | No | **No** | **Yes** |
+| **Usage-based billing (Stripe)** | Per-seat | Per-seat | Per-seat | Per-seat | No | **Subscription only** | **Per-seat + metered** |
+| **Multi-tenancy** | Optional | Optional | Optional | Built-in | Optional | **Clerk orgs** | **Built-in** |
+| **Free tier / Lite** | No | No | No | No | No | **Yes (whole product)** | Yes (Lite subset) |
+| **Managed (Cloud)** | No | No | No | No | No | **No** | **Yes (M8+)** |
+| **MCP server** | No | No | Yes | No | Yes | **No (AI SDK)** | **Yes** |
+| **AGENTS.md / skill** | No | No | No | No | No | **Skill + rules** | **Yes** |
+| **Per-tenant rate limits** | No | No | No | No | No | **App-level (Arcjet)** | **Per-tenant** |
+| **Human-in-the-loop checkpoints** | No | No | No | No | No | **No** | **Yes** |
+| **Agent-cost chargeback** | No | No | No | No | No | **No** | **Yes (Stripe metered)** |
+| **GitHub stars** | n/a | n/a | n/a | n/a | n/a | **7,102** | n/a |
+| **PH launches** | 2 | 5+ ⚠️ | 1 ⚠️ | 1 ⚠️ | Unknown | **0 (Vercel distribution)** | Planned |
+| **/showcase page** | Yes | Unknown | Unknown | Yes | Unknown | **Demo apps** | Yes (M4) |
+| **SEO comparison pages** | Yes | No | Yes ⚠️ | Unknown | No | **No** | Yes (M4) |
 
 ---
 
@@ -174,18 +235,20 @@ The positioning space is open. All competitors optimize AI for the *developer* (
 | TurboStarter | "AI Kit: providers, tool calling, memory" — roadmap agentic |
 | ShipFast | "Zero to launch fast" — no AI story |
 | SaasRock | "25+ features, fully customizable" — no AI story |
+| **NextForge** | **"Production-grade Turborepo template" + `npx skills add vercel/next-forge` (v6)** — comprehensiveness + agent-aware |
 
-### What's NOT claimed (the open space)
+### What's NOT claimed (the open space) — UPDATED 2026-06-24
 
-- **Agentic as a primary positioning** — no competitor owns it
-- **Per-tenant LLM metering** — nobody ships it
-- **Usage-based billing for agent costs** — nobody ships it
+- **Agentic as a primary positioning** — NextForge now has agent-aware features but doesn't lead with them. The "your agents run the system" framing is still unclaimed.
+- **Per-tenant LLM metering** — nobody ships it (NextForge confirmed: single `model: models.chat`)
+- **Usage-based billing for agent costs** — nobody ships it (NextForge: subscription-only Stripe)
 - **"Your agents are your developers"** — nobody says it
 - **The "charge your users for what their agents do" mechanism** — nobody has it
+- **`npx skills add <product>` for the agent meta-game** — NextForge is first; DeesseJS needs parity (see `../launch/npx-skills-parity-spec.md`)
 
 ### The one-line differentiation
 
-> "All competitors help you code with AI. DeesseJS lets your agents run the system."
+> "All competitors — including NextForge — give you AI features. DeesseJS gives you an agent system that monetizes AI features per tenant."
 
 ---
 
@@ -207,6 +270,15 @@ When a buyer says they're looking at [competitor], here's what to say:
 
 **"I'm looking at TurboStarter"**
 → "TurboStarter has tool-calling in the roadmap. DeesseJS ships it today, with per-tenant metering and Stripe metered usage. What's your timeline?"
+
+**"I'm looking at NextForge"**
+→ "NextForge is a great free template — Vercel maintains it, Hayden Bleasel built it, and it ships comprehensive batteries. The gap is the agent system: no per-tenant LLM metering, no Stripe metered usage for agent costs, no tenant-aware tool-calling contract. If you want to charge your users for what their agents do, you need a system, not a template. That's DeesseJS."
+
+**"NextForge is free — why pay for DeesseJS?"**
+→ "NextForge is a one-time scaffold. DeesseJS is an agent system + a Cloud. The free template stops being free when you spend 3 months wiring Stripe metered usage, building a per-tenant metering dashboard, and operating your own auth/billing/database infrastructure. The paid version ships all of that wired, with a Cloud you can deploy to in one click."
+
+**"Is NextForge going to add agentic features?"**
+→ "Maybe. Vercel ships the AI SDK, and next-forge v6 added an agent skill (`npx skills add vercel/next-forge`). But 'agent skill' is not 'agent system' — the skill teaches your agent about next-forge architecture; it doesn't ship per-tenant metering or usage-based billing. Watch this space, but the wedge hasn't closed yet."
 
 ---
 

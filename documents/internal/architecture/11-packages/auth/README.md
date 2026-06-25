@@ -36,24 +36,21 @@ Public exports from `packages/auth/src/index.ts`:
 ```
 packages/auth/
 ├── src/
-│   ├── auth.ts                  # createAuth() + the configured auth instance
-│   ├── access-control.ts        # createAccessControl(...) + statements + roles
-│   ├── plugins/
-│   │   ├── organization.ts      # organization() plugin config
-│   │   ├── admin.ts             # admin() plugin config
-│   │   ├── api-key.ts           # apiKey() plugin config
-│   │   ├── two-factor.ts        # twoFactor() plugin config
-│   │   ├── passkey.ts           # passkey() plugin config
-│   │   ├── magic-link.ts        # magicLink() + emailOtp() plugin config
-│   │   └── oauth.ts             # Google, GitHub, Microsoft (off by default), Apple (off by default)
+│   ├── auth.ts                  # createAuth() + the configured auth instance (all plugin calls live here)
+│   ├── auth.test.ts             # test-only instance (PGlite + testUtils plugin) — not in production build
+│   ├── access-control.ts        # createAccessControl(...) + statements + roles (for the org plugin)
 │   ├── hooks/                   # databaseHooks + organizationHooks (custom logic at lifecycle points)
-│   └── index.ts                 # public surface
-├── tests/                       # vitest integration (real Postgres + real Upstash)
+│   ├── utils/                   # small helpers (idempotency keys for sendMail hooks)
+│   └── index.ts                 # public surface (auth, Auth, Session, User, ac, owner, admin, member, billing, STATEMENTS)
+├── tests/
+│   └── integration/             # vitest integration tests against auth.test.ts
 ├── package.json
 └── tsconfig.json
 ```
 
-See [`setup.md`](./setup.md) for the `createAuth()` details, [`plugins.md`](./plugins.md) for the plugin-by-plugin rationale, and [`api-keys.md`](./api-keys.md) for the API key bridge.
+> **Drift note.** Earlier revisions of this doc listed `plugins/{organization,admin,api-key,…}.ts` as separate files. In reality, every plugin call lives inline in `src/auth.ts` — there's no `plugins/` folder. The plugin-specific deep dives (rationale, options, gotchas) live as standalone docs in this folder: `plugins.md` (the index), `admin.md`, `impersonation.md`. If we ever split `auth.ts` into per-plugin files (recommended once it exceeds ~300 lines), update this section to match.
+
+See [`setup.md`](./setup.md) for the `createAuth()` details, [`plugins.md`](./plugins.md) for the plugin-by-plugin rationale, [`admin.md`](./admin.md) for the admin plugin deep dive, and [`api-keys.md`](./api-keys.md) for the API key bridge.
 
 ## How `packages/api` consumes this package
 
@@ -119,9 +116,12 @@ The auth client (`createAuthClient(...)`) lives in `apps/web`, not in `packages/
 - [`setup.md`](./setup.md) — the `createAuth()` configuration, the Drizzle adapter, the joins opt-in (note: `experimental.joins` and `secondaryStorage` are documented but not yet applied — see M0-deferred-work.md)
 - [`integrations.md`](./integrations.md) — Hono mount, session middleware (with the `cookieCache` workaround), Drizzle schema assembly
 - [`plugins.md`](./plugins.md) — every plugin enabled in v1, with rationale per spec
+- [`admin.md`](./admin.md) — the **admin plugin deep dive** (endpoints, config, `user.role` vs `member.role` ambiguity, options, gotchas)
+- [`impersonation.md`](./impersonation.md) — the **impersonation flow** (server + UI banner + security + testing)
 - [`api-keys.md`](./api-keys.md) — the API key flow for `/api/v1/*`, including rate limiting and secondary storage
 - [`security-baseline.md`](./security-baseline.md) — the security version policy, advisory subscription, bump procedure, tracked upstream issues
 - [`decisions/0001-security-baseline-1.6.19.md`](./decisions/0001-security-baseline-1.6.19.md) — the ADR that pins 1.6.19
+- [`decisions/0002-admin-plugin-config.md`](./decisions/0002-admin-plugin-config.md) — the ADR for `defaultRole: 'member'`, `adminRoles: ['admin']`, no `ac`/`roles`
 - [`M0-deferred-work.md`](./M0-deferred-work.md) — **production-readiness gaps**: 3 documented-but-unimplemented fixes (`satisfies BetterAuthOptions`, `secondaryStorage` for rate limiting, `experimental.joins`). All three must ship before `/api/v1/*` is public.
 
 ## Conventions

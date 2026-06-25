@@ -44,14 +44,39 @@ What it does **not** provide (and we implement via `organizationHooks` or `datab
 - **GDPR data export / deletion** (spec 2.24) — custom hooks + a job.
 - **Sub-orgs / teams within orgs** (spec 2.11) — not in v1. The plugin has a `team` feature but we don't ship it in v1.
 
-## `admin()` — impersonation + ban (spec 2.19, 2.20)
+## `admin()` — global operator surface (spec 2.19, 2.20)
 
-- **Impersonation** — admin can act as another user. The session carries both the admin and the impersonated user. Our `AuthContext` exposes both with a flag.
-- **Ban / unban** — set a user's `banned` flag. Banned users can't sign in.
-- **Set / unset role** — promote / demote a user to a role.
-- **List users** with filters.
+The admin plugin operates on the `user` table (GLOBAL scope — across all orgs, across all sessions). One-paragraph summary here; full deep dive in [`admin.md`](./admin.md). Impersonation has its own doc at [`impersonation.md`](./impersonation.md).
 
-**Breaking change to track** : PR #6454 (`feat(admin): prevent impersonating admins by default`) — admins can no longer impersonate other admins unless explicitly allowed. **Improvement, but must be acted on** if our code ever did that.
+- **List / create / update / remove users** — `listUsers`, `createUser`, `updateUser`, `removeUser` on the global user table.
+- **Ban / unban** — sets `user.banned = true`, blocks sign-in. Optional expiry via `banExpiresIn`.
+- **Set / unset role** — changes `user.role` (GLOBAL, single string column). The roles here are `admin` (operator) and `member` (default). Distinct from org plugin's `member.role` — see below.
+- **Impersonate** — `impersonateUser` creates a new session for the target user with `session.impersonatedBy = <adminId>`. See [`impersonation.md`](./impersonation.md).
+- **Session management** — `listUserSessions`, `revokeUserSession`, `revokeUserSessions`.
+
+**Critical distinction — `user.role` vs `member.role`** :
+
+| Field | Plugin | Scope | Where it lives |
+|---|---|---|---|
+| `user.role` | `admin()` | GLOBAL — applies across all orgs | `users` table, single string column |
+| `member.role` | `organization()` | ORG-SCOPED — applies within one org | `members` table, one row per (user, org) pair |
+
+`adminRoles: ['admin']` matches `user.role === 'admin'`. Promoting a user to global admin is rare and powerful — they can ban any user, impersonate any non-admin, see every org. The org plugin's `'admin'` role on `member.role` is the everyday "admin of one org" — different field, different blast radius.
+
+UI must label both clearly. A user detail page should show **Global role** (from `user.role`) and **Org memberships** (each with its own `member.role`). See [`admin.md`](./admin.md) § 6 for the decision tree.
+
+**Configuration** (in `auth.ts`) :
+
+```ts
+admin({
+  defaultRole: 'member',      // role assigned to a newly-created user
+  adminRoles: ['admin'],      // which user.role values grant admin access
+})
+```
+
+No `ac` / `roles` passed — the plugin uses the built-in statements (`user`, `session`). Rationale in [`decisions/0002-admin-plugin-config.md`](./decisions/0002-admin-plugin-config.md).
+
+**Breaking change to track** : PR #6454 (`feat(admin): prevent impersonating admins by default`) — admins can no longer impersonate other admins unless explicitly allowed via the `impersonate-admins` permission. **Improvement, but must be acted on** if any future code path assumes admin-can-impersonate-admin.
 
 ## `apiKey()` — the bridge to /api/v1 (spec 7.5, 7.6)
 

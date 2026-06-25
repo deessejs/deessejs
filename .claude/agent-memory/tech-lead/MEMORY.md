@@ -4,6 +4,7 @@
 - [Feasibility doc has stale 300s claim](project-deessejs-cloud-feasibility-outdated-assumption.md) — 2026-06-16 doc missed the changelog, Risk #5 obsolete
 - [Use `fresh` CLI for all web research](feedback-use-fresh-cli.md) — Exa.ai CLI, replaces built-in WebSearch/WebFetch which are unreliable
 - [Research community conventions before deciding](feedback-research-before-deciding.md) — for non-obvious tech choices, default to "fouille sur le web ce que font les autres" before recommending
+- [Frame feature analysis from user perspective](feedback-user-perspective-reasoning.md) — after tech details, deliver a "what does this give ME" summary in second person; user confirmed this is the preferred framing on 2026-06-25
 - [Package impl state vs docs (2026-06-22)](project-package-implementation-state.md) — api Sprint 1 done (NOT empty), database/auth/cache M0 mostly done; mail + 9 packages + 2 apps still empty
 - [oRPC envelope + Better Auth endpoint renames](project-orpc-better-auth-endpoints.md) — oRPC 1.14 wraps JSON returns under `json` key; Better Auth 1.6.19 renamed `/api/auth/session` → `/api/auth/get-session`
 - [api middleware folder structure](project-api-middleware-folder-structure.md) — single `src/middlewares/` with `hono/` and `orpc/` subfolders (do NOT reintroduce `src/middleware/` singular)
@@ -37,3 +38,4 @@
 - [supastarter mailing pattern](reference-supastarter-mailing-pattern.md) — packages/mail + apps/mail-preview + provider switch + Wrapper + BaseMailProps; closest reference architecture
 - [apps/docs stack decision (2026-06-24)](project-apps-docs-stack-decision.md) — Fumadocs + shared packages/ui; supersedes Nextra/supastarter default; v0 scope deferred
 - [Fumadocs API reference](reference-fumadocs-api.md) — architecture, key APIs, scaffold file map, gotchas for apps/docs
+- [Admin package architecture (2026-06-25)](project-admin-package-architecture.md) — admin lives in apps/template/packages/admin/ as self-contained package, mounted via single catch-all [...slug]/page.tsx (mirrors packages/api pattern); 4 open questions pending

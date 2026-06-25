@@ -18,3 +18,4 @@
 - [SEO & content strategy](seo-content-strategy.md) — comparison pages (/vs/supastarter, /vs/shipfast, /vs/makerkit), "agentic SaaS template" keyword cluster, 3 content pillars for v1
 - [Social media strategy](social-media-strategy.md) — ⚠️ research gap: Reddit/LinkedIn/X tactics unconfirmed. Working hypotheses, decision tree for channel prioritization, founding member social layer
 - [Competitive analysis](competitive-analysis.md) — updated from adversarial research. Feature comparison table, counter-messages per competitor, confirmed feature gaps
+- [NextForge competitor deep-dive](competitor-nextforge.md) — **MISSING from prior analysis (fixed 2026-06-24):** the official Vercel Next.js template, MIT/free, Vercel halo. NOT same as Nexty ($188, nexty.dev) — that conflation was a bug. See [[reference-competitor-marketing]] for the correction.

@@ -155,6 +155,7 @@ The canonical index of every ADR in this folder. **Updated in the same PR as the
 | 0012 | Template-as-pattern: each `apps/*` is a DeesseJS instance | Accepted | 2026-06-17 | founder, tech lead |
 | 0013 | react-email v6 unified package (single import, no `@react-email/components`) | Accepted | 2026-06-22 | founder, tech lead |
 | 0014 | Resend as the only sanctioned email transport | Accepted | 2026-06-22 | founder, tech lead |
+| 0015 | Admin routes — flat `/admin/*` not `/[orgSlug]/admin/*` | Accepted | 2026-06-25 | founder, tech lead |
 
 The first 9 entries (0001–0009) are the **tech-decision seed set** to be backfilled from the product spec. Each gets its own file following the template above. Entry 0010 is the first **process decision** ADR (ratchet start). Entry 0011 was the first **structure decision** ADR, superseded by entry 0012 — Template-as-pattern — which is the canonical structure decision. See [`../../process/`](../../process/) for the process docs.
 

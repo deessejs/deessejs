@@ -26,7 +26,7 @@ const navLinks = [
  */
 export function HomeHeader() {
   return (
-    <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 border-b border-border bg-background">
       <div
         className={`${containerClass} flex h-14 items-center justify-between`}
       >
@@ -50,10 +50,10 @@ export function HomeHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline">
             Sign in
           </Button>
-          <Button size="sm">
+          <Button>
             Get started
             <ArrowRight />
           </Button>

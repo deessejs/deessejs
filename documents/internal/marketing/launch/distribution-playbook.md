@@ -220,10 +220,13 @@ LinkedIn / X / Reddit (cold)
 |---|---|---|
 | **M0/M1** | v1 homepage ships | 3 SEO blog posts (pillar content). IH thread. No PH yet. |
 | **M2** | Waitlist hits 200+ | Start Reddit seeding (founding members post "I signed up"). Founder personal LinkedIn active. |
+| **M2** | **NEW (2026-06-24)** | Ship `npx skills add deessejs/deessejs` (parity move vs. NextForge v6 skill). AGENTS.md at monorepo root. |
 | **M3** | Founding member offer opens | Private email to waitlist. 48h head start. PH launch 1 prep begins. |
+| **M3** | **NEW (2026-06-24)** | `/vs/next-forge` comparison page ships (priority #1 — default Google result). |
 | **M3–M4** | Founding members active | IH thread: "I'm building X with DeesseJS." Sponsored builder content starts. |
 | **M4** | Agent primitives demo + founding members sell | PH Launch 1. /showcase goes live with founding member projects. |
-| **M4–M6** | Post-PH1 feedback loop | Update based on comments. /vs/ comparison pages go live. |
+| **M4** | **NEW (2026-06-24)** | PH Launch 1 talking point: "first paid SaaS template with an installable agent skill" (parity with NextForge, monetisation differentiator). |
+| **M4–M6** | Post-PH1 feedback loop | Update based on comments. `/vs/supastarter`, `/vs/shipfast`, `/vs/makerkit` comparison pages go live. |
 | **M7** | Cloud beta prep | New hook for PH2 identified. Tease on X/LinkedIn. |
 | **M8** | Cloud beta opens | PH Launch 2 with Cloud as the catalyst. Founder post-mortem. |
 
@@ -244,5 +247,7 @@ LinkedIn / X / Reddit (cold)
 - `../landing/landing-page.md` — homepage strategy, v1/v2/v3 page structure
 - `product-hunt-launch.md` — detailed PH playbook
 - `seo-content-strategy.md` — full SEO and content strategy
+- `vs-next-forge-comparison.md` — **`/vs/next-forge` page draft (2026-06-24)**
+- `npx-skills-parity-spec.md` — **`npx skills add deessejs/deessejs` spec (2026-06-24)**
 - `../social/social-media-strategy.md` — Reddit, LinkedIn, X strategy (with research gaps)
-- `../research/competitive-analysis.md` — updated competitor analysis from research findings
+- `../research/competitive-analysis.md` — updated competitor analysis from research findings + NextForge deep-dive (2026-06-24)
