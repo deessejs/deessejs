@@ -12,3 +12,35 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 }
+
+
+
+@media (prefers-color-scheme: dark) {
+  .shiki,
+  .shiki span {
+    background-color: #0a0a0a !important;
+  }
+}
+
+html.dark .shiki,
+html.dark .shiki span {
+  background-color: #0a0a0a !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .shiki,
+  .shiki span {
+    background-color: var(--bg-background) !important;
+    font-style: var(--shiki-dark-font-style) !important;
+    font-weight: var(--shiki-dark-font-weight) !important;
+    text-decoration: var(--shiki-dark-text-decoration) !important;
+  }
+}
+
+html.dark .shiki,
+html.dark .shiki span {
+  background-color: var(--bg-background) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
