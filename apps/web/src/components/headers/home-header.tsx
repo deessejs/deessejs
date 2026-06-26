@@ -10,8 +10,8 @@ const containerClass = "mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"
 
 const navLinks = [
   { label: "Pricing", href: "#pricing" },
-  { label: "Changelog", href: "/changelog" },
   { label: "Blog", href: "/blog" },
+  { label: "Changelog", href: "/changelog" },
   { label: "Docs", href: "https://docs.deessejs.com" },
 ]
 
