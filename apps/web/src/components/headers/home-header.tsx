@@ -65,10 +65,10 @@ export function HomeHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" render={<Link href="/login" />}>
+          <Button variant="outline" nativeButton={false} render={<Link href="/login" />}>
             Sign in
           </Button>
-          <Button render={<Link href="/signup" />}>
+          <Button nativeButton={false} render={<Link href="/signup" />}>
             Get started
             <ArrowRight />
           </Button>
