@@ -38,6 +38,8 @@ import { HomeHeader } from "@/components/headers/home-header"
 import PixelBlast from "@/components/homepage/pixel-blast"
 import { CodePreview } from "@/components/homepage/code-preview"
 
+import { tiers } from "@/lib/pricing/data"
+
 import Link from "next/link"
 
 import {
@@ -46,16 +48,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@workspace/ui/components/ui/accordion"
-import { Badge } from "@workspace/ui/components/ui/badge"
 import { Button } from "@workspace/ui/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/ui/card"
+import { Badge } from "@workspace/ui/components/ui/badge"
+import { Separator } from "@workspace/ui/components/ui/separator"
+import { Card } from "@workspace/ui/components/ui/card"
 import {
   Tooltip,
   TooltipContent,
@@ -163,65 +159,6 @@ const standardFeatures = [
     icon: Settings,
     title: "Settings",
     description: "Per-tenant configuration with type-safe defaults and admin overrides.",
-  },
-]
-
-const tiers = [
-  {
-    name: "Starter",
-    description: "For solo founders shipping their first SaaS.",
-    regularPrice: 399,
-    founderPrice: 249,
-    features: [
-      "Auth (email + OAuth + passkeys + 2FA)",
-      "Billing (Stripe, per-seat + metered usage)",
-      "Background jobs (Trigger.dev + QStash)",
-      "Storage (Cloudflare R2)",
-      "API server (Hono + oRPC + SDK)",
-      "AGENTS.md + AI coding agent rules",
-      "Fumadocs-powered docs site",
-      "Tool-calling agent primitives",
-      "Lifetime updates",
-    ],
-    cta: "Get Starter",
-    highlighted: false,
-  },
-  {
-    name: "Pro",
-    description: "For teams shipping a real product to real users.",
-    regularPrice: 599,
-    founderPrice: 499,
-    features: [
-      "Everything in Starter, plus:",
-      "Admin dashboard + user management",
-      "Blog + content hub (MDX)",
-      "Multi-language support (i18n)",
-      "End-to-end testing (Playwright)",
-      "Figma UI Kit",
-      "Email templates (Resend + React Email)",
-      "Monitoring (Sentry integration)",
-      "Priority email support",
-    ],
-    cta: "Get Pro",
-    highlighted: true,
-  },
-  {
-    name: "Team",
-    description: "For agencies and teams shipping multiple SaaS.",
-    regularPrice: 999,
-    founderPrice: 899,
-    features: [
-      "Everything in Pro, plus:",
-      "White-label / rebrand rights",
-      "Private Discord community",
-      "AI Agent Workflow Library",
-      "Priority support (24h response)",
-      "1 onboarding session (60 min)",
-      "Multi-tenant architecture",
-      "Per-tenant LLM metering dashboard",
-    ],
-    cta: "Get Team",
-    highlighted: false,
   },
 ]
 
@@ -341,7 +278,7 @@ export default function HomePage() {
             </h1>
 
             <p className="mt-8 max-w-2xl text-pretty text-lg font-medium text-muted-foreground sm:text-xl">
-              Every surface your agents need — auth, billing, jobs, storage, notifications, API — is already wired. Your agents don't start from scratch. They start from a complete system.
+              Every surface your agents need — auth, billing, jobs, storage, notifications, API — is already wired. Your agents don&apos;t start from scratch. They start from a complete system.
             </p>
             
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
@@ -349,7 +286,7 @@ export default function HomePage() {
                 size="lg"
                 className="h-12 gap-2 rounded-full px-8 text-base font-semibold shadow-md transition-transform hover:scale-105"
                 nativeButton={false}
-                render={<a href="#pricing" />}
+                render={<Link href="/pricing" />}
               >
                 Start building
                 <ArrowRight className="h-4 w-4" />
@@ -411,7 +348,7 @@ export default function HomePage() {
                 Everything you need to scale.
               </h2>
               <p className="mt-4 text-pretty text-lg text-muted-foreground">
-                Skip the boilerplate. We've wired together the best tools in the ecosystem so you can focus on your product.
+                Skip the boilerplate. We&apos;ve wired together the best tools in the ecosystem so you can focus on your product.
               </p>
             </div>
 
@@ -487,7 +424,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* PRICING SECTION */}
+        {/* PRICING TEASER — compact 3-card row linking to /pricing for full detail */}
         <section id="pricing" className={`border-t border-border/40 ${sectionPadding}`}>
           <div className={bodyContainerClass}>
             <div className="mx-auto max-w-2xl text-center">
@@ -495,102 +432,81 @@ export default function HomePage() {
                 One-time price. Lifetime access.
               </h2>
               <p className="mt-4 text-pretty text-lg text-muted-foreground">
-                No subscriptions. No recurring fees. Lock in the founder rate before it closes.
+                No subscriptions. Lock in the founder rate before it closes.
               </p>
             </div>
 
-            {/* Founding-member offer */}
-            <div className="mx-auto mt-12 max-w-3xl rounded-xl border border-foreground/30 bg-foreground/5 p-6 text-center shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Founding-member offer
-              </div>
-              <div className="mt-2 flex items-baseline justify-center gap-3">
-                <span className="text-lg text-muted-foreground line-through">$249</span>
-                <span className="text-4xl font-bold tracking-tighter text-foreground">$99</span>
-                <span className="text-sm font-medium text-muted-foreground">one-time · lifetime</span>
-              </div>
-              <p className="mt-3 text-sm text-muted-foreground">
-                First 50 founders only. Same DeesseJS as the Starter tier — discounted, not feature-cut.
-              </p>
-              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-1.5 text-sm">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground opacity-75"></span>
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-foreground"></span>
-                </span>
-                <span className="font-medium text-foreground">37 of 50 claimed</span>
-                <span className="text-muted-foreground">· closes July 31, 2026</span>
-              </div>
-            </div>
-
-            <div className="mt-12 grid gap-8 lg:grid-cols-3 items-center">
+            <div className="mt-12 grid gap-6 lg:grid-cols-3">
               {tiers.map((tier) => (
                 <Card
                   key={tier.name}
-                  className={`relative flex flex-col justify-between overflow-hidden rounded-2xl transition-all duration-300 ${
-                    tier.highlighted
-                      ? "border-foreground/50 shadow-xl lg:scale-105 bg-background z-10 ring-1 ring-foreground/10"
-                      : "border-border/50 bg-card/40 shadow-sm hover:shadow-md"
-                  }`}
+                  className="flex flex-col rounded-lg border bg-background p-6 shadow-sm"
                 >
-                  {tier.highlighted && (
-                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-foreground via-foreground/80 to-foreground"></div>
-                  )}
-                  <CardHeader className="p-8">
-                    <div className="flex items-center justify-between gap-2">
-                      <CardTitle className="text-lg font-medium">{tier.name}</CardTitle>
-                      {tier.highlighted && (
-                        <Badge variant="default" className="rounded-full px-3 font-medium">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-semibold tracking-tight text-foreground">
+                        {tier.name}
+                      </span>
+                      {tier.highlighted ? (
+                        <Badge className="rounded-full border-transparent bg-foreground px-2 py-0.5 text-[10px] font-medium text-background [&_svg]:size-3 flex items-center gap-1">
+                          <Zap className="size-3" aria-hidden />
                           Most popular
                         </Badge>
-                      )}
+                      ) : null}
                     </div>
-                    <CardDescription className="mt-2 text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                       {tier.description}
-                    </CardDescription>
-                    <div className="mt-6 flex items-baseline gap-2">
-                      <span className="text-lg text-muted-foreground line-through">
-                        ${tier.regularPrice}
-                      </span>
-                      <span className="text-5xl font-bold tracking-tighter text-foreground">
-                        ${tier.founderPrice}
-                      </span>
-                    </div>
-                    <div className="text-xs font-medium text-muted-foreground">
-                      one-time · lifetime updates
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-8 pt-0 flex-1">
-                    <ul className="space-y-3">
-                      {tier.features.map((feature) => (
-                        <li key={feature} className="flex items-start gap-3 text-sm font-medium">
-                          <Check className="mt-0.5 size-4 shrink-0 text-foreground" />
-                          <span className="text-muted-foreground">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                  <CardFooter className="p-8 pt-0">
-                    <Button
-                      className={`w-full rounded-full h-12 font-semibold ${tier.highlighted ? "shadow-md hover:scale-[1.02] transition-transform" : ""}`}
-                      variant={tier.highlighted ? "default" : "outline"}
-                      nativeButton={false}
-                      render={<a href="#founding-member" />}
-                    >
-                      {tier.cta}
-                    </Button>
-                  </CardFooter>
+                    </p>
+                  </div>
+
+                  <Separator className="my-4 bg-border" />
+
+                  <div className="flex items-baseline gap-1 font-semibold">
+                    <span className="text-base leading-none">$</span>
+                    <span className="text-3xl leading-none tracking-tight">
+                      {tier.founderPrice}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    one-time · lifetime updates
+                  </p>
+
+                  <ul className="mt-4 flex flex-col gap-1.5">
+                    {tier.features.slice(0, 3).map((feature) => (
+                      <li
+                        key={feature}
+                        className="flex items-center gap-2 text-sm text-muted-foreground"
+                      >
+                        <Check
+                          className="size-4 shrink-0 text-foreground"
+                          aria-hidden
+                        />
+                        <span className="line-clamp-1">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    href="/pricing"
+                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-foreground hover:underline"
+                  >
+                    See full pricing
+                    <ArrowRight className="size-3.5" />
+                  </Link>
                 </Card>
               ))}
             </div>
 
-            {/* 14-day money-back guarantee */}
-            <div className="mx-auto mt-12 max-w-2xl rounded-xl border border-border/50 bg-card/30 p-6 text-center">
-              <div className="text-sm font-semibold uppercase tracking-wide text-foreground">
-                14-day money-back guarantee
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                If your agents don't save you 3 months of development work in the first 14 days, email us for a full refund — no questions asked.
-              </p>
+            <div className="mt-8 text-center">
+              <Button
+                variant="outline"
+                className="h-9 gap-2 rounded-md px-6 text-sm font-medium"
+                nativeButton={false}
+                render={<Link href="/pricing" />}
+              >
+                Compare all features
+                <ArrowRight className="size-4" />
+              </Button>
             </div>
           </div>
         </section>
@@ -638,7 +554,7 @@ export default function HomePage() {
                 size="lg"
                 className="h-12 gap-2 rounded-full px-8 text-base font-semibold shadow-md transition-transform hover:scale-105"
                 nativeButton={false}
-                render={<a href="#pricing" />}
+                render={<Link href="/pricing" />}
               >
                 Get DeesseJS
                 <ArrowRight className="h-4 w-4" />

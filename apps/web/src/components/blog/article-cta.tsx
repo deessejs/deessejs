@@ -11,7 +11,7 @@ import { Button } from "@workspace/ui/components/ui/button";
  * pattern is reused from the home page CTA (see apps/web/src/app/(unprotected)/(marketing)/page.tsx).
  *
  * Two actions:
- * - Primary: "Get DeesseJS" → /#pricing
+ * - Primary: "Get DeesseJS" → /pricing
  * - Secondary: "Read the docs" → /docs
  *
  * Both target the conversion surface. The agentic copy is intentional —
@@ -38,7 +38,7 @@ export function ArticleCta() {
           size="sm"
           className="h-9 gap-1.5 rounded-full px-5 text-sm font-semibold shadow-sm transition-transform hover:scale-105"
           nativeButton={false}
-          render={<Link href="/#pricing" />}
+          render={<Link href="/pricing" />}
         >
           Get DeesseJS
           <ArrowRight className="size-3.5" />

@@ -14,11 +14,12 @@
 
 **Single source of truth per concern:**
 - **Design system primitives** → `packages/ui` (consumed via `@workspace/ui/components/ui/*`)
-- **App-specific components** → `apps/web/src/components/*` (auth, headers, footers, homepage, blog, etc.)
+- **App-specific components** → `apps/web/src/components/*` (auth, headers, footers, homepage, blog, pricing, etc.)
 - **Blog/changelog engine surface** → `apps/web/content-collections.ts` (single file)
 - **Blog/changelog helpers** → `apps/web/lib/blog/*`
+- **Pricing data (tiers, founder offer, guarantee, feature matrix, comparison blocks, pricing FAQ)** → `apps/web/src/lib/pricing/*` (mirrors the `lib/blog/*` pattern — extracted from the home page on 2026-06-26 when `/pricing` shipped)
 - **Content (MDX + authors)** → `apps/web/content/*`
-- **Marketing copy** → hardcoded in `app/(unprotected)/(marketing)/page.tsx`
+- **Marketing copy** (hero, features, why-choose, FAQ, CTA) → hardcoded in `app/(unprotected)/(marketing)/page.tsx`
 
 The boundary between `packages/ui` and `apps/web/src/components` is load-bearing:
 - **`packages/ui`** is the design system. It must not know about the domain (no `Post` types, no content-collections imports). It only ships shadcn primitives and other globals.
@@ -36,7 +37,8 @@ app/
 └── (unprotected)/                  ← public marketing surface
     ├── layout.tsx                  ← HomeHeader sticky, main shell, NO footer
     ├── (marketing)/                ← the home page
-    │   └── page.tsx                ← HomePage (~660 LoC, hero + features + pricing + FAQ + CTA)
+    │   ├── page.tsx                ← HomePage (hero + features + why-choose + pricing teaser + FAQ + CTA)
+    │   └── pricing/page.tsx        ← dedicated /pricing route with full feature matrix (added 2026-06-26)
     ├── (auth)/                     ← login / signup / forgot-password (UI shells, see §9)
     │   ├── login/page.tsx
     │   ├── signup/page.tsx
