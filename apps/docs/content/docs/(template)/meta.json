@@ -1,5 +1,19 @@
 {
   "title": "Template",
+  "icon": "package",
   "root": true,
-  "pages": ["index", "test"]
+  "pages": [
+    "...quickstart",
+    "---Features---",
+    "database",
+    "api",
+    "auth",
+    "emails",
+    "admin",
+    "logs",
+    "---Reference---",
+    "reference",
+    "---Explanation---",
+    "explanation"
+  ]
 }

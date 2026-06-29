@@ -1,0 +1,13 @@
+{
+  "title": "Logs",
+  "icon": "scroll-text",
+  "defaultOpen": false,
+  "pages": [
+    "index",
+    "---",
+    "tutorials",
+    "how-to",
+    "reference",
+    "explanation"
+  ]
+}

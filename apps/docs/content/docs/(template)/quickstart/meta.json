@@ -1,0 +1,12 @@
+{
+  "title": "Quickstart",
+  "icon": "rocket",
+  "defaultOpen": true,
+  "pages": [
+    "01-clone-and-wizard",
+    "02-first-feature",
+    "03-customize",
+    "04-ship",
+    "upgrade-from-lite"
+  ]
+}

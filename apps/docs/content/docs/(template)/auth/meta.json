@@ -1,0 +1,13 @@
+{
+  "title": "Auth",
+  "icon": "shield-check",
+  "defaultOpen": false,
+  "pages": [
+    "index",
+    "---",
+    "tutorials",
+    "how-to",
+    "reference",
+    "explanation"
+  ]
+}

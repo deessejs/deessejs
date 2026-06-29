@@ -1,0 +1,10 @@
+{
+  "title": "Reference",
+  "defaultOpen": false,
+  "pages": [
+    "env-vars",
+    "scripts",
+    "folder-structure",
+    "pricing-tiers"
+  ]
+}

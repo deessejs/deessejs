@@ -1,5 +1,14 @@
 {
   "title": "Lite",
+  "icon": "book-open",
   "root": true,
-  "pages": ["index"]
+  "defaultOpen": false,
+  "pages": [
+    "index",
+    "---",
+    "tutorials",
+    "how-to",
+    "reference",
+    "explanation"
+  ]
 }

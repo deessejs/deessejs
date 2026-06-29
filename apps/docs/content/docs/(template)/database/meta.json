@@ -1,0 +1,13 @@
+{
+  "title": "Database",
+  "icon": "database",
+  "defaultOpen": true,
+  "pages": [
+    "index",
+    "---",
+    "tutorials",
+    "how-to",
+    "reference",
+    "explanation"
+  ]
+}

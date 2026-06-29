@@ -1,0 +1,13 @@
+{
+  "title": "Emails",
+  "icon": "mail",
+  "defaultOpen": false,
+  "pages": [
+    "index",
+    "---",
+    "tutorials",
+    "how-to",
+    "reference",
+    "explanation"
+  ]
+}

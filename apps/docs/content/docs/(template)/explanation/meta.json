@@ -1,0 +1,9 @@
+{
+  "title": "Explanation",
+  "defaultOpen": false,
+  "pages": [
+    "modular-contract",
+    "design-principles",
+    "why-this-stack"
+  ]
+}

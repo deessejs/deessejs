@@ -2,6 +2,8 @@
 @import 'fumadocs-ui/css/black.css';
 @import 'fumadocs-ui/css/preset.css';
 
+@import "@workspace/ui/globals.css";
+
 html {
   scrollbar-gutter: stable;
 }

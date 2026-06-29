@@ -1,0 +1,9 @@
+- [Scope and boundaries](project-apps-web-scope-and-boundaries.md) — apps/web (live) vs apps/template/apps/web (template) — the critical distinction, plus IN/OUT paths
+- [Next 16 quirks in apps/web](reference-next16-apps-web-quirks.md) — the next.config.ts options that must stay (shiki ESM, transpilePackages, pageExtensions, allowedDevOrigins, withContentCollections wrapper order)
+- [Content-collections engine](project-content-collections-engine.md) — 3 collections (authors/posts/releases), draft/scheduled skip, delete-test anchor, slug-from-filename
+- [Read node_modules/next/dist/docs first](feedback-next16-read-node-modules-docs.md) — meta-rule from apps/web/CLAUDE.md; "This is NOT the Next.js you know"
+- [Apps/docs Fumadocs setup](project-apps-docs-fumadocs-setup.md) — generated .source/, source.config.ts, llms.txt routes, OG route, search route
+- [Pixel-blast hero gotchas](project-pixel-blast-hero.md) — three.js + postprocessing performance traps on the marketing hero
+- [Base UI Button render trap](project-base-ui-button-render-trap.md) — nativeButton={false} mandatory when render={<Link/>} or render={<a/>}
+- [apps/web README is stale](project-apps-web-readme-stale.md) — still default create-next-app README, do not trust for stack info
+- [apps/docs structure 2026-06-29](project-apps-docs-structure-2026-06-29.md) — locked nav tree: Variants-first (Template→Lite→Cloud), Template root via route group, Diátaxis per variant, Engine + Ops at root

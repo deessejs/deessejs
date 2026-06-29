@@ -1,0 +1,12 @@
+{
+  "title": "How-to",
+  "pages": [
+    "configure-stripe",
+    "configure-r2",
+    "configure-trigger",
+    "add-a-feature",
+    "delete-notifications",
+    "delete-blog",
+    "delete-docs"
+  ]
+}

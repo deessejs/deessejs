@@ -1,0 +1,13 @@
+{
+  "title": "API",
+  "icon": "code",
+  "defaultOpen": false,
+  "pages": [
+    "index",
+    "---",
+    "tutorials",
+    "how-to",
+    "reference",
+    "explanation"
+  ]
+}

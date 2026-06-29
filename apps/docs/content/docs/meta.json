@@ -1,4 +1,5 @@
 {
   "title": "DeesseJS",
-  "pages": ["(template)", "lite"]
+  "defaultOpen": true,
+  "pages": ["(template)", "lite", "cloud"]
 }
