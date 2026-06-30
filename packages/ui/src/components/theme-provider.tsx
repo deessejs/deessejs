@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
 
 /**
  * The default theme provider. Wraps the entire React tree so `next-themes`
@@ -25,3 +25,10 @@ export function ThemeProvider({
 }: React.ComponentProps<typeof NextThemesProvider>) {
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>
 }
+
+/**
+ * Re-export of next-themes' `useTheme` hook so consumers can read/flip
+ * the current theme without taking a direct dependency on `next-themes`.
+ * Pattern: `import { useTheme } from "@workspace/ui/components/theme-provider"`.
+ */
+export { useTheme }

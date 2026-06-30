@@ -1,0 +1,22 @@
+- [Scope and boundaries](project-apps-cloud-scope-and-boundaries.md) — apps/app (successor of apps/cloud, AGENTS.md → must read node_modules/next/dist/docs/) + documents/internal/product/cloud/** + feasibility doc + packages/* — IN/OUT paths
+- [Feasibility doc staleness map](project-cloud-feasibility-staleness.md) — what the feasibility doc says that's now wrong; tech-2026-06.md is the replacement tech spec
+- [A/B/C taxonomy](reference-cloud-architecture-taxonomy.md) — A=Architecture, B=Business primitives, C=Customer-facing contracts; numbering rules; known gaps
+- [v0 private beta invariants](project-cloud-v0-private-beta.md) — Q3 2026, 30-tenant cap, $99/mo × 20 design partners, 87% gross margin, 4-6 min provisioning target
+- [V0 customer surface — 14 routes](project-v0-customer-surface.md) — V0 is NOT managed hosting; it's the minimum loop. 5 auth + 2 device auth + 1 dashboard + 5 projects + 1 profile. See [[C1-v0-customer-surface]]
+- [Vendor stack baseline](project-cloud-vendor-stack.md) — Vercel Platforms + Turso + Upstash + Trigger.dev + Resend + Stripe Connect + Cloudflare DNS + CF Workers Edge (control plane)
+- [Docs are the primary artifact](feedback-cloud-docs-are-primary.md) — meta-rule: write the A/B/C spec first, code is downstream
+- [DEESSEJS_SECRET is PASETO not JWT](project-deessejs-secret-paseto.md) — EdDSA, envelope-only, control plane `POST /exchange` returns 15-min PASERK seal
+- [The 6 metering failure modes](project-cloud-metering-failure-modes.md) — B4 §2 distilled; the INCRBY/Stripe idempotency asymmetry that will lose money on retries
+- [The 5 non-portable surfaces](project-cloud-portability-tax.md) — what an ejecting buyer still has to do manually (Fluid Compute, Vercel Blob/Cron/KV/Edge, DNS, Resend, Trigger.dev org)
+- [Research snapshot 2026-06-26](research-2026-06-26.md) — date-stamped "what fresh said" across the 8 vendors + PASETO/PASERK; what was verified, edge cases, gaps
+- [Doc corrections pending 2026-06-26](doc-corrections-pending-2026-06-26.md) — action items derived from the research sweep; explicit list of which doc to amend with which change
+- [Supabase evaluated 2026-06-26 — rejected for v0](project-supabase-evaluated-rejected.md) — 11× cost + harder escape hatch than Turso; revisit for v2 at 1000+ tenants. Lessons: Claim Flow, RLS footgun, connection pool sizing
+- [Better Auth — template candidate, escalate to tech-lead](reference-template-auth-better-auth-candidate.md) — strong fit for per-tenant self-hosted auth; **Better Auth Cloud = "PlanetScale for auth"**; **Sign in with Vercel built-in** (PR #6316); v2 candidate for cross-tenant ops
+- [Better Auth device authorization flow (RFC 8628)](reference-better-auth-device-flow.md) — native plugin for CLI `auth login`; 5 endpoints, single `deviceCode` table, 30min/5s defaults; **exact fit for `deesse auth login`**; open: separate `/device` routes vs inline approval on `/projects/[id]/cli`
+- [Cloud viewer tier — strategic idea 2026-06-26](project-cloud-viewer-tier-idea.md) — proposed but NOT decided; read-only viewer funnel toward managed hosting; "don't change anything yet"
+- [Vercel API for viewer — endpoint mapping](reference-vercel-api-for-viewer.md) — Sign in with Vercel + REST endpoints + 5 limitations (no impersonation, no streaming, no source, no DeesseJS marker, no public rate limits)
+- [Drizzle Studio embedding — step 2 research](reference-drizzle-studio-embedding.md) — three offerings (local / `@drizzle-team/studio` embed / Drizzle Gateway alpha); Turso scoped tokens perfect for per-tenant DB browser; 3 risks to resolve
+- [Fresh Exa credit limits 2026-06-26](project-fresh-exa-credit-limits-2026-06-26.md) — Exa hit cap mid-research; partial findings saved with gaps flagged; retry in future session
+- [Never use deep/deep-lite on fresh](feedback-no-deep-mode-on-fresh.md) — user directive: default mode only; deep modes burn the Exa credit budget fast
+- [Cloud deployment domains](project-cloud-deployment-domains.md) — app.deessejs.com = apps/app (Cloud), deessejs.com = apps/web (marketing). Wildcard *.deessejs.com operator-owned. See [[project-cloud-vendor-stack]]
+- [Trust user on cost assumptions](feedback-trust-user-on-cost-assumptions.md) — when user pushes back on vendor pricing/lock-in, dig into open-source alternatives before defending the original assessment

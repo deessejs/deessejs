@@ -442,13 +442,13 @@ WCAG 2.1 AA. Every component must:
 The DS that ships now includes:
 
 - **Tokens:** full color, typography, spacing, radius, shadow, easing.
-- **19 shadcn primitives** (installed via `pnpm dlx shadcn@latest add` on 2026-06-24, base-nova / Base UI style; `Avatar` and `Table` added 2026-06-26 to support `AuthorBadge` and the `/pricing` feature matrix respectively): `Button`, `Input`, `Textarea`, `Field`, `Label`, `Card`, `Dialog`, `DropdownMenu`, `Popover`, `Tooltip`, `Sonner`, `Checkbox`, `Switch`, `Separator`, `Accordion`, `Badge`, `Select`, `Avatar`, `Table`.
+- **24 shadcn primitives** (installed via `pnpm dlx shadcn@latest add` on 2026-06-24, base-nova / Base UI style; `Avatar` and `Table` added 2026-06-26 to support `AuthorBadge` and the `/pricing` feature matrix; `Collapsible` and `ScrollArea` added subsequently; `Sidebar`, `Sheet`, and `Skeleton` added 2026-06-30 to support the Cloud v0 `(protected)` shell — `Sidebar` ships with its own mobile drawer via `Sheet` and a loading primitive via `Skeleton`): `Button`, `Input`, `Textarea`, `Field`, `Label`, `Card`, `Dialog`, `DropdownMenu`, `Popover`, `Tooltip`, `Sonner`, `Checkbox`, `Switch`, `Separator`, `Accordion`, `Badge`, `Select`, `Avatar`, `Table`, `Collapsible`, `ScrollArea`, `Sidebar`, `Sheet`, `Skeleton`.
   - **Note on `Form`:** Forms use `react-hook-form` + `Zod` as a pattern (§4.2) — there is no shadcn `Form` primitive in the CLI registry.
 - **1 custom component (still to ship, will live in `src/components/`, not in `src/components/ui/`):** `InteractiveFiletree` — the visual centerpiece of the v1 landing page. Built with Motion for hover/click animations. Renders the monorepo structure as a monospaced tree with paired code panels (the "supastarter pattern" from §6 of `landing-page.md`). Not a shadcn primitive — has its own docs entry.
 
 **Deferred to v0.2** (each needs a use case in `apps/web` to justify shipping — "agentic SaaS template" is not "every component ever made"):
 
-- `Sheet`, `Command`, `Combobox`, `RadioGroup`, `Tabs`, `Breadcrumb`, `Alert`, `Skeleton`, `Spinner`, `Empty`, `Item`, `NavigationMenu`, `AlertDialog`, `ContextMenu`, `HoverCard`, `Menubar`, `Pagination`, `Resizable`, `ScrollArea`, `Slider`, `Toggle`, `ToggleGroup`, `DataTable` (TanStack wrapper).
+- `Command`, `Combobox`, `RadioGroup`, `Tabs`, `Breadcrumb`, `Alert`, `Spinner`, `Empty`, `Item`, `NavigationMenu`, `AlertDialog`, `ContextMenu`, `HoverCard`, `Menubar`, `Pagination`, `Resizable`, `Slider`, `Toggle`, `ToggleGroup`, `DataTable` (TanStack wrapper).
 
 ---
 
