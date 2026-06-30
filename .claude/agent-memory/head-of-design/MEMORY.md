@@ -1,4 +1,5 @@
 - [Always speak English](feedback-always-speak-english.md) — always respond in English regardless of user's language
+- [Feedback Base UI Tooltip asChild](feedback-base-ui-tooltip-aschild.md) — shadcn v4 base-nova TooltipTrigger wraps its child as a button; never nest a `<button>` inside (hydration error)
 - [Landing page structure](documents/internal/design/landing-page-structure.md) — page anatomy, InteractiveFiletree spec, components inventory, open questions
 - [Feedback setup shadcn monorepo](feedback-shadcn-monorepo-setup.md) — CLI v4 monorepo workflow + mistakes to avoid (aliases, radix imports, CLI flags)
 - [Feedback React peer dep for shadcn package](feedback-react-peer-dep-shadcn-package.md) — react/react-dom as both peerDependencies AND devDependencies, else TS fails on new component files
@@ -8,6 +9,7 @@
 - [Feedback never run dev](feedback-never-run-dev-server.md) — never launch dev servers, note issues only
 - [Feedback shadcn border token subtle](feedback-shadcn-border-token-subtle.md) — default --border has Lc ~10 contrast, use border-foreground/15 for page frames
 - [Feedback Base UI Accordion API](feedback-base-ui-accordion-api.md) — shadcn v4 base-nova uses @base-ui/react/accordion, no type="single" collapsible prop
+- [Feedback DeesseJS mono design language](feedback-deessejs-mono-design-language.md) — monochrome (no emerald checks), borders beat shadows, inline badges not above-card, cards: rounded-lg + bg-background + uniform + column dividers
 - [Feedback glued grid pattern](feedback-glued-grid-pattern.md) — homepage grid sections: no gaps, no section padding, no inter-subsection padding; cards get rounded-none ring-0 + divide-x/divide-y
 - [Feedback PixelBlast positioning](feedback-pixel-blast-positioning.md) — color must match bg brightness; pass position via inline style, not wrapper div with h-full
 - [Feedback Pierre grid layout](feedback-pierre-grid-layout.md) — @pierre/trees + @pierre/diffs hosts need h-full min-h-0 in grid cells, default block children collapse to 0px
@@ -21,3 +23,26 @@
 - [Vercel Geist](reference-vercel-geist.md) — design system inspiration : intent-based scale, motion "0ms is best", voice rules, focus ring signature
 - [DeesseJS produit](project-deessejs-product.md) — contexte commercial + 6 design principles load-bearing + audience B2B dev
 - [Monorepo strategy](project-monorepo-strategy.md) — nested workspace apps/template = buyer product, root apps/web = marketing site, shadcn integration shipped 2026-06-24 + 6 spec deviations still open
+- [Pricing page 2026-06-26](project-pricing-page-2026-06-26.md) — /pricing route + apps/web/src/lib/pricing/* data pattern + Table primitive; home page has compact teaser
+- [Pricing redesign 2026-06-29](project-pricing-redesign-2026-06-29.md) — Founder Banner + Tier Grid redesign + Lite integrated + MockupProofRow reusing home AppShell + Content; then simplified to 3 tiers (Pro removed)
+- [Pricing page patterns](reference-pricing-page-patterns.md) — 3-tier structure (lead magnet + solo + agency), founder urgency, comparison matrix, CTA strategy; from Linear/Vercel/Cursor/Notion/Cal.com research
+- [SVG illustration system](reference-svg-illustration-system.md) — bespoke mono SVG illustrations (hairline 1.5px, currentColor, 320×240 viewBox) in apps/web/src/components/illustrations/; no external illustration library
+- [Feedback illustrations use CSS not SVG](feedback-illustrations-use-css-not-svg.md) — capability/feature card illustrations must be CSS product mockups (fake admin pages), NOT SVG diagrams — Sophie AppShell + Content variant pattern
+- [Vercel home CSS](reference-vercel-home-css.md) — print-mark grid (1px lines, 5–10% opacity), mono palette, crosshair intersection marks; the mono precedent
+- [Supabase home CSS](reference-supabase-home-css.md) — mesh gradient hero (OKLCH + multi-radial + blur), cursor-tracked radial glow, interactive dashboard mockup
+- [Resend home CSS](reference-resend-home-css.md) — "code → arrow → output" hero composition, sharp mono palette, "tools list" section pattern
+- [Anthropic home CSS](reference-anthropic-home-css.md) — warm-ivory palette (#FAF9F5 + #D97757), Anthropic Serif headlines, "research paper" card anatomy
+- [Linear home CSS](reference-linear-home-css.md) — interactive dashboard mockup hero, "FIG 0.x" section labels, hairline feature tables
+- [Stripe home CSS](reference-stripe-home-css.md) — gradient-text headlines (background-clip: text), subtle mesh accents, mono stat grid
+- [Hero techniques 2026](reference-hero-techniques-2026.md) — 12-recipe CSS catalog + decision matrix mapping user keywords to techniques; the master synthesis
+- [Flowline decomposition](reference-flowline-decomposition.md) — Sophie Wodey's flowline repo: AppShell + Content variant split, 5 reusable primitives (SectionLabel/Reveal/Orb/TimerRing/AppShell), pillars data-driven iteration, 5-element rhythm inside content variants
+- [Decomposition method](reference-decomposition-method.md) — the 5-step workflow: decompose user need → atoms, pick layout primitive per atom, choose ONE technique, data-drive composition, annotate intent
+- [AI design workflow](reference-ai-design-workflow.md) — meta-workflow for "real design not slop": design-system-first, decomposition over generation, intent-cited references, 10 anti-patterns signature, generate-with-taste-verify-with-evidence
+- [Page redesign signals 2026-06-26](feedback-page-redesign-signals-2026-06-26.md) — 3 user corrections: keep PixelBlast + stack row as signatures, InteractiveFiletree concept stays, features cards need color/illustrations BUT no gradients, no flashy (chroma ≤ 0.08)
+- [Home why-different 2026-06-26](project-home-why-different-2026-06-26.md) — replaces 6-card "Why choose" grid with 3-card hairline stack; establishes apps/web/src/lib/marketing/* + apps/web/src/components/marketing/* patterns
+- [Blog + changelog redesign 2026-06-29](project-blog-changelog-redesign-2026-06-29.md) — v1 (covers + author bio + changelog grouping) + v2 (TOC + reading progress + share + featured hero + author pages) + multi-author schema
+- [Blog + changelog patterns](reference-blog-changelog-patterns.md) — research synthesis from Vercel/Supabase/Resend/Linear/Clerk/Stripe/GitHub; multi-author byline + TOC + version grouping patterns
+- [Home features redesign 2026-06-29](project-home-features-redesign-2026-06-29.md) — full evolution: 19 features → 4 CSS product mockup pillars + 9-card bento grid; AppShell + Content variant pattern adopted from Sophie
+- [Capability pillar pattern](reference-capability-pillar-pattern.md) — reusable pattern: claim + CSS product mockup via AppShell + Content variant split; alternation + grid ratio rules
+- [Bento grid implementation](reference-bento-grid-implementation.md) — 3-col 5-row layout, 2 hero cells (2×2) + 7 small cells (1×1); HoverSlideArrow pattern; external docs links
+- [Feedback language rule](feedback-always-speak-english.md) — code (incl. comments) must be English; conversation can match the user's language

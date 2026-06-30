@@ -1,1 +1,0 @@
-export { default } from "@deessejs/ui/postcss.config"

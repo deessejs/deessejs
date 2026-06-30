@@ -1,5 +1,0 @@
-packages:
-  - 'apps/web'
-  - 'apps/cli'
-  - 'apps/docs'
-  - 'packages/*'
