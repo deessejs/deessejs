@@ -10,7 +10,14 @@
 
 **This is the marketing site.** Hero, features grid, pricing, FAQ, CTA — all the conversion surface. Plus the public blog (`/blog`) and public changelog (`/changelog`).
 
-**This is NOT the buyer template.** The buyer template (`apps/template/apps/web`) is a separate nested pnpm workspace. It has its own `content-collections.ts`, its own `lib/`, its own components. The two apps do not share TypeScript code — they live in different pnpm workspaces and cannot import across.
+**This is NOT the buyer template, and NOT the Cloud app shell.** As of 2026-07-02, this monorepo is intentionally flat:
+
+- The **buyer template** lives in the external sibling repo `deessejs/template-starter` (extracted to avoid nested-workspace complexity — see `documents/internal/architecture/12-apps/cli/decisions/` for the rationale chain).
+- The **Cloud per-tenant app shell** lives at `apps/app` (`@deessejs/app`) — see `apps/app/CLAUDE.md` if/when it exists, and the Cloud feasibility doc in `documents/internal/product/`.
+- The **Lite** template lives in the external sibling repo `deessejs/template-lite`.
+- The **`deesse init` CLI** scaffolder lives in the external sibling repo `deessejs/deesse` (proposed; design lives in `documents/internal/architecture/12-apps/cli/` in this repo).
+
+This monorepo hosts four surfaces only: the marketing site (`apps/web`), the Cloud per-tenant shell (`apps/app`), the Fumadocs site (`apps/docs`), and the shared design system (`packages/ui`). See `documents/internal/architecture/00-system-overview/` for the C4 diagrams.
 
 **Single source of truth per concern:**
 - **Design system primitives** → `packages/ui` (consumed via `@workspace/ui/components/ui/*`)
