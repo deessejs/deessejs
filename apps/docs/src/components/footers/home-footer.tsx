@@ -1,15 +1,17 @@
 import Link from "next/link"
 import Image from "next/image"
 
+import { WEB_URL } from "@/lib/urls"
+
 const footerLinks = {
   deessejs: [
-    { label: 'Home', href: 'https://deessejs.com' },
+    { label: 'Home', href: WEB_URL },
     { label: 'Errors', href: 'https://errors.deessejs.com' },
     { label: 'DRPC', href: 'https://drpc.deessejs.com' },
     { label: 'Collections', href: 'https://collections.deessejs.com' },
     { label: 'FP', href: 'https://fp.deessejs.com' },
     { label: 'Admin', href: 'https://admin.deessejs.com' },
-    { label: 'Cloud', href: 'https://deessejs.com/cloud' },
+    { label: 'Cloud', href: `${WEB_URL}/cloud` },
   ],
   learn: [
     { label: 'Docs', href: '/docs' },
