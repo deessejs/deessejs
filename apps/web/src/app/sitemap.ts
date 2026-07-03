@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { allPosts } from "content-collections";
 import { allReleases } from "content-collections";
 
+import { WEB_URL } from "@/lib/urls";
+
 /**
  * Root sitemap for deessejs.com.
  * Includes all public marketing routes + every blog post + every changelog entry.
@@ -10,7 +12,7 @@ import { allReleases } from "content-collections";
  * excluded — they're placeholder thin pages with no SEO value.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = "https://deessejs.com";
+  const base = WEB_URL;
   const now = new Date();
 
   // Static marketing pages

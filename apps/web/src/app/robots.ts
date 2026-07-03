@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 
+import { WEB_URL } from "@/lib/urls";
+
 /**
  * robots.txt — allows all crawlers including AI search bots.
  *
@@ -64,6 +66,6 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
       },
     ],
-    sitemap: "https://deessejs.com/sitemap.xml",
+    sitemap: `${WEB_URL}/sitemap.xml`,
   };
 }

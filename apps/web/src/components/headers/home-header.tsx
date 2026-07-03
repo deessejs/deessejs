@@ -1,20 +1,15 @@
+"use client";
+
 import Link from "next/link"
 
 import { ArrowRight } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/ui/button"
+import { usePublicUrl } from "@/lib/use-public-url"
 
 // Header uses the plain max-w-7xl container without the editorial
 // border-x frame (the border only applies to the main content area).
 const containerClass = "mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"
-
-const navLinks = [
-  { label: "Pricing", href: "/pricing" },
-  { label: "Blog", href: "/blog" },
-  { label: "Changelog", href: "/changelog" },
-  { label: "Docs", href: "https://docs.deessejs.com" },
-  { label: "Demo", href: "https://demo.deessejs.com" },
-]
 
 /**
  * HomeHeader — sticky top nav for the marketing site.
@@ -26,6 +21,16 @@ const navLinks = [
  * Uses Next.js `Link` for client-side navigation.
  */
 export function HomeHeader() {
+  const { docsUrl, demoUrl, appUrl } = usePublicUrl();
+
+  const navLinks = [
+    { label: "Pricing", href: "/pricing" },
+    { label: "Blog", href: "/blog" },
+    { label: "Changelog", href: "/changelog" },
+    { label: "Docs", href: docsUrl },
+    { label: "Demo", href: demoUrl },
+  ];
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background">
       <div
@@ -66,10 +71,10 @@ export function HomeHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" nativeButton={false} render={<Link href="/login" />}>
+          <Button variant="outline" nativeButton={false} render={<Link href={`${appUrl}/login`} />}>
             Sign in
           </Button>
-          <Button nativeButton={false} render={<Link href="/signup" />}>
+          <Button nativeButton={false} render={<Link href={`${appUrl}/signup`} />}>
             Get started
             <ArrowRight />
           </Button>

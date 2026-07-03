@@ -11,6 +11,7 @@ import {
 import { Separator } from "@workspace/ui/components/ui/separator"
 
 import { HomeFooter } from "@/components/footers/home-footer"
+import { WEB_URL } from "@/lib/urls"
 
 export const metadata: Metadata = {
   title: "About — DeesseJS",
@@ -97,16 +98,16 @@ export default function AboutPage() {
   const personJsonLd = {
     "@context": "https://schema.org",
     "@type": "Person",
-    "@id": "https://deessejs.com/#person",
+    "@id": `${WEB_URL}/#person`,
     name: "David Pereira",
     alternateName: "dpereira",
     description:
       "Founder of DeesseJS. Building the SaaS template he wished he had three projects ago.",
-    url: "https://deessejs.com/about",
+    url: `${WEB_URL}/about`,
     sameAs: ["https://github.com/codewizdave"],
     worksFor: {
       "@type": "Organization",
-      "@id": "https://deessejs.com/#organization",
+      "@id": `${WEB_URL}/#organization`,
     },
   };
 

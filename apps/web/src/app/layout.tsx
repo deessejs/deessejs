@@ -5,6 +5,7 @@ import { cn } from "@workspace/ui/lib/utils"
 import { ThemeProvider } from "@workspace/ui/components/theme-provider"
 
 import "./globals.css"
+import { WEB_URL } from "@/lib/urls"
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -17,7 +18,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://deessejs.com"),
+  metadataBase: new URL(WEB_URL),
   title: {
     default: "DeesseJS",
     template: "%s | DeesseJS",
@@ -64,8 +65,8 @@ export default function RootLayout({
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "@id": "https://deessejs.com/#website",
-    url: "https://deessejs.com",
+    "@id": `${WEB_URL}/#website`,
+    url: WEB_URL,
     name: "DeesseJS",
     description:
       "The SaaS template that never sleeps. Ship your agents as your developers.",
@@ -73,8 +74,7 @@ export default function RootLayout({
       "@type": "SearchAction",
       target: {
         "@type": "EntryPoint",
-        urlTemplate:
-          "https://deessejs.com/blog?search={search_term_string}",
+        urlTemplate: `${WEB_URL}/blog?search={search_term_string}`,
       },
       "query-input": "required name=search_term_string",
     },
@@ -83,9 +83,9 @@ export default function RootLayout({
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "@id": "https://deessejs.com/#organization",
+    "@id": `${WEB_URL}/#organization`,
     name: "DeesseJS",
-    url: "https://deessejs.com",
+    url: WEB_URL,
     description:
       "The SaaS template that never sleeps. Ship your agents as your developers.",
     sameAs: ["https://github.com/nesalia-inc/deessejs"],

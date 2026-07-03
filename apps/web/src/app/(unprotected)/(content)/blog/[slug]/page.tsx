@@ -8,6 +8,8 @@ import { Separator } from "@workspace/ui/components/ui/separator";
 
 import { allPosts } from "content-collections";
 
+import { WEB_URL } from "@/lib/urls";
+
 import { ArticleCta } from "@/components/blog/article-cta";
 import { AuthorBio } from "@/components/blog/author-bio";
 import { PostCard } from "@/components/blog/post-card";
@@ -82,17 +84,17 @@ export default async function PostPage(
             dateModified: post.updated ?? post.date,
             author: {
               "@type": "Person",
-              "@id": "https://deessejs.com/#person",
+              "@id": `${WEB_URL}/#person`,
               name: post.author.name,
-              url: `https://deessejs.com/about`,
+              url: `${WEB_URL}/about`,
             },
             publisher: {
               "@type": "Organization",
-              "@id": "https://deessejs.com/#organization",
+              "@id": `${WEB_URL}/#organization`,
               name: "DeesseJS",
-              url: "https://deessejs.com",
+              url: WEB_URL,
             },
-            url: `https://deessejs.com${post.url}`,
+            url: `${WEB_URL}${post.url}`,
             ...(post.cover ? { image: post.cover } : {}),
           }).replace(/</g, "\\u003c"),
         }}

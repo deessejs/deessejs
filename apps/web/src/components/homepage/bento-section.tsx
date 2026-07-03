@@ -15,6 +15,7 @@ import {
 import { ResendMark } from "@/components/marketing/brand-marks"
 
 import { cn } from "@workspace/ui/lib/utils"
+import { DOCS_URL } from "@/lib/urls"
 
 /**
  * BentoSection — secondary features grid below the 4 capability pillars.
@@ -198,7 +199,7 @@ export function BentoSection() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:auto-rows-[180px]">
         {/* Email hero — 2×2 with inbox mockup */}
         <a
-          href="https://docs.deessejs.com/email"
+          href={`${DOCS_URL}/email`}
           target="_blank"
           rel="noopener noreferrer"
           className="group relative flex flex-col rounded-xl border border-border/40 bg-card/30 p-5 transition-colors hover:border-foreground/20 hover:bg-muted/20 md:col-span-2 md:row-span-2"
@@ -270,7 +271,7 @@ export function BentoSection() {
         <BentoCard
           title="S3-compatible storage"
           body="R2, AWS, MinIO — presigned uploads and access helpers included."
-          href="https://docs.deessejs.com/storage"
+          href={`${DOCS_URL}/storage`}
           tech={[
             { Icon: Database, name: "R2" },
             { Icon: Database, name: "S3" },
@@ -282,13 +283,13 @@ export function BentoSection() {
         <BentoCard
           title="Full-text search"
           body="Postgres FTS or your provider — faceted, typo-tolerant."
-          href="https://docs.deessejs.com/search"
+          href={`${DOCS_URL}/search`}
           tech={[{ Icon: Database, name: "Postgres" }]}
         />
 
         {/* Docs — 2×2 hero with sidebar preview (matches Email's weight) */}
         <a
-          href="https://docs.deessejs.com/docs"
+          href={`${DOCS_URL}/docs`}
           target="_blank"
           rel="noopener noreferrer"
           className="group relative flex flex-col rounded-xl border border-border/40 bg-card/30 p-5 transition-colors hover:border-foreground/20 hover:bg-muted/20 md:col-span-2 md:row-span-2"
@@ -375,7 +376,7 @@ export function BentoSection() {
         <BentoCard
           title="Webhooks in & out"
           body="Outbound dispatcher with retries. Inbound verification helpers."
-          href="https://docs.deessejs.com/webhooks"
+          href={`${DOCS_URL}/webhooks`}
           tech={[
             { Icon: Webhook, name: "Outbound" },
             { Icon: GitBranch, name: "Inbound" },
@@ -386,7 +387,7 @@ export function BentoSection() {
         <BentoCard
           title="Git integration"
           body="GitHub and GitLab webhooks with signed payloads and event normalization."
-          href="https://docs.deessejs.com/git"
+          href={`${DOCS_URL}/git`}
           tech={[
             { Icon: GitBranch, name: "GitHub" },
             { Icon: GitBranch, name: "GitLab" },
@@ -397,7 +398,7 @@ export function BentoSection() {
         <BentoCard
           title="Notifications"
           body="In-app, email, and push behind one delivery API with preferences."
-          href="https://docs.deessejs.com/notifications"
+          href={`${DOCS_URL}/notifications`}
           tech={[
             { Icon: Mail, name: "Email" },
             { Icon: Bell, name: "Push" },
@@ -409,7 +410,7 @@ export function BentoSection() {
         <BentoCard
           title="Multi-language"
           body="Typed locale files and a translation workflow, ready to ship."
-          href="https://docs.deessejs.com/i18n"
+          href={`${DOCS_URL}/i18n`}
           tech={[
             { Icon: Languages, name: "EN" },
             { Icon: Languages, name: "JA" },
@@ -421,7 +422,7 @@ export function BentoSection() {
         <BentoCard
           title="Multi-tenant"
           body="Per-tenant data isolation, org switching, role-based access."
-          href="https://docs.deessejs.com/multi-tenant"
+          href={`${DOCS_URL}/multi-tenant`}
           tech={[
             { Icon: Building2, name: "Orgs" },
             { Icon: Database, name: "RLS" },
