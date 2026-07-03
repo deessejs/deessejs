@@ -19,6 +19,11 @@ The framework (Next.js) is documented in [`01-stack/nextjs.md`](../01-stack/next
 - `wizard-flow.md` — the onboarding wizard as a special route: parallel routes, step state, persistence, recovery, "skip for power users".
 - `auth-flows.md` — page-level auth: sign-in, sign-up, OAuth callback, magic-link landing, the post-auth redirect logic.
 - `admin-surface.md` — the org-level admin (RBAC) vs the system admin (operator) — different layouts, different auth, different concerns.
+- `templates-library.md` — index doc for the templates library (registry + gallery + deploy + demo buttons). **Start here for any templates-related task.**
+- `templates-gallery.md` — the gallery's web app routes (`/templates/*`), filters, data source, ISR, SEO.
+- `deploy-button.md` — the `<DeployButton>` component: URL composition, variants, edge cases, tests.
+- `demo-button.md` — the `<DemoButton>` component (the friction-free "see it first" sibling of DeployButton).
+- `demo-button.md` — the `<DemoButton>` component: the friction-free "see it first" sibling of DeployButton.
 - `theming-and-tokens.md` — design tokens, dark mode, per-tenant branding (feature 10.5), the CSS variable contract.
 - `error-loading-empty.md` — `error.tsx`, `loading.tsx`, `not-found.tsx`, empty states, the polished-UX discipline.
 - `i18n-ui.md` — how the `en`-only architecture stays translatable: routing shape, content files, date/currency formatting, RTL readiness.
@@ -37,6 +42,7 @@ The web app is **one Next.js app** but it presents several distinct surfaces to 
 | **Docs** (`/docs/*`) | Buyer's end users + the buyer themselves | Mixed | `app/(docs)/` | Fumadocs site, API reference, "Deleting features" |
 | **Blog** (`/blog/*`) | Public | None | `app/(marketing)/blog/` | Fumadocs blog |
 | **API explorer** (`/api-explorer`) | Public | API key | `app/(marketing)/api-explorer/` | Scalar / Swagger UI, branded |
+| **Templates gallery** (`/templates/*`) | Devs (humans primary, agents as scrapers) | None | `app/(marketing)/templates/` | registry-driven grid + individual template pages with `<DeployButton>` + `<DemoButton>` paired on the hero |
 
 ## Conventions
 
