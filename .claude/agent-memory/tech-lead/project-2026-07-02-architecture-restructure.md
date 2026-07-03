@@ -15,7 +15,7 @@ metadata:
 
 **What changed:** the templates' CODE no longer lives in this monorepo. It moved to sibling repos (`deessejs/template-starter`, `deessejs/template-lite`, etc.). We don't write template code from this repo anymore.
 
-**What this repo IS now:** the organizational hub *around* templates. We build:
+**What this repo IS now:** the organizational hub *around* templates. We build: (Note: apps/template and apps/lite were MOVED to external repos as of 2026-07-03 — tech-lead no longer owns those paths, they live in deessejs/template-starter and deessejs/template-lite respectively.)
 - The marketing surface that sells them (`apps/web`)
 - The Cloud product that hosts them as per-tenant SaaS (`apps/app`)
 - The shared design system they consume (`packages/ui`)

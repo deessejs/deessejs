@@ -16,9 +16,9 @@ A new custom subagent was added on 2026-06-26: **`web-tech-lead`** (defined at `
 | `packages/ui/` | **web-tech-lead** (read + write) |
 | `packages/*` consumed by web/docs | **web-tech-lead** |
 | `scripts/` + root monorepo config | **web-tech-lead** |
-| `apps/template/**` | **tech-lead** (you, this agent) |
-| `apps/lite/**` | **tech-lead** |
-| `apps/cloud/**` | **tech-lead** |
+| `apps/template/**` | **MOVED** → `deessejs/template-starter` (external repo) |
+| `apps/lite/**` | **MOVED** → `deessejs/template-lite` (external repo) |
+| `apps/cloud/**` | **tech-lead** (cloud-tech-lead owns the product/design, tech-lead owns the scaffold) |
 
 ## Why this split
 

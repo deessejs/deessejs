@@ -18,9 +18,9 @@ A new custom subagent was added on 2026-06-26: **`cloud-tech-lead`** (defined at
 | `documents/internal/product/cloud/**` | **cloud-tech-lead** |
 | `documents/internal/product/deessejs-cloud-feasibility-2026-06.md` | **cloud-tech-lead** (full ownership) |
 | `packages/*` consumed by Cloud | **cloud-tech-lead** (read + write) |
-| `apps/template/**` | **tech-lead** (this agent) |
-| `apps/lite/**` | **tech-lead** |
-| Buyer-template `packages/*` | **tech-lead** |
+| `apps/template/**` | **MOVED** → `deessejs/template-starter` (external repo) |
+| `apps/lite/**` | **MOVED** → `deessejs/template-lite` (external repo) |
+| Buyer-template `packages/*` | **MOVED** → `deessejs/template-starter` |
 
 All three agents have packages/* access. **Conflicts on shared package files are arbitrated by the user.**
 
