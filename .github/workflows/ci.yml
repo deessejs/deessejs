@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo lint --force
+
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo build --filter=web --force
+      - run: pnpm turbo typecheck --force
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: production
+      BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
+      DATABASE_URL: postgresql://test:test@localhost:5432/test
+      NEXT_PUBLIC_APP_URL: https://ci.example.com
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      # Env validation — fails fast if production invariants are violated
+      # (DATABASE_URL required, BETTER_AUTH_SECRET >= 32 chars, etc.)
+      - name: Validate env
+        run: pnpm env:check
+      - run: pnpm turbo build --force
+
+  test-unit:
+    name: Test (Unit)
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo build
+      - run: pnpm turbo test
+
+  test-integration:
+    name: Test (Integration)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      # 32+ char secret so @workspace/env/server schema validation passes
+      # without depending on a CI secret. Production secrets are still
+      # injected via ${{ secrets.* }} in deploy workflows.
+      BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
+      DATABASE_URL: postgresql://test:test@localhost:5432/test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build dependencies
+        run: pnpm turbo build
+
+      - name: Generate migrations
+        run: pnpm db:generate
+
+      - name: Apply migrations
+        run: pnpm db:migrate
+
+      - name: Run integration tests
+        run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api

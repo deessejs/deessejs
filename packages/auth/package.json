@@ -1,0 +1,46 @@
+{
+  "name": "@workspace/auth",
+  "version": "0.0.2",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/auth.d.ts",
+      "import": "./dist/auth.js",
+      "default": "./dist/auth.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js",
+      "default": "./dist/types.js"
+    }
+  },
+  "types": "./dist/auth.d.ts",
+  "scripts": {
+    "lint": "eslint --max-warnings=0",
+    "build": "tsc",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "auth:generate": "pnpm exec auth generate --config ./src/auth.ts --output ../database/src/schema/auth.ts --yes"
+  },
+  "dependencies": {
+    "@better-auth/drizzle-adapter": "catalog:",
+    "@workspace/database": "workspace:*",
+    "@workspace/email": "workspace:*",
+    "@workspace/env": "workspace:*",
+    "better-auth": "catalog:",
+    "drizzle-orm": "catalog:",
+    "pg": "catalog:",
+    "postgres": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "@workspace/eslint-config": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,3 @@
+- [Project overview](project-saas-template-overview.md) — monorepo pnpm/Turbo single-tenant, 3 apps Next.js 16, packages auth/api/database/email/ui.
+- [Better-auth guides index](reference-better-auth-guides.md) — `docs/guides/better-auth/` : point d'entrée obligatoire avant tout code auth/schema.
+- [Read-only by default](feedback-read-only-by-default.md) — demande d'analyse/audit/revue = lecture seule stricte, aucune commande mutante.

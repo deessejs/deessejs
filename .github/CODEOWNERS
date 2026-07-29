@@ -1,0 +1,19 @@
+# Default owner
+* @codewizdave
+
+# By directory
+/apps/web/           @codewizdave
+/apps/app/           @codewizdave
+/apps/docs/          @codewizdave
+/packages/ui/         @codewizdave
+/packages/database/   @codewizdave
+/packages/auth/      @codewizdave
+/packages/api/       @codewizdave
+/packages/utils/      @codewizdave
+/packages/eslint-config/  @codewizdave
+/packages/typescript-config/  @codewizdave
+
+# Infrastructure
+/turbo.json          @codewizdave
+/pnpm-workspace.yaml  @codewizdave
+/.github/workflows/   @codewizdave

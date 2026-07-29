@@ -1,0 +1,25 @@
+name: 📝 Blank Issue
+description: Create a blank issue without a template
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for creating an issue!
+
+        Consider using one of the templates above for faster triaging.
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: 📝 Issue
+      description: Describe your issue
+      placeholder: Your issue description here
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 🌍 Additional Context
+      description: Any additional context
+      placeholder: Any other relevant information

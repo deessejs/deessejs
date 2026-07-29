@@ -1,0 +1,52 @@
+{
+  "name": "@workspace/api",
+  "version": "0.0.2",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./router": {
+      "types": "./dist/router/index.d.ts",
+      "import": "./dist/router/index.js",
+      "default": "./dist/router/index.js"
+    },
+    "./base-path": {
+      "types": "./dist/base-path.d.ts",
+      "import": "./dist/base-path.js",
+      "default": "./dist/base-path.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "lint": "eslint --max-warnings=0",
+    "build": "tsc",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@better-auth/drizzle-adapter": "catalog:",
+    "@orpc/client": "catalog:",
+    "@orpc/server": "catalog:",
+    "@workspace/auth": "workspace:*",
+    "@workspace/database": "workspace:*",
+    "@workspace/env": "workspace:*",
+    "better-auth": "catalog:",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:",
+    "postgres": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@workspace/eslint-config": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

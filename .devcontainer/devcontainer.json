@@ -1,0 +1,46 @@
+{
+  "name": "SaaS Template",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers-contrib/features/postgresql-bootstrapdata:1": {
+      "version": "16",
+      "runAsRoot": "true",
+      "username": "codespace"
+    }
+  },
+  "forwardPorts": [3000, 5432],
+  "portsAttributes": {
+    "3000": {
+      "label": "App",
+      "onAutoForward": "openPreview"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "pnpm install && pnpm db:generate",
+  "customizations": {
+    "codespaces": {
+      "openFiles": ["README.md", "CLAUDE.md"]
+    },
+    "vscode": {
+      "settings": {
+        "typescript.preferences.importModuleSpecifier": "non-relative"
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "prisma.prisma",
+        "ms-vscode.vscode-typescript-next"
+      ]
+    }
+  },
+  "remoteEnv": {
+    "DATABASE_URL": "postgresql://codespace:codespace@localhost:5432/postgres",
+    "BETTER_AUTH_SECRET": "${localEnv:BETTER_AUTH_SECRET}",
+    "BETTER_AUTH_URL": "http://localhost:3000"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "name": "web",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "content-collections": "content-collections build"
+  },
+  "dependencies": {
+    "@workspace/ui": "workspace:*",
+    "fuse.js": "catalog:",
+    "lucide-react": "catalog:",
+    "next": "catalog:",
+    "next-themes": "^0.4.6",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zustand": "catalog:"
+  },
+  "devDependencies": {
+    "@content-collections/cli": "catalog:",
+    "@content-collections/core": "catalog:",
+    "@content-collections/mdx": "catalog:",
+    "@content-collections/next": "catalog:",
+    "@shikijs/rehype": "catalog:",
+    "@tailwindcss/postcss": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@workspace/eslint-config": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "eslint": "^9",
+    "reading-time": "catalog:",
+    "typescript": "catalog:",
+    "zod": "catalog:"
+  }
+}

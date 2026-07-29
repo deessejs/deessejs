@@ -1,0 +1,76 @@
+name: 🐛 Bug Report
+description: Report an unexpected problem or unintended behavior
+labels: ["bug", "status:needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Describe the bug here
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 📋 Steps to Reproduce
+      description: How to reproduce the bug
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: ✅ Expected Behavior
+      description: What you expected to happen
+      placeholder: Describe what should happen
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: ❌ Actual Behavior
+      description: What actually happens
+      placeholder: Describe what actually happens
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 🎯 Area
+      description: Which part of the codebase is affected?
+      options:
+        - area:auth
+        - area:ui
+        - area:web
+        - area:app
+        - area:docs
+        - area:database
+        - area:email
+        - area:ci
+        - area:build
+        - area:deploy
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 📄 Logs / Error Messages
+      description: Any relevant log output or error messages
+      placeholder: Paste error messages here
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 🌍 Additional Context
+      description: Any other context about the problem
+      placeholder: OS, Node version, etc.

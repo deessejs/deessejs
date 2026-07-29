@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: https://github.com/deessejs/saas-template#readme
+    about: Check the README for setup instructions
+  - name: 💬 Discussions
+    url: https://github.com/deessejs/saas-template/discussions
+    about: Ask questions and share ideas

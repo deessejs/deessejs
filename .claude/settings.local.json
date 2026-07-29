@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+
+    "allow": ["Read(*)", "Write(*)", "Edit(*)", "Bash(*)", "Read(//tmp/**)"],
+
+    "deny": [
+      "Write(//tmp/**)",
+      "Edit(//tmp/**)",
+      "Bash(rm */tmp/*)",
+
+      "Bash(kill *)",
+      "Bash(pkill *)",
+      "Bash(killall *)",
+      "Bash(xargs kill*)",
+      "Bash(taskkill*)",
+
+      "Bash(git rebase *)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean*)",
+
+      "Bash(sudo *)",
+      "Bash(chmod *)",
+      "Bash(chown *)",
+      "Bash(rm -rf / *)",
+      "Bash(alias *)"
+    ]
+  }
+}

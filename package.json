@@ -1,0 +1,44 @@
+{
+  "name": "next-monorepo",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint -- --max-warnings=0",
+    "format": "turbo format",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "db:generate": "pnpm --filter @workspace/database db:generate",
+    "db:migrate": "pnpm --filter @workspace/database db:migrate",
+    "db:push": "pnpm --filter @workspace/database db:push",
+    "db:studio": "pnpm --filter @workspace/database db:studio",
+    "auth:generate": "pnpm --filter @workspace/auth auth:generate",
+    "env:check": "node --experimental-strip-types scripts/env-check.ts",
+    "dedupe:check": "pnpm dedupe --check"
+  },
+  "devDependencies": {
+    "@changesets/changelog-git": "catalog:",
+    "@changesets/cli": "catalog:",
+    "@workspace/eslint-config": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "prettier": "^3.9.4",
+    "prettier-plugin-tailwindcss": "^0.8.0",
+    "turbo": "^2.10.4",
+    "typescript": "catalog:",
+    "zod": "catalog:"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "^19.2.17",
+      "@types/react-dom": "^19.2.3"
+    }
+  },
+  "packageManager": "pnpm@11.0.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@tanstack/react-form": "catalog:"
+  }
+}

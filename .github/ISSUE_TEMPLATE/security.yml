@@ -1,0 +1,50 @@
+name: 🔒 Security Issue
+description: Report a security vulnerability (DO NOT disclose details publicly)
+labels: ["security"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ **IMPORTANT**: Please DO NOT disclose security vulnerabilities publicly.
+
+        If you believe you've found a security vulnerability, please report it privately.
+
+        For vulnerabilities in dependencies, check if it's already reported on GitHub Security Advisories.
+
+  - type: input
+    id: email
+    attributes:
+      label: 📧 Contact Email
+      description: Where can we reach you for follow-up?
+      placeholder: your@email.com
+    validations:
+      required: true
+
+  - type: textarea
+    id: vulnerability
+    attributes:
+      label: 🔍 Vulnerability Type
+      description: Type of security issue
+      placeholder: |
+        e.g., SQL Injection, XSS, Authentication bypass, etc.
+
+  - type: textarea
+    id: location
+    attributes:
+      label: 📍 Location
+      description: Where the vulnerability exists
+      placeholder: Package, file, function, or URL
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: 💥 Impact
+      description: Potential impact if exploited
+      placeholder: Who/what is affected and how
+
+  - type: textarea
+    id: proof
+    attributes:
+      label: 📝 Proof of Concept
+      description: Non-public details for verification (will be kept private)
+      placeholder: Detailed steps to reproduce (DO NOT include in public issue)

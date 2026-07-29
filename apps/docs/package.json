@@ -1,0 +1,38 @@
+{
+  "name": "@workspace/docs",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx,mdx}\"",
+    "typecheck": "fumadocs-mdx && next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@workspace/ui": "workspace:*",
+    "cnfast": "^0.0.8",
+    "fumadocs-core": "16.10.7",
+    "fumadocs-mdx": "15.0.13",
+    "fumadocs-ui": "16.10.7",
+    "lucide-react": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "catalog:",
+    "@types/mdx": "^2.0.14",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@workspace/eslint-config": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "eslint": "^9",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4",
+    "typescript": "catalog:"
+  }
+}

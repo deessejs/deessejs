@@ -1,0 +1,104 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# pnpm 11: explicit allowlist for build scripts
+allowBuilds:
+  '@mongodb-js/zstd': true
+  '@prisma/client': true
+  better-sqlite3: true
+  esbuild: true
+  node-liblzma: true
+  sharp: true
+  unrs-resolver: true
+
+# Shared dependency versions — update here, propagate everywhere
+catalog:
+  # Core
+
+  # Email (added 2026-07-07 — packages/email)
+
+  # Auth
+  "@better-auth/drizzle-adapter": ^1.6.23
+  '@changesets/changelog-git': ^0.2.1
+  '@changesets/cli': ^2.31.0
+  '@content-collections/cli': ^0.1.9
+  '@content-collections/core': ^0.15.2
+  '@content-collections/mdx': ^0.2.2
+  '@content-collections/next': ^0.2.11
+  '@deessejs/errors': ^1.1.1
+  '@deessejs/fp': ^1.0.0
+
+  # Next.js
+  "@next/env": ^16.2.10
+  '@orpc/client': ^1.14.7
+  "@orpc/server": ^1.14.7
+  "@react-email/components": ^1.0.12
+  "@react-email/render": ^2.0.6
+  '@shikijs/rehype': ^4.3.1
+
+  # Shared tooling
+  "@tailwindcss/postcss": ^4.3.2
+  '@tanstack/react-form': ^1.33.0
+  "@turbo/gen": ^2.10.4
+
+  # Types
+  "@types/node": ^24
+  "@types/pg": ^8.20.0
+  "@types/react": ^19.2.17
+  "@types/react-dom": ^19.2.3
+  "@vitest/coverage-v8": ^4.1.10
+  better-auth: ^1.6.23
+  cmdk: ^1.1.1
+
+  # Database
+  dotenv: ^17.4.2
+  drizzle-kit: ^0.31.10
+  drizzle-orm: ^0.45.2
+  eslint: ^9.39.4
+  "eslint-config-next": ^16.2.10
+  fuse.js: ^7.4.2
+
+  # API
+  hono: ^4.12.28
+  just-bash: ^3.0.2
+
+  # Icons
+  lucide-react: ^1.23.0
+  "next": ^16.2.10
+  pg: ^8.22.0
+  portless: ^0.15.1
+  postgres: ^3.4.9
+  react: 19.2.7
+  react-dom: 19.2.7
+  reading-time: ^1.5.0
+  resend: ^6.17.1
+  sonner: ^2.0.7
+
+  # UI
+  tailwind-merge: ^3.6.0
+  typescript: ^6.0.3
+
+  # Testing
+  vitest: ^4.1.10
+  zod: ^4.4.3
+  zustand: ^5.0.14
+
+# Strict mode: all dependencies MUST come from a catalog
+catalogMode: strict
+
+minimumReleaseAgeExclude:
+  # Kept out of the minimumReleaseAge check: these are transitively used by
+  # `apps/docs` via `fumadocs-mdx`, so excluding them avoids upgrade friction
+  # on docs builds. See `temp/audit/tech-lead-deletion/README.md` §6.
+  - rolldown
+  - "@rolldown/*"
+
+# Force single version of @types/react across the tree to avoid duplicate-type errors
+overrides:
+  "@types/react": ^19.2.17
+  "@types/react-dom": ^19.2.3
+  # Force single hono resolution: MCP SDK → @hono/node-server pulls hono@4.12.27
+  # transitively; without this override the workspace ends up with both 4.12.27
+  # and 4.12.28, causing duplicate-type errors and subtle runtime mismatches.
+  hono: ^4.12.28

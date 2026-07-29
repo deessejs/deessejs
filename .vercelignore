@@ -1,0 +1,11 @@
+# Build artifacts
+node_modules
+.pnp
+.pnp.*
+.yarn
+*.tsbuildinfo
+.next-env.d.ts
+dist
+.next
+.vercel
+.workflow-data

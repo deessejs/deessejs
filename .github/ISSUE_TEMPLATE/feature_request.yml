@@ -1,0 +1,78 @@
+name: ✨ Feature Request
+description: Suggest a new idea or enhancement
+labels: ["enhancement", "status:needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature!
+
+        Describe your feature request in detail. The more context you provide, the better.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 📝 Feature Summary
+      description: A brief summary of the feature
+      placeholder: One sentence summary
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 💡 Motivation
+      description: Why would this feature be valuable?
+      placeholder: Describe the problem you're trying to solve
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📖 Detailed Description
+      description: A clear and detailed description of the proposed feature
+      placeholder: Describe your feature in detail
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 🔄 Alternatives Considered
+      description: Any alternative solutions you've considered
+      placeholder: Describe alternatives you've considered
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: 🎨 Mockups / Examples
+      description: Any mockups, screenshots, or examples
+      placeholder: Links to mockups or examples
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 🎯 Area
+      description: Which part of the codebase is affected?
+      options:
+        - area:auth
+        - area:ui
+        - area:web
+        - area:app
+        - area:docs
+        - area:database
+        - area:email
+        - area:ci
+        - area:build
+        - area:deploy
+        - Cross-package
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: 📋 Requirements
+      description: Specific requirements or acceptance criteria
+      placeholder: |
+        - [ ] Requirement 1
+        - [ ] Requirement 2
