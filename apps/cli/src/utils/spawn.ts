@@ -23,7 +23,7 @@ export const spawn = (
       cwd,
       env: env ?? process.env,
       stdio,
-      shell: process.platform === "win32",
+      shell: false,
     })
     child.on("error", (err) => rejectFn(err))
     child.on("exit", (code) => {

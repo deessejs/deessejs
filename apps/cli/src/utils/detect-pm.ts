@@ -59,7 +59,7 @@ const readPackageJson = (
   }
 }
 
-const parsePackageManagerField = (
+export const parsePackageManagerField = (
   raw: string,
 ): PackageManagerInfo | null => {
   // Format: "<name>@<version>" or just "<name>". Common names: pnpm, npm, yarn, bun.

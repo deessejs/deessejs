@@ -61,7 +61,8 @@ export const initCommand = new Command("init")
           throw targetExists(dir)
         }
 
-        const repoUrl = `https://github.com/${template.owner}/${template.repo}`
+        const repoUrl =
+          template.cloneUrl ?? `https://github.com/${template.owner}/${template.repo}`
 
         const cloneSpinner = ora(`Cloning ${pc.cyan(template.owner + "/" + template.repo)}...`).start()
         let cloneResult

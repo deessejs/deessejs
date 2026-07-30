@@ -11,6 +11,8 @@ export type Template = {
   category: string
   labels: string[]
   image?: string
+  /** Optional override for the clone URL. Falls back to `https://github.com/<owner>/<repo>`. */
+  cloneUrl?: string
 }
 
 export type ApiResponse = { templates: Template[] }
@@ -70,6 +72,7 @@ const isTemplate = (value: unknown): value is Template => {
     typeof obj.license === "string" &&
     typeof obj.category === "string" &&
     Array.isArray(obj.labels) &&
-    obj.labels.every((l) => typeof l === "string")
+    obj.labels.every((l) => typeof l === "string") &&
+    (obj.cloneUrl === undefined || typeof obj.cloneUrl === "string")
   )
 }

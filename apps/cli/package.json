@@ -18,7 +18,9 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
+    "pretest": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "start": "node ./dist/index.js"
   },
   "dependencies": {
