@@ -24,6 +24,8 @@
     "start": "node ./dist/index.js"
   },
   "dependencies": {
+    "@deessejs/errors": "catalog:",
+    "@deessejs/fp": "catalog:",
     "commander": "^12.1.0",
     "ora": "^8.1.1",
     "picocolors": "^1.1.1"

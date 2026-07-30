@@ -27,6 +27,12 @@ catalogs:
     '@content-collections/next':
       specifier: ^0.2.11
       version: 0.2.11
+    '@deessejs/errors':
+      specifier: ^1.1.1
+      version: 1.1.1
+    '@deessejs/fp':
+      specifier: ^1.0.0
+      version: 1.0.0
     '@next/env':
       specifier: ^16.2.10
       version: 16.2.10
@@ -243,6 +249,12 @@ importers:
 
   apps/cli:
     dependencies:
+      '@deessejs/errors':
+        specifier: 'catalog:'
+        version: 1.1.1
+      '@deessejs/fp':
+        specifier: 'catalog:'
+        version: 1.0.0(@deessejs/errors@1.1.1)
       commander:
         specifier: ^12.1.0
         version: 12.1.0
@@ -1112,6 +1124,14 @@ packages:
     peerDependencies:
       '@content-collections/core': 0.x
       next: ^12 || ^13 || ^14 || ^15 || ^16
+
+  '@deessejs/errors@1.1.1':
+    resolution: {integrity: sha512-iq9ei2OgoGqpuO37c7Mp4EBIFOZsyueGQLgavSwUKtExu0oSElWCzTcF568XUWRVAjrjlxWD8vcDyLRFPYSIZQ==}
+
+  '@deessejs/fp@1.0.0':
+    resolution: {integrity: sha512-li2Lg1ZKnGq0temTUZxFzR9wK1d24trc/SOMFNF9KI1NZOom4FWn/DXd34Gthssn3gSaBKyqUItaUnFCB4v8IQ==}
+    peerDependencies:
+      '@deessejs/errors': '>=1.0.0'
 
   '@dotenvx/dotenvx@1.75.1':
     resolution: {integrity: sha512-/BITOC9dmS/edY2zQwZNicQ059O6RKabtQfyEafV0nGtfYRNHYy1DIPiYVcov40+tob9hfmBnbR963dS+EQ1DQ==}
@@ -8156,6 +8176,14 @@ snapshots:
       '@content-collections/core': 0.15.2(typescript@6.0.3)
       '@content-collections/integrations': 0.5.0(@content-collections/core@0.15.2(typescript@6.0.3))
       next: 16.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+
+  '@deessejs/errors@1.1.1':
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+
+  '@deessejs/fp@1.0.0(@deessejs/errors@1.1.1)':
+    dependencies:
+      '@deessejs/errors': 1.1.1
 
   '@dotenvx/dotenvx@1.75.1':
     dependencies:
