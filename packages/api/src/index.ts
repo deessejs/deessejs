@@ -9,6 +9,7 @@ import { db } from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import { appRouter } from "./router/index.js"
 import { API_BASE_PATH } from "./base-path.js"
+import { TEMPLATES } from "./templates.js"
 
 // Body parser methods that consume the request body. The proxy below
 // redirects these to Hono's parsed getters so oRPC never sees a drained
@@ -65,6 +66,11 @@ api.use("*", async (c, next) => {
 
 // Health check
 api.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }))
+
+// Templates endpoint — consumed by the @deessejs/cli (list / info / init).
+// Public for V1 (the CLI has no auth tokens yet). V1.1 (device auth) can
+// gate this behind the authMiddleware without breaking the response shape.
+api.get("/templates", (c) => c.json({ templates: TEMPLATES }))
 api.get("/ready", async (c) => {
   try {
     // Ping Postgres before returning 200. db.execute throws on connection
