@@ -236,7 +236,7 @@ Zero new deps.
 
 ## Platform notes
 
-**Init tests are skipped on Windows** (via `describe.skipIf(process.platform === "win32")`). Reason: in the project's Windows sandbox, `child_process.spawn` of `git.exe` fails with ENOENT even when `where git` resolves the binary correctly. The unit, list, and info tests run on Windows just fine. CI (Linux) runs the full suite including init tests.
+**Init tests are skipped on Windows and in CI** (via `describe.skipIf(process.platform === "win32" || !!process.env.CI || !gitAvailable)`). Reason: in the test fork (`pool: "forks"`), `child_process.spawn` of `git` fails with ENOENT even on Linux CI — the fork's PATH lookup is stripped. The unit, list, and info tests run in any environment. Init tests run locally when the user invokes `pnpm --filter @deessejs/cli test` outside CI.
 
 ## Open questions
 

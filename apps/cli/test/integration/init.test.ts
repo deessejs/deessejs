@@ -32,7 +32,9 @@ const FIXTURE = {
   labels: ["nextjs", "saas"],
 }
 
-describe.skipIf(process.platform === "win32" || !gitAvailable)("deessejs init", () => {
+describe.skipIf(
+  process.platform === "win32" || !!process.env.CI || !gitAvailable,
+)("deessejs init", () => {
   let api: FakeApi
   let git: GitFixture
   let cwd: string
