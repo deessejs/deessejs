@@ -1,0 +1,46 @@
+{
+  "name": "@deessejs/cli",
+  "version": "0.1.0",
+  "description": "CLI for the DeesseJS template registry.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "deessejs": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "start": "node ./dist/index.js"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "ora": "^8.1.1",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@workspace/eslint-config": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "eslint": "^9",
+    "prettier": "^3.9.4",
+    "prettier-plugin-tailwindcss": "^0.8.0",
+    "tsup": "^8.3.5",
+    "typescript": "catalog:",
+    "vitest": "^2.1.5"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
