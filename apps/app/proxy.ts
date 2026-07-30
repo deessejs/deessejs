@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { authClient } from "./lib/auth-client"
+import { auth } from "@workspace/auth"
 import type { Session, User } from "better-auth"
 
 const PROTECTED_PREFIXES = ["/home", "/settings"]
@@ -38,15 +38,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Use authClient.getSession() instead of auth.api.getSession()
-  // This makes an HTTP call to /api/auth/get-session instead of accessing
-  // serverEnv directly, which allows the build to work without env vars.
-  const { data: session } = await authClient.getSession({
-    fetchOptions: {
-      headers: {
-        cookie: request.headers.get("cookie") || "",
-      },
-    },
+  // Server-side session read. The previous workaround used
+  // authClient.getSession() (an HTTP roundtrip to /api/auth/get-session)
+  // so the build worked without serverEnv. With turbo.json now caching
+  // dist/** (#44), serverEnv is reachable at build time — use the
+  // server-side API directly instead of bouncing through HTTP.
+  const session = await auth.api.getSession({
+    headers: request.headers,
   })
 
   if (isProtected && !session?.session) {
