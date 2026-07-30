@@ -17,7 +17,11 @@ export type CreateGitFixtureOpts = {
 }
 
 const git = (args: string[], cwd: string): void => {
-  execFileSync("git", args, { cwd, stdio: "pipe" })
+  execFileSync("git", args, {
+    cwd,
+    stdio: "pipe",
+    env: { ...process.env },
+  })
 }
 
 export const createGitFixture = async (
