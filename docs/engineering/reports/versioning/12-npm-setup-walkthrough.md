@@ -72,7 +72,7 @@ pnpm --filter @deessejs/cli publish --access public --no-git-checks
 4. Configure the fields:
    - **Publisher type**: GitHub Actions
    - **Organization or user**: `deessejs` (the GitHub org)
-   - **Repository**: `ecosystem-d` (or whatever the actual repo name is)
+   - **Repository**: `deessejs` (this repo's name)
    - **Workflow filename**: `release.yml` (just the filename, not the path)
    - **Environment name**: leave blank initially (we don't use GitHub environments; can be added later for hardening)
    - **Allowed actions**: select `npm publish` (not `npm stage publish` — that's the staged-2FA variant, see 12.7)
