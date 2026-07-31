@@ -31,7 +31,7 @@ Concrete changes to apply once the architecture in [05-strategy.md](05-strategy.
 ```jsonc
 {
   "name": "@deessejs/cli",
-  "version": "0.1.0",           // bumped to 0.2.0 by the first changesets release
+  "version": "1.0.1",           // bumped to 1.0.1 because the npm namespace was previously claimed (0.1.0–0.6.46 exist) and the @deessejs/* deps had to use real semver (see "Dependencies must be real semver" below)
   "description": "CLI for the DeesseJS template registry.",
   "type": "module",
   "license": "MIT",
@@ -49,10 +49,19 @@ Concrete changes to apply once the architecture in [05-strategy.md](05-strategy.
   "publishConfig": {
     "access": "public",
     "provenance": true
+  },
+  "dependencies": {
+    "@deessejs/errors": "^1.1.1",  // NOT "catalog:" — see dependency rule below
+    "@deessejs/fp": "^1.0.0",      // NOT "catalog:" — see dependency rule below
+    "commander": "^12.1.0",
+    "ora": "^8.1.1",
+    "picocolors": "^1.1.1"
   }
   // ... rest unchanged
 }
 ```
+
+**Dependencies must be real semver, not `catalog:`** — The `catalog:` protocol is pnpm-specific; npm doesn't understand it. When `apps/cli/package.json` shipped with `"@deessejs/errors": "catalog:"`, the published package could not be installed by `npm install` or `npx` (`EUNSUPPORTEDPROTOCOL` error). The catalog is fine for **internal** package deps (workspace packages stay in the monorepo) but **published** packages must have concrete semver ranges. Keep `devDependencies` in `catalog:` if you want — they don't get published.
 
 Corresponding `apps/cli/tsup.config.ts` change: add `dts: true` so `dist/index.d.ts` is emitted. Verify CI still passes on the existing test suite.
 

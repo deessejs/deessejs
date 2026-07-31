@@ -103,7 +103,7 @@ If the trusted publisher is misconfigured (wrong workflow filename, env mismatch
 
 ```
 npm error 404 Not Found - PUT https://registry.npmjs.org/@deessejs/cli
-npm error 404 '@deessejs/cli@0.2.0' is not in this registry.
+npm error 404 '@deessejs/cli@1.0.1' is not in this registry.
 ```
 
 The package exists. The version is correct. The OIDC token exchange probably succeeded. **The error is misleading.** It does NOT mean the package doesn't exist. It means the trusted publisher rejected the workflow's OIDC claims.
@@ -131,6 +131,19 @@ There's no `NPM_TOKEN` in the senior pattern. If trusted publishing is misconfig
 
 - Re-do the manual first publish from a developer's machine (12.3) — overwrites the published version if no published version exists at that name, but if versions exist, `npm unpublish` within 72h.
 - Disable the trusted publisher on npm, publish a new version with a temporary manual `npm publish --access public` from a developer's machine, re-enable the trusted publisher, fix the workflow.
+
+### 12.6.5 `catalog:` deps don't survive `npm publish`
+
+A published package's `package.json` must use standard semver, not pnpm's `catalog:` protocol. The `catalog:` syntax is **resolved at install time by pnpm**, but `npm publish` ships the raw `package.json` with the literal string `"catalog:"` in the `dependencies` field. When a consumer (or `npx`) tries to install the published package, npm rejects it with:
+
+```
+npm error code EUNSUPPORTEDPROTOCOL
+npm error Unsupported URL Type "catalog:": catalog:
+```
+
+**Rule**: only monorepo-internal packages (the `packages/*` workspace) can use `catalog:`. A workspace package that's going to be published to npm must use real semver ranges for its `dependencies`. `devDependencies` can stay in `catalog:` — they don't ship to the registry.
+
+**Recovery**: `npm unpublish @deessejs/cli@<broken-version>` (within 72h), fix the deps to real semver, then re-publish at the next version (e.g. `1.0.1` if `1.0.0` was the broken one).
 
 ## 12.7 Optional hardening (post-first-publish)
 
