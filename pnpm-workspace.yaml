@@ -27,7 +27,7 @@ catalog:
   '@content-collections/mdx': ^0.2.2
   '@content-collections/next': ^0.2.11
   '@deessejs/errors': ^1.1.1
-  '@deessejs/fp': ^1.0.0
+  '@deessejs/fp': ^1.0.1
 
   # Next.js
   "@next/env": ^16.2.10

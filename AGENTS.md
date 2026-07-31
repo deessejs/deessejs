@@ -37,18 +37,18 @@ feature/fix branch  ─PR─▶  staging  ─merge (manual, human)─▶  main  
 
 ### Better-Auth guides
 
-Pattern senior pour better-auth dans ce repo. **Lis toujours `docs/guides/better-auth/index.md` en premier** avant de modifier `packages/auth` ou `packages/database/src/schema/auth.ts`.
+Senior pattern for better-auth in this repo. **Always read `docs/guides/better-auth/index.md` first** before modifying `packages/auth` or `packages/database/src/schema/auth.ts`.
 
-| Guide | Contenu |
+| Guide | Content |
 |---|---|
-| [docs/guides/better-auth/index.md](docs/guides/better-auth/index.md) | Décisions verrouillées + état du code — **point d'entrée obligatoire** |
-| [docs/guides/better-auth/setup.md](docs/guides/better-auth/setup.md) | Config de base, drizzle-adapter, secrets, trustedOrigins |
+| [docs/guides/better-auth/index.md](docs/guides/better-auth/index.md) | Locked decisions + code state — **mandatory entry point** |
+| [docs/guides/better-auth/setup.md](docs/guides/better-auth/setup.md) | Base config, drizzle-adapter, secrets, trustedOrigins |
 | [docs/guides/better-auth/hooks.md](docs/guides/better-auth/hooks.md) | `databaseHooks`, ordering, fire-and-forget |
-| [docs/guides/better-auth/org.md](docs/guides/better-auth/org.md) | Organization plugin, auto-create org, invitations, rôles |
+| [docs/guides/better-auth/org.md](docs/guides/better-auth/org.md) | Organization plugin, auto-create org, invitations, roles |
 | [docs/guides/better-auth/email.md](docs/guides/better-auth/email.md) | Email verification, password reset, Resend + console dev |
 | [docs/guides/better-auth/session.md](docs/guides/better-auth/session.md) | Session config, cookies, expiration, trustedOrigins |
-| [docs/guides/better-auth/client.md](docs/guides/better-auth/client.md) | Hooks React, `useActiveOrganization`, workaround #9710 |
-| [docs/guides/better-auth/pitfalls.md](docs/guides/better-auth/pitfalls.md) | Bugs ouverts (#9070, #9710), options supprimées, gotchas — **à lire AVANT toute implémentation** |
+| [docs/guides/better-auth/client.md](docs/guides/better-auth/client.md) | React hooks, `useActiveOrganization`, workaround #9710 |
+| [docs/guides/better-auth/pitfalls.md](docs/guides/better-auth/pitfalls.md) | Open bugs (#9070, #9710), removed options, gotchas — **read BEFORE any implementation** |
 
 ### Fresh CLI 
 
@@ -69,3 +69,39 @@ Pattern senior pour better-auth dans ce repo. **Lis toujours `docs/guides/better
 **Notes:**
 - General help via `fresh --help` and per-command via `fresh <cmd> --help`.
 - Version via `fresh --version`.
+
+### Internal packages (@deessejs/*)
+
+`@deessejs/errors` and `@deessejs/fp` are our org's internal early-life packages (maintained by martyy-code + codewizdave). They evolve only based on our needs.
+
+**Rules:**
+
+- **File upstream issues, not local workarounds.** When these packages make something awkward for our usage, open an issue on the upstream repo (`github.com/deessejs/errors`, `github.com/deessejs/fp`) before patching locally. Even if waiting for the fix costs dev time — that is the cost of an internal shared codebase.
+- **Version checks on user signal only.** The user will tell us when to look at new versions. Do not auto-monitor releases, do not propose upgrades unprompted, do not run `npm outdated` for these packages proactively.
+- **Format upstream issues with consumer context** — name the app/package in our repo where it bites, the version used, and a minimal repro. Upstream is maintained by martyy-code + codewizdave.
+
+**Why:** Hard reality of an organization — internal shared code only works if the feedback loop between consumers and maintainers is alive. Local workarounds kill that loop, and silent version drift breaks the upgrade story later.
+
+**How to apply:** When integrating `@deessejs/*` or refactoring code that uses it, if you hit friction — propose an upstream issue, not a local shim. Aligned with [[feedback-long-term-solutions]] (fix at the source, not in the consumer).
+
+### Upstream template (deessejs/saas-template)
+
+This repo is built on top of [deessejs/saas-template](https://github.com/deessejs/saas-template), the SaaS monorepo template. Bugs that surface in template-owned code (a fresh clone of upstream `main` reproduces them) need both a local fix AND an upstream issue.
+
+**Rules:**
+
+- **File upstream issues for template-owned bugs.** If a fresh clone of upstream `main` reproduces it, file an issue on `github.com/deessejs/saas-template/issues` even when we patch locally. Read `https://github.com/deessejs/saas-template/tree/main/.github/ISSUE_TEMPLATE/` first and match the structure (see [feedback-issue-templates memory](.claude/agent-memory/tech-lead/feedback-issue-templates.md)).
+- **Local fix lands first. No upstream PRs.** Local fix lands in our repo (we need it now). The upstream maintainer picks up the issue from there. Per the [upstream PR policy](.claude/agent-memory/tech-lead/feedback-upstream-pr-policy.md).
+- **Severity threshold: blocked, fragilised, or wrong behavior.** Not "could be cleaner". Cosmetic issues are local-only.
+- **Version checks on user signal only.** Same rule as the Internal packages section above: do not auto-monitor upstream releases, do not propose bumps unprompted.
+
+**What counts as template-owned** (and triggers the issue rule):
+
+- Bug in apps/* or packages/* code that we have not added or modified since scaffolding.
+- Wrong call by the template in choosing or pinning a dependency (when reproducible upstream).
+
+**What does not** (local-only):
+
+- Bug in `apps/cli/` or AGENTS.md customizations or docs/engineering/plans/.
+- Configuration, env vars, runtime mismatch on our end.
+- Cosmetic, naming, or comment-level issues.

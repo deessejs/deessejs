@@ -88,19 +88,16 @@ Exit criteria:
 - Watch is set in GitHub.
 - A short note lands in AGENTS.md under a new `### Upstream template` subsection, mirrored from the `### Internal packages` policy ("version checks on user signal only").
 
-### Phase 3 — Issue-first policy and optional push-back
+### Phase 3 — Issue-first policy
 
-Goal: every template-owned bug gets an upstream issue alongside the local fix. PRs are optional and decided per case. Mirrors the [Internal packages rule in AGENTS.md](../../AGENTS.md) for a different upstream.
+Goal: every template-owned bug gets an upstream issue alongside the local fix. **No upstream PRs** per the [upstream PR policy](../../.claude/agent-memory/tech-lead/feedback-upstream-pr-policy.md). The upstream maintainer picks up changes when they choose to.
 
 Trigger: a local fix touches code that is unmodified compared to upstream `main`, OR a fresh clone of upstream `main` reproduces the bug.
 
 Steps per template-owned fix:
-1. Local fix lands in our fork first (we need it now).
+1. Local fix lands in our repo first (we need it now).
 2. Open an upstream issue on `github.com/deessejs/saas-template/issues` (or comment on an existing one). Match `.github/ISSUE_TEMPLATE/` structure (see [feedback-issue-templates memory](../../.claude/agent-memory/tech-lead/feedback-issue-templates.md)).
-3. Decide upstream PR or not:
-   - Open PR if the change has universal value for any consumer of the template (not just our apps/cli), bug-for-bug-compatible with the template's conventions, and maintainable for us across releases.
-   - Otherwise, file the issue and stop. The upstream maintainer picks up when ready.
-4. Track state in the divergence catalog. Row gains `upstream issue N` or `upstream PR N`, plus status.
+3. Track state in the divergence catalog. Row gains `upstream issue N`, plus status.
 
 Out of scope of this phase:
 - Local fixes in `apps/cli/`, AGENTS.md changes, docs/engineering/plans/ content (no upstream action needed).
@@ -108,12 +105,11 @@ Out of scope of this phase:
 - Cosmetic, naming, or comment-level issues (below severity threshold).
 
 Initial candidate from the snapshot:
-- `packages/api/src/templates.ts` plus `packages/api/src/index.ts` (the move from apps/web). Strong candidate, single file, generic architecture. Issue should be opened even if the PR is held for review.
+- `packages/api/src/templates.ts` plus `packages/api/src/index.ts` (the move from apps/web). Strong candidate. Issue opened; no PR.
 
 Exit criteria:
 - Every template-owned local fix since this policy landed has an open upstream issue (or is linked to one).
-- At least one upstream PR opened (the strongest candidates).
-- Each open PR has a divergence-catalog row with a status.
+- Every issue is logged in the divergence catalog.
 
 ### Phase 4 — Pull cycle (on user signal)
 
