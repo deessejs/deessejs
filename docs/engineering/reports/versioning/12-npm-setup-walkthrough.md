@@ -103,7 +103,7 @@ If the trusted publisher is misconfigured (wrong workflow filename, env mismatch
 
 ```
 npm error 404 Not Found - PUT https://registry.npmjs.org/@deessejs/cli
-npm error 404 '@deessejs/cli@0.2.0' is not in this registry.
+npm error 404 '@deessejs/cli@1.0.0' is not in this registry.
 ```
 
 The package exists. The version is correct. The OIDC token exchange probably succeeded. **The error is misleading.** It does NOT mean the package doesn't exist. It means the trusted publisher rejected the workflow's OIDC claims.
@@ -144,8 +144,8 @@ These are optional. The senior pattern works without them.
 
 ## 12.8 What if the first publish needs to be reverted?
 
-- **Within 72 hours**: `npm unpublish @deessejs/cli@0.1.0` (or whatever version). The package goes away entirely. Repeat 12.3 to re-publish.
-- **After 72 hours**: `npm publish` no longer allows unpublish. Use `npm deprecate @deessejs/cli@0.1.0 "reason"` and publish a new version with the fix.
+- **Within 72 hours**: `npm unpublish @deessejs/cli@x.y.z` (the bad version). The package goes away entirely. Repeat 12.3 to re-publish.
+- **After 72 hours**: `npm publish` no longer allows unpublish. Use `npm deprecate @deessejs/cli@x.y.z "reason"` and publish a new version with the fix.
 
 ## 12.9 Sequence summary
 

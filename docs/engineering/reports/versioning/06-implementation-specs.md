@@ -31,7 +31,7 @@ Concrete changes to apply once the architecture in [05-strategy.md](05-strategy.
 ```jsonc
 {
   "name": "@deessejs/cli",
-  "version": "0.1.0",           // bumped to 0.2.0 by the first changesets release
+  "version": "1.0.0",           // bumped manually before the first publish because the npm namespace was previously claimed (0.1.0–0.6.46 exist)
   "description": "CLI for the DeesseJS template registry.",
   "type": "module",
   "license": "MIT",

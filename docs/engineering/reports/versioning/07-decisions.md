@@ -45,6 +45,8 @@ The repo currently has a `VERSION` file at the root with value `0.0.1`. The seni
 
 The repo already has git tags like `template/v0.1.0` from the inherited fork pattern. The senior pattern stops creating them but doesn't delete the existing ones.
 
+> **Update (2026-07-31)**: the npm namespace `@deessejs/cli` was already populated with 46 versions (up to `0.6.46`) from the user's previous unrelated work. The first publish of the current code uses `1.0.0` to skip past the 0.x range cleanly. See [08-execution-plan.md §First release (actual sequence)](08-execution-plan.md#first-release-actual-sequence).
+
 **Recommended**: leave existing `template/v*` tags in place as historical references; new releases get `release/v*` tags going forward.
 
 **Alternative**: rewrite history to remove old `template/v*` tags (requires force-push; risky).

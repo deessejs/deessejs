@@ -43,30 +43,26 @@ Full step-by-step walkthrough at [12-npm-setup-walkthrough.md](12-npm-setup-walk
 
 **Common gotcha**: a misconfigured trusted publisher gives a misleading 404 from npm, not a meaningful error. Full diagnosis in [12-npm-setup-walkthrough.md §12.6](12-npm-setup-walkthrough.md#126-common-gotchas).
 
-## First release (sequence, including the manual first publish)
+## First release (actual sequence)
 
-- Write `.changeset/cli-v0.2.0.md` describing the bump: "Initial public release of `@deessejs/cli`. Establish the single-workflow release pattern."
-- Open PR against `staging`. CI verifies the changeset.
-- Merge to `staging`.
-- Human promotes `staging` → `main`.
-- **Manual first publish** (per [12-npm-setup-walkthrough.md §12.3](12-npm-setup-walkthrough.md#123-step-1--first-publish-manual-from-a-maintainers-machine)): a maintainer runs the publish command from their machine. The package exists on npm.
-- **Configure trusted publisher** (per [12.4](12-npm-setup-walkthrough.md#124-step-2--configure-the-trusted-publisher-on-npm)): maintainer visits the npm package settings page and adds the trusted publisher.
+The npm namespace `@deessejs/cli` already has 46 versions published (up to `0.6.46`) from previous unrelated work. The current code is the V1 release from a clean slate, so the manual first publish uses version `1.0.0` to skip past the entire 0.x range cleanly. (No changeset needed for the first publish — the version bump is done manually, not via changesets. The init-senior-pattern changeset that previously said `minor` has been removed.)
+
+- **Bump `apps/cli/package.json#version` from `0.1.0` to `1.0.0`** (manual edit, committed to main via PR).
+- From a maintainer's machine, on `main`:
+  ```bash
+  cd apps/cli
+  npm publish --access public --no-git-checks --provenance=false
+  ```
+  - 2FA OTP prompt. Publishes at `1.0.0`. No provenance (no OIDC outside CI).
+- **Configure trusted publisher** on `https://www.npmjs.com/package/@deessejs/cli/access`:
+  - GitHub Actions
+  - Organization: `deessejs`
+  - Repository: `deessejs`
+  - Workflow filename: `release.yml`
+  - Allowed action: `npm publish`
 - **Second release (the first using the workflow)**: a new PR with a changeset → merge → staging → main → `release.yml` runs:
-  - `pnpm changeset version` bumps `apps/cli/package.json#version` from `0.2.0` to `0.2.1`, regenerates `apps/cli/CHANGELOG.md`, deletes the changeset file.
-  - `pnpm changeset publish --provenance --access public` publishes `@deessejs/cli@0.2.1` to npm via trusted publisher (OIDC) + provenance.
-  - Tag `release/v0.2.1` created (force-update for idempotency).
+  - `pnpm changeset version` bumps `apps/cli/package.json#version` from `1.0.0` to `1.1.0` (or whatever the changeset specifies), regenerates `apps/cli/CHANGELOG.md`, deletes the changeset file.
+  - `pnpm changeset publish --provenance --access public` publishes via trusted publisher (OIDC) + provenance.
+  - Tag `release/v1.1.0` (or appropriate) created.
   - GitHub Release created.
-- Verify on npmjs.com: package public, provenance badge set, `dist/` correct.
-
-## First release
-
-- Write `.changeset/cli-v0.2.0.md` describing the bump: "Initial public release of `@deessejs/cli`. Establish the single-workflow release pattern."
-- Open PR against `staging`. CI verifies the changeset.
-- Merge to `staging`.
-- Human promotes `staging` → `main`.
-- `release.yml` runs on the squash-merge commit:
-  - `pnpm changeset version` bumps `apps/cli/package.json#version` from `0.1.0` to `0.2.0`, regenerates `apps/cli/CHANGELOG.md`, deletes the changeset file.
-  - `pnpm changeset publish --provenance --access public` publishes `@deessejs/cli@0.2.0` to npm via trusted publisher.
-  - Tag `release/v0.2.0` created.
-  - GitHub Release created.
-- Verify on npmjs.com: package public, provenance set, `dist/` correct.
+- Verify on npmjs.com: package version present, provenance badge set, `dist/` correct.

@@ -12,7 +12,7 @@ Verified by reading every `package.json` in the tree:
 | `apps/app` | 0.1.2 | true | — | yes |
 | `apps/web` | 0.0.1 | true | — | no |
 | `apps/docs` (`@workspace/docs`) | 0.0.0 | true | — | no |
-| `apps/cli` (`@deessejs/cli`) | 0.1.0 | **true** | `{"access":"public"}` (dead) | no (will be auto-generated) |
+| `apps/cli` (`@deessejs/cli`) | 1.0.0 | **false** | `{"access":"public","provenance":true}` | no (will be auto-generated) |
 | `packages/api` | 0.0.2 | true | — | yes (changesets format) |
 | `packages/auth` | 0.0.2 | true | — | yes |
 | `packages/cookies` | 0.0.1 | true | — | yes |
@@ -45,7 +45,7 @@ Verified by reading every `package.json` in the tree:
 - Triggers on `push: branches: [main]` and `workflow_dispatch`, gated on commit message containing `.changeset`.
 - Reads root `VERSION`.
 - Runs `pnpm changeset version` (bumps root + any workspace with a changeset; root is `private: true` so changesets ignores it).
-- Creates a git tag `template/v{VERSION}` (e.g. `template/v0.1.0`).
+- Creates a git tag `template/v{VERSION}` (e.g. `template/v0.1.0`). (Historical reference — the senior pattern no longer creates these tags; the upstream fork pattern is being deprecated.)
 - Creates a GitHub Release via `softprops/action-gh-release@v2`.
 - Manually patches root `CHANGELOG.md` via `node -e`.
 - Does **not** publish anything to npm.

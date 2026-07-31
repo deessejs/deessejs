@@ -50,6 +50,6 @@ Dependabot and Renovate PRs bumping dependencies in this repo do **not** need ch
 
 ## 2.9 ✓ — Three sources of root version drift (architecture-level)
 
-The old problem: root `VERSION` (0.0.1), root `package.json#version` (0.0.1), root `CHANGELOG.md` ([0.1.0]) — out of sync before any release touched them.
+The old problem (now resolved): root `VERSION` (0.0.1), root `package.json#version` (0.0.1), root `CHANGELOG.md` ([0.1.0]) — out of sync before any release touched them.
 
 Resolved by the senior pattern: root versioning is **dropped entirely**. No more `VERSION` file, no more root `CHANGELOG.md` auto-patching, no more `template/v*` tags. The drift problem cannot exist when there's no version to drift.
