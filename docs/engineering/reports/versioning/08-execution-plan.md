@@ -33,12 +33,30 @@ The senior pattern has 3 PRs (was 4 in the dual-flow draft, since the two-workfl
 
 ## One-time setup (not in a PR)
 
-- Configure trusted publisher on `https://www.npmjs.com/package/@deessejs/cli/access`:
-  - Organization/user: `deessejs`
-  - Repository: `ecosystem-d`
-  - Workflow filename: `release.yml`
-  - Allowed action: `npm publish`
-- Confirm npm CLI v11.5.1+ is on the GitHub-hosted runner (Node 24 setup-node handles this).
+The npm side has a chicken-and-egg: the package must exist on npm before a trusted publisher can be configured for it. The first publish is therefore manual from a maintainer's machine; the second publish onward uses the trusted publisher.
+
+Full step-by-step walkthrough at [12-npm-setup-walkthrough.md](12-npm-setup-walkthrough.md). Quick summary:
+
+1. **First publish (manual)**: a maintainer runs `pnpm --filter @deessejs/cli publish --access public --no-git-checks` from their machine. Uses their npm auth. Creates the package on npmjs.com. No provenance (no OIDC yet).
+2. **Configure trusted publisher**: manually on `https://www.npmjs.com/package/@deessejs/cli/access` (not `/settings/...`). Fields: org `deessejs`, repo `ecosystem-d`, workflow filename `release.yml`, allowed action `npm publish`.
+3. **Verify**: next PR through the workflow → staging → main → release.yml → publish with OIDC + provenance. Check the provenance badge on npmjs.com.
+
+**Common gotcha**: a misconfigured trusted publisher gives a misleading 404 from npm, not a meaningful error. Full diagnosis in [12-npm-setup-walkthrough.md §12.6](12-npm-setup-walkthrough.md#126-common-gotchas).
+
+## First release (sequence, including the manual first publish)
+
+- Write `.changeset/cli-v0.2.0.md` describing the bump: "Initial public release of `@deessejs/cli`. Establish the single-workflow release pattern."
+- Open PR against `staging`. CI verifies the changeset.
+- Merge to `staging`.
+- Human promotes `staging` → `main`.
+- **Manual first publish** (per [12-npm-setup-walkthrough.md §12.3](12-npm-setup-walkthrough.md#123-step-1--first-publish-manual-from-a-maintainers-machine)): a maintainer runs the publish command from their machine. The package exists on npm.
+- **Configure trusted publisher** (per [12.4](12-npm-setup-walkthrough.md#124-step-2--configure-the-trusted-publisher-on-npm)): maintainer visits the npm package settings page and adds the trusted publisher.
+- **Second release (the first using the workflow)**: a new PR with a changeset → merge → staging → main → `release.yml` runs:
+  - `pnpm changeset version` bumps `apps/cli/package.json#version` from `0.2.0` to `0.2.1`, regenerates `apps/cli/CHANGELOG.md`, deletes the changeset file.
+  - `pnpm changeset publish --provenance --access public` publishes `@deessejs/cli@0.2.1` to npm via trusted publisher (OIDC) + provenance.
+  - Tag `release/v0.2.1` created (force-update for idempotency).
+  - GitHub Release created.
+- Verify on npmjs.com: package public, provenance badge set, `dist/` correct.
 
 ## First release
 

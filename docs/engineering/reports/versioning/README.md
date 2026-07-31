@@ -18,6 +18,7 @@ This document is the index for the audit. Read it first, then jump into the sect
 | 8 | [08-execution-plan.md](08-execution-plan.md) | PR-by-PR execution order + one-time setup steps |
 | 9 | [09-risks-and-sources.md](09-risks-and-sources.md) | Risks, rollback procedures, internal + external sources |
 | 11 | [11-templates-not-cli.md](11-templates-not-cli.md) | Architectural principle: templates are content, not CLI features — when a template change IS a CLI change (edge cases) |
+| 12 | [12-npm-setup-walkthrough.md](12-npm-setup-walkthrough.md) | Step-by-step npm setup (chicken-and-egg first publish, trusted publisher config, gotchas) |
 
 ## Executive summary
 
@@ -36,6 +37,8 @@ Key gaps to fix before implementation:
 ## The senior pattern, in 3 sentences
 
 Contributors adding changesets in their PRs is the **only** manual step. The single `release.yml` workflow runs `pnpm changeset version` then `pnpm changeset publish` then tags `release/v{VERSION}` and creates a GitHub Release — no human in the loop. Hotfixes, yanks, and rollbacks are handled with the same primitives, not separate code paths.
+
+**One nuance**: the **first ever publish** of `@deessejs/cli` is manual from a maintainer's machine (npm has no "pending publisher" feature — the package must exist before a trusted publisher can be configured for it). After the first publish, the trusted publisher is configured, and from the second publish onward everything is automatic. Full walkthrough: [12-npm-setup-walkthrough.md](12-npm-setup-walkthrough.md).
 
 ## Status
 

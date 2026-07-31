@@ -1,0 +1,172 @@
+# 12. npm setup walkthrough
+
+[← Index](README.md) · **Prev: [11-templates-not-cli.md](11-templates-not-cli.md)**
+
+Step-by-step procedure for the npm side of the senior pattern. The user explicitly asked for this — the audit's high-level "one-time setup" line was too hand-wavy.
+
+## 12.1 TL;DR — the chicken-and-egg
+
+**The first publish of `@deessejs/cli` cannot use trusted publishing.** npm has no "pending publisher" feature (unlike PyPI). Before the package exists on npm, no trusted publisher is configured for it. Therefore:
+
+- **First publish**: manual, from a maintainer's machine, with the maintainer's own npm auth. No OIDC, no provenance from CI.
+- **After the first publish succeeds**: configure the trusted publisher on `https://www.npmjs.com/package/@deessejs/cli/access`.
+- **Second publish onward**: automatic via `.github/workflows/release.yml` with OIDC + provenance.
+
+This is documented as [npm/documentation#1926](https://github.com/npm/documentation/issues/1926) — the docs don't currently explain this gap. PyPI has a "pending publisher" feature that npm doesn't.
+
+## 12.2 Prerequisites
+
+Before any of this:
+
+- An npmjs.com account with publish rights on the `deessejs` org (the maintainer who publishes `@deessejs/cli` for the first time)
+- 2FA enabled on that npm account (required to publish under the `deessejs` org)
+- The `deessejs` npm org exists (one-time setup, presumably already done)
+- PR 1 + PR 2 + PR 3 from [08-execution-plan.md](08-execution-plan.md) all merged to `staging` and promoted to `main` — i.e. `apps/cli/package.json#private` is `false`, the LICENSE + repository + module + types fields are filled, `tsup.config.ts` has `dts: true`, `.github/workflows/release.yml` is the senior-pattern version, `.changeset/config.json` is updated.
+
+## 12.3 Step 1 — First publish (manual, from a maintainer's machine)
+
+This creates the package on npmjs.com. After it succeeds, the package exists and the trusted publisher can be configured.
+
+**On a maintainer's machine, with the working tree on `main` (or equivalent, after PR 1-3 are merged):**
+
+```bash
+# 1. Verify the build works locally
+pnpm install
+pnpm --filter @deessejs/cli build
+# Should produce dist/index.js + dist/index.d.ts
+
+# 2. Verify the package.json looks correct
+cat apps/cli/package.json | head -20
+# Confirm: private:false, license, repository, keywords, module, types,
+# files, publishConfig.access:public, publishConfig.provenance:true
+
+# 3. Confirm npm registry + auth
+npm whoami
+# Should print the npm username
+
+# 4. Dry-run to verify the published tarball contents
+pnpm --filter @deessejs/cli publish --dry-run
+# Should list: dist/index.js, dist/index.d.ts, README.md, LICENSE,
+# package.json. No src/, no test/, no node_modules/
+
+# 5. Publish for real
+pnpm --filter @deessejs/cli publish --access public --no-git-checks
+```
+
+**What happens during the first publish:**
+
+- npm prompts for a one-time password (2FA OTP) if the account has 2FA enabled.
+- The tarball is uploaded to npmjs.com.
+- The package appears at `https://www.npmjs.com/package/@deessejs/cli`.
+- Provenance is **NOT** generated for this first publish (no OIDC). This is a known limitation; documented in npm/documentation#1926.
+
+**If anything fails:** fix the issue (probably a missing `LICENSE` file, wrong `repository`, etc.) and retry. The package either exists or it doesn't — there's no half-state.
+
+## 12.4 Step 2 — Configure the trusted publisher on npm
+
+**Browser action, one-time.**
+
+1. Sign in to npmjs.com as the maintainer who has publish rights on the `deessejs` org.
+2. Navigate to `https://www.npmjs.com/package/@deessejs/cli/access`. **Note**: this is the per-package URL, not `/settings/{user}/packages`. Easy to miss; the trusted publisher config is on the package's settings page, not the user's settings page.
+3. Find the "Trusted Publisher" section. Click "Add a trusted publisher" (or similar).
+4. Configure the fields:
+   - **Publisher type**: GitHub Actions
+   - **Organization or user**: `deessejs` (the GitHub org)
+   - **Repository**: `ecosystem-d` (or whatever the actual repo name is)
+   - **Workflow filename**: `release.yml` (just the filename, not the path)
+   - **Environment name**: leave blank initially (we don't use GitHub environments; can be added later for hardening)
+   - **Allowed actions**: select `npm publish` (not `npm stage publish` — that's the staged-2FA variant, see 12.7)
+5. Save.
+
+**Verify the config** by re-loading the page — the trusted publisher entry should be listed.
+
+## 12.5 Step 3 — Verify the second publish works via the workflow
+
+**After** the trusted publisher is configured, the next release goes through the workflow automatically.
+
+1. Merge a small PR to `staging` that touches `apps/cli/**` and includes a `.changeset/<slug>.md` with `"@deessejs/cli": patch` (e.g. "Fix typo in --help output").
+2. Promote staging → main.
+3. Watch `.github/workflows/release.yml` run on the push to `main`.
+4. Verify on npmjs.com:
+   - The new version is published.
+   - The package page shows a "Provenance" badge (or equivalent attestation indicator).
+   - The tag `release/v{x.y.z}` exists in the GitHub repo.
+   - A GitHub Release exists for the same version.
+
+**If the workflow fails with HTTP 404** on the publish step, see 12.6.
+
+## 12.6 Common gotchas
+
+### 12.6.1 Misleading 404
+
+If the trusted publisher is misconfigured (wrong workflow filename, env mismatch, wrong npm version), npm returns:
+
+```
+npm error 404 Not Found - PUT https://registry.npmjs.org/@deessejs/cli
+npm error 404 '@deessejs/cli@0.2.0' is not in this registry.
+```
+
+The package exists. The version is correct. The OIDC token exchange probably succeeded. **The error is misleading.** It does NOT mean the package doesn't exist. It means the trusted publisher rejected the workflow's OIDC claims.
+
+**Common causes:**
+
+- npm version < 11.5.1 (Node 22 ships with npm 10.x). Fix: use Node 24 in the workflow, or `npm install -g npm@latest`.
+- Environment name mismatch (npm has `environment: release` configured, workflow says `environment: production` or vice versa). Fix: align them or remove from both.
+- Workflow filename mismatch (npm has `publish.yml`, repo has `release.yml`). Fix: reconfigure on npmjs.com with the exact filename.
+- Org/user mismatch (npm has `deessejs`, repo is under `martyy-code/deessejs` or similar). Fix: align org or move repo.
+
+Per Jurij Tokarski's [April 2026 writeup](https://varstatt.com/jurij/p/npm-trusted-publishing-from-github-actions), this 404 is the most common first-time confusion.
+
+### 12.6.2 Provenance flag despite the docs
+
+The npm docs say `--provenance` is automatic with trusted publishing. Real-world reports (Phil Nash, 2026-01-31) and the audit's own [02-problems.md §2.7](02-problems.md#27-p3--provenance-documentation-vs-reality) note that `--provenance` is still needed in practice. The senior pattern uses the triple belt: `publishConfig.provenance: true` in package.json, `--provenance` flag, and `NPM_CONFIG_PROVENANCE=true` env var. Belt + suspenders + belt.
+
+### 12.6.3 Maintainer leaves the org
+
+Trusted publishers are tied to specific GitHub users/orgs + repos + workflow filenames. If the maintainer who set it up leaves, the config stays valid (it's tied to the org, not the user). If the org moves the repo, the trusted publisher needs to be re-pointed.
+
+### 12.6.4 Lost NPM_TOKEN, no recovery
+
+There's no `NPM_TOKEN` in the senior pattern. If trusted publishing is misconfigured, the maintainer can't fall back to a long-lived token — because none exists. Recovery options:
+
+- Re-do the manual first publish from a developer's machine (12.3) — overwrites the published version if no published version exists at that name, but if versions exist, `npm unpublish` within 72h.
+- Disable the trusted publisher on npm, publish a new version with a temporary manual `npm publish --access public` from a developer's machine, re-enable the trusted publisher, fix the workflow.
+
+## 12.7 Optional hardening (post-first-publish)
+
+Once the basic flow works, the audit recommends considering:
+
+- **Restrict token publishing**: on `https://www.npmjs.com/package/@deessejs/cli/access`, "Publishing access" → "Require two-factor authentication and disallow tokens". This means even if a long-lived token existed, npm would reject it. Defense in depth.
+- **Use GitHub environments**: configure `environment: release` on both the trusted publisher (npm side) and the workflow job. Adds a manual approval gate for production publishes.
+- **Use `npm stage publish` only**: requires a 2FA 2FA review per publish via the CLI or npmjs.com. More secure but more friction. Probably overkill for this CLI.
+
+These are optional. The senior pattern works without them.
+
+## 12.8 What if the first publish needs to be reverted?
+
+- **Within 72 hours**: `npm unpublish @deessejs/cli@0.1.0` (or whatever version). The package goes away entirely. Repeat 12.3 to re-publish.
+- **After 72 hours**: `npm publish` no longer allows unpublish. Use `npm deprecate @deessejs/cli@0.1.0 "reason"` and publish a new version with the fix.
+
+## 12.9 Sequence summary
+
+```
+1. PR 1 + PR 2 + PR 3 land on staging, get promoted to main
+   ↓
+2. Maintainer runs 12.3 manually from their machine
+   - Package exists on npm, no provenance
+   ↓
+3. Maintainer configures trusted publisher on npmjs.com (12.4)
+   ↓
+4. Next PR goes through the normal workflow
+   - staging PR with .changeset/*.md
+   - Merge staging → main
+   - release.yml runs automatically
+   - Publish with OIDC + provenance ✓
+   ↓
+5. Maintainer verifies on npmjs.com (12.5)
+   - Provenance badge present
+   - Tag release/v{x.y.z} created
+   - GitHub Release exists
+```
+
+That's the full setup. After step 5, the maintainer doesn't think about npm anymore unless something breaks.
