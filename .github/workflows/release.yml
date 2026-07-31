@@ -1,8 +1,14 @@
 name: Release
 
-# Triggered when staging merges to main (push on main) with a `.changeset`
-# reference in the commit message, or manually via workflow_dispatch (which
-# re-runs the release against any changesets already on disk).
+# Senior release pattern: single workflow does version bump + npm publish +
+# tag + GitHub Release in one job. Triggered by push to main whose commit
+# message contains '.changeset' (the convention for commits that include
+# changeset files), or by manual workflow_dispatch.
+#
+# First-ever publish of @deessejs/cli is manual from a maintainer's machine
+# (npm has no "pending publisher" feature). See
+# docs/engineering/reports/versioning/12-npm-setup-walkthrough.md.
+
 on:
   push:
     branches: [main]
@@ -15,162 +21,57 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
+  id-token: write   # OIDC for npm trusted publisher
 
 jobs:
   release:
-    name: Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest      # GitHub-hosted only — trusted publishers don't support self-hosted
     if: |
       github.event_name == 'workflow_dispatch' ||
       contains(github.event.head_commit.message, '.changeset')
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
 
-      # ── Check for changeset files ───────────────────────────────────────
-      - name: Check changeset files
-        id: changesets
+      # 1. Consume changesets → bump apps/cli version, regenerate CHANGELOG
+      - name: Bump versions
+        run: pnpm changeset version
+      - run: pnpm install --frozen-lockfile
+
+      # 2. Publish via trusted publisher (OIDC) with explicit provenance belt
+      - name: Publish to npm
+        env:
+          NPM_CONFIG_PROVENANCE: true
+        run: pnpm changeset publish --provenance --access public
+
+      # 3. Read the new CLI version
+      - name: Read new version
+        id: version
         run: |
-          COUNT=$(ls .changeset/*.md 2>/dev/null | wc -l)
-          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
-          echo "Found $COUNT changeset file(s)"
+          VERSION=$(node -e "console.log(require('./apps/cli/package.json').version)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      # ── Skip if no changesets on auto trigger ────────────────────────────
-      - name: No changesets found
-        if: steps.changesets.outputs.count == '0'
-        run: |
-          echo "No changeset files found. Skipping release."
-          echo "To trigger a release manually, use workflow_dispatch."
-          echo "(Changesets must exist on disk — add one with 'pnpm changeset' first.)"
-
-      # ── Read current VERSION (before changeset bumps it) ─────────────────
-      - name: Read current VERSION
-        id: current-version
-        if: steps.changesets.outputs.count != '0'
-        run: |
-          if [ -f VERSION ]; then
-            CURRENT=$(cat VERSION)
-            echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
-            echo "VERSION file exists with: $CURRENT"
-          else
-            CURRENT=$(node -e "console.log(require('./package.json').version)")
-            echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
-            echo "No VERSION file, starting from: $CURRENT"
-          fi
-
-      # ── Version bump ────────────────────────────────────────────────────
-      - name: Apply version bump
-        if: steps.changesets.outputs.count != '0'
-        run: |
-          pnpm changeset version
-          pnpm install --frozen-lockfile
-
-      # ── Sync VERSION from package.json ───────────────────────────────────
-      - name: Sync VERSION file
-        if: steps.changesets.outputs.count != '0'
-        run: |
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            const version = pkg.version;
-            const current = '${{ steps.current-version.outputs.current }}';
-            fs.writeFileSync('VERSION', version + '\n');
-            console.log('VERSION updated: ' + current + ' -> ' + version);
-          "
-
-      # ── Commit version bump ──────────────────────────────────────────────
-      - name: Commit version bump
-        if: steps.changesets.outputs.count != '0'
+      # 4. Tag + push tag (force-update for idempotency)
+      - name: Tag release
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "chore: version bump" || echo "Nothing to commit"
-          git push origin main
+          git tag -f "release/v${{ steps.version.outputs.version }}"
+          git push --force origin "release/v${{ steps.version.outputs.version }}"
 
-      # ── Create git tags ──────────────────────────────────────────────────
-      # `-f` makes the operation idempotent: if a release is re-run with the
-      # same root version, the existing tag is force-updated to the new commit
-      # instead of failing. Required because `git tag -a` on an existing tag
-      # aborts by default (bit us on the e2e test: tag `template/v0.0.1`
-      # already existed from the backfilled v0.1.0 release).
-      - name: Create git tags
-        if: steps.changesets.outputs.count != '0'
-        run: |
-          VERSION=$(cat VERSION)
-          TAG="template/v${VERSION}"
-          echo "Creating/updating tag: $TAG"
-          git tag -f -a "$TAG" -m "Release $TAG"
-          git push --force origin "$TAG"
-
-      # ── Read new VERSION (output for downstream steps) ───────────────────
-      # GitHub Actions does NOT expand $(...) inside `with:` blocks, only in
-      # `run:` blocks via shell. Output the value here so the action can
-      # reference it via the Actions context.
-      - name: Read new VERSION
-        if: steps.changesets.outputs.count != '0'
-        id: new-version
-        run: |
-          NEW_VERSION=$(cat VERSION)
-          echo "new=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "Using VERSION: $NEW_VERSION"
-
-      # ── Create GitHub Release ────────────────────────────────────────────
-      - name: Create GitHub Release
-        if: steps.changesets.outputs.count != '0'
+      # 5. GitHub Release
+      - name: GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: template/v${{ steps.new-version.outputs.new }}
-          name: Release template/v${{ steps.new-version.outputs.new }}
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-          files: |
-            VERSION
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # ── Update root CHANGELOG.md ──────────────────────────────────────────
-      # Non-fatal on failure so cascade from earlier steps doesn't block it.
-      # Defensive checks: skip if CHANGELOG.md missing or no [Unreleased] section.
-      - name: Update root CHANGELOG.md
-        if: steps.changesets.outputs.count != '0'
-        run: |
-          DATE=$(date +%Y-%m-%d)
-          VERSION=$(cat VERSION)
-          node -e "
-            const fs = require('fs');
-            if (!fs.existsSync('CHANGELOG.md')) {
-              console.log('No CHANGELOG.md at root — skipping root changelog update.');
-              process.exit(0);
-            }
-            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
-            if (!changelog.includes('## [Unreleased]')) {
-              console.log('No ## [Unreleased] section in CHANGELOG.md — skipping.');
-              process.exit(0);
-            }
-            const entry = \`\n\n## [\${VERSION}] - \${DATE}\n\n### Changed\n\n- Template release\n\`;
-            const updated = changelog.replace('## [Unreleased]', entry + '## [Unreleased]');
-            fs.writeFileSync('CHANGELOG.md', updated);
-            console.log('CHANGELOG.md updated for', VERSION);
-          " && \
-          git add CHANGELOG.md && \
-          git commit -m "docs: update CHANGELOG.md for template/v${VERSION}" && \
-          git push origin main || echo "Root CHANGELOG.md update failed — non-fatal"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: release/v${{ steps.version.outputs.version }}
+          name: "Release v${{ steps.version.outputs.version }}"
+          generate_notes: true
+          fail_on_unmatched_files: true
