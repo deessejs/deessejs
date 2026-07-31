@@ -27,12 +27,6 @@ catalogs:
     '@content-collections/next':
       specifier: ^0.2.11
       version: 0.2.11
-    '@deessejs/errors':
-      specifier: ^1.1.1
-      version: 1.1.1
-    '@deessejs/fp':
-      specifier: ^1.0.0
-      version: 1.0.0
     '@next/env':
       specifier: ^16.2.10
       version: 16.2.10
@@ -250,10 +244,10 @@ importers:
   apps/cli:
     dependencies:
       '@deessejs/errors':
-        specifier: 'catalog:'
+        specifier: ^1.1.1
         version: 1.1.1
       '@deessejs/fp':
-        specifier: 'catalog:'
+        specifier: ^1.0.0
         version: 1.0.0(@deessejs/errors@1.1.1)
       commander:
         specifier: ^12.1.0
