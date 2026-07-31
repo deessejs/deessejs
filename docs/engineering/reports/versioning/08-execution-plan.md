@@ -38,7 +38,7 @@ The npm side has a chicken-and-egg: the package must exist on npm before a trust
 Full step-by-step walkthrough at [12-npm-setup-walkthrough.md](12-npm-setup-walkthrough.md). Quick summary:
 
 1. **First publish (manual)**: a maintainer runs `pnpm --filter @deessejs/cli publish --access public --no-git-checks` from their machine. Uses their npm auth. Creates the package on npmjs.com. No provenance (no OIDC yet).
-2. **Configure trusted publisher**: manually on `https://www.npmjs.com/package/@deessejs/cli/access` (not `/settings/...`). Fields: org `deessejs`, repo `ecosystem-d`, workflow filename `release.yml`, allowed action `npm publish`.
+2. **Configure trusted publisher**: manually on `https://www.npmjs.com/package/@deessejs/cli/access` (not `/settings/...`). Fields: org `deessejs`, repo `deessejs` (this repo's name), workflow filename `release.yml`, allowed action `npm publish`.
 3. **Verify**: next PR through the workflow → staging → main → release.yml → publish with OIDC + provenance. Check the provenance badge on npmjs.com.
 
 **Common gotcha**: a misconfigured trusted publisher gives a misleading 404 from npm, not a meaningful error. Full diagnosis in [12-npm-setup-walkthrough.md §12.6](12-npm-setup-walkthrough.md#126-common-gotchas).

@@ -101,7 +101,7 @@ npm unpublish @deessejs/cli@x.y.z
 **After 72 hours** (unpublish no longer allowed):
 
 ```bash
-npm deprecate @deessejs/cli@x.y.z "Critical bug: see https://github.com/deessejs/ecosystem-d/issues/N — upgrade to x.y.z+1"
+npm deprecate @deessejs/cli@x.y.z "Critical bug: see https://github.com/deessejs/deessejs/issues/N — upgrade to x.y.z+1"
 ```
 
 Record the yank in the next release notes.

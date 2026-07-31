@@ -37,7 +37,7 @@ Concrete changes to apply once the architecture in [05-strategy.md](05-strategy.
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deessejs/ecosystem-d.git"
+    "url": "git+https://github.com/deessejs/deessejs.git"
   },
   "keywords": ["cli", "deessejs", "saas-template", "scaffolding"],
   "private": false,             // FLIP — currently true
