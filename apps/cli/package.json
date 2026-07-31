@@ -3,14 +3,28 @@
   "version": "0.1.0",
   "description": "CLI for the DeesseJS template registry.",
   "type": "module",
-  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deessejs/deessejs.git"
+  },
+  "keywords": [
+    "cli",
+    "deessejs",
+    "saas-template",
+    "scaffolding"
+  ],
+  "private": false,
   "bin": {
     "deessejs": "./dist/index.js"
   },
   "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "../../LICENSE"
   ],
   "scripts": {
     "build": "tsup",
@@ -45,6 +59,7 @@
     "node": ">=18.18.0"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   }
 }
