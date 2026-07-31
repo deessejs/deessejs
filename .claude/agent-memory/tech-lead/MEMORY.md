@@ -21,11 +21,23 @@
 - [Verify high-severity findings](feedback-verify-high-severity-findings.md) — P0/P1 require exact versions, runtime/Git proof, and Fresh sources
 - [Package structure](project/package-structure.md) — one-package-per-concern — new features get their own packages/* (e.g. packages/email for the mailer)
 - [Mailer audit](project/mailer-audit.md) — 2026-07-07 decision log: Resend + console default + react-email in new packages/email package
+- [Internal @deessejs/* packages](project/internal-deessejs-packages.md) — 2026-07-30: @deessejs/errors + @deessejs/fp are our org's internal early-life packages; controlled consumer relationship, integration pending
+- [Release pipeline dual-flow](project/release-pipeline.md) — 2026-07-31: SINGLE workflow release.yml (senior pattern); replaces dual-flow design; version bump + publish + tag in one job; no root versioning
+- [Senior release pattern](project/senior-release-pattern.md) — 2026-07-31: chosen architecture — drop root versioning, tag prefix release/v*, single changesets-driven workflow; see also [feedback-senior-release-pattern](feedback-senior-release-pattern.md)
+- [changesets/action pinning](project/release-pipeline-changesets-action.md) — @v1 for changesets v2, @v2 for changesets v3 (not yet released); pin to match our @changesets/cli@^2.31.0
+- [apps/cli publish-readiness](project/apps-cli-publish-readiness.md) — 2026-07-31: apps/cli/package.json missing license/repository/keywords/types; tsup needs dts:true; preconditions for publish PR
+- [Templates are content, not CLI](project/templates-content-not-cli.md) — 2026-07-31: adding/updating/removing a template entry never triggers a CLI version bump; CLI is a client of the templates API; only schema-level template changes can.
 - [Claude Code docs index](claude-code/README.md) — pointer URLs for subagents, workflows, plugins, hooks, worktrees, memory
 - [Claude Code subagents](claude-code/subagents.md) — frontmatter fields, locations, invocation modes, pitfalls
 - [Claude Code skills](claude-code/skills.md) — CLI SKILL.md (progressive disclosure) + API/Managed skills distinction
 - [Claude Code workflows](claude-code/workflows.md) — Workflow tool primitives, patterns, hard limits, when over Agent tool
 - [User research style](user.md) — thorough research with examples, French, casual, autonomous decisions, /goal do it, fresh CLI
 - [Long-term solutions](feedback-long-term-solutions.md) — prefer systemic fixes over local patches (pnpm.overrides over catalog pin, codify patterns, track adjacent debt)
+- [Senior release pattern](feedback-senior-release-pattern.md) — 2026-07-31: user wants release engineering as set-and-forget; one source of truth / one workflow / one mental rule; reject dual-flow designs and manual sync steps
+- [Internal @deessejs/* packages](feedback-internal-deessejs-packages.md) — file upstream issues, never silently workaround; version checks only on user request
+- [Upstream PR policy](feedback-upstream-pr-policy.md) — file upstream issues, never PR. Applies to internal packages and template repo. Established 2026-07-30 ("On ne fait jamais de Pr upstream, note le").
+- [Better Auth server/client split](feedback-better-auth-server-client.md) — `auth.api.*` server-side, `authClient.*` client-side. Mixing fails at runtime, not compile time. Established 2026-07-30 (apps/app/proxy.ts bug).
+- [Build per package](feedback-build-per-package.md) — verify packages locally with `pnpm --filter`, never full `turbo run build` (apps/* env-var gates mask the package). Established 2026-07-30.
+- [apps/app architecture](apps/app.md) — adds: platform-wide API lives in `packages/api` (Hono), not `apps/web`. Established 2026-07-30 (V1 templates endpoint architecture fix).
 - [README layout 2026 (validated)](feedback-readme-layout-2026.md) — <picture> hero + shields badges + Vercel/Codespaces deploy + 3-col "What's included" + GitHub alerts + tables; validated 2026-07-28 by user ("love it") on commit 9de39a0
 - [No em-dashes](feedback-no-em-dashes.md) — README/prose must avoid em-dashes (—); use parentheses or periods. Validated 2026-07-28 on commit c336cff.
