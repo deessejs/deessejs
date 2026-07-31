@@ -1,0 +1,51 @@
+name: Changesets check
+
+# Verify that any PR touching apps/cli/** also includes a changeset.
+# This is the senior-pattern contribution gate: contributors add a changeset
+# if their PR changes the CLI surface, and CI enforces it.
+
+on:
+  pull_request:
+    branches: [staging, main]
+
+permissions:
+  contents: read
+
+jobs:
+  check-changeset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Detect changes to apps/cli/**
+        id: changed
+        run: |
+          # Compare PR head against the merge base. If any diff touched apps/cli/**,
+          # a changeset is required.
+          BASE=${{ github.event.pull_request.base.ref }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+          git fetch origin "$BASE" --depth=1
+          TOUCHED=$(git diff --name-only "origin/$BASE...$HEAD" | grep -E '^apps/cli/' || true)
+          if [ -n "$TOUCHED" ]; then
+            echo "touched=true" >> "$GITHUB_OUTPUT"
+            echo "Files changed under apps/cli/:"
+            echo "$TOUCHED"
+          else
+            echo "touched=false" >> "$GITHUB_OUTPUT"
+            echo "No files changed under apps/cli/ — changeset not required."
+          fi
+
+      - name: Verify changeset is present
+        if: steps.changed.outputs.touched == 'true'
+        run: |
+          COUNT=$(ls .changeset/*.md 2>/dev/null | wc -l)
+          if [ "$COUNT" -le 1 ]; then
+            # Only config.json is always present; otherwise there should be
+            # at least one *.md changeset file.
+            echo "::error::Apps/cli/** was modified but no changeset file was added."
+            echo "::error::Add a changeset under .changeset/ describing the bump type."
+            echo "::error::See .changeset/README.md for the format."
+            exit 1
+          fi
+          echo "Found $COUNT file(s) under .changeset/ — changeset present."

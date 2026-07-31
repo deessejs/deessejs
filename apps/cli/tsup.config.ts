@@ -14,4 +14,5 @@ export default defineConfig({
   splitting: false,
   shims: false,
   treeshake: true,
+  dts: true,
 })
