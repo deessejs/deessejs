@@ -41,16 +41,25 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # 0. Configure git (changesets will commit on our behalf via `commit: true`)
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       # 1. Consume changesets → bump apps/cli version, regenerate CHANGELOG
       - name: Bump versions
         run: pnpm changeset version
       - run: pnpm install --frozen-lockfile
 
-      # 2. Publish via trusted publisher (OIDC) with explicit provenance belt
+      # 2. Publish via trusted publisher (OIDC).
+      # Note: changesets publish doesn't accept --provenance or --access flags.
+      # We rely on `publishConfig.provenance: true` in apps/cli/package.json
+      # + NPM_CONFIG_PROVENANCE=true env var as belt + suspenders.
       - name: Publish to npm
         env:
           NPM_CONFIG_PROVENANCE: true
-        run: pnpm changeset publish --provenance --access public
+        run: pnpm changeset publish
 
       # 3. Read the new CLI version
       - name: Read new version
