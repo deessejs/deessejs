@@ -12,8 +12,6 @@ const validTemplate = {
   labels: ["nextjs", "saas", "auth", "postgres"],
 }
 
-const validResponse = { templates: [validTemplate] }
-
 describe("TemplateV1", () => {
   it("parses a minimal valid template", () => {
     const result = TemplateV1.parse(validTemplate)
@@ -34,7 +32,8 @@ describe("TemplateV1", () => {
   })
 
   it("rejects a missing slug", () => {
-    const { slug: _slug, ...rest } = validTemplate
+    const { slug, ...rest } = validTemplate
+    expect(slug).toBe("saas-starter") // referenced to keep the destructure used
     expect(() => TemplateV1.parse(rest)).toThrow()
   })
 
