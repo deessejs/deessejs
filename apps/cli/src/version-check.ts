@@ -64,7 +64,7 @@ export const maybeWarnAboutOutdatedCli = async (apiUrl: string): Promise<void> =
   if (compareSemver(localVersion, parsed.minSupported) < 0) {
     process.stderr.write(
       `\n⚠ deessejs-cli ${localVersion} is below the minimum supported version (${parsed.minSupported}).\n` +
-        `  Upgrade: pnpm dlx deessejs@latest\n\n`,
+        `  Upgrade: pnpm dlx @deessejs/cli@latest\n\n`,
     )
   }
 }
