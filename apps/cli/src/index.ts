@@ -12,6 +12,7 @@ program
   .description("CLI for the DeesseJS template registry")
   .version("0.1.0")
   .option("--api-url <url>", "templates endpoint URL", process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL)
+  .option("--offline", "skip the network, serve the on-disk cache (~/.deessejs/templates.json)")
 
 program.addCommand(listCommand)
 program.addCommand(infoCommand)

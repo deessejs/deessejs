@@ -14,12 +14,18 @@ export const infoCommand = new Command("info")
       const apiUrl = command.parent?.getOptionValue("apiUrl") as
         | string
         | undefined
+      const offline = command.parent?.getOptionValue("offline") as
+        | boolean
+        | undefined
 
-      const spinner = opts.json ? null : ora("Fetching template...").start()
+      const spinner = opts.json
+        ? null
+        : ora(offline ? "Reading cached template..." : "Fetching template...").start()
 
       try {
         const all = await fetchTemplates(
           apiUrl ?? process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL,
+          { offline: Boolean(offline) },
         )
         const template = all.find((t) => t.slug === slug)
         spinner?.stop()
