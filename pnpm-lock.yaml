@@ -249,9 +249,6 @@ importers:
       '@deessejs/fp':
         specifier: ^1.0.0
         version: 1.0.0(@deessejs/errors@1.1.1)
-      '@workspace/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
       commander:
         specifier: ^12.1.0
         version: 12.1.0
@@ -265,6 +262,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
+      '@workspace/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@workspace/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
