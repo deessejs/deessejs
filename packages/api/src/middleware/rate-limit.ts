@@ -1,5 +1,6 @@
 import type { Context, MiddlewareHandler } from "hono"
 import { logger } from "../logger.js"
+import { errorBody, readRequestId } from "../envelope.js"
 
 /**
  * Per-IP fixed-window rate limiter (in-memory).
@@ -67,7 +68,7 @@ export const rateLimit = (limit: number): MiddlewareHandler => {
     c.header("X-RateLimit-Reset", String(resetSeconds))
 
     if (bucket.count > limit) {
-      const requestId = c.get("requestId") ?? "unknown"
+      const requestId = readRequestId(c)
       logger.warn("rate_limited", {
         requestId,
         ip,
@@ -76,11 +77,11 @@ export const rateLimit = (limit: number): MiddlewareHandler => {
         limit,
       })
       return c.json(
-        {
-          code: "rate_limited",
-          message: `Too many requests. Try again in ${resetSeconds}s.`,
-          requestId,
-        },
+        errorBody(
+          c,
+          "rate_limited",
+          `Too many requests. Try again in ${resetSeconds}s.`,
+        ),
         429,
       )
     }

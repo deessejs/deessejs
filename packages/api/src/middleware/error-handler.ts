@@ -1,21 +1,15 @@
 import type { Context } from "hono"
 import { HTTPException } from "hono/http-exception"
 import { logger } from "../logger.js"
-
-export type ErrorBody = {
-  code: string
-  message: string
-  requestId: string
-}
+import { errorBody, readRequestId } from "../envelope.js"
 
 /**
  * Global error handler for the Hono app.
  *
- * Returns a stable JSON envelope for every unhandled error:
- *   { code, message, requestId }
- *
- * The full stack is logged server-side with the requestId so support can
- * find it, but is never returned to the client (no stack leak in prod).
+ * Returns a stable JSON envelope for every unhandled error via the
+ * shared `errorBody()` helper. The full stack is logged server-side
+ * with the requestId so support can find it, but is never returned
+ * to the client (no stack leak in prod).
  *
  * - HTTPException (thrown by Hono) is mapped to its status code and a
  *   code derived from the status.
@@ -23,17 +17,13 @@ export type ErrorBody = {
  *   in prod; the underlying message is preserved in the server log.
  */
 export const onError = (err: Error, c: Context): Response => {
-  const requestId = c.get("requestId") ?? "unknown"
+  const requestId = readRequestId(c)
   const isProd = process.env.NODE_ENV === "production"
 
   if (err instanceof HTTPException) {
     const status = err.status
     const code = httpStatusToCode(status)
-    const body: ErrorBody = {
-      code,
-      message: err.message || code,
-      requestId,
-    }
+    const body = errorBody(c, code, err.message || code)
     logger.warn("http_exception", {
       requestId,
       method: c.req.method,
@@ -44,11 +34,11 @@ export const onError = (err: Error, c: Context): Response => {
     return c.json(body, status as 400)
   }
 
-  const body: ErrorBody = {
-    code: "internal_error",
-    message: isProd ? "An unexpected error occurred" : err.message,
-    requestId,
-  }
+  const body = errorBody(
+    c,
+    "internal_error",
+    isProd ? "An unexpected error occurred" : err.message,
+  )
   logger.error("unhandled_error", err, {
     requestId,
     method: c.req.method,
