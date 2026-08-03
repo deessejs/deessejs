@@ -1,6 +1,7 @@
 import { Command } from "commander"
 import ora from "ora"
 import { fetchTemplates } from "../api.js"
+import { DEFAULT_API_URL } from "../constants.js"
 import { internal, notFound } from "../errors.js"
 import { printError, printJson, printTemplateInfo } from "../output.js"
 
@@ -18,7 +19,7 @@ export const infoCommand = new Command("info")
 
       try {
         const all = await fetchTemplates(
-          apiUrl ?? process.env.DEESSEJS_API_URL ?? "https://deessejs.com/api/templates",
+          apiUrl ?? process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL,
         )
         const template = all.find((t) => t.slug === slug)
         spinner?.stop()

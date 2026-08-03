@@ -2,6 +2,7 @@ import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
 import { fetchTemplates } from "../api.js"
+import { DEFAULT_API_URL } from "../constants.js"
 import { internal } from "../errors.js"
 import { printError, printJson, printTemplatesTable } from "../output.js"
 
@@ -24,7 +25,7 @@ export const listCommand = new Command("list")
 
       try {
         const all = await fetchTemplates(
-          apiUrl ?? process.env.DEESSEJS_API_URL ?? "https://deessejs.com/api/templates",
+          apiUrl ?? process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL,
         )
         const filtered = opts.category
           ? all.filter((t) => t.category === opts.category)
