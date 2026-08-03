@@ -1,25 +1,10 @@
+import { TemplatesListResponseV1 } from "@workspace/contracts/v1"
 import { USER_AGENT } from "./constants.js"
 import { networkError, parseError } from "./errors.js"
 
-export type Template = {
-  slug: string
-  name: string
-  description: string
-  owner: string
-  repo: string
-  license: string
-  category: string
-  labels: string[]
-  image?: string
-  /** Optional override for the clone URL. Falls back to `https://github.com/<owner>/<repo>`. */
-  cloneUrl?: string
-}
+export type Template = TemplatesListResponseV1["templates"][number]
 
-export type ApiResponse = { templates: Template[] }
-
-export const fetchTemplates = async (
-  apiUrl: string,
-): Promise<Template[]> => {
+export const fetchTemplates = async (apiUrl: string): Promise<Template[]> => {
   let res: Response
   try {
     res = await fetch(apiUrl, {
@@ -46,33 +31,12 @@ export const fetchTemplates = async (
     )
   }
 
-  if (!isApiResponse(body)) {
-    throw parseError('response is missing "templates" array')
+  const result = TemplatesListResponseV1.safeParse(body)
+  if (!result.success) {
+    throw parseError(
+      `response shape mismatch: ${result.error.issues.map((i) => `${i.path.join(".")} (${i.code})`).join(", ")}`,
+    )
   }
 
-  return body.templates
-}
-
-const isApiResponse = (value: unknown): value is ApiResponse => {
-  if (typeof value !== "object" || value === null) return false
-  const obj = value as Record<string, unknown>
-  if (!Array.isArray(obj.templates)) return false
-  return obj.templates.every(isTemplate)
-}
-
-const isTemplate = (value: unknown): value is Template => {
-  if (typeof value !== "object" || value === null) return false
-  const obj = value as Record<string, unknown>
-  return (
-    typeof obj.slug === "string" &&
-    typeof obj.name === "string" &&
-    typeof obj.description === "string" &&
-    typeof obj.owner === "string" &&
-    typeof obj.repo === "string" &&
-    typeof obj.license === "string" &&
-    typeof obj.category === "string" &&
-    Array.isArray(obj.labels) &&
-    obj.labels.every((l) => typeof l === "string") &&
-    (obj.cloneUrl === undefined || typeof obj.cloneUrl === "string")
-  )
+  return result.data.templates
 }

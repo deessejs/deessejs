@@ -83,4 +83,32 @@ describe("fetchTemplates", () => {
       code: "parse_error",
     })
   })
+
+  it("throws parse_error when a required field is missing", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            templates: [
+              {
+                // slug missing
+                name: "X",
+                description: "d",
+                owner: "o",
+                repo: "r",
+                license: "MIT",
+                category: "c",
+                labels: [],
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      ),
+    )
+    await expect(fetchTemplates("http://fake")).rejects.toMatchObject({
+      code: "parse_error",
+    })
+  })
 })
