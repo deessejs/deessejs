@@ -52,6 +52,15 @@ jobs:
         run: pnpm changeset version
       - run: pnpm install --frozen-lockfile
 
+      # 1b. Build all packages that produce publishable artifacts.
+      # Without this, `dist/` (the actual bundle) is missing from the
+      # published tarball — see incident on 2026-08-03 where @deessejs/cli@1.1.0
+      # shipped without its compiled bundle and `npx` couldn't find the bin.
+      # `--filter ...build` excludes private packages (no dist to produce)
+      # and runs each package's `build` script, including transitive deps.
+      - name: Build publishable packages
+        run: pnpm --filter "@deessejs/cli" --filter "@workspace/contracts" build
+
       # 2. Publish via trusted publisher (OIDC).
       # Note: changesets publish doesn't accept --provenance or --access flags.
       # We rely on `publishConfig.provenance: true` in apps/cli/package.json
