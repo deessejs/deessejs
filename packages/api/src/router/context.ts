@@ -8,6 +8,8 @@ export interface BaseContext {
   headers: Headers
   user: User | null
   session: Session | null
+  /** Per-request correlation ID, set by the X-Request-Id middleware. */
+  requestId: string
 }
 
 // Auth context — non-null assertions on user and session, available to

@@ -249,6 +249,9 @@ importers:
       '@deessejs/fp':
         specifier: ^1.0.0
         version: 1.0.0(@deessejs/errors@1.1.1)
+      '@workspace/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       commander:
         specifier: ^12.1.0
         version: 12.1.0
@@ -356,6 +359,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@workspace/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -441,6 +447,9 @@ importers:
       '@workspace/auth':
         specifier: workspace:*
         version: link:../auth
+      '@workspace/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@workspace/database':
         specifier: workspace:*
         version: link:../database
@@ -512,6 +521,28 @@ importers:
       '@types/pg':
         specifier: 'catalog:'
         version: 8.20.0
+      '@workspace/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@workspace/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.4(jiti@2.7.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@24.13.2)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
+
+  packages/contracts:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.2
       '@workspace/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config

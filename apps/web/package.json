@@ -13,6 +13,7 @@
     "content-collections": "content-collections build"
   },
   "dependencies": {
+    "@workspace/contracts": "workspace:*",
     "@workspace/ui": "workspace:*",
     "fuse.js": "catalog:",
     "lucide-react": "catalog:",

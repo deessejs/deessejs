@@ -34,6 +34,7 @@
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
     "@workspace/auth": "workspace:*",
+    "@workspace/contracts": "workspace:*",
     "@workspace/database": "workspace:*",
     "@workspace/env": "workspace:*",
     "better-auth": "catalog:",

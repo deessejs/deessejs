@@ -1,27 +1,16 @@
 /**
  * Templates registry data for the DeesseJS CLI.
  *
- * The templates endpoint at /api/templates serves this list to the CLI's
- * `deessejs list` / `info` / `init` commands. The CLI validates the shape
- * via `isTemplate` in apps/cli/src/api.ts, so any field added here must
- * either be added there or marked optional in the schema.
+ * The shape of each entry is owned by `@workspace/contracts/v1`. This file
+ * holds only the hand-curated list (V1). V1.1+ could swap this for a DB-backed
+ * source; the wire contract stays the same.
  *
- * V1 is hand-curated. V1.1+ could swap this for a DB-backed source. The
- * `cloneUrl` field is optional per template; it overrides the default
+ * The `cloneUrl` field is optional per template; it overrides the default
  * `https://github.com/<owner>/<repo>` lookup in the CLI.
  */
-export type Template = {
-  slug: string
-  name: string
-  description: string
-  owner: string
-  repo: string
-  license: string
-  category: string
-  labels: string[]
-  image?: string
-  cloneUrl?: string
-}
+import type { TemplateV1 } from "@workspace/contracts/v1"
+
+export type Template = TemplateV1
 
 export const TEMPLATES: Template[] = [
   {

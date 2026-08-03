@@ -4,6 +4,7 @@ import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
 import { fetchTemplates } from "../api.js"
+import { DEFAULT_API_URL } from "../constants.js"
 import {
   installFailed,
   internal,
@@ -43,10 +44,14 @@ export const initCommand = new Command("init")
       const apiUrl = initCommand.parent?.getOptionValue("apiUrl") as
         | string
         | undefined
+      const offline = initCommand.parent?.getOptionValue("offline") as
+        | boolean
+        | undefined
 
       try {
         const templates = await fetchTemplates(
-          apiUrl ?? process.env.DEESSEJS_API_URL ?? "https://deessejs.com/api/templates",
+          apiUrl ?? process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL,
+          { offline: Boolean(offline) },
         )
         const template = templates.find((t) => t.slug === slug)
         if (!template) {
