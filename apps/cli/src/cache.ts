@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 
@@ -67,7 +67,7 @@ export const writeDiskCache = <T>(
   writeFileSync(tmp, JSON.stringify(entry), "utf8")
   // Best-effort rename. If it fails (rare on Windows), fall back to direct write.
   try {
-    require("node:fs").renameSync(tmp, target)
+    renameSync(tmp, target)
   } catch {
     writeFileSync(target, JSON.stringify(entry), "utf8")
   }
