@@ -44,7 +44,7 @@ describe("version check", () => {
     })
     expect(result.exitCode).toBe(0) // command still succeeds
     expect(result.stderr).toContain("below the minimum supported")
-    expect(result.stderr).toContain("deessejs@latest")
+    expect(result.stderr).toContain("@deessejs/cli@latest")
   })
 
   it("does not warn when local version equals minSupported", async () => {
