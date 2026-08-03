@@ -3,7 +3,7 @@ import { TemplatesListResponseV1 } from "@workspace/contracts/v1"
 import {
   TEMPLATES_REVALIDATE_SECONDS,
   TEMPLATES_URL,
-} from "./templates-config.js"
+} from "./templates-config"
 
 export type Template = TemplatesListResponseV1["templates"][number]
 
