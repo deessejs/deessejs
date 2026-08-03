@@ -1,6 +1,6 @@
 {
   "name": "@deessejs/cli",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "CLI for the DeesseJS template registry.",
   "type": "module",
   "license": "MIT",
@@ -27,12 +27,14 @@
     "../../LICENSE"
   ],
   "scripts": {
+    "prebuild": "pnpm --filter @workspace/contracts build",
     "build": "tsup",
+    "predev": "pnpm --filter @workspace/contracts build",
     "dev": "tsup --watch",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "typecheck": "tsc --noEmit",
-    "pretest": "tsup",
+    "pretest": "pnpm --filter @workspace/contracts build && tsup",
     "test": "vitest run",
     "test:watch": "vitest",
     "start": "node ./dist/index.js"
@@ -40,6 +42,7 @@
   "dependencies": {
     "@deessejs/errors": "^1.1.1",
     "@deessejs/fp": "^1.0.0",
+    "@workspace/contracts": "workspace:*",
     "commander": "^12.1.0",
     "ora": "^8.1.1",
     "picocolors": "^1.1.1"

@@ -92,6 +92,45 @@ pnpm format    # Format code
 
 Update shared dependencies in `pnpm-workspace.yaml` under `catalog:`.
 
+## Module Resolution
+
+The repo mixes two bundler/resolver stacks and they disagree on one
+detail: **whether to write `.js` extensions on relative imports.**
+
+- **`packages/*`** (Node ESM, `tsc` output): keep the `.js` extension
+  in source. This is the `verbatimModuleSyntax` convention required by
+  the shared tsconfig — the emitted JS really is `.js`, and Node's
+  ESM resolver needs the explicit extension to find it.
+  ```ts
+  import { appRouter } from "./router/index.js"
+  ```
+- **`apps/web`** (Next.js 16 with Turbopack): **drop** the `.js`
+  extension. Turbopack does not honor the `verbatimModuleSyntax`
+  convention and treats `./foo.js` as a literal path, which fails to
+  resolve to `./foo.ts`.
+  ```ts
+  import { fetchTemplates } from "@/lib/templates-api"
+  // relative: import { x } from "./y"      ← no .js
+  ```
+
+Mixing the two conventions in the same package will fail the build.
+When in doubt, check what the surrounding files do.
+
+## Shared Error Envelope (API)
+
+The Hono app in `packages/api` returns a stable JSON envelope for
+every error path (`onError`, `notFound`, rate-limit 429). The shape
+is `{ code, message, requestId }`. The helper that builds it lives
+in `packages/api/src/envelope.ts` and is the single source of truth:
+
+```ts
+import { errorBody, readRequestId } from "@workspace/api/envelope"
+return c.json(errorBody(c, "not_found", "Route not found"), 404)
+```
+
+Adding a new top-level field to the envelope is a breaking change for
+all consumers (CLI, apps/web). Keep the shape small and stable.
+
 ## Support
 
 For questions, open an issue or contact [support@deessejs.com](mailto:support@deessejs.com)
