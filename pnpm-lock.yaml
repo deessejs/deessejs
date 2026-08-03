@@ -359,6 +359,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@workspace/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
