@@ -14,6 +14,9 @@ import { TEMPLATES } from "./templates.js"
 import { logger } from "./logger.js"
 import { requestId, REQUEST_ID_HEADER } from "./middleware/request-id.js"
 import { onError as onApiError } from "./middleware/error-handler.js"
+import { etag } from "./middleware/etag.js"
+import { rateLimit } from "./middleware/rate-limit.js"
+import { CLI_VERSION, CLI_MIN_SUPPORTED } from "./cli-version.js"
 
 // Body parser methods that consume the request body. The proxy below
 // redirects these to Hono's parsed getters so oRPC never sees a drained
@@ -92,7 +95,39 @@ api.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOStri
 // Templates endpoint — consumed by the @deessejs/cli (list / info / init).
 // Public for V1 (the CLI has no auth tokens yet). V1.1 (device auth) can
 // gate this behind the authMiddleware without breaking the response shape.
-api.get("/templates", (c) => c.json({ templates: TEMPLATES }))
+//
+// Caching: weak ETag keyed on a version counter. Bump the counter whenever
+// the catalog changes so the CDN serves fresh bytes. The CLI also uses
+// this ETag for its disk cache (planned for step 4).
+//
+// Rate limit: per-IP fixed window, default 100 req/min per Vercel
+// instance. The number lives in env (RATE_LIMIT_PER_MINUTE) so operators
+// can tighten it without a redeploy.
+const TEMPLATES_VERSION = "v1"
+
+api.get(
+  "/templates",
+  rateLimit(serverEnv.RATE_LIMIT_PER_MINUTE),
+  etag(() => TEMPLATES_VERSION),
+  (c) => c.json({ templates: TEMPLATES }),
+)
+
+// CLI version probe — public, no auth, low rate limit. The CLI calls this
+// on startup to warn the user when their installed version is below
+// CLI_MIN_SUPPORTED. Cached aggressively (10 minutes) because the values
+// change only at release time.
+api.get(
+  "/cli-version",
+  rateLimit(serverEnv.RATE_LIMIT_PER_MINUTE),
+  (c) => {
+    c.header("Cache-Control", "public, max-age=600, stale-while-revalidate=86400")
+    return c.json({
+      version: CLI_VERSION,
+      minSupported: CLI_MIN_SUPPORTED,
+    })
+  },
+)
+
 api.get("/ready", async (c) => {
   try {
     // Ping Postgres before returning 200. db.execute throws on connection
