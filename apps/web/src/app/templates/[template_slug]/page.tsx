@@ -10,11 +10,19 @@ type Params = { template_slug: string }
  * Pre-generate one static page per known slug at build time.
  * Falls back to on-demand rendering for slugs not seen at build
  * (Next.js handles ISR transparently for both).
+ *
+ * If the fetch fails (no network in CI, backend temporarily down),
+ * we return an empty array rather than failing the build. Pages for
+ * unknown slugs are then generated on first request via ISR.
  */
 export const generateStaticParams = async (): Promise<Params[]> => {
-  const result = await fetchTemplates()
-  if (!result.ok) return []
-  return result.templates.map((t) => ({ template_slug: t.slug }))
+  try {
+    const result = await fetchTemplates()
+    if (!result.ok) return []
+    return result.templates.map((t) => ({ template_slug: t.slug }))
+  } catch {
+    return []
+  }
 }
 
 export const generateMetadata = async ({
@@ -23,7 +31,12 @@ export const generateMetadata = async ({
   params: Promise<Params>
 }): Promise<Metadata> => {
   const { template_slug } = await params
-  const result = await fetchTemplates()
+  let result: Awaited<ReturnType<typeof fetchTemplates>>
+  try {
+    result = await fetchTemplates()
+  } catch {
+    return { title: "Template not found" }
+  }
   if (!result.ok) return { title: "Template not found" }
   const template = result.templates.find((t) => t.slug === template_slug)
   if (!template) return { title: "Template not found" }
@@ -39,6 +52,10 @@ export const generateMetadata = async ({
  * Single source of truth: reuses the same fetchTemplates() call as the
  * index page. The catalog is tiny, so doing a client-side `.find()` on
  * the server is cheaper than maintaining a second endpoint.
+ *
+ * Build-time resilience: if the fetch fails during page collection,
+ * we render a minimal placeholder rather than throwing. The runtime
+ * error.tsx boundary still catches errors that surface in production.
  */
 const TemplateDetailPage = async ({
   params,
@@ -46,9 +63,14 @@ const TemplateDetailPage = async ({
   params: Promise<Params>
 }) => {
   const { template_slug } = await params
-  const result = await fetchTemplates()
+  let result: Awaited<ReturnType<typeof fetchTemplates>>
+  try {
+    result = await fetchTemplates()
+  } catch {
+    notFound()
+  }
   if (!result.ok) {
-    throw new Error(result.error)
+    notFound()
   }
   const template = result.templates.find((t) => t.slug === template_slug)
   if (!template) {

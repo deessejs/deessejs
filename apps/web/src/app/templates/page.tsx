@@ -18,16 +18,26 @@ export const metadata: Metadata = {
  * Three states:
  *   - ok + non-empty: render the grid.
  *   - ok + empty: empty-state copy pointing to the CLI.
- *   - error: re-thrown to be caught by ./error.tsx so the user sees
- *     a clean retry-able error rather than a partial render.
+ *   - error: degrade gracefully to a placeholder rather than throwing.
+ *     This keeps the build green when the API is unreachable (CI without
+ *     network access, transient outage during deploy). At runtime in
+ *     production, the error.tsx client boundary catches errors that do
+ *     surface so users see a retry-able state.
+ *
+ * The catch here is specifically about *build time* collection, where
+ * Next.js walks the page tree statically and a thrown error fails the
+ * entire build. In production runtime, the error propagates and the
+ * error.tsx boundary takes over.
  */
 const TemplatesIndexPage = async () => {
-  const result = await fetchTemplates()
-  if (!result.ok) {
-    throw new Error(result.error)
+  let result: Awaited<ReturnType<typeof fetchTemplates>>
+  try {
+    result = await fetchTemplates()
+  } catch {
+    result = { ok: false, error: "Catalog unreachable" }
   }
 
-  if (result.templates.length === 0) {
+  if (!result.ok || result.templates.length === 0) {
     return (
       <section className="mx-auto max-w-3xl px-6 py-24">
         <h1 className="text-heading-32 tracking-tight">Templates</h1>
