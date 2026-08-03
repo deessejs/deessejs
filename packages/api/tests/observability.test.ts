@@ -32,6 +32,45 @@ describe("observability middleware", () => {
       ])
       expect(a.headers.get("X-Request-Id")).not.toBe(b.headers.get("X-Request-Id"))
     })
+
+    it("propagates a UUID-shaped caller ID", async () => {
+      const uuid = "550e8400-e29b-41d4-a716-446655440000"
+      const res = await api.request("/api/v1/health", {
+        headers: { "X-Request-Id": uuid },
+      })
+      expect(res.headers.get("X-Request-Id")).toBe(uuid)
+    })
+
+    it("rejects IDs with special characters and falls back to a UUID", async () => {
+      const res = await api.request("/api/v1/health", {
+        headers: { "X-Request-Id": "<script>alert(1)</script>" },
+      })
+      const id = res.headers.get("X-Request-Id")
+      expect(id).not.toBe("<script>alert(1)</script>")
+      expect(id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      )
+    })
+
+    it("rejects IDs longer than 128 characters and falls back to a UUID", async () => {
+      const tooLong = "a".repeat(129)
+      const res = await api.request("/api/v1/health", {
+        headers: { "X-Request-Id": tooLong },
+      })
+      const id = res.headers.get("X-Request-Id")
+      expect(id).not.toBe(tooLong)
+      expect(id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      )
+    })
+
+    it("the sanitized ID is also reflected in error bodies", async () => {
+      const res = await api.request("/api/v1/does-not-exist", {
+        headers: { "X-Request-Id": "ok-id-123" },
+      })
+      const body = await res.json()
+      expect(body.requestId).toBe("ok-id-123")
+    })
   })
 
   describe("secure headers", () => {
