@@ -32,8 +32,8 @@ const footerLinks = {
     { label: "Privacy Policy", href: "/privacy-policy" },
   ],
   community: [
-    { label: "Open Source Program", href: "#" },
-    { label: "Students", href: "#" },
+    { label: "Open Source Program", href: "/oss" },
+    { label: "Students", href: "/students" },
     { label: "Github", href: "https://github.com/deessejs" },
     { label: "LinkedIn", href: "#" },
     { label: "X", href: "#" },
@@ -140,18 +140,21 @@ export function AppFooter() {
           <div>
             <h3 className="font-semibold text-foreground mb-3">Community</h3>
             <ul className="space-y-2">
-              {footerLinks.community.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
+              {footerLinks.community.map((link) => {
+                const isExternal = link.href.startsWith("http")
+                return (
+                  <li key={link.label}>
+                    <a
+                      href={link.href}
+                      target={isExternal ? "_blank" : undefined}
+                      rel={isExternal ? "noopener noreferrer" : undefined}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                )
+              })}
             </ul>
           </div>
         </div>
