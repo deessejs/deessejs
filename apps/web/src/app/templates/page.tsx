@@ -60,11 +60,9 @@ const TemplatesIndexPage = async () => {
           <code className="text-copy-14-mono">deessejs init &lt;slug&gt;</code>.
         </p>
       </header>
-      <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
         <CategorySidebar templates={result.templates} />
-        <div className="min-w-0 flex-1">
-          <TemplateGrid templates={result.templates} />
-        </div>
+        <TemplateGrid templates={result.templates} />
       </div>
     </section>
   )

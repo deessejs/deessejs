@@ -1,5 +1,4 @@
 import type { Template } from "@/lib/templates-api"
-import { cn } from "@workspace/ui/lib/utils"
 
 /**
  * Categories shown in the templates sidebar.
@@ -41,8 +40,8 @@ export const CategorySidebar = ({
   className,
 }: CategorySidebarProps) => {
   return (
-    <aside className={cn("w-full lg:w-56 lg:shrink-0", className)}>
-      <div className="sticky top-20">
+    <aside className={cn("w-full lg:sticky lg:top-20 lg:self-start", className)}>
+      <div>
         <h2 className="text-label-14 mb-4 font-semibold tracking-tight text-foreground">
           Categories
         </h2>
