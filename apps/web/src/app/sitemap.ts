@@ -89,6 +89,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.6,
     },
     {
+      url: `${APP_URL}/knowledge-base`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: `${APP_URL}/customers`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
       url: `${APP_URL}/login`,
       lastModified: new Date(),
       changeFrequency: "monthly",

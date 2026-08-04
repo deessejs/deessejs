@@ -16,8 +16,13 @@ const footerLinks = {
     { label: "Docs", href: "https://docs.deessejs.com" },
     { label: "Blog", href: "https://deessejs.com/blog" },
     { label: "Changelog", href: "https://deessejs.com/changelog" },
+    { label: "Knowledge Base", href: "/knowledge-base" },
     { label: "Academy", href: "#" },
     { label: "Community", href: "#" },
+  ],
+  explore: [
+    { label: "Customers", href: "/customers" },
+    { label: "Templates", href: "/templates" },
   ],
   usecases: [
     { label: "Autonomous Agents", href: "#" },
@@ -45,9 +50,9 @@ export function AppFooter() {
   return (
     <footer className="border-t border-border bg-background">
       <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-8">
           {/* Brand */}
-          <div className="col-span-2 md:col-span-3 lg:col-span-2">
+          <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <img src="/icon.svg" alt="DeesseJS logo" className="size-7" />
               <span className="text-lg font-semibold text-foreground">
@@ -84,16 +89,36 @@ export function AppFooter() {
           <div>
             <h3 className="font-semibold text-foreground mb-3">Learn</h3>
             <ul className="space-y-2">
-              {footerLinks.learn.map((link) => (
+              {footerLinks.learn.map((link) => {
+                const isExternal = link.href.startsWith("http")
+                return (
+                  <li key={link.label}>
+                    <a
+                      href={link.href}
+                      target={isExternal ? "_blank" : undefined}
+                      rel={isExternal ? "noopener noreferrer" : undefined}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+
+          {/* Explore */}
+          <div>
+            <h3 className="font-semibold text-foreground mb-3">Explore</h3>
+            <ul className="space-y-2">
+              {footerLinks.explore.map((link) => (
                 <li key={link.label}>
-                  <a
+                  <Link
                     href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
