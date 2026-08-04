@@ -1,43 +1,40 @@
+import Link from "next/link"
+
 import type { Template } from "@/lib/templates-api"
 import { cn } from "@workspace/ui/lib/utils"
 
 /**
  * Categories shown in the templates sidebar.
  *
- * Currently derived from the hard-coded templates in
- * `packages/api/src/templates.ts` plus a few dummy entries to show
- * the "full list" shape the design is heading toward. In V1, this
- * list is **purely visual** — items render but are not clickable
- * yet. Click-to-filter wiring lands with the categories API (V1.1).
+ * Sourced from the union of `category` values present in the
+ * `TemplateV1` contract (see `packages/contracts/src/v1/templates.ts`).
+ * Only categories that actually have templates in the registry are
+ * listed — empty buckets are hidden until they ship.
  */
 const CATEGORIES: ReadonlyArray<{
   slug: string
   label: string
-  count: number
 }> = [
-  { slug: "all", label: "All templates", count: 3 },
-  { slug: "saas", label: "SaaS starters", count: 1 },
-  { slug: "ai", label: "AI", count: 1 },
-  { slug: "landing", label: "Landing pages", count: 1 },
-  { slug: "ecommerce", label: "E-commerce", count: 0 },
-  { slug: "mobile", label: "Mobile apps", count: 0 },
-  { slug: "internal-tools", label: "Internal tools", count: 0 },
-  { slug: "apis", label: "APIs", count: 0 },
+  { slug: "all", label: "All templates" },
+  { slug: "saas", label: "SaaS starters" },
+  { slug: "ai", label: "AI" },
+  { slug: "landing", label: "Landing pages" },
 ] as const
 
 export type CategorySidebarProps = {
   templates: Template[]
+  /** Currently active category, used to mark the matching link. */
+  activeCategory: string
   className?: string
 }
 
 /**
- * Sidebar that lists template categories. Currently a static visual
- * surface — counts are hard-coded, items are not clickable. The shape
- * is forward-compatible: when the categories API lands, this component
- * swaps the constant for a `fetch` and the links become `<a href>`.
+ * Sidebar that lists template categories as links to `/templates?category=<slug>`.
+ * The "all" entry points to `/templates` without a query string.
  */
 export const CategorySidebar = ({
   templates,
+  activeCategory,
   className,
 }: CategorySidebarProps) => {
   return (
@@ -47,27 +44,40 @@ export const CategorySidebar = ({
           Categories
         </h2>
         <ul className="flex flex-col gap-1">
-          {CATEGORIES.map((category) => (
-            <li key={category.slug}>
-              <button
-                type="button"
-                disabled
-                aria-label={`Filter by ${category.label} (coming soon)`}
-                className="text-label-13 flex w-full items-center justify-between rounded-md px-3 py-1.5 text-left text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-100"
-              >
-                <span>{category.label}</span>
-                <span className="text-copy-13 text-muted-foreground/70">
-                  {category.count}
-                </span>
-              </button>
-            </li>
-          ))}
+          {CATEGORIES.map((category) => {
+            const isActive = activeCategory === category.slug
+            const href = category.slug === "all" ? "/templates" : `/templates?category=${category.slug}`
+            const count = templatesByCategory(templates, category.slug)
+            return (
+              <li key={category.slug}>
+                <Link
+                  href={href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "text-label-13 flex w-full items-center justify-between rounded-md px-3 py-1.5 text-left transition-colors hover:bg-accent hover:text-foreground",
+                    isActive
+                      ? "bg-accent text-foreground"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  <span>{category.label}</span>
+                  <span className="text-copy-13 text-muted-foreground/70">
+                    {count}
+                  </span>
+                </Link>
+              </li>
+            )
+          })}
         </ul>
         <p className="text-copy-13 text-muted-foreground/70 mt-6">
           {templates.length} template{templates.length === 1 ? "" : "s"} shown
-          · filter coming soon
         </p>
       </div>
     </aside>
   )
+}
+
+const templatesByCategory = (templates: Template[], slug: string) => {
+  if (slug === "all") return templates.length
+  return templates.filter((t) => t.category === slug).length
 }

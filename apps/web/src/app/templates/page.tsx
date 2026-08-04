@@ -30,7 +30,11 @@ export const metadata: Metadata = {
  * entire build. In production runtime, the error propagates and the
  * error.tsx boundary takes over.
  */
-const TemplatesIndexPage = async () => {
+const TemplatesIndexPage = async ({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>
+}) => {
   let result: Awaited<ReturnType<typeof fetchTemplates>>
   try {
     result = await fetchTemplates()
@@ -50,6 +54,16 @@ const TemplatesIndexPage = async () => {
     )
   }
 
+  const { category: rawCategory } = await searchParams
+  const activeCategory =
+    rawCategory && ["saas", "ai", "landing"].includes(rawCategory)
+      ? rawCategory
+      : "all"
+  const visibleTemplates =
+    activeCategory === "all"
+      ? result.templates
+      : result.templates.filter((t) => t.category === activeCategory)
+
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
       <header className="mb-10 flex flex-col gap-3">
@@ -61,8 +75,17 @@ const TemplatesIndexPage = async () => {
         </p>
       </header>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
-        <CategorySidebar templates={result.templates} />
-        <TemplateGrid templates={result.templates} />
+        <CategorySidebar
+          templates={result.templates}
+          activeCategory={activeCategory}
+        />
+        {visibleTemplates.length === 0 ? (
+          <div className="text-copy-16 text-muted-foreground">
+            No templates in this category yet.
+          </div>
+        ) : (
+          <TemplateGrid templates={visibleTemplates} />
+        )}
       </div>
     </section>
   )
