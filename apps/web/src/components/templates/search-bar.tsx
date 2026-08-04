@@ -87,7 +87,7 @@ export const SearchableTemplateGrid = ({
       {filtered.length === 0 ? (
         <p className="text-copy-16 text-muted-foreground">
           No templates match{" "}
-          <span className="text-copy-14-mono">"{deferred}"</span> in {categoryLabel}.
+          <span className="text-copy-14-mono">&quot;{deferred}&quot;</span> in {categoryLabel}.
         </p>
       ) : (
         <TemplateGrid templates={filtered} />

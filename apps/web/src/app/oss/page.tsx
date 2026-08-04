@@ -11,7 +11,7 @@ export default function OssPage() {
     <div className="mx-auto max-w-2xl px-4 py-16">
       <H1>Open Source Program</H1>
       <P>
-        Information about DeesseJS's open source program — sponsorship
+        Information about DeesseJS&apos;s open source program — sponsorship
         tiers, supported projects, and how to apply. This page is a
         placeholder — replace it with the program details before going
         to production.

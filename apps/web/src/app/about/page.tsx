@@ -12,7 +12,7 @@ export default function AboutPage() {
       <H1>About DeesseJS</H1>
       <P>
         DeesseJS is the main app of the deessejs organization. This page
-        is a placeholder — replace it with the team's story before going
+        is a placeholder — replace it with the team&apos;s story before going
         to production.
       </P>
     </div>

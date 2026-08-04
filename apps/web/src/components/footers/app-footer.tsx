@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 
 import { CookiePreferencesButton } from "@workspace/cookies"
 
@@ -54,7 +55,13 @@ export function AppFooter() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-3 lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <img src="/icon.svg" alt="DeesseJS logo" className="size-7" />
+              <Image
+                src="/icon.svg"
+                alt="DeesseJS logo"
+                width={28}
+                height={28}
+                className="size-7"
+              />
               <span className="text-lg font-semibold text-foreground">
                 DeesseJS
               </span>
