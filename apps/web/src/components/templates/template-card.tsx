@@ -28,7 +28,7 @@ export const TemplateCard = ({ template, className }: TemplateCardProps) => {
   return (
     <Card
       className={cn(
-        "group h-48 justify-between transition-colors hover:bg-accent/30",
+        "group h-48 justify-between rounded-none border-0 bg-background transition-colors hover:bg-accent/30",
         className,
       )}
     >
