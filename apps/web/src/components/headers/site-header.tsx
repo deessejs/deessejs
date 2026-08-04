@@ -60,11 +60,8 @@ function MobileNav() {
           ))}
         </nav>
         <div className="mt-auto flex flex-col gap-2">
-          <Button variant="outline" asChild className="w-full">
-            <Link href="/login">Login</Link>
-          </Button>
-          <Button asChild className="w-full">
-            <Link href="/signup">Sign up</Link>
+          <Button disabled className="w-full">
+            Coming soon
           </Button>
         </div>
       </SheetContent>
@@ -85,12 +82,7 @@ export function SiteHeader() {
         </div>
 
         <div className="hidden items-center gap-2 sm:flex">
-          <Button variant="outline" asChild>
-            <Link href="/login">Login</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/signup">Sign up</Link>
-          </Button>
+          <Button disabled>Coming soon</Button>
         </div>
       </div>
     </header>
