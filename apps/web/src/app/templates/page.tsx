@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 
 import { fetchTemplates } from "@/lib/templates-api"
 import { CategorySidebar } from "@/components/templates/category-sidebar"
-import { TemplateGrid } from "@/components/templates/template-grid"
+import { SearchableTemplateGrid } from "@/components/templates/search-bar"
 
 export const metadata: Metadata = {
   title: "Templates",
@@ -64,6 +64,14 @@ const TemplatesIndexPage = async ({
       ? result.templates
       : result.templates.filter((t) => t.category === activeCategory)
 
+  const CATEGORY_LABELS: Record<string, string> = {
+    all: "All templates",
+    saas: "SaaS starters",
+    ai: "AI",
+    landing: "Landing pages",
+  }
+  const activeCategoryLabel = CATEGORY_LABELS[activeCategory] ?? "All templates"
+
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
       <header className="mb-10 flex flex-col gap-3">
@@ -84,7 +92,10 @@ const TemplatesIndexPage = async ({
             No templates in this category yet.
           </div>
         ) : (
-          <TemplateGrid templates={visibleTemplates} />
+          <SearchableTemplateGrid
+            templates={visibleTemplates}
+            categoryLabel={activeCategoryLabel}
+          />
         )}
       </div>
     </section>
