@@ -1,8 +1,7 @@
 {
   "name": "@workspace/contracts",
   "version": "0.0.1",
-  "private": false,
-  "description": "Workspace-only shared contract package. Marked private:false so Changesets accepts it as a regular versioned dependency of @deessejs/cli. Do NOT add a publish workflow — this package is consumed only inside the monorepo.",
+  "private": true,
   "type": "module",
   "exports": {
     ".": {
