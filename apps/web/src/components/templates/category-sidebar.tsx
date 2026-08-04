@@ -1,4 +1,5 @@
 import type { Template } from "@/lib/templates-api"
+import { cn } from "@workspace/ui/lib/utils"
 
 /**
  * Categories shown in the templates sidebar.
