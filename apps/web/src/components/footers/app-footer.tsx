@@ -50,9 +50,9 @@ export function AppFooter() {
   return (
     <footer className="border-t border-border bg-background">
       <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
           {/* Brand */}
-          <div className="col-span-2 md:col-span-4 lg:col-span-1">
+          <div className="col-span-2 md:col-span-3 lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <img src="/icon.svg" alt="DeesseJS logo" className="size-7" />
               <span className="text-lg font-semibold text-foreground">
@@ -104,23 +104,6 @@ export function AppFooter() {
                   </li>
                 )
               })}
-            </ul>
-          </div>
-
-          {/* Explore */}
-          <div>
-            <h3 className="font-semibold text-foreground mb-3">Explore</h3>
-            <ul className="space-y-2">
-              {footerLinks.explore.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
             </ul>
           </div>
 
@@ -181,6 +164,23 @@ export function AppFooter() {
                   </li>
                 )
               })}
+            </ul>
+          </div>
+
+          {/* Explore (last section — sits at the right of the bottom row) */}
+          <div>
+            <h3 className="font-semibold text-foreground mb-3">Explore</h3>
+            <ul className="space-y-2">
+              {footerLinks.explore.map((link) => (
+                <li key={link.label}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
