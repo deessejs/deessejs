@@ -51,7 +51,7 @@ export const serverSchema = z.object({
     .string()
     .email()
     .default("onboarding@resend.dev"),
-  RESEND_FROM_NAME: z.string().min(1).default("SaaS Template"),
+  RESEND_FROM_NAME: z.string().min(1).default("DeesseJS"),
 
   // Mailer — transport selector
   //   "console" (default) → logs to stdout, zero infrastructure
@@ -112,7 +112,7 @@ export const serverSchema = z.object({
  * browser. Values are inlined at build time by the bundler.
  */
 export const clientSchema = z.object({
-  NEXT_PUBLIC_APP_NAME: z.string().min(1).default("SaaS Template"),
+  NEXT_PUBLIC_APP_NAME: z.string().min(1).default("DeesseJS"),
   NEXT_PUBLIC_APP_DESCRIPTION: z
     .string()
     .min(1)
