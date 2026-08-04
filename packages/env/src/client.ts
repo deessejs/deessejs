@@ -30,7 +30,7 @@ export const clientEnv: Readonly<ClientEnv> = Object.freeze(
     ? parsed.data
     : {
         NEXT_PUBLIC_APP_NAME:
-          process.env.NEXT_PUBLIC_APP_NAME ?? "SaaS Template",
+          process.env.NEXT_PUBLIC_APP_NAME ?? "DeesseJS",
         NEXT_PUBLIC_APP_DESCRIPTION:
           process.env.NEXT_PUBLIC_APP_DESCRIPTION ??
           "SaaS application built with Next.js and shared UI components",

@@ -9,7 +9,7 @@ As of 2026-07-31, `apps/cli/package.json` is missing several fields required to 
 
 Missing fields (all verified):
 
-- `license` — README says `UNLICENSED for V1`; npm refuses unlicensed. Recommended: MIT (matches upstream saas-template).
+- `license` — README says `UNLICENSED for V1`; npm refuses unlicensed. Recommended: MIT.
 - `repository` — required by npm trusted publishers; the trusted publisher config on npmjs.com rejects the workflow run if `repository.url` doesn't match the GitHub repo configured.
 - `keywords` — discoverability on npm.
 - `types` — no `dist/index.d.ts` is emitted today because tsup config has `dts: false`. Add `dts: true` to `tsup.config.ts` and add `types: "./dist/index.d.ts"` to package.json.

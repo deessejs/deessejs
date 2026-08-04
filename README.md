@@ -2,37 +2,39 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="public/banner-ds.jpg">
     <source media="(prefers-color-scheme: light)" srcset="public/banner-ds.jpg">
-    <img src="public/banner-ds.jpg" alt="SaaS Template banner" width="900">
+    <img src="public/banner-ds.jpg" alt="DeesseJS banner" width="900">
   </picture>
 </p>
 
-<h1 align="center">SaaS Template</h1>
+<h1 align="center">DeesseJS</h1>
 
 <p align="center">
-  <strong>Production-ready single-tenant SaaS starter.</strong>
+  <strong>The main app of the deessejs organization.</strong>
   Next.js 16 · Better Auth · Drizzle · Tailwind v4 · Deploy in minutes.
 </p>
 
 <p align="center">
-  <a href="https://github.com/deessejs/saas-template/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/deessejs/saas-template" alt="License">
+  <a href="https://github.com/deessejs/deessejs/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/deessejs/deessejs" alt="License">
   </a>
-  <a href="https://github.com/deessejs/saas-template/actions/workflows/ci.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/deessejs/saas-template/ci.yml?label=CI" alt="CI">
+  <a href="https://github.com/deessejs/deessejs/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/deessejs/deessejs/ci.yml?label=CI" alt="CI">
   </a>
-  <a href="https://github.com/deessejs/saas-template/stargazers">
-    <img src="https://img.shields.io/github/stars/deessejs/saas-template?style=social" alt="Stars">
+  <a href="https://github.com/deessejs/deessejs/stargazers">
+    <img src="https://img.shields.io/github/stars/deessejs/deessejs?style=social" alt="Stars">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdeessejs%2Fsaas-template">
+  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdeessejs%2Fdeessejs">
     <img src="https://vercel.com/button" alt="Deploy with Vercel">
   </a>
-  <a href="https://github.com/deessejs/saas-template/codespaces/new">
+  <a href="https://github.com/deessejs/deessejs/codespaces/new">
     <img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces">
   </a>
 </p>
+
+> **Started from [`deessejs/saas-template`](https://github.com/deessejs/saas-template)** (MIT, July 2026). This repo was cloned from it as the foundation for the deessejs main app and has since diverged — see [docs/engineering/plans/saas-template-divergence.md](docs/engineering/plans/saas-template-divergence.md) for the divergence map.
 
 > 👉 **Need workspaces / multi-tenant?** See [`deessejs/saas-template-multi-tenant`](https://github.com/deessejs/saas-template-multi-tenant) — same monorepo with the Better Auth Organization plugin wired in, for users who need per-tenant data isolation and invite-based memberships.
 
@@ -50,7 +52,7 @@
 | **Tooling** | pnpm 11 workspaces, Turbo v2, strict catalogs, shared ESLint + TS configs | One command rebuilds, lints, types, tests the whole monorepo. |
 | **Single-tenant** | No organization plugin, no org schema, no org client | One user = one workspace. Multi-tenant is opt-in. |
 
-## Why this template
+## Why this stack
 
 - **Modern, but boring where it matters.** Next.js 16, Tailwind v4, React 19, TypeScript 6. Chosen because they're the default for new SaaS projects in 2026.
 - **Lockfile-clean pnpm catalogs.** All shared versions live in `pnpm-workspace.yaml` with `catalogMode: strict`. No drift between apps.
@@ -61,7 +63,7 @@
 ## Quick start
 
 > [!TIP]
-> Don't want to install anything locally? [Open in GitHub Codespaces](https://github.com/deessejs/saas-template/codespaces/new). PostgreSQL is pre-configured in the dev container.
+> Don't want to install anything locally? [Open in GitHub Codespaces](https://github.com/deessejs/deessejs/codespaces/new). PostgreSQL is pre-configured in the dev container.
 
 ### Prerequisites
 
@@ -73,8 +75,8 @@
 
 ```bash
 # 1. Clone
-git clone https://github.com/deessejs/saas-template.git
-cd saas-template
+git clone https://github.com/deessejs/deessejs.git
+cd deessejs
 
 # 2. Install dependencies
 pnpm install
@@ -165,14 +167,14 @@ Click the **Deploy with Vercel** button at the top. The monorepo is detected aut
 
 ## Customization
 
-This template is **single-tenant by design**. The auth guides under `docs/guides/better-auth/` explain the lock-ins:
+DeesseJS is **single-tenant by design**. The auth guides under `docs/guides/better-auth/` explain the lock-ins:
 
 - No `organization(...)` plugin in `packages/auth/src/auth.ts`.
 - No `databaseHooks.session.create.before` for org auto-create.
 - No `organizationClient()` on the client.
 - Email verification is enforced in `apps/app/proxy.ts` (unverified users redirect to `/verify-email`).
 
-If you need multi-tenant, start from Better Auth's `organizationPlugin` separately. This template will not graft it in cleanly.
+If you need multi-tenant, start from Better Auth's `organizationPlugin` separately. DeesseJS will not graft it in cleanly.
 
 ## Architecture notes
 
@@ -191,6 +193,6 @@ Open an issue to discuss larger changes. For typos, broken links, and small fixe
 
 ## Support
 
-- Issues: [github.com/deessejs/saas-template/issues](https://github.com/deessejs/saas-template/issues)
-- Discussions: [github.com/deessejs/saas-template/discussions](https://github.com/deessejs/saas-template/discussions)
+- Issues: [github.com/deessejs/deessejs/issues](https://github.com/deessejs/deessejs/issues)
+- Discussions: [github.com/deessejs/deessejs/discussions](https://github.com/deessejs/deessejs/discussions)
 - Email: [support@deessejs.com](mailto:support@deessejs.com)

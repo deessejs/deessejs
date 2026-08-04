@@ -35,11 +35,11 @@ git checkout staging && git pull origin staging
 Fetch all in parallel:
 
 ```bash
-gh api "https://api.github.com/repos/deessejs/saas-template/issues/{n}"
-gh api --paginate "https://api.github.com/repos/deessejs/saas-template/issues/{n}/comments"
+gh api "https://api.github.com/repos/deessejs/deessejs/issues/{n}"
+gh api --paginate "https://api.github.com/repos/deessejs/deessejs/issues/{n}/comments"
 gh api -H "X-GitHub-Api-Version: 2026-03-10" \
   "https://api.github.com/orgs/deessejs/issue-fields"
-gh api "https://api.github.com/repos/deessejs/saas-template/contents/.claude/plans/{n}/plan.md?ref=impl/{n}-{slug}" \
+gh api "https://api.github.com/repos/deessejs/deessejs/contents/.claude/plans/{n}/plan.md?ref=impl/{n}-{slug}" \
   --jq '.content' 2>/dev/null | base64 -d -
 ```
 
@@ -64,7 +64,7 @@ Refuse if missing:
 **Gate B — no existing open PR**
 
 ```bash
-gh api --paginate "https://api.github.com/repos/deessejs/saas-template/pulls?state=open&base=staging&per_page=50" \
+gh api --paginate "https://api.github.com/repos/deessejs/deessejs/pulls?state=open&base=staging&per_page=50" \
   --jq '.[] | select(.body | contains("#{n}")) | {number, html_url}'
 ```
 

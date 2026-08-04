@@ -4,6 +4,8 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+This repo is the **DeesseJS main app** — the monorepo that powers the deessejs organization. Started from [`deessejs/saas-template`](https://github.com/deessejs/saas-template) in July 2026. See [docs/engineering/plans/saas-template-divergence.md](docs/engineering/plans/saas-template-divergence.md) for the divergence map and [docs/engineering/plans/deessejs-main-app-repositioning.md](docs/engineering/plans/deessejs-main-app-repositioning.md) for the identity-surface plan.
+
 ## Git workflow — staging-first
 
 This repo uses a **staging-first** workflow. All development happens against `staging`, never directly against `main`.

@@ -1,6 +1,6 @@
 ---
 name: create-issue
-description: Create GitHub issues with labels, priority, and structured fields for the saas-template project. Use when asked to "create an issue", "file an issue", or "open an issue" for the project.
+description: Create GitHub issues with labels, priority, and structured fields for the DeesseJS project. Use when asked to "create an issue", "file an issue", or "open an issue" for the project.
 ---
 
 # `create-issue` Skill
@@ -30,11 +30,11 @@ Before creating, confirm:
 
 If the user only provides a title, use reasonable defaults: no priority label / `priority:medium`.
 
-## Repo context — `deessejs/saas-template`
+## Repo context — `deessejs/deessejs`
 
 ### Org — `deessejs`
 
-Repo: `github.com/deessejs/saas-template`
+Repo: `github.com/deessejs/deessejs`
 
 ### Labels available in this repo
 
