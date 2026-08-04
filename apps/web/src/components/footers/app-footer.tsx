@@ -8,6 +8,7 @@ const footerLinks = {
     { label: "DRPC", href: "https://drpc.deessejs.com" },
     { label: "Collections", href: "https://collections.deessejs.com" },
     { label: "FP", href: "https://fp.deessejs.com" },
+    { label: "UI", href: "https://ui.deessejs.com" },
     { label: "Admin", href: "https://admin.deessejs.com" },
     { label: "Cloud", href: "https://cloud.deessejs.com" },
   ],
@@ -25,10 +26,10 @@ const footerLinks = {
     { label: "Content Creation", href: "#" },
   ],
   company: [
-    { label: "About", href: "#" },
-    { label: "Help", href: "#" },
-    { label: "Legal", href: "#" },
-    { label: "Privacy Policy", href: "#" },
+    { label: "About", href: "/about" },
+    { label: "Help", href: "/help" },
+    { label: "Legal", href: "/legal" },
+    { label: "Privacy Policy", href: "/privacy-policy" },
   ],
   community: [
     { label: "Open Source Program", href: "#" },
@@ -124,14 +125,12 @@ export function AppFooter() {
             <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
-                  <a
+                  <Link
                     href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
