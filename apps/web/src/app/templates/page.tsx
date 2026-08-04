@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { fetchTemplates } from "@/lib/templates-api"
+import { CategorySidebar } from "@/components/templates/category-sidebar"
 import { TemplateGrid } from "@/components/templates/template-grid"
 
 export const metadata: Metadata = {
@@ -39,7 +40,7 @@ const TemplatesIndexPage = async () => {
 
   if (!result.ok || result.templates.length === 0) {
     return (
-      <section className="mx-auto max-w-3xl px-6 py-24">
+      <section className="mx-auto max-w-6xl px-6 py-24">
         <h1 className="text-heading-32 tracking-tight">Templates</h1>
         <p className="text-copy-16 text-muted-foreground mt-4">
           No templates available right now. Try the CLI:
@@ -59,7 +60,12 @@ const TemplatesIndexPage = async () => {
           <code className="text-copy-14-mono">deessejs init &lt;slug&gt;</code>.
         </p>
       </header>
-      <TemplateGrid templates={result.templates} />
+      <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
+        <CategorySidebar templates={result.templates} />
+        <div className="min-w-0 flex-1">
+          <TemplateGrid templates={result.templates} />
+        </div>
+      </div>
     </section>
   )
 }
