@@ -39,14 +39,14 @@ Fetch all in parallel:
 
 ```bash
 # PR details
-gh api "https://api.github.com/repos/deessejs/saas-template/pulls/{n}"
+gh api "https://api.github.com/repos/deessejs/deessejs/pulls/{n}"
 
 # CI / checks status
-gh api "https://api.github.com/repos/deessejs/saas-template/commits/{sha}/statuses"
-gh api "https://api.github.com/repos/deessejs/saas-template/check-runs?per_page=100"
+gh api "https://api.github.com/repos/deessejs/deessejs/commits/{sha}/statuses"
+gh api "https://api.github.com/repos/deessejs/deessejs/check-runs?per_page=100"
 
 # Issue linked to this PR (parse from body)
-gh api "https://api.github.com/repos/deessejs/saas-template/issues/{n}"
+gh api "https://api.github.com/repos/deessejs/deessejs/issues/{n}"
 
 # Spec if it exists (try to extract issue number from PR body)
 # e.g. "Closes #2" → fetch .claude/plans/2/plan.md from impl/2-{slug}
@@ -76,7 +76,7 @@ Report CI status to the user:
 **Gate C — no unresolved blocking comments**
 
 ```bash
-gh api "https://api.github.com/repos/deessejs/saas-template/pulls/{n}/comments?status=open"
+gh api "https://api.github.com/repos/deessejs/deessejs/pulls/{n}/comments?status=open"
 ```
 
 If unresolved review comments exist → note them, include in review decision.
@@ -104,9 +104,9 @@ Look for `Closes #{issue}` in the PR body, then try to fetch the spec:
 ISSUE_N=$(echo "$PR_BODY" | grep -oP 'Closes #\K\d+')
 if [ -n "$ISSUE_N" ]; then
   # Try to find the branch: list branches matching impl/{ISSUE_N}
-  gh api "https://api.github.com/repos/deessejs/saas-template/pulls/{n}" --jq '.head.ref'
+  gh api "https://api.github.com/repos/deessejs/deessejs/pulls/{n}" --jq '.head.ref'
   SPEC_BRANCH=$(gh api "..." --jq '.head.ref')
-  gh api "https://api.github.com/repos/deessejs/saas-template/contents/.claude/plans/${ISSUE_N}/plan.md?ref=${SPEC_BRANCH}" \
+  gh api "https://api.github.com/repos/deessejs/deessejs/contents/.claude/plans/${ISSUE_N}/plan.md?ref=${SPEC_BRANCH}" \
     --jq '.content' 2>/dev/null | base64 -d -
 fi
 ```

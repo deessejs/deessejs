@@ -6,7 +6,7 @@ const validTemplate = {
   name: "SaaS Starter",
   description: "Production-ready Next.js + Better Auth + Postgres boilerplate.",
   owner: "deessejs",
-  repo: "saas-template",
+  repo: "deessejs",
   license: "MIT",
   category: "saas",
   labels: ["nextjs", "saas", "auth", "postgres"],
@@ -23,11 +23,11 @@ describe("TemplateV1", () => {
     const result = TemplateV1.parse({
       ...validTemplate,
       image: "https://cdn.example.com/saas.png",
-      cloneUrl: "https://github.com/deessejs/saas-template.git",
+      cloneUrl: "https://github.com/deessejs/deessejs.git",
     })
     expect(result.image).toBe("https://cdn.example.com/saas.png")
     expect(result.cloneUrl).toBe(
-      "https://github.com/deessejs/saas-template.git",
+      "https://github.com/deessejs/deessejs.git",
     )
   })
 

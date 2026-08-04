@@ -122,7 +122,7 @@ Files: `README.md`, `AGENTS.md`, `CLAUDE.md`, `package.json` (root).
 - Subtitle: replace with `The main app of the deessejs organization.`.
 - "What's included" table — line about apps: keep wording but remove any "SaaS Template" frame (the apps are listed as `apps/web (marketing)`, `apps/app (authenticated product)`, `apps/docs (Fumadocs)` — already fine).
 - Add the **"Started from" upstream note** under the badges block, after the Quick start block, before "## What's included".
-- Drop the sister-repo pointer to `deessejs/saas-template-multi-tenant` (not relevant for this repo's identity — keep only if user wants).
+- **Keep** the sister-repo pointer to [`deessejs/saas-template-multi-tenant`](https://github.com/deessejs/saas-template-multi-tenant) (user decision 2026-08-04 — relevant for single-tenant → multi-tenant upgrade path).
 - "Quick start" `git clone` URL: change `https://github.com/deessejs/saas-template.git` → `https://github.com/deessejs/deessejs.git` (or whatever the GitHub repo is renamed to — pending decision).
 - "Support" section: keep `support@deessejs.com` (already correct).
 - License: MIT (already correct).

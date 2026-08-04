@@ -59,8 +59,8 @@ git checkout staging && git pull origin staging
 ## §1 — Fetch
 
 ```bash
-gh api "https://api.github.com/repos/deessejs/saas-template/issues/{n}"
-gh api --paginate "https://api.github.com/repos/deessejs/saas-template/issues/{n}/comments"
+gh api "https://api.github.com/repos/deessejs/deessejs/issues/{n}"
+gh api --paginate "https://api.github.com/repos/deessejs/deessejs/issues/{n}/comments"
 ```
 
 ## §2 — Check
@@ -78,7 +78,7 @@ Refuse if `status:ready` label is absent:
 Look for `.claude/plans/{n}/plan.md` on the branch `impl/{n}-{slug}`:
 
 ```bash
-gh api "https://api.github.com/repos/deessejs/saas-template/contents/.claude/plans/{n}/plan.md?ref=impl/{n}-{slug}" \
+gh api "https://api.github.com/repos/deessejs/deessejs/contents/.claude/plans/{n}/plan.md?ref=impl/{n}-{slug}" \
   --jq '.content' 2>/dev/null | base64 -d -
 ```
 
@@ -188,16 +188,16 @@ git checkout staging && git pull origin staging
 
 ```bash
 # PR details
-gh api "https://api.github.com/repos/deessejs/saas-template/pulls/{n}"
+gh api "https://api.github.com/repos/deessejs/deessejs/pulls/{n}"
 
 # All reviews with their comments
-gh api --paginate "https://api.github.com/repos/deessejs/saas-template/pulls/{n}/reviews"
+gh api --paginate "https://api.github.com/repos/deessejs/deessejs/pulls/{n}/reviews"
 
 # Review comments (includes file-level + line-level)
-gh api --paginate "https://api.github.com/repos/deessejs/saas-template/pulls/{n}/comments"
+gh api --paginate "https://api.github.com/repos/deessejs/deessejs/pulls/{n}/comments"
 
 # The branch name
-BRANCH=$(gh api "https://api.github.com/repos/deessejs/saas-template/pulls/{n}" --jq '.head.ref')
+BRANCH=$(gh api "https://api.github.com/repos/deessejs/deessejs/pulls/{n}" --jq '.head.ref')
 ```
 
 ## §2 — Check
@@ -205,7 +205,7 @@ BRANCH=$(gh api "https://api.github.com/repos/deessejs/saas-template/pulls/{n}" 
 **Gate A — PR must be open**
 
 ```bash
-STATE=$(gh api "https://api.github.com/repos/deessejs/saas-template/pulls/{n}" --jq '.state')
+STATE=$(gh api "https://api.github.com/repos/deessejs/deessejs/pulls/{n}" --jq '.state')
 ```
 
 Refuse if `state != open`:
@@ -215,7 +215,7 @@ Refuse if `state != open`:
 **Gate B — must have a review with `requested_changes`**
 
 ```bash
-REVIEW_STATE=$(gh api --paginate "https://api.github.com/repos/deessejs/saas-template/pulls/{n}/reviews" \
+REVIEW_STATE=$(gh api --paginate "https://api.github.com/repos/deessejs/deessejs/pulls/{n}/reviews" \
   --jq '.[] | select(.state == "CHANGES_REQUESTED") | .user.login' | head -1)
 ```
 
@@ -286,7 +286,7 @@ git push origin "$BRANCH"
 ## §7 — Re-request review
 
 ```bash
-gh api -X POST "https://api.github.com/repos/deessejs/saas-template/pulls/{n}/reviews/{review_id}/events" \
+gh api -X POST "https://api.github.com/repos/deessejs/deessejs/pulls/{n}/reviews/{review_id}/events" \
   -H "Accept: application/vnd.github+json" \
   -f event="REQUEST_REVIEW"
 ```

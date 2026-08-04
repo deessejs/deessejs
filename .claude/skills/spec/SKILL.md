@@ -32,7 +32,7 @@ git checkout staging && git pull origin staging
 ## §1 — Fetch
 
 ```bash
-gh api "https://api.github.com/repos/deessejs/saas-template/issues/{n}"
+gh api "https://api.github.com/repos/deessejs/deessejs/issues/{n}"
 ```
 
 Extract: title, body, labels, comments.
