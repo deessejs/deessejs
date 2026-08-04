@@ -90,15 +90,7 @@ export const SearchableTemplateGrid = ({
           <span className="text-copy-14-mono">"{deferred}"</span> in {categoryLabel}.
         </p>
       ) : (
-        <>
-          {normalized.length > 0 ? (
-            <p className="text-copy-13 text-muted-foreground/70">
-              {filtered.length} match{filtered.length === 1 ? "" : "es"} for{" "}
-              <span className="text-copy-13-mono">"{deferred}"</span> in {categoryLabel}.
-            </p>
-          ) : null}
-          <TemplateGrid templates={filtered} />
-        </>
+        <TemplateGrid templates={filtered} />
       )}
     </div>
   )
