@@ -43,7 +43,7 @@ export const CategorySidebar = ({
   return (
     <aside className={cn("w-full lg:sticky lg:top-20 lg:self-start", className)}>
       <div>
-        <h2 className="text-label-14 mb-4 font-semibold tracking-tight text-foreground">
+        <h2 className="text-label-13 mb-3 font-semibold tracking-tight text-foreground">
           Categories
         </h2>
         <ul className="flex flex-col gap-1">
@@ -53,7 +53,7 @@ export const CategorySidebar = ({
                 type="button"
                 disabled
                 aria-label={`Filter by ${category.label} (coming soon)`}
-                className="text-label-14 flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-100"
+                className="text-label-13 flex w-full items-center justify-between rounded-md px-3 py-1.5 text-left text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-100"
               >
                 <span>{category.label}</span>
                 <span className="text-copy-13 text-muted-foreground/70">
