@@ -19,7 +19,7 @@ export const TEMPLATES: Template[] = [
     description:
       "Production-ready Next.js + Better Auth + Postgres boilerplate for B2B SaaS.",
     owner: "deessejs",
-    repo: "saas-template",
+    repo: "deessejs",
     license: "MIT",
     category: "saas",
     labels: ["nextjs", "saas", "auth", "postgres"],

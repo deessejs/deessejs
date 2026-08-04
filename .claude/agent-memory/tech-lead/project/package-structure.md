@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-The saas-template monorepo enforces a strict **one-package-per-concern** architecture. Each domain owns its own `packages/*` workspace with its own `package.json`, `tsconfig.json`, and dep tree.
+The deessejs monorepo enforces a strict **one-package-per-concern** architecture. Each domain owns its own `packages/*` workspace with its own `package.json`, `tsconfig.json`, and dep tree.
 
 **Why:** Confirmed 2026-07-07 during the mailer audit — user decided to extract the mailer into a new `packages/email` package instead of co-locating it under `packages/auth/src/email/`. The existing `packages/auth`, `packages/database`, `packages/api`, `packages/ui`, `packages/env` already follow this pattern, so adding `packages/email` is the consistent choice. Each package has minimal deps, tests in isolation, and clear ownership boundaries.
 

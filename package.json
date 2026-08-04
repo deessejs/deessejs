@@ -1,7 +1,8 @@
 {
-  "name": "next-monorepo",
+  "name": "deessejs",
   "version": "0.0.1",
   "private": true,
+  "description": "DeesseJS main app — the monorepo that powers the deessejs organization.",
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",

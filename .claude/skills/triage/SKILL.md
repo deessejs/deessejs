@@ -200,7 +200,7 @@ For questions, consider using GitHub Discussions instead of issues.
 - **When in doubt, ask for more info** (`needs-info`) rather than guessing
 - **Consistent naming:** use `needs-info` (no prefix), `status:ready`, `status:blocked`, `status:in-progress`
 
-## Project Label Taxonomy (saas-template)
+## Project Label Taxonomy (DeesseJS)
 
 ### area:* (required — infer from content)
 `area:auth` · `area:ui` · `area:web` · `area:app` · `area:docs` · `area:database` · `area:email` · `area:ci` · `area:build` · `area:deploy`

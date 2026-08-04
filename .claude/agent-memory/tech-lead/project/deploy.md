@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-# Vercel deploy — this template's three apps
+# Vercel deploy — this repo's three apps
 
 `apps/web` (marketing), `apps/app` (authenticated product), and `apps/docs` (Fumadocs) are deployed as **three separate Vercel projects** from one monorepo. Vercel detects the Next.js framework per app automatically.
 
@@ -13,9 +13,9 @@ metadata:
 
 | App | Vercel project name (suggested) | Build command (auto) | Output dir |
 |---|---|---|---|
-| `apps/web` | `saas-template-web` | `next build` | `.next` |
-| `apps/app` | `saas-template-app` | `next build` | `.next` |
-| `apps/docs` | `saas-template-docs` | `next build` (after `fumadocs-mdx`) | `.next` |
+| `apps/web` | `deessejs-web` | `next build` | `.next` |
+| `apps/app` | `deessejs-app` | `next build` | `.next` |
+| `apps/docs` | `deessejs-docs` | `next build` (after `fumadocs-mdx`) | `.next` |
 
 The repo root has no `vercel.json`. Each Vercel project is configured to point at its app's directory and use the framework auto-detection. Default behavior works.
 

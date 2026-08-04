@@ -175,7 +175,7 @@ Logs a grep-friendly format to stdout:
 ```
 [mailer] ┌─ email ─────────────────────────────────────────
 [mailer] │ to:        alice@example.com
-[mailer] │ from:      SaaS Template <onboarding@resend.dev>
+[mailer] │ from:      DeesseJS <onboarding@resend.dev>
 [mailer] │ subject:   Verify your email
 [mailer] │ link:      https://example.com/verify?token=...   ← copy me
 [mailer] │
