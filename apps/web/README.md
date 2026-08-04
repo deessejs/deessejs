@@ -1,6 +1,6 @@
 # `apps/web`
 
-Public marketing and landing page for the SaaS template.
+Public marketing site for DeesseJS — the main app of the deessejs organization.
 
 ## Purpose
 
@@ -22,7 +22,7 @@ Public marketing and landing page for the SaaS template.
 No additional env vars required. Shared app config is read from `NEXT_PUBLIC_APP_*` variables:
 
 ```env
-NEXT_PUBLIC_APP_NAME="SaaS Template"
+NEXT_PUBLIC_APP_NAME="DeesseJS"
 NEXT_PUBLIC_APP_DESCRIPTION="..."
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```

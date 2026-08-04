@@ -40,7 +40,7 @@ export function BaseLayout({ preview, children }: BaseLayoutProps) {
           <Container className="mx-auto my-0 max-w-[600px] bg-white p-8">
             <Section>
               <Heading className="text-2xl font-bold text-gray-900">
-                SaaS Template
+                DeesseJS
               </Heading>
             </Section>
             <Hr className="my-4 border-gray-200" />
@@ -48,7 +48,7 @@ export function BaseLayout({ preview, children }: BaseLayoutProps) {
             <Hr className="my-4 border-gray-200" />
             <Section>
               <Text className="text-xs text-gray-500">
-                © {new Date().getFullYear()} SaaS Template. All rights reserved.
+                © {new Date().getFullYear()} DeesseJS. All rights reserved.
               </Text>
             </Section>
           </Container>

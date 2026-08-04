@@ -1,6 +1,6 @@
 # @workspace/docs
 
-Documentation site for the SaaS Template, built with [Fumadocs](https://fumadocs.dev) on Next.js.
+Documentation site for DeesseJS — the main app of the deessejs organization. Built with [Fumadocs](https://fumadocs.dev) on Next.js.
 
 ## Role in the monorepo
 
