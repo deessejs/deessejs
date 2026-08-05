@@ -25,9 +25,6 @@ const footerLinks = {
     { label: "Customers", href: "/customers" },
     { label: "Templates", href: "/templates" },
     { label: "Ecosystem", href: "/ecosystem" },
-    { label: "Manifesto", href: "/manifesto" },
-    { label: "Principles", href: "/principles" },
-    { label: "Vision", href: "/vision" },
   ],
   usecases: [
     { label: "SaaS apps", href: "/use-cases/saas-apps" },
@@ -40,10 +37,18 @@ const footerLinks = {
   ],
   company: [
     { label: "About", href: "/about" },
+    { label: "Manifesto", href: "/manifesto" },
+    { label: "Principles", href: "/principles" },
+    { label: "Vision", href: "/vision" },
     { label: "Enterprise", href: "/enterprise" },
     { label: "Help", href: "/help" },
-    { label: "Legal", href: "/legal" },
-    { label: "Privacy Policy", href: "/privacy-policy" },
+  ],
+  "legal-trust": [
+    { label: "Privacy", href: "/privacy" },
+    { label: "Terms", href: "/terms" },
+    { label: "Cookies", href: "/cookies" },
+    { label: "DPA", href: "/legal" },
+    { label: "Security", href: "mailto:security@deessejs.com" },
   ],
   community: [
     { label: "Open Source Program", href: "/oss" },
@@ -162,6 +167,30 @@ export function AppFooter() {
                   </Link>
                 </li>
               ))}
+            </ul>
+          </div>
+
+          {/* Legal & Trust */}
+          <div>
+            <h3 className="font-semibold text-foreground mb-3">
+              Legal &amp; Trust
+            </h3>
+            <ul className="space-y-2">
+              {footerLinks["legal-trust"].map((link) => {
+                const isExternal = link.href.startsWith("http")
+                return (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      target={isExternal ? "_blank" : undefined}
+                      rel={isExternal ? "noopener noreferrer" : undefined}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                )
+              })}
             </ul>
           </div>
 
