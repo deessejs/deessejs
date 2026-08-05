@@ -86,7 +86,7 @@ const SUB_DOMAINS: ReadonlyArray<SubDomain> = [
     initials: "UI",
     blurb:
       "Component library on top of shadcn — the DeesseJS look across every surface.",
-    status: "Coming soon",
+    status: "Shipping",
   },
   {
     slug: "admin",
