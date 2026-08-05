@@ -1,0 +1,103 @@
+name: 🧩 Add Template
+description: Propose a repository to be added as a template in the DeesseJS registry
+labels: ["template", "status:needs-triage", "area:registry"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a template for the DeesseJS registry!
+        Filling out the form below will create a PR on
+        `deessejs/deessejs` where the template entry is added to
+        `packages/api/src/templates.ts`.
+
+  - type: input
+    id: slug
+    attributes:
+      label: 🔖 Template slug
+      description: Lowercase, dash-separated. Used in `deessejs init <slug>`. Must be unique in the registry.
+      placeholder: e.g. acme-saas-starter
+    validations:
+      required: true
+      regex: "^[a-z0-9]+(-[a-z0-9]+)*$"
+
+  - type: input
+    id: name
+    attributes:
+      label: 🏷️ Display name
+      description: Human-readable name shown in the catalog and on `/templates`.
+      placeholder: e.g. Acme SaaS Starter
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: 🗂️ Category
+      description: Select one. New categories require a separate proposal — open an issue if you need one.
+      options:
+        - SaaS
+        - AI
+        - Landing
+        - API
+        - Internal
+        - Mobile
+        - Docs
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: license
+    attributes:
+      label: 📜 License
+      description: SPDX identifier. The registry only accepts OSI-approved permissive licenses.
+      options:
+        - MIT
+        - Apache-2.0
+        - BSD-3-Clause
+        - MPL-2.0
+        - Other (will require reviewer sign-off)
+    validations:
+      required: true
+
+  - type: input
+    id: repo
+    attributes:
+      label: 📦 Source repository
+      description: GitHub `<owner>/<repo>` that `deessejs init <slug>` should clone. Public, default branch reachable.
+      placeholder: e.g. acme-co/saas-template
+    validations:
+      required: true
+      regex: "^[\\w.-]+/[\\w.-]+$"
+
+  - type: input
+    id: description
+    attributes:
+      label: ✏️ One-line description
+      description: Shown on the catalog card. 1 sentence, what the template ships, who it's for.
+      placeholder: e.g. Production-ready Next.js + Better Auth + Postgres boilerplate for B2B SaaS.
+    validations:
+      required: true
+      maxLength: 180
+
+  - type: input
+    id: labels
+    attributes:
+      label: 🏷️ Tech labels
+      description: 3-4 comma-separated labels. Lowercase, dash-separated. Used in the live search filter.
+      placeholder: e.g. nextjs, saas, auth, postgres
+    validations:
+      required: true
+      regex: "^[a-z0-9]+(-[a-z0-9]+)*(, *[a-z0-9]+(-[a-z0-9]+)*){2,3}$"
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 📝 Reviewer notes
+      description: Anything that helps the reviewer: how to install locally, screenshots, related templates, alternative approaches you considered.
+      placeholder: |
+        - `pnpm install && pnpm dev` to test
+        - Light/dark themed demo screenshots attached
+        - Builds on top of `saas-starter`, not a replacement
+    validations:
+      required: false

@@ -23,14 +23,21 @@ export const TemplateLabels = ({
   const overflow = labels.length - visible.length
 
   return (
-    <ul className={cn("flex flex-wrap items-center gap-1.5", className)}>
+    <ul
+      className={cn(
+        "flex flex-nowrap items-center gap-1.5 overflow-hidden",
+        className,
+      )}
+    >
       {visible.map((label) => (
-        <li key={label}>
-          <Badge variant="secondary">{label}</Badge>
+        <li key={label} className="min-w-0 shrink">
+          <Badge variant="secondary" className="block truncate">
+            {label}
+          </Badge>
         </li>
       ))}
       {overflow > 0 ? (
-        <li>
+        <li className="shrink-0">
           <Badge variant="outline" className="text-muted-foreground">
             +{overflow}
           </Badge>
