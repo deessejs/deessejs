@@ -149,7 +149,7 @@ export default function ManifestoPage() {
         className="flex flex-col gap-6"
       >
         <H2>Read next</H2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Link
             href="/about"
             className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
@@ -181,6 +181,17 @@ export default function ManifestoPage() {
             </span>
             <span className="text-copy-13 text-muted-foreground">
               Where we&apos;re taking this next.
+            </span>
+          </Link>
+          <Link
+            href="/ecosystem"
+            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
+          >
+            <span className="text-label-14 font-semibold text-foreground">
+              Ecosystem
+            </span>
+            <span className="text-copy-13 text-muted-foreground">
+              The sub-domains and shared values.
             </span>
           </Link>
         </div>

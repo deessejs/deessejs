@@ -219,6 +219,62 @@ export default function EcosystemPage() {
       {/* Cross-link CTA */}
       <nav
         aria-label="Related pages"
+        className="flex flex-col gap-6"
+      >
+        <H2>Read next</H2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Link
+            href="/about"
+            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
+          >
+            <span className="text-label-14 font-semibold text-foreground">
+              About
+            </span>
+            <span className="text-copy-13 text-muted-foreground">
+              Who we are, and how we got here.
+            </span>
+          </Link>
+          <Link
+            href="/manifesto"
+            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
+          >
+            <span className="text-label-14 font-semibold text-foreground">
+              Manifesto
+            </span>
+            <span className="text-copy-13 text-muted-foreground">
+              Why we&apos;re here — the beliefs behind the work.
+            </span>
+          </Link>
+          <Link
+            href="/principles"
+            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
+          >
+            <span className="text-label-14 font-semibold text-foreground">
+              Principles
+            </span>
+            <span className="text-copy-13 text-muted-foreground">
+              How we work, day to day.
+            </span>
+          </Link>
+          <Link
+            href="/vision"
+            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
+          >
+            <span className="text-label-14 font-semibold text-foreground">
+              Vision
+            </span>
+            <span className="text-copy-13 text-muted-foreground">
+              Where this is going next.
+            </span>
+          </Link>
+        </div>
+      </nav>
+
+      <Separator />
+
+      {/* Action CTA */}
+      <nav
+        aria-label="Get started"
         className="flex flex-col items-start gap-6"
       >
         <H2>Start here</H2>
