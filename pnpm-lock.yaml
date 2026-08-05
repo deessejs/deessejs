@@ -247,8 +247,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
       '@deessejs/fp':
-        specifier: ^1.0.0
-        version: 1.0.0(@deessejs/errors@1.1.1)
+        specifier: ^1.0.1
+        version: 1.0.1(@deessejs/errors@1.1.1)
       commander:
         specifier: ^12.1.0
         version: 12.1.0
@@ -1153,8 +1153,8 @@ packages:
   '@deessejs/errors@1.1.1':
     resolution: {integrity: sha512-iq9ei2OgoGqpuO37c7Mp4EBIFOZsyueGQLgavSwUKtExu0oSElWCzTcF568XUWRVAjrjlxWD8vcDyLRFPYSIZQ==}
 
-  '@deessejs/fp@1.0.0':
-    resolution: {integrity: sha512-li2Lg1ZKnGq0temTUZxFzR9wK1d24trc/SOMFNF9KI1NZOom4FWn/DXd34Gthssn3gSaBKyqUItaUnFCB4v8IQ==}
+  '@deessejs/fp@1.0.1':
+    resolution: {integrity: sha512-CnPHL30AbyAwMmIjLTFMRVXC18BI5YWLNZI6ZuVWf7c2raIxe9nEbqDqb2iY8GrPXWaL2ArR+zvFeSHTRGnRCA==}
     peerDependencies:
       '@deessejs/errors': '>=1.0.0'
 
@@ -8206,7 +8206,7 @@ snapshots:
     dependencies:
       '@standard-schema/spec': 1.1.0
 
-  '@deessejs/fp@1.0.0(@deessejs/errors@1.1.1)':
+  '@deessejs/fp@1.0.1(@deessejs/errors@1.1.1)':
     dependencies:
       '@deessejs/errors': 1.1.1
 

@@ -1,6 +1,6 @@
 # apps/cli — @deessejs/errors and @deessejs/fp integration plan
 
-_Date: 2026-07-30. Status: Phase 1 FAILED on upstream issue. Stopped per plan §"If any exit criterion fails, file the upstream issue with a repro and stop."_
+_Date: 2026-07-30. Status: Phase 1 PASSED 2026-07-31 with @deessejs/fp@^1.0.1. All four exit criteria met. Phase 2 (decide target) is the next action._
 
 ## Phase 1 outcome (2026-07-30)
 
@@ -10,7 +10,24 @@ Phase 1 spike ran. Both packages install via public npm, type-check passes, tsup
 
 Upstream issue filed: https://github.com/deessejs/fp/issues/356
 
-**Status:** Stopped. Phase 2 onwards blocked until upstream fixes the extensionless imports.
+**Status:** Originally stopped. Phase 2 onwards blocked until upstream fixes the extensionless imports.
+
+## Unblock (2026-07-31)
+
+Upstream shipped `@deessejs/fp@1.0.1`. PR #357 ([chore(fp): version bump — emit .js extensions in published ESM imports](https://github.com/deessejs/fp/pull/357)) fixes the issue identified in Phase 1. PR #358 ([fix(ci): make release.yml robust to non-empty working trees](https://github.com/deessejs/fp/pull/358)) also landed. Issue #356 closed by codewizdave.
+
+## Phase 1 re-run (2026-07-31) — PASSED
+
+Bumped `@deessejs/fp` from `^1.0.0` to `^1.0.1` in `apps/cli/package.json`. Ran the four exit criteria:
+
+- Both packages install via public npm with pinned versions. PASS.
+- TypeScript types align with `apps/cli/tsconfig.json`. PASS (`tsc --noEmit` clean).
+- ESM bundling works through tsup (no peer dep warnings, no resolver errors). PASS (14.49 KB ESM bundle in 280 ms).
+- Runtime tests pass for `error()` plus `is()`, plus `ok()`/`err()`/`map()`/`match()`. PASS (7 of 7 vitest tests green in 19 ms).
+
+The runtime API surface area exercised in the spike is enough to validate the integration. The full `Result.tryCatch` plus `raise()` plus `causes()` chains will be exercised organically during Phase 3 and Phase 4 migration.
+
+**Status:** Phase 1 complete. Next action is Phase 2 (decide target), which is already locked at apps/cli. Ready to branch for Phase 3 when the user signals.
 
 ## Context
 
