@@ -58,7 +58,7 @@ export type CategorySidebarProps = {
 const buildHref = (
   current: ReadonlyArray<string>,
   target: string | null,
-  key: "type" | "framework",
+  paramKey: "type" | "framework",
   otherKey: "type" | "framework",
   otherValues: ReadonlyArray<string>,
 ): string => {
@@ -77,7 +77,7 @@ const buildHref = (
     set.add(target)
   }
   for (const v of set) {
-    params.append(key, v)
+    params.append(paramKey, v)
   }
   if (params.toString().length === 0) return "/templates"
   return `/templates?${params.toString()}`
@@ -91,8 +91,9 @@ type FilterGroupProps = {
   activeValues: ReadonlyArray<string>
   /** Other filter group's active values (preserved on toggle). */
   otherActiveValues: ReadonlyArray<string>
-  /** Query key for this group ("type" or "framework"). */
-  key: "type" | "framework"
+  /** Query key for this group ("type" or "framework").
+   * Named `paramKey` to avoid collision with React's reserved `key` prop. */
+  paramKey: "type" | "framework"
   /** Other group's query key. */
   otherKey: "type" | "framework"
   /** Count templates matching this entry (group-specific). */
@@ -107,7 +108,7 @@ const FilterGroup = ({
   entries,
   activeValues,
   otherActiveValues,
-  key,
+  paramKey,
   otherKey,
   countFor,
 }: FilterGroupProps) => {
@@ -123,7 +124,7 @@ const FilterGroup = ({
           const href = buildHref(
             activeValues,
             entry.slug,
-            key,
+            paramKey,
             otherKey,
             otherActiveValues,
           )
@@ -182,7 +183,7 @@ export const CategorySidebar = ({
           entries={CATEGORIES}
           activeValues={activeTypes}
           otherActiveValues={activeFrameworks}
-          key="type"
+          paramKey="type"
           otherKey="framework"
           countFor={(slug) =>
             templates.filter((t) => t.category === slug).length
@@ -193,7 +194,7 @@ export const CategorySidebar = ({
           entries={visibleFrameworks}
           activeValues={activeFrameworks}
           otherActiveValues={activeTypes}
-          key="framework"
+          paramKey="framework"
           otherKey="type"
           countFor={(slug) =>
             templates.filter((t) => t.labels.includes(slug)).length
