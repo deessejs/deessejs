@@ -49,7 +49,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
   const sourceUrl = `https://github.com/${template.owner}/${template.repo}`
 
   return (
-    <article className={cn("mx-auto flex max-w-6xl flex-col gap-8", className)}>
+    <article className={cn("mx-auto flex max-w-4xl flex-col gap-8", className)}>
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
