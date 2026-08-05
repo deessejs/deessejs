@@ -131,6 +131,29 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
               max={template.labels.length}
             />
           </section>
+
+          <section
+            aria-label="Submit your template"
+            className="flex flex-col items-start gap-3 rounded-lg border border-border bg-muted/30 p-4"
+          >
+            <h2 className="text-label-14 font-semibold tracking-tight text-foreground">
+              Ship your template to the registry
+            </h2>
+            <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+              {template.name} is in the DeesseJS registry. Open a
+              PR to add another — or yours. Slug, category, and
+              labels are collected via the issue form.
+            </p>
+            <Button asChild>
+              <a
+                href="https://github.com/deessejs/deessejs/issues/new?template=add-template.yml&labels=template"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Submit your template
+              </a>
+            </Button>
+          </section>
         </div>
 
         <aside className="flex flex-col gap-6">
@@ -169,29 +192,6 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
                 <dd className="text-foreground truncate">{template.category}</dd>
               </div>
             </dl>
-          </Card>
-          <Card className="flex flex-col gap-3 p-6">
-            <h3 className="text-label-13 font-semibold tracking-tight text-foreground">
-              Ship your own
-            </h3>
-            <p className="text-copy-13 text-muted-foreground leading-5 [&:not(:first-child)]:mt-0">
-              {template.name} is in the DeesseJS registry. Open a
-              PR to add another — or yours.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="self-start"
-            >
-              <a
-                href="https://github.com/deessejs/deessejs/issues/new?template=add-template.yml&labels=template"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Submit your template
-              </a>
-            </Button>
           </Card>
         </aside>
       </div>
