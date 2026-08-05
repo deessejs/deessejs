@@ -54,7 +54,7 @@ export const TemplateCard = ({ template, className }: TemplateCardProps) => {
           aria-hidden
           className="aspect-video w-full border-b border-border bg-muted/40"
         />
-        <div className="flex h-full flex-col justify-between gap-4 p-6">
+        <div className="flex h-full flex-col gap-4 p-6">
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-label-16 leading-snug font-semibold tracking-tight">
               {template.name}
@@ -66,7 +66,9 @@ export const TemplateCard = ({ template, className }: TemplateCardProps) => {
           <p className="text-copy-14 text-muted-foreground line-clamp-2">
             {template.description}
           </p>
-          <TemplateLabels labels={template.labels} />
+          <div className="mt-auto">
+            <TemplateLabels labels={template.labels} />
+          </div>
         </div>
       </Link>
     </Card>
