@@ -48,6 +48,15 @@ const KNOWN_FRAMEWORKS = [
   "react-hook-form",
 ] as const
 
+/**
+ * Deep link to the GitHub "Add Template" Issue Template. Used by
+ * the "Submit your template" CTAs on /templates and
+ * /templates/[slug]. The labels=template query string tags the
+ * issue for triage; everything else comes from the form.
+ */
+const SUBMIT_TEMPLATE_URL =
+  "https://github.com/deessejs/deessejs/issues/new?template=add-template.yml&labels=template"
+
 type FilterValue<T extends ReadonlyArray<string>> = T[number]
 
 const dedupe = <T extends string>(
@@ -126,6 +135,27 @@ const TemplatesIndexPage = async ({
           <code className="text-copy-14-mono">deessejs init &lt;slug&gt;</code>.
         </p>
       </header>
+
+      <a
+        href={SUBMIT_TEMPLATE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mb-10 flex flex-col items-start justify-between gap-3 rounded-lg border border-border bg-muted/30 p-4 transition-colors hover:bg-accent/30 sm:flex-row sm:items-center"
+      >
+        <div className="flex flex-col gap-1">
+          <span className="text-label-14 font-semibold tracking-tight text-foreground">
+            Ship your template to the registry
+          </span>
+          <span className="text-copy-13 text-muted-foreground">
+            Open a PR on deessejs/deessejs. Slug, category, and
+            labels are collected via the form on the right.
+          </span>
+        </div>
+        <span className="text-label-14 text-foreground underline-offset-4 group-hover:underline whitespace-nowrap">
+          Submit your template →
+        </span>
+      </a>
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
         <CategorySidebar
           templates={result.templates}

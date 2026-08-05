@@ -170,6 +170,29 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
               </div>
             </dl>
           </Card>
+          <Card className="flex flex-col gap-3 p-6">
+            <h3 className="text-label-13 font-semibold tracking-tight text-foreground">
+              Ship your own
+            </h3>
+            <p className="text-copy-13 text-muted-foreground leading-5 [&:not(:first-child)]:mt-0">
+              {template.name} is in the DeesseJS registry. Open a
+              PR to add another — or yours.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="self-start"
+            >
+              <a
+                href="https://github.com/deessejs/deessejs/issues/new?template=add-template.yml&labels=template"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Submit your template
+              </a>
+            </Button>
+          </Card>
         </aside>
       </div>
     </article>
