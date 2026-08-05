@@ -54,7 +54,7 @@ export const TemplateCard = ({ template, className }: TemplateCardProps) => {
           aria-hidden
           className="h-48 w-full shrink-0 border-b border-border bg-muted/40"
         />
-        <div className="flex h-full flex-col gap-4 p-6">
+        <div className="flex min-h-40 flex-col gap-4 p-6">
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-label-16 leading-snug font-semibold tracking-tight">
               {template.name}
