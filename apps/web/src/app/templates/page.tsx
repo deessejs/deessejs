@@ -30,10 +30,12 @@ export const metadata: Metadata = {
  * entire build. In production runtime, the error propagates and the
  * error.tsx boundary takes over.
  */
+const KNOWN_TYPES = ["saas", "ai", "landing"] as const
+
 const TemplatesIndexPage = async ({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>
+  searchParams: Promise<{ type?: string | string[] }>
 }) => {
   let result: Awaited<ReturnType<typeof fetchTemplates>>
   try {
@@ -54,23 +56,36 @@ const TemplatesIndexPage = async ({
     )
   }
 
-  const { category: rawCategory } = await searchParams
-  const activeCategory =
-    rawCategory && ["saas", "ai", "landing"].includes(rawCategory)
-      ? rawCategory
-      : "all"
+  const params = await searchParams
+  const rawType = params.type
+  const rawTypes = Array.isArray(rawType) ? rawType : rawType ? [rawType] : []
+  const filtered: Array<(typeof KNOWN_TYPES)[number]> = []
+  for (const t of rawTypes) {
+    if ((KNOWN_TYPES as readonly string[]).includes(t)) {
+      filtered.push(t as (typeof KNOWN_TYPES)[number])
+    }
+  }
+  const activeTypes: Array<(typeof KNOWN_TYPES)[number]> = Array.from(
+    new Set(filtered),
+  )
   const visibleTemplates =
-    activeCategory === "all"
+    activeTypes.length === 0
       ? result.templates
-      : result.templates.filter((t) => t.category === activeCategory)
+      : result.templates.filter((t) =>
+          activeTypes.includes(
+            t.category as (typeof KNOWN_TYPES)[number],
+          ),
+        )
 
   const CATEGORY_LABELS: Record<string, string> = {
-    all: "All templates",
     saas: "SaaS starters",
     ai: "AI",
     landing: "Landing pages",
   }
-  const activeCategoryLabel = CATEGORY_LABELS[activeCategory] ?? "All templates"
+  const filterLabel =
+    activeTypes.length === 0
+      ? "all categories"
+      : activeTypes.map((t) => CATEGORY_LABELS[t] ?? t).join(", ")
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
@@ -85,16 +100,16 @@ const TemplatesIndexPage = async ({
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
         <CategorySidebar
           templates={result.templates}
-          activeCategory={activeCategory}
+          activeTypes={activeTypes}
         />
         {visibleTemplates.length === 0 ? (
           <div className="text-copy-16 text-muted-foreground">
-            No templates in this category yet.
+            No templates in this filter yet.
           </div>
         ) : (
           <SearchableTemplateGrid
             templates={visibleTemplates}
-            categoryLabel={activeCategoryLabel}
+            categoryLabel={filterLabel}
           />
         )}
       </div>
