@@ -30,12 +30,47 @@ export const metadata: Metadata = {
  * entire build. In production runtime, the error propagates and the
  * error.tsx boundary takes over.
  */
+
 const KNOWN_TYPES = ["saas", "ai", "landing"] as const
+// Frameworks surface from labels on the registry. Add new frameworks
+// here (and the matching templates in `packages/api/src/templates.ts`)
+// to expose them in the sidebar.
+const KNOWN_FRAMEWORKS = [
+  "nextjs",
+  "astro",
+  "tailwind",
+  "shadcn",
+  "drizzle",
+  "postgres",
+  "stripe",
+  "tanstack-table",
+  "openai",
+  "react-hook-form",
+] as const
+
+type FilterValue<T extends ReadonlyArray<string>> = T[number]
+
+const dedupe = <T extends string>(
+  values: ReadonlyArray<string>,
+  allowed: ReadonlyArray<T>,
+): Array<T> => {
+  const set = new Set<T>(allowed)
+  const out: Array<T> = []
+  for (const v of values) {
+    if (set.has(v as T)) {
+      out.push(v as T)
+    }
+  }
+  return Array.from(new Set(out))
+}
 
 const TemplatesIndexPage = async ({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string | string[] }>
+  searchParams: Promise<{
+    type?: string | string[]
+    framework?: string | string[]
+  }>
 }) => {
   let result: Awaited<ReturnType<typeof fetchTemplates>>
   try {
@@ -58,34 +93,28 @@ const TemplatesIndexPage = async ({
 
   const params = await searchParams
   const rawType = params.type
+  const rawFramework = params.framework
   const rawTypes = Array.isArray(rawType) ? rawType : rawType ? [rawType] : []
-  const filtered: Array<(typeof KNOWN_TYPES)[number]> = []
-  for (const t of rawTypes) {
-    if ((KNOWN_TYPES as readonly string[]).includes(t)) {
-      filtered.push(t as (typeof KNOWN_TYPES)[number])
-    }
-  }
-  const activeTypes: Array<(typeof KNOWN_TYPES)[number]> = Array.from(
-    new Set(filtered),
-  )
-  const visibleTemplates =
-    activeTypes.length === 0
-      ? result.templates
-      : result.templates.filter((t) =>
-          activeTypes.includes(
-            t.category as (typeof KNOWN_TYPES)[number],
-          ),
-        )
+  const rawFrameworks = Array.isArray(rawFramework)
+    ? rawFramework
+    : rawFramework
+      ? [rawFramework]
+      : []
 
-  const CATEGORY_LABELS: Record<string, string> = {
-    saas: "SaaS starters",
-    ai: "AI",
-    landing: "Landing pages",
-  }
-  const filterLabel =
-    activeTypes.length === 0
-      ? "all categories"
-      : activeTypes.map((t) => CATEGORY_LABELS[t] ?? t).join(", ")
+  const activeTypes = dedupe(rawTypes, KNOWN_TYPES)
+  const activeFrameworks = dedupe(rawFrameworks, KNOWN_FRAMEWORKS)
+
+  const visibleTemplates = result.templates.filter((template) => {
+    const matchesType =
+      activeTypes.length === 0 ||
+      activeTypes.includes(
+        template.category as FilterValue<typeof KNOWN_TYPES>,
+      )
+    const matchesFramework =
+      activeFrameworks.length === 0 ||
+      activeFrameworks.some((framework) => template.labels.includes(framework))
+    return matchesType && matchesFramework
+  })
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
@@ -101,6 +130,7 @@ const TemplatesIndexPage = async ({
         <CategorySidebar
           templates={result.templates}
           activeTypes={activeTypes}
+          activeFrameworks={activeFrameworks}
         />
         {visibleTemplates.length === 0 ? (
           <div className="text-copy-16 text-muted-foreground">
@@ -109,7 +139,7 @@ const TemplatesIndexPage = async ({
         ) : (
           <SearchableTemplateGrid
             templates={visibleTemplates}
-            categoryLabel={filterLabel}
+            categoryLabel="the current filter"
           />
         )}
       </div>
