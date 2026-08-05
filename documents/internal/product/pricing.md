@@ -6,30 +6,33 @@ This document is strategy. Implementation lives in its respective docs.
 
 ## Model
 
-Two layers, in one catalog:
+Three layers, in one catalog:
 
 - **Open Community** — free, MIT.
+- **Pro Education** — free, MIT, students and OSS projects only.
 - **DeesseJS Pro** — one-shot paid, $299–$999 per template.
 
-Both layers ship complete templates. A free landing template is a complete landing template, not a stripped-down Pro. Pro contains more built-in work — not more knobs.
+All three layers ship complete templates. A free landing template is a complete landing template, not a stripped-down Pro. Pro contains more built-in work — not more knobs.
 
 One rule: **every template ships complete**.
 
-## Why two layers
+## Why three layers and not three tiers
 
 Catalog items vary in effort. A landing page takes one day. A multi-tenant SaaS with billing, audit and RBAC takes one sprint. A single price tier per template reflects this. The previous three-tier SaaS-license model ("Solo / Team / Studio") is dead. App counts and seat counts do not apply to a templates catalog.
+
+The education layer is separate from the open layer because the audience is separate: students and OSS projects can free-ride without competing with freelance buyers who pay.
 
 ## Why one-shot, not subscription
 
 The persona wins from time saved on a one-time project. A freelance dev finishing a client SaaS does not need a recurring bill for one project.
 
-Subscription remains an option for v2:
+Subscription remains an option for a separate product line in v2:
 
 - $99–$199 / year per dev
 - covers priority support and early access
 - is a separate product, not a layer on top of templates
 
-The 50% renewal at 12 months is the floor for recurring revenue.
+The 50% renewal at 12 months is the floor for recurring revenue on the Pro layer.
 
 ## Open Community
 
@@ -54,6 +57,24 @@ A template one developer can write in one afternoon. Examples:
 
 End-to-end means the template runs, the README is true, and the buyer can deploy without writing the missing 30%.
 
+## Pro Education
+
+### Audience
+
+- verified students (`.edu` email or equivalent proof)
+- OSS projects the buyer owns or contributes to
+
+### Rules
+
+- free, MIT, same as Open Community
+- same submission and review flow
+- verification needed before license is granted
+- license remains the buyer's; OSS project leadership may not transfer it to a third party that is not an OSS contributor
+
+### Why free
+
+A student learning on a Pro template becomes a freelance dev tomorrow. An OSS project runs on the same templates. The free layer pays back later through the Pro layer and through community trust.
+
 ## DeesseJS Pro
 
 ### What ships here
@@ -71,6 +92,7 @@ Each Pro template ships with:
 
 - a license (paid)
 - a 12-month update window
+- Cloud access for this template (auth + repo + clone via CLI)
 - a renew-or-keep-buyers-choice at month 12
 
 ### Pricing rules
@@ -78,12 +100,14 @@ Each Pro template ships with:
 - One-shot license per template.
 - Price band: $299–$999 per template.
 - Source-code delivered.
-- Buyer deploys it, or buys hosting from Nesalia Inc. separately.
-- 14-day refund window.
+- Cloud access included for the buyer's license (auth + repo + CLI for this template).
+- Cloud features beyond auth and repo (observability, scaling) are a separate product, deferred to v2.
+- Buyer deploys it themselves, or buys hosting from Nesalia Inc. separately.
+- 14-day refund window, no questions asked.
 - Updates: 12 months included.
 - After 12 months: buyer keeps the version forever.
 - New versions after 12 months: 50% renewal.
-- Buyer may rebrand. Re-selling the unmodified template under another catalog is not allowed.
+- Buyer may re-sell the codebase to a client (the freelancer case). The unmodified template may not appear in another catalog.
 
 ### Renewal
 
@@ -97,7 +121,7 @@ Renewal is optional. The buyer keeps the original version forever.
 
 ### Primary
 
-Freelance developer or small studio. Bills the client $20k–$80k. Buys Pro templates to remove the parts of the build that do not pay well: auth setup, billing plumbing, audit logging.
+Freelance developer or small studio. Bills the client $20k–$80k. Buys Pro templates to remove the parts of the build that do not pay well: auth setup, billing plumbing, audit logging. Then ships under the client brand and may charge the client for the saved time.
 
 ### Secondary
 
@@ -107,37 +131,30 @@ In-house team at a startup past the weekend stage. Buys Pro the same way it buys
 
 Enterprise team in a regulated industry. Wants Pro not because it cannot build it, but because it does not want to.
 
-### Not the persona
+### Floor
 
-Solo indie hacker shipping a weekend project. They use Open Community free templates. That is the floor. The marketing pitch leans on it.
+Solo indie hacker shipping a weekend project. Uses Open Community free templates. That is the floor. The marketing pitch leans on it.
 
 ## Submission flow
 
-Open Community contributions go in via pull-request. Pro templates skip pull-request — the DeesseJS team authors them directly.
+Open Community and Pro Education contributions go in via pull-request. Pro templates skip pull-request — the DeesseJS team authors them directly.
 
-The two layers share the catalog surface:
+The three layers share the catalog surface:
 
 - submission, moderation, listing, search, install
 - the layer is an attribute on the entry, not a different system
 
+Cloud auth, repo private and CLI distant are referenced by this flow but not detailed here. See the Cloud product doc once it exists.
+
 ## Pricing model — structural envelope
 
-- Open Community: free, no SLA, no exclusivity.
-- Pro: one-shot, $299–$999 per template, per-template price set by the engineering owner.
-- Renewal: 50% at month 12.
-- Future subscription: $99–$199 per dev per year, layered on top.
+- **Open Community**: free, no SLA, no exclusivity.
+- **Pro Education**: free, same as Open Community, license is bound to the verified student or OSS project.
+- **Pro**: one-shot, $299–$999 per template, per-template price set by the engineering owner.
+- **Renewal**: 50% at month 12 per Pro template.
+- **Future subscription**: $99–$199 per dev per year, layered on a separate Cloud product.
 
-Revenue shape: heavy on one-shot, small renewal floor, optional future subscription.
-
-## Open questions
-
-1. Per-Pro-template pricing — who sets the price? Engineer-owner, marketing, or both?
-2. Refund window — strict 14 days, or prorated later?
-3. Education and non-profit discounts?
-4. Multi-currency — USD-only at launch, EUR and GBP at first international buyer?
-5. Exclusivity — can a freelancer re-sell the codebase under their client brand? Currently yes with rebrand.
-6. Hosting layering — does the Cloud-hosted product replace or layer on top of Pro licenses?
-7. Subscription math — breakeven vs cost for a $99–$199/year support add-on?
+Revenue shape: heavy on Pro one-shot, with a small renewal floor and an optional future subscription tier.
 
 ## Cross-references
 
