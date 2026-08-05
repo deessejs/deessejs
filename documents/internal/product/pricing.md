@@ -1,6 +1,6 @@
 # DeesseJS — Pricing
 
-> This document sets the pricing strategy for templates. It uses Simplified Technical English (ASD-STE100) for clarity.
+> This document sets the pricing strategy for templates. It uses short sentences, active voice, and precise verbs for clarity.
 
 This document is strategy. Implementation lives in its respective docs.
 
