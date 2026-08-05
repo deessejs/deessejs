@@ -25,6 +25,9 @@ const footerLinks = {
     { label: "Customers", href: "/customers" },
     { label: "Templates", href: "/templates" },
     { label: "Ecosystem", href: "/ecosystem" },
+    { label: "Manifesto", href: "/manifesto" },
+    { label: "Principles", href: "/principles" },
+    { label: "Vision", href: "/vision" },
   ],
   usecases: [
     { label: "SaaS apps", href: "/use-cases/saas-apps" },
