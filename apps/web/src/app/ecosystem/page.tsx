@@ -22,7 +22,7 @@ export const metadata: Metadata = {
  *
  * Layout:
  *   ┌─ Hero: title + lead ───────────────────────────┐
- *   ├─ Sub-domain grid (3-cols, 6 sub-domains) ───────┤
+ *   ├─ Sub-domain grid (3-cols, 7 entries) ─────────┤
  *   ├─ Mantra block: shared defaults + values ────────┤
  *   ├─ Cross-link CTA → /templates, /manifesto ──────┤
  *   └──────────────────────────────────────────────┘
@@ -105,6 +105,15 @@ const SUB_DOMAINS: ReadonlyArray<SubDomain> = [
     blurb:
       "Hosted runtime for the templates — preview, deploy, observe, scale.",
     status: "Coming soon",
+  },
+  {
+    slug: "type-testing",
+    url: "https://www.npmjs.com/package/@deessejs/type-testing",
+    name: "type-testing",
+    initials: "TT",
+    blurb:
+      "Assertion-style type tests for the SDKs and shared contracts — positive, negative, and deep inference in one suite.",
+    status: "Shipping",
   },
 ] as const
 
