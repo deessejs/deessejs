@@ -75,7 +75,7 @@ const TemplatesIndexPage = async ({
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
       <header className="mb-10 flex flex-col gap-3">
-        <h1 className="text-heading-40 tracking-tight">Templates</h1>
+        <h1 className="text-heading-56 tracking-tight">Templates</h1>
         <p className="text-copy-16 text-muted-foreground max-w-2xl">
           Production-ready starters shipped by DeesseJS. Click any card to
           view details, or install from the CLI with{" "}
