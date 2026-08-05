@@ -15,8 +15,8 @@ const footerLinks = {
   ],
   learn: [
     { label: "Docs", href: "https://docs.deessejs.com" },
-    { label: "Blog", href: "https://deessejs.com/blog" },
-    { label: "Changelog", href: "https://deessejs.com/changelog" },
+    { label: "Blog", href: "/blog" },
+    { label: "Changelog", href: "/changelog" },
     { label: "Knowledge Base", href: "/knowledge-base" },
     { label: "Academy", href: "#" },
     { label: "Community", href: "#" },
