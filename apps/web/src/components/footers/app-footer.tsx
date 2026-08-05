@@ -24,6 +24,7 @@ const footerLinks = {
   explore: [
     { label: "Customers", href: "/customers" },
     { label: "Templates", href: "/templates" },
+    { label: "Ecosystem", href: "/ecosystem" },
   ],
   usecases: [
     { label: "SaaS apps", href: "/use-cases/saas-apps" },
