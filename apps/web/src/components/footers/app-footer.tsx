@@ -26,10 +26,13 @@ const footerLinks = {
     { label: "Templates", href: "/templates" },
   ],
   usecases: [
-    { label: "Autonomous Agents", href: "#" },
-    { label: "Workflows", href: "#" },
-    { label: "Github Bot", href: "#" },
-    { label: "Content Creation", href: "#" },
+    { label: "SaaS apps", href: "/use-cases/saas-apps" },
+    { label: "AI products", href: "/use-cases/ai-products" },
+    { label: "Landing pages", href: "/use-cases/landing-pages" },
+    { label: "API backends", href: "/use-cases/api-backends" },
+    { label: "Internal tools", href: "/use-cases/internal-tools" },
+    { label: "Open source", href: "/use-cases/open-source" },
+    { label: "Mobile backend", href: "/use-cases/mobile-backend" },
   ],
   company: [
     { label: "About", href: "/about" },
