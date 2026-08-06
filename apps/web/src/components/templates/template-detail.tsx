@@ -1,5 +1,3 @@
-import Link from "next/link"
-
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -80,7 +78,13 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
 
       <div className="flex flex-wrap items-center gap-3">
         <Button asChild>
-          <Link href="/docs/cli">Install CLI</Link>
+          <a
+            href="https://docs.deessejs.com/cli"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Install CLI
+          </a>
         </Button>
         <Button variant="outline" asChild>
           <a href={sourceUrl} target="_blank" rel="noopener noreferrer">

@@ -47,13 +47,13 @@ const CHANNELS: ReadonlyArray<{
   },
   {
     label: "Security",
-    href: "mailto:security@deessejs.com",
+    href: "mailto:support@deessejs.com",
     body:
-      "Report a vulnerability privately to security@deessejs.com. Sensitive issues stay out of the public tracker until a fix is ready.",
+      "Report a vulnerability privately to support@deessejs.com. Sensitive issues stay out of the public tracker until a fix is ready.",
   },
   {
     label: "Press & partnerships",
-    href: "mailto:hello@deessejs.com",
+    href: "mailto:support@deessejs.com",
     body:
       "For press, conference talks, sponsorship, or anything else where an email beats an issue.",
   },

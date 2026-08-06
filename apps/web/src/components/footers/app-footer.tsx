@@ -18,8 +18,6 @@ const footerLinks = {
     { label: "Blog", href: "/blog" },
     { label: "Changelog", href: "/changelog" },
     { label: "Knowledge Base", href: "/knowledge-base" },
-    { label: "Academy", href: "#" },
-    { label: "Community", href: "#" },
   ],
   explore: [
     { label: "Customers", href: "/customers" },
@@ -32,8 +30,6 @@ const footerLinks = {
     { label: "Landing pages", href: "/use-cases/landing-pages" },
     { label: "API backends", href: "/use-cases/api-backends" },
     { label: "Internal tools", href: "/use-cases/internal-tools" },
-    { label: "Open source", href: "/use-cases/open-source" },
-    { label: "Mobile backend", href: "/use-cases/mobile-backend" },
   ],
   company: [
     { label: "About", href: "/about" },
@@ -47,8 +43,8 @@ const footerLinks = {
     { label: "Privacy", href: "/privacy" },
     { label: "Terms", href: "/terms" },
     { label: "Cookies", href: "/cookies" },
-    { label: "DPA", href: "/legal" },
-    { label: "Security", href: "mailto:security@deessejs.com" },
+    { label: "DPA", href: "mailto:support@deessejs.com?subject=DPA%20request" },
+    { label: "Security", href: "mailto:support@deessejs.com" },
   ],
   community: [
     { label: "Open Source Program", href: "/oss" },

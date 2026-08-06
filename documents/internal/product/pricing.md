@@ -10,7 +10,7 @@ Three layers, in one catalog:
 
 - **Open Community** — free, MIT.
 - **Pro Education** — free, MIT, students and OSS projects only.
-- **DeesseJS Pro** — one-shot paid, $299–$999 per template.
+- **DeesseJS Pro** — one-shot paid, $299 for lifetime access to every Pro template.
 
 All three layers ship complete templates. A free landing template is a complete landing template, not a stripped-down Pro. Pro contains more built-in work — not more knobs.
 
@@ -91,31 +91,20 @@ Categories:
 Each Pro template ships with:
 
 - a license (paid)
-- a 12-month update window
-- Cloud access for this template (auth + repo + clone via CLI)
-- a renew-or-keep-buyers-choice at month 12
+- lifetime access to the full Pro catalog, including templates added later
+- Cloud access for every Pro template (auth + repo + clone via CLI)
 
 ### Pricing rules
 
-- One-shot license per template.
-- Price band: $299–$999 per template.
-- Source-code delivered.
-- Cloud access included for the buyer's license (auth + repo + CLI for this template).
+- One-shot license for the full Pro package. Single payment, lifetime access.
+- Entry price: $299.
+- Source-code delivered for every Pro template included in the package.
+- Cloud access included for the buyer's license (auth + repo + CLI for every Pro template).
 - Cloud features beyond auth and repo (observability, scaling) are a separate product, deferred to v2.
 - Buyer deploys it themselves, or buys hosting from Nesalia Inc. separately.
 - 14-day refund window, no questions asked.
-- Updates: 12 months included.
-- After 12 months: buyer keeps the version forever.
-- New versions after 12 months: 50% renewal.
+- Lifetime access. No renewal. No subscription. The buyer keeps the version they downloaded forever, and any future Pro template added to the catalog is included.
 - Buyer may re-sell the codebase to a client (the freelancer case). The unmodified template may not appear in another catalog.
-
-### Renewal
-
-Renewal is optional. The buyer keeps the original version forever.
-
-- 50% off the original price.
-- Brings the buyer back inside the 12-month update window.
-- No subscription contract — single payment, single renewal.
 
 ## Persona
 
@@ -150,11 +139,10 @@ Cloud auth, repo private and CLI distant are referenced by this flow but not det
 
 - **Open Community**: free, no SLA, no exclusivity.
 - **Pro Education**: free, same as Open Community, license is bound to the verified student or OSS project.
-- **Pro**: one-shot, $299–$999 per template, per-template price set by the engineering owner.
-- **Renewal**: 50% at month 12 per Pro template.
+- **Pro**: one-shot, $299 for lifetime access to every Pro template. No per-template price. No renewal. No subscription.
 - **Future subscription**: $99–$199 per dev per year, layered on a separate Cloud product.
 
-Revenue shape: heavy on Pro one-shot, with a small renewal floor and an optional future subscription tier.
+Revenue shape: heavy on Pro one-shot lifetime licenses. No recurring revenue floor at V1.
 
 ## Cross-references
 
