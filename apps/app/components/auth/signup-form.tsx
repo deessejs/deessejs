@@ -22,6 +22,16 @@ export function SignupForm() {
 			password: "",
 			confirmPassword: "",
 		},
+		// TanStack Form v1+ gates `canSubmit` on `isTouched`, which stays
+		// false until the user clicks submit at least once. With a submit
+		// handler on the button (`disabled={!canSubmit}`), the first
+		// click is a no-op: the button never fires, the form never
+		// submits, `isTouched` never flips, and the user sees nothing
+		// happen. `canSubmitWhenInvalid: true` opts the button out of
+		// the touched gate. Validation still runs on submit and
+		// surfaces field errors via `field.state.meta.errors` when the
+		// input is invalid.
+		canSubmitWhenInvalid: true,
 		validators: {
 			onSubmit: signupSchema,
 		},
