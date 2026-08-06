@@ -7,6 +7,15 @@ import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
 
 /**
+ * Mount path for the auth API on the server. Mirrors
+ * `API_AUTH_PATH` in `packages/api/src/base-path.ts` — kept
+ * here as a string to avoid importing across `apps/app` <-> `api`
+ * <-> `auth` boundaries. The two values must stay in sync; if one
+ * moves, update the other.
+ */
+const AUTH_BASE_PATH = "/api/v1/auth" as const
+
+/**
  * Log a transactional email failure. Hook your observability vendor here
  * (Sentry.captureException, metrics.increment("email_send_failure_total", {flow}),
  * structured log shipping, etc.). Kept as a thin local function so the auth
@@ -21,6 +30,14 @@ function logEmailFailure(flow: string, userId: string, error: string): void {
 
 export const auth = betterAuth({
   baseURL: serverEnv.BETTER_AUTH_URL,
+  // Strip the API prefix before Better Auth's internal route matcher
+  // looks for `/sign-up/email`, `/get-session`, etc. Without this,
+  // the server returns 404 on every auth route because it tries to
+  // match `/api/v1/auth/sign-up/email` against its internal routes,
+  // which are mounted at the root. The Hono catch-all already routes
+  // `/api/v1/auth/*` to `auth.handler(c.req.raw)` — Better Auth
+  // then needs to know to strip the prefix back off.
+  basePath: AUTH_BASE_PATH,
   secret: serverEnv.BETTER_AUTH_SECRET,
   trustedOrigins: [
     ...(process.env.NODE_ENV === "development"
