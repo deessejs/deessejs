@@ -1,134 +1,166 @@
 # DeesseJS — Pricing
 
-> **The pricing strategy, tier structure, gate philosophy, and open questions.** The README is the high-level summary; this is the depth.
+> This document sets the pricing strategy for templates. It uses short sentences, active voice, and precise verbs for clarity.
 
-## Pricing structure (locked)
+This document is strategy. Implementation lives in its respective docs.
 
-**3 tiers, one-time payment, lifetime license.** No recurring / subscription tier — universal in the band.
+## Model
 
-| Tier | Price | Buyer |
-|---|---|---|
-| **Solo** | $299 | Indie founder, first SaaS |
-| **Team** | $599 | Small team (2-5 people), first SaaS in production |
-| **Studio** | $999 | Agency, studio, or power user with multiple products |
+Three layers, in one catalog:
 
-**Why this structure:**
-- Matches the band's median (Makerkit, TurboStarter, others sit at $249-499 for the entry tier)
-- Three SKUs is the Apple-friendly minimum that covers the three audience segments
-- $999 ceiling stays in the $299-999 band the buyer asked for
-- One-time, lifetime license — universal in the band, builds trust
+- **Open Community** — free, MIT.
+- **Pro Education** — free, MIT, students and OSS projects only.
+- **DeesseJS Pro** — one-shot paid, $299–$999 per template.
 
-**Why not the premium structure ($399/$799/$1,499)?** The user picked the industry-standard structure deliberately — DeesseJS is "the Apple of SaaS templates" through execution (completeness + DX + modular), not through price. The entry tier stays at $299 to match the band.
+All three layers ship complete templates. A free landing template is a complete landing template, not a stripped-down Pro. Pro contains more built-in work — not more knobs.
 
-**Why not the Apple-minimal 2-tier ($399/$999)?** Skips the mid-market team segment. The 3-tier structure better serves the $299-999 band.
+One rule: **every template ships complete**.
 
-**Why not include a free / OSS tier?** None of the direct competitors have one. It's an open question whether to test it — see below.
+## Why three layers and not three tiers
 
-## Tier gate philosophy (locked)
+Catalog items vary in effort. A landing page takes one day. A multi-tenant SaaS with billing, audit and RBAC takes one sprint. A single price tier per template reflects this. The previous three-tier SaaS-license model ("Solo / Team / Studio") is dead. App counts and seat counts do not apply to a templates catalog.
 
-**Consistent: gates = rights + support + updates.** All tiers get the full feature set. The gates are commercial: app count, seat count, support level, updates window, white-label rights, onboarding.
+The education layer is separate from the open layer because the audience is separate: students and OSS projects can free-ride without competing with freelance buyers who pay.
 
-This aligns with the "no half-built features" design principle. The Solo buyer gets the full DeesseJS experience; they just have a smaller license envelope.
+## Why one-shot, not subscription
 
-**Why this and not feature gating?**
-- "No half-built features" means we can't hold back features to push upgrades
-- Apple energy is "the best experience, opinionated." Feature gating is the opposite.
-- The upgrade moments are operational (you outgrew 1 app, you need white-label) — they're earned, not forced
+The persona wins from time saved on a one-time project. A freelance dev finishing a client SaaS does not need a recurring bill for one project.
 
-## Concrete tier gates (proposed — pending confirmation)
+Subscription remains an option for a separate product line in v2:
 
-This is the concrete breakdown. The user picked the philosophy; these gates are the implementation that follows. Confirm or adjust before launch.
+- $99–$199 / year per dev
+- covers priority support and early access
+- is a separate product, not a layer on top of templates
 
-### Solo — $299
+The 50% renewal at 12 months is the floor for recurring revenue on the Pro layer.
 
-- **1 app**
-- **1 seat** (single founder, or founder + 1 collaborator)
-- **All features** (full RBAC, full billing, all integrations, notifications, CLI, SDK, AI primitives)
-- **Community Discord** support
-- **1 year of updates**
-- White-label rights: ❌
+## Open Community
 
-### Team — $599
+### What ships here
 
-- **Up to 3 apps**
-- **Up to 10 seats**
-- **All features**
-- **Email support** (48h response, business hours)
-- **1 year of updates**
-- White-label rights: ❌
+A template one developer can write in one afternoon. Examples:
 
-### Studio — $999
+- landing pages
+- dashboards
+- B2B SaaS starters
+- internal tools
+- AI surfaces
+- API backends
 
-- **Unlimited apps**
-- **Unlimited seats**
-- **All features**
-- **Priority email + dedicated Slack channel** (24h response)
-- **Lifetime updates**
-- **White-label rights** (rebrand and resell under the buyer's own name)
-- **1 onboarding session** (60min, with the founder or a core contributor)
+### Rules
 
-## Updates policy (proposed)
+- free, MIT
+- no app count, no seat count, no deployment cap
+- pull-requests accepted from anyone
+- review by a DeesseJS maintainer
+- quality bar: **does it ship end-to-end?** not "is it excellent?"
 
-- **Solo / Team:** 1 year of updates from purchase date. After 1 year, the buyer can keep using the version they have forever; new versions require a renewal at a discounted rate (50% off the original tier).
-- **Studio:** Lifetime updates. New major versions (e.g. DeesseJS 2.0) are included; major architectural changes may require a Studio-tier upgrade for buyers on lower tiers (TBD, communicate at the time).
+End-to-end means the template runs, the README is true, and the buyer can deploy without writing the missing 30%.
 
-**Why this:**
-- Matches the "1 year for paid / lifetime for top" norm in the band
-- Studio is a real anchor — it makes the upgrade feel worth it
-- 1 year + 50% renewal is friendly to indie buyers and creates a recurring-revenue path without the "subscription" stigma
+## Pro Education
 
-## Recurring revenue: the open question
+### Audience
 
-The "no recurring / subscription" norm in the band is universal. Every competitor is one-time. We match.
+- verified students (`.edu` email or equivalent proof)
+- OSS projects the buyer owns or contributes to
 
-**The opportunity:** a thin support / upgrades subscription as a *separate* product line. Not gating features. Buyers who want priority support or earlier access to new features can opt in.
+### Rules
 
-**Options:**
-- **No subscription.** Pure one-time, 50% renewal for updates after 1 year. Lowest friction.
-- **Optional add-on subscription.** $99/year for priority support + early access. Low commitment, real margin.
-- **Two-track:** one-time for the code, $199/year for a "Pro support" add-on (Slack channel, faster response, quarterly office hours).
+- free, MIT, same as Open Community
+- same submission and review flow
+- verification needed before license is granted
+- license remains the buyer's; OSS project leadership may not transfer it to a third party that is not an OSS contributor
 
-**Recommendation:** start with **no subscription**. Re-evaluate at the 6-month mark based on buyer feedback. Subscription design is a v2 problem.
+### Why free
 
-## Free / OSS tier: the open question
+A student learning on a Pro template becomes a freelance dev tomorrow. An OSS project runs on the same templates. The free layer pays back later through the Pro layer and through community trust.
 
-**The argument for:** None of the direct competitors have one. A free tier (e.g. a stripped-down version, or a public repo with the basics) is a top-of-funnel. Indie devs see it, like it, then upgrade when they need the full feature set.
+## DeesseJS Pro
 
-**The argument against:** Maintenance. Every feature we ship has to be tested in the free tier too, or the upgrade path is broken. The "no half-built features" principle argues against a half-feature free tier.
+### What ships here
 
-**The compromise:** ship a *subset* of DeesseJS as a public repo (just the architecture: Next.js + Drizzle + Better Auth + Tailwind + shadcn, no paid features). Let devs see the DX. The paid template is the "complete" version on top.
+A template the DeesseJS team builds in tens of hours, and an enterprise team otherwise spends a sprint on. Each Pro template ships complete, with production patterns a startup CISO expects.
 
-**Recommendation:** **defer.** Don't ship a free tier for v1. Re-evaluate after launch based on the funnel. The paid product is the focus.
+Categories:
 
-## Open pricing questions
+- **SaaS Pro** — multi-tenant, SSO, audit, RBAC, billing, observability, deploy
+- **AI Production** — rate-limiting, moderation, cost observability, eval harness
+- **Compliance Pro** — regulated industries, healthcare, fintech
+- **Marketplace Pro** — multi-sided billing, payouts, takedowns
 
-1. **Concrete gates (above) — confirm or adjust.** Specifically: 1 vs 3 seats for Solo, 3 vs 5 apps for Team, 10 vs unlimited seats for Team.
-2. **Updates scope after 1 year:** is 50% renewal the right number, or should it be 30% / free / no-renewal (locked to that version forever)?
-3. **Studio's "1 onboarding session"** — who delivers this? The founder? A contractor? An agency partner? This is an ops question that affects the Studio margin.
-4. **Multi-currency:** USD-only, or also EUR / GBP? For an international audience, multi-currency matters but adds Stripe complexity.
-5. **Education / non-profit discount?** Common in dev tools. Worth deciding.
-6. **Free OSS tier** — ship a public subset as top-of-funnel, or stay 100% paid? (Defer to post-launch.)
+Each Pro template ships with:
 
-## Margin model (rough)
+- a license (paid)
+- a 12-month update window
+- Cloud access for this template (auth + repo + clone via CLI)
+- a renew-or-keep-buyers-choice at month 12
 
-Assuming 60% of buyers pick Solo, 30% Team, 10% Studio, and a 5% renewal rate at 50% off:
+### Pricing rules
 
-- **Solo ($299) × 60% × 1000 buyers/year = $179,400**
-- **Team ($599) × 30% × 1000 = $179,700**
-- **Studio ($999) × 10% × 1000 = $99,900**
-- **Renewals (5% × 50% off) × 1000 = ~$25,000**
+- One-shot license per template.
+- Price band: $299–$999 per template.
+- Source-code delivered.
+- Cloud access included for the buyer's license (auth + repo + CLI for this template).
+- Cloud features beyond auth and repo (observability, scaling) are a separate product, deferred to v2.
+- Buyer deploys it themselves, or buys hosting from Nesalia Inc. separately.
+- 14-day refund window, no questions asked.
+- Updates: 12 months included.
+- After 12 months: buyer keeps the version forever.
+- New versions after 12 months: 50% renewal.
+- Buyer may re-sell the codebase to a client (the freelancer case). The unmodified template may not appear in another catalog.
 
-**Total: ~$484K at 1,000 buyers/year.** Realistic for a Year 1 in this band (ShipFast reportedly does $1M+/year at the lower price point; supastarter / Makerkit are reportedly in the $500K-2M range).
+### Renewal
 
-**Key levers:**
-- **Volume** (the single biggest lever — 5,000 buyers/year puts us at $2.4M)
-- **Tier mix** (more Studio buyers helps; marketing can target agencies)
-- **Renewals** (the 5% assumption is conservative; if we hit 15%, that's $75K extra)
+Renewal is optional. The buyer keeps the original version forever.
+
+- 50% off the original price.
+- Brings the buyer back inside the 12-month update window.
+- No subscription contract — single payment, single renewal.
+
+## Persona
+
+### Primary
+
+Freelance developer or small studio. Bills the client $20k–$80k. Buys Pro templates to remove the parts of the build that do not pay well: auth setup, billing plumbing, audit logging. Then ships under the client brand and may charge the client for the saved time.
+
+### Secondary
+
+In-house team at a startup past the weekend stage. Buys Pro the same way it buys Vercel or Linear seats. Charges it against engineering time saved.
+
+### Tertiary
+
+Enterprise team in a regulated industry. Wants Pro not because it cannot build it, but because it does not want to.
+
+### Floor
+
+Solo indie hacker shipping a weekend project. Uses Open Community free templates. That is the floor. The marketing pitch leans on it.
+
+## Submission flow
+
+Open Community and Pro Education contributions go in via pull-request. Pro templates skip pull-request — the DeesseJS team authors them directly.
+
+The three layers share the catalog surface:
+
+- submission, moderation, listing, search, install
+- the layer is an attribute on the entry, not a different system
+
+Cloud auth, repo private and CLI distant are referenced by this flow but not detailed here. See the Cloud product doc once it exists.
+
+## Pricing model — structural envelope
+
+- **Open Community**: free, no SLA, no exclusivity.
+- **Pro Education**: free, same as Open Community, license is bound to the verified student or OSS project.
+- **Pro**: one-shot, $299–$999 per template, per-template price set by the engineering owner.
+- **Renewal**: 50% at month 12 per Pro template.
+- **Future subscription**: $99–$199 per dev per year, layered on a separate Cloud product.
+
+Revenue shape: heavy on Pro one-shot, with a small renewal floor and an optional future subscription tier.
 
 ## Cross-references
 
-- README: [`README.md`](./README.md) — high-level product brief
-- Architecture: [`architecture.md`](./architecture.md) — stack reference
-- Positioning: [`positioning.md`](./positioning.md) — brand + wedge + copy
-- Research: [`research.md`](./research.md) — market + buyer voice
-- Memory: [[project-market-research-2026-06]] — pricing norms from the band
+- [README.md](./README.md) — product brief
+- [positioning.md](./positioning.md) — brand and copy
+- [architecture.md](./architecture.md) — stack reference
+- [documents/internal/marketing/](../marketing/) — surface plan and copy deck
+- [documents/internal/marketing/launch/](../marketing/launch/) — distribution playbook
+- [build-roadmap.md](./build-roadmap.md) — feature sequencing
