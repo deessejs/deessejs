@@ -335,7 +335,7 @@ const PricingPage = () => {
             Open Community, same MIT terms, bound to the verified buyer. The
             license may not be transferred to a non-OSS third party.{" "}
             <Link
-              href="mailto:education@deessejs.com?subject=Pro%20Education%20access"
+              href="mailto:support@deessejs.com?subject=Pro%20Education%20access"
               className="underline underline-offset-4 hover:text-foreground"
             >
               Request access
@@ -417,7 +417,7 @@ const PricingPage = () => {
             <Link href="/templates">Browse the catalog</Link>
           </Button>
           <Button asChild variant="outline">
-            <a href="mailto:hello@deessejs.com?subject=Pricing">Email us</a>
+            <a href="mailto:support@deessejs.com?subject=Pricing">Email us</a>
           </Button>
         </div>
       </section>

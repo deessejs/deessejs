@@ -61,7 +61,7 @@ export const PRICING_LAYERS: ReadonlyArray<PricingLayer> = [
     ],
     cta: {
       label: "Email us about Pro",
-      href: "mailto:hello@deessejs.com?subject=Pro%20package",
+      href: "mailto:support@deessejs.com?subject=Pro%20package",
       external: true,
     },
   },
@@ -216,7 +216,7 @@ export const PRICING_FAQ: ReadonlyArray<FaqItem> = [
   {
     question: "Do you have a refund policy?",
     answer:
-      "14 days, no questions asked. Email hello@deessejs.com and we process it.",
+      "14 days, no questions asked. Email support@deessejs.com and we process it.",
   },
   {
     question: "Which stacks does Pro cover?",
@@ -241,7 +241,7 @@ export const PRICING_FAQ: ReadonlyArray<FaqItem> = [
   {
     question: "How does Pro Education verification work?",
     answer:
-      "Send a .edu email or equivalent proof (student card, school-issued document) to education@deessejs.com. For OSS projects, link the repo where you are a maintainer. The license is bound to the verified buyer or project and may not be transferred to a non-OSS third party.",
+      "Send a .edu email or equivalent proof (student card, school-issued document) to support@deessejs.com. For OSS projects, link the repo where you are a maintainer. The license is bound to the verified buyer or project and may not be transferred to a non-OSS third party.",
   },
   {
     question: "Can I switch a template between layers?",
