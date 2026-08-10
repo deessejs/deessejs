@@ -36,4 +36,3 @@ export const API_RPC_PATH = `${API_BASE_PATH}/rpc` as const
 export const API_AUTH_PATH = `${API_BASE_PATH}/auth` as const
 export const API_HEALTH_PATH = `${API_BASE_PATH}/health` as const
 export const API_READY_PATH = `${API_BASE_PATH}/ready` as const
-export const API_TEMPLATES_PATH = `${API_BASE_PATH}/templates` as const

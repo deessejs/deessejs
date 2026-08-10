@@ -15,8 +15,18 @@ const validTemplates = [
   },
 ]
 
-const orpcEnvelope = (templates: unknown) =>
+/**
+ * Wire shapes for the two outcomes the CLI handles:
+ *   - success: { result: { data: { templates } } }
+ *   - ORPCError: { defined, code, status, message, data }
+ */
+const successBody = (templates: unknown) =>
   JSON.stringify({ result: { data: { templates } } })
+
+const errorBody = (code: string, status: number, message: string) =>
+  JSON.stringify({ defined: false, code, status, message, data: {} })
+
+const noRetry = { skipVersionCheck: true, maxAttempts: 1 }
 
 describe("fetchTemplates", () => {
   beforeEach(() => {
@@ -31,58 +41,94 @@ describe("fetchTemplates", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(orpcEnvelope(validTemplates), {
+        new Response(successBody(validTemplates), {
           status: 200,
           headers: { "content-type": "application/json" },
         }),
       ),
     )
-    const result = await fetchTemplates("http://fake", { skipVersionCheck: true })
+    const result = await fetchTemplates("http://fake", noRetry)
     expect(result).toEqual(validTemplates)
   })
 
-  it("throws network_error on 404", async () => {
+  it("surfaces ORPCError RATE_LIMITED on 429 as parse_error", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(new Response("not found", { status: 404 })),
+      vi.fn().mockResolvedValue(
+        new Response(
+          errorBody("RATE_LIMITED", 429, "Too many requests. Try again in 60s."),
+          {
+            status: 429,
+            headers: { "content-type": "application/json" },
+          },
+        ),
+      ),
     )
     await expect(
-      fetchTemplates("http://fake", { skipVersionCheck: true }),
-    ).rejects.toMatchObject({ code: "network_error" })
+      fetchTemplates("http://fake", noRetry),
+    ).rejects.toMatchObject({
+      code: "parse_error",
+      message: expect.stringContaining("RATE_LIMITED"),
+    })
   })
 
-  it("throws network_error on 500", async () => {
+  it("surfaces ORPCError NOT_FOUND on 404 as parse_error", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(new Response("server error", { status: 500 })),
+      vi.fn().mockResolvedValue(
+        new Response(errorBody("NOT_FOUND", 404, "Route not found"), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
     )
     await expect(
-      fetchTemplates("http://fake", { skipVersionCheck: true }),
-    ).rejects.toMatchObject({ code: "network_error" })
+      fetchTemplates("http://fake", noRetry),
+    ).rejects.toMatchObject({
+      code: "parse_error",
+      message: expect.stringContaining("NOT_FOUND"),
+    })
+  })
+
+  it("surfaces ORPCError INTERNAL_SERVER_ERROR on 500 as parse_error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(errorBody("INTERNAL_SERVER_ERROR", 500, "Boom"), {
+          status: 500,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+    )
+    await expect(
+      fetchTemplates("http://fake", noRetry),
+    ).rejects.toMatchObject({
+      code: "parse_error",
+      message: expect.stringContaining("INTERNAL_SERVER_ERROR"),
+    })
   })
 
   it("throws network_error on connection refused", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockRejectedValue(new Error("ECONNREFUSED")),
+      vi.fn().mockRejectedValue(new TypeError("fetch failed")),
     )
     await expect(
-      fetchTemplates("http://fake", { skipVersionCheck: true }),
+      fetchTemplates("http://fake", noRetry),
     ).rejects.toMatchObject({ code: "network_error" })
   })
 
-  it("throws parse_error on malformed JSON", async () => {
+  it("throws network_error on malformed (non-JSON) response body", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(new Response("not json", { status: 200 })),
     )
     await expect(
-      fetchTemplates("http://fake", { skipVersionCheck: true }),
-    ).rejects.toMatchObject({ code: "parse_error" })
+      fetchTemplates("http://fake", noRetry),
+    ).rejects.toMatchObject({ code: "network_error" })
   })
 
-  it("throws parse_error when templates key missing in unwrapped payload", async () => {
-    // oRPC envelope wraps a payload that lacks `templates` after unwrap.
+  it("throws parse_error when the templates field is missing in the success body", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -93,16 +139,16 @@ describe("fetchTemplates", () => {
       ),
     )
     await expect(
-      fetchTemplates("http://fake", { skipVersionCheck: true }),
+      fetchTemplates("http://fake", noRetry),
     ).rejects.toMatchObject({ code: "parse_error" })
   })
 
-  it("throws parse_error when a required field is missing", async () => {
+  it("throws parse_error when a required template field is missing", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
         new Response(
-          orpcEnvelope([
+          successBody([
             {
               // slug missing
               name: "X",
@@ -119,7 +165,7 @@ describe("fetchTemplates", () => {
       ),
     )
     await expect(
-      fetchTemplates("http://fake", { skipVersionCheck: true }),
+      fetchTemplates("http://fake", noRetry),
     ).rejects.toMatchObject({ code: "parse_error" })
   })
 })

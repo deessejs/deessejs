@@ -1,6 +1,6 @@
 import type { Context, MiddlewareHandler } from "hono"
+import { HTTPException } from "hono/http-exception"
 import { logger } from "../logger.js"
-import { errorBody, readRequestId } from "../envelope.js"
 
 /**
  * Per-IP fixed-window rate limiter (in-memory).
@@ -20,9 +20,9 @@ import { errorBody, readRequestId } from "../envelope.js"
  *
  * Behavior:
  *   - On every request, increment the counter for the current minute.
- *   - If count > limit, return 429 with the standard error envelope and
- *     the X-RateLimit-* headers. The 429 is logged with the requestId
- *     for traceability.
+ *   - If count > limit, throw an HTTPException 429 that the global
+ *     onError maps to an ORPCError wire shape. The typed client
+ *     decodes this as a real `ORPCError` with code `RATE_LIMITED`.
  *   - Opportunistic cleanup: every 256 requests, evict expired buckets
  *     to keep the map bounded.
  */
@@ -68,7 +68,7 @@ export const rateLimit = (limit: number): MiddlewareHandler => {
     c.header("X-RateLimit-Reset", String(resetSeconds))
 
     if (bucket.count > limit) {
-      const requestId = readRequestId(c)
+      const requestId = c.get("requestId") ?? "unknown"
       logger.warn("rate_limited", {
         requestId,
         ip,
@@ -76,14 +76,15 @@ export const rateLimit = (limit: number): MiddlewareHandler => {
         path: c.req.path,
         limit,
       })
-      return c.json(
-        errorBody(
-          c,
-          "rate_limited",
-          `Too many requests. Try again in ${resetSeconds}s.`,
-        ),
-        429,
-      )
+      // Throwing HTTPException lets the global onError map this to an
+      // ORPCError wire shape so the typed client surfaces it as
+      // `new ORPCError("RATE_LIMITED", { status: 429 })`. We attach
+      // `retryAfter` as a property on the HTTPException so the onError
+      // hook can read it; in practice the message carries the seconds
+      // and the client computes the wait from there.
+      throw new HTTPException(429, {
+        message: `Too many requests. Try again in ${resetSeconds}s.`,
+      })
     }
 
     if (totalRequests % 256 === 0) {

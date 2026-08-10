@@ -15,7 +15,6 @@ import { requestId, REQUEST_ID_HEADER } from "./middleware/request-id.js"
 import { onError as onApiError } from "./middleware/error-handler.js"
 import { rateLimit } from "./middleware/rate-limit.js"
 import { CLI_VERSION, CLI_MIN_SUPPORTED } from "./cli-version.js"
-import { errorBody } from "./envelope.js"
 
 // Body parser methods that consume the request body. The proxy below
 // redirects these to Hono's parsed getters so oRPC never sees a drained
@@ -175,10 +174,21 @@ api.use("/rpc/*", async (c, next) => {
   await next()
 })
 
-// Not-found handler — uses the same stable error envelope as the global
-// error handler so the client always sees { code, message, requestId }.
-api.notFound((c) => {
-  return c.json(errorBody(c, "not_found", "Route not found"), 404)
+// Not-found handler — replaces the Hono-level `api.notFound` so the wire
+// shape stays ORPCError-compatible. Mounted as a fallback oRPC
+// middleware on `*` so any unmatched path produces the typed error
+// shape the client decodes as a real `ORPCError`.
+api.use("/*", async () => {
+  return new Response(
+    JSON.stringify({
+      defined: false,
+      code: "NOT_FOUND",
+      status: 404,
+      message: "Route not found",
+      data: {},
+    }),
+    { status: 404, headers: { "content-type": "application/json" } },
+  )
 })
 
 // Single export for the Next.js catch-all (uses `handle(api)` from hono/vercel).
