@@ -11,8 +11,7 @@ program
   .name("deessejs")
   .description("CLI for the DeesseJS template registry")
   .version("0.1.0")
-  .option("--api-url <url>", "templates endpoint URL", process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL)
-  .option("--offline", "skip the network, serve the on-disk cache (~/.deessejs/templates.json)")
+  .option("--api-url <url>", "API base URL (the oRPC client appends the procedure path)", process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL)
 
 program.addCommand(listCommand)
 program.addCommand(infoCommand)

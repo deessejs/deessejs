@@ -11,11 +11,21 @@
  */
 
 /**
- * oRPC endpoint for the templates registry. Marketing consumes the
- * `templates.list` procedure, just like the CLI does.
+ * oRPC endpoint base URL. The client appends procedure paths
+ * automatically. Same value as `API_RPC_PATH` in
+ * `@workspace/api/base-path` (kept as a string here so the marketing
+ * app does not depend on the API package's runtime exports).
  */
-const FALLBACK_TEMPLATES_URL =
-  "https://app.deessejs.com/api/v1/rpc/templates/list"
+const FALLBACK_TEMPLATES_URL = "https://app.deessejs.com/api/v1/rpc"
+
+/**
+ * Convenience export for the oRPC client. Same string as
+ * `FALLBACK_TEMPLATES_URL` (or the env override), surfaced under a
+ * name that signals "this is the oRPC endpoint, not the legacy REST
+ * route that used to live at /api/v1/templates".
+ */
+export const TEMPLATES_RPC_URL: string =
+  process.env.TEMPLATES_RPC_URL ?? FALLBACK_TEMPLATES_URL
 
 export const TEMPLATES_URL: string =
   process.env.TEMPLATES_URL ?? FALLBACK_TEMPLATES_URL

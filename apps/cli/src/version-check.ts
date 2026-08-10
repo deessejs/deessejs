@@ -38,9 +38,11 @@ const compareSemver = (a: string, b: string): number => {
 export const maybeWarnAboutOutdatedCli = async (apiUrl: string): Promise<void> => {
   let bodyText: string
   try {
-    const res = await fetchWithRetry({
-      apiUrl: apiUrl.replace(/\/templates$/, "/cli-version"),
-    })
+    // `apiUrl` is the oRPC base (e.g. `https://app.deessejs.com/api/v1/rpc`).
+    // The CLI version probe lives at `<base-parent>/cli-version`, i.e. we
+    // strip the trailing `/rpc` segment and append `/cli-version`.
+    const versionUrl = apiUrl.replace(/\/rpc$/, "/cli-version")
+    const res = await fetchWithRetry({ apiUrl: versionUrl })
     if (res.status !== 200) return
     bodyText = res.bodyText
   } catch {

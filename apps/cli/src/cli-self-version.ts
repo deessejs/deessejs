@@ -8,6 +8,6 @@
  *
  * Update this when bumping apps/cli/package.json.
  */
-export const CLI_PACKAGE_VERSION = "1.1.1"
+export const CLI_PACKAGE_VERSION = "2.0.0"
 
 export const readPackageVersion = (): string => CLI_PACKAGE_VERSION

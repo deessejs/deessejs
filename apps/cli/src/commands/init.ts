@@ -44,14 +44,10 @@ export const initCommand = new Command("init")
       const apiUrl = initCommand.parent?.getOptionValue("apiUrl") as
         | string
         | undefined
-      const offline = initCommand.parent?.getOptionValue("offline") as
-        | boolean
-        | undefined
 
       try {
         const templates = await fetchTemplates(
           apiUrl ?? process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL,
-          { offline: Boolean(offline) },
         )
         const template = templates.find((t) => t.slug === slug)
         if (!template) {
