@@ -11,10 +11,10 @@ import { serverEnv } from "@workspace/env/server"
 import { appRouter } from "./router/index.js"
 import { API_BASE_PATH } from "./base-path.js"
 import { TEMPLATES } from "./templates.js"
+import { fetchTemplates } from "./templates-fetcher.js"
 import { logger } from "./logger.js"
 import { requestId, REQUEST_ID_HEADER } from "./middleware/request-id.js"
 import { onError as onApiError } from "./middleware/error-handler.js"
-import { etag } from "./middleware/etag.js"
 import { rateLimit } from "./middleware/rate-limit.js"
 import { CLI_VERSION, CLI_MIN_SUPPORTED } from "./cli-version.js"
 import { errorBody } from "./envelope.js"
@@ -97,21 +97,30 @@ api.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOStri
 // Public for V1 (the CLI has no auth tokens yet). V1.1 (device auth) can
 // gate this behind the authMiddleware without breaking the response shape.
 //
-// Caching: weak ETag keyed on a version counter. Bump the counter whenever
-// the catalog changes so the CDN serves fresh bytes. The CLI also uses
-// this ETag for its disk cache (planned for step 4).
+// Live data: each request hits GitHub's REST API in parallel for every
+// registry entry, merges the response onto the static fields, and
+// returns the enriched list. No caching layer in V1 — if GitHub is
+// unreachable or rate-limited, the endpoint returns 503 with a stable
+// error code (templates_fetch_failed). Caching is a V1.1 concern
+// (background refresh + Redis) — the CLI handles its own disk cache.
 //
 // Rate limit: per-IP fixed window, default 100 req/min per Vercel
 // instance. The number lives in env (RATE_LIMIT_PER_MINUTE) so operators
 // can tighten it without a redeploy.
-const TEMPLATES_VERSION = "v1"
-
-api.get(
-  "/templates",
-  rateLimit(serverEnv.RATE_LIMIT_PER_MINUTE),
-  etag(() => TEMPLATES_VERSION),
-  (c) => c.json({ templates: TEMPLATES }),
-)
+api.get("/templates", rateLimit(serverEnv.RATE_LIMIT_PER_MINUTE), async (c) => {
+  try {
+    const templates = await fetchTemplates(TEMPLATES)
+    return c.json({ templates })
+  } catch (error) {
+    logger.error("templates_fetch_failed", {
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return c.json(
+      errorBody(c, "templates_fetch_failed", "Could not load templates from GitHub. Try again in a few minutes."),
+      503,
+    )
+  }
+})
 
 // CLI version probe — public, no auth, low rate limit. The CLI calls this
 // on startup to warn the user when their installed version is below
