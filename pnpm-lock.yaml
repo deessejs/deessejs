@@ -365,6 +365,12 @@ importers:
       '@orpc/client':
         specifier: 'catalog:'
         version: 1.14.7
+      '@orpc/server':
+        specifier: 'catalog:'
+        version: 1.14.7
+      '@workspace/api':
+        specifier: workspace:*
+        version: link:../../packages/api
       '@workspace/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

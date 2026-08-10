@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@orpc/client": "catalog:",
+    "@orpc/server": "catalog:",
+    "@workspace/api": "workspace:*",
     "@workspace/contracts": "workspace:*",
     "@workspace/ui": "workspace:*",
     "fuse.js": "catalog:",
