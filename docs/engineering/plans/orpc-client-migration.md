@@ -220,13 +220,102 @@ The marketing site has different constraints: Next.js RSC fetches with `next.rev
 
 4. **Surface errors as a typed result.** The web `fetchTemplates` already returns `FetchTemplatesResult = { ok: true } | { ok: false; error: string }`. Keep that shape but populate `error` from `ORPCError.code` when the client throws.
 
-### Phase 3 — test refactor
+### Phase 3 — test refactor with Server-Side Client and MSW
 
-The current test file mocks `fetch` globally. With RPCLink the wire is fixed (POST, body shape) and the body contract is enforced by the router type. We can rewrite the tests as **server mocks** using `MSW` or a hand-rolled interceptor on the global fetch.
+This phase was originally vague ("rewrite tests as server mocks using MSW"). After working through the CLI tests and seeing `vi.stubGlobal("fetch", ...)` fail repeatedly with RPCLink, we landed on the [official oRPC testing pattern](https://orpc.dev/docs/advanced/testing-mocking) plus MSW for HTTP-level tests.
 
-The simpler path for V1: keep mocking `fetch` globally, but expect an oRPC envelope (`{ result: { data: ... } }` for success, `{ defined: true, code, status, message, data }` for ORPCError). The current tests do this; they just don't reach the right code path because of the wrapper bug.
+#### Why `vi.stubGlobal("fetch", ...)` doesn't work with `RPCLink`
 
-For the Hono-envelope error channel (Phase 1 step 2), add at least one test that returns `{ code, message, requestId }` and asserts the mapper surfaces it as `parse_error` with the server's code.
+`RPCLink` doesn't just call `fetch(url)` — it builds a `Request` with a body stream, sends it, and reads the response. When we mock `fetch` directly with `vi.fn().mockResolvedValue(new Response(...))`, we return a single fixed `Response` for every call, regardless of what was actually requested. RPCLink:
+
+- Cannot parse the response body for 4xx/5xx because the body is consumed in a way that defeats the typed client.
+- Surfaces a generic `Error("Cannot parse response body")` instead of a real `ORPCError`, because the mock does not honour the wire contract.
+- Causes `fetchWithRetry`'s 3-retry backoff to compound against a static mock, producing flaky tests.
+
+The mock is at the wrong layer: it bypasses RPCLink entirely instead of letting RPCLink run.
+
+#### Pattern A — Server-Side Client (recommended for CLI tests)
+
+The [official oRPC testing guide](https://orpc.dev/docs/advanced/testing-mocking) recommends the **Server-Side Client** pattern for unit-testing logic that consumes oRPC procedures:
+
+```ts
+import { appRouter } from "@workspace/api/router"
+
+// Direct call. No HTTP. No RPCLink. No fetch. No mocks.
+const result = await appRouter.templates.list()
+expect(result.templates).toEqual(validTemplates)
+```
+
+Trade-offs:
+
+- **Pro**: Type-safe via the shared contract. Fast. No mocks. No flakiness.
+- **Pro**: Tests the procedure handler logic + middleware chain, which is the bulk of what can go wrong on the server.
+- **Con**: Does not test RPCLink's serialization, retry, or `isOrpcErrorBody` mapping — those are tested separately against a real HTTP fixture.
+- **Con**: Tests cannot run in a pure-Node environment if the router pulls in env-only modules (auth, db). Workaround: import the procedure definition only, or stub the env at the test boundary.
+
+For the CLI, this means: **tests of the templates procedure logic** use the Server-Side Client directly. **Tests of the CLI's HTTP layer** (retry, envelope parsing, error mapping) use a real HTTP fixture — see Pattern B.
+
+#### Pattern B — MSW with `@dansnow/orpc-msw` (recommended for web tests)
+
+The web side needs to test React Server Components and client components that consume the typed RPCLink. Mocker `fetch` is wrong for the same reason as the CLI. The recommended pattern is [MSW](https://mswjs.io/) with type-safe oRPC handlers via [DanSnow/orpc-msw](https://github.com/DanSnow/orpc-msw):
+
+```ts
+import { createORPCMsw } from "@dansnow/orpc-msw"
+import { appRouter } from "@workspace/api/router"
+
+const msw = createORPCMsw(appRouter)
+
+// In a Vitest setup file:
+beforeAll(() => msw.listen())
+afterAll(() => msw.close())
+
+// In tests:
+it("renders templates on success", async () => {
+  msw.templates.list.handler = async () => ({ templates: validTemplates })
+  // ...render the React component, MSW intercepts the RPCLink request
+})
+```
+
+Trade-offs:
+
+- **Pro**: Type-safe — handler inputs/outputs are inferred from the router contract. Adding a field to `TemplateV1` flags every test that needs updating.
+- **Pro**: Tests the full client → link → serialization stack, including ISR via `context.next`.
+- **Con**: New dev dependency: `@dansnow/orpc-msw`. We accept this for the type-safety gain. Pin to a known-good version; revisit if the project goes unmaintained.
+- **Con**: Requires Next.js fetch extension support — MSW must intercept the same `fetch` that Next.js extends for ISR. Verified to work with MSW v2.
+
+#### Pattern C — vanilla MSW (fallback)
+
+If `@dansnow/orpc-msw` turns out to be unmaintained or incompatible with our setup, fall back to vanilla MSW with hand-written handlers. We lose type-safety but keep the network-level test coverage.
+
+```ts
+import { http, HttpResponse } from "msw"
+import { setupServer } from "msw/node"
+
+const server = setupServer(
+  http.post("https://app.deessejs.com/api/v1/rpc/templates/list", () =>
+    HttpResponse.json({
+      result: { data: { templates: validTemplates } },
+    }),
+  ),
+)
+```
+
+Vanilla MSW handlers are not type-checked against the contract — they're free to drift. Acceptable for now; revisit when the catalog grows.
+
+#### What we actually do for the CLI
+
+`apps/cli/src/api.ts` stays with the typed client (`createORPCClient` + `RPCLink`) for production. For tests, we adopt Pattern A for the procedure logic and Pattern C (or a tiny HTTP fixture) for the CLI's HTTP layer. The current `vi.stubGlobal("fetch", ...)` tests are replaced.
+
+Concretely:
+
+1. `apps/cli/test/unit/api.test.ts` is split into two files:
+   - `api.contract.test.ts` — calls `appRouter.templates.list()` directly via the Server-Side Client. Tests success, ORPCError shapes, contract drift.
+   - `api.http.test.ts` — uses a minimal HTTP fixture (Node's `http.createServer` listening on an ephemeral port, or a hand-rolled `Response` factory injected via a custom `fetchWithRetry`) to test retry, backoff, envelope parsing, and `isOrpcErrorBody` mapping. The CLI hits the fixture URL instead of mocking.
+2. We add `@dansnow/orpc-msw` only if we need Pattern B for web; otherwise we use vanilla MSW.
+
+#### What we actually do for the web
+
+`apps/web` uses `@orpc/client` with a typed `RPCLink`. Tests use Pattern B (`@dansnow/orpc-msw`) for components that call `client.templates.list()`. RSC pages that use ISR directives get a vanilla MSW handler that inspects the `next.revalidate` value passed by `RPCLink` via `context.next`.
 
 ### Phase 4 — error taxonomy alignment
 
@@ -271,3 +360,4 @@ We pick **A** because the codes cross the wire and we already import the contrac
 - **2026-08-10**: audited `packages/api/src/index.ts` against the oRPC Hono guide. Current implementation follows the recommended patterns (RPCHandler, body-parser Proxy, prefix, c.newResponse, await next()).
 - **2026-08-10**: confirmed two error channels on the wire — `ORPCError` from procedures (decoded by the typed client) and the custom `{ code, message, requestId }` envelope from Hono middleware (NOT decoded).
 - **2026-08-10** (revised): decided to absorb the server-side error unification into Phase 1 instead of treating it as a separate long-term task. Rationale: the two-channel error model is a permanent anti-pattern; every new client would have to handle it; the cost of unifying now (half a day) is much smaller than the cost of carrying the debt forward. The plan now ships a single error channel end-to-end.
+- **2026-08-10** (revised): after working through the CLI tests, discovered that `vi.stubGlobal("fetch", ...)` is the wrong mocking layer for RPCLink tests. The mock sits below RPCLink and bypasses it, so the typed client never runs and the wire contract never gets validated. Initial reaction was to roll back to direct fetch + unwrap; correct reaction is to use the [official oRPC testing pattern](https://orpc.dev/docs/advanced/testing-mocking) (Server-Side Client) plus MSW with `@dansnow/orpc-msw` for HTTP-level tests. Phase 3 rewritten around these patterns. The CLI keeps RPCLink for production; only the test approach changes.
