@@ -24,7 +24,7 @@ decisions:
   - id: web-rsc
     date: 2026-08-10
     choice: "Use @orpc/client with custom fetch that threads Next.js ISR directives"
-    rationale: "Replaces the verbose direct-fetch + manual unwrap with a typed client. The custom fetch forwards `context.next.revalidate` and `context.next.tags` to the global fetch, preserving ISR semantics that the manual version had."
+    rationale: "Replaces the verbose direct-fetch + manual unwrap with a typed client. The custom fetch forwards `init.next.revalidate` and `init.next.tags` to the global fetch, preserving ISR semantics that the manual version had. Note: ISR directives are placed directly on `init` (the standard Next.js fetch extension), not via the RPCLink context — Next.js reads them straight from `init`."
   - id: hono-audit
     date: 2026-08-10
     choice: "Server-side Hono integration is faithful to the oRPC guide, no changes required for the client-only migration"
@@ -210,15 +210,58 @@ No more `ORPC_NO_INPUT_BODY` constant — the client builds the body. No more `u
 
 ### Phase 2 — typed web client (RSC-aware)
 
-The marketing site has different constraints: Next.js RSC fetches with `next.revalidate` and `next.tags` for ISR. The RPCLink wraps a `fetch` we control, so we can pass `context: { next: { revalidate, tags } }` on each call and read it in `orpcFetch` to forward to the underlying `fetch`.
+The marketing site runs on Next.js App Router. The marketing pages use ISR via `next.revalidate` and `next.tags`, which Next reads from the standard `fetch` API's `init.next` extension.
 
-1. **Add `@orpc/client` to `apps/web/package.json`.**
+#### ISR strategy: thread via `init`, not via `context`
 
-2. **Create `apps/web/src/lib/orpc.ts`** with the typed client + a custom `fetch` that reads `context.next` and threads it to the global `fetch`. The custom fetch signature is the same 5-arg shape as the CLI.
+Initial drafts of this plan called for threading ISR directives through `RPCLink`'s `context` (the third argument of the custom `fetch` hook). The oRPC docs do cover client context — `[context]` is the shape passed to `headers`, `method`, and `fetch` — but they explicitly do not document Next.js ISR forwarding. The mechanism oRPC exposes for Next integration is simply the standard `fetch` extension: `init.next.revalidate` and `init.next.tags` are read by Next.js directly when `globalThis.fetch(url, init)` is called.
 
-3. **Rewrite `apps/web/src/lib/templates-api.ts`** to use `client.templates.list()` and drop the manual `ORPC_NO_INPUT_BODY` / `unwrapOrpc`. ISR semantics preserved via the context.
+**The pattern is therefore**: in our custom `fetch` hook, build the `RequestInit` ourselves and add `next: { revalidate, tags }` before calling `globalThis.fetch`. The `RPCLink` is not involved in ISR; it only builds the request, our hook wraps it, Next reads the directives from `init`.
 
-4. **Surface errors as a typed result.** The web `fetchTemplates` already returns `FetchTemplatesResult = { ok: true } | { ok: false; error: string }`. Keep that shape but populate `error` from `ORPCError.code` when the client throws.
+```ts
+import { createORPCClient } from "@orpc/client"
+import { RPCLink } from "@orpc/client/fetch"
+import { API_RPC_PATH } from "@workspace/api/base-path"
+import type { appRouter } from "@workspace/api/router"
+
+const link = new RPCLink({
+  url: API_RPC_PATH,
+  fetch: (request, init) => {
+    const isrInit: RequestInit = {
+      ...init,
+      next: { revalidate: 600, tags: ["templates"] },
+    }
+    return globalThis.fetch(request, isrInit)
+  },
+})
+
+export type ORPCClient = RouterClient<typeof appRouter>
+export const orpc: ORPCClient = createORPCClient(link)
+```
+
+#### Why this works with `apps/app` too
+
+`apps/app/lib/orpc.ts` (already on the repo) uses the same `RPCLink` pattern without a custom fetch — it relies on the global `fetch`. RSC pages in `apps/app` add ISR directives via `unstable_cache` or by passing `next: {...}` to `globalThis.fetch` directly. The marketing site (`apps/web`) doesn't need `unstable_cache` because the directives live on the `fetch` hook, which is called from RSC code. Both approaches converge on the same Next.js data cache.
+
+#### Files to add or modify
+
+1. **`apps/web/src/lib/orpc.ts`** (new). The wrapper above. The signature mirrors `apps/app/lib/orpc.ts` so the two consumers stay aligned.
+
+2. **`apps/web/src/lib/templates-api.ts`** (rewrite). Drop `ORPC_NO_INPUT_BODY` and `unwrapOrpc`. Replace `globalThis.fetch(TEMPLATES_URL, ...)` with `orpc.templates.list()`. ISR directives now come from the RPCLink's `fetch` hook in `orpc.ts`, not from the call site.
+
+3. **`apps/web/src/app/templates/page.tsx`** (consumers). No change to the consumer code itself; the API surface stays `fetchTemplates()` returning `{ templates }`. Only the implementation path changes.
+
+#### Tests for the web side
+
+Per Phase 3 below, web tests use `@dansnow/orpc-msw` for component-level handler interception. The ISR directives are not asserted in unit tests — Next.js's `cache` is a Next.js concern, not an oRPC one, and is tested at the Next.js integration level (smoke test on `app.deessejs.com`).
+
+#### Open question (resolved)
+
+Earlier drafts of this plan asked whether ISR directives should live at the call site (`context: { next: {...} }`) or in the RPCLink itself. The answer is **the RPCLink**, because:
+
+- ISR directives describe how the resource should be cached across requests, which is a static property of the endpoint, not a per-call decision.
+- The call site stays simple: `client.templates.list()` with no options.
+- If we later add a procedure that needs different ISR semantics, we can override per call by passing `{ context: { next: { revalidate: 0 } } }` and reading it in the `fetch` hook (extending the wrapper to merge call-site directives with the defaults).
 
 ### Phase 3 — test refactor with Server-Side Client and MSW
 
@@ -361,3 +404,4 @@ We pick **A** because the codes cross the wire and we already import the contrac
 - **2026-08-10**: confirmed two error channels on the wire — `ORPCError` from procedures (decoded by the typed client) and the custom `{ code, message, requestId }` envelope from Hono middleware (NOT decoded).
 - **2026-08-10** (revised): decided to absorb the server-side error unification into Phase 1 instead of treating it as a separate long-term task. Rationale: the two-channel error model is a permanent anti-pattern; every new client would have to handle it; the cost of unifying now (half a day) is much smaller than the cost of carrying the debt forward. The plan now ships a single error channel end-to-end.
 - **2026-08-10** (revised): after working through the CLI tests, discovered that `vi.stubGlobal("fetch", ...)` is the wrong mocking layer for RPCLink tests. The mock sits below RPCLink and bypasses it, so the typed client never runs and the wire contract never gets validated. Initial reaction was to roll back to direct fetch + unwrap; correct reaction is to use the [official oRPC testing pattern](https://orpc.dev/docs/advanced/testing-mocking) (Server-Side Client) plus MSW with `@dansnow/orpc-msw` for HTTP-level tests. Phase 3 rewritten around these patterns. The CLI keeps RPCLink for production; only the test approach changes.
+- **2026-08-10** (revised): Phase 2 ISR strategy corrected. Earlier drafts called for threading `next.revalidate` and `next.tags` through the RPCLink `context` (the third argument of the custom `fetch` hook). The oRPC docs do cover client context but explicitly do not document Next.js ISR forwarding. The mechanism Next.js exposes for ISR is the standard `fetch` extension: `init.next.revalidate` and `init.next.tags` are read by Next directly when `globalThis.fetch(url, init)` is called. The correct pattern is therefore to add the directives to `init` inside our custom `fetch` hook, not via `context`. This simplifies both the wrapper and the call sites.
