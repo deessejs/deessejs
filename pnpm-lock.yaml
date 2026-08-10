@@ -249,6 +249,9 @@ importers:
       '@deessejs/fp':
         specifier: ^1.0.0
         version: 1.0.0(@deessejs/errors@1.1.1)
+      '@orpc/client':
+        specifier: 'catalog:'
+        version: 1.14.7
       commander:
         specifier: ^12.1.0
         version: 12.1.0
@@ -359,6 +362,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@orpc/client':
+        specifier: 'catalog:'
+        version: 1.14.7
       '@workspace/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

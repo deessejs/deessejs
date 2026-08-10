@@ -13,6 +13,7 @@
     "content-collections": "content-collections build"
   },
   "dependencies": {
+    "@orpc/client": "catalog:",
     "@workspace/contracts": "workspace:*",
     "@workspace/ui": "workspace:*",
     "fuse.js": "catalog:",

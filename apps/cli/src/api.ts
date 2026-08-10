@@ -1,3 +1,6 @@
+import { createORPCClient } from "@orpc/client"
+import { RPCLink } from "@orpc/client/fetch"
+import type { ClientOptions } from "@orpc/client"
 import { TemplatesListResponseV1 } from "@workspace/contracts/v1"
 
 import { USER_AGENT } from "./constants.js"
@@ -12,62 +15,145 @@ export type FetchOptions = {
   skipVersionCheck?: boolean
   /**
    * Maximum number of retry attempts for `fetchWithRetry`. Production
-   * default is 3. Tests pass `1` so the mock isn't retried 3 times
-   * with backoff before the test sees the response.
+   * default is 3. Tests pass `1` to skip the retry/backoff in unit tests
+   * that target the typed client (procedure contract is tested via the
+   * Server-Side Client pattern; see test/contract/templates.test.ts).
    */
   maxAttempts?: number
 }
 
 /**
- * oRPC request body for a no-input procedure. The numeric key (`"0"`) is
- * the procedure's input slot; with no inputs we send `null`. The server
- * unwraps this and runs the named procedure.
- */
-const ORPC_NO_INPUT_BODY = JSON.stringify({ "0": { json: null, meta: [] } })
-
-/**
- * Unwrap the oRPC envelope and return the procedure's typed result.
+ * Adapter that exposes our retry-aware `fetchWithRetry` as the global
+ * `fetch` shape that `RPCLink` expects.
  *
- * The server returns `{ result: { data: ... } }` for success, or
- * `{ defined, code, status, message, data }` for ORPCError. We unwrap
- * the success shape; the error shape is identified by shape match and
- * surfaced as a `parse_error` carrying the server's code.
+ * Signature comes from `@orpc/client/adapters/fetch/index.d.ts`:
+ *   fetch(request, init, options, path, input) => Promise<Response>
+ *
+ * We only consume `request` and `init.redirect`. The rest are surfaced
+ * for plugins/interceptors and we don't use either.
+ *
+ * The `Request.body` is a stream; the client always passes a string for
+ * RPC procedures (the JSON envelope). We read it once via `req.text()`.
  */
-const unwrapOrpc = (envelope: unknown): unknown => {
-  if (
-    envelope !== null &&
-    typeof envelope === "object" &&
-    "result" in envelope &&
-    envelope.result !== null &&
-    typeof envelope.result === "object" &&
-    "data" in envelope.result
-  ) {
-    return (envelope.result as { data: unknown }).data
+export const orpcFetch = async (
+  request: Request | string,
+  init: { redirect?: Request["redirect"] } | undefined,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _options?: ClientOptions<Record<string, unknown>>,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _path?: readonly string[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _input?: unknown,
+): Promise<Response> => {
+  let req: Request
+  if (typeof request === "string") {
+    if (init?.redirect !== undefined) {
+      req = new Request(request, { redirect: init.redirect })
+    } else {
+      req = new Request(request)
+    }
+  } else {
+    req = request
   }
-  return envelope
+
+  const apiUrl = req.url
+  const headers: Record<string, string> = {}
+  req.headers.forEach((value, key) => {
+    headers[key] = value
+  })
+  const body = req.body ? await req.text() : undefined
+
+  const opts: {
+    apiUrl: string
+    method: string
+    body: string
+    headers: Record<string, string>
+    maxAttempts?: number
+  } = {
+    apiUrl,
+    method: req.method,
+    headers,
+    body: body ?? "",
+  }
+  if (body === undefined) opts.body = ""
+
+  const res = await fetchWithRetry(opts)
+  return new Response(res.bodyText, {
+    status: res.status,
+    statusText: res.status === 200 ? "OK" : "Error",
+    headers: {
+      "content-type": "application/json",
+      ...(res.etag ? { etag: res.etag } : {}),
+    },
+  })
 }
 
 /**
- * Detect an ORPCError wire shape on a parsed JSON body.
+ * Build a typed oRPC client for the templates registry.
  *
- * Matches `{ defined: boolean, code: string, status: number, message: string, data: unknown }`.
- * Mirrors the validation done by `@orpc/client` server-side, so a
- * decode failure here means the same thing on both ends.
+ * `RPCLink` takes a base URL; the client appends procedure paths
+ * automatically (`<base>/templates/list`). The router type is inlined
+ * against the shared Zod contract — the client and the server speak
+ * the same shape.
  */
-const isOrpcErrorBody = (body: unknown): body is {
-  code: string
-  status: number
-  message: string
-  data: unknown
-} =>
-  body !== null &&
-  typeof body === "object" &&
-  "code" in body &&
-  typeof (body as { code: unknown }).code === "string" &&
-  "status" in body &&
-  typeof (body as { status: unknown }).status === "number" &&
-  "message" in body &&
-  typeof (body as { message: unknown }).message === "string"
+const buildOrpcClient = (baseUrl: string) => {
+  const link = new RPCLink({
+    url: baseUrl,
+    fetch: orpcFetch,
+  })
+  return createORPCClient<{
+    templates: { list: () => Promise<TemplatesListResponseV1> }
+  }>(link)
+}
+
+/**
+ * Map an unknown error from the typed client to a CliError.
+ *
+ * The server emits one error channel: ORPCError (e.g. `RATE_LIMITED`,
+ * `INTERNAL_SERVER_ERROR`, `NOT_FOUND`). The client decodes the wire
+ * shape `{ defined, code, status, message, data }` into a real
+ * `ORPCError` instance and throws it.
+ *
+ * We match the wire shape (not `instanceof ORPCError`) because the
+ * client may live-load a different version of `@orpc/client` than the
+ * one we import here for the type, breaking `instanceof`. Shape
+ * matching is robust to that.
+ *
+ * Network errors (fetch failed before reaching the server) are
+ * `TypeError`. Anything else falls through to a generic `network_error`
+ * with the original message.
+ */
+export const orpcToCliError = (e: unknown): Error & { code: string } => {
+  if (
+    e !== null &&
+    typeof e === "object" &&
+    "code" in e &&
+    typeof (e as { code: unknown }).code === "string" &&
+    "status" in e &&
+    typeof (e as { status: unknown }).status === "number"
+  ) {
+    const err = e as unknown as {
+      code: string
+      status: number
+      data?: unknown
+      message?: string
+    }
+    const detail =
+      err.data !== undefined
+        ? typeof err.data === "string"
+          ? err.data
+          : JSON.stringify(err.data)
+        : err.message ?? ""
+    return parseError(
+      `endpoint returned ORPCError ${err.code} (status ${err.status})`,
+      `server returned ${err.code} (status ${err.status}): ${detail}`,
+    )
+  }
+  if (e instanceof TypeError) {
+    return networkError(e.message)
+  }
+  return networkError(e instanceof Error ? e.message : String(e))
+}
 
 /**
  * Fetch the templates registry.
@@ -75,26 +161,22 @@ const isOrpcErrorBody = (body: unknown): body is {
  * Flow:
  *   1. (If not skipVersionCheck) probe /cli-version and warn if outdated.
  *      Failure here is silent — version check is best-effort.
- *   2. POST to the oRPC endpoint with the standard no-input body.
- *      Retry + backoff are handled by fetchWithRetry.
- *   3. Surface typed errors. ORPCError-shape bodies are surfaced as
- *      parse_error with the server's code; network failures (5xx,
- *      connection refused, malformed non-JSON) are network_error.
+ *   2. Call templates.list via the typed oRPC client. Retry + backoff
+ *      are handled inside `orpcFetch` (delegating to fetchWithRetry).
+ *   3. Surface typed errors. ORPCError.code is mapped to a CliError.
  *
- * Why direct fetch + manual unwrap instead of `@orpc/client` + RPCLink:
- *   - The CLI keeps a sophisticated retry/backoff/429-aware fetch via
- *     fetchWithRetry. Wrapping it into a global `fetch` shape to feed
- *     RPCLink adds friction without much gain: we still parse the body
- *     through Zod, we still throw the same CliError codes, and the
- *     unwrap is one short helper.
- *   - The 5-arg signature of `RPCLink.fetch` is fragile to mock under
- *     Vitest's `vi.stubGlobal("fetch")` — the mock receives a `Request`
- *     object whose body stream is consumed once and cannot be
- *     re-inspected. Tests that simulate 4xx/5xx with the typed client
- *     end up with a generic "Cannot parse response body" Error instead
- *     of an ORPCError, defeating the error-mapping goal.
- *   - We keep direct fetch + unwrap. Same wire format, same retry
- *     semantics, simpler code, testable.
+ * Testing:
+ *   - The procedure contract (success, ORPCError shapes, contract
+ *     drift) is tested via the Server-Side Client pattern in
+ *     `test/contract/templates.test.ts`. Call `appRouter.templates.list()`
+ *     directly, no HTTP.
+ *   - The HTTP layer (retry, envelope parsing, isOrpcErrorBody mapping)
+ *     is tested via a Node `http.createServer` fixture in
+ *     `test/http/fetch-templates.test.ts`. The CLI hits the fixture URL.
+ *   - We do not mock `fetch` globally. RPCLink builds a `Request`
+ *     whose body is consumed once, and a global fetch mock bypasses
+ *     RPCLink entirely. See Phase 3 of
+ *     `docs/engineering/plans/orpc-client-migration.md` for details.
  */
 export const fetchTemplates = async (
   apiUrl: string,
@@ -104,72 +186,16 @@ export const fetchTemplates = async (
     await maybeWarnAboutOutdatedCli(apiUrl)
   }
 
-  let res: Awaited<ReturnType<typeof fetchWithRetry>>
+  const client = buildOrpcClient(apiUrl)
   try {
-    const opts: {
-      apiUrl: string
-      method: string
-      body: string
-      headers: Record<string, string>
-      maxAttempts?: number
-    } = {
-      apiUrl,
-      method: "POST",
-      body: ORPC_NO_INPUT_BODY,
-      headers: {
-        "user-agent": USER_AGENT,
-        accept: "application/json",
-        "content-type": "application/json",
-      },
-    }
-    if (options.maxAttempts !== undefined) opts.maxAttempts = options.maxAttempts
-    res = await fetchWithRetry(opts)
+    const result = await client.templates.list()
+    return result.templates
   } catch (e) {
-    throw networkError(
-      `fetch failed: ${e instanceof Error ? e.message : String(e)}`,
-    )
+    throw orpcToCliError(e)
   }
-
-  // The body can carry an ORPCError wire shape regardless of status —
-  // 4xx, 5xx, and even some 2xx paths (e.g. Zod parse failure inside
-  // a procedure) all encode the error as `{ defined, code, status,
-  // message, data }`. We read the body first, then decide what to do.
-  //
-  // If the body is not JSON at all, that's a transport-level failure
-  // (the server returned something we can't decode). network_error.
-  let body: unknown
-  try {
-    body = JSON.parse(res.bodyText)
-  } catch (e) {
-    throw networkError(
-      `endpoint returned non-JSON body: ${e instanceof Error ? e.message : String(e)}`,
-    )
-  }
-
-  // ORPCError wire shape: surface the server's code instead of letting
-  // it be re-wrapped by the contract Zod parse. This catches errors
-  // thrown from procedures (e.g. templates_fetch_failed, RATE_LIMITED,
-  // NOT_FOUND) and from Hono-level middleware (the global onError maps
-  // to ORPCError since Phase 1).
-  if (isOrpcErrorBody(body)) {
-    throw parseError(
-      `endpoint returned ORPCError ${body.code} (status ${body.status})`,
-      `server returned ${body.code} (status ${body.status}): ${body.data ?? body.message}`,
-    )
-  }
-
-  if (res.status < 200 || res.status >= 300) {
-    throw networkError(`endpoint returned HTTP ${res.status}`)
-  }
-
-  const result = TemplatesListResponseV1.safeParse(unwrapOrpc(body))
-  if (!result.success) {
-    throw parseError(
-      `response shape mismatch: ${result.error.issues
-        .map((i) => `${i.path.join(".")} (${i.code})`)
-        .join(", ")}`,
-    )
-  }
-
-  return result.data.templates
 }
+
+// USER_AGENT is forwarded by fetchWithRetry as a default header.
+// Kept the import so future work that wants to thread it on the
+// link directly has the symbol handy.
+void USER_AGENT
