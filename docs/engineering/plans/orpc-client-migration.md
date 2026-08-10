@@ -19,8 +19,8 @@ decisions:
     rationale: "Today, procedures throw ORPCError (e.g. auth middleware), while Hono-level middleware (rate limit, 404, global onError) produce our custom { code, message, requestId } envelope via errorBody(). Until the server side is unified, the client must handle both shapes."
   - id: server-error-unification
     date: 2026-08-10
-    choice: "Long-term: throw ORPCError from Hono middleware too, drop errorBody envelope"
-    rationale: "The client expects ORPCError on every error path. The Hono middleware (rate limit, 404, onError) currently bypass oRPC by returning a custom JSON envelope. Migrating them to throw ORPCError makes the wire uniform and lets the client catch one error type."
+    choice: "Unify now (Phase 1): convert Hono middleware to ORPCError, drop errorBody envelope"
+    rationale: "Two error channels on the wire is a permanent anti-pattern that forces every client to handle two decoders and creates silent drift between server codes and client mappers. Phase 1 absorbs the server-side change alongside the CLI migration. Effort: half a day extra; payoff: every consumer sees one error type forever."
   - id: web-rsc
     date: 2026-08-10
     choice: "Use @orpc/client with custom fetch that threads Next.js ISR directives"
@@ -124,84 +124,89 @@ The third argument of the `fetch` hook carries `context`, which oRPC also passes
 
 ## Plan
 
-### Phase 1 — typed CLI client
+### Phase 1 — typed CLI client AND unified server error format
 
-1. **Type the wrapper correctly.** Rewrite `apps/cli/src/api.ts` so `orpcFetch` accepts all five arguments:
+The CLI migration and the server-side error unification land in the same phase. Two error channels on the wire is an anti-pattern we won't ship: it forces every client to handle two decoders, doubles the test surface, and creates silent drift between server codes and client mappers. Better to fix it now while we're already touching both sides.
 
-   ```ts
-   import type { ClientOptions } from "@orpc/client"
-   const orpcFetch = async <T>(
-     request: Request,
-     init: { redirect?: Request["redirect"] },
-     _options: ClientOptions<T>,
-     _path: readonly string[],
-     _input: unknown,
-   ): Promise<Response> => {
-     // unwrap retry result -> Response
-   }
-   ```
+#### 1.1 — Convert Hono middleware to `ORPCError`
 
-   No `as unknown` cast. The signature is the one from `@orpc/client/adapters/fetch/index.d.ts`.
+In `packages/api/src/index.ts` and `packages/api/src/middleware/`:
 
-2. **Map both error channels to CliError.** Add a small helper next to `networkError` and `parseError` in `apps/cli/src/errors.ts`:
+- **Rate-limit middleware** (`middleware/rate-limit.ts:80`): replace the `c.json(errorBody(...), 429)` call with `throw new ORPCError("RATE_LIMITED", { status: 429, data: { retryAfter: <seconds> } })`.
+- **Global `onError`** (`index.ts:57`): keep it as a Hono-level handler that maps unknown errors to `INTERNAL_SERVER_ERROR`. We don't throw ORPCError from `onError` because Hono's error handling runs at the Hono layer, not the oRPC layer — by the time we get there, the response shape is already decided. The pragmatic fix is to make sure the response is `ORPCError`-shaped: `c.body(JSON.stringify({ defined: false, code: "INTERNAL_SERVER_ERROR", status: 500, message: "...", data: {} }), { status: 500, headers: { "content-type": "application/json" } })`. The client will decode it as a `defined: false` `ORPCError`.
+- **404 handler** (`index.ts:181`): `throw new ORPCError("NOT_FOUND", { status: 404 })` instead of `c.json(errorBody(...), 404)`. But wait — Hono's `api.notFound` doesn't run inside the oRPC middleware. It runs when the oRPC middleware calls `next()` and Hono can't find a route. The 404 path lives outside the oRPC handler.
 
-   ```ts
-   import { ORPCError } from "@orpc/client"
+  Resolution: replace the Hono `notFound` with a fallback oRPC middleware mounted on `*` (after the `/rpc/*` one) that throws `NOT_FOUND`. Cleaner: extend the `/rpc/*` middleware to handle unmatched paths inside oRPC's envelope.
 
-   /**
-    * Map an unknown error from the typed client to a CliError.
-    *
-    * Two error channels from the server:
-    *  1. ORPCError from a procedure — has `code`, `status`, `data`.
-    *  2. Custom envelope { code, message, requestId } from a Hono
-    *     middleware — not an ORPCError, but parseable as JSON.
-    *
-    * Network errors (fetch failed) are network_error. Anything we
-    * can parse is parse_error. We surface server codes as-is so the
-    * user sees the same vocabulary on both sides of the wire.
-    */
-   export const orpcToCliError = async (
-     e: unknown,
-     getResponseBody: () => Promise<string>,
-   ): Promise<CliError> => {
-     if (e instanceof ORPCError) {
-       return parseError(`server returned ${e.code}: ${e.data ?? e.message}`)
-     }
-     // Network error: fetch failed before reaching the server.
-     if (e instanceof TypeError) {
-       return networkError(e.message)
-     }
-     // Hono middleware envelope: the client could not decode the
-     // response as ORPCError, but the body is a known shape.
-     try {
-       const body = await getResponseBody()
-       const envelope = JSON.parse(body) as { code?: string; message?: string }
-       if (envelope?.code) {
-         return parseError(`server returned ${envelope.code}: ${envelope.message ?? ""}`)
-       }
-     } catch {
-       // Body was not parseable JSON; fall through to network_error.
-     }
-     return networkError(e instanceof Error ? e.message : String(e))
-   }
-   ```
+#### 1.2 — Define a shared error map
 
-   The `getResponseBody` closure is a small escape hatch: it gives the mapper access to the raw response when oRPC couldn't decode it. In `fetchTemplates` we wire it to the fetch hook's last successful response body.
+In `packages/api/src/router/index.ts` (or a new `errors.ts`):
 
-3. **Drop the manual unwrap.** No more `ORPC_NO_INPUT_BODY` constant — the client builds the body. No more `unwrapOrpc` helper. The client wraps the response in `ORPCError` if the envelope is wrong.
+```ts
+import { os } from "@orpc/server"
+import { z } from "zod"
 
-4. **Capture the response body in the fetch hook.** Modify `orpcFetch` to keep the last response body in a closure so the error mapper can read it on decode failure:
+export const base = os.errors({
+  RATE_LIMITED: {
+    data: z.object({ retryAfter: z.number() }),
+    status: 429,
+  },
+  NOT_FOUND: { status: 404 },
+  UNAUTHORIZED: { status: 401 },
+})
+```
 
-   ```ts
-   let lastBody = ""
-   const orpcFetch: typeof fetch = async (request, init, options, path, input) => {
-     const res = await fetchWithRetry(/* map (request, init) to opts */)
-     lastBody = res.bodyText
-     return new Response(res.bodyText, /* status, headers */)
-   }
-   ```
+Use it from procedures:
 
-   The `orpcToCliError(e, () => lastBody)` call reads this.
+```ts
+throw base.errors.RATE_LIMITED({ data: { retryAfter: 60 } })
+```
+
+The `defined: true` flag on the wire tells the typed client this code is known.
+
+#### 1.3 — Delete `packages/api/src/envelope.ts`
+
+Once nothing references `errorBody`, the file is dead. Verify with `grep -rn "errorBody" packages/` before deleting.
+
+#### 1.4 — Type the CLI fetch wrapper correctly
+
+```ts
+import type { ClientOptions } from "@orpc/client"
+const orpcFetch = async <T>(
+  request: Request,
+  init: { redirect?: Request["redirect"] },
+  _options: ClientOptions<T>,
+  _path: readonly string[],
+  _input: unknown,
+): Promise<Response> => {
+  // unwrap retry result -> Response
+}
+```
+
+No `as unknown` cast. The signature is the one from `@orpc/client/adapters/fetch/index.d.ts`.
+
+#### 1.5 — Map `ORPCError` to `CliError` (single channel now)
+
+```ts
+import { ORPCError } from "@orpc/client"
+
+export const orpcToCliError = (e: unknown): CliError => {
+  if (e instanceof ORPCError) {
+    return parseError(`server returned ${e.code}: ${e.data ?? e.message}`)
+  }
+  // Network error: fetch failed before reaching the server.
+  if (e instanceof TypeError) {
+    return networkError(e.message)
+  }
+  return networkError(e instanceof Error ? e.message : String(e))
+}
+```
+
+With Phase 1.1-1.3 done, every error from the server is an `ORPCError`. The mapper only needs the `ORPCError` branch and the network-error fallback. **The two-channel mapper from the previous version of this plan is now obsolete** — that's the win.
+
+#### 1.6 — Drop the manual unwrap
+
+No more `ORPC_NO_INPUT_BODY` constant — the client builds the body. No more `unwrapOrpc` helper. The client wraps the response in `ORPCError` if the envelope is wrong.
 
 ### Phase 2 — typed web client (RSC-aware)
 
@@ -223,29 +228,7 @@ The simpler path for V1: keep mocking `fetch` globally, but expect an oRPC envel
 
 For the Hono-envelope error channel (Phase 1 step 2), add at least one test that returns `{ code, message, requestId }` and asserts the mapper surfaces it as `parse_error` with the server's code.
 
-### Phase 4 — server-side error unification (long-term)
-
-The Hono middleware currently bypass oRPC. To make the client uniform:
-
-1. **Convert `notFound` and the global `onError` in `packages/api/src/index.ts`** to throw `ORPCError` instead of returning our custom JSON.
-
-2. **Convert the rate-limit middleware** to throw `new ORPCError("RATE_LIMITED", { status: 429, data: { retryAfter: ... } })`. The auth middleware already does this style with `UNAUTHORIZED`.
-
-3. **Define a shared error map** in `packages/api/src/router/index.ts` or a dedicated `errors.ts`:
-
-   ```ts
-   const base = os.errors({
-     RATE_LIMITED: { data: z.object({ retryAfter: z.number() }) },
-     NOT_FOUND: {},
-     UNAUTHORIZED: {},
-   })
-   ```
-
-4. **Delete `packages/api/src/envelope.ts`** once nothing references it. The custom `errorBody` helper becomes dead code.
-
-This phase is **optional for the client migration to land** — the client just needs to handle both channels. But it's the clean end-state and removes the second error path.
-
-### Phase 5 — error taxonomy alignment
+### Phase 4 — error taxonomy alignment
 
 Right now our server-side codes live in `packages/api/src/envelope.ts` (`errorBody(c, code, message)`) and our client-side codes live in `apps/cli/src/errors.ts` (`networkError`, `parseError`). They don't share a vocabulary.
 
@@ -260,11 +243,10 @@ We pick **A** because the codes cross the wire and we already import the contrac
 
 | Phase | Scope | Effort | Risk |
 |---|---|---|---|
-| 1 — typed CLI client (two-channel error map) | `apps/cli/src/api.ts` + `apps/cli/src/errors.ts` | 1 day | Low: signature is verified, error mapper handles both channels. |
+| 1 — typed CLI client + server error unification | `apps/cli/src/api.ts`, `packages/api/src/index.ts`, `packages/api/src/middleware/*`, `packages/api/src/envelope.ts` (delete) | 2 days | Medium: touches the rate-limit and error middleware, plus the CLI client. |
 | 2 — typed web client | `apps/web/src/lib/orpc.ts` + `apps/web/src/lib/templates-api.ts` | half a day | Medium: Next.js ISR semantics need careful threading via `context.next`. |
-| 3 — test refactor (Hono envelope coverage) | rewrite `apps/cli/test/unit/api.test.ts` | half a day | Low. |
-| 4 — server-side error unification | convert Hono middleware to `ORPCError`, delete `envelope.ts` | 1-2 days | Medium: touches the rate-limit and error middleware. |
-| 5 — error taxonomy alignment | new `packages/contracts/src/errors.ts` | 1 day | Low: additive change. |
+| 3 — test refactor | rewrite `apps/cli/test/unit/api.test.ts` + add server-error tests | half a day | Low. |
+| 4 — error taxonomy alignment | new `packages/contracts/src/errors.ts` | 1 day | Low: additive change. |
 
 ## Risks and mitigations
 
@@ -286,5 +268,6 @@ We pick **A** because the codes cross the wire and we already import the contrac
 ## Decision log
 
 - **2026-08-10**: decided to commit a checkpoint of the broken RPCLink work rather than discard it. We learned that `RPCLink.fetch` has a 5-arg signature and that `ORPCError.code` is the right surface for our CliError codes. Both lessons are now baked into this plan.
-- **2026-08-10**: audited `packages/api/src/index.ts` against the oRPC Hono guide. Current implementation follows the recommended patterns (RPCHandler, body-parser Proxy, prefix, c.newResponse, await next()). No server-side changes required for the client migration.
-- **2026-08-10**: confirmed two error channels on the wire — `ORPCError` from procedures (decoded by the typed client) and the custom `{ code, message, requestId }` envelope from Hono middleware (NOT decoded by the typed client). The CLI error mapper must handle both. Long-term: unify server-side by throwing `ORPCError` from Hono middleware too (Phase 4).
+- **2026-08-10**: audited `packages/api/src/index.ts` against the oRPC Hono guide. Current implementation follows the recommended patterns (RPCHandler, body-parser Proxy, prefix, c.newResponse, await next()).
+- **2026-08-10**: confirmed two error channels on the wire — `ORPCError` from procedures (decoded by the typed client) and the custom `{ code, message, requestId }` envelope from Hono middleware (NOT decoded).
+- **2026-08-10** (revised): decided to absorb the server-side error unification into Phase 1 instead of treating it as a separate long-term task. Rationale: the two-channel error model is a permanent anti-pattern; every new client would have to handle it; the cost of unifying now (half a day) is much smaller than the cost of carrying the debt forward. The plan now ships a single error channel end-to-end.
