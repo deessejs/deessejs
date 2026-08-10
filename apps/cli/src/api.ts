@@ -16,14 +16,18 @@ export type FetchOptions = {
 
 const TEMPLATES_CACHE_FILE = "templates.json"
 
-const buildHeaders = (etag: string | null): Record<string, string> => {
-  const headers: Record<string, string> = {
-    "user-agent": USER_AGENT,
-    accept: "application/json",
-  }
-  if (etag) headers["If-None-Match"] = etag
-  return headers
-}
+/**
+ * oRPC request body for a no-input procedure. The numeric key (`"0"`) is
+ * the procedure's input slot; with no inputs we send `null`. The server
+ * unwraps this and runs the named procedure.
+ */
+const ORPC_NO_INPUT_BODY = JSON.stringify({ "0": { json: null, meta: [] } })
+
+const buildHeaders = (): Record<string, string> => ({
+  "user-agent": USER_AGENT,
+  accept: "application/json",
+  "content-type": "application/json",
+})
 
 /**
  * Fetch the templates registry, with disk cache + retry + offline support.
@@ -62,7 +66,9 @@ export const fetchTemplates = async (
   try {
     res = await fetchWithRetry({
       apiUrl,
-      headers: buildHeaders(cached?.etag ?? null),
+      method: "POST",
+      body: ORPC_NO_INPUT_BODY,
+      headers: buildHeaders(),
     })
   } catch (e) {
     // All retries exhausted on a network error. Fall back to cache.
@@ -77,10 +83,6 @@ export const fetchTemplates = async (
     )
   }
 
-  if (res.status === 304 && cached) {
-    return cached.body.templates
-  }
-
   if (res.status < 200 || res.status >= 300) {
     // Non-retryable failure (4xx other than 429, or 5xx after all retries).
     if (cached) {
@@ -92,22 +94,36 @@ export const fetchTemplates = async (
     throw networkError(`endpoint returned HTTP ${res.status}`)
   }
 
-  let body: unknown
+  let envelope: unknown
   try {
-    body = JSON.parse(res.bodyText)
+    envelope = JSON.parse(res.bodyText)
   } catch (e) {
     throw parseError(
       `endpoint returned non-JSON body: ${e instanceof Error ? e.message : String(e)}`,
     )
   }
 
-  const result = TemplatesListResponseV1.safeParse(body)
+  // oRPC wraps the procedure return in `{ result: { data: ... } }`.
+  // Unwrap before validating against the public contract.
+  const data =
+    envelope !== null &&
+    typeof envelope === "object" &&
+    "result" in envelope &&
+    envelope.result !== null &&
+    typeof envelope.result === "object" &&
+    "data" in envelope.result
+      ? (envelope.result as { data: unknown }).data
+      : envelope
+
+  const result = TemplatesListResponseV1.safeParse(data)
   if (!result.success) {
     throw parseError(
       `response shape mismatch: ${result.error.issues.map((i) => `${i.path.join(".")} (${i.code})`).join(", ")}`,
     )
   }
 
-  writeDiskCache(TEMPLATES_CACHE_FILE, result.data, res.etag)
+  // oRPC responses don't carry an ETag; we rely on `fetchedAt` to drive
+  // cache freshness in the CLI. Disk the body and move on.
+  writeDiskCache(TEMPLATES_CACHE_FILE, result.data, null)
   return result.data.templates
 }

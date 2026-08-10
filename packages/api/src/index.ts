@@ -10,8 +10,6 @@ import { db } from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import { appRouter } from "./router/index.js"
 import { API_BASE_PATH } from "./base-path.js"
-import { TEMPLATES } from "./templates.js"
-import { fetchTemplates } from "./templates-fetcher.js"
 import { logger } from "./logger.js"
 import { requestId, REQUEST_ID_HEADER } from "./middleware/request-id.js"
 import { onError as onApiError } from "./middleware/error-handler.js"
@@ -93,34 +91,9 @@ api.use("*", async (c, next) => {
 // Health check
 api.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }))
 
-// Templates endpoint — consumed by the @deessejs/cli (list / info / init).
-// Public for V1 (the CLI has no auth tokens yet). V1.1 (device auth) can
-// gate this behind the authMiddleware without breaking the response shape.
-//
-// Live data: each request hits GitHub's REST API in parallel for every
-// registry entry, merges the response onto the static fields, and
-// returns the enriched list. No caching layer in V1 — if GitHub is
-// unreachable or rate-limited, the endpoint returns 503 with a stable
-// error code (templates_fetch_failed). Caching is a V1.1 concern
-// (background refresh + Redis) — the CLI handles its own disk cache.
-//
-// Rate limit: per-IP fixed window, default 100 req/min per Vercel
-// instance. The number lives in env (RATE_LIMIT_PER_MINUTE) so operators
-// can tighten it without a redeploy.
-api.get("/templates", rateLimit(serverEnv.RATE_LIMIT_PER_MINUTE), async (c) => {
-  try {
-    const templates = await fetchTemplates(TEMPLATES)
-    return c.json({ templates })
-  } catch (error) {
-    logger.error("templates_fetch_failed", {
-      error: error instanceof Error ? error.message : String(error),
-    })
-    return c.json(
-      errorBody(c, "templates_fetch_failed", "Could not load templates from GitHub. Try again in a few minutes."),
-      503,
-    )
-  }
-})
+// Templates endpoint — moved to an oRPC procedure at /api/v1/rpc/templates/list.
+// The CLI now calls it via @orpc/client instead of hitting a REST route.
+// CLI version 2.0.0+ required (see packages/api/src/cli-version.ts).
 
 // CLI version probe — public, no auth, low rate limit. The CLI calls this
 // on startup to warn the user when their installed version is below

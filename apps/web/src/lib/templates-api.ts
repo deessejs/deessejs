@@ -12,10 +12,21 @@ export type FetchTemplatesResult =
   | { ok: false; error: string }
 
 /**
+ * Body sent to a no-input oRPC procedure. The numeric key (`"0"`) is the
+ * procedure's input slot; with no inputs we send `null`. The server
+ * unwraps this and runs the named procedure.
+ */
+const ORPC_NO_INPUT_BODY = JSON.stringify({ "0": { json: null, meta: [] } })
+
+/**
  * Fetch the templates registry from the backend.
  *
  * Runs as a React Server Component: `cache: "force-cache"` with a
  * revalidation window (ISR). The browser never sees this call.
+ *
+ * The endpoint is an oRPC procedure (`templates.list`). The server wraps
+ * the response in `{ result: { data: ... } }`, which we unwrap here
+ * before validating against the public Zod contract.
  *
  * Why ISR + tags instead of plain SSR:
  *   - The catalog changes rarely. SSR per request is wasted work.
@@ -32,11 +43,16 @@ export type FetchTemplatesResult =
 export const fetchTemplates = async (): Promise<FetchTemplatesResult> => {
   try {
     const res = await fetch(TEMPLATES_URL, {
+      method: "POST",
+      body: ORPC_NO_INPUT_BODY,
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+      },
       next: {
         revalidate: TEMPLATES_REVALIDATE_SECONDS,
         tags: ["templates"],
       },
-      headers: { accept: "application/json" },
     })
 
     if (!res.ok) {
@@ -46,8 +62,18 @@ export const fetchTemplates = async (): Promise<FetchTemplatesResult> => {
       }
     }
 
-    const body: unknown = await res.json()
-    const parsed = TemplatesListResponseV1.safeParse(body)
+    const envelope: unknown = await res.json()
+    const data =
+      envelope !== null &&
+      typeof envelope === "object" &&
+      "result" in envelope &&
+      envelope.result !== null &&
+      typeof envelope.result === "object" &&
+      "data" in envelope.result
+        ? (envelope.result as { data: unknown }).data
+        : envelope
+
+    const parsed = TemplatesListResponseV1.safeParse(data)
     if (!parsed.success) {
       return {
         ok: false,

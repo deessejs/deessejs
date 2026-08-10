@@ -2,6 +2,8 @@ import { USER_AGENT } from "./constants.js"
 
 export type FetchRetryOptions = {
   apiUrl: string
+  method?: string
+  body?: string
   headers?: Record<string, string>
   /** Maximum number of attempts. Default 3. */
   maxAttempts?: number
@@ -52,7 +54,12 @@ export const fetchWithRetry = async (
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     let res: Response
     try {
-      res = await fetch(opts.apiUrl, { headers })
+      const init: RequestInit = {
+        method: opts.method ?? "GET",
+        headers,
+      }
+      if (opts.body !== undefined) init.body = opts.body
+      res = await fetch(opts.apiUrl, init)
     } catch (e) {
       lastNetworkError = e
       if (attempt < maxAttempts - 1) {

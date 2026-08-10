@@ -10,7 +10,12 @@
  * the intent is clear from the file location.
  */
 
-const FALLBACK_TEMPLATES_URL = "https://app.deessejs.com/api/v1/templates"
+/**
+ * oRPC endpoint for the templates registry. Marketing consumes the
+ * `templates.list` procedure, just like the CLI does.
+ */
+const FALLBACK_TEMPLATES_URL =
+  "https://app.deessejs.com/api/v1/rpc/templates/list"
 
 export const TEMPLATES_URL: string =
   process.env.TEMPLATES_URL ?? FALLBACK_TEMPLATES_URL
