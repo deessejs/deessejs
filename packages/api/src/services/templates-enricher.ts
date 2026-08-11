@@ -1,5 +1,5 @@
 /**
- * GitHub fetcher for the templates registry.
+ * GitHub enricher for the templates registry.
  *
  * Each entry in the registry declares `owner` and `repo`. For every entry
  * we hit GitHub's REST API in parallel:
@@ -89,26 +89,26 @@ const fetchReadme = async (
   return Buffer.from(payload.content, "base64").toString("utf8")
 }
 
-export type FetchedTemplate = TemplateV1
+export type EnrichedTemplate = TemplateV1
 
 /**
- * Fetch live data from GitHub for each registry entry. Failures
+ * Enrich each registry entry with live data from GitHub. Failures
  * (network, rate limit, 404) throw — the caller is expected to
  * translate that into a 503 response.
  */
-export async function fetchTemplates(
+export async function enrich(
   registry: ReadonlyArray<TemplateV1>,
-): Promise<FetchedTemplate[]> {
+): Promise<EnrichedTemplate[]> {
   const token = serverEnv.GITHUB_TOKEN
 
   const enriched = await Promise.all(
-    registry.map(async (entry): Promise<FetchedTemplate> => {
+    registry.map(async (entry): Promise<EnrichedTemplate> => {
       const [repo, readme] = await Promise.all([
         fetchRepo(entry.owner, entry.repo, token),
         fetchReadme(entry.owner, entry.repo, token),
       ])
 
-      const enrichedEntry: FetchedTemplate = {
+      const enrichedEntry: EnrichedTemplate = {
         ...entry,
         // Prefer the live repo name over the registry name when they differ.
         // In practice the registry name is editorial and matches the repo,

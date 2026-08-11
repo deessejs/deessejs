@@ -127,15 +127,15 @@ live-load a different version of `@orpc/client` than the one we
 import for the type, breaking `instanceof`. Shape matching is
 robust to that.
 
-## templates-fetcher
+## templates-enricher
 
-`packages/api/src/services/templates-fetcher.ts`. The single source
+`packages/api/src/services/templates-enricher.ts`. The single source
 of GitHub access for the templates registry. Called by the
 `templates.list` procedure in `router/templates.ts`. Fetches
-metadata for each registry entry in parallel. Returns enriched
-templates with `name`, `description`, `license`, `labels`,
-`updatedAt`, `stars`, `readme`. Fails loud on rate-limit or
-downtime.
+metadata for each registry entry in parallel and merges it onto
+the editorial registry entries. Returns enriched templates with
+`name`, `description`, `license`, `labels`, `updatedAt`, `stars`,
+`readme`. Fails loud on rate-limit or downtime.
 
 ## union of keys
 

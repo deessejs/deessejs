@@ -106,6 +106,48 @@ shows a small number of high-level entry points (e.g. `index.ts`,
 `router.ts`, `service.ts`). Opening any sub-directory shows a single
 sub-domain. Reading the package is a tree traversal, not a flat scan.
 
+### Rule 5: no navigation noise in names
+
+The reader knows where they are. The reader knows what they are
+importing. The reader does not need a name to repeat information
+that is already on the screen.
+
+A name that mirrors the file path or the directory above it adds
+characters without adding information. Every call site has to
+re-parse the redundant half. Every grep result duplicates context.
+A reader scanning the file tree is reading the same word three
+times before they get to the verb that distinguishes one function
+from another.
+
+The test: a reader who is already in the file (or one tab away)
+must be able to answer "what does this thing do?" from the name
+alone, without the file or directory name. The name describes the
+**action**, not the **path**.
+
+This applies to:
+
+- **function names**. A function defined in a file whose path
+  already names the noun does not repeat the noun. The verb is
+  enough. `load`, `parse`, `toDto` are sufficient when the caller
+  is in `templates.ts` or one import line away.
+- **file names that repeat the parent directory name verbatim**.
+  `registry/registry.ts` is a tautology. The file is not about
+  "the registry concept" — it is about a specific registry for a
+  specific type.
+- **type names that repeat the file name**. A file exporting a
+  type whose name is the file's stem adds nothing; the import
+  path already carries that information.
+- **prefixes that mirror the package or app**. A function or
+  constant in a sub-domain file does not need a prefix that
+  names the surrounding app, package, or feature. The prefix
+  is for disambiguation; disambiguation is already provided by
+  the file path.
+
+The rule is asymmetric. Repeating the noun is noise. Repeating
+the verb is not — the verb is what tells the reader what the
+function does. `parse` and `toDto` are different verbs; they
+are not redundant even when the noun is identical.
+
 ## What this means in practice
 
 - `packages/api/src/index.ts` is the only file at the package root
@@ -195,6 +237,10 @@ third is not a name. The first two are.
   higher than the cost of "now".
 - "I'll create `types.ts` to share types between files." No. Each
   type lives in its own file or with the feature it belongs to.
+- "The function is called `fetchX` because it fetches X." If the
+  reader is already in `x.ts`, the function is just `load`. The
+  verb is for the action, not the noun. The noun belongs in the
+  file path, not in the function name.
 
 ## What this rule allows
 
@@ -217,6 +263,9 @@ third is not a name. The first two are.
   places is rejected. The author extracts.
 - A PR that puts a function in the wrong sub-domain is rejected. The
   author moves it.
+- A PR that names a function or file by repeating the surrounding
+  path is rejected. The author renames so the name carries the
+  action, not the location.
 - A file over ~200 lines without a clear single responsibility is a
   signal to split. The reviewer flags it, the author splits.
 

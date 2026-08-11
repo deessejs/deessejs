@@ -45,7 +45,7 @@ The current architecture is functional but lacks the affordances of a multi-cons
 - The `Template` schema is duplicated between `packages/api/src/templates.ts` and `apps/cli/src/api.ts`, validated at runtime by a hand-written `isTemplate` type guard.
 - The REST surface is unversioned (`/api/templates` with no `/v1/` prefix), unauthenticated by design, has no caching headers, no rate limiting, no pagination, no request IDs, and no global error handler beyond Hono's defaults.
 - The CLI has no retry, no offline cache, no version negotiation, and no degraded mode — a single network failure aborts the run.
-- `/templates` is documented as "public for V1; gate behind `authMiddleware` in V1.1" in `packages/api/src/index.ts`, but no coexistence path exists for the in-the-wild CLI clients.
+- `/templates` is documented as "public for V1; gate behind `authGuard` in V1.1" in `packages/api/src/index.ts`, but no coexistence path exists for the in-the-wild CLI clients.
 - The API package's tests (`packages/api/tests/routes.test.ts`) construct local `new Hono()` instances with the same patterns; the real exported `api` is not integration-tested, and there is no end-to-end test that proves `apps/app`'s catch-all actually mounts it.
 
 This plan is strategy. It does not write implementation code, open PRs, or touch production files.
@@ -95,7 +95,7 @@ This plan is strategy. It does not write implementation code, open PRs, or touch
 
 - One Hono app, one deployment, one set of env vars (`turbo.json` propagates `DATABASE_URL`, `BETTER_AUTH_SECRET`, etc.).
 - `apps/app/app/api/[[...route]]/route.ts` uses `handle(api)` from `hono/vercel` — no `as any`, no per-route dispatch.
-- Session middleware runs once per request and populates `c.var.user/session`, consumed by `authMiddleware` in `packages/api/src/router/middlewares/auth.ts`.
+- Session middleware runs once per request and populates `c.var.user/session`, consumed by `authGuard` in `packages/api/src/router/auth-middleware.ts`.
 - The body-parser `Proxy` wrapping `c.req.raw` for oRPC prevents the "Body Already Used" issue.
 - `/health` and `/ready` are split: the former for liveness, the latter pings Postgres and returns 503 on failure.
 - The CLI is self-contained: tsup ESM bundle, `commander` + `ora` + `picocolors`, no HTTP client dep, no Git dep.
@@ -107,7 +107,7 @@ This plan is strategy. It does not write implementation code, open PRs, or touch
 |---|---|---|
 | Schema | Adding a required field on `TEMPLATE` breaks old CLI silently (`isTemplate` rejects → `parse_error`) | No shared contract package; no URL versioning |
 | REST | `/api/templates` has no `/v1` prefix, no `ETag`, no `Cache-Control`, no rate limit headers | Built as a private internal endpoint, not a product |
-| CLI | `fetchTemplates` throws `networkError` on first DNS failure | No retry, no offline cache, no degraded mode |
+| CLI | `enrich` throws `networkError` on first DNS failure | No retry, no offline cache, no degraded mode |
 | Observability | Hono default logger, `console.error("[oRPC]", error)` | No request ID, no structured errors, no trace propagation |
 | Auth | `/templates` is public; comment in `packages/api/src/index.ts` says "V1.1 will gate this" | No coexistence plan for installed CLI V1 |
 | Tests | API tests construct local `new Hono()` instances | Real `api` export is not integration-tested |
@@ -179,7 +179,7 @@ This plan is strategy. It does not write implementation code, open PRs, or touch
 - Adds `zValidator("query", …)` for any future filtered endpoint.
 
 **`apps/cli`**:
-- Imports the shared contract; `fetchTemplates` parses the response through `TemplateListResponseV1.parse()`.
+- Imports the shared contract; `enrich` parses the response through `TemplateListResponseV1.parse()`.
 - Adds disk cache at `~/.deessejs/templates.json` keyed by ETag.
 - Adds retry (3 attempts, 250ms / 750ms / 2s with jitter) before falling back to cache.
 - Adds `--offline` flag that skips network entirely if cache exists.

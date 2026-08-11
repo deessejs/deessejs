@@ -13,7 +13,7 @@ export interface BaseContext {
 }
 
 // Auth context — non-null assertions on user and session, available to
-// procedures that go through `authMiddleware`.
+// procedures that go through `authGuard`.
 export interface AuthContext extends BaseContext {
   session: Session
   user: User

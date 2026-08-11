@@ -71,9 +71,9 @@ export const serverSchema = z.object({
     .positive()
     .default(100),
 
-  // GitHub API token (optional). When unset, the templates fetcher
+  // GitHub API token (optional). When unset, the templates enricher
   // hits GitHub anonymously (60 req/h). Set in production to lift
-  // the rate limit to 5000 req/h. See packages/api/src/templates-fetcher.ts.
+  // the rate limit to 5000 req/h. See packages/api/src/services/templates-enricher.ts.
   GITHUB_TOKEN: z.string().optional(),
 })
   // Production-only invariants. Skipped in dev/test so contributors don't

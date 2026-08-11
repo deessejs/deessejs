@@ -96,7 +96,7 @@ After deeper investigation, the wire has **two distinct error channels**, and th
 
 The client oRPC decodes this shape into a real `ORPCError` class instance and throws it. `instanceof ORPCError` works.
 
-The auth middleware (`packages/api/src/router/middlewares/auth.ts`) already uses this pattern:
+The auth middleware (`packages/api/src/router/auth-middleware.ts`) already uses this pattern:
 
 ```ts
 throw new ORPCError("UNAUTHORIZED")

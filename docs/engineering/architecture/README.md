@@ -87,7 +87,7 @@ across every deployment. Tomorrow is what never arrives.
 ### The PR description is part of the work
 
 - "Fixed a bug" is not a description. "Fix the off-by-one in
-  `fetchTemplates` when GitHub returns fewer repos than the registry
+  `enrich` when GitHub returns fewer repos than the registry
   declares" is a description.
 - "I followed the existing pattern" is acceptable when the existing
   pattern is correct. When it's wrong, the PR is wrong.

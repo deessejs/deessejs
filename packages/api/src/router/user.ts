@@ -1,9 +1,9 @@
 import { z } from "zod"
 import { base } from "./context.js"
-import { authMiddleware } from "./middlewares/auth.js"
+import { authGuard } from "./auth-middleware.js"
 
 // Public procedures (no auth)
-export const listUsers = base
+export const list = base
   .input(
     z.object({
       limit: z.number().int().min(1).max(100).optional().default(10),
@@ -16,16 +16,16 @@ export const listUsers = base
   })
 
 // Protected procedures (with auth)
-const protectedBase = base.use(authMiddleware)
+const protectedBase = base.use(authGuard)
 
-export const findUser = protectedBase
+export const find = protectedBase
   .input(z.object({ id: z.string() }))
   .handler(async ({ input }) => {
     // TODO: Implement with @workspace/database
     return { id: input.id, name: "User", email: "user@example.com" }
   })
 
-export const createUser = protectedBase
+export const create = protectedBase
   .input(
     z.object({
       name: z.string().min(1),
@@ -43,8 +43,8 @@ export const getProfile = protectedBase.handler(async ({ context }) => {
 
 // Router
 export const userRouter = {
-  list: listUsers,
-  find: findUser,
-  create: createUser,
+  list,
+  find,
+  create,
   profile: getProfile,
 }

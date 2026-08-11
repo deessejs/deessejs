@@ -5,7 +5,7 @@
  * from, a static `layer` (open-community | pro | enterprise), and an
  * editorial `category`. The live fields (name, description, license,
  * labels, stars, updatedAt, readme) are populated at request time by
- * `services/templates-fetcher.ts`.
+ * `services/templates-enricher.ts`.
  *
  * V1 ships with a single entry: `saas-starter`. Each additional template
  * requires its own GitHub repo to live at the path declared by `owner/repo`.
