@@ -170,6 +170,11 @@ packages/api/src/
 - A PR that puts a Hono file (`app.use(...)` or any
   import of `hono`, `hono/cors`, etc.) under `orpc/`
   is rejected. The author moves it to `http/`.
+- A PR that names a file, constant, route, or docstring in
+  `packages/api/` after a consumer (`cli-version.ts`,
+  `CLI_VERSION`, `/cli-version`, "Consumed by apps/cli")
+  is rejected per [ADR-005](./ADR-005-api-consumer-agnostic.md).
+  The author renames to the server's view.
 - A PR that puts an oRPC file (`os.$context(...)`,
   `os.middleware(...)`, any import of `@orpc/server`)
   under `http/` is rejected. The author moves it to
@@ -261,6 +266,12 @@ the layer names.
   the load-bearing role of oRPC justifies giving it a
   dedicated layer rather than burying it under
   "router/".
+- [ADR-005: API is consumer-agnostic](./ADR-005-api-consumer-agnostic.md) —
+  the structure above is consumer-agnostic by definition
+  (the four layers are named after what the server does,
+  not who consumes it). ADR-005 is the sibling invariant
+  that names the discipline; this ADR is the structural
+  consequence.
 - [knowledge-base/hono/middleware.md](../knowledge-base/hono/middleware.md) —
   the seven custom Hono middlewares that live in
   `http/middleware/`.
