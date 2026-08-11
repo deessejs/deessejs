@@ -47,14 +47,17 @@ Reasons:
   `ORPCError("TEMPLATES_FETCH_FAILED", { status: 503 })`. The
   consumer renders an error state. No silent fallback.
 
-## What we are not doing in V1
+## What this ADR does not allow
 
-- **Server-side cache** (Redis, Vercel KV): deferred. Phase 4 of
-  `docs/engineering/plans/orpc-client-migration.md` discusses this.
-- **Background refresh**: deferred. The cache is hit on every
-  procedure call. If volume grows, we'll add a TTL'd in-memory
-  cache or move to a shared store.
+- **Server-side cache** (Redis, Vercel KV): the registry is fetched
+  on every procedure call. If the volume grows enough to justify the
+  extra dependency, secret, and latency, this ADR is superseded by
+  one that does.
+- **Background refresh**: deferred at the registry layer. The procedure
+  call always hits the upstream source. A TTL'd in-memory cache or a
+  shared store can be added later if the upstream rate-limit becomes
+  a real constraint.
 - **Multiple template categories as separate procedures**: the
-  `category` field on the registry entry handles filtering. We don't
-  split into `templates.listByCategory` unless that becomes a real
-  bottleneck.
+  `category` field on the registry entry handles filtering. A
+  per-category procedure is added only if the single-procedure path
+  becomes a real bottleneck.

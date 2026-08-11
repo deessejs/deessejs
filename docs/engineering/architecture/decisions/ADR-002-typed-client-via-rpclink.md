@@ -40,24 +40,27 @@ identical.
   contract, real `http.createServer` for the HTTP layer, MSW with
   `@dansnow/orpc-msw` for component tests. See `../rules/test-mocking.md`.
 
-## What we are not doing in V1
+## What this ADR does not allow
 
 - **Sharing the `orpc.ts` wrapper across apps via a `@workspace/api-client`
   package**: each app's wrapper is ~30 lines and carries app-specific
   concerns. Abstraction is more expensive than duplication here.
 - **Generating the client from OpenAPI**: the typed client already
-  exists via `RouterClient`. Adding OpenAPI would mean we have two
-  type sources for the same procedures, which drift. Wait until we have
-  external consumers who need OpenAPI.
+  exists via `RouterClient`. Adding OpenAPI would mean having two
+  type sources for the same procedures, which drift. OpenAPI is
+  appropriate when external consumers need it; until then, the
+  typed client is the single source of truth.
 - **Replacing Hono's `basePath` mount with a per-app handler**: the
   catch-all in `apps/app/app/api/[[...route]]/route.ts` already
-  forwards everything to Hono. No per-app Hono mounts.
+  forwards everything to Hono. Per-app Hono mounts would duplicate
+  routing without adding capability.
 
 ## Migration note
 
-Before this ADR was accepted, the CLI used direct `fetch` + manual
-envelope unwrap. That code worked but lost type safety on responses.
-The migration to `RPCLink` is captured in commits on
-`feat/templates` and the plan `orpc-client-migration.md`. Tests that
-mocked the global `fetch` were removed; contract tests use the
-Server-Side Client pattern.
+Any historical detail about how a previous code path looked is not
+captured here. An ADR describes what the system **is**, not what it
+**was**. The git log holds the history.
+
+If you find yourself writing "before this ADR was accepted, the
+system did X" in any doc, stop. Move that detail to a commit
+message or a retrospective — not the ADR.

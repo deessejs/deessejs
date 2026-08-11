@@ -120,7 +120,7 @@ a field to `TemplateV1` flags every test that needs updating.
   case statement).
 - Adding a new procedure does not require a test file in the same
   PR. The contract test is added when the procedure's behavior is
-  stable, not at first commit.
+  stable, not when the procedure is first committed.
 
 ## Anti-patterns
 

@@ -51,8 +51,6 @@ shape:
 Procedures throw `ORPCError` with `defined: true`. Both decode into
 the same `ORPCError` instance on the client side.
 
-`packages/api/src/envelope.ts` was deleted in commit `d8a8c6a`.
-
 ## Consequences
 
 - Every error response, regardless of where it originated, decodes
@@ -61,10 +59,6 @@ the same `ORPCError` instance on the client side.
 - The `ORPCError.code` is the canonical vocabulary. Server-side
   middleware codes match the procedure error map (HTTPException 429
   → `RATE_LIMITED`, HTTPException 404 → `NOT_FOUND`, etc.).
-- Tests that mocked the custom envelope (`{ code, message,
-  requestId }`) need to be rewritten to assert against the ORPCError
-  shape. Most are now `appRouter.X()` direct calls (Server-Side
-  Client).
 - Future error codes added to a procedure's `errors` map flow to
   consumers without consumer changes — the type signature catches
   them.
