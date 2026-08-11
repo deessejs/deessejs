@@ -1,5 +1,5 @@
 import { TemplatesListResponseV1 } from "@workspace/contracts/v1"
-import { base } from "./context.js"
+import { base } from "./base.js"
 import { TEMPLATES } from "../templates.js"
 import { enrich } from "../services/templates-enricher.js"
 

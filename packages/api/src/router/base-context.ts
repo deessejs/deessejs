@@ -1,4 +1,3 @@
-import { os } from "@orpc/server"
 import type { Session, User } from "better-auth"
 
 // Context populated by the Hono session middleware in packages/api/src/index.ts.
@@ -11,13 +10,3 @@ export interface BaseContext {
   /** Per-request correlation ID, set by the X-Request-Id middleware. */
   requestId: string
 }
-
-// Auth context — non-null assertions on user and session, available to
-// procedures that go through `authGuard`.
-export interface AuthContext extends BaseContext {
-  session: Session
-  user: User
-}
-
-// Base procedure with shared context
-export const base = os.$context<BaseContext>()

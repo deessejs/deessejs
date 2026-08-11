@@ -1,6 +1,6 @@
 import { ORPCError } from "@orpc/server"
-import { base } from "./context.js"
-import type { AuthContext } from "./context.js"
+import { base } from "./base.js"
+import type { AuthContext } from "./auth-context.js"
 
 // Auth guard — `user` and `session` are populated by the Hono session
 // middleware (see packages/api/src/index.ts), so we only need to verify

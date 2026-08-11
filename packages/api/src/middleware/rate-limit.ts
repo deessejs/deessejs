@@ -1,6 +1,7 @@
 import type { Context, MiddlewareHandler } from "hono"
 import { HTTPException } from "hono/http-exception"
 import { logger } from "../logger.js"
+import type { Bucket } from "./bucket.js"
 
 /**
  * Per-IP fixed-window rate limiter (in-memory).
@@ -26,8 +27,6 @@ import { logger } from "../logger.js"
  *   - Opportunistic cleanup: every 256 requests, evict expired buckets
  *     to keep the map bounded.
  */
-type Bucket = { count: number; resetAt: number }
-
 const buckets = new Map<string, Bucket>()
 let totalRequests = 0
 
