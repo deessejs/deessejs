@@ -1,10 +1,9 @@
 import { ORPCError } from "@orpc/server"
 import { base } from "./base.js"
-import type { AuthContext } from "./auth-context.js"
 
 // Auth guard — `user` and `session` are populated by the Hono session
-// middleware (see packages/api/src/index.ts), so we only need to verify
-// they're present and forward them through.
+// middleware (see packages/api/src/middleware/session.ts), so we only
+// need to verify they are present and forward them through.
 export const authGuard = base.middleware(async ({ context, next }) => {
   if (!context.user || !context.session) {
     throw new ORPCError("UNAUTHORIZED")
@@ -15,6 +14,6 @@ export const authGuard = base.middleware(async ({ context, next }) => {
       ...context,
       user: context.user,
       session: context.session,
-    } as AuthContext,
+    },
   })
 })

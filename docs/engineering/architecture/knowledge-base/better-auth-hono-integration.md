@@ -59,6 +59,9 @@ export const session = (): MiddlewareHandler => async (c, next) => {
 
 `user` and `session` are `null` (not `undefined`) when the
 request is unauthenticated — predictable shape for consumers.
+The `?? null` form is preferred over an explicit early-return
+because it makes the unconditional `await next()` at the end
+stand out — no hidden exit path.
 
 ## Typing the Hono environment
 
