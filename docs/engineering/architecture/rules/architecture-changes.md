@@ -55,11 +55,11 @@ did you consult? Cite URLs.]
 http.createServer, MSW)?]
 ```
 
-The PR template lives at `docs/engineering/rules/pr-template.md`.
+The PR template lives at `docs/engineering/architecture/rules/pr-template.md`.
 
 ## When you introduce a new abstraction
 
-1. Create an ADR in `docs/engineering/decisions/`. Use the next
+1. Create an ADR in `docs/engineering/architecture/decisions/`. Use the next
    available number (e.g. `ADR-018-...`). Reference the previous
    decision that this builds on or supersedes.
 2. Update the relevant `architecture/` doc. If no `architecture/` doc
@@ -80,7 +80,7 @@ When you remove an abstraction:
 If you change how the RPC wire format works, or how errors propagate,
 or where the typed client lives — you are touching an invariant.
 
-1. Find the doc in `architecture/` or `decisions/` that documents the
+1. Find the doc in `../decisions/` that documents the
    current behavior.
 2. Update the doc in the same commit as the code change. Reviewers
    will check both.
@@ -101,7 +101,7 @@ or where the typed client lives — you are touching an invariant.
 ## What the AI reviewer checks
 
 When the AI reviewer runs on a PR (see
-`docs/engineering/decisions/ADR-017-testing-strategy.md` and the future
+`docs/engineering/architecture/decisions/ADR-017-testing-strategy.md` and the future
 reviewer spec), it should:
 
 - Detect new files in `packages/` or `apps/<x>/src/lib/` and require an

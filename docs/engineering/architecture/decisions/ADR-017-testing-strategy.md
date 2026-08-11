@@ -37,7 +37,7 @@ What we explicitly do NOT do:
 
 - **Mock `globalThis.fetch` with `vi.stubGlobal`**: bypasses RPCLink,
   produces flaky tests, hides the real wire behavior. Banned by
-  review. See `rules/test-mocking.md`.
+  review. See `../rules/test-mocking.md`.
 
 ## Pattern A — Server-Side Client
 

@@ -38,7 +38,7 @@ identical.
   inference to every consumer. No client code changes.
 - Test pattern: `appRouter.X()` direct (Server-Side Client) for
   contract, real `http.createServer` for the HTTP layer, MSW with
-  `@dansnow/orpc-msw` for component tests. See `rules/test-mocking.md`.
+  `@dansnow/orpc-msw` for component tests. See `../rules/test-mocking.md`.
 
 ## What we are not doing in V1
 

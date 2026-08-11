@@ -6,11 +6,11 @@ levels win.
 ```
 1. Compiler / tests / types
         ↓
-2. Architecture internals + ADRs (docs/engineering/decisions/)
+2. Architecture internals + ADRs (docs/engineering/architecture/decisions/)
         ↓
 3. Official documentation of the technology used
         ↓
-4. Repository conventions (docs/engineering/rules/)
+4. Repository conventions (docs/engineering/architecture/rules/)
         ↓
 5. Knowledge base (docs/engineering/architecture/, glossary.md)
         ↓
@@ -33,7 +33,7 @@ correctness.
 
 ### 2. ADRs
 
-`docs/engineering/decisions/ADR-NNN-*.md` capture deliberate
+`docs/engineering/architecture/decisions/ADR-NNN-*.md` capture deliberate
 decisions. They say "we chose X because Y". They are the law of
 this repo. Code that contradicts an ADR is wrong, even if the ADR
 itself was wrong at the time. Update the ADR, then the code.
@@ -42,11 +42,11 @@ itself was wrong at the time. Update the ADR, then the code.
 
 For external libraries, frameworks, and APIs: the official docs
 for the version installed in `package.json`. See
-`rules/external-knowledge.md`.
+`architecture/rules/external-knowledge.md`.
 
 ### 4. Repository conventions
 
-`docs/engineering/rules/` describe how we do things here. The
+`docs/engineering/architecture/rules/` describe how we do things here. The
 "why" lives in the rule. If you think the rule is wrong, change
 the rule, not the code.
 

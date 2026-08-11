@@ -13,7 +13,7 @@ the expected outcome?
 ## Architecture
 
 Which existing boundaries does this touch? Cite `architecture/` or
-`decisions/` files by name. If you introduce a new abstraction,
+`../decisions/` files by name. If you introduce a new abstraction,
 link the ADR you wrote in the same PR.
 
 ## Decisions
@@ -31,7 +31,7 @@ change? If yes:
 - Did the documentation contradict any existing code? If yes, how
   was it resolved?
 
-See `rules/external-knowledge.md` for the policy.
+See `../rules/external-knowledge.md` for the policy.
 
 ## Testing
 
@@ -57,7 +57,7 @@ needed (changesets, ADRs)?
 - [ ] If new abstraction: ADR created or updated
 - [ ] If invariant changed: corresponding `architecture/` doc updated
 - [ ] If external lib changed: docs cited in this description
-- [ ] If mock added: it follows `rules/test-mocking.md`
+- [ ] If mock added: it follows `../rules/test-mocking.md`
 - [ ] No `vi.stubGlobal("fetch", ...)` in test files
 
 ## Example

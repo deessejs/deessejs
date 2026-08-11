@@ -36,7 +36,7 @@ version against `CLI_MIN_SUPPORTED` on startup and warns the user.
 
 JSON envelope used by oRPC: `{ result: { data: ... } }` for success,
 `{ defined: false, code: "...", status: ..., message: "...", data: {} }`
-for `ORPCError`. See `decisions/ADR-016-orpcerror-wire-format.md`.
+for `ORPCError`. See `architecture/decisions/ADR-016-orpcerror-wire-format.md`.
 
 ## fetchWithRetry
 
@@ -64,7 +64,7 @@ business decision, not a property of the repo.
 
 Mock Service Worker. Used in `apps/web` (future) for component
 tests via `@dansnow/orpc-msw`. The handler is type-checked against
-the router contract. See `decisions/ADR-017-testing-strategy.md`.
+the router contract. See `architecture/decisions/ADR-017-testing-strategy.md`.
 
 ## orpc
 
