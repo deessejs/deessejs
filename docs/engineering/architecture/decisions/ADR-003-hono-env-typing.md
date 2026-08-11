@@ -110,7 +110,7 @@ session: AuthInstance["$Infer"]["Session"]["session"] | null
 
 The shape flows from the auth config (`packages/auth/src/auth.ts`).
 A change in the session schema propagates without a manual
-edit here. See [docs/guides/better-auth/hono.md](../../../../guides/better-auth/hono.md)
+edit here. See [better-auth + Hono integration](../knowledge-base/better-auth-hono-integration.md)
 for the full integration pattern.
 
 ## Consequences
@@ -161,7 +161,7 @@ now because the type is honest, not because the type lies.
 
 ## Related
 
-- [docs/guides/better-auth/hono.md](../../../../guides/better-auth/hono.md) —
+- [better-auth + Hono integration](../knowledge-base/better-auth-hono-integration.md) —
   the integration pattern this ADR codifies.
 - [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md) —
   the contract this env feeds into.

@@ -59,13 +59,15 @@ packages/email/                       — email transport + transactional templa
 ```
 index.md (you are here)
 ├── setup.md       — prerequisite for all changes
-├── hono.md        — Hono integration (handler mount, CORS, session middleware, typed env)
 ├── email.md       — requires pitfalls.md first for the fire-and-forget pattern
 ├── session.md     — standalone
 ├── client.md      — standalone (no #9710 workaround applies — single-tenant has no $activeOrgSignal)
 ├── hooks.md       — standalone (databaseHooks patterns are still valid for non-org use cases)
 └── pitfalls.md    — read BEFORE any implementation
 ```
+
+> Hono-specific integration (handler mount, CORS, session middleware, typed env) lives at
+> [`docs/engineering/architecture/knowledge-base/better-auth-hono-integration.md`](../../engineering/architecture/knowledge-base/better-auth-hono-integration.md). It is a study of a better-auth + Hono cross-cutting pattern, not a better-auth guide proper.
 
 > `org.md` is historical reference only (single-tenant); no longer in the read path.
 

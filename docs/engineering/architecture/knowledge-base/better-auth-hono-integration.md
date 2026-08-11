@@ -1,16 +1,17 @@
-# Better Auth + Hono
+# Better Auth + Hono integration
 
-How better-auth is mounted in the Hono app. Mirrors
+A study of how better-auth is mounted inside the Hono app, pinned
+to the concrete files in this repo. Built on
 [better-auth.com/docs/integrations/hono](https://better-auth.com/docs/integrations/hono)
-but pinned to the concrete files in this repo. The upstream
-page is the source of truth when the lib changes; this guide
-exists to show what we wired where.
+— the upstream page is the source of truth when the lib changes;
+this entry exists to show what we wired where, and why the pieces
+live in the directories they do.
 
 ## Mount the handler
 
 `auth.handler` runs on every request under `/auth/*` and is
-responsible for login, signup, session, etc. — i.e. the
-better-auth HTTP surface.
+responsible for login, signup, session, etc. — the better-auth
+HTTP surface.
 
 ```ts
 // packages/api/src/router/routes/http.ts
@@ -93,6 +94,9 @@ The `?? "unknown"` fallbacks in `error-handler.ts` and
 `requestId()` so `c.var.requestId` is genuinely `undefined`
 at that point.
 
+The decision is codified in
+[ADR-003: Hono env typing is per-app, not global](../decisions/ADR-003-hono-env-typing.md).
+
 ## Consuming the typed values in routes
 
 ```ts
@@ -125,11 +129,12 @@ This repo currently runs app and API on the same Vercel
 project (the catch-all at `apps/app`), so cross-subdomain
 cookies are not yet configured.
 
-## What this guide is not
+## What this entry is not
 
-This guide is not an ADR. It documents how better-auth + Hono
-work in the current version of the lib, and where each piece
-lives in our repo. The **decisions** (which pattern we picked
-and why) live in `docs/engineering/architecture/decisions/`.
-When a future change conflicts with this guide, the guide
-is wrong, not the code.
+This is a knowledge-base entry, not an ADR. It documents how
+better-auth + Hono work in the current version of the lib,
+and where each piece lives in our repo. The **decisions**
+(which pattern we picked and why) live in
+`docs/engineering/architecture/decisions/`. When a future
+change conflicts with this entry, the entry is wrong, not
+the code.
