@@ -42,7 +42,8 @@ itself was wrong at the time. Update the ADR, then the code.
 
 For external libraries, frameworks, and APIs: the official docs
 for the version installed in `package.json`. See
-`architecture/rules/external-knowledge.md`.
+`architecture/rules/0006-technology-choices.md` (the durable-assumption
+discipline covers the "consult upstream first" practice).
 
 ### 4. Repository conventions
 

@@ -74,7 +74,7 @@ talk to the server, see [`rpc.md`](./rpc.md).
 - **DB**: Drizzle + Postgres (pg-mem in tests).
 - **Styling**: Tailwind v4 + shadcn/ui.
 - **RPC**: oRPC + Zod (Standard Schema compatible).
-- **Tests**: Vitest. Patterns per `docs/engineering/architecture/rules/test-mocking.md`.
+- **Tests**: Vitest. Patterns per `docs/engineering/architecture/knowledge-base/orpc/testing-mocking.md`.
 
 ## What lives where, exactly
 
@@ -100,5 +100,5 @@ talk to the server, see [`rpc.md`](./rpc.md).
 - Putting business logic in a procedure handler. Put it in `core/<sub>/`.
 - Sharing `orpc.ts` between apps. Each app has its own wrapper.
 - Mocking the global `fetch` to test RPCLink. See
-  `docs/engineering/architecture/rules/test-mocking.md`.
+  `docs/engineering/architecture/knowledge-base/orpc/testing-mocking.md`.
 - Reaching for `any` to silence TypeScript. Type the contract first.

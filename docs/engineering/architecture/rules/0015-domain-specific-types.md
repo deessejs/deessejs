@@ -1,0 +1,435 @@
+# 0015 — Domain-Specific Types Over Primitives
+
+**Status**: Active (enforced through code review).
+**Date**: 2026-08-11.
+
+## Rule
+
+Every value that represents a **domain concept** is typed as a
+**domain-specific type**, not as a primitive. A `Message` is a
+`Message` with a `content` field, a `type` field, and whatever
+fields the domain grows; it is **not** a bare `string`. A `UserId`
+is a `UserId` with whatever fields a user-id carries; it is **not**
+a bare `string`.
+
+The rule applies to **all values that cross a module boundary**
+or that participate in **more than one function**. A local variable
+inside a one-line lambda may be a primitive; anything the consumer
+will see, type, or extend is a domain-specific type.
+
+A primitive is permitted at the **boundary** where a value first
+enters the system (parsing JSON, reading an env var, accepting
+foreign input). The conversion from primitive to domain type
+happens at that boundary; the rest of the codebase sees the domain
+type only.
+
+## Why
+
+A primitive is **typeless at the semantic level**. `string` is
+every string at once; `number` is every number at once. The
+compiler cannot tell a message from a username, a percentage from
+a count, a user-id from a session-id. The reader who sees
+`function send(message: string, user: string)` cannot know
+whether the second argument is the username, the user-id, or the
+session-id — the type is the same in all three cases. The reader
+has to read the body to recover the meaning.
+
+A domain-specific type **carries the meaning**. `function send(
+message: Message, recipient: UserId)` says what each value is. The
+reader does not have to guess. The compiler refuses to mix the
+two: `send(message, recipient)` will not accept a username in the
+second position.
+
+The deeper problem is **extensibility**. A `Message` with `content`
+and `type` is a **shape that can grow**. A new field (`priority`,
+`correlationId`, `sentAt`) is a one-line type extension that
+preserves every existing caller. A bare `string` cannot grow;
+adding a field means breaking every function signature. The
+domain-specific type is the **stable shape** that future
+contributors extend without breaking consumers.
+
+## What this looks like in practice
+
+The bad shape, primitive as a domain concept:
+
+```ts
+// Bad — what is the difference between the two strings?
+function sendNotification(message: string, recipient: string): void {
+  // ...
+}
+
+sendNotification('Hello, world!', 'usr_123');
+// Is the second argument a username, an id, a phone number?
+// The compiler does not know. The reader has to read the body.
+```
+
+The right shape, domain-specific types:
+
+```ts
+// Good — each value is what it is. Literal unions are extracted as
+// named domain types so the shape is reusable across the codebase
+// and the literal strings appear in one place.
+type MessageType = 'text' | 'image' | 'audio';
+type MessagePriority = 'low' | 'normal' | 'high';
+
+type Message = {
+  readonly content: string;
+  readonly type: MessageType;
+  readonly priority?: MessagePriority;
+  readonly correlationId?: string;
+};
+
+type UserId = {
+  readonly value: string;
+};
+
+function sendNotification(message: Message, recipient: UserId): void {
+  // ...
+}
+
+sendNotification({ content: 'Hello, world!', type: 'text' }, { value: 'usr_123' });
+// The compiler checks the shape. The reader does not have to guess.
+```
+
+The literal unions are extracted as named types (`MessageType`,
+`MessagePriority`) rather than inlined because:
+
+- The same set of literals appears in multiple places (the type,
+  the validation function, the rendering function). Extracting
+  them once keeps the literal strings in **one place**; adding a
+  new value is one line in the type and the compiler enforces
+  that every consumer handles it.
+- The name carries the meaning. A function parameter typed as
+  `MessageType` is more readable than one typed as the literal
+  union `'text' | 'image' | 'audio'`. The reader sees the
+  concept; the literal is one step removed.
+- The union is **reusable**. Other types that need the same set
+  of literals (`NotificationFilter`, `MessageDraft`,
+  `MessageSummary`) reuse `MessageType` instead of repeating the
+  union.
+
+The shape of `Message` is **open to extension** without breaking
+existing callers. Adding `priority` is one line in the type
+definition. Adding `sentAt` is one line. Each extension is
+**additive** because the type is the contract.
+
+The bad shape, primitive as an identifier:
+
+```ts
+// Bad — three strings, all the same type.
+function transfer(fromAccountId: string, toAccountId: string, amount: number): void {
+  // ...
+}
+```
+
+When the right shape applies — multiple semantic IDs in the same
+context:
+
+```ts
+// Good — each identifier is a distinct type. The compiler refuses
+// to swap them.
+type AccountId = string & { readonly __brand: 'AccountId' };
+type CustomerId = string & { readonly __brand: 'CustomerId' };
+
+function transfer(from: AccountId, to: AccountId, amount: number): void {
+  // ...
+}
+
+// transfer(customerA, accountB, 100) — type error at the call site,
+// before the function runs.
+```
+
+When the branded type does **not** apply — single identifier with
+no internal structure:
+
+```ts
+// Bad — the brand adds no information. The id is just an
+// incremental or UUID string. Branding forces every consumer to
+// construct the branded type, which is friction without benefit.
+type OrderId = string & { readonly __brand: 'OrderId' };
+
+function getOrder(id: OrderId): Order {
+  // ...
+}
+
+// The caller has to do this:
+getOrder(order.id as OrderId);
+// Or this:
+getOrder({ value: order.id } as OrderId);
+
+// Both are friction. The compiler was never going to confuse
+// `OrderId` with `CustomerId` if there is only one id type.
+```
+
+When the codebase has only one identifier per domain value
+(`OrderId` and nothing else), the primitive is the right shape.
+The brand would be ceremony without value. The right move is:
+
+```ts
+// Just use the primitive. The type name is the contract.
+function getOrder(id: string): Order {
+  // ...
+}
+
+getOrder(order.id);
+```
+
+The brand is justified only when the codebase has **two or more
+IDs of the same primitive type that must not be confused**. The
+moment a second ID appears (`OrderId` and `CustomerId` next to
+each other in a transfer function, say), the brand becomes the
+cheapest way to tell them apart at compile time.
+
+The branded type has the same runtime shape as `string`, but the
+type system distinguishes them. The consumer cannot swap
+`AccountId` and `CustomerId`; the compiler refuses.
+
+## The four patterns
+
+The codebase uses four patterns for domain types, in increasing
+order of expressiveness.
+
+- **Branded type** (identifier, scalar): `type AccountId = string & {
+readonly __brand: 'AccountId' }`. Same runtime shape as the
+  primitive; the type system prevents mix-ups. Use when the value
+  is a single string or number with no internal structure.
+- **Record type** (shape with fields): `type Message = { readonly
+content: string; readonly type: 'text' | 'image' }`. Use when the
+  value has internal structure the domain cares about.
+- **Discriminated union**: `type Event = { kind: 'click'; x: number;
+y: number } | { kind: 'key'; key: string }`. Use when the value
+  has multiple shapes the consumer switches on.
+- **Branded record** (identifier with metadata): `type UserId = {
+readonly value: string; readonly tenantId: string }`. Use when
+  the identifier carries metadata the domain cares about.
+
+The pattern is chosen by **what the value carries**, not by
+preference. A `UserId` that is just a string gets the branded
+pattern; a `UserId` that carries tenant info gets the branded
+record. A `Message` with content and type gets the record; an
+`Event` with multiple shapes gets the discriminated union.
+
+## When the rule does not apply
+
+The rule applies to **values that participate in the domain**.
+It does not apply to:
+
+- **Truly local values** that never escape a single function.
+  `function double(n: number)` is fine; the consumer never sees
+  `n`.
+- **Built-in primitive usages** that the language requires —
+  `Array.prototype.length` is `number`; `string.length` is `number`;
+  iteration indices are `number`. The rule is about domain values,
+  not language-level primitives.
+- **Boundary conversions**. When JSON is parsed, the parser returns
+  `string`; the conversion to `Message` happens immediately
+  after. The conversion is the boundary.
+- **Algorithm-internal values** that the algorithm never exposes.
+  A `Stack<T>` may use `T[]` internally; the public `Stack<T>`
+  type hides the array.
+
+## The conversion at the boundary
+
+The conversion from primitive to domain type happens **once**, at
+the boundary where the value enters the system. After conversion,
+the rest of the codebase uses the domain type. The conversion
+function is named for the domain concept, not the primitive:
+
+```ts
+// Bad — the parser returns string; the rest of the codebase uses string.
+function parseNotification(raw: string): string {
+  // ...
+}
+
+// Good — the parser returns the domain type; the rest of the
+// codebase sees the shape.
+function parseNotification(raw: string): Message {
+  // ...validate, then construct the typed value.
+  return { content: '...', type: 'text' };
+}
+
+// And the conversion function lives next to the type:
+function parseUserId(raw: string): UserId {
+  if (!isValidUserId(raw)) {
+    throw new InvalidUserIdError(raw);
+  }
+  return { value: raw };
+}
+```
+
+The conversion function **validates the contract** that the
+primitive cannot. A `parseUserId` rejects strings that are not
+valid user-ids; the rest of the codebase never has to check.
+
+## What this looks like in violation
+
+Three shapes that this rule exists to catch.
+
+The first, primitive as a function parameter:
+
+```ts
+// Bad — what is the difference between the three strings?
+function createUser(name: string, email: string, password: string): User {
+  // ...
+}
+```
+
+Three strings, one type. The compiler cannot tell which argument
+is which; the reader has to read the call sites to know.
+
+The second, primitive as a function return type:
+
+```ts
+// Bad — what does this string mean?
+function getUserId(user: User): string {
+  // ...
+}
+```
+
+The return type is `string`. The consumer receives a string. The
+consumer does not know whether this string is the user-id, the
+username, or the email. The fix is `function getUserId(user: User):
+UserId`.
+
+The third, primitive in a data structure:
+
+```ts
+// Bad — three strings in one shape.
+type Notification = {
+  readonly message: string;
+  readonly sender: string;
+  readonly recipient: string;
+};
+```
+
+A `Notification` with three strings is a shape where the consumer
+cannot tell the fields apart. The fix is to make each field a
+domain type:
+
+```ts
+type Notification = {
+  readonly message: Message;
+  readonly sender: UserId;
+  readonly recipient: UserId;
+};
+```
+
+The shape is the same shape at runtime; the type system now
+refuses to mix the three.
+
+## What senior practitioners say
+
+> "TypeScript's type system doesn't always provide a way to
+> differentiate types that seem to be structurally the same. [...]
+> We need a way to 'brand' (mark) some value as being not just any
+> old value, but specifically the type we want."
+>
+> — Josh Goldberg, _Branded Types_, Learning TypeScript,
+> August 2024.
+
+Goldberg captures the structural-typing limitation. Two strings
+are the same to the compiler; the brand is what makes them
+different. The rule's branded-type pattern is Goldberg's pattern.
+
+> "More general types like `number` or `string` can suffice in
+> terms of general compile-time checks, but they fail to provide
+> checks for more nuanced cases. [...] You may not immediately
+> notice the error during runtime. Only at a later time when you've
+> forgotten about writing this could the issue pop up again
+> unexpectedly."
+>
+> — Ferreira, _Opaque / Branded Types in TypeScript_, 2022.
+
+Ferreira captures the **time dimension** of the rule. The bare
+primitive compiles today; the bug appears six months later when
+the consumer has forgotten the convention. The domain type
+**shifts the error to compile time**, which is the only time the
+author can catch it.
+
+> "The reason for having a symbolic name for a type isn't
+> 'consistency'. It's to increase the expressivity of your code.
+> [...] It makes it easier to work with for humans."
+>
+> — Kilian Foth, _Is it OK to have type aliases for primitive
+> types in TypeScript?_, Software Engineering Stack Exchange,
+> accepted answer (22 votes), 2022.
+
+Foth captures the **reader's economy**. A primitive that is aliased
+to a domain type still reads as a primitive to the consumer; the
+alias adds nothing. A domain-specific type adds the **shape** the
+domain cares about, and the shape is what the reader sees.
+
+The three sources converge on the operational rule: primitives
+are the **wrong level of abstraction** for any value the domain
+treats as a concept. The right level is a type the domain owns.
+
+## Enforcement
+
+- **Code review**. A reviewer who sees a `string` or `number` in a
+  public function signature, a return type, or a data structure
+  blocks the PR and asks for the domain type.
+- **Lint rule** (future). A custom ESLint rule can flag function
+  parameters typed as primitives when the parameter name is a
+  domain concept (`message`, `recipient`, `amount` without a
+  custom type). The rule's existence is the enforcement signal
+  even before it is automated.
+- **Quarterly audit**. A standing review of "what primitives
+  cross module boundaries in this codebase?" surfaces the
+  candidates that slipped through.
+
+## Exceptions
+
+Built-in language primitives are exempt: `Array.prototype.length`
+is `number`; iteration indices are `number`. The rule applies to
+**domain** primitives.
+
+A truly local value that never escapes a function is exempt. The
+point of the rule is the **boundary** and the **consumer**; local
+values have neither.
+
+A boundary conversion is exempt: the conversion function
+**accepts** the primitive. The conversion produces the domain
+type. After the conversion, the primitive is gone from the
+codebase's vocabulary.
+
+Algorithm-internal primitives are exempt. A `Stack<T>` may use
+`T[]` internally; the public type hides the array. The internals
+of an algorithm are not the boundary.
+
+## See also
+
+- **Rule 0012** — Prefer `type` Over `interface`: domain types
+  are declared as `type`, not `interface`. The rule's pattern
+  is the structural form this rule's content takes.
+- **Rule 0014** — Functions Over Classes for Public API: the
+  conversion function (`parseUserId`, `parseNotification`) is a
+  factory function in the sense of rule 0014 — it is the only
+  public construction of the domain value, and the consumer never
+  `new`s a `Message`.
+- **Rule 0001** — Project Mindset: invariant 9 ("optimise for
+  the reader") is the philosophical ground. The reader sees a
+  domain type at the boundary; the reader does not see a
+  primitive that may or may not be the right thing.
+
+## Sources
+
+- **Goldberg, Josh.** _Branded Types._ Learning TypeScript,
+  August 2024. The structural-typing limitation: two strings
+  with the same shape are the same type to the compiler; a
+  brand is what makes them different. The rule's branded-type
+  pattern is Goldberg's pattern.
+- **Ferreira.** _Opaque / Branded Types in TypeScript._ 2022.
+  The time dimension: a primitive bug appears six months later
+  when the consumer has forgotten the convention; a domain type
+  shifts the error to compile time. The rule's "compiletime vs
+  runtime" framing is Ferreira's.
+- **Foth, Kilian.** _Is it OK to have type aliases for primitive
+  types in TypeScript?_ Software Engineering Stack Exchange,
+  accepted answer (22 votes), 2022. The reader's economy: a
+  primitive aliased to a domain type still reads as a primitive
+  to the consumer; the alias adds nothing. The rule picks the
+  shape over the alias.
+- **AIWalker.** Cited from the same SE question: the alias
+  pattern is a soft antipattern when it is purely descriptive
+  (no validation, no discrimination). The rule captures the
+  distinction between alias and brand.

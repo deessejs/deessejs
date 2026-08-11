@@ -320,7 +320,7 @@ mistake the precedent for general permission.
 
 - [README.md](../README.md) — the engineering culture this ADR
   enforces.
-- [rules/architecture-changes.md](../rules/architecture-changes.md) —
+- [rules/0006-technology-choices.md](../rules/0006-technology-choices.md) —
   every abstraction needs an ADR.
 - [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md) —
   the non-negotiable invariant.

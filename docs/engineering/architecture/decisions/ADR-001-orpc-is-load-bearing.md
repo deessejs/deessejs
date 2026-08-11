@@ -47,7 +47,7 @@ correctness at the expense of global architecture.
 
 When you write code that touches oRPC:
 
-1. **Check the upstream docs first.** Per `rules/external-knowledge.md`,
+1. **Check the upstream docs first.** Per `rules/0006-technology-choices.md`,
    the official docs are the source of truth. If a feature is
    undocumented, the answer is not "implement a workaround" — it is
    "escalate".
@@ -148,7 +148,7 @@ is the path.
 ## Related
 
 - [README.md](../README.md) — the engineering culture this ADR enforces.
-- [rules/external-knowledge.md](../rules/external-knowledge.md) —
+- [rules/0006-technology-choices.md](../rules/0006-technology-choices.md) —
   official docs over model knowledge.
-- [rules/architecture-changes.md](../rules/architecture-changes.md) —
+- [rules/0006-technology-choices.md](../rules/0006-technology-choices.md) —
   every abstraction needs an ADR.

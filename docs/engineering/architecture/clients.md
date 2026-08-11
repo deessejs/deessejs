@@ -77,7 +77,7 @@ affects what the procedure returns, **add it to the procedure**.
 - Calling `appRouter.X()` directly from a consumer app's `page.tsx`
   or `commands/`. Use the typed client.
 - Mocking `globalThis.fetch` to test the fetch hook. See
-  `docs/engineering/architecture/rules/test-mocking.md`.
+  `docs/engineering/architecture/knowledge-base/orpc/testing-mocking.md`.
 - Putting the wrapper in `packages/`. The wrapper is a consumer
   concern, not a contract.
 

@@ -25,7 +25,8 @@ it("returns the templates from the registry", async () => {
 })
 ```
 
-This is the same pattern as `rules/test-mocking.md` Pattern A.
+This is the same pattern as `rules/0001-project-mindset.md`
+applied to procedure-level testing.
 It exercises the procedure handler, the input/output Zod
 schemas, the error map, and any oRPC middleware in the
 chain. It does not exercise HTTP, the wire envelope, or the
@@ -96,7 +97,7 @@ backend.
 
 The oRPC docs do not explicitly forbid mocking the global
 `fetch`, but they lean toward the server-side client because
-it tests the procedure in isolation. Our `rules/test-mocking.md`
+it tests the procedure in isolation. The project-wide policy
 makes that **binding** and adds explicit bans:
 
 - `vi.stubGlobal("fetch", ...)` — bypasses RPCLink, the
