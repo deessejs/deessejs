@@ -2,7 +2,7 @@
  * Enrich the templates registry with live data from GitHub.
  *
  * Each registry entry declares an `owner/repo`. For every entry we hit
- * GitHub's REST API in parallel (see `./github-client.ts`) and merge
+ * GitHub's REST API in parallel (see `../github/client.ts`) and merge
  * the response onto the entry. The result is the wire shape that the
  * CLI and apps/web consume (TemplateV1, see `@workspace/contracts/v1`).
  *
@@ -12,7 +12,7 @@
  */
 import type { TemplateV1 } from "@workspace/contracts/v1"
 import { serverEnv } from "@workspace/env/server"
-import { fetchReadme, fetchRepo } from "./github-client.js"
+import { fetchReadme, fetchRepo } from "../github/client.js"
 
 export type EnrichedTemplate = TemplateV1
 

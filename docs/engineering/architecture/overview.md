@@ -58,8 +58,8 @@ talk to the server, see [`rpc.md`](./rpc.md).
 | You want to…                       | Put it in…                       |
 | ---------------------------------- | --------------------------------- |
 | Add a server-side endpoint         | `packages/api/src/router/`         |
-| Add a server-side business rule    | `packages/api/src/services/`       |
-| Add a server-side fetch (e.g. GH)  | `packages/api/src/services/`       |
+| Add a server-side business rule    | `packages/api/src/core/<sub>/`     |
+| Add a server-side fetch (e.g. GH)  | `packages/api/src/core/<sub>/`     |
 | Add a Zod contract                 | `packages/contracts/src/vN/`       |
 | Add a UI primitive                 | `packages/ui/src/components/`      |
 | Add a marketing page               | `apps/web/src/app/`               |
@@ -82,9 +82,11 @@ talk to the server, see [`rpc.md`](./rpc.md).
   Versioned by path (`v1/`, `v2/`). Every cross-process communication
   references a contract from here.
 - **`packages/api/src/router/`**: oRPC procedures. Each procedure is a
-  thin handler that delegates business logic to `services/`.
-- **`packages/api/src/services/`**: business logic. Talks to the database,
-  to GitHub, to Resend. Knows nothing about HTTP, oRPC, or RPC.
+  thin handler that delegates business logic to `core/<sub>/`.
+- **`packages/api/src/core/`**: server-side code that does work but
+  does not speak HTTP. Organised by sub-domain, one folder per concept
+  (e.g. `core/github/`, `core/templates/`). Talks to the database,
+  to GitHub, to Resend. Knows nothing about Hono, oRPC, or RPC.
 - **`packages/api/src/middleware/`**: Hono-level middleware. CORS, rate
   limit, session. Catches errors and shapes them as `ORPCError` (see
   `decisions/`).
@@ -95,7 +97,7 @@ talk to the server, see [`rpc.md`](./rpc.md).
 ## Anti-patterns
 
 - Reaching for `fetch` to talk to the server. Use oRPC.
-- Putting business logic in a procedure handler. Put it in `services/`.
+- Putting business logic in a procedure handler. Put it in `core/<sub>/`.
 - Sharing `orpc.ts` between apps. Each app has its own wrapper.
 - Mocking the global `fetch` to test RPCLink. See
   `docs/engineering/architecture/rules/test-mocking.md`.

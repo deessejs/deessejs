@@ -86,7 +86,7 @@ every consumer.
   direct `fetch` to the server instead of `client.templates.list()`).
 - A wrapper that imitates what `RPCLink` already does.
 - A parallel transport mechanism (REST + oRPC, or GraphQL + oRPC).
-- A `fetch` in a procedure handler that bypasses the service layer.
+- A `fetch` in a procedure handler that bypasses the `core/` layer.
 
 Each of these is a load-bearing piece of "today is a temporary
 shortcut that becomes tomorrow's permanent debt".

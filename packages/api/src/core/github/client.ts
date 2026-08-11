@@ -1,14 +1,14 @@
 /**
- * Minimal GitHub REST client used by the templates enricher.
+ * Minimal GitHub REST client.
  *
- * Scope: only the two endpoints the templates registry needs
+ * Scope: only the two endpoints currently consumed
  * (`GET /repos/{owner}/{repo}` and `GET /repos/{owner}/{repo}/readme`).
  * Not a general-purpose GitHub SDK; do not extend without a consumer
  * that needs the new shape.
  *
  * Auth: the GITHUB_TOKEN env var (optional) lifts the anonymous rate
  * limit from 60 req/h to 5000 req/h. In production on Vercel, set
- * this as a project secret. Anonymous is enough for the V1 registry.
+ * this as a project secret.
  */
 const GITHUB_API = "https://api.github.com"
 

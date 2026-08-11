@@ -110,13 +110,19 @@ map. The [official oRPC testing pattern](https://orpc.dev/docs/advanced/testing-
 Forbidden: try to test the wire with this pattern — that's a
 different layer.
 
-## services/
+## core/
 
-`packages/api/src/services/`. Business logic. Talks to the database,
-to GitHub, to Resend. Knows nothing about HTTP, oRPC, or RPC.
-Procedure handlers in `router/` delegate to services. The services
-directory is the place for code that does work but doesn't speak
-HTTP.
+`packages/api/src/core/`. Server-side code that does work but does
+not speak HTTP. Organised by sub-domain, one folder per concept
+(e.g. `core/github/`, `core/templates/`). Talks to the database,
+to GitHub, to Resend. Knows nothing about Hono, oRPC, or RPC.
+Procedure handlers in `router/` delegate to functions in `core/`.
+
+A sub-domain's folder is small enough today to be a single file
+(`core/<sub>/<thing>.ts`). When a sub-domain grows past one
+file, additional files live alongside (`core/<sub>/<a>.ts`,
+`core/<sub>/<b>.ts`). Imports between sub-domains go through
+explicit paths, never through barrel `index.ts` files.
 
 ## shape matching
 
@@ -129,13 +135,17 @@ robust to that.
 
 ## templates-enricher
 
-`packages/api/src/services/templates-enricher.ts`. The single source
+`packages/api/src/core/templates/enrich.ts`. The single source
 of GitHub access for the templates registry. Called by the
 `templates.list` procedure in `router/templates.ts`. Fetches
 metadata for each registry entry in parallel and merges it onto
 the editorial registry entries. Returns enriched templates with
 `name`, `description`, `license`, `labels`, `updatedAt`, `stars`,
 `readme`. Fails loud on rate-limit or downtime.
+
+The GitHub client itself lives at `core/github/client.ts` — a
+separate sub-domain, imported by the enricher. The two folders
+are not coupled beyond that one import.
 
 ## union of keys
 

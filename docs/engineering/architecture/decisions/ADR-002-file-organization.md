@@ -59,15 +59,15 @@ package. These names signal "I didn't know where this should go".
 
 When you find yourself reaching for `utils.ts`, ask: what sub-domain
 is this? "Template parsing" is not `utils/template-parsing.ts` — it
-is `template-parser.ts` under `packages/api/src/services/template/`.
+is `template-parser.ts` under `packages/api/src/core/templates/`.
 "Generic string helpers" don't exist in this repo. If you find a
 generic helper, it's because you didn't decompose enough.
 
 The rule is recursive. `packages/api/src/utils/` is also wrong. If
-`packages/api/src/services/templates/parser.ts` needs a
+`packages/api/src/core/templates/parser.ts` needs a
 slug-normalizer, the slug-normalizer goes in
-`packages/api/src/services/templates/slug.ts` or
-`packages/api/src/services/templates/parser/slug.ts`. Not in
+`packages/api/src/core/templates/slug.ts` or
+`packages/api/src/core/templates/parser/slug.ts`. Not in
 `packages/api/src/utils/`.
 
 ### Rule 3: if a function might be reused, extract it now
@@ -97,7 +97,7 @@ package has `auth.ts`, `auth-types.ts`, `auth-utils.ts`, and
 these is a separate concern and should live in a sub-directory.
 
 Sub-directories are named after sub-domains, not after file types.
-`packages/api/src/services/auth/` is correct. `packages/api/src/types/`
+`packages/api/src/core/auth/` is correct. `packages/api/src/types/`
 is wrong. `packages/auth/src/session/` is correct.
 `packages/auth/src/utils/` is wrong.
 
@@ -151,7 +151,7 @@ are not redundant even when the noun is identical.
 ## What this means in practice
 
 - `packages/api/src/index.ts` is the only file at the package root
-  besides `router/`, `services/`, `middleware/`, `templates.ts`
+  besides `router/`, `core/`, `middleware/`, `templates.ts`
   (the registry). No `utils.ts`, no `types.ts`, no `errors.ts` at the
   root.
 - `packages/contracts/src/v1/index.ts` is the only file at the version
@@ -200,7 +200,7 @@ through a shared abstraction. Each registry belongs in its own file,
 with its own data type, in its own sub-domain.
 
 ```
-- packages/api/src/services/templates/registry.ts
+- packages/api/src/core/templates/registry.ts
 - packages/auth/src/users/registry.ts
 - packages/billing/src/plans/registry.ts
 ```
@@ -245,7 +245,7 @@ third is not a name. The first two are.
 ## What this rule allows
 
 - Helper functions in a sub-domain directory. `template-parser.ts`
-  in `packages/api/src/services/templates/` can have helper functions
+  in `packages/api/src/core/templates/` can have helper functions
   for parsing templates. They're scoped to the templates sub-domain.
 - Re-exports in `index.ts`. A sub-domain's `index.ts` can re-export
   declarations from other files in the same sub-domain. This is
@@ -278,7 +278,7 @@ Ask three questions:
 2. **What sub-domain does it belong to?** Templates, auth, billing,
    registry. If you don't know, the file probably doesn't exist yet.
 3. **Is it data, logic, or transport?** Data lives in the domain.
-   Logic lives in services. Transport lives in router or middleware.
+   Logic lives in `core/`. Transport lives in `router/` or `middleware/`.
    Types live next to the thing they describe.
 
 ## Where this rule came from
@@ -288,7 +288,7 @@ everything in `packages/api/src/index.ts`. As features were added,
 the file grew. Imports got tangled. A grep for `template` returned
 the procedure, the fetcher, the GitHub adapter, the error handler,
 and the logger — all in one file. Splitting that file into
-`router/`, `services/`, and `middleware/` took three PRs and three
+`router/`, `core/`, and `middleware/` took three PRs and three
 rebase cycles.
 
 This ADR exists so the next contributor doesn't have to do that.

@@ -51,7 +51,7 @@ Use it.   Add a procedure to packages/api/src/router/.
           Validate input/output with Zod (packages/contracts/).
             │
             ▼
-          Delegate to services/. The handler stays thin.
+          Delegate to `core/`. The handler stays thin.
             │
             ▼
           Update tests/contract/. Server-Side Client calls the
