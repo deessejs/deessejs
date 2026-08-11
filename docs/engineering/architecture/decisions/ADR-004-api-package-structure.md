@@ -25,7 +25,7 @@ Three structural lies:
 2. **`core/` is half-applied.** It contains `github/` and
    `templates/` as sub-domains (one folder per concept), but
    the equivalent concepts at the package root —
-   `base-path.ts`, `cli-version.ts`, `logger.ts` — sit
+   `base-path.ts`, `version.ts`, `logger.ts` — sit
    loose. Either every "code pur" goes under `core/`, or
    none does. The current state is asymmetric.
 
@@ -73,7 +73,7 @@ packages/api/src/
 │   │   └── not-found.ts        404 handler returning ORPCError wire shape
 │   ├── routes/             direct HTTP routes (not oRPC)
 │   │   ├── health.ts            GET /health
-│   │   ├── cli-version.ts       GET /cli-version
+│   │   ├── version.ts            GET /version
 │   │   ├── ready.ts             GET /ready
 │   │   └── auth.ts              *  /auth/*  (better-auth handler)
 │   ├── mount.ts            mountHttp() factory — composes the direct routes
@@ -95,7 +95,7 @@ packages/api/src/
 │
 ├── constants/              shared constants (Rule 1: one file per concept)
 │   ├── base-path.ts            API_BASE_PATH_*, API_RPC_PATH, etc.
-│   ├── cli-version.ts          CLI_VERSION, CLI_MIN_SUPPORTED
+│   ├── version.ts              VERSION, MIN_SUPPORTED_VERSION
 │   └── logger.ts               structured JSON logger
 │
 └── templates.ts            the static templates registry (root is correct;
@@ -171,10 +171,13 @@ packages/api/src/
   import of `hono`, `hono/cors`, etc.) under `orpc/`
   is rejected. The author moves it to `http/`.
 - A PR that names a file, constant, route, or docstring in
-  `packages/api/` after a consumer (`cli-version.ts`,
-  `CLI_VERSION`, `/cli-version`, "Consumed by apps/cli")
-  is rejected per [ADR-005](./ADR-005-api-consumer-agnostic.md).
-  The author renames to the server's view.
+  `packages/api/` after a consumer (any consumer, in any
+  form) is rejected per
+  [ADR-005](./ADR-005-api-consumer-agnostic.md). The author
+  renames to the server's view. The four consumer-named
+  leaks that pre-existed ADR-005 have been migrated to
+  server-side names; the rule keeps the next leak from
+  landing.
 - A PR that puts an oRPC file (`os.$context(...)`,
   `os.middleware(...)`, any import of `@orpc/server`)
   under `http/` is rejected. The author moves it to
@@ -187,7 +190,7 @@ packages/api/src/
   `index.ts` is rejected. Every middleware lives in
   `http/middleware/` and is mounted by name.
 - A PR that puts a constant at the package root
-  (`base-path.ts`, `cli-version.ts`, `logger.ts` at
+  (`base-path.ts`, `version.ts`, `logger.ts` at
   root) is rejected. Constants go in `constants/` (or
   in the file of the sub-concept they belong to, per
   ADR-002 Rule 1).
