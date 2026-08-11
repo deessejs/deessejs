@@ -4,7 +4,6 @@ import { logger as honoLogger } from "hono/logger"
 import { secureHeaders } from "hono/secure-headers"
 import { serverEnv } from "@workspace/env/server"
 import { API_BASE_PATH } from "./base-path.js"
-import "./hono-augment.js"
 import {
   onError as onApiError,
   requestId,
