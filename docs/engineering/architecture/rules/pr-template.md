@@ -74,8 +74,8 @@ gives every consumer input/output type inference.
 
 ## Architecture
 - New procedure in `packages/api/src/router/templates.ts`
-- Error wire format per ADR-003
-- Client wrapper per ADR-002
+- Typed client wrapper in `apps/<x>/src/lib/orpc.ts`
+- Single error channel: `ORPCError` wire format on every response
 
 ## Decisions
 - Single procedure, no server-side cache (deferred to V1.1)

@@ -59,7 +59,7 @@ including the throwaway ones.
 
 ### oRPC is not negotiable
 
-See [decisions/ADR-005-orpc-is-load-bearing.md](./decisions/ADR-005-orpc-is-load-bearing.md).
+See [decisions/ADR-001-orpc-is-load-bearing.md](./decisions/ADR-001-orpc-is-load-bearing.md).
 oRPC is the load-bearing core of the internal API. We do not
 workaround it, bypass it, or add a second transport. When a problem
 arises, the agent escalates to the tech lead. "I'll just implement
@@ -134,7 +134,7 @@ Some pieces of the architecture are load-bearing — touching them the
 wrong way fragments the system. For those, the answer is not "work
 around it". The answer is escalate.
 
-See [decisions/ADR-005-orpc-is-load-bearing.md](./decisions/ADR-005-orpc-is-load-bearing.md)
+See [decisions/ADR-001-orpc-is-load-bearing.md](./decisions/ADR-001-orpc-is-load-bearing.md)
 for what that means in practice. The pattern is:
 
 1. Stop coding.
