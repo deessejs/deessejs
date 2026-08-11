@@ -10,9 +10,7 @@ import {
   requestId,
   session,
 } from "./middleware/index.js"
-import { mountRpc } from "./router/procedures/mount.js"
-import { mountHttp } from "./router/routes/http.js"
-import { appRouter, type AppRouter } from "./router/index.js"
+import { mountRpc, mountHttp, appRouter, type AppRouter } from "./router/index.js"
 import type { ApiEnv } from "./types/api-env.js"
 
 const api = new Hono<ApiEnv>().basePath(API_BASE_PATH)
