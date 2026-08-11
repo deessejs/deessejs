@@ -1,13 +1,12 @@
 # Hono testing
 
-A study of the Hono testing patterns, pinned to what we have
-and what we do not. Built on
+A study of Hono's testing patterns. Built on
 [hono.dev/docs/guides/testing](https://hono.dev/docs/guides/testing)
-and
-[hono.dev/docs/helpers/testing](https://hono.dev/docs/helpers/testing)
+and [hono.dev/docs/helpers/testing](https://hono.dev/docs/helpers/testing)
 — the upstream pages are the source of truth when the lib
-changes; this entry exists to show what we wired where, and
-the one place we are using the pattern wrong.
+changes; this entry exists to show the shape of the
+integration and the discipline that distinguishes testing
+the framework from testing the app.
 
 ## `app.request(...)` — the basic test handle
 
@@ -36,9 +35,8 @@ Three call shapes:
   URL the test cares about).
 
 The third argument accepts an `Env` for bindings injection
-(Cloudflare `D1`, `KV`, etc.) — we do not use this in the
-current tests because we are not on Cloudflare Workers. The
-default Node test runtime does not need it.
+(Cloudflare `D1`, `KV`, etc.) — typically not used in a
+Node test runtime.
 
 ## `testClient` from `hono/testing` — typed test client
 
@@ -71,44 +69,24 @@ app.get("/search", ...)
 app.post("/posts", ...)
 ```
 
-This is relevant to us because our `index.ts` does not chain
-routes — it composes the app from `mountHttp(api)` and
-`mountRpc(api)` calls. The `testClient` would type as
-`Record<string, never>` against our app, which makes it
-useless. Either we restructure `index.ts` to chain routes
-(against the current pattern), or we use the
-`app.request(...)` form everywhere and skip `testClient`.
+When the app composes routes from factories (a common
+pattern for non-trivial apps), `testClient` types as
+`Record<string, never>` and is useless. The `app.request(...)`
+form is the fallback.
 
-The oRPC layer has its own typed client
-(`createORPCClient`), which is what we should use for
-testing the oRPC surface — see
-`orpc-testing-mocking.md`. The Hono `testClient` is a
-fallback for the non-oRPC routes (`/health`, `/ready`,
-`/cli-version`, `/auth/*`), and those are simple enough
-that `app.request(...)` is fine.
+## The discipline: test the app, not the framework
 
-## What we have today
+A test that exercises a `new Hono()` with a single route
+tests that Hono itself routes correctly. It does not test
+that the app's middlewares run, that the composer's
+factories mount, that the procedure handler runs, or that
+the wire envelope is correct.
 
-`packages/api/tests/routes.test.ts` uses the `app.request`
-pattern — but against a **local `new Hono()`** with a
-single route, not against the real `api` exported from
-`packages/api/src/index.ts`. The test verifies that Hono
-itself routes correctly. It does not verify that **our**
-app routes correctly, that our middlewares run, or that
-the oRPC handler mounts.
-
-This is the same gap surfaced during the PR #45 review:
-the only file in `packages/api/tests/` that touches
-`/api/v1/rpc/templates/list` is the CLI-side integration
-test, which talks to a fake server, not the real one.
-
-## What an end-to-end test would look like
-
-The intended pattern, when we get there, is to export the
-real `api` and call it directly:
+The end-to-end pattern, when arrived at, is to export the
+real app and call it directly:
 
 ```ts
-// packages/api/tests/templates-list.test.ts (sketch, not yet written)
+// (sketch, not yet written)
 import { api } from "@workspace/api"   // the real Hono app
 import { auth as testAuth } from "@workspace/auth/tests/setup"
 
@@ -130,23 +108,19 @@ it("returns the templates to an authenticated caller", async () => {
 })
 ```
 
-This goes through the **real** `app.onError`,
-`requestId`, `secureHeaders`, `cors`, `session`, the real
-`/rpc/*` mount, the real `wrapForOrpc` Proxy, the real
-`RPCHandler`, the real `templates.list` procedure, and the
-real `enrich()` function (which still calls GitHub, so
-the context-injection pattern from `orpc-testing-mocking.md`
-applies here too).
-
-The cost is a test database + a fake GitHub client. The
-benefit is that we test the actual wire that ships, end to
-end, without mocking any of our own code.
+This tests the **real** app, the **real** error handler,
+the **real** request-id middleware, the **real** CORS, the
+**real** session middleware, the **real** oRPC handler, and
+the **real** procedure. The cost is a test database and a
+fake external dependency. The benefit is that the test
+exercises the wire that ships, end-to-end, without
+mocking any of our own code.
 
 ## What this entry is not
 
-This is a knowledge-base entry, not an ADR. It documents how
-Hono's testing patterns work in the current version of the
-lib, and where each piece lives in our repo. The
+This is a knowledge-base entry, not an ADR. It documents
+how Hono's testing patterns work in the current version of
+the lib, and the shape of the integration. The
 **decisions** (which patterns we picked and why) live in
 `docs/engineering/architecture/decisions/` and
 `docs/engineering/architecture/rules/`. When a future

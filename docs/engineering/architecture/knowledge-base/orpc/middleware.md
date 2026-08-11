@@ -1,10 +1,10 @@
 # oRPC middleware
 
-A study of oRPC's middleware patterns, pinned to the concrete
-files in our app. Built on
+A study of oRPC's middleware patterns. Built on
 [orpc.dev/docs/middleware](https://orpc.dev/docs/middleware)
 — the upstream page is the source of truth when the lib
-changes; this entry exists to show what we wired where.
+changes; this entry exists to show the shape of the
+integration and the patterns we use.
 
 ## What an oRPC middleware is
 
@@ -49,15 +49,15 @@ The combined context is the union of every `next({ context })`
 along the chain. A handler downstream sees everything
 injected by upstream middlewares.
 
-## Our `authGuard` middleware
+## The auth-guard pattern
 
-`packages/api/src/router/procedures/auth-middleware.ts` is
-our one oRPC middleware. It guards a procedure by requiring
-`context.user` and `context.session` to be set, and
-narrows the type for the downstream handler.
+The auth guard is the canonical oRPC middleware pattern
+in this codebase. It guards a procedure by requiring the
+session-derived values to be present, and narrows the type
+for the downstream handler.
 
 ```ts
-export const authGuard = base.middleware(async ({ context, next }) => {
+export const requireSession = base.middleware(async ({ context, next }) => {
   if (!context.user || !context.session) {
     throw new ORPCError("UNAUTHORIZED")
   }
@@ -74,18 +74,8 @@ export const authGuard = base.middleware(async ({ context, next }) => {
 
 The narrowed type for downstream handlers is inferred by
 oRPC from the non-null assertion in the guard — there is
-no `as AuthContext` cast. (The cast was removed in a prior
-commit; see `decisions/` for the why.) The base context
-type comes from `os.$context<BaseContext>()` in
-`router/procedures/base.ts`.
-
-`authGuard` is currently **orphaned** in the sense that no
-router uses it (we removed the dummy `user.ts` routes).
-It exists for the next protected procedure that needs it.
-Per ADR-002, dead code is not removed when it is
-**anticipated** to be needed soon; we keep it in place so
-the next protected procedure can use the established
-pattern without re-deriving it.
+no `as` cast. The base context type comes from
+`os.$context<BaseContext>()`.
 
 ## `$context` — the dependent context
 
@@ -99,7 +89,7 @@ upstream.
 export const base = os.$context<BaseContext>()
 ```
 
-`BaseContext` is our Hono-shared type. The values
+`BaseContext` is the Hono-shared type. The values
 (`requestId`, `user`, `session`) are populated by the
 Hono-level session middleware (see
 [better-auth + Hono integration](../better-auth/hono-integration.md)).
@@ -108,12 +98,11 @@ Hono-level session middleware (see
 
 oRPC ships `onError`, `onStart`, `onSuccess`, `onFinish` —
 the lifecycle interceptors. We use `onError` on the
-`RPCHandler` to log every procedure-level error to our
+`RPCHandler` to log every procedure-level error to the
 structured logger:
 
 ```ts
-// packages/api/src/router/procedures/mount.ts
-const rpcHandler = new RPCHandler(appRouter, {
+const rpcHandler = new RPCHandler(router, {
   interceptors: [onError((error) => logger.error("orpc_error", error))],
 })
 ```
@@ -124,9 +113,9 @@ those are surfaced to the client as-is.
 
 ## What this entry is not
 
-This is a knowledge-base entry, not an ADR. It documents how
-oRPC middleware patterns work in the current version of the
-lib, and where each piece lives in our repo. The
+This is a knowledge-base entry, not an ADR. It documents
+how oRPC middleware patterns work in the current version of
+the lib, and the shape of the integration. The
 **decisions** (which patterns we picked and why) live in
 `docs/engineering/architecture/decisions/` and
 `docs/engineering/architecture/rules/`. When a future

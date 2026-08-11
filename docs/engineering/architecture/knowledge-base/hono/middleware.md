@@ -1,10 +1,11 @@
 # Hono middleware
 
-A study of Hono's middleware patterns, pinned to the concrete
-files in our app. Built on
+A study of Hono's middleware patterns. Built on
 [hono.dev/docs/guides/middleware](https://hono.dev/docs/guides/middleware)
 — the upstream page is the source of truth when the lib
-changes; this entry exists to show what we wired where.
+changes; this entry exists to show the shape of the
+integration and the discipline that orders the middleware
+chain.
 
 ## What a middleware is
 
@@ -42,9 +43,8 @@ mw1 end
 ```
 
 A throw anywhere in the chain is caught by `api.onError(...)`
-if one is registered (and we have one, see
-`packages/api/src/middleware/error-handler.ts`). The
-`await next()` in upstream middleware never throws.
+if one is registered. The `await next()` in upstream
+middleware never throws.
 
 ## The error handler
 
@@ -54,77 +54,62 @@ middleware — it is registered with `onError`, not `use` —
 but it lives in the same chain conceptually.
 
 ```ts
-// packages/api/src/middleware/error-handler.ts
 api.onError(onApiError)
 ```
 
-The handler must produce a `Response`. We use it to funnel
-every error path into the same wire format
-(`{ defined, code, status, message, data }`) so the typed
-client decodes every error the same way, including
-Hono-level errors that never reached the oRPC procedure.
+The handler must produce a `Response`. The convention is to
+funnel every error path into the same wire shape so the
+typed client decodes every error the same way, including
+Hono-level errors that never reached the procedure.
 
-## Custom middleware in our app
+## Categories of middleware in a Hono app
 
-`packages/api/src/middleware/` holds the custom middlewares.
-Each is a small module that exports a factory function
-returning a `MiddlewareHandler` (or the `MiddlewareHandler`
-itself for stateless cases). The folder is the place for
-**HTTP-level** concerns only — oRPC procedure-level
-concerns live in `packages/api/src/router/procedures/`.
+The middlewares an app actually mounts fall into seven
+categories, with a recommended order:
 
-| File | Purpose | Where it runs |
+| Category | Purpose | Where it runs |
 |---|---|---|
-| `error-handler.ts` | Funnels every error into the ORPCError wire shape | `api.onError(...)` |
-| `request-id.ts` | Mints `X-Request-Id`, sets `c.var.requestId`, echoes the header | `api.use("*", ...)` |
-| `session.ts` | Calls Better Auth, sets `c.var.user` and `c.var.session` | `api.use("*", ...)` |
-| `cors.ts` (via `hono/cors`) | CORS headers, validated `ALLOWED_ORIGINS` | `api.use("*", ...)` |
-| `secure-headers.ts` (via `hono/secure-headers`) | HSTS, nosniff, CSP defaults | `api.use("*", ...)` |
-| `rate-limit.ts` | Per-IP fixed-window rate limit | Per-route, e.g. `/cli-version` |
-| `etag.ts` | Weak ETag handler, opt-in per route | Per-route, when needed |
+| Error handler | Funnels every error into the wire shape | `api.onError(...)` |
+| Request ID | Mints a per-request correlation ID, sets a context variable, echoes the header | `app.use("*", ...)` |
+| Session | Calls the auth lib, sets the user/session context variables | `app.use("*", ...)` |
+| CORS | Headers for cross-origin requests | `app.use("*", ...)` |
+| Security headers | HSTS, nosniff, CSP defaults | `app.use("*", ...)` |
+| Logger | Request/response logging | `app.use("*", ...)` |
+| Rate limit | Per-IP or per-route throttling | Per-route, when needed |
+| ETag | Weak ETag handler for cacheable routes | Per-route, when needed |
 
-The composition order in `packages/api/src/index.ts`:
+The composition order in the composer:
 
 ```ts
 api.onError(onApiError)            // catch-all, runs first
 api.use("*", requestId())          // sets c.var.requestId
 api.use("*", secureHeaders())      // cheap hardening
-api.use("*", cors({ ... }))        // CORS, before auth routes
+api.use("*", cors({ ... }))        // CORS, before routes
 api.use("*", honoLogger())         // logs request, after requestId
 api.use("*", session())            // populates c.var.user/session
 ```
 
 Order matters: `onError` before any middleware that might
 throw; `requestId` before anything that logs; `session`
-before any route that reads `c.var.user`. The current order
-is correct.
+before any route that reads the user/session context. The
+current order is correct.
 
 ## `createMiddleware` for reusable middleware
 
-Hono's `createMiddleware` factory is the recommended way to
-extract middleware with type safety. We do **not** use it
-because our middlewares are simple enough that inlining the
-generic is the same cost as the indirection:
-
-```ts
-// Current (fine for our scale)
-export const session = (): MiddlewareHandler => async (c, next) => { ... }
-
-// If we ever need to type the Env explicitly
-import { createMiddleware } from "hono/factory"
-const session = createMiddleware<ApiEnv>(async (c, next) => { ... })
-```
-
-The second form buys us nothing today because the `c`
-parameter is already typed by Hono's inference from
-`new Hono<ApiEnv>()`. We will switch when a middleware
-needs an explicit `Env` that differs from the app's.
+Hono's `createMiddleware` factory is the recommended way
+to extract middleware with type safety. The inline form
+(a plain function passed to `app.use`) is fine when the
+`c` parameter is already typed by Hono's inference from
+the Hono instance. The `createMiddleware<Env>(...)` form
+becomes necessary when a middleware needs an explicit
+`Env` that differs from the app's, or when the middleware
+is exported for reuse across apps.
 
 ## What this entry is not
 
-This is a knowledge-base entry, not an ADR. It documents how
-Hono middleware patterns work in the current version of the
-lib, and where each piece lives in our repo. The
+This is a knowledge-base entry, not an ADR. It documents
+how Hono middleware patterns work in the current version of
+the lib, and the shape of the integration. The
 **decisions** (which patterns we picked and why) live in
 `docs/engineering/architecture/decisions/` and
 `docs/engineering/architecture/rules/`. When a future

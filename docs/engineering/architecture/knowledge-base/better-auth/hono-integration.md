@@ -1,26 +1,25 @@
 # Better Auth + Hono integration
 
-A study of how better-auth is mounted inside the Hono app, pinned
-to the concrete files in this repo. Built on
-[better-auth.com/docs/integrations/hono](https://better-auth.com/docs/integrations/hono)
-— the upstream page is the source of truth when the lib changes;
-this entry exists to show what we wired where, and why the pieces
-live in the directories they do.
+A study of how better-auth is mounted inside a Hono app. Built
+on [better-auth.com/docs/integrations/hono](https://better-auth.com/docs/integrations/hono)
+— the upstream page is the source of truth when the lib
+changes; this entry exists to show the shape of the
+integration, the conventions we follow, and the divergences
+that a contributor needs to know about.
 
 ## Mount the handler
 
 `auth.handler` runs on every request under `/auth/*` and is
-responsible for login, signup, session, etc. — the better-auth
-HTTP surface.
+responsible for the better-auth HTTP surface (login, signup,
+session, etc.).
 
 ```ts
-// packages/api/src/router/routes/http.ts
 api.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw))
 ```
 
-The catch-all at `apps/app/app/api/[[...route]]/route.ts`
-forwards `/api/v1/auth/*` to the Hono app, which dispatches
-to the better-auth handler.
+The route is mounted at the API's base path. A catch-all
+in the host app forwards the request to the Hono app, which
+dispatches to the better-auth handler.
 
 ## CORS
 
@@ -29,26 +28,26 @@ level. better-auth expects cross-origin requests to be
 authorized at the framework layer.
 
 ```ts
-// packages/api/src/index.ts
 api.use(
   "*",
   cors({ origin: serverEnv.ALLOWED_ORIGINS, credentials: true }),
 )
 ```
 
-`ALLOWED_ORIGINS` is validated at the env-package boundary.
-CORS is registered **before** the auth routes, per the
-better-auth timing requirement.
+The allowed origins are validated at the env-package
+boundary. CORS is registered **before** the auth routes,
+per the better-auth timing requirement: the framework must
+authorize the cross-origin headers before the better-auth
+handler reads the request.
 
 ## Middleware: populate `c.var.user` and `c.var.session`
 
 The session middleware runs once per request and populates
 the typed context variables, so downstream middleware and
-oRPC procedures can read them without re-issuing
+procedures can read them without re-issuing
 `auth.api.getSession({ headers })`.
 
 ```ts
-// packages/api/src/middleware/session.ts
 export const session = (): MiddlewareHandler => async (c, next) => {
   const data = await auth.api.getSession({ headers: c.req.raw.headers })
   c.set("user", data?.user ?? null)
@@ -58,10 +57,10 @@ export const session = (): MiddlewareHandler => async (c, next) => {
 ```
 
 `user` and `session` are `null` (not `undefined`) when the
-request is unauthenticated — predictable shape for consumers.
-The `?? null` form is preferred over an explicit early-return
-because it makes the unconditional `await next()` at the end
-stand out — no hidden exit path.
+request is unauthenticated — predictable shape for
+consumers. The `?? null` form is preferred over an explicit
+early-return because it makes the unconditional `await
+next()` at the end stand out — no hidden exit path.
 
 ## Typing the Hono environment
 
@@ -69,7 +68,6 @@ We use the official better-auth pattern, derived from the
 auth instance config:
 
 ```ts
-// packages/api/src/types/api-env.ts
 import type { AuthInstance } from "@workspace/auth"
 
 export type ApiEnv = {
@@ -82,25 +80,27 @@ export type ApiEnv = {
 ```
 
 `AuthInstance["$Infer"]["Session"]` is the type better-auth
-derives from the auth config. A change in the session schema
-flows through automatically — no manual edit here.
+derives from the auth config. A change in the session
+schema flows through automatically — no manual edit here.
 
 **Do not augment Hono's `ContextVariableMap` globally.** The
 per-app `Variables` generic on `new Hono<ApiEnv>()` is enough.
 Global augmentation is explicitly discouraged by the Hono
-docs: it adds types to every context, even where the setting
-middleware never ran, hiding runtime `undefined` behind a
-typed contract. See [Hono Context API](https://hono.dev/docs/api/context).
+docs: it adds types to every context, even where the
+setting middleware never ran, hiding runtime `undefined`
+behind a typed contract. See [Hono Context API](https://hono.dev/docs/api/context).
 
-The `?? "unknown"` fallbacks in `error-handler.ts` and
-`rate-limit.ts` are honest — `api.onError` runs before
-`requestId()` so `c.var.requestId` is genuinely `undefined`
-at that point.
+The `?? "unknown"` fallbacks in the error handler and rate
+limiter are honest — the global error handler runs before
+the request-id middleware, so the request-ID variable is
+genuinely `undefined` at that point.
 
 The decision is codified in
-[ADR-003: Hono env typing is per-app, not global](../decisions/ADR-003-hono-env-typing.md).
+[ADR-003: Hono env typing is per-app, not global](../../decisions/ADR-003-hono-env-typing.md).
 
 ## Consuming the typed values in routes
+
+A procedure downstream reads the typed context:
 
 ```ts
 // oRPC procedure
@@ -109,9 +109,10 @@ export const getProfile = base.handler(async ({ context }) => {
 })
 ```
 
-`context.user` is typed as `AuthInstance["$Infer"]["Session"]["user"] | null`.
-A non-null assertion requires going through `authGuard` (see
-`router/procedures/auth-middleware.ts`).
+The user field is typed as
+`AuthInstance["$Infer"]["Session"]["user"] | null`. A
+non-null assertion requires going through a guard middleware
+that narrows the type and throws on unauthenticated access.
 
 ## Client-side configuration
 
@@ -128,16 +129,14 @@ cross-subdomain setups (e.g. `app.deessejs.com` calling
 `api.deessejs.com`), set `crossSubDomainCookies.enabled` in
 the auth config — see
 [better-auth.com/docs/integrations/hono#cross-domain-cookies](https://better-auth.com/docs/integrations/hono#cross-domain-cookies).
-This repo currently runs app and API on the same Vercel
-project (the catch-all at `apps/app`), so cross-subdomain
-cookies are not yet configured.
+This is a better-auth config change, not a Hono change.
 
 ## What this entry is not
 
 This is a knowledge-base entry, not an ADR. It documents how
 better-auth + Hono work in the current version of the lib,
-and where each piece lives in our repo. The **decisions**
-(which pattern we picked and why) live in
+and the shape of the integration. The **decisions** (which
+pattern we picked and why) live in
 `docs/engineering/architecture/decisions/`. When a future
 change conflicts with this entry, the entry is wrong, not
 the code.
