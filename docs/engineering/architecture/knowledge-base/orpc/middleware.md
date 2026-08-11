@@ -102,7 +102,7 @@ export const base = os.$context<BaseContext>()
 `BaseContext` is our Hono-shared type. The values
 (`requestId`, `user`, `session`) are populated by the
 Hono-level session middleware (see
-`better-auth-hono-integration.md`).
+[better-auth + Hono integration](../better-auth/hono-integration.md)).
 
 ## Built-in middlewares
 
