@@ -119,6 +119,51 @@ sub-domain. Reading the package is a tree traversal, not a flat scan.
 - If a file would be called `utils.ts` or `types.ts`, the names
   involved in the file are wrong. Rename. Move.
 
+## Common patterns live in their sub-domain
+
+When you implement a pattern that could be reused (jitter, sleep,
+retry strategies, data structures), it does not go in `utils/` or in a
+shared package. It goes in the sub-domain that owns the concept.
+
+`jitter` is not generic. It's a backoff strategy for retry. It lives
+in `packages/cli/src/retry-strategy.ts` (or wherever the retry
+concern lives). If a second consumer wants to jitter their own
+retries, they import from there — they don't import from a shared
+`utils/jitter.ts`.
+
+`sleep` is not generic. It's an async primitive for a specific call
+site. It lives in the file that needs it. If a second site needs a
+sleep, the second file imports from the first, or both import from
+the sub-domain's `async.ts`. Not from `utils/async.ts`.
+
+Data structures are owned by their sub-domain. `TemplateRegistry`
+lives in `packages/api/src/services/templates/registry.ts`. A future
+`BillingPlanRegistry` lives in `packages/billing/src/plans/registry.ts`.
+Not in `packages/registrys/`. Not in `packages/api/src/types/registry.ts`.
+
+The heuristic: a pattern is "common" only if it's used by two or more
+**sub-domains** in the same package or across packages. If it's used
+by two files in the same sub-domain, it's already co-located —
+extract into the sub-domain's own file, not a shared one. If it's
+used by two sub-domains, **then** consider extracting, and the
+extract goes in the closest common ancestor package, not in a
+catch-all `utils/`.
+
+Examples:
+
+| Pattern           | Used by                  | Lives in                                              |
+| ----------------- | ------------------------ | ----------------------------------------------------- |
+| `jitter`          | CLI retry backoff        | `apps/cli/src/retry-strategy.ts`                      |
+| `jitter`          | CLI + API rate limiter   | `packages/retry/` (new shared package if justified)    |
+| `sleep`           | CLI retry                | `apps/cli/src/retry-strategy.ts`                      |
+| `sleep`           | API mock middleware      | `packages/api/src/middleware/sleep.ts`                 |
+| `Template` type   | API + CLI + web          | `packages/contracts/src/v1/template.ts`               |
+| `User` type       | API + auth + CLI         | `packages/auth/src/user.ts`                          |
+| `retry`           | CLI + API                | `packages/retry/` (new shared package if justified)    |
+
+The "extract to a shared package" path is real but rare. Most
+patterns are sub-domain-specific. Don't pre-extract.
+
 ## Anti-patterns
 
 - "I'll just put this in `utils.ts` for now, I'll move it later."
