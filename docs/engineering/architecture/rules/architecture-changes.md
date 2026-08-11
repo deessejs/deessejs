@@ -108,6 +108,11 @@ reviewer spec), it should:
   ADR reference.
 - Detect changes to files documented in `architecture/` and require
   a doc update in the same PR.
+- Detect `utils.ts`, `helpers.ts`, `misc.ts`, `common.ts`,
+  `types.ts` at any package root. Reject the PR. See
+  [ADR-002](./decisions/ADR-002-file-organization.md).
+- Detect files >200 lines without a single responsibility. Flag for
+  split.
 - Detect import patterns that bypass documented boundaries (e.g.
   `import { fetch } from "..."` in a server procedure).
 - Flag missing "External documentation" section when an external lib
