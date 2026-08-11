@@ -1,8 +1,8 @@
 import { TemplatesListResponseV1 } from "@workspace/contracts/v1"
 
-import { networkError, parseError } from "./errors.js"
-import { maybeWarnAboutOutdatedCli } from "./version-check.js"
-import { buildOrpcClient } from "./api/client.js"
+import { networkError, parseError } from "../errors.js"
+import { maybeWarnAboutOutdatedCli } from "../version-check.js"
+import { buildOrpcClient } from "./client.js"
 
 export type Template = TemplatesListResponseV1["templates"][number]
 
@@ -73,7 +73,7 @@ export const orpcToCliError = (e: unknown): Error & { code: string } => {
  * Flow:
  *   1. (If not skipVersionCheck) probe /cli-version and warn if outdated.
  *      Failure here is silent — version check is best-effort.
- *   2. Build a typed oRPC client (./api/client.ts) and call
+ *   2. Build a typed oRPC client (./client.ts) and call
  *      templates.list. Retry + backoff are handled inside `orpcFetch`,
  *      which delegates to fetchWithRetry.
  *   3. Surface typed errors. ORPCError.code is mapped to a CliError.

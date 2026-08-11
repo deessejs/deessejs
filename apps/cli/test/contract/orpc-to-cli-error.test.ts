@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 
-import { orpcToCliError } from "../../src/api.js"
+import { orpcToCliError } from "../../src/api/index.js"
 
 /**
  * Unit tests for the ORPCError → CliError mapper.

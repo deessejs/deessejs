@@ -1,7 +1,7 @@
 import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
-import { fetchTemplates } from "../api.js"
+import { fetchTemplates } from "../api/index.js"
 import { DEFAULT_API_URL } from "../constants.js"
 import { internal } from "../errors.js"
 import { printError, printJson, printTemplatesTable } from "../output.js"

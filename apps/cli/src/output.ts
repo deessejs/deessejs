@@ -1,6 +1,6 @@
 import pc from "picocolors"
 import type { CliError } from "./errors.js"
-import type { Template } from "./api.js"
+import type { Template } from "./api/index.js"
 
 export const printJson = (value: unknown): void => {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n")

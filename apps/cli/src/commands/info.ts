@@ -1,6 +1,6 @@
 import { Command } from "commander"
 import ora from "ora"
-import { fetchTemplates } from "../api.js"
+import { fetchTemplates } from "../api/index.js"
 import { DEFAULT_API_URL } from "../constants.js"
 import { internal, notFound } from "../errors.js"
 import { printError, printJson, printTemplateInfo } from "../output.js"
