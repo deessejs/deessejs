@@ -59,6 +59,7 @@ packages/email/                       — email transport + transactional templa
 ```
 index.md (you are here)
 ├── setup.md       — prerequisite for all changes
+├── hono.md        — Hono integration (handler mount, CORS, session middleware, typed env)
 ├── email.md       — requires pitfalls.md first for the fire-and-forget pattern
 ├── session.md     — standalone
 ├── client.md      — standalone (no #9710 workaround applies — single-tenant has no $activeOrgSignal)
