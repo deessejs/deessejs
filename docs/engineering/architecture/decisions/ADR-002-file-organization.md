@@ -119,50 +119,70 @@ sub-domain. Reading the package is a tree traversal, not a flat scan.
 - If a file would be called `utils.ts` or `types.ts`, the names
   involved in the file are wrong. Rename. Move.
 
-## Common patterns live in their sub-domain
+## Common patterns live in their own file
 
-When you implement a pattern that could be reused (jitter, sleep,
-retry strategies, data structures), it does not go in `utils/` or in a
-shared package. It goes in the sub-domain that owns the concept.
+When you implement a pattern (jitter, sleep, retry, debounce, a
+data structure, a parser), it does not go in `utils/`, in the file
+of a sub-domain that happens to use it, or in a "common" catch-all.
+The pattern lives in its own file dedicated to that pattern. The
+file's purpose is the pattern itself, nothing else.
 
-`jitter` is not generic. It's a backoff strategy for retry. It lives
-in `packages/cli/src/retry-strategy.ts` (or wherever the retry
-concern lives). If a second consumer wants to jitter their own
-retries, they import from there — they don't import from a shared
-`utils/jitter.ts`.
+`jitter` is a mathematical operation. It does not belong to "retry"
+just because the first caller uses it for retry backoff. A future
+caller might use jitter to add randomness to a UI animation. The
+file is `jitter.ts`, and it implements the jitter pattern. Nothing
+else.
 
-`sleep` is not generic. It's an async primitive for a specific call
-site. It lives in the file that needs it. If a second site needs a
-sleep, the second file imports from the first, or both import from
-the sub-domain's `async.ts`. Not from `utils/async.ts`.
+```
+- jitter.ts          implements jitter(base, range). No context.
+- sleep.ts           implements sleep(ms). No context.
+- retry.ts           implements retry(fn, options). No context.
+- debounce.ts        implements debounce(fn, ms). No context.
+```
 
-Data structures are owned by their sub-domain. `TemplateRegistry`
-lives in `packages/api/src/services/templates/registry.ts`. A future
-`BillingPlanRegistry` lives in `packages/billing/src/plans/registry.ts`.
-Not in `packages/registrys/`. Not in `packages/api/src/types/registry.ts`.
+Each of these files answers one question: "what does this pattern
+do?" They do not answer "what is this pattern used for?" — that
+is the caller's concern. The caller imports the pattern. The pattern
+does not know about the caller.
 
-The heuristic: a pattern is "common" only if it's used by two or more
-**sub-domains** in the same package or across packages. If it's used
-by two files in the same sub-domain, it's already co-located —
-extract into the sub-domain's own file, not a shared one. If it's
-used by two sub-domains, **then** consider extracting, and the
-extract goes in the closest common ancestor package, not in a
-catch-all `utils/`.
+`utils.ts` is wrong because it lumps multiple patterns together
+under a name that means nothing. `jitter.ts` is right because the
+file's name is the pattern's name. The file's purpose is the
+pattern. The file's name is the pattern. One file, one pattern.
 
-Examples:
+Data structures follow the same rule. `TemplateRegistry` is a
+specific registry for a specific type. It belongs with `Template`.
+A `registry.ts` that contains `TemplateRegistry`, `UserRegistry`,
+`BillingPlanRegistry` is wrong — it couples three sub-domains
+through a shared abstraction. Each registry belongs in its own file,
+with its own data type, in its own sub-domain.
 
-| Pattern           | Used by                  | Lives in                                              |
-| ----------------- | ------------------------ | ----------------------------------------------------- |
-| `jitter`          | CLI retry backoff        | `apps/cli/src/retry-strategy.ts`                      |
-| `jitter`          | CLI + API rate limiter   | `packages/retry/` (new shared package if justified)    |
-| `sleep`           | CLI retry                | `apps/cli/src/retry-strategy.ts`                      |
-| `sleep`           | API mock middleware      | `packages/api/src/middleware/sleep.ts`                 |
-| `Template` type   | API + CLI + web          | `packages/contracts/src/v1/template.ts`               |
-| `User` type       | API + auth + CLI         | `packages/auth/src/user.ts`                          |
-| `retry`           | CLI + API                | `packages/retry/` (new shared package if justified)    |
+```
+- packages/api/src/services/templates/registry.ts
+- packages/auth/src/users/registry.ts
+- packages/billing/src/plans/registry.ts
+```
 
-The "extract to a shared package" path is real but rare. Most
-patterns are sub-domain-specific. Don't pre-extract.
+When two sub-domains want to share a pattern, that is a real
+extract. It does not go in `utils/`. It goes in a package that
+exists for that pattern:
+
+```
+- packages/retry/src/retry.ts      implements retry(fn, options)
+- packages/async/src/jitter.ts     implements jitter(base, range)
+- packages/async/src/sleep.ts     implements sleep(ms)
+```
+
+The package's name is the concept, not "common" or "shared" or
+"utils". A package named `packages/common/` is the same anti-pattern
+as `utils.ts`. The concept must have a name that describes what it
+is, not where it lives.
+
+The test: when you read the filename without the rest of the
+project, do you know what the file does? `jitter.ts` says "this
+implements jitter". `retry.ts` says "this implements retry". `utils.ts`
+says "this is where things go when you don't know where they go". The
+third is not a name. The first two are.
 
 ## Anti-patterns
 
