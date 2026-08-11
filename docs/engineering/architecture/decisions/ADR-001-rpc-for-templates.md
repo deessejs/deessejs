@@ -1,4 +1,4 @@
-# ADR-014: RPC for templates
+# ADR-001: RPC for templates
 
 ## Status
 

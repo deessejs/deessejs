@@ -74,8 +74,8 @@ gives every consumer input/output type inference.
 
 ## Architecture
 - New procedure in `packages/api/src/router/templates.ts`
-- Error wire format per ADR-016
-- Client wrapper per ADR-015
+- Error wire format per ADR-003
+- Client wrapper per ADR-002
 
 ## Decisions
 - Single procedure, no server-side cache (deferred to V1.1)
@@ -98,7 +98,7 @@ None for V1. Server-side cache is deferred.
 - [x] Typecheck passes
 - [x] Lint passes
 - [x] Tests pass
-- [x] ADR-014 created
+- [x] ADR-001 created
 - [x] architecture/rpc.md updated
 - [x] rules/test-mocking.md followed
 ```

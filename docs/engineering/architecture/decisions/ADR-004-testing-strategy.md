@@ -1,4 +1,4 @@
-# ADR-017: Testing strategy for the RPC stack
+# ADR-004: Testing strategy for the RPC stack
 
 ## Status
 

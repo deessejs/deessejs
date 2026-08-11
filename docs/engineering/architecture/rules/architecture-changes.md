@@ -60,7 +60,7 @@ The PR template lives at `docs/engineering/architecture/rules/pr-template.md`.
 ## When you introduce a new abstraction
 
 1. Create an ADR in `docs/engineering/architecture/decisions/`. Use the next
-   available number (e.g. `ADR-018-...`). Reference the previous
+   available number (e.g. `ADR-005-...`). Reference the previous
    decision that this builds on or supersedes.
 2. Update the relevant `architecture/` doc. If no `architecture/` doc
    covers the abstraction, add one.
@@ -101,7 +101,7 @@ or where the typed client lives — you are touching an invariant.
 ## What the AI reviewer checks
 
 When the AI reviewer runs on a PR (see
-`docs/engineering/architecture/decisions/ADR-017-testing-strategy.md` and the future
+`docs/engineering/architecture/decisions/ADR-004-testing-strategy.md` and the future
 reviewer spec), it should:
 
 - Detect new files in `packages/` or `apps/<x>/src/lib/` and require an

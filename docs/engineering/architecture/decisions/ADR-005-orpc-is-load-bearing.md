@@ -1,4 +1,4 @@
-# ADR-018: oRPC is the load-bearing core of the internal API
+# ADR-005: oRPC is the load-bearing core of the internal API
 
 ## Status
 
@@ -55,7 +55,7 @@ When you write code that touches oRPC:
    `packages/contracts/`. The router lives in `packages/api/src/router/`.
    If your code needs a shape that doesn't exist in either, the answer
    is not "shape your own" — it is "escalate".
-3. **Read the existing ADRs.** ADR-014, ADR-015, ADR-016, ADR-017
+3. **Read the existing ADRs.** ADR-001, ADR-002, ADR-003, ADR-004
    cover the load-bearing pieces. If your code contradicts them, you
    are wrong. Update the ADR first, then the code.
 4. **When in doubt, escalate.** The tech lead is the human escalation
@@ -97,7 +97,7 @@ shortcut that becomes tomorrow's permanent debt".
 - Reading the oRPC docs to understand the right way.
 - Asking questions in PR comments when an ADR is unclear.
 - Proposing an ADR change when the existing rule is wrong.
-- Adding a procedure that uses oRPC's existing patterns (see ADR-014).
+- Adding a procedure that uses oRPC's existing patterns (see ADR-001).
 
 These are how the system evolves. They are not workarounds.
 
@@ -115,13 +115,13 @@ These are how the system evolves. They are not workarounds.
 ## Anti-patterns
 
 - "I'll just use REST here, oRPC is overkill for this endpoint." No.
-  Every endpoint uses oRPC. ADR-014.
+  Every endpoint uses oRPC. ADR-001.
 - "I'll catch the error and remap it to my custom format." No.
-  ORPCError is the format. ADR-016.
+  ORPCError is the format. ADR-003.
 - "I'll mock the RPCLink to make the test pass." No. Server-Side
-  Client or `http.createServer`. ADR-017.
+  Client or `http.createServer`. ADR-004.
 - "I'll wrap oRPC in a custom error handler because ORPCError is too
-  complex." No. Use ORPCError directly. ADR-016.
+  complex." No. Use ORPCError directly. ADR-003.
 
 ## What this rule does not forbid
 
@@ -147,10 +147,10 @@ is the path.
 
 ## Related
 
-- ADR-014: RPC for templates — the protocol choice.
-- ADR-015: Typed client via RPCLink — the consumer-side pattern.
-- ADR-016: ORPCError wire format — the error contract.
-- ADR-017: Testing strategy for the RPC stack — how to test the
+- ADR-001: RPC for templates — the protocol choice.
+- ADR-002: Typed client via RPCLink — the consumer-side pattern.
+- ADR-003: ORPCError wire format — the error contract.
+- ADR-004: Testing strategy for the RPC stack — how to test the
   load-bearing core without bypassing it.
 - rules/external-knowledge.md — official docs > model knowledge.
 - rules/architecture-changes.md — every abstraction needs an ADR.

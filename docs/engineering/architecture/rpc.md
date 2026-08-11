@@ -102,7 +102,7 @@ the page level.
 
 Wire format: `{ defined, code, status, message, data }`. The
 client decodes this into a real `ORPCError` instance. See
-[`decisions/ADR-016-orpcerror-wire-format.md`](../decisions/ADR-016-orpcerror-wire-format.md).
+[`decisions/ADR-003-orpcerror-wire-format.md`](../decisions/ADR-003-orpcerror-wire-format.md).
 
 Server-side: Hono middleware (rate-limit, notFound, onError) throws
 `HTTPException` which the global `onError` maps to the wire shape.

@@ -1,4 +1,4 @@
-# ADR-015: Typed client via RPCLink
+# ADR-002: Typed client via RPCLink
 
 ## Status
 

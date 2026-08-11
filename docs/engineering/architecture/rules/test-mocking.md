@@ -24,7 +24,7 @@ regardless of what was requested. The result:
 If you find yourself reaching for this pattern, you are testing the
 mock, not the client. Use Pattern A (Server-Side Client) or Pattern
 B (`http.createServer`) instead. See
-`docs/engineering/architecture/decisions/ADR-017-testing-strategy.md`.
+`docs/engineering/architecture/decisions/ADR-004-testing-strategy.md`.
 
 ### `vi.spyOn` on an exported function to verify it was called
 

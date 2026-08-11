@@ -1,4 +1,4 @@
-# ADR-016: ORPCError wire format
+# ADR-003: ORPCError wire format
 
 ## Status
 

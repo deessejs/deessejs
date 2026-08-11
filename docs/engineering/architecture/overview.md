@@ -87,7 +87,7 @@ talk to the server, see [`rpc.md`](./rpc.md).
   to GitHub, to Resend. Knows nothing about HTTP, oRPC, or RPC.
 - **`packages/api/src/middleware/`**: Hono-level middleware. CORS, rate
   limit, session. Catches errors and shapes them as `ORPCError` (see
-  `decisions/ADR-016-orpcerror-wire-format.md`).
+  `decisions/ADR-003-orpcerror-wire-format.md`).
 - **`packages/ui/`**: visual primitives. No business logic, no data fetching.
 - **`apps/<web|app|cli>/src/lib/orpc.ts`**: typed client wrapper. Adds ISR
   (web), retry (CLI), or nothing (app) on top of `createORPCClient`.
