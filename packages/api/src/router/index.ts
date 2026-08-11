@@ -1,8 +1,6 @@
-import { userRouter } from "./routes/user.js"
 import { templatesRouter } from "./routes/templates.js"
 
 export const appRouter = {
-  user: userRouter,
   templates: templatesRouter,
 }
 
