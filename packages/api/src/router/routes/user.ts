@@ -1,6 +1,6 @@
 import { z } from "zod"
-import { base } from "./base.js"
-import { authGuard } from "./auth-middleware.js"
+import { base } from "../procedures/base.js"
+import { authGuard } from "../procedures/auth-middleware.js"
 
 // Public procedures (no auth)
 export const list = base

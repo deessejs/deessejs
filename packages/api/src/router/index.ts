@@ -1,5 +1,5 @@
-import { userRouter } from "./user.js"
-import { templatesRouter } from "./templates.js"
+import { userRouter } from "./routes/user.js"
+import { templatesRouter } from "./routes/templates.js"
 
 export const appRouter = {
   user: userRouter,
