@@ -57,6 +57,15 @@ including the throwaway ones.
 - The contract is shared (`packages/contracts/`). Don't redeclare it
   in the consumer. Don't add fields the producer doesn't know about.
 
+### oRPC is not negotiable
+
+See [decisions/ADR-018-orpc-is-load-bearing.md](./decisions/ADR-018-orpc-is-load-bearing.md).
+oRPC is the load-bearing core of the internal API. We do not
+workaround it, bypass it, or add a second transport. When a problem
+arises, the agent escalates to the tech lead. "I'll just implement
+my own envelope" is not an option. The cost of a workaround compounds
+across every deployment. Tomorrow is what never arrives.
+
 ### Tests prove behavior, not implementation
 
 - A test that calls `expect(true).toBe(true)` passes. It proves nothing.
@@ -118,6 +127,25 @@ responsible for knowing the right answer before writing the code.
 If the right answer isn't in this directory, you add it. If the right
 answer isn't in the upstream docs, you cite the docs in your PR.
 Either way, you don't ship without knowing.
+
+## When the rule is non-negotiable
+
+Some pieces of the architecture are load-bearing — touching them the
+wrong way fragments the system. For those, the answer is not "work
+around it". The answer is escalate.
+
+See [decisions/ADR-018-orpc-is-load-bearing.md](./decisions/ADR-018-orpc-is-load-bearing.md)
+for what that means in practice. The pattern is:
+
+1. Stop coding.
+2. Describe the problem precisely.
+3. Cite upstream docs and existing ADRs.
+4. Propose options.
+5. Hand off to the tech lead.
+
+The agent's job is to identify the problem, not to solve it
+unilaterally when the rule says "don't". A wrong solution is worse
+than no solution.
 
 ## The test of a senior commit
 
