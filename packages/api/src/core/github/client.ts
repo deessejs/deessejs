@@ -10,23 +10,9 @@
  * limit from 60 req/h to 5000 req/h. In production on Vercel, set
  * this as a project secret.
  */
+import type { GitHubReadme, GitHubRepo } from "./types.js"
+
 const GITHUB_API = "https://api.github.com"
-
-export type GitHubRepo = {
-  name: string
-  full_name: string
-  description: string | null
-  license: { spdx_id: string | null; name: string } | null
-  stargazers_count: number
-  pushed_at: string
-  topics?: string[]
-  html_url: string
-}
-
-export type GitHubReadme = {
-  content: string
-  encoding: "base64"
-}
 
 const headers = (token: string | undefined): Record<string, string> => {
   const base: Record<string, string> = {

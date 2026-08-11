@@ -293,6 +293,24 @@ rebase cycles.
 
 This ADR exists so the next contributor doesn't have to do that.
 
+### 2026-08 — exception for `core/<sub>/types.ts`
+
+The maintainer directed the creation of `packages/api/src/core/github/types.ts`
+to hold `GitHubRepo` and `GitHubReadme`, even though the exception
+in "What this rule allows" requires types to be strictly internal to
+the sub-domain. `GitHubRepo` is consumed by `core/templates/enrich.ts`,
+which technically violates the exception's preconditions.
+
+The maintainer's reasoning: discoverability of types independently
+of the client functions, in anticipation of more GitHub-related
+types landing in this sub-domain. This is a deliberate exception,
+not an application of the rule. Future contributors who want a
+`types.ts` in another sub-domain should follow this precedent only
+with the maintainer's explicit go-ahead, not by analogy.
+
+This entry exists so the next person reading the rule does not
+mistake the precedent for general permission.
+
 ## Related
 
 - [README.md](../README.md) — the engineering culture this ADR
