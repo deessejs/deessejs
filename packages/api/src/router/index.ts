@@ -1,8 +1,5 @@
-import { templatesRouter } from "./routes/templates.js"
-
-export const appRouter = {
-  templates: templatesRouter,
-}
-
-// Type export for client usage
-export type AppRouter = typeof appRouter
+// Public surface of the router. Importers should use this file
+// rather than reaching into sub-dirs. Sub-dirs (`procedures/`,
+// `routes/`) are implementation details; their internal layout
+// can change without breaking external consumers.
+export { appRouter, type AppRouter } from "./routes/index.js"

@@ -4,7 +4,7 @@ import type { Hono } from "hono"
 import { logger } from "../../logger.js"
 import { REQUEST_ID_HEADER } from "../../middleware/request-id.js"
 import type { ApiEnv } from "../../types/api-env.js"
-import { appRouter } from "../index.js"
+import { appRouter } from "../routes/index.js"
 import { wrapForOrpc } from "./hono-adapter.js"
 
 /**

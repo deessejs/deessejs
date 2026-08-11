@@ -247,9 +247,14 @@ third is not a name. The first two are.
 - Helper functions in a sub-domain directory. `template-parser.ts`
   in `packages/api/src/core/templates/` can have helper functions
   for parsing templates. They're scoped to the templates sub-domain.
-- Re-exports in `index.ts`. A sub-domain's `index.ts` can re-export
-  declarations from other files in the same sub-domain. This is
-  allowed because it's a public surface, not a dump.
+- **Barrel `index.ts` per directory.** A directory's `index.ts` is
+  the public surface of that directory. It re-exports declarations
+  from sibling files so consumers can write
+  `import { foo } from "./barrel.js"` instead of
+  `import { foo } from "./barrel/foo.js"`. The barrel is required
+  to be **superficial** — re-exports only, no logic, no side
+  effects, no re-implementation. Adding code to a barrel turns it
+  into a `utils.ts` by another name and is rejected.
 - A single small `types.ts` for a sub-domain when the types are
   strictly internal to that sub-domain. The exception applies per
   sub-domain, not per package.

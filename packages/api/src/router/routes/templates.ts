@@ -1,7 +1,7 @@
 import { TemplatesListResponseV1 } from "@workspace/contracts/v1"
 import { base } from "../procedures/base.js"
 import { TEMPLATES } from "../../templates.js"
-import { enrich } from "../../core/templates/enrich.js"
+import { enrich } from "../../core/templates/index.js"
 
 /**
  * Public procedure: list the templates in the catalog.
