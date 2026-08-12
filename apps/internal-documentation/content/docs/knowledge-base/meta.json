@@ -2,5 +2,6 @@
   "title": "Knowledge Base",
   "description": "...",
   "icon": "BookMarked",
+  "root": true,
   "pages": ["index"]
 }
