@@ -74,12 +74,14 @@ guidelines; they are the floor.
 
 The single sentence that operationalises the ten invariants:
 
-> "If the type says it's not null, trust the type. If the
-> type is wrong, fix the type. Don't add runtime null checks
-> for values that can't be null."
->
-> — Miguel Pizza, _No Defensive Null Checks_, Maintainable
-> TypeScript doctrine.
+<Callout type="info" title="The trust-the-type principle">
+  "If the type says it's not null, trust the type. If the
+  type is wrong, fix the type. Don't add runtime null checks
+  for values that can't be null."
+</Callout>
+
+— Miguel Pizza, _No Defensive Null Checks_, Maintainable
+TypeScript doctrine.
 
 Every invariant in this rule is a consequence of that
 principle. The compiler is the first reviewer (invariant 9);
@@ -113,28 +115,38 @@ this one.
 
 ## See also
 
-This rule is the mindset. The other rules operationalise
-it:
+This rule is the mindset. The other rules operationalise it:
 
-- **File Separation** — the structure this mindset expects.
-- **File Placement** — the discipline that turns the mindset
-  into a code-shape decision. The Rule of Three named in
-  invariant 4 above is the _abstraction_ threshold; this rule
-  applies a _second-concern_ threshold for file relocation —
-  the two are different decisions with different evidence.
-- **No Speculative Defences** — invariant 4 (no speculative
-  abstractions) and invariant 7 (no compiler bypass) in
-  operational form.
-- **Top-Down Composition** — the discipline that puts the
-  reader first.
-- **No Chained Type Assertions** — the type-side application
-  of invariant 7.
+<Cards>
+  <Card title="File Separation" href="/docs/0002-file-separation">
+    The structure this mindset expects.
+  </Card>
+  <Card title="File Placement" href="/docs/0003-file-placement">
+    The discipline that turns the mindset into a code-shape
+    decision. The Rule of Three named in invariant 4 above is
+    the abstraction threshold; this rule applies a
+    second-concern threshold for file relocation — the two
+    are different decisions with different evidence.
+  </Card>
+  <Card title="No Speculative Defences" href="/docs/0004-no-speculative-defences">
+    Invariant 4 (no speculative abstractions) and invariant 7
+    (no compiler bypass) in operational form.
+  </Card>
+  <Card title="Top-Down Composition" href="/docs/0007-top-down-composition">
+    The discipline that puts the reader first.
+  </Card>
+  <Card title="No Chained Type Assertions" href="/docs/0008-no-chained-type-assertions">
+    The type-side application of invariant 7.
+  </Card>
+</Cards>
 
 ## Exceptions
 
-None. The invariants are absolute. A request for an
-exception is a signal that the request should be re-scoped
-until it no longer requires one.
+<Callout type="warn" title="No exceptions">
+  The invariants are absolute. A request for an exception is a
+  signal that the request should be re-scoped until it no
+  longer requires one.
+</Callout>
 
 ## Sources
 

@@ -1,0 +1,145 @@
+# ADR-006: Fumadocs Cards design rules
+
+## Status
+
+Accepted (2026-08). Non-negotiable.
+
+## Context
+
+The `Cards` / `Card` components from `fumadocs-ui` are the
+primary navigation primitive in the rendering site. A wrapper
+of `<Card>` elements in a `<Cards>` grid is the right shape
+for "see also" sections, "next steps" callouts, and
+top-of-page entry points. They are also easy to misuse: a
+card without an icon is text wallpaper, a card with a
+five-line description is a wall.
+
+The rule is **a design guideline for the rendering site,
+not a doc-engine constraint**. The MDX accepts whatever the
+contributor types. The rule is enforced by code review on
+the doc source files, not by the site.
+
+## Decision
+
+When a Card is rendered in the rendering site, two rules
+apply:
+
+1. **Every Card has an icon**, when one is available.
+   `"icon": "HomeIcon"` in the frontmatter, or an inline
+   `<Icon>` element. A card without an icon is rejected
+   in review; the contributor adds the icon or removes the
+   card.
+2. **The Card description is four lines or fewer**,
+   measured at the rendered width. A description that
+   exceeds four lines in the rendered grid is rejected in
+   review; the contributor shortens the description or
+   moves the content to a body section.
+
+The two rules compose: a card with no icon and a five-line
+description fails on both. The two rules are independent:
+a card with an icon but a five-line description still
+fails on the second rule.
+
+## Why
+
+The Fumadocs `<Card>` renders as a fixed-height tile in a
+grid. The tile has a uniform height in the grid layout. A
+description that exceeds what fits in the tile's body
+either gets clipped (the contributor does not notice) or
+overflows (the grid stops being uniform, the page breaks
+visual rhythm). The contributor cannot see this from the
+MDX source — only the rendered HTML reveals the layout
+break.
+
+The icon is the visual anchor of the tile. A card without
+an icon is a text paragraph wearing a card frame; the
+visual hierarchy is broken; the reader does not know
+where to look. The `lucide-react` icon library is already
+a dependency in the site package; the cost of an icon is
+one word in the frontmatter.
+
+The four-line limit is a **heuristic** tuned for the
+default Fumadocs layout at the standard viewport. It is not
+a hard character count — a long sentence with line breaks
+at the right places may exceed four physical lines without
+the card looking broken. The rule is the intent: the
+description should be a glance, not a read.
+
+## What this rule allows
+
+- **No icon if the concept is genuinely abstract.** A card
+  linking to "project mindset" might not have an icon that
+  adds information. The contributor can omit the icon
+  with a comment explaining why, and the review agrees
+  that the card is stronger without one.
+- **A description just over four lines** when the
+  contributor can demonstrate that the rendered output
+  reads as a single coherent sentence (no orphan word at
+  the end, no awkward line break in the middle of a
+  technical term). The reviewer judges the rendering, not
+  the line count.
+- **A longer description in a Card that is a section
+  header**, not a navigation cell. The nav rule is the
+  four-line heuristic; the body section is prose and
+  follows the prose rules.
+
+## What this rule forbids
+
+- **A Card without an icon, when an icon is available.**
+  The card wastes the visual anchor; the reader's eye
+  has no landing point.
+- **A Card description that exceeds four lines at the
+  rendered width.** The card breaks the grid; the layout
+  is no longer uniform.
+- **A `<Card>` used as a section header or a paragraph
+  surrogate.** The card is a navigation primitive;
+  paragraphs and headings live in body sections.
+- **An icon that does not match the content.** A `BookIcon`
+  on a card about a CLI is a lie. The icon should be the
+  first word of the description, in visual form.
+
+## What this rule does not change
+
+- The Card component itself. The rule is a content
+  guideline, not a wrapper around the component.
+- The Cards component. Same — the rule is "what you put
+  inside a card", not "when you use a card grid".
+- The frontmatter schema. The `icon` field is optional
+  in the schema; the rule makes it effectively required
+  for the rendering site. The schema stays permissive
+  because the source files in `docs/engineering/` are
+  not all rendering targets.
+
+## How to enforce
+
+The rule is enforced by code review on the doc source
+files. The reviewer checks the rendering of the affected
+page in the dev server before approving the PR. The dev
+server is `pnpm --filter @workspace/internal-documentation
+dev`; the reviewer opens the page at the standard viewport
+(1024px) and verifies each Card.
+
+No automated check. The visual heuristic is not amenable
+to a Zod schema (a Card's appearance depends on the
+viewport, the surrounding cards, and the icon used). The
+reviewer's eye is the right enforcement.
+
+## Where this rule came from
+
+The rule came from the first migration of `0001-project-mindset`,
+which used a `<Cards>` grid in the "See also" section. The
+contributor wrote the cards with descriptions that, in the
+source, looked like one sentence. The rendered grid showed
+the descriptions spilling across five lines and a half, with
+the cards no longer aligned. The rule emerged from the fix.
+
+## Related
+
+- [knowledge-base/fumadocs.md](../knowledge-base/fumadocs.md) —
+  the components reference, including the `Card` props.
+- [ADR-004: API package structure](./ADR-004-api-package-structure.md) —
+  the same principle in a different domain: structure
+  constraints are stated in the ADR, not enforced by tooling.
+- Rule 0001 (Project Mindset) — invariant 9 ("optimise for
+  the reader"). The four-line limit is the rendering-target
+  application of the same principle.
