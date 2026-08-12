@@ -1,0 +1,270 @@
+---
+title: '0012 .  Prefer `type` Over `interface`'
+description: 'Every shape in this codebase is declared with `type`, not'
+---
+
+# 0012 .  Prefer `type` Over `interface`
+
+
+## Rule
+
+Every shape in this codebase is declared with `type`, not
+`interface`, unless one of three conditions is met:
+
+1. **Declaration merging is required.** A consumer extends the
+   shape by adding fields to a second `interface X { ... }`
+   declaration in a different file. Only `interface` supports
+   this; `type` does not.
+2. **A class implements the shape and the shape has no runtime
+   behaviour.** `class Foo implements Shape { ... }` works with
+   both, but a class that needs the shape to be **open** for
+   third-party additions (a library extension point) is the
+   natural fit for `interface`.
+3. **The shape is part of a host type the project does not own.**
+   Augmenting a third-party `interface` (e.g. extending a host
+   framework's request type) uses `interface` because the host
+   already chose `interface`.
+
+In every other case , a shape that describes a value, a union, an
+intersection, a function signature, a conditional, a mapped type , the
+declaration is `type`. The shape of the code becomes uniform; the
+choice between `type` and `interface` stops being made on every
+declaration.
+
+## Why
+
+`type` and `interface` overlap in the cases most codebases use them.
+For a plain object shape, both compile to the same structural type;
+both have the same IDE support; both produce the same error
+messages on misuse. The choice between them is not a type-system
+choice; it is a **convention** choice.
+
+The convention this rule picks is `type`, for three reasons:
+
+- **`type` is more expressive.** `type` accepts unions,
+  intersections, conditionals, mapped types, and template literal
+  types. `interface` accepts unions only with `&` and only for
+  object shapes. A codebase that uses `type` uniformly never has
+  to reach for `interface` when the shape needs an expression
+  `type` cannot write.
+- **`type` is one declaration site.** An `interface X` declared in
+  two files is a single shape that the compiler merges. A `type X`
+  declared twice is an error. The merge is occasionally useful
+  (declaration merging for host augmentation) and frequently a
+  source of "where did this field come from?" bugs. Defaulting to
+  `type` makes merge a deliberate choice, not an accident.
+- **`type` is the union's natural home.** A codebase that mixes
+  unions and interfaces has to remember that `interface X extends
+Y | Z` is invalid; the syntax switches between the two. A
+  codebase that uses `type` uniformly has one syntax for "shape"
+  and one syntax for "either this or that".
+
+The rule is not "no `interface` ever". The rule is "the choice
+between the two is not yours to make on every declaration. The
+default is `type`. The exception list is short, named, and audited."
+
+## What this looks like in practice
+
+A declaration that should be `type`:
+
+```ts
+// Good , the shape is a value description, not an extension point
+type ValidationRule = {
+  readonly field: string;
+  readonly severity: 'error' | 'warning';
+  readonly code: string;
+};
+```
+
+A declaration that must be `interface` because declaration merging
+is the point:
+
+```ts
+// Required: third-party host augmentation
+declare module 'express' {
+  interface Request {
+    requestId: string;
+  }
+}
+```
+
+A declaration that must be `interface` because a library exposes
+an extension point:
+
+```ts
+// The library author chose interface deliberately , they expect
+// consumers to add fields by declaring the interface again in
+// their own module.
+interface PluginContext {
+  config: Record<string, unknown>;
+  logger: Logger;
+}
+```
+
+The library author writes `interface` because the consumer might
+add fields via declaration merging. The consumer writes `type` for
+their own shapes, because they control their own shapes.
+
+## When the rule does not apply
+
+The rule applies to **shape declarations**. It does not apply to:
+
+- **Class declarations** themselves. `class Foo { ... }` is not
+  affected by the rule; the rule is about declaring the shapes
+  classes implement or the unions and intersections they
+  participate in.
+- **Type assertions** of host types. The shape of the ambient
+  declaration is fixed by the host.
+- **Build-time tooling** that requires one or the other for
+  configuration (rare, but some tool configs use `interface X` as a
+  literal label).
+- **Augmentation files** (the `*.d.ts` files that extend host
+  types). Augmentation is `interface`; this is the canonical
+  exception.
+
+## How to convert an `interface` to a `type`
+
+When a contributor has written `interface` and the rule says `type`,
+the conversion is mechanical:
+
+```ts
+// Before
+interface ValidationRule {
+  readonly field: string;
+  readonly severity: 'error' | 'warning';
+}
+
+// After
+type ValidationRule = {
+  readonly field: string;
+  readonly severity: 'error' | 'warning';
+};
+```
+
+The conversion is lossless for object shapes that do not use
+declaration merging. The compiler emits the same structural type;
+the IDE shows the same hints; the consumers see no change.
+
+A conversion that requires more than a keyword swap is a signal that
+the original `interface` was doing something `type` cannot do. The
+signal is not a failure to convert; it is the rule's way of telling
+the contributor "this `interface` is on the exception list; document
+why".
+
+## What this looks like in violation
+
+Three shapes that this rule exists to catch.
+
+The first, mixed convention:
+
+```ts
+// File 1
+interface User {
+  id: string;
+  email: string;
+}
+
+// File 2
+type Admin = {
+  id: string;
+  permissions: string[];
+};
+
+// File 3
+interface Config {
+  env: 'production' | 'staging';
+}
+
+// File 4
+type FeatureFlag = {
+  name: string;
+  enabled: boolean;
+};
+```
+
+The same project, four files, four declarations, two conventions.
+The reader has to remember which keyword was used in which file
+when they want to add a field.
+
+The second, `interface` used where the shape is closed:
+
+```ts
+// Bad , the shape is closed; no third party extends it
+// The author chose interface because that was the example they
+// followed, not because they wanted declaration merging.
+interface UserSettings {
+  theme: 'light' | 'dark';
+  language: string;
+}
+```
+
+A `type` is the right shape. A future contributor who wants to
+add a field finds `type UserSettings = { ... }` and edits the
+shape in one place.
+
+The third, `type` used where `interface` is required:
+
+```ts
+// Bad , third-party host augmentation with type
+// (TypeScript will accept this in some configurations but
+// declaration merging does not work as expected.)
+declare module 'express' {
+  type Request = {
+    requestId: string;
+  };
+}
+```
+
+The augmentation does not merge into the host `Request`. The
+consumer's `requestId` field is invisible to library code that
+expects an augmented `Request`. The fix is `interface`.
+
+## Enforcement
+
+- **Code review**. A reviewer who sees `interface X` in a file that
+  does not perform declaration merging, class implementation of an
+  open shape, or third-party augmentation asks for the `type`
+  conversion.
+- **Lint rule** (future). A custom ESLint rule can flag `interface`
+  declarations outside the canonical exception list. The rule's
+  existence is the enforcement signal even before it is automated.
+- **Quarterly audit**. A standing review of "where do we still use
+  `interface`?" surfaces the candidates that slipped through. Each
+  is either converted or annotated as a documented exception.
+
+## Exceptions
+
+The rule is absolute except for the three conditions listed at the
+top: declaration merging, class implementation of open shapes, and
+host type augmentation. Each `interface` declaration in the codebase
+should be traceable to one of those three conditions. A
+declaration that cannot be traced is a violation.
+
+## See also
+
+- **Rule 0002** .  File Separation: a `types.ts` file is the
+  natural home for the `type` declarations this rule produces.
+- **Rule 0008** .  No Chained Type Assertions: the type discipline
+  this rule relies on. A `type` declaration that requires a cast
+  to use is a violation of 0008; the declaration is the wrong
+  shape.
+- **Rule 0014** .  Functions Over Classes for Public API: the
+  exception 2 above ("a class implements the shape and the shape
+  has no runtime behaviour") describes a class that _implements_
+  an `interface`; that class must remain non-exported per rule 0014. The public shape is the interface; the class is the
+  internal implementer. The two rules cooperate: 0012 picks
+  `interface` for the extension point, 0014 hides the class that
+  implements it.
+
+## Sources
+
+This rule is a synthesis of the project's own working
+experience. The TypeScript documentation itself states that
+`type` and `interface` are largely interchangeable in the cases
+most codebases use them; the rule picks `type` as the default
+because the expressiveness, single-declaration-site, and
+union-friendly characteristics are not duplicated by
+`interface`. The three documented exceptions (declaration
+merging, class implementation of open shapes, host type
+augmentation) are the cases where `interface` is genuinely
+required.

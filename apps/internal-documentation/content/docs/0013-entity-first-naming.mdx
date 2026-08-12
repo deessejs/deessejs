@@ -1,0 +1,347 @@
+---
+title: '0013 .  Entity-First Naming: Refuse Bare `-er` Suffixes'
+description: 'A class, type, or module name is **never** a bare job title. The'
+---
+
+# 0013 .  Entity-First Naming: Refuse Bare `-er` Suffixes
+
+
+## Rule
+
+A class, type, or module name is **never** a bare job title. The
+suffixes `Manager`, `Service`, `Handler`, `Controller`, `Helper`,
+`Writer`, `Reader`, `Converter`, `Validator`, `Router`,
+`Dispatcher`, `Observer`, `Listener`, `Sorter`, `Encoder`,
+`Decoder`, and every other `-er` ending that names what the thing
+**does for the caller** rather than what the thing **is** . 
+are refused as standalone names.
+
+The rule is against suffixes as **the only content of a name** AND
+against suffixes that survive qualification. A `Handler` is refused
+because the name says only that something is being handled; a
+`CancelOrderHandler` is also refused, because the suffix still
+describes the **role the thing plays in someone else's code**,
+not the thing itself. The qualifier does not change the smell; it
+only makes the smell larger and harder to spot.
+
+Two patterns, in increasing order of severity:
+
+- **Suffix as name content** (`Manager`, `Service`, `Handler`,
+  `CancelOrderHandler`, `UserCreationService`) , refused. The
+  suffix is part of the name, with or without a qualifier. The
+  name describes a role, not an entity.
+- **Entity name** (`SortedApples`, `ValidatedPayload`,
+  `CancellationRequest`) , the only accepted shape. The name
+  describes what the thing **is**, not what it does for the
+  caller.
+
+The rule accepts the entity shape only. The suffix shape, with
+or without a qualifier, is the smell this rule exists to catch.
+
+## Why
+
+A bare job title is a confession that the author could not name
+the thing they were building. The thing exists; the author wrote
+it. But the name they gave it is the name of the **role the thing
+plays in someone else's code**, not the name of the thing itself.
+The author outsourced the naming to the caller.
+
+This is the same anti-pattern as a function called `doStuff`,
+applied at the type level. The reader who meets the type for the
+first time cannot tell what it represents, only what it does for
+the system that uses it. The reader has to read the callers to
+recover the entity, when the name should have done that work.
+
+The deeper problem is **diffusion of responsibility**. A class
+named `Manager` is a class to which any method can be added
+without breaking its name. A class named `OrderCancellationService`
+is a class to which only order-cancellation methods can be added
+without breaking its name. The first grows; the second stays
+focal. The smell is not aesthetic; it is a measurement of how
+much scope a class is allowed to absorb.
+
+## What this looks like in violation
+
+The first shape, bare job title:
+
+```ts
+// Bad , what does this manage?
+class UserManager {
+  createUser(input: CreateUserInput): User {
+    /* ... */
+  }
+  updateUser(id: string, input: UpdateUserInput): User {
+    /* ... */
+  }
+  deleteUser(id: string): void {
+    /* ... */
+  }
+  authenticateUser(credentials: Credentials): Session {
+    /* ... */
+  }
+  sendPasswordResetEmail(email: string): void {
+    /* ... */
+  }
+  generateUserReport(filters: ReportFilters): Report {
+    /* ... */
+  }
+  // ... and so on, indefinitely.
+}
+```
+
+Six unrelated responsibilities under one name. The next contributor
+who adds a method asks "where does it go?" and the answer is
+"UserManager". The class grows until it is unmanageable.
+
+The second shape, qualified job title, is the shape the rule
+**refuses**. It is mentioned here only because it is what most
+codebases reach for as the "smaller" compromise:
+
+```ts
+// Refused , the suffix still describes a role, not an entity.
+// The qualifier makes the smell larger, not smaller.
+class OrderCancellationHandler {
+  handle(command: CancelOrderCommand): CancellationResult {
+    /* ... */
+  }
+}
+```
+
+The qualifier does not turn a role into an entity. The class is
+still named for what it does for the caller (`Handler`), not for
+what it is. A reader who meets `OrderCancellationHandler` learns
+that there is a handler; they still have to read the body to
+discover that the handler is the cancellation.
+
+The right shape:
+
+```ts
+// The name describes what the thing is.
+// The class stays internal , see rule 0014.
+class OrderCancellation {
+  cancel(command: CancelOrderCommand): CancellationResult {
+    /* ... */
+  }
+}
+
+// Or, more idiomatic in functional code:
+type OrderCancellation = (command: CancelOrderCommand) => CancellationResult;
+```
+
+The class is the **thing**; the method is the **operation on the
+thing**. The reader does not need to know who is using it. _The
+class above is internal; rule 0014 forbids exporting it. The
+public shape is a factory function (`createOrderCancellation`)
+or, more often, a type alias and a free function. The example
+here shows the naming pattern; rule 0014 shows the public-API
+pattern._
+
+## When the rule does not apply
+
+The rule applies to **shape names** , the name of a class, a type,
+a module, a service handle. It does not apply to:
+
+- **Variable names** that hold an instance briefly. `const
+manager = new OrderCancellationHandler();` is acceptable; the
+  variable is scoped to one expression and the type name carries
+  the focal responsibility.
+- **Test names**. `UserManagerTest` is acceptable as a test class
+  name when the type under test is `UserManager`; the test name
+  mirrors the type name. Refusing the test name would create a
+  useless indirection.
+- **Build-time tooling**. Generated code, vendor bindings, and
+  frameworks where the shape is fixed by the other side.
+
+## How to refactor a suffix-bearing name
+
+When a contributor has written `Manager`, `Service`, `Handler`,
+or any qualified version (`CancelOrderHandler`,
+`UserCreationService`), the refactor has two steps, in order:
+
+1. **Identify the entity.** The class is doing something for the
+   caller. The thing it operates on, or the thing it **is**, is
+   the entity. A `CancelOrderHandler` is the cancellation; the
+   qualifier already names it. A `UserCreationService` is the user
+   creation; the qualifier already names it. The entity is in
+   the qualifier; the suffix is what is removed.
+2. **Rename to the entity, drop the suffix.**
+   `CancelOrderHandler` → `OrderCancellation`. `UserCreationService`
+   → `UserCreation`. The method on the entity is the action
+   (`cancel`, `create`).
+
+There is no "smallest change" path that keeps the suffix. The
+suffix is the smell; removing it is the change. If the class is
+too small to deserve its own entity name, the qualifier is
+replaced by the action: `cancelOrder(command: CancelOrderCommand)`
+is a function on the `OrderCancellationService` , but the function
+itself does not need a wrapper class; it is a function.
+
+The refactor in three steps when the class is large enough:
+
+1. Split into one entity per focal responsibility.
+2. Each entity exposes one operation (`cancel`, `create`,
+   `validate`).
+3. The suffix goes away with the wrapper class.
+
+## What this looks like in violation , the focused case
+
+A class that has the right name but the wrong shape:
+
+```ts
+// Bad , the name says one thing, the methods do many.
+class OrderCancellation {
+  cancel(command: CancelOrderCommand): CancellationResult {
+    /* ... */
+  }
+  refund(orderId: string, amount: Money): RefundResult {
+    /* ... */
+  }
+  notifyCustomer(orderId: string): void {
+    /* ... */
+  }
+  generateCancellationReport(filters: ReportFilters): Report {
+    /* ... */
+  }
+}
+```
+
+The name promises one responsibility; the body delivers four.
+The right move is to split. Each method becomes its own entity
+or its own command. The class `OrderCancellation` then has only
+the `cancel` method; the others live in their own types.
+
+## What senior practitioners say
+
+> "Manager. Controller. Helper. Handler. Writer. Reader.
+> Converter. Validator. Router. Dispatcher. Observer. Listener.
+> Sorter. Encoder. Decoder. This is the class names hall of shame.
+> Have you seen them in your code? In open source libraries
+> you're using? In pattern books? They are all wrong. What do
+> they have in common? They all end in '-er.' And what's wrong
+> with that? They are not classes, and the objects they
+> instantiate are not objects. Instead, they are collections of
+> procedures pretending to be classes."
+>
+> .  Yegor Bugayenko, _Don't Create Objects That End With -ER_,
+> March 2015.
+
+Bugayenko's diagnosis is the philosophical ground of the rule.
+A bare job title is a class that has no entity to be; it is a
+collection of procedures that the caller orchestrates. The shape
+exists; the entity does not.
+
+> "If a class only has a single responsibility it will be pretty
+> difficult to attach a Manager suffix to the class name."
+>
+> .  Scott Muc, _Manager Suffixes Are a Code Smell_, June 2008.
+
+Muc's observation operationalises Bugayenko. The suffix is a
+proxy measurement for responsibility count. When the suffix is
+necessary, the count is high.
+
+> "Six methods each with around five unit tests: that's 30 unit
+> tests, probably all in the same file name
+> 'CartServiceTest'. That's beginning to be a lot harder to
+> manage. [...] Every class should be a noun and every method
+> should be a verb."
+>
+> .  Charles-H lavoie, _"Service" should be a banned word_, Proper
+> Code, June 2019.
+
+Lavoie quantifies the cost. A bare `Service` accumulates methods
+faster than it accumulates tests. The total cost of the class is
+the methods times the tests; the suffix makes the cost invisible.
+
+> "A command handler's job is to coordinate the execution of a
+> command. It's named for the command, not the entity. The
+> handler is named `CancelOrderHandler`, not `OrderHandler`."
+>
+> .  Jimmy Bogard, _Domain Command Patterns - Handlers_,
+> March 2018.
+
+Bogard's position is the most permissive of the four sources. The
+rule does not follow Bogard; the rule follows Bugayenko. The
+qualifier-plus-suffix shape Bogard recommends is, in this rule's
+reading, still a role-naming convention: `CancelOrderHandler`
+tells the reader what the thing does for the caller, not what
+the thing is. The rule's stance is that a class which is
+described by what it does for the caller should be a function
+on the entity it operates on, not a wrapper class. The
+qualifier is the entity; the suffix is the wrapper.
+
+The four voices still converge on the **diagnosis** , the suffix
+is a smell , even when they disagree on the **threshold**. The
+rule picks the strictest threshold: no suffix, with or without a
+qualifier. The other positions describe intermediate shapes
+project contributors may reach for during a refactor; the rule
+captures the shape the project is moving toward.
+
+## Enforcement
+
+- **Code review**. A reviewer who sees a bare `-er` suffix in a
+  class or type name (`UserManager`, `PaymentService`,
+  `EventHandler`) blocks the PR and asks for a qualifier, a split,
+  or an entity rename.
+- **Naming audit**. A standing review of "which classes in this
+  codebase have a bare `-er` suffix?" surfaces the candidates that
+  slipped through. Each is a refactor candidate, not a backlog
+  item.
+- **Lint rule** (future). A custom ESLint rule can flag bare
+  `-er` suffixes in class and type declarations. The rule's
+  existence is the enforcement signal even before it is automated.
+
+## Exceptions
+
+A test class name (`UserManagerTest`) is permitted because it
+mirrors the type under test. The test class is not the entity; it
+is the verification of the entity. Renaming `UserManagerTest` to
+`UserTest` while the type under test is still `UserManager` would
+create a useless indirection; the rename is the responsibility of
+the type rename, not the test rename.
+
+A variable that holds an instance briefly (`const manager = ...`)
+is permitted. The type name carries the focal responsibility; the
+variable name is local. The rule refuses type names, not
+variable names.
+
+Build-time tooling, generated code, vendor bindings, and
+frameworks where the shape is fixed by the other side are
+permitted. The rule applies to code the project writes, not to
+code the project consumes.
+
+## See also
+
+- **Rule 0002** .  File Separation: a class with bare `-er` is
+  usually a class that mixes types and operations; the rule on
+  file separation makes that mixing visible.
+- **Rule 0007** .  Top-Down Composition: the same principle at
+  the function level. A function called `processData` is the
+  function-level equivalent of a `DataManager` class. The
+  principle is the same , name the thing, not the job.
+- **Rule 0011** .  Filenames Are kebab-case: a class named
+  `UserManager` usually lives in a file named `user-manager.ts`,
+  which is the right casing. The rule's wrong shape is the class
+  name, not the file name.
+
+## Sources
+
+- **Bugayenko, Yegor.** _Don't Create Objects That End With
+  -ER._ March 2015. The philosophical ground: a bare job title
+  is a class that has no entity to be; it is a collection of
+  procedures that the caller orchestrates. The hall-of-shame
+  list (Manager, Controller, Helper, Handler, Writer, Reader,
+  Converter, Validator, Router, Dispatcher, Observer, Listener,
+  Sorter, Encoder, Decoder) is the rule's reference list.
+- **Muc, Scott.** _Manager Suffixes Are a Code Smell._ June 2008.
+  The operational reading: a suffix is a proxy measurement for
+  responsibility count. When the suffix is necessary, the count
+  is high.
+- **lavoie, Charles-H.** _"Service" should be a banned word._
+  Proper Code, June 2019. The quantified cost: six methods,
+  thirty unit tests in one file. The bare suffix makes the cost
+  invisible.
+- **Bogard, Jimmy.** _Domain Command Patterns - Handlers._
+  March 2018. The counter-example: the handler suffix is fine
+  when qualified by the command it handles. The rule does not
+  follow Bogard; the rule follows Bugayenko. The qualifier is
+  the entity; the suffix is the wrapper.

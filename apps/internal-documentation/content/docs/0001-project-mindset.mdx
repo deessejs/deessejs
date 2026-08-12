@@ -1,6 +1,6 @@
 ---
 title: Project Mindset
-description: Excellence by default — the ten invariants every contribution must satisfy.
+description: Excellence by default. The ten invariants every contribution must satisfy.
 ---
 
 Every contribution to this repository must be made **as if it
@@ -40,8 +40,8 @@ guidelines; they are the floor.
    abstraction.
 
 5. **No `any`.** `unknown` is the safe escape hatch. If a type
-   cannot be expressed, model it explicitly — through a
-   schema, a discriminated union, or a generic — rather than
+   cannot be expressed, model it explicitly, through a
+   schema, a discriminated union, or a generic, rather than
    closing the eyes.
 
 6. **No silent failures.** A `try`/`catch` that swallows an
@@ -80,13 +80,13 @@ The single sentence that operationalises the ten invariants:
   for values that can't be null."
 </Callout>
 
-— Miguel Pizza, _No Defensive Null Checks_, Maintainable
+.  Miguel Pizza, _No Defensive Null Checks_, Maintainable
 TypeScript doctrine.
 
 Every invariant in this rule is a consequence of that
 principle. The compiler is the first reviewer (invariant 9);
 the compiler says "not null", the runtime says "I trust you"
-— or, if the compiler is wrong, the fix is in the type, not
+or, if the compiler is wrong, the fix is in the type, not
 in the runtime. No conscious debt (invariant 2) means no
 guard that papers over a type we are afraid to fix. No
 speculative abstractions (invariant 4) means no abstract
@@ -125,7 +125,7 @@ This rule is the mindset. The other rules operationalise it:
     The discipline that turns the mindset into a code-shape
     decision. The Rule of Three named in invariant 4 above is
     the abstraction threshold; this rule applies a
-    second-concern threshold for file relocation — the two
+    second-concern threshold for file relocation, the two
     are different decisions with different evidence.
   </Card>
   <Card title="No Speculative Defences" href="/docs/0004-no-speculative-defences">

@@ -1,0 +1,148 @@
+---
+title: '0002 .  File Separation: by Concern, not by Syntax Kind'
+description: 'Within a single concern (a feature, a module, a domain), code is'
+---
+
+# 0002 .  File Separation: by Concern, not by Syntax Kind
+
+
+## Rule
+
+Within a single concern (a feature, a module, a domain), code is
+separated by **what it does**, not by **what kind of symbol it is**.
+
+- **Types** for one concern live in `types.ts` of that concern.
+- **Constants** for one concern live in `constants.ts` of that
+  concern.
+- **Functions** for one concern live in `index.ts`, `factory.ts`,
+  `parser.ts`, `formatter.ts`, or whatever verb-named file describes
+  the operation , not in a generic `utils.ts` or `helpers.ts` that
+  mixes every helper from every concern.
+
+Across concerns, types and helpers **must not leak** into a shared
+global. There is no `src/types.ts`, no `src/constants.ts` that holds
+"the types of the project", no `src/utils/index.ts` that re-exports
+every helper in the repo. A file that wants a type or constant from
+another concern imports it from that concern's `types.ts` or
+`constants.ts` directly.
+
+## Why
+
+A type, a constant, and a function are not interchangeable artefacts.
+They live different lifecycles: a constant changes rarely and reads
+like a table of contents; a type is a contract that constrains every
+caller; a function is an operation with inputs, outputs, and side
+effects. Mixing them in a single file buries the contract in the
+implementation, and forces a reader to skim past implementations to
+find the shape of a value.
+
+The opposite failure is just as bad. A single `types.ts` at the
+package root that holds every type in the codebase invites circular
+imports, forces a deep dependency graph, and makes it impossible to
+extract a sub-concern without surgery. The grain of separation must
+match the grain of the domain, not the grain of the language.
+
+The right cut is per **concern**: a `ValidationError` carries its
+own types, its own constants (validation codes, severity levels),
+and its own functions. A `User` carries its own types and constants.
+They share nothing at the package root, but within each concern the
+kinds are separated.
+
+## What this looks like in practice
+
+A concern folder that follows the rule looks like:
+
+```
+validation/
+├── types.ts       # interfaces, discriminated unions, type aliases
+├── constants.ts   # codes, defaults, lookup tables
+├── validator.ts   # the operation(s)
+└── index.ts       # public re-exports, if needed
+```
+
+A concern folder that **violates** the rule looks like one of these:
+
+- **Single mega file**: `validation/index.ts` contains the type, the
+  constants, and every function. Hard to skim, hard to refactor.
+
+  ```ts
+  // validation/index.ts , every concern in one file
+  export interface ValidationRule {
+    /* ... */
+  }
+  export const DEFAULT_RULES: ValidationRule[] = [/* ... */];
+  export function validate(input: unknown): Result {
+    /* 200 lines */
+  }
+  export function formatErrors(errors: Error[]): string {
+    /* ... */
+  }
+  ```
+
+- **Syntax-based split**: `types/types.ts` holding every type from
+  every concern, `constants/constants.ts` holding every constant.
+  Encourages cross-cutting imports, defeats tree-shaking, signals
+  "we don't know our own domain boundaries".
+
+  ```ts
+  // types/types.ts , every type in the project
+  export interface ValidationRule {
+    /* ... */
+  }
+  export interface UserProfile {
+    /* unrelated concern */
+  }
+  export interface InvoiceLine {
+    /* unrelated concern */
+  }
+  ```
+
+## What about generic helpers?
+
+A helper that is genuinely cross-cutting (date formatting, string
+trimming, an `assertNever` guard) belongs in a small, focused module
+whose name describes **what the helper does**, not "utils". Two
+helpers in the same file is fine if they serve the same purpose. A
+catch-all `utils.ts` that grows over time is the symptom this rule
+exists to prevent.
+
+## Enforcement
+
+- **Code review**. A reviewer who sees a `types.ts` at the package
+  root that contains types from multiple concerns blocks the PR.
+- **Import-graph check**: a CI step (or a manual audit during
+  release prep) verifies that no module imports across concerns
+  through a shared barrel that re-exports types from more than one
+  concern.
+- **Refactor signal**: when a `types.ts` or `constants.ts` starts
+  mixing concerns, splitting it is treated as a same-week cleanup,
+  not a backlog item.
+
+## Exceptions
+
+None at the package root level. Within a single concern, a tiny
+helper that lives next to its single caller may stay in the same
+file (e.g. an internal helper inside `validator.ts`); this is not a
+violation because the file is named for its operation, not for
+"helpers".
+
+## See also
+
+- **Rule 0003** .  File Placement: the decision rule that picks the
+  home for a file once the concern is identified. This rule says
+  "no cross-concern `types.ts`"; 0003 says "where does this new file
+  go before I write it" and consolidates the codebase's three
+  extraction thresholds (one-caller inline, two-concern move,
+  three-case abstraction).
+- **Rule 0011** .  Filenames Are kebab-case: the casing discipline
+  that makes a folder of separated files read as one project.
+
+## Sources
+
+This rule is a synthesis of the project's own working
+experience. No external reference anchors it. The shape (one
+file per syntactic kind, per concern) is a JavaScript
+convention; the project's experience is that the convention
+breaks down when cross-concern types accumulate in a shared
+`types.ts`. The rule captures the failure mode before it
+becomes a smell.
