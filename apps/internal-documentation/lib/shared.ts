@@ -1,11 +1,12 @@
-export const appName = 'My App';
-export const docsRoute = '/docs';
-export const docsImageRoute = '/og/docs';
-export const docsContentRoute = '/llms.mdx/docs';
+export const appName = 'DeesseJS'
+export const docsRoute = '/docs'
+export const docsImageRoute = '/og/docs'
+export const docsContentRoute = '/llms.mdx/docs'
 
-// fill this with your actual GitHub info, for example:
+// GitHub info for the "View source" / "Edit on GitHub" links
+// rendered by the fumadocs docs layout.
 export const gitConfig = {
-  user: 'fuma-nama',
-  repo: 'fumadocs',
+  user: 'deessejs',
+  repo: 'deessejs',
   branch: 'main',
-};
+}
