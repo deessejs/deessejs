@@ -3,5 +3,24 @@
   "description": "Always-on PR constraints, durable invariants.",
   "icon": "BookOpen",
   "root": true,
-  "pages": ["index"]
+  "pages": [
+    "index",
+    "---",
+    "0001-project-mindset",
+    "0002-file-separation",
+    "0003-file-placement",
+    "0004-no-speculative-defences",
+    "0005-named-algorithms-and-independent-data-structures",
+    "0006-technology-choices",
+    "0007-top-down-composition",
+    "0008-no-chained-type-assertions",
+    "0009-open-extension-closed-modification",
+    "0010-typed-environment-access",
+    "0011-filename-kebab-case",
+    "0012-prefer-type-over-interface",
+    "0013-entity-first-naming",
+    "0014-functions-over-classes-for-public-api",
+    "0015-domain-specific-types",
+    "0016-no-generic-verbs"
+  ]
 }
