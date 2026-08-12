@@ -1,0 +1,147 @@
+---
+title: Project Mindset
+description: Excellence by default — the ten invariants every contribution must satisfy.
+---
+
+Every contribution to this repository must be made **as if it
+were the last commit before the project reached its largest
+possible audience**. The standard is: would I be comfortable
+explaining this line to a contributor joining in two years,
+in front of a million users, with no opportunity to revise
+it first?
+
+There is no "good enough for now". There is no "we'll fix it
+later". The work done today is the work that ships at scale.
+
+## The ten invariants
+
+Every contribution must satisfy all of these. They are not
+guidelines; they are the floor.
+
+1. **No shortcuts.** A cast that bypasses the type system is a
+   lie to the audience. Either the return type is what you say
+   it is, or it is not, and the code should reflect that
+   truthfully.
+
+2. **No conscious debt.** "We'll fix it later" is a promise to a
+   future that may not exist. The only moment we are paid to do
+   something well is the moment we are doing it. There is no
+   later that justifies a shortcut now.
+
+3. **Understand before writing.** If the API being called is not
+   understood in full, the code is not ready to be written.
+   Reading the source, asking the maintainer, or waiting for
+   an answer are all acceptable next steps. Guessing is not.
+
+4. **No speculative abstractions.** An abstraction added "in
+   case" is a wall the next contributor will have to climb.
+   Abstract only when three concrete cases exist (Rule of
+   Three). Until then, the duplication is cheaper than the
+   abstraction.
+
+5. **No `any`.** `unknown` is the safe escape hatch. If a type
+   cannot be expressed, model it explicitly — through a
+   schema, a discriminated union, or a generic — rather than
+   closing the eyes.
+
+6. **No silent failures.** A `try`/`catch` that swallows an
+   error is a betrayal of the user. Either re-raise, transform
+   with explicit context, or log through a structured channel.
+   Never silently.
+
+7. **No compiler bypass.** `@ts-expect-error`, `as` casts,
+   `// @ts-ignore`, dynamic `require`, and friends are signals
+   that the code has a problem. Address the problem; do not
+   silence the alarm.
+
+8. **No dependency without justification.** A new dependency is
+   a long-term commitment. Before adding it, be able to answer:
+   what is its license, its release cadence, its bus factor,
+   and why this one and not its alternatives. If the answer is
+   "it has stars", it is not ready.
+
+9. **Optimise for the reader.** The next maintainer is the
+   audience. If a PR is harder to read than to write, it is
+   the wrong PR. Comments explain _why_, not _what_. Names
+   carry meaning; comments carry context that names cannot.
+
+10. **Excellence is silent.** No commit message that
+    celebrates. No PR description that congratulates itself.
+    The work is the artefact. If it needs explanation to be
+    recognised as good, the work is not good enough.
+
+## The trust-the-type principle
+
+The single sentence that operationalises the ten invariants:
+
+> "If the type says it's not null, trust the type. If the
+> type is wrong, fix the type. Don't add runtime null checks
+> for values that can't be null."
+>
+> — Miguel Pizza, _No Defensive Null Checks_, Maintainable
+> TypeScript doctrine.
+
+Every invariant in this rule is a consequence of that
+principle. The compiler is the first reviewer (invariant 9);
+the compiler says "not null", the runtime says "I trust you"
+— or, if the compiler is wrong, the fix is in the type, not
+in the runtime. No conscious debt (invariant 2) means no
+guard that papers over a type we are afraid to fix. No
+speculative abstractions (invariant 4) means no abstract
+`defensive(...)` helper that catches everything on the
+assumption that anything might happen.
+
+The principle is the slogan of the project. A reader who
+remembers only one sentence from this rule set should remember
+this one.
+
+## Enforcement
+
+- **Code review** is the primary gate. A reviewer who sees
+  any of the ten invariants violated is expected to block the
+  PR, regardless of urgency or seniority of the author.
+- **Onboarding** documents must include this rule verbatim.
+  New contributors who arrive through a fast path
+  (open-source contribution, AI-assisted PR) are pointed
+  here on their first interaction with the repo.
+- **Self-removal**: contributors who consistently violate
+  the invariants despite feedback are removed from the
+  maintainer list. This is not a punishment; it is a
+  recognition that the project and the contributor have
+  different standards, and the project's standard is the
+  one that ships.
+
+## See also
+
+This rule is the mindset. The other rules operationalise
+it:
+
+- **File Separation** — the structure this mindset expects.
+- **File Placement** — the discipline that turns the mindset
+  into a code-shape decision. The Rule of Three named in
+  invariant 4 above is the _abstraction_ threshold; this rule
+  applies a _second-concern_ threshold for file relocation —
+  the two are different decisions with different evidence.
+- **No Speculative Defences** — invariant 4 (no speculative
+  abstractions) and invariant 7 (no compiler bypass) in
+  operational form.
+- **Top-Down Composition** — the discipline that puts the
+  reader first.
+- **No Chained Type Assertions** — the type-side application
+  of invariant 7.
+
+## Exceptions
+
+None. The invariants are absolute. A request for an
+exception is a signal that the request should be re-scoped
+until it no longer requires one.
+
+## Sources
+
+- **Pizza, Miguel.** _No Defensive Null Checks._ Maintainable
+  TypeScript doctrine. Cited in the trust-the-type epigraph
+  above and again in the No Speculative Defences rule
+  (where the principle is operationalised for runtime
+  guards). The "trust the type" quote is the project's
+  slogan; the rule applies the principle at the level of
+  contributor mindset.
