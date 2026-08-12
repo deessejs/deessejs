@@ -1,6 +1,6 @@
 {
   "title": "Decisions",
-  "description": "...",
+  "description": "Architecture Decision Records (ADRs). Each captures one load-bearing choice, the alternatives considered, and the consequences.",
   "icon": "GitBranch",
   "root": true,
   "pages": ["index"]

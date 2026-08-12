@@ -1,6 +1,6 @@
 {
   "title": "Rules",
-  "description": "...",
+  "description": "The standing, always-on constraints every PR must respect. Each rule is a durable invariant, not a guideline.",
   "icon": "BookOpen",
   "root": true,
   "pages": ["index"]
