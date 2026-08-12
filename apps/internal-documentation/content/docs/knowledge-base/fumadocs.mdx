@@ -222,21 +222,21 @@ package's own `.d.ts`:
 
 | Component | Type | Purpose |
 |---|---|---|
-| `h1`–`h6` | HTMLAttributes<HTMLHeadingElement> | Heading anchors (auto-generated TOC anchor) |
-| `a` | AnchorHTMLAttributes | Anchor with relative-link resolution |
-| `pre` | HTMLAttributes<HTMLPreElement> | Pre-formatted block with copy button |
-| `img` | ImgHTMLAttributes | Image with optional zoom |
-| `table` | TableHTMLAttributes | Static table renderer |
-| `Cards` | HTMLAttributes<HTMLDivElement> | Grid container for `Card` |
-| `Card` | CardProps | Single tile in a `Cards` grid |
+| `h1` to `h6` | heading element props | Heading anchors (auto-generated TOC anchor) |
+| `a` | anchor element props | Anchor with relative-link resolution |
+| `pre` | pre element props | Pre-formatted block with copy button |
+| `img` | image element props | Image with optional zoom |
+| `table` | table element props | Static table renderer |
+| `Cards` | div element props | Grid container for `Card` |
+| `Card` | `CardProps` | Single tile in a `Cards` grid |
 | `Callout` | `CalloutType` + title | Highlighted block |
 | `CalloutContainer` | (advanced) | Bypass the title to write a custom layout |
 | `CalloutTitle` | (advanced) | Used inside `CalloutContainer` |
 | `CalloutDescription` | (advanced) | Used inside `CalloutContainer` |
-| `CodeBlockTabs` | .  | Multi-tab code block |
-| `CodeBlockTabsList` | .  | Tab strip of a `CodeBlockTabs` |
-| `CodeBlockTabsTrigger` | .  | One tab in a `CodeBlockTabs` |
-| `CodeBlockTab` | .  | One pane of a `CodeBlockTabs` |
+| `CodeBlockTabs` | none | Multi-tab code block |
+| `CodeBlockTabsList` | none | Tab strip of a `CodeBlockTabs` |
+| `CodeBlockTabsTrigger` | none | One tab in a `CodeBlockTabs` |
+| `CodeBlockTab` | none | One pane of a `CodeBlockTabs` |
 
 The `Card` props (`title` is required, `description` and
 `icon` are optional, `href` makes it a link, `external` marks
