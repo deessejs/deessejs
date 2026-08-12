@@ -1,6 +1,6 @@
 {
   "title": "Knowledge Base",
-  "description": "Studies of external libraries (better-auth, Hono, oRPC, commander, fumadocs) and the shape of their integration in this codebase.",
+  "description": "External library studies, integration shapes.",
   "icon": "BookMarked",
   "root": true,
   "pages": ["index"]
