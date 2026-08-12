@@ -271,7 +271,7 @@ intersection.
 > benefit you and your readers. [...] Can you tell what any of
 > these names refer to, univocally?"
 >
-> .  Julio Merino, _Readability: No abbreviations_, June 2013.
+> . Julio Merino, _Readability: No abbreviations_, June 2013.
 
 Merino's position is the strictest. The rule bans project-internal
 diminutives for the same reason he gives: the reader cannot
@@ -282,7 +282,7 @@ decipher them without a glossary, and the glossary does not exist.
 > outside your project, and do not abbreviate by deleting letters
 > within a word."
 >
-> .  Google TypeScript Style Guide, § Naming.
+> . Google TypeScript Style Guide, § Naming.
 
 Google's position is the calibrated one. The rule follows Google's
 framing: abbreviations that are ambiguous or unfamiliar are banned;
@@ -298,7 +298,7 @@ distinction in this rule is Google's distinction made explicit.
 > For a local variable, the name `i` conveys as much information
 > as `index` or `idx` and is quicker to read."
 >
-> .  Keegan Donley, _When Can I Use Abbreviated Variable Names?_,
+> . Keegan Donley, _When Can I Use Abbreviated Variable Names?_,
 > August 2023; Russ Cox, _research!rsc: Names_, February 2010.
 
 Donley and Cox are the conventional exceptions. `i` in a loop,
@@ -319,8 +319,8 @@ generic programming.
 > single expression of the algorithms to be used with any concrete
 > representation of the container."
 >
-> .  Alexander Stepanov and David Musser, _Algorithm-oriented
-> Generic Libraries_, Software .  Practice and Experience,
+> . Alexander Stepanov and David Musser, _Algorithm-oriented
+> Generic Libraries_, Software . Practice and Experience,
 > vol. 24(7), July 1994.
 
 Stepanov and Musser formalised what the rule calls
@@ -336,7 +336,7 @@ principle, three decades apart.
 > side effect. A `find` is a `count_if` over a range with early
 > termination."
 >
-> .  Alexander Stepanov, _Notes on Programming_ (talk transcript,
+> . Alexander Stepanov, _Notes on Programming_ (talk transcript,
 > A9.com, 2007).
 
 Stepanov's deeper point: the algorithms are also independent
@@ -348,13 +348,13 @@ combine, not an inline shape the consumer has to read.
 
 ## See also
 
-- **Rule 0007** .  Top-Down Composition: the discipline that puts
+- **Rule 0007** . Top-Down Composition: the discipline that puts
   the named algorithms this rule produces at the top of their
   callers. This rule extracts; 0007 composes.
-- **Rule 0009** .  Open Extension, Closed Modification: the discipline
+- **Rule 0009** . Open Extension, Closed Modification: the discipline
   that turns the named data structures (Stack, Queue, etc.) into
   reusable registries.
-- **Rule 0003** .  File Placement: a single-caller algorithm does
+- **Rule 0003** . File Placement: a single-caller algorithm does
   not need to be extracted yet; this rule says "name it when it has
   a second caller", not "extract every algorithm immediately".
 
@@ -382,7 +382,7 @@ The "named algorithms" invariant is anchored in:
 The "independent data structures" invariant is anchored in:
 
 - **Stepanov, Alexander, and David Musser.** _Algorithm-oriented
-  Generic Libraries._ Software .  Practice and Experience,
+  Generic Libraries._ Software . Practice and Experience,
   vol. 24(7), July 1994. The canonical source for parameterising
   algorithms by container access operations. The `Stack<T>`
   reusable across BFS, DFS, and undo-log is the TypeScript-level

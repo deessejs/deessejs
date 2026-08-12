@@ -159,15 +159,15 @@ file is the rule, not the exception.
 
 ## See also
 
-- **Rule 0006** .  Technology Choices: the rule that motivates
+- **Rule 0006** . Technology Choices: the rule that motivates
   avoiding `@types/node` as a runtime dependency. This rule is the
   operational form of "minimal dependencies, typed boundaries".
-- **Rule 0008** .  No Chained Type Assertions: the type discipline
+- **Rule 0008** . No Chained Type Assertions: the type discipline
   this rule relies on. A typed accessor that required an `as
 unknown as Environment` to construct is a violation of 0008; the
   accessor module is the only file that legitimately narrows the
   ambient `process` shape.
-- **Rule 0015** .  Domain-Specific Types Over Primitives: rule
+- **Rule 0015** . Domain-Specific Types Over Primitives: rule
   0015 requires domain concepts to be domain types. Environment
   values are configuration, not domain concepts , they remain
   primitives inside the accessor (see "Why the values stay

@@ -117,7 +117,7 @@ The rule applies to **exports**. It does not apply to:
 - **Classes that are genuinely host types** , when augmenting a
   host type (Express request, Error subclass), the host already
   chose `class`; the project follows.
-- **Built-in classes** .  `Error`, `Map`, `Set`, `Date`, `URL`,
+- **Built-in classes** . `Error`, `Map`, `Set`, `Date`, `URL`,
   `URLSearchParams`. These are language-standard classes; the rule
   does not apply.
 - **Test files**, where a class is the natural shape for a test
@@ -272,7 +272,7 @@ export and the constructor becomes the function.
 > them, people will inherit from them in all sorts of ways that
 > make zero sense to you, but that you may break in the future."
 >
-> .  Dan Abramov, _How to Use Classes and Sleep at Night_,
+> . Dan Abramov, _How to Use Classes and Sleep at Night_,
 > October 2015.
 
 Abamov's position is the strictest among the senior sources and
@@ -282,7 +282,7 @@ implementation; the API is the function.
 > "When using factory function, only the methods we expose are
 > public, everything else is encapsulated."
 >
-> .  Cristian Salcescu, _Class vs Factory function: exploring the
+> . Cristian Salcescu, _Class vs Factory function: exploring the
 > way forward_, freeCodeCamp, March 2018.
 
 Salcescu operationalises Abamov with the encapsulation argument.
@@ -294,7 +294,7 @@ the open one.
 > to provide your classes as a public API, prefer duck typing
 > when accepting inputs."
 >
-> .  Dan Abramov, _How to Use Classes and Sleep at Night_,
+> . Dan Abramov, _How to Use Classes and Sleep at Night_,
 > October 2015.
 
 The duck-typing corollary: the function's input type does not
@@ -337,7 +337,7 @@ the host; the augmentation is `interface`, not `class`.
 
 ## See also
 
-- **Rule 0012** .  Prefer `type` Over `interface`: rule 0012
+- **Rule 0012** . Prefer `type` Over `interface`: rule 0012
   carves out `interface` for declaration merging, open-shape
   class implementation, and host augmentation. When rule 0012
   permits an `interface` because a class implements an open
@@ -345,16 +345,16 @@ the host; the augmentation is `interface`, not `class`.
   internal per this rule; the public contract is the `interface`,
   the public constructor is the factory function, the class is
   behind the boundary.
-- **Rule 0013** .  Entity-First Naming: the factory function is
+- **Rule 0013** . Entity-First Naming: the factory function is
   the natural name for the **action** that produces the entity
   (`group`, `createGroup`, `cancelOrder`). The class is the
   entity behind the action; the action is what the consumer calls.
-- **Rule 0001** .  Project Mindset: invariant 9 ("optimise for
+- **Rule 0001** . Project Mindset: invariant 9 ("optimise for
   the reader") is the philosophical ground of the rule. The
   reader of an exported function sees only the function's contract.
   The reader of an exported class sees the contract plus the
   freedom to break it.
-- **Rule 0006** .  Technology Choices: the function-based API
+- **Rule 0006** . Technology Choices: the function-based API
   surface is one of the explicit choices the codebase commits to.
   Adding a class is a change to that commitment, not a local
   refactor.

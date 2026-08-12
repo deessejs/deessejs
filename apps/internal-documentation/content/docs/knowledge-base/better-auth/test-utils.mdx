@@ -17,14 +17,14 @@ production.
 The plugin does **not** register HTTP routes. It adds
 privileged server-side helpers on `ctx.test`:
 
-- **Factories** .  `createUser`, `createOrganization` , build
+- **Factories** . `createUser`, `createOrganization` , build
   objects with sensible defaults, no DB write.
-- **Database helpers** .  `saveUser`, `deleteUser`,
+- **Database helpers** . `saveUser`, `deleteUser`,
   `addMember` , persist and remove records.
-- **Auth helpers** .  `login`, `getAuthHeaders`, `getCookies`
+- **Auth helpers** . `login`, `getAuthHeaders`, `getCookies`
   , create authenticated sessions and return the headers
   needed to hit a protected route.
-- **OTP capture** .  `captureOTP: true` (we do not use this;
+- **OTP capture** . `captureOTP: true` (we do not use this;
   see "What we use" below).
 
 ## Where it lives in this repo

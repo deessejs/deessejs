@@ -220,7 +220,7 @@ the `cancel` method; the others live in their own types.
 > instantiate are not objects. Instead, they are collections of
 > procedures pretending to be classes."
 >
-> .  Yegor Bugayenko, _Don't Create Objects That End With -ER_,
+> . Yegor Bugayenko, _Don't Create Objects That End With -ER_,
 > March 2015.
 
 Bugayenko's diagnosis is the philosophical ground of the rule.
@@ -231,7 +231,7 @@ exists; the entity does not.
 > "If a class only has a single responsibility it will be pretty
 > difficult to attach a Manager suffix to the class name."
 >
-> .  Scott Muc, _Manager Suffixes Are a Code Smell_, June 2008.
+> . Scott Muc, _Manager Suffixes Are a Code Smell_, June 2008.
 
 Muc's observation operationalises Bugayenko. The suffix is a
 proxy measurement for responsibility count. When the suffix is
@@ -243,7 +243,7 @@ necessary, the count is high.
 > manage. [...] Every class should be a noun and every method
 > should be a verb."
 >
-> .  Charles-H lavoie, _"Service" should be a banned word_, Proper
+> . Charles-H lavoie, _"Service" should be a banned word_, Proper
 > Code, June 2019.
 
 Lavoie quantifies the cost. A bare `Service` accumulates methods
@@ -254,7 +254,7 @@ the methods times the tests; the suffix makes the cost invisible.
 > command. It's named for the command, not the entity. The
 > handler is named `CancelOrderHandler`, not `OrderHandler`."
 >
-> .  Jimmy Bogard, _Domain Command Patterns - Handlers_,
+> . Jimmy Bogard, _Domain Command Patterns - Handlers_,
 > March 2018.
 
 Bogard's position is the most permissive of the four sources. The
@@ -309,14 +309,14 @@ code the project consumes.
 
 ## See also
 
-- **Rule 0002** .  File Separation: a class with bare `-er` is
+- **Rule 0002** . File Separation: a class with bare `-er` is
   usually a class that mixes types and operations; the rule on
   file separation makes that mixing visible.
-- **Rule 0007** .  Top-Down Composition: the same principle at
+- **Rule 0007** . Top-Down Composition: the same principle at
   the function level. A function called `processData` is the
   function-level equivalent of a `DataManager` class. The
   principle is the same , name the thing, not the job.
-- **Rule 0011** .  Filenames Are kebab-case: a class named
+- **Rule 0011** . Filenames Are kebab-case: a class named
   `UserManager` usually lives in a file named `user-manager.ts`,
   which is the right casing. The rule's wrong shape is the class
   name, not the file name.

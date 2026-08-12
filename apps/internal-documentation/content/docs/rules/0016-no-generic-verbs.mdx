@@ -149,7 +149,7 @@ It does not refuse:
   message, an error message. `// process the message before
 sending` is fine in a comment; the comment does not have to
   carry the contract.
-- **Generic verbs as nouns** .  `handleRequest` as a class name is
+- **Generic verbs as nouns** . `handleRequest` as a class name is
   a different smell (rule 0013). The rule here is about the
   verb of a function.
 - **Truly generic operations** , a function whose job is genuinely
@@ -168,7 +168,7 @@ sending` is fine in a comment; the comment does not have to
 > "There are 2 hard problems in computer science: cache
 > invalidation, naming things, and off-by-1 errors."
 >
-> .  Phil Karlton, paraphrased in Daniel Lübke, _The easiest rule
+> . Phil Karlton, paraphrased in Daniel Lübke, _The easiest rule
 > to not give bad names for your APIs and operations: No Generic
 > Terms_, 2021.
 
@@ -181,7 +181,7 @@ easiest way to fail at it.
 > by definition. So you should not mention that. Make is double
 > the characters without conveying any more meaning."
 >
-> .  Daniel Lübke, _The easiest rule to not give bad names for
+> . Daniel Lübke, _The easiest rule to not give bad names for
 > your APIs and operations: No Generic Terms_, January 2021.
 
 Lübke's forbidden list is the operational form of the rule.
@@ -195,7 +195,7 @@ verbs that are common in this codebase: `parse`, `convert`,
 > [...] The burden falls upon its callers to handle that
 > possibility."
 >
-> .  Alexis King, _Parse, don't validate_, November 2019.
+> . Alexis King, _Parse, don't validate_, November 2019.
 
 King's principle, applied to naming: a function called `validate`
 returns `boolean`; the caller must handle the case where the
@@ -208,7 +208,7 @@ function throws). The verb encodes the contract.
 > the last time I checked, there were no validation methods on
 > `string` that validate they are auto maker's names."
 >
-> .  Andrew Theken, _The "Named Generic" Anti-pattern_, June 2010.
+> . Andrew Theken, _The "Named Generic" Anti-pattern_, June 2010.
 
 Theken targets types; this rule targets verbs. Both are instances
 of the same principle: a name that adds zero information is a
@@ -246,15 +246,15 @@ code is exempt.
 
 ## See also
 
-- **Rule 0005** .  Named Algorithms and Independent Data Structures:
+- **Rule 0005** . Named Algorithms and Independent Data Structures:
   a function whose verb is `process` is a function whose algorithm
   is not named. Rule 0005 captures the algorithm naming;
   rule 0016 captures the verb naming.
-- **Rule 0013** .  Entity-First Naming: a class named `Handler`
+- **Rule 0013** . Entity-First Naming: a class named `Handler`
   is the noun-level equivalent of a function named `handle*`. The
   two rules compound; the suffix smell and the verb smell are
   instances of the same "named generic" anti-pattern.
-- **Rule 0015** .  Domain-Specific Types Over Primitives: a generic
+- **Rule 0015** . Domain-Specific Types Over Primitives: a generic
   verb often pairs with a primitive return type. `processMessage`
   returns `void`; the verb is generic because the return is
   generic. The fix for both is the same: pick a specific verb and

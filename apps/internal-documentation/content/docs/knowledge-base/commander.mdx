@@ -19,7 +19,7 @@ Commander is a Command class with two responsibilities:
 1. **Argument parsing** , flags (`--api-url <url>`), options
    (`--category <name>`), positional arguments
    (`teardown <dir> [otherDirs...]`).
-2. **Subcommand dispatch** .  `program.command('list')` returns
+2. **Subcommand dispatch** . `program.command('list')` returns
    a Command for that subcommand; chained `.option()` and
    `.action()` register the handler.
 
@@ -182,7 +182,7 @@ pattern is used for every boolean flag.
   ever need to test command-line invocation
   programmatically, we add `exitOverride()` then.
 - **No variadic arguments** , every input is a flag.
-- **No executable subcommands** .  `program.command('list',
+- **No executable subcommands** . `program.command('list',
   'List available templates')` is not used; we always
   chain. The two-call form is for cases where the child
   lives in a separate file (we don't need that yet).

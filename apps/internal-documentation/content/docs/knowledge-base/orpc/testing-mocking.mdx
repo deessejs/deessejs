@@ -12,7 +12,7 @@ changes; this entry exists to show the shape of the
 integration and the discipline that separates testing from
 mocking.
 
-## Server-Side Client .  `call`
+## Server-Side Client . `call`
 
 The official pattern for testing a procedure in isolation.
 No HTTP, no transport, no RPC envelope. The procedure is
@@ -74,7 +74,7 @@ network-level mocks. The cost is that the procedure must
 **accept its dependencies from the context** rather than
 import them statically.
 
-## Implementer .  `implement`
+## Implementer . `implement`
 
 The official pattern for **replacing** a procedure with a
 fake during a test, useful for contract-first development

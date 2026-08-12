@@ -8,7 +8,7 @@ description: 'A runtime guard exists to handle one of two cases:'
 > wrong, fix the type. Don't add runtime null checks for values that
 > can't be null."
 >
-> .  Miguel Pizza, _No Defensive Null Checks_, Maintainable
+> . Miguel Pizza, _No Defensive Null Checks_, Maintainable
 > TypeScript doctrine.
 
 ## Rule
@@ -211,14 +211,14 @@ The idiom is documented and recommended:
 > "Recommend `== null` to check for both `undefined` or `null`. You
 > generally don't want to make a distinction between the two."
 >
-> .  Basarat Ali Syed, _TypeScript book_, 2024 edition.
+> . Basarat Ali Syed, _TypeScript book_, 2024 edition.
 
 > "We intentionally allow this [comparison against null on
 > non-nullable types] for the sake of defensive programming (i.e.
 > defending against missing inputs from non-TS code). If there's
 > enough demand we could add a flag or something."
 >
-> .  Ryan Cavanaugh, TypeScript core team, GitHub
+> . Ryan Cavanaugh, TypeScript core team, GitHub
 > microsoft/TypeScript#11920, October 2016 (issue still open in
 > 2025).
 
@@ -265,7 +265,7 @@ consensus that operationalises it:
 > question should be: 'Why was this object allowed to enter the
 > system as null in the first place?'"
 >
-> .  Aziz Kale, _Why Senior Developers Rarely Need `if (x == null)`_,
+> . Aziz Kale, _Why Senior Developers Rarely Need `if (x == null)`_,
 > Dev Genius, July 2026.
 
 Kale's reframe is the first question this rule asks. The author
@@ -277,7 +277,7 @@ purpose.
 > is wrong, fix the type. Don't add runtime null checks for values
 > that can't be null."
 >
-> .  Miguel Pizza, _No Defensive Null Checks_, Maintainable
+> . Miguel Pizza, _No Defensive Null Checks_, Maintainable
 > TypeScript doctrine.
 
 Pizza's formulation is the operational form of the rule. A guard
@@ -288,7 +288,7 @@ type is wrong. The fix is in the type, not in the runtime.
 > perform some validations, it's a strong sign you fall into the
 > trap of primitive obsession."
 >
-> .  Vladimir Khorikov, _Defensive programming: the good, the bad
+> . Vladimir Khorikov, _Defensive programming: the good, the bad
 > and the ugly_, Enterprise Craftsmanship.
 
 Khorikov's point is the smell of repetition. A guard that appears
@@ -302,7 +302,7 @@ that owns the invariant once.
 > mind. I setup trust boundaries for the code [...] deciding what
 > data couldn't be trusted and what could."
 >
-> .  Jim Bird, _Defensive Programming: Being Just-Enough Paranoid_,
+> . Jim Bird, _Defensive Programming: Being Just-Enough Paranoid_,
 > Building Real Software, March 2012.
 
 Bird's anecdote is the cautionary tale. A system saturated with
@@ -328,7 +328,7 @@ the operational form of that position.
   precise tool for "value is absent" and is not the kind of
   speculative defence the rule forbids.
 - **Kale, Aziz.** _Why Senior Developers Rarely Need `if (x ==
-null)`._ Dev Genius, July 2026. The reframe .  "why was this value
+null)`._ Dev Genius, July 2026. The reframe . "why was this value
   allowed to be null in the first place?" , is captured in the
   rule's question 0.
 - **Pizza again.** Cited for the operational form: "if the type
@@ -355,12 +355,12 @@ null)`._ Dev Genius, July 2026. The reframe .  "why was this value
 
 ## See also
 
-- **Rule 0007** .  Top-Down Composition: a function that accumulates
+- **Rule 0007** . Top-Down Composition: a function that accumulates
   guards is a function that has grown past its name. The
   reframe in question 0 often reveals that the function's
   responsibility should be split, not defended.
-- **Rule 0008** .  No Chained Type Assertions: the type-side
+- **Rule 0008** . No Chained Type Assertions: the type-side
   complement. A guard at a boundary without a cast is this rule's
   smell; a chain of casts is 0008's smell. The two rules compound:
   one is the runtime discipline, the other the type discipline,
-  and both ask the same question .  "what is the contract?".
+  and both ask the same question . "what is the contract?".

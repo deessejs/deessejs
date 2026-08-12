@@ -325,7 +325,7 @@ refuses to mix the three.
 > We need a way to 'brand' (mark) some value as being not just any
 > old value, but specifically the type we want."
 >
-> .  Josh Goldberg, _Branded Types_, Learning TypeScript,
+> . Josh Goldberg, _Branded Types_, Learning TypeScript,
 > August 2024.
 
 Goldberg captures the structural-typing limitation. Two strings
@@ -339,7 +339,7 @@ different. The rule's branded-type pattern is Goldberg's pattern.
 > forgotten about writing this could the issue pop up again
 > unexpectedly."
 >
-> .  Ferreira, _Opaque / Branded Types in TypeScript_, 2022.
+> . Ferreira, _Opaque / Branded Types in TypeScript_, 2022.
 
 Ferreira captures the **time dimension** of the rule. The bare
 primitive compiles today; the bug appears six months later when
@@ -351,7 +351,7 @@ author can catch it.
 > 'consistency'. It's to increase the expressivity of your code.
 > [...] It makes it easier to work with for humans."
 >
-> .  Kilian Foth, _Is it OK to have type aliases for primitive
+> . Kilian Foth, _Is it OK to have type aliases for primitive
 > types in TypeScript?_, Software Engineering Stack Exchange,
 > accepted answer (22 votes), 2022.
 
@@ -399,15 +399,15 @@ of an algorithm are not the boundary.
 
 ## See also
 
-- **Rule 0012** .  Prefer `type` Over `interface`: domain types
+- **Rule 0012** . Prefer `type` Over `interface`: domain types
   are declared as `type`, not `interface`. The rule's pattern
   is the structural form this rule's content takes.
-- **Rule 0014** .  Functions Over Classes for Public API: the
+- **Rule 0014** . Functions Over Classes for Public API: the
   conversion function (`parseUserId`, `parseNotification`) is a
   factory function in the sense of rule 0014 , it is the only
   public construction of the domain value, and the consumer never
   `new`s a `Message`.
-- **Rule 0001** .  Project Mindset: invariant 9 ("optimise for
+- **Rule 0001** . Project Mindset: invariant 9 ("optimise for
   the reader") is the philosophical ground. The reader sees a
   domain type at the boundary; the reader does not see a
   primitive that may or may not be the right thing.

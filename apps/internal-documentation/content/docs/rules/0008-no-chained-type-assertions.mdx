@@ -192,7 +192,7 @@ sources capture the consensus:
 > now telling it what to believe rather than the tooling basing
 > that belief on logic, inference, etc."
 >
-> .  Darryl Edwards, _TypeScript – don't misuse casting_, Code
+> . Darryl Edwards, _TypeScript – don't misuse casting_, Code
 > Krispies, June 2024.
 
 Edwards's point is that `as unknown as Y` is not a workaround; it
@@ -207,7 +207,7 @@ is the reasoning the reader would have benefited from.
 > is that we prevent TypeScript from helping us where it should
 > and take on that responsibility ourselves."
 >
-> .  Maina Wycliffe, _Avoid using Type Assertions in TypeScript_,
+> . Maina Wycliffe, _Avoid using Type Assertions in TypeScript_,
 > All Things TypeScript, October 2023.
 
 Wycliffe makes the responsibility transfer explicit. The cast
@@ -219,7 +219,7 @@ business logic is an undocumented one.
 > "Any external data has an `unknown` type by default until it is
 > inferred."
 >
-> .  Anton Beluzhenko, _Why `as unknown as Type` should be banned_,
+> . Anton Beluzhenko, _Why `as unknown as Type` should be banned_,
 > JavaScript in Plain English, April 2024.
 
 Beluzhenko frames the legitimate case. A value at a boundary is
@@ -236,11 +236,11 @@ that position.
 
 ## See also
 
-- **Rule 0004** .  No Speculative Defences: the rule that covers
+- **Rule 0004** . No Speculative Defences: the rule that covers
   casts at a boundary without a guard. The two rules compound:
   a cast at a boundary without a guard is 0004's smell; a chain
   of casts is 0008's smell.
-- **Rule 0012** .  Prefer `type` Over `interface`: the type
+- **Rule 0012** . Prefer `type` Over `interface`: the type
   discipline this rule relies on. A `type` declaration that
   requires a cast to use is a violation of 0008; the declaration is
   the wrong shape.
