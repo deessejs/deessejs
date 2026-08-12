@@ -208,6 +208,89 @@ That is the entire contributor workflow. The loader, the
 layout, the route handlers, the search backend — all are
 infrastructure that picks up the change automatically.
 
+## The default MDX components
+
+`fumadocs-ui/mdx` exports a `defaultMdxComponents` object
+that overrides the standard HTML elements and adds the
+Fumadocs-specific components. The shape, read from the
+package's own `.d.ts`:
+
+| Component | Type | Purpose |
+|---|---|---|
+| `h1`–`h6` | HTMLAttributes<HTMLHeadingElement> | Heading anchors (auto-generated TOC anchor) |
+| `a` | AnchorHTMLAttributes | Anchor with relative-link resolution |
+| `pre` | HTMLAttributes<HTMLPreElement> | Pre-formatted block with copy button |
+| `img` | ImgHTMLAttributes | Image with optional zoom |
+| `table` | TableHTMLAttributes | Static table renderer |
+| `Cards` | HTMLAttributes<HTMLDivElement> | Grid container for `Card` |
+| `Card` | CardProps | Single tile in a `Cards` grid |
+| `Callout` | `CalloutType` + title | Highlighted block |
+| `CalloutContainer` | (advanced) | Bypass the title to write a custom layout |
+| `CalloutTitle` | (advanced) | Used inside `CalloutContainer` |
+| `CalloutDescription` | (advanced) | Used inside `CalloutContainer` |
+| `CodeBlockTabs` | — | Multi-tab code block |
+| `CodeBlockTabsList` | — | Tab strip of a `CodeBlockTabs` |
+| `CodeBlockTabsTrigger` | — | One tab in a `CodeBlockTabs` |
+| `CodeBlockTab` | — | One pane of a `CodeBlockTabs` |
+
+The `Card` props (`title` is required, `description` and
+`icon` are optional, `href` makes it a link, `external` marks
+external links) and the `Callout` types
+(`info | warn | error | success | warning | idea`) are derived
+from the package's TypeScript definitions, not from the doc
+site. The types are the source of truth.
+
+Three patterns a contributor reaches for first:
+
+```mdx
+<Cards>
+  <Card title="Project Mindset" href="/docs/0001-project-mindset">
+    The ten invariants every contribution must satisfy.
+  </Card>
+</Cards>
+```
+
+```mdx
+<Callout type="warn">
+  No internal code references. The KB describes the lib,
+  not the codebase.
+</Callout>
+```
+
+```mdx
+<Callout type="info" title="The trust-the-type principle">
+  If the type says it's not null, trust the type. If the type
+  is wrong, fix the type.
+</Callout>
+```
+
+The default export is wired into the layout's MDX renderer.
+A consumer who wants to override (for example, to inject a
+custom `a` tag with relative-link resolution) passes the
+overrides as the second argument to `getMDXComponents`:
+
+```ts
+import { getMDXComponents } from '@/components/mdx'
+import { createRelativeLink } from 'fumadocs-ui/mdx'
+import { source } from '@/lib/source'
+
+const MDX = page.data.body
+return (
+  <MDX
+    components={getMDXComponents({
+      a: createRelativeLink(source, page),
+    })}
+  />
+)
+```
+
+The custom `a` is the one concession to framework
+integration: it resolves `./file.mdx` and
+`./(group)/file.mdx` style links to the right URL based on
+the page's location in the tree. Without it, every
+cross-reference in the docs is a hardcoded absolute URL that
+breaks when the page moves.
+
 ## What this entry is not
 
 This is a knowledge-base entry, not an ADR. It documents how
