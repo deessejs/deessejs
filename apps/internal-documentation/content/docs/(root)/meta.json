@@ -1,0 +1,7 @@
+{
+  "title": "DeesseJS",
+  "description": "...",
+  "icon": "Building",
+  "root": true,
+  "pages": ["index"]
+}
