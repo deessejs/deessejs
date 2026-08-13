@@ -33,6 +33,7 @@
   },
   "dependencies": {
     "@next/env": "catalog:",
+    "@t3-oss/env-core": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

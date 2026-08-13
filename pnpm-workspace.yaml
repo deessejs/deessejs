@@ -33,6 +33,7 @@ catalog:
   "@next/env": ^16.2.10
   '@orpc/client': ^1.14.7
   "@orpc/server": ^1.14.7
+  "@t3-oss/env-core": ^0.13.0
   "@react-email/components": ^1.0.12
   "@react-email/render": ^2.0.6
   '@shikijs/rehype': ^4.3.1
