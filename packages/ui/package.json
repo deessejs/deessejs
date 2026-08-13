@@ -34,7 +34,8 @@
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9",
     "tailwindcss": "^4",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@workspace/vitest-config": "workspace:*"
   },
   "exports": {
     "./globals.css": "./src/styles/globals.css",
