@@ -25,6 +25,20 @@ export const config = {
   ],
 }
 
+// The proxy imports @workspace/auth, which transitively
+// imports postgres. postgres is a Node.js-only library
+// (TCP I/O, fs, os) and cannot run in the Edge runtime.
+// Two fixes work together:
+//   1. serverExternalPackages: ["postgres"] in next.config.ts
+//      tells Turbopack not to bundle postgres for the proxy,
+//      so the dependency is loaded at runtime from node_modules.
+//   2. runtime = "nodejs" below opts the proxy itself into the
+//      Node.js runtime, where postgres works natively.
+// In Next.js 16, "nodejs" is the default, but we declare it
+// explicitly to document the intent and to be safe against
+// future changes to the framework default.
+export const runtime = "nodejs"
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))
