@@ -31,6 +31,7 @@
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@workspace/vitest-config": "workspace:*"
   }
 }

@@ -1,8 +1,8 @@
 import { defineConfig } from "vitest/config"
+import { vitestConfig } from "@workspace/vitest-config"
 
-export default defineConfig({
-  test: {
-    environment: "node",
-    include: ["tests/**/*.test.ts"],
-  },
-})
+export default defineConfig(
+  vitestConfig({
+    setupFiles: [],
+  }),
+)
