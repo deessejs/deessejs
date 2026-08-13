@@ -30,7 +30,6 @@ catalog:
   '@deessejs/fp': ^1.0.0
 
   # Next.js
-  "@next/env": ^16.2.10
   '@orpc/client': ^1.14.7
   "@orpc/server": ^1.14.7
   "@t3-oss/env-core": ^0.13.0

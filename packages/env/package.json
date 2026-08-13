@@ -32,8 +32,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@next/env": "catalog:",
     "@t3-oss/env-core": "catalog:",
+    "dotenv": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -1,35 +1,38 @@
 import { createEnv } from "@t3-oss/env-core"
 
-import { loadRepoEnv } from "./loader.js"
+import { loadDotenvSnapshot, loadRepoEnv } from "./loader.js"
 import { clientSchema, type ClientEnv } from "./schema.js"
 
 /**
- * Client-safe env. Only NEXT_PUBLIC_* values are referenced, so the bundler
- * inlines them at build time. No runtime guard needed: `createEnv` enforces
- * the client/server boundary at the type level (via the `runtimeEnvStrict`
- * argument), and at runtime via `onInvalidAccess` if a server-only key
- * ever leaks into a client bundle.
+ * Mirror the snapshot into `process.env` for legacy consumers, then
+ * read the snapshot ourselves for the validator. Idempotent.
  */
 loadRepoEnv()
+
+const dotenv = loadDotenvSnapshot()
 
 const env = createEnv({
   client: clientSchema.shape,
   clientPrefix: "NEXT_PUBLIC_",
+  // `runtimeEnvStrict` enforces (at compile time) that every key declared
+  // in `clientSchema` is listed here. Adding a NEXT_PUBLIC_* to the
+  // schema without listing it here is a TypeScript build error.
+  //
+  // `emptyStringAsUndefined: true` mutates this `dotenv` snapshot, not
+  // `process.env`: the snapshot is a plain object we own, so the
+  // delete-on-empty-string stays scoped to our local cache.
   runtimeEnvStrict: {
-    // Each NEXT_PUBLIC_* must be listed explicitly. The destructured
-    // literal keeps `emptyStringAsUndefined: true` (which `delete`s `""`
-    // keys on this object) from mutating the live `process.env`.
-    NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
-    NEXT_PUBLIC_APP_DESCRIPTION: process.env.NEXT_PUBLIC_APP_DESCRIPTION,
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_APP_NAME: dotenv.NEXT_PUBLIC_APP_NAME,
+    NEXT_PUBLIC_APP_DESCRIPTION: dotenv.NEXT_PUBLIC_APP_DESCRIPTION,
+    NEXT_PUBLIC_APP_URL: dotenv.NEXT_PUBLIC_APP_URL,
   },
   emptyStringAsUndefined: true,
 })
 
 /**
- * Eager-validated client env. Validation fires at module load (top-level
- * `createEnv` call above). The Proxy returned by `createEnv` enforces
- * the client/server boundary on every property access.
+ * Eager-validated client env. Validation fires at module load. The
+ * Proxy returned by `createEnv` enforces the client/server boundary on
+ * every property access.
  */
 export const clientEnv: Readonly<ClientEnv> = Object.freeze({
   NEXT_PUBLIC_APP_NAME: env.NEXT_PUBLIC_APP_NAME,

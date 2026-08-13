@@ -27,9 +27,6 @@ catalogs:
     '@content-collections/next':
       specifier: ^0.2.11
       version: 0.2.11
-    '@next/env':
-      specifier: ^16.2.10
-      version: 16.2.10
     '@orpc/client':
       specifier: ^1.14.7
       version: 1.14.7
@@ -790,12 +787,12 @@ importers:
 
   packages/env:
     dependencies:
-      '@next/env':
-        specifier: 'catalog:'
-        version: 16.2.10
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.11(typescript@6.0.3)(zod@4.4.3)
+      dotenv:
+        specifier: 'catalog:'
+        version: 17.4.2
       zod:
         specifier: 'catalog:'
         version: 4.4.3
