@@ -2,7 +2,7 @@
 
 import { createAuthClient } from "better-auth/react"
 import { clientEnv } from "@workspace/env/client"
-import { API_AUTH_PATH } from "@workspace/api/base-path"
+import { API_AUTH_PATH } from "@workspace/api"
 
 /**
  * Better Auth is mounted on Hono at `${API_BASE_PATH}/auth/*` (see

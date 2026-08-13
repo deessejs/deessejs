@@ -8,7 +8,8 @@ import { API_RPC_PATH, appRouter } from "@workspace/api"
  * Typed oRPC client for the marketing site.
  *
  * `API_RPC_PATH` is the single source of truth for the oRPC endpoint
- * URL (defined in @workspace/api/base-path). The same constant is read
+ * URL (exported from the @workspace/api main entry, defined in
+ * packages/api/src/constants/base-path.ts). The same constant is read
  * by apps/app's lib/orpc.ts and by Hono's `basePath(API_BASE_PATH)`
  * server-side. Renaming the API prefix means editing the constant and
  * moving the Next.js catch-all directory; nothing else.
