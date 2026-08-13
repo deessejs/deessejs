@@ -12,9 +12,9 @@ import { z } from "zod"
  *   - BETTER_AUTH_SECRET    >=32 chars in prod; optional in dev/test
  *                           (better-auth auto-generates a dev-only default)
  *                           Generate: openssl rand -base64 32
- *   - AUTH_SECRET           Alias for BETTER_AUTH_SECRET (resolved at the
- *                           package boundary, so call sites only see the
- *                           resolved value)
+ *   - AUTH_SECRET           Alias for BETTER_AUTH_SECRET (resolved via
+ *                           z.preprocess; call sites only see the resolved
+ *                           value)
  *   - BETTER_AUTH_URL       Defaults to http://localhost:3000
  *   - ALLOWED_ORIGINS       CSV. Defaults to localhost dev origins.
  *
@@ -28,21 +28,52 @@ const csv = z
   .string()
   .transform((s) => s.split(",").map((p) => p.trim()).filter(Boolean))
 
+/**
+ * Alias resolution lives in the schema, not in the consumer.
+ *
+ * `AUTH_SECRET` is a historical alias for `BETTER_AUTH_SECRET`. The
+ * `z.preprocess` below reads `AUTH_SECRET` first, then falls back to
+ * `BETTER_AUTH_SECRET`. The output field is `BETTER_AUTH_SECRET`; the
+ * alias name never appears in the validated result.
+ *
+ * `TEST_DATABASE_URL` falls back to `DATABASE_URL` via the same pattern.
+ * Test setups that only set `DATABASE_URL` get a working
+ * `TEST_DATABASE_URL` without writing a fallback in every consumer.
+ */
+const aliasPreprocess = <K extends string, T>(
+  aliasName: K,
+  canonicalName: K,
+  schema: z.ZodType<T>,
+) =>
+  z.preprocess((raw) => {
+    const env = (raw ?? {}) as Record<string, unknown>
+    const fromAlias = env[aliasName]
+    if (fromAlias !== undefined) return fromAlias
+    return env[canonicalName]
+  }, schema)
+
 export const serverSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
   DATABASE_URL: z.string().url().optional(),
-  TEST_DATABASE_URL: z.string().url().optional(),
+  TEST_DATABASE_URL: aliasPreprocess(
+    "TEST_DATABASE_URL",
+    "DATABASE_URL",
+    z.string().url().optional(),
+  ),
   BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
   // Optional. In production, better-auth throws if unset.
   // In dev/test, better-auth uses a built-in default secret.
   // We only validate length when the value is present (prevents crash in test).
-  BETTER_AUTH_SECRET: z
-    .string()
-    .min(32, "Run: openssl rand -base64 32 (>= 32 chars required)")
-    .optional(),
-  AUTH_SECRET: z.string().min(32).optional(),
+  BETTER_AUTH_SECRET: aliasPreprocess(
+    "AUTH_SECRET",
+    "BETTER_AUTH_SECRET",
+    z
+      .string()
+      .min(32, "Run: openssl rand -base64 32 (>= 32 chars required)")
+      .optional(),
+  ),
   ALLOWED_ORIGINS: csv.default([]),
 
   // Mailer — Resend (prod)
@@ -92,8 +123,7 @@ export const serverSchema = z.object({
       })
     }
 
-    const secret = data.BETTER_AUTH_SECRET ?? data.AUTH_SECRET
-    if (!secret || secret.length < 32) {
+    if (!data.BETTER_AUTH_SECRET || data.BETTER_AUTH_SECRET.length < 32) {
       ctx.addIssue({
         code: "custom",
         message:
@@ -115,6 +145,10 @@ export const serverSchema = z.object({
 /**
  * Client-side env contract. Only NEXT_PUBLIC_* values, safe to bundle to the
  * browser. Values are inlined at build time by the bundler.
+ *
+ * Authored against `createEnv({ ...runtimeEnvStrict })`, so each key must
+ * appear in the destructured literal passed by `client.ts`. Adding a key to
+ * this schema without listing it in `client.ts` is a compile-time error.
  */
 export const clientSchema = z.object({
   NEXT_PUBLIC_APP_NAME: z.string().min(1).default("DeesseJS"),
