@@ -13,6 +13,7 @@
     "ADR-006-fumadocs-card-design",
     "ADR-007-no-em-dash-in-internal-doc",
     "ADR-008-internal-doc-title-max-4-words",
-    "ADR-009-test-strategy"
+    "ADR-009-test-strategy",
+    "ADR-010-cli-public-surface"
   ]
 }
