@@ -209,9 +209,6 @@ importers:
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      postgres:
-        specifier: 'catalog:'
-        version: 3.4.9
       react:
         specifier: 'catalog:'
         version: 19.2.7

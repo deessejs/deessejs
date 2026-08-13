@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { auth } from "@workspace/auth"
-import type { Session, User } from "better-auth"
+import { authClient } from "@/lib/auth-client"
 
 const PROTECTED_PREFIXES = ["/home", "/settings"]
 const AUTH_PREFIXES = [
@@ -25,18 +24,14 @@ export const config = {
   ],
 }
 
-// The proxy imports @workspace/auth, which transitively
-// imports postgres. postgres is a Node.js-only library
-// (TCP I/O, fs, os) and cannot run in the Edge runtime.
-// Two fixes work together:
-//   1. serverExternalPackages: ["postgres"] in next.config.ts
-//      tells Turbopack not to bundle postgres for the proxy,
-//      so the dependency is loaded at runtime from node_modules.
-//   2. runtime = "nodejs" below opts the proxy itself into the
-//      Node.js runtime, where postgres works natively.
-// In Next.js 16, "nodejs" is the default, but we declare it
-// explicitly to document the intent and to be safe against
-// future changes to the framework default.
+// The proxy uses the better-auth client (HTTP roundtrip) instead of
+// the server-side auth.api.getSession(...) import. The server-side
+// API transitively imports postgres through packages/database,
+// which Turbopack cannot bundle for any runtime (the path resolution
+// fails on fs/net/os imports inside postgres). Using the client
+// avoids the postgres import path entirely because the proxy
+// only needs HTTP, and fetch is supported in every runtime
+// Next.js supports (Edge and Node).
 export const runtime = "nodejs"
 
 export async function proxy(request: NextRequest) {
@@ -47,18 +42,13 @@ export async function proxy(request: NextRequest) {
   )
 
   // Only call getSession when the route actually needs the gate decision.
-  // Avoids a DB roundtrip on every static asset or unrelated request.
+  // Avoids a roundtrip on every static asset or unrelated request.
   if (!isProtected && !isAuthPage) {
     return NextResponse.next()
   }
 
-  // Server-side session read. The previous workaround used
-  // authClient.getSession() (an HTTP roundtrip to /api/auth/get-session)
-  // so the build worked without serverEnv. With turbo.json now caching
-  // dist/** (#44), serverEnv is reachable at build time — use the
-  // server-side API directly instead of bouncing through HTTP.
-  const session = await auth.api.getSession({
-    headers: request.headers,
+  const { data: session } = await authClient.getSession({
+    fetchOptions: { headers: request.headers },
   })
 
   if (isProtected && !session?.session) {
@@ -77,6 +67,3 @@ export async function proxy(request: NextRequest) {
 
   return NextResponse.next()
 }
-
-// Re-export types for consumers
-export type { Session, User }
