@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { clientEnv } from "@workspace/env/client"
-import { API_AUTH_PATH } from "@workspace/api"
+import { API_AUTH_PATH } from "@workspace/api/base-path"
 
 const PROTECTED_PREFIXES = ["/home", "/settings"]
 const AUTH_PREFIXES = [
@@ -33,7 +32,10 @@ export const config = {
 // every runtime Next.js supports. The auth route handler at
 // /api/auth/get-session runs on the Node runtime in the api package,
 // where postgres works natively.
-export const runtime = "nodejs"
+//
+// Next.js 16 always runs proxy files on the Node.js runtime —
+// setting `export const runtime = "nodejs"` here is rejected at build
+// time ("Route segment config is not allowed in Proxy file").
 
 interface GetSessionResponse {
   session?: { user?: { emailVerified?: boolean } }
