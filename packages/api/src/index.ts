@@ -35,6 +35,7 @@ api.notFound((c) =>
       status: 404,
       message: "Route not found",
       data: {},
+      requestId: c.get("requestId"),
     },
     404,
   ),
