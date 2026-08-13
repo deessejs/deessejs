@@ -141,7 +141,7 @@ code is the integration layer the library cannot see:
   `delete`s keys whose value is `""`. Passing `process.env`
   directly mutates the live `process.env`. Mitigation: pass a
   destructured literal, `runtimeEnv: { DATABASE_URL:
-  process.env.DATABASE_URL, ... }`, one entry per schema key.
+process.env.DATABASE_URL, ... }`, one entry per schema key.
   This is also the recommended pattern for framework-aware
   static analysis.
 
@@ -196,10 +196,10 @@ fallback is local, no schema gymnastics.
 
 Three states, three responses:
 
-| Phase         | serverEnv                    | clientEnv                    |
-| ------------- | ---------------------------- | ---------------------------- |
-| dev/test load | soft-fail, defaults shown    | soft-fail, defaults shown    |
-| prod startup  | fatal on first `get`         | fatal on import              |
+| Phase         | serverEnv                 | clientEnv                 |
+| ------------- | ------------------------- | ------------------------- |
+| dev/test load | soft-fail, defaults shown | soft-fail, defaults shown |
+| prod startup  | fatal on first `get`      | fatal on import           |
 
 `createEnv` throws on parse failure, we let it. The `process.exit(1)`
 post-processing in `server.ts` is replaced by the upstream error

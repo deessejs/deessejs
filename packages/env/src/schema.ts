@@ -24,9 +24,12 @@ import { z } from "zod"
  * suite run without env vars while still enforcing it at prod startup.
  */
 
-const csv = z
-  .string()
-  .transform((s) => s.split(",").map((p) => p.trim()).filter(Boolean))
+const csv = z.string().transform((s) =>
+  s
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)
+)
 
 /**
  * Alias resolution lives in the schema, not in the consumer.
@@ -43,7 +46,7 @@ const csv = z
 const aliasPreprocess = <K extends string, T>(
   aliasName: K,
   canonicalName: K,
-  schema: z.ZodType<T>,
+  schema: z.ZodType<T>
 ) =>
   z.preprocess((raw) => {
     const env = (raw ?? {}) as Record<string, unknown>
@@ -52,61 +55,53 @@ const aliasPreprocess = <K extends string, T>(
     return env[canonicalName]
   }, schema)
 
-export const serverSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "test", "production"])
-    .default("development"),
-  DATABASE_URL: z.string().url().optional(),
-  TEST_DATABASE_URL: aliasPreprocess(
-    "TEST_DATABASE_URL",
-    "DATABASE_URL",
-    z.string().url().optional(),
-  ),
-  BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
-  // Optional. In production, better-auth throws if unset.
-  // In dev/test, better-auth uses a built-in default secret.
-  // We only validate length when the value is present (prevents crash in test).
-  BETTER_AUTH_SECRET: aliasPreprocess(
-    "AUTH_SECRET",
-    "BETTER_AUTH_SECRET",
-    z
-      .string()
-      .min(32, "Run: openssl rand -base64 32 (>= 32 chars required)")
-      .optional(),
-  ),
-  ALLOWED_ORIGINS: csv.default([]),
+export const serverSchema = z
+  .object({
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
+    DATABASE_URL: z.string().url().optional(),
+    TEST_DATABASE_URL: aliasPreprocess(
+      "TEST_DATABASE_URL",
+      "DATABASE_URL",
+      z.string().url().optional()
+    ),
+    BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
+    // Optional. In production, better-auth throws if unset.
+    // In dev/test, better-auth uses a built-in default secret.
+    // We only validate length when the value is present (prevents crash in test).
+    BETTER_AUTH_SECRET: aliasPreprocess(
+      "AUTH_SECRET",
+      "BETTER_AUTH_SECRET",
+      z
+        .string()
+        .min(32, "Run: openssl rand -base64 32 (>= 32 chars required)")
+        .optional()
+    ),
+    ALLOWED_ORIGINS: csv.default([]),
 
-  // Mailer — Resend (prod)
-  RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM_EMAIL: z
-    .string()
-    .email()
-    .default("onboarding@resend.dev"),
-  RESEND_FROM_NAME: z.string().min(1).default("DeesseJS"),
+    // Mailer — Resend (prod)
+    RESEND_API_KEY: z.string().optional(),
+    RESEND_FROM_EMAIL: z.string().email().default("onboarding@resend.dev"),
+    RESEND_FROM_NAME: z.string().min(1).default("DeesseJS"),
 
-  // Mailer — transport selector
-  //   "console" (default) → logs to stdout, zero infrastructure
-  //   "resend"            → production, uses RESEND_API_KEY
-  MAIL_TRANSPORT: z
-    .enum(["console", "resend"])
-    .default("console"),
+    // Mailer — transport selector
+    //   "console" (default) → logs to stdout, zero infrastructure
+    //   "resend"            → production, uses RESEND_API_KEY
+    MAIL_TRANSPORT: z.enum(["console", "resend"]).default("console"),
 
-  // Per-IP rate limit on /api/v1/templates and /api/v1/version.
-  // In-memory fixed window per Vercel instance; see the rate-limit
-  // middleware comment for the trade-off analysis. 100/min is enough
-  // for a CLI that polls once per session and a marketing site that
-  // revalidates every 10 minutes.
-  RATE_LIMIT_PER_MINUTE: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(100),
+    // Per-IP rate limit on /api/v1/templates and /api/v1/version.
+    // In-memory fixed window per Vercel instance; see the rate-limit
+    // middleware comment for the trade-off analysis. 100/min is enough
+    // for a CLI that polls once per session and a marketing site that
+    // revalidates every 10 minutes.
+    RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(100),
 
-  // GitHub API token (optional). When unset, the templates enricher
-  // hits GitHub anonymously (60 req/h). Set in production to lift
-  // the rate limit to 5000 req/h. See packages/api/src/core/templates/enrich.ts.
-  GITHUB_TOKEN: z.string().optional(),
-})
+    // GitHub API token (optional). When unset, the templates enricher
+    // hits GitHub anonymously (60 req/h). Set in production to lift
+    // the rate limit to 5000 req/h. See packages/api/src/core/templates/enrich.ts.
+    GITHUB_TOKEN: z.string().optional(),
+  })
   // Production-only invariants. Skipped in dev/test so contributors don't
   // need a full .env to start the app. Enforced in prod because each of these
   // silently degrades to a stub (e.g. dummy `{}` DB, default localhost URL,

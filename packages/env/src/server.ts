@@ -1,15 +1,7 @@
 import { createEnv } from "@t3-oss/env-core"
 
-import {
-  loadDotenvSnapshot,
-  loadRepoEnv,
-  type EnvSnapshot,
-} from "./loader.js"
-import {
-  clientSchema,
-  serverSchema,
-  type ServerEnv,
-} from "./schema.js"
+import { loadDotenvSnapshot, loadRepoEnv, type EnvSnapshot } from "./loader.js"
+import { clientSchema, serverSchema, type ServerEnv } from "./schema.js"
 
 /**
  * Mirror the snapshot into `process.env` so legacy consumers
@@ -60,12 +52,12 @@ function getServerEnv(): Readonly<ServerEnv> {
       for (const issue of issues) {
         // eslint-disable-next-line no-console
         console.error(
-          `  - ${issue.path?.join(".") ?? "(root)"}: ${issue.message}`,
+          `  - ${issue.path?.join(".") ?? "(root)"}: ${issue.message}`
         )
       }
       // eslint-disable-next-line no-console
       console.error(
-        "\nCopy .env.example to .env at the repo root and fill in the values.\n",
+        "\nCopy .env.example to .env at the repo root and fill in the values.\n"
       )
       throw new Error("Invalid environment variables")
     },
@@ -97,7 +89,7 @@ function getServerEnv(): Readonly<ServerEnv> {
     if (key.startsWith("NEXT_PUBLIC_")) {
       throw new Error(
         `[env] serverEnv exposes NEXT_PUBLIC_* key: ${key}. ` +
-          `NEXT_PUBLIC_* belongs to clientEnv, not serverEnv.`,
+          `NEXT_PUBLIC_* belongs to clientEnv, not serverEnv.`
       )
     }
   }
@@ -135,7 +127,7 @@ export const serverEnv: Readonly<ServerEnv> = new Proxy(
     },
     ownKeys() {
       return Reflect.ownKeys(
-        getServerEnv() as unknown as Record<string, unknown>,
+        getServerEnv() as unknown as Record<string, unknown>
       )
     },
     getOwnPropertyDescriptor(_target, prop) {
@@ -143,7 +135,7 @@ export const serverEnv: Readonly<ServerEnv> = new Proxy(
       if (typeof prop === "symbol") return undefined
       return Object.getOwnPropertyDescriptor(env, prop)
     },
-  },
+  }
 )
 
 export { getServerEnv }

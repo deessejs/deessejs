@@ -61,7 +61,7 @@ function findRepoRoot(start: string): string {
  * source of truth for `createEnv`'s `runtimeEnv` argument.
  */
 export function loadDotenvSnapshot(
-  repoRoot: string = findRepoRoot(process.cwd()),
+  repoRoot: string = findRepoRoot(process.cwd())
 ): EnvSnapshot {
   if (cachedSnapshot) return cachedSnapshot
 
