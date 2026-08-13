@@ -1,6 +1,6 @@
 import type { Context, MiddlewareHandler } from "hono"
 import { HTTPException } from "hono/http-exception"
-import { logger } from "../logger.js"
+import { logger } from "../../constants/logger.js"
 import type { Bucket } from "./bucket.js"
 
 /**

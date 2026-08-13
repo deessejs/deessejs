@@ -26,7 +26,7 @@ const compareSemver = (a: string, b: string): number => {
 /**
  * Non-blocking version probe.
  *
- * Calls /api/v1/cli-version. If the local CLI version is strictly
+ * Calls /api/v1/version. If the local CLI version is strictly
  * below minSupported, prints a warning to stderr. The caller does NOT
  * abort — the user might have a workflow that depends on the old
  * version. The warning is loud (yellow, separate line) but not
@@ -39,9 +39,9 @@ export const maybeWarnAboutOutdatedCli = async (apiUrl: string): Promise<void> =
   let bodyText: string
   try {
     // `apiUrl` is the oRPC base (e.g. `https://app.deessejs.com/api/v1/rpc`).
-    // The CLI version probe lives at `<base-parent>/cli-version`, i.e. we
-    // strip the trailing `/rpc` segment and append `/cli-version`.
-    const versionUrl = apiUrl.replace(/\/rpc$/, "/cli-version")
+    // The server version probe lives at `<base-parent>/version`, i.e. we
+    // strip the trailing `/rpc` segment and append `/version`.
+    const versionUrl = apiUrl.replace(/\/rpc$/, "/version")
     const res = await fetchWithRetry({ apiUrl: versionUrl })
     if (res.status !== 200) return
     bodyText = res.bodyText

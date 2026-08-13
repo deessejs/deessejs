@@ -1,6 +1,6 @@
 import type { Context } from "hono"
 import { HTTPException } from "hono/http-exception"
-import { logger } from "../logger.js"
+import { logger } from "../../constants/logger.js"
 
 /**
  * Wire shape for every error response, regardless of where the error

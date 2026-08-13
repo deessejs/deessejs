@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { auth } from "@workspace/auth"
-import type { Session, User } from "better-auth"
+import { clientEnv } from "@workspace/env/client"
+import { API_AUTH_PATH } from "@workspace/api"
 
 const PROTECTED_PREFIXES = ["/home", "/settings"]
 const AUTH_PREFIXES = [
@@ -25,6 +25,20 @@ export const config = {
   ],
 }
 
+// The proxy uses a pure HTTP fetch to /api/auth/get-session
+// instead of importing better-auth directly. better-auth transitively
+// imports postgres via the @better-auth/drizzle adapter, which
+// Turbopack cannot bundle for any runtime (fs/net/os imports fail
+// at build time). The fetch path uses only Web APIs that work in
+// every runtime Next.js supports. The auth route handler at
+// /api/auth/get-session runs on the Node runtime in the api package,
+// where postgres works natively.
+export const runtime = "nodejs"
+
+interface GetSessionResponse {
+  session?: { user?: { emailVerified?: boolean } }
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))
@@ -33,19 +47,21 @@ export async function proxy(request: NextRequest) {
   )
 
   // Only call getSession when the route actually needs the gate decision.
-  // Avoids a DB roundtrip on every static asset or unrelated request.
+  // Avoids a roundtrip on every static asset or unrelated request.
   if (!isProtected && !isAuthPage) {
     return NextResponse.next()
   }
 
-  // Server-side session read. The previous workaround used
-  // authClient.getSession() (an HTTP roundtrip to /api/auth/get-session)
-  // so the build worked without serverEnv. With turbo.json now caching
-  // dist/** (#44), serverEnv is reachable at build time — use the
-  // server-side API directly instead of bouncing through HTTP.
-  const session = await auth.api.getSession({
-    headers: request.headers,
+  const getSessionUrl = new URL(
+    `${API_AUTH_PATH.replace(/\/$/, "")}/get-session`,
+    request.url,
+  )
+  const response = await fetch(getSessionUrl, {
+    headers: { cookie: request.headers.get("cookie") ?? "" },
   })
+  const session = (response.ok
+    ? ((await response.json()) as GetSessionResponse | null)
+    : null)
 
   if (isProtected && !session?.session) {
     const loginUrl = new URL("/login", request.url)
@@ -53,7 +69,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  if (isProtected && session?.user && !session.user.emailVerified) {
+  if (isProtected && session?.session?.user && !session.session.user.emailVerified) {
     return NextResponse.redirect(new URL("/verify-email", request.url))
   }
 
@@ -63,6 +79,3 @@ export async function proxy(request: NextRequest) {
 
   return NextResponse.next()
 }
-
-// Re-export types for consumers
-export type { Session, User }

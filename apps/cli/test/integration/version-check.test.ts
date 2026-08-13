@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { startFakeApi, type FakeApi } from "../helpers/fake-api.js"
 import { runCli } from "../helpers/run-cli.js"
 
-const FAKE_HOME = join(tmpdir(), `deessejs-cli-version-${Date.now()}-${Math.random()}`)
+const FAKE_HOME = join(tmpdir(), `deessejs-cli-version-check-${Date.now()}-${Math.random()}`)
 
 vi.mock("node:os", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:os")>()
@@ -31,7 +31,7 @@ describe("version check", () => {
   it("warns when local version is below minSupported", async () => {
     api = await startFakeApi({
       handler: (req) => {
-        if (req.url?.endsWith("/cli-version")) {
+        if (req.url?.endsWith("/version")) {
           return { status: 200, body: JSON.stringify({ version: "2.0.0", minSupported: "2.0.0" }) }
         }
         return { status: 200, body: JSON.stringify({ templates: [FIXTURE] }) }
@@ -50,7 +50,7 @@ describe("version check", () => {
   it("does not warn when local version equals minSupported", async () => {
     api = await startFakeApi({
       handler: (req) => {
-        if (req.url?.endsWith("/cli-version")) {
+        if (req.url?.endsWith("/version")) {
           return { status: 200, body: JSON.stringify({ version: "1.0.1", minSupported: "1.0.0" }) }
         }
         return { status: 200, body: JSON.stringify({ templates: [FIXTURE] }) }

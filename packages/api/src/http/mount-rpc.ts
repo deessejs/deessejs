@@ -1,11 +1,11 @@
 import { onError } from "@orpc/server"
 import { RPCHandler } from "@orpc/server/fetch"
 import type { Hono } from "hono"
-import { logger } from "../../logger.js"
-import { REQUEST_ID_HEADER } from "../../middleware/request-id.js"
-import type { ApiEnv } from "../../types/api-env.js"
-import { appRouter } from "../routes/index.js"
+import { logger } from "../constants/logger.js"
+import { appRouter } from "../orpc/routes/app-router.js"
 import { wrapForOrpc } from "./hono-adapter.js"
+import { REQUEST_ID_HEADER } from "./middleware/request-id.js"
+import type { ApiEnv } from "./env.js"
 
 /**
  * Mount the oRPC handler on `/rpc/*`.

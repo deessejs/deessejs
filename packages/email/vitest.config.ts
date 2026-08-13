@@ -1,13 +1,11 @@
 import { defineConfig } from "vitest/config"
+import { vitestConfig } from "@workspace/vitest-config"
 
-export default defineConfig({
-  test: {
-    environment: "node",
+export default defineConfig(
+  vitestConfig({
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
-    setupFiles: ["@workspace/env/server"],
     coverage: {
-      provider: "v8",
       include: ["src/**/*.ts", "src/**/*.tsx"],
     },
-  },
-})
+  }),
+)
