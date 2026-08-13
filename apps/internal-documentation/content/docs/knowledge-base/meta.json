@@ -10,6 +10,7 @@
     "better-auth/test-utils",
     "---hono---",
     "hono/middleware",
+    "hono/middleware-composition",
     "hono/testing",
     "---orpc---",
     "orpc/hono-adapter",
