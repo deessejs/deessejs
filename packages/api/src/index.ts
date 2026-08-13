@@ -30,19 +30,21 @@ api.use("*", session())
 mountHttp(api)
 mountRpc(api)
 
-api.notFound((c) =>
-  c.json(
-    {
-      defined: false,
-      code: "NOT_FOUND",
-      status: 404,
-      message: "Route not found",
-      data: {},
-      requestId: c.get("requestId"),
-    },
-    404,
-  ),
-)
+api.notFound((c) => {
+  const body: {
+    defined: false
+    code: "NOT_FOUND"
+    message: string
+    requestId?: string
+  } = {
+    defined: false,
+    code: "NOT_FOUND",
+    message: "Route not found",
+  }
+  const requestId = c.get("requestId")
+  if (requestId !== undefined) body.requestId = requestId
+  return c.json(body, 404)
+})
 
 void logger // re-exported for downstream consumers if needed
 
