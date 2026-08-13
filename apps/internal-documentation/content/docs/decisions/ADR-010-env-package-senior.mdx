@@ -102,12 +102,13 @@ single rule that governs the split:
 The hand-rolled code is **never** the validation engine. The
 hand-rolled code is the integration layer the library cannot see:
 
-- **`loader.ts`** discovers the repo root, calls
-  `@next/env.loadEnvConfig`, merges its `combinedEnv` into
-  `process.env`, and exposes a `loadRepoEnv` function. Calling
-  `loadRepoEnv()` is the only public way to populate the runtime.
-  The Proxy never reads from `process.env` directly; it reads from
-  a captured `runtimeEnv` snapshot.
+- **`loader.ts`** discovers the repo root, reads `.env.local`,
+  `.env.{NODE_ENV}`, and `.env` in Next.js precedence via `dotenv`,
+  and merges the result into a plain object snapshot. The package
+  exports two functions: `loadDotenvSnapshot()` (pure, returns an
+  object) and `loadRepoEnv()` (mutates `process.env` as a side
+  effect, kept for callers that still read `process.env` directly).
+  `createEnv(...)` consumes the snapshot, never `process.env`.
 - **`server.ts` and `client.ts`** are thin `createEnv(...)` calls.
   They accept the runtime snapshot captured by `loader.ts`. They
   expose the result as a frozen, deeply-typed object.
@@ -165,11 +166,21 @@ inside the callback and short-circuits in dev.
 
 ### Loader as a single shot
 
-`loader.ts` calls `loadEnvConfig(repoRoot, true)` exactly once,
-capturing the `combinedEnv` snapshot. The snapshot is passed
-to `createEnv` as a destructured literal, never as the live
-`process.env`. The `#92040` workaround stays inside `loader.ts`;
-the rest of the package does not know about caching.
+`loader.ts` reads the `.env` hierarchy exactly once, in Next.js
+precedence (`.env.local` > `.env.{NODE_ENV}` > `.env`). The result
+is a plain object snapshot; `createEnv` reads it via a destructured
+literal, never via `process.env`. The `@next/env` dependency and
+its open cache bug (`#92040`, status Open as of 2026-08, no merged
+fix) are removed from the package. `dotenv` has no cache, no
+`forceReload` workaround, no global `process.env` mutation inside
+the loader itself.
+
+`loadRepoEnv()` is kept as a backwards-compatible shim that calls
+`loadDotenvSnapshot()` and then writes the keys into `process.env`.
+The shim exists for the nine call sites that still read
+`process.env` directly (`drizzle.config.ts`, scripts). They are
+migrated in a follow-up PR; until then, the shim keeps them
+working without forcing a coordinated refactor across the monorepo.
 
 ### Alias resolution
 
@@ -206,9 +217,9 @@ output.
 
 ### What we do not get from `createEnv`
 
-- **The `@next/env` cache workaround** is independent of the
-  validator. We still ship `loader.ts`; it just no longer mutates
-  `process.env` after validating.
+- **The `@next/env` cache workaround** is removed entirely. The package
+  no longer imports `@next/env`; the bug is gone with the dependency.
+  The new loader uses `dotenv`, which has no per-process cache.
 - **The dev/prod asymmetry**. `createEnv` validates the same way
   in both. The dev relaxation we have today (`DATABASE_URL`
   optional in dev, required in prod) requires a `.superRefine`
@@ -224,9 +235,11 @@ output.
 3. Replace the inline fallback in `client.ts` with
    `clientSchema.parse({})` at build time, so the literal
    duplicates the schema.
-4. Stop mutating `process.env` in `loader.ts`; capture the
-   `@next/env.loadEnvConfig` result and pass it as `runtimeEnv`
-   to `createEnv`.
+4. Replace `@next/env` with `dotenv` in `loader.ts`. Capture the
+   plain-object snapshot from `loadDotenvSnapshot()` and pass it
+   as `runtimeEnv` to `createEnv`. Keep `loadRepoEnv()` as a shim
+   that mirrors the snapshot into `process.env` for legacy
+   consumers.
 5. Drop the Proxy-side leak-guard. Add a build-time assertion (a
    single test) that no `NEXT_PUBLIC_*` name is reachable from
    `server.ts` imports.
@@ -265,19 +278,22 @@ packages/env/src/
 │
 ├── server.ts           createEnv(serverSchema, clientSchema,
 │                       { runtimeEnv, emptyStringAsUndefined: true })
-│                       + the @next/env loader bridge. One file,
-│                       one face. No fallback defaults inline.
+│                       + createEnv(serverSchema, clientSchema,
+│                       { runtimeEnv: snapshot, emptyStringAsUndefined: true }).
+│                       One file, one face. Reads from the dotenv
+│                       snapshot, not from process.env.
 │
 ├── client.ts           createEnv(clientSchema, undefined,
 │                       { runtimeEnv, emptyStringAsUndefined: true })
-│                       + non-fatal console.warn on parse failure.
-│                       Fallback derives from
-│                       clientSchema.parse({}), not from a literal.
+│                       + createEnv(clientSchema, undefined,
+│                       { runtimeEnvStrict: snapshot,
+│                       emptyStringAsUndefined: true }).
 │
-└── loader.ts           the only file that talks to @next/env.
-                        Captures loadEnvConfig result once; merges
-                        into process.env; exposes loadRepoEnv().
-                        Owns the #92040 workaround.
+└── loader.ts           the only file that talks to dotenv. Reads the
+                        .env hierarchy once in Next.js precedence;
+                        exposes loadDotenvSnapshot() (pure) and
+                        loadRepoEnv() (mutating shim for legacy
+                        consumers). No @next/env dependency.
 ```
 
 ### Boundaries
@@ -286,7 +302,7 @@ The boundaries are normative. A PR that crosses a boundary is
 rejected; the author moves the code.
 
 - **`schema.ts`** imports from `zod` only. It does not import
-  from `@t3-oss/env-core`, `@next/env`, `node:process`, or any
+  from `@t3-oss/env-core`, `dotenv`, `node:process`, or any
   consumer package. The schema is the contract; it has no
   dependencies on its execution.
 - **`server.ts`** imports `createEnv` from `@t3-oss/env-core`,
@@ -297,10 +313,10 @@ rejected; the author moves the code.
   except the schema is `clientSchema` and `runtimeEnvStrict`
   replaces `runtimeEnv` so a missing `NEXT_PUBLIC_*` fails at
   the validator, not at the bundler.
-- **`loader.ts`** imports `@next/env` and `node:path`. It does
-  not import any validator. The validator cannot see the
-  loader; the loader cannot see the validator; the schema is
-  the meeting point.
+- **`loader.ts`** imports `dotenv` and `node:path`. It does not
+  import any validator. The validator cannot see the loader;
+  the loader cannot see the validator; the schema is the
+  meeting point.
 - **`index.ts`** imports `server.ts`, `client.ts`, and `types.ts`
   only. It re-exports. A `process.exit` or a `console.warn` in
   this file is a violation; the side effects belong to the face
@@ -326,7 +342,7 @@ rejected; the author moves the code.
 - **`@t3-oss/env-core` as a direct dependency** of `packages/env`.
   It is the validation engine; the schema describes what it
   validates.
-- **A `runtimeEnv` captured from `@next/env.loadEnvConfig(...)`**,
+- **A `runtimeEnv` captured from `loadDotenvSnapshot(...)`**,
   not from `process.env` directly, in `server.ts` and `client.ts`.
 - **A `loader.ts` that owns all caching and bug workarounds**. The
   loader is the only file that talks to `@next/env`.
@@ -426,8 +442,9 @@ The work that triggered this ADR is the staging branch
   this ADR is the implementation shape.
 - [`@t3-oss/env-core`](https://env.t3.gg/docs/core). The
   validation engine we delegate to.
-- [`@next/env` issue #92040](https://github.com/vercel/next.js/issues/92040).
-  The cache bug `loader.ts` works around.
+- [`dotenv`](https://github.com/motdotla/dotenv). The `.env`
+  parser. Its `parse()` returns a plain object; we use that to
+  build the `runtimeEnv` snapshot without mutating `process.env`.
 - [Next.js environment variables guide](https://nextjs.org/docs/pages/guides/environment-variables).
   The framework's own guidance on the `.env` precedence we
   depend on.
