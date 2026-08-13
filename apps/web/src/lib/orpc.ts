@@ -2,8 +2,7 @@ import { createORPCClient } from "@orpc/client"
 import { RPCLink } from "@orpc/client/fetch"
 import type { RouterClient } from "@orpc/server"
 
-import { API_RPC_PATH } from "@workspace/api/base-path"
-import { appRouter } from "@workspace/api/router"
+import { API_RPC_PATH, appRouter } from "@workspace/api"
 
 /**
  * Typed oRPC client for the marketing site.

@@ -3,7 +3,7 @@ import { cors } from "hono/cors"
 import { logger as honoLogger } from "hono/logger"
 import { secureHeaders } from "hono/secure-headers"
 import { serverEnv } from "@workspace/env/server"
-import { API_BASE_PATH } from "./constants/base-path.js"
+import { API_BASE_PATH, API_RPC_PATH } from "./constants/base-path.js"
 import { logger } from "./constants/logger.js"
 import {
   onError as onApiError,
@@ -50,3 +50,4 @@ void logger // re-exported for downstream consumers if needed
 
 export { api }
 export { appRouter, type AppRouter }
+export { API_RPC_PATH }

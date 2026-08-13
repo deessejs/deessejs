@@ -13,11 +13,6 @@
       "types": "./dist/router/index.d.ts",
       "import": "./dist/router/index.js",
       "default": "./dist/router/index.js"
-    },
-    "./base-path": {
-      "types": "./dist/base-path.d.ts",
-      "import": "./dist/base-path.js",
-      "default": "./dist/base-path.js"
     }
   },
   "types": "./dist/index.d.ts",
