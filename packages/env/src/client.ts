@@ -5,8 +5,14 @@ import { clientSchema, type ClientEnv } from "./schema.js"
  * inlines them at build time. No runtime guard needed (browser is the only
  * runtime that imports this).
  *
- * Validation is soft: if values are missing, we fall back to the schema
- * defaults so the client still renders. A warn is emitted once at module load.
+ * Validation is soft: if values are missing or malformed, we fall back to
+ * the schema defaults so the client still renders. A warn is emitted once
+ * at module load when the parse fails, but only in the Node runtime (browser
+ * bundles have no console to warn into).
+ *
+ * The fallback values come from the schema itself
+ * (`clientSchema.parse({})`) so the schema is the single source of truth
+ * for defaults. There is no second literal to keep in sync.
  */
 const parsed = clientSchema.safeParse({
   NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
@@ -26,15 +32,5 @@ if (
 }
 
 export const clientEnv: Readonly<ClientEnv> = Object.freeze(
-  parsed.success
-    ? parsed.data
-    : {
-        NEXT_PUBLIC_APP_NAME:
-          process.env.NEXT_PUBLIC_APP_NAME ?? "DeesseJS",
-        NEXT_PUBLIC_APP_DESCRIPTION:
-          process.env.NEXT_PUBLIC_APP_DESCRIPTION ??
-          "SaaS application built with Next.js and shared UI components",
-        NEXT_PUBLIC_APP_URL:
-          process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-      },
+  parsed.success ? parsed.data : clientSchema.parse({}),
 )
