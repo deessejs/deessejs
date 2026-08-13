@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { api } from "../src/index.js"
+import { api } from "../../src/index.js"
 
 // The Hono app is created with `.basePath(API_BASE_PATH)` (= "/api/v1"),
 // which only matters for routing — `api.request()` in tests bypasses the
