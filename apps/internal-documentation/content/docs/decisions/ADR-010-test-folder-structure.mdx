@@ -1,0 +1,310 @@
+---
+title: Test folder structure
+description: The shape of tests/ for unit and integration.
+---
+
+## Status
+
+Accepted (2026-08). Non-negotiable.
+
+## Context
+
+ADR-009 (Test strategy) defines a shared Vitest config and
+a contract-test pattern. This ADR defines **the folder
+shape** that the tests live in.
+
+The monorepo has two test layers:
+
+  - **Unit tests** — exercise a single module in
+    isolation. No network, no real database, no real
+    subprocess. Mocks are local to the test file.
+  - **Integration tests** — exercise a real dependency:
+    a real Postgres, a real HTTP server, a real CLI
+    subprocess. The test starts the dependency, runs the
+    scenario, and tears it down.
+
+The boundary between unit and integration is the boundary
+between "fast" and "slow". A unit test should run in
+milliseconds. An integration test can run in seconds.
+Mixing them in the same file is a smell: the fast ones
+are slowed by the slow setup, the slow ones are forced to
+be lightweight to keep the suite fast.
+
+The current tests don't separate the two. `packages/api/`
+has unit tests in `tests/` (server-side client) and
+integration tests in `tests/integration/` (with a real
+Postgres via the CI service). The split exists but is
+implicit. A new contributor who adds a real-DB test
+might drop it in `tests/`, where the test runner treats
+it the same as the fast ones and runs it on every
+keystroke.
+
+The contract tests from ADR-009 (Pattern A) belong to the
+**unit** layer. They are fast (no network, no DB), they
+exercise the procedure handler in isolation, and they
+assert the wire shape. They are the **primary signal**
+that the server has not drifted. They must be co-located
+with the procedure they test, not in a `tests/contract/`
+directory that lives apart.
+
+## Decision
+
+The test directory has **three sub-trees**, two for tests
+and one for shared fixtures. The shape is identical for
+every package that has tests.
+
+```
+tests/
++-- unit/                 fast, isolated, no external deps
+|   +-- <module>.test.ts    one test file per module
+|   +-- <module>/          tests for a module that has
+|   |   `-- <thing>.test.ts multiple files
+|   +-- _fixtures/          module-level fixtures shared
+|   |   `-- <fixture>.ts    by multiple unit tests
+|   +-- _helpers/           test-helper utilities
+|       `-- <helper>.ts     (assertion builders, mocks)
+|
++-- integration/         real dependencies, slower
+|   +-- <flow>.test.ts     one test per cross-module flow
+|   +-- _fixtures/         integration-level fixtures
+|   |   `-- <fixture>.ts   (DB seeds, server bootstrap)
+|   +-- _helpers/          integration helpers
+|       `-- <helper>.ts    (HTTP client, pg pool)
+|
++-- contract/             Pattern A tests, server-side client
+    `-- <procedure>.test.ts one file per procedure handler
+```
+
+### Unit tests
+
+A unit test exercises **one module** in isolation. The
+import surface is the module under test and its public
+types. Mocks are declared at the top of the file with
+`vi.mock(...)`. There is no network, no file system, no
+subprocess, no real clock.
+
+```
+tests/unit/
++-- enrich.test.ts         matches packages/api/src/core/templates/enrich.ts
++-- request-id.test.ts    matches packages/api/src/middleware/request-id.ts
++-- cors.test.ts          matches the cors factory in index.ts
+```
+
+The test file is **colocated with the convention** that
+its name matches the source module it tests. The Vitest
+`include` glob picks up `tests/unit/**/*.test.ts` and no
+other path.
+
+### Integration tests
+
+An integration test exercises a **cross-module flow** with
+real dependencies. The setup starts a real Postgres, a
+real HTTP server, or a real subprocess; the scenario
+exercises the flow; the teardown cleans up.
+
+```
+tests/integration/
++-- templates-list.test.ts    the list endpoint, end-to-end
++-- health.test.ts            the health endpoint, real server
++-- cli-info.test.ts          the CLI's info command, real subprocess
+```
+
+The test file describes the **flow**, not the module. The
+naming uses verbs or flow names (`health`, `templates-list`)
+rather than module names. The Vitest `include` glob picks
+up `tests/integration/**/*.test.ts`.
+
+Integration tests are **the only tests that may import
+`@workspace/database` directly**, set up a real DB pool,
+and run real queries. The unit test layer must never
+touch the database.
+
+### Contract tests
+
+A contract test exercises the procedure via the
+**server-side client** (Pattern A in
+`rules/test-mocking.md`). It is fast (no DB, no network),
+it asserts the wire shape of the response, and it lives
+**next to the procedure it tests**.
+
+```
+tests/contract/
++-- templates-list.test.ts   matches the templates.list procedure
++-- auth-me.test.ts          matches the auth.me procedure
++-- profile-update.test.ts   matches the profile.update procedure
+```
+
+The contract test is named after the **procedure**, not
+after the file the procedure lives in. The file lives in
+`tests/contract/`, not in `tests/unit/` and not in
+`tests/integration/`, because the contract test is a
+**separate concern** from either layer: it asserts the
+wire contract, which is the same regardless of whether the
+implementation is a unit-test (in-memory) or integration
+(real DB).
+
+The test file is co-located with the **procedure name**,
+not with the source file. The source file lives in
+`packages/api/src/orpc/routes/<name>.ts`; the test file
+lives in `packages/api/tests/contract/<name>.test.ts`. The
+naming alignment is by procedure, not by file path. This
+is the **only test layer where the file name does not
+mirror the source path**.
+
+### Fixtures and helpers
+
+Fixtures are test data: a user record, a templates
+registry, a request body. Helpers are test utilities: a
+factory that creates a user, a mock that returns a
+specific GitHub response.
+
+Each layer has its own `_fixtures/` and `_helpers/`
+directory. The underscore prefix tells the Vitest include
+glob (which uses `**/*.test.ts`) to **skip** these
+directories — they are not test files.
+
+A fixture shared by both unit and integration tests
+**does not exist**. If a fixture is needed in both, it
+goes into the layer that owns the lifecycle. A
+`tests/unit/_fixtures/db-user.ts` mocks the database; a
+`tests/integration/_fixtures/db-user.ts` is a real
+`INSERT`. They share a name but not an implementation.
+
+The `_helpers/` directory is the same: unit helpers
+construct mocks, integration helpers construct real
+clients. They share a name but not an implementation.
+
+## What this rule allows
+
+- **A test file that imports from `tests/unit/_helpers/`**
+  or `tests/integration/_helpers/` within the same layer.
+  Cross-layer imports of fixtures or helpers are forbidden
+  (see "What this rule forbids").
+- **A unit test that imports `_fixtures/` from a deeper
+  path** within the same layer. The convention is local,
+  not module-wide.
+- **A contract test that imports a procedure's input type**
+  from the source file. The contract test is the
+  consumer of the procedure's types.
+
+## What this rule forbids
+
+- **A unit test that imports from `tests/integration/`** or
+  vice versa. The two layers have different runtime
+  requirements (real DB vs mocked). A unit test that pulls
+  in an integration helper drags the DB setup into the
+  fast suite.
+- **A contract test that does not use Pattern A.** The
+  contract layer is the **only** layer that calls the
+  procedure through the server-side client (`call(...)`).
+  A contract test that imports the procedure module
+  directly and calls the handler is a unit test with the
+  wrong label.
+- **A test file in the layer root** (e.g.
+  `tests/foo.test.ts`). All test files live under
+  `tests/unit/`, `tests/integration/`, or `tests/contract/`.
+  The layer root is for `_fixtures/` and `_helpers/`.
+- **A `_fixture` or `_helper` file that is a test file.**
+  The leading underscore is the convention that signals
+  "not a test". The Vitest `**/*.test.ts` glob skips
+  anything that does not end in `.test.ts`, so the
+  underscore is redundant with the glob — but the
+  underscore is the **human signal**, the glob is the
+  **machine signal**. Both are needed.
+
+## What this rule does not change
+
+- The naming of the package's test root (`tests/` vs
+  `test/`). The convention from ADR-009 (Test strategy) is
+  `tests/` for all packages. This ADR is consistent with
+  ADR-009.
+- The Vitest `include` glob. It is
+  `["tests/unit/**/*.test.ts", "tests/integration/**/*.test.ts",
+  "tests/contract/**/*.test.ts"]`. The glob is the machine
+  filter; the folder layout is the human filter.
+- The shared Vitest config from ADR-009. The shared
+  config governs Vitest options (timeouts, pool,
+  coverage). The folder layout governs what test files
+  exist and where they live. The two ADRs are orthogonal.
+
+## Why this rule exists
+
+The boundary between unit and integration is the boundary
+between **fast and slow**. Mixing the two means:
+
+  - The fast suite is slowed by the slow setup. A 5ms
+    unit test becomes a 200ms test when a DB is in scope.
+  - The slow suite is forced to be lightweight to keep
+    the fast suite fast. The contract test that should
+    assert the wire shape end-to-end never gets written
+    because the contributor sees the unit suite is
+    "fast enough" and skips the integration.
+
+A clean folder split makes the layer explicit. A test file
+in `tests/unit/` cannot accidentally import a DB. A test
+file in `tests/integration/` cannot accidentally mock the
+contract. The folder name is the **type assertion** of the
+test.
+
+The contract layer is **separate** from the other two
+because the contract is a different concern. A unit test
+asks "does this module do the right thing?". An integration
+test asks "does this flow do the right thing?". A contract
+test asks "does the wire shape match?". The third question
+is independent of the other two, and a test of it does
+not need either an in-memory mock or a real database —
+it needs the procedure's own types.
+
+The naming alignment (procedure name, not file path) is
+the **second** level of the type assertion. A reader who
+sees `tests/contract/templates-list.test.ts` knows
+exactly which procedure is being tested without reading
+the source. The contract layer is the only one where the
+file name is **invariant under refactor**: the test still
+asserts the right thing after a procedure is moved between
+files.
+
+## How to migrate
+
+In one PR per package, mechanical refactor:
+
+  1. Create `tests/unit/`, `tests/integration/`,
+     `tests/contract/`, and the per-layer `_fixtures/`
+     and `_helpers/`.
+  2. Move existing `.test.ts` files into the right layer
+     based on whether they mock or use real deps.
+  3. Update the Vitest `include` glob to point at the
+     three layers.
+  4. Add `_helpers/` content as tests are migrated (one
+     helper per common pattern, not one per test file).
+
+The contract tests are new work, not migration. They are
+added per ADR-009. The folder structure is the
+**infrastructure** for those tests; the tests
+themselves are the meaningful work.
+
+## Related
+
+- [ADR-009: Test strategy](./ADR-009-test-strategy.md) —
+  the shared Vitest config and the contract-test
+  pattern. This ADR is the folder shape; ADR-009 is the
+  Vitest config. The two are orthogonal.
+- [Rule 0008: test-mocking.md](../rules/test-mocking.md) —
+  the patterns (Server-Side Client, mock-the-boundary,
+  no-vi.mock-of-the-procedure) that govern what each
+  test does. The folder shape is the **where**; the
+  rule is the **how**.
+- [ADR-002: file organization by sub-domain](./ADR-002-file-organization.md) —
+  one concept per file. The three test layers are three
+  concepts (unit, integration, contract); the two
+  helpers layers (fixtures, helpers) are the
+  per-layer support code.
+
+## What this rule is not
+
+This is an ADR for the **shape of the test directory**, not
+for the patterns within each test. The unit patterns are
+in `rules/test-mocking.md`; the integration patterns are
+implicit in the integration conventions; the contract
+patterns are Pattern A in `rules/test-mocking.md`. The
+folder shape is the **where**; the rules are the **how**.
