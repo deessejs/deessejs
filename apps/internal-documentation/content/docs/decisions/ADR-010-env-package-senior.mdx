@@ -81,15 +81,21 @@ bridge and the test runtime).
 
 ### Topology
 
-```
-packages/env/src/
-+-- index.ts        re-export only (server, client, types)
-+-- schema.ts       two pure Zod schemas (serverSchema, clientSchema)
-+-- server.ts       createEnv(serverSchema, clientSchema, { runtimeEnv })
-+-- client.ts       createEnv(clientSchema, undefined,           { runtimeEnv })
-+-- loader.ts       Next.js bridge: loadEnvConfig once, cache result
-+-- types.ts        ServerEnv, ClientEnv, Env (inferred from createEnv)
-```
+The package has six files at `src/`. The shape is documented as
+`## Expected structure` below; the topology section names the
+single rule that governs the split:
+
+- **One file per concept** (ADR-002 Rule 1). No `utils.ts`, no
+  `errors.ts`, no `defaults.ts` at the package root. Each concept
+  gets a file whose name is the concept.
+- **A `loader.ts` that owns the side effects.** Every
+  `@next.env` call, every `process.env` mutation, every
+  `loadRepoEnv` invocation is inside this file. The other files
+  are side-effect free.
+- **A `server.ts` and a `client.ts` that are thin.** Each is a
+  `createEnv(...)` call. The bulk of the package is in `schema.ts`
+  (declarations) and `loader.ts` (integration). The two faces
+  differ only by which schema they bind.
 
 ### Boundary: what we keep
 
@@ -208,6 +214,88 @@ The package surface stays identical; the implementation shrinks
 roughly thirty percent and the four hand-rolled flags
 (`_cached`, `loaded`, the Proxy trap list, the duplicate defaults)
 go away.
+
+## Expected structure
+
+`packages/env/src/` has six files. The shape below is the
+authoritative tree; the role column is the single line that
+explains why this file exists. Any new file in this package must
+claim a row that does not yet exist; any removal is a row deletion
+plus an update to `What this rule allows`.
+
+```
+packages/env/src/
+│
+├── index.ts            barrel: re-export only. The two faces
+│                       (server, client) and the inferred types.
+│                       No logic. No side effects.
+│
+├── types.ts            ServerEnv, ClientEnv, Env (inferred from
+│                       createEnv). The public type surface that
+│                       consumers import.
+│
+├── schema.ts           two pure Zod schemas (serverSchema,
+│                       clientSchema). The only place a variable
+│                       shape is declared. Aliases live here as
+│                       z.preprocess, not as Proxy traps.
+│
+├── server.ts           createEnv(serverSchema, clientSchema,
+│                       { runtimeEnv, emptyStringAsUndefined: true })
+│                       + the @next/env loader bridge. One file,
+│                       one face. No fallback defaults inline.
+│
+├── client.ts           createEnv(clientSchema, undefined,
+│                       { runtimeEnv, emptyStringAsUndefined: true })
+│                       + non-fatal console.warn on parse failure.
+│                       Fallback derives from
+│                       clientSchema.parse({}), not from a literal.
+│
+└── loader.ts           the only file that talks to @next/env.
+                        Captures loadEnvConfig result once; merges
+                        into process.env; exposes loadRepoEnv().
+                        Owns the #92040 workaround.
+```
+
+### Boundaries
+
+The boundaries are normative. A PR that crosses a boundary is
+rejected; the author moves the code.
+
+- **`schema.ts`** imports from `zod` only. It does not import
+  from `@t3-oss/env-core`, `@next/env`, `node:process`, or any
+  consumer package. The schema is the contract; it has no
+  dependencies on its execution.
+- **`server.ts`** imports `createEnv` from `@t3-oss/env-core`,
+  the schemas from `schema.ts`, and `loadRepoEnv` from
+  `loader.ts`. It does not import `@next/env` directly; the
+  loader owns that surface.
+- **`client.ts`** imports the same three things as `server.ts`,
+  except the schema is `clientSchema` and `runtimeEnvStrict`
+  replaces `runtimeEnv` so a missing `NEXT_PUBLIC_*` fails at
+  the validator, not at the bundler.
+- **`loader.ts`** imports `@next/env` and `node:path`. It does
+  not import any validator. The validator cannot see the
+  loader; the loader cannot see the validator; the schema is
+  the meeting point.
+- **`index.ts`** imports `server.ts`, `client.ts`, and `types.ts`
+  only. It re-exports. A `process.exit` or a `console.warn` in
+  this file is a violation; the side effects belong to the face
+  that triggers them.
+- **`types.ts`** imports from `schema.ts` and `server.ts` only.
+  It is a type-only file (the package's `package.json`
+  `sideEffects` must be `false`). Runtime imports from this
+  file are rejected.
+
+### Naming
+
+- A file is named after its **concept**, not its **framework**.
+  `server.ts` is the server face, not the `t3-server.ts` or
+  `next-server.ts`. The package owner is the env package, not
+  the framework the consumer happens to use.
+- A folder at the package root is forbidden by ADR-002 Rule 4.
+  If the package outgrows six files, the next layer (`core/`,
+  `next/`, `cli/`) ships with its own ADR. The flat layout is
+  not a constraint; it is the current correct shape.
 
 ## What this rule allows
 
