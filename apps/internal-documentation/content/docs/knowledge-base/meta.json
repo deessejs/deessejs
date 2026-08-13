@@ -1,0 +1,22 @@
+{
+  "title": "Knowledge Base",
+  "description": "External library studies, integration shapes.",
+  "icon": "BookMarked",
+  "root": true,
+  "pages": [
+    "index",
+    "---better-auth---",
+    "better-auth/hono-integration",
+    "better-auth/test-utils",
+    "---hono---",
+    "hono/middleware",
+    "hono/testing",
+    "---orpc---",
+    "orpc/hono-adapter",
+    "orpc/middleware",
+    "orpc/testing-mocking",
+    "---standalone---",
+    "commander",
+    "fumadocs"
+  ]
+}

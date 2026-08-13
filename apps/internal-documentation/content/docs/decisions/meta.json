@@ -1,0 +1,17 @@
+{
+  "title": "Decisions",
+  "description": "Architecture Decision Records, load-bearing choices.",
+  "icon": "GitBranch",
+  "root": true,
+  "pages": [
+    "index",
+    "ADR-001-orpc-is-load-bearing",
+    "ADR-002-file-organization",
+    "ADR-003-hono-env-typing",
+    "ADR-004-api-package-structure",
+    "ADR-005-api-consumer-agnostic",
+    "ADR-006-fumadocs-card-design",
+    "ADR-007-no-em-dash-in-internal-doc",
+    "ADR-008-internal-doc-title-max-4-words"
+  ]
+}

@@ -96,7 +96,7 @@ describe("observability middleware", () => {
       expect(res.status).toBe(404)
       const body = await res.json()
       expect(body).toMatchObject({
-        code: "not_found",
+        code: "NOT_FOUND",
         message: expect.any(String),
         requestId: expect.any(String),
       })

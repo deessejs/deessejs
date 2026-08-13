@@ -66,6 +66,9 @@ index.md (you are here)
 └── pitfalls.md    — read BEFORE any implementation
 ```
 
+> Hono-specific integration (handler mount, CORS, session middleware, typed env) lives at
+> [`docs/engineering/architecture/knowledge-base/better-auth/hono-integration.md`](../../engineering/architecture/knowledge-base/better-auth/hono-integration.md). It is a study of a better-auth + Hono cross-cutting pattern, not a better-auth guide proper.
+
 > `org.md` is historical reference only (single-tenant); no longer in the read path.
 
 ---

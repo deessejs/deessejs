@@ -32,6 +32,11 @@ jobs:
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: production
+      BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
+      DATABASE_URL: postgresql://test:test@localhost:5432/test
+      NEXT_PUBLIC_APP_URL: https://ci.example.com
     steps:
       - uses: actions/checkout@v4
         with:

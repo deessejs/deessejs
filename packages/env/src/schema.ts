@@ -70,6 +70,11 @@ export const serverSchema = z.object({
     .int()
     .positive()
     .default(100),
+
+  // GitHub API token (optional). When unset, the templates enricher
+  // hits GitHub anonymously (60 req/h). Set in production to lift
+  // the rate limit to 5000 req/h. See packages/api/src/core/templates/enrich.ts.
+  GITHUB_TOKEN: z.string().optional(),
 })
   // Production-only invariants. Skipped in dev/test so contributors don't
   // need a full .env to start the app. Enforced in prod because each of these
