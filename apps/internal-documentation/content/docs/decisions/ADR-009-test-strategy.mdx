@@ -93,6 +93,63 @@ per-package (they are **CLI-specific** because the CLI
 spawns real subprocesses). They are explicit overrides in
 `apps/cli/vitest.config.ts`, not the default.
 
+#### Folder structure within `tests/`
+
+The `tests/` directory has **three sub-trees**, two for
+tests and one for shared fixtures. The shape is identical
+for every package that has tests.
+
+```
+tests/
++-- unit/                 fast, isolated, no external deps
+|   +-- <module>.test.ts    one test file per module
+|   +-- <module>/          tests for a module that has
+|   |   `-- <thing>.test.ts multiple files
+|   +-- _fixtures/          module-level fixtures shared
+|   |   `-- <fixture>.ts    by multiple unit tests
+|   +-- _helpers/           test-helper utilities
+|       `-- <helper>.ts     (assertion builders, mocks)
++-- integration/         real dependencies, slower
+|   +-- <flow>.test.ts     one test per cross-module flow
+|   +-- _fixtures/         integration-level fixtures
+|   |   `-- <fixture>.ts   (DB seeds, server bootstrap)
+|   +-- _helpers/          integration helpers
+|       `-- <helper>.ts    (HTTP client, pg pool)
++-- contract/             Pattern A tests, server-side client
+    `-- <procedure>.test.ts one file per procedure handler
+```
+
+The three layers are the boundary between **fast and slow**:
+
+  - **Unit** exercises one module in isolation. No network,
+    no real database, no real subprocess. Mocks are local
+    to the test file. The test file is named after the
+    module it tests: `tests/unit/<module>.test.ts`.
+  - **Integration** exercises a cross-module flow with real
+    dependencies. The setup starts a real Postgres, a real
+    HTTP server, or a real subprocess; the scenario
+    exercises the flow; the teardown cleans up. The test
+    file is named after the flow, not the module: the
+    naming uses verbs or flow names (`health`,
+    `templates-list`).
+  - **Contract** exercises the procedure via the server-side
+    client (Pattern A in `rules/test-mocking.md`). It is
+    fast (no DB, no network), it asserts the wire shape of
+    the response, and it lives next to the procedure it
+    tests. The test file is named after the **procedure**,
+    not the source file: `tests/contract/<procedure>.test.ts`.
+    The contract layer is the **only** layer where the file
+    name does not mirror the source path; the test still
+    asserts the right thing after the procedure is moved
+    between files.
+
+The three layers have separate `_fixtures/` and
+`_helpers/` directories. A fixture or helper shared by
+**both** unit and integration tests does not exist: if a
+fixture is needed in both, it goes into the layer that owns
+the lifecycle. The leading underscore signals "not a test"
+to humans; the `**/*.test.ts` glob is the machine filter.
+
 ### Contract test pattern
 
 The `RPCHandler` is the load-bearing contract. Every procedure
