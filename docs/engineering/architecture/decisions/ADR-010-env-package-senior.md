@@ -110,30 +110,56 @@ code is the integration layer the library cannot see:
 
 ### Boundary: what we delegate
 
-- **Lazy validation**: delegated to `createEnv`. The library's Proxy
-  triggers validation on first access; we no longer need the manual
-  `_cached` flag.
-- **Runtime leak guard**: not provided by `createEnv`. We stop pretending
-  we had one. A `NEXT_PUBLIC_*` variable is safe-by-construction when the
-  client schema imports only public names; that is the test, not a
-  Proxy trap.
-- **Eager vs lazy policy**: dropped. `createEnv` validates the whole
-  schema on the first access. The user-side choice is `clientEnv` (eager,
-  fail-open with `console.warn`) vs `serverEnv` (lazy, fatal on first
-  access to any key). The asymmetry is preserved; the implementation is
-  not hand-rolled.
+- **Validation on call**: delegated to `createEnv`. The library
+  validates the combined schema synchronously at the moment
+  `createEnv(...)` is invoked (`packages/core/src/index.ts`,
+  line ~360: `finalSchema["~standard"].validate(runtimeEnv)`).
+  Validation is **eager, not lazy**. The returned `env` is a
+  Proxy whose `get` trap only enforces the server/client
+  boundary (`onInvalidAccess`), not memoization. We no longer
+  need the manual `_cached` flag.
+- **Runtime leak guard**: replaced by `onInvalidAccess`. The
+  library throws on a client bundle referencing a server-only
+  key; our hand-rolled `toJSON` / `then` / `Symbol` trap list
+  is deleted. The leak guard is the type of `clientPrefix`,
+  enforced at compile time.
+- **Eager vs lazy policy** (revisited after reading the source):
+  `createEnv` is eager by construction. Our package keeps the
+  current "import has no side-effect" contract by deferring the
+  call site: the import binds a `getServerEnv()` function, not
+  a `serverEnv` constant. The first call validates; subsequent
+  calls read the cached result. The asymmetry between the two
+  faces is preserved.
 - **Empty-string handling**: delegated to `createEnv` via
-  `emptyStringAsUndefined: true`. This single flag closes the entire
-  category of bug where a docker-compose left a blank `RESEND_API_KEY=""`
-  and the server accepted it as a non-empty string.
+  `emptyStringAsUndefined: true`. This single flag closes the
+  entire category of bug where a docker-compose left a blank
+  `RESEND_API_KEY=""` and the server accepted it as a
+  non-empty string. Caveat (caught by reading the source):
+  the flag mutates the object passed as `runtimeEnv`, it
+  `delete`s keys whose value is `""`. Passing `process.env`
+  directly mutates the live `process.env`. Mitigation: pass a
+  destructured literal, `runtimeEnv: { DATABASE_URL:
+  process.env.DATABASE_URL, ... }`, one entry per schema key.
+  This is also the recommended pattern for framework-aware
+  static analysis.
+
+### Refining the dev-vs-prod policy
+
+The `.superRefine` that gates `DATABASE_URL`,
+`BETTER_AUTH_SECRET`, and `RESEND_API_KEY` on
+`NODE_ENV === "production"` is preserved verbatim. It is
+attached via the `createFinalSchema(shape, isServer)` callback
+that `createEnv` accepts. The `isServer` argument tells the
+callback what face is being built; the `NODE_ENV` check sits
+inside the callback and short-circuits in dev.
 
 ### Loader as a single shot
 
-`loader.ts` calls `loadEnvConfig(repoRoot, true)` exactly once, in
-production, with `forceReload: true`. The result is captured, not
-re-mutated into `process.env` mid-import. Subsequent reads by `createEnv`
-use `runtimeEnv: capturedSnapshot`. The fix for `#92040` lives behind the
-loader; the rest of the package does not know about caching.
+`loader.ts` calls `loadEnvConfig(repoRoot, true)` exactly once,
+capturing the `combinedEnv` snapshot. The snapshot is passed
+to `createEnv` as a destructured literal, never as the live
+`process.env`. The `#92040` workaround stays inside `loader.ts`;
+the rest of the package does not know about caching.
 
 ### Alias resolution
 
