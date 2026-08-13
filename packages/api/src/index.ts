@@ -3,14 +3,17 @@ import { cors } from "hono/cors"
 import { logger as honoLogger } from "hono/logger"
 import { secureHeaders } from "hono/secure-headers"
 import { serverEnv } from "@workspace/env/server"
-import { API_BASE_PATH } from "./base-path.js"
+import { API_BASE_PATH } from "./constants/base-path.js"
+import { logger } from "./constants/logger.js"
 import {
   onError as onApiError,
   requestId,
   session,
-} from "./middleware/index.js"
-import { mountRpc, mountHttp, appRouter, type AppRouter } from "./router/index.js"
-import type { ApiEnv } from "./types/api-env.js"
+  type ApiEnv,
+  mountHttp,
+  mountRpc,
+} from "./http/index.js"
+import { appRouter, type AppRouter } from "./orpc/index.js"
 
 const api = new Hono<ApiEnv>().basePath(API_BASE_PATH)
 
@@ -40,6 +43,8 @@ api.notFound((c) =>
     404,
   ),
 )
+
+void logger // re-exported for downstream consumers if needed
 
 export { api }
 export { appRouter, type AppRouter }

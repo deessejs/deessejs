@@ -3,9 +3,9 @@ import { auth } from "@workspace/auth"
 import { db } from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import type { Hono } from "hono"
-import { rateLimit } from "../../middleware/rate-limit.js"
-import type { ApiEnv } from "../../types/api-env.js"
-import { VERSION, MIN_SUPPORTED_VERSION } from "../../version.js"
+import { VERSION, MIN_SUPPORTED_VERSION } from "../../constants/version.js"
+import type { ApiEnv } from "../env.js"
+import { rateLimit } from "../middleware/rate-limit.js"
 
 /**
  * Direct HTTP routes that do not go through oRPC:
