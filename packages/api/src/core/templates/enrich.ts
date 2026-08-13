@@ -13,7 +13,6 @@
 import type { TemplateV1 } from "@workspace/contracts/v1"
 import { serverEnv } from "@workspace/env/server"
 import { fetchReadme, fetchRepo } from "../github/client.js"
-import type { GitHubRepo } from "../github/types.js"
 
 export type EnrichedTemplate = TemplateV1
 
