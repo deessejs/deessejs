@@ -194,49 +194,6 @@ roughly thirty percent and the four hand-rolled flags
 (`_cached`, `loaded`, the Proxy trap list, the duplicate defaults) go
 away.
 
-## Alternatives considered
-
-### A. Keep the hand-rolled package
-
-The package is five files and works. Keeping it costs the duplication
-friction (defaults, leak-guard, cache workaround) and the maintenance
-hazard that any new dev joins and sees a custom Proxy where the rest of
-the ecosystem sees `createEnv`. We name the friction; we do not turn it
-into a refusal. The package crosses the senior-grade line by
-duplicating senior-grade library primitives that already ship, well
-maintained, well tested, with a standard interface.
-
-### B. Move to `@t3-oss/env-nextjs` (the Next.js wrapper)
-
-The Next.js wrapper automates one thing: it calls `loadEnvConfig(...)`
-for you and exposes a `runtimeEnv` shaped for Next.js. The wrapper
-brings two pieces we do not want:
-
-- A hard-coded coupling to `process.cwd()` that does not match a
-  monorepo (`packages/env` does not know what the working directory is
-  for any given consumer; the consumer does).
-- A Next.js-typed `clientPrefix` default that does not match
-  `NEXT_PUBLIC_*`.
-
-We get the engine (`env-core`), not the wrapper. The loader is a
-monorepo concern and lives in `packages/env`.
-
-### C. Move to `next-runtime-env` for runtime injection
-
-`next-runtime-env` solves a different problem: it lets a server-side
-rendered page receive env values that are not in the build. We do not
-have that problem (every value our apps need at runtime is statically
-known at build via `NEXT_PUBLIC_*`). Choosing a runtime-injection
-library for a build-time-injection problem is the wrong fix.
-
-### D. Move to Valibot
-
-Valibot is a `StandardSchemaV1` implementation. The decision to use it
-is independent of this ADR; both Zod and Valibot are `StandardSchemaV1`
-and `@t3-oss/env-core` accepts either. The schema layer (Zod today) is
-local to `packages/env` and reversible; the rest of the package does not
-care.
-
 ## What this rule allows
 
 - **`@t3-oss/env-core` as a direct dependency** of `packages/env`. It
