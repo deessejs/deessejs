@@ -3,14 +3,14 @@ import { auth } from "@workspace/auth"
 import { db } from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import type { Hono } from "hono"
-import { CLI_VERSION, CLI_MIN_SUPPORTED } from "../../cli-version.js"
 import { rateLimit } from "../../middleware/rate-limit.js"
 import type { ApiEnv } from "../../types/api-env.js"
+import { VERSION, MIN_SUPPORTED_VERSION } from "../../version.js"
 
 /**
  * Direct HTTP routes that do not go through oRPC:
  *   - `GET /health`    — liveness probe, no dependencies.
- *   - `GET /cli-version` — CLI startup probe. Cached aggressively.
+ *   - `GET /version`   — server version probe. Cached aggressively.
  *   - `GET /ready`     — readiness probe, pings Postgres.
  *   - `*  /auth/*`     — Better Auth handler (login, signup, ...).
  *
@@ -24,11 +24,10 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
     c.json({ status: "ok", timestamp: new Date().toISOString() }),
   )
 
-  // CLI version probe — public, no auth, rate-limited. Cached for
-  // 10 minutes because the values change only at release time.
-  // CLI 2.0.0+ calls this on startup to warn about outdated installs.
+  // Server version probe — public, no auth, rate-limited. Cached
+  // for 10 minutes because the values change only at release time.
   api.get(
-    "/cli-version",
+    "/version",
     rateLimit(serverEnv.RATE_LIMIT_PER_MINUTE),
     (c) => {
       c.header(
@@ -36,8 +35,8 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
         "public, max-age=600, stale-while-revalidate=86400",
       )
       return c.json({
-        version: CLI_VERSION,
-        minSupported: CLI_MIN_SUPPORTED,
+        version: VERSION,
+        minSupported: MIN_SUPPORTED_VERSION,
       })
     },
   )

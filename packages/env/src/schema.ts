@@ -60,7 +60,7 @@ export const serverSchema = z.object({
     .enum(["console", "resend"])
     .default("console"),
 
-  // Per-IP rate limit on /api/v1/templates and /api/v1/cli-version.
+  // Per-IP rate limit on /api/v1/templates and /api/v1/version.
   // In-memory fixed window per Vercel instance; see the rate-limit
   // middleware comment for the trade-off analysis. 100/min is enough
   // for a CLI that polls once per session and a marketing site that

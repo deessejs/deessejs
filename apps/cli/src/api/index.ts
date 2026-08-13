@@ -71,7 +71,7 @@ export const orpcToCliError = (e: unknown): Error & { code: string } => {
  * Fetch the templates registry.
  *
  * Flow:
- *   1. (If not skipVersionCheck) probe /cli-version and warn if outdated.
+ *   1. (If not skipVersionCheck) probe /version and warn if outdated.
  *      Failure here is silent — version check is best-effort.
  *   2. Build a typed oRPC client (./client.ts) and call
  *      templates.list. Retry + backoff are handled inside `orpcFetch`,
