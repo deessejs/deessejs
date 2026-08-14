@@ -4,14 +4,13 @@ import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
 import { fetchTemplates } from "../api/index.js"
-import { DEFAULT_API_URL } from "../constants.js"
 import {
   installFailed,
   internal,
   notFound,
   targetExists,
-} from "../errors.js"
-import { printError, printJson } from "../output.js"
+} from "../errors/index.js"
+import { printError, printJson } from "../output/index.js"
 import { cloneRepo } from "../utils/git.js"
 import {
   detectPackageManager,
@@ -41,14 +40,8 @@ export const initCommand = new Command("init")
         json?: boolean
       },
     ) => {
-      const apiUrl = initCommand.parent?.getOptionValue("apiUrl") as
-        | string
-        | undefined
-
       try {
-        const templates = await fetchTemplates(
-          apiUrl ?? process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL,
-        )
+        const templates = await fetchTemplates()
         const template = templates.find((t) => t.slug === slug)
         if (!template) {
           throw notFound(

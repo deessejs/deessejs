@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { CLI_PACKAGE_VERSION } from "../../src/cli-self-version.js"
+import { CLI_PACKAGE_VERSION } from "../../src/api/self-version.js"
 
 /**
  * Drift check: CLI_PACKAGE_VERSION is hand-baked into the bundle (we

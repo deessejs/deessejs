@@ -2,31 +2,19 @@ import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
 import { fetchTemplates } from "../api/index.js"
-import { DEFAULT_API_URL } from "../constants.js"
-import { internal } from "../errors.js"
-import { printError, printJson, printTemplatesTable } from "../output.js"
+import { internal } from "../errors/index.js"
+import { printError, printJson, printTemplatesTable } from "../output/index.js"
 
 export const listCommand = new Command("list")
   .description("List available templates")
   .option("--category <name>", "filter to a single category")
   .option("--json", "JSON output for scripting")
   .action(
-    async (
-      opts: { category?: string; json?: boolean },
-      command: Command,
-    ) => {
-      const apiUrl = command.parent?.getOptionValue("apiUrl") as
-        | string
-        | undefined
-
-      const spinner = opts.json
-        ? null
-        : ora("Fetching templates...").start()
+    async (opts: { category?: string; json?: boolean }) => {
+      const spinner = opts.json ? null : ora("Fetching templates...").start()
 
       try {
-        const all = await fetchTemplates(
-          apiUrl ?? process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL,
-        )
+        const all = await fetchTemplates()
         const filtered = opts.category
           ? all.filter((t) => t.category === opts.category)
           : all

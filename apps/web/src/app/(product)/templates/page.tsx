@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 
-import { fetchTemplates } from "@/lib/templates-api"
+import type { TemplateV1 } from "@workspace/contracts/v1"
+
+import { orpc } from "@/lib/orpc"
 import { CategorySidebar } from "@/components/templates/category-sidebar"
 import { SearchableTemplateGrid } from "@/components/templates/search-bar"
 
@@ -81,14 +83,15 @@ const TemplatesIndexPage = async ({
     framework?: string | string[]
   }>
 }) => {
-  let result: Awaited<ReturnType<typeof fetchTemplates>>
+  let templates: TemplateV1[] = []
   try {
-    result = await fetchTemplates()
+    const result = await orpc.templates.list()
+    templates = result.templates
   } catch {
-    result = { ok: false, error: "Catalog unreachable" }
+    templates = []
   }
 
-  if (!result.ok || result.templates.length === 0) {
+  if (templates.length === 0) {
     return (
       <section className="mx-auto max-w-6xl px-6 py-24">
         <h1 className="text-heading-32 tracking-tight">Templates</h1>
@@ -113,7 +116,7 @@ const TemplatesIndexPage = async ({
   const activeTypes = dedupe(rawTypes, KNOWN_TYPES)
   const activeFrameworks = dedupe(rawFrameworks, KNOWN_FRAMEWORKS)
 
-  const visibleTemplates = result.templates.filter((template) => {
+  const visibleTemplates = templates.filter((template) => {
     const matchesType =
       activeTypes.length === 0 ||
       activeTypes.includes(
@@ -138,7 +141,7 @@ const TemplatesIndexPage = async ({
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
         <CategorySidebar
-          templates={result.templates}
+          templates={templates}
           activeTypes={activeTypes}
           activeFrameworks={activeFrameworks}
         />

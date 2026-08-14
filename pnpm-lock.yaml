@@ -258,6 +258,15 @@ importers:
       '@orpc/client':
         specifier: 'catalog:'
         version: 1.14.7
+      '@orpc/server':
+        specifier: 'catalog:'
+        version: 1.14.7
+      '@workspace/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@workspace/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       commander:
         specifier: ^12.1.0
         version: 12.1.0
@@ -271,9 +280,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
-      '@workspace/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
       '@workspace/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
