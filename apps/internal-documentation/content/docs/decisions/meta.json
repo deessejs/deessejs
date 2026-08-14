@@ -16,6 +16,8 @@
     "ADR-009-test-strategy",
     "ADR-010-cli-public-surface",
     "ADR-011-hono-for-system-routes",
-    "ADR-012-changesets-private-workspace-deps"
+    "ADR-012-changesets-private-workspace-deps",
+    "ADR-013-knowledge-base-topics",
+    "ADR-014-knowledge-base-guides"
   ]
 }
