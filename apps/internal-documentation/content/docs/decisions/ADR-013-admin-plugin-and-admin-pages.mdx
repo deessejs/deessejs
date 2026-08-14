@@ -1,0 +1,235 @@
+---
+title: 'Admin plugin and admin pages'
+description: 'Wire the better-auth admin plugin and the /admin route group.'
+---
+
+# ADR-013: better-auth admin plugin and the apps/app admin section
+
+## Status
+
+Accepted (2026-08). Non-negotiable once shipped.
+
+## Context
+
+`apps/app` is the authenticated workspace of the DeesseJS monorepo.
+Today it exposes only two surfaces: a `/home` landing page and a
+`/settings` group covering profile, security, sessions, connections,
+and account. None of these pages act on users other than the caller.
+The `better-auth` instance in `packages/auth/src/auth.ts` runs without
+the `admin` plugin, so no admin endpoints are available: there is no
+way to list users, change a role, ban, impersonate, set a password, or
+remove an account through the auth layer.
+
+Operations have so far been done by hand on the database. That works
+for a single-tenant staging environment but does not scale and offers
+no audit trail beyond git history.
+
+The plugin catalog (`https://www.better-auth.com/docs/plugins/admin`)
+ships a turnkey admin surface with:
+
+- schema additions on the `user` table (`role`, `banned`,
+  `banReason`, `banExpires`) and on the `session` table
+  (`impersonatedBy`),
+- server endpoints guarded by an `admin` role or by an `adminUserIds`
+  allowlist, with a default role of `user` and `adminRoles: ["admin"]`,
+- a parallel `adminClient` for browser-side calls,
+- an access-control hook (`createAccessControl`, statements, roles)
+  for fine-grained permissions.
+
+This ADR locks in two coupled decisions: wiring the plugin in
+`packages/auth` and shipping a parallel `/admin` route group in
+`apps/app/app/(protected)`.
+
+## Decision
+
+### 1. Wire the admin plugin in `packages/auth`
+
+`packages/auth/src/auth.ts` adds `admin()` from `better-auth/plugins`
+to the `plugins` array. Initial configuration:
+
+```ts
+admin({
+  defaultRole: "user",
+  adminRoles: ["admin"],
+  adminUserIds: [], // populated from env on first deploy
+  impersonationSessionDuration: 60 * 60, // 1 hour
+})
+```
+
+No custom `ac` or `roles` block lands in this ADR. Custom access
+control stays a follow-up: the default statement set covers every
+admin action we need for the V1 pages, and introducing a custom
+`ac` now would lock a permission surface that has not been
+audited yet. The `defaultStatements` import path remains available
+when the follow-up ADR is written.
+
+The `emailAndPassword.customSyntheticUser` hook (required when
+`requireEmailVerification: true`, per the plugin docs) gains the
+admin fields in schema order: `role: "user"`, `banned: false`,
+`banReason: null`, `banExpires: null`. This keeps the
+email-enumeration protection working at signup.
+
+### 2. Add an `/admin` route group under `(protected)`
+
+`apps/app/app/(protected)/admin/` becomes a new section, parallel
+to `/settings`, not nested inside it. `/settings` is self-service
+for the caller; `/admin` operates on other users. Mixing them in
+the same sidebar group or the same index page would be confusing.
+
+Route tree:
+
+```
+app/(protected)/admin/
+  layout.tsx                   # role gate, sidebar entry
+  page.tsx                     # index (placeholder welcome, V1)
+  users/
+    page.tsx                   # list + pagination + filters
+    new/page.tsx               # createUser form
+    [id]/
+      page.tsx                 # detail (header, profile, sessions)
+      edit/page.tsx            # adminUpdateUser
+      sessions/page.tsx        # listUserSessions + revoke actions
+      delete/page.tsx          # removeUser confirmation
+  roles/
+    page.tsx                   # role x permission matrix (read-only)
+    [role]/page.tsx            # role detail + user count
+```
+
+A global `ImpersonationBanner` component mounts inside
+`apps/app/app/layout.tsx` and renders when
+`session.impersonatedBy` is set. It exposes a "Stop impersonating"
+button bound to `authClient.admin.stopImpersonating()`. There is no
+`/admin/impersonate` page; the banner is the surface.
+
+Ban, set-role, set-password, and impersonate actions live as Dialogs
+on the user detail page, not as standalone routes. They are
+single-click actions and a full page each would be wasteful. Only
+edit, delete, sessions, and the dedicated `new` flow get their own
+URL.
+
+### 3. Two-layer gating
+
+The route gate runs twice:
+
+- `apps/app/proxy.ts` adds `/admin/:path*` to `PROTECTED_PREFIXES`
+  and to the `config.matcher`. Without this, the proxy only enforces
+  `emailVerified`, and a non-admin could type the URL and trigger a
+  round-trip before the layout redirect fires.
+- `app/(protected)/admin/layout.tsx` runs as a Server Component,
+  calls `auth.api.getSession({ headers })`, and redirects to `/home`
+  if `session.user.role !== "admin"` and the user id is not in
+  `adminUserIds`. The plugin enforces this server-side on every
+  endpoint; the layout gate exists for UX and typing, not security.
+
+### 4. Server-first data flow
+
+Pages are Server Components. Mutations go through Server Actions
+defined in `apps/app/lib/admin/actions.ts` that:
+
+1. re-check the admin role from the session,
+2. validate input with Zod schemas in
+   `apps/app/lib/admin/schemas.ts`,
+3. call `auth.api.<endpoint>({ body, headers })`,
+4. revalidate the affected path or call `redirect`.
+
+`authClient.admin.*` is reserved for the impersonation banner,
+which must call `stopImpersonating` from a client component because
+the action needs to run after a route change triggered by the
+server.
+
+### 5. Sidebar wiring
+
+`AppSidebar` reads `usePathname()`. When the path starts with
+`/admin`, it renders an extra `SidebarGroup` with `Users` and
+`Roles` entries above the existing `Settings` shortcut. The
+home/settings/admin groupings remain visually distinct. No new prop
+is added to the sidebar; the existing `usePathname` hook is enough.
+
+## Why this and not the alternatives
+
+1. **Use the organization plugin instead.** The organization plugin
+   supports invitations and member management, but the locked-in
+   decision in `docs/guides/better-auth/index.md` is single-tenant.
+   Switching to the organization plugin would re-litigate that ADR
+   and ship a much larger surface (organizations, members,
+   invitations, active-org signal) for a problem we do not have.
+
+2. **Build admin actions directly in `packages/database` without
+   the plugin.** That would mean writing our own role column, our
+   own authorization checks, our own ban/impersonate flows, and our
+   own `session.impersonatedBy` plumbing. The plugin does all of
+   that and is the canonical path. Re-implementing it would be a
+   long-term maintenance burden for a single-tenant app.
+
+3. **Nest admin under `/settings`.** Conceptually wrong: `/settings`
+   is "edit your own account"; `/admin` is "edit other accounts".
+   Users on `/settings` should never see an "Admin" card, and users
+   on `/admin` should not have to leave the section to manage a
+   user's sessions. Two distinct route groups reflect two distinct
+   mental models.
+
+4. **Ship the admin surface as a separate app.** Out of proportion
+   for V1. The traffic is low, the data is the same Postgres
+   instance, and `apps/app` already has the auth wiring, the
+   sidebar shell, and the shadcn components. A separate app would
+   duplicate session, proxy, and layout without a payoff.
+
+## Cost
+
+- `packages/database/src/schema/auth.ts` gains five columns (four
+  on `user`, one on `session`). `pnpm auth:generate` runs as part
+  of the migration; the generated drizzle tables must be committed
+  alongside the plugin wiring.
+- `apps/app/components/sidebars/app-sidebar.tsx` grows a
+  conditional group. The conditional is two lines, but it makes
+  the sidebar aware of a third top-level section, which raises
+  the surface that any sidebar refactor must touch.
+- The proxy gains two array entries and one matcher entry. Trivial,
+  but every change to `proxy.ts` is a security-adjacent file and
+  must keep the existing `runtime = "nodejs"` ban in mind (Next 16
+  rejects it in proxy files, see ADR-009 context).
+- `customSyntheticUser` in `packages/auth/src/auth.ts` grows five
+  fields. Any future plugin that adds columns will need a parallel
+  edit, and the order in the schema must match what
+  `@better-auth/cli generate` produces.
+
+## What this ADR does not change
+
+- Single-tenant remains locked. No organization plugin, no org
+  schema, no org client. The historical-only `org.md` guide stays
+  out of the read path.
+- Custom access control (`createAccessControl`, custom statements,
+  custom roles) is a follow-up. The default statement set covers
+  V1. A future ADR will lock the statement surface once we have a
+  concrete permission audit.
+- No audit log of admin actions ships in V1. The plugin does not
+  log admin operations; an audit trail would require a
+  `databaseHooks` or a wrapper on the Server Actions. Out of scope
+  here.
+- The CLI (`apps/cli`) is unaffected. Admin endpoints are
+  HTTP-only on the better-auth server; no CLI surface is added.
+
+## Consequences
+
+- `apps/app/app/(protected)/admin/` ships with the route tree
+  listed above. Pages are gated, sidebar-aware, and use
+  shadcn components from `@workspace/ui`.
+- `auth.api.{listUsers, getUser, createUser, setRole,
+  setUserPassword, adminUpdateUser, banUser, unbanUser,
+  listUserSessions, revokeUserSession, revokeUserSessions,
+  impersonateUser, removeUser, userHasPermission}` are all
+  reachable from Server Actions in `apps/app`.
+- `authClient.admin.stopImpersonating` is the one client-side
+  call wired in V1, mounted on the global impersonation banner.
+- A new env-driven allowlist (`BETTER_AUTH_ADMIN_USER_IDS`)
+  populates `adminUserIds` at boot. The list is empty on first
+  deploy, so the first admin must be promoted by a SQL update
+  against `user.role`. This is documented in the migration
+  changeset that ships with the plugin wiring.
+- Migration order: ship schema first (`pnpm auth:generate` +
+  drizzle migration), then the plugin wiring, then the pages.
+  The pages do not work without the schema; the schema is harmless
+  without the plugin wiring.
+- ADR-009 (test strategy) applies: Server Actions get unit
+  coverage on the Zod schemas and on the role-gate branches; the
+  pages themselves are not E2E-covered in V1.
