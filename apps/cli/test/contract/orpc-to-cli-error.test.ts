@@ -6,7 +6,8 @@ import { orpcToCliError } from "../../src/api/index.js"
  * Unit tests for the ORPCError → CliError mapper.
  *
  * The mapper is the only piece of logic in `api.ts` that does not
- * delegate to a tested helper (RPCLink, fetchWithRetry, Zod contract).
+ * delegate to a tested helper (RPCLink, the official oRPC plugins,
+ * Zod contract).
  * Mocking the global `fetch` is the wrong layer for RPCLink tests —
  * see Phase 3 of docs/engineering/plans/orpc-client-migration.md.
  * So we test the mapper directly here.

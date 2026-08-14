@@ -1,99 +1,53 @@
-import { createORPCClient, type ClientOptions } from "@orpc/client"
+import {
+  ClientRetryPlugin,
+  RetryAfterPlugin,
+} from "@orpc/client/plugins"
 import { RPCLink } from "@orpc/client/fetch"
+import { createORPCClient } from "@orpc/client"
 import { TemplatesListResponseV1 } from "@workspace/contracts/v1"
 
-import { fetchWithRetry } from "./retry.js"
+import { USER_AGENT } from "../constants/agent.js"
 
 /**
  * Typed oRPC client construction for the CLI.
  *
  * Internal to the CLI. The public surface (`fetchTemplates`) lives in
- * ../api.ts. Tests that target the typed client (Server-Side Client
- * pattern) import `appRouter` directly from `@workspace/api/router`
- * and bypass this module entirely.
+ * ../api/index.ts. Tests that target the typed client (Server-Side Client
+ * pattern) import `appRouter` directly from `@workspace/api/router` and
+ * bypass this module entirely.
  *
- * Why a `client/` subfolder:
- *   - The construction is the only piece of this CLI that touches
- *     `@orpc/client`. Keeping it isolated makes the rest of `api.ts`
- *     (orchestration, error mapping, version check) easier to read.
- *   - The 5-arg signature of the custom `fetch` hook, plus the
- *     trade-off with shape-matching in the error mapper, are details
- *     that belong with the implementation, not with the API surface.
- *   - When we add MSW-based tests (Phase 3 of the migration plan),
- *     they live in `test/http/` and mock the fetch hook here, not
- *     the orchestration in `api.ts`.
+ * Resilience is delegated to the official oRPC plugins
+ * (`ClientRetryPlugin`, `RetryAfterPlugin`) rather than a custom fetch
+ * hook. The plugins cover ~70% of what the previous custom hook did
+ * (retry on 5xx and 429, honour Retry-After) and are tested against
+ * future oRPC upgrades upstream. The remaining 30% (custom rate-limit
+ * header, jitter, runtime User-Agent) is handled here.
  *
- * See docs/engineering/plans/orpc-client-migration.md phase 2 for the
- * rationale on why we use RPCLink + custom fetch instead of direct
- * `fetch` + manual envelope unwrap.
+ * See `apps/internal-documentation/content/docs/knowledge-base/orpc/client-plugins.mdx`
+ * for the full coverage analysis.
+ *
+ * The User-Agent header carries the installed CLI version (read from
+ * `apps/cli/src/api/self-version.ts`). We inject it via the fetch hook
+ * because oRPC does not currently ship a dedicated "request headers"
+ * plugin. The hook signature is the canonical 5-argument form from
+ * `@orpc/client/adapters/fetch`; we accept and ignore the last three
+ * arguments, which exist for plugin and interceptor use.
  */
-
-/**
- * Adapter that exposes our retry-aware `fetchWithRetry` as the global
- * `fetch` shape that `RPCLink` expects.
- *
- * Signature comes from `@orpc/client/adapters/fetch/index.d.ts`:
- *   fetch(request, init, options, path, input) => Promise<Response>
- *
- * We only consume `request` and `init.redirect`. The remaining
- * arguments (`options`, `path`, `input`) are surfaced for
- * plugins/interceptors; we don't use either, hence the `_` prefix.
- *
- * The `Request.body` is a stream; the client always passes a string
- * for RPC procedures (the JSON envelope). We read it once via
- * `req.text()`.
- */
-export const orpcFetch = async (
-  request: Request | string,
+const withUserAgent = async (
+  request: Request,
   init: { redirect?: Request["redirect"] } | undefined,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _options?: ClientOptions<Record<string, unknown>>,
+  _options?: unknown,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _path?: readonly string[],
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _input?: unknown,
 ): Promise<Response> => {
-  let req: Request
-  if (typeof request === "string") {
-    if (init?.redirect !== undefined) {
-      req = new Request(request, { redirect: init.redirect })
-    } else {
-      req = new Request(request)
-    }
-  } else {
-    req = request
-  }
-
-  const apiUrl = req.url
-  const headers: Record<string, string> = {}
-  req.headers.forEach((value, key) => {
-    headers[key] = value
-  })
-  const body = req.body ? await req.text() : undefined
-
-  const opts: {
-    apiUrl: string
-    method: string
-    body: string
-    headers: Record<string, string>
-    maxAttempts?: number
-  } = {
-    apiUrl,
-    method: req.method,
-    headers,
-    body: body ?? "",
-  }
-  if (body === undefined) opts.body = ""
-
-  const res = await fetchWithRetry(opts)
-  return new Response(res.bodyText, {
-    status: res.status,
-    statusText: res.status === 200 ? "OK" : "Error",
-    headers: {
-      "content-type": "application/json",
-      ...(res.etag ? { etag: res.etag } : {}),
-    },
-  })
+  const headers = new Headers(request.headers)
+  headers.set("user-agent", USER_AGENT)
+  const next: RequestInit = init ? { ...init } : {}
+  next.headers = headers
+  return globalThis.fetch(request, next)
 }
 
 /**
@@ -107,7 +61,23 @@ export const orpcFetch = async (
 export const buildOrpcClient = (baseUrl: string) => {
   const link = new RPCLink({
     url: baseUrl,
-    fetch: orpcFetch,
+    fetch: withUserAgent,
+    plugins: [
+      new RetryAfterPlugin(),
+      new ClientRetryPlugin({
+        default: {
+          retry: 3,
+          shouldRetry: ({ error }) => {
+            // `error` here is the thrown value from the procedure or
+            // the typed client. It is not an HTTP response — the
+            // 5xx path is covered by RetryAfterPlugin (which retries
+            // on 503 by default). What remains is the transient
+            // network error from the global fetch (a TypeError).
+            return error instanceof TypeError
+          },
+        },
+      }),
+    ],
   })
   return createORPCClient<{
     templates: { list: () => Promise<TemplatesListResponseV1> }

@@ -9,13 +9,6 @@ export type Template = TemplatesListResponseV1["templates"][number]
 export type FetchOptions = {
   /** Skip the version probe. Used by tests and by the version probe itself. */
   skipVersionCheck?: boolean
-  /**
-   * Maximum number of retry attempts for `fetchWithRetry`. Production
-   * default is 3. Tests pass `1` to skip the retry/backoff in unit tests
-   * that target the typed client (procedure contract is tested via the
-   * Server-Side Client pattern; see test/contract/templates.test.ts).
-   */
-  maxAttempts?: number
 }
 
 /**
@@ -74,8 +67,8 @@ export const orpcToCliError = (e: unknown): Error & { code: string } => {
  *   1. (If not skipVersionCheck) probe /version and warn if outdated.
  *      Failure here is silent — version check is best-effort.
  *   2. Build a typed oRPC client (./client.ts) and call
- *      templates.list. Retry + backoff are handled inside `orpcFetch`,
- *      which delegates to fetchWithRetry.
+ *      templates.list. Retry on 5xx and 429 is handled by the
+ *      official oRPC plugins configured in ./client.ts.
  *   3. Surface typed errors. ORPCError.code is mapped to a CliError.
  *
  * Testing:
@@ -83,14 +76,10 @@ export const orpcToCliError = (e: unknown): Error & { code: string } => {
  *     drift) is tested via the Server-Side Client pattern in
  *     `test/contract/orpc-to-cli-error.test.ts`. Call
  *     `appRouter.templates.list()` directly, no HTTP.
- *   - The HTTP layer (retry, envelope parsing, isOrpcErrorBody
- *     mapping) is tested via a Node `http.createServer` fixture in
- *     `test/http/fetch-templates.test.ts`. The CLI hits the fixture
- *     URL.
- *   - We do not mock `fetch` globally. RPCLink builds a `Request`
- *     whose body is consumed once, and a global fetch mock bypasses
- *     RPCLink entirely. See Phase 3 of
- *     `docs/engineering/plans/orpc-client-migration.md` for details.
+ *   - The HTTP layer is exercised end-to-end by the integration
+ *     tests under `test/integration/`. They use the fake-api fixture
+ *     to serve a real HTTP response, and the real typed client
+ *     (with plugins) processes it.
  */
 export const fetchTemplates = async (
   apiUrl: string,
