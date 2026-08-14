@@ -1,6 +1,6 @@
 import { cn } from "@workspace/ui/lib/utils"
 
-import type { Template } from "@/lib/templates-api"
+import type { TemplateV1 as Template } from "@workspace/contracts/v1"
 import { TemplateCard } from "./template-card"
 
 export type TemplateGridProps = {
