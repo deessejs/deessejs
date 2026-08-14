@@ -109,7 +109,7 @@ detail: **whether to write `.js` extensions on relative imports.**
   convention and treats `./foo.js` as a literal path, which fails to
   resolve to `./foo.ts`.
   ```ts
-  import { fetchTemplates } from "@/lib/templates-api"
+  import { orpc } from "@/lib/orpc"
   // relative: import { x } from "./y"      ← no .js
   ```
 

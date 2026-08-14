@@ -7,7 +7,7 @@ import { Input } from "@workspace/ui/components/input"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
-import type { Template } from "@/lib/templates-api"
+import type { TemplateV1 as Template } from "@workspace/contracts/v1"
 import { TemplateGrid } from "./template-grid"
 
 export type SearchableTemplateGridProps = {

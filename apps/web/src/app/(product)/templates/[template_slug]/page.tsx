@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { fetchTemplates } from "@/lib/templates-api"
+import type { TemplateV1 } from "@workspace/contracts/v1"
+
+import { orpc } from "@/lib/orpc"
 import { TemplateDetail } from "@/components/templates/template-detail"
 
 type Params = { template_slug: string }
@@ -17,8 +19,7 @@ type Params = { template_slug: string }
  */
 export const generateStaticParams = async (): Promise<Params[]> => {
   try {
-    const result = await fetchTemplates()
-    if (!result.ok) return []
+    const result = await orpc.templates.list()
     return result.templates.map((t) => ({ template_slug: t.slug }))
   } catch {
     return []
@@ -31,14 +32,14 @@ export const generateMetadata = async ({
   params: Promise<Params>
 }): Promise<Metadata> => {
   const { template_slug } = await params
-  let result: Awaited<ReturnType<typeof fetchTemplates>>
+  let templates: TemplateV1[]
   try {
-    result = await fetchTemplates()
+    const result = await orpc.templates.list()
+    templates = result.templates
   } catch {
     return { title: "Template not found" }
   }
-  if (!result.ok) return { title: "Template not found" }
-  const template = result.templates.find((t) => t.slug === template_slug)
+  const template = templates.find((t) => t.slug === template_slug)
   if (!template) return { title: "Template not found" }
   return {
     title: template.name,
@@ -49,9 +50,9 @@ export const generateMetadata = async ({
 /**
  * Detail page at /templates/[template_slug].
  *
- * Single source of truth: reuses the same fetchTemplates() call as the
- * index page. The catalog is tiny, so doing a client-side `.find()` on
- * the server is cheaper than maintaining a second endpoint.
+ * Single source of truth: same `orpc.templates.list()` call as the
+ * index page. The catalog is tiny, so doing a server-side `.find()`
+ * is cheaper than maintaining a second endpoint.
  *
  * Build-time resilience: if the fetch fails during page collection,
  * we render a minimal placeholder rather than throwing. The runtime
@@ -63,16 +64,14 @@ const TemplateDetailPage = async ({
   params: Promise<Params>
 }) => {
   const { template_slug } = await params
-  let result: Awaited<ReturnType<typeof fetchTemplates>>
+  let templates: TemplateV1[]
   try {
-    result = await fetchTemplates()
+    const result = await orpc.templates.list()
+    templates = result.templates
   } catch {
     notFound()
   }
-  if (!result.ok) {
-    notFound()
-  }
-  const template = result.templates.find((t) => t.slug === template_slug)
+  const template = templates.find((t) => t.slug === template_slug)
   if (!template) {
     notFound()
   }

@@ -247,9 +247,9 @@ export const orpc: ORPCClient = createORPCClient(link)
 
 1. **`apps/web/src/lib/orpc.ts`** (new). The wrapper above. The signature mirrors `apps/app/lib/orpc.ts` so the two consumers stay aligned.
 
-2. **`apps/web/src/lib/templates-api.ts`** (rewrite). Drop `ORPC_NO_INPUT_BODY` and `unwrapOrpc`. Replace `globalThis.fetch(TEMPLATES_URL, ...)` with `orpc.templates.list()`. ISR directives now come from the RPCLink's `fetch` hook in `orpc.ts`, not from the call site.
+2. **`apps/web/src/lib/templates-api.ts`** (rewrite, then later removed). Drop `ORPC_NO_INPUT_BODY` and `unwrapOrpc`. Replace `globalThis.fetch(TEMPLATES_URL, ...)` with `orpc.templates.list()`. ISR directives now come from the RPCLink's `fetch` hook in `orpc.ts`, not from the call site. The file was ultimately deleted in favor of calling `orpc.templates.list()` directly from the consumer pages; the wrapper added no value once the typed client was in place.
 
-3. **`apps/web/src/app/templates/page.tsx`** (consumers). No change to the consumer code itself; the API surface stays `fetchTemplates()` returning `{ templates }`. Only the implementation path changes.
+3. **`apps/web/src/app/templates/page.tsx`** (consumers). Pages call `orpc.templates.list()` directly. The `fetchTemplates()` wrapper is no longer the public surface — the typed `orpc` client is. Consumer types (`TemplateV1`) come from `@workspace/contracts/v1`, not from a local re-export.
 
 #### Tests for the web side
 
