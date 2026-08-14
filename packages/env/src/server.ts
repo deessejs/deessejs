@@ -1,7 +1,7 @@
 import { createEnv } from "@t3-oss/env-core"
 
 import { loadDotenvSnapshot, loadRepoEnv, type EnvSnapshot } from "./loader.js"
-import { clientSchema, serverSchema, type ServerEnv } from "./schema.js"
+import { clientSchema, serverInputShape, type ServerEnv } from "./schema.js"
 
 /**
  * Mirror the snapshot into `process.env` so legacy consumers
@@ -41,7 +41,7 @@ function getServerEnv(): Readonly<ServerEnv> {
   const snapshot = loadDotenvSnapshot() as EnvSnapshot
 
   const env = createEnv({
-    server: serverSchema.shape,
+    server: serverInputShape,
     client: clientSchema.shape,
     clientPrefix: "NEXT_PUBLIC_",
     runtimeEnv: snapshot,
@@ -63,15 +63,18 @@ function getServerEnv(): Readonly<ServerEnv> {
     },
   })
 
-  // Materialise the Proxy into a frozen plain object. The Proxy returned
-  // by createEnv enforces the server/client boundary on each get; we
-  // freeze the snapshot once and serve it from the outer Proxy below.
+  // Materialise the Proxy into a frozen plain object. The Proxy
+  // returned by createEnv enforces the server/client boundary on each
+  // get; we freeze the snapshot once and serve it from the outer Proxy
+  // below. Aliases (AUTH_SECRET -> BETTER_AUTH_SECRET,
+  // TEST_DATABASE_URL -> DATABASE_URL) are resolved at this boundary
+  // so call sites see only the canonical name.
   const materialised = Object.freeze({
     NODE_ENV: env.NODE_ENV,
     DATABASE_URL: env.DATABASE_URL,
-    TEST_DATABASE_URL: env.TEST_DATABASE_URL,
+    TEST_DATABASE_URL: env.TEST_DATABASE_URL ?? env.DATABASE_URL,
     BETTER_AUTH_URL: env.BETTER_AUTH_URL,
-    BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
+    BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET ?? env.AUTH_SECRET,
     ALLOWED_ORIGINS: env.ALLOWED_ORIGINS,
     RESEND_API_KEY: env.RESEND_API_KEY,
     RESEND_FROM_EMAIL: env.RESEND_FROM_EMAIL,
