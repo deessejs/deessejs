@@ -32,6 +32,14 @@ import { API_RPC_PATH } from "@workspace/api/base-path"
  * sends a User-Agent because it hits a Hono-direct endpoint, not an
  * oRPC procedure.
  */
+/**
+ * Whether an error thrown from the wire layer is a transient network
+ * error (DNS failure, TCP reset, timeout). These are worth retrying;
+ * typed ORPCError and other application errors are not.
+ */
+const isTransientNetworkError = (e: unknown): boolean =>
+  e instanceof TypeError
+
 const link = new RPCLink({
   url: API_RPC_PATH,
   plugins: [
@@ -39,14 +47,7 @@ const link = new RPCLink({
     new ClientRetryPlugin({
       default: {
         retry: 3,
-        shouldRetry: ({ error }) => {
-          // `error` here is the thrown value from the procedure or
-          // the typed client. It is not an HTTP response — the
-          // 5xx path is covered by RetryAfterPlugin (which retries
-          // on 503 by default). What remains is the transient
-          // network error from the global fetch (a TypeError).
-          return error instanceof TypeError
-        },
+        shouldRetry: ({ error }) => isTransientNetworkError(error),
       },
     }),
   ],
