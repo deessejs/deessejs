@@ -2,7 +2,7 @@ import { TemplatesListResponseV1 } from "@workspace/contracts/v1"
 
 import { networkError, parseError } from "../errors/index.js"
 import { maybeWarnAboutOutdatedCli } from "../version/check.js"
-import { buildOrpcClient } from "./client.js"
+import { orpc } from "./client.js"
 
 export type Template = TemplatesListResponseV1["templates"][number]
 
@@ -66,10 +66,15 @@ export const orpcToCliError = (e: unknown): Error & { code: string } => {
  * Flow:
  *   1. (If not skipVersionCheck) probe /version and warn if outdated.
  *      Failure here is silent — version check is best-effort.
- *   2. Build a typed oRPC client (./client.ts) and call
- *      templates.list. Retry on 5xx and 429 is handled by the
- *      official oRPC plugins configured in ./client.ts.
+ *   2. Call templates.list on the shared typed client. Retry on
+ *      5xx and 429 is handled by the official oRPC plugins configured
+ *      in ./client.ts.
  *   3. Surface typed errors. ORPCError.code is mapped to a CliError.
+ *
+ * The URL is fixed at `API_RPC_PATH` (imported from
+ * `@workspace/api/base-path`). A per-command override is intentionally
+ * not part of the public surface in V1 — it adds complexity without a
+ * concrete use case.
  *
  * Testing:
  *   - The procedure contract (success, ORPCError shapes, contract
@@ -82,16 +87,14 @@ export const orpcToCliError = (e: unknown): Error & { code: string } => {
  *     (with plugins) processes it.
  */
 export const fetchTemplates = async (
-  apiUrl: string,
   options: FetchOptions = {},
 ): Promise<Template[]> => {
   if (!options.skipVersionCheck) {
-    await maybeWarnAboutOutdatedCli(apiUrl)
+    await maybeWarnAboutOutdatedCli()
   }
 
-  const client = buildOrpcClient(apiUrl)
   try {
-    const result = await client.templates.list()
+    const result = await orpc.templates.list()
     return result.templates
   } catch (e) {
     throw orpcToCliError(e)

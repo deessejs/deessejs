@@ -128,8 +128,6 @@ apps/cli/
 │   │   └── spinner.ts          ora spinner factory
 │   │
 │   ├── constants/          shared constants
-│   │   ├── api-url.ts          DEFAULT_API_URL, user override
-│   │   ├── agent.ts            USER_AGENT string
 │   │   └── exit.ts             EXIT_SUCCESS, EXIT_ERROR
 │   │
 │   └── utils/              pure helpers (no I/O, no state)
@@ -236,10 +234,17 @@ three is a breaking change.
 | `deessejs list` | List available templates | `0` success, `1` error | templates table to stdout |
 | `deessejs info <slug>` | Show details for one template | `0` success, `1` error | template details to stdout |
 
-Every command accepts `--api-url <url>` and `--offline`. No
-other flag is part of the public surface; per-command flags
-(`--category`, `--json`) are public but are reviewed against
-the same rule.
+Every command accepts `--offline`. No other flag is part
+of the public surface in V1. The previous `--api-url <url>`
+flag was removed because no concrete use case surfaced in V1
+and the URL is a server-side concern (defined by
+`API_RPC_PATH` in `@workspace/api/base-path`). Per-command
+flags (`--category`, `--json`) are public but are reviewed
+against the same rule.
+
+If a future V needs per-command URL overrides, the
+re-introduction must come with a V-bump and a deprecation
+warning, per the "What this rule forbids" section below.
 
 Each command file (`commands/list.ts`, `commands/info.ts`,
 `commands/init.ts`) is the single source of truth for its
