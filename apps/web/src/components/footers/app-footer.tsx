@@ -1,59 +1,84 @@
-import Link from "next/link"
 import Image from "next/image"
 
 import { CookiePreferencesButton } from "@workspace/cookies"
 
-const footerLinks = {
-  deessejs: [
-    { label: "Errors", href: "https://errors.deessejs.com" },
-    { label: "DRPC", href: "https://drpc.deessejs.com" },
-    { label: "Collections", href: "https://collections.deessejs.com" },
-    { label: "FP", href: "https://fp.deessejs.com" },
-    { label: "UI", href: "https://ui.deessejs.com" },
-    { label: "Admin", href: "https://admin.deessejs.com" },
-    { label: "Cloud", href: "https://cloud.deessejs.com" },
-  ],
-  learn: [
-    { label: "Docs", href: "https://docs.deessejs.com" },
-    { label: "Blog", href: "/blog" },
-    { label: "Changelog", href: "/changelog" },
-    { label: "Knowledge Base", href: "/knowledge-base" },
-  ],
-  explore: [
-    { label: "Customers", href: "/customers" },
-    { label: "Templates", href: "/templates" },
-    { label: "Ecosystem", href: "/ecosystem" },
-  ],
-  usecases: [
-    { label: "SaaS apps", href: "/use-cases/saas-apps" },
-    { label: "AI products", href: "/use-cases/ai-products" },
-    { label: "Landing pages", href: "/use-cases/landing-pages" },
-    { label: "API backends", href: "/use-cases/api-backends" },
-    { label: "Internal tools", href: "/use-cases/internal-tools" },
-  ],
-  company: [
-    { label: "About", href: "/about" },
-    { label: "Manifesto", href: "/manifesto" },
-    { label: "Principles", href: "/principles" },
-    { label: "Vision", href: "/vision" },
-    { label: "Enterprise", href: "/enterprise" },
-    { label: "Help", href: "/help" },
-  ],
-  "legal-trust": [
-    { label: "Privacy", href: "/privacy" },
-    { label: "Terms", href: "/terms" },
-    { label: "Cookies", href: "/cookies" },
-    { label: "DPA", href: "mailto:support@deessejs.com?subject=DPA%20request" },
-    { label: "Security", href: "mailto:support@deessejs.com" },
-  ],
-  community: [
-    { label: "Open Source Program", href: "/oss" },
-    { label: "Students", href: "/students" },
-    { label: "Github", href: "https://github.com/deessejs" },
-    { label: "LinkedIn", href: "#" },
-    { label: "X", href: "#" },
-  ],
-}
+import { FooterColumn, type FooterLink } from "./footer-column"
+
+const footerSections: ReadonlyArray<{
+  heading: string
+  links: ReadonlyArray<FooterLink>
+}> = [
+  {
+    heading: "DeesseJS",
+    links: [
+      { label: "Errors", href: "https://errors.deessejs.com" },
+      { label: "DRPC", href: "https://drpc.deessejs.com" },
+      { label: "Collections", href: "https://collections.deessejs.com" },
+      { label: "FP", href: "https://fp.deessejs.com" },
+      { label: "UI", href: "https://ui.deessejs.com" },
+      { label: "Admin", href: "https://admin.deessejs.com" },
+      { label: "Cloud", href: "https://cloud.deessejs.com" },
+    ],
+  },
+  {
+    heading: "Learn",
+    links: [
+      { label: "Docs", href: "https://docs.deessejs.com" },
+      { label: "Blog", href: "/blog" },
+      { label: "Changelog", href: "/changelog" },
+      { label: "Knowledge Base", href: "/knowledge-base" },
+    ],
+  },
+  {
+    heading: "Use cases",
+    links: [
+      { label: "SaaS apps", href: "/use-cases/saas-apps" },
+      { label: "AI products", href: "/use-cases/ai-products" },
+      { label: "Landing pages", href: "/use-cases/landing-pages" },
+      { label: "API backends", href: "/use-cases/api-backends" },
+      { label: "Internal tools", href: "/use-cases/internal-tools" },
+    ],
+  },
+  {
+    heading: "Company",
+    links: [
+      { label: "About", href: "/about" },
+      { label: "Manifesto", href: "/manifesto" },
+      { label: "Principles", href: "/principles" },
+      { label: "Vision", href: "/vision" },
+      { label: "Enterprise", href: "/enterprise" },
+      { label: "Help", href: "/help" },
+    ],
+  },
+  {
+    heading: "Legal & Trust",
+    links: [
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
+      { label: "Cookies", href: "/cookies" },
+      { label: "DPA", href: "mailto:support@deessejs.com?subject=DPA%20request" },
+      { label: "Security", href: "mailto:support@deessejs.com" },
+    ],
+  },
+  {
+    heading: "Community",
+    links: [
+      { label: "Open Source Program", href: "/oss" },
+      { label: "Students", href: "/students" },
+      { label: "Github", href: "https://github.com/deessejs" },
+      { label: "LinkedIn", href: "#" },
+      { label: "X", href: "#" },
+    ],
+  },
+  {
+    heading: "Explore",
+    links: [
+      { label: "Customers", href: "/customers" },
+      { label: "Templates", href: "/templates" },
+      { label: "Ecosystem", href: "/ecosystem" },
+    ],
+  },
+]
 
 export function AppFooter() {
   return (
@@ -81,153 +106,13 @@ export function AppFooter() {
             </p>
           </div>
 
-          {/* DeesseJS */}
-          <div>
-            <h3 className="font-semibold text-foreground mb-3">DeesseJS</h3>
-            <ul className="space-y-2">
-              {footerLinks.deessejs.map((link) => {
-                const isExternal = link.href.startsWith("http")
-                return (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      target={isExternal ? "_blank" : undefined}
-                      rel={isExternal ? "noopener noreferrer" : undefined}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-
-          {/* Learn */}
-          <div>
-            <h3 className="font-semibold text-foreground mb-3">Learn</h3>
-            <ul className="space-y-2">
-              {footerLinks.learn.map((link) => {
-                const isExternal = link.href.startsWith("http")
-                return (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      target={isExternal ? "_blank" : undefined}
-                      rel={isExternal ? "noopener noreferrer" : undefined}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-
-          {/* Use cases */}
-          <div>
-            <h3 className="font-semibold text-foreground mb-3">
-              Use cases
-            </h3>
-            <ul className="space-y-2">
-              {footerLinks.usecases.map((link) => {
-                const isExternal = link.href.startsWith("http")
-                return (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      target={isExternal ? "_blank" : undefined}
-                      rel={isExternal ? "noopener noreferrer" : undefined}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div>
-            <h3 className="font-semibold text-foreground mb-3">Company</h3>
-            <ul className="space-y-2">
-              {footerLinks.company.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Legal & Trust */}
-          <div>
-            <h3 className="font-semibold text-foreground mb-3">
-              Legal &amp; Trust
-            </h3>
-            <ul className="space-y-2">
-              {footerLinks["legal-trust"].map((link) => {
-                const isExternal = link.href.startsWith("http")
-                return (
-                  <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      target={isExternal ? "_blank" : undefined}
-                      rel={isExternal ? "noopener noreferrer" : undefined}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-
-          {/* Community */}
-          <div>
-            <h3 className="font-semibold text-foreground mb-3">Community</h3>
-            <ul className="space-y-2">
-              {footerLinks.community.map((link) => {
-                const isExternal = link.href.startsWith("http")
-                return (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      target={isExternal ? "_blank" : undefined}
-                      rel={isExternal ? "noopener noreferrer" : undefined}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-
-          {/* Explore (last section — sits at the right of the bottom row) */}
-          <div>
-            <h3 className="font-semibold text-foreground mb-3">Explore</h3>
-            <ul className="space-y-2">
-              {footerLinks.explore.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {footerSections.map((section) => (
+            <FooterColumn
+              key={section.heading}
+              heading={section.heading}
+              links={section.links}
+            />
+          ))}
         </div>
 
         {/* Bottom bar */}
