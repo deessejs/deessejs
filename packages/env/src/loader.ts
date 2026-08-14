@@ -89,6 +89,25 @@ export function loadDotenvSnapshot(
     }
   }
 
+  // Fallback to the live process.env. The deployment platform (Vercel,
+  // CI, the host shell) injects runtime values via process.env that do
+  // not appear in any .env file. Without this fallback, the snapshot
+  // would only see values that exist on disk and would miss the
+  // process-level configuration that production environments rely on
+  // (DATABASE_URL, BETTER_AUTH_SECRET, etc.).
+  //
+  // Precedence (first wins, consistent with Next.js docs):
+  //   1. .env.{NODE_ENV}.local
+  //   2. .env.local
+  //   3. .env.{NODE_ENV}
+  //   4. .env
+  //   5. process.env  ← this fallback
+  for (const [key, value] of Object.entries(process.env)) {
+    if (snapshot[key] === undefined && value !== undefined) {
+      snapshot[key] = value
+    }
+  }
+
   cachedSnapshot = snapshot
   return cachedSnapshot
 }
