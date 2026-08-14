@@ -15,6 +15,7 @@
     "ADR-008-internal-doc-title-max-4-words",
     "ADR-009-test-strategy",
     "ADR-010-cli-public-surface",
-    "ADR-011-hono-for-system-routes"
+    "ADR-011-hono-for-system-routes",
+    "ADR-012-changesets-private-workspace-deps"
   ]
 }
