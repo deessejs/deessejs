@@ -56,10 +56,14 @@ jobs:
       # Without this, `dist/` (the actual bundle) is missing from the
       # published tarball — see incident on 2026-08-03 where @deessejs/cli@1.1.0
       # shipped without its compiled bundle and `npx` couldn't find the bin.
-      # `--filter ...build` excludes private packages (no dist to produce)
-      # and runs each package's `build` script, including transitive deps.
+      # Use Turbo so transitive workspace deps (@workspace/api, @workspace/auth,
+      # @workspace/database, @workspace/env, ...) get built in topological
+      # order before @deessejs/cli. pnpm --filter does not follow transitive
+      # workspace deps; plain `--filter` would surface as a build failure when
+      # tsup tries to resolve a subpath export like @workspace/api/base-path
+      # whose dist/ does not exist yet.
       - name: Build publishable packages
-        run: pnpm --filter "@deessejs/cli" --filter "@workspace/contracts" build
+        run: pnpm turbo build --filter="@deessejs/cli" --force
 
       # 2. Publish via trusted publisher (OIDC).
       # Note: changesets publish doesn't accept --provenance or --access flags.
