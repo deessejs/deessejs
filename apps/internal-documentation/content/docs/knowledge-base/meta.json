@@ -16,6 +16,8 @@
     "orpc/hono-adapter",
     "orpc/middleware",
     "orpc/testing-mocking",
+    "orpc/fetch-hook",
+    "orpc/client-plugins",
     "---standalone---",
     "commander",
     "fumadocs"

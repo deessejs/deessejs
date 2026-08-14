@@ -1,5 +1,6 @@
-import { readPackageVersion } from "./cli-self-version.js"
-import { fetchWithRetry } from "./fetch-with-retry.js"
+import { API_BASE_PATH } from "@workspace/api/base-path"
+
+import { readPackageVersion } from "../api/self-version.js"
 
 export type CliVersionResponse = {
   version: string
@@ -26,25 +27,22 @@ const compareSemver = (a: string, b: string): number => {
 /**
  * Non-blocking version probe.
  *
- * Calls /api/v1/version. If the local CLI version is strictly
- * below minSupported, prints a warning to stderr. The caller does NOT
- * abort — the user might have a workflow that depends on the old
- * version. The warning is loud (yellow, separate line) but not
- * authoritative.
+ * Calls `${API_BASE_PATH}/version` (a system route per ADR-011, served
+ * by Hono direct, not through oRPC). If the local CLI version is
+ * strictly below minSupported, prints a warning to stderr. The caller
+ * does NOT abort; the user might have a workflow that depends on the
+ * old version. The warning is loud but not authoritative.
  *
  * Failures (network, parse, server error) are swallowed silently: the
  * version check is best-effort, never the reason a command fails.
  */
-export const maybeWarnAboutOutdatedCli = async (apiUrl: string): Promise<void> => {
+export const maybeWarnAboutOutdatedCli = async (): Promise<void> => {
   let bodyText: string
   try {
-    // `apiUrl` is the oRPC base (e.g. `https://app.deessejs.com/api/v1/rpc`).
-    // The server version probe lives at `<base-parent>/version`, i.e. we
-    // strip the trailing `/rpc` segment and append `/version`.
-    const versionUrl = apiUrl.replace(/\/rpc$/, "/version")
-    const res = await fetchWithRetry({ apiUrl: versionUrl })
+    const versionUrl = `${API_BASE_PATH}/version`
+    const res = await fetch(versionUrl)
     if (res.status !== 200) return
-    bodyText = res.bodyText
+    bodyText = await res.text()
   } catch {
     return
   }

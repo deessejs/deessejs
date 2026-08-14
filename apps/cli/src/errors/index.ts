@@ -1,19 +1,29 @@
-import { EXIT_ERROR } from "./constants.js"
+import { EXIT_ERROR } from "../constants/exit.js"
 
+// Public surface (per ADR-010 §2): the closed list of error codes
+// that downstream tooling may pattern-match against. Adding a code
+// here is a breaking change.
 export type CliErrorCode =
   | "not_found"
   | "network_error"
+  | "parse_error"
+  | "cli_outdated"
+
+// Internal codes, used only inside the CLI. Not surfaced as a public
+// pattern-match surface. Adding a code here is non-breaking.
+export type InternalCliErrorCode =
   | "git_not_installed"
   | "target_exists"
   | "install_failed"
-  | "parse_error"
   | "internal"
 
+export type AnyCliErrorCode = CliErrorCode | InternalCliErrorCode
+
 export class CliError extends Error {
-  public readonly code: CliErrorCode
+  public readonly code: AnyCliErrorCode
   public readonly hint: string | undefined
 
-  constructor(code: CliErrorCode, message: string, hint?: string) {
+  constructor(code: AnyCliErrorCode, message: string, hint?: string) {
     super(message)
     this.name = "CliError"
     this.code = code
@@ -23,20 +33,15 @@ export class CliError extends Error {
   public exitCode = (): number => EXIT_ERROR
 }
 
-export const notFound = (slug: string, available: string[]): CliError =>
-  new CliError(
-    "not_found",
-    `template "${slug}" not found`,
-    `available templates: ${available.join(", ")}`,
-  )
+// Public factories (re-export the per-code files).
+export { networkError } from "./network.js"
+export { parseError } from "./parse.js"
+export { notFound } from "./not-found.js"
+export { cliOutdated } from "./outdated.js"
 
-export const networkError = (detail: string): CliError =>
-  new CliError(
-    "network_error",
-    `could not reach the templates endpoint`,
-    detail,
-  )
-
+// Internal factories, kept in this file because they are not part of
+// the public surface (ADR-010 §2 "What this rule allows": internal
+// error codes are not surfaced to the user).
 export const gitNotInstalled = (): CliError =>
   new CliError(
     "git_not_installed",
@@ -60,17 +65,6 @@ export const installFailed = (
     `${pm} install exited with code ${code ?? "unknown"}`,
     "check the output above, then run the install command manually inside the cloned directory",
   )
-
-/**
- * Build a parse_error. The default message describes a generic
- * response-shape mismatch; callers that know what went wrong (e.g.
- * server returned an ORPCError with code RATE_LIMITED) pass a
- * custom message that the user will see directly.
- */
-export const parseError = (
-  detail: string,
-  message: string = "templates endpoint returned malformed data",
-): CliError => new CliError("parse_error", message, detail)
 
 export const internal = (detail: string): CliError =>
   new CliError("internal", "unexpected internal error", detail)

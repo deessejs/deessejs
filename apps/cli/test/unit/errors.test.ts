@@ -8,7 +8,7 @@ import {
   notFound,
   parseError,
   targetExists,
-} from "../../src/errors.js"
+} from "../../src/errors/index.js"
 
 describe("CliError", () => {
   it("constructor sets code, message, and hint", () => {

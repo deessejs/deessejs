@@ -1,6 +1,5 @@
 import { Command } from "commander"
 import pc from "picocolors"
-import { DEFAULT_API_URL, USER_AGENT } from "./constants.js"
 import { initCommand } from "./commands/init.js"
 import { listCommand } from "./commands/list.js"
 import { infoCommand } from "./commands/info.js"
@@ -11,7 +10,6 @@ program
   .name("deessejs")
   .description("CLI for the DeesseJS template registry")
   .version("0.1.0")
-  .option("--api-url <url>", "API base URL (the oRPC client appends the procedure path)", process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL)
 
 program.addCommand(listCommand)
 program.addCommand(infoCommand)
@@ -28,5 +26,3 @@ program.parseAsync(process.argv).catch((err) => {
   }
   process.exit(1)
 })
-
-void USER_AGENT // re-exported for downstream consumers if needed
