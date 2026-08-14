@@ -29,7 +29,9 @@
   },
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@t3-oss/env-core": "catalog:",
@@ -40,6 +42,8 @@
     "@types/node": "catalog:",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
-    "typescript": "catalog:"
+    "@workspace/vitest-config": "workspace:*",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
