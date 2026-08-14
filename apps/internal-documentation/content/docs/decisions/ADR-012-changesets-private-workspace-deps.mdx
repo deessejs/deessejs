@@ -111,11 +111,16 @@ keeping the CLI on the senior release pattern.
 
 - `@workspace/contracts` remains `private: true`. It is not
   published to npm. The hotfix in CLI 1.1.1 stands.
-- The CLI's `package.json` keeps `workspace:*` entries for
-  `@workspace/api` and `@workspace/contracts`. The bundle
-  remains self-contained via tsup `noExternal`. Cleaning up
-  the dependency declarations to match the runtime reality is
-  a separate, larger refactor (out of scope here).
+- The CLI's `package.json` keeps the `workspace:*` entry for
+  `@workspace/api`. The dependency serves two roles: type-only
+  imports (`appRouter`) and string constants (`API_BASE_PATH`,
+  `API_RPC_PATH`). The runtime side is inlined by tsup via
+  `noExternal: [/^@workspace\//]`, so the published bundle is
+  self-contained. Restructuring this dep (moving to
+  `devDependencies`, splitting the path constants into a
+  dedicated package, or switching to `peerDependencies`) is a
+  separate refactor that crosses the ADR-005 boundary on path
+  co-location. Out of scope here.
 - The `privatePackages: { tag: false }` half stays. No git
   tags for private packages; only the CLI gets
   `release/v{VERSION}` tags.
@@ -137,3 +142,8 @@ keeping the CLI on the senior release pattern.
   of `06-implementation-specs.md`) is no longer true. This is
   tracked separately; the report's recommendation is
   superseded by this ADR.
+- `apps/cli/package.json` no longer carries the duplicate
+  `@workspace/contracts` entry (it stays in `devDependencies`
+  for typecheck). The package is still consumed at build time
+  via tsup `noExternal`, and via tsc via `devDependencies`.
+  No runtime behavior change.
