@@ -1,9 +1,9 @@
 import { Command } from "commander"
 import ora from "ora"
 import { fetchTemplates } from "../api/index.js"
-import { DEFAULT_API_URL } from "../constants.js"
-import { internal, notFound } from "../errors.js"
-import { printError, printJson, printTemplateInfo } from "../output.js"
+import { DEFAULT_API_URL } from "../constants/api-url.js"
+import { internal, notFound } from "../errors/index.js"
+import { printError, printJson, printTemplateInfo } from "../output/index.js"
 
 export const infoCommand = new Command("info")
   .description("Show details for one template")

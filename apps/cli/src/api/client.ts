@@ -2,7 +2,7 @@ import { createORPCClient, type ClientOptions } from "@orpc/client"
 import { RPCLink } from "@orpc/client/fetch"
 import { TemplatesListResponseV1 } from "@workspace/contracts/v1"
 
-import { fetchWithRetry } from "../fetch-with-retry.js"
+import { fetchWithRetry } from "./retry.js"
 
 /**
  * Typed oRPC client construction for the CLI.

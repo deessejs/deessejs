@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { fetchWithRetry } from "../../src/fetch-with-retry.js"
+import { fetchWithRetry } from "../../src/api/retry.js"
 
 describe("fetchWithRetry", () => {
   beforeEach(() => {

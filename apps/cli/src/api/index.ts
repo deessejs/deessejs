@@ -1,7 +1,7 @@
 import { TemplatesListResponseV1 } from "@workspace/contracts/v1"
 
-import { networkError, parseError } from "../errors.js"
-import { maybeWarnAboutOutdatedCli } from "../version-check.js"
+import { networkError, parseError } from "../errors/index.js"
+import { maybeWarnAboutOutdatedCli } from "../version/check.js"
 import { buildOrpcClient } from "./client.js"
 
 export type Template = TemplatesListResponseV1["templates"][number]

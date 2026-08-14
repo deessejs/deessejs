@@ -7,7 +7,7 @@ import {
   afterEach,
 } from "vitest"
 
-import * as fetchWithRetryModule from "../../src/fetch-with-retry.js"
+import * as fetchWithRetryModule from "../../src/api/retry.js"
 
 /**
  * Tests for the CLI's HTTP layer.
@@ -25,9 +25,9 @@ import * as fetchWithRetryModule from "../../src/fetch-with-retry.js"
  * module mock is local and explicit.
  */
 
-const orpcFetchModule = await import("../../src/api.js")
+const orpcFetchModule = await import("../../src/api/index.js")
 
-vi.mock("../../src/fetch-with-retry.js", () => ({
+vi.mock("../../src/api/retry.js", () => ({
   fetchWithRetry: vi.fn(),
 }))
 

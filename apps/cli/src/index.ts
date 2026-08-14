@@ -1,6 +1,7 @@
 import { Command } from "commander"
 import pc from "picocolors"
-import { DEFAULT_API_URL, USER_AGENT } from "./constants.js"
+import { DEFAULT_API_URL } from "./constants/api-url.js"
+import { USER_AGENT } from "./constants/agent.js"
 import { initCommand } from "./commands/init.js"
 import { listCommand } from "./commands/list.js"
 import { infoCommand } from "./commands/info.js"

@@ -4,14 +4,14 @@ import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
 import { fetchTemplates } from "../api/index.js"
-import { DEFAULT_API_URL } from "../constants.js"
+import { DEFAULT_API_URL } from "../constants/api-url.js"
 import {
   installFailed,
   internal,
   notFound,
   targetExists,
-} from "../errors.js"
-import { printError, printJson } from "../output.js"
+} from "../errors/index.js"
+import { printError, printJson } from "../output/index.js"
 import { cloneRepo } from "../utils/git.js"
 import {
   detectPackageManager,

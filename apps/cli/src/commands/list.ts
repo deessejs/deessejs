@@ -2,9 +2,9 @@ import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
 import { fetchTemplates } from "../api/index.js"
-import { DEFAULT_API_URL } from "../constants.js"
-import { internal } from "../errors.js"
-import { printError, printJson, printTemplatesTable } from "../output.js"
+import { DEFAULT_API_URL } from "../constants/api-url.js"
+import { internal } from "../errors/index.js"
+import { printError, printJson, printTemplatesTable } from "../output/index.js"
 
 export const listCommand = new Command("list")
   .description("List available templates")

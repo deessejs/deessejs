@@ -1,4 +1,4 @@
-import { USER_AGENT } from "./constants.js"
+import { USER_AGENT } from "../constants/agent.js"
 
 export type FetchRetryOptions = {
   apiUrl: string

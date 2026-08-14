@@ -1,5 +1,5 @@
-import { readPackageVersion } from "./cli-self-version.js"
-import { fetchWithRetry } from "./fetch-with-retry.js"
+import { readPackageVersion } from "../api/self-version.js"
+import { fetchWithRetry } from "../api/retry.js"
 
 export type CliVersionResponse = {
   version: string

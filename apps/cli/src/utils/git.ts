@@ -1,5 +1,5 @@
 import { spawn } from "./spawn.js"
-import { gitNotInstalled } from "../errors.js"
+import { gitNotInstalled } from "../errors/index.js"
 
 export type CloneResult = {
   ref: string
