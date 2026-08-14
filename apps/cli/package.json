@@ -27,14 +27,14 @@
     "../../LICENSE"
   ],
   "scripts": {
-    "prebuild": "pnpm --filter @workspace/contracts build",
+    "prebuild": "pnpm --filter @workspace/contracts --filter @workspace/api build",
     "build": "tsup",
-    "predev": "pnpm --filter @workspace/contracts build",
+    "predev": "pnpm --filter @workspace/contracts --filter @workspace/api build",
     "dev": "tsup --watch",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "typecheck": "tsc --noEmit",
-    "pretest": "pnpm --filter @workspace/contracts build && tsup",
+    "pretest": "pnpm --filter @workspace/contracts --filter @workspace/api build && tsup",
     "test": "vitest run",
     "test:watch": "vitest",
     "start": "node ./dist/index.js"
