@@ -52,6 +52,16 @@ jobs:
         run: pnpm changeset version
       - run: pnpm install --frozen-lockfile
 
+      # 1a. Push the changesets commit back to main. Changesets (with
+      # `commit: true` in .changeset/config.json) creates the version-bump
+      # commit locally; without this push, the commit sits only in the
+      # runner's working tree. The next release would then try to re-bump
+      # and double-publish, and the consumed .changeset/ files would never
+      # reach origin/main — leaving the repo with a stale .changeset/ and
+      # a published npm version that doesn't exist on the main branch.
+      - name: Push version bump
+        run: git push origin HEAD:main
+
       # 1b. Build all packages that produce publishable artifacts.
       # Without this, `dist/` (the actual bundle) is missing from the
       # published tarball — see incident on 2026-08-03 where @deessejs/cli@1.1.0

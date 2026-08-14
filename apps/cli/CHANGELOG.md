@@ -1,5 +1,32 @@
 # @deessejs/cli
 
+## 2.0.1
+
+### Patch Changes
+
+- 3c707fa: Mark `@workspace/contracts` as private so the release workflow stops trying to publish it.
+
+  What's in this patch:
+
+  - `packages/contracts/package.json` reverts to `"private": true`. Earlier attempts at the same fix marked it `private: false` to satisfy Changesets' versioned-dependency check (because `@deessejs/cli` used to list it as a runtime dependency). With that dependency moved to `devDependencies` (PR #20), Changesets no longer needs the workaround and respects `private: true` as the canonical signal for 'never publish this package'.
+  - The previous attempts to fix this resulted in `pnpm changeset publish` trying to `PUT @workspace/contracts@0.0.1` to the public npm registry, which 404'd. With `private: true`, Changesets skips the package entirely on publish.
+  - `apps/cli/src/cli-self-version.ts` is bumped from `1.1.0` to `1.1.1` to match the new `apps/cli/package.json` version (kept in sync by the drift check test).
+
+  After this release, `npx @deessejs/cli@latest --version` should return `1.1.1` and the install should complete without any 404.
+
+- 5d6a790: Unblock the release workflow. Changesets has been failing at `pnpm changeset version` since the oRPC migration added `@workspace/api` and `@workspace/contracts` as dependencies of the published CLI; Changesets refuses to bump a package that depends on a skipped package.
+
+  What's in this patch:
+
+  - `.changeset/config.json` flips `privatePackages` from `{ version: false, tag: false }` to `{ version: true, tag: false }`. Private workspace packages are now versioned (so the dependency graph stays consistent) but never tagged or published. Implements ADR-012.
+  - `apps/cli/package.json` drops the duplicate `@workspace/contracts` entry from `dependencies`. The package stays in `devDependencies` for typecheck; runtime code is still inlined by tsup via `noExternal: [/^@workspace\//]`.
+
+  No behavior change at runtime. The next release workflow run after this lands on `main` will bump the CLI to `2.0.1` and publish it on npm.
+
+- 6762ae0: Reposition discoverability metadata: replace the `saas-template` npm keyword with `deessejs-main-app` to match the repo's new identity. No behavior change, no API change, no runtime impact — search-engine metadata only.
+
+  This is one of several commits shipping under the `chore(brand):` theme to reposition this repo as the DeesseJS main app (see `docs/engineering/plans/deessejs-main-app-repositioning.md`). The keyword change is isolated to `apps/cli/package.json`; the package name (`@deessejs/cli`) and `repository.url` were already aligned with the new identity.
+
 ## 1.1.1
 
 ### Patch Changes
