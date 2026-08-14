@@ -42,6 +42,8 @@
     "drizzle-kit": "catalog:",
     "eslint": "catalog:",
     "pg-mem": "^3.0.0",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@workspace/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:"
   }
 }

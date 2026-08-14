@@ -10,14 +10,14 @@
       "default": "./dist/index.js"
     },
     "./router": {
-      "types": "./dist/router/index.d.ts",
-      "import": "./dist/router/index.js",
-      "default": "./dist/router/index.js"
+      "types": "./dist/orpc/index.d.ts",
+      "import": "./dist/orpc/index.js",
+      "default": "./dist/orpc/index.js"
     },
     "./base-path": {
-      "types": "./dist/base-path.d.ts",
-      "import": "./dist/base-path.js",
-      "default": "./dist/base-path.js"
+      "types": "./dist/constants/base-path.d.ts",
+      "import": "./dist/constants/base-path.js",
+      "default": "./dist/constants/base-path.js"
     }
   },
   "types": "./dist/index.d.ts",
@@ -48,6 +48,8 @@
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@workspace/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:"
   }
 }

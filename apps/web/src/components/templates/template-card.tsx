@@ -4,7 +4,7 @@ import { Card } from "@workspace/ui/components/card"
 import { Badge } from "@workspace/ui/components/badge"
 import { cn } from "@workspace/ui/lib/utils"
 
-import type { Template } from "@/lib/templates-api"
+import type { TemplateV1 as Template } from "@workspace/contracts/v1"
 import { TemplateLabels } from "./template-labels"
 
 export type TemplateCardProps = {

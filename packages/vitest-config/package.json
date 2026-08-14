@@ -1,0 +1,23 @@
+{
+  "name": "@workspace/vitest-config",
+  "version": "0.0.0",
+  "private": true,
+  "license": "PROPRIETARY",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
+  }
+}

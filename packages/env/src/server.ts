@@ -1,97 +1,144 @@
-import { loadRepoEnv } from "./loader.js"
-import { serverSchema, type ServerEnv } from "./schema.js"
+import { createEnv } from "@t3-oss/env-core"
+
+import { loadDotenvSnapshot, loadRepoEnv, type EnvSnapshot } from "./loader.js"
+import { clientSchema, serverInputShape, type ServerEnv } from "./schema.js"
 
 /**
- * Load .env files into process.env. Idempotent.
+ * Mirror the snapshot into `process.env` so legacy consumers
+ * (drizzle.config.ts, scripts, `require("@workspace/env/server")` in
+ * `packages/database/src/client.ts`) keep working. The shim is the only
+ * place where `process.env` is mutated by this package.
+ *
+ * Idempotent. Safe to call at module top-level.
  */
 loadRepoEnv()
 
 /**
- * Cached validation result. Validated lazily on first access, not at import time.
- * This allows packages to build without requiring env vars, and fail at runtime
- * (startup) instead when env vars are missing.
+ * Build the validated server env via `@t3-oss/env-core`'s `createEnv`.
+ *
+ * `createEnv` validates the combined schema synchronously at the moment
+ * it is called (see `packages/core/src/index.ts` ~line 360: validate()
+ * runs before the Proxy is built). We wrap the call in `getServerEnv()`
+ * so the import of `@workspace/env/server` stays side-effect free:
+ * tests, scripts, and `setupFiles: ["@workspace/env/server"]` can import
+ * without forcing a validation.
+ *
+ * The snapshot passed as `runtimeEnv` comes from
+ * `loadDotenvSnapshot()` and is mutated only by `createEnv`'s own
+ * `emptyStringAsUndefined: true` flag. The live `process.env` is not
+ * touched from here.
+ *
+ * The first caller pays the validation cost; subsequent callers read the
+ * memoised result. The Proxy shape preserves the existing
+ * `serverEnv.DATABASE_URL` access pattern across the codebase (13
+ * callers).
  */
 let _cached: ServerEnv | null = null
 
-/**
- * Validate server env lazily on first access.
- * Fail fast with a clear, actionable error message.
- */
-function validateServerEnv(): Readonly<ServerEnv> {
+function getServerEnv(): Readonly<ServerEnv> {
   if (_cached) return _cached
 
-  const parsed = serverSchema.safeParse(process.env)
-  if (!parsed.success) {
-    // eslint-disable-next-line no-console
-    console.error("\n[env] Invalid environment variables:")
-    for (const issue of parsed.error.issues) {
-      // eslint-disable-next-line no-console
-      console.error(`  - ${issue.path.join(".")}: ${issue.message}`)
-    }
-    // eslint-disable-next-line no-console
-    console.error(
-      "\nCopy .env.example to .env at the repo root and fill in the values.\n",
-    )
-    process.exit(1)
-  }
+  const snapshot = loadDotenvSnapshot() as EnvSnapshot
 
-  _cached = Object.freeze({
-    ...parsed.data,
-    // Resolve alias: BETTER_AUTH_SECRET > AUTH_SECRET.
-    // When both are undefined, let the consumer (better-auth) handle the
-    // validation — it throws in production and uses a dev default in test/dev.
-    BETTER_AUTH_SECRET:
-      parsed.data.BETTER_AUTH_SECRET ?? parsed.data.AUTH_SECRET ?? undefined,
-    TEST_DATABASE_URL:
-      parsed.data.TEST_DATABASE_URL ?? parsed.data.DATABASE_URL,
+  const env = createEnv({
+    server: serverInputShape,
+    client: clientSchema.shape,
+    clientPrefix: "NEXT_PUBLIC_",
+    runtimeEnv: snapshot,
+    emptyStringAsUndefined: true,
+    onValidationError: (issues) => {
+      // eslint-disable-next-line no-console
+      console.error("\n[env] Invalid environment variables:")
+      for (const issue of issues) {
+        // eslint-disable-next-line no-console
+        console.error(
+          `  - ${issue.path?.join(".") ?? "(root)"}: ${issue.message}`
+        )
+      }
+      // eslint-disable-next-line no-console
+      console.error(
+        "\nCopy .env.example to .env at the repo root and fill in the values.\n"
+      )
+      throw new Error("Invalid environment variables")
+    },
   })
 
+  // Materialise the Proxy into a frozen plain object. The Proxy
+  // returned by createEnv enforces the server/client boundary on each
+  // get; we freeze the snapshot once and serve it from the outer Proxy
+  // below. Aliases (AUTH_SECRET -> BETTER_AUTH_SECRET,
+  // TEST_DATABASE_URL -> DATABASE_URL) are resolved at this boundary
+  // so call sites see only the canonical name.
+  const materialised = Object.freeze({
+    NODE_ENV: env.NODE_ENV,
+    DATABASE_URL: env.DATABASE_URL,
+    TEST_DATABASE_URL: env.TEST_DATABASE_URL ?? env.DATABASE_URL,
+    BETTER_AUTH_URL: env.BETTER_AUTH_URL,
+    BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET ?? env.AUTH_SECRET,
+    ALLOWED_ORIGINS: env.ALLOWED_ORIGINS,
+    RESEND_API_KEY: env.RESEND_API_KEY,
+    RESEND_FROM_EMAIL: env.RESEND_FROM_EMAIL,
+    RESEND_FROM_NAME: env.RESEND_FROM_NAME,
+    MAIL_TRANSPORT: env.MAIL_TRANSPORT,
+    RATE_LIMIT_PER_MINUTE: env.RATE_LIMIT_PER_MINUTE,
+    GITHUB_TOKEN: env.GITHUB_TOKEN,
+  } as ServerEnv) as Readonly<ServerEnv>
+
+  // Runtime assertion: no NEXT_PUBLIC_* may leak through the server face.
+  // The previous hand-rolled Proxy trap list ran on every access; this
+  // fires once at materialisation. Compile-time catches it via the
+  // schema's clientPrefix contract.
+  for (const key of Object.keys(materialised)) {
+    if (key.startsWith("NEXT_PUBLIC_")) {
+      throw new Error(
+        `[env] serverEnv exposes NEXT_PUBLIC_* key: ${key}. ` +
+          `NEXT_PUBLIC_* belongs to clientEnv, not serverEnv.`
+      )
+    }
+  }
+
+  _cached = materialised
   return _cached
 }
 
 /**
- * Resolved, frozen server env object. Aliases (AUTH_SECRET -> BETTER_AUTH_SECRET)
- * and fallbacks (TEST_DATABASE_URL -> DATABASE_URL) are resolved at this
- * boundary so call sites stay simple.
+ * Lazy server env. Validation fires on first property access, not at
+ * import time. This preserves the existing contract used by:
  *
- * Validation is lazy — only happens on first property access, not at import time.
- * This allows builds and tests to run without env vars, failing at startup
- * instead.
+ *   - vitest config (`setupFiles: ["@workspace/env/server"]`)
+ *   - drizzle-kit (`drizzle.config.ts`)
+ *   - the `require("@workspace/env/server")` path in
+ *     `packages/database/src/client.ts`
+ *   - the side-effect-only `import "@workspace/env/server"` form
  *
- * Runtime guard: must never be bundled to the browser. The bundler can tree-
- * shake the import if unused, but if a misuse leaks this module into a client
- * bundle, fail loudly at the first reference.
+ * Migration entry point for callers that want explicit control:
+ *   import { getServerEnv } from "@workspace/env/server"
+ *   const env = getServerEnv()
  */
-export const serverEnv: Readonly<ServerEnv> = new Proxy({} as Readonly<ServerEnv>, {
-  get(_target, prop) {
-    if (prop === "toJSON") return undefined
-    if (prop === "then") return undefined
-    if (prop === "Symbol(\"[object Object]\")") return undefined
-    if (prop === "getPrototypeOf") return undefined
-    if (prop === "propertyIsEnumerable") return undefined
+export const serverEnv: Readonly<ServerEnv> = new Proxy(
+  {} as Readonly<ServerEnv>,
+  {
+    get(_target, prop) {
+      if (typeof prop === "symbol") return undefined
+      const env = getServerEnv()
+      const value = (env as unknown as Record<string, unknown>)[prop]
+      return value === undefined ? undefined : value
+    },
+    has(_target, prop) {
+      if (typeof prop === "symbol") return false
+      return prop in (getServerEnv() as unknown as Record<string, unknown>)
+    },
+    ownKeys() {
+      return Reflect.ownKeys(
+        getServerEnv() as unknown as Record<string, unknown>
+      )
+    },
+    getOwnPropertyDescriptor(_target, prop) {
+      const env = getServerEnv() as unknown as Record<string, unknown>
+      if (typeof prop === "symbol") return undefined
+      return Object.getOwnPropertyDescriptor(env, prop)
+    },
+  }
+)
 
-    // Runtime guard: detect browser bundle leaks
-    if (prop === "toString" || prop === "valueOf" || typeof prop === "symbol") {
-      const value = validateServerEnv()
-      const descriptor = Object.getOwnPropertyDescriptor(value, prop as string)
-      if (descriptor?.value) return descriptor.value
-    }
-
-    const value = validateServerEnv()
-    return (value as Record<string, unknown>)[prop as string]
-  },
-  has(_target, prop) {
-    const value = validateServerEnv()
-    return prop in (value as Record<string, unknown>)
-  },
-  ownKeys() {
-    return Reflect.ownKeys(validateServerEnv() as Record<string, unknown>)
-  },
-  getOwnPropertyDescriptor(_target, prop) {
-    const value = validateServerEnv()
-    return Object.getOwnPropertyDescriptor(
-      value as Record<string, unknown>,
-      prop,
-    )
-  },
-})
+export { getServerEnv }

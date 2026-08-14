@@ -1,6 +1,6 @@
 {
   "name": "@deessejs/cli",
-  "version": "1.1.1",
+  "version": "2.0.0",
   "description": "CLI for the DeesseJS template registry.",
   "type": "module",
   "license": "MIT",
@@ -42,6 +42,10 @@
   "dependencies": {
     "@deessejs/errors": "^1.1.1",
     "@deessejs/fp": "^1.0.0",
+    "@orpc/client": "catalog:",
+    "@orpc/server": "catalog:",
+    "@workspace/api": "workspace:*",
+    "@workspace/contracts": "workspace:*",
     "commander": "^12.1.0",
     "ora": "^8.1.1",
     "picocolors": "^1.1.1"

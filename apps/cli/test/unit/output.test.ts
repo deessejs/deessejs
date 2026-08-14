@@ -4,9 +4,9 @@ import {
   printError,
   printTemplatesTable,
   printTemplateInfo,
-} from "../../src/output.js"
-import type { Template } from "../../src/api.js"
-import { CliError } from "../../src/errors.js"
+} from "../../src/output/index.js"
+import type { Template } from "../../src/api/index.js"
+import { CliError } from "../../src/errors/index.js"
 
 const sampleTemplate: Template = {
   slug: "saas-starter",

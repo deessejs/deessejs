@@ -1,0 +1,122 @@
+---
+title: 'Hono middleware'
+description: 'A study of Hono''s middleware patterns. Built on'
+---
+
+# Hono middleware
+
+A study of Hono's middleware patterns. Built on
+[hono.dev/docs/guides/middleware](https://hono.dev/docs/guides/middleware)
+, the upstream page is the source of truth when the lib
+changes; this entry exists to show the shape of the
+integration and the discipline that orders the middleware
+chain.
+
+## What a middleware is
+
+A Hono middleware is `async (c, next) => ...` that runs
+**before** and **after** a handler. It must `await next()`
+unless it returns a `Response` to short-circuit the chain.
+
+```ts
+app.use(async (c, next) => {
+  // before handler
+  await next()
+  // after handler
+})
+```
+
+Three registration shapes:
+
+- `app.use(mw())` , every method, every path.
+- `app.use('/posts/*', cors())` , path-scoped.
+- `app.post('/posts/*', basicAuth())` , method + path-scoped.
+
+## Execution order
+
+Order is determined by registration order, and the
+middleware runs as nested `await next()`:
+
+```
+mw1 start
+  mw2 start
+    mw3 start
+      handler
+    mw3 end
+  mw2 end
+mw1 end
+```
+
+A throw anywhere in the chain is caught by `api.onError(...)`
+if one is registered. The `await next()` in upstream
+middleware never throws.
+
+## The error handler
+
+`app.onError(handler)` is the global catch. It runs after
+**any** middleware or handler throws. It is not strictly a
+middleware , it is registered with `onError`, not `use` . 
+but it lives in the same chain conceptually.
+
+```ts
+api.onError(onApiError)
+```
+
+The handler must produce a `Response`. The convention is to
+funnel every error path into the same wire shape so the
+typed client decodes every error the same way, including
+Hono-level errors that never reached the procedure.
+
+## Categories of middleware in a Hono app
+
+The middlewares an app actually mounts fall into seven
+categories, with a recommended order:
+
+| Category | Purpose | Where it runs |
+|---|---|---|
+| Error handler | Funnels every error into the wire shape | `api.onError(...)` |
+| Request ID | Mints a per-request correlation ID, sets a context variable, echoes the header | `app.use("*", ...)` |
+| Session | Calls the auth lib, sets the user/session context variables | `app.use("*", ...)` |
+| CORS | Headers for cross-origin requests | `app.use("*", ...)` |
+| Security headers | HSTS, nosniff, CSP defaults | `app.use("*", ...)` |
+| Logger | Request/response logging | `app.use("*", ...)` |
+| Rate limit | Per-IP or per-route throttling | Per-route, when needed |
+| ETag | Weak ETag handler for cacheable routes | Per-route, when needed |
+
+The composition order in the composer:
+
+```ts
+api.onError(onApiError)            // catch-all, runs first
+api.use("*", requestId())          // sets c.var.requestId
+api.use("*", secureHeaders())      // cheap hardening
+api.use("*", cors({ ... }))        // CORS, before routes
+api.use("*", honoLogger())         // logs request, after requestId
+api.use("*", session())            // populates c.var.user/session
+```
+
+Order matters: `onError` before any middleware that might
+throw; `requestId` before anything that logs; `session`
+before any route that reads the user/session context. The
+current order is correct.
+
+## `createMiddleware` for reusable middleware
+
+Hono's `createMiddleware` factory is the recommended way
+to extract middleware with type safety. The inline form
+(a plain function passed to `app.use`) is fine when the
+`c` parameter is already typed by Hono's inference from
+the Hono instance. The `createMiddleware<Env>(...)` form
+becomes necessary when a middleware needs an explicit
+`Env` that differs from the app's, or when the middleware
+is exported for reuse across apps.
+
+## What this entry is not
+
+This is a knowledge-base entry, not an ADR. It documents
+how Hono middleware patterns work in the current version of
+the lib, and the shape of the integration. The
+**decisions** (which patterns we picked and why) live in
+`docs/engineering/architecture/decisions/` and
+`docs/engineering/architecture/rules/`. When a future
+change conflicts with this entry, the entry is wrong, not
+the code.

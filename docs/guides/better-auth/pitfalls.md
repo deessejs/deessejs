@@ -49,7 +49,7 @@ Setting `emailAndPassword.requireEmailVerification: true` **without** also setti
 
 ## 4. Auth Middleware Throws Plain `Error`, Not `ORPCError`
 
-In `packages/api/src/router/middlewares/auth.ts`:
+In `packages/api/src/router/auth-middleware.ts`:
 
 ```ts
 throw new Error("Authentication required")

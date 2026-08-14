@@ -1,40 +1,47 @@
+import { createEnv } from "@t3-oss/env-core"
+
 import { clientSchema, type ClientEnv } from "./schema.js"
 
 /**
- * Client-safe env. Only NEXT_PUBLIC_* values are referenced, so the bundler
- * inlines them at build time. No runtime guard needed (browser is the only
- * runtime that imports this).
+ * Client-safe env. Only NEXT_PUBLIC_* values, safe to bundle to the
+ * browser. Values are inlined at build time by the bundler (Turbopack
+ * for Next.js, webpack, etc.) — no runtime loader is needed here.
  *
- * Validation is soft: if values are missing, we fall back to the schema
- * defaults so the client still renders. A warn is emitted once at module load.
+ * This file MUST NOT import `loader.ts`. The loader reads `node:fs`,
+ * which Turbopack cannot bundle into a client chunk. The conditional
+ * `exports` map in `package.json` keeps `loader.ts` server-only:
+ *
+ *   "@workspace/env/server": { "node": "./dist/server.js", ... }
+ *   "@workspace/env/client": { "browser": "./dist/client.js", ... }
+ *
+ * Importing `@workspace/env/client` from a Client Component therefore
+ * never reaches the loader. The validator runs on `process.env`
+ * directly: in the browser, the values are already inlined by the
+ * bundler; in a Node target (e.g. SSR), `process.env.NEXT_PUBLIC_*`
+ * is the source of truth.
  */
-const parsed = clientSchema.safeParse({
-  NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
-  NEXT_PUBLIC_APP_DESCRIPTION: process.env.NEXT_PUBLIC_APP_DESCRIPTION,
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+
+const env = createEnv({
+  client: clientSchema.shape,
+  clientPrefix: "NEXT_PUBLIC_",
+  // `runtimeEnvStrict` enforces (at compile time) that every key
+  // declared in `clientSchema` is listed here. Adding a NEXT_PUBLIC_*
+  // to the schema without listing it here is a TypeScript build error.
+  runtimeEnvStrict: {
+    NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
+    NEXT_PUBLIC_APP_DESCRIPTION: process.env.NEXT_PUBLIC_APP_DESCRIPTION,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  },
+  emptyStringAsUndefined: true,
 })
 
-if (
-  !parsed.success &&
-  typeof (globalThis as { window?: unknown }).window === "undefined"
-) {
-  // eslint-disable-next-line no-console
-  console.warn(
-    "[env] Client env validation warnings (using defaults):",
-    parsed.error.issues,
-  )
-}
-
-export const clientEnv: Readonly<ClientEnv> = Object.freeze(
-  parsed.success
-    ? parsed.data
-    : {
-        NEXT_PUBLIC_APP_NAME:
-          process.env.NEXT_PUBLIC_APP_NAME ?? "DeesseJS",
-        NEXT_PUBLIC_APP_DESCRIPTION:
-          process.env.NEXT_PUBLIC_APP_DESCRIPTION ??
-          "SaaS application built with Next.js and shared UI components",
-        NEXT_PUBLIC_APP_URL:
-          process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-      },
-)
+/**
+ * Eager-validated client env. Validation fires at module load. The
+ * Proxy returned by `createEnv` enforces the client/server boundary
+ * on every property access (`onInvalidAccess`).
+ */
+export const clientEnv: Readonly<ClientEnv> = Object.freeze({
+  NEXT_PUBLIC_APP_NAME: env.NEXT_PUBLIC_APP_NAME,
+  NEXT_PUBLIC_APP_DESCRIPTION: env.NEXT_PUBLIC_APP_DESCRIPTION,
+  NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
+} as ClientEnv) as Readonly<ClientEnv>
