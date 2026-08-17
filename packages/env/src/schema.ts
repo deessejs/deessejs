@@ -90,6 +90,16 @@ export const serverInputShape = {
   // hits GitHub anonymously (60 req/h). Set in production to lift
   // the rate limit to 5000 req/h. See packages/api/src/core/templates/enrich.ts.
   GITHUB_TOKEN: z.string().optional(),
+
+  // GitHub OAuth credentials (optional). Used by better-auth's
+  // `socialProviders.github` block in packages/auth/src/auth.ts to
+  // light up "Continue with GitHub". CI / Vitest run without these
+  // (mirrors BETTER_AUTH_SECRET's optional treatment). The required
+  // `user:email` scope is configured on the OAuth App side
+  // (Permissions > Account Permissions > Email Addresses > Read-only),
+  // NOT here. See ADR-013.
+  GITHUB_CLIENT_ID: z.string().min(1).optional(),
+  GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
 }
 
 export const serverSchema = z.object(serverInputShape).superRefine(

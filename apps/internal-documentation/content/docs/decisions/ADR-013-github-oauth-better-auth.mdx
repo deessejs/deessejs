@@ -1,0 +1,580 @@
+---
+title: 'GitHub OAuth via better-auth'
+description: 'Server config and UI rule to make GitHub sign-in work end-to-end.'
+---
+
+# ADR-013: GitHub OAuth sign-in via better-auth
+
+## Status
+
+Proposed (2026-08). Under review on `chore/adr-013-github-oauth-better-auth`.
+
+## Context
+
+`packages/auth/` instantiates `betterAuth({...})` with
+`emailAndPassword`, `emailVerification`, `session`, and
+`plugins: [nextCookies()]`. It does **not** declare a
+`socialProviders` block. The env contract at
+`packages/env/src/server.ts` carries `BETTER_AUTH_URL`,
+`BETTER_AUTH_SECRET`, and a long tail of Resend, mail,
+and rate-limit keys, but no OAuth credentials. The only
+`GITHUB_*` entry that exists is `GITHUB_TOKEN`, which feeds
+the templates registry REST client in `packages/api/`, it
+is not an OAuth client id.
+
+Despite the missing server config, `apps/app/` ships a
+fully built GitHub sign-in surface:
+
+- `apps/app/components/auth/oauth-buttons.tsx` renders
+  "Continue with GitHub" and "Continue with Google" on
+  both the login and the signup page, behind a `Separator`
+  with "Or continue with" label. The handler calls
+  `authClient.signIn.social({ provider: "github", callbackURL })`
+  with a `safeRedirect` guard against CVE-2025-27143.
+- `apps/app/components/settings/connected-accounts-list.tsx`
+  at the route `apps/app/app/(protected)/settings/connections/page.tsx`
+  exposes `authClient.listAccounts()`,
+  `authClient.linkSocial({ provider })`, and
+  `authClient.unlinkAccount(...)` for both `google` and
+  `github`, with a confirmation `Dialog` for unlink.
+- `apps/app/components/sidebars/nav-user.tsx`, mounted in
+  the `(protected)` layout's `AppSidebar`, sources its
+  avatar from `authClient.useSession()`. The branch
+  `if (image) return image` at line 50 already prefers
+  `user.image` over a third-party fallback (the hard-coded
+  Vercel `dpl_AS99V7XmtTzE4xdb72tYFtNTVV48` deployment
+  token). The shape is ready for an OAuth-fed avatar.
+
+Clicking "Continue with GitHub" today hits a provider that
+is not configured. better-auth has nothing to redirect to.
+The UI lies. Every GitHub button in the product is currently
+a dead path that bounces the user back with an opaque error
+from the client.
+
+The OAuth callback, whenever it lands, will arrive on
+`/api/v1/auth/*`, which ADR-011 pins as a system route in
+`mountHttp`, delegated to Better Auth. The new plugin
+does not change the mount point; it changes what Better
+Auth does when the callback fires.
+
+The Drizzle adapter is already in place via the
+`drizzleAdapter` from `better-auth/adapters/drizzle`. The
+`account`, `session`, `user`, and `verification` tables
+exist under `packages/database/src/schema/auth.ts` with
+the columns better-auth's social sign-in writes to
+(`provider`, `providerAccountId`, `accessToken`,
+`refreshToken`, etc.). The schema is ready.
+
+What is missing is the load-bearing wiring: env vars,
+auth config, and the choices around the OAuth flow that
+have user-visible consequences (linking policy, avatar
+behaviour, route protection for OAuth-only users).
+
+## Decision
+
+Add GitHub OAuth sign-in to `packages/auth/` through
+better-auth's built-in `socialProviders.github` block,
+backed by server-only env vars in `packages/env/`. The
+scope of this ADR is **GitHub only**. Google, if and when
+it lands, is a separate ADR.
+
+### Server config
+
+`packages/auth/src/auth.ts` adds, alongside the existing
+`emailAndPassword`, `emailVerification`, `session`, and
+`plugins`:
+
+```ts
+socialProviders: {
+    github: {
+        clientId: serverEnv.GITHUB_CLIENT_ID!,
+        clientSecret: serverEnv.GITHUB_CLIENT_SECRET!,
+    },
+},
+```
+
+The values are read through the validated `serverEnv`
+proxy from `@workspace/env/server` (the same source
+already feeding `baseURL` and `secret` at
+`packages/auth/src/auth.ts:23-24`), not through raw
+`process.env`. The `!` is acceptable here because the
+`socialProviders` block is read by better-auth only at
+request time, and the env-validated build would refuse to
+boot when the keys are missing (per the
+`.superRefine` chain at `packages/env/src/schema.ts:95-134`).
+
+No `scope` field is set on the better-auth side. The
+required `user:email` scope is configured on the GitHub
+OAuth App side (Permissions > Account Permissions > Email
+Addresses > Read-only), per the GitHub plugin's primary
+doc. Adding `scope` here would duplicate upstream and
+drift.
+
+### Env contract
+
+`packages/env/src/schema.ts` adds two server-side
+optional fields:
+
+- `GITHUB_CLIENT_ID: z.string().min(1).optional()`
+- `GITHUB_CLIENT_SECRET: z.string().min(1).optional()`
+
+Optional, not required, because the rest of the test
+suite (Vitest, Drizzle migration tests, integration
+suites that sign in via email/password) must continue to
+run without an OAuth credential on disk. The precedent is
+`BETTER_AUTH_SECRET`'s own optional treatment at
+`schema.ts:20-23`. `packages/env/src/server.ts` exposes
+both fields through the `materialised` block, mirroring
+the `Resend*` pair.
+
+`GITHUB_TOKEN` (the templates-registry decoy) stays
+unchanged. Renaming it would touch the templates API
+surface and break the CLI contract per ADR-004.
+
+### Account-linking policy
+
+`packages/auth/src/auth.ts` sets `account.accountLinking`
+explicitly:
+
+- `enabled: true` (default).
+- `trustedProviders: ["github"]`.
+- `allowDifferentEmails: false`.
+- `updateUserInfoOnLink: true`.
+
+Rationale, each line:
+
+- `enabled: true` keeps auto-link-by-email on the
+  pairing GitHub can prove (verified email or trusted
+  provider). Default; pinning it here removes ambiguity.
+- `trustedProviders: ["github"]` is the documented
+  override that lets a same-email GitHub sign-in auto-link
+  to an existing email/password user without the explicit
+  `linkSocial` call. The risk this carries
+  (account-takeover via email-confirmed-then-account-claimed)
+  is acceptable here because the existing-user email is
+  verified at signup per `emailVerification` and the
+  trade-off matches better-auth's documented "Use this
+  with caution" guidance for trusted providers.
+- `allowDifferentEmails: false` keeps the door shut on
+  the case where a user owns both `a@x.com` and
+  `b@x.com` across two providers and wants them merged.
+  Merge is a deliberate user action (`linkSocial`) only.
+- `updateUserInfoOnLink: true` copies the GitHub profile
+  fields (`name`, `image`, any `mapProfileToUser` extras)
+  onto the local `user` row on sign-in. This is what
+  makes the dashboard avatar pick up the GitHub avatar
+  automatically. The local `email` and `emailVerified`
+  are never changed by the link, per the better-auth
+  contract.
+
+### Avatar wiring
+
+`apps/app/components/sidebars/nav-user.tsx` already
+reads `user.image` and prefers it over the Vercel
+fallback. No change required. This ADR does not migrate
+the underlying `<AvatarImage>` (a Radix `img`) to
+`next/image`; that migration needs
+`images.remotePatterns` for
+`avatars.githubusercontent.com` and is a separate
+refactor.
+
+### Route protection
+
+`apps/app/proxy.ts` (the Next.js 16 proxy that replaced
+`middleware.ts`) gates `(protected)` routes on
+`session.user.emailVerified`. GitHub returns a verified
+email as long as the OAuth App has the `user:email` scope
+(granted at OAuth App setup). The gate therefore passes
+for OAuth users without code change. If, in the future,
+GitHub's email verification semantics change, the proxy
+is the single place to revisit.
+
+### UI contract
+
+`apps/app/components/auth/oauth-buttons.tsx` continues to
+render one button per provider regardless of whether the
+provider is configured. Hiding a button when the server
+is unconfigured is tempting but creates two sources of
+truth (env presence + render decision) and a UI that
+changes shape between local and prod. Instead, the
+provider's UX is unconditional and the test for
+"is `github` configured" lives server-side, in
+`packages/auth/src/auth.ts`, where the missing env var
+fails loud and on first call.
+
+### Settings page
+
+No change to
+`apps/app/components/settings/connected-accounts-list.tsx`
+or its route. The component already supports `github` in
+its `PROVIDER_INFO` map, already calls
+`authClient.linkSocial` and `authClient.unlinkAccount`,
+and already renders a per-provider row that the new
+plugin populates. This ADR inherits the page; it does
+not own it.
+
+## Consequences
+
+- Clicking "Continue with GitHub" on
+  `apps/app/app/(unprotected)/(auth)/login/page.tsx`
+  and `.../signup/page.tsx` reaches a configured
+  provider and returns an authenticated session. The
+  redirect target is the existing `callbackURL`
+  (default `/home`, overridable via `?redirect=`).
+- The dashboard avatar in
+  `apps/app/components/sidebars/nav-user.tsx`
+  reflects the GitHub avatar for users who signed in
+  with GitHub, on every `(protected)` page that
+  mounts `AppSidebar`. No avatar-component edit
+  required.
+- A user who first signs up with email/password and
+  later clicks "Connect GitHub" on
+  `/settings/connections` reuses the same `user`
+  row. Their `name` and `image` are refreshed from
+  GitHub on the next sign-in via
+  `updateUserInfoOnLink: true`.
+- A user who first signs up with GitHub and later
+  sets a password at `/settings/security/password`
+  gets both credentials on the same `user` row,
+  same `account` table, same session.
+- The OAuth callback routes through
+  `/api/v1/auth/callback/github`, which the better-auth
+  client posts to on the server side at
+  `apps/app/app/api/[[...route]]/route.ts` (the Hono
+  catch-all that delegates `/api/v1/auth/*` to
+  `auth.handler`). No new mount point. No new Hono
+  route. No new env var for the callback URL.
+- `apps/app/proxy.ts` continues to gate `(protected)`
+  routes on `emailVerified`. GitHub's verified email
+  passes; the gate is unchanged.
+- Optional env vars mean CI runs without GitHub
+  credentials. The contract test that asserts
+  `GITHUB_CLIENT_ID` presence lives at the
+  environment-validation step, not at runtime.
+- `pnpm env:check` succeeds without GitHub creds;
+  fails loud if the field is present and `min(1)` is
+  violated (a whitespace-only string is rejected).
+
+## What this rule allows
+
+- Adding the `socialProviders.github` block to
+  `packages/auth/src/auth.ts` with the
+  `clientId`/`clientSecret` pair sourced from
+  `serverEnv.GITHUB_CLIENT_ID` / `.GITHUB_CLIENT_SECRET`,
+  never from raw `process.env` reads.
+- Adding `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`
+  as optional, server-only fields in
+  `packages/env/src/schema.ts` and exposing both in
+  `packages/env/src/server.ts`.
+- Setting `account.accountLinking` with `github` in
+  `trustedProviders` and `updateUserInfoOnLink: true`
+  in `packages/auth/src/auth.ts`.
+- A test that calls
+  `authClient.signIn.social({ provider: "github" })`
+  with mocked credentials and asserts the redirect URL
+  shape, gated on the presence of
+  `GITHUB_CLIENT_ID` at test-time.
+
+## What this rule forbids
+
+- Hardcoding `clientId` or `clientSecret` anywhere in
+  the monorepo outside server-env reads in
+  `packages/auth/src/auth.ts`.
+- Reading the OAuth client id or secret through raw
+  `process.env` in `packages/auth/src/auth.ts`. The
+  contract is `serverEnv.*` from `@workspace/env/server`.
+- Wiring a `redirectPlugin()` into
+  `packages/auth/src/auth.ts`. The block comment at
+  `apps/app/components/auth/oauth-buttons.tsx:32`
+  claims the plugin is wired; it is not. better-auth's
+  default behaviour handles the post-`signIn.social`
+  redirect to `callbackURL`. Adding the plugin on top
+  is dead code.
+- Wrapping the OAuth callback in an oRPC procedure.
+  The callback is a system route, owned by Better Auth
+  per ADR-011.
+- Importing `better-auth` (the server package)
+  directly from `apps/app/components/` or from any
+  client bundle. The boundary held by ADR-003 (server
+  types via `$Infer.Session`) and ADR-004 (`@workspace/auth`
+  imported only by `http/middleware/session.ts` and
+  `http/routes/auth.ts`) stays intact.
+- Adding a `scope` field on the `socialProviders.github`
+  block in code. Scopes are an OAuth App concern.
+- Renaming the existing `GITHUB_TOKEN` env var (the
+  templates-registry decoy). That is a separate load-bearing
+  rename inside the templates API.
+- Rendering a `<Suspense>`-aware "is GitHub configured?"
+  conditional in `oauth-buttons.tsx`. The button is
+  unconditional; server fails loud.
+
+## What this rule does not change
+
+- The `account` table schema at
+  `packages/database/src/schema/auth.ts:36-58`. No
+  Drizzle migration runs from this ADR. The columns
+  better-auth expects from a GitHub sign-in (`providerId`,
+  `accountId`, `accessToken`, `refreshToken`, `idToken`,
+  `accessTokenExpiresAt`, `refreshTokenExpiresAt`,
+  `scope`) are already present.
+- The `apps/app/components/sidebars/nav-user.tsx`
+  Vercel default-avatar fallback. The hard-coded
+  deployment token at line 53
+  (`?s=40&u=${...}&dpl=dpl_AS99V7XmtTzE4xdb72tYFtNTVV48`)
+  is fragile third-party coupling and survives this
+  ADR only because the `if (image) return image` branch
+  short-circuits it for every OAuth and any user with a
+  set image. Removing the fallback belongs to a
+  separate refactor.
+- The migration from `<AvatarImage>` (Radix `img`) to
+  `next/image`. That migration requires
+  `next.config.ts` to allow
+  `avatars.githubusercontent.com` in
+  `images.remotePatterns` and is independent of this
+  decision.
+- Google OAuth. `oauth-buttons.tsx` and
+  `connected-accounts-list.tsx` already render a
+  Google button, which is currently a second dead path
+  exactly like GitHub today. Adding Google is a
+  separate ADR with its own config block, its own env
+  vars, and its own `trustedProviders` entry.
+- The route protection policy in
+  `apps/app/proxy.ts`. The proxy gates on
+  `emailVerified` today and continues to gate on
+  `emailVerified` after this ADR; GitHub's verified
+  email satisfies it.
+- The `account.accountLinking` defaults other than
+  the four listed above. `allowUnlinkingAll` stays at
+  the better-auth default. `disableImplicitLinking`
+  stays at the default (`false`, i.e. link-on-email is
+  on for trusted providers).
+- `account.encryptOAuthTokens` stays at the better-auth
+  default (`false`). GitHub `accessToken` and
+  `refreshToken` (when present) are persisted in the
+  `account` table in plaintext. Token encryption is an
+  explicit follow-up via `databaseHooks.account.create.before`,
+  not part of this ADR's scope; it is gated by the
+  `docs/guides/better-auth/hooks.md` precedent of
+  fire-and-forget hooks and was not requested.
+- The `apps/cli/` published surface. The CLI does not
+  sign in. OAuth is a web/app concern only.
+
+## Implementation surface
+
+The implementation PR that follows this ADR touches
+exactly six files. No Drizzle migration. No new Hono
+route. No new env var beyond the two below. No UI
+page edit.
+
+### Files to change
+
+1. `packages/env/src/schema.ts` — add two optional
+   server fields to `serverInputShape` (line 52-93):
+
+   ```ts
+   GITHUB_CLIENT_ID: z.string().min(1).optional(),
+   GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
+   ```
+
+   Precedent: `BETTER_AUTH_SECRET`'s own optional
+   treatment at `schema.ts:20-23`. The `.optional()`
+   keeps CI / Vitest green in environments without
+   OAuth credentials on disk.
+
+2. `packages/env/src/server.ts` — expose both keys in
+   the `materialised` literal (line 72-85) so the
+   `serverEnv` proxy serves them. This is what makes
+   `serverEnv.GITHUB_CLIENT_ID` resolve at
+   `packages/auth/src/auth.ts` request time instead
+   of falling through to `undefined`.
+
+3. `packages/auth/src/auth.ts` — extend the existing
+   `betterAuth({...})` instance (line 22-90) with
+   two new top-level blocks:
+
+   ```ts
+   socialProviders: {
+     github: {
+       clientId: serverEnv.GITHUB_CLIENT_ID!,
+       clientSecret: serverEnv.GITHUB_CLIENT_SECRET!,
+     },
+   },
+   account: {
+     accountLinking: {
+       enabled: true,
+       trustedProviders: ["github"],
+       allowDifferentEmails: false,
+       updateUserInfoOnLink: true,
+     },
+   },
+   ```
+
+   The `!` on each key is acceptable because the
+   env-validated build refuses to boot when the keys
+   are absent (`packages/env/src/schema.ts:95-134`),
+   so by the time `socialProviders` is read at request
+   time the keys are either set or the process is
+   already dead.
+
+4. `.env.example` — annotate the two keys with the
+   `user:email` scope caveat. Add a comment pointing
+   to the GitHub OAuth App permissions page (Account
+   permissions > Email addresses > Read-only). The
+   same comment is mirrored in
+   `docs/guides/better-auth/setup.md`.
+
+5. `docs/guides/better-auth/setup.md` — extend the
+   env-var table (line 49-54), the Base Configuration
+   block (line 19-37), and the Trusted Origins block
+   (line 81-96) with the two new keys and the
+   `socialProviders.github` snippet.
+
+6. `docs/guides/better-auth/pitfalls.md` — add a new
+   section covering GitHub OAuth specifics: `scope`
+   is an OAuth App concern (not in the better-auth
+   config), `accountLinking` semantics, the absence
+   of a refresh token (GitHub access tokens do not
+   expire on a short interval), and the
+   `redirectPlugin` misinformation at
+   `apps/app/components/auth/oauth-buttons.tsx:32`.
+
+### Files explicitly NOT touched
+
+- `apps/app/app/(unprotected)/(auth)/login/page.tsx`
+- `apps/app/app/(unprotected)/(auth)/signup/page.tsx`
+- `apps/app/components/auth/login-form.tsx`
+- `apps/app/components/auth/signup-form.tsx`
+- `apps/app/components/auth/oauth-buttons.tsx`
+  (the handler at line 23-33 is already correct;
+  the stale comment at line 32 is fixed in the
+  implementation PR as a one-liner)
+- `apps/app/components/settings/connected-accounts-list.tsx`
+- `apps/app/app/(protected)/settings/connections/page.tsx`
+- `apps/app/components/sidebars/nav-user.tsx`
+- `apps/app/app/(protected)/layout.tsx`
+- `apps/app/proxy.ts`
+- `apps/app/lib/auth-client.ts`
+- `packages/database/src/schema/auth.ts`
+- `packages/database/drizzle/0000_boring_steel_serpent.sql`
+  (no new migration)
+- `packages/api/src/http/routes/http.ts` (the
+  `/api/v1/auth/*` mount at line 57 already
+  delegates to `auth.handler`)
+- `packages/api/src/http/middleware/session.ts`
+
+### Verification after merge
+
+The implementation PR self-validates with these
+manual steps in local dev:
+
+1. With `GITHUB_CLIENT_ID` / `_SECRET` unset in
+   `.env`, click "Continue with GitHub" on
+   `/login`. The button renders, the click fires
+   `authClient.signIn.social({ provider: "github" })`,
+   and the server fails loud (better-auth has no
+   config) with an opaque error. This confirms the
+   server-side failure mode matches the rule, not the
+   UI.
+2. With both keys set to a real GitHub OAuth App,
+   clicking "Continue with GitHub" redirects to
+   `github.com/login/oauth/authorize` with the
+   `user:email` scope, then bounces back to
+   `http://localhost:3000/api/auth/callback/github`,
+   which delegates to `auth.handler` via Hono
+   `mountHttp`. The user lands on `/home` (or the
+   `?redirect=` value if present).
+3. `apps/app/components/sidebars/nav-user.tsx` shows
+   `user.image` (the GitHub avatar URL) for an
+   OAuth-signed-in user. The Vercel fallback is
+   short-circuited by the `if (image) return image`
+   branch.
+4. `/settings/connections` lists the GitHub account
+   under "Connected accounts", with an "Disconnect"
+   button that opens the existing `Dialog` for
+   confirmation.
+5. `pnpm auth:generate` produces a byte-identical
+   `packages/database/src/schema/auth.ts`. No Drizzle
+   migration is checked in.
+6. `pnpm env:check` passes with and without
+   `GITHUB_CLIENT_*` set.
+
+## Where this rule came from
+
+The UI has been ready for months. The agent that
+shipped `oauth-buttons.tsx`, the `connections` page,
+and the avatar `user.image` branch did so under the
+assumption that the server config would follow. It did
+not, because the OAuth project never had an owner and
+no consumer ever blocked on it.
+
+The first concrete signal that the omission was a real
+defect (not a deferred decision) came from the
+`/settings/connections` page: the page renders a
+"Connect GitHub" affordance that fails silently. Users
+who land there to attach a work identity to their
+account get a server error and no remediation path. The
+fix surface is enumerated in the `Implementation
+surface` section above: three runtime files
+(`packages/auth/src/auth.ts`,
+`packages/env/src/schema.ts`,
+`packages/env/src/server.ts`) plus `.env.example`
+and the two doc guides under
+`docs/guides/better-auth/`.
+
+The git context for this ADR is the staging branch
+`chore/adr-013-github-oauth-better-auth`, opened from
+`staging` per the staging-first workflow
+([`AGENTS.md`](../../../AGENTS.md)). No code ships in
+this PR — the ADR is the deliverable.
+
+## Related
+
+- [ADR-003: Hono env typing](./ADR-003-hono-env-typing.md).
+  The `$Infer.Session` pattern that derives the session
+  shape from `packages/auth/src/auth.ts`. Adding
+  `socialProviders.github` plus `accountLinking` widens
+  the inferred shape (additional `account` rows per
+  user, `image` populates from social). The consumer
+  type at `packages/api/src/types/api-env.ts` picks up
+  the new fields without an edit, by the same mechanism
+  `ADR-003` locks.
+- [ADR-004: API package structure](./ADR-004-api-package-structure.md).
+  The boundary that pins `@workspace/auth` as imported
+  only by `http/middleware/session.ts` and
+  `http/routes/auth.ts`. The OAuth callback arrives on
+  `/api/v1/auth/*`, which is the second of those two
+  import sites. This ADR does not touch the boundary.
+- [ADR-005: API is consumer-agnostic](./ADR-005-api-consumer-agnostic.md).
+  The server-side counterpart. The GitHub plugin lives
+  in `packages/auth/`; consumers (`apps/web`, `apps/app`,
+  `apps/cli`, the API itself) talk to the catch-all
+  handler in `apps/app/app/api/[[...route]]/route.ts`,
+  not to better-auth directly. The plugin does not
+  appear in any consumer's import graph.
+- [ADR-011: Hono for system routes](./ADR-011-hono-for-system-routes.md).
+  The OAuth callback is a system route, mounted in
+  `mountHttp`, delegated to Better Auth's
+  `auth.handler`. This ADR inherits the mount; it does
+  not own it.
+- [ADR-012: Changesets versioning for private workspace deps](./ADR-012-changesets-private-workspace-deps.md).
+  No version bump follows this ADR (ADR is docs only).
+  The next release that ships the actual plugin
+  config will inherit `ADR-012`'s rule that `packages/auth`
+  is bumped even though it is private.
+- [`knowledge-base/better-auth/hono-integration.md`](../knowledge-base/better-auth/hono-integration.md).
+  The conceptual companion for how Better Auth hands
+  requests back to Hono; the OAuth plugin sits on the
+  same path. Future edits to the integration pattern
+  should update both this ADR's `Related` list and the
+  knowledge-base entry.
+- [better-auth GitHub OAuth plugin](https://www.better-auth.com/docs/authentication/github).
+  Upstream docs for `socialProviders.github`. The
+  verbatim quoted shape (`clientId` + `clientSecret`
+  only, `scope` on the OAuth App side,
+  callback at `/api/auth/callback/github`) is what
+  `packages/auth/src/auth.ts` mirrors.
+- [better-auth `account` table & `accountLinking`](https://www.better-auth.com/docs/concepts/users-accounts).
+  Upstream docs for `account.accountLinking`. The
+  `trustedProviders` / `updateUserInfoOnLink` /
+  `disableImplicitLinking` semantics in the Decision
+  above come from this page.

@@ -82,6 +82,8 @@ function getServerEnv(): Readonly<ServerEnv> {
     MAIL_TRANSPORT: env.MAIL_TRANSPORT,
     RATE_LIMIT_PER_MINUTE: env.RATE_LIMIT_PER_MINUTE,
     GITHUB_TOKEN: env.GITHUB_TOKEN,
+    GITHUB_CLIENT_ID: env.GITHUB_CLIENT_ID,
+    GITHUB_CLIENT_SECRET: env.GITHUB_CLIENT_SECRET,
   } as ServerEnv) as Readonly<ServerEnv>
 
   // Runtime assertion: no NEXT_PUBLIC_* may leak through the server face.
