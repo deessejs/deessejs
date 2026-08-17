@@ -149,6 +149,42 @@ const releases = defineCollection({
   },
 })
 
+const kbTopics = defineCollection({
+  name: "kbTopics",
+  directory: "content/knowledge-base/topics",
+  include: "*.mdx",
+  schema: z.object({
+    title: z.string().min(1).max(120),
+    description: z.string().min(1).max(280),
+    order: z.number().int().nonnegative().default(0),
+    content: z.string(),
+  }),
+  transform: async (topic, context) => {
+    const slug = topic._meta.filePath
+      .replace(/^.*\//, "")
+      .replace(/\.mdx$/, "")
+
+    const mdxCode = await compileMDX(context, topic, {
+      rehypePlugins: [
+        [
+          rehypeShiki,
+          {
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          },
+        ],
+      ],
+    })
+
+    return {
+      ...topic,
+      slug,
+      url: `/knowledge-base/topics/${slug}`,
+      mdxCode,
+    }
+  },
+})
+
 export default defineConfig({
-  content: [authors, posts, releases],
+  content: [authors, posts, releases, kbTopics],
 })

@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Search, X } from "lucide-react"
 import Fuse from "fuse.js"
-import { searchData } from "@/lib/blog/search"
+import { searchData } from "@/lib/search/corpus"
 import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -152,7 +152,9 @@ export function SearchDialog() {
                           "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
                           result.item.type === "post"
                             ? "bg-primary/10 text-primary"
-                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                            : result.item.type === "kb-topic"
+                              ? "bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
                         )}
                       >
                         {result.item.type}

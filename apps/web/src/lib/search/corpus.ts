@@ -1,10 +1,10 @@
-import { allPosts, allReleases } from "content-collections"
+import { allPosts, allReleases, allKbTopics } from "content-collections"
 
 export type SearchItem = {
   title: string
   description: string
   url: string
-  type: "post" | "release"
+  type: "post" | "release" | "kb-topic"
 }
 
 export const searchData: SearchItem[] = [
@@ -19,5 +19,11 @@ export const searchData: SearchItem[] = [
     description: release.description,
     url: release.url,
     type: "release" as const,
+  })),
+  ...allKbTopics.map((topic) => ({
+    title: topic.title,
+    description: topic.description,
+    url: topic.url,
+    type: "kb-topic" as const,
   })),
 ]

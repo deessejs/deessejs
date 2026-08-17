@@ -1,5 +1,6 @@
 import Link from "next/link"
 import type { Metadata } from "next"
+import { allKbTopics } from "content-collections"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Card } from "@workspace/ui/components/card"
@@ -27,31 +28,13 @@ export const metadata: Metadata = {
  *   5. All Guides — tag cloud + list of guides
  *   6. CTA strip — "Ready to ship?" block
  *
- * Data is hard-coded in this file for V1. Once the editorial
- * pipeline stabilizes, swap these constants for a content
- * source under `apps/web/content/knowledge-base/`.
+ * Topic sections read from the kbTopics content-collection
+ * (ADR-013). Guide sections are still hard-coded; they
+ * move to kbGuides in ADR-014.
  */
 
-const FEATURED_TOPICS = [
-  {
-    slug: "getting-started",
-    title: "Getting Started",
-    description:
-      "Bootstrap your first project, install the CLI, and ship a working preview in under 10 minutes.",
-  },
-  {
-    slug: "agents",
-    title: "Agents",
-    description:
-      "Patterns for AI agents that code, review, and operate on your infra — locally and in the cloud.",
-  },
-  {
-    slug: "deployment",
-    title: "Deployment",
-    description:
-      "From git push to production — environments, domains, env vars, observability.",
-  },
-] as const
+const TOPICS = [...allKbTopics].sort((a, b) => a.order - b.order)
+const FEATURED_TOPICS = TOPICS.slice(0, 3)
 
 const FEATURED_GUIDES = [
   {
@@ -98,38 +81,7 @@ const FEATURED_GUIDES = [
   },
 ] as const
 
-const ALL_TOPICS = [
-  {
-    slug: "getting-started",
-    title: "Getting Started",
-    description: "First-run setup, onboarding, common shortcuts.",
-  },
-  {
-    slug: "agents",
-    title: "Agents",
-    description: "AI agents, tool use, autonomous workflows.",
-  },
-  {
-    slug: "deployment",
-    title: "Deployment",
-    description: "Build, deploy, environments, rollback.",
-  },
-  {
-    slug: "databases",
-    title: "Databases",
-    description: "Postgres, pgvector, migrations, schema design.",
-  },
-  {
-    slug: "ui",
-    title: "UI",
-    description: "shadcn/ui, Tailwind, design tokens, themes.",
-  },
-  {
-    slug: "cli",
-    title: "CLI",
-    description: "deessejs CLI commands, registry, scaffolding.",
-  },
-] as const
+const ALL_TOPICS = TOPICS
 
 const ALL_GUIDES = [
   ...FEATURED_GUIDES,
@@ -182,7 +134,7 @@ export default function KnowledgeBasePage() {
           {FEATURED_TOPICS.map((topic) => (
             <Link
               key={topic.slug}
-              href={`/knowledge-base/${topic.slug}`}
+              href={`/knowledge-base/topics/${topic.slug}`}
               className="group"
             >
               <Card className="flex h-full flex-col gap-3 p-6 transition-colors group-hover:bg-accent/30">
@@ -237,7 +189,7 @@ export default function KnowledgeBasePage() {
           {ALL_TOPICS.map((topic) => (
             <Link
               key={topic.slug}
-              href={`/knowledge-base/${topic.slug}`}
+              href={`/knowledge-base/topics/${topic.slug}`}
               className="group"
             >
               <Card className="flex h-full flex-col gap-2 p-6 transition-colors group-hover:bg-accent/30">

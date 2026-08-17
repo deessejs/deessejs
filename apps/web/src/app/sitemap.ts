@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next"
 import { APP_URL } from "@workspace/ui/lib/config"
-import { allPosts, allReleases, allAuthors } from "content-collections"
+import { allPosts, allReleases, allAuthors, allKbTopics } from "content-collections"
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
@@ -139,11 +139,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.4,
   }))
 
+  const kbTopicPages: MetadataRoute.Sitemap = allKbTopics.map((topic) => ({
+    url: `${APP_URL}${topic.url}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly" as const,
+    priority: 0.4,
+  }))
+
   return [
     ...staticPages,
     ...blogPosts,
     ...changelogEntries,
     ...authorPages,
     ...tagPages,
+    ...kbTopicPages,
   ]
 }
