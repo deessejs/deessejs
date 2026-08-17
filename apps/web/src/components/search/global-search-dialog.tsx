@@ -145,7 +145,9 @@ export function GlobalSearchDialog() {
                             ? "bg-primary/10 text-primary"
                             : result.item.type === "kb-topic"
                               ? "bg-violet-500/10 text-violet-600 dark:text-violet-400"
-                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                              : result.item.type === "kb-guide"
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
                         )}
                       >
                         {result.item.type}

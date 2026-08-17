@@ -1,0 +1,50 @@
+---
+title: Use the Next.js RAG template
+description: From the templates registry to a streaming chat endpoint with embeddings.
+topic: agents
+products: [rag]
+order: 1
+draft: false
+---
+
+The Next.js RAG template wires a streaming chat endpoint
+to a Postgres-backed vector store. It is the fastest path
+to a working RAG product on DeesseJS.
+
+## 1. Scaffold
+
+```bash
+deessejs init nextjs-rag
+```
+
+## 2. Configure the embedding model
+
+Set `EMBEDDING_MODEL` and `EMBEDDING_DIMENSIONS` in the
+env. Defaults target OpenAI's `text-embedding-3-small`
+at 1536 dimensions.
+
+## 3. Index your corpus
+
+```bash
+pnpm rag:index ./content
+```
+
+The script chunks, embeds, and upserts into the
+`documents` table.
+
+## 4. Stream a query
+
+```ts
+const answer = await rag.stream("What does ADR-013 say about topic tags?")
+for await (const chunk of answer) {
+  process.stdout.write(chunk.text)
+}
+```
+
+## What's next
+
+- [Build your first agent stack](/knowledge-base/guides/first-agent-stack)
+  — combine RAG with tool use for an agent that can both
+  retrieve and act.
+- [Manage Postgres migrations](/knowledge-base/guides/postgres-migrations)
+  — version the `documents` table as the schema evolves.

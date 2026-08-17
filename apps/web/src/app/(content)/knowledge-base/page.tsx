@@ -1,6 +1,6 @@
 import Link from "next/link"
 import type { Metadata } from "next"
-import { allKbTopics } from "content-collections"
+import { allKbTopics, allKbGuides } from "content-collections"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Card } from "@workspace/ui/components/card"
@@ -36,82 +36,15 @@ export const metadata: Metadata = {
 const TOPICS = [...allKbTopics].sort((a, b) => a.order - b.order)
 const FEATURED_TOPICS = TOPICS.slice(0, 3)
 
+const GUIDES = [...allKbGuides].sort((a, b) => a.order - b.order)
+const FEATURED_GUIDES = GUIDES.slice(0, 6)
+
 const TOPIC_TAGS = Array.from(
   new Set(TOPICS.flatMap((t) => t.tags)),
 ).sort()
 
-const FEATURED_GUIDES = [
-  {
-    slug: "install-deessejs-cli",
-    title: "Install the deessejs CLI",
-    description:
-      "Set up the CLI, authenticate, and discover templates from the registry.",
-    products: ["cli", "registry"],
-  },
-  {
-    slug: "first-agent-stack",
-    title: "Build your first agent stack",
-    description:
-      "Compose an AI agent with the SDK, a tool registry, and a streaming endpoint.",
-    products: ["agents", "ai-sdk"],
-  },
-  {
-    slug: "deploy-to-vercel",
-    title: "Deploy to Vercel",
-    description:
-      "Connect your repo, configure environments, and run your first production build.",
-    products: ["deploy"],
-  },
-  {
-    slug: "nextjs-rag-template",
-    title: "Use the Next.js RAG template",
-    description:
-      "From the templates registry to a streaming chat endpoint with embeddings.",
-    products: ["templates", "ai", "postgres"],
-  },
-  {
-    slug: "background-jobs-queue",
-    title: "Run background jobs",
-    description:
-      "Queue and worker patterns for async work outside your request path.",
-    products: ["queue"],
-  },
-  {
-    slug: "observability-logging",
-    title: "Add observability",
-    description:
-      "Logs, traces, and metrics — the three signals that catch production issues.",
-    products: ["observability"],
-  },
-] as const
-
 const ALL_TOPICS = TOPICS
-
-const ALL_GUIDES = [
-  ...FEATURED_GUIDES,
-  {
-    slug: "postgres-migrations",
-    title: "Manage Postgres migrations",
-    description: "Drizzle migrations in CI, rollback, zero-downtime.",
-    products: ["database"],
-  },
-  {
-    slug: "shadcn-theming",
-    title: "Theme with shadcn tokens",
-    description: "Add semantic tokens, dark mode, brand colors.",
-    products: ["ui"],
-  },
-  {
-    slug: "production-checklist",
-    title: "Production readiness checklist",
-    description: "Auth, secrets, observability, rate limits — what to verify.",
-    products: ["deploy"],
-  },
-] as const
-
-const TAG_CLOUD = Array.from(
-  new Set(ALL_GUIDES.flatMap((g) => g.products)),
-).sort()
+const ALL_GUIDES = GUIDES
 
 export default function KnowledgeBasePage() {
   return (
@@ -170,7 +103,7 @@ export default function KnowledgeBasePage() {
           {FEATURED_GUIDES.map((guide) => (
             <Link
               key={guide.slug}
-              href={`/knowledge-base/guide/${guide.slug}`}
+              href={`/knowledge-base/guides/${guide.slug}`}
               className="group"
             >
               <Card className="flex h-full flex-col justify-between gap-4 p-6 transition-colors group-hover:bg-accent/30">
@@ -245,19 +178,11 @@ export default function KnowledgeBasePage() {
       <section className="flex flex-col gap-6">
         <H2>All Guides</H2>
 
-        <div className="flex flex-wrap gap-2">
-          {TAG_CLOUD.map((tag) => (
-            <Badge key={tag} variant="outline">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-
         <ul className="flex flex-col gap-3">
           {ALL_GUIDES.map((guide) => (
             <li key={guide.slug}>
               <Link
-                href={`/knowledge-base/guide/${guide.slug}`}
+                href={`/knowledge-base/guides/${guide.slug}`}
                 className="flex flex-col gap-1 rounded-md px-2 py-2 transition-colors hover:bg-accent/30"
               >
                 <span className="text-label-16 font-medium text-foreground">

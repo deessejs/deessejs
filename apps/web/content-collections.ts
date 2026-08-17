@@ -186,6 +186,49 @@ const kbTopics = defineCollection({
   },
 })
 
+const kbGuides = defineCollection({
+  name: "kbGuides",
+  directory: "content/knowledge-base/guides",
+  include: "*.mdx",
+  schema: z.object({
+    title: z.string().min(1).max(120),
+    description: z.string().min(1).max(280),
+    topic: z.string().min(1),
+    products: z.array(z.string()).default([]),
+    order: z.number().int().nonnegative().default(0),
+    draft: z.boolean().default(false),
+    content: z.string(),
+  }),
+  transform: async (guide, context) => {
+    if (guide.draft && process.env.NODE_ENV === "production") {
+      return context.skip("document is a draft")
+    }
+
+    const slug = guide._meta.filePath
+      .replace(/^.*\//, "")
+      .replace(/\.mdx$/, "")
+
+    const mdxCode = await compileMDX(context, guide, {
+      rehypePlugins: [
+        [
+          rehypeShiki,
+          {
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          },
+        ],
+      ],
+    })
+
+    return {
+      ...guide,
+      slug,
+      url: `/knowledge-base/guides/${slug}`,
+      mdxCode,
+    }
+  },
+})
+
 export default defineConfig({
-  content: [authors, posts, releases, kbTopics],
+  content: [authors, posts, releases, kbTopics, kbGuides],
 })

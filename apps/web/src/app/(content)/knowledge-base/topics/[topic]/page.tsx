@@ -1,5 +1,6 @@
+import Link from "next/link"
 import { notFound } from "next/navigation"
-import { allKbTopics } from "content-collections"
+import { allKbTopics, allKbGuides } from "content-collections"
 
 import {
   Breadcrumb,
@@ -9,7 +10,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
-import { Card } from "@workspace/ui/components/card"
 import { Badge } from "@workspace/ui/components/badge"
 import { H1, H2 } from "@workspace/ui/components/typography"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
@@ -31,6 +31,10 @@ export default async function KnowledgeTopicPage({
   if (!topicDoc) {
     notFound()
   }
+
+  const topicGuides = allKbGuides
+    .filter((g) => g.topic === topicDoc.slug)
+    .sort((a, b) => a.order - b.order)
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-10 px-4 py-16 sm:px-6 lg:py-24">
@@ -70,14 +74,27 @@ export default async function KnowledgeTopicPage({
 
       <section className="flex flex-col gap-4">
         <H2>Guides in this topic</H2>
-        <Card className="flex flex-col gap-3 p-6">
+        {topicGuides.length === 0 ? (
           <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-            Guides for this topic land when the guides ADR is
-            implemented. The topic body above is editorial
-            content; the guide list lives in a separate
-            collection.
+            No guides in this topic yet.
           </p>
-        </Card>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {topicGuides.map((guide) => (
+              <li key={guide.slug}>
+                <Link
+                  href={`/knowledge-base/guides/${guide.slug}`}
+                  className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-accent/30"
+                >
+                  <span className="text-label-16 text-foreground">
+                    {guide.title}
+                  </span>
+                  <Badge variant="secondary">Guide</Badge>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   )
