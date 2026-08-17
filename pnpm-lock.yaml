@@ -261,9 +261,6 @@ importers:
       '@orpc/server':
         specifier: 'catalog:'
         version: 1.14.7
-      '@workspace/api':
-        specifier: workspace:*
-        version: link:../../packages/api
       commander:
         specifier: ^12.1.0
         version: 12.1.0
