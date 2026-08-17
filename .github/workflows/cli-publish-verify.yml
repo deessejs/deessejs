@@ -49,13 +49,20 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Build the bundle. We use `pnpm --filter @deessejs/cli build`
-      # rather than `pnpm turbo build --filter=@deessejs/cli` because
-      # Turbo bypasses the npm `prebuild` lifecycle hook that builds
-      # @workspace/contracts first. Without it, tsup cannot resolve
-      # any @workspace/* subpath import.
-      - name: Build CLI
-        run: pnpm --filter @deessejs/cli build
+      # Build the full workspace dep chain that the CLI transitively
+      # consumes. We use `pnpm turbo build --filter=@deessejs/cli` so
+      # transitive deps (`@workspace/api` -> `@workspace/auth` -> ...)
+      # are built in topological order via Turbo's `dependsOn: ^build`.
+      #
+      # Turbo bypasses npm lifecycle hooks (the prebuild), so the
+      # CLI's prebuild is not triggered here. That is fine: this
+      # step produces the dist/ that tsup needs.
+      #
+      # The CLI's prebuild is left intact for local `pnpm dev` /
+      # `pnpm test` where it gives correct results for the two
+      # direct deps.
+      - name: Build CLI and workspace deps
+        run: pnpm turbo build --filter=@deessejs/cli
 
       # Step 1: pack the tarball that would be published.
       - name: Pack CLI tarball
