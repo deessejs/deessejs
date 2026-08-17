@@ -63,3 +63,18 @@ throw new ORPCError({ code: "UNAUTHORIZED", message: "Authentication required" }
 ```
 
 This is tracked as a minor issue since oRPC may still surface the message, but the status code may be wrong (500 instead of 401).
+
+---
+
+## 5. GitHub OAuth Specifics
+
+When wiring `socialProviders.github`:
+
+- **`scope` is an OAuth App concern, not a better-auth config field.** The required `user:email` scope is configured on the GitHub OAuth App side (Permissions and Events > Account permissions > Email addresses > Read-only). Adding `scope` to the `socialProviders.github` block duplicates upstream and drifts.
+- **No refresh token.** GitHub does not issue refresh tokens for OAuth apps. Access tokens remain valid until the user or the app revokes them. The `account.refreshToken` column stays `NULL` for GitHub-linked accounts.
+- **`accountLinking.trustedProviders: ["github"]`** lets a same-email GitHub sign-in auto-link to an existing email/password user. This is safe here because `emailAndPassword.requireEmailVerification: true` already gates sign-up on a verified email. Without that gate, switching `trustedProviders` on for a provider that does not verify emails would be an account-takeover risk.
+- **`updateUserInfoOnLink: true`** copies the GitHub `name` and `image` onto the local user on each sign-in. The local `email` and `emailVerified` are never changed by the link — signing in with a new provider cannot rebind the account's identity.
+- **`redirectPlugin` is NOT wired.** The comment at `apps/app/components/auth/oauth-buttons.tsx:32` previously claimed so; it does not. better-auth's default behaviour handles the post-`signIn.social` redirect to `callbackURL`. Adding the plugin on top is dead code. ADR-013 forbids wiring it.
+- **`account.encryptOAuthTokens`** defaults to `false`. The GitHub `accessToken` persists in plaintext in the `account` table. Token encryption is a follow-up via `databaseHooks.account.create.before` and is not in scope for ADR-013.
+
+**Source:** [better-auth.com/docs/authentication/github](https://better-auth.com/docs/authentication/github). [better-auth.com/docs/concepts/users-accounts](https://better-auth.com/docs/concepts/users-accounts) — `updateUserInfoOnLink`. [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options) — `account.encryptOAuthTokens`.
