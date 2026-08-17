@@ -42,8 +42,8 @@
   "dependencies": {
     "@deessejs/errors": "^1.1.1",
     "@deessejs/fp": "^1.0.0",
-    "@orpc/client": "catalog:",
-    "@orpc/server": "catalog:",
+    "@orpc/client": "^1.14.7",
+    "@orpc/server": "^1.14.7",
     "commander": "^12.1.0",
     "ora": "^8.1.1",
     "picocolors": "^1.1.1"

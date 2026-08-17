@@ -256,10 +256,10 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0(@deessejs/errors@1.1.1)
       '@orpc/client':
-        specifier: 'catalog:'
+        specifier: ^1.14.7
         version: 1.14.7
       '@orpc/server':
-        specifier: 'catalog:'
+        specifier: ^1.14.7
         version: 1.14.7
       commander:
         specifier: ^12.1.0
