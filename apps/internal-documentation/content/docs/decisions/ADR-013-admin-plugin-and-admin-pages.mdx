@@ -84,15 +84,8 @@ app/(protected)/admin/
   page.tsx                     # index (placeholder welcome, V1)
   users/
     page.tsx                   # list + pagination + filters
-    new/page.tsx               # createUser form
     [id]/
       page.tsx                 # detail (header, profile, sessions)
-      edit/page.tsx            # adminUpdateUser
-      sessions/page.tsx        # listUserSessions + revoke actions
-      delete/page.tsx          # removeUser confirmation
-  roles/
-    page.tsx                   # role x permission matrix (read-only)
-    [role]/page.tsx            # role detail + user count
 ```
 
 A global `ImpersonationBanner` component mounts inside
@@ -101,11 +94,28 @@ A global `ImpersonationBanner` component mounts inside
 button bound to `authClient.admin.stopImpersonating()`. There is no
 `/admin/impersonate` page; the banner is the surface.
 
-Ban, set-role, set-password, and impersonate actions live as Dialogs
-on the user detail page, not as standalone routes. They are
-single-click actions and a full page each would be wasteful. Only
-edit, delete, sessions, and the dedicated `new` flow get their own
-URL.
+Every mutation that used to be a route is now a Dialog mounted on
+the page that triggers it. The user list page owns a `CreateUser`
+dialog bound to `auth.api.createUser`. The user detail page owns
+`EditUser` (`adminUpdateUser`), `SetRole` (`setRole`),
+`SetPassword` (`setUserPassword`), `Ban` / `Unban` (`banUser` /
+`unbanUser`), `Impersonate` (`impersonateUser`), and `Delete`
+(`removeUser`) dialogs. Revoke-session actions live on the detail
+page too and call `revokeUserSession` / `revokeUserSessions`
+directly, with a confirmation dialog for the bulk revoke.
+
+The scope of the V1 surface is exactly:
+
+- `admin/layout.tsx`,
+- `admin/page.tsx` (placeholder),
+- `admin/users/page.tsx` (list),
+- `admin/users/[id]/page.tsx` (detail with dialogs).
+
+No `/admin/users/new`, no `/admin/users/[id]/edit`, no
+`/admin/users/[id]/sessions`, no `/admin/users/[id]/delete`, no
+`/admin/roles`. Roles and permission matrices stay out of V1; if a
+future ADR brings them back, they will be read-only pages or a
+follow-up section.
 
 ### 3. Two-layer gating
 
@@ -140,8 +150,8 @@ server.
 ### 5. Sidebar wiring
 
 `AppSidebar` reads `usePathname()`. When the path starts with
-`/admin`, it renders an extra `SidebarGroup` with `Users` and
-`Roles` entries above the existing `Settings` shortcut. The
+`/admin`, it renders an extra `SidebarGroup` with a single `Users`
+entry above the existing `Settings` shortcut. The
 home/settings/admin groupings remain visually distinct. No new prop
 is added to the sidebar; the existing `usePathname` hook is enough.
 
@@ -211,14 +221,18 @@ is added to the sidebar; the existing `usePathname` hook is enough.
 
 ## Consequences
 
-- `apps/app/app/(protected)/admin/` ships with the route tree
-  listed above. Pages are gated, sidebar-aware, and use
+- `apps/app/app/(protected)/admin/` ships exactly four pages:
+  `layout.tsx`, `page.tsx` (placeholder), `users/page.tsx`, and
+  `users/[id]/page.tsx`. Every other interaction is a Dialog on one
+  of those two pages. Pages are gated, sidebar-aware, and use
   shadcn components from `@workspace/ui`.
 - `auth.api.{listUsers, getUser, createUser, setRole,
   setUserPassword, adminUpdateUser, banUser, unbanUser,
   listUserSessions, revokeUserSession, revokeUserSessions,
   impersonateUser, removeUser, userHasPermission}` are all
-  reachable from Server Actions in `apps/app`.
+  reachable from Server Actions in `apps/app`, even when only a
+  subset are wired to dialogs in V1. The full set stays reachable
+  so follow-up dialogs do not require new server wiring.
 - `authClient.admin.stopImpersonating` is the one client-side
   call wired in V1, mounted on the global impersonation banner.
 - A new env-driven allowlist (`BETTER_AUTH_ADMIN_USER_IDS`)
