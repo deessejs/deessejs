@@ -31,11 +31,46 @@ The suite runs in CI on every PR touching `apps/cli/**` and in a deeper nightly 
 
 ### One prerequisite: `API_BASE_URL` env var
 
-The CLI hardcodes `API_RPC_PATH` and `API_BASE_PATH` as path constants and lets `globalThis.fetch` resolve them as relative URLs. Today, fetching `/api/v1/rpc` from Node uses `window.location.origin` as the base, which is `http://localhost:80` in the absence of a window. The CLI cannot be pointed at a different server.
+The CLI hardcodes `API_RPC_PATH` and `API_BASE_PATH` as path constants and lets `globalThis.fetch` resolve them as relative URLs. A reproduction confirms that `fetch("/api/v1/rpc")` in Node fails with `TypeError: fetch failed` — there is no `window.location.origin` to resolve against in non-browser environments. The CLI cannot be pointed at a different server today.
 
-This is what makes the e2e suite possible. Before any e2e test can run, the CLI must accept an `API_BASE_URL` environment variable that prefixes the path constants. The override is read at startup, fails loudly if the env var is malformed, and falls back to the current hardcoded behavior when unset (so existing consumers are not affected).
+This is what makes the e2e suite possible. Before any e2e test can run, the CLI must accept an `API_BASE_URL` environment variable that prefixes the path constants. The override is read at startup, fails loudly if the env var is malformed, and falls back to a production default when unset (so existing consumers are not affected).
 
-This is a prerequisite for the e2e suite, not a refactor. The change is small: one env var read, one string concatenation, one fallback. It does not change the production behavior of the CLI for users who do not set the env var.
+#### What the modification is
+
+The behavior change is small but not trivial. It has three parts.
+
+**1. A new module exposes the resolved URL.** Today, `apps/cli/src/api/client.ts` and `apps/cli/src/version/check.ts` import `API_RPC_PATH` and `API_BASE_PATH` directly from `@workspace/api/base-path`. A new module — for example `apps/cli/src/api/runtime.ts` — exposes `getApiRpcUrl()` and `getApiVersionUrl()` instead. The functions read `API_BASE_URL` from the environment at call time and return a fully resolved URL. The CLI calls these functions where it currently uses the path constants.
+
+**2. The fallback uses a production default.** When `API_BASE_URL` is unset, the resolver returns the production URL. The exact value is decided at implementation time; a reasonable candidate is `https://deessejs.com` (the marketing site, which also serves the API). This preserves current behavior for users who do not set the env var. Users who run the CLI against a self-hosted registry get to override the URL without rebuilding.
+
+**3. Malformed values fail loudly.** If `API_BASE_URL` is set but not a valid URL (e.g., empty, missing scheme, trailing whitespace), the CLI exits with a non-zero code and a clear error message before making any request. The validation is cheap and prevents confusing failures deep in the network stack.
+
+#### Naming
+
+The current `@workspace/api/base-path` module exports two constants: `API_BASE_PATH` (the path prefix, e.g. `/api/v1`) and `API_RPC_PATH` (the RPC endpoint, e.g. `/api/v1/rpc`). Adding an `API_BASE_URL` env var to the CLI creates a naming collision with the existing `API_BASE_PATH` constant. The implementation will rename one of the two. The implementation PR resolves the naming before this ADR is implemented.
+
+#### Files impacted
+
+Three files in this repo:
+
+- `apps/cli/src/api/client.ts` — replace `RPCLink({ url: API_RPC_PATH })` with a function call.
+- `apps/cli/src/version/check.ts` — replace the template-literal URL with a function call.
+- A new file under `apps/cli/src/api/` — the resolver module. The location and the exact name are decided at implementation time.
+
+The change does not touch the `@workspace/api` package. The path constants stay where they are; the CLI gains a runtime resolver that lives in the CLI itself.
+
+#### Behavior in each environment
+
+| Environment | `API_BASE_URL` | Behavior |
+|---|---|---|
+| Production user (no env var) | unset | Resolver returns the production default. Same as today, modulo the runtime resolution. |
+| Production user (sets env var) | `https://self-hosted.example.com` | Resolver returns the override. The CLI talks to the self-hosted registry. |
+| Local dev (`pnpm dev`) | unset | Same as production user. The CLI talks to the production registry. |
+| Local dev (overrides) | `http://localhost:4873` | Resolver returns the override. The CLI talks to a local mock. |
+| E2E test | `http://localhost:<random-port>` | Resolver returns the override. The CLI talks to the in-process mock server. |
+| E2E test (unset, broken) | unset | Resolver returns the production default. The CLI talks to the real API. The test fails with a clear network error. The test runner is responsible for setting the env var. |
+
+This is the four-line change in concrete terms: one env var read, one validation, one fallback constant, one resolver function. The rest of the CLI calls the resolver instead of the hardcoded constants. The change is local to two CLI files and one new file. It does not change the public surface of the CLI.
 
 ### The tests
 
