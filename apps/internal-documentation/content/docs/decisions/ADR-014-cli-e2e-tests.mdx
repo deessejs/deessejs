@@ -147,39 +147,213 @@ Three things this ADR leaves out of scope:
 
 ### The tests
 
-Three commands, three suites. Each suite covers the happy path plus at least one error path.
+Three commands, three suites. Each suite covers the happy path plus at least one error path. The suites live in `apps/cli/test/e2e/` as `list.test.ts`, `info.test.ts`, `init.test.ts`. Each suite is a `describe` block with at least one `it` per scenario.
 
-**`list`**: the mock server returns a fixed list of templates. The test asserts that the CLI prints the template slugs in the output. A second test mocks a server error and asserts that the CLI exits non-zero with a `network_error` CliError code.
+The convention is that every test follows the same shape: bootstrap fixtures, run the CLI, assert on stdout, stderr, and exit code. The convention is enforced by the `run()` helper, which returns `{ stdout, stderr, exitCode, durationMs }` and exposes a `expect*` API for the common assertions.
 
-**`info`**: the mock server returns one template matching the requested slug. The test asserts that the CLI prints the template's name and description. A second test mocks a 404 and asserts that the CLI exits with a `not_found` CliError code. A third test mocks malformed data and asserts that the CLI exits with a `parse_error` CliError code.
+#### `list` suite
 
-**`init`**: a bare git repo is created in `tmpdir` with a `main` branch and a single commit. The mock server returns a template pointing at that bare repo. The CLI is invoked with `--no-install` to skip the package-manager step (that step is already covered by unit tests on the spawn helper). The test asserts that the destination directory contains the cloned repo's contents.
+Two tests. The mock server has two modes: returns a fixed list, or returns a 500.
+
+| Test | Mock returns | Assert on stdout | Assert on stderr | Assert on exit |
+|---|---|---|---|---|
+| `list happy path` | Two templates, full schema | stdout contains both slugs, both names, both categories | empty | 0 |
+| `list server error` | HTTP 500 with body `{"message": "internal"}` | empty | stderr contains `Error` and `network_error` code | 1 |
+
+The happy-path test asserts on the table format only (the contract is the slugs and names, not the exact column positions). The server-error test asserts on the CliError code in stderr's `Code:` line, which is the contract the unit tests in `apps/cli/test/unit/errors.test.ts` already pin.
+
+#### `info` suite
+
+Three tests. The mock server has three modes: returns one template, returns 404, returns malformed data.
+
+| Test | Mock returns | Assert on stdout | Assert on stderr | Assert on exit |
+|---|---|---|---|---|
+| `info happy path` | One template matching the slug | stdout contains the slug, name, description | empty | 0 |
+| `info not found` | HTTP 404 with body `{"message": "template not found"}` | empty | stderr contains `not_found` code | 1 |
+| `info malformed data` | HTTP 200 with `{"templates": [{"slug": "x"}]}` (missing required fields) | empty | stderr contains `parse_error` code | 1 |
+
+The malformed-data test is the one that catches CLI regressions where the runtime parser silently accepts malformed data. The contract test in `apps/cli/test/contract/orpc-to-cli-error.test.ts` already pins that `parse_error` is the right code; the e2e test pins that the `info` command actually emits the code on malformed data.
+
+#### `init` suite
+
+Three tests. The git fixture has one mode: a bare repo with a single file. The mock server always returns one template pointing at that bare repo.
+
+| Test | CLI args | Assert on filesystem | Assert on stderr | Assert on exit |
+|---|---|---|---|---|
+| `init happy path` | `init <slug> --no-install --dir <tmpdir>/dest` | `<tmpdir>/dest/<expected-file>` exists and matches the fixture's commit | empty | 0 |
+| `init clone refused (existing dir)` | `init <slug> --no-install` (target dir already exists) | nothing created | stderr contains `target_exists` code | 1 |
+| `init network error` | `init <slug> --no-install` (mock returns 500) | nothing created | stderr contains `network_error` code | 1 |
+
+The `--no-install` flag is the only path that skips the package-manager step. The unit tests in `apps/cli/test/unit/git.test.ts` already cover the spawn helper, so the e2e suite does not duplicate that. The `--no-install` path is the only one that completes in CI without a network round-trip to a package manager.
+
+The existing-dir test asserts that the CLI refuses to overwrite without `--force`. The current behavior is correct; the test pins it so a future regression is caught.
+
+The network-error test pins that the CLI fails fast on the first request, before invoking `git clone`. A regression where the CLI clones first and reports the network error after would be caught here.
 
 ### The mock server
 
-A minimal Node `http` server, no framework, ~80 lines. The server speaks two endpoints: `GET /api/v1/version` and `POST /api/v1/rpc`. The `/api/v1/rpc` handler checks the request body shape and returns one of four canned responses: success, 404, malformed, or network error.
+A minimal Node `http` server. No framework, no dependencies. The implementation is ~80 lines in `apps/cli/test/e2e/helpers/mock-server.ts`.
 
-The server is not a real API. It does not validate auth. It does not interpolate GitHub data. It serves the contract shapes that the CLI client expects and that the unit tests already pin. Anything outside the contract is the CLI's problem to detect and surface.
+#### Endpoints
+
+The server exposes two endpoints. Both are the ones the CLI invokes in production.
+
+| Method | Path | Purpose | Response |
+|---|---|---|---|
+| `GET` | `/api/v1/version` | Returns the version probe. The CLI calls this at startup to warn about outdated versions. | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
+| `POST` | `/api/v1/rpc` | The ORPC endpoint. The CLI calls this for `list` and `info`. | `200 {"result": {"data": "...", "..."}}` or `4xx {"message": "..."}` |
+
+The server does not validate auth. It does not interpolate GitHub data. It serves the contract shapes that the CLI client expects and that the unit tests already pin. Anything outside the contract is the CLI's problem to detect and surface.
+
+#### Request validation
+
+The `/api/v1/rpc` handler parses the request body as JSON and checks the shape. A malformed body returns `400 {"message": "invalid request"}`. The server does not validate the ORPC envelope beyond the `jsonrpc` field, because the CLI does not either. Tightening the server past what the client sends would mask bugs.
+
+#### Scenario mode
+
+The server accepts a mode parameter at startup. The mode controls which canned responses the server returns. The mode is set by the test that boots the server, not by the request.
+
+| Mode | `/api/v1/rpc` response | `/api/v1/version` response |
+|---|---|---|
+| `success` | `200 {"result": {"data": "<templates>"}}` where `<templates>` is the configured list | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
+| `not_found` | `404 {"message": "template not found"}` | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
+| `malformed` | `200 {"templates": [{"slug": "x"}]}` (missing required fields) | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
+| `server_error` | `500 {"message": "internal"}` | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
+
+The mode is per-server-instance. A test that needs both `success` and `not_found` responses starts two server instances.
+
+#### Lifecycle
+
+The server is a class with `start(): Promise<{ url, port }>` and `stop(): Promise<void>`. `start` binds to `127.0.0.1` on port `0` (the OS picks a free port) and resolves once the server is listening. `stop` closes the server and waits for the close callback. The class is a single-use resource; tests that need multiple modes start multiple instances.
+
+The runner uses the port from `start()` to set `API_BASE_URL` in the CLI's environment. The URL is `http://127.0.0.1:<port>`.
 
 ### The CLI runner
 
-A `cli-runner.ts` helper that wraps `execa`. It spawns the CLI binary with the tarball path, captures stdout, stderr, and the exit code, and exposes a `run(args, envOverride)` API. Tests use it like `await run(["list"], { API_BASE_URL: mockServer.url })`.
+A `cli-runner.ts` helper in `apps/cli/test/e2e/helpers/`. The implementation is ~50 lines.
 
-The runner uses the tarball from the verify workflow's `apps/cli/dist/deessejs-cli-*.tgz`. If the tarball is missing, the runner fails the test with a clear error message. The runner does not invoke the source TypeScript directly; the e2e suite tests the published artifact, not the source.
+#### API
+
+```ts
+type RunOptions = {
+  args: string[]
+  env?: Record<string, string>
+  timeoutMs?: number  // default 30_000
+}
+
+type RunResult = {
+  stdout: string
+  stderr: string
+  exitCode: number
+  durationMs: number
+}
+
+function run(options: RunOptions): Promise<RunResult>
+```
+
+Tests use it like:
+
+```ts
+const result = await run({
+  args: ["list"],
+  env: { API_BASE_URL: mockServer.url },
+})
+expect(result.exitCode).toBe(0)
+expect(result.stdout).toContain("saas-starter")
+```
+
+The runner returns a structured result rather than throwing on non-zero exit codes. The test asserts on the exit code rather than catching a thrown error. This makes the failure messages explicit: the test can print `result.stdout` and `result.stderr` in the assertion failure.
+
+#### Tarball resolution
+
+The runner reads the tarball path from the env var `DEESSEJS_CLI_TARBALL`. The verify workflow sets this env var before invoking the tests. If the env var is unset, the runner fails the test with a clear error message: `DEESSEJS_CLI_TARBALL is not set; the e2e suite requires the verify workflow to run first.` The runner does not invoke the source TypeScript directly; the e2e suite tests the published artifact, not the source.
+
+The verify workflow produces the tarball at `apps/cli/dist/deessejs-cli-*.tgz`. The runner uses `glob` to find the file. If multiple tarballs exist (e.g., from a previous run that did not clean up), the runner uses the most recent one by `mtime`.
+
+#### Stream handling
+
+The runner captures stdout and stderr separately. This is what makes the test assertions on `Code:` lines in stderr work. The runner does not pipe them through a TTY; the CLI is invoked with a non-interactive stdin.
+
+#### Cleanup
+
+The runner kills the child process on timeout or on parent test failure. The cleanup uses `SIGTERM` first, then `SIGKILL` after a 5-second grace period. The runner does not leak child processes when a test fails.
 
 ### The git fixture
 
-A `git-fixture.ts` helper that creates a bare git repo in a fresh `tmpdir`, adds a `main` branch with a single commit, and exposes the bare path as a `file://` URL. The bare repo has a single file so the test can assert that the clone produced the correct contents.
+A `git-fixture.ts` helper in `apps/cli/test/e2e/helpers/`. The implementation is ~40 lines.
 
-Bare local repos are deterministic. They do not depend on GitHub. They do not depend on network. The fixture is created in a `tmpdir` and cleaned up at the end of the test run.
+#### API
+
+```ts
+type GitFixture = {
+  barePath: string       // absolute path to the bare repo
+  fileUrl: string         // file:// URL for the bare repo
+  content: { path: string, content: string }  // the single file in the main branch
+}
+
+function createBareRepo(tmpdir: string): Promise<GitFixture>
+function cleanup(fixture: GitFixture): Promise<void>
+```
+
+Tests use it like:
+
+```ts
+const tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "cli-e2e-"))
+const fixture = await createBareRepo(tmpdir)
+try {
+  // ... test
+} finally {
+  await cleanup(fixture)
+}
+```
+
+The `try/finally` is the test's responsibility. The fixture does not auto-cleanup because the test might want to inspect the repo after failure.
+
+#### What the fixture creates
+
+A bare git repo at `<tmpdir>/repo.git`. The repo has a `main` branch with a single commit. The commit contains one file, `README.md`, with a fixed content. The `main` branch is the default branch because the CLI clones with `git clone --branch main` (the default).
+
+The fixture does not create a working tree. The CLI clones the bare repo at clone time, so the working tree is the test's actual assertion target.
+
+#### Cleanup
+
+The cleanup removes the entire `tmpdir`. The cleanup runs on test failure too. The fixture does not leave orphan repos behind.
 
 ### CI integration
 
-Two workflows:
+Two workflows. The implementation is in `.github/workflows/`, named `cli-e2e.yml` and `cli-e2e-extended.yml`.
 
-**`cli-e2e.yml` (PR, blocking)**: gates on `apps/cli/**`. Runs the three suites. Failures block merge. The suite is fast (< 2 min) because the mock server is local and the git fixture is in-process.
+#### `cli-e2e.yml` (PR blocking)
 
-**`cli-e2e-extended.yml` (nightly, non-blocking)**: runs an extended matrix. Includes longer timeouts, larger fixtures, retry-on-flake, and the cases that are too slow or too unreliable for PR (e.g., the spawn-helper test that actually runs the package manager). Failures here post a GitHub issue with the captured output rather than failing the build.
+The PR workflow is the gating one. It runs on every PR that touches `apps/cli/**`. It runs the three suites. Failures block merge.
+
+The workflow has three jobs:
+
+1. **`pack`**: produces the tarball. Runs `pnpm --filter @deessejs/cli build` and `npm pack`. The tarball is uploaded as an artifact.
+2. **`e2e`**: runs the three suites. Downloads the tarball artifact, sets `DEESSEJS_CLI_TARBALL`, runs `pnpm --filter @deessejs/cli test:e2e`. The mock server is in-process, no external service to start.
+3. **`cleanup`**: removes the tarball artifact after 7 days. The cleanup is automatic via the `actions/upload-artifact@v4` retention setting.
+
+The workflow uses `ubuntu-latest` and `node-version: 24` (matching the verify workflow). The total runtime is under 2 minutes. The old `pnpm install` step is replaced by `pnpm install --frozen-lockfile` to keep the install fast.
+
+#### `cli-e2e-extended.yml` (nightly non-blocking)
+
+The nightly workflow is the deep one. It runs on a schedule (cron: `0 3 * * *`) and on manual dispatch. It runs an extended matrix that the PR workflow skips.
+
+The matrix dimension is "scenario". Each scenario tests a different aspect of the CLI that is too slow or too flaky for PR gating:
+
+| Scenario | What it covers | Why nightly-only |
+|---|---|---|
+| `large-fixture` | Mock returns 100 templates; CLI prints them. | Slow. Takes 10s. Acceptable for nightly. |
+| `slow-network` | Mock delays responses by 2s. | Tests timeouts. Too slow for PR. |
+| `flaky-network` | Mock returns 500 on the first request, 200 on the second. | Tests retry logic. Flaky in normal CI. |
+| `real-pm` | Skips `--no-install` and runs the actual package manager. | Slow; depends on pnpm in CI. |
+| `unicode` | Mock returns templates with unicode names. | Sanity check; not part of the PR contract. |
+
+Failures in the nightly workflow post a GitHub issue with the captured output. The issue template is pre-populated with the workflow run URL, the scenario that failed, and the stdout/stderr of the failing test. The post is done via `peter-evans/create-or-update-comment` or a custom action; the choice is decided at implementation time.
+
+#### Why two workflows
+
+The split is cost. The PR workflow is the gate; it must run on every PR and stay fast. The nightly workflow is the deep check; it can run slowly and tolerate flakiness. Combining them would either slow PRs (extended matrix on every PR) or weaken the gate (PR workflow skips important tests). The split is the standard pattern for CI matrices that have a fast-slow split.
 
 ### Why not the alternatives
 
