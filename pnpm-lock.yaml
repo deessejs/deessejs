@@ -274,6 +274,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
+      '@workspace/api':
+        specifier: workspace:*
+        version: link:../../packages/api
       '@workspace/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
