@@ -206,31 +206,152 @@ local interval by 5 seconds and continues. On
 `expired_token` or `access_denied`, the CLI exits with a
 distinct exit code mapped through `CliError`.
 
-### Verification URI
+### apps/app pages
 
-The server-side plugin is configured with
-`verificationUri: "/device"`. The path is a public route
-on `apps/app/` (an `(unprotected)` route group), reachable
-without a session — the page claims the code for the
-calling session on `GET /api/v1/auth/device?user_code=...`,
-which is the only call that requires a session.
+The user-facing surface for the device flow lives in
+`apps/app/`. The plugin's `verificationUri: "/device"`
+points to a page that handles four states; the page is
+reachable without a session, the session is established
+on the fly when the user signs in. The CLI never sees
+the page directly — the CLI's `deesse auth login`
+command opens the browser to the `verification_uri_complete`
+returned by `/device/code`, which already carries the
+`user_code` in the query string.
 
-The page lives at `apps/app/app/(unprotected)/device/page.tsx`
-and follows the existing `(unprotected)` route convention:
-the layout, the `AuthContainer` component (or its successor
-in the design system), the `use-shadcn` discipline for any
-form fields.
+#### Route layout
 
-### Settings integration
+The verification page lives under the `(unprotected)`
+route group, alongside `login`, `signup`,
+`forgot-password`, `reset-password`, and
+`verify-email`:
 
-The existing `/settings/sessions` page lists active sessions
-via the Better Auth `session` table. The device-code flow
-does not introduce a new settings entry: the verification
-page is the user-facing surface, and the sessions page
-already shows everything the user needs to manage
-authenticated devices. A future ADR may add a "pending
-device authorizations" panel; it does not belong in this
-ADR.
+```
+apps/app/app/(unprotected)/
+├── (auth)/
+│   ├── login/page.tsx
+│   ├── signup/page.tsx
+│   ├── forgot-password/page.tsx
+│   ├── reset-password/page.tsx
+│   ├── verify-email/page.tsx
+│   └── layout.tsx
+└── device/
+    └── page.tsx
+```
+
+The page is **not** under the `(auth)` sub-group. The
+`(auth)` sub-group is paired with the `(unprotected)`
+layout and is the layout for the form-based sign-in
+flow; the device flow has a different shape (read the
+URL, claim the code, render one of four states) and
+sits at its own `(unprotected)/device/page.tsx`. The
+`(unprotected)/layout.tsx` and the auth `(auth)/layout.tsx`
+are unchanged.
+
+The page is **public**: `apps/app/proxy.ts` does not
+gate it. The proxy's `AUTH_PREFIXES` allowlist is the
+list of routes that bounce a signed-in user to `/home`;
+the device page is added to this list so a user who is
+already authenticated is forwarded to the approve/deny
+view directly instead of being bounced to `/login`. The
+allowlist gains `/device`; the rest of the proxy is
+unchanged.
+
+#### The page component
+
+`apps/app/app/(unprotected)/device/page.tsx` is a
+server component that reads `user_code` from the search
+params, validates the shape (8 chars, charset
+`ABCDEFGHJKLMNPQRSTUVWXYZ23456789`), and renders the
+matching state. The four states:
+
+| State | Condition | Render |
+|---|---|---|
+| Not signed in | `authClient.getSession()` returns null | "Sign in to continue" panel with a `next` param pointing back to `/device?user_code=...`; clicking the panel signs the user in, lands back on the device page, the session is now present and the page re-renders into the "claim" state |
+| Claimed, pending | `authClient.device({ query: { user_code } })` returns `{ status: "pending" }` and the calling session is now bound to the code (the GET endpoint side-effects `userId` on first call) | "Approve" panel with two `Button` components (shadcn `Button` per the `use-shadcn` discipline), one for `authClient.device.approve({ userCode })`, one for `authClient.device.deny({ userCode })`. A short caption names the device (the `client_id` from the device-code record, when present) and the scopes (`scope`, when present). |
+| Approved | the user clicked approve, the next `device()` poll returns `{ status: "approved" }` | "Done" panel: "You can close this tab and return to your terminal." with a `<Link>` back to `/home` (not a forced redirect — the user may want to keep the tab open). |
+| Denied, expired, or invalid | the device-code record's `status` is `denied` / `expiresAt` is in the past / the record is missing | "Expired" panel: "This code has expired or is invalid. Run `deesse auth login` again." No retry button on this page; the CLI owns the retry loop. |
+
+The component uses `useEffect` + `useState` for the
+client-side state machine, not a server component with
+revalidation. The four states are an interaction state,
+not a server state; the server state is read on demand
+through the typed Better Auth client.
+
+#### Components
+
+The page composes a new component
+`apps/app/components/auth/device-form.tsx` that owns
+the four-state machine. The form follows the same
+convention as `login-form.tsx`, `signup-form.tsx`,
+`forgot-password-form.tsx`, and `reset-password-form.tsx`
+(per the `use-shadcn` discipline — Button, Input,
+Card, and friends from `@workspace/ui` only, no raw
+`<input>` with shadcn classes copy-pasted). The
+component is exported from `apps/app/components/auth/index.ts`
+alongside the existing five forms; the `(unprotected)/device/page.tsx`
+imports it through the barrel, mirroring
+`login/page.tsx`'s `import { AuthContainer, LoginForm } from "@/components/auth"`.
+
+The `AuthContainer` layout is **not** reused here. The
+device page does not need the centered single-column
+form layout; it needs a wider panel that fits a "what
+you're approving" caption alongside the approve/deny
+buttons. A new layout primitive
+`apps/app/components/auth/device-container.tsx` (or a
+generic `WideAuthContainer` if the same shape is
+needed elsewhere later) owns the wider layout. The
+shape is registered through the design system, not
+duplicated as ad-hoc Tailwind.
+
+#### Wiring the typed client
+
+`apps/app/lib/auth-client.ts` already exports the typed
+`authClient`. The device page calls the four client
+methods directly:
+
+```ts
+const { data } = await authClient.device({
+  query: { user_code },
+})
+const { data } = await authClient.device.approve({
+  userCode,
+})
+const { data } = await authClient.device.deny({
+  userCode,
+})
+```
+
+No wrapper. No bespoke fetch. The typed client is the
+wire format, per ADR-001.
+
+#### Email verification gate
+
+The device page is reachable by an unverified user
+(they may have just signed up to approve their CLI).
+The page itself does not gate on `emailVerified`; the
+flow is "sign in, approve". The existing
+`apps/app/proxy.ts` gate (per
+`docs/guides/better-auth/pitfalls.md` §3) redirects
+unverified users on protected prefixes to
+`/verify-email`. The device page is **not** a
+protected prefix, so the gate does not apply; the
+approve flow proceeds, and the CLI receives a session
+token whose cookie is subject to the same verification
+gate on its next visit to a protected route. A user who
+signs in to approve a CLI without verifying their
+email gets a token, but cannot use the web app until
+they verify. This is the intended behavior: the device
+flow is a wire-level approval, not an onboarding step.
+
+#### Settings integration
+
+The device flow does not add a new entry to the
+settings home. The existing `/settings/sessions` page
+already lists active sessions via the Better Auth
+`session` table; the CLI session appears there like
+any other session. A future ADR may add a "pending
+device authorizations" panel; it does not belong in
+this ADR.
 
 ## What this rule allows
 
@@ -256,6 +377,31 @@ ADR.
   mapping is internal; the public error code list (per
   ADR-010 §2) does not gain new entries for the polling
   loop.
+- A new page `apps/app/app/(unprotected)/device/page.tsx`
+  alongside the existing `(unprotected)/(auth)/*` pages.
+  The page is a sibling, not a child of the `(auth)`
+  sub-group.
+- A new form component
+  `apps/app/components/auth/device-form.tsx` exported
+  from `components/auth/index.ts`. The component owns
+  the four-state machine (not signed in / claimed
+  pending / approved / expired) and uses the typed
+  Better Auth client directly.
+- A new layout primitive
+  `apps/app/components/auth/device-container.tsx` (or a
+  generic `WideAuthContainer`) for the wider panel the
+  device page needs. The primitive is registered
+  through the design system, not duplicated as ad-hoc
+  Tailwind.
+- Adding `/device` to the `AUTH_PREFIXES` allowlist in
+  `apps/app/proxy.ts`. The proxy bounces a signed-in
+  user to `/home`; an authenticated user landing on
+  `/device` skips the bounce and goes straight to the
+  approve/deny view.
+- Composing the device page from `@workspace/ui`
+  shadcn components (Button, Input, Card) per the
+  `use-shadcn` discipline. No raw `<input>` with
+  shadcn classes copy-pasted.
 
 ## What this rule forbids
 
@@ -302,6 +448,34 @@ ADR.
   verification page.** The verification page is the
   user-facing surface; `/settings/sessions` already
   covers device management.
+- **Placing the device page under the `(auth)` sub-group.**
+  The `(auth)` sub-group is the layout for the form-based
+  sign-in flow; the device flow has a different shape
+  and sits at its own `(unprotected)/device/page.tsx`.
+- **Reusing `AuthContainer` for the device page.** The
+  device page needs a wider layout; the centered
+  single-column form layout is the wrong shape. A new
+  layout primitive (`device-container.tsx` or a generic
+  `WideAuthContainer`) owns the wider shape.
+- **Bypassing `authClient` for the four device methods
+  on the web side.** The page calls
+  `authClient.device()`, `authClient.device.approve()`,
+  `authClient.device.deny()` directly. A bespoke
+  `fetch`, a wrapper that imitates the typed client, or
+  a parallel envelope on the web side is forbidden by
+  ADR-001.
+- **Gating the device page on `emailVerified`.** The
+  page is reachable by a user who has not yet verified
+  their email; the flow is "sign in, approve". The
+  verification gate that protects `/home` and
+  `/settings` (per `docs/guides/better-auth/pitfalls.md`
+  §3) is unchanged; the device page is not a protected
+  prefix and the gate does not apply here.
+- **Putting the device page under a protected route
+  group.** The page is `(unprotected)`; a protected
+  wrapper would block the very users the flow is
+  designed to serve (a fresh CLI user who has never
+  signed in to the web app).
 
 ## What this rule does not change
 
