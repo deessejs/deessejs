@@ -7,7 +7,7 @@ import { createORPCClient } from "@orpc/client"
 import type { RouterClient } from "@orpc/server"
 
 import { appRouter } from "@workspace/api/router"
-import { API_RPC_PATH } from "@workspace/api/base-path"
+import { getApiRpcUrl } from "./runtime.js"
 
 /**
  * Typed oRPC link for the CLI.
@@ -41,7 +41,7 @@ const isTransientNetworkError = (e: unknown): boolean =>
   e instanceof TypeError
 
 const link = new RPCLink({
-  url: API_RPC_PATH,
+  url: getApiRpcUrl(),
   plugins: [
     new RetryAfterPlugin(),
     new ClientRetryPlugin({
