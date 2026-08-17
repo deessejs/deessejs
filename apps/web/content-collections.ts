@@ -157,6 +157,7 @@ const kbTopics = defineCollection({
     title: z.string().min(1).max(120),
     description: z.string().min(1).max(280),
     order: z.number().int().nonnegative().default(0),
+    tags: z.array(z.string()).default([]),
     content: z.string(),
   }),
   transform: async (topic, context) => {

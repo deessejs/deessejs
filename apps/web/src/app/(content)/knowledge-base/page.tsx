@@ -36,6 +36,10 @@ export const metadata: Metadata = {
 const TOPICS = [...allKbTopics].sort((a, b) => a.order - b.order)
 const FEATURED_TOPICS = TOPICS.slice(0, 3)
 
+const TOPIC_TAGS = Array.from(
+  new Set(TOPICS.flatMap((t) => t.tags)),
+).sort()
+
 const FEATURED_GUIDES = [
   {
     slug: "install-deessejs-cli",
@@ -144,6 +148,15 @@ export default function KnowledgeBasePage() {
                 <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
                   {topic.description}
                 </p>
+                {topic.tags.length > 0 ? (
+                  <div className="mt-auto flex flex-wrap gap-1.5">
+                    {topic.tags.map((tag) => (
+                      <Badge key={tag} variant="outline">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
               </Card>
             </Link>
           ))}
@@ -182,6 +195,20 @@ export default function KnowledgeBasePage() {
         </div>
       </section>
 
+      {/* Topic Tags */}
+      {TOPIC_TAGS.length > 0 ? (
+        <section className="flex flex-col gap-4">
+          <H2>Browse by topic tag</H2>
+          <div className="flex flex-wrap gap-2">
+            {TOPIC_TAGS.map((tag) => (
+              <Badge key={tag} variant="outline">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {/* All Topics */}
       <section className="flex flex-col gap-6">
         <H2>All Topics</H2>
@@ -199,6 +226,15 @@ export default function KnowledgeBasePage() {
                 <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
                   {topic.description}
                 </p>
+                {topic.tags.length > 0 ? (
+                  <div className="mt-auto flex flex-wrap gap-1.5">
+                    {topic.tags.map((tag) => (
+                      <Badge key={tag} variant="outline">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
               </Card>
             </Link>
           ))}

@@ -5,6 +5,8 @@ import { APP_CONFIG } from "@workspace/ui/lib/config"
 import { AppProviders } from "@/components/providers"
 import { AppFooter } from "@/components/footers/app-footer"
 import { SiteHeader } from "@/components/headers/site-header"
+import { GlobalSearchDialog } from "@/components/search/global-search-dialog"
+import { GlobalSearchShortcut } from "@/components/search/global-search-shortcut"
 import { CookieConsent } from "@workspace/cookies"
 import { Toaster } from "@workspace/ui/components/sonner"
 import { cn } from "@workspace/ui/lib/utils"
@@ -41,6 +43,8 @@ export default function RootLayout({
             <CookieConsent />
             <Toaster />
           </div>
+          <GlobalSearchShortcut />
+          <GlobalSearchDialog />
         </AppProviders>
       </body>
     </html>

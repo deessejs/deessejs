@@ -5,6 +5,7 @@ export type SearchItem = {
   description: string
   url: string
   type: "post" | "release" | "kb-topic"
+  tags?: string[]
 }
 
 export const searchData: SearchItem[] = [
@@ -25,5 +26,6 @@ export const searchData: SearchItem[] = [
     description: topic.description,
     url: topic.url,
     type: "kb-topic" as const,
+    tags: topic.tags,
   })),
 ]

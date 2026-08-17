@@ -5,13 +5,27 @@ import { useRouter } from "next/navigation"
 import { Search, X } from "lucide-react"
 import Fuse from "fuse.js"
 import { searchData } from "@/lib/search/corpus"
+import { useSearchDialogStore } from "@/lib/search/store"
 import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 
-export function SearchDialog() {
+/**
+ * Site-wide Cmd-K search dialog.
+ *
+ * Mounted once at the root layout. Visibility comes from the
+ * Zustand store (`useSearchDialogStore`) so that the trigger
+ * button (in the header), the keyboard shortcut, and any future
+ * placeholder can all open the same dialog.
+ *
+ * The trigger button is no longer rendered here — it lives in
+ * the header. This component renders the dialog surface only.
+ */
+
+export function GlobalSearchDialog() {
+  const isOpen = useSearchDialogStore((s) => s.isOpen)
+  const close = useSearchDialogStore((s) => s.close)
   const [query, setQuery] = useState("")
-  const [isOpen, setIsOpen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -22,6 +36,7 @@ export function SearchDialog() {
         keys: [
           { name: "title", weight: 2 },
           { name: "description", weight: 1 },
+          { name: "tags", weight: 1 },
         ],
         threshold: 0.3,
         includeScore: true,
@@ -43,23 +58,15 @@ export function SearchDialog() {
   }, [results])
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault()
-        setIsOpen(true)
-      }
-      if (e.key === "Escape") {
-        setIsOpen(false)
-        setQuery("")
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [])
-
-  useEffect(() => {
     if (isOpen) {
       inputRef.current?.focus()
+    } else {
+      // Reset state when the dialog closes so the next open starts fresh.
+      // This is intentional - cascading render is fine here because close
+      // is a user action, not a render-driven one.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setQuery("")
+      setSelectedIndex(-1)
     }
   }, [isOpen])
 
@@ -73,33 +80,17 @@ export function SearchDialog() {
     } else if (e.key === "Enter" && selectedIndex >= 0) {
       e.preventDefault()
       router.push(results[selectedIndex]!.item.url)
-      setIsOpen(false)
-      setQuery("")
+      close()
     }
   }
 
-  if (!isOpen) {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 border border-border/40 bg-muted/30 px-3 py-1.5 text-muted-foreground hover:bg-muted/50"
-      >
-        <Search className="size-4" />
-        <span className="hidden sm:inline">Search...</span>
-        <kbd className="hidden sm:inline text-[10px] font-mono text-muted-foreground/60">
-          ⌘K
-        </kbd>
-      </Button>
-    )
-  }
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
       <div
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={() => { setIsOpen(false); setQuery("") }}
+        onClick={() => close()}
       />
       <div className="relative z-10 w-full max-w-lg rounded-xl border border-border/40 bg-card shadow-xl">
         <div className="flex items-center gap-3 border-b border-border/40 px-4 py-3">
@@ -107,7 +98,7 @@ export function SearchDialog() {
           <Input
             ref={inputRef}
             type="text"
-            placeholder="Search articles and releases..."
+            placeholder="Search the DeesseJS ecosystem..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -116,7 +107,8 @@ export function SearchDialog() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => { setIsOpen(false); setQuery("") }}
+            onClick={() => close()}
+            aria-label="Close search"
             className="text-muted-foreground hover:text-foreground"
           >
             <X className="size-4" />
@@ -136,8 +128,7 @@ export function SearchDialog() {
                     variant="ghost"
                     onClick={() => {
                       router.push(result.item.url)
-                      setIsOpen(false)
-                      setQuery("")
+                      close()
                     }}
                     className={cn(
                       "flex w-full flex-col items-start gap-0.5 px-4 py-2 text-left",
@@ -173,7 +164,7 @@ export function SearchDialog() {
 
         {!query.trim() && (
           <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-            Start typing to search posts and releases
+            Start typing to search posts, releases, and KB topics
           </div>
         )}
       </div>

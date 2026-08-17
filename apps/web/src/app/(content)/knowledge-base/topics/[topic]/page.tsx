@@ -10,6 +10,7 @@ import {
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
 import { Card } from "@workspace/ui/components/card"
+import { Badge } from "@workspace/ui/components/badge"
 import { H1, H2 } from "@workspace/ui/components/typography"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
 import { Prose } from "@/components/blog/prose"
@@ -52,6 +53,15 @@ export default async function KnowledgeTopicPage({
         <p className="text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
           {topicDoc.description}
         </p>
+        {topicDoc.tags.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {topicDoc.tags.map((tag) => (
+              <Badge key={tag} variant="outline">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
       </header>
 
       <Prose className="mt-2">

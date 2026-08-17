@@ -3,7 +3,6 @@ import Image from "next/image"
 import Link from "next/link"
 import { Badge } from "@workspace/ui/components/badge"
 import { PostCard } from "@/components/blog/post-card"
-import { SearchDialog } from "@/components/blog/search-dialog"
 import { getAllPosts } from "@/lib/blog/posts"
 import { getAllTags } from "@/lib/blog/types"
 
@@ -65,7 +64,6 @@ export default function BlogPage() {
               </Link>
             ))}
           </div>
-          <SearchDialog />
         </nav>
       )}
 
