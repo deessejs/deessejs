@@ -348,6 +348,14 @@ not own it.
   the better-auth default. `disableImplicitLinking`
   stays at the default (`false`, i.e. link-on-email is
   on for trusted providers).
+- `account.encryptOAuthTokens` stays at the better-auth
+  default (`false`). GitHub `accessToken` and
+  `refreshToken` (when present) are persisted in the
+  `account` table in plaintext. Token encryption is an
+  explicit follow-up via `databaseHooks.account.create.before`,
+  not part of this ADR's scope; it is gated by the
+  `docs/guides/better-auth/hooks.md` precedent of
+  fire-and-forget hooks and was not requested.
 - The `apps/cli/` published surface. The CLI does not
   sign in. OAuth is a web/app concern only.
 
