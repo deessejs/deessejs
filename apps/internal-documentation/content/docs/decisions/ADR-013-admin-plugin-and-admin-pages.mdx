@@ -1,0 +1,389 @@
+---
+title: 'Admin plugin and admin pages'
+description: 'Wire the better-auth admin plugin and the /admin route group.'
+---
+
+# ADR-013: better-auth admin plugin and the apps/app admin section
+
+## Status
+
+Accepted (2026-08). Non-negotiable once shipped.
+
+## Context
+
+`apps/app` is the authenticated workspace of the DeesseJS monorepo.
+Today it exposes only two surfaces: a `/home` landing page and a
+`/settings` group covering profile, security, sessions, connections,
+and account. None of these pages act on users other than the caller.
+The `better-auth` instance in `packages/auth/src/auth.ts` runs without
+the `admin` plugin, so no admin endpoints are available: there is no
+way to list users, change a role, ban, impersonate, set a password, or
+remove an account through the auth layer.
+
+Operations have so far been done by hand on the database. That works
+for a single-tenant staging environment but does not scale and offers
+no audit trail beyond git history.
+
+The plugin catalog (`https://www.better-auth.com/docs/plugins/admin`)
+ships a turnkey admin surface with:
+
+- schema additions on the `user` table (`role`, `banned`,
+  `banReason`, `banExpires`) and on the `session` table
+  (`impersonatedBy`),
+- server endpoints guarded by an `admin` role or by an `adminUserIds`
+  allowlist, with a default role of `user` and `adminRoles: ["admin"]`,
+- a parallel `adminClient` for browser-side calls,
+- an access-control hook (`createAccessControl`, statements, roles)
+  for fine-grained permissions.
+
+This ADR locks in two coupled decisions: wiring the plugin in
+`packages/auth` and shipping a parallel `/admin` route group in
+`apps/app/app/(protected)`.
+
+## Decision
+
+### 1. Wire the admin plugin in `packages/auth`
+
+`packages/auth/src/auth.ts` adds `admin()` from `better-auth/plugins`
+to the `plugins` array. Initial configuration:
+
+```ts
+admin({
+  defaultRole: "user",
+  adminRoles: ["admin"],
+  adminUserIds: [], // populated from env on first deploy
+  impersonationSessionDuration: 60 * 60, // 1 hour
+})
+```
+
+No custom `ac` or `roles` block lands in this ADR. Custom access
+control stays a follow-up: the default statement set covers every
+admin action we need for the V1 pages, and introducing a custom
+`ac` now would lock a permission surface that has not been
+audited yet. The `defaultStatements` import path remains available
+when the follow-up ADR is written.
+
+The `emailAndPassword.customSyntheticUser` hook (required when
+`requireEmailVerification: true`, per the plugin docs) gains the
+admin fields in schema order: `role: "user"`, `banned: false`,
+`banReason: null`, `banExpires: null`. This keeps the
+email-enumeration protection working at signup.
+
+### 2. Add an `/admin` route group under `(protected)`
+
+`apps/app/app/(protected)/admin/` becomes a new section, parallel
+to `/settings`, not nested inside it. `/settings` is self-service
+for the caller; `/admin` operates on other users. Mixing them in
+the same sidebar group or the same index page would be confusing.
+
+Route tree:
+
+```
+app/(protected)/admin/
+  layout.tsx                   # role gate, sidebar entry
+  page.tsx                     # index (placeholder welcome, V1)
+  users/
+    page.tsx                   # list + pagination + filters
+    [id]/
+      page.tsx                 # detail (header, profile, sessions)
+  roles/
+    page.tsx                   # role x permission matrix (read-only)
+    [role]/page.tsx            # role detail + user count
+```
+
+A global `ImpersonationBanner` component mounts inside
+`apps/app/app/layout.tsx` and renders when
+`session.impersonatedBy` is set. It exposes a "Stop impersonating"
+button bound to `authClient.admin.stopImpersonating()`. There is no
+`/admin/impersonate` page; the banner is the surface.
+
+Every mutation that used to be a route is now a Dialog mounted on
+the page that triggers it. The user list page owns a `CreateUser`
+dialog bound to `auth.api.createUser`. The user detail page owns
+`EditUser` (`adminUpdateUser`), `SetRole` (`setRole`),
+`SetPassword` (`setUserPassword`), `Ban` / `Unban` (`banUser` /
+`unbanUser`), `Impersonate` (`impersonateUser`), and `Delete`
+(`removeUser`) dialogs. Revoke-session actions live on the detail
+page too and call `revokeUserSession` / `revokeUserSessions`
+directly, with a confirmation dialog for the bulk revoke.
+
+The scope of the V1 surface is exactly:
+
+- `admin/layout.tsx`,
+- `admin/page.tsx` (placeholder),
+- `admin/users/page.tsx` (list),
+- `admin/users/[id]/page.tsx` (detail with dialogs),
+- `admin/roles/page.tsx` (read-only role x permission matrix),
+- `admin/roles/[role]/page.tsx` (read-only role detail with user
+  count).
+
+No `/admin/users/new`, no `/admin/users/[id]/edit`, no
+`/admin/users/[id]/sessions`, no `/admin/users/[id]/delete`. Roles
+are informational: they render the statement set and the role
+definitions, but no runtime editing. Editing permissions stays a
+code-level concern; if a future ADR brings runtime role editing, it
+will land as dialogs on the same pages, not as a new section.
+
+### 3. Three-layer gating
+
+The admin section is protected by three independent layers. Each
+layer has a different role, and the layers are not redundant: each
+catches a class of failure that the others do not.
+
+#### Layer 1: better-auth plugin (the security layer)
+
+`packages/auth/src/auth.ts` runs `admin()` from `better-auth/plugins`.
+The plugin enforces role checks server-side on every admin endpoint
+(`auth.api.{listUsers, getUser, createUser, setRole,
+setUserPassword, adminUpdateUser, banUser, unbanUser,
+listUserSessions, revokeUserSession, revokeUserSessions,
+impersonateUser, removeUser, userHasPermission}`). An endpoint call
+returns `403 Forbidden` unless **at least one** of the following is
+true for the calling session:
+
+- `session.user.role` is included in `adminRoles` (default
+  `["admin"]`),
+- `session.user.id` is included in `adminUserIds` (default `[]`).
+
+Note that `adminUserIds` is an alternative grant path, not a
+subordinate check: a user with `role: "user"` who is listed in
+`adminUserIds` still passes. This matters because the allowlist is
+how the first admin is promoted before any custom access control
+exists. Treat `adminUserIds` as a privileged escalation lever; the
+env-driven allowlist is documented in Consequences.
+
+This layer covers the entire HTTP surface, including direct API
+calls that bypass the UI. A non-admin who curls
+`/api/auth/admin/list-users` with a valid cookie is rejected here.
+
+#### Layer 2: admin layout (the UX and typing layer)
+
+`app/(protected)/admin/layout.tsx` runs as a Server Component. It
+calls `auth.api.getSession({ headers })` and redirects to `/home`
+when `session.user.role` is not in `adminRoles` **and** the user id
+is not in `adminUserIds`. The plugin enforces the same condition
+server-side on every endpoint; this gate exists to keep the UI from
+rendering for non-admins and to narrow the TypeScript type of the
+session to `{ role: "admin" }`. Removing this gate would not weaken
+security: every Server Action would still be rejected by Layer 1,
+the user would just see partially-rendered screens with errors
+instead of a clean redirect.
+
+This layer does **not** currently check `session.user.banned`. An
+admin who is banned by another admin keeps viewing the section UI
+until their session expires. Layer 1 still blocks their actions.
+Closing this UX gap is tracked in the "Known gaps" sub-section
+below.
+
+#### Layer 3: Next.js proxy (the session and email layer)
+
+`apps/app/proxy.ts` adds `/admin/:path*` to `PROTECTED_PREFIXES`
+and to the `config.matcher`. The proxy enforces two checks:
+
+- the request carries a session (otherwise redirect to `/login`
+  with `redirect` set to the original path),
+- `session.user.emailVerified === true` (otherwise redirect to
+  `/verify-email`).
+
+The proxy does **not** check the role, and that is intentional.
+Re-implementing the role check in the proxy would duplicate Layer 1
+without security gain and would couple `proxy.ts` to the
+better-auth API. The proxy already imports the auth route via
+`@workspace/api/base-path`; pulling the role out of the same
+`get-session` response would force the proxy to interpret
+admin-specific fields, drift from the plugin's notion of "admin",
+and lose the ability to fail closed when the plugin definition of
+`adminRoles` changes.
+
+The proxy also gates `/home` and `/settings`, but those routes do
+not require admin role. The added matcher entry extends the
+existing `PROTECTED_PREFIXES` and `config.matcher` patterns only;
+no new gate logic ships.
+
+### 4. Server-first data flow
+
+Pages are Server Components. Mutations go through Server Actions
+defined in `apps/app/lib/admin/actions.ts` that:
+
+1. re-check the admin role from the session,
+2. validate input with Zod schemas in
+   `apps/app/lib/admin/schemas.ts`,
+3. call `auth.api.<endpoint>({ body, headers })`,
+4. revalidate the affected path or call `redirect`.
+
+`authClient.admin.*` is reserved for the impersonation banner,
+which must call `stopImpersonating` from a client component because
+the action needs to run after a route change triggered by the
+server.
+
+### 5. Sidebar wiring
+
+`AppSidebar` reads `usePathname()`. When the path starts with
+`/admin`, it renders an extra `SidebarGroup` with `Users` and
+`Roles` entries above the existing `Settings` shortcut. The
+home/settings/admin groupings remain visually distinct. No new prop
+is added to the sidebar; the existing `usePathname` hook is enough.
+
+## Why this and not the alternatives
+
+1. **Use the organization plugin instead.** The organization plugin
+   supports invitations and member management, but the locked-in
+   decision in `docs/guides/better-auth/index.md` is single-tenant.
+   Switching to the organization plugin would re-litigate that ADR
+   and ship a much larger surface (organizations, members,
+   invitations, active-org signal) for a problem we do not have.
+
+2. **Build admin actions directly in `packages/database` without
+   the plugin.** That would mean writing our own role column, our
+   own authorization checks, our own ban/impersonate flows, and our
+   own `session.impersonatedBy` plumbing. The plugin does all of
+   that and is the canonical path. Re-implementing it would be a
+   long-term maintenance burden for a single-tenant app.
+
+3. **Nest admin under `/settings`.** Conceptually wrong: `/settings`
+   is "edit your own account"; `/admin` is "edit other accounts".
+   Users on `/settings` should never see an "Admin" card, and users
+   on `/admin` should not have to leave the section to manage a
+   user's sessions. Two distinct route groups reflect two distinct
+   mental models.
+
+4. **Ship the admin surface as a separate app.** Out of proportion
+   for V1. The traffic is low, the data is the same Postgres
+   instance, and `apps/app` already has the auth wiring, the
+   sidebar shell, and the shadcn components. A separate app would
+   duplicate session, proxy, and layout without a payoff.
+
+## Cost
+
+- `packages/database/src/schema/auth.ts` gains five columns (four
+  on `user`, one on `session`). `pnpm auth:generate` runs as part
+  of the migration; the generated drizzle tables must be committed
+  alongside the plugin wiring.
+- `apps/app/components/sidebars/app-sidebar.tsx` grows a
+  conditional group. The conditional is two lines, but it makes
+  the sidebar aware of a third top-level section, which raises
+  the surface that any sidebar refactor must touch.
+- The proxy gains two array entries and one matcher entry. Trivial,
+  but every change to `proxy.ts` is a security-adjacent file and
+  must keep the existing `runtime = "nodejs"` ban in mind (Next 16
+  rejects it in proxy files, see ADR-009 context).
+- `customSyntheticUser` in `packages/auth/src/auth.ts` grows five
+  fields. Any future plugin that adds columns will need a parallel
+  edit, and the order in the schema must match what
+  `@better-auth/cli generate` produces.
+
+## What this ADR does not change
+
+- Single-tenant remains locked. No organization plugin, no org
+  schema, no org client. The historical-only `org.md` guide stays
+  out of the read path.
+- Custom access control (`createAccessControl`, custom statements,
+  custom roles) is a follow-up. The default statement set covers
+  V1. A future ADR will lock the statement surface once we have a
+  concrete permission audit.
+- No audit log of admin actions ships in V1. The plugin does not
+  log admin operations; an audit trail would require a
+  `databaseHooks` or a wrapper on the Server Actions. Out of scope
+  here.
+- The CLI (`apps/cli`) is unaffected. Admin endpoints are
+  HTTP-only on the better-auth server; no CLI surface is added.
+
+## Consequences
+
+- `apps/app/app/(protected)/admin/` ships exactly six pages:
+  `layout.tsx`, `page.tsx` (placeholder), `users/page.tsx`,
+  `users/[id]/page.tsx`, `roles/page.tsx`, and `roles/[role]/page.tsx`.
+  User mutations are dialogs on `users/[id]/page.tsx`; the roles
+  pages are read-only. Pages are gated, sidebar-aware, and use
+  shadcn components from `@workspace/ui`.
+- `auth.api.{listUsers, getUser, createUser, setRole,
+  setUserPassword, adminUpdateUser, banUser, unbanUser,
+  listUserSessions, revokeUserSession, revokeUserSessions,
+  impersonateUser, removeUser, userHasPermission}` are all
+  reachable from Server Actions in `apps/app`, even when only a
+  subset are wired to dialogs in V1. The full set stays reachable
+  so follow-up dialogs do not require new server wiring.
+- `authClient.admin.stopImpersonating` is the one client-side
+  call wired in V1, mounted on the global impersonation banner.
+- A new env-driven allowlist (`BETTER_AUTH_ADMIN_USER_IDS`)
+  populates `adminUserIds` at boot. The list is empty on first
+  deploy, so the first admin must be promoted by a SQL update
+  against `user.role`. This is documented in the migration
+  changeset that ships with the plugin wiring.
+- `adminUserIds` is an alternative grant path, not a subordinate
+  one. A user with `role: "user"` listed in `adminUserIds` passes
+  both Layer 1 and Layer 2. The env-driven allowlist is therefore
+  a privileged escalation lever: any id added there immediately
+  gains full admin powers, including `removeUser` (hard delete).
+  Treat the env value as a production secret. Changing it requires
+  a server restart.
+- Migration order: ship schema first (`pnpm auth:generate` +
+  drizzle migration), then the plugin wiring, then the pages.
+  The pages do not work without the schema; the schema is harmless
+  without the plugin wiring.
+- ADR-009 (test strategy) applies: Server Actions get unit
+  coverage on the Zod schemas and on the role-gate branches; the
+  pages themselves are not E2E-covered in V1.
+
+## Threat model notes
+
+The three layers cover the documented threats but leave a small set
+of gaps explicit. Each gap names the threat, the layer that
+mitigates it, and the residual risk.
+
+- **Direct API calls bypassing the UI.** A non-admin who curls
+  `/api/auth/admin/<endpoint>` with a valid cookie is rejected by
+  Layer 1. The plugin's middleware runs on every endpoint before
+  any handler logic. No additional mitigation is required.
+- **Non-admin typing `/admin/...` in the URL bar.** Blocked by
+  Layer 2 (redirect to `/home`). Layer 1 would also reject every
+  Server Action, but Layer 2 closes the round-trip before any
+  page renders.
+- **Email-unverified user reaching admin UI.** Blocked by Layer 3
+  (redirect to `/verify-email`). Layer 1 does not check
+  `emailVerified`; without Layer 3, an admin account created with
+  `requireEmailVerification: true` and an unverified email would
+  pass role checks but fail every password sign-in. The proxy is
+  the only place that closes this gap.
+- **Banned admin continuing to view the admin UI.** Layer 1 blocks
+  every action, but Layer 2 does not check `session.user.banned`.
+  A banned admin keeps seeing `/admin` pages until their session
+  expires. **Gap**: known, accepted for V1, follow-up required.
+  The fix is a single `banned === false` check in the admin layout,
+  paired with a call to revoke the session. Tracked as a separate
+  issue at implementation time.
+- **Session impersonation by another admin.** Covered by the
+  `session.impersonatedBy` column and by the global
+  `ImpersonationBanner`, which forces an explicit "Stop
+  impersonating" action. The plugin refuses to let admins
+  impersonate other admins unless the role grants
+  `impersonate-admins`; with default access control, only `admin`
+  can impersonate non-admins.
+- **Brute force or scripted probing of admin endpoints.** better-auth
+  does not ship rate limiting. There is no Layer 4 today. Out of
+  scope for V1. Mitigation options if the threat materializes:
+  Hono middleware on the auth handler, or a reverse proxy rule.
+  Documented here so the next reviewer does not assume the plugin
+  provides it.
+- **Privilege escalation via custom access control.** When custom
+  `ac` and `roles` land (deferred, see "What this ADR does not
+  change"), a misconfigured statement set could grant
+  `impersonate-admins` or `delete` to a non-admin role. Layer 1
+  applies whatever `adminRoles` resolves to; the plugin does not
+  audit the permission graph. **Mitigation required before the
+  custom AC ADR lands**: a code-review checklist and an integration
+  test that asserts no role outside `adminRoles` can call
+  `removeUser` or `impersonateUser`.
+- **`adminUserIds` allowlist compromise.** Anyone able to set the
+  `BETTER_AUTH_ADMIN_USER_IDS` env var can promote arbitrary user
+  ids to admin. The threat is operational (env access), not
+  application-level, and is mitigated by treating the env value as
+  a production secret. No application-layer fix.
+- **Audit trail.** V1 has none. An admin who calls `removeUser`
+  leaves no application-level trace. Layer 1 succeeds, but the
+  action is invisible. Out of scope; the follow-up ADR will add
+  `databaseHooks` or a Server Action wrapper that logs to a
+  dedicated table.
+
+The threat model is reviewed whenever an ADR touches `packages/auth`,
+`apps/app/proxy.ts`, or any admin endpoint.
