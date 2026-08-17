@@ -1,0 +1,110 @@
+name: CLI publish verify
+
+# Catches publish-path regressions at PR time, not at release time.
+#
+# The release workflow (release.yml) trusts the published package.json
+# to be correct. Three recent releases (1.1.0, 1.1.1, 2.0.1) have shipped
+# broken published artifacts. None of them were caught by CI because
+# none of the CI jobs exercise the npm publish path.
+#
+# This workflow runs the four steps that would have caught all three
+# incidents:
+#
+# 1. Pack the tarball locally (no registry).
+# 2. Inspect the tarball contents (bad inclusions).
+# 3. npm install --dry-run in a clean project (workspace:* deps).
+# 4. Real npm install + npx <cli> --help (user-facing smoke test).
+#
+# Permissions: contents: read ONLY. No id-token: write, no NPM_TOKEN,
+# no NODE_AUTH_TOKEN. The job does not publish; it only installs a
+# tarball the build step produced locally. Trusted Publishing stays
+# exclusively in release.yml.
+#
+# Implements ADR-013.
+
+on:
+  pull_request:
+    branches: [main, staging]
+    paths:
+      - "apps/cli/**"
+      - ".github/workflows/cli-publish-verify.yml"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish-verify:
+    name: Verify CLI publish artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Build the bundle (tsup) and its workspace deps. The prebuild
+      # chain in apps/cli already handles the transitive cascade.
+      - name: Build CLI
+        run: pnpm turbo build --filter=@deessejs/cli
+
+      # Step 1: pack the tarball that would be published.
+      - name: Pack CLI tarball
+        run: pnpm --filter @deessejs/cli exec npm pack
+
+      # Step 2: inspect the contents. A successful pack is not enough;
+      # the tarball must contain the compiled bundle and the expected
+      # metadata files.
+      - name: Inspect tarball contents
+        run: |
+          set -euo pipefail
+          TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
+          echo "Inspecting: $TARBALL"
+          tar -tzf "$TARBALL"
+          # Required files in the published artifact.
+          for required in \
+            "package/package.json" \
+            "package/dist/index.js" \
+            "package/dist/index.d.ts" \
+            "package/README.md" \
+          ; do
+            if ! tar -tzf "$TARBALL" | grep -q "^$required$"; then
+              echo "::error::Missing required file in tarball: $required"
+              exit 1
+            fi
+          done
+
+      # Step 3: dry-run install in a clean project. This catches the
+      # 2.0.1 failure mode (workspace:* / catalog: in dependencies
+      # that npm cannot resolve from the registry).
+      - name: Verify npm install (dry-run)
+        run: |
+          set -euo pipefail
+          TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
+          SCRATCH=$(mktemp -d)
+          pushd "$SCRATCH" > /dev/null
+          npm init -y > /dev/null
+          npm install --dry-run "$GITHUB_WORKSPACE/$TARBALL"
+          popd > /dev/null
+          rm -rf "$SCRATCH"
+
+      # Step 4: real install + npx smoke test. This is what the user
+      # actually does. Fails if the install cannot complete or the
+      # binary cannot run.
+      - name: Real install + npx smoke test
+        run: |
+          set -euo pipefail
+          TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
+          SCRATCH=$(mktemp -d)
+          pushd "$SCRATCH" > /dev/null
+          npm init -y > /dev/null
+          npm install "$GITHUB_WORKSPACE/$TARBALL"
+          npx @deessejs/cli --help
+          popd > /dev/null
+          rm -rf "$SCRATCH"
