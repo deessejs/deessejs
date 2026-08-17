@@ -50,6 +50,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@workspace/api": "workspace:*",
     "@workspace/contracts": "workspace:*",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
