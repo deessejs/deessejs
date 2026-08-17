@@ -1,0 +1,96 @@
+---
+title: 'CLI e2e tests'
+description: 'Smoke testing each command against a mock HTTP server.'
+---
+
+# ADR-014: CLI e2e tests
+
+## Status
+
+Accepted (2026-08). Non-negotiable.
+
+## Context
+
+`@deessejs/cli` is the only surface of the monorepo that users actually run. The unit tests (`apps/cli/test/contract/`, `apps/cli/test/unit/`) cover the internal logic: error mapping, output formatting, and a small set of git helpers. They do not cover the published artifact as a whole.
+
+The verify workflow (ADR-013) catches publish-path regressions: `npx @deessejs/cli@latest --help` runs against the just-packed tarball. It catches broken installs and missing runtimes. It does not catch commands that run but return the wrong thing.
+
+Three failure modes the unit tests and the verify job do not catch:
+
+1. A command that returns the wrong templates. The mock-free path is `pnpm dev` + a hand-edited server. Beyond manual smoke testing, nothing.
+2. A command that crashes on a specific input shape. `cli info <unknown-slug>` should print a `not_found` CliError, not a stack trace. The unit tests cover the mapping; they do not cover what happens when the oRPC procedure returns a typed error.
+3. `cli init` cloning the wrong repository. The unit tests mock `cloneRepo`; the real `git clone` path is untested.
+
+For the published `@deessejs/cli@2.0.1`, the verify job caught a broken install. It would not have caught a CLI that installs cleanly but returns garbage.
+
+## Decision
+
+Add a dedicated e2e test suite under `apps/cli/test/e2e/` that runs the published tarball against a mock HTTP server. The suite is one file per command (`list`, `info`, `init`), plus a helpers folder for the mock server, the CLI runner, and the git fixture.
+
+The suite runs in CI on every PR touching `apps/cli/**` and in a deeper nightly run.
+
+### One prerequisite: `API_BASE_URL` env var
+
+The CLI hardcodes `API_RPC_PATH` and `API_BASE_PATH` as path constants and lets `globalThis.fetch` resolve them as relative URLs. Today, fetching `/api/v1/rpc` from Node uses `window.location.origin` as the base, which is `http://localhost:80` in the absence of a window. The CLI cannot be pointed at a different server.
+
+This is what makes the e2e suite possible. Before any e2e test can run, the CLI must accept an `API_BASE_URL` environment variable that prefixes the path constants. The override is read at startup, fails loudly if the env var is malformed, and falls back to the current hardcoded behavior when unset (so existing consumers are not affected).
+
+This is a prerequisite for the e2e suite, not a refactor. The change is small: one env var read, one string concatenation, one fallback. It does not change the production behavior of the CLI for users who do not set the env var.
+
+### The tests
+
+Three commands, three suites. Each suite covers the happy path plus at least one error path.
+
+**`list`**: the mock server returns a fixed list of templates. The test asserts that the CLI prints the template slugs in the output. A second test mocks a server error and asserts that the CLI exits non-zero with a `network_error` CliError code.
+
+**`info`**: the mock server returns one template matching the requested slug. The test asserts that the CLI prints the template's name and description. A second test mocks a 404 and asserts that the CLI exits with a `not_found` CliError code. A third test mocks malformed data and asserts that the CLI exits with a `parse_error` CliError code.
+
+**`init`**: a bare git repo is created in `tmpdir` with a `main` branch and a single commit. The mock server returns a template pointing at that bare repo. The CLI is invoked with `--no-install` to skip the package-manager step (that step is already covered by unit tests on the spawn helper). The test asserts that the destination directory contains the cloned repo's contents.
+
+### The mock server
+
+A minimal Node `http` server, no framework, ~80 lines. The server speaks two endpoints: `GET /api/v1/version` and `POST /api/v1/rpc`. The `/api/v1/rpc` handler checks the request body shape and returns one of four canned responses: success, 404, malformed, or network error.
+
+The server is not a real API. It does not validate auth. It does not interpolate GitHub data. It serves the contract shapes that the CLI client expects and that the unit tests already pin. Anything outside the contract is the CLI's problem to detect and surface.
+
+### The CLI runner
+
+A `cli-runner.ts` helper that wraps `execa`. It spawns the CLI binary with the tarball path, captures stdout, stderr, and the exit code, and exposes a `run(args, envOverride)` API. Tests use it like `await run(["list"], { API_BASE_URL: mockServer.url })`.
+
+The runner uses the tarball from the verify workflow's `apps/cli/dist/deessejs-cli-*.tgz`. If the tarball is missing, the runner fails the test with a clear error message. The runner does not invoke the source TypeScript directly; the e2e suite tests the published artifact, not the source.
+
+### The git fixture
+
+A `git-fixture.ts` helper that creates a bare git repo in a fresh `tmpdir`, adds a `main` branch with a single commit, and exposes the bare path as a `file://` URL. The bare repo has a single file so the test can assert that the clone produced the correct contents.
+
+Bare local repos are deterministic. They do not depend on GitHub. They do not depend on network. The fixture is created in a `tmpdir` and cleaned up at the end of the test run.
+
+### CI integration
+
+Two workflows:
+
+**`cli-e2e.yml` (PR, blocking)**: gates on `apps/cli/**`. Runs the three suites. Failures block merge. The suite is fast (< 2 min) because the mock server is local and the git fixture is in-process.
+
+**`cli-e2e-extended.yml` (nightly, non-blocking)**: runs an extended matrix. Includes longer timeouts, larger fixtures, retry-on-flake, and the cases that are too slow or too unreliable for PR (e.g., the spawn-helper test that actually runs the package manager). Failures here post a GitHub issue with the captured output rather than failing the build.
+
+### Why not the alternatives
+
+Three patterns were considered and rejected:
+
+- **Tighten the contract tests.** The unit tests already pin the request/response shapes. Tightening further would catch fewer bugs at a higher cost. The e2e suite tests the integration, not the shape.
+- **Spin up the real API in CI.** The real API depends on Postgres and the GitHub REST API. Both add flakiness and a maintenance burden. The mock server is the test surface; the real API is the production surface.
+- **Run the CLI against a `verdaccio` registry.** Verdaccio is the senior pattern for packages that depend on other packages published separately. The CLI is its own dependency tree after the publish fix (ADR-013). Verdaccio is the wrong tool.
+
+### Cost
+
+One developer-week for the prerequisites: `API_BASE_URL` override, `cli-runner` helper, `http-server` helper, `git-fixture` helper. One developer-day for the three test suites. One developer-day for the CI workflows. Total: one developer-week for the senior pattern.
+
+The cost is bounded and the value compounds: every future change to the CLI is automatically tested against the published artifact on a real install.
+
+## Consequences
+
+- Every PR that touches `apps/cli/**` runs the e2e suite. Bugs of the form "the CLI runs but returns the wrong thing" are caught at PR time, not at release time.
+- A nightly run exercises a wider matrix. Bugs that are too slow or too flaky for PR gating surface in a GitHub issue, not as a CI failure.
+- The CLI gains an `API_BASE_URL` env var override. This is a small ergonomic improvement for users who run the CLI against a self-hosted registry, and it is the prerequisite that makes the e2e suite possible.
+- The verify job (ADR-013) and the e2e suite are complementary. The verify job catches broken publishes; the e2e suite catches broken behavior. A release is green only when both pass.
+- `pkg.pr.new` is a future option. It would let reviewers run the actual CLI from a PR preview URL. It is out of scope here; ADR-013 explains why.
