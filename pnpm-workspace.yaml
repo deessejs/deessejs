@@ -80,6 +80,7 @@ catalog:
   typescript: ^6.0.3
 
   # Testing
+  execa: ^9.6.0
   vitest: ^4.1.10
   zod: ^4.4.3
   zustand: ^5.0.14
