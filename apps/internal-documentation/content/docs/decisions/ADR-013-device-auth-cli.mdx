@@ -221,31 +221,31 @@ returned by `/device/code`, which already carries the
 #### Route layout
 
 The verification page lives under the `(unprotected)`
-route group, alongside `login`, `signup`,
-`forgot-password`, `reset-password`, and
-`verify-email`:
+route group, **inside the `(auth)` sub-group**, alongside
+`login`, `signup`, `forgot-password`, `reset-password`,
+and `verify-email`:
 
 ```
 apps/app/app/(unprotected)/
-├── (auth)/
-│   ├── login/page.tsx
-│   ├── signup/page.tsx
-│   ├── forgot-password/page.tsx
-│   ├── reset-password/page.tsx
-│   ├── verify-email/page.tsx
-│   └── layout.tsx
-└── device/
-    └── page.tsx
+└── (auth)/
+    ├── login/page.tsx
+    ├── signup/page.tsx
+    ├── forgot-password/page.tsx
+    ├── reset-password/page.tsx
+    ├── verify-email/page.tsx
+    ├── device/
+    │   └── page.tsx
+    └── layout.tsx
 ```
 
-The page is **not** under the `(auth)` sub-group. The
-`(auth)` sub-group is paired with the `(unprotected)`
-layout and is the layout for the form-based sign-in
-flow; the device flow has a different shape (read the
-URL, claim the code, render one of four states) and
-sits at its own `(unprotected)/device/page.tsx`. The
-`(unprotected)/layout.tsx` and the auth `(auth)/layout.tsx`
-are unchanged.
+The page inherits the `(auth)/layout.tsx` layout — the
+centered single-column panel (`max-w-md`) that
+`login`, `signup`, and the rest of the form-based
+flows already use. The form-based flow and the device
+flow share the same panel shape (a heading, a caption,
+one or two primary actions, a "go back" link); the
+shared layout is the right fit. The
+`(unprotected)/layout.tsx` is unchanged.
 
 The page is **public**: `apps/app/proxy.ts` does not
 gate it. The proxy's `AUTH_PREFIXES` allowlist is the
@@ -288,20 +288,22 @@ convention as `login-form.tsx`, `signup-form.tsx`,
 Card, and friends from `@workspace/ui` only, no raw
 `<input>` with shadcn classes copy-pasted). The
 component is exported from `apps/app/components/auth/index.ts`
-alongside the existing five forms; the `(unprotected)/device/page.tsx`
-imports it through the barrel, mirroring
-`login/page.tsx`'s `import { AuthContainer, LoginForm } from "@/components/auth"`.
+alongside the existing five forms; the page imports
+it through the barrel, mirroring `login/page.tsx`'s
+`import { AuthContainer, LoginForm } from "@/components/auth"`.
 
-The `AuthContainer` layout is **not** reused here. The
-device page does not need the centered single-column
-form layout; it needs a wider panel that fits a "what
-you're approving" caption alongside the approve/deny
-buttons. A new layout primitive
-`apps/app/components/auth/device-container.tsx` (or a
-generic `WideAuthContainer` if the same shape is
-needed elsewhere later) owns the wider layout. The
-shape is registered through the design system, not
-duplicated as ad-hoc Tailwind.
+The `AuthContainer` layout is reused. The page is
+inside the `(auth)` sub-group, so it inherits the
+centered single-column panel from `(auth)/layout.tsx`
+— the same panel `login`, `signup`, and the rest of
+the form-based flows already use. The device flow's
+"what you're approving" caption and the
+approve/deny buttons fit the `max-w-md` panel without
+needing a wider container. If a future ADR adds a
+device page that needs more horizontal space (a code
+preview, a longer scopes list), the wider layout is a
+new primitive registered through the design system,
+not duplicated as ad-hoc Tailwind.
 
 #### Wiring the typed client
 
@@ -377,22 +379,19 @@ this ADR.
   mapping is internal; the public error code list (per
   ADR-010 §2) does not gain new entries for the polling
   loop.
-- A new page `apps/app/app/(unprotected)/device/page.tsx`
-  alongside the existing `(unprotected)/(auth)/*` pages.
-  The page is a sibling, not a child of the `(auth)`
-  sub-group.
+- A new page
+  `apps/app/app/(unprotected)/(auth)/device/page.tsx`
+  inside the existing `(auth)` sub-group, alongside
+  `login`, `signup`, `forgot-password`,
+  `reset-password`, and `verify-email`. The page
+  inherits the centered `AuthContainer` layout from
+  `(auth)/layout.tsx`.
 - A new form component
   `apps/app/components/auth/device-form.tsx` exported
   from `components/auth/index.ts`. The component owns
   the four-state machine (not signed in / claimed
   pending / approved / expired) and uses the typed
   Better Auth client directly.
-- A new layout primitive
-  `apps/app/components/auth/device-container.tsx` (or a
-  generic `WideAuthContainer`) for the wider panel the
-  device page needs. The primitive is registered
-  through the design system, not duplicated as ad-hoc
-  Tailwind.
 - Adding `/device` to the `AUTH_PREFIXES` allowlist in
   `apps/app/proxy.ts`. The proxy bounces a signed-in
   user to `/home`; an authenticated user landing on
@@ -448,15 +447,19 @@ this ADR.
   verification page.** The verification page is the
   user-facing surface; `/settings/sessions` already
   covers device management.
-- **Placing the device page under the `(auth)` sub-group.**
-  The `(auth)` sub-group is the layout for the form-based
-  sign-in flow; the device flow has a different shape
-  and sits at its own `(unprotected)/device/page.tsx`.
-- **Reusing `AuthContainer` for the device page.** The
-  device page needs a wider layout; the centered
-  single-column form layout is the wrong shape. A new
-  layout primitive (`device-container.tsx` or a generic
-  `WideAuthContainer`) owns the wider shape.
+- **Placing the device page outside the `(auth)`
+  sub-group.** The page is part of the auth surface
+  and inherits the `AuthContainer` layout; a sibling
+  placement under `(unprotected)/device/` would
+  duplicate the layout primitive for no gain.
+- **Introducing a wider container primitive
+  (`device-container.tsx` or a generic
+  `WideAuthContainer`) for V1.** The `AuthContainer`
+  `max-w-md` panel fits the approve/deny caption and
+  the two buttons. A wider container is added only if
+  a future ADR surfaces a layout that does not fit
+  the existing panel, and it lands in the design
+  system, not in `components/auth/`.
 - **Bypassing `authClient` for the four device methods
   on the web side.** The page calls
   `authClient.device()`, `authClient.device.approve()`,
