@@ -86,6 +86,9 @@ app/(protected)/admin/
     page.tsx                   # list + pagination + filters
     [id]/
       page.tsx                 # detail (header, profile, sessions)
+  roles/
+    page.tsx                   # role x permission matrix (read-only)
+    [role]/page.tsx            # role detail + user count
 ```
 
 A global `ImpersonationBanner` component mounts inside
@@ -109,13 +112,17 @@ The scope of the V1 surface is exactly:
 - `admin/layout.tsx`,
 - `admin/page.tsx` (placeholder),
 - `admin/users/page.tsx` (list),
-- `admin/users/[id]/page.tsx` (detail with dialogs).
+- `admin/users/[id]/page.tsx` (detail with dialogs),
+- `admin/roles/page.tsx` (read-only role x permission matrix),
+- `admin/roles/[role]/page.tsx` (read-only role detail with user
+  count).
 
 No `/admin/users/new`, no `/admin/users/[id]/edit`, no
-`/admin/users/[id]/sessions`, no `/admin/users/[id]/delete`, no
-`/admin/roles`. Roles and permission matrices stay out of V1; if a
-future ADR brings them back, they will be read-only pages or a
-follow-up section.
+`/admin/users/[id]/sessions`, no `/admin/users/[id]/delete`. Roles
+are informational: they render the statement set and the role
+definitions, but no runtime editing. Editing permissions stays a
+code-level concern; if a future ADR brings runtime role editing, it
+will land as dialogs on the same pages, not as a new section.
 
 ### 3. Two-layer gating
 
@@ -150,8 +157,8 @@ server.
 ### 5. Sidebar wiring
 
 `AppSidebar` reads `usePathname()`. When the path starts with
-`/admin`, it renders an extra `SidebarGroup` with a single `Users`
-entry above the existing `Settings` shortcut. The
+`/admin`, it renders an extra `SidebarGroup` with `Users` and
+`Roles` entries above the existing `Settings` shortcut. The
 home/settings/admin groupings remain visually distinct. No new prop
 is added to the sidebar; the existing `usePathname` hook is enough.
 
@@ -221,10 +228,11 @@ is added to the sidebar; the existing `usePathname` hook is enough.
 
 ## Consequences
 
-- `apps/app/app/(protected)/admin/` ships exactly four pages:
-  `layout.tsx`, `page.tsx` (placeholder), `users/page.tsx`, and
-  `users/[id]/page.tsx`. Every other interaction is a Dialog on one
-  of those two pages. Pages are gated, sidebar-aware, and use
+- `apps/app/app/(protected)/admin/` ships exactly six pages:
+  `layout.tsx`, `page.tsx` (placeholder), `users/page.tsx`,
+  `users/[id]/page.tsx`, `roles/page.tsx`, and `roles/[role]/page.tsx`.
+  User mutations are dialogs on `users/[id]/page.tsx`; the roles
+  pages are read-only. Pages are gated, sidebar-aware, and use
   shadcn components from `@workspace/ui`.
 - `auth.api.{listUsers, getUser, createUser, setRole,
   setUserPassword, adminUpdateUser, banUser, unbanUser,
