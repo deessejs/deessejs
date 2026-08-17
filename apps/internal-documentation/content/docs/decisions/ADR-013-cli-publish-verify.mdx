@@ -1,0 +1,75 @@
+---
+title: 'CLI publish verify'
+description: 'CI dry-run pack + smoke install + npx run before publish.'
+---
+
+# ADR-013: CLI publish verify
+
+## Status
+
+Accepted (2026-08). Non-negotiable.
+
+## Context
+
+`@deessejs/cli` is the only published package in the monorepo. The release workflow (`release.yml`) bumps the version, packs the tarball, and pushes to npm via Trusted Publishing. The three recent releases (1.1.0, 1.1.1, 2.0.1) have shipped broken `package.json` artifacts:
+
+- 1.1.0 shipped without a compiled bundle; `npx` could not find the bin.
+- 1.1.1 added a fix, but the published tarball still listed `@workspace/api` as a runtime dependency (`hasInstallScript` issues, `EUNSUPPORTEDPROTOCOL` at install).
+- 2.0.1 repeated the same `@workspace/api` mistake.
+
+None of these bugs were caught by CI. The CI runs `pnpm install --frozen-lockfile`, `pnpm turbo build`, `pnpm turbo test`, and `pnpm turbo typecheck`. None of these exercise the npm publish path. The release workflow does, but it runs only on push to `main`, after the bug is already merged and the version is already bumped.
+
+The pattern that would have caught all three bugs: **build the tarball, install it in a clean project, run the binary**. There is no step in CI today that does this.
+
+The repo's senior publish pattern (`docs/engineering/processes/versioning.md`) is built around the assumption that the publish artifact is correct. The pattern omits a verify step. With three failures in a row, the omission is no longer defensible.
+
+## Decision
+
+Add a verify workflow (`cli-publish-verify.yml`) that runs on every PR touching `apps/cli/**`. The workflow exercises the npm publish path end to end without touching the registry. It fails the PR if any step fails.
+
+### The four levels of verification
+
+The workflow runs all four. Each adds a guarantee the previous one cannot.
+
+1. **Pack the tarball locally.** `pnpm --filter @deessejs/cli exec npm pack` produces a `.tgz` identical to what `pnpm changeset publish` would push. Fails if the tarball cannot be built (bin not present, files field missing, etc.).
+
+2. **Inspect the tarball contents.** `tar -tzf` lists the files. Fails if `.npmignore` is missing, the bin path is wrong, or unexpected files leak. This is what would have caught the 1.1.0 incident (no compiled bundle).
+
+3. **Dry-run install in a clean project.** A scratch directory runs `npm install --dry-run <tarball>`. This is what would have caught the 2.0.1 incident: npm's resolver sees the published `dependencies` (not the workspace list) and 404s on `@workspace/api`.
+
+4. **Real install plus `npx` smoke test.** `npm install <tarball>` plus `npx @deessejs/cli --help`. This is what would have caught the 2.0.1 incident most directly: the user-facing command actually running. Fails if the install cannot complete or the binary cannot run.
+
+### Permissions
+
+The job runs with `contents: read` only. No `id-token: write`, no `NPM_TOKEN`, no `NODE_AUTH_TOKEN`. The verify job does not publish anything; it only installs a tarball the build step produced locally. Trusted Publishing stays exclusively in `release.yml`.
+
+### Why the existing CI does not catch this
+
+`pnpm install --frozen-lockfile` in the CI uses the workspace symlink for `@workspace/*`. The published tarball does not. Two different installs, two different dependency graphs. The verify job runs the second one.
+
+`pnpm turbo build` produces the bundle. It does not pack or install anything. The verify job runs the next two steps.
+
+`pnpm turbo test` runs tests against the workspace source. It does not import from the published artifact. The verify job runs the published artifact.
+
+### Why not pkg.pr.new
+
+`pkg.pr.new` is the senior pattern for pre-publish testing in 2025-2026 (1.9k stars, MIT, Cloudflare-backed). It publishes a preview package to a temporary npm-compatible URL on every commit and PR. Reviewers can `npm install https://pkg.pr.new/deessejs/cli@a832a55` and run the CLI.
+
+Reasons not to use it here, for now:
+
+1. The repo's monorepo topology has `@workspace/*` packages that are bundle-internal to the CLI. `pkg.pr.new` reads the published `package.json` and would see `workspace:*` — it would not know to substitute. The fix requires either (a) the workspace deps to be aligned to real semver (which they cannot be, by design) or (b) a pre-pack step that rewrites `workspace:*` to a placeholder. Neither is in scope here.
+2. The four levels above cover the failure modes we have actually hit. `pkg.pr.new` is a faster iteration loop for review, not a substitute for the smoke install. It can be added as a fifth level later, in a different ADR.
+
+### Cost
+
+The job runs in roughly 3-4 minutes on the standard CI runner. Build is the slowest step (Next.js apps in the same workspace); the verify steps themselves are under 30 seconds.
+
+The job is triggered only on PRs that touch `apps/cli/**`. PRs that touch other packages do not pay the cost.
+
+## Consequences
+
+- Every PR that touches `apps/cli/**` now runs the verify job. Bugs of the form "the published tarball fails to install or run" are caught at PR time, not at release time.
+- The verify job is gated on `apps/cli/**` paths. A PR that only changes documentation or unrelated packages does not trigger it.
+- The ADR is paired with implementation in the same PR (`fix/cli-publish-deps`). The workflow file is `.github/workflows/cli-publish-verify.yml`.
+- `pkg.pr.new` (or a similar tool) is a future option. It would let reviewers run the actual CLI from a PR preview URL. It is out of scope here because of the workspace-deps substitution problem.
+- The verify workflow does not replace the release workflow. `release.yml` is the only path that publishes to npm. The verify workflow is a gate before the release path; it does not modify the release path.
