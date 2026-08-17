@@ -72,6 +72,79 @@ The change does not touch the `@workspace/api` package. The path constants stay 
 
 This is the four-line change in concrete terms: one env var read, one validation, one fallback constant, one resolver function. The rest of the CLI calls the resolver instead of the hardcoded constants. The change is local to two CLI files and one new file. It does not change the public surface of the CLI.
 
+### Code surface
+
+The implementation lands the following additions. None of this is code yet — it is the public shape the implementation PR will produce.
+
+#### New module: `apps/cli/src/api/runtime.ts`
+
+Three exports. The module is the only place in the CLI that reads `process.env.API_BASE_URL`.
+
+| Export | Type | Purpose |
+|---|---|---|
+| `getApiBaseUrl` | `() => string` | Returns the resolved base URL. Reads `API_BASE_URL` from the env, validates it, returns the production default if unset. Memoized after the first call. |
+| `getApiRpcUrl` | `() => string` | Returns `${getApiBaseUrl()}/api/v1/rpc`. |
+| `getApiVersionUrl` | `() => string` | Returns `${getApiBaseUrl()}/api/v1/version`. |
+
+The memoization matters. The CLI calls `getApiRpcUrl` once at startup (in `client.ts`) and `getApiVersionUrl` once at startup (in `version/check.ts`). If the env var were read at every call, a test that wraps spawn in a way that mutates the env would have surprising behavior. The memoization makes the resolution deterministic.
+
+#### Validation
+
+The validation rules are tight enough to catch obvious mistakes but lenient enough to accept any well-formed URL. The format is `https://example.com` or `http://localhost:4873`. Empty strings, missing scheme, whitespace, and `null` are rejected. The CLI throws a `CliError` with code `internal_error` and a message that includes the offending value. The failure happens before any network call so it does not mask deeper issues.
+
+The regex is small. It rejects anything that does not match `^https?://[^/\s]+(:\d+)?(/.*)?$`. URLs with credentials, query strings, and fragments are accepted; we do not need that surface area yet.
+
+#### Call sites
+
+Two call sites change. Both are local replacements of a constant with a function call.
+
+`apps/cli/src/api/client.ts`:
+```diff
+- import { API_RPC_PATH } from "@workspace/api/base-path"
++ import { getApiRpcUrl } from "./runtime.js"
+  ...
+  const link = new RPCLink({
+-   url: API_RPC_PATH,
++   url: getApiRpcUrl(),
+    plugins: [...]
+  })
+```
+
+`apps/cli/src/version/check.ts`:
+```diff
+- import { API_BASE_PATH } from "@workspace/api/base-path"
++ import { getApiVersionUrl } from "./runtime.js"
+  ...
+- const versionUrl = `${API_BASE_PATH}/version`
++ const versionUrl = getApiVersionUrl()
+```
+
+The `@workspace/api/base-path` imports stay in `@workspace/api`. The CLI still gets the path constants for places that need them (e.g., the Readme mentions the API path; the cli-self-version test exists; the version probe shape). Only the runtime URL resolution moves to the CLI.
+
+#### Unit tests
+
+The new module is small enough to test in isolation. The implementation PR adds a `runtime.test.ts` next to the module. The tests cover the five cases:
+
+1. `API_BASE_URL` unset → returns the production default.
+2. `API_BASE_URL` set to a valid URL → returns the URL.
+3. `API_BASE_URL` set to an empty string → throws `CliError`.
+4. `API_BASE_URL` set to a malformed value (no scheme, whitespace) → throws `CliError`.
+5. `getApiRpcUrl` and `getApiVersionUrl` join paths correctly with the resolved base.
+
+The tests do not spawn the CLI. They call the resolver functions directly. The integration with the CLI is verified by the e2e suite that this ADR mandates.
+
+#### Changeset
+
+The implementation ships with a patch changeset for `@deessejs/cli`. The body documents the new env var override, the fallback, and the validation. It does not document the e2e suite — that lands in a follow-up PR.
+
+#### What does NOT change
+
+Three things this ADR leaves out of scope:
+
+- The `@workspace/api` package. The path constants stay. The CLI gains a runtime resolver; the API package does not gain a runtime counterpart.
+- The constants `API_BASE_PATH` and `API_RPC_PATH` are still exported from `@workspace/api/base-path`. Web, app, and tests use them. The CLI gains a runtime resolver; the other consumers keep the constants.
+- The error code for malformed `API_BASE_URL`. The current proposal is `internal_error`. The choice is decided at implementation time. `invalid_env` is a candidate if the team prefers a more specific code.
+
 ### The tests
 
 Three commands, three suites. Each suite covers the happy path plus at least one error path.
