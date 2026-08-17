@@ -1,6 +1,6 @@
 ---
 title: 'Knowledge Base guides'
-description: 'kbGuides content-collection for the marketing-site knowledge base; guide pages are MDX-rendered, pre-rendered, and reference kbTopics by FK.'
+description: 'kbGuides content-collection; guide pages MDX-rendered and SSG, FK to kbTopics, products aligned with topic tags, enriched breadcrumb, per-guide OG image.'
 ---
 
 # ADR-014: Knowledge Base guides
@@ -151,6 +151,81 @@ is owned by [ADR-013](./ADR-013-knowledge-base-topics.md).
 builds by filtering at the helper layer (the blog does
 this for `posts`).
 
+### Products ↔ topic tags alignment
+
+A guide's `products` array is constrained to be a subset of
+its topic's `tags` array (declared in
+[ADR-013](./ADR-013-knowledge-base-topics.md)). Concretely:
+
+```ts
+// In the page or a derived helper:
+const topicDoc = allKbTopics.find((t) => t.slug === guide.topic)
+if (!topicDoc) notFound()
+const productNotOnTopic = guide.products.find(
+  (p) => !topicDoc.tags.includes(p),
+)
+if (productNotOnTopic) {
+  throw new Error(
+    `Guide "${guide.slug}" declares product "${productNotOnTopic}" ` +
+      `which is not on topic "${guide.topic}". Add it to the topic's ` +
+      `tags, or remove it from the guide's products.`,
+  )
+}
+```
+
+The constraint is checked at **build time** in the page
+module (a server component throws if violated). It is
+deliberately not enforced in the Zod schema — the schema
+sees only its own file, while the alignment is a property
+of the relation between two files. A refinement inside
+the collection transform is possible but mixes two
+collections into one transform, which complicates the
+build graph. The page-level check is the simplest place
+that has both files in scope.
+
+#### Why align
+
+Three reasons:
+
+1. **Editorial signal.** When an editor adds a guide
+   product, they are implicitly classifying it under a
+   topic. If the product is not on the topic, the
+   classification is ambiguous. The check makes the
+   ambiguity explicit at build time.
+2. **Discoverability.** The KB index page renders both
+   topic tags and guide products as badges. When the two
+   namespaces drift, the visitor sees two unrelated
+   badge clouds and cannot tell which product belongs to
+   which topic.
+3. **Search corpus.** `lib/search/corpus.ts` indexes
+   `tags` on `kb-topic` entries and `products` on
+   `kb-guide` entries. The unified search ranks results
+   against a flat taxonomy; a divergent products/tags
+   namespace doubles the surface and halves the recall.
+
+The alignment is **strict** — every guide product must
+be on its topic. There is no escape hatch. An editor
+who wants a product that is not on the topic must first
+add it to the topic's tags; if that addition would
+broaden the topic beyond its intent, the guide goes on a
+different topic.
+
+#### Migration cost
+
+Three existing products need renaming or removal to
+satisfy the alignment against the topic tags we set in
+ADR-013:
+
+| Guide | Old product | New product | Reason |
+|---|---|---|---|
+| `nextjs-rag-template` | `templates`, `ai`, `postgres` | `rag`, `postgres` | `templates` is not on `agents`'s tags; `ai` is not on `agents` either; `rag` is |
+| `postgres-migrations` | `database` | `postgres`, `migrations` | `database` is not on `databases`'s tags |
+| `production-checklist` | `deploy` | `vercel`, `production` | `deploy` is not on `deployment`'s tags |
+
+The renames are mechanical: the guide frontmatter is
+updated in lockstep with the topic tags. No new
+editorial copy is required.
+
 ### Initial guide set
 
 The migration seeds nine guide files. All nine are
@@ -159,15 +234,19 @@ The migration seeds nine guide files. All nine are
 
 | Slug | Topic | Products |
 |---|---|---|
-| `install-deessejs-cli` | `cli` | cli, registry |
-| `first-agent-stack` | `agents` | agents, ai-sdk |
-| `deploy-to-vercel` | `deployment` | deploy |
-| `nextjs-rag-template` | `agents` | templates, ai, postgres |
-| `background-jobs-queue` | `queue` | queue |
-| `observability-logging` | `observability` | observability |
-| `postgres-migrations` | `databases` | database |
-| `shadcn-theming` | `ui` | ui |
-| `production-checklist` | `deployment` | deploy |
+| `install-deessejs-cli` | `cli` | cli, registry, scaffolding |
+| `first-agent-stack` | `agents` | ai, llm, rag |
+| `deploy-to-vercel` | `deployment` | vercel, production, ci-cd |
+| `nextjs-rag-template` | `agents` | rag, postgres |
+| `background-jobs-queue` | `queue` | background-jobs, async |
+| `observability-logging` | `observability` | logs, traces, metrics |
+| `postgres-migrations` | `databases` | postgres, drizzle, migrations |
+| `shadcn-theming` | `ui` | shadcn, tailwind, theming |
+| `production-checklist` | `deployment` | vercel, production |
+
+Every entry's `Products` column is a strict subset of
+its `Topic`'s `tags` array. See "Products ↔ topic tags
+alignment" above for the rule and the migration cost.
 
 #### Orphaned guides
 
@@ -182,15 +261,12 @@ gap by adding two new topics — `queue` and
 `observability` — to the initial topic set. This ADR
 points the two orphan guides at those new topics.
 
-If the topic FK were enforced against `allKbTopics` at
-build time (e.g. via a refinement), a guide pointing at a
-non-existent topic would be a build error. Today the
-schema only enforces that `topic` is a non-empty string;
-the topic page itself reads
-`allKbGuides.filter((g) => g.topic === slug)` and an
-orphan guide silently disappears from the topic listing.
-The next contributor who adds a refinement tightening
-the FK lives in a future ADR.
+The topic FK is enforced at page-level (see "Products ↔
+topic tags alignment"): a guide pointing at a
+non-existent topic throws at build time. The schema
+itself only enforces that `topic` is a non-empty string;
+the page module is the simplest place that has both the
+guide and the topic in scope.
 
 ### Page wiring
 
@@ -205,22 +281,75 @@ The guide side of the knowledge base reads from
   `Array.from(new Set(allKbGuides.flatMap((g) => g.products))).sort()`
   — the same expression that exists today, lifted from a
   constant.
-- `app/(content)/knowledge-base/guide/[slug]/page.tsx` —
+- `app/(content)/knowledge-base/guides/[slug]/page.tsx`
+  *(route is renamed from `guide/[slug]/` to
+  `guides/[slug]/` per the same flat-dynamic-segment
+  convention as `[topic]` → `topics/[topic]` in
+  [ADR-013](./ADR-013-knowledge-base-topics.md))*:
   `KNOWN_SLUGS` and `GUIDE_META` removed; the page looks
-  up the guide from `allKbGuides` by slug, renders the
-  body via `MdxRenderer` wrapped in `Prose`, and exposes
-  per-guide SEO via `generateMetadata` (which reads from
-  the same collection and returns `title`, `description`,
-  OG tags).
+  up the guide from `allKbGuides` by slug, looks up the
+  topic from `allKbTopics` by the guide's `topic` field
+  (and calls `notFound()` if the topic FK does not
+  resolve), renders the body via `MdxRenderer` wrapped
+  in `Prose`, and exposes per-guide SEO via
+  `generateMetadata` (which reads from the same
+  collection and returns `title`, `description`, OG
+  tags).
 
 `generateStaticParams` is added on
-`guide/[slug]/page.tsx`:
+`guides/[slug]/page.tsx`:
 
 ```ts
 export function generateStaticParams(): Array<{ slug: string }> {
   return allKbGuides.map((g) => ({ slug: g.slug }))
 }
 ```
+
+#### Breadcrumb
+
+The guide page renders a three-level breadcrumb —
+`Knowledge Base > {Topic Title} > {Guide Title}` — instead
+of the current two-level `Knowledge Base > {Guide Title}`.
+The three-level breadcrumb costs one extra `Link` and one
+extra `BreadcrumbSeparator` and gives the visitor a
+visible path back up the taxonomy. The topic title comes
+from the same `allKbTopics` lookup that resolves the FK;
+no extra fetch.
+
+#### Per-guide OG image
+
+Each guide page ships an `opengraph-image.tsx` that
+renders a 1200×630 image with the guide title, the topic
+title, and the brand wordmark. The pattern is copied
+verbatim from
+`app/(content)/blog/[slug]/opengraph-image.tsx`; the
+content payload is `{ guide.title, topic.title, brand:
+APP_NAME }`. The image is generated at build time via
+Next.js's `opengraph-image.tsx` convention; no runtime
+cost.
+
+The guide page's `metadata` returns
+`openGraph: { ... images: ['/knowledge-base/guides/<slug>/opengraph-image'] }`
+pointing at the generated image. Crawlers and link
+previews pick up the right image per guide without
+manual intervention.
+
+#### notFound behaviour
+
+The page calls `notFound()` when:
+
+- `allKbGuides.find(...)` returns `undefined` (unknown
+  slug). The segment-level `not-found.tsx` handles the
+  fallback.
+- The guide's `topic` field does not resolve to an entry
+  in `allKbTopics` (broken FK). The same `not-found.tsx`
+  handles the fallback; the build-time check above
+  prevents this case from reaching production, but the
+  runtime check stays as defence in depth.
+
+There is **no** runtime whitelist (`KNOWN_SLUGS`). A
+guide's existence is its presence in `allKbGuides`; a
+missing topic is its absence from `allKbTopics`.
 
 ### Sitemap
 
@@ -252,9 +381,11 @@ ADR-013's migration.
 
 ### Search
 
-`lib/blog/search.ts` exports a `SearchItem` type with
-`type: "post" | "release"`. After this ADR the union
-extends to add `"kb-guide"`:
+`lib/search/corpus.ts` (lifted from `lib/blog/search.ts`
+per [ADR-015](./ADR-015-knowledge-base-global-search.md))
+exports a `SearchItem` type with
+`type: "post" | "release" | "kb-topic"`. After this ADR
+the union extends to add `"kb-guide"`:
 
 ```ts
 export type SearchItem = {
@@ -262,6 +393,7 @@ export type SearchItem = {
   description: string
   url: string
   type: "post" | "release" | "kb-topic" | "kb-guide"
+  tags?: string[]
 }
 ```
 
@@ -273,8 +405,18 @@ The new entries derived from `allKbGuides`:
   description: guide.description,
   url: guide.url,
   type: "kb-guide" as const,
+  tags: guide.products,
 })),
 ```
+
+The `kb-guide` projection carries `tags: guide.products`,
+not a separate field. The naming unifies with `kb-topic`
+(both projects call it `tags`); the value source differs
+(topic tags vs guide products) but the corpus shape is
+identical, and the products/topic-tags alignment
+guarantees that the values overlap on every guide's
+topic. Fuse.js ranks against the same `tags` key with
+weight 1, matching the `kb-topic` configuration.
 
 The `SearchDialog` component
 (`components/blog/search-dialog.tsx`) renders the new
@@ -315,7 +457,7 @@ exists.
   controls sort. No file renames required.
 - **Per-guide SEO.** `generateMetadata` reads from the
   guide; every guide gets its own `title`, `description`,
-  OG card.
+  OG card (via the per-guide `opengraph-image.tsx`).
 
 ## What this rule forbids
 
@@ -327,6 +469,15 @@ exists.
 - **A guide without a `topic:` field.** `schema.topic` is
   `z.string()`, not `.optional()`. A guide without a
   topic is a schema error caught at build time.
+- **A guide whose `topic` field does not resolve to a
+  topic.** The page module throws at build time. The
+  topic page is owned by [ADR-013](./ADR-013-knowledge-base-topics.md);
+  the FK is enforced at the join.
+- **A guide with a `products` value not on its topic's
+  `tags`.** The page module throws at build time with a
+  message naming the offending product. The contributor
+  either adds the product to the topic's tags or removes
+  it from the guide.
 - **A guide body in JSX instead of MDX.** The body is the
   MDX file.
 - **A MDX render that bypasses `MdxRenderer`.** The
@@ -349,7 +500,7 @@ exists.
   `/(content)/knowledge-base`. The links in
   `components/headers/nav-sections.tsx:142-145` and
   `components/footers/app-footer.tsx:29` stay.
-- **The `not-found.tsx` file on `guide/[slug]/`.** It
+- **The `not-found.tsx` file on `guides/[slug]/`.** It
   delegates to `NotFoundPanel`; the panel is unchanged.
 - **The `MdxRenderer` and `Prose` components.** They are
   reused verbatim.
@@ -391,44 +542,87 @@ another inline constant for the new content, framed as
   independently.
 
 The cost of the rule is the migration of one page
-(`guide/[slug]/page.tsx`), the rewrite of the index
+(`guide/[slug]/page.tsx`, renamed to
+`guides/[slug]/page.tsx`), the rewrite of the index
 page's guide sections, the addition of one collection,
-and the writing of nine MDX files. The migration is
-mechanical (edit, rename, write frontmatter). The two
-orphan guides (`background-jobs-queue`,
-`observability-logging`) get their `topic:` field set to
-the new topics added by ADR-013.
+the writing of nine MDX files, and the per-guide OG
+image. The migration is mechanical (edit, rename, write
+frontmatter). The two orphan guides
+(`background-jobs-queue`, `observability-logging`) get
+their `topic:` field set to the new topics added by
+ADR-013. Three existing products are renamed to satisfy
+the products/topic-tags alignment.
 
 ## How to migrate
 
 In one PR (split into three commits for review):
 
-1. **Add `kbGuides` to `content-collections.config.ts`.**
+1. **Add `kbGuides` to `content-collections.ts`.**
    The config must declare the Zod schema, the directory,
    the include glob, and the `transform` that compiles
    MDX with `rehypeShiki`. The collection sits alongside
-   `posts`, `releases`, `authors`, and `kbTopics`.
+   `posts`, `releases`, `authors`, and `kbTopics`. Same
+   shape as `kbTopics`; slug extracted from
+   `_meta.filePath` (matching the existing convention).
+   Draft filtering happens in the transform via
+   `context.skip("document is a draft")` when
+   `process.env.NODE_ENV === "production"`, matching the
+   `posts` pattern.
 2. **Write the guide files.** Nine `.mdx` files land in
    `content/knowledge-base/guides/`. The slug of every
    file matches the slug that was in the TSX constant;
    the redirect surface stays stable. The `topic:` field
    on each guide points to a slug in
-   `content/knowledge-base/topics/`.
-3. **Rewrite the guide side of the pages.** Remove every
-   inline constant. Add `generateStaticParams` on
-   `guide/[slug]`. Add `MdxRenderer` and `Prose` to the
-   guide page body. The index page reads `allKbGuides`
-   for the Featured Guides and All Guides sections.
-4. **Extend the sitemap and search.** Add the guide
+   `content/knowledge-base/topics/`. The `products:`
+   array is constrained to be a subset of the topic's
+   `tags` (see "Products ↔ topic tags alignment" above).
+3. **Move and rewrite the guide page.** The route
+   `app/(content)/knowledge-base/guide/[slug]/page.tsx`
+   is moved to `guides/[slug]/page.tsx` (the same
+   flat-dynamic-segment convention as `[topic]/` →
+   `topics/[topic]/` in ADR-013). The page rewrites:
+   looks up the guide from `allKbGuides` by slug, looks
+   up the topic from `allKbTopics` by the guide's
+   `topic:` field (calls `notFound()` on FK miss),
+   renders the body via `MdxRenderer` + `Prose`,
+   validates the products/topic-tags alignment at the
+   top of the page module, and exposes per-guide SEO
+   via `generateMetadata`.
+4. **Add the per-guide OG image.** Create
+   `app/(content)/knowledge-base/guides/[slug]/opengraph-image.tsx`
+   copying the blog pattern from
+   `app/(content)/blog/[slug]/opengraph-image.tsx`. The
+   image payload is `{ guide.title, topic.title, brand:
+   APP_NAME }`. The page module's `metadata` references
+   the generated image via
+   `openGraph.images`.
+5. **Rewrite the guide side of the index page.** Remove
+   `FEATURED_GUIDES`, `ALL_GUIDES`, and `TAG_CLOUD` (the
+   existing guide-tag cloud) from
+   `app/(content)/knowledge-base/page.tsx`. The Featured
+   Guides section reads `allKbGuides` sorted by `order`;
+   the All Guides section reads `allKbGuides`; the
+   tag cloud is derived from
+   `allKbGuides.flatMap((g) => g.products)`.
+6. **Wire the topic page's guide list.**
+   `app/(content)/knowledge-base/topics/[topic]/page.tsx`
+   currently shows an empty-state card for "Guides in
+   this topic". After this ADR it reads
+   `allKbGuides.filter((g) => g.topic === slug)` and
+   renders a list of guide links, sorted by `order`.
+7. **Extend the sitemap and search.** Add the guide
    entries to `app/sitemap.ts`. Extend
-   `lib/blog/search.ts` with `kb-guide` entries; the
-   `SearchDialog` component renders them with the
-   existing tag-pill logic.
+   `lib/search/corpus.ts` with `kb-guide` entries
+   (carrying `tags: guide.products`). The
+   `GlobalSearchDialog` component renders them with the
+   tag-pill logic it already uses for `kb-topic`.
 
 The PR is medium-sized (one collection declaration,
-nine new MDX files, one page rewrite, sitemap and search
-edits). The diff is mostly mechanical; the review load is
-the collection schema and the page rewrites.
+nine new MDX files, one page move + rewrite, one OG
+image file, sitemap and search edits). The diff is
+mostly mechanical; the review load is the collection
+schema, the products/topic-tags alignment rule, and the
+page rewrite.
 
 ## Consequences
 
@@ -436,12 +630,22 @@ the collection schema and the page rewrites.
   rejected. The pages read from `allKbGuides`.
 - A PR that adds a guide without a `topic:` field is
   rejected. The Zod schema enforces it at build time.
+- A PR that adds a guide whose `topic` does not resolve
+  is rejected. The page-level FK check throws at build
+  time with a message naming the offending topic.
+- A PR that adds a guide with a `products` value not on
+  its topic's `tags` is rejected. The alignment check
+  throws at build time; the contributor either adds the
+  product to the topic or removes it from the guide.
 - A PR that adds a guide body in JSX instead of MDX is
   rejected. The body is the MDX file.
 - A PR that bypasses `MdxRenderer` for guide bodies is
   rejected. The shiki + rehype pipeline is shared.
 - A PR that hides `draft: true` guides in dev is rejected.
   The filter is build-time only; dev shows everything.
+- A PR that adds a guide without a per-route
+  `opengraph-image.tsx` is rejected. Every guide page
+  ships its own 1200×630 image.
 
 ## Where this rule came from
 
