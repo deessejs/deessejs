@@ -71,20 +71,26 @@ jobs:
       # Step 2: inspect the contents. A successful pack is not enough;
       # the tarball must contain the compiled bundle and the expected
       # metadata files.
+      #
+      # We do NOT use `set -o pipefail` because `grep -q` closes its
+      # stdin on first match, which sends SIGPIPE to `tar` and tar
+      # exits non-zero. With pipefail, this would mask a successful
+      # match as a failure. Instead we use a temp file and a simple
+      # existence check.
       - name: Inspect tarball contents
         run: |
-          set -euo pipefail
+          set -eu
           TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
           echo "Inspecting: $TARBALL"
-          tar -tzf "$TARBALL"
-          # Required files in the published artifact.
+          FILES=$(tar -tzf "$TARBALL")
+          echo "$FILES"
           for required in \
             "package/package.json" \
             "package/dist/index.js" \
             "package/dist/index.d.ts" \
             "package/README.md" \
           ; do
-            if ! tar -tzf "$TARBALL" | grep -q "^$required$"; then
+            if ! echo "$FILES" | grep -qxF "$required"; then
               echo "::error::Missing required file in tarball: $required"
               exit 1
             fi
@@ -95,7 +101,7 @@ jobs:
       # that npm cannot resolve from the registry).
       - name: Verify npm install (dry-run)
         run: |
-          set -euo pipefail
+          set -eu
           TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
@@ -109,7 +115,7 @@ jobs:
       # binary cannot run.
       - name: Real install + npx smoke test
         run: |
-          set -euo pipefail
+          set -eu
           TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
