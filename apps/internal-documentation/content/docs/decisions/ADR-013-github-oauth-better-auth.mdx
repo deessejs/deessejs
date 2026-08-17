@@ -359,6 +359,145 @@ not own it.
 - The `apps/cli/` published surface. The CLI does not
   sign in. OAuth is a web/app concern only.
 
+## Implementation surface
+
+The implementation PR that follows this ADR touches
+exactly six files. No Drizzle migration. No new Hono
+route. No new env var beyond the two below. No UI
+page edit.
+
+### Files to change
+
+1. `packages/env/src/schema.ts` — add two optional
+   server fields to `serverInputShape` (line 52-93):
+
+   ```ts
+   GITHUB_CLIENT_ID: z.string().min(1).optional(),
+   GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
+   ```
+
+   Precedent: `BETTER_AUTH_SECRET`'s own optional
+   treatment at `schema.ts:20-23`. The `.optional()`
+   keeps CI / Vitest green in environments without
+   OAuth credentials on disk.
+
+2. `packages/env/src/server.ts` — expose both keys in
+   the `materialised` literal (line 72-85) so the
+   `serverEnv` proxy serves them. This is what makes
+   `serverEnv.GITHUB_CLIENT_ID` resolve at
+   `packages/auth/src/auth.ts` request time instead
+   of falling through to `undefined`.
+
+3. `packages/auth/src/auth.ts` — extend the existing
+   `betterAuth({...})` instance (line 22-90) with
+   two new top-level blocks:
+
+   ```ts
+   socialProviders: {
+     github: {
+       clientId: serverEnv.GITHUB_CLIENT_ID!,
+       clientSecret: serverEnv.GITHUB_CLIENT_SECRET!,
+     },
+   },
+   account: {
+     accountLinking: {
+       enabled: true,
+       trustedProviders: ["github"],
+       allowDifferentEmails: false,
+       updateUserInfoOnLink: true,
+     },
+   },
+   ```
+
+   The `!` on each key is acceptable because the
+   env-validated build refuses to boot when the keys
+   are absent (`packages/env/src/schema.ts:95-134`),
+   so by the time `socialProviders` is read at request
+   time the keys are either set or the process is
+   already dead.
+
+4. `.env.example` — annotate the two keys with the
+   `user:email` scope caveat. Add a comment pointing
+   to the GitHub OAuth App permissions page (Account
+   permissions > Email addresses > Read-only). The
+   same comment is mirrored in
+   `docs/guides/better-auth/setup.md`.
+
+5. `docs/guides/better-auth/setup.md` — extend the
+   env-var table (line 49-54), the Base Configuration
+   block (line 19-37), and the Trusted Origins block
+   (line 81-96) with the two new keys and the
+   `socialProviders.github` snippet.
+
+6. `docs/guides/better-auth/pitfalls.md` — add a new
+   section covering GitHub OAuth specifics: `scope`
+   is an OAuth App concern (not in the better-auth
+   config), `accountLinking` semantics, the absence
+   of a refresh token (GitHub access tokens do not
+   expire on a short interval), and the
+   `redirectPlugin` misinformation at
+   `apps/app/components/auth/oauth-buttons.tsx:32`.
+
+### Files explicitly NOT touched
+
+- `apps/app/app/(unprotected)/(auth)/login/page.tsx`
+- `apps/app/app/(unprotected)/(auth)/signup/page.tsx`
+- `apps/app/components/auth/login-form.tsx`
+- `apps/app/components/auth/signup-form.tsx`
+- `apps/app/components/auth/oauth-buttons.tsx`
+  (the handler at line 23-33 is already correct;
+  the stale comment at line 32 is fixed in the
+  implementation PR as a one-liner)
+- `apps/app/components/settings/connected-accounts-list.tsx`
+- `apps/app/app/(protected)/settings/connections/page.tsx`
+- `apps/app/components/sidebars/nav-user.tsx`
+- `apps/app/app/(protected)/layout.tsx`
+- `apps/app/proxy.ts`
+- `apps/app/lib/auth-client.ts`
+- `packages/database/src/schema/auth.ts`
+- `packages/database/drizzle/0000_boring_steel_serpent.sql`
+  (no new migration)
+- `packages/api/src/http/routes/http.ts` (the
+  `/api/v1/auth/*` mount at line 57 already
+  delegates to `auth.handler`)
+- `packages/api/src/http/middleware/session.ts`
+
+### Verification after merge
+
+The implementation PR self-validates with these
+manual steps in local dev:
+
+1. With `GITHUB_CLIENT_ID` / `_SECRET` unset in
+   `.env`, click "Continue with GitHub" on
+   `/login`. The button renders, the click fires
+   `authClient.signIn.social({ provider: "github" })`,
+   and the server fails loud (better-auth has no
+   config) with an opaque error. This confirms the
+   server-side failure mode matches the rule, not the
+   UI.
+2. With both keys set to a real GitHub OAuth App,
+   clicking "Continue with GitHub" redirects to
+   `github.com/login/oauth/authorize` with the
+   `user:email` scope, then bounces back to
+   `http://localhost:3000/api/auth/callback/github`,
+   which delegates to `auth.handler` via Hono
+   `mountHttp`. The user lands on `/home` (or the
+   `?redirect=` value if present).
+3. `apps/app/components/sidebars/nav-user.tsx` shows
+   `user.image` (the GitHub avatar URL) for an
+   OAuth-signed-in user. The Vercel fallback is
+   short-circuited by the `if (image) return image`
+   branch.
+4. `/settings/connections` lists the GitHub account
+   under "Connected accounts", with an "Disconnect"
+   button that opens the existing `Dialog` for
+   confirmation.
+5. `pnpm auth:generate` produces a byte-identical
+   `packages/database/src/schema/auth.ts`. No Drizzle
+   migration is checked in.
+6. `pnpm env:check` passes with and without
+   `GITHUB_CLIENT_*` set.
+
 ## Where this rule came from
 
 The UI has been ready for months. The agent that
@@ -374,11 +513,12 @@ defect (not a deferred decision) came from the
 "Connect GitHub" affordance that fails silently. Users
 who land there to attach a work identity to their
 account get a server error and no remediation path. The
-fix surface is three files
+fix surface is enumerated in the `Implementation
+surface` section above: three runtime files
 (`packages/auth/src/auth.ts`,
 `packages/env/src/schema.ts`,
 `packages/env/src/server.ts`) plus `.env.example`
-and the doc guides under
+and the two doc guides under
 `docs/guides/better-auth/`.
 
 The git context for this ADR is the staging branch
