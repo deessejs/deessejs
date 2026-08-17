@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { allKbTopics, allKbGuides } from "content-collections"
 
@@ -10,10 +9,12 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
-import { Badge } from "@workspace/ui/components/badge"
-import { H1, H2 } from "@workspace/ui/components/typography"
+import { H2 } from "@workspace/ui/components/typography"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
 import { Prose } from "@/components/blog/prose"
+import { GuideCard } from "@/components/knowledge-base/guide-card"
+import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
+import { TopicTagPill } from "@/components/knowledge-base/badges"
 
 type Params = { topic: string }
 
@@ -53,16 +54,16 @@ export default async function KnowledgeTopicPage({
       </Breadcrumb>
 
       <header className="flex flex-col gap-3">
-        <H1>{topicDoc.title}</H1>
-        <p className="text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+        <h1 className="scroll-m-20 text-3xl font-bold tracking-tight first:mt-0 text-balance">
+          {topicDoc.title}
+        </h1>
+        <p className="text-muted-foreground leading-7 text-pretty [&:not(:first-child)]:mt-0">
           {topicDoc.description}
         </p>
         {topicDoc.tags.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {topicDoc.tags.map((tag) => (
-              <Badge key={tag} variant="outline">
-                {tag}
-              </Badge>
+              <TopicTagPill key={tag}>{tag}</TopicTagPill>
             ))}
           </div>
         ) : null}
@@ -73,27 +74,27 @@ export default async function KnowledgeTopicPage({
       </Prose>
 
       <section className="flex flex-col gap-4">
-        <H2>Guides in this topic</H2>
+        <div className="flex items-baseline justify-between gap-3">
+          <H2>Guides in this topic</H2>
+          {topicGuides.length > 0 ? (
+            <span className="text-copy-14 text-muted-foreground">
+              {topicGuides.length}{" "}
+              {topicGuides.length === 1 ? "guide" : "guides"}
+            </span>
+          ) : null}
+        </div>
         {topicGuides.length === 0 ? (
           <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
             No guides in this topic yet.
           </p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <KbCardGrid>
             {topicGuides.map((guide) => (
               <li key={guide.slug}>
-                <Link
-                  href={`/knowledge-base/guides/${guide.slug}`}
-                  className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-accent/30"
-                >
-                  <span className="text-label-16 text-foreground">
-                    {guide.title}
-                  </span>
-                  <Badge variant="secondary">Guide</Badge>
-                </Link>
+                <GuideCard guide={guide} />
               </li>
             ))}
-          </ul>
+          </KbCardGrid>
         )}
       </section>
     </div>

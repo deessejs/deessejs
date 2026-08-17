@@ -9,6 +9,12 @@ import { useSearchDialogStore } from "@/lib/search/store"
 import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@workspace/ui/components/dialog"
 
 /**
  * Site-wide Cmd-K search dialog.
@@ -18,8 +24,11 @@ import { Input } from "@workspace/ui/components/input"
  * button (in the header), the keyboard shortcut, and any future
  * placeholder can all open the same dialog.
  *
- * The trigger button is no longer rendered here — it lives in
- * the header. This component renders the dialog surface only.
+ * Built on the shadcn Dialog primitive (Radix). The primitive
+ * handles focus trap, focus return to the trigger, backdrop
+ * click, and the Portal. We hide its default close button
+ * (`showCloseButton = false`) because the input row already
+ * carries an explicit X.
  */
 
 export function GlobalSearchDialog() {
@@ -84,15 +93,18 @@ export function GlobalSearchDialog() {
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
-      <div
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={() => close()}
-      />
-      <div className="relative z-10 w-full max-w-lg rounded-xl border border-border/40 bg-card shadow-xl">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-w-lg flex-col gap-0 p-0 sm:max-w-lg"
+      >
+        <DialogTitle className="sr-only">Search the DeesseJS ecosystem</DialogTitle>
+        <DialogDescription className="sr-only">
+          Press Escape to close, arrow keys to navigate results,
+          Enter to open the selected item.
+        </DialogDescription>
+
         <div className="flex items-center gap-3 border-b border-border/40 px-4 py-3">
           <Search className="size-4 text-muted-foreground" />
           <Input
@@ -102,11 +114,12 @@ export function GlobalSearchDialog() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
+            aria-label="Search query"
             className="flex-1 border-0 bg-transparent p-0 text-sm shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0"
           />
           <Button
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             onClick={() => close()}
             aria-label="Close search"
             className="text-muted-foreground hover:text-foreground"
@@ -114,6 +127,16 @@ export function GlobalSearchDialog() {
             <X className="size-4" />
           </Button>
         </div>
+
+        {/* Live region for screen readers: announces result count.
+            Visually hidden (sr-only) but announces via aria-live. */}
+        <span role="status" aria-live="polite" className="sr-only">
+          {query.trim() === ""
+            ? ""
+            : results.length === 0
+              ? `No results for ${query}`
+              : `${results.length} ${results.length === 1 ? "result" : "results"} for ${query}`}
+        </span>
 
         {query.trim() && (
           <ul className="max-h-80 overflow-y-auto py-2">
@@ -169,7 +192,7 @@ export function GlobalSearchDialog() {
             Start typing to search posts, releases, and KB topics
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

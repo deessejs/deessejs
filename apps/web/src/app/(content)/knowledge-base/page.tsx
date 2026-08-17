@@ -2,12 +2,19 @@ import Link from "next/link"
 import type { Metadata } from "next"
 import { allKbTopics, allKbGuides } from "content-collections"
 
-import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
 import { Card } from "@workspace/ui/components/card"
-import { Separator } from "@workspace/ui/components/separator"
-import { cn } from "@workspace/ui/lib/utils"
+import {
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
 
 import { H1, H2 } from "@workspace/ui/components/typography"
+
+import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
+import { TopicTagPill, GuideProductPill } from "@/components/knowledge-base/badges"
 
 export const metadata: Metadata = {
   title: "Knowledge Base",
@@ -21,16 +28,18 @@ export const metadata: Metadata = {
  *
  * Vercel-style surface (https://vercel.com/knowledge):
  *
- *   1. Hero — title + tagline + search bar (placeholder)
- *   2. Featured Topics — 3-4 large tiles
- *   3. Featured Guides — 6 highlighted cards
- *   4. All Topics — full grid of subjects
- *   5. All Guides — tag cloud + list of guides
- *   6. CTA strip — "Ready to ship?" block
+ *   1. Hero — title + tagline
+ *   2. Featured Topics — 3 tiles
+ *   3. Featured Guides — 6 cards
+ *   4. Topic Tags — cloud derived from all topic tags
+ *   5. All Topics — full grid
+ *   6. All Guides — list
+ *   7. CTA strip
  *
- * Topic sections read from the kbTopics content-collection
- * (ADR-013). Guide sections are still hard-coded; they
- * move to kbGuides in ADR-014.
+ * Topic and guide sections read from their respective
+ * content-collections (ADR-013, ADR-014). Cards use the
+ * templates-grid pattern (bg-background, no rounded, divide
+ * borders) for a continuous table-like surface.
  */
 
 const TOPICS = [...allKbTopics].sort((a, b) => a.order - b.order)
@@ -38,10 +47,6 @@ const FEATURED_TOPICS = TOPICS.slice(0, 3)
 
 const GUIDES = [...allKbGuides].sort((a, b) => a.order - b.order)
 const FEATURED_GUIDES = GUIDES.slice(0, 6)
-
-const TOPIC_TAGS = Array.from(
-  new Set(TOPICS.flatMap((t) => t.tags)),
-).sort()
 
 const ALL_TOPICS = TOPICS
 const ALL_GUIDES = GUIDES
@@ -56,180 +61,160 @@ export default function KnowledgeBasePage() {
           In-depth guides, tutorials, and explainers for the
           DeesseJS ecosystem.
         </p>
-        <div
-          aria-hidden
-          className="flex h-12 w-full max-w-2xl items-center justify-center rounded-md border border-border bg-muted/30 text-copy-14 text-muted-foreground/70"
-        >
-          Search Knowledge Base — coming soon
-        </div>
       </header>
 
       {/* Featured Topics */}
       <section className="flex flex-col gap-6">
         <H2>Featured Topics</H2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <KbCardGrid>
           {FEATURED_TOPICS.map((topic) => (
-            <Link
-              key={topic.slug}
-              href={`/knowledge-base/topics/${topic.slug}`}
-              className="group"
-            >
-              <Card className="flex h-full flex-col gap-3 p-6 transition-colors group-hover:bg-accent/30">
-                <span className="text-label-16 font-semibold tracking-tight text-foreground">
-                  {topic.title}
-                </span>
-                <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-                  {topic.description}
-                </p>
-                {topic.tags.length > 0 ? (
-                  <div className="mt-auto flex flex-wrap gap-1.5">
-                    {topic.tags.map((tag) => (
-                      <Badge key={tag} variant="outline">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
-              </Card>
-            </Link>
+            <li key={topic.slug}>
+              <Link
+                href={`/knowledge-base/topics/${topic.slug}`}
+                aria-label={`Browse the ${topic.title} topic`}
+                className="group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <Card className="w-full flex-1 rounded-none border-0 bg-background transition-colors group-hover:bg-accent/30 group-focus-within:bg-accent/30">
+                  <CardHeader className="gap-3">
+                    <CardTitle className="text-label-16 font-semibold tracking-tight text-balance underline-offset-4 group-hover:underline">
+                      {topic.title}
+                    </CardTitle>
+                    <CardDescription className="text-copy-14 text-muted-foreground leading-7 text-pretty">
+                      {topic.description}
+                    </CardDescription>
+                  </CardHeader>
+                  {topic.tags.length > 0 ? (
+                    <CardContent className="flex flex-wrap gap-1.5">
+                      {topic.tags.slice(0, 3).map((tag) => (
+                        <TopicTagPill key={tag}>{tag}</TopicTagPill>
+                      ))}
+                    </CardContent>
+                  ) : null}
+                </Card>
+              </Link>
+            </li>
           ))}
-        </div>
+        </KbCardGrid>
       </section>
 
       {/* Featured Guides */}
       <section className="flex flex-col gap-6">
-        <H2>Featured Guides</H2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {FEATURED_GUIDES.map((guide) => (
-            <Link
-              key={guide.slug}
-              href={`/knowledge-base/guides/${guide.slug}`}
-              className="group"
-            >
-              <Card className="flex h-full flex-col justify-between gap-4 p-6 transition-colors group-hover:bg-accent/30">
-                <div className="flex flex-col gap-2">
-                  <span className="text-label-16 font-semibold tracking-tight text-foreground">
-                    {guide.title}
-                  </span>
-                  <p className="text-copy-14 text-muted-foreground leading-7 line-clamp-3 [&:not(:first-child)]:mt-0">
-                    {guide.description}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {guide.products.map((product) => (
-                    <Badge key={product} variant="secondary">
-                      {product}
-                    </Badge>
-                  ))}
-                </div>
-              </Card>
-            </Link>
-          ))}
+        <div className="flex items-center justify-between gap-3">
+          <H2>Featured Guides</H2>
+          <Link
+            href="#all-guides"
+            className="text-copy-14 text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+          >
+            View all {ALL_GUIDES.length} guides →
+          </Link>
         </div>
+        <KbCardGrid>
+          {FEATURED_GUIDES.map((guide) => (
+            <li key={guide.slug}>
+              <Link
+                href={`/knowledge-base/guides/${guide.slug}`}
+                aria-label={`Read the ${guide.title} guide`}
+                className="group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <Card className="w-full flex-1 rounded-none border-0 bg-background transition-colors group-hover:bg-accent/30 group-focus-within:bg-accent/30">
+                  <CardHeader className="gap-3">
+                    <CardTitle className="text-label-16 font-semibold tracking-tight text-balance underline-offset-4 group-hover:underline">
+                      {guide.title}
+                    </CardTitle>
+                    <CardDescription className="text-copy-14 text-muted-foreground leading-7 line-clamp-3 text-pretty">
+                      {guide.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap gap-1.5">
+                    {guide.products.slice(0, 3).map((product) => (
+                      <GuideProductPill key={product}>{product}</GuideProductPill>
+                    ))}
+                  </CardContent>
+                </Card>
+              </Link>
+            </li>
+          ))}
+        </KbCardGrid>
       </section>
-
-      {/* Topic Tags */}
-      {TOPIC_TAGS.length > 0 ? (
-        <section className="flex flex-col gap-4">
-          <H2>Browse by topic tag</H2>
-          <div className="flex flex-wrap gap-2">
-            {TOPIC_TAGS.map((tag) => (
-              <Badge key={tag} variant="outline">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       {/* All Topics */}
       <section className="flex flex-col gap-6">
         <H2>All Topics</H2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <KbCardGrid>
           {ALL_TOPICS.map((topic) => (
-            <Link
-              key={topic.slug}
-              href={`/knowledge-base/topics/${topic.slug}`}
-              className="group"
-            >
-              <Card className="flex h-full flex-col gap-2 p-6 transition-colors group-hover:bg-accent/30">
-                <span className="text-label-16 font-semibold tracking-tight text-foreground">
-                  {topic.title}
-                </span>
-                <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-                  {topic.description}
-                </p>
-                {topic.tags.length > 0 ? (
-                  <div className="mt-auto flex flex-wrap gap-1.5">
-                    {topic.tags.map((tag) => (
-                      <Badge key={tag} variant="outline">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
-              </Card>
-            </Link>
+            <li key={topic.slug}>
+              <Link
+                href={`/knowledge-base/topics/${topic.slug}`}
+                aria-label={`Browse the ${topic.title} topic`}
+                className="group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <Card className="w-full flex-1 rounded-none border-0 bg-background transition-colors group-hover:bg-accent/30 group-focus-within:bg-accent/30">
+                  <CardHeader className="gap-3">
+                    <CardTitle className="text-label-16 font-semibold tracking-tight text-balance underline-offset-4 group-hover:underline">
+                      {topic.title}
+                    </CardTitle>
+                    <CardDescription className="text-copy-14 text-muted-foreground leading-7 text-pretty">
+                      {topic.description}
+                    </CardDescription>
+                  </CardHeader>
+                  {topic.tags.length > 0 ? (
+                    <CardContent className="flex flex-wrap gap-1.5">
+                      {topic.tags.slice(0, 3).map((tag) => (
+                        <TopicTagPill key={tag}>{tag}</TopicTagPill>
+                      ))}
+                    </CardContent>
+                  ) : null}
+                </Card>
+              </Link>
+            </li>
           ))}
-        </div>
+        </KbCardGrid>
       </section>
 
       {/* All Guides */}
-      <section className="flex flex-col gap-6">
+      <section id="all-guides" className="flex flex-col gap-6">
         <H2>All Guides</H2>
-
-        <ul className="flex flex-col gap-3">
+        <ul className="m-0 flex flex-col list-none divide-y divide-border p-0">
           {ALL_GUIDES.map((guide) => (
             <li key={guide.slug}>
               <Link
                 href={`/knowledge-base/guides/${guide.slug}`}
-                className="flex flex-col gap-1 rounded-md px-2 py-2 transition-colors hover:bg-accent/30"
+                aria-label={`Read the ${guide.title} guide`}
+                className="group flex flex-col gap-1 px-2 py-4 transition-colors hover:bg-accent/30 focus-visible:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                <span className="text-label-16 font-medium text-foreground">
+                <span className="text-label-16 font-medium text-foreground underline-offset-4 group-hover:underline text-balance">
                   {guide.title}
                 </span>
-                <span className="text-copy-13 text-muted-foreground">
+                <span className="text-copy-13 text-muted-foreground text-pretty">
                   {guide.description}
                 </span>
-                <span className="flex flex-wrap gap-1.5 pt-1">
-                  {guide.products.map((product) => (
-                    <Badge key={product} variant="secondary">
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {guide.products.slice(0, 3).map((product) => (
+                    <GuideProductPill key={product}>
                       {product}
-                    </Badge>
+                    </GuideProductPill>
                   ))}
-                </span>
+                </div>
               </Link>
             </li>
           ))}
         </ul>
       </section>
 
-      <Separator />
-
       {/* CTA */}
-      <section className="flex flex-col items-center gap-3 text-center">
+      <section className="mt-16 flex flex-col items-center gap-3 text-center sm:mt-24">
         <H2>Ready to ship?</H2>
         <p className="text-muted-foreground max-w-xl text-copy-16 leading-7 [&:not(:first-child)]:mt-0">
           Spin up your first project from a DeesseJS template in
           under a minute.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href="/templates"
-            className={cn(
-              "inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 text-button-14 font-medium text-primary-foreground transition-colors hover:bg-primary/90",
-            )}
-          >
-            Start with a template
-          </Link>
-          <Link
-            href="/enterprise"
-            className={cn(
-              "inline-flex h-10 items-center justify-center rounded-md border border-border px-6 text-button-14 font-medium text-foreground transition-colors hover:bg-accent",
-            )}
-          >
-            Talk to the team
-          </Link>
+          <Button asChild>
+            <Link href="/templates">Start with a template</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/enterprise">Talk to the team</Link>
+          </Button>
         </div>
       </section>
     </div>
