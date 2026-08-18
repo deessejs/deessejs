@@ -18,6 +18,7 @@
     "ADR-011-hono-for-system-routes",
     "ADR-012-changesets-private-workspace-deps",
     "ADR-013-cli-publish-verify",
-    "ADR-014-cli-e2e-tests"
+    "ADR-014-cli-e2e-tests",
+    "ADR-015-drizzle-migrations-ci"
   ]
 }
