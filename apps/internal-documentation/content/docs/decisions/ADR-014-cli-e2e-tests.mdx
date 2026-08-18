@@ -1,6 +1,6 @@
 ---
 title: 'CLI e2e tests'
-description: 'Smoke testing each command against a mock HTTP server.'
+description: 'Smoke testing each command against the production API.'
 ---
 
 # ADR-014: CLI e2e tests
@@ -149,40 +149,48 @@ Three things this ADR leaves out of scope:
 
 Three commands, three suites. Each suite covers the happy path plus at least one error path. The suites live in `apps/cli/test/e2e/` as `list.test.ts`, `info.test.ts`, `init.test.ts`. Each suite is a `describe` block with at least one `it` per scenario.
 
+The tests target the **production API** at `deessejs.com` by default. The URL is overridable via the env var `DEESSEJS_API_URL` for local dev and for pointing at a staging environment. The production API is the test surface; we do not run a mock in CI.
+
 The convention is that every test follows the same shape: bootstrap fixtures, run the CLI, assert on stdout, stderr, and exit code. The convention is enforced by the `run()` helper, which returns `{ stdout, stderr, exitCode, durationMs }` and exposes a `expect*` API for the common assertions.
 
 #### `list` suite
 
-Two tests. The mock server has two modes: returns a fixed list, or returns a 500.
+Two tests. The CLI runs against the production API. The fixture contributes no mock server; the test reads the actual template registry.
 
-| Test | Mock returns | Assert on stdout | Assert on stderr | Assert on exit |
-|---|---|---|---|---|
-| `list happy path` | Two templates, full schema | stdout contains both slugs, both names, both categories | empty | 0 |
-| `list server error` | HTTP 500 with body `{"message": "internal"}` | empty | stderr contains `Error` and `network_error` code | 1 |
+| Test | Assert on stdout | Assert on stderr | Assert on exit |
+|---|---|---|---|
+| `list happy path` | stdout contains at least one template slug from the production registry (e.g. `saas-starter`) | empty | 0 |
+| `list network error` | empty | stderr contains `network_error` code | 1 |
 
-The happy-path test asserts on the table format only (the contract is the slugs and names, not the exact column positions). The server-error test asserts on the CliError code in stderr's `Code:` line, which is the contract the unit tests in `apps/cli/test/unit/errors.test.ts` already pin.
+The network-error test points the CLI at a URL that is not serving HTTP (e.g. `http://127.0.0.1:1`). The runner uses a dedicated env var to redirect the CLI away from the production API for this case. The CLI is expected to fail fast with a `network_error` code. This is the only test in the suite that does not exercise the production API.
+
+The happy-path test asserts only on the presence of a known slug, not on the full shape. The unit tests in `apps/cli/test/unit/output.test.ts` already pin the column format. The e2e test confirms the wired-up commands work end-to-end against the live API.
 
 #### `info` suite
 
-Three tests. The mock server has three modes: returns one template, returns 404, returns malformed data.
+Three tests. The CLI runs against the production API for the happy path. The unhappy paths use the `DEESSEJS_API_URL` override.
 
-| Test | Mock returns | Assert on stdout | Assert on stderr | Assert on exit |
+| Test | Setup | Assert on stdout | Assert on stderr | Assert on exit |
 |---|---|---|---|---|
-| `info happy path` | One template matching the slug | stdout contains the slug, name, description | empty | 0 |
-| `info not found` | HTTP 404 with body `{"message": "template not found"}` | empty | stderr contains `not_found` code | 1 |
-| `info malformed data` | HTTP 200 with `{"templates": [{"slug": "x"}]}` (missing required fields) | empty | stderr contains `parse_error` code | 1 |
+| `info happy path` | `info saas-starter` against production | stdout contains the slug, name, description | empty | 0 |
+| `info not found` | `info does-not-exist` against production | empty | stderr contains `not_found` code | 1 |
+| `info server error` | `info saas-starter` against a URL that 500s | empty | stderr contains `network_error` code | 1 |
 
-The malformed-data test is the one that catches CLI regressions where the runtime parser silently accepts malformed data. The contract test in `apps/cli/test/contract/orpc-to-cli-error.test.ts` already pins that `parse_error` is the right code; the e2e test pins that the `info` command actually emits the code on malformed data.
+The not-found test runs against the production API with a deliberately unknown slug. The production API returns a 404 with the standard `not_found` code. This is the most realistic test of the not-found path because it exercises the actual server, not a synthetic fixture.
+
+The server-error test is the only test in the suite that does not exercise the production API. It uses a URL that does not serve HTTP to force the CLI to surface a `network_error` code.
+
+The malformed-data test from the previous version of this ADR is removed. The unit tests in `apps/cli/test/contract/orpc-to-cli-error.test.ts` already pin that `parse_error` is the right code when the runtime parser is given bad data. The e2e suite does not duplicate that coverage. A regression in the malformed path is caught at the unit level, not the e2e level.
 
 #### `init` suite
 
-Three tests. The git fixture has one mode: a bare repo with a single file. The mock server always returns one template pointing at that bare repo.
+Three tests. The git fixture is the only mock in this suite. The CLI runs against the production API for the happy path. The `cloneUrl` returned by the production API is overridden to point at a local bare repo for the happy path. The unhappy paths use the URL override.
 
 | Test | CLI args | Assert on filesystem | Assert on stderr | Assert on exit |
 |---|---|---|---|---|
-| `init happy path` | `init <slug> --no-install --dir <tmpdir>/dest` | `<tmpdir>/dest/<expected-file>` exists and matches the fixture's commit | empty | 0 |
-| `init clone refused (existing dir)` | `init <slug> --no-install` (target dir already exists) | nothing created | stderr contains `target_exists` code | 1 |
-| `init network error` | `init <slug> --no-install` (mock returns 500) | nothing created | stderr contains `network_error` code | 1 |
+| `init happy path` | `init saas-starter --no-install --dir <tmpdir>/dest` (with the API pointed at a harness that returns `cloneUrl: file://<fixture>/repo.git`) | `<tmpdir>/dest/<expected-file>` exists and matches the fixture's commit | empty | 0 |
+| `init clone refused (existing dir)` | `init saas-starter --no-install` (target dir already exists) | nothing created | stderr contains `target_exists` code | 1 |
+| `init network error` | `init saas-starter --no-install` (API pointed at a URL that 500s) | nothing created | stderr contains `network_error` code | 1 |
 
 The `--no-install` flag is the only path that skips the package-manager step. The unit tests in `apps/cli/test/unit/git.test.ts` already cover the spawn helper, so the e2e suite does not duplicate that. The `--no-install` path is the only one that completes in CI without a network round-trip to a package manager.
 
@@ -190,43 +198,13 @@ The existing-dir test asserts that the CLI refuses to overwrite without `--force
 
 The network-error test pins that the CLI fails fast on the first request, before invoking `git clone`. A regression where the CLI clones first and reports the network error after would be caught here.
 
-### The mock server
+#### The test harness for the `init` happy path
 
-A minimal Node `http` server. No framework, no dependencies. The implementation is ~80 lines in `apps/cli/test/e2e/helpers/mock-server.ts`.
+The CLI's `clone` step uses the `cloneUrl` field from the template, not the GitHub URL it would derive from `owner` and `repo`. The production API uses `cloneUrl` only when the template needs a non-default URL. For the `init` happy path, the test runs against a **harness** that wraps the production API and rewrites the `cloneUrl` for the test template to point at the local bare repo.
 
-#### Endpoints
+The harness is a thin middleware: it proxies the production API for endpoints the test does not care about and rewrites the `list` response to use a local `cloneUrl`. The harness is the only deliberate mock in this suite. It exists because the production API does not have a way to point `cloneUrl` at a per-test value, and we do not want to mutate the production registry.
 
-The server exposes two endpoints. Both are the ones the CLI invokes in production.
-
-| Method | Path | Purpose | Response |
-|---|---|---|---|
-| `GET` | `/api/v1/version` | Returns the version probe. The CLI calls this at startup to warn about outdated versions. | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-| `POST` | `/api/v1/rpc` | The ORPC endpoint. The CLI calls this for `list` and `info`. | `200 {"result": {"data": "...", "..."}}` or `4xx {"message": "..."}` |
-
-The server does not validate auth. It does not interpolate GitHub data. It serves the contract shapes that the CLI client expects and that the unit tests already pin. Anything outside the contract is the CLI's problem to detect and surface.
-
-#### Request validation
-
-The `/api/v1/rpc` handler parses the request body as JSON and checks the shape. A malformed body returns `400 {"message": "invalid request"}`. The server does not validate the ORPC envelope beyond the `jsonrpc` field, because the CLI does not either. Tightening the server past what the client sends would mask bugs.
-
-#### Scenario mode
-
-The server accepts a mode parameter at startup. The mode controls which canned responses the server returns. The mode is set by the test that boots the server, not by the request.
-
-| Mode | `/api/v1/rpc` response | `/api/v1/version` response |
-|---|---|---|
-| `success` | `200 {"result": {"data": "<templates>"}}` where `<templates>` is the configured list | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-| `not_found` | `404 {"message": "template not found"}` | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-| `malformed` | `200 {"templates": [{"slug": "x"}]}` (missing required fields) | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-| `server_error` | `500 {"message": "internal"}` | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-
-The mode is per-server-instance. A test that needs both `success` and `not_found` responses starts two server instances.
-
-#### Lifecycle
-
-The server is a class with `start(): Promise<{ url, port }>` and `stop(): Promise<void>`. `start` binds to `127.0.0.1` on port `0` (the OS picks a free port) and resolves once the server is listening. `stop` closes the server and waits for the close callback. The class is a single-use resource; tests that need multiple modes start multiple instances.
-
-The runner uses the port from `start()` to set `API_BASE_URL` in the CLI's environment. The URL is `http://127.0.0.1:<port>`.
+The harness is less than 30 lines. It does not reimplement the API. It wraps the real one.
 
 ### The CLI runner
 
@@ -256,7 +234,7 @@ Tests use it like:
 ```ts
 const result = await run({
   args: ["list"],
-  env: { API_BASE_URL: mockServer.url },
+  // env left unset — runner uses the default DEESSEJS_API_URL
 })
 expect(result.exitCode).toBe(0)
 expect(result.stdout).toContain("saas-starter")
@@ -319,21 +297,32 @@ The fixture does not create a working tree. The CLI clones the bare repo at clon
 
 The cleanup removes the entire `tmpdir`. The cleanup runs on test failure too. The fixture does not leave orphan repos behind.
 
+#### Why this is the only deliberate mock
+
+The GitHub repo is the only externally-facing surface in the `init` flow that we cannot exercise against the production environment. Two reasons:
+
+1. **Speed.** A `git clone` of the production `deessejs/saas-template` repo takes seconds and depends on GitHub availability. A local bare repo is milliseconds.
+2. **Write isolation.** Cloning the production repo does not require writes, but the broader `init` flow (which includes a `pnpm install` step) would. The fixture stops the test at the clone step.
+
+The fixture is a true local mock for a network-bound dependency. It is not a reimplementation of the API contract. The CLI does not know it is talking to a bare repo instead of a GitHub repo — `git clone file://<...>` is a real git transport.
+
 ### CI integration
 
 Two workflows. The implementation is in `.github/workflows/`, named `cli-e2e.yml` and `cli-e2e-extended.yml`.
 
 #### `cli-e2e.yml` (PR blocking)
 
-The PR workflow is the gating one. It runs on every PR that touches `apps/cli/**`. It runs the three suites. Failures block merge.
+The PR workflow is the gating one. It runs on every PR that touches `apps/cli/**`. It runs the three suites against the production API. Failures block merge.
 
 The workflow has three jobs:
 
 1. **`pack`**: produces the tarball. Runs `pnpm --filter @deessejs/cli build` and `npm pack`. The tarball is uploaded as an artifact.
-2. **`e2e`**: runs the three suites. Downloads the tarball artifact, sets `DEESSEJS_CLI_TARBALL`, runs `pnpm --filter @deessejs/cli test:e2e`. The mock server is in-process, no external service to start.
+2. **`e2e`**: runs the three suites. Downloads the tarball artifact, sets `DEESSEJS_CLI_TARBALL`, runs `pnpm --filter @deessejs/cli test:e2e`. The suites talk to `https://deessejs.com` by default. The `init` happy-path suite uses the harness to point the template's `cloneUrl` at a local bare repo.
 3. **`cleanup`**: removes the tarball artifact after 7 days. The cleanup is automatic via the `actions/upload-artifact@v4` retention setting.
 
-The workflow uses `ubuntu-latest` and `node-version: 24` (matching the verify workflow). The total runtime is under 2 minutes. The old `pnpm install` step is replaced by `pnpm install --frozen-lockfile` to keep the install fast.
+The workflow uses `ubuntu-latest` and `node-version: 24` (matching the verify workflow). The total runtime is under 2 minutes for the PR suite.
+
+The workflow has `permissions: contents: read` for the test job. No `id-token`, no `NPM_TOKEN`. The publish path is unchanged from the verify workflow.
 
 #### `cli-e2e-extended.yml` (nightly non-blocking)
 
@@ -343,11 +332,13 @@ The matrix dimension is "scenario". Each scenario tests a different aspect of th
 
 | Scenario | What it covers | Why nightly-only |
 |---|---|---|
-| `large-fixture` | Mock returns 100 templates; CLI prints them. | Slow. Takes 10s. Acceptable for nightly. |
-| `slow-network` | Mock delays responses by 2s. | Tests timeouts. Too slow for PR. |
-| `flaky-network` | Mock returns 500 on the first request, 200 on the second. | Tests retry logic. Flaky in normal CI. |
-| `real-pm` | Skips `--no-install` and runs the actual package manager. | Slow; depends on pnpm in CI. |
-| `unicode` | Mock returns templates with unicode names. | Sanity check; not part of the PR contract. |
+| `large-registry` | Production API at peak rate. CI runs 100 list calls in succession. | Tests retry logic under load. |
+| `slow-network` | `DEESSEJS_API_URL` pointed at a 2s-delayed proxy. | Tests timeouts. Too slow for PR. |
+| `flaky-network` | `DEESSEJS_API_URL` pointed at a flaky proxy that returns 500 on the first request and 200 on the second. | Tests retry logic. Flaky in normal CI. |
+| `real-pm` | Skips `--no-install` and runs the actual package manager against the cloned repo. | Slow; depends on pnpm in CI. |
+| `unicode` | Production API templates with unicode names. | Sanity check; not part of the PR contract. |
+
+The slow-network and flaky-network scenarios use a small in-process proxy that wraps the production API. The proxy is a few lines and is the only mock in this workflow. It exists because the slow/flaky behavior is not something we can engineer against the production API directly.
 
 Failures in the nightly workflow post a GitHub issue with the captured output. The issue template is pre-populated with the workflow run URL, the scenario that failed, and the stdout/stderr of the failing test. The post is done via `peter-evans/create-or-update-comment` or a custom action; the choice is decided at implementation time.
 
@@ -355,24 +346,53 @@ Failures in the nightly workflow post a GitHub issue with the captured output. T
 
 The split is cost. The PR workflow is the gate; it must run on every PR and stay fast. The nightly workflow is the deep check; it can run slowly and tolerate flakiness. Combining them would either slow PRs (extended matrix on every PR) or weaken the gate (PR workflow skips important tests). The split is the standard pattern for CI matrices that have a fast-slow split.
 
-### Why not the alternatives
+### Why the production API instead of a mock
 
-Three patterns were considered and rejected:
+Three patterns were considered. The first two are rejected; the third is the decision.
 
-- **Tighten the contract tests.** The unit tests already pin the request/response shapes. Tightening further would catch fewer bugs at a higher cost. The e2e suite tests the integration, not the shape.
-- **Spin up the real API in CI.** The real API depends on Postgres and the GitHub REST API. Both add flakiness and a maintenance burden. The mock server is the test surface; the real API is the production surface.
-- **Run the CLI against a `verdaccio` registry.** Verdaccio is the senior pattern for packages that depend on other packages published separately. The CLI is its own dependency tree after the publish fix (ADR-013). Verdaccio is the wrong tool.
+#### Mock server (rejected)
+
+A mock server that re-implements the API contract has three failure modes:
+
+1. **Drift.** The mock changes slower than the real API. A test that passes against the mock can fail against production. The mock is a contract I have to remember to update when the real API changes.
+2. **Wrong contract.** The mock's contract is a best-guess at the real one. If the guess is wrong, the test fails for reasons that have nothing to do with the CLI. The first attempt at this suite (the spike on branch `chore/cli-e2e-spike`) failed for exactly this reason: the mock's ORPC envelope was a guess, and the test could not be exercised end-to-end.
+3. **Double infrastructure.** The production API is one system to maintain. The mock is a second. Two systems that have to stay in sync is more maintenance than one.
+
+The mock server pattern is right when the real API is unstable, slow, or has meaningful side effects. None of those apply here: the DeesseJS API is stable, the read path is fast, and the templates endpoint has no side effects.
+
+#### Verdaccio (rejected)
+
+Verdaccio is the senior pattern for packages that depend on **other packages** published separately. The CLI is its own dependency tree after the publish fix (ADR-013). Verdaccio addresses a different problem.
+
+#### Production API (chosen)
+
+The suite runs against `https://deessejs.com`. The read-path endpoints (`list`, `info`, version probe) have no side effects and are stable. The production API is the test surface.
+
+The init happy path uses a thin harness that proxies the production API and rewrites the template's `cloneUrl` to a local bare repo. The harness is the only deliberate mock in the suite. It is not a reimplementation of the API. It is a transparent proxy that swaps one string in the response.
+
+The network-error test paths use a URL that does not serve HTTP. The CLI is expected to fail fast with a `network_error` code. This is the only way to test the failure path without engineering the production API to fail.
+
+The implications for maintenance:
+
+- **No mock code to update** when the API contract changes. The CLI is exercised against the real contract. A breaking change in the API will surface as a CLI test failure, which is the desired signal.
+- **No double infrastructure.** The production API is the only HTTP surface the suite depends on.
+- **Real-world data.** The production template registry is the actual registry. Tests catch data-driven regressions (e.g. a template with a missing required field) end-to-end.
+- **Latency.** The production API is reachable from the CI runner. Round-trip latency is in the order of 100-300 ms. The full PR suite runs in under 2 minutes.
+
+The trade-off is that the suite depends on the production API being available. If the API is down, the suite fails. This is the correct failure mode: the CLI is broken from the user's perspective if the API is down, and the test should catch it.
 
 ### Cost
 
-One developer-week for the prerequisites: `API_BASE_URL` override, `cli-runner` helper, `http-server` helper, `git-fixture` helper. One developer-day for the three test suites. One developer-day for the CI workflows. Total: one developer-week for the senior pattern.
+One developer-day for the test suites (the harness is fewer than 30 lines; the rest is straight tests). One developer-day for the CI workflows. The prerequisites (`API_BASE_URL` override, runtime module, runner) are already done.
 
-The cost is bounded and the value compounds: every future change to the CLI is automatically tested against the published artifact on a real install.
+The cost is bounded and the value compounds: every future change to the CLI is automatically tested against the real API on a real install.
 
 ## Consequences
 
-- Every PR that touches `apps/cli/**` runs the e2e suite. Bugs of the form "the CLI runs but returns the wrong thing" are caught at PR time, not at release time.
+- Every PR that touches `apps/cli/**` runs the e2e suite against the production API. Bugs of the form "the CLI runs but returns the wrong thing" are caught at PR time, not at release time.
 - A nightly run exercises a wider matrix. Bugs that are too slow or too flaky for PR gating surface in a GitHub issue, not as a CI failure.
 - The CLI gains an `API_BASE_URL` env var override. This is a small ergonomic improvement for users who run the CLI against a self-hosted registry, and it is the prerequisite that makes the e2e suite possible.
 - The verify job (ADR-013) and the e2e suite are complementary. The verify job catches broken publishes; the e2e suite catches broken behavior. A release is green only when both pass.
+- The e2e suite depends on the production API being reachable from CI. The CI network must allow outbound to `deessejs.com`. If the production API is down, the suite fails. This is the correct failure mode.
 - `pkg.pr.new` is a future option. It would let reviewers run the actual CLI from a PR preview URL. It is out of scope here; ADR-013 explains why.
+- The earlier spike on branch `chore/cli-e2e-spike` retained a mock server design that this ADR supersedes. The spike's PR is a draft and will be closed once the production-API implementation lands.
