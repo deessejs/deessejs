@@ -217,6 +217,108 @@ bodies.
   `app.deessejs.com/api/v1/health` and `/api/v1/ready`
   post-deploy; this ADR does not add that.
 
+### Files structure
+
+The full layout of `packages/api/tests/` after the
+implementation lands. Existing files are marked
+`existing`; planned files are marked `planned`. The
+implementation PR does not touch the `contract/` and
+`unit/` trees — it only adds to `integration/` and adds a
+`globalSetup` file at the root.
+
+```
+packages/api/tests/
+├── globalSetup.ts                    planned
+│   pg_isready against the CI Postgres service.
+│   Exposes inject('postgres:ready') for the readiness test.
+│
+├── contract/                         existing
+│   └── templates-list.test.ts        existing  (51 lines)
+│   oRPC Server-Side Client. Calls
+│   `call(appRouter.templates.list, ...)` directly. Bypasses
+│   the Hono mount. Tests the procedure logic, not the wire.
+│
+├── unit/                             existing
+│   ├── _helpers/
+│   │   └── env-setup.ts              existing
+│   │   Shared test helpers. Imports
+│   │   `@workspace/auth/tests/setup.js` and re-exports
+│   │   `auth` + `createRPCHandler()`.
+│   │
+│   ├── observability.test.ts         existing  (113 lines)
+│   │   Hits the REAL `api` object via `api.request()`. Tests
+│   │   the request-id middleware, secure headers, and the
+│   │   global `notFound` envelope. The closest existing
+│   │   precedent to what the integration suite extends.
+│   │
+│   └── validation.test.ts            existing  (86 lines)
+│       Pure Zod schema tests. No Hono, no network. Not
+│       changed by this ADR.
+│
+└── integration/                      mixed
+    ├── routes.test.ts                existing  (59 lines)
+    │   Builds a throwaway Hono app per test. NOT a real
+    │   `api` test. Kept as a basic-pattern reference but
+    │   superseded by the planned files below.
+    │
+    ├── system/                       planned
+    │   ├── health.test.ts            planned
+    │   │   `GET /api/v1/health` and `GET /api/v1/ready`.
+    │   │   Readiness test reads the `postgres:ready` flag
+    │   │   from `globalSetup` and skips loudly when false.
+    │   │
+    │   ├── version.test.ts           planned
+    │   │   `GET /api/v1/version`. Pins the
+    │   │   `{ version, minSupported }` shape against the
+    │   │   constants in `packages/api/src/constants/version.ts`.
+    │   │   Asserts `Cache-Control` and `X-RateLimit-*` headers.
+    │   │
+    │   └── auth.test.ts              planned
+    │       `GET /api/v1/auth/get-session`. Smoke test:
+    │       asserts the mount is wired and the handler returns
+    │       200 with `{ session: null, user: null }` for an
+    │       unauthenticated request.
+    │
+    ├── rpc/                          planned
+    │   └── templates.test.ts         planned
+    │       `POST /api/v1/rpc/templates/list`. The load-bearing
+    │       test: pins the URL Hono serves matches the URL
+    │       the `RPCLink` client sends. Mocks `enrich` via
+    │       `vi.mock(import(...))`; fixture derived from
+    │       `TemplateV1`. Would have caught ADR-015.
+    │
+    └── routing/                      planned
+        ├── not-found.test.ts         planned
+        │   `GET /api/v1/does-not-exist`. Asserts the
+        │   `notFound` envelope shape and the 404 status.
+        │
+        └── base-path.test.ts         planned
+            Each known route hit at its full `/api/v1/...`
+            path. Pins the Hono `basePath("/api/v1")` decision
+            from ADR-011. A regression that silently drops the
+            prefix causes a 404 here.
+```
+
+**Layout rules, pinned by this ADR:**
+
+- One test file per route family, grouped under a
+  subdirectory that names the family (`system/`, `rpc/`,
+  `routing/`). A future "future family" gets its own
+  subdirectory, not a flat file at the root.
+- Files start with the route family (`health.test.ts`,
+  `templates.test.ts`), not with the verb (`get.test.ts`,
+  `fetch.test.ts`). The route name is the public surface;
+  the verb is incidental.
+- `globalSetup.ts` lives at the root of `tests/`, not under
+  `unit/` or `integration/`. It runs before workers start
+  and is outside the test graph.
+- The existing `integration/routes.test.ts` is not deleted
+  by the implementation PR. It is a placeholder pattern
+  that the new files replace; removing it is a separate
+  decision. The new files prove the real `api` works; the
+  old file's value is to document the minimum pattern a
+  Hono test should not follow.
+
 ### Why not the alternatives
 
 Three alternatives were considered:
@@ -282,7 +384,9 @@ listener for CI integration tests.
   is already `src/**/*.ts`; integration tests live under
   `tests/`, not `src/`, so they are not part of the coverage
   surface by design (integration tests assert behaviour,
-  not line coverage).
+  not line coverage). The vitest config also picks up
+  `packages/api/tests/globalSetup.ts` to seed the
+  `postgres:ready` flag for the readiness test.
 - The auth smoke test (`system/auth.test.ts`) requires a
   `BETTER_AUTH_SECRET` in the env, which the CI job already
   sets. No new env requirement.
@@ -348,3 +452,15 @@ listener for CI integration tests.
     test already follows this pattern; the new
     integration tests extend the convention to request
     bodies.
+- **2026-08-18 (round 4)**: added a "Files structure"
+  section with the full layout of `packages/api/tests/`
+  after the implementation lands. Each file annotated as
+  `existing` or `planned`, with a one-line role and a
+  count for the existing files (51, 113, 86, 59 lines).
+  Pinned three layout rules: one test file per route
+  family in a subdirectory named after the family, file
+  names that start with the route family (not the verb),
+  and `globalSetup.ts` at the root of `tests/`. The
+  existing `integration/routes.test.ts` is kept as a
+  placeholder pattern the new files supersede; removing
+  it is a separate decision.
