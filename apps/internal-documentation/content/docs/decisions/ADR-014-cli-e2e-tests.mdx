@@ -179,9 +179,11 @@ Two tests. The CLI runs against the local server.
 | `list happy path` | stdout contains the seeded template slug (`e2e-template`) and its name | empty | 0 |
 | `list network error` | empty | stderr contains `network_error` code | 1 |
 
-The happy-path test seeds the local server with a known template before invoking the CLI. The seed is an HTTP POST to the server's internal test endpoint. The server's normal `list` endpoint reads from the registry; the test endpoint writes a fixture. This is a single internal endpoint, not a parallel mock.
+The templates registry is a static in-memory module on the server (`packages/api/src/templates.ts`). It is not in the database. The CLI's `list` and `info` commands read this registry; they do not need any data seeded in the database. The e2e suite reads the same registry the production API reads.
 
-Each test that seeds the server uses a unique slug (e.g. `e2e-template-${testName}-${Date.now()}`) so that two tests can run in the same CI job without colliding on the registry state. The senior pattern is that **every test must be isolated to the execution dimension**: it must produce the same result regardless of order, regardless of whether other tests are running in parallel. The unique slugs are not a defense-in-depth for a sequential suite; they are the design that allows the suite to be parallelized later without code changes. The implementation PR may run the suite sequentially in CI for cost reasons, but the suite's correctness does not depend on that ordering.
+The suite's only database concern is the better-auth tables (`packages/database/src/schema/auth.ts`: user, session, account, verification). The CLI itself does not query these tables; the server's auth surface does. The e2e suite does not exercise the auth surface directly — it exercises the templates surface. The auth tables are seeded once, at the start of the suite, by the global setup (see "The local server fixture and Vitest global setup" section). The seed is a single known user; the suite does not depend on auth state per test.
+
+The e2e suite is therefore stateless from the database's perspective. The local server's templates endpoint returns the same fixtures on every test. The `list` happy path asserts on a known template slug (`e2e-template`) that the server's static registry already provides. The suite does not need a per-test seed.
 
 The network-error test points the CLI at a closed local port (e.g. `127.0.0.1:1`) via the `API_BASE_URL` env var. The server is untouched. The CLI attempts a connection, fails immediately with `ECONNREFUSED`, and surfaces a `network_error` code. This is the only test in the suite that does not exercise the server. The test does not stop the server, does not require a second server instance, and is independent of every other test.
 
@@ -193,7 +195,7 @@ Three tests. The CLI runs against the local server.
 
 | Test | Setup | Assert on stdout | Assert on stderr | Assert on exit |
 |---|---|---|---|---|
-| `info happy path` | seed a template, then `info <slug>` | stdout contains the slug, name, description | empty | 0 |
+| `info happy path` | `info e2e-template` (server's static registry has the template) | stdout contains the slug, name, description | empty | 0 |
 | `info not found` | `info does-not-exist` (server returns 404) | empty | stderr contains `not_found` code | 1 |
 | `info network error` | `API_BASE_URL` pointed at a closed local port | empty | stderr contains `network_error` code | 1 |
 
@@ -213,7 +215,7 @@ Three tests. The git fixture is the only mock in this suite. The CLI runs agains
 
 The `--no-install` flag is the only path that skips the package-manager step. The unit tests in `apps/cli/test/unit/git.test.ts` already cover the spawn helper, so the e2e suite does not duplicate that. The `--no-install` path is the only one that completes in CI without a network round-trip to a package manager.
 
-The happy-path test seeds the local server with a template whose `cloneUrl` is a `file://` URL pointing at the local bare repo. The seed is an HTTP POST to the server's internal test endpoint, identical to the seed used in the `list` suite. The slug for the init happy path is unique to the test (e.g. `e2e-init-${Date.now()}`) for the same reason as the list suite: avoid collisions if the runner is reconfigured for parallelism.
+The happy-path test invokes `init e2e-template --no-install --dir <tmpdir>/dest`. The server returns the template's metadata; the `cloneUrl` field points at the local bare repo that the git fixture created. No server seeding is required for this test — the templates registry is static, and the cloneUrl comes from the static registry's pre-existing entry (the production registry carries `https://github.com/<owner>/<repo>` for saas-starter; the e2e suite uses a fixture template whose `cloneUrl` is overridden at the server fixture level to point at the local bare repo).
 
 The existing-dir test asserts that the CLI refuses to overwrite without `--force`. The current behavior is correct; the test pins it so a future regression is caught.
 
@@ -236,13 +238,40 @@ export default defineConfig({
 
 // test/e2e/helpers/global-setup.ts
 import type { TestProject } from "vitest/node"
+import { reset, seed } from "drizzle-seed"
+import { drizzle } from "drizzle-orm/node-postgres"
 import { startLocalServer, type ServerHandle } from "./server.js"
+import * as schema from "@workspace/database/schema"
 
 let server: ServerHandle | null = null
+let db: ReturnType<typeof drizzle> | null = null
 
 export default async function setup(project: TestProject) {
+  // 1. Connect to the test database (CI provides DATABASE_URL).
+  db = drizzle(process.env.DATABASE_URL!)
+
+  // 2. Reset to a known empty state.
+  await reset(db, schema)
+
+  // 3. Seed a known user. The e2e suite does not exercise the
+  //    auth surface directly, but the local server's auth
+  //    routes must see a valid user table. One row is enough.
+  await seed(db, { user: schema.user }).refine((f) => ({
+    user: {
+      count: 1,
+      columns: {
+        id: f.valuesFromArray({ values: ["e2e-test-user-id"] }),
+        email: f.valuesFromArray({ values: ["[email protected]"] }),
+      },
+    },
+  }))
+
+  // 4. Start the local server. It reads the seeded DB.
   server = await startLocalServer()
   project.provide("serverUrl", server.url)
+
+  // 5. Teardown: stop the server, leave the DB as-is. (CI
+  //    throws the database away after the job.)
   return async () => {
     if (server !== null) {
       await server.stop()
@@ -253,28 +282,29 @@ export default async function setup(project: TestProject) {
 
 // test/e2e/list.test.ts
 import { inject } from "vitest"
-import { seedServer } from "./helpers/server.js"
 
 test("happy path", async () => {
   const serverUrl = inject<string>("serverUrl")
-  await seedServer(serverUrl, [SAMPLE_TEMPLATE])
   const result = await run({
     args: ["list"],
     env: { API_BASE_URL: serverUrl },
   })
-  expect(result.stdout).toContain("e2e-template")
+  expect(result.stdout).toContain("saas-starter")
 })
 ```
 
-This pattern has three properties that matter:
+The pattern is the senior **drizzle-seed** pattern from the Drizzle team: deterministic, official, and built specifically for test isolation. The seed runs in `globalSetup` (not `beforeEach`) because the suite is stateless from the database's perspective — every test reads the same templates, and the templates live in the server's static registry, not the database. The seed only needs to populate the better-auth tables (one user) so the local server's auth routes are not broken when the server reads its own schema on startup.
+
+This pattern has four properties that matter:
 
 1. **One server, one boot.** The local server starts once when the suite begins, not once per test. A typical 8-test suite boots the server 8 times in the naive pattern. Vitest's `globalSetup` avoids this; the cost is one ~1s boot for the whole run.
-2. **Tests are independent of the boot lifecycle.** No test starts or stops the server. A test that mutates the registry does not affect the boot; the next test sees the mutated state. This is why the slug uniqueness (see "The tests" section) is the isolation mechanism, not test ordering.
+2. **Tests are independent of the boot lifecycle.** No test starts or stops the server, mutates the database, or affects the boot. The database is seeded once at the start and not modified per test. The e2e suite is therefore the cleanest case of test isolation: every test is hermetic without needing per-test cleanup.
 3. **The `inject` contract is the only shared surface.** Test files do not import a global module to read the server URL. They call `inject` at the top of the test. The contract is typed (`inject<string>("serverUrl")` fails at the type level if the global setup does not provide a string). The runner does not need to know how the server was started; it just needs an `API_BASE_URL`.
+4. **Seeding is owned by Drizzle, not the server.** The previous version of this ADR proposed a `POST /test/seed` HTTP endpoint on the server. That design was wrong: it asked the server to know it is in test mode, and it invented an HTTP contract that has no analogue in production. The senior pattern is to seed the database directly with the official Drizzle tooling, not to add test-only endpoints to the production server. This is the standard pattern across the Drizzle ecosystem.
 
 #### What the local server fixture does
 
-A `server.ts` helper in `apps/cli/test/e2e/helpers/`. The implementation is ~50 lines.
+A `server.ts` helper in `apps/cli/test/e2e/helpers/`. The implementation is ~30 lines.
 
 #### API
 
@@ -282,7 +312,6 @@ A `server.ts` helper in `apps/cli/test/e2e/helpers/`. The implementation is ~50 
 type ServerHandle = {
   url: string       // absolute URL the CLI should hit
   port: number      // the port the server is bound to
-  seed: (templates: TemplateV1[]) => Promise<void>
   stop: () => Promise<void>
 }
 
@@ -291,11 +320,13 @@ async function startLocalServer(): Promise<ServerHandle>
 
 The server is bound to `127.0.0.1` on port `0`. The OS picks a free port. The `url` returned by `startLocalServer` is `http://127.0.0.1:<port>`. The runner sets `API_BASE_URL` to this URL in the child's environment.
 
-#### The seed endpoint
+The `seed` field is removed from the handle. The previous version returned a `seed(templates)` function that POSTed to the server. The new version does not have a seed field because the server does not need to be seeded. The templates are static. The only DB seeding is at the global setup level, via drizzle-seed.
 
-The local server exposes one internal endpoint beyond its normal surface: `POST /test/seed` accepts a JSON body and replaces the in-memory registry with the seeded templates. This is the only test-only endpoint. The endpoint is a thin wrapper around the registry module the server already uses for production. There is no parallel implementation.
+#### Why the templates do not need a per-test seed
 
-The seed endpoint is not part of the public API. It is enabled by an env var that the e2e workflow sets (`E2E_SEED_ENABLED=1`). The endpoint is not exposed in production.
+The templates registry in `packages/api/src/templates.ts` is a static, in-memory module. It is the same module the production API reads. The CLI's `list` and `info` commands read the same registry the production API reads. The e2e suite does not need to mutate the registry between tests. A test asserting on a known slug (`saas-starter`, which is the entry in the static registry) reads the same data on every test run. There is no per-test state to clean up.
+
+The e2e suite asserts on `saas-starter` (the production entry), not on a fabricated `e2e-template` slug. The previous version of this ADR introduced `e2e-template` as a fabrication; the senior pattern reads the production registry as-is. The test surface is the server the PR is changing, not a synthetic substitute.
 
 #### Network-error tests
 
@@ -491,7 +522,7 @@ The trade-off is that the suite must run the server, which means the server has 
 
 ### Cost
 
-One developer-day for the local server fixture and the seed endpoint on the server. One developer-day for the three test suites. One developer-day for the CI workflows. The prerequisites (`API_BASE_URL` override, runtime module, runner) are already done.
+One developer-day for the local server fixture and the drizzle-seed integration. One developer-day for the three test suites. One developer-day for the CI workflows. The prerequisites (`API_BASE_URL` override, runtime module, runner) are already done.
 
 The cost is bounded and the value compounds: every future change to the CLI is automatically tested against the server the PR is changing.
 
@@ -518,18 +549,23 @@ apps/cli/
 │       ├── info.test.ts                         +  3 tests: happy path, not found, network error
 │       ├── init.test.ts                         +  3 tests: happy path, existing dir, network error
 │       └── helpers/
-│           ├── global-setup.ts                  +  Vitest globalSetup: startLocalServer once, project.provide('serverUrl', ...), teardown server.stop()
-│           ├── server.ts                        +  startLocalServer (spawn + health check) and seedServer (POST /test/seed)
+│           ├── global-setup.ts                  +  Vitest globalSetup: drizzle reset/seed, startLocalServer once, project.provide('serverUrl', ...), teardown server.stop()
+│           ├── server.ts                        +  startLocalServer (spawn + health check); no per-test seed (templates are static)
 │           ├── cli-runner.ts                    +  execa wrapper; reads DEESSEJS_CLI_TARBALL; sets NO_COLOR=1 in child env
 │           └── git-fixture.ts                   +  bare git repo with main branch + one commit (README.md)
 
+packages/database/  (no new files)
+└── (no new files; better-auth tables already exist)  ~  e2e suite reuses schema; drizzle-seed operates on existing tables
+
 packages/api/
-└── (one new file OR one new flag-gated block in an existing router file)   +  POST /test/seed endpoint, gated by E2E_SEED_ENABLED=1; not exposed in production
-                                                                          (file path is owned by the API package, not pinned by this ADR)
+└── (no new files)  no test-only endpoint on the server; seeding happens at the DB level via drizzle-seed, not the server
 
 .github/workflows/
 ├── cli-e2e.yml                                  +  PR blocking; 2 steps: build-and-pack, test-e2e; Vitest owns the server lifecycle
 └── cli-e2e-extended.yml                        +  nightly non-blocking; matrix of large-registry / slow-network / flaky-network / real-pm / unicode; failure posts a GitHub issue
+
+# new dependency
+drizzle-seed                                     +  in pnpm catalog; the e2e suite installs it via @workspace/database peer or directly in apps/cli
 
 pnpm-workspace.yaml                              ~  execa added to the catalog (already merged in PR #64)
 ```
