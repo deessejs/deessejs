@@ -62,8 +62,17 @@ jobs:
 
       # Layer 3: Squawk lints the .sql files for destructive
       # operations (DROP TABLE, DROP COLUMN, ALTER TABLE DROP NOT
-      # NULL, lock-taking operations, etc.).
-      - uses: sbdchd/squawk-action@v1
-        with:
-          pattern: "packages/database/drizzle/*.sql"
-          fail-on-violations: true
+      # NULL, lock-taking operations, etc.). The CLI exits
+      # non-zero on violation, which fails the step.
+      #
+      # We use the squawk-cli directly instead of the GitHub
+      # Action because sbdchd/squawk-action@v1 is the only tagged
+      # release and it is outdated: the @v1 tag only accepts
+      # `pattern`, `version`, `access_token` inputs (no
+      # fail-on-violations, no upload-to-github toggle). The
+      # @main branch of the action has these inputs but is not
+      # a tagged release and would be a moving target.
+      - name: Lint migrations with Squawk
+        run: |
+          npm install -g squawk-cli
+          squawk packages/database/drizzle/*.sql
