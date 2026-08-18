@@ -19,20 +19,16 @@ import { api } from "../../../src/index.js"
 describe("GET /api/v1/auth/get-session", () => {
   it("is mounted and returns 200 for an unauthenticated request", async () => {
     const res = await api.request("/api/v1/auth/get-session")
-    // Diag: surface the body to learn whether the 404 is Hono's
-    // notFound envelope or a Better Auth response.
-    const body = await res.json()
-    // eslint-disable-next-line no-console
-    console.log(JSON.stringify({
-      status: res.status,
-      headers: Object.fromEntries(res.headers.entries()),
-      body,
-    }))
     expect(res.status).toBe(200)
+    const body = await res.json()
+    // Documented unauthenticated shape: both null. We do not
+    // assert the absence of other fields — Better Auth owns
+    // the envelope.
     expect(body).toMatchObject({
       session: null,
       user: null,
     })
   })
 })
+
 
