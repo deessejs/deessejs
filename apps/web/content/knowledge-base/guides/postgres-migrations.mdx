@@ -1,0 +1,51 @@
+---
+title: Manage Postgres migrations
+description: Drizzle migrations in CI, rollback, zero-downtime schema changes.
+topic: databases
+products: [postgres, drizzle, migrations]
+order: 0
+draft: false
+---
+
+Drizzle generates SQL migrations from the schema
+diff. The pipeline runs them in CI before the deploy
+hits, and a separate rollback migration is generated
+when a schema change is destructive.
+
+## 1. Author the schema
+
+Edit the relevant file in
+`packages/database/src/schema/<table>.ts`. Drizzle's
+`schema` helper enforces the column types.
+
+## 2. Generate the migration
+
+```bash
+pnpm db:generate
+```
+
+The generated SQL lands in
+`packages/database/migrations/<timestamp>_<name>.sql`.
+
+## 3. Apply
+
+```bash
+pnpm db:migrate
+```
+
+In production, the CI step runs this before the Vercel
+build. A failing migration aborts the deploy.
+
+## 4. Rollback
+
+For destructive changes, write the rollback SQL in the
+same migration file under `-- rollback:`. The CI tooling
+detects this comment and ships the rollback alongside.
+
+## What's next
+
+- [Use the Next.js RAG template](/knowledge-base/guides/nextjs-rag-template)
+  — the `documents` table lives under migrations.
+- [Production readiness checklist](/knowledge-base/guides/production-checklist)
+  — verify migration runbook before the first prod
+  promotion.

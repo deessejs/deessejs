@@ -1,0 +1,40 @@
+---
+title: Deploy to Vercel
+description: Connect your repo, configure environments, and run your first production build.
+topic: deployment
+products: [vercel, production, ci-cd]
+order: 0
+draft: false
+---
+
+Vercel is the default deploy target for DeesseJS apps.
+The integration covers preview environments on every PR,
+production environments on `main`, and CI hooks for the
+better-auth and database packages.
+
+## 1. Connect the repo
+
+In the Vercel dashboard, import your repo. The monorepo
+is auto-detected; configure three projects (one per app
+in `apps/`) and point each at the right root directory.
+
+## 2. Configure environments
+
+Each app needs three environments: `development`,
+`preview`, `production`. The `DATABASE_URL` points at a
+throwaway Postgres for `development`, a branch database
+for `preview`, and the production cluster for
+`production`.
+
+## 3. Trigger a build
+
+Push to `staging` to run a preview build. Promote via the
+Vercel dashboard to ship to production.
+
+## What's next
+
+- [Production readiness checklist](/knowledge-base/guides/production-checklist)
+  — verify auth, secrets, and rate limits before the
+  first real promotion.
+- [Run background jobs](/knowledge-base/guides/background-jobs-queue)
+  — move async work off the request path.

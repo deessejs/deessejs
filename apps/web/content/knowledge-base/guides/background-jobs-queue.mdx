@@ -1,0 +1,44 @@
+---
+title: Run background jobs
+description: Queue and worker patterns for async work outside your request path.
+topic: queue
+products: [background-jobs, async]
+order: 0
+draft: false
+---
+
+Not every operation belongs in a request path. Long
+ingestions, fan-out notifications, and third-party API
+retries should run as background jobs that the request
+hands off and returns from immediately.
+
+## 1. Pick a queue
+
+DeesseJS uses Postgres as the queue substrate. The
+`jobs` table is provisioned by the `database` package;
+the `worker` binary in `@deessejs/cli` reads from it.
+
+## 2. Enqueue
+
+```ts
+import { enqueue } from "@workspace/queue"
+
+await enqueue("send-welcome-email", { userId: user.id })
+```
+
+## 3. Worker
+
+```bash
+pnpm --filter @workspace/cli worker
+```
+
+The worker is a long-running process that picks up jobs
+in FIFO order, runs the handler, and retries with
+exponential backoff on failure.
+
+## What's next
+
+- [Add observability](/knowledge-base/guides/observability-logging)
+  — track job duration and retry rate.
+- [Production readiness checklist](/knowledge-base/guides/production-checklist)
+  — verify queue depth alarms before going live.

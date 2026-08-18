@@ -1,0 +1,44 @@
+---
+title: Build your first agent stack
+description: Compose an AI agent with the SDK, a tool registry, and a streaming endpoint.
+topic: agents
+products: [ai, llm, rag]
+order: 0
+draft: false
+---
+
+The DeesseJS agent stack wires three things together: a
+model provider, a tool registry, and a streaming endpoint
+that surfaces the agent's reasoning in real time.
+
+## 1. Install the SDK
+
+```bash
+pnpm add @deessejs/agents
+```
+
+## 2. Compose an agent
+
+```ts
+import { Agent } from "@deessejs/agents"
+
+const agent = new Agent({
+  model: "claude-sonnet",
+  tools: [searchDocs, runQuery, deployPreview],
+})
+```
+
+## 3. Stream the response
+
+```ts
+for await (const chunk of agent.stream("Deploy the staging env")) {
+  process.stdout.write(chunk.text)
+}
+```
+
+## What's next
+
+- [Use the Next.js RAG template](/knowledge-base/guides/nextjs-rag-template)
+  — wire embeddings and a vector store.
+- [Add observability](/knowledge-base/guides/observability-logging)
+  — capture traces from the streaming endpoint.
