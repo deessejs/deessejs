@@ -155,10 +155,15 @@ file (configured in `packages/api/vitest.config.ts`)
 asserts the service is reachable before workers start and
 passes a serialisable flag down via
 [`inject('postgres:ready')`](https://vitest.dev/config/globalsetup).
-The readiness test skips itself with a clear message when
-the flag is false, rather than failing with a confusing
-`ECONNREFUSED`. The non-DB tests ignore the flag and run
-unaffected.
+The readiness test skips itself when the flag is false.
+**The skip is observable, not silent:** the test name
+carries a `[skip-postgres]` annotation that surfaces in
+vitest's reporter output, and the `beforeAll` emits a
+`WARN` line to stderr via the existing
+`packages/api/src/constants/logger.ts` so the skipped test
+is visible in the log aggregator. A misconfigured CI that
+should have provided Postgres is loud, not silent. The
+non-DB tests ignore the flag and run unaffected.
 
 **Better Auth smoke shape.** The `/api/v1/auth/get-session`
 handler is mounted via `mountHttp:57`:
@@ -175,6 +180,26 @@ a 200 with `{ session: null, user: null }` — the
 documented shape for an unauthenticated request. The point
 is to assert the Hono mount is wired; Better Auth's own
 behaviour is tested in `packages/auth`.
+
+**Payload fixtures come from the contract schemas.** Test
+files that send JSON payloads (the oRPC wire shape, the
+auth request body, future procedure inputs) derive their
+fixtures from the Zod schemas in
+`@workspace/contracts/src/vN/`, not from hand-written
+constants. The TypeScript type of an inline fixture is
+local; the contract schema is the source of truth shared
+between the server, the typed client, and the tests. When
+`TemplateV1` gains a required field, a hand-written
+`{ slug: "saas-starter" }` fixture would silently drift and
+the test would keep passing against an outdated shape. A
+schema-derived fixture fails to compile at the production
+type site (the procedure's input or output type) and the
+test cannot be merged until the fixture is updated. The
+existing contract test already follows this pattern
+(`vi.mock(import("../../src/core/templates/index.js"), ...)`)
+returns an array that matches the schema; the new
+integration tests extend the same convention to request
+bodies.
 
 ### What the suite does not cover
 
@@ -305,3 +330,21 @@ listener for CI integration tests.
   pinned the `globalSetup` + `inject` pattern for the
   readiness test, and cited the Better Auth docs for the
   smoke-test expected shape.
+- **2026-08-18 (round 3)**: applied peer-review feedback.
+  Two micro-points were raised. Both folded in.
+  - The Postgres-skip path is now **observable**: a
+    `[skip-postgres]` test-name annotation is appended, and
+    the `beforeAll` emits a `WARN` via the existing
+    `packages/api/src/constants/logger.ts` so the skip
+    surfaces in the log aggregator. A misconfigured CI
+    that should have provided Postgres is loud, not
+    silent.
+  - JSON payload fixtures are now pinned to be derived
+    from the Zod schemas in `@workspace/contracts/src/vN/`,
+    not hand-written. When a schema gains a required field,
+    a fixture derived from the schema fails to compile at
+    the procedure's input/output type, and a hand-written
+    fixture would silently drift. The existing contract
+    test already follows this pattern; the new
+    integration tests extend the convention to request
+    bodies.
