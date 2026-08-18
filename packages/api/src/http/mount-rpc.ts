@@ -14,16 +14,13 @@ import type { ApiEnv } from "./env.js"
  * down the chain instead of short-circuiting. See
  * https://orpc.dev/docs/adapters/hono.
  *
- * The mount uses Hono's catch-all splat syntax
- * (`/rpc{/*splat}`) so the middleware matches every path
- * under `/rpc/`, regardless of segment count. The bare
- * `/rpc/*` syntax Hono shows in the oRPC adapter example
- * matches a single segment; oRPC procedure paths are
- * namespaced (e.g. `templates.list` → two segments after
- * `/rpc/`), so the bare pattern misses them. The published
- * oRPC docs do not show the multi-segment case. See
- * ADR-015 for the root-cause analysis and Hono issues
- * #1644 and #4158 for the splat syntax.
+ * Per Hono's docs (https://hono.dev/docs/api/routing), the
+ * trailing wildcard `*` is a *special* wildcard that matches
+ * any number of path segments: `/rpc/*` matches `/rpc/x`,
+ * `/rpc/x/y`, and `/rpc/x/y/z`. The bare pattern is therefore
+ * sufficient for any oRPC procedure path, regardless of
+ * segment count. ADR-015 documents the misreading that
+ * suggested the opposite.
  *
  * The matched response is rewritten to carry the request ID
  * header, so clients can correlate even when oRPC constructs
@@ -34,7 +31,7 @@ export const mountRpc = (api: Hono<ApiEnv>): void => {
     interceptors: [onError((error) => logger.error("orpc_error", error))],
   })
 
-  api.use("/rpc{/*splat}", async (c, next) => {
+  api.use("/rpc/*", async (c, next) => {
     const request = wrapForOrpc(c)
     const { matched, response } = await rpcHandler.handle(request, {
       prefix: "/rpc",
