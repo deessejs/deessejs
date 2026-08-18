@@ -86,11 +86,19 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Validates the migration journal for commutativity and ordering.
       - run: pnpm --filter @workspace/database db:check
-      # Re-runs generate against the committed schema. If the schema
-      # changed without a matching migration, generate produces new
-      # files and git diff --exit-code fails the step.
-      - run: pnpm --filter @workspace/database db:generate
-      - run: git diff --exit-code packages/database/drizzle
+      # Re-runs generate against the committed schema. Bounded
+      # timeout because a missed db:generate on a column rename
+      # makes generate prompt on stdin, which would otherwise block
+      # until the job-level 360-minute timeout fires.
+      - name: Detect schema drift
+        timeout-minutes: 2
+        run: |
+          pnpm --filter @workspace/database db:generate
+          if [ -n "$(git status --porcelain packages/database/drizzle)" ]; then
+            echo "Schema drift detected: uncommitted migrations or snapshots."
+            git status --porcelain packages/database/drizzle
+            exit 1
+          fi
 ```
 
 The check has two layers because each catches a different class of
@@ -99,28 +107,37 @@ and ordering issues between migrations already on disk. The second
 layer detects the case the first cannot: a schema change that did
 not produce a matching migration. The PR is blocked either way.
 
-The second layer uses `git diff --exit-code` on the whole
-`packages/database/drizzle` directory. It deliberately does not
-exclude `_journal.json` or any snapshot: if `db:generate` rewrites
-them on a fresh run, that rewrite is the signal. Drizzle's
+The second layer uses `git status --porcelain` on
+`packages/database/drizzle`. This catches modifications AND
+untracked files (a freshly created `0004_*.sql` and
+`meta/0004_snapshot.json` show up as `??`). It deliberately does
+not exclude `_journal.json` or any snapshot: if `db:generate`
+rewrites them on a fresh run, that rewrite is the signal. Drizzle's
 default prefix is `index`, so snapshots are numbered
 `0000_snapshot.json`, `0001_snapshot.json`, etc. There is no safe
-static allowlist of snapshot filenames to skip.
+static allowlist of snapshot filenames to skip, and the snapshot
+list grows with every migration, so it cannot be maintained by
+hand.
+
+`git diff --exit-code` is NOT a substitute: it only inspects
+already-tracked files, so a brand-new migration file would slip
+past.
 
 #### TTY risk during `db:generate`
 
 `drizzle-kit generate` can prompt interactively when it detects a
 column rename ("is this a rename or a new column?"). On a
-non-interactive CI runner the prompt blocks until the job times
-out or the process crashes on EOF. `drizzle-kit generate` does not
-expose a documented `--no-prompt` or `--yes` flag.
+non-interactive CI runner the prompt blocks until the job-level
+default timeout (360 minutes) fires, wasting a slot of CI quota.
+`drizzle-kit generate` does not expose a documented `--no-prompt`
+or `--yes` flag.
 
-The mitigation is contributor discipline, not CI config: the
-contributor who edits a schema file must run `pnpm db:generate`
-locally before pushing, answer the prompt, and commit the SQL.
-The drift gate then re-runs `db:generate` against the committed
-schema; if the schema is already in sync with the committed
-migrations, no prompt fires because there is no diff.
+The CI defense is a 2-minute `timeout-minutes` on the drift step
+itself. The contributor-level mitigation is to run
+`pnpm db:generate` locally before pushing, answer the prompt, and
+commit the SQL. The drift gate then re-runs `db:generate` against
+the committed schema; if the schema is already in sync with the
+committed migrations, no prompt fires because there is no diff.
 
 The workflow is added to the required checks for both `main` and
 `staging` in branch protection.
@@ -158,7 +175,16 @@ jobs:
       # line and skip the audit block.
       - name: Audit pending migrations
         run: |
-          NEW=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
+          # GitHub sets github.event.before to forty zeros on the
+          # first push to a new branch, and to a no-longer-existing
+          # commit on a force push. Both cases make `git diff`
+          # refuse to run ("fatal: bad object"), so we degrade to
+          # HEAD~1, which exists on every non-initial commit.
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE="HEAD~1"
+          fi
+          NEW=$(git diff --name-only "$BEFORE" "${{ github.sha }}" \
             -- 'packages/database/drizzle/*.sql')
           if [ -n "$NEW" ]; then
             echo "=== Migrations applied by this push ==="
@@ -250,10 +276,11 @@ The right gate is a SQL linter that runs against the files in
 `packages/database/drizzle/*.sql` on every PR. Two proven
 candidates:
 
-- **Squawk** (`squawkhq/squawk`): Postgres-aware linter that flags
+- **Squawk** (`sbdchd/squawk`): Postgres-aware linter that flags
   `DROP TABLE`, `DROP COLUMN`, `ALTER TABLE … DROP NOT NULL`,
   missing `IF EXISTS`, lock-taking operations, and similar
-  patterns. Has a GitHub Action. Free, MIT.
+  patterns. Has an official GitHub Action (`sbdchd/squawk-action`).
+  Free, MIT.
 - **Atlas migrate lint**: a more general migration linter; heavier
   to integrate.
 
@@ -261,11 +288,18 @@ The implementation picks Squawk. The workflow adds a step after
 the drift check:
 
 ```yaml
-      - uses: squawkhq/squawk-action@v1
+      - uses: sbdchd/squawk-action@v1
         with:
-          # Fail the PR on any warning, not just errors.
-          fail-on: any
+          pattern: "packages/database/drizzle/*.sql"
+          fail-on-violations: true
 ```
+
+The action's documented inputs are `pattern` (glob), `files`
+(space-separated paths, no globs), and `fail-on-violations`
+(boolean). Earlier drafts of this ADR used the names
+`squawkhq/squawk` and `squawkhq/squawk-action`; those names are
+wrong (the GitHub API returns 404 for both). The correct owner
+is `sbdchd`, the same person who maintains the Squawk CLI.
 
 Squawk is configured per-project via `squawk.toml` at the repo
 root. The configuration starts strict and is loosened only by an
@@ -452,7 +486,7 @@ After the three changes land:
   push-only in v0.31, silently deprecated in v1.0. This is the
   source for the "no Drizzle config field protects `migrate`"
   claim in the Decision section.
-- [Squawk](https://github.com/squawkhq/squawk). The Postgres SQL
+- [Squawk](https://github.com/sbdchd/squawk). The Postgres SQL
   linter used for the destructive-SQL gate. The action is
-  `squawkhq/squawk-action`. The configuration lives in
+  `sbdchd/squawk-action`. The configuration lives in
   `squawk.toml` at the repo root.
