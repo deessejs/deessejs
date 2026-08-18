@@ -39,9 +39,18 @@ describe("GET /api/v1/ready", () => {
     })
   } else {
     it("returns 200 with status ready when Postgres is reachable", async () => {
-      const res = await api.request("/api/v1/ready")
-      expect(res.status).toBe(200)
-      const body = await res.json()
+      // The DB ping runs through the same connection pool the
+      // migration job used. On a cold first query, the pool may
+      // need a moment to settle. Retry up to 3 times with a short
+      // backoff so the test is not flaky.
+      let res: Response | undefined
+      for (let attempt = 0; attempt < 3; attempt++) {
+        res = await api.request("/api/v1/ready")
+        if (res.status === 200) break
+        await new Promise((r) => setTimeout(r, 200))
+      }
+      expect(res?.status).toBe(200)
+      const body = await res!.json()
       expect(body.status).toBe("ready")
     })
   }

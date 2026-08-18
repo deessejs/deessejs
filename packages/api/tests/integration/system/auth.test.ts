@@ -32,17 +32,16 @@ describe("GET /api/v1/auth/get-session", () => {
       // and the global setup emits a WARN. A misconfigured CI is visible.
     })
   } else {
-    it("is mounted and returns 200 with a null session for an unauthenticated request", async () => {
+    it("is mounted and returns 200 for an unauthenticated request", async () => {
       const res = await api.request("/api/v1/auth/get-session")
+      // Better Auth returns 200 for an unauthenticated `/get-session`
+      // call. The body may be `null` or `{ session: null, user: null }`
+      // depending on the Better Auth version; the test pins the
+      // status code and the fact that the handler is wired, not
+      // the specific envelope shape.
       expect(res.status).toBe(200)
       const body = await res.json()
-      // Documented unauthenticated shape: both null. We do not
-      // assert the absence of other fields — Better Auth owns
-      // the envelope.
-      expect(body).toMatchObject({
-        session: null,
-        user: null,
-      })
+      expect([null, { session: null, user: null }]).toContainEqual(body)
     })
   }
 })
