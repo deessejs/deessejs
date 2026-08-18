@@ -430,6 +430,55 @@ Three extensions are out of scope here but worth flagging:
    and the API surface is small enough to read. Tracked here so
    the next iteration picks it up without re-justifying.
 
+## Expected file structure
+
+The three changes above land as five concrete files. Two are
+added, one is created at the repo root, two are unchanged but
+called out for completeness.
+
+```
+deessejs/
+├── .github/
+│   └── workflows/
+│       ├── drizzle-check.yml              # NEW: PR drift + Squawk gate
+│       └── db-migrate-staging.yml         # NEW: push-to-staging auto-apply
+├── packages/
+│   └── database/
+│       └── drizzle.config.ts              # UNCHANGED
+├── squawk.toml                            # NEW: Squawk config at repo root
+└── apps/
+    └── internal-documentation/
+        └── content/
+            └── docs/
+                └── decisions/
+                    └── ADR-015-drizzle-migrations-ci.mdx  # THIS FILE
+```
+
+`packages/database/drizzle.config.ts` is listed for completeness
+only. Earlier revisions of this ADR proposed a `strict: true`
+edit there; that proposal was retracted. The current shape
+leaves Drizzle's config untouched. Any drift or destructive SQL
+is caught by the CI workflows, not by the config.
+
+`squawk.toml` lives at the repo root because Squawk's CLI
+expects a single config file at the project root. A typical
+initial content:
+
+```toml
+# Squawk config — see https://github.com/sbdchd/squawk
+# Starts strict. Loosened only by an explicit ADR.
+
+pg-version = 16
+
+[[rules]]
+name = "disallow-ban-drop-column"
+```
+
+The implementation PR may add more rules as they prove useful.
+The starter config above blocks `DROP COLUMN` outright, which
+catches the most common source of data loss in this codebase
+without false positives.
+
 ## How to verify
 
 After the three changes land:
