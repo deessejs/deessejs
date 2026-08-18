@@ -1,0 +1,14 @@
+# Squawk config for the deessejs monorepo.
+# See https://github.com/sbdchd/squawk/blob/master/docs/docs/cli.md
+#
+# Started minimal on 2026-08. Tuned only by ADR.
+# Postgres version matches the version used by the GitHub Actions
+# test-integration service (postgres:16-alpine) and the staging DB.
+
+pg_version = "16.0"
+
+# squawk-ignore-file is the per-file escape hatch for contributors.
+# Anything louder than a per-file exclusion needs an ADR.
+
+[upload_to_github]
+fail_on_violations = true

@@ -1,0 +1,63 @@
+name: Drizzle drift check
+
+# PR drift gate for Drizzle migrations.
+#
+# Two layers:
+#   1. `pnpm db:check` validates the migration journal for
+#      commutativity and ordering issues between migrations
+#      already on disk.
+#   2. `pnpm db:generate` re-run against the committed schema;
+#      `git status --porcelain` catches both modifications and
+#      untracked files (a brand-new migration file would slip
+#      past `git diff --exit-code`).
+#
+# Plus a Squawk lint on the .sql files for destructive SQL.
+# Implemented per ADR-015.
+
+on:
+  pull_request:
+    branches: [main, staging]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Drift + Squawk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+
+      - run: pnpm install --frozen-lockfile
+
+      # Layer 1: validates the migration journal for commutativity
+      # and ordering issues.
+      - name: Run drizzle-kit check
+        run: pnpm --filter @workspace/database db:check
+
+      # Layer 2: re-runs generate against the committed schema.
+      # Bounded timeout because a missed db:generate on a column
+      # rename makes generate prompt on stdin, which would
+      # otherwise block until the job-level 360-minute timeout.
+      - name: Detect schema drift
+        timeout-minutes: 2
+        run: |
+          pnpm --filter @workspace/database db:generate
+          if [ -n "$(git status --porcelain packages/database/drizzle)" ]; then
+            echo "Schema drift detected: uncommitted migrations or snapshots."
+            git status --porcelain packages/database/drizzle
+            exit 1
+          fi
+
+      # Layer 3: Squawk lints the .sql files for destructive
+      # operations (DROP TABLE, DROP COLUMN, ALTER TABLE DROP NOT
+      # NULL, lock-taking operations, etc.).
+      - uses: sbdchd/squawk-action@v1
+        with:
+          pattern: "packages/database/drizzle/*.sql"
+          fail-on-violations: true

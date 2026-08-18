@@ -445,7 +445,7 @@ deessejs/
 ├── packages/
 │   └── database/
 │       └── drizzle.config.ts              # UNCHANGED
-├── squawk.toml                            # NEW: Squawk config at repo root
+├── .squawk.toml                           # NEW: Squawk config at repo root
 └── apps/
     └── internal-documentation/
         └── content/
@@ -460,24 +460,31 @@ edit there; that proposal was retracted. The current shape
 leaves Drizzle's config untouched. Any drift or destructive SQL
 is caught by the CI workflows, not by the config.
 
-`squawk.toml` lives at the repo root because Squawk's CLI
-expects a single config file at the project root. A typical
-initial content:
+`.squawk.toml` (note the leading dot) lives at the repo root
+because Squawk's CLI looks for it there by default. The
+top-level keys are `pg_version` (string), `excluded_rules` and
+`included_rules` (arrays of rule names), `assume_in_transaction`
+(boolean), `excluded_paths` (array), and a `[upload_to_github]`
+table. Confirmed against the official Squawk CLI docs.
+
+A starter content:
 
 ```toml
-# Squawk config — see https://github.com/sbdchd/squawk
-# Starts strict. Loosened only by an explicit ADR.
+# .squawk.toml — see https://github.com/sbdchd/squawk/blob/master/docs/docs/cli.md
+# Version matches the GitHub Actions test-integration
+# service (postgres:16-alpine) and the staging DB.
 
-pg-version = 16
+pg_version = "16.0"
 
-[[rules]]
-name = "disallow-ban-drop-column"
+[upload_to_github]
+fail_on_violations = true
 ```
 
-The implementation PR may add more rules as they prove useful.
-The starter config above blocks `DROP COLUMN` outright, which
-catches the most common source of data loss in this codebase
-without false positives.
+This config fails the PR on any Squawk warning, with no rules
+excluded. The default rule set is already tuned enough to catch
+`DROP COLUMN`, `DROP TABLE`, ALTER TABLE locks, and the typical
+destructive-migration patterns. The implementation PR may add
+`excluded_rules` as they prove noisy in CI.
 
 ## How to verify
 
