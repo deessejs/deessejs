@@ -17,7 +17,7 @@
 import { describe, expect, it } from "vitest"
 import { inject } from "vitest"
 
-import { api } from "../../src/index.js"
+import { api } from "../../../src/index.js"
 
 const POSTGRES_READY = inject("postgres:ready") === true
 

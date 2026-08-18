@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { api } from "../../src/index.js"
+import { api } from "../../../src/index.js"
 
 describe("Hono basePath /api/v1", () => {
   it("serves /api/v1/health", async () => {

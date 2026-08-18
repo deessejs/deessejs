@@ -9,11 +9,8 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { api } from "../../src/index.js"
-import {
-  VERSION,
-  MIN_SUPPORTED_VERSION,
-} from "../../src/constants/version.js"
+import { api } from "../../../src/index.js"
+import { VERSION, MIN_SUPPORTED_VERSION } from "../../../src/constants/version.js"
 
 describe("GET /api/v1/version", () => {
   it("returns 200 with the declared version and minSupported", async () => {

@@ -20,7 +20,7 @@
  */
 import { describe, expect, it, vi } from "vitest"
 
-vi.mock(import("../../src/core/templates/index.js"), () => ({
+vi.mock(import("../../../src/core/templates/index.js"), () => ({
   enrich: vi.fn(async () => [
     {
       slug: "saas-starter",
@@ -37,7 +37,7 @@ vi.mock(import("../../src/core/templates/index.js"), () => ({
 
 import { TemplateV1 } from "@workspace/contracts/v1"
 
-import { api } from "../../src/index.js"
+import { api } from "../../../src/index.js"
 
 describe("POST /api/v1/rpc/templates/list", () => {
   const EXPECTED_TEMPLATE: ReturnType<typeof TemplateV1.parse> = TemplateV1.parse({

@@ -14,7 +14,7 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { api } from "../../src/index.js"
+import { api } from "../../../src/index.js"
 
 describe("GET /api/v1/auth/get-session", () => {
   it("is mounted and returns 200 for an unauthenticated request", async () => {

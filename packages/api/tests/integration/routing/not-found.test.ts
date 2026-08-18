@@ -15,7 +15,7 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { api } from "../../src/index.js"
+import { api } from "../../../src/index.js"
 
 describe("notFound envelope", () => {
   it("returns 404 with the standard envelope for unknown URLs", async () => {
