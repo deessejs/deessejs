@@ -1,17 +1,15 @@
-name: Drizzle drift check
+name: Drizzle check
 
-# PR drift gate for Drizzle migrations.
+# PR gate for Drizzle migrations.
 #
-# Two layers:
-#   1. `pnpm db:check` validates the migration journal for
-#      commutativity and ordering issues between migrations
-#      already on disk.
-#   2. `pnpm db:generate` re-run against the committed schema;
-#      `git status --porcelain` catches both modifications and
-#      untracked files (a brand-new migration file would slip
-#      past `git diff --exit-code`).
+# Two jobs, run in parallel against the same PR:
+#   - drift: validates the migration journal for commutativity
+#     and ordering issues, then re-runs drizzle-kit generate and
+#     asserts the working tree stays clean.
+#   - squawk: lints ONLY the .sql files this PR introduces
+#     against the destructive-SQL rules kept active in
+#     .squawk.toml.
 #
-# Plus a Squawk lint on the .sql files for destructive SQL.
 # Implemented per ADR-015.
 
 on:
@@ -22,8 +20,8 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: Drift + Squawk
+  drift:
+    name: Drift
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,20 +58,23 @@ jobs:
             exit 1
           fi
 
-      # Layer 3: Squawk lints ONLY the .sql files this PR
-      # introduces — `git diff --name-only` against the merge
-      # base, scoped to packages/database/drizzle/*.sql. This is
-      # necessary because the bootstrap migration triggers
-      # dozens of valid Squawk warnings that are out of scope
-      # for the gate; ADR-015 documents the rationale.
+  squawk:
+    name: Squawk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      # Lints ONLY the .sql files this PR introduces — git diff
+      # against the merge base, scoped to
+      # packages/database/drizzle/*.sql. On a PR that adds no
+      # migration, the step exits 0 with a clear log line.
       #
-      # We use the squawk-cli directly instead of the GitHub
-      # Action because sbdchd/squawk-action@v1 is the only tagged
+      # We use squawk-cli directly instead of the GitHub Action
+      # because sbdchd/squawk-action@v1 is the only tagged
       # release and it is outdated: the @v1 tag only accepts
-      # `pattern`, `version`, `access_token` inputs (no
-      # fail-on-violations, no upload-to-github toggle). The
-      # @main branch of the action has these inputs but is not
-      # a tagged release and would be a moving target.
+      # `pattern`, `version`, `access_token` inputs. The @main
+      # branch has more inputs but is not a tagged release.
       - name: Lint migrations with Squawk
         run: |
           npm install -g squawk-cli
