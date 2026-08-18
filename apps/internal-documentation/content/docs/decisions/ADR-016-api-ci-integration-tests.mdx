@@ -122,6 +122,60 @@ network flakiness in CI. The contract test
 `templates-list.test.ts` already follows this pattern; the
 new file reuses the same mock.
 
+### Test seams and conventions
+
+Three implementation details the test files should follow.
+They are pinned here so a future contributor does not
+re-derive them.
+
+**`vi.mock` form.** Vitest's recommended mock form for
+pnpm workspaces is the dynamic-import argument
+([vitest #3105](https://github.com/vitest-dev/vitest/issues/3105),
+[#9259](https://github.com/vitest-dev/vitest/issues/9259),
+[#10145](https://github.com/vitest-dev/vitest/issues/10145)):
+
+```ts
+vi.mock(import("../../src/core/templates/index.js"), () => ({
+  enrich: vi.fn(async () => [/* ... */]),
+}))
+```
+
+The string-path form (`vi.mock("../../src/...", factory)`)
+works in this repo today and is what the existing contract
+test uses. The dynamic-import form is more robust across
+pnpm hoist and tsconfig-paths setups and is what the new
+test files should adopt. Both forms can coexist; this is
+a forward-looking convention, not a forced migration.
+
+**`globalSetup` for the DB-backed readiness test.** Only
+`system/health.test.ts` touches Postgres. The CI job
+already provides a Postgres service, but the test should
+not retry the connection on every run. A `globalSetup`
+file (configured in `packages/api/vitest.config.ts`)
+asserts the service is reachable before workers start and
+passes a serialisable flag down via
+[`inject('postgres:ready')`](https://vitest.dev/config/globalsetup).
+The readiness test skips itself with a clear message when
+the flag is false, rather than failing with a confusing
+`ECONNREFUSED`. The non-DB tests ignore the flag and run
+unaffected.
+
+**Better Auth smoke shape.** The `/api/v1/auth/get-session`
+handler is mounted via `mountHttp:57`:
+
+```ts
+api.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw))
+```
+
+Per the [Better Auth Hono integration
+docs](https://better-auth.com/docs/integrations/hono), the
+handler returns a `Response` directly. The smoke test calls
+`GET /api/v1/auth/get-session` with no cookies and asserts
+a 200 with `{ session: null, user: null }` — the
+documented shape for an unauthenticated request. The point
+is to assert the Hono mount is wired; Better Auth's own
+behaviour is tested in `packages/auth`.
+
 ### What the suite does not cover
 
 - **Real GitHub requests.** Out of scope; that is the
@@ -165,6 +219,23 @@ Three alternatives were considered:
   the only file that touches the DB; it gets its own
   beforeAll that asserts the service is up before running.
   Rejected.
+- **Use Hono's `testClient` for a typed test client.**
+  `hono/testing` exposes `testClient(app)` which returns a
+  type-safe client keyed off the app's route types
+  ([hono.dev/docs/helpers/testing](https://hono.dev/docs/helpers/testing)).
+  The type inference **only works when routes are chained
+  directly on `new Hono()`**. `packages/api/src/index.ts:18-31`
+  builds the app via `new Hono<ApiEnv>().basePath(...)`
+  followed by separate `api.onError(...)`, `api.use(...)`,
+  `mountHttp(api)`, `mountRpc(api)` calls — exactly the
+  pattern that strips `testClient` of its type
+  information. Adopting `testClient` would require
+  refactoring the Hono app construction to use chained
+  method calls everywhere, which is a non-trivial change
+  to a load-bearing file. The untyped `api.request()` call
+  is cheap, fast, and exercises the same surface; the
+  type-safety gain is not worth the construction-site
+  refactor. Rejected.
 
 The `api.request()` pattern is the cheapest option that
 exercises the surface that breaks. Hono's tests docs, the
@@ -223,3 +294,14 @@ listener for CI integration tests.
   the integration pattern and rejected three alternatives
   (apps/app boot, Vite dev server, per-file DB setup).
   Wrote the harness plan in this ADR.
+- **2026-08-18 (round 2)**: re-checked the Hono testing
+  helper (`testClient`), the vitest `vi.mock` form for
+  pnpm monorepos, the `globalSetup` + `inject` pattern,
+  and the Better Auth Hono mount contract. Folded the
+  findings into the ADR: added a fourth rejected
+  alternative (`testClient`, blocked by the
+  `basePath`-then-`use` construction pattern), pinned the
+  dynamic-import form of `vi.mock` for new test files,
+  pinned the `globalSetup` + `inject` pattern for the
+  readiness test, and cited the Better Auth docs for the
+  smoke-test expected shape.
