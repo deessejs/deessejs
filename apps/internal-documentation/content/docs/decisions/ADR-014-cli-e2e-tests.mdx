@@ -103,6 +103,8 @@ Three exports. The module is the only place in the CLI that reads `process.env.A
 
 The memoization matters. The CLI calls `getApiRpcUrl` once at startup (in `client.ts`) and `getApiVersionUrl` once at startup (in `version/check.ts`). If the env var were read at every call, a test that wraps spawn in a way that mutates the env would have surprising behavior. The memoization makes the resolution deterministic.
 
+`getApiBaseUrl` normalizes its output by stripping a trailing slash. An env var of `http://localhost:3000/` (with trailing slash) joined with `/api/v1/rpc` would produce `http://localhost:3000//api/v1/rpc` (double slash). The implementation must strip the trailing slash before returning. The straightforward choice is `getApiBaseUrl` returning `url.replace(/\/+$/, "")` after `new URL` parsing. The choice of `String#replace` with a regex (rather than `URL#toString` or a hand-rolled trim) is deliberate: `new URL` does not expose a public API for trailing-slash removal, and a regex anchored to the end of the string is the simplest way to express "remove any number of trailing slashes". The alternative of `new URL("/api/v1/rpc", getApiBaseUrl()).toString` is also correct and pushes the join logic to the URL constructor; the implementation PR picks one and documents the choice.
+
 #### Validation
 
 The validation rules are tight enough to catch obvious mistakes but lenient enough to accept any well-formed URL. The format is `https://example.com` or `http://localhost:4873`. Empty strings, missing scheme, whitespace, and `null` are rejected. The CLI throws a `CliError` with code `internal_error` and a message that includes the offending value. The failure happens before any network call so it does not mask deeper issues.
@@ -327,11 +329,11 @@ Two workflows. The implementation is in `.github/workflows/`, named `cli-e2e.yml
 
 The PR workflow is the gating one. It runs on every PR that touches `apps/cli/**`. It runs the three suites against a local server built from the same PR's source. Failures block merge.
 
-The workflow has three jobs:
+The workflow has one job with three steps. A single job is required because each GitHub Actions job runs on a separate runner, and the local server listens on `localhost` — splitting the work across jobs would lose the server. The three steps are:
 
-1. **`build-and-start-server`**: builds `packages/api` from the PR's source, starts the server on `localhost:<port>` in the background, waits for `GET /healthz` to respond, sets `E2E_SEED_ENABLED=1`. The server stays up for the duration of the e2e job.
-2. **`pack-and-e2e`**: depends on the first job. Builds `@deessejs/cli` and packs the tarball. Sets `API_BASE_URL` to the local server's URL and `DEESSEJS_CLI_TARBALL` to the tarball path. Runs `pnpm --filter @deessejs/cli test:e2e`. The e2e suite talks to the local server.
-3. **`teardown`**: depends on the second job. Kills the local server. The teardown is `if: always()` so a failure in the e2e job still cleans up.
+1. **`build-and-start-server`**: builds `packages/api` from the PR's source, starts the server on `localhost:<port>` in the background, waits for `GET /healthz` to respond, sets `E2E_SEED_ENABLED=1`. The server stays up for the duration of the job.
+2. **`pack-and-e2e`**: builds `@deessejs/cli` and packs the tarball. Sets `API_BASE_URL` to the local server's URL and `DEESSEJS_CLI_TARBALL` to the tarball path. Runs `pnpm --filter @deessejs/cli test:e2e`. The e2e suite talks to the local server that the previous step is hosting.
+3. **`teardown`**: kills the local server. The teardown is `if: always()` so a failure in the e2e step still cleans up.
 
 The workflow uses `ubuntu-latest` and `node-version: 24` (matching the verify workflow). The total runtime is under 3 minutes for the PR suite: ~1m for the server build, ~30s for the CLI build, ~1m for the e2e suite.
 
