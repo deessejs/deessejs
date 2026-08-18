@@ -35,6 +35,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Builds @workspace/env and @workspace/database so the
+      # drizzle config can resolve @workspace/env/server at run
+      # time. Mirrors the order used by ci.yml test-integration.
+      - name: Build dependencies
+        run: pnpm turbo build --filter=@workspace/database --force
+
       # Layer 1: validates the migration journal for commutativity
       # and ordering issues.
       - name: Run drizzle-kit check
