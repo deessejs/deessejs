@@ -59,7 +59,6 @@ describe("GET /api/v1/ready", () => {
         // Skip silently for now — the wiring is verified by the
         // other tests and the production smoke test. The DB
         // first-query timing in the integration job is finicky.
-        // eslint-disable-next-line no-console
         console.warn(
           `[api-tests] /api/v1/ready returned ${res?.status} after 5 retries — skipping assertion`,
         )
