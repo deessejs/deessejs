@@ -110,7 +110,7 @@ specific class of regression.
 |---|---|---|
 | `system/health.test.ts` | `GET /api/v1/health`, `GET /api/v1/ready` | Liveness returns 200 with `{ status: "ok" }`. Readiness pings the DB and returns 200 or 503. No `force-dynamic` leakage, no auth required. |
 | `system/version.test.ts` | `GET /api/v1/version` | Returns `{ version, minSupported }` matching the constants in `packages/api/src/constants/version.ts`. Cache-Control header is set. Rate-limit headers are set. |
-| `system/auth.test.ts` | `GET /api/v1/auth/get-session` | Single happy-path call: an unauthenticated `GET` returns 200 with a `null` session. The point is to assert the Better Auth handler is mounted, not to retest Better Auth itself. |
+| `system/auth.test.ts` | `GET /api/v1/auth/get-session` | Single happy-path call: an unauthenticated `GET` returns 200 with a `null` session. The point is to assert the Hono↔Better Auth boundary is wired (Hono reaches the handler, the handler returns the documented envelope). DB-gated via `inject('postgres:ready')` — see *Test seams and conventions* below. |
 | `rpc/templates.test.ts` | `POST /api/v1/rpc/templates/list` (URL with two path segments) | Asserts that the URL Hono serves matches the URL the `RPCLink` client sends. Asserts the wire envelope shape. Asserts the contract layer (`TemplatesListResponseV1`) round-trips end-to-end. Mocks `enrich()` to avoid GitHub network. |
 | `routing/not-found.test.ts` | `GET /api/v1/does-not-exist` | Asserts the `notFound` envelope `{ defined: false, code: "NOT_FOUND", message, requestId }` and the 404 status. This is the test that would have caught ADR-015's bug if it had existed. |
 | `routing/base-path.test.ts` | All routes | Each test must hit the full path including `/api/v1`. This pins the Hono `basePath("/api/v1")` decision in ADR-011 against a regression that would silently drop the prefix. |
@@ -178,8 +178,24 @@ handler returns a `Response` directly. The smoke test calls
 `GET /api/v1/auth/get-session` with no cookies and asserts
 a 200 with `{ session: null, user: null }` — the
 documented shape for an unauthenticated request. The point
-is to assert the Hono mount is wired; Better Auth's own
-behaviour is tested in `packages/auth`.
+is to assert the Hono↔Better Auth boundary is wired: the
+Hono mount catches the URL, the handler returns the
+documented envelope. Better Auth's own behaviour is tested
+in `packages/auth`.
+
+**The auth smoke test is DB-gated.** Unlike the other
+non-DB routes in the table above, the auth handler reaches
+into Postgres (via the session middleware and the
+drizzle-backed user lookup). The smoke test therefore
+reads `inject('postgres:ready')` at file-load time and
+skips itself loudly when the flag is false — same pattern
+as the readiness test. The skip is loud (the test name
+carries `[skip-postgres]` and `globalSetup` emits a WARN).
+The test runs in the CI `test-integration` job where
+Postgres is up; in the `test-unit` job it skips. This is
+acceptable because the goal of the test is to assert the
+real Hono↔Better Auth boundary in real conditions, not to
+re-test Better Auth in isolation.
 
 **Payload fixtures come from the contract schemas.** Test
 files that send JSON payloads (the oRPC wire shape, the
@@ -464,3 +480,14 @@ listener for CI integration tests.
   existing `integration/routes.test.ts` is kept as a
   placeholder pattern the new files supersede; removing
   it is a separate decision.
+- **2026-08-18 (round 5)**: clarified in the table and
+  the *Test seams and conventions* section that the auth
+  smoke test is **DB-gated** via `inject('postgres:ready')`.
+  The original ADR said the auth test was a non-DB smoke
+  test, but the Better Auth handler reaches Postgres via
+  the session middleware and the drizzle-backed user
+  lookup. The test now runs in the `test-integration` job
+  only and skips loudly in the `test-unit` job. The
+  goal — to assert the Hono↔Better Auth boundary in real
+  conditions — is preserved; the assertion that Better
+  Auth itself works in isolation stays in `packages/auth`.
