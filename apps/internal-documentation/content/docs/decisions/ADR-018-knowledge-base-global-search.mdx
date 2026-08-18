@@ -3,7 +3,7 @@ title: 'Knowledge Base global search'
 description: 'A single Cmd-K search modal mounted at the root layout covers the entire marketing-site corpus (blog, changelog, KB topics, KB guides) with Fuse.js.'
 ---
 
-# ADR-015: Knowledge Base global search
+# ADR-018: Knowledge Base global search
 
 ## Status
 
@@ -20,10 +20,10 @@ surfaces today:
   from `content-collections`.
 - Knowledge base topics (`content/knowledge-base/topics/*.mdx`)
   — `allKbTopics`, added by
-  [ADR-013](./ADR-013-knowledge-base-topics.md).
+  [ADR-016](./ADR-016-knowledge-base-topics.md).
 - Knowledge base guides (`content/knowledge-base/guides/*.mdx`)
   — `allKbGuides`, added by
-  [ADR-014](./ADR-014-knowledge-base-guides.md).
+  [ADR-017](./ADR-017-knowledge-base-guides.md).
 
 A search bar exists, but it is **partial and page-scoped**:
 
@@ -103,7 +103,7 @@ KB topics, KB guides). It **does not** cover:
   routes). Code search is a different problem; it does
   not belong in a marketing-site Cmd-K.
 
-The boundary is the marketing-site URL space. ADR-015
+The boundary is the marketing-site URL space. ADR-018
 owns search within that space; it does not own search
 across the monorepo.
 
@@ -159,8 +159,8 @@ export const searchData: SearchItem[] = [
 ]
 ```
 
-The KB entries become available because ADR-013 and
-ADR-014 introduce `allKbTopics` and `allKbGuides` to the
+The KB entries become available because ADR-016 and
+ADR-017 introduce `allKbTopics` and `allKbGuides` to the
 `content-collections` barrel.
 
 ### Component API
@@ -293,8 +293,8 @@ not the v1.
 - **The blog and changelog collections.** They keep
   their `content-collections` declarations and their
   page surfaces.
-- **The KB topics and guides collections.** ADR-013
-  and ADR-014 own their schemas; ADR-015 only reads
+- **The KB topics and guides collections.** ADR-016
+  and ADR-017 own their schemas; ADR-018 only reads
   the resulting `all*` exports.
 - **The `noindex, nofollow` robots directive on the
   knowledge-base index.** The search dialog does not
@@ -422,10 +422,10 @@ contributor will point at Cmd-K.
 
 ## Related
 
-- [ADR-013: Knowledge Base topics](./ADR-013-knowledge-base-topics.md).
+- [ADR-016: Knowledge Base topics](./ADR-016-knowledge-base-topics.md).
   The prerequisite ADR that owns `allKbTopics`. The
   global search reads the resulting collection.
-- [ADR-014: Knowledge Base guides](./ADR-014-knowledge-base-guides.md).
+- [ADR-017: Knowledge Base guides](./ADR-017-knowledge-base-guides.md).
   The prerequisite ADR that owns `allKbGuides`. The
   global search reads the resulting collection.
 - [Rule 0009: open-extension closed-modification](../rules/open-extension-closed-modification.md).
@@ -439,9 +439,9 @@ contributor will point at Cmd-K.
   `apps/web/content/posts/` (blog),
   `apps/web/content/releases/` (changelog),
   `apps/web/content/knowledge-base/topics/`
-  (KB topics, ADR-013),
+  (KB topics, ADR-016),
   `apps/web/content/knowledge-base/guides/`
-  (KB guides, ADR-014).
+  (KB guides, ADR-017).
 - The shadcn `Dialog` primitive at
   `@workspace/ui/components/dialog` (already in the
   catalog via `cmdk`).

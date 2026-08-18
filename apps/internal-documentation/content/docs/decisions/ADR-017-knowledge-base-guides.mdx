@@ -3,7 +3,7 @@ title: 'Knowledge Base guides'
 description: 'kbGuides content-collection; guide pages MDX-rendered and SSG, FK to kbTopics, products aligned with topic tags, enriched breadcrumb, per-guide OG image.'
 ---
 
-# ADR-014: Knowledge Base guides
+# ADR-017: Knowledge Base guides
 
 ## Status
 
@@ -17,7 +17,7 @@ a topic index at `/knowledge-base`, per-topic pages at
 `/knowledge-base/[topic]`, and per-guide pages at
 `/knowledge-base/guide/[slug]`.
 
-[ADR-013](./ADR-013-knowledge-base-topics.md) is the
+[ADR-016](./ADR-016-knowledge-base-topics.md) is the
 prerequisite for this ADR: it pins the `kbTopics`
 collection and the topic pages. This ADR is the guides
 half — it pins `kbGuides` and the guide pages.
@@ -74,7 +74,7 @@ The blog reads `allPosts` from `content-collections`
 The marketing-site knowledge base has a `kbGuides`
 content-collection. The collection is declared in the
 same `content-collections.config.ts` that already declares
-`posts`, `releases`, `authors`, and (per ADR-013)
+`posts`, `releases`, `authors`, and (per ADR-016)
 `kbTopics`. The collection reuses the existing rendering
 stack unchanged.
 
@@ -145,7 +145,7 @@ const kbGuides = defineCollection({
 schema error caught at build time. The topic must match
 the slug of a file in
 `content/knowledge-base/topics/`; the topic page itself
-is owned by [ADR-013](./ADR-013-knowledge-base-topics.md).
+is owned by [ADR-016](./ADR-016-knowledge-base-topics.md).
 
 `draft` defaults to `false` and is honoured in production
 builds by filtering at the helper layer (the blog does
@@ -155,7 +155,7 @@ this for `posts`).
 
 A guide's `products` array is constrained to be a subset of
 its topic's `tags` array (declared in
-[ADR-013](./ADR-013-knowledge-base-topics.md)). Concretely:
+[ADR-016](./ADR-016-knowledge-base-topics.md)). Concretely:
 
 ```ts
 // In the page or a derived helper:
@@ -214,7 +214,7 @@ different topic.
 
 Three existing products need renaming or removal to
 satisfy the alignment against the topic tags we set in
-ADR-013:
+ADR-016:
 
 | Guide | Old product | New product | Reason |
 |---|---|---|---|
@@ -256,7 +256,7 @@ era:
 - `background-jobs-queue` — no matching topic existed.
 - `observability-logging` — no matching topic existed.
 
-[ADR-013](./ADR-013-knowledge-base-topics.md) closes this
+[ADR-016](./ADR-016-knowledge-base-topics.md) closes this
 gap by adding two new topics — `queue` and
 `observability` — to the initial topic set. This ADR
 points the two orphan guides at those new topics.
@@ -285,7 +285,7 @@ The guide side of the knowledge base reads from
   *(route is renamed from `guide/[slug]/` to
   `guides/[slug]/` per the same flat-dynamic-segment
   convention as `[topic]` → `topics/[topic]` in
-  [ADR-013](./ADR-013-knowledge-base-topics.md))*:
+  [ADR-016](./ADR-016-knowledge-base-topics.md))*:
   `KNOWN_SLUGS` and `GUIDE_META` removed; the page looks
   up the guide from `allKbGuides` by slug, looks up the
   topic from `allKbTopics` by the guide's `topic` field
@@ -374,15 +374,15 @@ entry per guide:
 
 The topic sitemap entries
 (`/knowledge-base/<slug>`) land in
-[ADR-013](./ADR-013-knowledge-base-topics.md). The shared
+[ADR-016](./ADR-016-knowledge-base-topics.md). The shared
 index entry above is mentioned in both ADRs to avoid
 double-claiming it; the entry is added once, in
-ADR-013's migration.
+ADR-016's migration.
 
 ### Search
 
 `lib/search/corpus.ts` (lifted from `lib/blog/search.ts`
-per [ADR-015](./ADR-015-knowledge-base-global-search.md))
+per [ADR-018](./ADR-018-knowledge-base-global-search.md))
 exports a `SearchItem` type with
 `type: "post" | "release" | "kb-topic"`. After this ADR
 the union extends to add `"kb-guide"`:
@@ -421,7 +421,7 @@ weight 1, matching the `kb-topic` configuration.
 The `SearchDialog` component
 (`components/blog/search-dialog.tsx`) renders the new
 `kb-guide` type with the same tag-pill styling it uses
-for `kb-topic` (added in ADR-013); the existing Fuse.js
+for `kb-topic` (added in ADR-016); the existing Fuse.js
 keys (`title`, `description`) cover both.
 
 ### Rendering stack
@@ -471,7 +471,7 @@ exists.
   topic is a schema error caught at build time.
 - **A guide whose `topic` field does not resolve to a
   topic.** The page module throws at build time. The
-  topic page is owned by [ADR-013](./ADR-013-knowledge-base-topics.md);
+  topic page is owned by [ADR-016](./ADR-016-knowledge-base-topics.md);
   the FK is enforced at the join.
 - **A guide with a `products` value not on its topic's
   `tags`.** The page module throws at build time with a
@@ -550,7 +550,7 @@ image. The migration is mechanical (edit, rename, write
 frontmatter). The two orphan guides
 (`background-jobs-queue`, `observability-logging`) get
 their `topic:` field set to the new topics added by
-ADR-013. Three existing products are renamed to satisfy
+ADR-016. Three existing products are renamed to satisfy
 the products/topic-tags alignment.
 
 ## How to migrate
@@ -580,7 +580,7 @@ In one PR (split into three commits for review):
    `app/(content)/knowledge-base/guide/[slug]/page.tsx`
    is moved to `guides/[slug]/page.tsx` (the same
    flat-dynamic-segment convention as `[topic]/` →
-   `topics/[topic]/` in ADR-013). The page rewrites:
+   `topics/[topic]/` in ADR-016). The page rewrites:
    looks up the guide from `allKbGuides` by slug, looks
    up the topic from `allKbTopics` by the guide's
    `topic:` field (calls `notFound()` on FK miss),
@@ -665,7 +665,7 @@ that the work stalled. The rule removes the stall: the
 pipeline is the path; the constants are gone.
 
 The decision to split this ADR from
-[ADR-013](./ADR-013-knowledge-base-topics.md) was made
+[ADR-016](./ADR-016-knowledge-base-topics.md) was made
 because topics are a prerequisite for guides. A guide
 without a topic is a schema error; a topic page without
 a list of guides is a partial surface. Topics land first
@@ -679,7 +679,7 @@ in the architectural narrative.
   it.
 - [ADR-006: fumadocs card design](./ADR-006-fumadocs-card-design.md).
   The card system used by the knowledge-base index.
-- [ADR-013: Knowledge Base topics](./ADR-013-knowledge-base-topics.md).
+- [ADR-016: Knowledge Base topics](./ADR-016-knowledge-base-topics.md).
   The prerequisite ADR that owns `kbTopics`. The
   `topic:` FK on a guide points at a slug in this
   collection.

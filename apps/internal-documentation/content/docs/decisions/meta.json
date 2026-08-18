@@ -17,8 +17,10 @@
     "ADR-010-cli-public-surface",
     "ADR-011-hono-for-system-routes",
     "ADR-012-changesets-private-workspace-deps",
-    "ADR-013-knowledge-base-topics",
-    "ADR-014-knowledge-base-guides",
-    "ADR-015-knowledge-base-global-search"
+    "ADR-013-cli-publish-verify",
+    "ADR-014-cli-e2e-tests",
+    "ADR-016-knowledge-base-topics",
+    "ADR-017-knowledge-base-guides",
+    "ADR-018-knowledge-base-global-search"
   ]
 }

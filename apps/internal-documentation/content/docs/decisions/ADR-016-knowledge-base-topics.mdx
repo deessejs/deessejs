@@ -3,7 +3,7 @@ title: 'Knowledge Base topics'
 description: 'kbTopics content-collection for the marketing-site knowledge base; topic pages are MDX-rendered, pre-rendered, and seeded with eight topics.'
 ---
 
-# ADR-013: Knowledge Base topics
+# ADR-016: Knowledge Base topics
 
 ## Status
 
@@ -61,7 +61,7 @@ The blog reads `allPosts` from `content-collections`
 `generateStaticParams`.
 
 This ADR is the topics half of the knowledge-base
-pipeline. ADR-014 builds on it with the guides half.
+pipeline. ADR-017 builds on it with the guides half.
 
 ## Decision
 
@@ -142,7 +142,7 @@ The migration seeds eight topic files. Six are
 | `cli` | `ALL_TOPICS` |
 
 Two are new — they close the orphan-guide gap identified
-in [ADR-014 §"Orphaned guides"](./ADR-014-knowledge-base-guides.md):
+in [ADR-017 §"Orphaned guides"](./ADR-017-knowledge-base-guides.md):
 
 | Slug | Source |
 |---|---|
@@ -201,7 +201,7 @@ entry per topic:
 ```
 
 The guide sitemap entries (`/knowledge-base/guide/<slug>`)
-land in [ADR-014](./ADR-014-knowledge-base-guides.md). The
+land in [ADR-017](./ADR-017-knowledge-base-guides.md). The
 shared index entry above is mentioned in both ADRs to
 avoid double-claiming it; the entry is added once, in
 this ADR's migration.
@@ -235,7 +235,7 @@ The new entries derived from `allKbTopics`:
 The `SearchDialog` component
 (`components/blog/search-dialog.tsx`) renders the new
 `kb-topic` type with the same tag-pill styling it uses
-for `kb-guide` (added in ADR-014); the existing Fuse.js
+for `kb-guide` (added in ADR-017); the existing Fuse.js
 keys (`title`, `description`) cover both.
 
 ### Rendering stack
@@ -345,7 +345,7 @@ topic sections, the addition of one collection, and the
 writing of eight MDX files. The migration is mechanical
 (edit, rename, write frontmatter). The two new topic
 files (`queue`, `observability`) close the orphan-guide
-gap that [ADR-014](./ADR-014-knowledge-base-guides.md)
+gap that [ADR-017](./ADR-017-knowledge-base-guides.md)
 inherits.
 
 ## How to migrate
@@ -388,7 +388,7 @@ the collection schema and the page rewrites.
   rejected. The shiki + rehype pipeline is shared.
 - A PR that adds a guide without a `topic:` field that
   names an existing topic is rejected. The Zod schema in
-  [ADR-014](./ADR-014-knowledge-base-guides.md) enforces
+  [ADR-017](./ADR-017-knowledge-base-guides.md) enforces
   it at build time.
 
 ## Where this rule came from
@@ -409,7 +409,7 @@ removes the stall: the pipeline is the path; the
 constants are gone.
 
 The decision to split this ADR from
-[ADR-014](./ADR-014-knowledge-base-guides.md) was made
+[ADR-017](./ADR-017-knowledge-base-guides.md) was made
 because topics are a prerequisite for guides. A guide
 without a topic is a schema error; a topic page without
 a list of guides is a partial surface. Topics land first
@@ -423,7 +423,7 @@ in the architectural narrative.
   it.
 - [ADR-006: fumadocs card design](./ADR-006-fumadocs-card-design.md).
   The card system used by the knowledge-base index.
-- [ADR-014: Knowledge Base guides](./ADR-014-knowledge-base-guides.md).
+- [ADR-017: Knowledge Base guides](./ADR-017-knowledge-base-guides.md).
   The dependent ADR that owns `kbGuides`, the guide-page
   wiring, and the `topic:` FK back to this collection.
 - [Rule 0009: open-extension closed-modification](../rules/open-extension-closed-modification.md).
