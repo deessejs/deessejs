@@ -181,7 +181,7 @@ Two tests. The CLI runs against the local server.
 
 The happy-path test seeds the local server with a known template before invoking the CLI. The seed is an HTTP POST to the server's internal test endpoint. The server's normal `list` endpoint reads from the registry; the test endpoint writes a fixture. This is a single internal endpoint, not a parallel mock.
 
-Each test that seeds the server uses a unique slug (e.g. `e2e-template-${testName}-${Date.now()}`) so that two tests can run in the same CI job without colliding on the registry state. The e2e suite runs sequentially in CI; the unique slugs are a defense-in-depth in case Vitest is reconfigured for parallelism later. The runner sets `vitest --sequence.concurrent=false` (or equivalent) in the workflow to make sequentiality explicit.
+Each test that seeds the server uses a unique slug (e.g. `e2e-template-${testName}-${Date.now()}`) so that two tests can run in the same CI job without colliding on the registry state. The senior pattern is that **every test must be isolated to the execution dimension**: it must produce the same result regardless of order, regardless of whether other tests are running in parallel. The unique slugs are not a defense-in-depth for a sequential suite; they are the design that allows the suite to be parallelized later without code changes. The implementation PR may run the suite sequentially in CI for cost reasons, but the suite's correctness does not depend on that ordering.
 
 The network-error test points the CLI at a closed local port (e.g. `127.0.0.1:1`) via the `API_BASE_URL` env var. The server is untouched. The CLI attempts a connection, fails immediately with `ECONNREFUSED`, and surfaces a `network_error` code. This is the only test in the suite that does not exercise the server. The test does not stop the server, does not require a second server instance, and is independent of every other test.
 
@@ -218,6 +218,95 @@ The happy-path test seeds the local server with a template whose `cloneUrl` is a
 The existing-dir test asserts that the CLI refuses to overwrite without `--force`. The current behavior is correct; the test pins it so a future regression is caught.
 
 The network-error test pins that the CLI fails fast on the first request, before invoking `git clone`. A regression where the CLI clones first and reports the network error after would be caught here.
+
+### The local server fixture and Vitest global setup
+
+The local server is started **once for the whole suite** via Vitest's `globalSetup` mechanism, not once per test. The pattern is:
+
+```ts
+// vitest.e2e.config.ts
+import { defineConfig } from "vitest/config"
+
+export default defineConfig({
+  test: {
+    globalSetup: ["./test/e2e/helpers/global-setup.ts"],
+    // ... other options
+  },
+})
+
+// test/e2e/helpers/global-setup.ts
+import type { TestProject } from "vitest/node"
+import { startLocalServer, type ServerHandle } from "./server.js"
+
+let server: ServerHandle | null = null
+
+export default async function setup(project: TestProject) {
+  server = await startLocalServer()
+  project.provide("serverUrl", server.url)
+  project.provide("seed", server.seed)
+  return async () => {
+    if (server !== null) {
+      await server.stop()
+      server = null
+    }
+  }
+}
+
+// test/e2e/list.test.ts
+import { inject } from "vitest"
+
+test("happy path", async () => {
+  const serverUrl = inject<string>("serverUrl")
+  const seed = inject<(t: TemplateV1[]) => Promise<void>>("seed")
+  await seed([SAMPLE_TEMPLATE])
+  const result = await run({
+    args: ["list"],
+    env: { API_BASE_URL: serverUrl },
+  })
+  expect(result.stdout).toContain("e2e-template")
+})
+```
+
+This pattern has three properties that matter:
+
+1. **One server, one boot.** The local server starts once when the suite begins, not once per test. A typical 8-test suite boots the server 8 times in the naive pattern. Vitest's `globalSetup` avoids this; the cost is one ~1s boot for the whole run.
+2. **Tests are independent of the boot lifecycle.** No test starts or stops the server. A test that mutates the registry does not affect the boot; the next test sees the mutated state. This is why the slug uniqueness (see "The tests" section) is the isolation mechanism, not test ordering.
+3. **The `inject` contract is the only shared surface.** Test files do not import a global module to read the server URL. They call `inject` at the top of the test. The contract is typed (`inject<string>("serverUrl")` fails at the type level if the global setup does not provide a string). The runner does not need to know how the server was started; it just needs an `API_BASE_URL`.
+
+#### What the local server fixture does
+
+A `server.ts` helper in `apps/cli/test/e2e/helpers/`. The implementation is ~50 lines.
+
+#### API
+
+```ts
+type ServerHandle = {
+  url: string       // absolute URL the CLI should hit
+  port: number      // the port the server is bound to
+  seed: (templates: TemplateV1[]) => Promise<void>
+  stop: () => Promise<void>
+}
+
+async function startLocalServer(): Promise<ServerHandle>
+```
+
+The server is bound to `127.0.0.1` on port `0`. The OS picks a free port. The `url` returned by `startLocalServer` is `http://127.0.0.1:<port>`. The runner sets `API_BASE_URL` to this URL in the child's environment.
+
+#### The seed endpoint
+
+The local server exposes one internal endpoint beyond its normal surface: `POST /test/seed` accepts a JSON body and replaces the in-memory registry with the seeded templates. This is the only test-only endpoint. The endpoint is a thin wrapper around the registry module the server already uses for production. There is no parallel implementation.
+
+The seed endpoint is not part of the public API. It is enabled by an env var that the e2e workflow sets (`E2E_SEED_ENABLED=1`). The endpoint is not exposed in production.
+
+#### Network-error tests
+
+The `list network error`, `info network error`, and `init network error` tests do not stop the server. They set `API_BASE_URL` to a closed local port (e.g. `127.0.0.1:1`) and rely on `ECONNREFUSED`. The server is untouched. The test is independent of every other test. The runner does not need a second server instance for these tests.
+
+#### Cleanup
+
+`stop()` is called by the `globalSetup` teardown returned from `setup`. The teardown runs once, after all tests have finished, even if individual tests fail. The `teardown` step in the CI workflow has `if: always()` so a failure in the e2e step also runs it; this is a defense-in-depth in case Vitest crashes before the teardown is reached.
+
+The shell-level process that runs the server inside the GitHub Actions step is wrapped in a `trap` that calls `kill` on `EXIT`, `SIGTERM`, and `SIGINT`. The trap is the second line of defense in case the `teardown` step itself fails. The two layers (Vitest teardown + shell trap) cover the failure modes: test failure, runner timeout, runner kill, and matrix cancellation.
 
 ### The CLI runner
 
