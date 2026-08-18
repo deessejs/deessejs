@@ -1,0 +1,181 @@
+---
+title: 'Hono RPC mount multi-segment'
+description: 'The /rpc/* pattern does not match multi-segment procedure paths; the oRPC client sends the full namespace as a path.'
+---
+
+# ADR-015: Hono `*` matches one segment; `/rpc/*` misses every multi-segment procedure
+
+## Status
+
+Accepted (2026-08). Non-negotiable.
+
+## Context
+
+`packages/api/src/http/mount-rpc.ts` mounts the oRPC
+`RPCHandler` on a Hono middleware path. The current mount is:
+
+```ts
+api.use("/rpc/*", async (c, next) => {
+  const request = wrapForOrpc(c)
+  const { matched, response } = await rpcHandler.handle(request, {
+    prefix: "/rpc",
+    context: { ... },
+  })
+  if (matched) {
+    return c.newResponse(response.body, { ...response, headers })
+  }
+  await next()
+})
+```
+
+The mount pattern is taken verbatim from the official oRPC
+Hono adapter example
+([orpc.dev/docs/adapters/hono](https://orpc.dev/docs/adapters/hono)),
+which uses the same shape with `prefix: "/rpc"`. The mount
+appears correct against the oRPC documentation.
+
+The wire format is documented at
+[orpc.dev/docs/advanced/rpc-protocol](https://orpc.dev/docs/advanced/rpc-protocol).
+The procedure path is in the URL pathname, not in the body.
+For a router shaped as `{ templates: { list: ... } }`, the
+client sends a request to `/rpc/templates/list` (two segments
+after `/rpc/`). The body shape is `{ json, meta, maps }`.
+
+Hono's routing semantics for `*` (documented at
+[hono.dev/docs/api/routing](https://hono.dev/docs/api/routing))
+are that a single `*` matches one path segment, not multiple.
+The canonical multi-segment syntax in Hono is a regex parameter,
+e.g. `app.get('/posts/:filename{.+\\.png}')`. There is no
+shorthand `**` and no implicit multi-segment `*`.
+
+The combination — oRPC's wire format and Hono's `*` semantics —
+means the current mount matches the URL `/rpc/<single-segment>`
+and nothing else. The only procedure path in the repo with one
+segment is none today; every procedure is namespaced. The
+canonical case, `templates.list`, requires two segments
+(`/rpc/templates/list`) and falls through the middleware into
+the Hono `notFound` handler at `packages/api/src/index.ts:33-47`,
+which returns the ORPCError-shaped 404 body.
+
+## The bug
+
+The visible symptom is that the `/templates` page in `apps/web`
+renders no cards. The chain is:
+
+1. `apps/web/src/app/(product)/templates/page.tsx:88` is an
+   RSC. It calls `orpc.templates.list()` inside a `try/catch`
+   that swallows every error and sets `templates = []`.
+2. `apps/web/src/lib/orpc.ts:35-47` builds a `RPCLink` with
+   `url: API_RPC_PATH` (= `/api/v1/rpc`). `RPCLink` appends
+   the procedure path to the URL, producing the request
+   `/api/v1/rpc/templates/list`.
+3. `apps/web` has no `app/api/**` route handlers. The request
+   hits the Hono catch-all mounted by `apps/app` at
+   `apps/app/app/api/[[...route]]/route.ts`.
+4. Hono routes the request to the global middleware chain.
+   The `api.use("/rpc/*", ...)` mount in
+   `packages/api/src/http/mount-rpc.ts:26` does not match
+   `/api/v1/rpc/templates/list` (two segments after `/rpc/`),
+   so the middleware passes the request through.
+5. The Hono `notFound` handler responds with
+   `{ defined: false, code: "NOT_FOUND", message: "Route not found" }`
+   and a 404 status.
+6. The RSC's `try/catch` swallows the error, renders the
+   "No templates available right now" empty state, and the
+   bug is invisible without a server log.
+
+The bug was reproduced against `app.deessejs.com` with a
+direct `curl` to `/api/v1/rpc/templates/list`. The response
+was 404 with the Hono `notFound` body. `/api/v1/health`,
+`/api/v1/version`, and `/api/v1/ready` all returned 200.
+OPTIONS `/api/v1/rpc` returned 204, confirming the URL
+reaches the Hono app and is processed by the CORS middleware.
+The 404 on POST and GET to the procedure URL is the symptom
+of the routing miss described above.
+
+The `apps/web` RSC's silent `try/catch` is a separate code
+smell. ADR-014 documents a similar pattern in the CLI: the
+test surface must not silently mask endpoint failures. The
+same rule applies to the web side, and is captured as a
+follow-up action below.
+
+## Decision
+
+The fix is in `packages/api/src/http/mount-rpc.ts:26`. Replace
+`api.use("/rpc/*", ...)` with a pattern that matches every
+path under `/rpc/`, regardless of segment count.
+
+Three options were considered:
+
+- **`/rpc{/*splat}`** — Hono splat syntax that matches every
+  remaining path segment after `/rpc/`. Idiomatic in Hono 4
+  for catch-all under a known prefix. Not documented in the
+  routing page but referenced in Hono issues #1644 and #4158
+  for multi-segment matches. Lowest ceremony.
+- **`*` with a manual prefix check** — mount the middleware
+  on every path (`api.use("*", ...)`) and inspect `c.req.path`
+  inside the handler to confirm the path starts with
+  `/api/v1/rpc/`. The current handler already reads `prefix`
+  from oRPC, so the manual check is redundant; this option
+  just trades one string for another.
+- **A regex parameter on a single route** — e.g.
+  `api.use("/rpc/:rest{.+}", ...)`. Works but reads as
+  "exactly one path" and matches `c.req.param("rest")` as a
+  string, which the oRPC handler does not need.
+
+The chosen pattern is `/rpc{/*splat}`. It is the closest to
+the existing line (one character changed) and reads as
+"anything under `/rpc/`". The Hono issues confirm the syntax
+exists in Hono 4; a test on the deployed version pins the
+behavior.
+
+The oRPC-prefix path-extraction logic in the handler is
+unchanged. The oRPC `RPCHandler` already strips the prefix
+from the URL before matching the procedure; the Hono-side
+pattern only needs to deliver the request to the middleware.
+
+## Consequences
+
+- `apps/web` reaches the templates procedure. The
+  `/templates` page renders the catalog (one entry today,
+  `saas-starter`).
+- Every other namespaced procedure (current and future) is
+  reachable through the same mount. The Hono pattern is
+  the only Hono-side configuration required for any
+  procedure shape.
+- The `try/catch` in `apps/web/src/app/(product)/templates/page.tsx:88`
+  is preserved for build-time resilience, but a follow-up
+  PR logs the swallowed error so a future routing miss is
+  visible in the server log rather than masked as an empty
+  page. Same rule applies to
+  `apps/web/src/app/(product)/templates/[template_slug]/page.tsx:69-72`.
+- A new test pins the mount: a Vitest test under
+  `packages/api/tests/routing/` starts a Hono app with the
+  production mount and asserts that `POST /api/v1/rpc/templates/list`
+  with the oRPC body shape resolves to the procedure and
+  returns 200 with the expected envelope. The same test
+  asserts that the URL with one segment (`/api/v1/rpc/x`)
+  also resolves when a single-segment procedure exists,
+  proving the pattern is segment-count agnostic.
+- A smoke test in the verify workflow hits the live URL
+  shape after deploy, so a future regression of the
+  Hono version (or a change in the Hono splat syntax) is
+  caught at PR time, not by a user report.
+
+## Decision log
+
+- **2026-08-18**: investigated the templates page
+  symptom. Curl against `app.deessejs.com` returned 404 on
+  `/api/v1/rpc/templates/list` with the Hono `notFound`
+  body, while `/api/v1/health` returned 200. The RSC's
+  silent `try/catch` masked the failure as an empty page.
+- **2026-08-18**: confirmed via the oRPC Hono adapter docs
+  that the `app.use("/rpc/*", ...)` pattern is the official
+  example, and via the oRPC protocol docs that the
+  procedure path is in the URL pathname.
+- **2026-08-18**: confirmed via the Hono routing docs and
+  Hono issues #1644 and #4158 that `*` in Hono matches one
+  segment. The multi-segment case requires a different
+  syntax.
+- **2026-08-18**: chose `/rpc{/*splat}` as the fix and
+  committed the corresponding change.
