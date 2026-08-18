@@ -68,7 +68,7 @@ A new workflow
 (`.github/workflows/drizzle-check.yml`) runs on every
 `pull_request` against `main` or `staging`. The workflow installs
 dependencies, runs `drizzle-kit check`, then runs `drizzle-kit
-generate` a second time and asserts no new SQL file appears.
+generate` a second time and asserts the working tree stays clean.
 
 ```yaml
 on:
@@ -84,27 +84,43 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      # Validates the migration journal for commutativity and ordering.
       - run: pnpm --filter @workspace/database db:check
-      - run: |
-          pnpm --filter @workspace/database db:generate
-          if [ -n "$(git status --porcelain packages/database/drizzle \
-                | grep -v '_journal.json\|0000_snapshot.json')" ]; then
-            echo "Schema changed but no migration committed"
-            git diff --stat
-            exit 1
-          fi
+      # Re-runs generate against the committed schema. If the schema
+      # changed without a matching migration, generate produces new
+      # files and git diff --exit-code fails the step.
+      - run: pnpm --filter @workspace/database db:generate
+      - run: git diff --exit-code packages/database/drizzle
 ```
 
-The check has two steps because each step catches a different class
-of bug. `db:check` validates the existing journal for commutativity
+The check has two layers because each catches a different class of
+bug. `db:check` validates the existing journal for commutativity
 and ordering issues between migrations already on disk. The second
-step detects the case the first step cannot: a schema change that
-did not produce a migration. The PR is blocked either way.
+layer detects the case the first cannot: a schema change that did
+not produce a matching migration. The PR is blocked either way.
 
-The second step excludes `_journal.json` and `0000_snapshot.json`
-because `db:generate` rewrites them on every run. The exclusion is
-deliberate: a change to those files alone, without a new SQL file,
-is the symptom of the bug, not the bug itself.
+The second layer uses `git diff --exit-code` on the whole
+`packages/database/drizzle` directory. It deliberately does not
+exclude `_journal.json` or any snapshot: if `db:generate` rewrites
+them on a fresh run, that rewrite is the signal. Drizzle's
+default prefix is `index`, so snapshots are numbered
+`0000_snapshot.json`, `0001_snapshot.json`, etc. There is no safe
+static allowlist of snapshot filenames to skip.
+
+#### TTY risk during `db:generate`
+
+`drizzle-kit generate` can prompt interactively when it detects a
+column rename ("is this a rename or a new column?"). On a
+non-interactive CI runner the prompt blocks until the job times
+out or the process crashes on EOF. `drizzle-kit generate` does not
+expose a documented `--no-prompt` or `--yes` flag.
+
+The mitigation is contributor discipline, not CI config: the
+contributor who edits a schema file must run `pnpm db:generate`
+locally before pushing, answer the prompt, and commit the SQL.
+The drift gate then re-runs `db:generate` against the committed
+schema; if the schema is already in sync with the committed
+migrations, no prompt fires because there is no diff.
 
 The workflow is added to the required checks for both `main` and
 `staging` in branch protection.
@@ -113,9 +129,9 @@ The workflow is added to the required checks for both `main` and
 
 A second workflow
 (`.github/workflows/db-migrate-staging.yml`) runs on every push to
-`staging`. The workflow installs dependencies, prints the most
-recent SQL file for audit, then runs `drizzle-kit migrate` against
-the staging database.
+`staging`. The workflow installs dependencies, prints the SQL of
+the migrations added in this push for audit, then runs
+`drizzle-kit migrate` against the staging database.
 
 ```yaml
 on:
@@ -137,14 +153,40 @@ jobs:
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @workspace/database build
-      - run: ls -1 packages/database/drizzle/*.sql | sort | tail -1 | xargs cat
+      # Audit: print only the SQL files added by THIS push.
+      # If the push touches no migration files, log a clear empty
+      # line and skip the audit block.
+      - name: Audit pending migrations
+        run: |
+          NEW=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
+            -- 'packages/database/drizzle/*.sql')
+          if [ -n "$NEW" ]; then
+            echo "=== Migrations applied by this push ==="
+            for f in $NEW; do
+              echo "--- $f ---"
+              cat "$f"
+            done
+          else
+            echo "No new migrations in this push."
+          fi
       - run: pnpm --filter @workspace/database db:migrate
 ```
 
-The `cat` step is the audit trail. Every CI run prints the SQL that
-is about to be applied, so the GitHub Actions log captures the
-intent. If a migration lands that the reviewer did not see in the
-PR, the log shows it.
+The audit step uses `git diff --name-only` between the previous
+and current commit on `staging`. It only prints SQL files that
+were actually added by this push, so:
+
+- A push that bundles multiple migrations prints all of them, in
+  the order they were added. No more `tail -1` hiding batch
+  migrations.
+- A push that touches no migration prints a clear
+  "No new migrations in this push." line. No more stale SQL from
+  three weeks ago polluting the audit trail.
+
+The `cat` of each migration is the audit trail. Every CI run
+prints the SQL that was about to be applied, so the GitHub Actions
+log captures the intent. If a migration lands that the reviewer
+did not see in the PR, the log shows it.
 
 The workflow is gated on `staging` only. A push to `main` does not
 apply migrations; production migrations remain a manual step until
@@ -152,33 +194,83 @@ the team is comfortable with the staging auto-apply. The staging
 auto-apply is the lower-risk half of the loop. Promotion to a
 production auto-apply is a separate decision.
 
-The workflow requires `STAGING_DATABASE_URL` as a repository secret.
-The secret is provisioned at implementation time.
+#### Network prerequisite
 
-### 3. `strict: true` in `drizzle.config.ts`
+The workflow requires the GitHub-hosted runner to reach the
+staging database. If staging runs on AWS RDS, GCP Cloud SQL, or
+any provider inside a private VPC with no public IP, a standard
+`ubuntu-latest` runner cannot connect. Two valid resolutions:
 
-The third change is in `packages/database/drizzle.config.ts`. The
-config gains a `strict: true` field. Drizzle asks for confirmation
-on destructive operations; with `strict: true`, the failure mode in
-CI is a non-zero exit rather than a silent apply.
+- Expose the database through a tunnel (Tailscale, Cloudflare
+  Tunnel) that the runner reaches via a known hostname.
+- Use a self-hosted runner inside the same VPC.
 
-```ts
-export default defineConfig({
-  dialect: "postgresql",
-  schema: "./src/schema/index.ts",
-  out: "./drizzle",
-  strict: true,
-  dbCredentials: {
-    url: serverEnv.DATABASE_URL,
-  },
-})
+The `STAGING_DATABASE_URL` secret is provisioned at implementation
+time, alongside one of the two resolutions above.
+
+#### Ordering with the app deploy
+
+The staging auto-apply workflow runs migrations only. The
+application deploy is a separate workflow (today, manual; in the
+future, possibly automated). For the expand-and-contract pattern
+to work, the order must be:
+
+1. Migrations apply to the staging database.
+2. The new app version starts against the updated schema.
+
+A migration that adds a nullable column is backward-compatible
+with the old app version, so the order can be relaxed. A
+migration that drops a column is NOT backward-compatible; the old
+app must be retired before the drop migration runs. This is the
+core of expand-and-contract, documented in the dedicated section
+below.
+
+### 3. Destructive-SQL lint on PRs
+
+The third change is a static-analysis gate against destructive
+SQL in the migration files. It does NOT live in `drizzle.config.ts`.
+
+The earlier draft proposed `strict: true` as a guard against
+destructive migrations. That proposal was incorrect. To clarify
+what `strict` actually does:
+
+- In `drizzle-kit` v0.31 (the version pinned in this repo's
+  `pnpm-workspace.yaml` catalog), `strict` is a config field for
+  `drizzle-kit push`. It causes push to prompt for confirmation
+  before applying statements that would sync the schema with the
+  database. It has no effect on `drizzle-kit migrate`.
+- `drizzle-kit migrate` does not inspect the AST of the SQL
+  files. It runs them in order. A `DROP TABLE` or `DROP COLUMN`
+  inside a committed `.sql` file is applied silently.
+- In `drizzle-kit` v1.0 beta, `strict` in config is silently
+  ignored, and via CLI it throws a deprecation error. It is not a
+  stable protection mechanism.
+
+The right gate is a SQL linter that runs against the files in
+`packages/database/drizzle/*.sql` on every PR. Two proven
+candidates:
+
+- **Squawk** (`squawkhq/squawk`): Postgres-aware linter that flags
+  `DROP TABLE`, `DROP COLUMN`, `ALTER TABLE … DROP NOT NULL`,
+  missing `IF EXISTS`, lock-taking operations, and similar
+  patterns. Has a GitHub Action. Free, MIT.
+- **Atlas migrate lint**: a more general migration linter; heavier
+  to integrate.
+
+The implementation picks Squawk. The workflow adds a step after
+the drift check:
+
+```yaml
+      - uses: squawkhq/squawk-action@v1
+        with:
+          # Fail the PR on any warning, not just errors.
+          fail-on: any
 ```
 
-This is a one-line change. The behavior change is meaningful: any
-migration that Drizzle flags as destructive fails the CI step
-instead of applying. The contributor is forced to amend the
-migration (typically to switch to the expand-and-contract pattern,
-documented below) and re-push.
+Squawk is configured per-project via `squawk.toml` at the repo
+root. The configuration starts strict and is loosened only by an
+explicit ADR (typical exceptions: `DROP TABLE` on tables the
+team has marked as ephemeral, like `_drizzle_migrations` itself).
 
 ### What this rule forbids
 
@@ -187,7 +279,7 @@ Three things are out of scope for this ADR:
 - **A production auto-apply.** The staging auto-apply is the
   proposal. Production stays a manual step until the team has
   observed the staging auto-apply for at least one month and has
-  validated that the audit step, the strict config, and the PR drift
+  validated that the audit step, the Squawk gate, and the PR drift
   gate together catch the failure modes the team cares about. The
   follow-up ADR is filed in the "Future work" section.
 - **A preview database per PR.** Neon branching and Supabase
@@ -213,39 +305,45 @@ Three things are out of scope for this ADR:
   merge. False positives are possible (a contributor edits the
   schema and re-generates the migration in the same commit); the
   signal in that case is no signal, which is the desired behavior.
+- **Every PR that adds destructive SQL to a migration file is
+  blocked by Squawk**. The gate catches failure mode 2's
+  destructive variant at PR time. The reviewer can override
+  Squawk with an explicit `squawk-allow` comment plus a follow-up
+  issue, but the override is visible in the PR conversation.
 - **Every push to `staging` applies pending migrations against the
   staging database**. Failure mode 3 disappears for staging. The
-  audit step (`cat` the last SQL) puts every applied migration in
-  the CI log.
+  audit step (`git diff` of added SQL files) puts every applied
+  migration in the CI log, scoped to the push that introduced
+  them.
 - **The integration job remains the contract test for the migration
   path on a fresh database**. The new workflows do not replace it.
   The new workflows assert the production-shaped path: existing
   journal, new SQL, apply against an external Postgres.
-- **`strict: true` is a load-bearing config field**. A future
-  contributor who removes it has removed a safety net. The config
-  is small enough that any reviewer can spot the change; the
-  drift-gate workflow's job is to make the diff visible in CI.
+- **`drizzle.config.ts` is unchanged**. The earlier draft proposed
+  `strict: true`; that proposal was incorrect and has been
+  retracted. No Drizzle config field protects `migrate` against
+  destructive SQL. The protection lives in Squawk, outside Drizzle.
 - **The Better Auth table changes go through the same gate**.
   `npx @better-auth/cli generate` writes to the same schema
   directory and the same Drizzle journal. A contributor who updates
   the Better Auth config without regenerating hits the same drift
   failure as a schema edit without regeneration.
 - **Destructive migrations must follow the expand-and-contract
-  pattern**. With `strict: true`, a single-commit column drop
-  fails CI. The contributor is forced to split: add nullable, ship
-  the app change, then backfill, then drop. The pattern is
-  documented in the ADR for posterity.
+  pattern**. With Squawk on, a single-commit column drop fails
+  CI. The contributor is forced to split: add nullable, ship the
+  app change, then backfill, then drop. The pattern is documented
+  in the ADR for posterity.
 
 ## Expand-and-contract for destructive changes
 
-Two changes in particular must always land as two PRs:
+Two changes in particular must always land as multiple PRs:
 
 1. **Renaming a column.** First PR adds the new column nullable,
    ships the app writing to both columns, backfills data in a
-   separate batch. Second PR sets the old column nullable to false
-   (after a `NOT VALID` + `VALIDATE CONSTRAINT` for large tables) and
-   drops the old column. Both PRs pass the drift gate and the
-   staging auto-apply.
+   separate batch. Second PR sets the new column to `NOT NULL`
+   (after a `NOT VALID` + `VALIDATE CONSTRAINT` for large tables)
+   and drops the old column. Both PRs pass the drift gate, the
+   Squawk lint, and the staging auto-apply.
 
 2. **Adding a `NOT NULL` constraint on a populated table.** First
    PR adds the column nullable and backfills. Second PR runs
@@ -254,7 +352,7 @@ Two changes in particular must always land as two PRs:
    column-level `NOT NULL`. Each PR's SQL is reviewed independently.
 
 This is the same pattern documented in Drizzle's production guides.
-The CI gate enforces it because `strict: true` is on.
+The CI gate enforces it because Squawk is on.
 
 ## Cost
 
@@ -268,8 +366,9 @@ The implementation is roughly:
 - 30 minutes for `drizzle-check.yml` plus the branch protection
   update.
 - 30 minutes for `db-migrate-staging.yml` plus the
-  `STAGING_DATABASE_URL` secret.
-- 5 minutes for `strict: true` in `drizzle.config.ts`.
+  `STAGING_DATABASE_URL` secret and the network prerequisite.
+- 30 minutes for the Squawk action plus `squawk.toml` at the repo
+  root.
 - 30 minutes for the documentation update (`packages/database/README`
   if it exists, or the schema file's leading comment).
 
@@ -309,11 +408,16 @@ After the three changes land:
    integration job applies the migration against its ephemeral
    Postgres; the staging auto-apply runs on merge to staging and
    applies against the staging database.
-3. Push a destructive migration (single-commit column drop). The
-   `strict: true` config makes `db:migrate` exit non-zero in the
-   staging auto-apply. The CI log shows the prompt and the
-   rejection. The contributor splits the migration into two PRs.
-4. `pnpm db:check` continues to pass locally. The check is the
+3. Open a PR that adds a `DROP TABLE foo;` line to a migration
+   file. The Squawk action fails the PR with a clear warning.
+   The contributor splits the change into an additive migration
+   plus a follow-up contract migration after the app retires
+   `foo`.
+4. Push to `staging` that bundles three migrations. The audit log
+   shows all three SQL files, in order. Push to `staging` that
+   touches no migration files. The audit log shows
+   "No new migrations in this push."
+5. `pnpm db:check` continues to pass locally. The check is the
    first line of defense for commutativity bugs; the CI gate is
    the second.
 
@@ -343,3 +447,12 @@ After the three changes land:
 - [`drizzle-team/drizzle-orm` discussion #5876](https://github.com/drizzle-team/drizzle-orm/discussions/5876).
   The upstream GitHub Action for cross-branch collision checks.
   Noted in "Future work" because the action is still pre-release.
+- [`drizzle-team/drizzle-orm` issue #5249](https://github.com/drizzle-team/drizzle-orm/issues/5249).
+  The bug report that documents `strict`'s actual behavior:
+  push-only in v0.31, silently deprecated in v1.0. This is the
+  source for the "no Drizzle config field protects `migrate`"
+  claim in the Decision section.
+- [Squawk](https://github.com/squawkhq/squawk). The Postgres SQL
+  linter used for the destructive-SQL gate. The action is
+  `squawkhq/squawk-action`. The configuration lives in
+  `squawk.toml` at the repo root.
