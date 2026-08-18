@@ -23,21 +23,7 @@ Three failure modes the unit tests and the verify job do not catch:
 
 For the published `@deessejs/cli@2.0.1`, the verify job caught a broken install. It would not have caught a CLI that installs cleanly but returns garbage.
 
-Three approaches were considered for the e2e suite. Each was rejected in turn before the current decision was reached.
-
-#### Approach 1: a mock server in the test process (rejected)
-
-The first attempt at this ADR designed a mock HTTP server that re-implemented the API contract. The implementation shipped as a draft PR (branch `chore/cli-e2e-spike`). The attempt failed: the mock's ORPC envelope was a best-guess at the real one, and the test could not be exercised end-to-end. A mock server is a second source of truth that has to stay in sync with the real API. When the API evolves, the mock drifts. When the test fails, it is not clear whether the failure is the CLI or the mock. A mock server is the right tool when the real API is unstable, slow, or has meaningful side effects. None of those apply to the DeesseJS API: it is stable, the read path is fast, and the templates endpoint has no side effects.
-
-#### Approach 2: test against the production API (rejected)
-
-The second attempt pivoted to running the suite against `https://deessejs.com`. The pivot was wrong on two counts.
-
-First, the suite does not test the code of the PR being reviewed. It tests the code that is currently in production. A bug introduced by the PR is invisible to the test until the PR merges and a new release ships the CLI that depends on it. The whole point of running tests on a PR is to catch regressions before they reach users.
-
-Second, the suite depends on the production API being available. If the production API is down, the suite fails. This is the correct failure mode for a synthetic-monitor workflow that runs against production. It is the wrong failure mode for a PR gate that should be hermetic.
-
-#### Approach 3: build the server and the CLI from the same PR, run both in CI (this ADR)
+#### The pattern
 
 The pattern is well established. Hookdeck, Trigger.dev, Mastra, and others run a CI job that builds the server in the same runner as the SDK or CLI under test. The runner starts the server on `localhost`, waits for a health check, then runs the e2e suite against `http://localhost:<port>`. Both processes run the same PR's code. The test surface is hermetic, fast, and faithful to the code being reviewed.
 
