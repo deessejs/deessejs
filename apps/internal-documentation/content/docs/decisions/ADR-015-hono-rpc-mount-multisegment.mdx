@@ -1,6 +1,6 @@
 ---
 title: 'Hono basePath + oRPC prefix alignment'
-description: 'The Hono basePath("/api/v1") is not propagated to the oRPC prefix or Better Auth basePath; the underlying handlers never match the URL they receive.'
+description: 'The Hono basePath is not propagated to the oRPC prefix or Better Auth basePath; the underlying handlers never match the URL they receive.'
 ---
 
 # ADR-015: Hono `basePath` must be propagated to the oRPC prefix and Better Auth `basePath`
@@ -240,8 +240,8 @@ The chosen fix is the cleaner of the two.
   wildcard is a special multi-segment wildcard (Hono issue
   #360, yusukebe). The mount pattern is correct.
 - **2026-08-18**: read the oRPC `StandardHandler.handle`
-  source. The prefix check is `pathname.startsWith(`${prefix}/`)
-  || pathname === prefix`. With `prefix: "/rpc"` and pathname
+  source. The prefix check is `pathname.startsWith($prefix + "/")`
+  or `pathname === prefix`. With `prefix: "/rpc"` and pathname
   `/api/v1/rpc/templates/list`, the check fails. The prefix
   passed to `rpcHandler.handle` must be the full `/api/v1/rpc`.
 - **2026-08-18**: same prefix-mismatch class hits Better
