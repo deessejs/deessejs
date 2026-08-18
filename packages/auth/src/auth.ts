@@ -4,6 +4,7 @@ import { nextCookies } from "better-auth/next-js"
 import { db } from "@workspace/database"
 import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
+import { API_AUTH_PATH } from "@workspace/api/base-path"
 import { sendAuthEmail, templates } from "@workspace/email"
 
 /**
@@ -21,6 +22,7 @@ function logEmailFailure(flow: string, userId: string, error: string): void {
 
 export const auth = betterAuth({
   baseURL: serverEnv.BETTER_AUTH_URL,
+  basePath: API_AUTH_PATH,
   secret: serverEnv.BETTER_AUTH_SECRET,
   trustedOrigins: [
     ...(process.env.NODE_ENV === "development"
