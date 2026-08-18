@@ -107,7 +107,7 @@ The memoization matters. The CLI calls `getApiRpcUrl` once at startup (in `clien
 
 The validation rules are tight enough to catch obvious mistakes but lenient enough to accept any well-formed URL. The format is `https://example.com` or `http://localhost:4873`. Empty strings, missing scheme, whitespace, and `null` are rejected. The CLI throws a `CliError` with code `internal_error` and a message that includes the offending value. The failure happens before any network call so it does not mask deeper issues.
 
-The regex is small. It rejects anything that does not match `^https?://[^/\s]+(:\d+)?(/.*)?$`. URLs with credentials, query strings, and fragments are accepted; we do not need that surface area yet.
+The validation uses Node's native `new URL()` parser, not a regex. URL parsing has well-known edge cases (IPv6, credentials, query strings, fragments, encoded characters) that a regex cannot cover without becoming unwieldy. `new URL()` is the standard library answer: it validates the scheme, the host, and the path structure in one call. The implementation wraps `new URL()` in a try/catch and rejects anything that throws or that does not use `http:` or `https:` as the protocol. URLs with credentials, query strings, and fragments are accepted; we do not need to surface that surface area yet.
 
 #### Call sites
 
@@ -179,7 +179,9 @@ Two tests. The CLI runs against the local server.
 
 The happy-path test seeds the local server with a known template before invoking the CLI. The seed is an HTTP POST to the server's internal test endpoint. The server's normal `list` endpoint reads from the registry; the test endpoint writes a fixture. This is a single internal endpoint, not a parallel mock.
 
-The network-error test stops the local server before invoking the CLI. The CLI is expected to fail fast with a `network_error` code. This is the only test in the suite that does not exercise the server.
+Each test that seeds the server uses a unique slug (e.g. `e2e-template-${testName}-${Date.now()}`) so that two tests can run in the same CI job without colliding on the registry state. The e2e suite runs sequentially in CI; the unique slugs are a defense-in-depth in case Vitest is reconfigured for parallelism later. The runner sets `vitest --sequence.concurrent=false` (or equivalent) in the workflow to make sequentiality explicit.
+
+The network-error test points the CLI at a closed local port (e.g. `127.0.0.1:1`) via the `API_BASE_URL` env var. The server is untouched. The CLI attempts a connection, fails immediately with `ECONNREFUSED`, and surfaces a `network_error` code. This is the only test in the suite that does not exercise the server. The test does not stop the server, does not require a second server instance, and is independent of every other test.
 
 The happy-path test asserts only on the presence of a known slug, not on the full shape. The unit tests in `apps/cli/test/unit/output.test.ts` already pin the column format. The e2e test confirms the wired-up commands work end-to-end against the local server.
 
@@ -191,7 +193,7 @@ Three tests. The CLI runs against the local server.
 |---|---|---|---|---|
 | `info happy path` | seed a template, then `info <slug>` | stdout contains the slug, name, description | empty | 0 |
 | `info not found` | `info does-not-exist` (server returns 404) | empty | stderr contains `not_found` code | 1 |
-| `info network error` | stop server, then `info <slug>` | empty | stderr contains `network_error` code | 1 |
+| `info network error` | `API_BASE_URL` pointed at a closed local port | empty | stderr contains `network_error` code | 1 |
 
 The not-found test runs against the local server with a deliberately unknown slug. The server returns a 404 with the standard `not_found` code. The test confirms that the CLI's error mapping reads the server's 404 and surfaces the right CliError code. This is the most realistic test of the not-found path because it exercises the real server's 404 response, not a synthetic fixture.
 
@@ -205,11 +207,11 @@ Three tests. The git fixture is the only mock in this suite. The CLI runs agains
 |---|---|---|---|---|
 | `init happy path` | `init e2e-template --no-install --dir <tmpdir>/dest` | `<tmpdir>/dest/<expected-file>` exists and matches the fixture's commit | empty | 0 |
 | `init clone refused (existing dir)` | `init e2e-template --no-install` (target dir already exists) | nothing created | stderr contains `target_exists` code | 1 |
-| `init network error` | stop server, then `init e2e-template --no-install` | nothing created | stderr contains `network_error` code | 1 |
+| `init network error` | `API_BASE_URL` pointed at a closed local port, then `init e2e-template --no-install` | nothing created | stderr contains `network_error` code | 1 |
 
 The `--no-install` flag is the only path that skips the package-manager step. The unit tests in `apps/cli/test/unit/git.test.ts` already cover the spawn helper, so the e2e suite does not duplicate that. The `--no-install` path is the only one that completes in CI without a network round-trip to a package manager.
 
-The happy-path test seeds the local server with a template whose `cloneUrl` is a `file://` URL pointing at the local bare repo. The seed is an HTTP POST to the server's internal test endpoint, identical to the seed used in the `list` suite.
+The happy-path test seeds the local server with a template whose `cloneUrl` is a `file://` URL pointing at the local bare repo. The seed is an HTTP POST to the server's internal test endpoint, identical to the seed used in the `list` suite. The slug for the init happy path is unique to the test (e.g. `e2e-init-${Date.now()}`) for the same reason as the list suite: avoid collisions if the runner is reconfigured for parallelism.
 
 The existing-dir test asserts that the CLI refuses to overwrite without `--force`. The current behavior is correct; the test pins it so a future regression is caught.
 
@@ -260,6 +262,8 @@ The verify workflow produces the tarball at `apps/cli/dist/deessejs-cli-*.tgz`. 
 #### Stream handling
 
 The runner captures stdout and stderr separately. This is what makes the test assertions on `Code:` lines in stderr work. The runner does not pipe them through a TTY; the CLI is invoked with a non-interactive stdin.
+
+The runner sets `NO_COLOR=1` in the child process's environment unconditionally. The CLI uses `picocolors` for terminal coloring; without `NO_COLOR`, the child emits ANSI escape codes to stdout and stderr. The runner does not strip them before passing the output to the test. A test asserting `expect(result.stdout).toContain("saas-starter")` would still pass on a substring match, but an assertion like `toMatch(/^.*$/m)` or a snapshot test would not. The `NO_COLOR=1` env var keeps the output plain. The choice of `NO_COLOR` over `FORCE_COLOR=0` follows the [no-color.org](https://no-color.org) standard that the CLI's dependencies already support.
 
 #### Cleanup
 
