@@ -60,10 +60,12 @@ jobs:
             exit 1
           fi
 
-      # Layer 3: Squawk lints the .sql files for destructive
-      # operations (DROP TABLE, DROP COLUMN, ALTER TABLE DROP NOT
-      # NULL, lock-taking operations, etc.). The CLI exits
-      # non-zero on violation, which fails the step.
+      # Layer 3: Squawk lints ONLY the .sql files this PR
+      # introduces — `git diff --name-only` against the merge
+      # base, scoped to packages/database/drizzle/*.sql. This is
+      # necessary because the bootstrap migration triggers
+      # dozens of valid Squawk warnings that are out of scope
+      # for the gate; ADR-015 documents the rationale.
       #
       # We use the squawk-cli directly instead of the GitHub
       # Action because sbdchd/squawk-action@v1 is the only tagged
@@ -75,4 +77,13 @@ jobs:
       - name: Lint migrations with Squawk
         run: |
           npm install -g squawk-cli
-          squawk packages/database/drizzle/*.sql
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          NEW=$(git diff --name-only "$BASE" "$HEAD" -- 'packages/database/drizzle/*.sql')
+          if [ -z "$NEW" ]; then
+            echo "No new SQL migrations in this PR. Skipping Squawk."
+            exit 0
+          fi
+          echo "Linting PR-introduced migrations:"
+          echo "$NEW"
+          squawk $NEW
