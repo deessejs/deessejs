@@ -495,7 +495,56 @@ One developer-day for the local server fixture and the seed endpoint on the serv
 
 The cost is bounded and the value compounds: every future change to the CLI is automatically tested against the server the PR is changing.
 
-## Consequences
+## Expected file structure
+
+The implementation lands the following file changes. Files are listed only when the ADR specifies them. Files the implementation may need that the ADR does not specify (e.g. new server modules beyond what the ADR describes) are not listed; the implementation PR decides those.
+
+### `apps/cli/` (the CLI)
+
+**New files**
+
+- `apps/cli/src/api/runtime.ts` — the runtime module. Exports `getApiBaseUrl`, `getApiRpcUrl`, `getApiVersionUrl`, `resetApiBaseUrlCache`. Reads `process.env.API_BASE_URL`. Memoized. Validates via `new URL()` and strips trailing slashes.
+- `apps/cli/test/unit/runtime.test.ts` — five unit tests covering the runtime module: unset, valid URL, empty string, malformed, path joining.
+- `apps/cli/vitest.e2e.config.ts` — separate Vitest config for the e2e suite. Excludes unit tests. Includes the e2e tests with the `globalSetup` configured.
+- `apps/cli/test/e2e/list.test.ts` — list command suite (2 tests).
+- `apps/cli/test/e2e/info.test.ts` — info command suite (3 tests).
+- `apps/cli/test/e2e/init.test.ts` — init command suite (3 tests).
+- `apps/cli/test/e2e/helpers/global-setup.ts` — Vitest global setup. Starts the local server once, provides `serverUrl` via `inject`. Returns a teardown that calls `server.stop()`.
+- `apps/cli/test/e2e/helpers/server.ts` — local server fixture. Exports `startLocalServer`, `seedServer`. The `startLocalServer` function spawns the server process and waits for `GET /healthz`. The `seedServer` function sends a `POST /test/seed` to the server.
+- `apps/cli/test/e2e/helpers/cli-runner.ts` — execa-based CLI runner. Reads `DEESSEJS_CLI_TARBALL` env var, spawns the CLI with the given args and env, sets `NO_COLOR=1` in the child environment, captures stdout and stderr, returns exit code.
+- `apps/cli/test/e2e/helpers/git-fixture.ts` — bare git repo helper for the init suite. Creates a `main` branch with one commit containing `README.md`.
+
+**Modified files**
+
+- `apps/cli/src/api/client.ts` — replace `RPCLink({ url: API_RPC_PATH })` with a call to `getApiRpcUrl()`.
+- `apps/cli/src/version/check.ts` — replace the template-literal `${API_BASE_PATH}/version` URL with a call to `getApiVersionUrl()`.
+- `apps/cli/vitest.config.ts` — exclude `test/e2e/**` from the unit suite. The e2e suite runs under the separate `vitest.e2e.config.ts`.
+- `apps/cli/package.json` — add `test:e2e` script, exclude e2e from the default `test` script.
+
+### `packages/api/` (the server)
+
+**Modified files**
+
+- The server gains one internal endpoint: `POST /test/seed`. The endpoint is a thin wrapper around the in-memory registry module the server already uses. It is enabled only when the env var `E2E_SEED_ENABLED=1` is set. The implementation PR decides the file structure (a new file, or a flag-gated block in an existing router file); the ADR does not pin a specific file path. The endpoint must not be exposed in production builds.
+
+### `.github/workflows/`
+
+**New files**
+
+- `.github/workflows/cli-e2e.yml` — PR blocking. Two steps: `build-and-pack` and `test-e2e`. Vitest handles the server lifecycle. Permissions: `contents: read`. No `id-token`. Triggers on paths touching `apps/cli/**`, `packages/api/**`, the workflow file, and `pnpm-lock.yaml`.
+- `.github/workflows/cli-e2e-extended.yml` — nightly non-blocking. Cron `0 3 * * *` plus manual dispatch. The implementation lands the matrix of scenarios (`large-registry`, `slow-network`, `flaky-network`, `real-pm`, `unicode`) here. Failure posts a GitHub issue with the captured output.
+
+### `pnpm-workspace.yaml`
+
+**Modified files**
+
+- `pnpm-workspace.yaml` — add the `execa` entry to the catalog (already merged in PR #64).
+
+### Files explicitly NOT changed by this ADR
+
+The ADR does not add a new HTTP mock server. `apps/cli/test/e2e/helpers/mock-server.ts` does not exist after this implementation. The earlier spike on branch `chore/cli-e2e-spike` contained a draft mock server; that file is removed in the implementation PR that supersedes the spike.
+
+
 
 - Every PR that touches `apps/cli/**` runs the e2e suite against a local server built from the same PR's source. Bugs of the form "the CLI runs but returns the wrong thing" are caught at PR time, not at release time.
 - A nightly run exercises a wider matrix. Bugs that are too slow or too flaky for PR gating surface in a GitHub issue, not as a CI failure.
