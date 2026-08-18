@@ -16,7 +16,11 @@
  *
  * Per the Better Auth Hono integration docs, an
  * unauthenticated request to `/api/v1/auth/get-session`
- * returns 200 with `{ session: null, user: null }`.
+ * returns 200 with the literal body `null` (JSON). Verified
+ * against the CI integration job output (2026-08-18): the
+ * response body for an unauthenticated `/get-session` call
+ * is `null`. If Better Auth changes the envelope shape, this
+ * test fails and surfaces the change immediately.
  */
 import { describe, expect, it } from "vitest"
 import { inject } from "vitest"
@@ -32,16 +36,17 @@ describe("GET /api/v1/auth/get-session", () => {
       // and the global setup emits a WARN. A misconfigured CI is visible.
     })
   } else {
-    it("is mounted and returns 200 for an unauthenticated request", async () => {
+    it("is mounted and returns 200 with body null for an unauthenticated request", async () => {
       const res = await api.request("/api/v1/auth/get-session")
-      // Better Auth returns 200 for an unauthenticated `/get-session`
-      // call. The body may be `null` or `{ session: null, user: null }`
-      // depending on the Better Auth version; the test pins the
-      // status code and the fact that the handler is wired, not
-      // the specific envelope shape.
       expect(res.status).toBe(200)
       const body = await res.json()
-      expect([null, { session: null, user: null }]).toContainEqual(body)
+      // Pin the envelope. The literal `null` body is what
+      // Better Auth returns for an unauthenticated request
+      // when the Hono↔Better Auth boundary is wired correctly
+      // (verified against the pinned `basePath: "/api/v1/auth"`
+      // in `packages/auth/src/auth.ts`). A different envelope
+      // (e.g. `{ session: null, user: null }`) is a regression.
+      expect(body).toBeNull()
     })
   }
 })

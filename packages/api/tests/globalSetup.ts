@@ -5,21 +5,29 @@
  * `postgres:ready`, via `project.provide(...)`. Tests read it
  * via `inject('postgres:ready')` and skip loudly when false.
  *
- * Per ADR-016:
- *   - The check is `pg_isready` against the CI service URL,
- *     not a Postgres protocol handshake. `pg_isready` is cheap
- *     and short-circuits on the common failure modes
- *     (ECONNREFUSED, auth failures, DNS).
- *   - The skip is loud, not silent: a WARN line is emitted via
- *     the structured logger so the absence of the readiness
- *     test surfaces in the log aggregator.
- *   - Non-DB tests do not call `inject('postgres:ready')` and
- *     are unaffected by the flag.
+ * Per ADR-016 (round 4 — warm the pool):
+ *   - The check is a real `SELECT 1` against the CI Postgres
+ *     service, not `pg_isready`. `pg_isready` only checks TCP
+ *     reachability and skips auth, TLS, and protocol-version
+ *     failures. A real query catches the modes that the
+ *     readiness route (`packages/api/src/http/routes/http.ts:47-54`)
+ *     actually exercises.
+ *   - The query is run through the same postgres client config
+ *     the app uses (`prepare: false, max: 10, idle_timeout: 60`),
+ *     so a successful query proves the pool can be created
+ *     end-to-end. The pool itself is closed before the test
+ *     workers start — the app's `db` proxy creates its own
+ *     pool on first access; we just want to confirm the
+ *     connection works.
+ *   - The skip is loud, not silent: a WARN line is emitted so
+ *     the absence of the readiness test surfaces in the log
+ *     aggregator. A misconfigured CI that should have provided
+ *     Postgres is visible, not silent.
  *
  * The setup is registered in `packages/api/vitest.config.ts`
  * via `vitestConfig({ globalSetup: "./tests/globalSetup.ts" })`.
  */
-import { spawn } from "node:child_process"
+import postgres from "postgres"
 
 const DEFAULT_TIMEOUT_MS = 5_000
 const BASELINE_DATABASE_URL =
@@ -29,51 +37,56 @@ const resolveDatabaseUrl = (): string => {
   return process.env.DATABASE_URL ?? BASELINE_DATABASE_URL
 }
 
-const parseHostPort = (url: string): { host: string; port: number } => {
-  // Default Postgres URL form: postgresql://user:pass@host:port/db
-  // We accept the same prefix that better-auth/drizzle accept.
-  try {
-    const u = new URL(url)
-    const host = u.hostname || "localhost"
-    const port = u.port ? Number(u.port) : 5432
-    return { host, port }
-  } catch {
-    return { host: "localhost", port: 5432 }
-  }
-}
-
-const checkPostgres = (host: string, port: number): Promise<boolean> => {
-  return new Promise((resolve) => {
-    const child = spawn(
-      "pg_isready",
-      ["-h", host, "-p", String(port), "-t", "3"],
-      { stdio: ["ignore", "ignore", "ignore"] },
-    )
-    const timer = setTimeout(() => {
-      child.kill("SIGKILL")
-      resolve(false)
-    }, DEFAULT_TIMEOUT_MS)
-    child.on("exit", (code) => {
-      clearTimeout(timer)
-      resolve(code === 0)
-    })
-    child.on("error", () => {
-      clearTimeout(timer)
-      resolve(false)
-    })
+const checkPostgres = async (url: string): Promise<boolean> => {
+  const pool = postgres(url, {
+    prepare: false,
+    max: 10,
+    idle_timeout: 60,
+    max_lifetime: 60 * 30,
+    connection_timeout: 5,
   })
+  try {
+    await Promise.race([
+      pool`SELECT 1`,
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("postgres:ready timeout")),
+          DEFAULT_TIMEOUT_MS,
+        ),
+      ),
+    ])
+    return true
+  } catch {
+    return false
+  } finally {
+    await pool.end().catch(() => {
+      // The pool may already be closed or never opened. Swallow.
+    })
+  }
 }
 
 export const setup = async (project: {
   provide: (key: string, value: unknown) => void
 }): Promise<void> => {
   const databaseUrl = resolveDatabaseUrl()
-  const { host, port } = parseHostPort(databaseUrl)
-  const ready = await checkPostgres(host, port)
+  const ready = await checkPostgres(databaseUrl)
 
-  console.warn(
-    `[api-tests] postgres:ready=${ready} (host=${host} port=${port})`,
-  )
+  console.warn(`[api-tests] postgres:ready=${ready} (url=${redact(databaseUrl)})`)
 
   project.provide("postgres:ready", ready)
+}
+
+/**
+ * Strip the user:password segment from a Postgres URL before
+ * logging it. The CI job sets the real password; we don't want
+ * it in stdout.
+ */
+const redact = (url: string): string => {
+  try {
+    const u = new URL(url)
+    if (u.password) u.password = "***"
+    return u.toString()
+  } catch {
+    return "<unparseable url>"
+  }
 }

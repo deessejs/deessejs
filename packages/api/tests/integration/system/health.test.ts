@@ -39,30 +39,14 @@ describe("GET /api/v1/ready", () => {
     })
   } else {
     it("returns 200 with status ready when Postgres is reachable", async () => {
-      // The DB ping runs through the same connection pool the
-      // migration job used. The pool may need a moment to
-      // settle once the migration has finished. Retry up to 5
-      // times with a 250ms backoff so the test is not flaky.
-      // If the DB ping still throws after the retries, the test
-      // passes (skips) — the readiness route is wired correctly;
-      // the assertion is on the DB connectivity, not the route.
-      let res: Response | undefined
-      for (let attempt = 0; attempt < 5; attempt++) {
-        res = await api.request("/api/v1/ready")
-        if (res.status === 200) break
-        await new Promise((r) => setTimeout(r, 250))
-      }
-      if (res?.status === 200) {
-        const body = await res.json()
-        expect(body.status).toBe("ready")
-      } else {
-        // Skip silently for now — the wiring is verified by the
-        // other tests and the production smoke test. The DB
-        // first-query timing in the integration job is finicky.
-        console.warn(
-          `[api-tests] /api/v1/ready returned ${res?.status} after 5 retries — skipping assertion`,
-        )
-      }
+      // The pool is warmed by `globalSetup` (round-4 amendment:
+      // it runs a real `SELECT 1` against the same postgres
+      // client config the app uses). The first query from the
+      // readiness route hits a warm pool and returns 200.
+      const res = await api.request("/api/v1/ready")
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.status).toBe("ready")
     })
   }
 })
