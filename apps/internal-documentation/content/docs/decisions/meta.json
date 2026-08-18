@@ -19,6 +19,9 @@
     "ADR-012-changesets-private-workspace-deps",
     "ADR-013-cli-publish-verify",
     "ADR-014-cli-e2e-tests",
-    "ADR-015-drizzle-migrations-ci"
+    "ADR-015-drizzle-migrations-ci",
+    "ADR-016-knowledge-base-topics",
+    "ADR-017-knowledge-base-guides",
+    "ADR-018-knowledge-base-global-search"
   ]
 }
