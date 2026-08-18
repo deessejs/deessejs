@@ -1,0 +1,90 @@
+name: Drizzle check
+
+# PR gate for Drizzle migrations.
+#
+# Two jobs, run in parallel against the same PR:
+#   - drift: validates the migration journal for commutativity
+#     and ordering issues, then re-runs drizzle-kit generate and
+#     asserts the working tree stays clean.
+#   - squawk: lints ONLY the .sql files this PR introduces
+#     against the destructive-SQL rules kept active in
+#     .squawk.toml.
+#
+# Implemented per ADR-015.
+
+on:
+  pull_request:
+    branches: [main, staging]
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: Drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+
+      - run: pnpm install --frozen-lockfile
+
+      # Builds @workspace/env and @workspace/database so the
+      # drizzle config can resolve @workspace/env/server at run
+      # time. Mirrors the order used by ci.yml test-integration.
+      - name: Build dependencies
+        run: pnpm turbo build --filter=@workspace/database --force
+
+      # Layer 1: validates the migration journal for commutativity
+      # and ordering issues.
+      - name: Run drizzle-kit check
+        run: pnpm --filter @workspace/database db:check
+
+      # Layer 2: re-runs generate against the committed schema.
+      # Bounded timeout because a missed db:generate on a column
+      # rename makes generate prompt on stdin, which would
+      # otherwise block until the job-level 360-minute timeout.
+      - name: Detect schema drift
+        timeout-minutes: 2
+        run: |
+          pnpm --filter @workspace/database db:generate
+          if [ -n "$(git status --porcelain packages/database/drizzle)" ]; then
+            echo "Schema drift detected: uncommitted migrations or snapshots."
+            git status --porcelain packages/database/drizzle
+            exit 1
+          fi
+
+  squawk:
+    name: Squawk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      # Lints ONLY the .sql files this PR introduces — git diff
+      # against the merge base, scoped to
+      # packages/database/drizzle/*.sql. On a PR that adds no
+      # migration, the step exits 0 with a clear log line.
+      #
+      # We use squawk-cli directly instead of the GitHub Action
+      # because sbdchd/squawk-action@v1 is the only tagged
+      # release and it is outdated: the @v1 tag only accepts
+      # `pattern`, `version`, `access_token` inputs. The @main
+      # branch has more inputs but is not a tagged release.
+      - name: Lint migrations with Squawk
+        run: |
+          npm install -g squawk-cli
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          NEW=$(git diff --name-only "$BASE" "$HEAD" -- 'packages/database/drizzle/*.sql')
+          if [ -z "$NEW" ]; then
+            echo "No new SQL migrations in this PR. Skipping Squawk."
+            exit 0
+          fi
+          echo "Linting PR-introduced migrations:"
+          echo "$NEW"
+          squawk $NEW

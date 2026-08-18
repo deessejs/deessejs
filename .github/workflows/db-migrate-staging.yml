@@ -1,0 +1,71 @@
+name: DB migrate staging
+
+# Auto-apply migrations to the staging database on every push
+# to the staging branch.
+#
+# Three steps after install:
+#   1. Build the @workspace/database package (the migrator runs
+#      against the compiled output).
+#   2. Audit the SQL files added by THIS push and print them to
+#      the CI log. github.event.before is guarded against the
+#      all-zeros hash GitHub sends on first push / force push;
+#      we degrade to HEAD~1.
+#   3. Run drizzle-kit migrate against STAGING_DATABASE_URL.
+#
+# Implemented per ADR-015. Requires STAGING_DATABASE_URL as a
+# repository secret, and a network path from the runner to the
+# staging database.
+
+on:
+  push:
+    branches: [staging]
+
+concurrency:
+  group: db-migrate-staging-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Apply migrations on staging
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @workspace/database build
+
+      # Audit: print only the SQL files added by THIS push.
+      # GitHub sets github.event.before to forty zeros on first
+      # push to a new branch and to a no-longer-existing commit
+      # on a force push. Both cases make `git diff` refuse to
+      # run ("fatal: bad object"), so we degrade to HEAD~1.
+      - name: Audit pending migrations
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE="HEAD~1"
+          fi
+          NEW=$(git diff --name-only "$BEFORE" "${{ github.sha }}" \
+            -- 'packages/database/drizzle/*.sql')
+          if [ -n "$NEW" ]; then
+            echo "=== Migrations applied by this push ==="
+            for f in $NEW; do
+              echo "--- $f ---"
+              cat "$f"
+            done
+          else
+            echo "No new migrations in this push."
+          fi
+
+      - run: pnpm --filter @workspace/database db:migrate
