@@ -243,7 +243,6 @@ let server: ServerHandle | null = null
 export default async function setup(project: TestProject) {
   server = await startLocalServer()
   project.provide("serverUrl", server.url)
-  project.provide("seed", server.seed)
   return async () => {
     if (server !== null) {
       await server.stop()
@@ -254,11 +253,11 @@ export default async function setup(project: TestProject) {
 
 // test/e2e/list.test.ts
 import { inject } from "vitest"
+import { seedServer } from "./helpers/server.js"
 
 test("happy path", async () => {
   const serverUrl = inject<string>("serverUrl")
-  const seed = inject<(t: TemplateV1[]) => Promise<void>>("seed")
-  await seed([SAMPLE_TEMPLATE])
+  await seedServer(serverUrl, [SAMPLE_TEMPLATE])
   const result = await run({
     args: ["list"],
     env: { API_BASE_URL: serverUrl },
@@ -304,9 +303,14 @@ The `list network error`, `info network error`, and `init network error` tests d
 
 #### Cleanup
 
-`stop()` is called by the `globalSetup` teardown returned from `setup`. The teardown runs once, after all tests have finished, even if individual tests fail. The `teardown` step in the CI workflow has `if: always()` so a failure in the e2e step also runs it; this is a defense-in-depth in case Vitest crashes before the teardown is reached.
+`stop()` is called by the `globalSetup` teardown returned from `setup`. The teardown runs once, after all tests have finished, even if individual tests fail. Because the server runs inside the same Node process as Vitest, no separate process management is needed: the teardown is a TypeScript function that runs in the same event loop as the tests.
 
-The shell-level process that runs the server inside the GitHub Actions step is wrapped in a `trap` that calls `kill` on `EXIT`, `SIGTERM`, and `SIGINT`. The trap is the second line of defense in case the `teardown` step itself fails. The two layers (Vitest teardown + shell trap) cover the failure modes: test failure, runner timeout, runner kill, and matrix cancellation.
+The test runner has its own protections against failure modes. The two relevant ones are:
+
+- **Test failure.** Vitest's `globalSetup` teardown runs on every test outcome, including failure. The teardown function calls `server.stop()` and clears the `server` reference. There is no state leak between test cases.
+- **Process kill.** If the test process is killed (runner timeout, matrix cancellation, manual cancel), Node does not run teardown. The server's TCP socket is closed by the OS on process exit; the listening port is released. There is no orphan process because the server runs in the same process as the tests.
+
+No shell-level trap or separate kill step is needed. The lifecycle is owned by Vitest and Node, not by the shell.
 
 ### The CLI runner
 
@@ -418,11 +422,10 @@ Two workflows. The implementation is in `.github/workflows/`, named `cli-e2e.yml
 
 The PR workflow is the gating one. It runs on every PR that touches `apps/cli/**`. It runs the three suites against a local server built from the same PR's source. Failures block merge.
 
-The workflow has one job with three steps. A single job is required because each GitHub Actions job runs on a separate runner, and the local server listens on `localhost` — splitting the work across jobs would lose the server. The three steps are:
+The workflow has one job with two steps. The local server is started by Vitest's `globalSetup` (see "The local server fixture and Vitest global setup" section). GitHub Actions does not start, wait for, or kill the server. The two steps are:
 
-1. **`build-and-start-server`**: builds `packages/api` from the PR's source, starts the server on `localhost:<port>` in the background, waits for `GET /healthz` to respond, sets `E2E_SEED_ENABLED=1`. The server stays up for the duration of the job.
-2. **`pack-and-e2e`**: builds `@deessejs/cli` and packs the tarball. Sets `API_BASE_URL` to the local server's URL and `DEESSEJS_CLI_TARBALL` to the tarball path. Runs `pnpm --filter @deessejs/cli test:e2e`. The e2e suite talks to the local server that the previous step is hosting.
-3. **`teardown`**: kills the local server. The teardown is `if: always()` so a failure in the e2e step still cleans up.
+1. **`build-and-pack`**: builds `packages/api`, builds `@deessejs/cli`, and packs the tarball (`apps/cli/dist/deessejs-cli-*.tgz`). The tarball is uploaded as an artifact for the next step.
+2. **`test-e2e`**: downloads the tarball artifact, sets `DEESSEJS_CLI_TARBALL` to the tarball path, and runs `pnpm --filter @deessejs/cli test:e2e`. Vitest handles starting the local server on a free port, health-checking it, running the suite, and graceful teardown via its `globalSetup`. The CI workflow does not manage the server lifecycle; Vitest does.
 
 The workflow uses `ubuntu-latest` and `node-version: 24` (matching the verify workflow). The total runtime is under 3 minutes for the PR suite: ~1m for the server build, ~30s for the CLI build, ~1m for the e2e suite.
 
