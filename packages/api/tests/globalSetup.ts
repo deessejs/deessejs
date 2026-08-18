@@ -71,7 +71,6 @@ export const setup = async (project: {
   const { host, port } = parseHostPort(databaseUrl)
   const ready = await checkPostgres(host, port)
 
-  // eslint-disable-next-line no-console
   console.warn(
     `[api-tests] postgres:ready=${ready} (host=${host} port=${port})`,
   )
