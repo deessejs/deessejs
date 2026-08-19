@@ -1,9 +1,9 @@
 ---
-title: 'Device auth for the CLI'
+title: 'Device auth for CLI'
 description: 'Better Auth device authorization plugin drives the CLI auth flow.'
 ---
 
-# ADR-013: Device authorization for the CLI auth surface
+# ADR-019: Device authorization for the CLI auth surface
 
 ## Status
 
@@ -176,7 +176,7 @@ file format:
 The file is owned by a new module
 `apps/cli/src/auth-store/index.ts` (one concept per folder,
 per ADR-002). The module exposes `readAuth`, `writeAuth`,
-`clearAuth` — three pure file-IO helpers. The token file
+`clearAuth`: three pure file-IO helpers. The token file
 is **opaque** to consumers: a tool that reads
 `~/.deessejs/auth.json` directly is reading the cache, not
 the contract. The format may change between CLI minor
@@ -188,6 +188,22 @@ threat model is "someone with shell access to my machine",
 not "someone who steals my laptop's encrypted home
 directory". If the threat model widens, encryption at rest
 ships as a separate ADR.
+
+The token file is written with mode **`0600`** (read/write
+for the owner only). The `writeAuth` helper calls
+`fs.writeFile(path, body, { mode: 0o600 })` and explicitly
+`fs.chmod(path, 0o600)` after the write. `writeFile`'s
+mode is masked by the process umask, so the chmod is the
+authoritative step. On Windows (which has no `0600`
+equivalent), the helper falls back to `icacls` to grant
+the current user only; the rule is "the file is readable
+only by the user running the CLI", not "the bits are 0600".
+The `readAuth` and `clearAuth` helpers do not change the
+mode (the file's owner is set once, at write time).
+A `writeAuth` call that fails the chmod check is treated
+as a write failure: the CLI exits through `CliError`
+with an internal error code, not a public code. The
+permission hardening is not a user-facing concern.
 
 ### Wire format for the polling loop
 
@@ -201,10 +217,11 @@ Better Auth publishes. The error codes
 The CLI maps them to behavior, not to user-facing labels.
 
 The `interval` returned by `/device/code` is the minimum
-polling interval. On `slow_down`, the CLI increases its
-local interval by 5 seconds and continues. On
-`expired_token` or `access_denied`, the CLI exits with a
-distinct exit code mapped through `CliError`.
+polling interval. Better Auth's default is `"5s"`; the
+CLI respects whatever the server publishes. On `slow_down`,
+the CLI increases its local interval by 5 seconds and
+continues. On `expired_token` or `access_denied`, the CLI
+exits with a distinct exit code mapped through `CliError`.
 
 ### apps/app pages
 
@@ -213,7 +230,7 @@ The user-facing surface for the device flow lives in
 points to a page that handles four states; the page is
 reachable without a session, the session is established
 on the fly when the user signs in. The CLI never sees
-the page directly — the CLI's `deesse auth login`
+the page directly. The CLI's `deesse auth login`
 command opens the browser to the `verification_uri_complete`
 returned by `/device/code`, which already carries the
 `user_code` in the query string.
@@ -238,7 +255,7 @@ apps/app/app/(unprotected)/
     └── layout.tsx
 ```
 
-The page inherits the `(auth)/layout.tsx` layout — the
+The page inherits the `(auth)/layout.tsx` layout. The
 centered single-column panel (`max-w-md`) that
 `login`, `signup`, and the rest of the form-based
 flows already use. The form-based flow and the device
@@ -262,20 +279,48 @@ unchanged.
 server component that reads `user_code` from the search
 params, validates the shape (8 chars, charset
 `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`), and renders the
-matching state. The four states:
+matching state. The validation lives in a small Zod
+schema (`userCodeSchema = z.string().regex(/^[A-HJ-NP-Z2-9]{8}$/)`)
+imported from the auth components barrel; the page
+calls `userCodeSchema.safeParse(searchParams.user_code)`
+and renders the "Expired" panel on a parse failure
+(invalid or missing `user_code` is the same as
+expired. There is no point telling an unauthenticated
+visitor why the URL was bad). The page types
+`searchParams` as `Promise<{ user_code?: string | string[] }>`
+(the Next.js 16 searchParams shape), narrows to
+`{ user_code: string }` after the Zod check, and passes
+the narrowed value down to `DeviceForm`. The four states:
 
 | State | Condition | Render |
 |---|---|---|
 | Not signed in | `authClient.getSession()` returns null | "Sign in to continue" panel with a `next` param pointing back to `/device?user_code=...`; clicking the panel signs the user in, lands back on the device page, the session is now present and the page re-renders into the "claim" state |
 | Claimed, pending | `authClient.device({ query: { user_code } })` returns `{ status: "pending" }` and the calling session is now bound to the code (the GET endpoint side-effects `userId` on first call) | "Approve" panel with two `Button` components (shadcn `Button` per the `use-shadcn` discipline), one for `authClient.device.approve({ userCode })`, one for `authClient.device.deny({ userCode })`. A short caption names the device (the `client_id` from the device-code record, when present) and the scopes (`scope`, when present). |
-| Approved | the user clicked approve, the next `device()` poll returns `{ status: "approved" }` | "Done" panel: "You can close this tab and return to your terminal." with a `<Link>` back to `/home` (not a forced redirect — the user may want to keep the tab open). |
+| Approved | the user clicked approve, the next `device()` poll returns `{ status: "approved" }` | "Done" panel: "You can close this tab and return to your terminal." with a `<Link>` back to `/home` (not a forced redirect; the user may want to keep the tab open). |
 | Denied, expired, or invalid | the device-code record's `status` is `denied` / `expiresAt` is in the past / the record is missing | "Expired" panel: "This code has expired or is invalid. Run `deesse auth login` again." No retry button on this page; the CLI owns the retry loop. |
 
-The component uses `useEffect` + `useState` for the
+The component uses `@tanstack/react-query` for the
 client-side state machine, not a server component with
-revalidation. The four states are an interaction state,
-not a server state; the server state is read on demand
-through the typed Better Auth client.
+revalidation and not raw `useEffect` + `useState`. The
+read path (`authClient.device(...)`) goes through
+`useQuery` with a stable `queryKey` keyed on `user_code`,
+so concurrent polls are deduped and a `slow_down`-style
+throttle can sit in `refetchInterval` if the server
+exposes a next-poll hint. The mutations
+(`authClient.device.approve(...)`, `authClient.device.deny(...)`)
+go through `useMutation` so the in-flight state can
+disable the buttons without a local boolean. The four
+states are an interaction state, not a server state;
+the server state is read on demand through the typed
+Better Auth client.
+
+The `apps/app` workspace pins `@tanstack/react-query` in
+the catalogue (`pnpm-workspace.yaml`) and wires
+`QueryClientProvider` at the root layout. The page is a
+thin server component (reads `searchParams.user_code`,
+runs the runtime validation, renders the
+`DeviceForm`); the `DeviceForm` component owns the
+state machine.
 
 #### Components
 
@@ -284,7 +329,7 @@ The page composes a new component
 the four-state machine. The form follows the same
 convention as `login-form.tsx`, `signup-form.tsx`,
 `forgot-password-form.tsx`, and `reset-password-form.tsx`
-(per the `use-shadcn` discipline — Button, Input,
+(per the `use-shadcn` discipline. Button, Input,
 Card, and friends from `@workspace/ui` only, no raw
 `<input>` with shadcn classes copy-pasted). The
 component is exported from `apps/app/components/auth/index.ts`
@@ -295,7 +340,7 @@ it through the barrel, mirroring `login/page.tsx`'s
 The `AuthContainer` layout is reused. The page is
 inside the `(auth)` sub-group, so it inherits the
 centered single-column panel from `(auth)/layout.tsx`
-— the same panel `login`, `signup`, and the rest of
+The same panel `login`, `signup`, and the rest of
 the form-based flows already use. The device flow's
 "what you're approving" caption and the
 approve/deny buttons fit the `max-w-md` panel without
@@ -379,6 +424,15 @@ this ADR.
   mapping is internal; the public error code list (per
   ADR-010 §2) does not gain new entries for the polling
   loop.
+- The CLI opening the browser to the
+  `verification_uri_complete` returned by `/device/code`,
+  (not to `verification_uri` alone). The `_complete`
+  variant already carries the `user_code` in the query
+  string; navigating to `verification_uri` without the
+  code sends the user to a bare sign-in page that does
+  not know which device to claim. The CLI encodes the
+  `user_code` in the URL it opens so the page hydrates
+  the right state on first paint.
 - A new page
   `apps/app/app/(unprotected)/(auth)/device/page.tsx`
   inside the existing `(auth)` sub-group, alongside
@@ -520,6 +574,18 @@ this ADR.
   `commands/auth/` and `auth-store/` folders follow the
   one-folder-per-concept rule (ADR-002); no new file at
   the `apps/cli/` root.
+- **The OAuth-device path is not in scope here.** Better
+  Auth ships a sibling plugin, `oauthDeviceAuthorization`,
+  under the separate `@better-auth/oauth-provider`
+  package. That plugin adds `POST /oauth2/token` for
+  registered OAuth clients and is the right shape for
+  machine-to-machine consumers (other CLIs, CI bots).
+  This ADR covers only the user-in-the-browser flow
+  driven by `deviceAuthorization`; the OAuth path
+  ships in a separate change with its own ADR. The
+  single-tenant decision, the `deviceCode` table, and
+  the `verificationUri` page are shared, but the
+  plumbing does not change here.
 
 ## Consequences
 
@@ -562,8 +628,8 @@ surface. The three commands that exist today
 (`init`, `list`, `info`) are anonymous on the wire: the
 server does not know who is calling, and the CLI does not
 carry identity. The first feature that requires identity
-on the CLI side — a roadmap item that surfaces a
-"personal registry" experience for authenticated users —
+on the CLI side. A roadmap item that surfaces a
+"personal registry" experience for authenticated users.
 forces the question: how does the CLI authenticate?
 
 Three options were considered:
