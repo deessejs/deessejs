@@ -26,6 +26,7 @@ let _db: ReturnType<typeof drizzle> | null = null
 function getDb(): ReturnType<typeof drizzle> {
   if (_db) return _db
   const url = serverEnv.DATABASE_URL
+  console.error("[db-debug-3] process.env.DATABASE_URL=", process.env.DATABASE_URL, " serverEnv.DATABASE_URL=", url)
   if (!url) {
     throw new Error("DATABASE_URL is required for @workspace/database")
   }
