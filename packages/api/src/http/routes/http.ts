@@ -48,7 +48,8 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
     try {
       await db.execute(sql`SELECT 1`)
       return c.json({ status: "ready" })
-    } catch {
+    } catch (err) {
+      console.error("[ready-debug-2] db.execute failed:", err)
       return c.json({ status: "not ready" }, 503)
     }
   })
