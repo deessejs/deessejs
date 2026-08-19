@@ -120,7 +120,6 @@ const checkGithub = async (token: string | undefined): Promise<GithubCheck> => {
 export const setup = async (project: {
   provide: (key: string, value: unknown) => void
 }): Promise<void> => {
-  console.warn(`[api-tests-debug] main process process.env.DATABASE_URL=${process.env.DATABASE_URL}`)
   const databaseUrl = resolveDatabaseUrl()
   const postgresReady = await checkPostgres(databaseUrl)
   console.warn(
