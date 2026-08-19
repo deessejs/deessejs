@@ -1,0 +1,76 @@
+---
+title: 'CLI e2e spike'
+description: 'Validate the local-server + drizzle-seed + globalSetup pattern before committing to a full implementation.'
+---
+
+# ADR-015: CLI e2e spike
+
+## Status
+
+Accepted (2026-08). Time-boxed, single-purpose.
+
+## Context
+
+ADR-014 documents the design of the e2e suite for `@deessejs/cli`: a local server built from the same PR's source, started in CI by Vitest's `globalSetup`, the CLI tarball invoked with `API_BASE_URL` pointing at that local server, drizzle-seed used to populate the database. The design is senior. It is also unvalidated.
+
+The first attempt at the suite (PR #67 on branch `chore/cli-e2e-spike`) failed because the mock server's ORPC envelope was a best-guess at the real one. The pipeline was not exercised end-to-end before the spike shipped. Five rounds of peer-review corrected the design, but the design is still unproven: the spike code in PR #67 was discarded (mock server, then production API, then local server). The pipeline is now senior on paper. It is not senior in CI.
+
+Three questions remain:
+
+1. **Can a Next.js production server be spawned inside Vitest's `globalSetup`?** This is the load-bearing assumption of ADR-014. If the server cannot be spawned, or cannot be health-checked reliably, or cannot serve requests for the duration of the test run, the design is wrong.
+2. **Can drizzle-seed's `reset()` and `seed()` run at the right moment in the lifecycle?** Before the server boots? After? On the same DB connection? The order matters. The order is not in the docs.
+3. **Can `execa` invoke the CLI tarball against that local server and assert on its output?** This is the test's raison d'être. If the spawn fails or the assertions flake, the design is wrong.
+
+These are not "research" questions. They are "does it work in this repo" questions. The fastest way to answer them is to build a single test that exercises the full pipeline and run it.
+
+## Decision
+
+Add a **spike** that proves the pipeline. The spike is a single commit on a new branch. The spike answers the three questions above with a working `it` block. The spike is not the implementation; it is a precondition for committing to the implementation.
+
+### The question the spike answers
+
+> Can a Next.js production server be spawned inside Vitest's `globalSetup`, health-checked, and serve real requests for the duration of a single test run, with the database seeded by `drizzle-seed` at the right moment?
+
+If yes: ADR-014's design is valid; the implementation lands as a series of small commits on top of the spike. If no: ADR-014 is wrong; we pivot before polluting a feature branch.
+
+### The spike scope
+
+The spike is a single test file at `apps/cli/test/e2e/spike.spec.ts`. The file contains one `it` block:
+
+1. `globalSetup` (`apps/cli/test/e2e/helpers/global-setup.ts`) starts the local server. The server is `next start` on `apps/app`, bound to a free port returned by `get-port`, health-checked at `/api/v1/health` until it returns 200 or the 60-second timeout fires.
+2. `globalSetup` calls `drizzle-orm/node-postgres/migrator`'s `migrate()` against `packages/database/drizzle/`. It then calls `drizzle-seed`'s `reset()` and `seed()` to populate one user. The database URL is `process.env.DATABASE_URL`, provided by the CI runner.
+3. The spike test fetches `GET <serverUrl>/api/v1/health` and asserts the response is 200. It fetches `GET <serverUrl>/api/v1/version` and asserts the response shape. It fetches `GET <serverUrl>/api/v1/templates` (or its actual path under the new routing) and asserts the response contains the production `saas-starter` slug. It invokes the CLI tarball with `execa(node, [tarball, 'list'], { env: { API_BASE_URL: serverUrl, NO_COLOR: '1' } })` and asserts the stdout contains the slug.
+4. The teardown stops the server. The database is left as-is (CI throws it away after the job).
+
+If all four steps pass, the spike is green.
+
+### What the spike is NOT
+
+- It is not a test suite. Three test files (`list.test.ts`, `info.test.ts`, `init.test.ts`) come after the spike, on top of it.
+- It is not a CI workflow. The `cli-e2e.yml` workflow comes after the spike, on top of the test suite.
+- It is not a release artifact. The spike is merged on the spike branch and acts as the foundation for the test files. It is not deleted.
+- It is not a contract test. The spike proves the pipeline works once. The contract tests are still the unit tests and the `cli-publish-verify` job (ADR-013).
+
+### Why a spike, not an implementation
+
+The last attempt at the suite (PR #67) wrote five files based on a design that turned out to be wrong. The five files were discarded. The wasted effort was not in the code (it was 600 lines, recoverable) but in the iteration: three rounds of design changes for a design that was never validated.
+
+The spike is cheap insurance. It produces one test file, one config file, one helper, and a working `globalSetup`. That is approximately 200 lines. The implementation produces five test files, two workflow files, and a full `globalSetup`. That is approximately 1000 lines. The spike catches the same class of failures at 20% of the cost.
+
+### Cost
+
+One developer-day for the spike. If the spike passes: one developer-day for the implementation (the spike's `globalSetup` is reused, the spike's test file is renamed to `list.test.ts` and extended). If the spike fails: the spike branch is closed, no further work, and ADR-014 is revised. The cost is bounded by one day either way.
+
+The implementation is a separate commit on the same branch, after the spike. The implementation does not start until the spike is green.
+
+## Consequences
+
+- The spike answers three questions that the rest of the e2e design assumes. The answers are known before the implementation commits land.
+- The spike produces a working `globalSetup` and a working test file that the implementation reuses. The spike is not throwaway.
+- The spike branch (`chore/cli-e2e-spike`) carries the spike. If the spike passes, the branch becomes the implementation branch; PR #67 is updated with the implementation commits. If the spike fails, the branch is closed; ADR-014 is revised.
+- ADR-014 is not modified by this spike. ADR-014 is the design contract. ADR-015 is the validation step. If ADR-014 needs changes after the spike, the changes are made on a separate commit that references the spike's findings.
+- The spike is merged on the spike branch. It is not a release artifact. The spike's `it` block stays in the test suite as a smoke test that runs on every PR.
+
+## What this ADR is NOT
+
+This ADR is not a code change. It is a decision to do a spike before committing to a full implementation. The spike itself lives in the next commit on the spike branch. The spike is not the spike code; the spike is the act of writing the spike code and learning from it.

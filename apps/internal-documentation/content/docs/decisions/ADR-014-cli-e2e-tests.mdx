@@ -1,6 +1,6 @@
 ---
 title: 'CLI e2e tests'
-description: 'Smoke testing each command against a mock HTTP server.'
+description: 'Smoke testing each command against a locally-built server from the same PR.'
 ---
 
 # ADR-014: CLI e2e tests
@@ -23,11 +23,26 @@ Three failure modes the unit tests and the verify job do not catch:
 
 For the published `@deessejs/cli@2.0.1`, the verify job caught a broken install. It would not have caught a CLI that installs cleanly but returns garbage.
 
+#### The pattern
+
+The pattern is well established. Hookdeck, Trigger.dev, Mastra, and others run a CI job that builds the server in the same runner as the SDK or CLI under test. The runner starts the server on `localhost`, waits for a health check, then runs the e2e suite against `http://localhost:<port>`. Both processes run the same PR's code. The test surface is hermetic, fast, and faithful to the code being reviewed.
+
+For DeesseJS, this means:
+
+- The CI runner builds `packages/api` (the server) from the PR's source.
+- The CI runner builds `@deessejs/cli` (the CLI) and packs the tarball.
+- The runner starts the server on `localhost:<port>` in the background.
+- The runner waits for `GET /healthz` to respond (or equivalent).
+- The runner spawns the CLI tarball with `API_BASE_URL=http://localhost:<port>`.
+- The runner asserts on the CLI's stdout, stderr, and exit code.
+
+The CLI is exercised against the server it is designed to talk to. The server is exercised against the code the PR changes. The test surface is hermetic. No external service is required.
+
 ## Decision
 
-Add a dedicated e2e test suite under `apps/cli/test/e2e/` that runs the published tarball against a mock HTTP server. The suite is one file per command (`list`, `info`, `init`), plus a helpers folder for the mock server, the CLI runner, and the git fixture.
+The e2e suite lives in `apps/cli/test/e2e/`. It is one file per command (`list.test.ts`, `info.test.ts`, `init.test.ts`), plus a helpers folder for the CLI runner and the git fixture. There is no HTTP mock server in the suite.
 
-The suite runs in CI on every PR touching `apps/cli/**` and in a deeper nightly run.
+The suite runs in CI on every PR touching `apps/cli/**` and in a deeper nightly run. The CI workflow starts a local server from the same PR, waits for the health check, then runs the e2e suite against the local server. The server is killed at the end of the job.
 
 ### One prerequisite: `API_BASE_URL` env var
 
@@ -88,11 +103,13 @@ Three exports. The module is the only place in the CLI that reads `process.env.A
 
 The memoization matters. The CLI calls `getApiRpcUrl` once at startup (in `client.ts`) and `getApiVersionUrl` once at startup (in `version/check.ts`). If the env var were read at every call, a test that wraps spawn in a way that mutates the env would have surprising behavior. The memoization makes the resolution deterministic.
 
+`getApiBaseUrl` normalizes its output by stripping a trailing slash. An env var of `http://localhost:3000/` (with trailing slash) joined with `/api/v1/rpc` would produce `http://localhost:3000//api/v1/rpc` (double slash). The implementation must strip the trailing slash before returning. The straightforward choice is `getApiBaseUrl` returning `url.replace(/\/+$/, "")` after `new URL` parsing. The choice of `String#replace` with a regex (rather than `URL#toString` or a hand-rolled trim) is deliberate: `new URL` does not expose a public API for trailing-slash removal, and a regex anchored to the end of the string is the simplest way to express "remove any number of trailing slashes". The alternative of `new URL("/api/v1/rpc", getApiBaseUrl()).toString` is also correct and pushes the join logic to the URL constructor; the implementation PR picks one and documents the choice.
+
 #### Validation
 
 The validation rules are tight enough to catch obvious mistakes but lenient enough to accept any well-formed URL. The format is `https://example.com` or `http://localhost:4873`. Empty strings, missing scheme, whitespace, and `null` are rejected. The CLI throws a `CliError` with code `internal_error` and a message that includes the offending value. The failure happens before any network call so it does not mask deeper issues.
 
-The regex is small. It rejects anything that does not match `^https?://[^/\s]+(:\d+)?(/.*)?$`. URLs with credentials, query strings, and fragments are accepted; we do not need that surface area yet.
+The validation uses Node's native `new URL()` parser, not a regex. URL parsing has well-known edge cases (IPv6, credentials, query strings, fragments, encoded characters) that a regex cannot cover without becoming unwieldy. `new URL()` is the standard library answer: it validates the scheme, the host, and the path structure in one call. The implementation wraps `new URL()` in a try/catch and rejects anything that throws or that does not use `http:` or `https:` as the protocol. URLs with credentials, query strings, and fragments are accepted; we do not need to surface that surface area yet.
 
 #### Call sites
 
@@ -149,84 +166,182 @@ Three things this ADR leaves out of scope:
 
 Three commands, three suites. Each suite covers the happy path plus at least one error path. The suites live in `apps/cli/test/e2e/` as `list.test.ts`, `info.test.ts`, `init.test.ts`. Each suite is a `describe` block with at least one `it` per scenario.
 
-The convention is that every test follows the same shape: bootstrap fixtures, run the CLI, assert on stdout, stderr, and exit code. The convention is enforced by the `run()` helper, which returns `{ stdout, stderr, exitCode, durationMs }` and exposes a `expect*` API for the common assertions.
+The tests target a **local server** built from the same PR's source. The CI workflow starts the server on `localhost:<port>` before running the e2e job. The CLI's runtime module resolves `API_BASE_URL` to that local server when the env var is unset. The tests do not need to pass `API_BASE_URL` explicitly.
+
+The convention is that every test follows the same shape: bootstrap the local server, run the CLI, assert on stdout, stderr, and exit code. The convention is enforced by the `run()` helper, which returns `{ stdout, stderr, exitCode, durationMs }` and exposes a `expect*` API for the common assertions.
 
 #### `list` suite
 
-Two tests. The mock server has two modes: returns a fixed list, or returns a 500.
+Two tests. The CLI runs against the local server.
 
-| Test | Mock returns | Assert on stdout | Assert on stderr | Assert on exit |
-|---|---|---|---|---|
-| `list happy path` | Two templates, full schema | stdout contains both slugs, both names, both categories | empty | 0 |
-| `list server error` | HTTP 500 with body `{"message": "internal"}` | empty | stderr contains `Error` and `network_error` code | 1 |
+| Test | Assert on stdout | Assert on stderr | Assert on exit |
+|---|---|---|---|
+| `list happy path` | stdout contains the seeded template slug (`e2e-template`) and its name | empty | 0 |
+| `list network error` | empty | stderr contains `network_error` code | 1 |
 
-The happy-path test asserts on the table format only (the contract is the slugs and names, not the exact column positions). The server-error test asserts on the CliError code in stderr's `Code:` line, which is the contract the unit tests in `apps/cli/test/unit/errors.test.ts` already pin.
+The templates registry is a static in-memory module on the server (`packages/api/src/templates.ts`). It is not in the database. The CLI's `list` and `info` commands read this registry; they do not need any data seeded in the database. The e2e suite reads the same registry the production API reads.
+
+The suite's only database concern is the better-auth tables (`packages/database/src/schema/auth.ts`: user, session, account, verification). The CLI itself does not query these tables; the server's auth surface does. The e2e suite does not exercise the auth surface directly — it exercises the templates surface. The auth tables are seeded once, at the start of the suite, by the global setup (see "The local server fixture and Vitest global setup" section). The seed is a single known user; the suite does not depend on auth state per test.
+
+The e2e suite is therefore stateless from the database's perspective. The local server's templates endpoint returns the same fixtures on every test. The `list` happy path asserts on a known template slug (`e2e-template`) that the server's static registry already provides. The suite does not need a per-test seed.
+
+The network-error test points the CLI at a closed local port (e.g. `127.0.0.1:1`) via the `API_BASE_URL` env var. The server is untouched. The CLI attempts a connection, fails immediately with `ECONNREFUSED`, and surfaces a `network_error` code. This is the only test in the suite that does not exercise the server. The test does not stop the server, does not require a second server instance, and is independent of every other test.
+
+The happy-path test asserts only on the presence of a known slug, not on the full shape. The unit tests in `apps/cli/test/unit/output.test.ts` already pin the column format. The e2e test confirms the wired-up commands work end-to-end against the local server.
 
 #### `info` suite
 
-Three tests. The mock server has three modes: returns one template, returns 404, returns malformed data.
+Three tests. The CLI runs against the local server.
 
-| Test | Mock returns | Assert on stdout | Assert on stderr | Assert on exit |
+| Test | Setup | Assert on stdout | Assert on stderr | Assert on exit |
 |---|---|---|---|---|
-| `info happy path` | One template matching the slug | stdout contains the slug, name, description | empty | 0 |
-| `info not found` | HTTP 404 with body `{"message": "template not found"}` | empty | stderr contains `not_found` code | 1 |
-| `info malformed data` | HTTP 200 with `{"templates": [{"slug": "x"}]}` (missing required fields) | empty | stderr contains `parse_error` code | 1 |
+| `info happy path` | `info e2e-template` (server's static registry has the template) | stdout contains the slug, name, description | empty | 0 |
+| `info not found` | `info does-not-exist` (server returns 404) | empty | stderr contains `not_found` code | 1 |
+| `info network error` | `API_BASE_URL` pointed at a closed local port | empty | stderr contains `network_error` code | 1 |
 
-The malformed-data test is the one that catches CLI regressions where the runtime parser silently accepts malformed data. The contract test in `apps/cli/test/contract/orpc-to-cli-error.test.ts` already pins that `parse_error` is the right code; the e2e test pins that the `info` command actually emits the code on malformed data.
+The not-found test runs against the local server with a deliberately unknown slug. The server returns a 404 with the standard `not_found` code. The test confirms that the CLI's error mapping reads the server's 404 and surfaces the right CliError code. This is the most realistic test of the not-found path because it exercises the real server's 404 response, not a synthetic fixture.
+
+The malformed-data test from the previous version of this ADR is removed. The unit tests in `apps/cli/test/contract/orpc-to-cli-error.test.ts` already pin that `parse_error` is the right code when the runtime parser is given bad data. The e2e suite does not duplicate that coverage. A regression in the malformed path is caught at the unit level, not the e2e level.
 
 #### `init` suite
 
-Three tests. The git fixture has one mode: a bare repo with a single file. The mock server always returns one template pointing at that bare repo.
+Three tests. The git fixture is the only mock in this suite. The CLI runs against the local server for the happy path. The local server's `list` endpoint returns a template whose `cloneUrl` points at the local bare repo.
 
 | Test | CLI args | Assert on filesystem | Assert on stderr | Assert on exit |
 |---|---|---|---|---|
-| `init happy path` | `init <slug> --no-install --dir <tmpdir>/dest` | `<tmpdir>/dest/<expected-file>` exists and matches the fixture's commit | empty | 0 |
-| `init clone refused (existing dir)` | `init <slug> --no-install` (target dir already exists) | nothing created | stderr contains `target_exists` code | 1 |
-| `init network error` | `init <slug> --no-install` (mock returns 500) | nothing created | stderr contains `network_error` code | 1 |
+| `init happy path` | `init e2e-template --no-install --dir <tmpdir>/dest` | `<tmpdir>/dest/<expected-file>` exists and matches the fixture's commit | empty | 0 |
+| `init clone refused (existing dir)` | `init e2e-template --no-install` (target dir already exists) | nothing created | stderr contains `target_exists` code | 1 |
+| `init network error` | `API_BASE_URL` pointed at a closed local port, then `init e2e-template --no-install` | nothing created | stderr contains `network_error` code | 1 |
 
 The `--no-install` flag is the only path that skips the package-manager step. The unit tests in `apps/cli/test/unit/git.test.ts` already cover the spawn helper, so the e2e suite does not duplicate that. The `--no-install` path is the only one that completes in CI without a network round-trip to a package manager.
+
+The happy-path test invokes `init e2e-template --no-install --dir <tmpdir>/dest`. The server returns the template's metadata; the `cloneUrl` field points at the local bare repo that the git fixture created. No server seeding is required for this test — the templates registry is static, and the cloneUrl comes from the static registry's pre-existing entry (the production registry carries `https://github.com/<owner>/<repo>` for saas-starter; the e2e suite uses a fixture template whose `cloneUrl` is overridden at the server fixture level to point at the local bare repo).
 
 The existing-dir test asserts that the CLI refuses to overwrite without `--force`. The current behavior is correct; the test pins it so a future regression is caught.
 
 The network-error test pins that the CLI fails fast on the first request, before invoking `git clone`. A regression where the CLI clones first and reports the network error after would be caught here.
 
-### The mock server
+### The local server fixture and Vitest global setup
 
-A minimal Node `http` server. No framework, no dependencies. The implementation is ~80 lines in `apps/cli/test/e2e/helpers/mock-server.ts`.
+The local server is started **once for the whole suite** via Vitest's `globalSetup` mechanism, not once per test. The pattern is:
 
-#### Endpoints
+```ts
+// vitest.e2e.config.ts
+import { defineConfig } from "vitest/config"
 
-The server exposes two endpoints. Both are the ones the CLI invokes in production.
+export default defineConfig({
+  test: {
+    globalSetup: ["./test/e2e/helpers/global-setup.ts"],
+    // ... other options
+  },
+})
 
-| Method | Path | Purpose | Response |
-|---|---|---|---|
-| `GET` | `/api/v1/version` | Returns the version probe. The CLI calls this at startup to warn about outdated versions. | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-| `POST` | `/api/v1/rpc` | The ORPC endpoint. The CLI calls this for `list` and `info`. | `200 {"result": {"data": "...", "..."}}` or `4xx {"message": "..."}` |
+// test/e2e/helpers/global-setup.ts
+import type { TestProject } from "vitest/node"
+import { reset, seed } from "drizzle-seed"
+import { drizzle } from "drizzle-orm/node-postgres"
+import { startLocalServer, type ServerHandle } from "./server.js"
+import * as schema from "@workspace/database/schema"
 
-The server does not validate auth. It does not interpolate GitHub data. It serves the contract shapes that the CLI client expects and that the unit tests already pin. Anything outside the contract is the CLI's problem to detect and surface.
+let server: ServerHandle | null = null
+let db: ReturnType<typeof drizzle> | null = null
 
-#### Request validation
+export default async function setup(project: TestProject) {
+  // 1. Connect to the test database (CI provides DATABASE_URL).
+  db = drizzle(process.env.DATABASE_URL!)
 
-The `/api/v1/rpc` handler parses the request body as JSON and checks the shape. A malformed body returns `400 {"message": "invalid request"}`. The server does not validate the ORPC envelope beyond the `jsonrpc` field, because the CLI does not either. Tightening the server past what the client sends would mask bugs.
+  // 2. Reset to a known empty state.
+  await reset(db, schema)
 
-#### Scenario mode
+  // 3. Seed a known user. The e2e suite does not exercise the
+  //    auth surface directly, but the local server's auth
+  //    routes must see a valid user table. One row is enough.
+  await seed(db, { user: schema.user }).refine((f) => ({
+    user: {
+      count: 1,
+      columns: {
+        id: f.valuesFromArray({ values: ["e2e-test-user-id"] }),
+        email: f.valuesFromArray({ values: ["[email protected]"] }),
+      },
+    },
+  }))
 
-The server accepts a mode parameter at startup. The mode controls which canned responses the server returns. The mode is set by the test that boots the server, not by the request.
+  // 4. Start the local server. It reads the seeded DB.
+  server = await startLocalServer()
+  project.provide("serverUrl", server.url)
 
-| Mode | `/api/v1/rpc` response | `/api/v1/version` response |
-|---|---|---|
-| `success` | `200 {"result": {"data": "<templates>"}}` where `<templates>` is the configured list | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-| `not_found` | `404 {"message": "template not found"}` | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-| `malformed` | `200 {"templates": [{"slug": "x"}]}` (missing required fields) | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-| `server_error` | `500 {"message": "internal"}` | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
+  // 5. Teardown: stop the server, leave the DB as-is. (CI
+  //    throws the database away after the job.)
+  return async () => {
+    if (server !== null) {
+      await server.stop()
+      server = null
+    }
+  }
+}
 
-The mode is per-server-instance. A test that needs both `success` and `not_found` responses starts two server instances.
+// test/e2e/list.test.ts
+import { inject } from "vitest"
 
-#### Lifecycle
+test("happy path", async () => {
+  const serverUrl = inject<string>("serverUrl")
+  const result = await run({
+    args: ["list"],
+    env: { API_BASE_URL: serverUrl },
+  })
+  expect(result.stdout).toContain("saas-starter")
+})
+```
 
-The server is a class with `start(): Promise<{ url, port }>` and `stop(): Promise<void>`. `start` binds to `127.0.0.1` on port `0` (the OS picks a free port) and resolves once the server is listening. `stop` closes the server and waits for the close callback. The class is a single-use resource; tests that need multiple modes start multiple instances.
+The pattern is the senior **drizzle-seed** pattern from the Drizzle team: deterministic, official, and built specifically for test isolation. The seed runs in `globalSetup` (not `beforeEach`) because the suite is stateless from the database's perspective — every test reads the same templates, and the templates live in the server's static registry, not the database. The seed only needs to populate the better-auth tables (one user) so the local server's auth routes are not broken when the server reads its own schema on startup.
 
-The runner uses the port from `start()` to set `API_BASE_URL` in the CLI's environment. The URL is `http://127.0.0.1:<port>`.
+This pattern has four properties that matter:
+
+1. **One server, one boot.** The local server starts once when the suite begins, not once per test. A typical 8-test suite boots the server 8 times in the naive pattern. Vitest's `globalSetup` avoids this; the cost is one ~1s boot for the whole run.
+2. **Tests are independent of the boot lifecycle.** No test starts or stops the server, mutates the database, or affects the boot. The database is seeded once at the start and not modified per test. The e2e suite is therefore the cleanest case of test isolation: every test is hermetic without needing per-test cleanup.
+3. **The `inject` contract is the only shared surface.** Test files do not import a global module to read the server URL. They call `inject` at the top of the test. The contract is typed (`inject<string>("serverUrl")` fails at the type level if the global setup does not provide a string). The runner does not need to know how the server was started; it just needs an `API_BASE_URL`.
+4. **Seeding is owned by Drizzle, not the server.** The previous version of this ADR proposed a `POST /test/seed` HTTP endpoint on the server. That design was wrong: it asked the server to know it is in test mode, and it invented an HTTP contract that has no analogue in production. The senior pattern is to seed the database directly with the official Drizzle tooling, not to add test-only endpoints to the production server. This is the standard pattern across the Drizzle ecosystem.
+
+#### What the local server fixture does
+
+A `server.ts` helper in `apps/cli/test/e2e/helpers/`. The implementation is ~30 lines.
+
+#### API
+
+```ts
+type ServerHandle = {
+  url: string       // absolute URL the CLI should hit
+  port: number      // the port the server is bound to
+  stop: () => Promise<void>
+}
+
+async function startLocalServer(): Promise<ServerHandle>
+```
+
+The server is bound to `127.0.0.1` on port `0`. The OS picks a free port. The `url` returned by `startLocalServer` is `http://127.0.0.1:<port>`. The runner sets `API_BASE_URL` to this URL in the child's environment.
+
+The `seed` field is removed from the handle. The previous version returned a `seed(templates)` function that POSTed to the server. The new version does not have a seed field because the server does not need to be seeded. The templates are static. The only DB seeding is at the global setup level, via drizzle-seed.
+
+#### Why the templates do not need a per-test seed
+
+The templates registry in `packages/api/src/templates.ts` is a static, in-memory module. It is the same module the production API reads. The CLI's `list` and `info` commands read the same registry the production API reads. The e2e suite does not need to mutate the registry between tests. A test asserting on a known slug (`saas-starter`, which is the entry in the static registry) reads the same data on every test run. There is no per-test state to clean up.
+
+The e2e suite asserts on `saas-starter` (the production entry), not on a fabricated `e2e-template` slug. The previous version of this ADR introduced `e2e-template` as a fabrication; the senior pattern reads the production registry as-is. The test surface is the server the PR is changing, not a synthetic substitute.
+
+#### Network-error tests
+
+The `list network error`, `info network error`, and `init network error` tests do not stop the server. They set `API_BASE_URL` to a closed local port (e.g. `127.0.0.1:1`) and rely on `ECONNREFUSED`. The server is untouched. The test is independent of every other test. The runner does not need a second server instance for these tests.
+
+#### Cleanup
+
+`stop()` is called by the `globalSetup` teardown returned from `setup`. The teardown runs once, after all tests have finished, even if individual tests fail. Because the server runs inside the same Node process as Vitest, no separate process management is needed: the teardown is a TypeScript function that runs in the same event loop as the tests.
+
+The test runner has its own protections against failure modes. The two relevant ones are:
+
+- **Test failure.** Vitest's `globalSetup` teardown runs on every test outcome, including failure. The teardown function calls `server.stop()` and clears the `server` reference. There is no state leak between test cases.
+- **Process kill.** If the test process is killed (runner timeout, matrix cancellation, manual cancel), Node does not run teardown. The server's TCP socket is closed by the OS on process exit; the listening port is released. There is no orphan process because the server runs in the same process as the tests.
+
+No shell-level trap or separate kill step is needed. The lifecycle is owned by Vitest and Node, not by the shell.
 
 ### The CLI runner
 
@@ -256,7 +371,7 @@ Tests use it like:
 ```ts
 const result = await run({
   args: ["list"],
-  env: { API_BASE_URL: mockServer.url },
+  // env left unset — runner uses the default DEESSEJS_API_URL
 })
 expect(result.exitCode).toBe(0)
 expect(result.stdout).toContain("saas-starter")
@@ -273,6 +388,8 @@ The verify workflow produces the tarball at `apps/cli/dist/deessejs-cli-*.tgz`. 
 #### Stream handling
 
 The runner captures stdout and stderr separately. This is what makes the test assertions on `Code:` lines in stderr work. The runner does not pipe them through a TTY; the CLI is invoked with a non-interactive stdin.
+
+The runner sets `NO_COLOR=1` in the child process's environment unconditionally. The CLI uses `picocolors` for terminal coloring; without `NO_COLOR`, the child emits ANSI escape codes to stdout and stderr. The runner does not strip them before passing the output to the test. A test asserting `expect(result.stdout).toContain("saas-starter")` would still pass on a substring match, but an assertion like `toMatch(/^.*$/m)` or a snapshot test would not. The `NO_COLOR=1` env var keeps the output plain. The choice of `NO_COLOR` over `FORCE_COLOR=0` follows the [no-color.org](https://no-color.org) standard that the CLI's dependencies already support.
 
 #### Cleanup
 
@@ -319,21 +436,31 @@ The fixture does not create a working tree. The CLI clones the bare repo at clon
 
 The cleanup removes the entire `tmpdir`. The cleanup runs on test failure too. The fixture does not leave orphan repos behind.
 
+#### Why this is the only deliberate mock
+
+The GitHub repo is the only externally-facing surface in the `init` flow that we cannot exercise against the production environment. Two reasons:
+
+1. **Speed.** A `git clone` of the production `deessejs/saas-template` repo takes seconds and depends on GitHub availability. A local bare repo is milliseconds.
+2. **Write isolation.** Cloning the production repo does not require writes, but the broader `init` flow (which includes a `pnpm install` step) would. The fixture stops the test at the clone step.
+
+The fixture is a true local mock for a network-bound dependency. It is not a reimplementation of the API contract. The CLI does not know it is talking to a bare repo instead of a GitHub repo — `git clone file://<...>` is a real git transport.
+
 ### CI integration
 
 Two workflows. The implementation is in `.github/workflows/`, named `cli-e2e.yml` and `cli-e2e-extended.yml`.
 
 #### `cli-e2e.yml` (PR blocking)
 
-The PR workflow is the gating one. It runs on every PR that touches `apps/cli/**`. It runs the three suites. Failures block merge.
+The PR workflow is the gating one. It runs on every PR that touches `apps/cli/**`. It runs the three suites against a local server built from the same PR's source. Failures block merge.
 
-The workflow has three jobs:
+The workflow has one job with two steps. The local server is started by Vitest's `globalSetup` (see "The local server fixture and Vitest global setup" section). GitHub Actions does not start, wait for, or kill the server. The two steps are:
 
-1. **`pack`**: produces the tarball. Runs `pnpm --filter @deessejs/cli build` and `npm pack`. The tarball is uploaded as an artifact.
-2. **`e2e`**: runs the three suites. Downloads the tarball artifact, sets `DEESSEJS_CLI_TARBALL`, runs `pnpm --filter @deessejs/cli test:e2e`. The mock server is in-process, no external service to start.
-3. **`cleanup`**: removes the tarball artifact after 7 days. The cleanup is automatic via the `actions/upload-artifact@v4` retention setting.
+1. **`build-and-pack`**: builds `packages/api`, builds `@deessejs/cli`, and packs the tarball (`apps/cli/dist/deessejs-cli-*.tgz`). The tarball is uploaded as an artifact for the next step.
+2. **`test-e2e`**: downloads the tarball artifact, sets `DEESSEJS_CLI_TARBALL` to the tarball path, and runs `pnpm --filter @deessejs/cli test:e2e`. Vitest handles starting the local server on a free port, health-checking it, running the suite, and graceful teardown via its `globalSetup`. The CI workflow does not manage the server lifecycle; Vitest does.
 
-The workflow uses `ubuntu-latest` and `node-version: 24` (matching the verify workflow). The total runtime is under 2 minutes. The old `pnpm install` step is replaced by `pnpm install --frozen-lockfile` to keep the install fast.
+The workflow uses `ubuntu-latest` and `node-version: 24` (matching the verify workflow). The total runtime is under 3 minutes for the PR suite: ~1m for the server build, ~30s for the CLI build, ~1m for the e2e suite.
+
+The workflow has `permissions: contents: read` for the e2e job. No `id-token`, no `NPM_TOKEN`. The publish path is unchanged from the verify workflow.
 
 #### `cli-e2e-extended.yml` (nightly non-blocking)
 
@@ -343,11 +470,13 @@ The matrix dimension is "scenario". Each scenario tests a different aspect of th
 
 | Scenario | What it covers | Why nightly-only |
 |---|---|---|
-| `large-fixture` | Mock returns 100 templates; CLI prints them. | Slow. Takes 10s. Acceptable for nightly. |
-| `slow-network` | Mock delays responses by 2s. | Tests timeouts. Too slow for PR. |
-| `flaky-network` | Mock returns 500 on the first request, 200 on the second. | Tests retry logic. Flaky in normal CI. |
-| `real-pm` | Skips `--no-install` and runs the actual package manager. | Slow; depends on pnpm in CI. |
-| `unicode` | Mock returns templates with unicode names. | Sanity check; not part of the PR contract. |
+| `large-registry` | Local server with 100 templates; CLI lists them. | Tests retry logic under load. Takes ~10s. |
+| `slow-network` | Local server with a 2s delay on every response. | Tests timeouts. Too slow for PR. |
+| `flaky-network` | Local server that returns 500 on the first request, 200 on the second. | Tests retry logic. Flaky in normal CI. |
+| `real-pm` | Skips `--no-install` and runs the actual package manager against the cloned repo. | Slow; depends on pnpm in CI. |
+| `unicode` | Local server with templates with unicode names. | Sanity check; not part of the PR contract. |
+
+The slow-network and flaky-network scenarios wrap the local server with a small proxy that adds the delay or flakiness. The proxy is a few lines and is the only mock in this workflow. It exists because the slow/flaky behavior is not something we can engineer against the local server directly.
 
 Failures in the nightly workflow post a GitHub issue with the captured output. The issue template is pre-populated with the workflow run URL, the scenario that failed, and the stdout/stderr of the failing test. The post is done via `peter-evans/create-or-update-comment` or a custom action; the choice is decided at implementation time.
 
@@ -355,24 +484,102 @@ Failures in the nightly workflow post a GitHub issue with the captured output. T
 
 The split is cost. The PR workflow is the gate; it must run on every PR and stay fast. The nightly workflow is the deep check; it can run slowly and tolerate flakiness. Combining them would either slow PRs (extended matrix on every PR) or weaken the gate (PR workflow skips important tests). The split is the standard pattern for CI matrices that have a fast-slow split.
 
-### Why not the alternatives
+### Why the local server instead of a mock or the production API
 
-Three patterns were considered and rejected:
+Three patterns were considered. The first two are rejected; the third is the decision.
 
-- **Tighten the contract tests.** The unit tests already pin the request/response shapes. Tightening further would catch fewer bugs at a higher cost. The e2e suite tests the integration, not the shape.
-- **Spin up the real API in CI.** The real API depends on Postgres and the GitHub REST API. Both add flakiness and a maintenance burden. The mock server is the test surface; the real API is the production surface.
-- **Run the CLI against a `verdaccio` registry.** Verdaccio is the senior pattern for packages that depend on other packages published separately. The CLI is its own dependency tree after the publish fix (ADR-013). Verdaccio is the wrong tool.
+#### Mock server (rejected)
+
+A mock server that re-implements the API contract has three failure modes:
+
+1. **Drift.** The mock changes slower than the real API. A test that passes against the mock can fail against production. The mock is a contract to maintain, separately from the API it stands in for.
+2. **Wrong contract.** The mock's contract is a best-guess at the real one. If the guess is wrong, the test fails for reasons that have nothing to do with the CLI. The first attempt at this suite (the spike on branch `chore/cli-e2e-spike`) failed for exactly this reason: the mock's ORPC envelope was a guess, and the test could not be exercised end-to-end.
+3. **Double infrastructure.** The real server is one system to maintain. The mock is a second. Two systems that have to stay in sync is more maintenance than one.
+
+The mock server pattern is right when the real API is unstable, slow, or has meaningful side effects. None of those apply here: the DeesseJS server is stable, the read path is fast, and the templates endpoint has no side effects.
+
+#### Production API (rejected)
+
+Running the suite against `https://deessejs.com` was the second attempt. The pivot was wrong on two counts.
+
+First, the suite does not test the code of the PR being reviewed. It tests the code that is currently in production. A bug introduced by the PR is invisible to the test until the PR merges and a new release ships the CLI that depends on it. The whole point of running tests on a PR is to catch regressions before they reach users.
+
+Second, the suite depends on the production API being available. If the production API is down, the suite fails. This is the correct failure mode for a synthetic-monitor workflow that runs against production. It is the wrong failure mode for a PR gate that should be hermetic.
+
+#### Local server in CI (chosen)
+
+This is the pattern used by Hookdeck, Trigger.dev, Mastra, and others. The runner builds the server from the same PR's source, starts it on `localhost`, and runs the e2e suite against it. Both the CLI under test and the server it talks to run the PR's code. The test surface is hermetic, fast, and faithful to the code being reviewed.
+
+The implications for maintenance:
+
+- **No mock code to update** when the API contract changes. The CLI is exercised against the real server. A breaking change in the API will surface as a CLI test failure, which is the desired signal.
+- **No double infrastructure.** The server is the one being changed by the PR; the test runs it directly.
+- **Real-world data.** The server runs the same code the PR is changing. Tests catch the bugs the PR introduces.
+- **Latency.** The server is on `localhost`. No network round-trip. The full PR suite runs in under 3 minutes.
+- **Hermetic.** The suite does not depend on any external service. It runs on a fork PR and on a private network. The only requirement is that the CI runner has `node` and `pnpm`.
+
+The trade-off is that the suite must run the server, which means the server has to be buildable. The server already builds on the verify workflow's `Build` job, so the additional build cost is one job's worth.
 
 ### Cost
 
-One developer-week for the prerequisites: `API_BASE_URL` override, `cli-runner` helper, `http-server` helper, `git-fixture` helper. One developer-day for the three test suites. One developer-day for the CI workflows. Total: one developer-week for the senior pattern.
+One developer-day for the local server fixture and the drizzle-seed integration. One developer-day for the three test suites. One developer-day for the CI workflows. The prerequisites (`API_BASE_URL` override, runtime module, runner) are already done.
 
-The cost is bounded and the value compounds: every future change to the CLI is automatically tested against the published artifact on a real install.
+The cost is bounded and the value compounds: every future change to the CLI is automatically tested against the server the PR is changing.
 
-## Consequences
+## Expected file structure
 
-- Every PR that touches `apps/cli/**` runs the e2e suite. Bugs of the form "the CLI runs but returns the wrong thing" are caught at PR time, not at release time.
+The implementation lands the following file changes. Files are listed only when the ADR specifies them. Files the implementation may need that the ADR does not specify (e.g. new server modules beyond what the ADR describes) are not listed; the implementation PR decides those.
+
+The legend: `+` is a new file, `~` is a modified file. Lines with no prefix are pre-existing files. The "Files explicitly NOT changed" callout at the end names files that earlier versions of this design would have added but the senior pattern does not.
+
+```text
+apps/cli/
+├── package.json                                 ~  add test:e2e script, exclude e2e from default test
+├── vitest.config.ts                             ~  exclude test/e2e/** from the unit suite
+├── vitest.e2e.config.ts                         +  separate Vitest config for the e2e suite; globalSetup wired here
+├── src/
+│   └── api/
+│       ├── client.ts                            ~  RPCLink({ url: getApiRpcUrl() }) instead of API_RPC_PATH
+│       └── runtime.ts                           +  getApiBaseUrl / getApiRpcUrl / getApiVersionUrl; env var, memoized, new URL() validation, trailing-slash strip
+├── test/
+│   ├── unit/
+│   │   └── runtime.test.ts                      +  five cases from ADR: unset, valid, empty, malformed, path join
+│   └── e2e/
+│       ├── list.test.ts                         +  2 tests: happy path, network error (closed port)
+│       ├── info.test.ts                         +  3 tests: happy path, not found, network error
+│       ├── init.test.ts                         +  3 tests: happy path, existing dir, network error
+│       └── helpers/
+│           ├── global-setup.ts                  +  Vitest globalSetup: drizzle reset/seed, startLocalServer once, project.provide('serverUrl', ...), teardown server.stop()
+│           ├── server.ts                        +  startLocalServer (spawn + health check); no per-test seed (templates are static)
+│           ├── cli-runner.ts                    +  execa wrapper; reads DEESSEJS_CLI_TARBALL; sets NO_COLOR=1 in child env
+│           └── git-fixture.ts                   +  bare git repo with main branch + one commit (README.md)
+
+packages/database/  (no new files)
+└── (no new files; better-auth tables already exist)  ~  e2e suite reuses schema; drizzle-seed operates on existing tables
+
+packages/api/
+└── (no new files)  no test-only endpoint on the server; seeding happens at the DB level via drizzle-seed, not the server
+
+.github/workflows/
+├── cli-e2e.yml                                  +  PR blocking; 2 steps: build-and-pack, test-e2e; Vitest owns the server lifecycle
+└── cli-e2e-extended.yml                        +  nightly non-blocking; matrix of large-registry / slow-network / flaky-network / real-pm / unicode; failure posts a GitHub issue
+
+# new dependency
+drizzle-seed                                     +  in pnpm catalog; the e2e suite installs it via @workspace/database peer or directly in apps/cli
+
+pnpm-workspace.yaml                              ~  execa added to the catalog (already merged in PR #64)
+```
+
+### Files explicitly NOT changed by this ADR
+
+The ADR does not add a new HTTP mock server. `apps/cli/test/e2e/helpers/mock-server.ts` does not exist after this implementation. The earlier spike on branch `chore/cli-e2e-spike` contained a draft mock server; that file is removed in the implementation PR that supersedes the spike.
+
+
+
+- Every PR that touches `apps/cli/**` runs the e2e suite against a local server built from the same PR's source. Bugs of the form "the CLI runs but returns the wrong thing" are caught at PR time, not at release time.
 - A nightly run exercises a wider matrix. Bugs that are too slow or too flaky for PR gating surface in a GitHub issue, not as a CI failure.
 - The CLI gains an `API_BASE_URL` env var override. This is a small ergonomic improvement for users who run the CLI against a self-hosted registry, and it is the prerequisite that makes the e2e suite possible.
 - The verify job (ADR-013) and the e2e suite are complementary. The verify job catches broken publishes; the e2e suite catches broken behavior. A release is green only when both pass.
+- The e2e suite is hermetic. It does not depend on any external service. It runs on fork PRs and on private networks.
 - `pkg.pr.new` is a future option. It would let reviewers run the actual CLI from a PR preview URL. It is out of scope here; ADR-013 explains why.
+- The earlier spike on branch `chore/cli-e2e-spike` retained a mock server design that this ADR supersedes. The spike's PR is a draft and will be closed once the local-server implementation lands.

@@ -1,4 +1,4 @@
-import { API_BASE_PATH } from "@workspace/api/base-path"
+import { getApiVersionUrl } from "../api/runtime.js"
 
 import { readPackageVersion } from "../api/self-version.js"
 
@@ -39,7 +39,7 @@ const compareSemver = (a: string, b: string): number => {
 export const maybeWarnAboutOutdatedCli = async (): Promise<void> => {
   let bodyText: string
   try {
-    const versionUrl = `${API_BASE_PATH}/version`
+    const versionUrl = getApiVersionUrl()
     const res = await fetch(versionUrl)
     if (res.status !== 200) return
     bodyText = await res.text()
