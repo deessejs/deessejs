@@ -55,7 +55,7 @@ const validateBaseUrl = (raw: string): string => {
       )
     }
     return parsed.toString().replace(/\/$/, "")
-  } catch (err) {
+  } catch {
     throw new Error(
       `API_BASE_URL is not a valid URL: '${raw}'. ` +
         "Expected an http(s) URL with no whitespace.",

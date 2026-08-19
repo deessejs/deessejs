@@ -1,4 +1,4 @@
-import { execa, type ExecaError } from "execa"
+import { execa } from "execa"
 import getPort from "get-port"
 import { resolve } from "node:path"
 import { drizzle } from "drizzle-orm/node-postgres"

@@ -53,7 +53,6 @@ describe("CLI e2e spike", () => {
     // status here. We log the response so the spike's findings
     // include the actual wire format.
     const rpcBody = await rpc.text()
-    // eslint-disable-next-line no-console
     console.log(`[spike] /api/v1/rpc status=${rpc.status} body=${rpcBody.slice(0, 500)}`)
     expect([200, 400, 404]).toContain(rpc.status)
 
@@ -80,7 +79,6 @@ describe("CLI e2e spike", () => {
       },
       reject: false,
     })
-    // eslint-disable-next-line no-console
     console.log(
       `[spike] cli list exit=${result.exitCode} stdout=${result.stdout.slice(0, 500)}`,
     )
