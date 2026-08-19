@@ -8,7 +8,7 @@ CREATE TABLE "deviceCode" (
 	"status" text DEFAULT 'pending' NOT NULL,
 	"expires_at" timestamp NOT NULL,
 	"last_polled_at" timestamp,
-	"polling_interval" integer,
+	"polling_interval" bigint,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "deviceCode_device_code_unique" UNIQUE("device_code"),

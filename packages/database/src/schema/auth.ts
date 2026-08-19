@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, bigint, index } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -98,7 +98,14 @@ export const deviceCode = pgTable(
     status: text("status").notNull().default("pending"),
     expiresAt: timestamp("expires_at").notNull(),
     lastPolledAt: timestamp("last_polled_at"),
-    pollingInterval: integer("polling_interval"),
+    // The plugin's Zod schema for deviceCode declares
+    // pollingInterval as z.number(); Drizzle's bigint with
+    // mode "number" maps to JS number (not bigint), which
+    // matches the plugin's expectation. Squawk's
+    // prefer-bigint-over-int rule is satisfied by bigint.
+    // Polling intervals are seconds (typically 5-60), so
+    // the 64-bit range is wildly more than enough.
+    pollingInterval: bigint("polling_interval", { mode: "number" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
