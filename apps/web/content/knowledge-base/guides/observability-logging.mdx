@@ -1,0 +1,48 @@
+---
+title: Add observability
+description: Logs, traces, and metrics — the three signals that catch production issues.
+topic: observability
+products: [logs, traces, metrics]
+order: 0
+draft: false
+---
+
+Production issues surface in three signals: logs,
+traces, and metrics. A baseline setup captures all three
+without much ceremony.
+
+## 1. Logs
+
+```ts
+import { logger } from "@workspace/observability"
+
+logger.info("user.signed_up", { userId: user.id })
+```
+
+Structured JSON to stdout; your platform's log shipper
+picks them up.
+
+## 2. Traces
+
+The `honoLogger` middleware in `packages/api` instruments
+every request. Custom spans:
+
+```ts
+import { trace } from "@workspace/observability"
+
+await trace("embed-document", async () => embed(text))
+```
+
+## 3. Metrics
+
+Counter and gauge helpers wrap the platform's metrics
+client. The `request_total{route=...,status=...}` counter
+ships automatically from the Hono middleware; custom
+counters live alongside.
+
+## What's next
+
+- [Run background jobs](/knowledge-base/guides/background-jobs-queue)
+  — instrument workers with the same three signals.
+- [Production readiness checklist](/knowledge-base/guides/production-checklist)
+  — verify dashboard alerts fire on the right thresholds.

@@ -7,13 +7,26 @@ import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
 
 /**
- * Mount path for the auth API on the server. Mirrors
- * `API_AUTH_PATH` in `packages/api/src/base-path.ts` — kept
- * here as a string to avoid importing across `apps/app` <-> `api`
- * <-> `auth` boundaries. The two values must stay in sync; if one
- * moves, update the other.
+ * Better Auth `basePath` — the URL prefix the handler claims.
+ *
+ * MUST match the Hono mount at `packages/api/src/http/routes/http.ts:57`
+ * (`api.on(["POST", "GET"], "/auth/*", ...)`) composed with the
+ * Hono app's `basePath("/api/v1")`. The two must agree, otherwise
+ * Better Auth returns 404 for every `/api/v1/auth/*` URL — the
+ * Hono middleware fires but `auth.handler` rejects the request
+ * because the path does not start with `/api/auth`.
+ *
+ * Cannot import from `@workspace/api/base-path` because the API
+ * package depends on `@workspace/auth` (transitively, via
+ * `packages/api/src/http/routes/http.ts` importing `auth`).
+ * Defining the literal here keeps the invariant local to auth
+ * and avoids the cycle. If the basePath ever changes, this
+ * constant and the Hono mount must change together.
+ *
+ * See ADR-015 for the full root-cause analysis and the prefix
+ * alignment invariant.
  */
-const AUTH_BASE_PATH = "/api/v1/auth" as const
+const AUTH_BASE_PATH = "/api/v1/auth"
 
 /**
  * Log a transactional email failure. Hook your observability vendor here
@@ -30,13 +43,6 @@ function logEmailFailure(flow: string, userId: string, error: string): void {
 
 export const auth = betterAuth({
   baseURL: serverEnv.BETTER_AUTH_URL,
-  // Strip the API prefix before Better Auth's internal route matcher
-  // looks for `/sign-up/email`, `/get-session`, etc. Without this,
-  // the server returns 404 on every auth route because it tries to
-  // match `/api/v1/auth/sign-up/email` against its internal routes,
-  // which are mounted at the root. The Hono catch-all already routes
-  // `/api/v1/auth/*` to `auth.handler(c.req.raw)` — Better Auth
-  // then needs to know to strip the prefix back off.
   basePath: AUTH_BASE_PATH,
   secret: serverEnv.BETTER_AUTH_SECRET,
   trustedOrigins: [

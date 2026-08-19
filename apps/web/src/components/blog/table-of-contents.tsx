@@ -66,7 +66,10 @@ export function TableOfContents({ targetId }: { targetId: string }) {
   if (items.length === 0) return null
 
   return (
-    <nav aria-label="Table of contents" className="sticky top-20">
+    <nav
+      aria-label="Table of contents"
+      className="sticky top-[calc(theme(spacing.14)+theme(spacing.6))] max-h-[calc(100dvh-calc(theme(spacing.14)+theme(spacing.8)))] overflow-y-auto"
+    >
       <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
         On this page
       </p>
