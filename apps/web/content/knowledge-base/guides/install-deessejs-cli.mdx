@@ -1,0 +1,52 @@
+---
+title: Install the deessejs CLI
+description: Set up the CLI, authenticate, and discover templates from the registry.
+topic: cli
+products: [cli, registry, scaffolding]
+order: 0
+draft: false
+---
+
+The deessejs CLI is the entry point to the rest of the
+ecosystem — it talks to the template registry, scaffolds
+new projects, and authenticates against the cloud runtime.
+
+## 1. Install
+
+```bash
+npm install -g deessejs
+```
+
+Verify the install:
+
+```bash
+deessejs --version
+```
+
+## 2. Authenticate
+
+```bash
+deessejs auth login
+```
+
+This opens a browser window to complete the device flow.
+The token is stored locally and reused on subsequent
+runs.
+
+## 3. Discover templates
+
+```bash
+deessejs list
+```
+
+Lists every template in the registry with a one-line
+description. Pick the one closest to your target stack
+and run `deessejs init <template-slug>` to scaffold a new
+project.
+
+## What's next
+
+- [Build your first agent stack](/knowledge-base/guides/first-agent-stack)
+  — compose an AI agent with the SDK.
+- [Deploy to Vercel](/knowledge-base/guides/deploy-to-vercel)
+  — promote your scaffolded project to production.

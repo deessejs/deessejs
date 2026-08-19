@@ -2,10 +2,12 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu } from "lucide-react"
+import { Menu, Search } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@workspace/ui/components/sheet"
 import { Button } from "@workspace/ui/components/button"
 import { APP_NAME } from "@workspace/ui/lib/config"
+
+import { useSearchDialogStore } from "@/lib/search/store"
 
 import { NavSections } from "./nav-sections"
 
@@ -26,6 +28,7 @@ import { NavSections } from "./nav-sections"
  */
 export function SiteHeader() {
   const pathname = usePathname()
+  const openSearch = useSearchDialogStore((s) => s.open)
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background">
@@ -49,6 +52,19 @@ export function SiteHeader() {
                 {APP_NAME}
               </Link>
               <NavSections pathname={pathname} variant="mobile" />
+              <Button
+                variant="outline"
+                onClick={openSearch}
+                aria-label="Open search"
+                aria-keyshortcuts="Meta+K Control+K"
+                className="mt-4 w-full justify-start gap-2"
+              >
+                <Search className="size-4" />
+                <span>Search...</span>
+                <kbd className="ml-auto text-[10px] font-mono text-muted-foreground/60">
+                  ⌘K
+                </kbd>
+              </Button>
               <div className="mt-auto flex flex-col gap-2">
                 <Button disabled className="w-full">
                   Coming soon
@@ -69,6 +85,20 @@ export function SiteHeader() {
         </div>
 
         <div className="hidden items-center gap-2 sm:flex">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openSearch}
+            aria-label="Open search"
+            aria-keyshortcuts="Meta+K Control+K"
+            className="flex items-center gap-2 px-3"
+          >
+            <Search className="size-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Search...</span>
+            <kbd className="ml-2 hidden text-[10px] font-mono text-muted-foreground/60 md:inline">
+              ⌘K
+            </kbd>
+          </Button>
           <Button disabled>Coming soon</Button>
         </div>
       </div>
