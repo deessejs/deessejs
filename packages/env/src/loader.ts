@@ -115,16 +115,14 @@ export function loadDotenvSnapshot(
 /**
  * Legacy shim. Calls `loadDotenvSnapshot()` and mirrors the result into
  * `process.env` for callers that still read `process.env` directly
- * (`drizzle.config.ts`, scripts, and the `require("@workspace/env/server")`
- * path in `packages/database/src/client.ts` until that consumer is
- * migrated).
+ * (`drizzle.config.ts`, scripts).
  *
  * Idempotent. The mutation happens once per process.
  *
  * New code should call `loadDotenvSnapshot()` directly and pass the
  * returned object to `createEnv` as `runtimeEnv`. The shim is here only
- * to keep the nine legacy consumers working without a coordinated
- * refactor across the monorepo.
+ * to keep the legacy consumers working without a coordinated refactor
+ * across the monorepo.
  */
 export function loadRepoEnv(): void {
   if (loaded) return
