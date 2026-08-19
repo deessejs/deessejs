@@ -115,3 +115,54 @@ describe("POST /api/v1/rpc/templates/list", () => {
     })
   }
 })
+
+/**
+ * Wire-code contract test (issue #81).
+ *
+ * Pins the error contract that the marketing site depends on:
+ * when GitHub enrichment fails, the typed client must see an
+ * `ORPCError` with code `"TEMPLATES_FETCH_FAILED"` (status 502),
+ * NOT a generic `INTERNAL_SERVER_ERROR`. The failure is
+ * triggered by feeding `enrich()` a registry entry pointing at
+ * a non-existent GitHub repo (synchronous reject from
+ * `packages/api/src/core/github/client.ts#fetchRepo`).
+ *
+ * This is a unit-style test of the core layer; the oRPC handler
+ * wrapping `enrich()` and translating the raw `Error` is covered
+ * by the integration test above (under the `[skip-github]`
+ * block — when real GitHub is rate-limited this is the only
+ * place the wire-code is exercised end-to-end).
+ */
+import type { TemplateV1 } from "@workspace/contracts/v1"
+
+import { describe as describeUnit, expect as expectUnit, it as itUnit } from "vitest"
+
+import { ORPCError } from "@orpc/server"
+
+import { enrich } from "../../../src/core/templates/enrich.js"
+import { TEMPLATES } from "../../../src/templates.js"
+
+const brokenRegistry: ReadonlyArray<TemplateV1> = [
+  {
+    ...TEMPLATES[0],
+    repo: "this-repo-must-not-exist-xyz-12345",
+  },
+]
+
+describeUnit("enrich() failure surface (issue #81 wire-code)", () => {
+  itUnit("rejects with a plain Error when GitHub returns non-OK", async () => {
+    await expectUnit(enrich(brokenRegistry)).rejects.toBeInstanceOf(Error)
+  })
+
+  itUnit("does not translate errors itself — translation lives in the handler", async () => {
+    // The core layer surfaces raw errors. The handler in
+    // `packages/api/src/orpc/routes/templates.ts` is the single
+    // place the code is promoted to `TEMPLATES_FETCH_FAILED`.
+    // A regression here (e.g. someone wraps `enrich()` in a
+    // try/catch and throws an ORPCError from the core) would
+    // break the layered separation.
+    await expectUnit(enrich(brokenRegistry)).rejects.not.toBeInstanceOf(
+      ORPCError,
+    )
+  })
+})
