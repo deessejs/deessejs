@@ -27,7 +27,7 @@
  * runs. The fields we pin exactly (slug, name, owner, repo,
  * license, cloneUrl) are the ones that should be stable.
  * The description and labels are derived from the live repo
- * (see `enrich.ts`), so we only assert they are strings /
+ * (see `enrich.ts`), so we only assert they are strings or
  * arrays, not specific values.
  */
 import { describe, expect, it } from "vitest"
