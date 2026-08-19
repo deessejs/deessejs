@@ -16,7 +16,20 @@ const DEFAULT_OVERRIDES = {
   include: ["tests/**/*.test.ts"],
   testTimeout: 5_000,
   hookTimeout: 10_000,
-  pool: "threads" as const,
+  // Vitest 4 `threads` (worker_threads) does not reliably propagate the
+  // GitHub Actions step `env:` block into worker processes: tests then
+  // see `process.env.DATABASE_URL === undefined` even though the main
+  // process inherited it correctly, which surfaced as the strict 200
+  // assertion in `packages/api/tests/integration/system/health.test.ts`
+  // failing while the globalSetup probe (running in the main process)
+  // still saw the env. `forks` (child_process) gives each test file a
+  // fresh `process.env` copy of the parent shell env. Tracked under
+  // vitest-dev/vitest#8769 (env-sync, fixed in 4.x) — but the fix only
+  // re-syncs env at pool start, not after, so the worker_threads path
+  // still drops late-bound env values. Switch to `forks` as the
+  // defensive default; packages that need threads (e.g. for ESM module
+  // caching) can override via the `VitestOverrides.pool` argument.
+  pool: "forks" as const,
   setupFiles: ["@workspace/env/server"],
   coverage: false as const,
   clearMocks: true,
