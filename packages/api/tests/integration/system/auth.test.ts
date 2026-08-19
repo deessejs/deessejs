@@ -73,6 +73,8 @@ describe("POST /api/v1/auth/device/code", () => {
     it("issues a device and user code with the documented envelope", async () => {
       const res = await api.request("/api/v1/auth/device/code", {
         method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ client_id: "test-client" }),
       })
       expect(res.status).toBe(200)
       const body = (await res.json()) as {
@@ -81,7 +83,7 @@ describe("POST /api/v1/auth/device/code", () => {
         verification_uri: string
         verification_uri_complete: string
         expires_in: number
-        interval: string
+        interval: number
       }
       // The user_code is 8 chars from the device-flow charset
       // (base32 sans I, O, 0, 1). The verification_uri is the
@@ -90,21 +92,44 @@ describe("POST /api/v1/auth/device/code", () => {
       expect(body.device_code).toBeTypeOf("string")
       expect(body.verification_uri).toBe("/device")
       expect(body.verification_uri_complete).toBe(`/device?user_code=${body.user_code}`)
-      // Default Better Auth polling interval is "5s"; the expires_in
-      // matches the device-code TTL (1800s = 30 minutes by default).
-      expect(body.interval).toBe("5s")
+      // Better Auth default interval is 5 seconds (number, not string,
+      // in the response envelope). expires_in is the device-code TTL
+      // in seconds (1800 = 30 minutes by default).
+      expect(body.interval).toBe(5)
       expect(body.expires_in).toBe(1800)
     })
 
     it("returns the same user_code is not guaranteed (regenerate on each call)", async () => {
-      const first = await api.request("/api/v1/auth/device/code", { method: "POST" })
-      const second = await api.request("/api/v1/auth/device/code", { method: "POST" })
+      const first = await api.request("/api/v1/auth/device/code", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ client_id: "test-client" }),
+      })
+      const second = await api.request("/api/v1/auth/device/code", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ client_id: "test-client" }),
+      })
       const a = ((await first.json()) as { user_code: string }).user_code
       const b = ((await second.json()) as { user_code: string }).user_code
       // Two independent /device/code calls produce two independent codes.
       // The plugin uses collision-retry; the chance of collision is the
       // 8-char base32 space (~1e12), so a duplicate is a regression.
       expect(a).not.toBe(b)
+    })
+
+    it("rejects a missing client_id with 400 invalid_request", async () => {
+      const res = await api.request("/api/v1/auth/device/code", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      })
+      // The plugin's body schema requires client_id; without it
+      // the request fails Zod validation and returns 400 with
+      // error: "invalid_request".
+      expect(res.status).toBe(400)
+      const body = (await res.json()) as { error?: string }
+      expect(body.error).toBe("invalid_request")
     })
   }
 })
@@ -139,7 +164,11 @@ describe("GET /api/v1/auth/device", () => {
     it.skip("[skip-postgres] device requires a reachable Postgres", () => {})
   } else {
     it("returns 401 for an unauthenticated request to a pending code", async () => {
-      const issued = await api.request("/api/v1/auth/device/code", { method: "POST" })
+      const issued = await api.request("/api/v1/auth/device/code", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ client_id: "test-client" }),
+      })
       const { user_code } = (await issued.json()) as { user_code: string }
       const res = await api.request(`/api/v1/auth/device?user_code=${user_code}`)
       // The endpoint requires an authenticated session. Without a cookie,
@@ -155,7 +184,11 @@ describe("POST /api/v1/auth/device/approve", () => {
     it.skip("[skip-postgres] device/approve requires a reachable Postgres", () => {})
   } else {
     it("rejects an unauthenticated approve with 401", async () => {
-      const issued = await api.request("/api/v1/auth/device/code", { method: "POST" })
+      const issued = await api.request("/api/v1/auth/device/code", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ client_id: "test-client" }),
+      })
       const { user_code } = (await issued.json()) as { user_code: string }
       const res = await api.request("/api/v1/auth/device/approve", {
         method: "POST",
@@ -172,7 +205,11 @@ describe("POST /api/v1/auth/device/deny", () => {
     it.skip("[skip-postgres] device/deny requires a reachable Postgres", () => {})
   } else {
     it("rejects an unauthenticated deny with 401", async () => {
-      const issued = await api.request("/api/v1/auth/device/code", { method: "POST" })
+      const issued = await api.request("/api/v1/auth/device/code", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ client_id: "test-client" }),
+      })
       const { user_code } = (await issued.json()) as { user_code: string }
       const res = await api.request("/api/v1/auth/device/deny", {
         method: "POST",
