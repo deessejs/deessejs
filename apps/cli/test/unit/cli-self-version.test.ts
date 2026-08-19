@@ -3,27 +3,50 @@ import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { CLI_PACKAGE_VERSION } from "../../src/api/self-version.js"
+import { readPackageVersion } from "../../src/api/self-version.js"
 
 /**
- * Drift check: CLI_PACKAGE_VERSION is hand-baked into the bundle (we
- * can't resolve apps/cli/package.json at runtime after tsup), so the
- * developer has to update both files on a version bump. This test
- * fails CI if they forget.
+ * Drift check: readPackageVersion is injected at build time from
+ * apps/cli/package.json via tsup `define` (see apps/cli/tsup.config.ts).
+ * vitest's define is configured to mirror the substitution so the same
+ * value resolves under test. This test pins the invariant in three
+ * shapes:
  *
- * The test resolves the monorepo root from this file's location
- * (apps/cli/test/unit/cli-self-version.test.ts → apps/cli/), then
- * reads apps/cli/package.json synchronously. The package.json is in
- * git and lives next to the source, so this is reliable.
+ * 1. The value is defined (catches a tsup misconfiguration where the
+ *    `define` block is dropped or mistyped).
+ * 2. The value matches apps/cli/package.json (catches a drift between
+ *    the source of truth and the build-time substitution, including
+ *    a stale vitest config that points at the wrong file).
+ * 3. The value is a valid X.Y.Z semver (catches a substitution that
+ *    resolved to `undefined`, an empty string, or a tag-shaped value
+ *    like `v2.0.0` that the version probe cannot compare).
+ *
+ * The package.json is read by path relative to this file
+ * (apps/cli/test/unit/cli-self-version.test.ts → apps/cli/package.json).
+ * The path is in git and lives next to the source, so the read is
+ * reliable across local dev and CI.
  */
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const packageJsonPath = resolve(__dirname, "..", "..", "package.json")
 
-describe("CLI version drift", () => {
-  it("CLI_PACKAGE_VERSION matches apps/cli/package.json", () => {
+const SEMVER_RE = /^\d+\.\d+\.\d+$/
+
+describe("CLI version injection", () => {
+  it("readPackageVersion is defined", () => {
+    const local = readPackageVersion()
+    expect(local).toBeDefined()
+    expect(local).not.toBe("")
+  })
+
+  it("readPackageVersion matches apps/cli/package.json", () => {
     const raw = readFileSync(packageJsonPath, "utf8")
     const parsed = JSON.parse(raw) as { version?: string }
     expect(parsed.version).toBeDefined()
-    expect(CLI_PACKAGE_VERSION).toBe(parsed.version)
+    expect(readPackageVersion()).toBe(parsed.version)
+  })
+
+  it("readPackageVersion is a valid X.Y.Z semver", () => {
+    const local = readPackageVersion()
+    expect(local).toMatch(SEMVER_RE)
   })
 })
