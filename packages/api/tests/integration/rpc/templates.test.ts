@@ -114,4 +114,4 @@ describe("POST /api/v1/rpc/templates/list", () => {
       expect(res.status).toBe(200)
     })
   }
-})</new_string>
+})
