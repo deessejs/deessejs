@@ -43,7 +43,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm --filter @workspace/database build
+      # Builds @workspace/env and @workspace/database so the
+      # drizzle config can resolve @workspace/env/server at run
+      # time. turbo walks the dep graph from @workspace/database
+      # and builds @workspace/env first. Same step pattern used
+      # by drizzle-check.yml and ci.yml test-integration.
+      - run: pnpm turbo build --filter=@workspace/database --force
 
       # Audit: print only the SQL files added by THIS push.
       # GitHub sets github.event.before to forty zeros on first
