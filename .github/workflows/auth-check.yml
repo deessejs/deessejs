@@ -1,0 +1,52 @@
+name: Auth schema check
+
+# CI gate that keeps packages/auth/src/auth.ts and
+# packages/database/src/schema/auth.ts in sync.
+#
+# Runs `pnpm auth:generate` and asserts the regenerated
+# schema/auth.ts is byte-identical to the committed version.
+# schema/auth.ts is not written by hand — it is generated from
+# auth.ts by the Better Auth CLI. A PR that edits auth.ts
+# without regenerating the schema leaves staging inconsistent
+# with the app config, and the first login device-flow crashes.
+#
+# Implemented per ADR-020.
+
+on:
+  pull_request:
+    branches: [main, staging]
+
+permissions:
+  contents: read
+
+jobs:
+  auth-schema:
+    name: Auth schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+
+      - run: pnpm install --frozen-lockfile
+
+      # Build @workspace/env and @workspace/auth so the auth
+      # generator can resolve @workspace/env/server at run time.
+      # Same pattern as drizzle-check.yml and db-migrate-staging.yml.
+      - run: pnpm turbo build --filter=@workspace/auth --force
+
+      - name: Verify auth schema is in sync
+        run: |
+          pnpm --filter @workspace/auth auth:generate
+          # git add -N marks untracked files as intent-to-add so
+          # git diff sees them as "new" rather than "ignored".
+          git add -N packages/database/src/schema/auth.ts
+          if ! git diff --exit-code packages/database/src/schema/auth.ts; then
+            echo "::error::packages/database/src/schema/auth.ts is out of sync with packages/auth/src/auth.ts"
+            echo "::error::Run \`pnpm --filter @workspace/auth auth:generate\` and commit the result."
+            git diff --stat packages/database/src/schema/auth.ts
+            exit 1
+          fi
