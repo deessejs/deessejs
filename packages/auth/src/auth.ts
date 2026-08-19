@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { nextCookies } from "better-auth/next-js"
+import { deviceAuthorization } from "better-auth/plugins"
 import { db } from "@workspace/database"
 import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
@@ -109,7 +110,20 @@ export const auth = betterAuth({
     joins: true,
   },
 
-  plugins: [nextCookies()],
+  plugins: [
+    // Device authorization (ADR-020): the device-code flow that lets the
+    // CLI obtain a session token without a password. The plugin adds
+    // /device/code, /device/token, /device, /device/approve, /device/deny
+    // under the existing /api/v1/auth mount. `verificationUri` is pinned to
+    // the relative path so the plugin can be configured independently of
+    // the deployment origin. The plugin must sit before `nextCookies()`
+    // because `nextCookies()` must remain the last entry (Next.js integration
+    // requirement).
+    deviceAuthorization({
+      verificationUri: "/device",
+    }),
+    nextCookies(),
+  ],
 })
 
 // Type exports for consumers
