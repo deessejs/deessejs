@@ -17,6 +17,6 @@
     "ADR-010-cli-public-surface",
     "ADR-011-hono-for-system-routes",
     "ADR-012-changesets-private-workspace-deps",
-    "ADR-013-device-auth-cli"
+    "ADR-019-device-auth-cli"
   ]
 }
