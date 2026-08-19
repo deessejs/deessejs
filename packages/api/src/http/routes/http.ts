@@ -49,7 +49,6 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
       await db.execute(sql`SELECT 1`)
       return c.json({ status: "ready" })
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error("[ready] db.execute failed:", err)
       return c.json({ status: "not ready" }, 503)
     }
