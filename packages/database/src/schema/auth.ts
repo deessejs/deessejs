@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, index } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -98,7 +98,7 @@ export const deviceCode = pgTable(
     status: text("status").notNull().default("pending"),
     expiresAt: timestamp("expires_at").notNull(),
     lastPolledAt: timestamp("last_polled_at"),
-    pollingInterval: text("polling_interval"),
+    pollingInterval: integer("polling_interval"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
