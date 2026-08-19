@@ -213,15 +213,37 @@ loop. The loop calls the typed Better Auth client method
 client_id })` and decodes the response into the shape
 Better Auth publishes. The error codes
 (`authorization_pending`, `slow_down`, `expired_token`,
-`access_denied`) are Better Auth's codes, not CLI codes.
-The CLI maps them to behavior, not to user-facing labels.
+`access_denied`, `invalid_grant`, `invalid_client`)
+are Better Auth's codes, not CLI codes. The CLI maps
+them to behavior, not to user-facing labels.
+
+The mapping table lives in
+`apps/cli/src/commands/auth/polling-errors.ts` as a
+pure function `mapPollingError(code: BetterAuthErrorCode): CliError`:
+- `authorization_pending` → continue polling (no exit)
+- `slow_down` → increase local interval by 5s, continue
+- `expired_token` → `cliDeviceExpired(...)` with message
+  "Device code expired before approval. Run `deesse auth login` again."
+- `access_denied` → `cliDeviceDenied(...)` with message
+  "Authorization was denied in the browser."
+- `invalid_grant`, `invalid_client` → `cliDeviceExpired(...)`
+  with a "code invalid or already used" message (the user
+  has no way to recover without restarting the flow)
 
 The `interval` returned by `/device/code` is the minimum
 polling interval. Better Auth's default is `"5s"`; the
 CLI respects whatever the server publishes. On `slow_down`,
 the CLI increases its local interval by 5 seconds and
-continues. On `expired_token` or `access_denied`, the CLI
-exits with a distinct exit code mapped through `CliError`.
+continues. On `expired_token`, `access_denied`,
+`invalid_grant`, or `invalid_client`, the CLI exits
+through the `mapPollingError` table above.
+
+The polling loop also enforces a **total timeout** of
+30 minutes (the upstream device-code TTL). On timeout, the
+CLI exits with `cliDeviceExpired` and the message
+"Device flow timed out after 30 minutes. Run `deesse auth login` again."
+The timeout uses the same `sleep` helper as the polling
+interval; no second timing mechanism.
 
 ### apps/app pages
 
@@ -432,7 +454,12 @@ this ADR.
   code sends the user to a bare sign-in page that does
   not know which device to claim. The CLI encodes the
   `user_code` in the URL it opens so the page hydrates
-  the right state on first paint.
+  the right state on first paint. The CLI uses the `open`
+  package (catalogued in `pnpm-workspace.yaml`) to launch
+  the OS-default browser on Linux/macOS/Windows; the
+  cross-platform shim is one line (`open(url)`) and the
+  package handles WSL detection and the
+  `xdg-open`/`open`/`start` per-OS dispatch.
 - A new page
   `apps/app/app/(unprotected)/(auth)/device/page.tsx`
   inside the existing `(auth)` sub-group, alongside
@@ -555,9 +582,12 @@ this ADR.
   not a renamed or removed command.
 - **The CLI's error code list.** The four codes
   (`network_error`, `parse_error`, `not_found`,
-  `cli_outdated`) are unchanged. The polling loop maps
-  Better Auth error codes to existing CLI codes through
-  the `CliError` machinery; no new public code is added.
+  `cli_outdated`) are unchanged, plus the two device-flow
+  codes (`cli_device_denied`, `cli_device_expired`) added
+  in lockstep by ADR-010 §2 (the public-list amendment
+  this ADR required). The polling loop maps Better Auth
+  error codes to these via the `CliError` machinery; no
+  other new public code is added by this ADR.
 - **The CLI's HTTP wire format.** The CLI still talks to
   the upstream through the Better Auth client for the
   auth endpoints. The typed oRPC client (per ADR-001)
@@ -586,6 +616,49 @@ this ADR.
   single-tenant decision, the `deviceCode` table, and
   the `verificationUri` page are shared, but the
   plumbing does not change here.
+
+## Test strategy
+
+The device-flow ships with **one test layer** in the
+implementation PR: an integration test on the server,
+extending `packages/api/tests/integration/system/auth.test.ts`
+to cover the five Better Auth endpoints
+(`/auth/device/code`, `/auth/device/token`, `/auth/device`,
+`/auth/device/approve`, `/auth/device/deny`). The test
+uses a real `http.createServer` plus a real database
+fixture, per ADR-009 (test strategy) and the
+Source-Side Client pattern (ADR-001 / rule 0008
+test-mocking). The integration test runs on every PR
+that touches the device-flow path, in the same CI
+job as the other system-route tests.
+
+The web side (`DeviceForm`, the `device` page, the
+`QueryClientProvider` wiring) ships without a unit or
+component test in the implementation PR. The page is a
+thin shell that delegates the state machine to
+`DeviceForm`; the only logic worth testing is the
+`mapPollingError` table on the CLI side and the Zod
+`userCodeSchema` runtime validation. The web side is
+exercised manually against a local Better Auth
+instance, then covered by the server integration test
+indirectly (the same wire format is consumed).
+
+The CLI commands (`auth login`, `auth status`,
+`auth logout`) ship without a unit or integration test
+in the implementation PR. The polling-loop logic is
+the part with the most surface (timeout, backoff,
+mapping table) and gains the most from a test, but
+building the fixture (a fake Better Auth server that
+returns `authorization_pending` then `approved` after
+N polls) is a separate concern. The follow-up PR
+"add device-auth CLI tests" lands alongside the
+implementation PR but is not part of it.
+
+A PR that adds a unit test for the web side or the
+CLI side is **not rejected** by this ADR. The ADR
+documents what the implementation PR ships, not what
+follows it. The follow-up tests are the right shape;
+the implementation PR is the right scope.
 
 ## Consequences
 
