@@ -1,5 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
+import { serverEnv } from "@workspace/env/server"
+
 import * as schema from "./schema/index.js"
 
 // Serverless-friendly defaults:
@@ -11,35 +13,29 @@ import * as schema from "./schema/index.js"
 //   max_lifetime: 1800 → recycle connections every 30 min to stay fresh.
 //
 // Lazy initialization: the pool is only created when `db` is first accessed.
-// When DATABASE_URL is not set (e.g. `pnpm auth:generate`), a dummy object is
-// returned so imports succeed without crashing.
+// `serverEnv` is itself a lazy Proxy in @workspace/env/server, so the static
+// import below does not trigger env validation at module load — only the
+// first property access (`serverEnv.DATABASE_URL`) does. A previous version
+// used `require("@workspace/env/server")` which threw `ReferenceError:
+// require is not defined` under ESM (issue #74), silently breaking every
+// `db.*` call site. The explicit throw below surfaces a missing
+// DATABASE_URL at boot instead of letting the proxy swallow it.
 
 let _db: ReturnType<typeof drizzle> | null = null
 
 function getDb(): ReturnType<typeof drizzle> {
-  if (!_db) {
-    // Dynamic import to avoid ESM circular dependency issues while still
-    // loading env vars at runtime (not build time).
-    // This is allowed for @workspace/env/server in eslint-config.
-    const envModule = require("@workspace/env/server") as {
-      serverEnv: { DATABASE_URL: string | undefined }
-    }
-    const url = envModule.serverEnv.DATABASE_URL
-
-    if (!url) {
-      // CLI context: return a passthrough object so imports don't crash.
-      // Real usage always has DATABASE_URL set.
-      _db = {} as ReturnType<typeof drizzle>
-    } else {
-      const pool = postgres(url, {
-        prepare: false,
-        max: 10,
-        idle_timeout: 60,
-        max_lifetime: 60 * 30,
-      })
-      _db = drizzle(pool, { schema })
-    }
+  if (_db) return _db
+  const url = serverEnv.DATABASE_URL
+  if (!url) {
+    throw new Error("DATABASE_URL is required for @workspace/database")
   }
+  const pool = postgres(url, {
+    prepare: false,
+    max: 10,
+    idle_timeout: 60,
+    max_lifetime: 60 * 30,
+  })
+  _db = drizzle(pool, { schema })
   return _db
 }
 
