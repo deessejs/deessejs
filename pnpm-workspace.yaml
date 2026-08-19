@@ -80,7 +80,9 @@ catalog:
   typescript: ^6.0.3
 
   # Testing
+  drizzle-seed: ^0.1.0
   execa: ^9.6.0
+  get-port: ^7.1.0
   vitest: ^4.1.10
   zod: ^4.4.3
   zustand: ^5.0.14
