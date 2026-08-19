@@ -3,7 +3,6 @@ import Link from "next/link"
 import { ArrowRight, Sparkles } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { ReleaseGroupView } from "@/components/blog/release-group"
-import { SearchDialog } from "@/components/blog/search-dialog"
 import { getAllReleases } from "@/lib/blog/releases"
 import { groupReleasesByMinor } from "@/lib/blog/types"
 
@@ -41,7 +40,6 @@ export default function ChangelogPage() {
             .
           </p>
         </div>
-        <SearchDialog />
       </header>
 
       {latest ? (

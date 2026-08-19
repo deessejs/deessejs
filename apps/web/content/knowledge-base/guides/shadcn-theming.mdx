@@ -1,0 +1,45 @@
+---
+title: Theme with shadcn tokens
+description: Add semantic tokens, dark mode, brand colors.
+topic: ui
+products: [shadcn, tailwind, theming]
+order: 0
+draft: false
+---
+
+The DeesseJS design system is shadcn/ui on Tailwind v4.
+Themes are declared as CSS variables in
+`packages/ui/src/styles/globals.css` and consumed through
+semantic tokens (`bg-background`, `text-foreground`,
+`border-border`).
+
+## 1. Pick a starting palette
+
+shadcn ships three defaults (zinc, slate, stone). Pick
+the closest to your brand and override the CSS variables
+in `globals.css`.
+
+## 2. Override semantic tokens
+
+```css
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+  --primary: 222 89% 55%;
+}
+```
+
+Dark mode overrides live under `.dark`. The
+`next-themes` provider flips the class based on the
+visitor's preference.
+
+## 3. Verify
+
+Run `pnpm --filter web dev`, toggle dark mode in the
+header, and confirm the brand colors land on every
+page.
+
+## What's next
+
+- [Install the deessejs CLI](/knowledge-base/guides/install-deessejs-cli)
+  — scaffold a project that inherits the new theme.
