@@ -1,5 +1,6 @@
 import { Command } from "commander"
 import pc from "picocolors"
+import { readPackageVersion } from "./api/self-version.js"
 import { initCommand } from "./commands/init.js"
 import { listCommand } from "./commands/list.js"
 import { infoCommand } from "./commands/info.js"
@@ -9,7 +10,7 @@ const program = new Command()
 program
   .name("deessejs")
   .description("CLI for the DeesseJS template registry")
-  .version("0.1.0")
+  .version(readPackageVersion())
 
 program.addCommand(listCommand)
 program.addCommand(infoCommand)
