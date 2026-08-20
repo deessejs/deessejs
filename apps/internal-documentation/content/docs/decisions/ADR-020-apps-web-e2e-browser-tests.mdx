@@ -642,6 +642,7 @@ jobs:
       - name: Run Playwright
         env:
           BASE_URL: ${{ github.event.client_payload.url }}
+          E2E_TEST_SECRET: ${{ secrets.E2E_TEST_SECRET }}
           CI: 1
         run: pnpm --filter web exec playwright test
       - if: failure()
