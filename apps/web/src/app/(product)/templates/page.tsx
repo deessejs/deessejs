@@ -100,7 +100,10 @@ const TemplatesIndexPage = async ({
 
   if (templates.length === 0) {
     return (
-      <section className="mx-auto max-w-6xl px-6 py-24">
+      <section
+        data-testid="templates-empty"
+        className="mx-auto max-w-6xl px-6 py-24"
+      >
         <h1 className="text-heading-32 tracking-tight">Templates</h1>
         <p className="text-copy-16 text-muted-foreground mt-4">
           No templates available right now. Try the CLI:
