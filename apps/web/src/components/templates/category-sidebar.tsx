@@ -98,6 +98,8 @@ type FilterGroupProps = {
   otherKey: "type" | "framework"
   /** Count templates matching this entry (group-specific). */
   countFor: (slug: string) => number
+  /** Optional data-testid forwarded to the group container. */
+  "data-testid"?: string
 }
 
 /**
@@ -111,10 +113,11 @@ const FilterGroup = ({
   paramKey,
   otherKey,
   countFor,
+  "data-testid": dataTestId,
 }: FilterGroupProps) => {
   const activeSet = new Set(activeValues)
   return (
-    <div>
+    <div data-testid={dataTestId}>
       <h3 className="text-label-13 mb-3 font-semibold tracking-tight text-foreground">
         {title}
       </h3>
@@ -185,6 +188,7 @@ export const CategorySidebar = ({
           otherActiveValues={activeFrameworks}
           paramKey="type"
           otherKey="framework"
+          data-testid="templates-sidebar-type"
           countFor={(slug) =>
             templates.filter((t) => t.category === slug).length
           }
@@ -196,11 +200,15 @@ export const CategorySidebar = ({
           otherActiveValues={activeTypes}
           paramKey="framework"
           otherKey="type"
+          data-testid="templates-sidebar-framework"
           countFor={(slug) =>
             templates.filter((t) => t.labels.includes(slug)).length
           }
         />
-        <p className="text-copy-13 text-muted-foreground/70">
+        <p
+          data-testid="templates-sidebar-count"
+          className="text-copy-13 text-muted-foreground/70"
+        >
           {totalShown} template{totalShown === 1 ? "" : "s"} in catalog
         </p>
       </div>
