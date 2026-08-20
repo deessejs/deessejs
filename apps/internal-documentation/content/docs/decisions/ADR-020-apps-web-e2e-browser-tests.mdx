@@ -1,0 +1,755 @@
+---
+title: 'apps/web browser end-to-end tests'
+description: 'Smoke suite against the deployed marketing site. Pin the cache-poisoning regression for issue #81 and protect the user-visible contract.'
+---
+
+# ADR-020: apps/web browser end-to-end tests
+
+## Status
+
+Draft (2026-08). Awaiting human review before any implementation lands.
+
+## Context
+
+`apps/web` is the marketing site. Its user-visible surface is the
+  RSC tree under `apps/web/src/app/(product)/templates/`, the
+  related navigation (`apps/web/src/components/headers/nav-sections.tsx`,
+  `apps/web/src/components/footers/app-footer.tsx`), and the
+  upstream call into `packages/api` via `orpc.templates.list`
+  (`apps/web/src/lib/orpc.ts`, `packages/api/src/orpc/routes/templates.ts`).
+Every unit and integration test in this monorepo today exercises
+  one layer in isolation: vitest at the helper layer (ADR-009)
+  for the `buildFetchIsrInit` translation contract, the API
+  surface in-process via `api.request()` (ADR-016) for the
+  Hono mount, and the CLI tarball in-process via the
+  `run()` helper (ADR-014) for the binary.
+**No test currently exercises the marketing site as a black
+  box the way a user does.** The gap is the failure mode the
+  user actually sees: the rendered DOM, the network round-trip
+  to `/api/v1/rpc/templates/list`, and the Next.js Data Cache
+  behavior for the `templates:live` tag introduced in PR #85.
+
+Three concrete failure modes the existing layer-cake does not catch:
+
+1. **The issue #81 cache-poisoning regression.** PR #85
+   introduced `templates:live` (`revalidate: 0`) and a runtime
+   re-throw at the three call-sites. The fix is verified at
+   the unit level (`apps/web/test/unit/orpc.test.ts`) and
+   the API-side unit level (`packages/api/tests/integration/rpc/templates.test.ts`).
+   Nothing exercises it as a user: a real browser hitting
+   the marketing site, where `/templates` renders a populated
+   grid then an empty `/templates` re-throws through to the
+   segment's `error.tsx`, with the response header
+   `x-nextjs-cache` reflecting the new `revalidate: 0`
+   directive. A regression that re-poisons the cache is
+   invisible to every existing test.
+2. **The wire-code `TEMPLATES_FETCH_FAILED` (502).** The new
+   error contract in `packages/api/src/orpc/routes/templates.ts:58-62`
+   is exercised at the unit layer but never observed from a
+   client: the typed client should branch on
+   `err instanceof ORPCError && err.code === "TEMPLATES_FETCH_FAILED"`
+   and the marketing site's `error.tsx` should render the
+   "Couldn't load templates" copy. No test pins that chain.
+3. **The new home-page -> detail links.** The marketing home
+   (`apps/web/src/app/(marketing)/page.tsx`) hard-codes three
+   featured slugs in `FEATURED_TEMPLATES` (lines 30-57). Only
+   `saas-starter` is registered server-side
+   (`packages/api/src/templates.ts:30-43`). Clicking the other
+   two links today lands on `not-found.tsx`. The asymmetry is
+   correct but unobservable; a regression that breaks even
+   the `saas-starter` link is not caught.
+
+Three patterns the existing test surface already provides, and
+  that this ADR deliberately re-uses rather than reimplements:
+
+- **Vitest unit seam (ADR-009).** The translation contract
+  `buildFetchIsrInit` lives at `apps/web/test/unit/orpc.test.ts`
+  (8 tests). It pins the translation contract that the
+  browser-level test depends on. It is not enough on its own
+  because the failure modes above need a real browser to be
+  observable.
+- **Hono `api.request()` integration (ADR-016).** The
+  `packages/api/tests/integration/rpc/templates.test.ts` block
+  exercises the Hono mount end-to-end without booting
+  Next.js. It is the right shape for the Hono surface; it is
+  the wrong shape for a UI test that needs RSC, the Data
+  Cache, and the segment `error.tsx` to be live.
+- **CLI `run()` e2e (ADR-014).** The published-artifact
+  smoke suite under `apps/cli/test/e2e/` runs the tarball
+  against a mock HTTP server. The shape (`{ stdout, stderr,
+  exitCode }`; helper `run()`; mode-based mock server)
+  informs how this ADR shapes the browser harness, but the
+  surface is different (no CLI binary, no git fixture).
+
+## Decision
+
+Add a dedicated Playwright suite under `apps/web/e2e/` that
+  exercises the deployed marketing site. The suite is one
+  file per surface (`templates-index`,
+  `templates-detail`, `templates-cache`, `navigation`), plus a
+  helpers folder for the mock-API route interception, the
+  page-object selectors, and the Vercel preview URL
+  resolution.
+
+The suite runs in CI against the Vercel preview deployment
+  for the PR. Failure modes that are too slow, flaky, or
+  expensive for PR gating run in a deeper nightly workflow.
+
+### What this rule decides
+
+Four concrete decisions.
+
+**1. Framework: Playwright.** Next's own testing guide lists
+  Playwright and Cypress as peer-supported
+  ([nextjs.org/docs/app/guides/testing](https://nextjs.org/docs/app/guides/testing),
+  v16.3.1, lastUpdated 2026-02-03). Next does not recommend one
+  over the other; both are equally listed. The choice for
+  Playwright rests on three technical grounds and one
+  ergonomic ground:
+
+  - **First-class multi-browser support.** Playwright ships
+    Chromium, Firefox, and WebKit drivers in one binary
+    ([playwright.dev/docs/browsers](https://playwright.dev/docs/browsers)).
+    The repo will need real Firefox and WebKit coverage at
+    some point; Cypress uses a remote-control architecture
+    that requires Sauce Labs for non-Chromium browsers.
+  - **`page.route()` interception at the network layer.** The
+    `TEMPLATES_FETCH_FAILED` test needs to inject a 502 from
+    the oRPC POST without a real upstream failure. Playwright
+    ships `page.route()` for this; Cypress's `cy.intercept()`
+    is a fine equivalent but the Playwright API composes more
+    cleanly with the existing TypeScript page-object style.
+  - **Native parallel mode and sharding.** The PR gate runs
+    in less than two minutes on three browsers; nightly can
+    shard. Cypress Parallelization requires a paid
+    Dashboard.
+  - **Ergonomics: the canonical Next example uses it.** Vercel
+    maintains [`vercel/next.js/examples/with-playwright`](https://github.com/vercel/next.js/tree/canary/examples/with-playwright)
+    verbatim. Reviewers can read the official example and
+    find our config next to it; the cognitive cost of going
+    against the example is higher than the cost of either
+    framework's quirks.
+
+Cypress is rejected on three grounds: no first-class
+  Firefox/WebKit, parallel mode requires the paid Dashboard,
+  and the test suite would deviate from the canonical Next
+  example.
+
+**2. Target: Vercel preview deployment, not a local Next dev
+  server.** The CI workflow uses the
+  `on: deployment_status` trigger with the
+  `target_url` from the Vercel payload as `BASE_URL`. Two
+  reasons:
+
+  - **The `x-nextjs-cache` header is a production-only
+    signal.** Next.js emits `HIT | STALE | MISS | REVALIDATED`
+    for ISR-rendered routes ([nextjs.org/docs/app/guides/incremental-static-regeneration](https://nextjs.org/docs/app/getting-started/revalidating);
+    v16.3.1). The header is populated by the production
+    runtime; `next dev` does not exercise it. The issue #81
+    regression test is meaningless against `next dev`.
+  - **The `revalidate: 0` directive on `liveCache` is a
+    production-only semantic.** Per the Next.js docs, `0`
+    means *« Prevent the resource from being cached. »*
+    ([nextjs.org/docs/app/api-reference/functions/fetch](https://nextjs.org/docs/app/api-reference/functions/fetch);
+    v16.3.1). In dev mode, the directive is short-circuited
+    when the request carries `cache-control: no-cache`,
+    which DevTools sends. Production assertions on this
+    directive cannot be made against `next start` either,
+    because the production app is not on the test machine;
+    the Vercel preview URL is the only environment where
+    the production code path runs at a stable URL.
+
+Local development runs against `pnpm dev` instead, using a
+  separate config preset (`baseURL: http://localhost:3000`,
+  `webServer` block from the Playwright docs). Local runs
+  exercise the same test code without asserting the cache
+  directive headers. The CI workflow does not use this
+  preset.
+
+**3. Test placement: `apps/web/e2e/`, mirroring Next's example
+  project.** The repo convention from ADR-009 is `test/`
+  (singular) at the app level (`apps/cli/test/`), but
+  Playwright's canonical directory in Next's example is
+  `e2e/` — and the divergence matters here: vitest is the
+  unit-tier runner governed by `vitestConfig({ package })`
+  per ADR-009, while Playwright is an out-of-band browser
+  runner with a different config format
+  (`playwright.config.ts`). They cannot share a directory.
+  The `e2e/` choice aligns with the canonical Next example
+  and keeps the discoverability argument obvious to anyone
+  reading the Next docs alongside our config.
+
+The directory tree after this ADR lands:
+
+```
+apps/web/
+├── e2e/                                  new
+│   ├── templates-index.spec.ts           new
+│   ├── templates-detail.spec.ts          new
+│   ├── templates-cache.spec.ts           new   (issue #81 regression guard)
+│   ├── navigation.spec.ts                new
+│   └── helpers/
+│       ├── intercept.ts                  new   page.route() helpers
+│       ├── selectors.ts                  new   stable selector queries
+│       └── preview-url.ts                new   Vercel URL parsing
+├── test/                                 existing (PR #85)
+│   └── unit/orpc.test.ts                 existing
+├── e2e.config.ts                         new   locally only
+├── playwright.config.ts                  new   CI only
+├── package.json                          modified (scripts + devDeps)
+└── vitest.config.ts                      existing
+```
+
+The `e2e.config.ts` and `playwright.config.ts` are two
+  presets of the same config: `playwright.config.ts` is the
+  CI preset (deployed preview, `workers: 1`); `e2e.config.ts`
+  is the local dev preset (hot reload, `next dev`). Playwright
+  loads the config passed via `--config`, so both presets
+  share one config file with a default export and a named
+  export for the other.
+
+**4. Stable selectors: a `data-testid` strategy, with a
+  fallback chain.** The audit at the end of this ADR
+  identifies 8 surfaces where today's selectors rely on copy
+  and would benefit from explicit `data-testid` attributes.
+  The strategy is:
+
+  - **Add `data-testid` on the four surfaces the load-bearing
+    P0 tests depend on.** The grid container, each card,
+    the sidebar groups, and the search input. Total: 8
+    `data-testid` attributes on 4 surfaces. The attributes
+    cost zero runtime overhead and zero CSS specificity
+    (Tailwind does not see them).
+  - **For surfaces the audit called out as P1/P2/P3, keep
+    the existing selectors.** The role/name/aria selectors
+    work for "Try again", "Search templates", the breadcrumb,
+    etc. Mixing test-ids in P0 and role-based selectors
+    elsewhere keeps the diff small.
+  - **Never depend on text content for assertions.** The
+    `error.tsx` deliberately suppresses `error.message`
+    (`apps/web/src/app/(product)/templates/error.tsx:7-11`),
+    so backend errors cannot leak to tests even by accident.
+
+The implementation lands the `data-testid` attributes in the
+  same PR as the test files. Two PRs would let a UI change
+  drift from a test expectation; one PR makes the coupling
+  visible at review time.
+
+### What this rule allows
+
+- **A `playwright.config.ts` at `apps/web/playwright.config.ts`**
+  with one canonical preset, a `dev` preset (for local
+  `pnpm dev` runs), and a `BASE_URL` env var that flips
+  between them. The CI workflow always sets `BASE_URL` to
+  the Vercel preview; the local preset omits `BASE_URL` and
+  uses Playwright's `webServer` block.
+- **`page.route()` interception of `/api/v1/rpc/templates/list`**
+  with three modes: `success` (the real GitHub-derived
+  payload), `failure` (502 with the new wire-code), and
+  `empty` (200 with `{ templates: [] }`). The routes are
+  scoped to the test that needs them; tests that don't need
+  to mock the API pass through to the real network.
+- **One suite per surface, named after the route family.**
+  The convention follows ADR-016's `tests/integration/`
+  rule: the file name mirrors the route, not the verb.
+  `templates-index.spec.ts` exercises `/templates`;
+  `templates-detail.spec.ts` exercises `/templates/[slug]`.
+- **Two CI workflows** (one PR-blocking, one nightly) —
+  exactly the structure from ADR-014. The PR-blocking
+  workflow runs in under three minutes on Chromium only;
+  the nightly runs the multi-browser matrix.
+- **A `test:e2e` script in `apps/web/package.json`** that
+  runs `playwright test --config playwright.config.ts` for
+  the CI preset and `playwright test --config e2e.config.ts`
+  for the local preset. The convention matches ADR-014's
+  `apps/cli/package.json:33` (`"test:e2e": "..."`) so the
+  two apps are addressable the same way from CI (`pnpm
+  --filter web test:e2e`). The vitest `test` script
+  (`apps/web/package.json`) is unaffected — vitest and
+  Playwright have independent runners.
+- **The `tests/` shape from ADR-009 continues to apply at
+  the helper layer.** A `page-objects/` directory inside
+  `apps/web/e2e/helpers/` is NOT a vitest test directory;
+  it is a Playwright fixture. The ADR-009 shape applies to
+  vitest unit tests only.
+
+### What this rule forbids
+
+- **Booting `next dev` or `next start` in the PR-blocking
+  workflow.** The PR workflow hits the Vercel preview
+  directly. Local booting is allowed only in the dev preset
+  and only on a developer machine, never in CI.
+- **A `vitest.config.ts` change for the Playwright suite.**
+  Playwright and vitest are independent runners. Adding the
+  `e2e/` directory to the vitest `include` glob would fail
+  the vitest parse step.
+- **Test-ids on the empty / not-found / error states that
+  duplicate role-based selectors.** Role-based
+  (`role=heading`, `role=button`) is more semantic. Test-ids
+  are added only where role-based selectors require copy that
+  may change with i18n.
+- **Spying on `process.exit` or stubbing `globalThis.fetch`
+  in the e2e suite.** The Playwright abstraction is the
+  browser; the page is the test surface.
+- **A dependency on `playwright/test` fixture composition
+  from `@playwright/test` outside of this folder.** The
+  fixture surface is local; cross-test sharing happens via
+  the helpers folder, not via test-runner-level fixtures.
+
+### Why not the alternatives
+
+Four patterns were considered and rejected.
+
+- **Cypress.** No first-class Firefox/WebKit, parallel mode
+  requires the paid Dashboard, deviates from the canonical
+  Next example. The orthogonal benefit of a friendlier UI
+  is moot for CI-driven smoke.
+- **A snapshot-only smoke test that hits `apps/app` directly
+  with curl.** Inspecting the HTML with grep pins the bytes
+  but misses the JS-driven DOM, the ISR cache, the segment
+  `error.tsx`, and the `data-testid` strategy. The failure
+  modes above need a real browser.
+- **Booting `next start` in CI via Docker and hitting
+  localhost.** ADR-016 rejects this pattern for API
+  integration tests (boot cost, port collisions, double
+  surface). The argument applies a fortiori to a UI test
+  that needs RSC *and* Hono *and* ISR *and* Vercel edge
+  cache headers. The Vercel preview URL is the production
+  surface; localhost is not.
+- **`chromium-only` smoke tests for the PR gate, Playwright
+  multi-browser for nightly.** The P0 assertions are
+  reproducible across browsers because they target
+  semantics the spec defines (HTTP 200 on `/templates`, a
+  `data-testid` present in the DOM, an `x-nextjs-cache`
+  value). Browser-specific bugs land in the matrix, not in
+  the gate. Skipping the browser matrix is not the issue
+  here; the issue is whether the gate is fast enough.
+
+### Test scope
+
+The first PR ships the P0 surface. Subsequent PRs add P1-P3
+  in priority order; each PR is one feature area.
+
+**P0 - ship in this PR.**
+- P0-1: `/templates` index renders the populated catalog.
+  Driven from `/`. Asserts `role=heading[name="Templates"]`,
+  sidebar `Type`/`Framework` groups, at least one card via
+  `data-testid="templates-card"`, and the count summary
+  text. Network: one POST `/api/v1/rpc/templates/list`.
+- P0-2: `/templates` empty catalog renders the empty state
+  with `data-testid="templates-empty"`. Network:
+  intercepted 200 with `{ templates: [] }`.
+- P0-3: `/templates` error boundary renders on a forced
+  oRPC failure. Network: intercepted 502 with wire-code
+  `TEMPLATES_FETCH_FAILED`. Asserts the H1, body copy, and
+  the `role=button[name="Try again"]`. **Clicking
+  "Try again" re-fires the oRPC POST** (the network
+  assertion is the regression guard for `reset()`).
+- P0-4: `/templates/[slug]` renders the detail page for
+  `saas-starter`. Asserts H1 matches `template.name`,
+  the breadcrumb links back to `/templates`, the H1 +
+  install + source + Details `&lt;dl&gt;` are present.
+- P0-5: `/templates/[slug]` for an unknown slug renders
+  `not-found.tsx`. The Pages output is 404 (asserted via
+  `response.status()`); the body has `role=heading[name=
+  "Template not found"]` and the back link.
+- P0-6: **issue #81 regression guard.** The POST
+  `/api/v1/rpc/templates/list` issued by `/templates` is
+  observed via `page.on('request')`. The network assertion
+  must fire the oRPC POST on **every** navigation (no
+  sticky cache). The RSC document response for `/templates`
+  must carry `x-nextjs-cache != "HIT"` or omit the header.
+  A `HIT` here is the smoking gun for a regression to the
+  old site-wide tag.
+
+**P1 - second PR.**
+- P1-7: sidebar filter toggles update the URL and re-filter
+  the grid. Asserts `aria-current="page"` after click.
+- P1-8: search input filters client-side without firing
+  the oRPC POST.
+- P1-9: load skeleton appears during the initial RSC
+  pending (throttle the network and assert
+  `data-testid="templates-loading"` exists).
+- P1-10: `Cache-Control: no-store` header on
+  `/api/v1/rpc/*` responses (per
+  `packages/api/src/http/mount-rpc.ts:70`).
+- P1-11: navigation footer/header links reach `/templates`.
+
+**P2 - third PR.**
+- P2-12: feature-card link from `/` to `/templates/[slug]`
+  for `saas-starter` lands on the detail; `ai-chatbot` and
+  `landing-page` land on `not-found.tsx` (the
+  registry-vs-marketing-asymmetry is observable but correct).
+- P2-13: filter for `?type=ai` renders the
+  "No templates in this filter yet" copy (distinct from
+  P0-2 empty-catalog copy).
+- P2-14: detail page `generateMetadata` sets
+  `await expect(page).toHaveTitle(template.name)`.
+- P2-15: detail page Copy button writes
+  `deessejs init saas-starter` to the clipboard
+  (granted in the Playwright context).
+
+**P3 - defer.** Console error counts, sitemap inclusion,
+  details `&lt;dl&gt;` values, framework-filter side-effects.
+  These land only if a regression surfaces.
+
+### Stable selectors the implementation adds
+
+Eight `data-testid` attributes on four surfaces. Each is
+  added in the same PR as the test file that uses it.
+
+| Surface | `data-testid` | File:line |
+|---|---|---|
+| Card grid container | `templates-grid` | `apps/web/src/components/templates/template-grid.tsx:30` |
+| Each card | `templates-card` | `apps/web/src/components/templates/template-card.tsx:48` |
+| Sidebar Type group | `templates-sidebar-type` | `apps/web/src/components/templates/category-sidebar.tsx:117` |
+| Sidebar Framework group | `templates-sidebar-framework` | `apps/web/src/components/templates/category-sidebar.tsx:117` |
+| Sidebar count summary | `templates-sidebar-count` | `apps/web/src/components/templates/category-sidebar.tsx:203` |
+| Search input | `templates-search` | `apps/web/src/components/templates/search-bar.tsx:64` |
+| Loading skeleton | `templates-loading` | `apps/web/src/app/(product)/templates/loading.tsx:17` |
+| Empty catalog copy | `templates-empty` | `apps/web/src/app/(product)/templates/page.tsx:103` |
+
+The audit identifies surfaces where role/name selectors are
+  already sufficient (the H1, the error UI, the not-found UI,
+  the breadcrumb, the copy buttons). Those stay role-based.
+  The eight test-ids above are added only where role-based
+  selectors would depend on copy that the audit flagged as
+  fragile (i18n, rebrand).
+
+### CI workflow shape
+
+Two workflows, named `apps-web-e2e.yml` and
+  `apps-web-e2e-extended.yml`. The shape inherits from the
+  CLI e2e workflows in ADR-014: PR-blocking and nightly,
+  no tarball (browser tests against the deployed app), one
+  pack step that is a no-op.
+
+**`apps-web-e2e.yml` (PR blocking).**
+```yaml
+name: apps/web e2e
+on:
+  deployment_status:
+    types: [success]
+jobs:
+  e2e:
+    if: github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: 'pnpm' }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web exec playwright install --with-deps
+      - name: Run Playwright
+        env:
+          BASE_URL: ${{ github.event.deployment_status.target_url }}
+          CI: 1
+        run: pnpm --filter web exec playwright test
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+```
+
+The `on: deployment_status` trigger is verbatim from the
+  Playwright CI docs: *"Services like Vercel use this pattern
+  so you can run your end-to-end tests on their deployed
+  environment."* The `target_url` is the commit URL
+  (`&lt;project&gt;-&lt;hash&gt;-&lt;scope&gt;.vercel.app`), which
+  Vercel pins to one commit and is the stable identifier for
+  the deployment.
+
+**`apps-web-e2e-extended.yml` (nightly non-blocking).**
+  Schedule: `cron: "0 3 * * *"`. Runs a wider matrix:
+
+  | Dimension | Scenarios | Notes |
+  |---|---|---|
+  | Browser | Desktop Chrome, Desktop Firefox, Desktop Safari (WebKit), Mobile Chrome (Pixel 5), Mobile Safari (iPhone 12) | PR gate runs Chromium only; nightly covers the multi-browser matrix per the canonical Playwright config |
+  | Network | `real-network` (the Vercel preview hit by the PR gate); `forced-cache-poison` (a 502 interception that re-runs the issue #81 regression); `slow-network` (Playwright route with a 2s delay to test the loading skeleton + `useDeferredValue`); `flaky-network` (intermittent 502s to test the `Try again` button) | Each scenario is a separate `matrix:` entry with its own `interception` preset |
+  | Fixture | `populated-catalog` (the V1 single template); `empty-catalog` (intercepted `{ templates: [] }`); `large-catalog` (intercepted 100 templates — slow path, asserts the grid scroll + filter performance) | Cloned from the `large-fixture` / `unicode` / `real-pm` pattern in ADR-014:322-356 |
+
+  Failures in any nightly scenario post a GitHub issue
+  with the workflow run URL, the scenario, and the
+  captured stdout/stderr. Same pattern as ADR-014's
+  nightly workflow.
+
+  **The `forced-cache-poison` scenario is the one that
+  directly mirrors the issue #81 regression.** It runs
+  P0-6 against an oRPC interception that returns
+  `{ defined: false, code: "TEMPLATES_FETCH_FAILED", status:
+  502 }`. The scenario asserts:
+    1. The `error.tsx` boundary renders the documented
+       copy.
+    2. The `role=button[name="Try again"]` recovers to a
+       fresh populated state.
+    3. The `x-nextjs-cache` header is **not** `HIT` after
+       the recovery.
+
+  If a contributor reintroduces the cache-poisoning bug —
+  the same re-throw path, the same page-side error
+  swallow — this scenario catches it on the same day. It
+  is the load-bearing nightly assertion.
+
+### Files structure
+
+```
+apps/web/e2e/                              new
++-- templates-index.spec.ts                new   P0-1, P0-2, P0-3
++-- templates-detail.spec.ts               new   P0-4, P0-5
++-- templates-cache.spec.ts                new   P0-6 (issue #81 guard)
++-- navigation.spec.ts                     new   P1-7, P1-11
++-- search-and-empty.spec.ts               new   P1-8, P1-9, P2-13
++-- home-page-links.spec.ts                new   P2-12
++-- metadata.spec.ts                       new   P2-14
++-- clipboard.spec.ts                      new   P2-15
++-- intercept.ts                           new   page.route() helpers
++-- selectors.ts                           new   role + test-id queries
++-- preview-url.ts                         new   Vercel URL parser
+
+apps/web/
++-- package.json                           modified (scripts + devDeps)
++-- playwright.config.ts                   new   CI preset
++-- e2e.config.ts                          new   local dev preset
++-- src/components/templates/template-grid.tsx      modified (test-id)
++-- src/components/templates/template-card.tsx      modified (test-id)
++-- src/components/templates/category-sidebar.tsx   modified (2 test-ids + count)
++-- src/components/templates/search-bar.tsx         modified (test-id)
++-- src/app/(product)/templates/loading.tsx         modified (test-id)
++-- src/app/(product)/templates/page.tsx            modified (test-id)
+```
+
+The vitest config and the playwright config are
+  independent files. The vitest `include` glob stays
+  `test/**/*.test.ts`. The playwright `testDir` is
+  `e2e/`. They cannot collide because the test extensions
+  differ (`.test.ts` for vitest, `.spec.ts` for Playwright).
+
+### Test seams and conventions
+
+Three implementation details pinned here so a future
+  contributor does not re-derive them.
+
+**`expect.toPass()` for retry-aware assertions.** The
+  network interception setup (`page.route`) takes effect on
+  the next request. A test that mocks the oRPC POST and
+  then asserts on the resulting DOM needs to retry the
+  assertion if the route interception races the navigation.
+  Playwright's `expect.toPass()` ([playwright.dev/docs/test-assertions](https://playwright.dev/docs/test-assertions#expecttopass))
+  is the canonical retry primitive.
+
+**`page.on('request')` and `page.on('response')` listeners
+  are cleaned up per-test.** Without cleanup, the listeners
+  accumulate across tests and the P0-6 regression guard
+  reports requests from previous tests. The convention:
+  every test that subscribes to `request` or `response`
+  removes the subscriber in a `finally` block.
+
+**Local-preset reuse of the CI preset.** The dev preset
+  (`apps/web/e2e.config.ts`) extends the CI preset with
+  three lines: `webServer: { command: 'pnpm dev', port: 3000,
+  reuseExistingServer: !process.env.CI }`, `use.baseURL:
+  'http://localhost:3000'`. No test file is duplicated. The
+  `playwright.config.ts` and `e2e.config.ts` files together
+  total under 80 lines.
+
+### What this rule does not change
+
+- **`apps/web/test/unit/orpc.test.ts` (8 tests, PR #85
+  addition).** Stays. The unit tests pin the translation
+  contract; the e2e tests pin the user-visible behavior.
+  Removing the unit tests would weaken the regression net
+  by an order of magnitude.
+- **`packages/api/tests/integration/rpc/templates.test.ts`.**
+  Stays. The Hono-mount integration tests are the right
+  shape for Hono; the e2e tests are the right shape for the
+  rendered UI. Both are needed.
+- **The Vercel preview deployment surface.** The
+  `apps/app/app/api/[[...route]]/route.ts` and the existing
+  CI workflows for Vercel deployments stay. The new
+  workflows add a `deployment_status` listener; they do not
+  modify existing workflows.
+
+### Consequences
+
+- **CI costs ~3 minutes per PR (3 browsers, ~1 minute each
+  in parallel under `workers: 1`).** The PR-blocking budget
+  matches ADR-014's pattern. The nightly runs ~12 minutes.
+- **PR #85's unit test for `buildFetchIsrInit` becomes a
+  regression net for the helper, but the e2e test is the
+  primary signal for the user-visible behavior.** A
+  contributor who breaks the translation contract fails
+  locally on the unit test; a contributor who changes the
+  page structure in a way that hides the bug fails CI on
+  the e2e test.
+- **A regression that reintroduces the cache-poisoning bug
+  fails CI before merge.** This is the load-bearing
+  consequence of the ADR.
+- **This is the first `e2e/` test tier materialised in the
+  monorepo.** ADR-009 (Accepted, line 87-89) defines three
+  vitest tiers (`unit/`, `integration/`, `contract/`) for
+  packages and the singular `test/` tier for apps. ADR-014
+  (Accepted, line 150) calls for an `apps/cli/test/e2e/`
+  fourth tier but has not been implemented. ADR-020 ships
+  the first materialised `e2e/` tier under `apps/web/`.
+  Naming: `apps/web/e2e/` (not `apps/web/test/e2e/`)
+  because the vitest `include` glob already covers
+  `test/**/*.test.ts` and Playwright files use `.spec.ts`
+  — the directories cannot share a prefix without a
+  vitest config collision.
+- **Vercel preview URLs are publicly accessible by default**
+  ([vercel.com/docs/deployments/generated-urls](https://vercel.com/docs/deployments/generated-urls);
+  lastUpdated 2025-09-24). The e2e tests run against the
+  preview; a misconfigured preview env that exposes
+  real-user data fails the e2e tests because the assertions
+  include a populated catalog and a non-2xx upstream
+  failure. **Deployment Protection** on the Vercel project
+  must remain off for the duration of e2e testing, or the
+  `deployment_status.target_url` from Vercel includes the
+  protection bypass secret in the URL, which would re-expose
+  preview traffic to the public. The migration to protected
+  previews is a follow-up ADR.
+
+### Future work
+
+Three extensions are out of scope for this ADR but worth
+  flagging:
+
+1. **A second Playwright suite under `apps/app/` for the
+   authenticated UI flow.** Better Auth + Hono session
+   cookies + the cookie-aware routes in `apps/app` need a
+   similar browser-level smoke. The scope here is
+   `apps/web`; `apps/app` is a separate ADR.
+   **Note on the current state:** `apps/app/` today has
+   no `tests/` directory, no `vitest.config.ts`, and no
+   Playwright dependency — the future Playwright suite is
+   a greenfield adoption, not an extension of existing
+   infrastructure. ADR-016:228 contains a factually
+   incorrect reference to *« the existing Playwright-style
+   test surface in apps/app »*; that line is one of the
+   things a follow-up ADR will need to correct.
+2. **Pixel-level visual regression on the populated grid.**
+   Playwright supports visual diffs natively. This ADR
+   defers it; the next iteration can adopt it if a UI
+   rebrand or template-card redesign is planned.
+3. **Closing the `vitestConfig` signature drift.** ADR-009
+   line 70-72 shows `vitestConfig({ package: 'X' })`, but
+   the actual
+   `packages/vitest-config/src/index.ts:3-13` exports
+   `VitestOverrides` with `include?, testTimeout?,
+   hookTimeout?, pool?, setupFiles?, coverage?,
+   clearMocks?, restoreMocks?, environment?` — no
+   `package` key. This ADR does not use `vitestConfig`,
+   so it does not trip the drift, but a follow-up should
+   align ADR-009's example with the implementation before
+   the next consumer is misled.
+
+All three are listed so the next iteration of this ADR
+  can incorporate them without re-justifying the choices.
+
+## Decision log
+
+- **2026-08-20**: investigated browser E2E options for
+  Next.js 16. Confirmed via the Next docs
+  ([nextjs.org/docs/app/guides/testing](https://nextjs.org/docs/app/guides/testing);
+  v16.3.1, lastUpdated 2026-02-03) that Next lists Playwright
+  and Cypress as peer-supported without preference.
+  Selected Playwright on the multi-browser, page.route(),
+  and canonical-presentation grounds.
+- **2026-08-20**: inventoried the existing test surface in
+  the repo. Confirmed that ADR-009 (unit/integration/contract
+  vitest) and ADR-016 (Hono `api.request()`) cover the
+  helper layer and the API layer but not the rendered UI.
+  ADR-014 (CLI tarball) is the closest analogue in spirit
+  but does not cover the browser surface.
+- **2026-08-20**: drafted the test scope (P0-P3) by auditing
+  the rendered templates tree. Pinned 8 `data-testid`
+  attributes on 4 surfaces; the remaining 17+ assertions
+  reuse role/name selectors.
+- **2026-08-20**: chose `e2e/` (not `test/e2e/`) because it
+  matches the canonical Next example and prevents vitest
+  config collision (ADR-009 forbids deviations from
+  `vitestConfig(...)`).
+- **2026-08-20**: chose Vercel preview URL over `next
+  start` for the same reason ADR-016 rejects the latter:
+  the production cache headers are observable only in the
+  production environment. Explicit override of ADR-016's
+  rejection rationale for the narrow case of a UI smoke
+  test that needs the production cache behavior.
+
+## Audit: rendered `apps/web` surface (the data the ADR is based on)
+
+The P0-P3 test scope above is grounded in the following
+  audit. Each row lists the file:line of the load-bearing
+  surface, the assertion strategy, and the regression
+  class the test catches. Audit performed 2026-08-20.
+
+| Surface | File:line | Assertion strategy | Regression class |
+|---|---|---|---|
+| `/templates` H1 (populated) | `apps/web/src/app/(product)/templates/page.tsx:141` | `role=heading[name="Templates"]` | Page renders at all |
+| `/templates` H1 (empty) | `apps/web/src/app/(product)/templates/page.tsx:104` | role + `data-testid="templates-empty"` | Bug A: empty state hides the API failure |
+| Sidebar Type group | `apps/web/src/components/templates/category-sidebar.tsx:117` | `data-testid="templates-sidebar-type"` + role | Filter UI broken |
+| Sidebar Framework group | `apps/web/src/components/templates/category-sidebar.tsx:117` | `data-testid="templates-sidebar-framework"` | Filter UI broken |
+| Sidebar count | `apps/web/src/components/templates/category-sidebar.tsx:203` | `data-testid="templates-sidebar-count"` | Wrong count visible |
+| Search input | `apps/web/src/components/templates/search-bar.tsx:64` | `data-testid="templates-search"` + aria-label | Search broken |
+| Loading skeleton | `apps/web/src/app/(product)/templates/loading.tsx:17` | `data-testid="templates-loading"` | CLS regression |
+| Card grid container | `apps/web/src/components/templates/template-grid.tsx:30` | `data-testid="templates-grid"` | Grid broken |
+| Each card | `apps/web/src/components/templates/template-card.tsx:48` | `data-testid="templates-card"` | Cards broken |
+| Error UI H1 | `apps/web/src/app/(product)/templates/error.tsx:21` | `role=heading[name="Couldn't load templates"]` | error boundary not wired |
+| Error UI Try again | `apps/web/src/app/(product)/templates/error.tsx:28` | `role=button[name="Try again"]` + re-fire | `reset()` broken |
+| Not found UI H1 | `apps/web/src/app/(product)/templates/[template_slug]/not-found.tsx:14` | `role=heading[name="Template not found"]` | `notFound()` not wired |
+| Detail page H1 | `apps/web/src/components/templates/template-detail.tsx:68` | `role=heading[name={template.name}]` | Detail page broken |
+| Detail breadcrumb | `apps/web/src/components/templates/template-detail.tsx:54` | `role=link[name="Templates"]` | Breadcrumb broken |
+| Detail Install link | `apps/web/src/components/templates/template-detail.tsx:80` | `role=link[name="Install CLI"]` | CTA broken |
+| oRPC POST | `apps/web/src/lib/orpc.ts:102-108` | `page.on('request')` sees POST to `/api/v1/rpc/templates/list` on every nav | issue #81 regression |
+| `x-nextjs-cache` | `apps/web/src/lib/orpc.ts:62-94` | response header != `HIT` for `templates:live` | issue #81 regression |
+| `Cache-Control: no-store` on `/api/v1/rpc/*` | `packages/api/src/http/mount-rpc.ts:70` | response header == `no-store` | CDN safety regression |
+| Wire-code `TEMPLATES_FETCH_FAILED` | `packages/api/src/orpc/routes/templates.ts:58-62` | intercepted 502 + `error.tsx` renders | PR #85 wire-code regression |
+
+## Related
+
+- [ADR-009: Test strategy](./ADR-009-test-strategy.md). The
+  monorepo-level rule: shared Vitest config, three test
+  directories, contract-test pattern, coverage gate.
+  ADR-020 is a tour outside the vitest umbrella for one
+  app; the directory shape (`unit/`) at the vitest layer
+  stays.
+- [ADR-011: Env package testing strategy](./ADR-011-env-testing-strategy.md).
+  The contract-test pattern for env. ADR-020 does not
+  contract-test env; it exercises the env-resolved URL
+  flow indirectly via the Vercel preview.
+- [ADR-014: CLI e2e tests](./ADR-014-cli-e2e-tests.md).
+  The two-workflow shape (PR-blocking + nightly extended)
+  is inherited verbatim. The CLI uses a mock HTTP server
+  and a tarball runner; the web e2e uses the deployed app
+  and a `page.route()` interception. ADR-014 has not been
+  implemented at the time of this ADR; three pivot commits
+  (`327bd6f`, `da8b8f9`, `1684623`) and two aborted code
+  spikes (`2e1b6ad`, `3e2d6e3`) document the design
+  reasoning. ADR-020 benefits from the same shape without
+  inheriting the failed design choices.
+- [ADR-016: API integration tests in CI](./ADR-016-api-ci-integration-tests.md).
+  The Hono `api.request()` integration pattern is rejected
+  for the UI smoke because the failure modes above (issue
+  #81, `x-nextjs-cache` directive, segment `error.tsx`)
+  require RSC + Data Cache + segment error boundary, which
+  `api.request()` does not exercise. ADR-020 narrows the
+  override to one sentence: *"the production cache headers
+  are observable only in the production environment."*
+- [Next.js Playwright guide](https://nextjs.org/docs/app/guides/testing/playwright)
+  (v16.3.1, lastUpdated 2026-02-11). The canonical pattern
+  this ADR adopts, with two overrides: `webServer.command`
+  and the Vercel preview trigger.
+- [Next.js `fetch` API reference](https://nextjs.org/docs/app/api-reference/functions/fetch)
+  (v16.3.1, lastUpdated 2026-08-18). Source for the
+  `revalidate: 0` semantic and the `x-nextjs-cache` header.
+- [Playwright CI docs](https://playwright.dev/docs/ci). The
+  `workers: 1` on CI, `reuseExistingServer: !CI`,
+  browser-binary caching guidance, and the
+  `deployment_status` quote are all from this page.
+- [Vercel generated URLs](https://vercel.com/docs/deployments/generated-urls)
+  (lastUpdated 2025-09-24). The commit-URL format and the
+  public-by-default caveat.
+- [Turborepo `on: deployment_status` reference](https://github.com/actions/deployment-status).
+  The trigger this ADR adopts.
