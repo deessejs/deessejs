@@ -48,7 +48,7 @@ export function DeviceForm({ userCode }: { userCode: string | null }) {
 			const res = await authClient.device({
 				query: { user_code: userCode },
 			})
-			if (res.error) throw new Error(res.error.message ?? "device claim failed")
+			if (res.error) throw new Error(res.error.error_description ?? "device claim failed")
 			// The plugin's envelope is { user_code, status }; the
 			// exact additional fields depend on Better Auth version.
 			return res.data as { user_code: string; status: "pending" | "approved" | "denied" }
@@ -66,7 +66,7 @@ export function DeviceForm({ userCode }: { userCode: string | null }) {
 			const res = await authClient.device.approve({
 				userCode,
 			})
-			if (res.error) throw new Error(res.error.message ?? "approve failed")
+			if (res.error) throw new Error(res.error.error_description ?? "approve failed")
 			return res.data
 		},
 		onSuccess: () => {
@@ -86,7 +86,7 @@ export function DeviceForm({ userCode }: { userCode: string | null }) {
 			const res = await authClient.device.deny({
 				userCode,
 			})
-			if (res.error) throw new Error(res.error.message ?? "deny failed")
+			if (res.error) throw new Error(res.error.error_description ?? "deny failed")
 			return res.data
 		},
 		onSuccess: () => {
