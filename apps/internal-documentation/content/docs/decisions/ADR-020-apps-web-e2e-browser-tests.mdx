@@ -83,8 +83,8 @@ Three patterns the existing test surface already provides, and
 
 ## Decision
 
-Add a dedicated Playwright suite under `apps/web/e2e/` that
-  exercises the deployed marketing site. The suite is one
+Add a dedicated Playwright suite under `apps/web/tests/e2e/`
+  that exercises the deployed marketing site. The suite is one
   file per surface (`templates-index`,
   `templates-detail`, `templates-cache`, `navigation`), plus a
   helpers folder for the page-object selectors and the
@@ -202,36 +202,65 @@ Local development runs against `pnpm dev` instead, using a
     code, which would create a pwn-request path that exposes
     secrets to untrusted code.
 
-**3. Test placement: `apps/web/e2e/`, mirroring Next's example
-  project.** The repo convention from ADR-009 is `test/`
-  (singular) at the app level (`apps/cli/test/`), but
-  Playwright's canonical directory in Next's example is
-  `e2e/` — and the divergence matters here: vitest is the
-  unit-tier runner governed by `vitestConfig({ package })`
-  per ADR-009, while Playwright is an out-of-band browser
-  runner with a different config format
-  (`playwright.config.ts`). They cannot share a directory.
-  The `e2e/` choice aligns with the canonical Next example
-  and keeps the discoverability argument obvious to anyone
-  reading the Next docs alongside our config.
+**3. Test placement: `apps/web/tests/e2e/`, deviating from
+  Next's example project.** The canonical Next example
+  uses `e2e/` at the project root
+  ([`vercel/next.js/examples/with-playwright`](https://github.com/vercel/next.js/tree/canary/examples/with-playwright)).
+  The deessejs convention from ADR-009 (§87-89) is
+  `tests/` (plural) for packages and `test/` (singular)
+  for apps. This ADR adopts **`tests/` (plural)** for
+  `apps/web` and places the Playwright suite under
+  `apps/web/tests/e2e/`. Three reasons:
+
+  - **Consistency with the existing vitest unit tests at
+    `apps/web/test/unit/orpc.test.ts` (PR #85).** Co-locating
+    `test/` (vitest) and `tests/e2e/` (Playwright) under
+    the same `apps/web/` root means a future contributor
+    finds all tests by descending one directory. The
+    vitest `include` glob is extended (see below).
+  - **Discoverability over Next-example parity.** The
+    divergence from Next's `e2e/` naming is small (a
+    trailing `s`) but the benefit is real: the
+    convention is now self-documenting for anyone reading
+    the repo without external context.
+  - **No collision with vitest config.** Vitest's `include`
+    pattern is `["test/**/*.test.ts", "tests/**/*.test.ts"]`
+    (both globs). The Playwright `testDir` is
+    `apps/web/tests/e2e/` and the test files use
+    `.spec.ts`. The two configs use disjoint file globs
+    (`.test.ts` vs `.spec.ts`) so the inclusion of
+    `tests/**` in the vitest `include` does not pick up
+    Playwright suites.
+
+  **vitest config update (companion change to this ADR).**
+  `apps/web/vitest.config.ts` currently sets
+  `include: ["test/**/*.test.ts"]` (the vitest preset
+  default). The implementation PR for this ADR extends it
+  to `["test/**/*.test.ts", "tests/**/*.test.ts"]`. The
+  Playwright files (`.spec.ts`) are not picked up by the
+  vitest `include` glob because the `.test.ts` extension
+  filter excludes them.
 
 The directory tree after this ADR lands:
 
 ```
 apps/web/
-├── e2e/                                  new
-│   ├── templates-index.spec.ts           new
-│   ├── templates-detail.spec.ts          new
-│   ├── templates-cache.spec.ts           new   (issue #81 regression guard)
-│   ├── navigation.spec.ts                new
-│   └── helpers/
-│       ├── selectors.ts                  new   stable selector queries
-│       ├── preview-url.ts                new   Vercel URL parsing
-│       └── headers.ts                    new   page.setExtraHTTPHeaders helpers
-├── test/                                 existing (PR #85)
-│   └── unit/orpc.test.ts                 existing
-├── e2e.config.ts                         new   locally only
-├── playwright.config.ts                  new   CI only
+├── tests/                                 new
+│   ├── e2e/                              new
+│   │   ├── templates-index.spec.ts       new
+│   │   ├── templates-detail.spec.ts      new
+│   │   ├── templates-cache.spec.ts       new   (issue #81 regression guard)
+│   │   ├── navigation.spec.ts            new
+│   │   └── helpers/
+│   │       ├── selectors.ts              new   stable selector queries
+│   │       ├── preview-url.ts            new   Vercel URL parsing
+│   │       └── headers.ts                new   page.setExtraHTTPHeaders helpers
+│   └── fixtures/                          new
+│       └── large-catalog.ts              new   100-template fixture for nightly matrix
+├── test/                                  existing (PR #85)
+│   └── unit/orpc.test.ts                  existing
+├── e2e.config.ts                          new   locally only (dev preset)
+├── playwright.config.ts                   new   CI only
 ├── package.json                          modified (scripts + devDeps)
 └── vitest.config.ts                      existing
 ```
@@ -456,9 +485,9 @@ The implementation lands the `data-testid` attributes in the
   Playwright have independent runners.
 - **The `tests/` shape from ADR-009 continues to apply at
   the helper layer.** A `page-objects/` directory inside
-  `apps/web/e2e/helpers/` is NOT a vitest test directory;
-  it is a Playwright fixture. The ADR-009 shape applies to
-  vitest unit tests only.
+  `apps/web/tests/e2e/helpers/` is NOT a vitest test
+  directory; it is a Playwright fixture. The ADR-009 shape
+  applies to vitest unit tests only.
 
 ### What this rule forbids
 
@@ -676,7 +705,7 @@ The `on: repository_dispatch` trigger with
   |---|---|---|
   | Browser | Desktop Chrome, Desktop Firefox, Desktop Safari (WebKit), Mobile Chrome (Pixel 5), Mobile Safari (iPhone 12) | PR gate runs Chromium only; nightly covers the multi-browser matrix per the canonical Playwright config |
   | Network | `real-network` (the Vercel preview hit by the PR gate); `forced-cache-poison` (a forced-handler failure path that re-runs the issue #81 regression against `x-e2e-force-fail: 1`); `slow-network` (e2e.config.ts only — local preset that delays the upstream); `flaky-network` (force the header to fail intermittently to test the `Try again` button) | Each scenario is a separate `matrix:` entry with its own header preset. **Note:** `page.route()` cannot simulate slow or flaky behaviour at the RSC layer — see Decision #5. The matrix exercises handler behaviour, not network behaviour. |
-  | Fixture | `populated-catalog` (the V1 single template); `empty-catalog` (`x-e2e-force-fail: 2`); `large-catalog` (custom registry fixture mounted at `apps/web/e2e/fixtures/large-catalog.ts` — 100 templates, slow path, asserts the grid scroll + filter performance) | Cloned from the `large-fixture` / `unicode` / `real-pm` pattern in ADR-014:322-356 |
+  | Fixture | `populated-catalog` (the V1 single template); `empty-catalog` (`x-e2e-force-fail: 2`); `large-catalog` (custom registry fixture mounted at `apps/web/tests/fixtures/large-catalog.ts` — 100 templates, slow path, asserts the grid scroll + filter performance) | Cloned from the `large-fixture` / `unicode` / `real-pm` pattern in ADR-014:322-356 |
 
   Failures in any nightly scenario post a GitHub issue
   with the workflow run URL, the scenario, and the
@@ -707,18 +736,21 @@ The `on: repository_dispatch` trigger with
 ### Files structure
 
 ```
-apps/web/e2e/                              new
-+-- templates-index.spec.ts                new   P0-1, P0-2, P0-3
-+-- templates-detail.spec.ts               new   P0-4, P0-5
-+-- templates-cache.spec.ts                new   P0-6 (issue #81 guard)
-+-- navigation.spec.ts                     new   P1-7, P1-11
-+-- search-and-empty.spec.ts               new   P1-8, P1-9, P2-13
-+-- home-page-links.spec.ts                new   P2-12
-+-- metadata.spec.ts                       new   P2-14
-+-- clipboard.spec.ts                      new   P2-15
-+-- selectors.ts                           new   role + test-id queries
-+-- preview-url.ts                         new   Vercel URL parser
-+-- headers.ts                             new   sets x-e2e-force-fail via page.setExtraHTTPHeaders
+apps/web/tests/                            new
++-- e2e/                                  new
+|   +-- templates-index.spec.ts            new   P0-1, P0-2, P0-3
+|   +-- templates-detail.spec.ts           new   P0-4, P0-5
+|   +-- templates-cache.spec.ts            new   P0-6 (issue #81 guard)
+|   +-- navigation.spec.ts                 new   P1-7, P1-11
+|   +-- search-and-empty.spec.ts           new   P1-8, P1-9, P2-13
+|   +-- home-page-links.spec.ts            new   P2-12
+|   +-- metadata.spec.ts                   new   P2-14
+|   +-- clipboard.spec.ts                  new   P2-15
+|   +-- selectors.ts                       new   role + test-id queries
+|   +-- preview-url.ts                     new   Vercel URL parser
+|   +-- headers.ts                         new   sets x-e2e-force-fail via page.setExtraHTTPHeaders
++-- fixtures/                              new
+    +-- large-catalog.ts                  new   100-template fixture for nightly matrix
 
 apps/web/
 +-- package.json                           modified (scripts + devDeps)
@@ -851,12 +883,14 @@ Three implementation details pinned here so a future
   packages and the singular `test/` tier for apps. ADR-014
   (Accepted, line 150) calls for an `apps/cli/test/e2e/`
   fourth tier but has not been implemented. ADR-020 ships
-  the first materialised `e2e/` tier under `apps/web/`.
-  Naming: `apps/web/e2e/` (not `apps/web/test/e2e/`)
-  because the vitest `include` glob already covers
-  `test/**/*.test.ts` and Playwright files use `.spec.ts`
-  — the directories cannot share a prefix without a
-  vitest config collision.
+  the first materialised `e2e/` tier under `apps/web/tests/`.
+  Naming: the vitest `include` glob is extended (see
+  Decision #3 companion change) to
+  `["test/**/*.test.ts", "tests/**/*.test.ts"]`; Playwright
+  files use `.spec.ts` and live under `tests/e2e/`, so the
+  vitest glob does not pick them up. The two directories
+  coexist under `apps/web/` because their `*.test.ts` vs
+  `*.spec.ts` extensions keep the runners disjoint.
 - **Vercel preview URLs are publicly accessible by default**
   ([vercel.com/docs/deployments/generated-urls](https://vercel.com/docs/deployments/generated-urls);
   lastUpdated 2025-09-24). The e2e tests run against the
