@@ -1,9 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import type { TemplateV1 } from "@workspace/contracts/v1"
-
-import { orpc } from "@/lib/orpc"
+import { liveCache, orpc, staticParamsCache } from "@/lib/orpc"
 import { TemplateDetail } from "@/components/templates/template-detail"
 
 type Params = { template_slug: string }
@@ -13,13 +11,15 @@ type Params = { template_slug: string }
  * Falls back to on-demand rendering for slugs not seen at build
  * (Next.js handles ISR transparently for both).
  *
- * If the fetch fails (no network in CI, backend temporarily down),
- * we return an empty array rather than failing the build. Pages for
- * unknown slugs are then generated on first request via ISR.
+ * Uses `staticParamsCache` (revalidate: 600, tag `templates:static`)
+ * so the slug list is cached across builds but cannot collide with
+ * the runtime cache. If the fetch fails (no network in CI, backend
+ * temporarily down), we return an empty array rather than failing
+ * the build; missing slugs are generated on demand via ISR.
  */
 export const generateStaticParams = async (): Promise<Params[]> => {
   try {
-    const result = await orpc.templates.list()
+    const result = await orpc.templates.list(undefined, staticParamsCache)
     return result.templates.map((t) => ({ template_slug: t.slug }))
   } catch {
     return []
@@ -32,18 +32,23 @@ export const generateMetadata = async ({
   params: Promise<Params>
 }): Promise<Metadata> => {
   const { template_slug } = await params
-  let templates: TemplateV1[]
   try {
-    const result = await orpc.templates.list()
-    templates = result.templates
+    const result = await orpc.templates.list(undefined, liveCache)
+    const template = result.templates.find((t) => t.slug === template_slug)
+    if (!template) return { title: "Template not found" }
+    return {
+      title: template.name,
+      description: template.description,
+    }
   } catch {
-    return { title: "Template not found" }
-  }
-  const template = templates.find((t) => t.slug === template_slug)
-  if (!template) return { title: "Template not found" }
-  return {
-    title: template.name,
-    description: template.description,
+    // Build-time fallback: when the build worker has no network
+    // access to the API, fall back to the existing "Template not
+    // found" title so the build still ships. Production runtime
+    // always re-throws so the segment's error.tsx renders. Issue #81.
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      return { title: "Template not found" }
+    }
+    throw new Error("Failed to load template metadata")
   }
 }
 
@@ -54,9 +59,12 @@ export const generateMetadata = async ({
  * index page. The catalog is tiny, so doing a server-side `.find()`
  * is cheaper than maintaining a second endpoint.
  *
- * Build-time resilience: if the fetch fails during page collection,
- * we render a minimal placeholder rather than throwing. The runtime
- * error.tsx boundary still catches errors that surface in production.
+ * Uses `liveCache` (revalidate: 0, tag `templates:live`) so a
+ * transient failure cannot poison the Next.js data cache. On a
+ * runtime error the request propagates to the segment's `error.tsx`
+ * boundary. A fetch error is NOT a 404 — do NOT `notFound()` in the
+ * catch. During `next build` we fall back to `notFound()` so the
+ * build still ships when the API is unreachable.
  */
 const TemplateDetailPage = async ({
   params,
@@ -64,14 +72,19 @@ const TemplateDetailPage = async ({
   params: Promise<Params>
 }) => {
   const { template_slug } = await params
-  let templates: TemplateV1[]
+  let template
   try {
-    const result = await orpc.templates.list()
-    templates = result.templates
+    const result = await orpc.templates.list(undefined, liveCache)
+    template = result.templates.find((t) => t.slug === template_slug)
   } catch {
-    notFound()
+    // Build-time fallback: a failed fetch during prerender becomes
+    // a 404 (the slug cannot be confirmed). Production runtime
+    // always re-throws so error.tsx renders. Issue #81.
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      notFound()
+    }
+    throw new Error("Failed to load template")
   }
-  const template = templates.find((t) => t.slug === template_slug)
   if (!template) {
     notFound()
   }

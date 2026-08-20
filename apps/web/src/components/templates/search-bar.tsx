@@ -64,6 +64,7 @@ export const SearchableTemplateGrid = ({
         <Input
           id={inputId}
           type="search"
+          data-testid="templates-search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search templates…"

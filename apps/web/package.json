@@ -10,6 +10,9 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test --config playwright.config.ts",
+    "test:e2e:local": "playwright test --config e2e.config.ts",
     "content-collections": "content-collections build"
   },
   "dependencies": {
@@ -36,11 +39,15 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "@workspace/eslint-config": "workspace:*",
+    "@playwright/test": "catalog:",
     "@workspace/typescript-config": "workspace:*",
+    "@workspace/vitest-config": "workspace:*",
     "eslint": "^9",
     "reading-time": "catalog:",
     "typescript": "catalog:",
+    "vitest": "catalog:",
     "zod": "catalog:"
   }
 }
