@@ -26,7 +26,7 @@ import { API_AUTH_PATH } from "@workspace/api/base-path"
  * plus `authClient.device.code(...)` and `authClient.device.token(...)`
  * for the CLI consumer.
  */
-export const authClient: ReturnType<typeof createAuthClient> = createAuthClient({
+export const authClient = createAuthClient({
   baseURL: clientEnv.NEXT_PUBLIC_APP_URL,
   basePath: API_AUTH_PATH,
   plugins: [deviceAuthorizationClient()],
