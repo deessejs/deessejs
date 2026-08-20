@@ -108,7 +108,6 @@ const pollForToken = async (
 	expiresBy: number,
 ): Promise<DeviceTokenSuccess> => {
 	let interval = POLL_INTERVAL_MS
-	let lastError: CliError | null = null
 	for (;;) {
 		if (Date.now() >= expiresBy) {
 			throw cliDeviceExpired("device flow timed out after 30 minutes")
@@ -136,11 +135,9 @@ const pollForToken = async (
 			throw mapped
 		}
 		// slow_down: bump the local interval for the next poll.
+		// Per ADR-020, slow_down and pending are silent (no log
+		// line, no toast); the caller keeps polling.
 		interval = POLL_INTERVAL_WITH_BACKOFF_MS
-		// Track the last error for any debug logging; the loop
-		// itself does not surface slow_down / pending states
-		// (per ADR-020, they are silent).
-		lastError = lastError
 	}
 }
 

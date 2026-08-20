@@ -5,7 +5,7 @@ import pc from "picocolors"
 import { deviceFetch } from "../../auth-store/device-fetch.js"
 import { readAuth, type StoredAuth } from "../../auth-store/store.js"
 import { internal } from "../../errors/index.js"
-import { printError, printJson } from "../../output/index.js"
+import { printJson } from "../../output/index.js"
 
 /**
  * deesse auth status (ADR-020).
