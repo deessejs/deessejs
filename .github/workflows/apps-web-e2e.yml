@@ -1,0 +1,46 @@
+# apps/web browser end-to-end suite (PR-blocking).
+#
+# Runs after every Vercel preview deployment of the deessejs-web
+# project. The trigger is `on: repository_dispatch` with
+# `vercel.deployment.success`; the URL travels in
+# `github.event.client_payload.url`.
+#
+# See https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment
+# and https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#repository_dispatch
+#
+# Per ADR-020.
+name: apps/web e2e
+on:
+  repository_dispatch:
+    types: [vercel.deployment.success]
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        run: pnpm --filter web exec playwright install --with-deps chromium
+      - name: Run Playwright
+        env:
+          # The preview URL Vercel just deployed. The "Playwright tests"
+          # bypass secret, mirrored from the Vercel dashboard
+          # (see tests/e2e/RUNBOOK.md).
+          BASE_URL: ${{ github.event.client_payload.url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          CI: 1
+        run: pnpm --filter web exec playwright test --config playwright.config.ts
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace
+          path: apps/web/tests/e2e/test-results/
+          retention-days: 3
