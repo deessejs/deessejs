@@ -1,0 +1,91 @@
+---
+title: 'Design system'
+description: 'The contributor contract for tokens, primitives, themes, and the apps that consume @workspace/ui.'
+---
+
+# Design system
+
+The contributor-facing contract for the DeesseJS design system. Source of truth is [`DESIGN.md`](../../../../../DESIGN.md) at the repo root. This section is a thin orienting surface, a stack-at-a-glance, and a consumer map; the spec lives in the spec, not here.
+
+## Source of truth
+
+[`DESIGN.md`](../../../../../DESIGN.md) owns every design decision. The spec has nine sections; each one is load-bearing for a different surface of the codebase.
+
+| Spec section | Owns |
+|---|---|
+| §0 Positioning | Marketing-vs-product framing. |
+| §1 Principles | Opinionated defaults, the modular contract, the CSS-variables rule. |
+| §2 Tokens | Color, typography, geometry, elevation, easing. |
+| §3 Motion | Duration, easing, reduced motion, the motion library. |
+| §4 Component patterns | Buttons, forms, empty/loading/error, toasts, modals. |
+| §5 Accessibility | WCAG 2.1 AA, focus ring contract, axe-core in CI. |
+| §6 Voice | Title case, sentence case, verb+noun actions, the success rule. |
+| §7 Inventory | Which primitives ship, which are deferred. |
+| §8 / §9 Add / Delete | The procedures for shipping primitives. |
+
+A PR that introduces a new token, primitive, variant, or pattern edits the matching section of `DESIGN.md` in the same PR. See [ADR-020](./decisions/ADR-020-design-system) §1.
+
+## Locked-in decisions
+
+| ADR | Locks |
+|---|---|
+| [ADR-020: Design system contract](./decisions/ADR-020-design-system) | `@workspace/ui` as the only product-UI surface; `DESIGN.md` as the spec; CSS variables + `next-themes` for dark mode; Radix-nova + lucide + Tailwind v4 stack; `pnpm-workspace.yaml` catalog as the version surface; forbiddances on the named divergences. |
+
+ADR-020 is the load-bearing decision record for everything in this section. Future decisions ship as new ADRs and are listed here.
+
+## Stack at a glance
+
+Every row lives at the version pinned by `pnpm-workspace.yaml` catalog (`catalogMode: strict`). Bumps land as one-line edits to the catalog file.
+
+| Package | Role | Catalog owner |
+|---|---|---|
+| `tailwindcss` | Styling layer, v4, CSS-first via `@theme inline` | `pnpm-workspace.yaml` |
+| `@tailwindcss/postcss` | v4 PostCSS plugin | `pnpm-workspace.yaml` |
+| `radix-ui` | Unified Radix umbrella (post-Feb-2026 shadcn `radix-nova` style) | `pnpm-workspace.yaml` (proposed; literal pin OK in this PR) |
+| `lucide-react` | Icon library | `pnpm-workspace.yaml` |
+| `cmdk` | Command palette primitive | `pnpm-workspace.yaml` |
+| `sonner` | Toaster primitive | `pnpm-workspace.yaml` |
+| `next-themes` | Dark-mode toggle (attribute=class) | `pnpm-workspace.yaml` (proposed; literal pin OK in this PR) |
+| `class-variance-authority` | Variant styling for primitives | `@workspace/ui/package.json` |
+| `clsx` | Class merge primitive | `@workspace/ui/package.json` |
+| `tailwind-merge` | Tailwind-aware dedupe | `pnpm-workspace.yaml` |
+
+**Future-shock candidate.** shadcn made `@base-ui/react` the default primitive layer for new projects in July 2026. Radix is not deprecated. A migration to Base UI requires its own ADR; the rule is named in [ADR-020](./decisions/ADR-020-design-system) "Future-shock: Base UI".
+
+## How the apps consume it
+
+Three Next.js apps consume `@workspace/ui` today. The map below is the contract for code review: any PR that breaks a "yes" turns into a `DESIGN.md` amendment PR.
+
+| App | Consumes `@workspace/ui` components? | Owns a `ThemeProvider`? | Overrides `globals.css`? |
+|---|---|---|---|
+| `apps/web` | Yes (Button, Card, Sheet, Dialog, Tooltip, NavigationMenu, Avatar, Skeleton, Accordion, Breadcrumb, Toaster, Separator, Badge, Typography) | Yes (today — duplicated; for consolidation see [ADR-020](./decisions/ADR-020-design-system) §5b) | No |
+| `apps/app` | Yes (Sidebar, Button, Input, Dialog, Separator, DropdownMenu, Avatar, Collapsible, Checkbox, Tooltip) | Yes (duplicated; for consolidation see [ADR-020](./decisions/ADR-020-design-system) §5b) | **No (forbidden by [ADR-020](./decisions/ADR-020-design-system) §5a)** |
+| `apps/docs` | No — uses `fumadocs-ui` (doc-site rendering) | No | No |
+| `apps/internal-documentation` | No — uses `fumadocs-ui` (doc-site rendering) | No | No |
+
+`apps/docs` and `apps/internal-documentation` are doc-site surfaces. They are explicitly outside the design-system contract. Their `fumadocs-bootstrap` duplication is a separate concern, not a violation.
+
+## Adding or removing a primitive
+
+Follow [`DESIGN.md`](../../../../../DESIGN.md) §8 (add) or §9 (delete) — both are single-PR procedures with a `pnpm dlx shadcn@latest add <name>` source and a `DESIGN.md` §7 inventory edit. The full contract is in [ADR-020](./decisions/ADR-020-design-system) §6. Adding a primitive that the design system does not already need is the senior anti-pattern (see `DESIGN.md` §1.5).
+
+## Bumping the stack
+
+For any bump covered by [ADR-020](./decisions/ADR-020-design-system) §4 (Tailwind major, Radix major, `next-themes` major, `lucide-react` major, `cmdk` major, `sonner` major), the bump is a catalog edit plus a review-of-the-stack ADR. Casual `^` ranges in consumer packages are forbidden by the catalog policy.
+
+## Related
+
+- [`DESIGN.md`](../../../../../DESIGN.md) — the spec.
+- [ADR-020: Design system contract](./decisions/ADR-020-design-system) — the decision record.
+- [ADR-006: Fumadocs Cards design rules](./decisions/ADR-006-fumadocs-card-design) — the same gate-by-review pattern.
+- `@workspace/ui` (`packages/ui/`) — the implementation.
+- `pnpm-workspace.yaml` — the version catalog.
+
+## Read next
+
+The four pages below split the contract by concern. Read them in order the first time; after that, jump by need.
+
+1. [Tokens](./tokens) — semantic colour, typography, geometry, motion, state palettes.
+2. [Theming](./theming) — the `class` strategy via `next-themes`, the light/dark model, the forbidden patterns.
+3. [Components](./components) — the 26 primitives, their families, the add/remove procedure.
+4. [Pitfalls](./pitfalls) — the named failure modes and the voice TL;DR.

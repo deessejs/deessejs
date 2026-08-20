@@ -1,0 +1,129 @@
+---
+title: 'Components'
+description: 'The 26 primitives in @workspace/ui, what they cover, what they defer, and the rules for adding and removing a primitive.'
+---
+
+# Components
+
+`@workspace/ui` is the only product-UI surface in the monorepo. It ships 26 primitives today, all from the shadcn `radix-nova` distribution plus a custom `Typography` block. The package does not wrap shadcn behind a domain layer; what you see in `packages/ui/src/components/` is what you consume.
+
+See [ADR-020](./decisions/ADR-020) §1 (single surface) and §6 (primitive policy) for the locks.
+
+## Inventory
+
+The 26 primitives split into five families by use case. Each row lists the file path (relative to `packages/ui/src/components/`) and the primitives it exports.
+
+### Surfaces — content inside a frame
+
+| File | Primitives | Backed by |
+|---|---|---|
+| `card.tsx` | `Card`, `CardHeader`, `CardFooter`, `CardTitle`, `CardAction`, `CardDescription`, `CardContent` | divs only |
+| `dialog.tsx` | `Dialog`, `DialogClose`, `DialogContent`, `DialogDescription`, `DialogFooter`, `DialogHeader`, `DialogOverlay`, `DialogPortal`, `DialogTitle`, `DialogTrigger` | `radix-ui` Dialog |
+| `sheet.tsx` | full Dialog overlay set, positioned on the viewport edge | re-uses `radix-ui` Dialog |
+| `popover.tsx` | `Popover`, `PopoverTrigger`, `PopoverContent`, `PopoverAnchor` | `radix-ui` |
+| `sidebar.tsx` | the full sidebar suite (~25 sub-exports: `Sidebar`, `SidebarContent`, `SidebarMenu`, `useSidebar`, etc.) | `cva` + Slot + Sheet + Tooltip |
+| `tooltip.tsx` | `Tooltip`, `TooltipContent`, `TooltipProvider`, `TooltipTrigger` | `radix-ui` |
+| `accordion.tsx` | `Accordion`, `AccordionItem`, `AccordionTrigger`, `AccordionContent` | `radix-ui` |
+
+### Inputs — capture user input
+
+| File | Primitives | Backed by |
+|---|---|---|
+| `input.tsx` | `Input` | native `<input>` |
+| `textarea.tsx` | `Textarea` | native `<textarea>` |
+| `input-group.tsx` | `InputGroup`, `InputGroupAddon`, `InputGroupButton`, `InputGroupText`, `InputGroupInput`, `InputGroupTextarea` | `cva` |
+| `checkbox.tsx` | `Checkbox` | `radix-ui` |
+| `switch.tsx` | `Switch` | `radix-ui` |
+| `select.tsx` | `Select`, `SelectGroup`, `SelectValue`, `SelectTrigger`, `SelectContent`, `SelectLabel`, `SelectItem`, `SelectSeparator` | `radix-ui` Select |
+
+### Navigation — orient within a surface
+
+| File | Primitives | Backed by |
+|---|---|---|
+| `breadcrumb.tsx` | `Breadcrumb`, `BreadcrumbList`, `BreadcrumbItem`, `BreadcrumbLink`, `BreadcrumbSeparator`, `BreadcrumbPage`, `BreadcrumbEllipsis` | Slot + lucide |
+| `navigation-menu.tsx` | `NavigationMenu`, `NavigationMenuList`, `NavigationMenuItem`, `NavigationMenuContent`, `NavigationMenuTrigger`, `NavigationMenuLink`, `NavigationMenuIndicator`, `NavigationMenuViewport` | `radix-ui` + `cva` + lucide |
+| `tabs.tsx` | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` (plus `tabsListVariants`) | `radix-ui` + `cva` |
+| `collapsible.tsx` | `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` | `radix-ui` |
+
+### Feedback — communicate state to the user
+
+| File | Primitives | Backed by |
+|---|---|---|
+| `sonner.tsx` | `Toaster` | `sonner` + `next-themes` + lucide |
+| `skeleton.tsx` | `Skeleton` | div |
+| `badge.tsx` | `Badge`, `badgeVariants` | `cva` + Slot |
+| `avatar.tsx` | `Avatar`, `AvatarImage`, `AvatarFallback` | `radix-ui` |
+| `command.tsx` | `Command`, `CommandInput`, `CommandList`, `CommandEmpty`, `CommandGroup`, `CommandItem`, `CommandShortcut`, `CommandDialog` | `cmdk` |
+
+### Typography — content primitives
+
+| File | Primitives | Backed by |
+|---|---|---|
+| `typography.tsx` | `H1`, `H2`, `H3`, `P`, `Lead`, `Small`, `Muted`, `Blockquote`, `InlineCode`, `Link`, `Ul`, `Ol`, `Li` | divs |
+| `separator.tsx` | `Separator` | `radix-ui` |
+
+## What is not a primitive
+
+The package deliberately does not ship:
+
+- A `Form` field-plus-label-plus-error primitive. Forms use `react-hook-form` + `Zod` as a pattern (see `DESIGN.md` §4.2). shadcn's CLI `Form` registry entry is not used; the pattern lives in app code or in a future `@workspace/forms` package.
+- A wrapper around shadcn's `Empty`, `Item`, `Spinner`. shadcn ships these as v0.1-deferred primitives (see `DESIGN.md` §7); they are added through the §8 procedure when an app has a use case.
+- An icon wrapper. Components reach into `lucide-react` directly. See below.
+
+## Icons
+
+The icon library is `lucide-react`. Each component that needs an icon imports the named icon directly:
+
+```tsx
+import { XIcon, ChevronDownIcon } from "lucide-react"
+```
+
+There is no `<Icon name="x" />` indirection. Swap of the icon library requires a new ADR; the lock is in [ADR-020](./decisions/ADR-020) §3.
+
+## Conventions baked into the primitives
+
+The primitives follow five conventions that the app code inherits by extension.
+
+| Convention | Where it shows |
+|---|---|
+| `data-slot="..."` attributes | Every primitive carries `data-slot`. Tailwind targeting and test selectors use them. |
+| `cva` + `VariantProps<typeof variants>` | `Button`, `Badge`, `Tabs`, `InputGroup`, `NavigationMenu`, `Sidebar` use `class-variance-authority`. Variant values are lowercase strings. |
+| `asChild` + `Slot.Root` | Any primitive that wraps an existing element (link styled as button, button inside a form) accepts `asChild` and uses `Slot.Root` from `radix-ui`. |
+| `"use client"` only when needed | 18 of 27 files carry the directive — every component that touches React state, refs, effects, Radix context, or `useTheme`. The other 8 stay server-friendly. |
+| Kebab-case filenames, PascalCase exports | File names use kebab-case (`dropdown-menu.tsx`, `input-group.tsx`); component identifiers and the directory `components/` use PascalCase. |
+
+## Adding a primitive
+
+The add procedure is `DESIGN.md` §8 + [ADR-020](./decisions/ADR-020) §6 condensed:
+
+1. `pnpm dlx shadcn@latest add <name>` lands the source in `packages/ui/src/components/<name>.tsx`.
+2. Read the generated source. Adjust variants, states, dark-mode wiring to match the conventions in this page.
+3. Add a row to the inventory in this page (and to `DESIGN.md` §7) in the same PR.
+4. Verify dark mode, `prefers-reduced-motion`, keyboard navigation.
+5. Run `pnpm typecheck` and `pnpm build`; both stay green across the workspace.
+
+There is no gate beyond "app needed it". A primitive without a consumer is the senior anti-pattern (`DESIGN.md` §1.5).
+
+## Removing a primitive
+
+The remove procedure is `DESIGN.md` §9 + [ADR-020](./decisions/ADR-020) §6 condensed:
+
+1. `rm packages/ui/src/components/<name>.tsx`.
+2. Remove imports across the codebase (`rg "@workspace/ui/components/<name>" apps/`).
+3. `pnpm typecheck` must remain green.
+4. `pnpm build` must succeed.
+5. Remove the row from the inventory in this page (and from `DESIGN.md` §7) in the same PR.
+
+Removing a primitive a buyer app needs is a breaking change. Surface it in the PR description.
+
+## Bypassing a primitive
+
+One bypass exists today and is documented: `apps/web/src/components/knowledge-base/badges.tsx` does not import `Badge` from `@workspace/ui/components/badge`. The file's leading comment names the reason: the shadcn `Badge` variants are too generic for the knowledge-base styling needs, and the file wants full colour control. The rule is to **preserve the comment on every edit**. Removing the comment is a review-reject.
+
+Other bypasses, if needed, follow the same shape: a leading comment in the file, naming the reason and pointing at the design-system alternative being bypassed.
+
+## What the package does not own
+
+Domain components. There is no `<UserAvatar>`, `<ProjectCard>`, `<PlanBadge>` in `packages/ui`. Those live in the consuming app — they compose primitives, they do not add to the design system. A component that needs a domain shape belongs to the app that uses it.
+
+Marketing chrome. `apps/web/src/components/headers/`, `footers/`, `blog/`, `templates/` are app-local compositions of primitives. They are not part of `@workspace/ui`.

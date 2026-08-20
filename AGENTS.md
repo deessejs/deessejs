@@ -52,6 +52,20 @@ Pattern senior pour better-auth dans ce repo. **Lis toujours `docs/guides/better
 | [docs/guides/better-auth/client.md](docs/guides/better-auth/client.md) | Hooks React, `useActiveOrganization`, workaround #9710 |
 | [docs/guides/better-auth/pitfalls.md](docs/guides/better-auth/pitfalls.md) | Bugs ouverts (#9070, #9710), options supprimées, gotchas — **à lire AVANT toute implémentation** |
 
+### Design system guides
+
+Senior pattern for the design system in this repo. **Always read `DESIGN.md` at the repo root first** before editing `packages/ui/` or any app that consumes `@workspace/ui` (`apps/web`, `apps/app`). The contract that locks the spec is [ADR-020](apps/internal-documentation/content/docs/decisions/ADR-020-design-system.mdx).
+
+| Guide | Content |
+|---|---|
+| [DESIGN.md](DESIGN.md) | Canonical spec — nine sections (tokens, motion, patterns, a11y, voice, inventory) — **mandatory entry point** |
+| [ADR-020](apps/internal-documentation/content/docs/decisions/ADR-020-design-system.mdx) | Locked decision — `@workspace/ui` as the only surface, `next-themes` for dark mode, Radix-nova stack, named forbiddances |
+| [Design system index](apps/internal-documentation/content/docs/design-system/index.mdx) | Contributor landing — stack, consumer map, add/remove procedure |
+| [Tokens](apps/internal-documentation/content/docs/design-system/tokens.mdx) | Semantic colors, typography (four voices), spacing/radius/elevation, motion, where the tokens live |
+| [Theming](apps/internal-documentation/content/docs/design-system/theming.mdx) | `class` strategy via `next-themes`, light/dark model, forbidden patterns (prefers-color-scheme override, data-mode, inline FOUC, hex redeclaration) |
+| [Components](apps/internal-documentation/content/docs/design-system/components.mdx) | The 26 primitives in five families, conventions (`data-slot`, `cva`, `Slot`), add/remove procedure |
+| [Pitfalls](apps/internal-documentation/content/docs/design-system/pitfalls.mdx) | Token, behavioural, and voice pitfalls a reviewer applies without re-reading DESIGN.md — **read BEFORE any UI PR** |
+
 ### Fresh CLI 
 
 `fresh` is a CLI for AI-powered web search and fetch, backed by Exa.ai.
