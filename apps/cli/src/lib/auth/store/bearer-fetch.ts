@@ -1,6 +1,6 @@
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
-import { readPackageVersion } from "../api/self-version.js"
+import { readPackageVersion } from "../../../api/self-version.js"
 
 /**
  * Minimal bearer-token fetch for the CLI (ADR-020).
@@ -8,7 +8,7 @@ import { readPackageVersion } from "../api/self-version.js"
  * Used only by auth status and auth logout, both of which
  * need to call Better Auth endpoints with a bearer token
  * read from ~/.deessejs/auth.json. The typed client
- * (apps/cli/src/auth-store/better-auth-client.ts) does
+ * (apps/cli/src/lib/auth/store/better-auth-client.ts) does
  * not support this case: it sends the bearer via its
  * cookie-based session, not a caller-supplied token.
  *

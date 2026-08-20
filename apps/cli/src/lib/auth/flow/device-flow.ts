@@ -1,6 +1,7 @@
-import { authClient } from "../auth-store/better-auth-client.js"
-import { cliDeviceExpired } from "../errors/index.js"
-import { sleep } from "../utils/sleep.js"
+import { cliDeviceExpired } from "../../../errors/index.js"
+import { sleep } from "../../../utils/sleep.js"
+
+import { authClient } from "../store/better-auth-client.js"
 
 import { mapPollingError } from "./polling-errors.js"
 

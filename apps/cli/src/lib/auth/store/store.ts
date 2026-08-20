@@ -1,7 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
 
-import { CACHE_DIR, cachePath } from "../cache/location.js"
+import { CACHE_DIR, cachePath } from "../../../cache/location.js"
 
 /**
  * CLI session-token store (ADR-020).

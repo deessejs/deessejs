@@ -1,4 +1,4 @@
-import { cliDeviceExpired, cliDeviceDenied, CliError } from "../errors/index.js"
+import { cliDeviceExpired, cliDeviceDenied, CliError } from "../../../errors/index.js"
 
 /**
  * Polling-protocol error mapper (ADR-020).

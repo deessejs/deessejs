@@ -2,7 +2,7 @@ import { createAuthClient } from "better-auth/client"
 import { deviceAuthorizationClient } from "better-auth/client/plugins"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
-import { readPackageVersion } from "../api/self-version.js"
+import { readPackageVersion } from "../../../api/self-version.js"
 
 /**
  * Better Auth client for the CLI (ADR-020).

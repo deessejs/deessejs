@@ -7,8 +7,8 @@ import {
 	openVerificationUrl,
 	pollForToken,
 	requestDeviceCode,
-} from "../../auth-flow/index.js"
-import { writeAuth } from "../../auth-store/store.js"
+} from "../../lib/auth/flow/index.js"
+import { writeAuth } from "../../lib/auth/store/store.js"
 import { internal, type CliError } from "../../errors/index.js"
 import { printError, printJson } from "../../output/index.js"
 
@@ -16,14 +16,14 @@ import { printError, printJson } from "../../output/index.js"
  * deesse auth login (ADR-020).
  *
  * Commander wrapper around the device-flow orchestration in
- * apps/cli/src/auth-flow/. This file owns the command
+ * apps/cli/src/lib/auth/flow/. This file owns the command
  * surface: option parsing, spinners, output formatting, and
  * exit-code mapping. The flow itself (request / poll /
  * open-browser) lives in the auth-flow module and is
  * reusable from other commands (e.g. a future `auth
  * reauth`) without duplicating orchestration.
  *
- * Flow summary (full detail in apps/cli/src/auth-flow/):
+ * Flow summary (full detail in apps/cli/src/lib/auth/flow/):
  *   1. requestDeviceCode: POST /device/code
  *   2. openVerificationUrl: spawn the OS browser
  *   3. pollForToken: poll /device/token until approved

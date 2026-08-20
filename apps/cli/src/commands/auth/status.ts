@@ -2,8 +2,8 @@ import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
 
-import { bearerFetch } from "../../auth-store/bearer-fetch.js"
-import { readAuth, type StoredAuth } from "../../auth-store/store.js"
+import { bearerFetch } from "../../lib/auth/store/bearer-fetch.js"
+import { readAuth, type StoredAuth } from "../../lib/auth/store/store.js"
 import { internal } from "../../errors/index.js"
 import { printJson } from "../../output/index.js"
 
