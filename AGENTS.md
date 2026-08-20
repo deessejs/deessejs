@@ -54,17 +54,17 @@ Pattern senior pour better-auth dans ce repo. **Lis toujours `docs/guides/better
 
 ### Design system guides
 
-Pattern senior pour le design system de ce repo. **Lis toujours `DESIGN.md` à la racine en premier** avant de modifier `packages/ui/` ou toute app qui consomme `@workspace/ui` (apps/web, apps/app). Le contrat qui verrouille la spec est [ADR-020](apps/internal-documentation/content/docs/decisions/ADR-020-design-system.mdx).
+Senior pattern for the design system in this repo. **Always read `DESIGN.md` at the repo root first** before editing `packages/ui/` or any app that consumes `@workspace/ui` (`apps/web`, `apps/app`). The contract that locks the spec is [ADR-020](apps/internal-documentation/content/docs/decisions/ADR-020-design-system.mdx).
 
-| Guide | Contenu |
+| Guide | Content |
 |---|---|
-| [DESIGN.md](DESIGN.md) | Spec canonique — neuf sections (tokens, motion, patterns, a11y, voice, inventaire) — **point d'entrée obligatoire** |
-| [ADR-020](apps/internal-documentation/content/docs/decisions/ADR-020-design-system.mdx) | Décision verrouillée — `@workspace/ui` surface unique, `next-themes` pour le dark mode, Radix-nova stack, interdits nommés |
-| [Design system index](apps/internal-documentation/content/docs/design-system/index.mdx) | Landing contributeur — stack, consumer map, procédure add/remove |
-| [Tokens](apps/internal-documentation/content/docs/design-system/tokens.mdx) | Couleurs sémantiques, typographie (4 voix), spacing/radius/elevation, motion, où vivent les tokens |
-| [Theming](apps/internal-documentation/content/docs/design-system/theming.mdx) | Stratégie `class` via `next-themes`, modèle light/dark, patterns interdits (prefers-color-scheme override, data-mode, FOUC inline, hex redeclaration) |
-| [Components](apps/internal-documentation/content/docs/design-system/components.mdx) | Les 26 primitives en 5 familles, conventions (`data-slot`, `cva`, `Slot`), procédure add/remove |
-| [Pitfalls](apps/internal-documentation/content/docs/design-system/pitfalls.mdx) | Pièges tokens/comportement/voix à check en review — **à lire AVANT toute PR touchant l'UI** |
+| [DESIGN.md](DESIGN.md) | Canonical spec — nine sections (tokens, motion, patterns, a11y, voice, inventory) — **mandatory entry point** |
+| [ADR-020](apps/internal-documentation/content/docs/decisions/ADR-020-design-system.mdx) | Locked decision — `@workspace/ui` as the only surface, `next-themes` for dark mode, Radix-nova stack, named forbiddances |
+| [Design system index](apps/internal-documentation/content/docs/design-system/index.mdx) | Contributor landing — stack, consumer map, add/remove procedure |
+| [Tokens](apps/internal-documentation/content/docs/design-system/tokens.mdx) | Semantic colors, typography (four voices), spacing/radius/elevation, motion, where the tokens live |
+| [Theming](apps/internal-documentation/content/docs/design-system/theming.mdx) | `class` strategy via `next-themes`, light/dark model, forbidden patterns (prefers-color-scheme override, data-mode, inline FOUC, hex redeclaration) |
+| [Components](apps/internal-documentation/content/docs/design-system/components.mdx) | The 26 primitives in five families, conventions (`data-slot`, `cva`, `Slot`), add/remove procedure |
+| [Pitfalls](apps/internal-documentation/content/docs/design-system/pitfalls.mdx) | Token, behavioural, and voice pitfalls a reviewer applies without re-reading DESIGN.md — **read BEFORE any UI PR** |
 
 ### Fresh CLI 
 
