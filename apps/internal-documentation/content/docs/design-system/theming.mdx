@@ -1,0 +1,120 @@
+---
+title: 'Theming'
+description: 'Dark mode strategy, light/dark token model, next-themes wiring, and what apps must and must not do to participate.'
+---
+
+# Theming
+
+The design system has one theming strategy and one theming primitive. Tokens carry the visual difference between light and dark; `next-themes` carries the toggle. Anything else — `data-mode` attribute, inline FOUC scripts, `@media (prefers-color-scheme)` overrides — is forbidden. See [ADR-020](./decisions/ADR-020) §2.
+
+## The model
+
+Two selectors hold the same token names:
+
+```css
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  /* ... */
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  /* ... */
+}
+```
+
+The values flip. The names do not. Components consume `bg-background`, `text-foreground`, `border-input`, and the tokens change underneath them. No primitive is aware of which mode is active.
+
+Tailwind v4 picks the dark values up via the `@custom-variant dark` declaration at the top of `globals.css`:
+
+```css
+@custom-variant dark (&:is(.dark *));
+```
+
+This routes the `dark:` utility variant to the class selector instead of the default `prefers-color-scheme` media query. Components that need to express mode-conditional styles write `dark:bg-card` etc.; Tailwind generates the rule targeting `.dark *`.
+
+## The toggle
+
+`next-themes` is the only allowed JS theme primitive. Each participating app wires `<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>` and wraps its tree.
+
+Three configuration values are load-bearing:
+
+| Option | Value | Why |
+|---|---|---|
+| `attribute` | `"class"` | Aligns with Tailwind v4 `@custom-variant dark (&:is(.dark *))`. |
+| `defaultTheme` | `"system"` | Honours OS preference on first load. |
+| `enableSystem` | `true` | Lets `useTheme()` return `"system"` and round-trip on the next render. |
+| `disableTransitionOnChange` | `true` | Prevents the half-second CSS-transition flash that happens when the entire `*` cascade transitions colour mid-render. |
+
+A "press `d` to toggle" hotkey lives on top of `<ThemeProvider>` in the same file. The two app-level ThemeProvider files are byte-identical today; the duplication is named in [ADR-020](./decisions/ADR-020) §5b and a follow-up PR will collapse them into `@workspace/ui/providers/theme-provider`.
+
+## Forbidden patterns
+
+Each forbidden pattern below maps to a failure mode the design system has already encountered or anticipates.
+
+### 1. `@media (prefers-color-scheme: dark)` stacked on the toggle
+
+```css
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+```
+
+This rule beats the `<html class="dark">` toggle at the user's hands. They picked Light on a Dark-preferred OS, and Dark applies. The OS override must not bypass the explicit user choice. `next-themes defaultTheme="system"` handles the OS preference cleanly (it adds the `.dark` class only when the user has not yet chosen); the `@media` rule is a duplicate mechanism.
+
+The named occurrence is `apps/app/app/globals.css`; see [ADR-020](./decisions/ADR-020) §5a.
+
+### 2. A `data-mode` attribute on `<html>`
+
+```html
+<html data-mode="dark">
+```
+
+The spec once owned this pattern; the implementation never did. Components never reference `[data-mode="dark"]` and the package does not ship a script that sets the attribute. The `@custom-variant dark (&:is(.dark *))` line is the only selector. Adding `data-mode` introduces a second mode carrier that the rest of the system ignores.
+
+### 3. An inline FOUC script
+
+```html
+<script>document.documentElement.setAttribute('data-mode', localStorage.theme)</script>
+```
+
+The premise was "the user opens the page, sees the dark variant from the first paint". `next-themes` solves this with its own inline pre-paint logic via `next/script` or a `colorScheme` attribute on `<html>`. A custom script is the wrong place to reimplement what `next-themes` already does correctly.
+
+### 4. Hex redeclaration of semantic tokens in app CSS
+
+```css
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+```
+
+Same selector names as `globals.css`, different unit. The cascade order wins whichever file is loaded last. Even when the hex happens to land close to the oklch value (`#ffffff` ≈ `oklch(1 0 0)`), the unit drift breaks the layer: every future change to the spec token requires a paired change to the app's hex declaration, with no review signal. Forbidden by [ADR-020](./decisions/ADR-020) §5a.
+
+## Per-app responsibilities
+
+Three things every participating app must do.
+
+1. Import `globals.css` once, at the root layout, before any app-level CSS.
+   ```ts
+   import "@workspace/ui/globals.css"
+   ```
+2. Wrap its tree in `<ThemeProvider>` (or the equivalent consolidation once the follow-up PR lands).
+3. Honour `prefers-reduced-motion` via `motion-safe:` / `motion-reduce:` for state-changing animation. This is not strictly theming, but the same mind: do not impose a default the user opted out of.
+
+Three things every participating app must not do.
+
+1. Add a second `<ThemeProvider>` inside a child tree. The single provider handles the whole tree.
+2. Read `localStorage.theme` directly. The toggle state flows through `useTheme()`.
+3. Import `@workspace/ui` only for some components. The contract is "consume `@workspace/ui`" or "do not consume it" — half-state produces half-broken trees when a primitive below the split reads `useTheme()` above it.
+
+## What the contract does not cover
+
+Theme switches for surfaces that are not product UI. `apps/docs` and `apps/internal-documentation` use `fumadocs-ui`'s `<RootProvider>`, not `next-themes`. They are explicitly outside this contract; their `<RootProvider>` is not a violation. See [the index page](./index) for the consumer map.
+
+Brand colour overrides per app. The package does not expose a `--brand-color` hook today; an app that wants a brand accent redeclares `--primary` and `--primary-foreground` in its own CSS layer without touching the package. That is an app-local override, not a design-system violation, as long as it does not branch the rest of the token family.

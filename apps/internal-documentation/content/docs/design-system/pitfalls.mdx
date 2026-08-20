@@ -1,0 +1,124 @@
+---
+title: 'Pitfalls'
+description: 'The named failure modes of the design system, the rules reviewers check for, and the voice TL;DR that prevents content-style drift.'
+---
+
+# Pitfalls
+
+The design system has locks. Locks without pitfalls are dormant; the gap between a lock and a code review is filled by what the reviewer is told to look for. This page is that telling.
+
+Three groups of pitfalls:
+
+1. **Token pitfalls** — colour, radius, typography, motion. The "looks right but the numbers are wrong" failures.
+2. **Behavioural pitfalls** — the divergences named in [ADR-020](./decisions/ADR-020) §5, plus the surrounding cases where apps reach around the contract.
+3. **Content pitfalls** — the voice TL;DR distilled from `DESIGN.md` §6, plus three rules every reviewer applies to user-facing copy.
+
+## Token pitfalls
+
+### Reaching for raw Tailwind colors
+
+```tsx
+// wrong
+<p className="text-zinc-900 dark:text-zinc-100">
+// wrong
+<div className="bg-[#fff]">
+```
+
+Both reach around the semantic token layer. The right form:
+
+```tsx
+<p className="text-foreground">
+<div className="bg-background">
+```
+
+`text-zinc-900` happens to be the same shade as `text-foreground` in light mode; the unit drift (zinc-900 vs `--foreground`) is silent. The next contributor who re-tunes the foreground token finds the `text-zinc-900` instance unchanged.
+
+### Hex redeclaration in app-level CSS
+
+```css
+/* apps/*/globals.css (forbidden) */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+```
+
+`packages/ui/src/styles/globals.css:86-119` owns the same selector names in `oklch()`. The cascade order decides which wins; whichever file is loaded last paints. Even when the hex coincides with the oklch value, the unit drift breaks the layer: every future change to a spec token now requires a paired change to the app's hex declaration, with no review signal. `[ADR-020](./decisions/ADR-020) §5a` forbids this. The named occurrence is `apps/app/app/globals.css` and will be deleted in a follow-up PR.
+
+### Setting font-size by hand
+
+```tsx
+/* wrong */
+<p className="text-[14px] leading-[20px] font-medium">
+```
+
+The token class exists: `text-copy-14`. Setting by hand pays a triple cost — the size does not respond to the spec amendment, the line-height does not track the voice's own padding, and the weight does not flow with `<strong>`.
+
+### Mixing radius families in a view
+
+`rounded-xs` next to `rounded-2xl` on the same screen reads as a designer who could not decide. Use one radius family per view; the spec is "one radius family per view, even if it spans the whole screen". Pair the chosen family with its matching elevation (`rounded-sm` + `shadow-card`, `rounded-md` + `shadow-popover`, etc.).
+
+### Animated state changes without `motion-safe:`
+
+```tsx
+/* wrong */
+<div className="data-[state=open]:animate-in data-[state=closed]:animate-out">
+```
+
+The user who prefers reduced motion sees the animation. Wrap state-changing animation in `motion-safe:` (apply when motion is fine) or `motion-reduce:` (apply when it is not). Tailwind v4 generates the variant from `prefers-reduced-motion`.
+
+### Tabular figures without the `-mono` variant
+
+Numbers that need to align in a column — prices, durations, counters, "3 projects" — should pick `label-14-mono` (or `label-13-mono` / `label-12-mono` for the smaller levels) instead of the sans counterpart. The variants exist precisely for this. **Known limit**: the design system does not enforce this rule; `DESIGN.md` §2.5 claims it but no tooling turns the claim into a check. The reviewer applies it.
+
+## Behavioural pitfalls
+
+### Two ThemeProvider copies that drift
+
+`apps/web/src/components/providers/theme-provider.tsx` and `apps/app/components/theme-provider.tsx` are byte-identical today. They must stay that way until the consolidation PR lands (see [ADR-020](./decisions/ADR-020) §5b). A PR that edits one and not the other is a review-reject — the divergence is invisible in the diff unless the reviewer reads both files.
+
+### A dead `use-mobile.ts` copy in `apps/app`
+
+`apps/app/hooks/use-mobile.ts` is a 22-line duplicate of `packages/ui/src/hooks/use-mobile.ts`. Nothing imports it. The alias in `apps/app/components.json` (`"hooks": "@/hooks"`) is set up so that a future `pnpm dlx shadcn@latest add` would write into the local file and silently fork from the package. Today it is dead; tomorrow it is a fork. Forbidden by [ADR-020](./decisions/ADR-020) §5c. The file is removed in the follow-up PR.
+
+### Bypass-comment removal on `badges.tsx`
+
+`apps/web/src/components/knowledge-base/badges.tsx` bypasses the shadcn `Badge` primitive deliberately. The leading comment names the reason and the rule: preserve it on every edit. Removing the comment on a future PR is a review-reject; the bypass loses its history and the next contributor redoes the work the comment was trying to prevent.
+
+### Half-importing `@workspace/ui`
+
+An app that imports `@workspace/ui/components/button` but reaches around the package for an Input shape duplicates state: the package thinks it is the only source of UI primitives; the app has its own opinion. The contract is "consume `@workspace/ui`" or "do not consume it" — half-state is the failure mode the contract exists to prevent. Reading `useTheme()` from `next-themes` in `sonner.tsx` while bypassing the package for `Button` is the canonical example of half-importing.
+
+### Doc-site surfaces treated as products
+
+`apps/docs` and `apps/internal-documentation` use `fumadocs-ui`. They render documentation, not product UI. They do not consume `@workspace/ui`, and they do not need to. A PR that wires `@workspace/ui` into these apps in the name of "consistency" drifts them away from what the design system is for; see [ADR-020](./decisions/ADR-020) §5e.
+
+## Content pitfalls
+
+These are the design-system relevant subset of `DESIGN.md` §6, condensed. The §6 document owns the full set; the rules below are the ones a reviewer applies without rereading the spec.
+
+| Rule | Why it matters |
+|---|---|
+| **Title Case** for labels, buttons, titles, tabs | Visually consistent across the surfaces that own navigation choices. |
+| **Sentence case** for body, helper text, toasts | Reads as prose, not as a button. |
+| Actions are **verb + noun** — `Deploy Project`, `Delete Member`. Never `Confirm`, `OK`, `Submit`. | The button says what happens when pressed, not the meta-action of confirming. |
+| Errors are **what happened + what to do next** — `Build failed. Bundle exceeds 50 MB. Reduce it or raise the limit.` | The user is stuck; the next action is the next sentence. |
+| Toasts are **specific thing + no period + never "successfully"** — `Project deleted`. Not `Successfully deleted the project.` | The verb already says it happened; "successfully" is filler. |
+| Empty states **point to the first action** — `No deployments yet. Push to your Git repository to create one.` | The user lands here without context; give them the next concrete move. |
+| In-progress is **present participle + ellipsis** — `Deploying…`, `Saving…`. | The ellipsis is the character `…`, not three dots. |
+| **Numerals not words** — `3 projects`, not `three projects`. | Tables of "three projects" feel amateur. |
+| **Curly quotes**, not straight. | Straight quotes are the typewriter residue of the `90s; they look dated on a product surface. |
+| **No `please`** in error messages or empty states. | It's filler that makes the product sound tentative. |
+| **No marketing superlatives** — `revolutionary`, `groundbreaking`, `cutting-edge`. | If the feature is good, the feature says so. The superlative lies for it. |
+
+The full §6 of `DESIGN.md` retains the rest, including voice-tone rules for marketing surfaces. This page keeps only the rules every review of every PR applies.
+
+## Out-of-scope pitfalls
+
+Things that are mistakes, but not design-system mistakes:
+
+- **Wrong contrast ratios on a one-off badge.** Fix the badge; not a design-system lock to add.
+- **A button that does not respond to `Enter` in a form.** That is a `react-hook-form` pattern mistake; not a `Button` primitive mistake.
+- **A 404 page that drops the user in a void.** That is a routing decision; the empty-state pattern in [`DESIGN.md`](../../../../../DESIGN.md) §4.3 applies, but the design system does not own the routing rules.
+
+When the fix is one component, fix the component. When the fix is a rule that will recur, raise it as a new ADR.
