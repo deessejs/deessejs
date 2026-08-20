@@ -180,9 +180,9 @@ Local development runs against `pnpm dev` instead, using a
   preset.
 
   **Why `repository_dispatch`, not `deployment_status`.**
-    Vercel publishes the preview URL via `repository_dispatch`
-    with `event_type: "vercel.deployment.success"`, and
-    recommends this pattern in their KB for e2e-after-preview
+    Vercel documents `repository_dispatch` with
+    `event_type: "vercel.deployment.success"` as the
+    alternative path in their KB for e2e-after-preview
     ([vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment](https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment)).
     Earlier drafts of this ADR used `on: deployment_status`,
     but the documentation path carries the deployment URL
@@ -192,18 +192,32 @@ Local development runs against `pnpm dev` instead, using a
     `repository_dispatch` payload is also documented and
     trusted by Vercel in their own example workflows.
 
-  **Fork-PR posture.** The `repository_dispatch` event
-    fires for fork PRs only after a maintainer authorizes
-    the Vercel preview deployment via fork protection
-    ([vercel.com/docs/git/vercel-for-github](https://vercel.com/docs/git/vercel-for-github)).
-    The repo is internal-only today (no fork-PR workflows
-    exist); the ADR does not engineer fork support into v1
-    but flags it as a known gap for the day the repo is
-    opened to external contributors. The alternative
-    (`on: pull_request_target` for permission-rich runs)
-    is rejected because e2e inherently executes the PR's
-    code, which would create a pwn-request path that exposes
-    secrets to untrusted code.
+    **Note on the comparison.** The Vercel KB does not
+    formally recommend one trigger over the other; it
+    documents both paths. The "one indirection closer"
+    framing is the ADR's editorial choice, justified by
+    the simpler field path on the GitHub Actions side.
+    The Playwright CI docs themselves use
+    `deployment_status` in their canonical example.
+
+  **Fork-PR posture.** Per the Vercel for GitHub docs
+    ([vercel.com/docs/git/vercel-for-github](https://vercel.com/docs/git/vercel-for-github)):
+    *"If you receive a pull request from a fork of your
+    repository, Vercel will require authorization from you
+    or a team member to deploy the pull request."* This
+    means fork PRs do not produce a Vercel deployment by
+    default, and therefore no `repository_dispatch` event
+    fires for them until a maintainer approves the deploy.
+    Once approved, the workflow runs the same way as for
+    an internal PR. The repo is internal-only today (no
+    fork-PR workflows exist); the ADR does not engineer
+    fork support into v1 but flags it as a known gap for
+    the day the repo is opened to external contributors.
+    The alternative (`on: pull_request_target` for
+    permission-rich runs) is rejected because e2e
+    inherently executes the PR's code, which would create
+    a pwn-request path that exposes secrets to untrusted
+    code.
 
 **3. Test placement: `apps/web/tests/e2e/`, deviating from
   Next's example project.** The canonical Next example
@@ -308,26 +322,32 @@ The implementation lands the `data-testid` attributes in the
   one chosen.
 
   **Why not `page.route()`.** Playwright's `page.route()`
-  (and `browserContext.route()`) intercepts *"requests that
-  a page does"* ([playwright.dev/docs/api/class-page#page-route](https://playwright.dev/docs/api/class-page#page-route);
-  v1.5x, fetched 2026-08-20). The docs make no SSR/RSC
-  distinction; the documented Service Worker caveat is the
-  only in-browser exception. Out-of-browser traffic —
-  anything running in Node — is **out of scope** by design
-  (issue #23705 on `microsoft/playwright` is the most-cited
-  demonstration; confirmed by the parallel primary doc on
+  (and `browserContext.route()`) intercepts *"Any requests
+  that a page does, including XHRs and fetch requests"*
+  ([playwright.dev/docs/network](https://playwright.dev/docs/network);
+  v1.5x, fetched 2026-08-20 — introduction section). The
+  same page states the in-browser scope explicitly: *"Any
+  requests that a page does … can be tracked, modified and
+  handled."* The API reference page
+  (`playwright.dev/docs/api/class-page#page-route`) provides
+  the method signature and the Service Worker caveat; the
+  phrase *"requests that a page does"* does not appear there.
+  Out-of-browser traffic — anything running in Node — is
+  **out of scope** by design (issue #23705 on
+  `microsoft/playwright` is the most-cited demonstration;
+  confirmed by the primary doc above).
   `playwright.dev/docs/network`).
 
   For our setup specifically, the oRPC `POST
   /api/v1/rpc/templates/list` call inside
   `apps/web/src/app/(product)/templates/page.tsx:87` is an
   async RSC. The fetch is **executed on the Next.js server
-  runtime during SSR/RSC rendering** (per
-  `apps/web/node_modules/next/dist/docs/01-app/02-guides/
-  streaming.md` and the `fetch` API ref in the same docs
-  bundle — *"In the browser, the cache option indicates how
-  a fetch request will interact with the browser's HTTP
-  cache. With this extension, cache indicates how a
+  runtime during SSR/RSC rendering** (per the `fetch` API ref
+  in the bundled docs — `apps/web/node_modules/next/dist/
+  docs/01-app/03-api-reference/04-functions/fetch.md:8-10`:
+  *"In the browser, the `cache` option indicates how a
+  fetch request will interact with the browser's HTTP
+  cache. With this extension, `cache` indicates how a
   server-side fetch request will interact with the
   framework's persistent cache. You can call fetch with
   async and await directly within Server Components."*).
@@ -772,13 +792,21 @@ The `on: repository_dispatch` trigger with
   authoritative `&lt;project&gt;-&lt;hash&gt;-&lt;scope&gt;.vercel.app`
   format. The earlier draft of this ADR used
   `on: deployment_status` with `target_url`; that path
-  remains valid, but Vercel themselves recommend the
-  dispatch event because it carries the URL one indirection
-  closer to the call site. The Playwright CI docs
-  additionally quote: *"Services like Vercel use this pattern
-  so you can run your end-to-end tests on their deployed
-  environment"* (referring to the dispatch event
-  generically).
+  remains valid. **Caveat on the comparison.** The Playwright
+  CI docs themselves use `deployment_status` + `target_url`
+  as their canonical example for *"Services like Vercel use
+  this pattern so you can run their end-to-end tests on
+  their deployed environment"* ([playwright.dev/docs/ci](https://playwright.dev/docs/ci));
+  Playwright does not endorse `repository_dispatch` over
+  `deployment_status` — the editorial preference in this
+  ADR comes from Vercel's own KB on e2e-after-preview,
+  which documents `repository_dispatch` with
+  `vercel.deployment.success` and `client_payload.url` as
+  the alternative path. The two patterns coexist; we
+  chose `repository_dispatch` because
+  `github.event.client_payload.url` is one indirection
+  closer to the call site than
+  `github.event.deployment_status.target_url`.
 
 **`apps-web-e2e-extended.yml` (nightly non-blocking).**
   Schedule: `cron: "0 3 * * *"`. Runs a wider matrix:
@@ -1012,11 +1040,16 @@ Three implementation details pinned here so a future
   real-user data fails the e2e tests because the assertions
   include a populated catalog and a non-2xx upstream
   failure. **Deployment Protection** on the Vercel project
-  must remain off for the duration of e2e testing, or the
-  `deployment_status.target_url` from Vercel includes the
-  protection bypass secret in the URL, which would re-expose
-  preview traffic to the public. The migration to protected
-  previews is a follow-up ADR.
+  **No contradiction with Deployment Protection.** This
+  ADR explicitly enables Deployment Protection on the
+  Vercel project (see Decision #5 and Consequences §5);
+  the e2e tests authenticate past the protection via the
+  `x-vercel-protection-bypass` header. The bypass secret
+  is **not** embedded in `target_url` — it travels as a
+  request header (or query parameter). Public-by-default
+  therefore refers to the *unauthenticated* default for
+  human visitors; the e2e test runner is not a human
+  visitor and uses the documented bypass mechanism.
 
 ### Future work
 
@@ -1174,8 +1207,11 @@ The P0-P3 test scope above is grounded in the following
 - [Playwright CI docs](https://playwright.dev/docs/ci). The
   `workers: 1` on CI, `reuseExistingServer: !CI`,
   browser-binary caching guidance, and the
-  `deployment_status` / `repository_dispatch` quotes about
-  Services like Vercel are all from this page.
+  `deployment_status` quote (*"Services like Vercel use
+  this pattern so you can run their end-to-end tests on
+  their deployed environment"*) are from this page. The
+  `repository_dispatch` documentation is from Vercel KB
+  (see below).
 - [Vercel generated URLs](https://vercel.com/docs/deployments/generated-urls)
   (lastUpdated 2025-09-24). The commit-URL format and the
   public-by-default caveat.
