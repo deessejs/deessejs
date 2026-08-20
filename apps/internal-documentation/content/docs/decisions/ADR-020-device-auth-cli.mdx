@@ -660,6 +660,92 @@ documents what the implementation PR ships, not what
 follows it. The follow-up tests are the right shape;
 the implementation PR is the right scope.
 
+## Known limitations in this version
+
+Four gaps in the device-management surface were identified during
+the review of this ADR but excluded from V1. They are tracked
+here so a future contributor (and the planned follow-up ADRs)
+can find them without re-discovering them. None blocks this
+ADR; each is bounded, scoped, and has a concrete forward path.
+
+### Limitation 1: the user does not know a CLI is connected
+
+`/settings/sessions` lists active Better Auth sessions, but
+the device-flow session created by `deesse auth login` is
+indistinguishable from a regular sign-in. The user sees a row
+like `127.0.0.1 / Node fetch / 2 days ago` without any
+context that this is their CLI. They will not recognise the
+session row as theirs unless we label it.
+
+**V1 mitigation** (cheap, in scope, does not require a new ADR):
+the CLI sends `User-Agent: DeesseJS CLI/<version>` on its
+`authClient.device.code(...)` and `authClient.device.token(...)`
+calls, and on subsequent calls that carry the session cookie.
+Better Auth stores the request `User-Agent` on the
+`session.userAgent` column (a core field, not a custom
+field). `/settings/sessions` then renders `DeesseJS CLI/2.x.y /
+...` as the row label without any schema change.
+
+**V1 limitation**: there is no opt-out, no permission gate, and
+no per-user toggle; the label is purely informational.
+
+### Limitation 2: per-device revocation is awkward
+
+The user can revoke the Better Auth session from
+`/settings/sessions` (the standard sign-out-for-one-session
+flow). This terminates the CLI's auth but leaves the
+`deviceCode` record in `pending` status until the device-code
+TTL elapses (1800 seconds by default). An attacker with the
+`deviceCode` string who polls before expiry would receive
+`authorization_pending` until the TTL expires; the token
+itself is unbound because the session was revoked, so no
+session can be created.
+
+**V1 mitigation**: acceptable because the session revocation
+short-circuits the auth path even before the device-code
+record matters. The leftover `pending` row is database noise
+(not a security risk) and will age out.
+
+### Limitation 3: no "pending approvals" view
+
+A user can have multiple CLIs in flight (laptop, workstation,
+CI bot). The `deviceCode` table has a `userId` column that is
+populated only when the user clicks `approve`; the
+`GET /device?user_code=...` endpoint side-effects a claim and
+binds the calling session. There is no documented Better Auth
+endpoint to list a user's pending device-code records, and the
+plugin does not expose one.
+
+**V1 limitation**: a user who loses track of an issued code
+(laptop closed, browser tab killed) has no way to see that a
+device-code still expects their approval. They will see it
+expire silently.
+
+### Limitation 4: `deviceCode` records have no automatic cleanup
+
+The plugin's `expiresIn` is enforced server-side on the
+polling response (`expired_token` error code), but the
+underlying rows are not deleted when they expire. They stay
+in the table forever unless a cron or hook removes them.
+
+**V1 limitation**: table growth over time; eventually a
+retention / vacuum job is needed. Not a security or
+correctness issue.
+
+### Where these limitations live in the ADRs
+
+| Limitation | Planned follow-up ADR | Notes |
+|---|---|---|
+| 1 + 2 | **ADR-021** (next, planned) | Activate the `multiSession` plugin, add `/settings/devices` page that calls `listDeviceSessions` and labels rows by `userAgent` prefix. Add a "Revoke" button per row via `multiSession.revoke`. Detail to be settled when ADR-021 lands. |
+| 3 | **ADR-022** (backlog) | Add a server endpoint `GET /device/pending` (custom route on the Hono mount at `/api/v1/auth/device/pending`, DB-gated to `deviceCode.userId = session.userId` AND `status = pending` AND `expiresAt > now()`). Pair with a `/settings/devices/pending` page. |
+| 4 | **ADR-022** or follow-up | Add a cleanup job (cron or `pg_cron` extension) that purges expired `deviceCode` rows. The retention window is TBD; default proposal is to drop rows older than 30 days past `expiresAt`. |
+
+The "V1 mitigation" of Limitation 1 (the `User-Agent` header
+from the CLI) ships in this PR's CLI implementation. The
+remaining three limitations are out of scope; the user
+explicitly accepts the existing `/settings/sessions` as the
+sole session management surface for V1.
+
 ## Consequences
 
 - A PR that adds a device-auth endpoint outside
