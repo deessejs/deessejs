@@ -115,18 +115,21 @@ Four concrete decisions.
     some point; Cypress uses a remote-control architecture
     that requires Sauce Labs for non-Chromium browsers.
   - **`page.setExtraHTTPHeaders()` first-class support.**
-    The chosen e2e strategy (see Decision #5) injects a
-    test-only request header
+    The chosen e2e strategy (see Decision #5) injects the
+    Vercel Protection Bypass secret via Playwright's
+    canonical `extraHTTPHeaders` API
     (`page.setExtraHTTPHeaders({
-      'x-e2e-force-fail': '1',
-      'x-e2e-secret': process.env.E2E_TEST_SECRET
-    })`
-    per navigation; the corresponding guard on the oRPC
-    handler reads it via Next's `headers()` and gates
-    behaviour accordingly. Playwright's API for this is a
-    first-class method on `Page`; Cypress exposes it via
-    `cy.intercept()` with a request callback, but the
-    Playwright ergonomics compose cleanly with the
+      'x-vercel-protection-bypass':
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+      'x-vercel-set-bypass-cookie': 'true'
+    })`),
+    plus a per-test `x-e2e-force-fail: '1'` (or `'2'`)
+    header that the oRPC handler reads via Next's
+    `headers()` to gate the failure path. The Playwright
+    API is a first-class method on `Page`; Cypress exposes
+    the equivalent via `cy.intercept()` with a request
+    callback, but the Playwright ergonomics compose
+    cleanly with the
     TypeScript page-object style we will adopt.
   - **Native parallel mode and sharding.** The PR gate runs
     in less than two minutes on three browsers; nightly can
@@ -358,30 +361,109 @@ The implementation lands the `data-testid` attributes in the
      race; the matrix scenarios stack. The 3-minute budget
      dies.
 
-  **The chosen pattern: per-request header injection,
-  guarded by a shared secret.** Pattern:
+  **The chosen pattern: Vercel Protection Bypass for
+  Automation, single Vercel-managed secret for both jobs.**
+  Pattern:
 
-  * **The header is set by Playwright per navigation** via
-    `page.setExtraHTTPHeaders({ 'x-e2e-force-fail': '1',
-    'x-e2e-secret': process.env.E2E_TEST_SECRET })`
-    ([playwright.dev/docs/api/class-page#page-set-extra-http-headers](https://playwright.dev/docs/api/class-page#page-set-extra-http-headers)).
-    The header travels with the request, including the
-    initial GET that triggers the SSR/RSC render. The
-    headers are scoped to the browser context, so two
-    tests in parallel do not interfere — each test gets a
-    clean `page` and a clean header set.
+  * **Activation.** The Vercel project has **Deployment
+    Protection enabled** (Password Protection or Vercel
+    Authentication — either is fine; the choice is
+    operational). A dedicated bypass secret named
+    *"Playwright tests"* is created in the project's
+    *Deployment Protection → Bypass for Automation*
+    settings. Vercel automatically injects that secret
+    value into the deployed runtime as
+    `process.env.VERCEL_AUTOMATION_BYPASS_SECRET`
+    ([vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation);
+    lastUpdated 2026-04-30, fetched 2026-08-20). The
+    preview URL is therefore inaccessible without the
+    secret; the secret is the gate.
 
-  * **The server reads the header via Next's `headers()`
-    API** at
-    `packages/api/src/orpc/routes/templates.ts:list`. The
-    guard:
+  * **One secret, two jobs.** The same secret that
+    Vercel-managed-system-injects as
+    `VERCEL_AUTOMATION_BYPASS_SECRET` is also read by the
+    oRPC handler at
+    `packages/api/src/orpc/routes/templates.ts:list` to
+    gate the test-only failure path. There is one secret
+    on the project, exposed in two places (the deployment
+    runtime + the oRPC handler); the secret's value
+    never leaves the trusted path (Vercel injects it as a
+    system env var; CI receives it as a GitHub Actions
+    repository secret). The same `extraHTTPHeaders` set
+    that bypasses the Vercel edge is also the one the
+    handler reads to enable the test-only code path.
+
+  * **Playwright configuration.** Per Vercel's
+    documentation, the canonical Playwright config for
+    this exact scenario is:
+
+    ```ts
+    // apps/web/playwright.config.ts (excerpt)
+    if (!process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
+      throw new Error(
+        "VERCEL_AUTOMATION_BYPASS_SECRET is required " +
+        "to run tests against protected deployments",
+      )
+    }
+    export default defineConfig({
+      use: {
+        extraHTTPHeaders: {
+          "x-vercel-protection-bypass":
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          // Required so follow-up navigations (next/link
+          // client transitions) inherit the bypass.
+          // The first response sets a Set-Cookie header
+          // on the preview domain; subsequent navigations
+          // carry the cookie automatically.
+          "x-vercel-set-bypass-cookie": "true",
+        },
+      },
+    })
+    ```
+
+    The two headers are the exact pattern Vercel
+    documents for "in-browser testing"
+    ([vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation#examples](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation#examples);
+    verbatim *"to bypass authorization on follow-up
+    requests (e.g. for **in-browser testing**) you can set
+    an additional header or query parameter named
+    `x-vercel-set-bypass-cookie` with the value `true`.
+    This will set the authorization bypass as a cookie
+    using a redirect with a `Set-Cookie` header."*).
+    Without `x-vercel-set-bypass-cookie`, the first SSR
+    paint works but the next client-side navigation
+    (e.g. the `Try again` recovery in P0-3) loses the
+    header — the issue #81 regression test would fail
+    spuriously on the second navigation.
+
+  * **Per-test guard inside Playwright tests.** On top of
+    the static `extraHTTPHeaders` set, individual tests
+    set the **second** test-only header that drives the
+    oRPC handler's failure path:
+
+    ```ts
+    await page.setExtraHTTPHeaders({
+      "x-e2e-force-fail": "1",
+    })
+    ```
+
+    The two headers travel together: `x-vercel-protection-bypass`
+    authenticates the request past the Vercel edge; `x-e2e-force-fail`
+    selects the test branch inside the handler. Both
+    are scoped per browser context, so two tests in
+    parallel do not race.
+
+  * **Server-side guard.** The oRPC handler reads both
+    headers via Next's `headers()` async API at
+    `packages/api/src/orpc/routes/templates.ts:list`:
 
     ```ts
     const h = await headers()
-    const e2eAllowed =
+    const bypassAllowed =
       process.env.NODE_ENV !== "production" &&
-      h.get("x-e2e-secret") === process.env.E2E_TEST_SECRET
-    if (e2eAllowed) {
+      h.get("x-vercel-protection-bypass") ===
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    if (bypassAllowed) {
       if (h.get("x-e2e-force-fail") === "1") {
         throw new ORPCError("TEMPLATES_FETCH_FAILED", {
           status: 502,
@@ -393,45 +475,47 @@ The implementation lands the `data-testid` attributes in the
     }
     ```
 
-  * **The secret is read from the env once at process
-    start.** The header value **must equal**
-    `process.env.E2E_TEST_SECRET` byte-for-byte. There is
-    no fallback to "no secret" — the gate is closed by
-    default.
-
-  * **`process.env.NODE_ENV !== "production"` is the load-bearing
-    guard against accidental production behaviour.** A
-    future contributor who adds the test-only code path
-    cannot enable it in production by accidentally
-    forwarding the header from a public client; the
-    server-side NODE_ENV check blocks it.
-
-  * **`E2E_TEST_SECRET` lives on the Vercel preview
-    environment as an env var** (set via the Vercel
-    dashboard, not the API mutation path). It is read once
-    per process; the value does not change at runtime.
-    CI exposes it as a GitHub Actions secret; the
-    workflow sets it on the test runner only (`env:
-    E2E_TEST_SECRET: ${{ secrets.E2E_TEST_SECRET }}`),
-    never on the deployment.
+  * **`process.env.NODE_ENV !== "production"` is the
+    load-bearing guard against accidental production
+    behaviour.** A future contributor who adds the
+    test-only code path cannot enable it in production
+    by forwarding the bypass header from a public client
+    (production has no `VERCEL_AUTOMATION_BYPASS_SECRET`
+    set); the server-side NODE_ENV check blocks it
+    regardless of header content.
 
   * **Contract pinning.** The values (`"1"` for failure,
-    `"2"` for empty catalog) are part of the wire contract
-    between the test runner and the handler and are pinned
-    here so a future refactor cannot introduce a typo
-    that silently falls back to the happy path.
+    `"2"` for empty catalog) are part of the wire
+    contract between the test runner and the handler and
+    are pinned here so a future refactor cannot introduce
+    a typo that silently falls back to the happy path.
 
   Implications for the issue #81 regression test (P0-6):
-  the test sets `x-e2e-force-fail: 1` via
-  `page.setExtraHTTPHeaders`, navigates, asserts on the
-  rendered DOM (`role=heading[name="Couldn't load
-  templates"]` and `role=button[name="Try again"]`), then
-  asserts the `x-nextjs-cache` header on the **document
-  response** (the Next.js HTML/RSC stream — that **is**
+  the test sets `x-vercel-protection-bypass` (via
+  `extraHTTPHeaders` in the global config) and
+  `x-e2e-force-fail: 1` (per-test), navigates, asserts
+  on the rendered DOM
+  (`role=heading[name="Couldn't load templates"]` and
+  `role=button[name="Try again"]`), then asserts the
+  `x-nextjs-cache` header on the **document response**
+  (the Next.js HTML/RSC stream — that **is**
   browser-visible) for the cache-poisoning regression
-  signal. The oRPC POST itself is not observable; we
-  assert on its consequence in the rendered tree and in
-  the response cache header.
+  signal. Clicking "Try again" issues a client-side
+  navigation; the bypass cookie set by the first
+  response is sent automatically. The oRPC POST itself
+  is not observable; we assert on its consequence in
+  the rendered tree and in the response cache header.
+
+  **Why this is the correct senior-grade pattern, not a
+  novelty.** The Vercel docs page for Protection Bypass
+  for Automation includes a verbatim Playwright
+  example for exactly this scenario, naming the
+  `extraHTTPHeaders` + `x-vercel-set-bypass-cookie`
+  pattern. Combining the bypass header with the
+  in-handler guard reuses Vercel's documented secret
+  management; a separate `E2E_TEST_SECRET` (the v2 of
+  this ADR) was a duplicate secret surface that this v3
+  eliminates.
 
 ### What this rule allows
 
@@ -449,19 +533,17 @@ The implementation lands the `data-testid` attributes in the
   `page.route()` cannot intercept server-side fetches
   executed inside React Server Components during SSR/RSC
   rendering (see Decision #5 for the reasons).
-- **Per-request header injection via
-  `page.setExtraHTTPHeaders`** scoped to the test's
-  browser context, gated by a shared `E2E_TEST_SECRET`
-  check on the server. The exact scheme is in Decision #5:
-  the test sets `x-e2e-force-fail: 1` (or `2`) along with
-  `x-e2e-secret: <secret>`; the handler in
-  `packages/api/src/orpc/routes/templates.ts:list`
-  honours the header only when `NODE_ENV !== "production"`
-  AND `x-e2e-secret` matches `E2E_TEST_SECRET`. The
-  secret is a process-start env var on the Vercel preview;
-  it is **not** mutated at test time. Per-test isolation
-  is provided by Playwright's per-`page` header scoping —
-  two tests in parallel cannot race.
+- **Vercel Protection Bypass for Automation as the
+  canonical secret surface.** The single
+  `VERCEL_AUTOMATION_BYPASS_SECRET` is Vercel-managed
+  (created in the project's *Deployment Protection →
+  Bypass for Automation* settings; Vercel injects it as
+  a system env var into the deployed runtime). The CI
+  workflow reads it from a GitHub Actions repository
+  secret and feeds it to Playwright via
+  `extraHTTPHeaders`. The same secret is the one the
+  oRPC handler reads via the `x-vercel-protection-bypass`
+  request header. The exact scheme is in Decision #5.
 - **Header values are an enum (`"1"` for forced failure,
   `"2"` for empty catalog)** so a typo in the test
   silently no-ops rather than finding the happy path.
@@ -671,7 +753,7 @@ jobs:
       - name: Run Playwright
         env:
           BASE_URL: ${{ github.event.client_payload.url }}
-          E2E_TEST_SECRET: ${{ secrets.E2E_TEST_SECRET }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           CI: 1
         run: pnpm --filter web exec playwright test
       - if: failure()
@@ -715,8 +797,9 @@ The `on: repository_dispatch` trigger with
   **The `forced-cache-poison` scenario is the one that
   directly mirrors the issue #81 regression.** It runs
   P0-6 against a Vercel preview where the test sets the
-  `x-e2e-force-fail: 1` request header (and `x-e2e-secret`).
-  The handler throws
+  `x-e2e-force-fail: 1` request header (with the bypass
+  cookie already set by the first navigation via
+  `x-vercel-set-bypass-cookie: true`). The handler throws
   `ORPCError("TEMPLATES_FETCH_FAILED", { status: 502 })`
   on the first `/templates` request. The scenario asserts:
     1. The `error.tsx` boundary renders the documented
@@ -809,14 +892,16 @@ Three implementation details pinned here so a future
   `headers()` async API (Next 16 makes the request headers
   available to RSCs through this primitive; cited in
   [nextjs.org/docs/api-reference/functions/headers](https://nextjs.org/docs/api-reference/functions/headers)
-  fetched 2026-08-20) and gates on:
+  fetched 2026-08-20) and gates on the Vercel
+  Automation Bypass secret:
 
   ```ts
   const h = await headers()
-  const e2eAllowed =
+  const bypassAllowed =
     process.env.NODE_ENV !== "production" &&
-    h.get("x-e2e-secret") === process.env.E2E_TEST_SECRET
-  if (e2eAllowed) {
+    h.get("x-vercel-protection-bypass") ===
+      process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+  if (bypassAllowed) {
     if (h.get("x-e2e-force-fail") === "1") {
       throw new ORPCError("TEMPLATES_FETCH_FAILED", { status: 502 })
     }
@@ -826,21 +911,35 @@ Three implementation details pinned here so a future
   }
   ```
 
-  Two unit tests pin the contract:
+  Three unit tests pin the contract:
 
   1. **Closed by default.** When
-     `process.env.E2E_TEST_SECRET` is unset **or** when the
-     `x-e2e-secret` header value does not match,
-     `e2eAllowed` is false and the guard is a no-op — the
-     handler proceeds to the real `enrich()` path.
+     `process.env.VERCEL_AUTOMATION_BYPASS_SECRET` is unset
+     **or** when the
+     `x-vercel-protection-bypass` header value does not
+     match, `bypassAllowed` is false and the guard is a
+     no-op — the handler proceeds to the real `enrich()`
+     path. **This is the load-bearing test against a
+     forgotten secret rotation** — if the Vercel dashboard
+     secret is revoked but the deployed runtime still
+     carries the old value, the handler proceeds without
+     enabling the test path (the handler reads from the
+     process env, not the header, for comparison).
   2. **Production-impervious.** When `NODE_ENV ===
      "production"`, the guard is a no-op regardless of
      header content. A future contributor who enables
      the code path cannot accidentally fire it from
      production traffic; the server-side env check
      blocks it.
+  3. **Header mismatch.** A test pins that a
+     `x-vercel-protection-bypass` value different from
+     `VERCEL_AUTOMATION_BYPASS_SECRET` does not enable the
+     path. This rules out a future refactor that
+     accidentally switches to a truthy-coercion
+     comparison (`if (h.get(...))`) and would expose the
+     test path to anyone able to send a header.
 
-  These two tests are part of
+  These three tests are part of
   `packages/api/tests/integration/rpc/templates.test.ts`
   (next to the existing `enrich()` failure block from
   PR #85). They run on every PR.
@@ -859,8 +958,23 @@ Three implementation details pinned here so a future
 - **The Vercel preview deployment surface.** The
   `apps/app/app/api/[[...route]]/route.ts` and the existing
   CI workflows for Vercel deployments stay. The new
-  workflows add a `deployment_status` listener; they do not
-  modify existing workflows.
+  workflows add a `repository_dispatch` listener; they do
+  not modify existing workflows.
+- **Deployment Protection is now required on the Vercel
+  project.** The implementation PR for this ADR activates
+  Deployment Protection (Password Protection or Vercel
+  Authentication — either is acceptable) on the deessejs
+  Vercel project, with a dedicated bypass secret named
+  *"Playwright tests"*. The runtime receives the secret
+  as `VERCEL_AUTOMATION_BYPASS_SECRET` (Vercel-managed);
+  CI receives the same value as a GitHub Actions
+  repository secret (named the same, by convention). A
+  future contributor can rotate the secret from the
+  Vercel dashboard; doing so invalidates the running
+  preview, which requires a redeploy to pick up the new
+  value. The rotation policy is documented in the
+  implementation runbook; ADR-020 does not formalise
+  the rotation schedule (out of scope).
 
 ### Consequences
 
@@ -971,6 +1085,24 @@ All three are listed so the next iteration of this ADR
   production environment. Explicit override of ADR-016's
   rejection rationale for the narrow case of a UI smoke
   test that needs the production cache behavior.
+- **2026-08-20 (v3)**: replaced the bespoke `E2E_TEST_SECRET`
+  with Vercel's documented
+  [Protection Bypass for Automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation).
+  Earlier drafts proposed either a separate e2e-only
+  secret (v2 of this ADR) or a runtime-mutated env flag
+  (v1). The Vercel-managed bypass secret is exposed as
+  `VERCEL_AUTOMATION_BYPASS_SECRET` system env var, serves
+  as the gate that unlocks the preview URL, AND is the
+  single secret the oRPC handler reads to enable the
+  test-only failure path. The duplicate-secret surface is
+  eliminated; the Playwright config snippet is adapted
+  verbatim from Vercel's canonical example. Added the
+  `x-vercel-set-bypass-cookie: true` follow-up header so
+  client-side navigations (the issue #81 recovery
+  scenario in P0-3) inherit the bypass automatically via
+  `Set-Cookie`. Deployment Protection is now required
+  on the Vercel project — the activation is in scope of
+  this ADR.
 
 ## Audit: rendered `apps/web` surface (the data the ADR is based on)
 
@@ -1017,8 +1149,9 @@ The P0-P3 test scope above is grounded in the following
   The two-workflow shape (PR-blocking + nightly extended)
   is inherited verbatim. The CLI uses a mock HTTP server
   and a tarball runner; the web e2e observes the deployed
-  app's DOM against a test-only env flag. ADR-014 has not
-  been implemented at the time of this ADR; three pivot
+  app's DOM against a test-only header scoped by the
+  Vercel Protection Bypass secret. ADR-014 has not been
+  implemented at the time of this ADR; three pivot
   commits (`327bd6f`, `da8b8f9`, `1684623`) and two
   aborted code spikes (`2e1b6ad`, `3e2d6e3`) document the
   design reasoning. ADR-020 benefits from the same shape without
@@ -1050,5 +1183,15 @@ The P0-P3 test scope above is grounded in the following
   Vercel preview deployment?](https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment).
   The trigger this ADR adopts (`on: repository_dispatch`
   with `vercel.deployment.success` and `client_payload.url`).
+- [Vercel Protection Bypass for Automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation)
+  (lastUpdated 2026-04-30, fetched 2026-08-20). The
+  secret-management scheme this ADR adopts — the
+  Vercel-managed `VERCEL_AUTOMATION_BYPASS_SECRET`
+  system env var, the `x-vercel-protection-bypass`
+  request header, and the
+  `x-vercel-set-bypass-cookie: true` cookie-bearing
+  follow-up pattern. The Playwright config snippet in
+  Decision #5 is adapted verbatim from this page's
+  canonical Playwright example.
 - [GitHub Actions — repository_dispatch event](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#repository_dispatch).
   Reference for the trigger semantics.
