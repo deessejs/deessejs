@@ -1,7 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
 
-import { CACHE_DIR, cachePath } from "../../../cache/location.js"
+import { cachePath } from "../../../cache/location.js"
 
 /**
  * CLI session-token store (ADR-020).
@@ -23,8 +23,19 @@ import { CACHE_DIR, cachePath } from "../../../cache/location.js"
  * reads the cache at its own risk.
  */
 
-/** Absolute path to the auth.json file. Stable across runs. */
-export const AUTH_PATH = cachePath("auth.json")
+/**
+ * Absolute path to the auth.json file. Computed at call
+ * time (no module-level capture) so tests can override
+ * HOME / USERPROFILE and have the path recomputed on
+ * the next invocation. Stable for the lifetime of a
+ * single process invocation under a given HOME.
+ */
+export const AUTH_PATH = (): string => cachePath("auth.json")
+
+// Convenience alias: readAuth / writeAuth / clearAuth all
+// resolve AUTH_PATH() once per call so they see the same
+// value for the duration of a single operation.
+const resolveAuthPath = (): string => AUTH_PATH()
 
 /** Stored session shape. JSON-serialisable. */
 export interface StoredAuth {
@@ -64,9 +75,10 @@ const chmodOwnerOnly = (path: string): void => {
  * explicitly via the CLI error path.
  */
 export const readAuth = (): StoredAuth | null => {
-	if (!existsSync(AUTH_PATH)) return null
+	const path = resolveAuthPath()
+	if (!existsSync(path)) return null
 	try {
-		const text = readFileSync(AUTH_PATH, "utf8")
+		const text = readFileSync(path, "utf8")
 		const parsed = JSON.parse(text) as StoredAuth
 		if (typeof parsed.access_token !== "string") return null
 		return parsed
@@ -80,10 +92,11 @@ export const readAuth = (): StoredAuth | null => {
  * throws on filesystem failure (caller decides how to surface).
  */
 export const writeAuth = (auth: StoredAuth): void => {
-	ensureDir(AUTH_PATH)
+	const path = resolveAuthPath()
+	ensureDir(path)
 	const text = JSON.stringify(auth, null, 2)
-	writeFileSync(AUTH_PATH, text, { mode: 0o600 })
-	chmodOwnerOnly(AUTH_PATH)
+	writeFileSync(path, text, { mode: 0o600 })
+	chmodOwnerOnly(path)
 }
 
 /**
@@ -92,14 +105,11 @@ export const writeAuth = (auth: StoredAuth): void => {
  * server-side session invalidation.
  */
 export const clearAuth = (): void => {
-	if (!existsSync(AUTH_PATH)) return
-	unlinkSync(AUTH_PATH)
+	const path = resolveAuthPath()
+	if (!existsSync(path)) return
+	unlinkSync(path)
 }
 
 // Exposed for the rare caller that needs the resolved path
 // without importing auth.json by name (test fixtures).
 export const authPath = AUTH_PATH
-
-// Re-export CACHE_DIR for tests and helpers that want to
-// place auxiliary files alongside auth.json.
-export { CACHE_DIR }

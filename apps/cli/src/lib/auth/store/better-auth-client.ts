@@ -5,49 +5,45 @@ import { API_AUTH_PATH } from "@workspace/api/base-path"
 import { readPackageVersion } from "../../../api/self-version.js"
 
 /**
- * Better Auth client for the CLI (ADR-020).
+ * Better Auth client factory for the CLI (ADR-020).
  *
- * Mirrors the server-side `deviceAuthorization` plugin. The
- * client side of the device flow runs in Node, not in a
- * browser, so we import the framework-agnostic client
- * (`better-auth/client`, NOT `better-auth/react`). The
- * `react` subpath only adds hooks like `useSession` that
- * the CLI does not consume.
+ * The factory is the public surface (not a singleton).
+ * Two reasons:
+ *   1. Tests need to override `DEESSEJS_API_URL` before the
+ *      client is built; a module-level singleton would
+ *      capture the env var at import time and freeze it.
+ *   2. Each command that touches the server runs at a
+ *      different point in the process lifetime; a fresh
+ *      client per call is fine because createAuthClient is
+ *      cheap (a Proxy + a few plugins).
  *
- * `disableDefaultFetchPlugins: true` is set explicitly. The
+ * The framework-agnostic core (`better-auth/client`) is used
+ * rather than `better-auth/react`. The react subpath only
+ * adds hooks like `useSession` that the CLI does not consume.
+ *
+ * `disableDefaultFetchPlugins: true` is set for Node: the
  * default plugins include a redirect handler that intercepts
- * `window.location`-style redirects, which is meaningless
- * in Node. The official Better Auth docs recommend this for
- * any non-browser environment (React Native, Expo, Node).
+ * `window.location`-style redirects, which is meaningless in
+ * Node.
  *
  * `fetchOptions.headers` injects the CLI User-Agent on every
- * request. The static form is sufficient here: the version
- * does not change between two requests in the same process,
- * so there is no need for the dynamic form. Better-fetch
- * merges the headers into every outgoing request alongside
- * the per-plugin headers (Authorization, Content-Type).
+ * request (ADR-020 limitation 1 mitigation).
  *
- * `baseURL` comes from the `DEESSEJS_API_URL` env var.
- * The CLI does not introduce a `--api-url` flag (ADR-010 §6
- * says per-command URL overrides are not public in V1). An
- * env var keeps the public surface unchanged while making
- * the auth flow possible. Default to localhost in dev so the
- * commands do not crash without explicit configuration.
- *
- * Note: importing from `better-auth/client` directly would
- * be tempting but resolves to the framework-agnostic core
- * (vanilla). `better-auth/client/plugins` is the sibling
- * that re-exports the framework-agnostic plugin client
- * (`deviceAuthorizationClient`).
+ * `baseURL` comes from the `DEESSEJS_API_URL` env var. The
+ * CLI does not introduce a `--api-url` flag (ADR-010 §6).
+ * Default to localhost in dev so the commands do not crash
+ * without explicit configuration.
  */
-export const authClient = createAuthClient({
-	baseURL: process.env.DEESSEJS_API_URL ?? "http://localhost:3000",
-	basePath: API_AUTH_PATH,
-	plugins: [deviceAuthorizationClient()],
-	disableDefaultFetchPlugins: true,
-	fetchOptions: {
-		headers: {
-			"user-agent": `DeesseJS CLI/${readPackageVersion()}`,
+export function createCliAuthClient() {
+	return createAuthClient({
+		baseURL: process.env.DEESSEJS_API_URL ?? "http://localhost:3000",
+		basePath: API_AUTH_PATH,
+		plugins: [deviceAuthorizationClient()],
+		disableDefaultFetchPlugins: true,
+		fetchOptions: {
+			headers: {
+				"user-agent": `DeesseJS CLI/${readPackageVersion()}`,
+			},
 		},
-	},
-})
+	})
+}

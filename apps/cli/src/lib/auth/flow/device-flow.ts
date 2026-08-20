@@ -1,7 +1,7 @@
 import { cliDeviceExpired } from "../../../errors/index.js"
 import { sleep } from "../../../utils/sleep.js"
 
-import { authClient } from "../store/better-auth-client.js"
+import { createCliAuthClient } from "../store/better-auth-client.js"
 
 import { mapPollingError } from "./polling-errors.js"
 
@@ -53,6 +53,7 @@ export type UserIdentity = {
 }
 
 export const requestDeviceCode = async (): Promise<IssuedDeviceCode> => {
+	const authClient = createCliAuthClient()
 	const { data, error } = await authClient.device.code({
 		client_id: "deessejs-cli",
 	})
@@ -79,6 +80,7 @@ export const pollForToken = async (
 			throw cliDeviceExpired("device flow timed out after 30 minutes")
 		}
 		await sleep(interval)
+		const authClient = createCliAuthClient()
 		const { data, error } = await authClient.device.token({
 			grant_type: "urn:ietf:params:oauth:grant-type:device_code",
 			device_code: deviceCode,
@@ -91,7 +93,15 @@ export const pollForToken = async (
 			const token = (data as { access_token: string }).access_token
 			return { accessToken: token }
 		}
-		const code = (error as { code?: string } | null)?.code
+		// The plugin's error envelope is
+		//   { error: "access_denied", error_description: "..." }
+		// (per better-auth/dist/plugins/device-authorization/
+		// routes.mjs deviceTokenErrorSchema). The field name is
+		// `error`, not `code`. Reading `code` here silently
+		// yields undefined and the polling loop falls through
+		// to the "no error code" guard below, which throws
+		// cliDeviceExpired instead of the actual reason.
+		const code = (error as { error?: string } | null)?.error
 		if (!code) {
 			throw cliDeviceExpired(
 				"token endpoint returned no data and no error code",
@@ -108,6 +118,7 @@ export const pollForToken = async (
 }
 
 export const fetchUserIdentity = async (): Promise<UserIdentity | null> => {
+	const authClient = createCliAuthClient()
 	const { data } = await authClient.getSession()
 	if (!data) return null
 	return data.user as UserIdentity

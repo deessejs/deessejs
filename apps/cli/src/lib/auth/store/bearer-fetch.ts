@@ -18,15 +18,16 @@ import { readPackageVersion } from "../../../api/self-version.js"
  *     /settings/sessions view of CLI sessions)
  *   - Authorization: Bearer <access_token> (caller-supplied)
  *
- * Path is appended to API_AUTH_PATH the same way
- * `deviceFetch` was. We do not export `deviceFetch`
- * anymore — the typed client owns the device-flow calls.
- * This helper is the only manual wrapper left, and only for
- * the read-only / sign-out calls that need a bearer.
+ * Path is appended to (baseURL + API_AUTH_PATH) so the
+ * request is absolute. baseURL comes from DEESSEJS_API_URL
+ * (same source the typed client reads) so production and
+ * tests share the same resolution. The default to
+ * http://localhost:3000 mirrors better-auth-client.ts.
  */
 function authUrl(path: string): string {
 	const normalised = path.startsWith("/") ? path.slice(1) : path
-	return `${API_AUTH_PATH}/${normalised}`
+	const baseURL = process.env.DEESSEJS_API_URL ?? "http://localhost:3000"
+	return `${baseURL}${API_AUTH_PATH}/${normalised}`
 }
 
 export function bearerFetch(

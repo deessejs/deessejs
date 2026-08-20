@@ -9,7 +9,7 @@ import {
 	requestDeviceCode,
 } from "../../lib/auth/flow/index.js"
 import { writeAuth } from "../../lib/auth/store/store.js"
-import { internal, type CliError } from "../../errors/index.js"
+import { type CliError } from "../../errors/index.js"
 import { printError, printJson } from "../../output/index.js"
 
 /**
@@ -87,8 +87,14 @@ export const loginCommand = new Command("login")
 				} else {
 					printError(err)
 				}
-				process.exit(err.exitCode())
+				// Rethrow so the index.ts last-resort handler
+				// calls process.exit(err.exitCode()). This is
+				// also what makes the command testable: vitest
+				// catches the throw, asserts on the error shape,
+				// and the production path still exits with the
+				// right code (via the central handler).
+				throw err
 			}
-			throw internal(e instanceof Error ? e.message : String(e))
+			throw e
 		}
 	})
