@@ -31,7 +31,58 @@ import { logger } from "../../constants/logger.js"
  * and 502 (Bad Gateway) is the semantically correct status.
  * Clients used to the documented 503 should treat any non-2xx
  * as retriable — the status code is informational.
+ *
+ * E2E test guard (ADR-020):
+ *
+ * Playwright e2e suites exercise the failure / empty paths by
+ * sending two request headers:
+ *
+ *   x-vercel-protection-bypass: <Vercel Automation Bypass secret>
+ *     AND
+ *   x-e2e-force-fail: "1" (force a 502 TEMPLATES_FETCH_FAILED)
+ *   x-e2e-force-fail: "2" (force an empty catalog)
+ *
+ * The bypass header is required to authenticate against a
+ * Deployment-Protection-protected Vercel preview deployment; the
+ * same secret value is matched against process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+ * (a system env var Vercel-managed injects on every
+ * deployment that has Deployment Protection + a bypass secret
+ * configured). See
+ * https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation
+ *
+ * The x-e2e-force-fail header is an *enum* with three valid
+ * values: "1" forces failure, "2" forces empty, anything else
+ * is a no-op (the test runner's normal fetch). A typo from the
+ * test runner silently falls back to the happy path — the
+ * three unit tests on this guard pin the contract that the
+ * guard is closed-by-default, production-impervious, and
+ * header-mismatch. See packages/api/tests/integration/rpc/templates.test.ts.
+ *
+ * The guard is gated on NODE_ENV !== "production" so a future
+ * contributor cannot accidentally fire the test path from
+ * production traffic. The env check is the floor; the secret
+ * comparison is the ceiling.
  */
+const e2eForceFail = (
+  requestHeaders: Headers,
+): TemplatesListResponseV1 | null => {
+  const bypass = requestHeaders.get("x-vercel-protection-bypass")
+  const expected = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+  // Closed by default: missing secret OR missing/non-matching
+  // header means the test path is a no-op.
+  if (!expected || !bypass || bypass !== expected) {
+    return null
+  }
+  const force = requestHeaders.get("x-e2e-force-fail")
+  if (force === "1") {
+    throw new ORPCError("TEMPLATES_FETCH_FAILED", { status: 502 })
+  }
+  if (force === "2") {
+    return { templates: [] }
+  }
+  return null
+}
+
 export const list = base
   .errors({
     TEMPLATES_FETCH_FAILED: {
@@ -41,6 +92,14 @@ export const list = base
     },
   })
   .handler(async ({ context }): Promise<TemplatesListResponseV1> => {
+    // E2E guard runs in EVERY environment except production.
+    // In production the guard is a no-op (closed-by-default + the
+    // NODE_ENV check on the import below).
+    if (process.env.NODE_ENV !== "production") {
+      const forced = e2eForceFail(context.headers)
+      if (forced !== null) return forced
+    }
+
     try {
       const templates = await enrich(TEMPLATES)
       return { templates }
