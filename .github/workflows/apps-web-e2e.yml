@@ -9,10 +9,18 @@
 # and https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#repository_dispatch
 #
 # Per ADR-020.
-name: apps/web e2e
+name: apps-web-e2e
 on:
+  # `repository_dispatch` only fires when the workflow file
+  # exists on the default branch (per Vercel docs at
+  # https://vercel.com/docs/git/vercel-for-github#repository-dispatch-events).
+  # For PR-time validation, Vercel recommends adding
+  # `workflow_dispatch` so the workflow can be triggered manually
+  # from the GitHub Actions UI before the workflow file lands
+  # on the default branch via merge.
   repository_dispatch:
     types: [vercel.deployment.success]
+  workflow_dispatch:
 jobs:
   e2e:
     runs-on: ubuntu-latest
