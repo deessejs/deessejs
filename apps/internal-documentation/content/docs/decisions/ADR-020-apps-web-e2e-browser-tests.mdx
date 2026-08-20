@@ -87,9 +87,10 @@ Add a dedicated Playwright suite under `apps/web/e2e/` that
   exercises the deployed marketing site. The suite is one
   file per surface (`templates-index`,
   `templates-detail`, `templates-cache`, `navigation`), plus a
-  helpers folder for the mock-API route interception, the
-  page-object selectors, and the Vercel preview URL
-  resolution.
+  helpers folder for the page-object selectors and the
+  Vercel preview URL resolution. The suite has **no network
+  interception helper** — the tests observe the rendered
+  DOM, not the outbound API traffic (see Decision #5).
 
 The suite runs in CI against the Vercel preview deployment
   for the PR. Failure modes that are too slow, flaky, or
@@ -137,13 +138,14 @@ Cypress is rejected on three grounds: no first-class
 
 **2. Target: Vercel preview deployment, not a local Next dev
   server.** The CI workflow uses the
-  `on: deployment_status` trigger with the
-  `target_url` from the Vercel payload as `BASE_URL`. Two
-  reasons:
+  `on: repository_dispatch` trigger with the
+  `client_payload.url` from the Vercel payload as
+  `BASE_URL`. Two reasons:
 
   - **The `x-nextjs-cache` header is a production-only
     signal.** Next.js emits `HIT | STALE | MISS | REVALIDATED`
-    for ISR-rendered routes ([nextjs.org/docs/app/guides/incremental-static-regeneration](https://nextjs.org/docs/app/getting-started/revalidating);
+    for ISR-rendered routes
+    ([nextjs.org/docs/app/guides/incremental-static-regeneration](https://nextjs.org/docs/app/getting-started/revalidating);
     v16.3.1). The header is populated by the production
     runtime; `next dev` does not exercise it. The issue #81
     regression test is meaningless against `next dev`.
@@ -165,6 +167,32 @@ Local development runs against `pnpm dev` instead, using a
   exercise the same test code without asserting the cache
   directive headers. The CI workflow does not use this
   preset.
+
+  **Why `repository_dispatch`, not `deployment_status`.**
+    Vercel publishes the preview URL via `repository_dispatch`
+    with `event_type: "vercel.deployment.success"`, and
+    recommends this pattern in their KB for e2e-after-preview
+    ([vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment](https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment)).
+    Earlier drafts of this ADR used `on: deployment_status`,
+    but the documentation path carries the deployment URL
+    directly in `client_payload.url`, while
+    `deployment_status` requires reading `environment_url`
+    (or `target_url`) and is one indirection further. The
+    `repository_dispatch` payload is also documented and
+    trusted by Vercel in their own example workflows.
+
+  **Fork-PR posture.** The `repository_dispatch` event
+    fires for fork PRs only after a maintainer authorizes
+    the Vercel preview deployment via fork protection
+    ([vercel.com/docs/git/vercel-for-github](https://vercel.com/docs/git/vercel-for-github)).
+    The repo is internal-only today (no fork-PR workflows
+    exist); the ADR does not engineer fork support into v1
+    but flags it as a known gap for the day the repo is
+    opened to external contributors. The alternative
+    (`on: pull_request_target` for permission-rich runs)
+    is rejected because e2e inherently executes the PR's
+    code, which would create a pwn-request path that exposes
+    secrets to untrusted code.
 
 **3. Test placement: `apps/web/e2e/`, mirroring Next's example
   project.** The repo convention from ADR-009 is `test/`
@@ -189,9 +217,9 @@ apps/web/
 │   ├── templates-cache.spec.ts           new   (issue #81 regression guard)
 │   ├── navigation.spec.ts                new
 │   └── helpers/
-│       ├── intercept.ts                  new   page.route() helpers
 │       ├── selectors.ts                  new   stable selector queries
-│       └── preview-url.ts                new   Vercel URL parsing
+│       ├── preview-url.ts                new   Vercel URL parsing
+│       └── env-flag.ts                   new   the test-only env-flag setter
 ├── test/                                 existing (PR #85)
 │   └── unit/orpc.test.ts                 existing
 ├── e2e.config.ts                         new   locally only
@@ -235,6 +263,66 @@ The implementation lands the `data-testid` attributes in the
   drift from a test expectation; one PR makes the coupling
   visible at review time.
 
+**5. Test-only env flag, not `page.route()`.** Playwright's
+  `page.route()` (and `browserContext.route()`) intercepts
+  *"requests that a page does"* ([playwright.dev/docs/api/class-page#page-route](https://playwright.dev/docs/api/class-page#page-route);
+  v1.5x, fetched 2026-08-20). The docs make no SSR/RSC
+  distinction; the documented Service Worker caveat is the
+  only in-browser exception. Out-of-browser traffic —
+  anything running in Node — is **out of scope** by design
+  (issue #23705 on `microsoft/playwright` is the most-cited
+  demonstration; confirmed by the parallel primary doc on
+  `playwright.dev/docs/network`).
+
+  For our setup specifically, the oRPC `POST
+  /api/v1/rpc/templates/list` call inside `apps/web/src/app/
+  (product)/templates/page.tsx:87` is an async RSC. The
+  fetch is **executed on the Next.js server runtime during
+  SSR/RSC rendering** (per
+  `apps/web/node_modules/next/dist/docs/01-app/02-guides/
+  streaming.md` and the `fetch` API ref in the same docs
+  bundle — *"In the browser, the cache option indicates how
+  a fetch request will interact with the browser's HTTP
+  cache. With this extension, cache indicates how a
+  server-side fetch request will interact with the
+  framework's persistent cache. You can call fetch with
+  async and await directly within Server Components."*).
+  The browser never sees a `POST /api/v1/rpc/*` request on
+  initial paint; the result is interleaved in the HTTP
+  response stream alongside the RSC payload.
+
+  **Therefore:** `page.route('**/api/v1/rpc/**')` **would
+  silently pass through** — the request never reaches the
+  browser, the handler is never invoked, the test would
+  return a false green against the real (or test) upstream
+  API. The earlier draft of this ADR proposed this pattern;
+  the review correctly identified it as a load-bearing bug
+  in the strategy. The implementation uses a test-only env
+  flag on the oRPC handler instead.
+
+  The env-flag pattern is the standard solution for the
+  SSR/RSC + Playwright boundary. The constraint is that the
+  flag must be honoured only outside production — the
+  guard in the handler is `process.env.TEMPLATES_E2E_FORCE_FAIL
+  === "1" && process.env.NODE_ENV !== "production"`. The
+  assert in the test is `process.env.NODE_ENV === "test"`
+  on the CI runner, plus the flag. Production callers
+  ignore the flag unconditionally. The exact values
+  (`"1"` for failure, `"2"` for empty catalog) are part of
+  the wire contract between the test runner and the handler
+  and are pinned here so a future refactor cannot introduce
+  a typo that silently falls back to the happy path.
+
+  Implications for the issue #81 regression test (P0-6):
+  the test asserts on the rendered DOM (`role=heading[
+  name="Couldn't load templates"]` and `role=button[name=
+  "Try again"]`) after setting the flag, then asserts the
+  `x-nextjs-cache` header on the *document response* (the
+  Next.js HTML/RSC stream — that **is** browser-visible)
+  for the cache-poisoning regression signal. The oRPC POST
+  itself is not observable; we assert on its consequence
+  in the rendered tree and in the response cache header.
+
 ### What this rule allows
 
 - **A `playwright.config.ts` at `apps/web/playwright.config.ts`**
@@ -243,12 +331,35 @@ The implementation lands the `data-testid` attributes in the
   between them. The CI workflow always sets `BASE_URL` to
   the Vercel preview; the local preset omits `BASE_URL` and
   uses Playwright's `webServer` block.
-- **`page.route()` interception of `/api/v1/rpc/templates/list`**
-  with three modes: `success` (the real GitHub-derived
-  payload), `failure` (502 with the new wire-code), and
-  `empty` (200 with `{ templates: [] }`). The routes are
-  scoped to the test that needs them; tests that don't need
-  to mock the API pass through to the real network.
+- **DOM-only assertions via Playwright's browser
+  primitives** (`page.goto`, `page.locator`,
+  `expect(...).toBeVisible`). The test surface is the
+  rendered HTML — the same boundary a user observes. Tests
+  do **not** intercept any `/api/v1/rpc/*` traffic because
+  `page.route()` cannot intercept server-side fetches
+  executed inside React Server Components during SSR/RSC
+  rendering (see Decision #5 for the reasons).
+- **A test-only env flag on the oRPC handler** —
+  `TEMPLATES_E2E_FORCE_FAIL=1` — that, when set together
+  with `process.env.NODE_ENV !== "production"`, throws
+  `ORPCError("TEMPLATES_FETCH_FAILED", { status: 502 })`
+  unconditionally from
+  `packages/api/src/orpc/routes/templates.ts:list`. This is
+  the only way the e2e suite can deterministically drive
+  the failure path: the flag is honoured only outside prod
+  (the env flag is checked on a guard, not a side-effect
+  path), and the assertion that follows is DOM-only against
+  the resulting `error.tsx` boundary. Without the flag,
+  the happy path exercises the same code; with the flag
+  set, the failure path is exercised deterministically.
+- **The same test-only env flag, set to `2`, exercises the
+  empty-catalog branch.** `enrich()` returns
+  `{ templates: [] }`; the page renders the documented
+  empty-state copy; the test asserts the
+  `data-testid="templates-empty"` marker. The flag value
+  is an enum, not a free string, so a typo in the workflow
+  fails the test rather than silently falling back to the
+  happy path.
 - **One suite per surface, named after the route family.**
   The convention follows ADR-016's `tests/integration/`
   rule: the file name mirrors the route, not the verb.
@@ -335,32 +446,44 @@ The first PR ships the P0 surface. Subsequent PRs add P1-P3
   Driven from `/`. Asserts `role=heading[name="Templates"]`,
   sidebar `Type`/`Framework` groups, at least one card via
   `data-testid="templates-card"`, and the count summary
-  text. Network: one POST `/api/v1/rpc/templates/list`.
+  text. No env flag is set; the test hits the real
+  upstream via the Vercel preview.
 - P0-2: `/templates` empty catalog renders the empty state
-  with `data-testid="templates-empty"`. Network:
-  intercepted 200 with `{ templates: [] }`.
+  with `data-testid="templates-empty"`. The test sets
+  `TEMPLATES_E2E_FORCE_FAIL=2` (env-flag enum value 2,
+  see Decision #5) on the preview environment, navigates,
+  and asserts the DOM. There is no `page.route()` here —
+  the flag is honoured on the server.
 - P0-3: `/templates` error boundary renders on a forced
-  oRPC failure. Network: intercepted 502 with wire-code
-  `TEMPLATES_FETCH_FAILED`. Asserts the H1, body copy, and
-  the `role=button[name="Try again"]`. **Clicking
-  "Try again" re-fires the oRPC POST** (the network
-  assertion is the regression guard for `reset()`).
+  oRPC failure. The test sets
+  `TEMPLATES_E2E_FORCE_FAIL=1` on the preview, navigates,
+  and asserts the H1, body copy, and the
+  `role=button[name="Try again"]`. **Clicking "Try again"
+  re-runs the parent RSC** (the `reset()` behavior) — the
+  test asserts the second navigation lands in the populated
+  state when the flag is unset.
 - P0-4: `/templates/[slug]` renders the detail page for
   `saas-starter`. Asserts H1 matches `template.name`,
   the breadcrumb links back to `/templates`, the H1 +
   install + source + Details `&lt;dl&gt;` are present.
+  DOM-only.
 - P0-5: `/templates/[slug]` for an unknown slug renders
   `not-found.tsx`. The Pages output is 404 (asserted via
   `response.status()`); the body has `role=heading[name=
-  "Template not found"]` and the back link.
-- P0-6: **issue #81 regression guard.** The POST
-  `/api/v1/rpc/templates/list` issued by `/templates` is
-  observed via `page.on('request')`. The network assertion
-  must fire the oRPC POST on **every** navigation (no
-  sticky cache). The RSC document response for `/templates`
-  must carry `x-nextjs-cache != "HIT"` or omit the header.
-  A `HIT` here is the smoking gun for a regression to the
-  old site-wide tag.
+  "Template not found"]` and the back link. DOM-only.
+- P0-6: **issue #81 regression guard.** Two assertions:
+  (a) the **RSC document response** for `/templates` must
+  carry `x-nextjs-cache != "HIT"` (or omit the header) on
+  every navigation — a `HIT` here is the smoking gun for a
+  regression to the old site-wide tag; (b) under
+  `TEMPLATES_E2E_FORCE_FAIL=1`, the `error.tsx` boundary
+  renders the documented copy, the "Try again" button
+  recovers the page to the populated state (after the flag
+  is unset), and the `x-nextjs-cache` header still reads
+  non-`HIT` on the recovered render. The oRPC POST itself
+  is **not** observable from the browser — the test
+  asserts on the consequence in the DOM and in the
+  response cache header.
 
 **P1 - second PR.**
 - P1-7: sidebar filter toggles update the URL and re-filter
@@ -428,11 +551,10 @@ Two workflows, named `apps-web-e2e.yml` and
 ```yaml
 name: apps/web e2e
 on:
-  deployment_status:
-    types: [success]
+  repository_dispatch:
+    types: [vercel.deployment.success]
 jobs:
   e2e:
-    if: github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -442,7 +564,7 @@ jobs:
       - run: pnpm --filter web exec playwright install --with-deps
       - name: Run Playwright
         env:
-          BASE_URL: ${{ github.event.deployment_status.target_url }}
+          BASE_URL: ${{ github.event.client_payload.url }}
           CI: 1
         run: pnpm --filter web exec playwright test
       - if: failure()
@@ -453,13 +575,21 @@ jobs:
           retention-days: 7
 ```
 
-The `on: deployment_status` trigger is verbatim from the
-  Playwright CI docs: *"Services like Vercel use this pattern
+The `on: repository_dispatch` trigger with
+  `vercel.deployment.success` is the pattern Vercel
+  recommends in their own KB for e2e-after-preview
+  ([vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment](https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment)).
+  The `client_payload.url` is the preview URL with the
+  authoritative `&lt;project&gt;-&lt;hash&gt;-&lt;scope&gt;.vercel.app`
+  format. The earlier draft of this ADR used
+  `on: deployment_status` with `target_url`; that path
+  remains valid, but Vercel themselves recommend the
+  dispatch event because it carries the URL one indirection
+  closer to the call site. The Playwright CI docs
+  additionally quote: *"Services like Vercel use this pattern
   so you can run your end-to-end tests on their deployed
-  environment."* The `target_url` is the commit URL
-  (`&lt;project&gt;-&lt;hash&gt;-&lt;scope&gt;.vercel.app`), which
-  Vercel pins to one commit and is the stable identifier for
-  the deployment.
+  environment"* (referring to the dispatch event
+  generically).
 
 **`apps-web-e2e-extended.yml` (nightly non-blocking).**
   Schedule: `cron: "0 3 * * *"`. Runs a wider matrix:
@@ -467,8 +597,8 @@ The `on: deployment_status` trigger is verbatim from the
   | Dimension | Scenarios | Notes |
   |---|---|---|
   | Browser | Desktop Chrome, Desktop Firefox, Desktop Safari (WebKit), Mobile Chrome (Pixel 5), Mobile Safari (iPhone 12) | PR gate runs Chromium only; nightly covers the multi-browser matrix per the canonical Playwright config |
-  | Network | `real-network` (the Vercel preview hit by the PR gate); `forced-cache-poison` (a 502 interception that re-runs the issue #81 regression); `slow-network` (Playwright route with a 2s delay to test the loading skeleton + `useDeferredValue`); `flaky-network` (intermittent 502s to test the `Try again` button) | Each scenario is a separate `matrix:` entry with its own `interception` preset |
-  | Fixture | `populated-catalog` (the V1 single template); `empty-catalog` (intercepted `{ templates: [] }`); `large-catalog` (intercepted 100 templates — slow path, asserts the grid scroll + filter performance) | Cloned from the `large-fixture` / `unicode` / `real-pm` pattern in ADR-014:322-356 |
+  | Network | `real-network` (the Vercel preview hit by the PR gate); `forced-cache-poison` (a forced-handler failure path that re-runs the issue #81 regression against `TEMPLATES_E2E_FORCE_FAIL=1`); `slow-network` (e2e.config.ts only — local preset that delays the upstream); `flaky-network` (force the flag to fail intermittently to test the `Try again` button) | Each scenario is a separate `matrix:` entry with its own env-flag preset. **Note:** `page.route()` cannot simulate slow or flaky behaviour at the RSC layer — see Decision #5. The matrix exercises handler behaviour, not network behaviour. |
+  | Fixture | `populated-catalog` (the V1 single template); `empty-catalog` (`TEMPLATES_E2E_FORCE_FAIL=2`); `large-catalog` (custom registry fixture mounted at `apps/web/e2e/fixtures/large-catalog.ts` — 100 templates, slow path, asserts the grid scroll + filter performance) | Cloned from the `large-fixture` / `unicode` / `real-pm` pattern in ADR-014:322-356 |
 
   Failures in any nightly scenario post a GitHub issue
   with the workflow run URL, the scenario, and the
@@ -477,13 +607,15 @@ The `on: deployment_status` trigger is verbatim from the
 
   **The `forced-cache-poison` scenario is the one that
   directly mirrors the issue #81 regression.** It runs
-  P0-6 against an oRPC interception that returns
-  `{ defined: false, code: "TEMPLATES_FETCH_FAILED", status:
-  502 }`. The scenario asserts:
+  P0-6 against a Vercel preview where `TEMPLATES_E2E_FORCE_FAIL=1`
+  is set on the environment. The handler throws
+  `ORPCError("TEMPLATES_FETCH_FAILED", { status: 502 })`
+  on the first `/templates` request. The scenario asserts:
     1. The `error.tsx` boundary renders the documented
        copy.
     2. The `role=button[name="Try again"]` recovers to a
-       fresh populated state.
+       fresh populated state (after the env flag is unset
+       in the next matrix iteration).
     3. The `x-nextjs-cache` header is **not** `HIT` after
        the recovery.
 
@@ -504,9 +636,9 @@ apps/web/e2e/                              new
 +-- home-page-links.spec.ts                new   P2-12
 +-- metadata.spec.ts                       new   P2-14
 +-- clipboard.spec.ts                      new   P2-15
-+-- intercept.ts                           new   page.route() helpers
 +-- selectors.ts                           new   role + test-id queries
 +-- preview-url.ts                         new   Vercel URL parser
++-- env-flag.ts                            new   sets TEMPLATES_E2E_FORCE_FAIL on the Vercel preview env
 
 apps/web/
 +-- package.json                           modified (scripts + devDeps)
@@ -531,20 +663,23 @@ The vitest config and the playwright config are
 Three implementation details pinned here so a future
   contributor does not re-derive them.
 
-**`expect.toPass()` for retry-aware assertions.** The
-  network interception setup (`page.route`) takes effect on
-  the next request. A test that mocks the oRPC POST and
-  then asserts on the resulting DOM needs to retry the
-  assertion if the route interception races the navigation.
-  Playwright's `expect.toPass()` ([playwright.dev/docs/test-assertions](https://playwright.dev/docs/test-assertions#expecttopass))
-  is the canonical retry primitive.
+**`expect.toPass()` for retry-aware assertions on the
+  DOM.** When the test sets the env flag and then asserts
+  on the rendered `error.tsx` copy, the Vercel preview
+  edge cache can race the assertion (the preview may
+  serve a cached success body for the first ~100ms after
+  the env flag flip). `expect.toPass()`
+  ([playwright.dev/docs/test-assertions](https://playwright.dev/docs/test-assertions#expecttopass))
+  is the canonical retry primitive. The default polling
+  is fine; the test does not need to tune `intervals`.
 
-**`page.on('request')` and `page.on('response')` listeners
-  are cleaned up per-test.** Without cleanup, the listeners
-  accumulate across tests and the P0-6 regression guard
-  reports requests from previous tests. The convention:
-  every test that subscribes to `request` or `response`
-  removes the subscriber in a `finally` block.
+**`page.on('response')` listeners are cleaned up per-test.**
+  The `x-nextjs-cache` header assertion in P0-6 subscribes
+  via `page.on('response')`. Without cleanup, the listeners
+  accumulate across tests and the regression guard reports
+  headers from previous tests. The convention: every test
+  that subscribes removes the subscriber in a `finally`
+  block.
 
 **Local-preset reuse of the CI preset.** The dev preset
   (`apps/web/e2e.config.ts`) extends the CI preset with
@@ -553,6 +688,26 @@ Three implementation details pinned here so a future
   'http://localhost:3000'`. No test file is duplicated. The
   `playwright.config.ts` and `e2e.config.ts` files together
   total under 80 lines.
+
+**Note on the oRPC handler guard.** The
+  `TEMPLATES_E2E_FORCE_FAIL` guard lives in
+  `packages/api/src/orpc/routes/templates.ts:list` (next to
+  the `TEMPLATES_FETCH_FAILED` wire-code from PR #85). The
+  guard pattern is:
+
+  ```ts
+  if (
+    process.env.TEMPLATES_E2E_FORCE_FAIL === "1" &&
+    process.env.NODE_ENV !== "production"
+  ) {
+    throw new ORPCError("TEMPLATES_FETCH_FAILED", { status: 502 })
+  }
+  ```
+
+  A unit test in the e2e suite pins that the guard never
+  fires under `NODE_ENV === "production"` regardless of the
+  env flag. The guard is the load-bearing contract that
+  makes the test-only flag a safe production surface.
 
 ### What this rule does not change
 
@@ -655,8 +810,9 @@ All three are listed so the next iteration of this ADR
   ([nextjs.org/docs/app/guides/testing](https://nextjs.org/docs/app/guides/testing);
   v16.3.1, lastUpdated 2026-02-03) that Next lists Playwright
   and Cypress as peer-supported without preference.
-  Selected Playwright on the multi-browser, page.route(),
-  and canonical-presentation grounds.
+  Selected Playwright on the multi-browser, native
+  DOM-assertion primitives, and canonical-presentation
+  grounds.
 - **2026-08-20**: inventoried the existing test surface in
   the repo. Confirmed that ADR-009 (unit/integration/contract
   vitest) and ADR-016 (Hono `api.request()`) cover the
@@ -705,7 +861,7 @@ The P0-P3 test scope above is grounded in the following
 | oRPC POST | `apps/web/src/lib/orpc.ts:102-108` | `page.on('request')` sees POST to `/api/v1/rpc/templates/list` on every nav | issue #81 regression |
 | `x-nextjs-cache` | `apps/web/src/lib/orpc.ts:62-94` | response header != `HIT` for `templates:live` | issue #81 regression |
 | `Cache-Control: no-store` on `/api/v1/rpc/*` | `packages/api/src/http/mount-rpc.ts:70` | response header == `no-store` | CDN safety regression |
-| Wire-code `TEMPLATES_FETCH_FAILED` | `packages/api/src/orpc/routes/templates.ts:58-62` | intercepted 502 + `error.tsx` renders | PR #85 wire-code regression |
+| Wire-code `TEMPLATES_FETCH_FAILED` | `packages/api/src/orpc/routes/templates.ts:58-62` (and the new `TEMPLATES_E2E_FORCE_FAIL` guard) | `TEMPLATES_E2E_FORCE_FAIL=1` env flag on the Vercel preview; the handler throws the wire-code; DOM-only assertion on `error.tsx` + `Try again` | PR #85 wire-code regression; issue #81 regression when paired with P0-6 |
 
 ## Related
 
@@ -722,12 +878,12 @@ The P0-P3 test scope above is grounded in the following
 - [ADR-014: CLI e2e tests](./ADR-014-cli-e2e-tests.md).
   The two-workflow shape (PR-blocking + nightly extended)
   is inherited verbatim. The CLI uses a mock HTTP server
-  and a tarball runner; the web e2e uses the deployed app
-  and a `page.route()` interception. ADR-014 has not been
-  implemented at the time of this ADR; three pivot commits
-  (`327bd6f`, `da8b8f9`, `1684623`) and two aborted code
-  spikes (`2e1b6ad`, `3e2d6e3`) document the design
-  reasoning. ADR-020 benefits from the same shape without
+  and a tarball runner; the web e2e observes the deployed
+  app's DOM against a test-only env flag. ADR-014 has not
+  been implemented at the time of this ADR; three pivot
+  commits (`327bd6f`, `da8b8f9`, `1684623`) and two
+  aborted code spikes (`2e1b6ad`, `3e2d6e3`) document the
+  design reasoning. ADR-020 benefits from the same shape without
   inheriting the failed design choices.
 - [ADR-016: API integration tests in CI](./ADR-016-api-ci-integration-tests.md).
   The Hono `api.request()` integration pattern is rejected
