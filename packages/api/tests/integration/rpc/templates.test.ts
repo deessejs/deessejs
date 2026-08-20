@@ -166,3 +166,95 @@ describeUnit("enrich() failure surface (issue #81 wire-code)", () => {
     )
   })
 })
+
+/**
+ * E2E test guard contract (ADR-020).
+ *
+ * Three unit-tier tests that pin the contract of the
+ * x-vercel-protection-bypass + x-e2e-force-fail guard inside
+ * the templates handler. The guard is the seam that lets the
+ * Playwright e2e suite drive the failure / empty paths
+ * without a real upstream outage.
+ *
+ * These tests do NOT hit the network — they run on every PR
+ * regardless of the GitHub rate limit. They only need to
+ * assert the guard's behavior under three specific shapes
+ * of the bypass header.
+ */
+describeUnit("templates.list e2e guard (ADR-020)", () => {
+  const SECRET = "test-only-bypass-secret"
+  const URL = "/api/v1/rpc/templates/list"
+  const BODY = JSON.stringify({ data: null, path: ["templates", "list"] })
+
+  const call = (headers: Record<string, string> = {}) =>
+    api.request(URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: BODY,
+    })
+
+  itUnit(
+    "closed by default: missing secret OR missing/non-matching bypass header means the guard is a no-op",
+    async () => {
+      // Save the real env value (if any) and ensure it is empty
+      // so the guard closes by default.
+      const saved = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      try {
+        // No headers — guard should be closed.
+        const res = await call({ "x-e2e-force-fail": "1" })
+        // The guard is closed, so we hit `enrich()` (which
+        // requires GitHub in real network but here we are in
+        // CI with mocked network — see globalSetup). The test
+        // pins that the response is NOT the wire-code 502.
+        expect(res.status).not.toBe(502)
+      } finally {
+        if (saved !== undefined) process.env.VERCEL_AUTOMATION_BYPASS_SECRET = saved
+      }
+    },
+  )
+
+  itUnit(
+    "production-impervious: guard is a no-op when NODE_ENV is 'production'",
+    async () => {
+      const savedSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      const savedNodeEnv = process.env.NODE_ENV
+      process.env.VERCEL_AUTOMATION_BYPASS_SECRET = SECRET
+      process.env.NODE_ENV = "production"
+      try {
+        // Even with a valid secret AND a matching bypass header
+        // AND the force-fail value, production cannot reach
+        // the test path.
+        const res = await call({
+          "x-vercel-protection-bypass": SECRET,
+          "x-e2e-force-fail": "1",
+        })
+        expect(res.status).not.toBe(502)
+      } finally {
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET = savedSecret
+        process.env.NODE_ENV = savedNodeEnv
+      }
+    },
+  )
+
+  itUnit(
+    "header-mismatch: a non-matching bypass value does not enable the guard",
+    async () => {
+      const savedSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      const savedNodeEnv = process.env.NODE_ENV
+      process.env.VERCEL_AUTOMATION_BYPASS_SECRET = SECRET
+      process.env.NODE_ENV = "test"
+      try {
+        // Bypass header does NOT match the server-side secret.
+        const res = await call({
+          "x-vercel-protection-bypass": "wrong-secret",
+          "x-e2e-force-fail": "1",
+        })
+        expect(res.status).not.toBe(502)
+      } finally {
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET = savedSecret
+        process.env.NODE_ENV = savedNodeEnv
+      }
+    },
+  )
+})
