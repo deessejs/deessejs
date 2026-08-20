@@ -35,7 +35,7 @@ export function DeviceForm({ userCode }: { userCode: string | null }) {
 	// reasons are "user_code not found", "no session to
 	// claim", or "server error", and the user action is the
 	// same in every case: re-run `deesse auth login`.
-	if (isError) return <ExpiredPanel reason={error?.message} />
+	if (isError) return <ExpiredPanel reason={error?.message ?? ""} />
 
 	if (status === "approved") return <ApprovedPanel />
 	if (status === "denied") return <ExpiredPanel reason="denied" />
