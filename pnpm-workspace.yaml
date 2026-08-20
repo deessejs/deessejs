@@ -42,6 +42,7 @@ catalog:
   '@tanstack/react-form': ^1.33.0
   '@tanstack/react-query': ^5.101.4
   "@turbo/gen": ^2.10.4
+  open: ^11.0.1
 
   # Types
   "@types/node": ^24
