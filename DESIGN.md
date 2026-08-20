@@ -29,7 +29,8 @@ These are inherited from the product brief and apply to every component and toke
 3. **One coherent product, not a collection of parts.** Same patterns, same naming, same errors, same focus ring, same spacing rhythm.
 4. **Polished UX everywhere.** Every screen, every empty state, every error. Not a chatbot demo — a *product*.
 5. **No half-built features.** Ship the v0.1 inventory (17 primitives + 1 custom) at 100%, not 30 components at 80%. The DS that ships is the DS that's documented.
-6. **CSS variables only.** No JavaScript theme manager. No `next-themes`. The `data-mode` attribute (light/dark) is set in HTML; CSS does the rest.
+6. **CSS variables only, with one allowed JS primitive.** All design tokens are CSS variables, declared in `:root` and `.dark` inside `packages/ui/src/styles/globals.css`, in `oklch()`. Tailwind v4 generates the utility classes via `@theme inline`. Components never reference hardcoded values; they consume `bg-primary`, `text-foreground`, `border-input`, and the like.
+   The one allowed JS theme primitive is `next-themes` (attribute=class, defaultTheme=system). It powers the dark-mode toggle and the `Toaster` (`packages/ui/src/components/sonner.tsx`). No `data-mode` attribute, no inline FOUC script, no `@media (prefers-color-scheme: dark)` block stacked on top of the toggle. The system preference is honoured by `next-themes defaultTheme="system"`; an explicit user choice always wins. See [ADR-020](apps/internal-documentation/content/docs/decisions/ADR-020-design-system.mdx) §2.
 
 ---
 
@@ -446,6 +447,8 @@ The DS that ships now includes:
   - **Note on `Form`:** Forms use `react-hook-form` + `Zod` as a pattern (§4.2) — there is no shadcn `Form` primitive in the CLI registry.
 - **1 custom component (still to ship, will live in `src/components/`, not in `src/components/ui/`):** `InteractiveFiletree` — the visual centerpiece of the v1 landing page. Built with Motion for hover/click animations. Renders the monorepo structure as a monospaced tree with paired code panels (the "supastarter pattern" from §6 of `landing-page.md`). Not a shadcn primitive — has its own docs entry.
 
+**Inventory edit policy.** Each row above is the source-of-truth list of what ships today. Adding a primitive follows §8 and the contract in [ADR-020](apps/internal-documentation/content/docs/decisions/ADR-020-design-system.mdx) §6 — the PR ships the primitive code AND edits this section in the same PR. Removing a primitive follows §9 with the same coordination. Removing a primitive requires `pnpm typecheck` and `pnpm build` to remain green across the workspace.
+
 **Deferred to v0.2** (each needs a use case in `apps/web` to justify shipping — "agentic SaaS template" is not "every component ever made"):
 
 - `Command`, `Combobox`, `RadioGroup`, `Tabs`, `Breadcrumb`, `Alert`, `Spinner`, `Empty`, `Item`, `NavigationMenu`, `AlertDialog`, `ContextMenu`, `HoverCard`, `Menubar`, `Pagination`, `Resizable`, `Slider`, `Toggle`, `ToggleGroup`, `DataTable` (TanStack wrapper).
@@ -473,3 +476,13 @@ The modular contract applies:
 6. Update this document (Section 7 inventory).
 
 A buyer can run steps 1–4 to remove a primitive they don't need. The contract holds.
+
+---
+
+## Cross-references
+
+This document is the spec the code implements. The contributor-facing decision record that pins this spec as canonical, names the divergences currently living in the codebase, and forbids them, is:
+
+- [ADR-020: Design system contract](apps/internal-documentation/content/docs/decisions/ADR-020-design-system.mdx) — locks `@workspace/ui` as the only product-UI surface, CSS variables + `next-themes` as the only token + dark-mode layers, Radix-nova + lucide + Tailwind v4 as the stack, and `pnpm-workspace.yaml` `catalog:` as the version surface. Names and forbids `apps/app/app/globals.css`, the duplicated `ThemeProvider` copies in `apps/web/src/components/providers/theme-provider.tsx` and `apps/app/components/theme-provider.tsx`, and the dead `apps/app/hooks/use-mobile.ts`.
+
+The contributor-facing surface for this contract lives at `apps/internal-documentation/content/docs/design-system/`, rendered as a top-level section of the internal doc site.

@@ -1,0 +1,128 @@
+---
+title: 'Design system contract'
+description: 'Lock @workspace/ui as the only UI surface, DESIGN.md as canonical spec, and forbid the divergences currently living in apps/app and apps/web.'
+---
+
+# ADR-020: Design system contract
+
+## Status
+
+Draft (2026-08). Awaiting review.
+
+## Context
+
+The codebase ships a design system without a contract for it. The implementation lives in `@workspace/ui` (`packages/ui/`), reachable from `apps/web`, `apps/app`, and `apps/docs` via `transpilePackages`. The spec lives at the repo root in [`DESIGN.md`](../../../../../DESIGN.md), which opens with "The spec the code implements. This document is the source of truth. If a design decision lives only in code, it's a bug — bring it back here." Nothing in the repo enforces that contract. Nothing else names it. Four concrete failure modes follow.
+
+1. **`DESIGN.md` contradicts `@workspace/ui` on `next-themes`.** §1.6 of the spec says "No JavaScript theme manager. No `next-themes`." The package declares `next-themes ^0.4.6` as a direct dependency and consumes it in `packages/ui/src/components/sonner.tsx:3` (`import { useTheme } from "next-themes"`). The two artifacts disagree. A reviewer reading one and the other must guess which is right.
+
+2. **The dark-mode wiring is duplicated, not exported.** `@workspace/ui/package.json` has no export for `./providers/theme-provider` or `./components/theme-provider`; the export map at lines 39-46 covers only `globals.css`, `postcss.config`, `lib/utils`, `lib/config`, `components/*`, and `hooks/*`. Yet `apps/web/src/components/providers/theme-provider.tsx` (72 lines) and `apps/app/components/theme-provider.tsx` (72 lines) are byte-identical, wrapping `next-themes` `ThemeProvider` with `attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange` plus a "press `d` to toggle" hotkey. Two apps, one provider, zero shared source of truth.
+
+3. **`apps/app/app/globals.css` re-declares semantic tokens in hex.** The file imports `tailwindcss` and then writes its own `:root { --background: #ffffff; --foreground: #171717; }` plus `@media (prefers-color-scheme: dark) { :root { --background: #0a0a0a; --foreground: #ededed; } }` plus `font-family: Arial, Helvetica, sans-serif` on `body`. The same selector names are declared in `packages/ui/src/styles/globals.css:86-119` in `oklch()`. The cascade order wins `@workspace/ui`'s import in `app/layout.tsx:3` and the per-app `globals.css`, so the hex values paint over the design system. Worse, the `prefers-color-scheme` rule ignores the `next-themes` toggle: a user who picks Light on a system preference of Dark gets the Dark palette. The `Arial, Helvetica, sans-serif` literal bypasses the Geist font wired by `apps/web/src/app/layout.tsx`. The component code uses the right tokens; the body does not.
+
+4. **`apps/app/hooks/use-mobile.ts` is a 22-line dead duplicate** of `packages/ui/src/hooks/use-mobile.ts`. The local file is never imported (`useSidebar` in `@workspace/ui/components/sidebar` ships its own internal hook); the alias in `apps/app/components.json:15` (`"hooks": "@/hooks"`) is set up so that a future `shadcn add` would write into the local file and silently fork from the package. The duplication has no reviewable contract.
+
+Two more cases sit at the edge of the same problem. `apps/web/src/components/knowledge-base/badges.tsx` bypasses the shadcn `Badge` primitive deliberately; the file's leading comment explains why and the rule to enforce is "preserve the comment on every edit", not "import the primitive". `apps/docs` and `apps/internal-documentation` ship their own near-identical `fumadocs-bootstrap` layout (mdx.tsx, cn.ts, global.css) — these are out of scope for the design-system contract because they don't render product UI; they render the doc site.
+
+The repo's product brief (DESIGN.md §0) frames the visual language as "agentic SaaS template" with "Apple" restraint + polish. The brief also says the DS ships the v0.1 inventory at 100%, not 30 components at 80% (§1.5). Both halves of the brief are load-bearing. The implementation holds to it; the contract does not.
+
+## Decision
+
+The contributor-facing contract for the design system is fixed by six locks. Locks are non-negotiable after acceptance of this ADR. Any change to a lock requires a new ADR.
+
+### 1. `DESIGN.md` is the canonical spec
+
+Any design decision lives in `DESIGN.md` before it lives in code. Reviewers reject a PR that introduces a new token, primitive, variant, or pattern with no accompanying edit to the section of `DESIGN.md` that owns the decision (§2 tokens, §3 motion, §4 component patterns, §5 a11y, §6 voice, §7 inventory, §8 add flow, §9 delete flow). The rule is enforced by code review on the spec source file in the same PR. Same pattern as ADR-006's Card rule: the visual intent is not amenable to a Zod schema, the reviewer's eye is the gate.
+
+### 2. CSS variables are the only token layer; dark mode uses the `class` strategy via `next-themes`
+
+- **Semantic tokens** (`--primary`, `--background`, `--foreground`, etc.) live in `:root` and `.dark` inside `packages/ui/src/styles/globals.css`, in `oklch()`. The `@theme inline` block in the same file maps each semantic token to a Tailwind utility class (`bg-primary`, `text-foreground`, etc.).
+- **Components never reference hardcoded values.** `Button`, `Card`, `Dialog`, `Sidebar`, `Sheet`, `Sonner`, `Typography`, every primitive in `packages/ui/src/components/`: they consume `cn()` from `@workspace/ui/lib/utils` against semantic tokens, nothing else. A PR that adds a `className="bg-[#fff]"` or a `text-zinc-900` to a primitive is rejected.
+- **Dark mode** is the `class` strategy: `next-themes` with `attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange` toggles the `dark` class on `<html>`. The Tailwind v4 `@custom-variant dark` (at `globals.css:5`) picks up the override via the class selector. `next-themes` is the only allowed JS theme primitive. The package's `sonner.tsx` reads `useTheme()` from `next-themes`; this is a permitted consumer.
+- **Forbidden:** a `data-mode` attribute, an inline FOUC script that sets it, or a `@media (prefers-color-scheme: dark)` block stacked on top of the toggle. The system preference is honoured by `next-themes defaultTheme="system"` (it adds the class only when the user has not made an explicit choice). A `@media (prefers-color-scheme: dark)` rule that ignores the toggle is forbidden.
+
+### 3. Stack — Radix-nova + lucide + Tailwind v4, today
+
+The primitive layer is the post-February-2026 shadcn `radix-nova` style: one unified `radix-ui` package (not the fragmented `@radix-ui/react-*` scopes), `lucide-react` as the icon library, `cmdk` for the command palette, `sonner` for toasts, `class-variance-authority` + `clsx` + `tailwind-merge` for variant styling, `tw-animate-css` for keyframe utilities. Tailwind v4 (`^4.3.2` via the workspace catalog at `pnpm-workspace.yaml`) with `@tailwindcss/postcss` is the styling layer; there is no `tailwind.config.*` file. CSS-first config with `@theme inline` is the only authoring surface.
+
+The icon library is `lucide-react`. Adding a second icon library is forbidden without a new ADR.
+
+### 4. Version policy — `catalog:` is the only versioning surface
+
+Every dependency under `@workspace/ui`'s design surface is declared through `pnpm-workspace.yaml` `catalog:` (`catalogMode: strict`). Bumps land as a one-line edit to the catalog file, not as ad-hoc `^` ranges in `packages/ui/package.json`. The named bump points (any of these requires a review-of-the-stack ADR, not a casual PR):
+
+| Bump | Why it is load-bearing |
+|---|---|
+| Tailwind v4 → v5 | `@theme inline` syntax, `@source` semantics, or `@custom-variant` resolution can move. |
+| Radix umbrella major | The unified `radix-ui` package shape (`import { Dialog } from "radix-ui"`) is load-bearing across 11 primitives. |
+| `next-themes` major | The hook contract and the `attribute="class"` semantics are load-bearing. |
+| `lucide-react` major | Icon name renames break every component that imports a named icon. |
+| `cmdk` or `sonner` major | API shape changes. |
+
+`pnpm.overrides` at the catalog level pins `@types/react*` to `^19.2.17` and `^19.2.3` respectively; this stays.
+
+### 5. Forbiddances — concrete divergences, named
+
+Each item below names a divergence currently in the repo at the date of this ADR. The divergence is forbidden. The follow-up implementation that removes it is out of scope for this ADR and ships as a separate PR.
+
+a. **`apps/app/app/globals.css`** is forbidden to redeclare `--background`, `--foreground`, `--primary`, `--card`, `--border`, or any other semantic token from `@workspace/ui/globals.css`. App-level CSS may extend the cascade (custom utility classes, MDX-prose scope, font import) but may not repaint the semantic tokens in a different unit (`#hex`, `rgb()`, etc.). When this ADR lands, the existing `apps/app/app/globals.css` is dead in the layer order and must be deleted (or rewritten to contain only app-local extensions).
+
+b. **`apps/web/src/components/providers/theme-provider.tsx` and `apps/app/components/theme-provider.tsx`** are byte-identical today. The contract is: a single `ThemeProvider` lives in `@workspace/ui` (preferred export path `./providers/theme-provider`); the two app-level files are gone; apps import the package export. Until the consolidation lands, the two files must remain byte-identical. Any divergence between them is a review-reject: differences creep in invisibly and both apps must move in lockstep until then.
+
+c. **`apps/app/hooks/use-mobile.ts`** is forbidden to exist. Consumers of `useIsMobile` import from `@workspace/ui/hooks/use-mobile`. The local copy and `apps/app/components.json:15`'s `"hooks": "@/hooks"` alias are deleted in the follow-up PR.
+
+d. **`apps/web/src/components/knowledge-base/badges.tsx`** is allowed to bypass the shadcn `Badge` primitive. The file's leading comment explaining the bypass must be preserved on every edit. A PR that removes the comment is a review-reject.
+
+e. **`apps/docs` and `apps/internal-documentation`** are doc-site surfaces. They do not consume `@workspace/ui` for product UI; they use `fumadocs-ui`. This is allowed and not a violation of the contract. The two `fumadocs-bootstrap` layouts being near-identical is a separate doc-site duplication concern outside this ADR.
+
+### 6. Primitive policy
+
+Adding or removing a primitive in `@workspace/ui` is a single PR with two coordinated edits:
+
+1. The `@workspace/ui` code change (e.g. `pnpm dlx shadcn@latest add <name>` lands the file; or `rm packages/ui/src/components/<name>.tsx` removes it, with cascading `pnpm typecheck` green).
+2. The corresponding edit to [`DESIGN.md`](../../../../../DESIGN.md) §7 inventory (add or remove the row). §8 (add) or §9 (delete) is followed when the situation matches; deviating from the §8 / §9 procedure is allowed but must be noted in the §7 row.
+
+Adding a primitive that the design system does not already need is the senior anti-pattern (§1.5 of the spec). A new primitive needs a use case in `apps/web` to justify shipping.
+
+## Why this and not the alternatives
+
+Five patterns were considered. Each is rejected for a concrete reason.
+
+1. **A separate `packages/design-system` package owning tokens as TypeScript objects (e.g. `tokens.ts` exporting `{ primary: "oklch(...)", ... }`).** Rejected because it duplicates the source of truth. CSS variables are the values; a JS object is a second copy of the same numbers, subject to drift. The CSS layer is also the runtime layer; TypeScript cannot paint. Every component would need to import the object and stringify it into a className, paying a runtime cost for no semantic gain.
+
+2. **Mirroring the contract into `docs/guides/design-system/`** in the shape of `docs/guides/better-auth/`. Rejected for this ADR's surface (minimal: one ADR + one `index.mdx`). The user-facing surface in `apps/internal-documentation/` already has the rendering machinery (Fumadocs, TOC, breadcrumbs, search). A repo-native mirror is a future option if the surface grows past index + ADR; in that case, `docs/guides/design-system/{index,tokens,theming,components,pitfalls}.md` is the right shape. Not now.
+
+3. **An ESLint rule that forbids `@apply` references to bare Tailwind colors (e.g. `text-zinc-900`).** Rejected as brittle. The forbid set is well-defined in principle, but the Tailwind color palette is one of many things contributors reach for, and the rule produces false positives at every utility that legitimately references an opacity level (`text-zinc-900/50`). The reviewer's eye catches the design-system violation; a lint rule catches the false positives. Same gate pattern as ADR-006.
+
+4. **Promote `@workspace/ui/src/styles/globals.css` to canonical and treat `DESIGN.md` as a rendering.** Rejected because the spec is the artifact humans read; CSS is the implementation. Two citations: ADR-006 Card rule and ADR-007 em-dash rule both express policy in prose, with code that follows it. The same shape holds here. Additionally, `DESIGN.md` already documents things the code does not (motion tokens, animation curves, oklch contrast thresholds, voice rules) that have no current code home and would need one if the spec was demoted.
+
+5. **Defer the ADR until the divergences are fixed.** Rejected because the spec and the implementation disagree today, and a fix-PR cannot name the policy it enforces until the policy is in an ADR. Separating the policy ADR from the code cleanup PR keeps each PR reviewable: the reviewer of the policy decides "is this the right contract", the reviewer of the code decides "does this PR enforce the contract".
+
+### What this ADR does not change
+
+- **The `@workspace/ui` primitive inventory.** Adding or removing primitives remains a §6 procedure (single PR with the code change + `DESIGN.md` §7 row edit).
+- **The doc-site applications.** `apps/docs` and `apps/internal-documentation` are not product UI; they are out of the design-system contract.
+- **The release pipeline.** Changesets owns the version bumps; this ADR does not touch `pnpm-workspace.yaml` except by naming it as the version surface.
+- **The motion library.** Motion (`motion` npm package) is referenced in `DESIGN.md` §3.5 for spring physics, drag, and choreography. It is not part of this contract.
+- **The voice and content rules in `DESIGN.md` §6.** Those are owned by ADR-007 (no em dash) and ADR-008 (title length ≤ 4 words). The contract inherits §6; it does not redefine it.
+
+### Future-shock: Base UI
+
+shadcn made `@base-ui/react` the default for new projects in July 2026 (per the [shadcn/ui changelog](https://ui.shadcn.com/docs/changelog/2026-07-base-ui-default)). Radix is not deprecated; both libraries ship updates and components. This ADR locks Radix-nova as today's primitive layer. A future migration to Base UI is allowed but must be its own ADR: a migration is a skill-driven, customisation-aware transition (per shadcn's docs) and is too load-bearing to ship silently. The Base UI option is named here so the constraint is visible.
+
+## Consequences
+
+- `DESIGN.md` is the source of truth. Any reviewer can read it and know what the code should look like; any contributor can edit it and let the code follow. The disagreement on `next-themes` (current §1.6) is fixed by the §1 amendment that ships with this ADR.
+- `@workspace/ui` is the only product-UI surface. There is exactly one design-token layer, one dark-mode strategy, one primitive registry. `apps/web` and `apps/app` import from `@workspace/ui/components/*` and `@workspace/ui/lib/utils` and `@workspace/ui/hooks/*`. Other surfaces are not part of the contract.
+- Divergences are named (the `apps/app/app/globals.css` repaint, the duplicated ThemeProvider, the duplicated `use-mobile.ts`) and forbidden. The fixes are scoped to follow-up PRs and tracked here. Until those PRs land, the rule "stay as you are, do not diverge" applies.
+- Versions flow through `pnpm-workspace.yaml` `catalog:`. Bumping Tailwind or Radix is a one-line catalog edit and a PR that touches the `catalog:` block, not the consumer packages.
+- The contract is enforceable in code review. A reviewer who spots a primitive bypassing the package, or a `className` reaching for bare Tailwind colors, or a hex redeclaration of a semantic token, can point at this ADR and reject the PR.
+- A new ADR is the gate for changing any lock. The locks are non-negotiable after acceptance and exist to prevent silent design drift.
+
+## Related
+
+- [`DESIGN.md`](../../../../../DESIGN.md) — the spec this ADR enforces.
+- [ADR-006: Fumadocs Cards design rules](./ADR-006-fumadocs-card-design.md) — the same "rendering target ≠ enforcement" pattern in a different domain; ADR-020 reviews visual intent the same way.
+- [ADR-007: No em dash in internal doc](./ADR-007-no-em-dash-in-internal-doc.md) and [ADR-008: Internal doc title max 4 words](./ADR-008-internal-doc-title-max-4-words.md) — sibling doc-style rules. ADR-020 inherits the style constraints set by these (no em dash, ≤ 4 words per title).
+- [ADR-019: CLI version build injection](./ADR-019-cli-version-build-injection.md) — precedent for "spec the code, do not duplicate state". CLI version flows from `package.json` through tsup `define`; `@workspace/ui` version flows from `pnpm-workspace.yaml` `catalog:` to the consumer packages.
+- [ADR-013: CLI publish verify](./ADR-013-cli-publish-verify.md), [ADR-015: Drizzle migrations in CI](./ADR-015-drizzle-migrations-ci.md) — precedents for "load-bearing constraint + reviewer gate".
+- [`apps/internal-documentation/content/docs/design-system/`](../design-system/index.mdx) — the contributor landing page for this contract.

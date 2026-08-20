@@ -1,0 +1,6 @@
+{
+  "title": "Design system",
+  "description": "The contributor-facing contract for tokens, primitives, themes, and the apps that consume them. Anchored on DESIGN.md.",
+  "icon": "Palette",
+  "root": true
+}
