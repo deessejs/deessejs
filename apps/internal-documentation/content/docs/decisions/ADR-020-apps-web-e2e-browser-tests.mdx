@@ -7,7 +7,7 @@ description: 'Smoke suite against the deployed marketing site. Pin the cache-poi
 
 ## Status
 
-Draft (2026-08). Awaiting human review before any implementation lands.
+Accepted (2026-08). Implementation may begin.
 
 ## Context
 
@@ -1108,10 +1108,19 @@ All three are listed so the next iteration of this ADR
   the rendered templates tree. Pinned 8 `data-testid`
   attributes on 4 surfaces; the remaining 17+ assertions
   reuse role/name selectors.
-- **2026-08-20**: chose `e2e/` (not `test/e2e/`) because it
-  matches the canonical Next example and prevents vitest
-  config collision (ADR-009 forbids deviations from
-  `vitestConfig(...)`).
+- **2026-08-20**: chose `tests/e2e/` (under `apps/web/`,
+  with the vitest `include` glob extended to
+  `["test/**/*.test.ts", "tests/**/*.test.ts"]`) to align
+  with the repo convention (ADR-009:87-89) while keeping
+  Playwright (`.spec.ts`) and vitest (`.test.ts`) on
+  disjoint file extensions. Earlier drafts used `e2e/`
+  (matching Next's canonical example) and then
+  `test/e2e/` (matching the singular `apps/cli/test/`
+  convention); the final placement preserves both
+  conventions by using the plural `tests/` for the app
+  and the singular `test/` for the existing vitest
+  unit suite at `apps/web/test/unit/orpc.test.ts`
+  (PR #85).
 - **2026-08-20**: chose Vercel preview URL over `next
   start` for the same reason ADR-016 rejects the latter:
   the production cache headers are observable only in the
