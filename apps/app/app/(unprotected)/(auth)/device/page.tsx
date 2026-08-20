@@ -38,7 +38,14 @@ import { userCodeSchema } from "@/components/auth/schemas"
 export default async function DevicePage({
 	searchParams,
 }: {
-	searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+	// The page reads exactly one query param, `user_code`. The
+	// Next.js type for searchParams is a generic Record; we
+	// narrow it here to the precise shape the page accepts, so
+	// future readers see the contract without having to read
+	// the body. The runtime shape is still string | string[] |
+	// undefined (a query string can appear twice); the
+	// userCodeSchema.safeParse below handles all three cases.
+	searchParams: Promise<{ user_code: string | string[] | undefined }>
 }) {
 	const params = await searchParams
 	const rawCode = Array.isArray(params.user_code)
