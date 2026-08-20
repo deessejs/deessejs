@@ -5,7 +5,7 @@
 # with the captured output.
 #
 # Per ADR-020.
-name: apps/web e2e (nightly)
+name: apps-web-e2e-nightly
 on:
   schedule:
     # 03:00 UTC daily.
@@ -26,6 +26,7 @@ jobs:
           - forced-cache-poison
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
