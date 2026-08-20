@@ -21,6 +21,15 @@ on:
   repository_dispatch:
     types: [vercel.deployment.success]
   workflow_dispatch:
+    inputs:
+      base_url:
+        description: |
+          The preview URL to test against. Required for manual
+          triggers (workflow_dispatch); ignored when triggered
+          via repository_dispatch (which carries the URL in
+          client_payload).
+        required: false
+        type: string
 jobs:
   e2e:
     runs-on: ubuntu-latest
@@ -35,8 +44,11 @@ jobs:
         env:
           # The preview URL Vercel just deployed. The "Playwright tests"
           # bypass secret, mirrored from the Vercel dashboard
-          # (see tests/e2e/RUNBOOK.md).
-          BASE_URL: ${{ github.event.client_payload.url }}
+          # (see tests/e2e/RUNBOOK.md). For manual triggers, the
+          # URL is passed via `workflow_dispatch.inputs.base_url`;
+          # for repository_dispatch triggers, it travels in
+          # `github.event.client_payload.url`.
+          BASE_URL: ${{ github.event.client_payload.url || inputs.base_url }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           CI: 1
         run: pnpm --filter web exec playwright test --config playwright.config.ts
