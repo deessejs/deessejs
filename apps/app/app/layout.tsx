@@ -2,9 +2,7 @@ import type { Metadata } from "next"
 
 import "@workspace/ui/globals.css"
 import { APP_CONFIG } from "@workspace/ui/lib/config"
-import { QueryClientProvider } from "@/components/query-client-provider"
-import { ThemeProvider } from "@/components/theme-provider"
-import { TooltipProvider } from "@workspace/ui/components/tooltip"
+import { AppProviders } from "@/providers"
 
 export const metadata: Metadata = {
   title: APP_CONFIG.name,
@@ -12,21 +10,15 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({
- children,
+  children,
 }: Readonly<{
-	children: React.ReactNode
+  children: React.ReactNode
 }>) {
-	return (
-		<html lang="en" suppressHydrationWarning>
-			<body>
-				<QueryClientProvider>
-					<ThemeProvider>
-						<TooltipProvider>
-							{children}
-						</TooltipProvider>
-					</ThemeProvider>
-				</QueryClientProvider>
-			</body>
-		</html>
-	)
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <AppProviders>{children}</AppProviders>
+      </body>
+    </html>
+  )
 }
