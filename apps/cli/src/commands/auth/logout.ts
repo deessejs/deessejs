@@ -2,7 +2,7 @@ import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
 
-import { deviceFetch } from "../../auth-store/device-fetch.js"
+import { bearerFetch } from "../../auth-store/bearer-fetch.js"
 import { clearAuth, readAuth } from "../../auth-store/store.js"
 import { internal } from "../../errors/index.js"
 import { printJson } from "../../output/index.js"
@@ -18,8 +18,13 @@ import { printJson } from "../../output/index.js"
  *      missing one (every subsequent command would silently
  *      use a dead token).
  *
- * Wire format: Better Auth's standard sign-out endpoint. ADR-001
- * forbids inventing a custom wire shape.
+ * Uses bearerFetch (not the typed client) because the
+ * client sends the session cookie, not a caller-supplied
+ * bearer token. The two helper files (better-auth-client.ts
+ * and bearer-fetch.ts) are deliberately complementary: the
+ * typed client owns the device-flow HTTP shape; the bearer
+ * helper owns the two read-only endpoints that need a
+ * caller-supplied token.
  *
  * If the file does not exist, the command exits 0 silently:
  *   there is no session to revoke.
@@ -34,8 +39,6 @@ export const logoutCommand = new Command("logout")
 			if (opts.json) {
 				printJson({ ok: true, reason: "no_session" })
 			}
-			// No local file => nothing to revoke server-side
-			// either. Silent success, exit 0.
 			return
 		}
 
@@ -43,12 +46,9 @@ export const logoutCommand = new Command("logout")
 			? null
 			: ora("Signing out...").start()
 		try {
-			const res = await deviceFetch("sign-out", {
+			const res = await bearerFetch("sign-out", stored.access_token, {
 				method: "POST",
-				headers: {
-					authorization: `Bearer ${stored.access_token}`,
-					"content-type": "application/json",
-				},
+				headers: { "content-type": "application/json" },
 			})
 			// We deliberately do NOT throw on a non-2xx here:
 			// the local cache cleanup is the user-facing

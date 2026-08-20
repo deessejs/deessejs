@@ -3,98 +3,43 @@ import open from "open"
 import ora from "ora"
 import pc from "picocolors"
 
-import { deviceFetch } from "../../auth-store/device-fetch.js"
+import { authClient } from "../../auth-store/better-auth-client.js"
 import { writeAuth } from "../../auth-store/store.js"
 import { cliDeviceExpired, internal, type CliError } from "../../errors/index.js"
 import { printError, printJson } from "../../output/index.js"
 import { sleep } from "../../utils/sleep.js"
 
-import { mapPollingError, type BetterAuthDeviceErrorCode } from "./polling-errors.js"
+import { mapPollingError } from "./polling-errors.js"
 
 /**
  * deesse auth login (ADR-020).
  *
  * Flow:
- *   1. POST /api/v1/auth/device/code with { client_id }.
+ *   1. authClient.device.code({ client_id }) -> issued code
+ *      + verification_uri_complete. The response is typed by
+ *      the deviceAuthorizationClient plugin (Better Auth
+ *      publishes the schema; the client infers it).
  *   2. Open the browser to verification_uri_complete so the
  *      user lands on /device?user_code=... with the code in
- *      the query string (per ADR-020 "verification_uri_complete"
- *      rule, not verification_uri alone).
- *   3. Poll /device/token every `interval` seconds (default 5),
- *      mapping Better Auth codes via mapPollingError:
- *        authorization_pending -> keep polling
- *        slow_down -> bump local +5s, keep polling
- *        expired_token / access_denied / invalid_grant /
- *          invalid_client -> cliDeviceExpired / cliDeviceDenied
- *   4. After the polling returns the Better Auth session token,
- *      /get-session is called to attach the user identity to
- *      the stored auth, then writeAuth persists to disk.
+ *      the query string (per ADR-020, not verification_uri
+ *      alone).
+ *   3. Poll authClient.device.token(...) every 5 seconds with
+ *      slow_down bumping the local interval by 5 seconds.
+ *      mapPollingError translates Better Auth's error codes
+ *      to the CLI's closed CliErrorCode list.
+ *   4. After the token resolves, authClient.getSession() is
+ *      called to attach the user identity to the stored
+ *      auth, then writeAuth persists to disk.
  *
  * The 30-minute total timeout is enforced by an absolute
  * deadline (T0 = code issuance) checked inside the loop.
  * Per ADR-020, the timeout reuses the same sleep helper as
  * the polling interval (no second timing mechanism).
- *
- * The wire format is whatever Better Auth publishes (ADR-001);
- * this command does not parse envelopes that are not
- * documented in the plugin's routes.mjs.
  */
 
 const POLL_INTERVAL_MS = 5_000
 const POLL_INTERVAL_WITH_BACKOFF_MS = 10_000
 const TOTAL_TIMEOUT_MS = 30 * 60 * 1_000 // 30 minutes per device-code TTL
-
-type DeviceCodeResponse = {
-	device_code: string
-	user_code: string
-	verification_uri: string
-	verification_uri_complete: string
-	expires_in: number
-	interval: number
-}
-
-type DeviceTokenSuccess = {
-	access_token: string
-	userId: string | null
-	scope?: string | null
-}
-
-type DeviceTokenFailure = {
-	error: BetterAuthDeviceErrorCode
-	error_description?: string
-}
-
-type DeviceSessionResponse = {
-	user: {
-		id: string
-		email?: string
-		name?: string
-	}
-}
-
-type IssuedDeviceCode = {
-	body: DeviceCodeResponse
-	expiresBy: number
-}
-
-const requestDeviceCode = async (): Promise<IssuedDeviceCode> => {
-	const res = await deviceFetch("device/code", {
-		method: "POST",
-		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ client_id: "deessejs-cli" }),
-	})
-	if (res.status !== 200) {
-		const text = await res.text()
-		throw cliDeviceExpired(
-			`could not obtain a device code (HTTP ${res.status}): ${text || "no body"}`,
-		)
-	}
-	const body = (await res.json()) as DeviceCodeResponse
-	return {
-		body,
-		expiresBy: Date.now() + TOTAL_TIMEOUT_MS,
-	}
-}
 
 const openVerificationUrl = async (url: string): Promise<void> => {
 	// `open` returns a child process handle; we don't await it
@@ -103,35 +48,57 @@ const openVerificationUrl = async (url: string): Promise<void> => {
 	await open(url, { wait: false })
 }
 
+const requestDeviceCode = async (): Promise<{
+	url: string
+	deviceCode: string
+	expiresBy: number
+}> => {
+	const { data, error } = await authClient.device.code({
+		client_id: "deessejs-cli",
+	})
+	if (error || !data) {
+		const description =
+			(error as { error_description?: string } | null)?.error_description ??
+			"unknown error"
+		throw cliDeviceExpired(`could not obtain a device code: ${description}`)
+	}
+	return {
+		url: data.verification_uri_complete,
+		deviceCode: data.device_code,
+		expiresBy: Date.now() + TOTAL_TIMEOUT_MS,
+	}
+}
+
 const pollForToken = async (
 	deviceCode: string,
 	expiresBy: number,
-): Promise<DeviceTokenSuccess> => {
+): Promise<{ accessToken: string }> => {
 	let interval = POLL_INTERVAL_MS
 	for (;;) {
 		if (Date.now() >= expiresBy) {
 			throw cliDeviceExpired("device flow timed out after 30 minutes")
 		}
 		await sleep(interval)
-		const res = await deviceFetch("device/token", {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({
-				grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-				device_code: deviceCode,
-				client_id: "deessejs-cli",
-			}),
+		const { data, error } = await authClient.device.token({
+			grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+			device_code: deviceCode,
+			client_id: "deessejs-cli",
 		})
-		if (res.status === 200) {
-			const body = (await res.json()) as DeviceTokenSuccess
-			return body
+		if (data) {
+			// The plugin types `data` as `unknown` in some
+			// Better Auth 1.6.x minor versions; the access
+			// token field is stable across versions.
+			const token = (data as { access_token: string }).access_token
+			return { accessToken: token }
 		}
-		const failure = (await res.json()) as DeviceTokenFailure
-		const mapped = mapPollingError(failure.error)
+		const code = (error as { code?: string } | null)?.code
+		if (!code) {
+			// No data and no recognized error code: treat as
+			// an internal error, do not loop forever.
+			throw cliDeviceExpired("token endpoint returned no data and no error code")
+		}
+		const mapped = mapPollingError(code)
 		if (mapped !== null) {
-			// A real error (expired / denied / invalid). Surface
-			// it. The CLI exits through CliError with the
-			// appropriate user-facing copy.
 			throw mapped
 		}
 		// slow_down: bump the local interval for the next poll.
@@ -141,16 +108,14 @@ const pollForToken = async (
 	}
 }
 
-const fetchUserIdentity = async (
-	accessToken: string,
-): Promise<DeviceSessionResponse["user"] | null> => {
-	const res = await deviceFetch("get-session", {
-		method: "GET",
-		headers: { authorization: `Bearer ${accessToken}` },
-	})
-	if (res.status !== 200) return null
-	const body = (await res.json()) as { user: DeviceSessionResponse["user"] } | null
-	return body?.user ?? null
+const fetchUserIdentity = async (): Promise<{
+	id: string
+	email?: string
+	name?: string
+} | null> => {
+	const { data } = await authClient.getSession()
+	if (!data) return null
+	return data.user as { id: string; email?: string; name?: string }
 }
 
 export const loginCommand = new Command("login")
@@ -164,7 +129,6 @@ export const loginCommand = new Command("login")
 			const issued = await requestDeviceCode()
 			spinner?.stop()
 
-			const url = issued.body.verification_uri_complete
 			if (!opts.json) {
 				console.log()
 				console.log(
@@ -172,24 +136,21 @@ export const loginCommand = new Command("login")
 						`Open the following URL in your browser if it doesn't open automatically:`,
 					),
 				)
-				console.log(pc.bold(url))
+				console.log(pc.bold(issued.url))
 				console.log()
 			}
 
-			await openVerificationUrl(url)
+			await openVerificationUrl(issued.url)
 
 			const pollSpinner = opts.json
 				? null
 				: ora("Waiting for browser approval...").start()
 			try {
-				const token = await pollForToken(
-					issued.body.device_code,
-					issued.expiresBy,
-				)
-				const user = await fetchUserIdentity(token.access_token)
+				const token = await pollForToken(issued.deviceCode, issued.expiresBy)
+				const user = await fetchUserIdentity()
 				writeAuth({
-					access_token: token.access_token,
-					user: user ?? { id: token.userId ?? "" },
+					access_token: token.accessToken,
+					user: user ?? { id: "" },
 					fetchedAt: new Date().toISOString(),
 				})
 				pollSpinner?.stop()

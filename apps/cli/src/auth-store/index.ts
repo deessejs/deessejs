@@ -1,4 +1,5 @@
-export { deviceFetch } from "./device-fetch.js"
+export { authClient } from "./better-auth-client.js"
+export { bearerFetch } from "./bearer-fetch.js"
 export {
 	readAuth,
 	writeAuth,

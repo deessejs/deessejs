@@ -2,7 +2,7 @@ import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
 
-import { deviceFetch } from "../../auth-store/device-fetch.js"
+import { bearerFetch } from "../../auth-store/bearer-fetch.js"
 import { readAuth, type StoredAuth } from "../../auth-store/store.js"
 import { internal } from "../../errors/index.js"
 import { printJson } from "../../output/index.js"
@@ -10,41 +10,25 @@ import { printJson } from "../../output/index.js"
 /**
  * deesse auth status (ADR-020).
  *
- * Read-only command: prints the currently-stored session's
- * identity (email, name, id) and the time the token was
- * fetched. The token is never echoed.
+ * Read-only command. Validates the stored session token
+ * against the server's /get-session endpoint. The typed
+ * better-auth client cannot drive this case (it sends the
+ * session cookie, not a caller-supplied bearer token),
+ * so this command uses the bearer-fetch helper directly.
  *
- * If the file does not exist or is malformed, exit with
- * `not_found` (the closed-list code; the user has nothing
- * to query). If the server has invalidated the session
- * since the file was written, surface this as a warning so
- * the user can run `deesse auth login` again.
+ * Terminal states:
+ *  - No auth.json: yellow notice, exit 0. No session is the
+ *    normal pre-login state.
+ *  - Token still valid server-side: green ✓, identity
+ *    echoed back, fetchedAt shown.
+ *  - Token revoked or expired server-side: yellow notice,
+ *    stale identity shown for context, exit 0. The user
+ *    reruns auth login.
  *
- * Wire format: the read goes through /api/v1/auth/get-session
- * (the same endpoint the existing /get-session test in
- * packages/api/tests covers) and decodes the published
- * envelope. ADR-001 forbids inventing a custom shape.
+ * The token itself is never echoed.
  */
 
-type SessionResponse = {
-	user: {
-		id: string
-		email?: string
-		name?: string
-	}
-}
-
-const fetchSession = async (
-	accessToken: string,
-): Promise<SessionResponse["user"] | null> => {
-	const res = await deviceFetch("get-session", {
-		method: "GET",
-		headers: { authorization: `Bearer ${accessToken}` },
-	})
-	if (res.status !== 200) return null
-	const body = (await res.json()) as { user: SessionResponse["user"] } | null
-	return body?.user ?? null
-}
+type StoredUser = StoredAuth["user"]
 
 const formatStored = (stored: StoredAuth): string => {
 	const userBits: string[] = []
@@ -54,6 +38,15 @@ const formatStored = (stored: StoredAuth): string => {
 	const who = userBits.length > 0 ? userBits.join(" ") : "unknown user"
 	const when = new Date(stored.fetchedAt).toLocaleString()
 	return `${who} — token fetched ${when}`
+}
+
+const validateSession = async (
+	accessToken: string,
+): Promise<StoredUser | null> => {
+	const res = await bearerFetch("get-session", accessToken, { method: "GET" })
+	if (res.status !== 200) return null
+	const body = (await res.json()) as { user?: StoredUser } | null
+	return body?.user ?? null
 }
 
 export const statusCommand = new Command("status")
@@ -71,15 +64,12 @@ export const statusCommand = new Command("status")
 					),
 				)
 			}
-			// Exit 0: this is a read-only status check, not an error.
-			// The user has not lost anything; they just have
-			// no session yet.
 			return
 		}
 
 		const spinner = opts.json ? null : ora("Checking session...").start()
 		try {
-			const user = await fetchSession(stored.access_token)
+			const user = await validateSession(stored.access_token)
 			if (!user) {
 				spinner?.stop()
 				if (opts.json) {
