@@ -52,6 +52,20 @@ Pattern senior pour better-auth dans ce repo. **Lis toujours `docs/guides/better
 | [docs/guides/better-auth/client.md](docs/guides/better-auth/client.md) | Hooks React, `useActiveOrganization`, workaround #9710 |
 | [docs/guides/better-auth/pitfalls.md](docs/guides/better-auth/pitfalls.md) | Bugs ouverts (#9070, #9710), options supprimées, gotchas — **à lire AVANT toute implémentation** |
 
+### Design system guides
+
+Pattern senior pour le design system de ce repo. **Lis toujours `DESIGN.md` à la racine en premier** avant de modifier `packages/ui/` ou toute app qui consomme `@workspace/ui` (apps/web, apps/app). Le contrat qui verrouille la spec est [ADR-020](apps/internal-documentation/content/docs/decisions/ADR-020-design-system.mdx).
+
+| Guide | Contenu |
+|---|---|
+| [DESIGN.md](DESIGN.md) | Spec canonique — neuf sections (tokens, motion, patterns, a11y, voice, inventaire) — **point d'entrée obligatoire** |
+| [ADR-020](apps/internal-documentation/content/docs/decisions/ADR-020-design-system.mdx) | Décision verrouillée — `@workspace/ui` surface unique, `next-themes` pour le dark mode, Radix-nova stack, interdits nommés |
+| [Design system index](apps/internal-documentation/content/docs/design-system/index.mdx) | Landing contributeur — stack, consumer map, procédure add/remove |
+| [Tokens](apps/internal-documentation/content/docs/design-system/tokens.mdx) | Couleurs sémantiques, typographie (4 voix), spacing/radius/elevation, motion, où vivent les tokens |
+| [Theming](apps/internal-documentation/content/docs/design-system/theming.mdx) | Stratégie `class` via `next-themes`, modèle light/dark, patterns interdits (prefers-color-scheme override, data-mode, FOUC inline, hex redeclaration) |
+| [Components](apps/internal-documentation/content/docs/design-system/components.mdx) | Les 26 primitives en 5 familles, conventions (`data-slot`, `cva`, `Slot`), procédure add/remove |
+| [Pitfalls](apps/internal-documentation/content/docs/design-system/pitfalls.mdx) | Pièges tokens/comportement/voix à check en review — **à lire AVANT toute PR touchant l'UI** |
+
 ### Fresh CLI 
 
 `fresh` is a CLI for AI-powered web search and fetch, backed by Exa.ai.
