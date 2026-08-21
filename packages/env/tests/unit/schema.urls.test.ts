@@ -11,7 +11,11 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { canonicalUrl, clientSchema, serverInputShape } from "../../src/schema.js"
+import {
+  canonicalUrl,
+  clientSchema,
+  serverSchema,
+} from "../../src/schema.js"
 
 describe("inter-app URL fields (ADR-021)", () => {
   describe("canonicalUrl helper", () => {
@@ -83,9 +87,10 @@ describe("inter-app URL fields (ADR-021)", () => {
     })
   })
 
-  describe("serverInputShape URL fields", () => {
+  describe("serverSchema URL fields", () => {
     it("accepts production URLs for WEB_URL, APP_URL, DOCS_URL, API_BASE_URL", () => {
-      const parsed = serverInputShape.parse({
+      const parsed = serverSchema.parse({
+        NODE_ENV: "development",
         WEB_URL: "https://deessejs.com",
         APP_URL: "https://app.deessejs.com",
         DOCS_URL: "https://docs.deessejs.com",
@@ -98,14 +103,14 @@ describe("inter-app URL fields (ADR-021)", () => {
     })
 
     it("rejects a server URL with a trailing slash", () => {
-      const result = serverInputShape.safeParse({
+      const result = serverSchema.safeParse({
         API_BASE_URL: "https://app.deessejs.com/",
       })
       expect(result.success).toBe(false)
     })
 
     it("rejects a server URL that is not a URL", () => {
-      const result = serverInputShape.safeParse({
+      const result = serverSchema.safeParse({
         WEB_URL: "not-a-url",
       })
       expect(result.success).toBe(false)
