@@ -20,6 +20,14 @@ name: CLI publish verify
 # tarball the build step produced locally. Trusted Publishing stays
 # exclusively in release.yml.
 #
+# Note (ADR-021): release.yml now publishes BOTH @latest (Tier 3, on
+# push to main) AND @canary (Tier 2, on workflow_dispatch with the
+# `canary` input). The verify job packs and tests without publishing,
+# so the multi-dist-tag change does not affect this workflow. The
+# tarball shape is identical for both channels; what differs is the
+# `--tag` flag on the publish step in release.yml, which is not
+# exercised here.
+#
 # Implements ADR-013.
 
 on:
