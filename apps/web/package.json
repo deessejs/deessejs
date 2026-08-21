@@ -20,6 +20,7 @@
     "@orpc/server": "catalog:",
     "@workspace/api": "workspace:*",
     "@workspace/contracts": "workspace:*",
+    "@workspace/env": "workspace:*",
     "@workspace/ui": "workspace:*",
     "fuse.js": "catalog:",
     "lucide-react": "catalog:",

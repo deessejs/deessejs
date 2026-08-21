@@ -30,7 +30,10 @@ const env = createEnv({
   runtimeEnvStrict: {
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
     NEXT_PUBLIC_APP_DESCRIPTION: process.env.NEXT_PUBLIC_APP_DESCRIPTION,
+    NEXT_PUBLIC_WEB_URL: process.env.NEXT_PUBLIC_WEB_URL,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_DOCS_URL: process.env.NEXT_PUBLIC_DOCS_URL,
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
   },
   emptyStringAsUndefined: true,
 })
@@ -43,5 +46,8 @@ const env = createEnv({
 export const clientEnv: Readonly<ClientEnv> = Object.freeze({
   NEXT_PUBLIC_APP_NAME: env.NEXT_PUBLIC_APP_NAME,
   NEXT_PUBLIC_APP_DESCRIPTION: env.NEXT_PUBLIC_APP_DESCRIPTION,
+  NEXT_PUBLIC_WEB_URL: env.NEXT_PUBLIC_WEB_URL,
   NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
+  NEXT_PUBLIC_DOCS_URL: env.NEXT_PUBLIC_DOCS_URL,
+  NEXT_PUBLIC_API_BASE_URL: env.NEXT_PUBLIC_API_BASE_URL,
 } as ClientEnv) as Readonly<ClientEnv>
