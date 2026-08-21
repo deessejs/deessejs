@@ -1,12 +1,13 @@
 import { cliDeviceExpired } from "../../../errors/index.js"
 import { sleep } from "../../../utils/sleep.js"
 
+import { bearerFetch } from "../store/bearer-fetch.js"
 import { createCliAuthClient } from "../store/better-auth-client.js"
 
 import { mapPollingError } from "./polling-errors.js"
 
 /**
- * Device-flow orchestration (ADR-020).
+ * Device-flow orchestration (ADR-020, ADR-022).
  *
  * Three pure functions that the `login` command composes:
  *
@@ -23,9 +24,17 @@ import { mapPollingError } from "./polling-errors.js"
  *    and slow_down; surfaces cli_device_expired /
  *    cli_device_denied per the polling-errors mapper.
  *
- *  - fetchUserIdentity: reads the resolved token's user
- *    identity via /get-session so the stored auth.json
- *    carries a printable "logged in as" string.
+ *  - fetchUserIdentity (ADR-022): resolves the user tied
+ *    to the device-flow access token by calling
+ *    /get-session with `Authorization: Bearer <token>`.
+ *    Uses `bearerFetch` (raw fetch) instead of the typed
+ *    Better Auth client because the typed client is
+ *    cookie-based and the CLI has no cookie jar. Throws
+ *    `cliDeviceExpired` (not a soft null) when the server
+ *    rejects the token or returns no user — a token
+ *    without a resolvable identity is a server-side or
+ *    wire-protocol regression, not a normal state. See
+ *    ADR-022 §"Decision / 1. CLI side".
  *
  * Polling interval constants live here, not in login.ts,
  * because they are part of the device-flow protocol, not
@@ -117,9 +126,20 @@ export const pollForToken = async (
 	}
 }
 
-export const fetchUserIdentity = async (): Promise<UserIdentity | null> => {
-	const authClient = createCliAuthClient()
-	const { data } = await authClient.getSession()
-	if (!data) return null
-	return data.user as UserIdentity
+export const fetchUserIdentity = async (
+	accessToken: string,
+): Promise<UserIdentity> => {
+	const response = await bearerFetch("get-session", accessToken, { method: "GET" })
+	if (!response.ok) {
+		throw cliDeviceExpired(
+			`server issued a session token but /get-session rejected it (HTTP ${response.status})`,
+		)
+	}
+	const body = (await response.json()) as { user?: UserIdentity }
+	if (!body.user) {
+		throw cliDeviceExpired(
+			"server issued a session token but no user identity was attached",
+		)
+	}
+	return body.user
 }
