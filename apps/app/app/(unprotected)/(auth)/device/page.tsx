@@ -1,9 +1,13 @@
+import { headers } from "next/headers"
+import { redirect } from "next/navigation"
+import { auth } from "@workspace/auth"
+
 import { AuthContainer } from "@/components/auth"
 import { DeviceForm } from "@/components/auth/device-form"
 import { userCodeSchema } from "@/components/auth/schemas"
 
 /**
- * Device authorization verification page (ADR-020).
+ * Device authorization verification page (ADR-020, ADR-022).
  *
  * The CLI's `deesse auth login` opens the browser to this
  * page with the issued `user_code` in the query string. The
@@ -11,6 +15,18 @@ import { userCodeSchema } from "@/components/auth/schemas"
  * have never signed in to the web app), and the device flow
  * is itself a sign-in flow — the user lands here, signs in
  * via the existing flow, claims the code, approves or denies.
+ *
+ * ADR-022: a user who lands here while anonymous used to see
+ * the Approve/Deny buttons immediately. Clicking Approve hit
+ * Better Auth's `POST /device/approve` which requires a
+ * session (HTTP 401 `unauthorized` otherwise). The CLI's
+ * polling loop never knew — the device code stayed pending,
+ * the user thought they had approved, and the CLI timed out
+ * or surfaced `unknown user`. This Server Component now
+ * gates the page on a valid session BEFORE rendering the
+ * form. An anonymous visitor is redirected to
+ * `/login?redirect=/device?user_code=<code>` so the
+ * `user_code` round-trips back into the URL after sign-in.
  *
  * This page is a thin Server Component:
  *   1. Read `searchParams.user_code` (Next 16 async prop).
@@ -20,7 +36,12 @@ import { userCodeSchema } from "@/components/auth/schemas"
  *      legitimately-expired device-code record. There is no
  *      point telling an unauthenticated visitor that the URL
  *      was bad — they cannot act on the information.
- *   3. Render the DeviceForm component, which owns the
+ *   3. ADR-022: call `auth.api.getSession({ headers })`. If
+ *      null, `redirect("/login?redirect=...")` so the user
+ *      signs in first, then comes back with the `user_code`
+ *      intact. The redirect is server-side so the Approve/
+ *      Deny buttons never flash for an anonymous user.
+ *   4. Render the DeviceForm component, which owns the
  *      4-state machine (TanStack Query: useQuery for the read
  *      of `authClient.device(...)`, useMutation for approve /
  *      deny).
@@ -57,6 +78,23 @@ export default async function DevicePage({
 	// (the validated user_code). When false, we render the
 	// "Expired" panel and never hand a value to DeviceForm.
 	const userCode = parsed.success ? parsed.data : null
+
+	// ADR-022: gate on session. `auth.api.getSession` reads
+	// either the session cookie (from the web sign-in) or the
+	// Bearer header (which `bearer()` plugin enables) — the
+	// CLI's `fetchUserIdentity` uses the latter path; this
+	// page uses the cookie path because the user is in a
+	// browser. An anonymous visitor is bounced to /login with
+	// the user_code round-tripped via the `redirect` query so
+	// the post-login navigation lands back on /device?user_code=
+	// unchanged. The redirect is server-side (not a client-side
+	// useEffect) so the Approve/Deny buttons never flash for a
+	// user who shouldn't see them.
+	const session = await auth.api.getSession({ headers: await headers() })
+	if (!session?.user && userCode) {
+		const returnPath = `/device?user_code=${encodeURIComponent(userCode)}`
+		redirect(`/login?redirect=${encodeURIComponent(returnPath)}`)
+	}
 
 	return (
 		<AuthContainer.Root>
