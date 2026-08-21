@@ -23,6 +23,27 @@ import { z } from "zod"
  * suite run without env vars while still enforcing it at prod startup.
  */
 
+/**
+ * Canonical host URL (no trailing slash) used by the inter-app URL
+ * configuration. Per ADR-021, every inter-app link is built as
+ * `new URL(path, host)`; a trailing slash on the base URL would
+ * be silently neutralised by `new URL`'s resolution rules but
+ * hides a contributor mistake behind a non-obvious normalisation.
+ * The `.refine` rejects the value at parse time so the mistake
+ * surfaces locally before CI.
+ *
+ * Exported so a colocated unit test (`tests/unit/schema.urls.test.ts`)
+ * can pin the validation contract; not part of the runtime surface.
+ */
+export const canonicalUrl = z
+  .string()
+  .url()
+  .refine((v) => !v.endsWith("/"), {
+    message:
+      "Inter-app URL must not end with a trailing slash — " +
+      "call sites use new URL(path, base) which already normalises.",
+  })
+
 const csv = z.string().transform((s) =>
   s
     .split(",")
@@ -90,6 +111,16 @@ export const serverInputShape = {
   // hits GitHub anonymously (60 req/h). Set in production to lift
   // the rate limit to 5000 req/h. See packages/api/src/core/templates/enrich.ts.
   GITHUB_TOKEN: z.string().optional(),
+
+  // Inter-app URL configuration (ADR-021). Server-side mirrors of
+  // the NEXT_PUBLIC_* fields on clientSchema. Used by server-side
+  // fetchers (apps/app's proxy, apps/cli's RPCLink, RSC fetches in
+  // apps/web when running on Node). Defaults are localhost ports
+  // per the dev convention; production values are set on Vercel.
+  WEB_URL: canonicalUrl.default("http://localhost:3000"),
+  APP_URL: canonicalUrl.default("http://localhost:3001"),
+  DOCS_URL: canonicalUrl.default("http://localhost:3002"),
+  API_BASE_URL: canonicalUrl.default("http://localhost:3001"),
 }
 
 export const serverSchema = z.object(serverInputShape).superRefine(
@@ -141,13 +172,22 @@ export const serverSchema = z.object(serverInputShape).superRefine(
  * appear in the destructured literal passed by `client.ts`. Adding a key to
  * this schema without listing it in `client.ts` is a compile-time error.
  */
+
 export const clientSchema = z.object({
   NEXT_PUBLIC_APP_NAME: z.string().min(1).default("DeesseJS"),
   NEXT_PUBLIC_APP_DESCRIPTION: z
     .string()
     .min(1)
     .default("SaaS application built with Next.js and shared UI components"),
-  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  // Inter-app URL configuration (ADR-021). Server-side mirrors
+  // live in serverInputShape below; the client variants carry
+  // NEXT_PUBLIC_* so the bundler inlines them into the browser
+  // bundle. Defaults are localhost ports per the dev convention
+  // documented in ADR-021 §1.
+  NEXT_PUBLIC_WEB_URL: canonicalUrl.default("http://localhost:3000"),
+  NEXT_PUBLIC_APP_URL: canonicalUrl.default("http://localhost:3001"),
+  NEXT_PUBLIC_DOCS_URL: canonicalUrl.default("http://localhost:3002"),
+  NEXT_PUBLIC_API_BASE_URL: canonicalUrl.default("http://localhost:3001"),
 })
 
 export type ServerEnv = z.infer<typeof serverSchema>
