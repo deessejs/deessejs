@@ -1,0 +1,52 @@
+# apps/web browser end-to-end suite — nightly extended matrix.
+#
+# Runs nightly (and on manual dispatch) over a wider matrix
+# than the PR-blocking workflow. Failures post a GitHub issue
+# with the captured output.
+#
+# Per ADR-020.
+name: apps/web e2e (nightly)
+on:
+  schedule:
+    # 03:00 UTC daily.
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+jobs:
+  e2e-extended:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+          - chromium
+          - firefox
+          - webkit
+        scenario:
+          - real
+          - forced-cache-poison
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        run: pnpm --filter web exec playwright install --with-deps ${{ matrix.browser }}
+      - name: Run Playwright
+        env:
+          # Nightly has no live Vercel deployment. The nightly
+          # suite runs against a Vercel preview URL that is
+          # manually deployed or against a long-lived preview.
+          # The base URL is wired to a matrix entry; the
+          # scenario is set as an env var and read by the
+          # spec via process.env.PW_E2E_SCENARIO.
+          BASE_URL: ${{ secrets.NIGHTLY_PREVIEW_URL }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          PW_E2E_SCENARIO: ${{ matrix.scenario }}
+          CI: 1
+        run: pnpm --filter web exec playwright test --config playwright.config.ts --project=${{ matrix.browser }}
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.browser }}-${{ matrix.scenario }}
+          path: apps/web/playwright-report/
+          retention-days: 14

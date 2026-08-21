@@ -35,6 +35,15 @@ import type { ApiEnv } from "./env.js"
  * The matched response is rewritten to carry the request ID
  * header, so clients can correlate even when oRPC constructs
  * the response internally.
+ *
+ * Cache directives:
+ *   Every RPC response carries `Cache-Control: no-store` so a
+ *   CDN/proxy in front of the API never caches upstream
+ *   procedure results. RPC responses are user-/session-derived
+ *   and time-sensitive; caching them is incorrect. This is a
+ *   hardening directive independent of any route-level fetch
+ *   cache that the client (e.g. apps/web) opts into via Next.js
+ *   ISR directives on the underlying `fetch`. See issue #81.
  */
 export const mountRpc = (api: Hono<ApiEnv>): void => {
   const rpcHandler = new RPCHandler(appRouter, {
@@ -56,6 +65,9 @@ export const mountRpc = (api: Hono<ApiEnv>): void => {
     if (matched) {
       const headers = new Headers(response.headers)
       headers.set(REQUEST_ID_HEADER, c.get("requestId"))
+      // Refuse any caching of upstream RPC results at the
+      // transport edge. See the JSDoc above.
+      headers.set("Cache-Control", "no-store")
       return c.newResponse(response.body, { ...response, headers })
     }
 

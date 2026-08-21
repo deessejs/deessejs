@@ -115,3 +115,146 @@ describe("POST /api/v1/rpc/templates/list", () => {
     })
   }
 })
+
+/**
+ * Wire-code contract test (issue #81).
+ *
+ * Pins the error contract that the marketing site depends on:
+ * when GitHub enrichment fails, the typed client must see an
+ * `ORPCError` with code `"TEMPLATES_FETCH_FAILED"` (status 502),
+ * NOT a generic `INTERNAL_SERVER_ERROR`. The failure is
+ * triggered by feeding `enrich()` a registry entry pointing at
+ * a non-existent GitHub repo (synchronous reject from
+ * `packages/api/src/core/github/client.ts#fetchRepo`).
+ *
+ * This is a unit-style test of the core layer; the oRPC handler
+ * wrapping `enrich()` and translating the raw `Error` is covered
+ * by the integration test above (under the `[skip-github]`
+ * block — when real GitHub is rate-limited this is the only
+ * place the wire-code is exercised end-to-end).
+ */
+import type { TemplateV1 } from "@workspace/contracts/v1"
+
+import { describe as describeUnit, expect as expectUnit, it as itUnit } from "vitest"
+
+import { ORPCError } from "@orpc/server"
+
+import { enrich } from "../../../src/core/templates/enrich.js"
+import { TEMPLATES } from "../../../src/templates.js"
+
+const brokenRegistry: ReadonlyArray<TemplateV1> = [
+  {
+    ...TEMPLATES[0],
+    repo: "this-repo-must-not-exist-xyz-12345",
+  },
+]
+
+describeUnit("enrich() failure surface (issue #81 wire-code)", () => {
+  itUnit("rejects with a plain Error when GitHub returns non-OK", async () => {
+    await expectUnit(enrich(brokenRegistry)).rejects.toBeInstanceOf(Error)
+  })
+
+  itUnit("does not translate errors itself — translation lives in the handler", async () => {
+    // The core layer surfaces raw errors. The handler in
+    // `packages/api/src/orpc/routes/templates.ts` is the single
+    // place the code is promoted to `TEMPLATES_FETCH_FAILED`.
+    // A regression here (e.g. someone wraps `enrich()` in a
+    // try/catch and throws an ORPCError from the core) would
+    // break the layered separation.
+    await expectUnit(enrich(brokenRegistry)).rejects.not.toBeInstanceOf(
+      ORPCError,
+    )
+  })
+})
+
+/**
+ * E2E test guard contract (ADR-020).
+ *
+ * Three unit-tier tests that pin the contract of the
+ * x-vercel-protection-bypass + x-e2e-force-fail guard inside
+ * the templates handler. The guard is the seam that lets the
+ * Playwright e2e suite drive the failure / empty paths
+ * without a real upstream outage.
+ *
+ * These tests do NOT hit the network — they run on every PR
+ * regardless of the GitHub rate limit. They only need to
+ * assert the guard's behavior under three specific shapes
+ * of the bypass header.
+ */
+describeUnit("templates.list e2e guard (ADR-020)", () => {
+  const SECRET = "test-only-bypass-secret"
+  const URL = "/api/v1/rpc/templates/list"
+  const BODY = JSON.stringify({ data: null, path: ["templates", "list"] })
+
+  const call = (headers: Record<string, string> = {}) =>
+    api.request(URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: BODY,
+    })
+
+  itUnit(
+    "closed by default: missing secret OR missing/non-matching bypass header means the guard is a no-op",
+    async () => {
+      // Save the real env value (if any) and ensure it is empty
+      // so the guard closes by default.
+      const saved = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      try {
+        // No headers — guard should be closed.
+        const res = await call({ "x-e2e-force-fail": "1" })
+        // The guard is closed, so we hit `enrich()` (which
+        // requires GitHub in real network but here we are in
+        // CI with mocked network — see globalSetup). The test
+        // pins that the response is NOT the wire-code 502.
+        expect(res.status).not.toBe(502)
+      } finally {
+        if (saved !== undefined) process.env.VERCEL_AUTOMATION_BYPASS_SECRET = saved
+      }
+    },
+  )
+
+  itUnit(
+    "production-impervious: guard is a no-op when NODE_ENV is 'production'",
+    async () => {
+      const savedSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      const savedNodeEnv = process.env.NODE_ENV
+      process.env.VERCEL_AUTOMATION_BYPASS_SECRET = SECRET
+      process.env.NODE_ENV = "production"
+      try {
+        // Even with a valid secret AND a matching bypass header
+        // AND the force-fail value, production cannot reach
+        // the test path.
+        const res = await call({
+          "x-vercel-protection-bypass": SECRET,
+          "x-e2e-force-fail": "1",
+        })
+        expect(res.status).not.toBe(502)
+      } finally {
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET = savedSecret
+        process.env.NODE_ENV = savedNodeEnv
+      }
+    },
+  )
+
+  itUnit(
+    "header-mismatch: a non-matching bypass value does not enable the guard",
+    async () => {
+      const savedSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      const savedNodeEnv = process.env.NODE_ENV
+      process.env.VERCEL_AUTOMATION_BYPASS_SECRET = SECRET
+      process.env.NODE_ENV = "test"
+      try {
+        // Bypass header does NOT match the server-side secret.
+        const res = await call({
+          "x-vercel-protection-bypass": "wrong-secret",
+          "x-e2e-force-fail": "1",
+        })
+        expect(res.status).not.toBe(502)
+      } finally {
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET = savedSecret
+        process.env.NODE_ENV = savedNodeEnv
+      }
+    },
+  )
+})

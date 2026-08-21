@@ -9,7 +9,10 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
  */
 const Loading = () => {
   return (
-    <section className="mx-auto max-w-6xl px-6 py-16">
+    <section
+      data-testid="templates-loading"
+      className="mx-auto max-w-6xl px-6 py-16"
+    >
       <header className="mb-10 flex flex-col gap-3">
         <Skeleton className="h-9 w-48" />
         <Skeleton className="h-5 w-96 max-w-full" />

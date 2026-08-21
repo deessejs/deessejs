@@ -6,9 +6,13 @@
  * the response onto the entry. The result is the wire shape that the
  * CLI and apps/web consume (TemplateV1, see `@workspace/contracts/v1`).
  *
- * Failure mode: no cache, fail loud. If GitHub is unreachable or
- * rate-limited, the procedure translates the thrown error into a
- * stable 503 with code `templates_fetch_failed`.
+ * Failure mode: no cache, fail loud. If GitHub is unreachable,
+ * rate-limited, or returns an unexpected status, this function
+ * rejects with a plain `Error`. The caller
+ * (`packages/api/src/orpc/routes/templates.ts`) translates that
+ * into a stable `ORPCError` with code `TEMPLATES_FETCH_FAILED`
+ * (HTTP 502, Bad Gateway) so the typed client can distinguish an
+ * upstream-GitHub failure from a genuine server bug.
  */
 import type { TemplateV1 } from "@workspace/contracts/v1"
 import { serverEnv } from "@workspace/env/server"

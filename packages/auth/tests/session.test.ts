@@ -70,11 +70,19 @@ describe("auth session", () => {
 
         expect(saved.id).toBeDefined()
 
+        // Capture auth headers BEFORE deleting the user. getAuthHeaders
+        // inserts a session row keyed by user_id, which violates the
+        // session.user_id -> user.id foreign key once the user row is
+        // gone. (Discovered when PR #75's turbo.json env fix made this
+        // describe block actually run under CI; previously it was
+        // skipped because turbo stripped DATABASE_URL and the
+        // hasDatabase gate was false.)
+        const headers = await ctx.test.getAuthHeaders({ userId: user.id })
+
         // Delete
         await ctx.test.deleteUser(user.id)
 
         // Verify deleted
-        const headers = await ctx.test.getAuthHeaders({ userId: user.id })
         const session = await auth.api.getSession({ headers })
         expect(session).toBeNull()
       })
