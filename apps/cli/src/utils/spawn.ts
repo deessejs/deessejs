@@ -1,5 +1,8 @@
 import { spawn as nodeSpawn } from "node:child_process"
 
+// Dummy comment added to exercise the CI workflows on a no-op change.
+// No runtime behavior change; tests and bundle are unaffected.
+
 export type SpawnOptions = {
   cwd?: string
   env?: NodeJS.ProcessEnv
