@@ -4,6 +4,7 @@ import type { RouterClient } from "@orpc/server"
 
 import { appRouter } from "@workspace/api/router"
 import { API_RPC_PATH } from "@workspace/api/base-path"
+import { clientEnv } from "@workspace/env/client"
 
 /**
  * Per-call context advertised by the marketing-site oRPC client.
@@ -52,12 +53,16 @@ export const buildFetchIsrInit = (
 /**
  * Typed oRPC client for the marketing site.
  *
- * `API_RPC_PATH` is the single source of truth for the oRPC endpoint
- * URL (defined in @workspace/api/base-path, source
- * packages/api/src/constants/base-path.ts). The same constant is read
- * by apps/app's lib/orpc.ts and by Hono's `basePath(API_BASE_PATH)`
- * server-side. Renaming the API prefix means editing the constant and
- * moving the Next.js catch-all directory; nothing else.
+ * `API_RPC_PATH` is the path part of the oRPC endpoint URL (defined
+ * in @workspace/api/base-path, source
+ * packages/api/src/constants/base-path.ts). The host part is
+ * `clientEnv.NEXT_PUBLIC_API_BASE_URL` (declared in @workspace/env);
+ * together they form the full oRPC endpoint URL via
+ * `new URL(API_RPC_PATH, clientEnv.NEXT_PUBLIC_API_BASE_URL)`.
+ * The same path constant is read by apps/app's lib/orpc.ts and by
+ * Hono's `basePath(API_BASE_PATH)` server-side. Renaming the API
+ * prefix means editing the constant, updating the env var on Vercel,
+ * and moving the Next.js catch-all directory; nothing else.
  *
  * Cache behavior (issue #81):
  *   `RPCLink` exposes per-call `context` to its `fetch` hook. We use
@@ -100,7 +105,18 @@ export const buildFetchIsrInit = (
  * Turbopack cannot satisfy (node builtins `net`/`tls`/`perf_hooks`).
  */
 const link = new RPCLink({
-  url: API_RPC_PATH,
+  // Per ADR-021: the oRPC endpoint URL is composed from the
+  // path constant (single source of truth for the API prefix) and
+  // the host constant (declared in @workspace/env, defaults to
+  // localhost:3001 in dev, app.deessejs.com in prod). The previous
+  // form `url: API_RPC_PATH` (a relative path) resolved against
+  // the current domain and hit /api/v1 on deessejs.com, which
+  // does not host the backend. `new URL(path, base)` is robust
+  // to a trailing slash on either side: the leading slash on the
+  // path erases the trailing slash on the base. The schema's
+  // `.refine` rejects trailing slashes at parse time as a second
+  // layer of defence.
+  url: new URL(API_RPC_PATH, clientEnv.NEXT_PUBLIC_API_BASE_URL).toString(),
   fetch: (request, init, options) => {
     const isrInit = buildFetchIsrInit(init, options?.context?.cache)
     return globalThis.fetch(request, isrInit)

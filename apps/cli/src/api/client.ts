@@ -31,6 +31,11 @@ import { API_RPC_PATH } from "@workspace/api/base-path"
  * system-level version probe (`apps/cli/src/version/check.ts`) still
  * sends a User-Agent because it hits a Hono-direct endpoint, not an
  * oRPC procedure.
+ *
+ * Per ADR-021: the URL is composed via `new URL(path, base)` rather
+ * than string concatenation; the leading-slash rule of `new URL`
+ * collapses any trailing slash on the base. The trailing-slash guard
+ * for the CLI is `resolveBaseURL()` below.
  */
 /**
  * Production default for the CLI's `baseURL`. Mirrors
@@ -49,6 +54,16 @@ export const DEFAULT_API_URL = "https://app.deessejs.com"
  *      end users in practice).
  *   2. The baked-in default above (production).
  *   3. A thrown validation error when source 1 is set but malformed.
+ *
+ * Per ADR-021: this is the CLI's analogue of the
+ * `apps/web/src/lib/orpc.ts` URL composition. The CLI cannot import
+ * `@workspace/env/server` because the env package is private to the
+ * monorepo (`packages/env/package.json: private: true`) and the CLI
+ * is published on npm. The naming divergence (`DEESSEJS_API_URL`
+ * here vs. `API_BASE_URL` in apps/web and apps/app) is intentional —
+ * the env loader on the web side owns the canonical name; the CLI
+ * uses a different namespace because its published tarball carries a
+ * single env var and there is no loader to alias it through.
  */
 export function resolveBaseURL(): string {
 	const raw = process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL
@@ -87,12 +102,13 @@ const isTransientNetworkError = (e: unknown): boolean =>
  * as `network_error` with hint `Invalid URL` despite the network being
  * fine.
  *
- * Fix: join `resolveBaseURL()` and `API_RPC_PATH` to an absolute URL.
- * `resolveBaseURL()` strips a trailing slash; `API_RPC_PATH` starts
- * with `/`, so the concatenation is unambiguous.
+ * Fix: join `resolveBaseURL()` and `API_RPC_PATH` to an absolute URL
+ * via `new URL(path, base)` so the leading-slash rule collapses any
+ * trailing slash on the base. `resolveBaseURL()` already strips a
+ * trailing slash as a first line of defence; `new URL` is the second.
  */
 const link = new RPCLink({
-  url: `${resolveBaseURL()}${API_RPC_PATH}`,
+  url: new URL(API_RPC_PATH, resolveBaseURL()).toString(),
   plugins: [
     new RetryAfterPlugin(),
     new ClientRetryPlugin({
