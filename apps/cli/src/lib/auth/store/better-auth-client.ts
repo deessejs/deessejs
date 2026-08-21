@@ -14,12 +14,20 @@ import { readPackageVersion } from "../../../api/self-version.js"
  * Baked-in defaults are the only mechanism that works
  * out of the box.
  *
- * The host `deessejs.com` is the marketing + API root per
- * ADR-014 ("the marketing site, which also serves the
- * API"). The `basePath` of `/api/v1/auth` is appended by
- * the Better Auth client, so the device-flow endpoints live
- * at `${baseURL}${API_AUTH_PATH}/device/*` =
- * `https://deessejs.com/api/v1/auth/device/*`.
+ * The host `app.deessejs.com` is the production API host
+ * per ADR-015 and ADR-016 (which both reproduce / test
+ * against `app.deessejs.com/api/v1/...`). The `basePath` of
+ * `/api/v1/auth` is appended by the Better Auth client, so
+ * the device-flow endpoints live at
+ * `${baseURL}${API_AUTH_PATH}/device/*` =
+ * `https://app.deessejs.com/api/v1/auth/device/*`.
+ *
+ * (Note: an earlier draft of this comment cited
+ * `deessejs.com` from ADR-014, which is the marketing
+ * apex. ADR-014 was wrong about which host serves the
+ * API. The canonical prod API host is `app.deessejs.com`,
+ * confirmed by ADR-015 §"Root cause" and ADR-016
+ * §"API CI". ADR-014 should be updated to match.)
  *
  * Three sources, in priority order:
  *   1. `DEESSEJS_API_URL` env var (CI / dev override;
@@ -29,7 +37,7 @@ import { readPackageVersion } from "../../../api/self-version.js"
  *      malformed (per ADR-014 §"Malformed values fail
  *      loudly").
  */
-export const DEFAULT_API_URL = "https://deessejs.com"
+export const DEFAULT_API_URL = "https://app.deessejs.com"
 
 export function resolveBaseURL(): string {
 	const raw = process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL

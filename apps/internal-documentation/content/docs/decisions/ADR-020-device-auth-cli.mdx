@@ -484,18 +484,20 @@ this ADR.
   shadcn classes copy-pasted.
 - Baked-in `baseURL` for the CLI's Better Auth client, with
   `DEESSEJS_API_URL` as the only env override. The default
-  is `https://deessejs.com` (the production host per
-  ADR-014 §"fallback"). The CLI ships to npm and runs in
-  end users' shells; those shells do not have
-  `DEESSEJS_API_URL` set, so the default is what makes
-  the command work out of the box. CI, staging, and
-  self-hosted deployments set the env var to override.
-  Values that are not absolute URLs (or that use a scheme
-  other than http/https) throw a validation error before
-  any network call (per ADR-014 §"Malformed values fail
-  loudly"). ADR-010 §6 forbids per-command URL flags, but
-  env vars and build-time defaults are not flags and are
-  not affected by the rule.
+  is `https://app.deessejs.com` (the production API
+  host per ADR-015 and ADR-016, which both reproduce
+  / test against `app.deessejs.com/api/v1/...`).
+  The CLI ships to npm and runs in end users' shells;
+  those shells do not have `DEESSEJS_API_URL` set, so
+  the default is what makes the command work out of
+  the box. CI, staging, and self-hosted deployments
+  set the env var to override. Values that are not
+  absolute URLs (or that use a scheme other than
+  http/https) throw a validation error before any
+  network call (per ADR-014 §"Malformed values fail
+  loudly"). ADR-010 §6 forbids per-command URL flags,
+  but env vars and build-time defaults are not flags
+  and are not affected by the rule.
 
 - **A new HTTP route outside `/api/v1/auth/*` for the
   device flow.** The five endpoints live under the
