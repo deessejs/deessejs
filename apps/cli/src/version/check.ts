@@ -39,7 +39,20 @@ const compareSemver = (a: string, b: string): number => {
 export const maybeWarnAboutOutdatedCli = async (): Promise<void> => {
   let bodyText: string
   try {
-    const versionUrl = `${API_BASE_PATH}/version`
+    // Per ADR-021: the version probe URL is composed from the path
+    // constant and the host constant. The previous form
+    // `${API_BASE_PATH}/version` (a relative path) resolved
+    // against the user's working directory and crashed the
+    // version probe. The host defaults to https://app.deessejs.com
+    // (the real backend domain); users override via the
+    // `API_BASE_URL` shell env var.
+    const apiBaseUrl =
+      process.env.API_BASE_URL?.replace(/\/$/, "") ??
+      "https://app.deessejs.com"
+    const versionUrl = new URL(
+      `${API_BASE_PATH}/version`,
+      apiBaseUrl,
+    ).toString()
     const res = await fetch(versionUrl)
     if (res.status !== 200) return
     bodyText = await res.text()

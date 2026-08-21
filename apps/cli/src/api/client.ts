@@ -10,6 +10,28 @@ import { appRouter } from "@workspace/api/router"
 import { API_RPC_PATH } from "@workspace/api/base-path"
 
 /**
+ * Production backend URL. Per ADR-021, this is the canonical
+ * hostname the CLI targets. Override via the `API_BASE_URL`
+ * shell env var (`API_BASE_URL=https://staging.example.com
+ * deessejs list`). The default is `https://app.deessejs.com`
+ * — the real backend domain, not the marketing site
+ * `deessejs.com` which does not serve the API.
+ *
+ * The CLI reads `process.env.API_BASE_URL` directly rather than
+ * importing `@workspace/env/server`, because:
+ *   1. `@workspace/env` is private to the monorepo (`private:
+ *      true` in packages/env/package.json); the CLI is published
+ *      on npm and cannot depend on it at runtime.
+ *   2. The env loader pulls `node:fs` (via loader.ts), which
+ *      the CLI's tsup bundle avoids for size and startup cost.
+ *
+ * The published tarball ships with this default. Users who
+ * self-host the registry override via shell env.
+ */
+const API_BASE_URL =
+  process.env.API_BASE_URL?.replace(/\/$/, "") ?? "https://app.deessejs.com"
+
+/**
  * Typed oRPC link for the CLI.
  *
  * Internal to the CLI. The public surface (`fetchTemplates`) lives in
@@ -41,7 +63,7 @@ const isTransientNetworkError = (e: unknown): boolean =>
   e instanceof TypeError
 
 const link = new RPCLink({
-  url: API_RPC_PATH,
+  url: new URL(API_RPC_PATH, API_BASE_URL).toString(),
   plugins: [
     new RetryAfterPlugin(),
     new ClientRetryPlugin({
