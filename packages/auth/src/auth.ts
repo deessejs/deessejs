@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { nextCookies } from "better-auth/next-js"
-import { deviceAuthorization } from "better-auth/plugins"
+import { bearer, deviceAuthorization } from "better-auth/plugins"
 import { db } from "@workspace/database"
 import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
@@ -122,6 +122,18 @@ export const auth = betterAuth({
     deviceAuthorization({
       verificationUri: "/device",
     }),
+    // Bearer plugin (ADR-022): lets `auth.api.getSession` (and
+    // `/api/v1/auth/get-session` from the typed client) resolve a session
+    // from an `Authorization: Bearer <token>` header instead of a session
+    // cookie. Required by the CLI's `fetchUserIdentity` follow-up after
+    // `/device/token` returns: the CLI is a stateless Node process with no
+    // cookie jar, so the only way to learn the user tied to the device-flow
+    // session token is to present it as a Bearer header. The default
+    // `requireSignature: false` accepts the raw unsigned session token
+    // returned by `/device/token` directly. The plugin is stateless (no
+    // schema change). Per Better Auth docs (docs/plugins/bearer) and the
+    // device-authorization docs' "Example: CLI Application" callout.
+    bearer(),
     nextCookies(),
   ],
 })
