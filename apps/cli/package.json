@@ -44,7 +44,9 @@
     "@deessejs/fp": "^1.0.0",
     "@orpc/client": "^1.14.7",
     "@orpc/server": "^1.14.7",
+    "better-auth": "^1.6.23",
     "commander": "^12.1.0",
+    "open": "^11.0.1",
     "ora": "^8.1.1",
     "picocolors": "^1.1.1"
   },
@@ -62,7 +64,7 @@
     "vitest": "^2.1.5"
   },
   "engines": {
-    "node": ">=18.18.0"
+    "node": ">=20.0.0"
   },
   "publishConfig": {
     "access": "public",

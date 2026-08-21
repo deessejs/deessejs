@@ -8,6 +8,13 @@
       "when": 1783351219509,
       "tag": "0000_boring_steel_serpent",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787131781490,
+      "tag": "0001_magenta_firebrand",
+      "breakpoints": true
     }
   ]
 }
