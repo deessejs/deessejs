@@ -23,6 +23,7 @@
     "@changesets/cli": "catalog:",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
+    "pkg-pr-new": "catalog:",
     "prettier": "^3.9.4",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "turbo": "^2.10.4",

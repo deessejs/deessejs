@@ -85,6 +85,9 @@ catalog:
   zod: ^4.4.3
   zustand: ^5.0.14
 
+  # CI tooling
+  pkg-pr-new: ^0.0.88
+
 # Strict mode: all dependencies MUST come from a catalog
 catalogMode: strict
 
