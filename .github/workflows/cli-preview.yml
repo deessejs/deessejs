@@ -65,12 +65,16 @@ jobs:
       #   --pnpm         required for pnpm catalogs (see pnpm-workspace.yaml)
       #   --compact      short URL form (https://pkg.pr.new/...@<sha>)
       #   --bin          render `npx ...` in the PR comment instead of `npm i ...`
-      #   --comment=update
-      #                  sticky PR comment that rewrites itself on each push
+      #   --comment=off  the CLI's default behavior is to also post its own
+      #                  sticky comment ("Open in StackBlitz" + npx). We
+      #                  disable that and post our own richer comment
+      #                  below (4 package managers, stable marker, link to
+      #                  the commit). The check-run "Continuous Releases"
+      #                  on the PR is independent of --comment and stays.
       #   --json output.json
       #                  machine-readable output for the comment step below
       - name: Publish preview packages
-        run: pnpm exec pkg-pr-new publish ./apps/cli --pnpm --compact --bin --comment=update --json output.json
+        run: pnpm exec pkg-pr-new publish ./apps/cli --pnpm --compact --bin --comment=off --json output.json
 
       # Post or update the sticky PR comment. Mirrors the sanity-io/next-sanity
       # pattern: find any existing comment with the marker, edit it if found,
