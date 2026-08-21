@@ -178,18 +178,43 @@ on apps/app happens to equal `NEXT_PUBLIC_APP_URL`, so the
 construction is identical) and to apps/cli (which reads the
 server-side `API_BASE_URL`).
 
-**3. The CLI reads `API_BASE_URL` from the env loader.**
+**3. The CLI reads `API_BASE_URL` from `process.env`
+directly.**
 
 ```ts
 // apps/cli/src/api/client.ts
-import { API_BASE_PATH } from "@workspace/api/base-path"
-import { serverEnv } from "@workspace/env/server"
+import { API_BASE_PATH, API_RPC_PATH } from "@workspace/api/base-path"
+
+const API_BASE_URL =
+  process.env.API_BASE_URL?.replace(/\/$/, "") ??
+  "https://app.deessejs.com"
 
 const link = new RPCLink({
-  url: new URL(API_RPC_PATH, serverEnv.API_BASE_URL).toString(),
+  url: new URL(API_RPC_PATH, API_BASE_URL).toString(),
   // …existing plugins
 })
 ```
+
+The CLI does **not** import `@workspace/env/server`. Two reasons:
+
+1. **`@workspace/env` is private to the monorepo** (`private:
+   true` in `packages/env/package.json`). The CLI is published on
+   npm and cannot depend on it at runtime — the dependency would
+   fail to resolve for any user who installs the tarball.
+2. **The env loader pulls `node:fs`** via `loader.ts`. The CLI's
+   tsup bundle avoids Node built-ins for size and startup cost.
+
+The CLI's contract is the env var name (`API_BASE_URL`), not
+the loader. The published tarball ships with the default
+`https://app.deessejs.com`; users override via shell env
+(`API_BASE_URL=https://my-staging.dev.example deessejs list`).
+
+The same pattern applies to the system-level version probe at
+`apps/cli/src/version/check.ts`, which hits `${API_BASE_PATH}/version`
+(Hono-direct, not oRPC). That probe was silently broken by the
+same relative-path bug (it resolved against the user's working
+directory); it now uses `new URL(path, apiBaseUrl)` with the
+same `process.env.API_BASE_URL` fallback.
 
 The CLI is a published Node binary. It reads `API_BASE_URL` from
 `process.env` at startup (the env loader exposes the server
@@ -278,11 +303,13 @@ deployment) is a one-line env var change.
   default (the canonical default is the one place the literal
   lives) and in the documentation.
 - **`process.env` reads outside `@workspace/env`.** The repo
-  convention is to centralise env reads in `@workspace/env`. The
-  CLI reads `API_BASE_URL` from the env loader, not from
-  `process.env` directly. (Apps/cli currently reads other vars
-  via the env loader; this ADR scopes itself to adding
-  `API_BASE_URL`, not refactoring every existing read.)
+  convention is to centralise env reads in `@workspace/env`.
+  The CLI is the **explicit exception**: it reads
+  `process.env.API_BASE_URL` directly (with a fallback) because
+  the published tarball cannot depend on the private
+  `@workspace/env` package, and the env loader's `node:fs`
+  footprint would bloat the bundle. Every other consumer
+  (apps/web, apps/app) reads through `@workspace/env`.
 
 ### Why not the alternatives
 
