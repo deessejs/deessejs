@@ -12,6 +12,8 @@ Changesets supports `pre enter <tag>` / `pre exit` to publish `-alpha.N` / `-bet
 
 For `@deessejs/cli` V1, pre-releases add operational risk without payoff. **Decision: stick with `latest` only.** Revisit when (if) the CLI ever needs an opt-in beta channel for breaking changes.
 
+> **Superseded (2026-08-21):** [ADR-021](../../../../apps/internal-documentation/content/docs/decisions/ADR-021-cli-three-tier-release.mdx) revives this deferral with a `@canary` channel implemented as a `workflow_dispatch` branch of `release.yml`, plus per-PR ephemeral previews via pkg.pr.new. ADR-021 §"Alternatives considered" §A documents why changesets `pre enter canary` was still rejected; the implementation bypasses changesets' pre-release mode entirely.
+
 ## Background (kept for reference)
 
 For context, here's how changesets pre-releases work when enabled:
