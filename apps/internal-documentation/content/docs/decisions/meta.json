@@ -23,6 +23,8 @@
     "ADR-016-knowledge-base-topics",
     "ADR-017-knowledge-base-guides",
     "ADR-018-knowledge-base-global-search",
-    "ADR-019-cli-version-build-injection"
+    "ADR-019-cli-version-build-injection",
+    "ADR-020-apps-web-e2e-browser-tests",
+    "ADR-021-inter-app-url-config"
   ]
 }
