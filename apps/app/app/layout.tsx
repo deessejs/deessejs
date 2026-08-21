@@ -2,8 +2,7 @@ import type { Metadata } from "next"
 
 import "@workspace/ui/globals.css"
 import { APP_CONFIG } from "@workspace/ui/lib/config"
-import { ThemeProvider } from "@/components/theme-provider"
-import { TooltipProvider } from "@workspace/ui/components/tooltip"
+import { AppProviders } from "@/components/providers"
 
 export const metadata: Metadata = {
   title: APP_CONFIG.name,
@@ -18,11 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <ThemeProvider>
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
-        </ThemeProvider>
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   )

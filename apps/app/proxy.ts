@@ -10,6 +10,14 @@ const AUTH_PREFIXES = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
+  // Device verification page (ADR-020): the CLI's auth login
+  // command opens the browser to /device?user_code=XXX. A
+  // user already signed in lands directly on the
+  // approve / deny view instead of being bounced to /login.
+  // The prefix match (no trailing slash) is intentional: only
+  // /device itself and an exact match get the bypass; a
+  // future /device/<sub> route is opted in separately.
+  "/device",
 ]
 
 export const config = {

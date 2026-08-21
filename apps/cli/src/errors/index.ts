@@ -3,11 +3,19 @@ import { EXIT_ERROR } from "../constants/exit.js"
 // Public surface (per ADR-010 §2): the closed list of error codes
 // that downstream tooling may pattern-match against. Adding a code
 // here is a breaking change.
+//
+// The two device-flow codes (cli_device_denied,
+// cli_device_expired) are an amendment to the closed list, added
+// in lockstep with ADR-020 (device authorization). They are not
+// a precedent for further openings; see ADR-010 §2 "What this
+// rule forbids".
 export type CliErrorCode =
   | "not_found"
   | "network_error"
   | "parse_error"
   | "cli_outdated"
+  | "cli_device_denied"
+  | "cli_device_expired"
 
 // Internal codes, used only inside the CLI. Not surfaced as a public
 // pattern-match surface. Adding a code here is non-breaking.
@@ -38,6 +46,8 @@ export { networkError } from "./network.js"
 export { parseError } from "./parse.js"
 export { notFound } from "./not-found.js"
 export { cliOutdated } from "./outdated.js"
+export { cliDeviceDenied } from "./device-denied.js"
+export { cliDeviceExpired } from "./device-expired.js"
 
 // Internal factories, kept in this file because they are not part of
 // the public surface (ADR-010 §2 "What this rule allows": internal

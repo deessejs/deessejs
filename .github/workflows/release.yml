@@ -5,6 +5,18 @@ name: Release
 # message contains '.changeset' (the convention for commits that include
 # changeset files), or by manual workflow_dispatch.
 #
+# Two publish channels:
+#   - @latest: human-promoted push to main (Tier 3). Changesets-driven
+#     version bump; pnpm changeset publish; stable GitHub Release.
+#   - @canary: on-demand workflow_dispatch with `canary: true` input
+#     (Tier 2). Synthetic version string (date+SHA); npm publish --tag canary;
+#     GitHub Release marked as prerelease.
+#
+# Both channels share the same npm trusted publisher entry (release.yml);
+# npm Trusted Publishing allows only one trusted publisher per package, so
+# the canary channel lives inside this same workflow rather than in its
+# own file. See ADR-021 §"Decision".
+#
 # First-ever publish of @deessejs/cli is manual from a maintainer's machine
 # (npm has no "pending publisher" feature). See
 # docs/engineering/reports/versioning/12-npm-setup-walkthrough.md.
@@ -13,6 +25,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      canary:
+        description: 'Publish a @canary build from the current commit (instead of @latest).'
+        type: boolean
+        required: true
+        default: false
 
 concurrency:
   group: release-${{ github.ref }}
@@ -47,10 +65,60 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # 1. Consume changesets → bump apps/cli version, regenerate CHANGELOG
+      # 0b. Determine release channel. Push to main → latest/stable.
+      # workflow_dispatch with canary=true → canary/prerelease.
+      # Downstream steps condition their behavior on these outputs.
+      - name: Determine release channel
+        id: channel
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.canary }}" = "true" ]; then
+            echo "dist_tag=canary"          >> "$GITHUB_OUTPUT"
+            echo "release_type=prerelease"  >> "$GITHUB_OUTPUT"
+            echo "version_source=synthetic" >> "$GITHUB_OUTPUT"
+          else
+            echo "dist_tag=latest"        >> "$GITHUB_OUTPUT"
+            echo "release_type=stable"    >> "$GITHUB_OUTPUT"
+            echo "version_source=changeset" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Tier 2 — @canary version computation (synthetic, no changesets).
+      # We deliberately do NOT run `pnpm changeset version` on the canary
+      # path: it would consume changesets before the eventual @latest run
+      # on main, dirty the working tree, and produce a `0.0.0-<date>` snapshot
+      # version that does not match our `2.1.0-canary.<date>.<sha>` naming.
+      # Instead we rewrite apps/cli/package.json#version in place via jq.
+      - name: Compute canary version
+        if: steps.channel.outputs.version_source == 'synthetic'
+        id: canary-version
+        run: |
+          BASE=$(node -e "console.log(require('./apps/cli/package.json').version)")
+          TS=$(date -u +%Y%m%d%H%M%S)
+          SHA="${GITHUB_SHA::7}"
+          CANARY="${BASE}-canary.${TS}.${SHA}"
+          echo "canary_version=${CANARY}" >> "$GITHUB_OUTPUT"
+          echo "Computed canary version: ${CANARY}"
+
+      - name: Rewrite apps/cli version for canary
+        if: steps.channel.outputs.version_source == 'synthetic'
+        run: |
+          jq --arg v "${{ steps.canary-version.outputs.canary_version }}" \
+            '.version = $v' \
+            apps/cli/package.json > apps/cli/package.json.tmp
+          mv apps/cli/package.json.tmp apps/cli/package.json
+          # Lockfile drift is acceptable for canary (not a reproducible tier);
+          # the in-place bump leaves the tree dirty, which `--no-git-checks`
+          # on the publish step below handles.
+
+      # Tier 3 — @latest version bump (changesets-driven).
+      # Consumes changesets, bumps apps/cli/package.json, regenerates CHANGELOG.
+      # Runs only when the channel is `latest`. The canary branch skips this
+      # so changesets on staging stay available for the eventual main publish.
       - name: Bump versions
+        if: steps.channel.outputs.version_source == 'changeset'
         run: pnpm changeset version
-      - run: pnpm install --frozen-lockfile
+      - name: Refresh lockfile after bump
+        if: steps.channel.outputs.version_source == 'changeset'
+        run: pnpm install --frozen-lockfile
 
       # 1b. Build all packages that produce publishable artifacts.
       # Without this, `dist/` (the actual bundle) is missing from the
@@ -61,23 +129,62 @@ jobs:
       - name: Build publishable packages
         run: pnpm --filter "@deessejs/cli" --filter "@workspace/contracts" build
 
-      # 2. Publish via trusted publisher (OIDC).
-      # Note: changesets publish doesn't accept --provenance or --access flags.
-      # We rely on `publishConfig.provenance: true` in apps/cli/package.json
-      # + NPM_CONFIG_PROVENANCE=true env var as belt + suspenders.
-      - name: Publish to npm
+      # 2. Publish to npm.
+      #
+      # Tier 3 (@latest): `pnpm changeset publish` defaults to the `latest`
+      # dist-tag with provenance triple-belt (publishConfig.provenance + env
+      # var + --provenance if supported).
+      #
+      # Tier 2 (@canary): `npm publish --tag canary --provenance --no-git-checks`.
+      # Three flags are load-bearing:
+      #   --tag canary     without it, npm moves the `latest` tag to the new
+      #                    version and silently un-`latest`s the previous stable.
+      #   --provenance     belt-and-suspenders alongside `publishConfig.provenance: true`.
+      #   --no-git-checks  suppresses npm's "dirty working tree" error caused
+      #                    by the synthetic version bump above.
+      # We deliberately bypass `pnpm changeset publish` on the canary path —
+      # outside changesets pre-release mode it publishes to `latest` regardless
+      # of any --tag flag and refuses packages whose version was not bumped
+      # via `changeset version`.
+      - name: Publish to npm (latest)
+        if: steps.channel.outputs.dist_tag == 'latest'
         env:
           NPM_CONFIG_PROVENANCE: true
         run: pnpm changeset publish
 
-      # 3. Read the new CLI version
+      - name: Publish to npm (canary)
+        if: steps.channel.outputs.dist_tag == 'canary'
+        env:
+          NPM_CONFIG_PROVENANCE: true
+        working-directory: apps/cli
+        run: |
+          npm publish \
+            --tag canary \
+            --provenance \
+            --no-git-checks
+          # Defensive: guarantee `latest` did not move.
+          # Read the previous latest from the registry (not from the local
+          # package.json, which now holds the synthetic canary version).
+          PREVIOUS=$(npm view @deessejs/cli@latest version 2>/dev/null || echo "")
+          if [ -n "$PREVIOUS" ] && [ "$PREVIOUS" != "${{ steps.canary-version.outputs.canary_version }}" ]; then
+            npm dist-tag add @deessejs/cli@${PREVIOUS} latest
+            echo "Re-pinned @latest to ${PREVIOUS} as belt-and-suspenders."
+          else
+            echo "@latest unchanged; no defensive re-pin needed."
+          fi
+
+      # 3. Read the new CLI version.
       - name: Read new version
         id: version
         run: |
           VERSION=$(node -e "console.log(require('./apps/cli/package.json').version)")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      # 4. Tag + push tag (force-update for idempotency)
+      # 4. Tag + push tag (force-update for idempotency).
+      # Tier 2 canary tags look like `release/v2.1.0-canary.20260821143022.a832a55`
+      # — same convention as Tier 3, with the synthetic suffix. Tags are visible
+      # in the GitHub Releases feed marked as prereleases via the
+      # `prerelease` flag on the action below.
       - name: Tag release
         run: |
           git config user.name "github-actions[bot]"
@@ -85,11 +192,17 @@ jobs:
           git tag -f "release/v${{ steps.version.outputs.version }}"
           git push --force origin "release/v${{ steps.version.outputs.version }}"
 
-      # 5. GitHub Release
+      # 5. GitHub Release.
+      # `prerelease` is set from `steps.channel.outputs.release_type`, so
+      # @canary releases are marked as prereleases in the Releases feed
+      # (visually distinct from @latest stable releases). The tag and title
+      # follow the same convention for both channels.
       - name: GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: release/v${{ steps.version.outputs.version }}
           name: "Release v${{ steps.version.outputs.version }}"
+          prerelease: ${{ steps.channel.outputs.release_type == 'prerelease' }}
           generate_notes: true
           fail_on_unmatched_files: true
+

@@ -10,28 +10,6 @@ import { appRouter } from "@workspace/api/router"
 import { API_RPC_PATH } from "@workspace/api/base-path"
 
 /**
- * Production backend URL. Per ADR-021, this is the canonical
- * hostname the CLI targets. Override via the `API_BASE_URL`
- * shell env var (`API_BASE_URL=https://staging.example.com
- * deessejs list`). The default is `https://app.deessejs.com`
- * — the real backend domain, not the marketing site
- * `deessejs.com` which does not serve the API.
- *
- * The CLI reads `process.env.API_BASE_URL` directly rather than
- * importing `@workspace/env/server`, because:
- *   1. `@workspace/env` is private to the monorepo (`private:
- *      true` in packages/env/package.json); the CLI is published
- *      on npm and cannot depend on it at runtime.
- *   2. The env loader pulls `node:fs` (via loader.ts), which
- *      the CLI's tsup bundle avoids for size and startup cost.
- *
- * The published tarball ships with this default. Users who
- * self-host the registry override via shell env.
- */
-const API_BASE_URL =
-  process.env.API_BASE_URL?.replace(/\/$/, "") ?? "https://app.deessejs.com"
-
-/**
  * Typed oRPC link for the CLI.
  *
  * Internal to the CLI. The public surface (`fetchTemplates`) lives in
@@ -53,7 +31,59 @@ const API_BASE_URL =
  * system-level version probe (`apps/cli/src/version/check.ts`) still
  * sends a User-Agent because it hits a Hono-direct endpoint, not an
  * oRPC procedure.
+ *
+ * Per ADR-021: the URL is composed via `new URL(path, base)` rather
+ * than string concatenation; the leading-slash rule of `new URL`
+ * collapses any trailing slash on the base. The trailing-slash guard
+ * for the CLI is `resolveBaseURL()` below.
  */
+/**
+ * Production default for the CLI's `baseURL`. Mirrors
+ * `apps/cli/src/lib/auth/store/better-auth-client.ts` so production
+ * and tests share the same resolution (per ADR-015/016: canonical
+ * prod API host is `app.deessejs.com`, NOT `deessejs.com` which is
+ * the marketing apex).
+ */
+export const DEFAULT_API_URL = "https://app.deessejs.com"
+
+/**
+ * Resolve the API base URL.
+ *
+ * Three sources, in priority order:
+ *   1. `DEESSEJS_API_URL` env var (CI / dev override; never set by
+ *      end users in practice).
+ *   2. The baked-in default above (production).
+ *   3. A thrown validation error when source 1 is set but malformed.
+ *
+ * Per ADR-021: this is the CLI's analogue of the
+ * `apps/web/src/lib/orpc.ts` URL composition. The CLI cannot import
+ * `@workspace/env/server` because the env package is private to the
+ * monorepo (`packages/env/package.json: private: true`) and the CLI
+ * is published on npm. The naming divergence (`DEESSEJS_API_URL`
+ * here vs. `API_BASE_URL` in apps/web and apps/app) is intentional —
+ * the env loader on the web side owns the canonical name; the CLI
+ * uses a different namespace because its published tarball carries a
+ * single env var and there is no loader to alias it through.
+ */
+export function resolveBaseURL(): string {
+	const raw = process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL
+	try {
+		const parsed = new URL(raw)
+		if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+			throw new Error(
+				`DEESSEJS_API_URL must use http or https (got ${parsed.protocol ?? "no protocol"})`,
+			)
+		}
+		return parsed.toString().replace(/\/$/, "")
+	} catch (e) {
+		const detail = e instanceof Error ? e.message : String(e)
+		throw new Error(
+			`DEESSEJS_API_URL is malformed: ${detail}. ` +
+				`Expected a full URL like https://api.example.com.`,
+		)
+	}
+}
+
 /**
  * Whether an error thrown from the wire layer is a transient network
  * error (DNS failure, TCP reset, timeout). These are worth retrying;
@@ -62,8 +92,23 @@ const API_BASE_URL =
 const isTransientNetworkError = (e: unknown): boolean =>
   e instanceof TypeError
 
+/**
+ * RPCLink URL must be absolute in a Node CLI context.
+ *
+ * The oRPC `RPCLink` resolves a relative `url` against the host page's
+ * origin via `new URL(...)`, which is meaningless in a Node binary (no
+ * `window.location`). Passing `API_RPC_PATH` (= `"/api/v1/rpc"`) as-is
+ * raised `TypeError: Invalid URL` on every command, surfaced to users
+ * as `network_error` with hint `Invalid URL` despite the network being
+ * fine.
+ *
+ * Fix: join `resolveBaseURL()` and `API_RPC_PATH` to an absolute URL
+ * via `new URL(path, base)` so the leading-slash rule collapses any
+ * trailing slash on the base. `resolveBaseURL()` already strips a
+ * trailing slash as a first line of defence; `new URL` is the second.
+ */
 const link = new RPCLink({
-  url: new URL(API_RPC_PATH, API_BASE_URL).toString(),
+  url: new URL(API_RPC_PATH, resolveBaseURL()).toString(),
   plugins: [
     new RetryAfterPlugin(),
     new ClientRetryPlugin({
