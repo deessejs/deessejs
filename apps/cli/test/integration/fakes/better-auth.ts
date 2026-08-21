@@ -59,6 +59,14 @@ type State = {
 		getSessionRequests: number
 		signOutRequests: number
 	}
+	/**
+	 * Last Authorization header seen on /get-session, used by
+	 * the CLI login test to assert the CLI sent the Bearer
+	 * token it received from /device/token (ADR-022 §"Test
+	 * strategy / CLI side"). Null until the first /get-session
+	 * call arrives.
+	 */
+	lastGetSessionAuthHeader: string | null
 }
 
 const CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // base32 sans I, O, 0, 1
@@ -123,6 +131,7 @@ export async function startFakeAuthServer(
 			getSessionRequests: 0,
 			signOutRequests: 0,
 		},
+		lastGetSessionAuthHeader: null,
 	}
 
 	const server = http.createServer(async (req, res) => {
@@ -215,9 +224,29 @@ export async function startFakeAuthServer(
 		}
 
 		// GET /api/v1/auth/get-session
+		//
+		// ADR-022: the real Better Auth `bearer()` plugin resolves
+		// the session from an `Authorization: Bearer <token>` header
+		// (or a cookie). The fake used to accept any request that
+		// arrived after a /device/token success — which let the CLI
+		// bug (no Authorization header) pass through the test
+		// undetected. The fake now honours the same contract:
+		//   - No Bearer header OR wrong token → 401 (matches the
+		//     real `bearer()` plugin's silent rejection).
+		//   - Bearer token matches `state.accessToken` → 200 with
+		//     the test user.
+		// The header is also captured into
+		// `state.lastGetSessionAuthHeader` so the CLI test can
+		// assert the CLI actually sent a Bearer header.
 		if (method === "GET" && path === "/api/v1/auth/get-session") {
 			state.counters.getSessionRequests += 1
-			if (state.behaviour.serverErrors || !state.accessToken) {
+			const authHeader = req.headers.authorization ?? null
+			state.lastGetSessionAuthHeader = authHeader
+			if (
+				state.behaviour.serverErrors ||
+				!state.accessToken ||
+				authHeader !== `Bearer ${state.accessToken}`
+			) {
 				// Better Auth returns 401 when there is no valid
 				// session. The body shape is null on this path.
 				res.writeHead(401, { "content-type": "application/json" })

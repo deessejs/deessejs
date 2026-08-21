@@ -24,6 +24,7 @@
     "ADR-017-knowledge-base-guides",
     "ADR-018-knowledge-base-global-search",
     "ADR-019-cli-version-build-injection",
-    "ADR-020-device-auth-cli"
+    "ADR-020-device-auth-cli",
+    "ADR-022-cli-device-auth-fixes"
   ]
 }

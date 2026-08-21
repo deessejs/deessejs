@@ -29,6 +29,16 @@ export const config = {
     "/forgot-password",
     "/reset-password",
     "/verify-email",
+    // Device verification page (ADR-022): the page-level
+    // `auth.api.getSession` check in `app/(unprotected)/(auth)/device/page.tsx`
+    // bounces anonymous visitors to /login. The proxy bounce
+    // branch below (line 86-88) covers the inverse case —
+    // a user who is already signed in and visits /device for
+    // any reason lands on /home instead. The page-level gate
+    // does its own session read; the proxy exists to skip the
+    // getSession call on static assets and to enforce the
+    // bounce-to-home invariant for auth pages.
+    "/device",
   ],
 }
 
