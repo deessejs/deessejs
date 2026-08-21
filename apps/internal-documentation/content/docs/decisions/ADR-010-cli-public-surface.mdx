@@ -267,16 +267,27 @@ maps to one of these codes:
 | `parse_error` | The upstream returned a body that does not match the contract | `parseError(...)` |
 | `not_found` | The requested resource does not exist | `notFoundError(...)` |
 | `cli_outdated` | The installed CLI version is below the server's `MIN_SUPPORTED_VERSION` | `maybeWarnAboutOutdatedCli` |
+| `cli_device_denied` | The user denied the device-flow authorization in the browser | `cliDeviceDenied(...)` |
+| `cli_device_expired` | The device code expired before the user approved it | `cliDeviceExpired(...)` |
 
 The mapping from upstream errors to CLI codes lives in
-`orpcToCliError` (`apps/cli/src/api/index.ts`). The mapper is
-the only place where upstream shapes turn into CLI codes. A
-new upstream error shape requires a new branch in the mapper,
-not a new error code in the public list.
+`orpcToCliError` (`apps/cli/src/api/index.ts`) and in the
+device-flow polling loop (`apps/cli/src/commands/auth/login.ts`).
+The two mappers are the only places where upstream shapes
+turn into CLI codes. A new upstream error shape requires a
+new branch in the relevant mapper, not a new error code in
+the public list.
 
 The error code list is **closed**. Adding a code is a
 breaking change for downstream tooling that pattern-matches
 on the code (analytics, telemetry, scripted error handling).
+The two device-flow codes were added in lockstep with
+ADR-019 (device authorization for the CLI auth surface) to
+preserve the principle that every error the user sees names
+the actual cause; mapping `access_denied` and `expired_token`
+to the generic `not_found` would have hidden the cause from
+the user. The closed-list rule still applies; the device-flow
+codes are not a precedent for opening open-ended additions.
 
 ### 3. Version probe
 
@@ -385,7 +396,10 @@ already enforced by `.changeset/README.md` and the CI
   flag either keeps its meaning or is removed.
 - **Adding a new public error code**. The list is closed; new
   upstream errors map to existing codes or to the generic
-  `network_error` / `parse_error`.
+  `network_error` / `parse_error`. The two device-flow
+  codes (`cli_device_denied`, `cli_device_expired`) are the
+  only sanctioned additions; they are not a precedent for
+  opening the list further.
 - **Renaming the version probe endpoint path** (`/api/v1/version`).
   The path is part of the wire contract; the rename ships in
   the same PR as the upstream change.

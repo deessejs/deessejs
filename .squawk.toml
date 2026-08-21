@@ -43,4 +43,15 @@ excluded_rules = [
   # hand-written DDL run during live traffic. This repo's
   # migrations run in a deployment-controlled DDL session.
   "require-timeout-settings",
+
+  # The repo's existing tables (user, session, account,
+  # verification) all use plain `timestamp` columns. The
+  # deviceCode table added by ADR-020 follows the same
+  # convention. Migrating the existing tables to
+  # `timestamptz` is a separate, larger piece of work that
+  # requires backfilling timezone-aware values and updating
+  # every consumer that does date math; it does not belong in
+  # the device-flow PR. Until that migration lands, the rule
+  # is excluded to keep the schema consistent across tables.
+  "prefer-timestamp-tz",
 ]

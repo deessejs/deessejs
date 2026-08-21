@@ -45,6 +45,37 @@ The four steps are the entire pipeline. Hotfixes follow the same path with `patc
 
 **Outputs:** new `@deessejs/cli` version on npmjs.org with provenance, `release/v{VERSION}` git tag, GitHub Release with auto-generated notes, updated `apps/cli/CHANGELOG.md`.
 
+## Release channels (ADR-021)
+
+In addition to the `@latest` channel above, two other release channels are available:
+
+### `@canary` — on-demand pre-release
+
+Triggered manually: `Actions → release.yml → Run workflow → ☑ canary`. The workflow:
+
+1. Computes a synthetic version string `<base>-canary.<UTC-timestamp>.<short-sha>` (e.g. `2.1.0-canary.20260821143022.a832a55`).
+2. Rewrites `apps/cli/package.json#version` in place via `jq`. Does NOT consume changesets (they stay available for the eventual `@latest` publish on `main`).
+3. Builds `@workspace/contracts` + `@deessejs/cli`.
+4. Publishes with `npm publish --tag canary --provenance --no-git-checks`.
+5. Defensively re-pins `@latest` to the previous `@latest` value to guard against any accidental tag move.
+6. Creates a GitHub Release tagged `release/v<canary-version>` with `prerelease: true`.
+
+The `@canary` dist-tag on npm is updated on every dispatch. There is no automatic cleanup; canarys accumulate on npm until manually deprecated (within 72h, can be unpublished).
+
+### Per-PR ephemeral previews (pkg.pr.new)
+
+Triggered automatically: every PR targeting `staging` or `main` that touches `apps/cli/**`, `packages/contracts/**`, `packages/api/**`, or the workflow file itself. The workflow (`.github/workflows/cli-preview.yml`):
+
+1. Builds the CLI and its workspace deps via Turbo.
+2. Runs `pnpm exec pkg-pr-new publish ./apps/cli --pnpm --compact --bin --comment=update`.
+3. Posts or updates a sticky PR comment with the install URL for each of `pnpm`, `npm`, `yarn`, `bun`.
+
+Previews are stored on pkg.pr.new's own infrastructure (Cloudflare R2) — NOT on npmjs.org. Retention is best-effort: ~1 month without a download OR ~6 months of age, whichever comes first.
+
+### Why three channels, one workflow
+
+The single trusted-publisher-per-package constraint from npm Trusted Publishing forces the canary channel to share `release.yml` with the latest channel. The pkg.pr.new preview channel is a separate workflow because pkg.pr.new authenticates via its own GitHub App, not via OIDC to npm. See ADR-021 for the full design rationale.
+
 **Failure recovery:**
 
 - **Trusted publisher not configured**: workflow fails with 403 from npm. Configure on `https://www.npmjs.com/package/@deessejs/cli/access` and re-run.
