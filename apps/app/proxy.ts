@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
+import { serverEnv } from "@workspace/env/server"
 
 const PROTECTED_PREFIXES = ["/home", "/settings"]
 const AUTH_PREFIXES = [
@@ -54,9 +55,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Per ADR-021: the proxy URL is composed from the path
+  // constant and the host constant, no longer relative to the
+  // incoming request. The two apps share `API_BASE_URL`, so
+  // this expression is identical on staging, prod, and dev. A
+  // future split of apps/app and the API (e.g. an
+  // `api.deessejs.com` deployment) is a one-line env var change
+  // rather than a code refactor.
   const getSessionUrl = new URL(
-    `${API_AUTH_PATH.replace(/\/$/, "")}/get-session`,
-    request.url,
+    `${API_AUTH_PATH}/get-session`,
+    serverEnv.API_BASE_URL,
   )
   const response = await fetch(getSessionUrl, {
     headers: { cookie: request.headers.get("cookie") ?? "" },
