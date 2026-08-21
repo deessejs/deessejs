@@ -2,6 +2,8 @@ import { API_AUTH_PATH } from "@workspace/api/base-path"
 
 import { readPackageVersion } from "../../../api/self-version.js"
 
+import { resolveBaseURL } from "./better-auth-client.js"
+
 /**
  * Minimal bearer-token fetch for the CLI (ADR-020).
  *
@@ -19,15 +21,17 @@ import { readPackageVersion } from "../../../api/self-version.js"
  *   - Authorization: Bearer <access_token> (caller-supplied)
  *
  * Path is appended to (baseURL + API_AUTH_PATH) so the
- * request is absolute. baseURL comes from DEESSEJS_API_URL
- * (same source the typed client reads) so production and
- * tests share the same resolution. The default to
- * http://localhost:3000 mirrors better-auth-client.ts.
+ * request is absolute. baseURL is resolved by the same
+ * helper the typed client uses (`resolveBaseURL` from
+ * better-auth-client.ts) so production and tests share
+ * the same resolution. No hardcoded localhost default
+ * here: end users who install the CLI do not control
+ * their shell env, and pointing to localhost would be a
+ * silent failure.
  */
 function authUrl(path: string): string {
 	const normalised = path.startsWith("/") ? path.slice(1) : path
-	const baseURL = process.env.DEESSEJS_API_URL ?? "http://localhost:3000"
-	return `${baseURL}${API_AUTH_PATH}/${normalised}`
+	return `${resolveBaseURL()}${API_AUTH_PATH}/${normalised}`
 }
 
 export function bearerFetch(
