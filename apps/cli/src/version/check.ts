@@ -35,24 +35,22 @@ const compareSemver = (a: string, b: string): number => {
  *
  * Failures (network, parse, server error) are swallowed silently: the
  * version check is best-effort, never the reason a command fails.
+ *
+ * Per ADR-021: the URL is composed via `new URL(path, base)`. The
+ * host is read from `DEESSEJS_API_URL` (the canonical CLI override)
+ * with fallback to `DEFAULT_API_URL = "https://app.deessejs.com"`.
+ * The shared `resolveBaseURL()` lives in `apps/cli/src/api/client.ts`;
+ * this file duplicates the resolution (a one-line `new URL(raw)`)
+ * because the version probe runs at startup before the oRPC link is
+ * constructed and importing the oRPC module would drag `node:fs`
+ * transitively (the CLI's tsup bundle is intentionally slim).
  */
 export const maybeWarnAboutOutdatedCli = async (): Promise<void> => {
   let bodyText: string
   try {
-    // Per ADR-021: the version probe URL is composed from the path
-    // constant and the host constant. The previous form
-    // `${API_BASE_PATH}/version` (a relative path) resolved
-    // against the user's working directory and crashed the
-    // version probe. The host defaults to https://app.deessejs.com
-    // (the real backend domain); users override via the
-    // `API_BASE_URL` shell env var.
-    const apiBaseUrl =
-      process.env.API_BASE_URL?.replace(/\/$/, "") ??
-      "https://app.deessejs.com"
-    const versionUrl = new URL(
-      `${API_BASE_PATH}/version`,
-      apiBaseUrl,
-    ).toString()
+    const raw =
+      process.env.DEESSEJS_API_URL ?? "https://app.deessejs.com"
+    const versionUrl = new URL(`${API_BASE_PATH}/version`, raw).toString()
     const res = await fetch(versionUrl)
     if (res.status !== 200) return
     bodyText = await res.text()
