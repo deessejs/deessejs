@@ -15,6 +15,7 @@ import { cn } from "@workspace/ui/lib/utils"
 import type { TemplateV1 as Template } from "@workspace/contracts/v1"
 import { TemplateLabels } from "./template-labels"
 import { CopyButton } from "./copy-button"
+import { TemplateReadme } from "./template-readme"
 
 export type TemplateDetailProps = {
   template: Template
@@ -32,6 +33,7 @@ export type TemplateDetailProps = {
  *   │  Hero: badges · title · description         │
  *   │  Preview image 16:9                         │
  *   │  CTAs: Install CLI · View source            │
+ *   │  Overview (sanitized README from GitHub)    │
  *   ├────────────────────────────────────────────┤
  *   │  Body (2 columns on lg):                    │
  *   │   ┌─ main ───────────────┐ ┌─ sidebar ──┐  │
@@ -92,6 +94,8 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
           </a>
         </Button>
       </div>
+
+      <TemplateReadme readme={template.readme} />
 
       <Separator />
 
