@@ -33,13 +33,13 @@ export type TemplateDetailProps = {
  *   │  Hero: badges · title · description         │
  *   │  Preview image 16:9                         │
  *   │  CTAs: Install CLI · View source            │
- *   │  Overview (sanitized README from GitHub)    │
  *   ├────────────────────────────────────────────┤
  *   │  Body (2 columns on lg):                    │
  *   │   ┌─ main ───────────────┐ ┌─ sidebar ──┐  │
  *   │   │  About              │ │  Quick     │  │
- *   │   │  Install            │ │  start     │  │
- *   │   │  Source             │ │  Metadata  │  │
+ *   │   │  Overview (README)   │ │  start     │  │
+ *   │   │  Install            │ │  Metadata  │  │
+ *   │   │  Source             │ │            │  │
  *   │   │  Labels             │ │            │  │
  *   │   └─────────────────────┘ └────────────┘  │
  *   └────────────────────────────────────────────┘
@@ -95,8 +95,6 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
         </Button>
       </div>
 
-      <TemplateReadme readme={template.readme} />
-
       <Separator />
 
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-16">
@@ -107,6 +105,8 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
               {template.description}
             </p>
           </section>
+
+          <TemplateReadme readme={template.readme} />
 
           <section className="flex flex-col gap-3">
             <h2 className="text-label-14 text-muted-foreground">Install</h2>
