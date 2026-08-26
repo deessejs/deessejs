@@ -165,7 +165,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
         </div>
 
         <aside className="flex flex-col gap-6">
-          <Card className="flex flex-col gap-3 p-6">
+          <section className="flex flex-col gap-3">
             <h3 className="text-label-13 font-semibold tracking-tight text-foreground">
               Quick start
             </h3>
@@ -177,8 +177,8 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
               className="w-full"
               label="Copy install command"
             />
-          </Card>
-          <Card className="flex flex-col gap-3 p-6">
+          </section>
+          <section className="flex flex-col gap-3">
             <h3 className="text-label-13 font-semibold tracking-tight text-foreground">
               Details
             </h3>
@@ -200,7 +200,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
                 <dd className="text-foreground truncate">{template.category}</dd>
               </div>
             </dl>
-          </Card>
+          </section>
         </aside>
       </div>
     </article>
