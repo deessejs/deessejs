@@ -67,7 +67,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
         </BreadcrumbList>
       </Breadcrumb>
 
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
         <div className="flex min-w-0 flex-col gap-3">
           <h1 className="text-heading-56 tracking-tight">{template.name}</h1>
           <p className="text-copy-18 text-muted-foreground max-w-3xl">
