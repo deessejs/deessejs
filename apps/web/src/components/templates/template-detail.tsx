@@ -185,11 +185,29 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
             <dl className="flex flex-col gap-3 text-copy-13">
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground">Owner</dt>
-                <dd className="text-foreground truncate">{template.owner}</dd>
+                <dd className="text-foreground truncate">
+                  <a
+                    href={`https://github.com/${template.owner}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline-offset-4 hover:underline"
+                  >
+                    {template.owner}
+                  </a>
+                </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground">Repo</dt>
-                <dd className="text-foreground truncate">{template.repo}</dd>
+                <dd className="text-foreground truncate">
+                  <a
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline-offset-4 hover:underline"
+                  >
+                    {template.repo}
+                  </a>
+                </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground">License</dt>
