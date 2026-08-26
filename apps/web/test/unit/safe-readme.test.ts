@@ -102,11 +102,11 @@ describe("safeReadmeOptions table wrapper", () => {
     const TableOverride = safeReadmeOptions.components?.table as any
     expect(TableOverride).toBeDefined()
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const childNode = createElement("table" as any, null, "child")
     const wrapperHtml = renderToStaticMarkup(
-      createElement(TableOverride, {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        children: createElement("table" as any, null, "child") as any,
-      }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      createElement(TableOverride, null, childNode) as any,
     )
 
     expect(wrapperHtml).toContain("overflow-x-auto")

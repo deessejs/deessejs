@@ -6,7 +6,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
-import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Card } from "@workspace/ui/components/card"
 import { Separator } from "@workspace/ui/components/separator"
@@ -30,19 +29,25 @@ export type TemplateDetailProps = {
  *   ┌─ Breadcrumb ───────────────────────────────┐
  *   │  Templates  /  {name}                       │
  *   ├────────────────────────────────────────────┤
- *   │  Hero: badges · title · description         │
+ *   │  Title                  [Install CLI] [VS]  │
+ *   │  Description                                │
+ *   ├────────────────────────────────────────────┤
  *   │  Preview image 16:9                         │
- *   │  CTAs: Install CLI · View source            │
  *   ├────────────────────────────────────────────┤
  *   │  Body (2 columns on lg):                    │
  *   │   ┌─ main ───────────────┐ ┌─ sidebar ──┐  │
  *   │   │  About              │ │  Quick     │  │
  *   │   │  Overview (README)   │ │  start     │  │
- *   │   │  Install            │ │  Metadata  │  │
+ *   │   │  Install            │ │  Details   │  │
  *   │   │  Source             │ │            │  │
  *   │   │  Labels             │ │            │  │
  *   │   └─────────────────────┘ └────────────┘  │
  *   └────────────────────────────────────────────┘
+ *
+ * The hero dropped the category/license badges (they live in the
+ * sidebar's Details block), and the CTAs moved up next to the
+ * title on lg. On smaller viewports `flex-col` keeps the CTAs
+ * stacked below the description.
  */
 export const TemplateDetail = ({ template, className }: TemplateDetailProps) => {
   const installCommand = `deessejs init ${template.slug}`
@@ -62,38 +67,35 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
         </BreadcrumbList>
       </Breadcrumb>
 
-      <header className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{template.category}</Badge>
-          <Badge variant="secondary">{template.license}</Badge>
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+        <div className="flex min-w-0 flex-col gap-3">
+          <h1 className="text-heading-56 tracking-tight">{template.name}</h1>
+          <p className="text-copy-18 text-muted-foreground max-w-3xl">
+            {template.description}
+          </p>
         </div>
-        <h1 className="text-heading-56 tracking-tight">{template.name}</h1>
-        <p className="text-copy-18 text-muted-foreground max-w-3xl">
-          {template.description}
-        </p>
+        <div className="flex flex-wrap items-center gap-3 lg:shrink-0">
+          <Button asChild>
+            <a
+              href="https://docs.deessejs.com/cli"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Install CLI
+            </a>
+          </Button>
+          <Button variant="outline" asChild>
+            <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+              View source
+            </a>
+          </Button>
+        </div>
       </header>
 
       <div
         aria-hidden
         className="aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted/40"
       />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button asChild>
-          <a
-            href="https://docs.deessejs.com/cli"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Install CLI
-          </a>
-        </Button>
-        <Button variant="outline" asChild>
-          <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
-            View source
-          </a>
-        </Button>
-      </div>
 
       <Separator />
 
