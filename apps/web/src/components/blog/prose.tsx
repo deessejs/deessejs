@@ -21,6 +21,19 @@ export function Prose({ children, className, ...rest }: ComponentProps<"article"
         "[&_img]:rounded-lg [&_img]:border [&_img]:border-border/40 [&_img]:my-4",
         "[&_blockquote]:border-l-2 [&_blockquote]:border-foreground/30 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:my-4",
         "[&_hr]:border-border/40 [&_hr]:my-8",
+        // GFM tables — react-markdown emits raw <table>/<th>/<td> with no
+        // classes, so without these selectors the browser-default 1990s
+        // table look takes over. Mirrors the hand-written table in
+        // apps/web/src/app/(marketing)/pricing/page.tsx (the canonical
+        // table styling on this site). Header row uses a full-opacity
+        // border; body rows use 60% so the header reads as the
+        // visual anchor. align-bottom on <th> / align-top on <td>
+        // keeps multi-line cells visually rooted.
+        "[&_table]:my-6 [&_table]:w-full [&_table]:border-collapse [&_table]:text-copy-14",
+        "[&_thead_tr]:border-b [&_thead_tr]:border-border",
+        "[&_th]:py-3 [&_th]:pr-4 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_th]:align-bottom",
+        "[&_tbody_tr]:border-b [&_tbody_tr]:border-border/60",
+        "[&_td]:py-3 [&_td]:pr-4 [&_td]:align-top [&_td]:text-muted-foreground",
         className,
       ]
         .filter(Boolean)

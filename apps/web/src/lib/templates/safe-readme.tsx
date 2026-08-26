@@ -66,6 +66,18 @@ const components: Components = {
       {children}
     </a>
   ),
+  // GFM tables — wrap the rendered <table> in a horizontally-scrollable
+  // container so wide tables don't blow out the narrow README column on
+  // mobile. The negative margin reclaims the gutter that Prose's
+  // `my-6` adds; on `sm` and up we collapse the margin back. Same
+  // wrapper shape as apps/web/src/app/(marketing)/pricing/page.tsx.
+  // Cell-level styling (padding, borders, alignment) lives in Prose via
+  // Tailwind arbitrary variants — we do not re-style here.
+  table: ({ children }) => (
+    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0 my-6">
+      {children}
+    </div>
+  ),
 }
 
 /**
