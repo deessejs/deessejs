@@ -136,7 +136,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
             <h2 className="text-label-14 text-muted-foreground">Labels</h2>
             <TemplateLabels
               labels={template.labels}
-              max={template.labels.length}
+              max={template.labels?.length ?? 0}
             />
           </section>
 
