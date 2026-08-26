@@ -190,7 +190,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
                     href={`https://github.com/${template.owner}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline-offset-4 hover:underline"
+                    className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
                   >
                     {template.owner}
                   </a>
@@ -203,7 +203,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
                     href={sourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline-offset-4 hover:underline"
+                    className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
                   >
                     {template.repo}
                   </a>
