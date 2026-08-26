@@ -97,7 +97,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
 
       <Separator />
 
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-16">
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_14rem] lg:gap-12">
         <div className="flex min-w-0 flex-col gap-8">
           <section className="flex flex-col gap-3">
             <h2 className="text-label-14 text-muted-foreground">About</h2>
