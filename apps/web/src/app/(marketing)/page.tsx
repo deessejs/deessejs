@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Bot, LayoutTemplate, Rocket } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -33,6 +33,7 @@ const FEATURED_TEMPLATES: ReadonlyArray<{
   name: string
   category: string
   blurb: string
+  icon: React.ComponentType<{ className?: string }>
 }> = [
   {
     slug: "saas-starter",
@@ -40,6 +41,7 @@ const FEATURED_TEMPLATES: ReadonlyArray<{
     category: "saas",
     blurb:
       "Next.js + Better Auth + Postgres + Drizzle, wired and tested.",
+    icon: Rocket,
   },
   {
     slug: "ai-chatbot",
@@ -47,6 +49,7 @@ const FEATURED_TEMPLATES: ReadonlyArray<{
     category: "ai",
     blurb:
       "Streaming AI agent with a typed tool registry and persistence.",
+    icon: Bot,
   },
   {
     slug: "landing-page",
@@ -54,6 +57,7 @@ const FEATURED_TEMPLATES: ReadonlyArray<{
     category: "landing",
     blurb:
       "Astro + Tailwind + shadcn blocks, tuned for B2B conversion.",
+    icon: LayoutTemplate,
   },
 ]
 
@@ -146,28 +150,31 @@ export default function HomePage() {
         </header>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {FEATURED_TEMPLATES.map((template) => (
-            <Link
-              key={template.slug}
-              href={`/templates/${template.slug}`}
-              className="group"
-            >
-              <Card className="flex h-full flex-col gap-3 p-6 transition-colors group-hover:bg-accent/30">
-                <Badge variant="outline" className="self-start">
-                  {template.category}
-                </Badge>
-                <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
-                  {template.name}
-                </h3>
-                <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-                  {template.blurb}
-                </p>
-                <code className="text-copy-13-mono text-muted-foreground/70 mt-auto">
-                  deessejs init {template.slug}
-                </code>
-              </Card>
-            </Link>
-          ))}
+          {FEATURED_TEMPLATES.map((template) => {
+            const Icon = template.icon
+            return (
+              <Link
+                key={template.slug}
+                href={`/templates/${template.slug}`}
+                className="group"
+              >
+                <Card className="flex h-full flex-col gap-3 rounded-sm p-4 transition-colors group-hover:bg-accent/50">
+                  <div className="flex items-start justify-between gap-2">
+                    <Badge variant="outline" className="self-start">
+                      {template.category}
+                    </Badge>
+                    <Icon className="text-muted-foreground size-5 shrink-0" aria-hidden />
+                  </div>
+                  <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                    {template.name}
+                  </h3>
+                  <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+                    {template.blurb}
+                  </p>
+                </Card>
+              </Link>
+            )
+          })}
         </div>
       </section>
 
