@@ -2,7 +2,7 @@
 title: "Reposition this repo as the DeesseJS main app (started from saas-template)"
 author: martyy-code
 generated: 2026-08-04
-status: approved: categories A/B/C only. Category D deferred (user decision 2026-08-04).
+status: approved (categories A/B/C only; category D deferred per user decision 2026-08-04)
 labels: [area:branding, area:docs, priority:high]
 supersedes:
   - docs/engineering/plans/company-identity-surface.md (partial; see "Relationship to company-identity-surface.md")
