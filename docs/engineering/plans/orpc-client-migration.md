@@ -1,5 +1,5 @@
 ---
-title: "Migrate CLI + web to @orpc/client + RPCLink"
+title: "Migrate command-line and web to the typed oRPC client"
 author: martyy-code
 generated: 2026-08-10
 status: draft
@@ -8,7 +8,7 @@ decisions:
   - id: client-typed
     date: 2026-08-10
     choice: "Use @orpc/client + RPCLink for both apps/cli and apps/web"
-    rationale: "Single source of truth for wire shape and types. The client ships a typed RPC envelope and a typed error model (ORPCError) that we map onto our CliError codes."
+    rationale: "Single source of truth for wire shape and types. The client ships a typed RPC envelope and a typed error model (ORPCError) that maps onto the CliError codes."
   - id: cli-retry-preserved
     date: 2026-08-10
     choice: "Keep fetchWithRetry as the underlying fetch, exposed through RPCLink's `fetch` hook"
@@ -31,7 +31,7 @@ decisions:
     rationale: "Audited against https://orpc.dev/docs/adapters/hono: RPCHandler, body-parser Proxy, prefix, c.newResponse, await next() all in place. The only follow-up is a comment clarifying the two-tier error handling."
 ---
 
-# Migrate CLI + web to @orpc/client + RPCLink
+# Migrate command-line and web to the typed oRPC client
 
 _Date: 2026-08-10. Status: draft. Working document, not yet approved._
 
@@ -41,9 +41,9 @@ The shared backend (`packages/api`) exposes procedures through `RPCHandler` moun
 
 The pattern is verbose at the call site, error-prone (one missed `data.` throws a confusing `parse_error`), and it doesn't leverage the type guarantees of `@orpc/client`. The migration aims to use the typed client everywhere, but it has surfaced a non-trivial gap in the retry-and-error machinery. <!-- vale fix: Microsoft.We -->
 
-## What we tried (and why it broke)
+## First attempt (and why it broke)
 
-A first attempt introduced `RPCLink({ url, fetch: orpcFetch })` with a custom `fetch` that wrapped `fetchWithRetry`. The hook signature we used was:
+A first attempt introduced `RPCLink({ url, fetch: orpcFetch })` with a custom `fetch` that wrapped `fetchWithRetry`. The hook signature used in that attempt was:
 
 ```ts
 const orpcFetch: typeof fetch = (request, init) => { /* ... */ }
@@ -63,13 +63,13 @@ fetch?: (
 
 Five arguments, not two. The `as unknown as ReturnType<typeof fetch>` cast hid the incompatibility at compile time. At runtime, the resulting client mis-interpreted responses (200 with malformed payload thrown as `network_error` instead of `parse_error`), which surfaced as 4 failing tests.
 
-We committed the broken state as `9b003da` (work in progress checkpoint) before going deeper.
+The broken state landed as `9b003da` (work in progress checkpoint) before going deeper.
 
 ## What's actually available
 
 ### The `RPCLink` hook
 
-`RPCLink` (`@orpc/client/adapters/fetch`) accepts a `fetch` option typed as above. It is the canonical way to inject retry/auth/observability around the wire call. We have to type our wrapper correctly and accept all five arguments.
+`RPCLink` (`@orpc/client/adapters/fetch`) accepts a `fetch` option typed as above. It's the canonical way to inject retry/auth/observability around the wire call. The wrapper must type correctly and accept all five arguments.
 
 ### The error model, two channels <!-- vale fix: Microsoft.HeadingAcronyms, Microsoft.HeadingColons -->
 
@@ -89,7 +89,7 @@ After deeper investigation, the wire has **two distinct error channels**, and th
 }
 ```
 
-- `defined: true` → the code is registered in the procedure's errorMap (type-safe).
+- `defined: true` → the procedure's errorMap registers the code (type-safe).
 - `defined: false` → the code is ad-hoc (still works, but client-side validation is off).
 - `data` is server-defined (no sensitive data per the docs).
 - Standard JS errors thrown from a procedure become `INTERNAL_SERVER_ERROR` automatically.
@@ -102,9 +102,9 @@ The auth middleware (`packages/api/src/router/auth-middleware.ts`) already uses 
 throw new ORPCError("UNAUTHORIZED")
 ```
 
-#### Channel 2: custom envelope from Hono middleware
+#### Channel 2, custom envelope from Hono middleware
 
-The Hono-level middleware (`notFound`, `onError`, rate-limit) currently bypass oRPC and return our custom envelope via `errorBody(c, code, message)`:
+The Hono-level middleware (`notFound`, `onError`, rate-limit) currently bypass oRPC and return the custom envelope via `errorBody(c, code, message)`:
 
 ```json
 { "code": "not_found", "message": "Route not found", "requestId": "..." }
@@ -116,7 +116,7 @@ Consequence: any error coming from a Hono middleware is opaque to the typed clie
 
 ### `ClientOptions` argument
 
-The third argument of the `fetch` hook carries `context`, which oRPC also passes through interceptors and plugins. We use it today to send `next.revalidate` and `next.tags` from `apps/web`. On the CLI we have no consumer yet, but the room is there.
+The third argument of the `fetch` hook carries `context`, which oRPC also passes through interceptors and plugins. The codebase uses it today to send `next.revalidate` and `next.tags` from `apps/web`. On the command-line side no consumer exists yet, but the room is there.
 
 ### `apps/app` is already on the typed client
 
@@ -126,7 +126,7 @@ The third argument of the `fetch` hook carries `context`, which oRPC also passes
 
 ### Phase 1, typed command-line client and unified server error format <!-- vale fix: Microsoft.HeadingColons, Microsoft.HeadingAcronyms -->
 
-The CLI migration and the server-side error unification land in the same phase. Two error channels on the wire is an anti-pattern we won't ship: it forces every client to handle two decoders, doubles the test surface, and creates silent drift between server codes and client mappers. Better to fix it now while we're already touching both sides.
+The command-line migration and the server-side error unification land in the same phase. Two error channels on the wire is an anti-pattern: every client must handle two decoders, the test surface doubles, and silent drift creeps in across server codes and client mappers. Better to fix it now while both sides are already touched.
 
 #### 1.1: Convert Hono middleware to `ORPCError`
 
@@ -162,7 +162,7 @@ Use it from procedures:
 throw base.errors.RATE_LIMITED({ data: { retryAfter: 60 } })
 ```
 
-The `defined: true` flag on the wire tells the typed client this code is known.
+The `defined: true` flag on the wire tells the typed client that the server registers this code.
 
 #### 1.3: Delete `packages/api/src/envelope.ts`
 
@@ -212,11 +212,11 @@ No more `ORPC_NO_INPUT_BODY` constant; the client builds the body. No more `unwr
 
 The marketing site runs on Next.js App Router. The marketing pages use ISR via `next.revalidate` and `next.tags`, which Next reads from the standard `fetch` API's `init.next` extension.
 
-#### ISR strategy: thread via `init`, not via `context`
+#### Incremental static regeneration strategy, thread via `init`, not via `context`
 
-Initial drafts of this plan called for threading ISR directives through `RPCLink`'s `context` (the third argument of the custom `fetch` hook). The oRPC docs do cover client context, and `[context]` is the shape passed to `headers`, `method`, and `fetch`, but they explicitly do not document Next.js ISR forwarding. The mechanism oRPC exposes for Next integration is simply the standard `fetch` extension: `init.next.revalidate` and `init.next.tags` are read by Next.js directly when `globalThis.fetch(url, init)` is called.
+Initial drafts of this plan called for threading ISR directives through `RPCLink`'s `context` (the third argument of the custom `fetch` hook). The oRPC docs cover client context, and `[context]` is the shape passed to `headers`, `method`, and `fetch`, but they don't document Next.js ISR forwarding. The mechanism oRPC exposes for Next integration is simply the standard `fetch` extension: Next.js reads `init.next.revalidate` and `init.next.tags` directly when `globalThis.fetch(url, init)` runs.
 
-**The pattern is therefore**: in our custom `fetch` hook, build the `RequestInit` ourselves and add `next: { revalidate, tags }` before calling `globalThis.fetch`. The `RPCLink` is not involved in ISR; it only builds the request, our hook wraps it, Next reads the directives from `init`.
+**The pattern**: in the custom `fetch` hook, build the `RequestInit` directly and add `next: { revalidate, tags }` before calling `globalThis.fetch`. The `RPCLink` isn't involved in ISR; it only builds the request, the hook wraps it, Next reads the directives from `init`.
 
 ```ts
 import { createORPCClient } from "@orpc/client"
@@ -241,43 +241,43 @@ export const orpc: ORPCClient = createORPCClient(link)
 
 #### Why this works with `apps/app` too
 
-`apps/app/lib/orpc.ts` (already on the repo) uses the same `RPCLink` pattern without a custom fetch; it relies on the global `fetch`. RSC pages in `apps/app` add ISR directives via `unstable_cache` or by passing `next: {...}` to `globalThis.fetch` directly. The marketing site (`apps/web`) doesn't need `unstable_cache` because the directives live on the `fetch` hook, which is called from RSC code. Both approaches converge on the same Next.js data cache.
+`apps/app/lib/orpc.ts` (already on the repo) uses the same `RPCLink` pattern without a custom fetch; it relies on the global `fetch`. RSC pages in `apps/app` add ISR directives via `unstable_cache` or by passing `next: {...}` to `globalThis.fetch` directly. The marketing site (`apps/web`) doesn't need `unstable_cache` because the directives live on the `fetch` hook, which RSC code calls. Both approaches converge on the same Next.js data cache.
 
-#### Files to add or modify
+#### Files to add or update
 
 1. **`apps/web/src/lib/orpc.ts`** (new). The wrapper above. The signature mirrors `apps/app/lib/orpc.ts` so the two consumers stay aligned.
 
-2. **`apps/web/src/lib/templates-api.ts`** (rewrite, then later removed). Drop `ORPC_NO_INPUT_BODY` and `unwrapOrpc`. Replace `globalThis.fetch(TEMPLATES_URL, ...)` with `orpc.templates.list()`. ISR directives now come from the RPCLink's `fetch` hook in `orpc.ts`, not from the call site. The file was ultimately deleted in favor of calling `orpc.templates.list()` directly from the consumer pages; the wrapper added no value once the typed client was in place.
+2. **`apps/web/src/lib/templates-api.ts`** (rewrite, then later removed). Drop `ORPC_NO_INPUT_BODY` and `unwrapOrpc`. Replace `globalThis.fetch(TEMPLATES_URL, ...)` with `orpc.templates.list()`. ISR directives now come from the RPCLink's `fetch` hook in `orpc.ts`, not from the call site. The file later got deleted in favor of calling `orpc.templates.list()` directly from the consumer pages; the wrapper added no value once the typed client was in place.
 
 3. **`apps/web/src/app/templates/page.tsx`** (consumers). Pages call `orpc.templates.list()` directly. The `fetchTemplates()` wrapper is no longer the public surface; the typed `orpc` client is. Consumer types (`TemplateV1`) come from `@workspace/contracts/v1`, not from a local re-export.
 
 #### Tests for the web side
 
-Per Phase 3 below, web tests use `@dansnow/orpc-msw` for component-level handler interception. The ISR directives are not asserted in unit tests. Next.js's `cache` is a Next.js concern, not an oRPC one, and is tested at the Next.js integration level (smoke test on `app.deessejs.com`).
+Per Phase 3 below, web tests use `@dansnow/orpc-msw` for component-level handler interception. Unit tests don't assert the ISR directives. Next.js's `cache` is a Next.js concern, not an oRPC one, and tests cover it at the Next.js integration level (smoke test on `app.deessejs.com`).
 
 #### Open question (resolved)
 
 Earlier drafts of this plan asked whether ISR directives should live at the call site (`context: { next: {...} }`) or in the RPCLink itself. The answer is **the RPCLink**, because:
 
-- ISR directives describe how the resource should be cached across requests, which is a static property of the endpoint, not a per-call decision.
+- ISR directives describe how Next.js should cache the resource across requests, which is a static property of the endpoint, not a per-call decision.
 - The call site stays simple: `client.templates.list()` with no options.
-- If we later add a procedure that needs different ISR semantics, we can override per call by passing `{ context: { next: { revalidate: 0 } } }` and reading it in the `fetch` hook (extending the wrapper to merge call-site directives with the defaults).
+- If a future procedure needs different ISR semantics, override per call by passing `{ context: { next: { revalidate: 0 } } }` and reading it in the `fetch` hook (extending the wrapper to merge call-site directives with the defaults).
 
-### Phase 3: test refactor with Server-Side Client and MSW
+### Phase 3, test refactor with server-side client and Mock Service Worker
 
-This phase was originally vague ("rewrite tests as server mocks using MSW"). After working through the CLI tests and seeing `vi.stubGlobal("fetch", ...)` fail repeatedly with RPCLink, we landed on the [official oRPC testing pattern](https://orpc.dev/docs/advanced/testing-mocking) plus MSW for HTTP-level tests.
+This phase started vague ("rewrite tests as server mocks using Mock Service Worker"). After working through the command-line tests and watching `vi.stubGlobal("fetch", ...)` fail with RPCLink, the [official oRPC testing pattern](https://orpc.dev/docs/advanced/testing-mocking) plus Mock Service Worker landed as the approach for HTTP-level tests.
 
 #### Why `vi.stubGlobal("fetch", ...)` doesn't work with `RPCLink`
 
-`RPCLink` doesn't just call `fetch(url)`. It builds a `Request` with a body stream, sends it, and reads the response. When we mock `fetch` directly with `vi.fn().mockResolvedValue(new Response(...))`, we return a single fixed `Response` for every call, regardless of what was actually requested. RPCLink:
+`RPCLink` doesn't just call `fetch(url)`. It builds a `Request` with a body stream, sends it, and reads the response. Mocking `fetch` directly with `vi.fn().mockResolvedValue(new Response(...))` returns a single fixed `Response` for every call, regardless of what the caller actually requested. RPCLink then:
 
-- Cannot parse the response body for 4xx/5xx because the body is consumed in a way that defeats the typed client.
-- Surfaces a generic `Error("Cannot parse response body")` instead of a real `ORPCError`, because the mock does not honour the wire contract.
+- Can't parse the response body for 4xx/5xx because consuming the body once defeats the typed client.
+- Surfaces a generic `Error("Cannot parse response body")` instead of a real `ORPCError`, because the mock doesn't honour the wire contract.
 - Causes `fetchWithRetry`'s 3-retry backoff to compound against a static mock, producing flaky tests.
 
 The mock is at the wrong layer: it bypasses RPCLink entirely instead of letting RPCLink run.
 
-#### Pattern A: Server-Side Client (recommended for CLI tests)
+#### Pattern A, server-side client (recommended for command-line tests)
 
 The [official oRPC testing guide](https://orpc.dev/docs/advanced/testing-mocking) recommends the **Server-Side Client** pattern for unit-testing logic that consumes oRPC procedures:
 
@@ -293,12 +293,12 @@ Trade-offs:
 
 - **Pro**: Type-safe via the shared contract. Fast. No mocks. No flakiness.
 - **Pro**: Tests the procedure handler logic + middleware chain, which is the bulk of what can go wrong on the server.
-- **Con**: Does not test RPCLink's serialization, retry, or `isOrpcErrorBody` mapping. Those are tested separately against a real HTTP fixture.
-- **Con**: Tests cannot run in a pure-Node environment if the router pulls in env-only modules (auth, db). Workaround: import the procedure definition only, or stub the env at the test boundary.
+- **Con**: Doesn't test RPCLink's serialization, retry, or `isOrpcErrorBody` mapping. Tests cover those against a real HTTP fixture.
+- **Con**: Tests can't run in a pure-Node environment if the router pulls in env-only modules (auth, db). Workaround: import the procedure definition only, or stub the env at the test boundary.
 
 For the CLI, this means: **tests of the templates procedure logic** use the Server-Side Client directly. **Tests of the CLI's HTTP layer** (retry, envelope parsing, error mapping) use a real HTTP fixture (see Pattern B).
 
-#### Pattern B: MSW with `@dansnow/orpc-msw` (recommended for web tests)
+#### Pattern B, Mock Service Worker with `@dansnow/orpc-msw` (recommended for web tests)
 
 The web side needs to test React Server Components and client components that consume the typed RPCLink. Mocker `fetch` is wrong for the same reason as the CLI. The recommended pattern is [MSW](https://mswjs.io/) with type-safe oRPC handlers via [DanSnow/orpc-msw](https://github.com/DanSnow/orpc-msw):
 
@@ -321,14 +321,14 @@ it("renders templates on success", async () => {
 
 Trade-offs:
 
-- **Pro**: Type-safe. Handler inputs/outputs are inferred from the router contract. Adding a field to `TemplateV1` flags every test that needs updating.
+- **Pro**: Type-safe. Handler inputs/outputs come from the router contract. Adding a field to `TemplateV1` flags every test that needs updating.
 - **Pro**: Tests the full client → link → serialization stack, including ISR via `context.next`.
-- **Con**: New dev dependency: `@dansnow/orpc-msw`. We accept this for the type-safety gain. Pin to a known-good version; revisit if the project goes unmaintained.
+- **Con**: New dev dependency: `@dansnow/orpc-msw`. The trade-off accepts this dependency for the type-safety gain. Pin to a known-good version; revisit if the project goes unmaintained.
 - **Con**: Requires Next.js fetch extension support. MSW must intercept the same `fetch` that Next.js extends for ISR. Verified to work with MSW v2.
 
-#### Pattern C: vanilla MSW (fallback)
+#### Pattern C, vanilla Mock Service Worker (fallback)
 
-If `@dansnow/orpc-msw` turns out to be unmaintained or incompatible with our setup, fall back to vanilla MSW with hand-written handlers. We lose type-safety but keep the network-level test coverage.
+If `@dansnow/orpc-msw` falls out of maintenance or breaks compatibility with the setup, fall back to vanilla Mock Service Worker with hand-written handlers. Type-safety drops but the network-level test coverage stays.
 
 ```ts
 import { http, HttpResponse } from "msw"
@@ -343,33 +343,33 @@ const server = setupServer(
 )
 ```
 
-Vanilla MSW handlers are not type-checked against the contract; they're free to drift. Acceptable for now; revisit when the catalog grows.
+Vanilla Mock Service Worker handlers aren't type-checked against the contract; they're free to drift. Acceptable for now; revisit when the catalog grows.
 
-#### What we actually do for the CLI
+#### What actually happens for the command-line client
 
-`apps/cli/src/api.ts` stays with the typed client (`createORPCClient` + `RPCLink`) for production. For tests, we adopt Pattern A for the procedure logic and Pattern C (or a tiny HTTP fixture) for the CLI's HTTP layer. The current `vi.stubGlobal("fetch", ...)` tests are replaced.
+`apps/cli/src/api.ts` stays with the typed client (`createORPCClient` + `RPCLink`) for production. Tests adopt Pattern A for the procedure logic and Pattern C (or a small HTTP fixture) for the command-line HTTP layer. The current `vi.stubGlobal("fetch", ...)` tests get replaced.
 
 Concretely:
 
-1. `apps/cli/test/unit/api.test.ts` is split into two files:
+1. Split `apps/cli/test/unit/api.test.ts` into two files:
    - `api.contract.test.ts`: calls `appRouter.templates.list()` directly via the Server-Side Client. Tests success, ORPCError shapes, contract drift.
-   - `api.http.test.ts`: uses a minimal HTTP fixture (Node's `http.createServer` listening on an ephemeral port, or a hand-rolled `Response` factory injected via a custom `fetchWithRetry`) to test retry, backoff, envelope parsing, and `isOrpcErrorBody` mapping. The CLI hits the fixture URL instead of mocking.
-2. We add `@dansnow/orpc-msw` only if we need Pattern B for web; otherwise we use vanilla MSW.
+   - `api.http.test.ts`: uses a minimal HTTP fixture (Node's `http.createServer` listening on an ephemeral port, or a hand-rolled `Response` factory injected via a custom `fetchWithRetry`) to test retry, backoff, envelope parsing, and `isOrpcErrorBody` mapping. The command-line hits the fixture address instead of mocking.
+2. Add `@dansnow/orpc-msw` only when Pattern B applies to web; otherwise use vanilla Mock Service Worker.
 
-#### What we actually do for the web
+#### What actually happens for the web
 
-`apps/web` uses `@orpc/client` with a typed `RPCLink`. Tests use Pattern B (`@dansnow/orpc-msw`) for components that call `client.templates.list()`. RSC pages that use ISR directives get a vanilla MSW handler that inspects the `next.revalidate` value passed by `RPCLink` via `context.next`.
+`apps/web` uses `@orpc/client` with a typed `RPCLink`. Tests use Pattern B (`@dansnow/orpc-msw`) for components that call `client.templates.list()`. RSC pages that use ISR directives get a vanilla Mock Service Worker handler that inspects the `next.revalidate` value passed by `RPCLink` via `context.next`.
 
-### Phase 4: error taxonomy alignment
+### Phase 4, error taxonomy alignment
 
-Right now our server-side codes live in `packages/api/src/envelope.ts` (`errorBody(c, code, message)`) and our client-side codes live in `apps/cli/src/errors.ts` (`networkError`, `parseError`). They don't share a vocabulary.
+Server-side codes currently live in `packages/api/src/envelope.ts` (`errorBody(c, code, message)`) and client-side codes live in `apps/cli/src/errors.ts` (`networkError`, `parseError`). They don't share a vocabulary.
 
 Two paths:
 
 - **A**: introduce `errors.ts` in `@workspace/contracts` with the canonical list (network_error, parse_error, not_found, templates_fetch_failed, etc.). Both server and client import from there. One source of truth for codes.
 - **B**: keep them separate and document the mapping in the plan. Less coupling, more drift risk.
 
-We pick **A** because the codes cross the wire and we already import the contract shape from `@workspace/contracts`. Adding `errors.ts` there is the natural next step.
+The plan picks **A** because the codes cross the wire and the contract shape already imports from `@workspace/contracts`. Adding `errors.ts` there is the natural next step.
 
 ## Phasing summary
 
@@ -388,20 +388,20 @@ We pick **A** because the codes cross the wire and we already import the contrac
 | Hono middleware envelopes look like network errors on the client. | Phase 1 maps both channels. Phase 4 unifies the server side so this becomes moot. |
 | `ORPCError.code` strings drift between server and client. | Phase 5: single source of truth in `@workspace/contracts`. |
 | ISR directives stop working when RPCLink wraps fetch. | Phase 2: thread `next.revalidate` and `next.tags` through the custom `fetch` hook's `options.context`. Verified by hitting the marketing site and inspecting the cache-control header on `app.deessejs.com`. |
-| Bumping `@orpc/client` upstream breaks the typed wrapper. | Pin to the catalog version, pin the types we consume, add a smoke test on every dependency bump. |
+| Bumping `@orpc/client` upstream breaks the typed wrapper. | Pin to the catalog version, pin the consumed types, add a smoke test on every dependency bump. |
 | Tests still flaky because of the global fetch mock. | Move to MSW in a future PR. Phase 3 keeps global mocking for now to ship. |
 
 ## Open questions
 
-- Should we keep the raw-fetch fallback (current behaviour) as an escape hatch in case the typed client misbehaves on a future oRPC upgrade? Currently no.
-- Should the `next: { revalidate, tags }` context live in the call site or in the RPCLink itself? We pass it per-call today. Per-call is more explicit.
-- Do we want to expose `ORPCError` in the public CLI API (re-export from `@deessejs/errors`)? Useful for downstream plugins but not required for V1.
+- Should the raw-fetch fallback (current behaviour) stay as an escape hatch in case the typed client misbehaves on a future oRPC upgrade? Currently no.
+- Should the `next: { revalidate, tags }` context live in the call site or in the RPCLink itself? Per-call is the choice today. Per-call is more explicit.
+- Should the public command-line API export `ORPCError` (re-export from `@deessejs/errors`)? Useful for downstream plugins but not required for V1.
 
 ## Decision log
 
-- **2026-08-10**: decided to commit a checkpoint of the broken RPCLink work rather than discard it. We learned that `RPCLink.fetch` has a 5-arg signature and that `ORPCError.code` is the right surface for our CliError codes. Both lessons are now baked into this plan.
+- **2026-08-10**: decided to commit a checkpoint of the broken RPCLink work rather than discard it. The investigation revealed that `RPCLink.fetch` has a 5-arg signature and that `ORPCError.code` is the right surface for the CliError codes. Both lessons are now baked into this plan.
 - **2026-08-10**: audited `packages/api/src/index.ts` against the oRPC Hono guide. Current implementation follows the recommended patterns (RPCHandler, body-parser Proxy, prefix, c.newResponse, await next()).
 - **2026-08-10**: confirmed two error channels on the wire. `ORPCError` from procedures (decoded by the typed client) and the custom `{ code, message, requestId }` envelope from Hono middleware (NOT decoded).
 - **2026-08-10** (revised): decided to absorb the server-side error unification into Phase 1 instead of treating it as a separate long-term task. Rationale: the two-channel error model is a permanent anti-pattern; every new client would have to handle it; the cost of unifying now (half a day) is much smaller than the cost of carrying the debt forward. The plan now ships a single error channel end-to-end.
 - **2026-08-10** (revised): after working through the CLI tests, discovered that `vi.stubGlobal("fetch", ...)` is the wrong mocking layer for RPCLink tests. The mock sits below RPCLink and bypasses it, so the typed client never runs and the wire contract never gets validated. Initial reaction was to roll back to direct fetch + unwrap; correct reaction is to use the [official oRPC testing pattern](https://orpc.dev/docs/advanced/testing-mocking) (Server-Side Client) plus MSW with `@dansnow/orpc-msw` for HTTP-level tests. Phase 3 rewritten around these patterns. The CLI keeps RPCLink for production; only the test approach changes.
-- **2026-08-10** (revised): Phase 2 ISR strategy corrected. Earlier drafts called for threading `next.revalidate` and `next.tags` through the RPCLink `context` (the third argument of the custom `fetch` hook). The oRPC docs do cover client context but explicitly do not document Next.js ISR forwarding. The mechanism Next.js exposes for ISR is the standard `fetch` extension: `init.next.revalidate` and `init.next.tags` are read by Next directly when `globalThis.fetch(url, init)` is called. The correct pattern is therefore to add the directives to `init` inside our custom `fetch` hook, not via `context`. This simplifies both the wrapper and the call sites.
+- **2026-08-10** (revised): Phase 2 ISR strategy corrected. Earlier drafts called for threading `next.revalidate` and `next.tags` through the RPCLink `context` (the third argument of the custom `fetch` hook). The oRPC docs cover client context but don't document Next.js ISR forwarding. The mechanism Next.js exposes for ISR is the standard `fetch` extension: Next reads `init.next.revalidate` and `init.next.tags` directly when `globalThis.fetch(url, init)` runs. The correct pattern adds the directives to `init` inside the custom `fetch` hook, not via `context`. This simplifies both the wrapper and the call sites.
