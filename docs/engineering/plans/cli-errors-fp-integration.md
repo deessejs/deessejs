@@ -6,9 +6,9 @@ _Date: 2026-07-30. Status: Phase 1 FAILED on upstream issue. Stopped per plan §
 
 Phase 1 spike ran. Both packages install via public npm, type-check passes, tsup builds cleanly. The tsup exit criterion passes. The runtime test exit criterion **fails**.
 
-**Failure:** `@deessejs/fp@1.0.0` ships ESM with extensionless relative imports (`from './result/constants'`). Node ESM (used by Vitest) requires explicit `.js` extensions. Bundlers (tsup) are tolerant, so production builds work, but tests can't load the package.
+**Failure:** `@deessejs/fp@1.0.0` ships ESM with extensionless relative imports (`from './result/constants'`). Node ESM (used by Vitest) requires explicit `.js` extensions. bundlers (tsup) are tolerant, so production builds work, but tests can't load the package.
 
-Upstream issue filed: https://github.com/deessejs/fp/issues/356
+upstream issue filed: https://github.com/deessejs/fp/issues/356
 
 **Status:** Stopped. Phase 2 onwards blocked until upstream fixes the extensionless imports.
 
@@ -47,7 +47,7 @@ Scope:
 - Create a one-off file at `apps/cli/src/__spike__/errors-fp.ts` (gitignored, removed at the end of the phase).
 - Exercises: `error()`, `raise()`, `is()`, `causes()` from errors. `ok()`, `err()`, `Result.tryCatch()`, `match()` from fp.
 - Runs the spike through tsup to confirm bundler compatibility.
-- Runs vitest on it (with both libs temporarily added as deps).
+- Runs Vitest on it (with both libs temporarily added as deps).
 
 Exit criteria:
 
@@ -88,7 +88,7 @@ Exit criteria:
 - apps/cli behaviour unchanged from a user's perspective (`--json` output byte-identical, error messages slightly improved).
 - `git.ts:43` no longer throws a raw `Error`; it throws a structured `GitError` with a `ref` field.
 - Every `name === "CliError"` check replaced with `is(...)`.
-- vitest green (after [cli-v1-testing.md](./cli-v1-testing.md) lands).
+- Vitest green (after [cli-v1-testing.md](./cli-v1-testing.md) lands).
 
 ### Phase 4: Integrate @deessejs/fp
 
@@ -109,7 +109,7 @@ Exit criteria:
 - All three commands use `Result.tryCatch` for their main pipeline.
 - Side effects preserved (spinners, `process.exit`, fs writes all still work).
 - JSON shapes unchanged or documented improvement (issue if a shape must change).
-- vitest green.
+- Vitest green.
 
 ### Phase 5: Issue workflow (continuous, not a separate phase)
 
@@ -120,7 +120,7 @@ Per AGENTS.md policy: every friction becomes one upstream issue. Examples:
 | API shape awkward for the team's usage | `github.com/deessejs/errors` or `/fp` issue |
 | TypeScript types too loose or too strict | upstream issue |
 | Missing helper (for example, flatten causes into one string) | upstream issue |
-| Bundler or peer dep surprise | upstream issue if reproducible there |
+| bundler or peer dep surprise | upstream issue if reproducible there |
 | Real bug in upstream behaviour | upstream issue with minimal repro |
 
 Log the first real issues in PR descriptions. After this plan ships, decide whether to maintain a dedicated `docs/engineering/upstream-issues.md` log based on volume.
