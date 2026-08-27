@@ -1,4 +1,4 @@
-# ADR-010: env package senior shape
+# ADR-010, env package senior shape
 
 ## Status
 
@@ -14,7 +14,7 @@ explicit `loader.ts` that works around `@next/env` cache bugs, two distinct
 schemas (`serverSchema`, `clientSchema`) wired by hand, and a separate
 `index.ts` barrel. The package is five files, ~200 lines, and works.
 
-The question this ADR answers is not "is it broken?", it is "would a
+The question this ADR answers isn't "is it broken?," it's "would a
 senior-grade package look like this?" Three senior patterns from the public
 record motivate the question:
 
@@ -22,8 +22,8 @@ record motivate the question:
    typed env in TypeScript in 2026. Its design primitives are a single
    source for `client` and `server`, a `runtimeEnv` provider passed
    explicitly (not pulled from `globalThis`), and a Proxy that validates on
-   first access and caches the validated value. The proxy is not a leak
-   guard, it is the validation engine
+   first access and caches the validated value. The proxy isn't a leak
+   guard, it's the validation engine
    ([env.t3.gg/docs/core](https://env.t3.gg/docs/core)).
 2. **Next.js documentation**, the `@next/env` workspace below
    `loadEnvConfig` carries a long-standing cache bug (`#92040`) that the
@@ -32,9 +32,9 @@ record motivate the question:
    layer that the validation library owns
    ([nextjs.org/docs/pages/guides/environment-variables](https://nextjs.org/docs/pages/guides/environment-variables)).
 3. **`StandardSchemaV1`** (the interface Zod, Valibot, and ArkType all
-   implement) decouples the validation library from the validator.
+   follow) decouples the validation library from the validator.
    Locking the package to one validator is a hardening restriction, not a
-   feature ([github.com/t3-oss/t3-env](https://github.com/t3-oss/t3-env)).
+   feature ([GitHub](https://github.com/t3-oss/t3-env)).
 
 Today the package owns the same seven concerns t3-env owns:
 
@@ -47,33 +47,33 @@ Today the package owns the same seven concerns t3-env owns:
 - leak-guard Proxy
 
 Splitting these seven concerns across `loader.ts`, `server.ts`, `client.ts`,
-`schema.ts`, and `index.ts` is what works; what does not scale is the
+`schema.ts`, and `index.ts` is what works; what doesn't scale is the
 hand-rolled lazy Proxy and the hand-rolled dev/prod differential. Two
 specific gaps become visible today:
 
 1. **A `process.env` mutation**. `loader.ts` mutates `process.env` to
-   avoid the `@next/env` cache bug. Today it is safe because `@next/env`
+   avoid the `@next/env` cache bug. Today it's safe because `@next/env`
    returns a plain object; tomorrow, if a new field name collides with a
    built-in, the merge becomes order-dependent. The fix belongs in the
    library, not the caller.
 2. **A hard-coded client default dictionary**. `client.ts` ships a literal
    copy of the defaults defined in `clientSchema`. If a default changes in
-   the schema, the inline fallback silently diverges. A duplicated default
-   is a TypeScript gap; the compiler cannot help.
+   the schema, the inline fallback diverges without warning. A duplicated default
+   is a TypeScript gap; the compiler can't help.
 
 Both gaps are senior-typical, the kind a "small enough to ignore" hand
-roll accumulates. They are the trigger for the proposal.
+roll accumulates. They're the trigger for the proposal.
 
 ## Decision
 
 The env package uses **one source of validation and one Proxy**,
-courtesy of `@t3-oss/env-core`. The hand-rolled pieces are kept only
-where `@t3-oss/env-core` cannot see (the Next.js `.env` loader bridge
+courtesy of `@t3-oss/env-core`. The hand-rolled pieces stay only
+where `@t3-oss/env-core` can't see (the Next.js `.env` loader bridge
 and the test runtime).
 
 ### Topology
 
-The package has six files at `src/`. The shape is documented as
+The package has six files at `src/`. The shape documents as
 `## Expected structure` below; the topology section names the
 single rule that governs the split:
 
@@ -89,10 +89,10 @@ single rule that governs the split:
   (declarations) and `loader.ts` (integration). The two faces
   differ only by which schema they bind.
 
-### Boundary: what we keep
+### Boundary, what this ADR keeps
 
 The hand-rolled code is **never** the validation engine. The hand-rolled
-code is the integration layer the library cannot see:
+code is the integration layer the library can't see:
 
 - **`loader.ts`** discovers the repo root, reads `.env.local`,
   `.env.{NODE_ENV}`, and `.env` in Next.js precedence via `dotenv`,
@@ -103,35 +103,35 @@ code is the integration layer the library cannot see:
   `createEnv(...)` consumes the snapshot, never `process.env`.
 - **`server.ts` and `client.ts`** are thin `createEnv(...)` calls. They
   accept the runtime snapshot captured by `loader.ts`. They expose the
-  result as a frozen, deeply-typed object.
+  result as a frozen object with type information.
 - **`schema.ts`** is the only place the variable shapes live. It exports
   `serverSchema` (full schema, dev-safe defaults) and `clientSchema`
   (`NEXT_PUBLIC_*` only). The aliases (`AUTH_SECRET` to
   `BETTER_AUTH_SECRET`, `TEST_DATABASE_URL` to `DATABASE_URL`) belong in
   `serverSchema`, expressed with `z.preprocess`, not in the Proxy.
 
-### Boundary: what we delegate
+### Boundary, what this ADR delegates
 
 - **Validation on call**: delegated to `createEnv`. The library
   validates the combined schema synchronously at the moment
-  `createEnv(...)` is invoked (`packages/core/src/index.ts`,
+  `createEnv(...)` runs (`packages/core/src/index.ts`,
   line ~360: `finalSchema["~standard"].validate(runtimeEnv)`).
   Validation is **eager, not lazy**. The returned `env` is a
   Proxy whose `get` trap only enforces the server/client
-  boundary (`onInvalidAccess`), not memoization. We no longer
-  need the manual `_cached` flag.
+  boundary (`onInvalidAccess`), not memoization. The package no longer
+  needs the manual `_cached` flag.
 - **Runtime leak guard**: replaced by `onInvalidAccess`. The
   library throws on a client bundle referencing a server-only
-  key; our hand-rolled `toJSON` / `then` / `Symbol` trap list
-  is deleted. The leak guard is the type of `clientPrefix`,
+  key; the hand-rolled `toJSON` / `then` / `Symbol` trap list
+  disappears. The leak guard is the `clientPrefix` type,
   enforced at compile time.
 - **Eager vs lazy policy** (revisited after reading the source):
-  `createEnv` is eager by construction. Our package keeps the
+  `createEnv` is eager by construction. The package keeps the
   current "import has no side-effect" contract by deferring the
   call site: the import binds a `getServerEnv()` function, not
-  a `serverEnv` constant. The first call validates; subsequent
+  a `serverEnv` constant. The first call validates; later
   calls read the cached result. The asymmetry between the two
-  faces is preserved.
+  faces stays.
 - **Empty-string handling**: delegated to `createEnv` via
   `emptyStringAsUndefined: true`. This single flag closes the
   entire category of bug where a docker-compose left a blank
@@ -149,10 +149,10 @@ process.env.DATABASE_URL, ... }`, one entry per schema key.
 
 The `.superRefine` that gates `DATABASE_URL`,
 `BETTER_AUTH_SECRET`, and `RESEND_API_KEY` on
-`NODE_ENV === "production"` is preserved verbatim. It is
-attached via the `createFinalSchema(shape, isServer)` callback
+`NODE_ENV === "production"` stays verbatim. The callback attaches
+via the `createFinalSchema(shape, isServer)` hook
 that `createEnv` accepts. The `isServer` argument tells the
-callback what face is being built; the `NODE_ENV` check sits
+callback what face the code constructs; the `NODE_ENV` check sits
 inside the callback and short-circuits in dev.
 
 ### Loader as a single shot
@@ -166,11 +166,11 @@ fix) leave the package: `dotenv` has no cache, no <!-- vale fix: write-good.Pass
 `forceReload` workaround, no global `process.env` mutation inside
 the loader itself.
 
-`loadRepoEnv()` is kept as a backwards-compatible shim that calls
+`loadRepoEnv()` stays as a backwards-compatible shim that calls
 `loadDotenvSnapshot()` and then writes the keys into `process.env`.
 The shim exists for the nine call sites that still read
-`process.env` directly (`drizzle.config.ts`, scripts). They are
-migrated in a follow-up PR; until then, the shim keeps them
+`process.env` directly (`drizzle.config.ts`, scripts). The team migrates them
+in a follow-up PR; until then, the shim keeps them
 working without forcing a coordinated refactor across the monorepo.
 
 ### Alias resolution
@@ -201,27 +201,27 @@ Three states, three responses:
 | dev/test load | soft-fail, defaults shown | soft-fail, defaults shown |
 | prod startup  | fatal on first `get`      | fatal on import           |
 
-`createEnv` throws on parse failure, we let it. The `process.exit(1)`
-post-processing in `server.ts` is replaced by the upstream error
-message; the upstream error is well-formed Zod output.
+`createEnv` throws on parse failure, and the package lets it. The upstream
+error message replaces the `process.exit(1)`
+post-processing in `server.ts`; the upstream error is well-formed Zod output.
 
-### What we do not get from `createEnv`
+### What this ADR doesn't get from `createEnv`
 
 - **The `@next/env` cache workaround** is removed entirely. The package
-  no longer imports `@next/env`; the bug is gone with the dependency.
+  no longer imports `@next/env`; removing the dependency removes the bug.
   The new loader uses `dotenv`, which has no per-process cache.
 - **The dev/prod asymmetry**. `createEnv` validates the same way in both.
-  The dev relaxation we have today (`DATABASE_URL` optional in dev,
-  required in prod) requires a `.superRefine` keyed on `NODE_ENV`. We
-  keep it; `createEnv` does not eat it.
+  The dev relaxation today (`DATABASE_URL` optional in dev,
+  required in prod) requires a `.superRefine` keyed on `NODE_ENV`. The
+  package keeps it; `createEnv` doesn't eat it.
 
-### Migration in one PR
+### Migration in a single pull request
 
 1. Add `@t3-oss/env-core` to `packages/env` (catalog version).
 2. Rewrite `server.ts` and `client.ts` as `createEnv(...)` calls. Tests
    should pass without changes; the public surface
    (`@workspace/env/server`, `@workspace/env/client`, the named exports)
-   is unchanged.
+   stays the same.
 3. Replace the inline fallback in `client.ts` with `clientSchema.parse({})`
    at build time, so the literal duplicates the schema.
 4. Replace `@next/env` with `dotenv` in `loader.ts`. Capture the
@@ -232,10 +232,10 @@ message; the upstream error is well-formed Zod output.
    test) that no `NEXT_PUBLIC_*` name is reachable from `server.ts`
    imports.
 6. Update `packages/api/tests/` to import only from the new shape; the
-   test file is the contract that the migration does not regress.
+   test file is the contract that the migration doesn't regress.
 
 The package surface stays identical; the implementation shrinks
-roughly thirty percent and the four hand-rolled flags
+about 30 percent and the four hand-rolled flags
 (`_cached`, `loaded`, the Proxy trap list, the duplicate defaults) go
 away.
 
@@ -244,7 +244,7 @@ away.
 `packages/env/src/` has six files. The shape below is the
 authoritative tree; the role column is the single line that
 explains why this file exists. Any new file in this package must
-claim a row that does not yet exist; any removal is a row deletion
+claim a row that doesn't yet exist; any removal is a row deletion
 plus an update to `What this rule allows`.
 
 ```
@@ -285,44 +285,44 @@ packages/env/src/
 
 ### Boundaries
 
-The boundaries are normative. A PR that crosses a boundary is
-rejected; the author moves the code.
+The boundaries are normative. Review rejects a PR that crosses a boundary;
+the author moves the code.
 
-- **`schema.ts`** imports from `zod` only. It does not import
+- **`schema.ts`** imports from `zod` only. It doesn't import
   from `@t3-oss/env-core`, `dotenv`, `node:process`, or any
   consumer package. The schema is the contract; it has no
   dependencies on its execution.
 - **`server.ts`** imports `createEnv` from `@t3-oss/env-core`,
   the schemas from `schema.ts`, and `loadRepoEnv` from
-  `loader.ts`. It does not import `@next/env` directly; the
+  `loader.ts`. It doesn't import `@next/env` directly; the
   loader owns that surface.
 - **`client.ts`** imports the same three things as `server.ts`,
   except the schema is `clientSchema` and `runtimeEnvStrict`
   replaces `runtimeEnv` so a missing `NEXT_PUBLIC_*` fails at
   the validator, not at the bundler.
-- **`loader.ts`** imports `dotenv` and `node:path`. It does not
-  import any validator. The validator cannot see the loader;
-  the loader cannot see the validator; the schema is the
+- **`loader.ts`** imports `dotenv` and `node:path`. It doesn't
+  import any validator. The validator can't see the loader;
+  the loader can't see the validator; the schema is the
   meeting point.
 - **`index.ts`** imports `server.ts`, `client.ts`, and `types.ts`
   only. It re-exports. A `process.exit` or a `console.warn` in
-  this file is a violation; the side effects belong to the face
+  this file violates the rule; the side effects belong to the face
   that triggers them.
 - **`types.ts`** imports from `schema.ts` and `server.ts` only.
-  It is a type-only file (the package's `package.json`
-  `sideEffects` must be `false`). Runtime imports from this
-  file are rejected.
+  It names a type-only file (the package's `package.json`
+  `sideEffects` must be `false`). Review rejects runtime imports from this
+  file.
 
 ### Naming
 
-- A file is named after its **concept**, not its **framework**.
+- A file takes its name from its **concept**, not its **framework**.
   `server.ts` is the server face, not the `t3-server.ts` or
   `next-server.ts`. The package owner is the env package, not
   the framework the consumer happens to use.
-- A folder at the package root is forbidden by ADR-002 Rule 4.
+- ADR-002 Rule 4 forbids a folder at the package root.
   If the package outgrows six files, the next layer (`core/`,
   `next/`, `cli/`) ships with its own ADR. The flat layout is
-  not a constraint; it is the current correct shape.
+  not a constraint; it's the current correct shape.
 
 ## What this rule allows
 
@@ -334,27 +334,27 @@ rejected; the author moves the code.
   loader is the only file that talks to `@next/env`.
 - **`StandardSchemaV1` predicates** in the package's public types.
   Consumers importing `ServerEnv` get a typed shape independent of the
-  validator; consumers migrating from Zod to Valibot do not see the
+  validator; consumers migrating from Zod to Valibot don't see the
   change.
-- **`emptyStringAsUndefined: true`** for both schemas. The flag is set
-  once, in the loader, not per call-site.
+- **`emptyStringAsUndefined: true`** for both schemas. The loader sets
+  the flag once, not per call-site.
 - **`.superRefine`-based dev-vs-prod gating** inside the schema. The
-  validator is the right place to express the policy; the Proxy is not.
+  validator is the right place to express the policy; the Proxy isn't.
 
 ## What this rule forbids
 
 - **A hand-rolled Proxy trap list** that returns `undefined` to "guard
-  browser bundle leakage". The guard is not what we were doing; it
+  browser bundle leakage". The guard isn't what the package was doing; it
   was a comment, not a mechanism.
 - **An inline default dictionary** in `client.ts` whose values can
   drift from `clientSchema` without a TypeScript error. Defaults
-  derive from the schema; there is one default source.
+  derive from the schema; one default source exists.
 - **A `process.env` mutation** in any helper that runs at import time.
   Tests, scripts, and packages must be able to import
   `@workspace/env/server` without ambient state changes.
 - **A second validation engine** in any consumer package. Consumers
-  read `serverEnv.X`; they do not call `z.string().parse(...)` to
-  re-validate the same input.
+  read `serverEnv.X`; they don't call `z.string().parse(...)` to
+  re-check the same input.
 - **A consumer-implemented fallback alias resolution**. The
   `AUTH_SECRET` to `BETTER_AUTH_SECRET` link happens in the schema or
   in a single helper in `@workspace/env`, not in every consumer.
@@ -362,20 +362,20 @@ rejected; the author moves the code.
 ## Consequences
 
 - A PR that adds a hand-rolled Proxy, a hand-rolled loader, or a
-  hand-rolled validator to `packages/env` is rejected. The PR uses the
+  hand-rolled validator to `packages/env` gets rejected. The PR uses the
   library.
 - A PR that adds a new default to `clientSchema` without updating the
-  loader-rendered fallback is rejected. The loader is the single
+  loader-rendered fallback gets rejected. The loader is the single
   source of defaults; the schema mirrors it.
 - A PR that mutates `process.env` from a helper imported anywhere in
-  `packages/` is rejected. Process mutation belongs to the
+  `packages/` gets rejected. Process mutation belongs to the
   process-startup layer of the consumer.
-- A PR that splits `serverSchema` into multiple files to "organise"
-  the variables is rejected (per ADR-002). One schema file, ordered by
+- A PR that splits `serverSchema` into many files to "organise"
+  the variables gets rejected (per ADR-002). One schema file, ordered by
   consumer group, no `auth-schema.ts` or `db-schema.ts` silos.
 - A PR that introduces a new alias (`OTHER_SECRET` to
-  `BETTER_AUTH_SECRET`) is welcomed if it adds a feature; rejected if
-  it is just compression. Aliases exist for historic names, not for
+  `BETTER_AUTH_SECRET`) gets welcomed if it adds a feature; gets rejected if
+  it amounts to compression. Aliases exist for historic names, not for
   hand-convenience.
 
 ## How to verify
@@ -391,8 +391,8 @@ After the migration:
    that imports `@workspace/env/server` returns zero matches; every
    consumer reads through `serverEnv`.
 5. A `grep` for `createEnv` across `packages/env/src/` returns one
-   call per face (`server.ts`, `client.ts`); the hand-rolled
-   validation engine is gone.
+   call per face (`server.ts`, `client.ts`); removing the hand-rolled
+   validation engine removes the rest.
 
 ## Where this rule came from
 
@@ -416,15 +416,15 @@ The work that triggered this ADR is the staging branch
   Vitest config and the contract-test pattern that verify this ADR.
 - [Rule 0006: Technology choices](../rules/0006-technology-choices.md).
   The discipline that requires every technology choice to answer
-  "what does it rule out". `@t3-oss/env-core` rules out the
+  "what does it rule out." `@t3-oss/env-core` rules out the
   hand-rolled Proxy; the answer belongs in this ADR.
 - [Rule 0010: Typed environment access](../rules/0010-typed-environment-access.md).
   The rule this ADR's package enforces. The rule is the policy; this
   ADR is the implementation shape.
 - [`@t3-oss/env-core`](https://env.t3.gg/docs/core). The validation
-  engine we delegate to.
+  engine the package delegates to.
 - [`dotenv`](https://github.com/motdotla/dotenv). The `.env` parser.
-  Its `parse()` returns a plain object; we use that to build the
+  Its `parse()` returns a plain object; the package uses that to build the
   `runtimeEnv` snapshot without mutating `process.env`.
 - [Next.js environment variables guide](https://nextjs.org/docs/pages/guides/environment-variables).
-  The framework's own guidance on the `.env` precedence we depend on.
+  The framework's own guidance on the `.env` precedence the package depends on.
