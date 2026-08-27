@@ -94,15 +94,15 @@ export default function HomePage() {
       {/* 1. Hero */}
       <section className="flex flex-col items-center gap-6 pt-12 text-center lg:pt-24">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          A registry of templates
+          Stop rewriting the same SaaS
         </p>
         <h1 className="text-heading-72 tracking-tight text-balance max-w-3xl">
-          DeesseJS is a registry of templates for Next.js SaaS.
+          Your coding agent should ship from contracts, not from scratch.
         </h1>
         <p className="text-muted-foreground text-copy-20 leading-7 max-w-2xl text-balance [&:not(:first-child)]:mt-0">
-          Each template ships with TypeScript contracts, a CLI, and an
-          AGENTS.md. Install a starter, point your coding agent at it,
-          and ship.
+          DeesseJS is a registry of Next.js SaaS templates with the
+          contracts already wired — auth, billing, jobs, storage. Your
+          agent reads them, builds on them, can't break them.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           <Button asChild size="lg">
