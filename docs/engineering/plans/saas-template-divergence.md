@@ -4,7 +4,7 @@ _Date: 2026-07-30. Status: draft, pending review._
 
 ## Context
 
-The user repo (`deessejs/deessejs`) forked from `github.com/deessejs/saas-template` (the SaaS template, "the SaaS template that never sleeps," MIT, public). Both share the same initial commit `102d837`. The user has layered intentional divergence on top: an apps/cli workspace, plan documents in docs/engineering/plans/, AGENTS.md customizations (staging-first git workflow, internal @deessejs/* packages section), and an architectural refactor of the templates endpoint out of apps/web into packages/api.
+The user repo (`deessejs/deessejs`) forked from `github.com/deessejs/saas-template` (the SaaS template, "the SaaS template that never sleeps," MIT, public). Both share the same initial commit `102d837`. The user has layered intentional divergence on top: an apps/cli workspace, plan documents in docs/engineering/plans/, AGENTS.md customizations (staging-first git workflow, internal @deessejs/* packages section), and an architectural refactor of the templates endpoint out of apps/web into the shared API package.
 
 Managing the fork relationship requires an explicit posture: what stays locked-local, what gets pushed back as upstream PRs, and what mirrors from upstream releases.
 
@@ -16,21 +16,21 @@ A snapshot taken from `git diff --stat 102d837..HEAD` plus the working-tree delt
 
 | Category | Item | Lock status |
 |---|---|---|
-| App | `apps/cli/` full workspace (commands, utils, vitest config, fixtures) | Locked-local |
-| App | `apps/web/src/app/api/` (route handlers created during templates-endpoint work) | Locked-local until Phase 1 classification |
-| Package | `packages/api/src/templates.ts` + tweak in `packages/api/src/index.ts` | Upstream-trackable (see `2a37346` refactor) |
+| App | `apps/cli/` full workspace (commands, utils, Vitest config, fixtures) | Locked-local |
+| App | apps/web route handlers (created during templates-endpoint work) | Locked-local until Phase 1 classification |
+| Package | the shared API package (templates.ts + tweak in index.ts) | upstream-trackable (see `2a37346` refactor) |
 | Docs | `docs/engineering/plans/cli-v1-testing.md` (257 lines) | Locked-local |
 | Docs | `docs/engineering/plans/cli-errors-fp-integration.md` (150 lines) | Locked-local |
 | Docs | `AGENTS.md` staging-first workflow block | Locked-local |
 | Docs | `AGENTS.md` `### Internal packages (@deessejs/*)` section | Locked-local |
-| Tooling | `apps/cli/vitest.config.ts` (pool: "forks," 30s timeouts) | Upstream-trackable (see Phase 3) |
-| Tests | `apps/cli/test/**` (run-cli, git-fixture, fake-api helpers + unit/integration tests) | Upstream-trackable (cli-specific, but helpers generalize) |
-| Lockfile | `pnpm-lock.yaml` refresh + `pnpm-workspace.yaml` catalog additions (`@deessejs/errors@^1.1.1`, `@deessejs/fp@^1.0.0`) | Catalog additions upstream-trackable; the rest is local-resolved |
+| Tooling | `apps/cli/vitest.config.ts` (pool: "forks," 30s timeouts) | upstream-trackable (see Phase 3) |
+| Tests | `apps/cli/test/**` (run-cli, git-fixture, mock-API helpers + unit/integration tests) | upstream-trackable (cli-specific, but helpers generalize) |
+| lockfile | `pnpm-lock.yaml` refresh + `pnpm-workspace.yaml` catalog additions (`@deessejs/errors@^1.1.1`, `@deessejs/fp@^1.0.0`) | Catalog additions upstream-trackable; the rest is local-resolved |
 | Memory | `.claude/agent-memory/tech-lead/**` (feedback + project memories) | Not in git |
 
 Status legend:
 - Locked-local: consumer-specific, stays in the fork, not pushed back.
-- Upstream-trackable: candidate for an upstream PR. Decided in Phase 1.
+- upstream-trackable: candidate for an upstream PR. Decided in Phase 1.
 
 ## Goals
 
@@ -65,7 +65,7 @@ Exit criteria:
 
 ### Phase 1: Classify with the user
 
-Goal: confirm classifications, especially for ambiguous rows (apps/web route handlers, vitest config patterns).
+Goal: confirm classifications, especially for ambiguous rows (apps/web route handlers, Vitest config patterns).
 
 Steps:
 - Walk the catalog with the user.
@@ -73,7 +73,7 @@ Steps:
 
 Exit criteria:
 - Every row has an explicit decision signed off by the user.
-- Upstream-trackable rows include whether a PR lands now or sits on the back-burner.
+- upstream-trackable rows include whether a PR lands now or sits on the back-burner.
 
 ### Phase 2: Set up passive monitoring
 
@@ -108,7 +108,7 @@ Out of scope of this phase:
 - Cosmetic, naming, or comment-level issues (below severity threshold).
 
 Initial candidate from the snapshot:
-- `packages/api/src/templates.ts` plus `packages/api/src/index.ts` (the move from apps/web). Strong candidate, single file, generic architecture. Issue goes live even if the PR stays on the back-burner for review.
+- the shared API package (templates.ts plus index.ts, the move from apps/web). Strong candidate, single file, generic architecture. Issue goes live even if the PR stays on the back-burner for review.
 
 Exit criteria:
 - Every template-owned local fix since this policy landed has an open upstream issue (or links to one).
@@ -123,7 +123,7 @@ Steps per upstream release that the user signals:
 - Review the diff between upstream HEAD and the fork's fork-point-or-last-merge tag.
 - For each upstream commit: locked-local row says "skip"; upstream-trackable row says "refresh"; and remove-by-resync row says "drop the fork's override."
 - Resolve conflicts in downstream-locked files first (apps/cli, AGENTS.md sections, docs/engineering/plans/) so fork-specific changes survive cleanly.
-- Smoke-check apps/web, apps/app, apps/docs, apps/cli against the merged state (lint, typecheck, vitest).
+- Smoke-check apps/web, apps/app, apps/docs, apps/cli against the merged state (lint, typecheck, Vitest).
 
 Exit criteria:
 - Conflict resolution didn't destroy any locked-local change.
@@ -142,7 +142,7 @@ Otherwise, keep it local and document the reason in the divergence catalog.
 ## Open questions
 
 1. **apps/web route handlers (`apps/web/src/app/api/`)**: created during the templates-endpoint move, currently empty or in flux. Locked-local, transient, or remove-by-resync. <!-- vale fix: Microsoft.QuestionMarks -->
-2. **CLI workspace as upstream PR**: the apps/cli itself is fork-specific (consumer of the registry). But the *patterns* (vitest config, fork spawn, fake-api helper) generalize. Ship as a doc-only PR, or wait until a separate template genuinely needs CLI. <!-- vale fix: Microsoft.We --> <!-- vale fix: Microsoft.QuestionMarks -->
+2. **CLI workspace as upstream PR**: the apps/cli itself is fork-specific (consumer of the registry). But the *patterns* (Vitest config, fork spawn, fake-API helper) generalize. Ship as a doc-only PR, or wait until a separate template genuinely needs CLI. <!-- vale fix: Microsoft.We --> <!-- vale fix: Microsoft.QuestionMarks -->
 3. **Pull cadence**: review upstream `main` on each release, quarterly, or only when the user asks. Recommendation: on user signal only, matching the @deessejs/* packages rule. <!-- vale fix: Microsoft.QuestionMarks -->
 4. **Long-term posture**: stay as a fork forever, or design a path to merge back into the template (for example, apps/cli becomes an upstream addon). Worth re-evaluating annually. <!-- vale fix: Microsoft.Foreign --> <!-- vale fix: Microsoft.QuestionMarks -->
 5. **Divergence catalog location**: `docs/internal/template-divergence.md` (suggested) or somewhere else. Trivial to decide later; just keep it next to other internal docs. <!-- vale fix: Microsoft.QuestionMarks -->
