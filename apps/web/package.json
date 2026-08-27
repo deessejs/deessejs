@@ -29,6 +29,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-markdown": "catalog:",
+    "rehype-pretty-code": "catalog:",
     "rehype-sanitize": "catalog:",
     "remark-gfm": "catalog:",
     "zustand": "catalog:"

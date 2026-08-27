@@ -40,6 +40,7 @@ catalog:
 
   # Markdown rendering (apps/web — untrusted GitHub READMEs on /templates/[slug])
   react-markdown: ^10.1.0
+  rehype-pretty-code: ^0.14.5
   remark-gfm: ^4.0.1
   rehype-sanitize: ^6.0.0
 

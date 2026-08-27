@@ -15,8 +15,22 @@ export function Prose({ children, className, ...rest }: ComponentProps<"article"
         "[&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6",
         "[&_li]:my-1",
         "[&_code]:break-words [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-sm [&_code]:font-mono [&_code]:text-foreground",
-        "[&_pre]:rounded-lg [&_pre]:border [&_pre]:border-border/40 [&_pre]:bg-muted/30 [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:my-4",
+        // Code blocks — pre emits outer chrome (border + bg + scroll), the
+        // [data-line] spans emitted by rehype-pretty-code (shiki) carry
+        // the horizontal padding so highlighted lines can grow a left
+        // band without breaking the rounded corners. Same selector
+        // convention as the table rules below.
+        "[&_pre]:rounded-lg [&_pre]:border [&_pre]:border-border/40 [&_pre]:bg-muted/30 [&_pre]:overflow-x-auto [&_pre]:my-6 [&_pre]:text-copy-14 [&_pre]:font-mono",
         "[&_pre_code]:break-normal [&_pre_code]:bg-transparent [&_pre_code]:p-0",
+        "[&_[data-line]]:block [&_[data-line]]:px-4 [&_[data-line]]:py-0.5",
+        // Highlighted lines via ```ts {2,4-6} or ```ts {1,3-5}{2,4-6}:
+        // a subtle inset that doesn't fight the muted bg.
+        "[&_[data-highlighted-line]]:bg-foreground/5 [&_[data-highlighted-line]]:relative",
+        // Diff markers via ```ts {1,3} show=/for/i: rehype-pretty-code
+        // emits data-* attrs we can target if a future contributor wants
+        // to highlight added/removed lines. We style only the wrapper
+        // background; specific tokens are coloured by shiki itself.
+        "[&_[data-highlighted-chars]]:bg-foreground/10 [&_[data-highlighted-chars]]:rounded",
         "[&_a]:break-words [&_a]:text-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:decoration-foreground/30 hover:[&_a]:decoration-foreground",
         "[&_img]:rounded-lg [&_img]:border [&_img]:border-border/40 [&_img]:my-4",
         "[&_blockquote]:border-l-2 [&_blockquote]:border-foreground/30 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:my-4",
