@@ -4,7 +4,7 @@
 
 The deessejs main app monorepo hosts `apps/web`, the public site of `deessejs`. Started from [`deessejs/saas-template`](https://github.com/deessejs/saas-template). Today, there is **no page** that explains who `deessejs` is, what the company builds, or why. `apps/web/src/app/` only contains `blog`, `changelog`, `cookies`, `privacy`, `terms`, plus a landing template default. The landing `app/page.tsx` is still the starter boilerplate.
 
-**Goal:** Add a "company identity" surface that is quickly readable by both humans (visitors, contributors, GitHub stars) and AI agents (LLM crawlers, coding agents consulting the docs). The surface can be filled in later, but the infrastructure (routes, JSON-LD, `llms.txt`, markdown mirrors) must be in place now.
+**Goal:** Add a "company identity" surface that's readable by both humans (visitors, contributors, GitHub stars) and AI agents (LLM crawlers, coding agents consulting the docs). The editor fills it in later, but the infrastructure (routes, JSON-LD, `llms.txt`, markdown mirrors) must be in place now.
 
 **Decisions locked with the user:**
 - Pages authored as **deessejs** (the company), not template-agnostic.
@@ -24,7 +24,7 @@ The deessejs main app monorepo hosts `apps/web`, the public site of `deessejs`. 
 
 ## Files to create
 
-### HTML pages (server components)
+### HyperText Markup Language pages (server components)
 
 ```
 apps/web/src/app/about/page.tsx          # GET /about: Hero + 5 placeholder sections
@@ -51,14 +51,14 @@ Each `route.ts`:
 - Returns `new Response(md, { headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": "public, max-age=3600" } })`.
 - No `Vary: Accept` needed (no negotiation).
 
-### AI-agent artifacts
+### Artificial-intelligence personal digital assistant artifacts
 
 ```
 apps/web/src/app/llms.txt/route.ts     # GET /llms.txt: 300-800 word index
 apps/web/src/app/.well-known/route.ts  # GET /.well-known/security.txt: RFC 9116
 ```
 
-**`/llms.txt`** follows the strict spec (per Phase 1.B research):
+**`/llms.txt`** follows the strict specification (per Phase 1.B research):
 
 ```md
 # deessejs
@@ -95,9 +95,9 @@ Expires: 2027-08-03T00:00:00.000Z
 Preferred-Languages: en
 ```
 
-The `route.ts` handles a `KNOWN: Record<string, Response>` map to support future additions (`mcp.json` when a callable agent exists).
+The `route.ts` handles a `KNOWN: Record<string, Response>` map to support future additions (`mcp.json` when a callable personal digital assistant exists).
 
-### Single source of truth (TS data files)
+### Single source of truth (TypeScript data files)
 
 ```
 apps/web/src/lib/site/identity.ts      # name, legalName, tagline, foundingDate, url, email, social[]
@@ -174,7 +174,7 @@ export function IdentityLayout({ children, breadcrumb }: {
 }
 ```
 
-## Files to modify
+## Files to change
 
 ### Header nav: `apps/web/src/components/headers/site-header.tsx`
 
@@ -194,13 +194,13 @@ Order chosen: content surfaces on the left, identity on the right. `Team` stays 
 
 ### Footer: `apps/web/src/components/footers/app-footer.tsx`
 
-Add `<Link href="/about">About</Link>` inside the existing `<nav>`, after "Docs".
+Add `<Link href="/about">About</Link>` inside the existing `<nav>`, after the "Docs" link.
 
 ### Root layout: `apps/web/src/app/layout.tsx`
 
 Add `<JsonLd data={ORGANIZATION_LD} />` inside `<body>` (before `<AppProviders>`). Data sourced from `lib/site/identity.ts`.
 
-Existing `metadata`: `title: APP_CONFIG.name` → sufficient. No template needed because each page's title overrides via local `export const metadata`.
+Existing `metadata`: `title: APP_CONFIG.name` → enough as-is. No template needed because each page's title overrides via local `export const metadata`.
 
 ### Sitemap: `apps/web/src/app/sitemap.ts`
 
@@ -220,7 +220,7 @@ Append to `staticPages` (after line 8, before `blogPosts`):
 
 ### Robots: `apps/web/src/app/robots.ts`
 
-**No changes.** `allow: "/"` already covers all new routes. **Do not** add `Disallow: /llms.txt` (Phase 1.B research forbids it).
+**No changes.** `allow: "/"` already covers all new routes. **Don't** add `Disallow: /llms.txt` (Phase 1.B research forbids it).
 
 ## Placeholder strategy
 

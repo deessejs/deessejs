@@ -14,24 +14,24 @@ Upstream issue filed: https://github.com/deessejs/fp/issues/356
 
 ## Context
 
-`@deessejs/errors` and `@deessejs/fp` are our org's internal libraries, in early life, evolving only based on our needs (see [AGENTS.md#internal-packages](../../AGENTS.md)). We need a first concrete integration site to validate the libs in our setup and to surface real frictions upstream.
+`@deessejs/errors` and `@deessejs/fp` are the org's internal libraries, in early life, evolving only based on the org's needs (see [AGENTS.md#internal-packages](../../AGENTS.md)). The team needs a first concrete integration site to test the libs in the setup and to surface real frictions upstream.
 
 `apps/cli` is the likely first candidate. It already ships a hand-rolled `CliError` ([apps/cli/src/errors.ts:13](../../../apps/cli/src/errors.ts)) and three near-identical try/catch blocks across commands. Both are natural migration targets: errors for the class hierarchy, fp's `Result.tryCatch` for the action pipelines.
 
-This plan covers a pre-flight validation plus a two-phase integration of errors then fp into apps/cli. It does not cover other apps (web, app, docs, packages/auth); those stay out of scope until apps/cli ships a validated integration.
+This plan covers a pre-flight validation plus a two-phase integration of errors then fp into apps/cli. It doesn't cover other apps (web, app, docs, packages/auth); those stay out of scope until apps/cli ships a validated integration.
 
 ## Goals
 
-- Validate that `@deessejs/errors` and `@deessejs/fp` install, type-check, and bundle cleanly in our setup (pnpm catalog strict, tsup, Node 18.18).
+- Check that `@deessejs/errors` and `@deessejs/fp` install, type-check, and bundle cleanly in the setup (pnpm catalog strict, tsup, Node 18.18).
 - Confirm apps/cli as the first integration target with the user.
 - Migrate `src/errors.ts` to use `error({...})` from @deessejs/errors while keeping the public surface stable for consumers.
 - Replace the three repeated try/catch blocks with `Result.tryCatch` pipelines where they fit.
-- Open at least one real upstream issue before this plan is marked "done", exercising the AGENTS.md "file upstream, not workaround" rule.
+- Open at least one real upstream issue before this plan flips to "done," exercising the AGENTS.md "file upstream, not workaround" rule.
 
 ## Non-goals
 
 - Migrating other apps in this plan (apps/web, apps/app, apps/docs, packages/auth).
-- Auto-monitoring upstream versions or proposing bumps (per AGENTS.md).
+- Automonitoring upstream versions or proposing bumps (per AGENTS.md).
 - Silent local workarounds for upstream quirks.
 - Refactoring the test suite (covered by [cli-v1-testing.md](./cli-v1-testing.md)).
 - Breaking changes to the CLI surface (commands and flags stay backwards-compatible).
@@ -40,7 +40,7 @@ This plan covers a pre-flight validation plus a two-phase integration of errors 
 
 ### Phase 1: Pre-flight spike (~15 min)
 
-Validate the libs work in our setup before committing to a migration.
+Check the libs work in the setup before committing to a migration.
 
 Scope:
 
@@ -57,7 +57,7 @@ Exit criteria:
 - At least one runtime test passes for `error()` plus `is()`.
 - At least one runtime test passes for `Result.tryCatch()` plus `match()`.
 
-If any exit criterion fails, file the upstream issue with a repro and stop. Do not proceed to Phase 2.
+If any exit criterion fails, file the upstream issue with a repro and stop. Don't proceed to Phase 2.
 
 ### Phase 2: Decide target
 
@@ -65,7 +65,7 @@ Present the spike outcome to the user. Decision points:
 
 - apps/cli confirmed as first integration target? (recommended: yes).
 - Pinned versions to start with for `@deessejs/errors` and `@deessejs/fp`. User provides the exact numbers.
-- Branch name: `chore/cli-integrate-deessejs-errors`. fp on a separate branch afterwards (`chore/cli-integrate-deessejs-fp`).
+- Branch name: `chore/cli-integrate-deessejs-errors`. fp on a separate branch afterward (`chore/cli-integrate-deessejs-fp`).
 
 Exit: explicit user sign-off before any code change in apps/cli.
 
@@ -117,9 +117,9 @@ Per AGENTS.md policy: every friction becomes one upstream issue. Examples:
 
 | Friction type | Where filed |
 |---|---|
-| API shape awkward for our usage | `github.com/deessejs/errors` or `/fp` issue |
+| API shape awkward for the team's usage | `github.com/deessejs/errors` or `/fp` issue |
 | TypeScript types too loose or too strict | upstream issue |
-| Missing helper (e.g. flatten causes into one string) | upstream issue |
+| Missing helper (for example, flatten causes into one string) | upstream issue |
 | Bundler or peer dep surprise | upstream issue if reproducible there |
 | Real bug in upstream behaviour | upstream issue with minimal repro |
 
@@ -129,16 +129,16 @@ Log the first real issues in PR descriptions. After this plan ships, decide whet
 
 - Errors first: smaller blast radius, gets the upstream feedback loop running sooner.
 - Errors has a clear, isolated migration target (one file: `src/errors.ts`).
-- fp refactor is larger and depends on errors being stable (we want consistent `CliError` types throughout the Result pipelines).
+- fp refactor is larger and depends on errors being stable (consistent `CliError` types throughout the Result pipelines matter).
 
 ## Open questions
 
 1. **apps/cli as target, or scratch repo first?** Confirmed 2026-07-30: apps/cli. Small, standalone, with natural migration targets. A scratch repo adds infra for no payoff.
 2. ~~What pinned versions of errors and fp?~~ **LOCKED 2026-07-30**: `@deessejs/errors@^1.1.1` (latest as of 2026-06-05, public npm), `@deessejs/fp@^1.0.0` (latest as of 2026-06-09, public npm). Both 1.x. Both on `registry.npmjs.org`, no private registry.
 3. **PR scope: one PR or three?** Recommendation: one PR per phase (errors PR, fp PR). Each targets staging per AGENTS.md.
-4. **Do upstream issues gate the apps/cli PR?** Recommendation: no. File them as they happen, link in the PR description, do not block on upstream fixes.
+4. **Do upstream issues gate the apps/cli PR?** Recommendation: no. File them as they happen, link in the PR description, don't block on upstream fixes.
 5. **When to expand to other apps?** Recommendation: not before apps/cli has used errors plus fp for one real release cycle. Decision criteria for expansion come in a follow-up plan.
-6. **Update AGENTS.md after this plan ships?** Recommendation: no. The `### Internal packages (@deessejs/*)` rule is already correct. Lessons from this plan feed back into agent memory, not project docs.
+6. **Update AGENTS.md after this plan ships?** Recommendation: no. The `### Internal packages (@deessejs/*)` rule is already correct. Lessons from this plan feed back into personal digital assistant memory, not project docs.
 
 ## Next steps
 

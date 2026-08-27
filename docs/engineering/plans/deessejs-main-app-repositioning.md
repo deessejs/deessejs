@@ -25,7 +25,7 @@ decisions:
     rationale: "Fork = same project, parallel history. Clone = same starting point, now its own project. saas-template is upstream; this repo is no longer a fork of it (different orgs/products)."
   - id: github-repo-urls
     date: 2026-08-04
-    choice: "This repo's GitHub URL is https://github.com/deessejs/deessejs. Upstream to link is https://github.com/deessejs/saas-template. NEVER link this repo to deessejs/saas-template."
+    choice: "This repo's GitHub address is https://github.com/deessejs/deessejs. Upstream to link is https://github.com/deessejs/saas-template. NEVER link this repo to deessejs/saas-template."
     rationale: "Confirmed with user 2026-08-04. Origin remote already points to deessejs/deessejs."
   - id: scope
     date: 2026-08-04
@@ -39,11 +39,11 @@ decisions:
 
 # DeesseJS main app, identity repositioning <!-- vale fix: Microsoft.Headings --> <!-- vale fix: Microsoft.HeadingColons -->
 
-_Date: 2026-08-04. Status: draft, pending user review. This plan is analysis + a file-by-file change list. No code is written until the user approves._
+_Date: 2026-08-04. Status: draft, pending user review. This plan is analysis + a file-by-file change list. No code lands until the user approves._
 
 ## Context
 
-This repo (package name: `next-monorepo`, GitHub: `deessejs/deessejs`) was **cloned** from `github.com/deessejs/saas-template` (MIT, July 2026) as the foundation for the deessejs organization's main app. Since the clone, intentional divergence has been layered on top:
+This repo (package name: `next-monorepo`, GitHub: `deessejs/deessejs`) forked from `github.com/deessejs/saas-template` (MIT, July 2026) as the foundation for the deessejs organization's main app. Since the fork, intentional divergence has accumulated on top:
 
 - `apps/cli/` workspace (published as `@deessejs/cli`)
 - `packages/contracts/` shared contract package
@@ -51,9 +51,9 @@ This repo (package name: `next-monorepo`, GitHub: `deessejs/deessejs`) was **clo
 - `AGENTS.md` customizations (staging-first workflow, internal-package policy)
 - Refactor of the templates endpoint from `apps/web` into `packages/api`
 
-Today, the repo is **still framed as "SaaS Template"** in 67 user-facing files (per cartography 2026-08-04): the root `README.md` says "SaaS Template" in its H1, `apps/web/README.md` calls itself "the SaaS template", the email footer says "© SaaS Template", the `.env.example` default `NEXT_PUBLIC_APP_NAME=SaaS Template`, etc.
+Today, the repo is **still framed as "SaaS Template"** in 67 user-facing files (per cartography 2026-08-04): the root `README.md` calls itself "SaaS Template" in its H1; `apps/web/README.md` calls itself "the SaaS template"; the email footer reads "© SaaS Template"; and `.env.example` defaults to `NEXT_PUBLIC_APP_NAME=SaaS Template`.
 
-This plan **repositions the repo as the DeesseJS main app** while keeping a clear link to the upstream `deessejs/saas-template` (MIT) it was started from.
+This plan **repositions the repo as the DeesseJS main app** while keeping a clear link to the upstream `deessejs/saas-template` (MIT) that spawned it.
 
 ## Goals
 
@@ -61,12 +61,12 @@ This plan **repositions the repo as the DeesseJS main app** while keeping a clea
 - The upstream relationship is **explicit and visible**: a "Started from [saas-template](github-url)" note in the root README, plus the existing `docs/engineering/plans/saas-template-divergence.md` plan, which describes the divergence.
 - **Zero mention of "SaaS Template" as the project's identity** in user-facing files (categories A, B, C, E). Generic market term "SaaS template" (lowercase, plural, generic: "SaaS templates," "the SaaS template market") stays in marketing/positioning docs where it functions as a category descriptor, not the project's name. <!-- vale fix: Microsoft.Quotes --> <!-- vale fix: write-good.Passive -->
 - **Coordinated with `company-identity-surface.md`** so the public `/about`, `/principles`, `/team` pages (when implemented) use the same `DeesseJS` name and the same data file (`apps/web/src/lib/site/identity.ts`).
-- All changes are **tracked in commits on `chore/deessejs-main-app-repositioning`** (branched from `staging`, per AGENTS.md), grouped by category. No direct push to `main`.
+- All changes land in commits on `chore/deessejs-main-app-repositioning` (branched from `staging`, per AGENTS.md), grouped by category. No direct push to `main`.
 
 ## Non-goals
 
 - Renaming the GitHub repo (`deessejs/saas-template` → `deessejs/deessejs` or similar). That's a separate decision; this plan only edits in-repo content.
-- Rewriting product positioning. Marketing terms like "agentic SaaS template", "the SaaS template that never sleeps", "Apple of SaaS templates" stay where they appear (in `documents/internal/marketing/**`). They are **category descriptors**, not the project's identity.
+- Rewriting product positioning. Marketing terms like "agentic SaaS template," "the SaaS template that never sleeps," and "Apple of SaaS templates" stay where they appear (in `documents/internal/marketing/**`). They're **category descriptors**, not the project's identity.
 - Refactoring the landing page (`apps/web/src/app/page.tsx`). `company-identity-surface.md` explicitly excludes it.
 - Touching the diverged CLI (`apps/cli/**`) beyond a keyword in `apps/cli/package.json`.
 - Touching `pnpm-lock.yaml`, `node_modules/`, `.git/`, or any build artifacts.
@@ -151,11 +151,11 @@ Files: `apps/web/README.md`, `apps/docs/README.md`, `apps/web/content/posts/gett
 - Line 3: `Documentation site for the SaaS Template, built with [Fumadocs]` → `Documentation site for DeesseJS, the main app of the deessejs organization. Built with [Fumadocs]`.
 
 **`apps/web/content/posts/getting-started.mdx`:**
-- Frontmatter `title` + `description`: replace "SaaS Template" → "DeesseJS".
+- Frontmatter `title` + `description`: replace "SaaS Template" with "DeesseJS."
 - First paragraph: rephrase "Welcome to your new SaaS template." → "Welcome to DeesseJS, the main app of the deessejs organization.".
 
 **`apps/web/content/releases/0.1.0.mdx`:**
-- Frontmatter + first paragraph: replace "SaaS Template" → "DeesseJS".
+- Frontmatter + first paragraph: replace "SaaS Template" with "DeesseJS."
 
 **`packages/cookies/README.md`:**
 - Line 3: `Cookie consent system for the SaaS template.` → `Cookie consent system for DeesseJS.`.
@@ -200,7 +200,7 @@ Files (28 total under `documents/internal/` and `docs/engineering/`). Strategy:
 | File | Lines | Change |
 |---|---|---|
 | `DESIGN.md` | L11, L449 | "The Apple of SaaS templates" → "The Apple of SaaS templates" stays (it's the marketing wedge). But "The SaaS template that never sleeps" wedge reframes to "DeesseJS, the SaaS template that never sleeps." | <!-- vale fix: Microsoft.Quotes -->
-| `documents/internal/product/README.md` | L19, L145, L154, L197, L198 | Where "SaaS Template" names the project, replace with "DeesseJS". |
+| `documents/internal/product/README.md` | L19, L145, L154, L197, L198 | Where "SaaS Template" names the project, replace with "DeesseJS." |
 | `documents/internal/product/positioning.md` | L7, L14, L16, L26, L99, L129, L132 | Same. |
 | `documents/internal/product/pricing.md` | L21 | Same. |
 | `documents/internal/product/lead-magnets.md` | L3, L72, L73, L74, L97, L115, L129, L136, L138, L179, L188, L198 | Same. |
@@ -254,7 +254,7 @@ Files (12 total). Strategy:
 | File | Lines | Change |
 |---|---|---|
 | `.claude/agent-memory/tech-lead/apps/app.md` | L79 | `NEXT_PUBLIC_APP_NAME ?? "SaaS Template"` → `?? "DeesseJS"`. |
-| `.claude/agent-memory/tech-lead/project/package-structure.md` | L8 | "The saas-template monorepo enforces…" → "The deessejs monorepo enforces…". |
+| `.claude/agent-memory/tech-lead/project/package-structure.md` | L8 | "The saas-template monorepo enforces…" → "The deessejs monorepo enforces…" |
 | `.claude/agent-memory/tech-lead/project/deploy.md` | L16, L17, L18 | Rename Vercel project names `saas-template-web/app/docs` → `deessejs-web/app/docs`. **Action item**: this also requires renaming the actual Vercel projects via the Vercel dashboard, separate ops task, not in this plan. |
 | `.claude/agent-memory/tech-lead/project/apps-cli-publish-readiness.md` | L12 | "Recommended: MIT (matches upstream saas-template)." → "Recommended: MIT." (the upstream relationship is obvious from the AGENTS preamble). |
 
@@ -264,7 +264,7 @@ Files (12 total). Strategy:
 |---|---|---|
 | `.claude/agent-memory/tech-lead/project/template-strategy.md` | L8 | Strategic memo about the upstream; keep the upstream reference. |
 | `.claude/agent-memory/tech-lead/feedback-readme-layout-2026.md` | L3, L8, L22 | Historical feedback with a commit reference; keep. |
-| `.claude/skills/create-issue/SKILL.md` | L3, L33, L37 | Skill targets the GitHub repo `deessejs/saas-template`; keep URL, update label if needed. |
+| `.claude/skills/create-issue/SKILL.md` | L3, L33, L37 | Skill targets the GitHub repo `deessejs/saas-template`; keep the address, update label if needed. |
 | `.claude/skills/create-pr/SKILL.md` | L38, L41, L42, L67, L109 | Same. |
 | `.claude/skills/implement/SKILL.md` | L62, L63, L81, … | Same. |
 | `.claude/skills/review-pr/SKILL.md` | L42, L45, … | Same. |
@@ -273,9 +273,9 @@ Files (12 total). Strategy:
 
 ## Special cases
 
-### GitHub repo URL
+### GitHub repo address
 
-The root README's `git clone` URL currently is `https://github.com/deessejs/saas-template.git`. If the GitHub repo is renamed (e.g. to `deessejs/deessejs`), update the URL here and in all `.claude/skills/**` files.
+The root README's `git clone` address currently is `https://github.com/deessejs/saas-template.git`. If the GitHub repo gets a new name (e.g. `deessejs/deessejs`), update the address here and in all `.claude/skills/**` files.
 
 **If the GitHub repo isn't renamed** (stays as `deessejs/saas-template`): the "Started from" line is still valid. `deessejs/saas-template` is the upstream that this repo originated from, and the same path now points here. <!-- vale fix: Microsoft.Contractions --> <!-- vale fix: write-good.Passive -->
 
@@ -283,7 +283,7 @@ This is the **only open question** that gates the implementation. See "Open ques
 
 ### `packages/api/src/templates.ts` and `packages/contracts/tests/template.test.ts`
 
-The slug `repo: "saas-template"` in the templates registry is **technical data**, not the project's identity. It refers to the upstream `deessejs/saas-template` GitHub repo that the CLI clones when a user picks the `saas-starter` template entry. **Keep as is** unless the GitHub repo is renamed (in which case update the slug to match).
+The slug `repo: "saas-template"` in the templates registry is **technical data**, not the project's identity. It refers to the upstream `deessejs/saas-template` GitHub repo that the CLI clones when a user picks the `saas-starter` template entry. **Keep as is** unless the GitHub repo gets a new name (in which case update the slug to match).
 
 ## Out of scope (deferred)
 
@@ -295,11 +295,11 @@ The slug `repo: "saas-template"` in the templates registry is **technical data**
 
 ## Open questions
 
-_None. The previous open question (GitHub repo URL) was resolved with the user on 2026-08-04: this repo is `deessejs/deessejs`, the upstream to link is `deessejs/saas-template`._
+_None. The previous open question (GitHub repo address) closed with the user on 2026-08-04: this repo is `deessejs/deessejs`, the upstream to link is `deessejs/saas-template`._
 
 ## Risks and trade-offs
 
-- **29 files in Category D** is the largest single commit. If the wording is contested, the diff will be hard to review. Mitigation: ship per-file with detailed commit messages citing this plan.
+- **29 files in Category D** is the largest single commit. If anyone challenges the wording, the diff will be hard to review. Mitigation: ship per-file with detailed commit messages citing this plan.
 - **Email footer / env defaults** change is customer-visible the moment it merges (anyone receiving an email after deploy will see "DeesseJS" instead of "SaaS Template"). Mitigation: ship Category C in the same deploy window as a notification.
 - **The default `NEXT_PUBLIC_APP_NAME` change** ripples into any deployed env that didn't override the value. Mitigation: `pnpm env:check` after merge; audit Vercel env vars per project.
 - **The `keywords` removal in `apps/cli/package.json`** (`saas-template` keyword) may reduce npm search visibility. Mitigation: replaced by `deessejs-main-app` keyword.
