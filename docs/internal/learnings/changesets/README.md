@@ -12,14 +12,14 @@ metadata:
 
 **Changesets is not yet integrated into this monorepo.** All packages are currently `private: true` (see `packages/*/package.json`) and are versioned `0.0.0`. There is no `.changeset/` directory and no release automation. The `turbo.json`-based build pipeline handles compilation and testing, but package publishing is not automated.
 
-This makes sense for an internal template — the packages are not published to npm. However, if any package in `apps/` or `packages/` is later extracted for independent consumption, changesets should be added.
+This makes sense for an internal template. The packages are not published to npm. However, if any package in `apps/` or `packages/` is later extracted for independent consumption, changesets should be added.
 
 ## What Is Changesets
 
 [Changesets](https://github.com/changesets/changesets) is a versioning and changelog management tool purpose-built for monorepos. It takes a developer-intent approach rather than commit-message inference:
 
 - Each PR author explicitly declares **which packages change**, **what semver bump** (major/minor/patch), and **a human-readable changelog summary**.
-- These declarations live as small Markdown files in `.changeset/` — committed alongside the code, reviewed in the PR.
+- These declarations live as small Markdown files in `.changeset/`, committed alongside the code and reviewed in the PR.
 - When ready to release, `changeset version` consumes all pending changesets, bumps the right package versions, updates `CHANGELOG.md` files, and handles the internal dependency graph (dependent packages get patched automatically).
 - `changeset publish` (or a GitHub Actions workflow) publishes to npm.
 
@@ -27,8 +27,8 @@ This makes sense for an internal template — the packages are not published to 
 
 ## Current Changesets Version
 
-- **Stable (v2):** `@changesets/cli@2.30.0` — published March 2026.
-- **Pre-release (v3):** `@changesets/cli@3.0.0-next.x` — actively developed on `main` branch. The v3 rewrite has breaking changes and is not yet stable.
+- **Stable (v2):** `@changesets/cli@2.30.0`, published March 2026.
+- **Pre-release (v3):** `@changesets/cli@3.0.0-next.x`, actively developed on `main` branch. The v3 rewrite has breaking changes and is not yet stable.
 - **For new integrations today:** stick with `^2.30.0` (the pnpm.io docs still reference v2.28.0 as the latest stable).
 
 This repo does not currently have changesets installed.
@@ -39,12 +39,12 @@ This repo does not currently have changesets installed.
 
 | Concept | Description |
 |---|---|
-| **Changeset file** | A Markdown file in `.changeset/` with YAML front matter declaring package(s), bump type, and a changelog summary. Created by the developer during PR review — not auto-generated. |
+| **Changeset file** | A Markdown file in `.changeset/` with YAML front matter declaring package(s), bump type, and a changelog summary. Created by the developer during PR review, not auto-generated. |
 | **Intent, not inference** | Unlike `semantic-release`, changesets does NOT parse commit messages. The bump type is always explicit and intentional. |
 | **Version PR** | A GitHub Action auto-opens a "Version Packages" PR that accumulates all pending changesets. It updates as new changesets land on `main`. This is the release gate. |
 | **`changeset version`** | Consumes all changeset files, computes new semver for each package (accounting for the dependency graph), updates `package.json` versions and `CHANGELOG.md`, then deletes the changeset files. |
 | **`changeset publish`** | Publishes all packages with bumped versions to npm. Can also create git tags. |
-| **Internal dependency cascade** | When package A is bumped, all internal packages depending on A get a patch bump to update their `workspace:*` dependency range — governed by `updateInternalDependencies: "patch"` in config. |
+| **Internal dependency cascade** | When package A is bumped, all internal packages depending on A get a patch bump to update their `workspace:*` dependency range, governed by `updateInternalDependencies: "patch"` in config. |
 
 ### Changeset File Format
 
@@ -142,7 +142,7 @@ They are complementary but not interchangeable:
 | **Commit convention** | Not required | Enforced (`feat:`, `fix:`, etc.) |
 | **Changelog quality** | Human-written prose per-release | Auto-generated from commits |
 | **Monorepo support** | First-class, independent versioning per package | Requires plugin (`semantic-release-monorepo`) |
-| **PR review integration** | Explicit — the changeset is part of the PR | Implicit — version bump is inferred |
+| **PR review integration** | Explicit: the changeset is part of the PR | Implicit: version bump is inferred |
 | **Use case** | Developer tooling, open source, team-based | DevOps/CI, fully automated pipelines |
 
 The critical distinction: **semantic-release infers version from commits. Changesets requires explicit declaration.** Changesets is the right choice when you want PR authors to communicate user-facing impact, not just implementation detail.
@@ -159,7 +159,7 @@ This repo already uses Conventional Commits (`feat:`, `fix:`, `chore:`) per `CON
 - They help reviewers understand the nature of a change at a glance.
 - CI lint tools (e.g., `commitlint`) can enforce them independently.
 
-**But do not rely on them for versioning.** A `fix:` prefix does not auto-bump — the changeset declares the actual semver impact.
+**But do not rely on them for versioning.** A `fix:` prefix does not auto-bump; the changeset declares the actual semver impact.
 
 ### Changeset Summary Guidelines
 
@@ -184,7 +184,7 @@ read before the organization plugin had initialized. To migrate:
 
 ### PR Title Conventions
 
-Keep PR titles descriptive — they appear in the "Version Packages" PR body and git history:
+Keep PR titles descriptive. They appear in the "Version Packages" PR body and git history:
 
 ```
 feat(auth): add organization-scoped session refresh
@@ -207,7 +207,7 @@ docs(api): document rate limiting headers
 
 - All packages are `private: true` and consumed only as `workspace:*` ranges within the monorepo.
 - No external consumers depend on specific versions.
-- The monorepo is not a published library — it is an application deployment artifact.
+- The monorepo is not a published library; it is an application deployment artifact.
 - You are iterating rapidly and version history provides no value (internal tools).
 
 **Current state of this repo:** All packages are `private: true`. Manual version management is currently unnecessary. Changesets should be introduced only if/when a package is made public.
@@ -230,7 +230,7 @@ create-issue  → triage  →  spec  →  implement  →  create-pr  →  review
 ### Practical Integration Steps
 
 1. **During `implement`:** Make the code change.
-2. **Before `create-pr`:** Run `pnpm changeset` — select the affected packages, choose the bump type, write the summary. Commit the `.changeset/UNIQUE_ID.md` file to the branch.
+2. **Before `create-pr`:** Run `pnpm changeset`. Select the affected packages, choose the bump type, and write the summary. Commit the `.changeset/UNIQUE_ID.md` file to the branch.
 3. **During `review-pr`:** Reviewer sees the changeset alongside the code diff. The bot comment shows exactly what will be released.
 4. **After `review-pr` (merge to main):** The `changesets/action` on `main` opens a "Version Packages" PR. CI accumulates all changesets landed on `main` since the last release.
 5. **Merge Version PR:** Triggers `pnpm changeset version && pnpm changeset publish`.
@@ -246,7 +246,7 @@ A changeset file is **consumed** (deleted) when `changeset version` runs. It can
 
 ## Relation to the Existing Build Pipeline
 
-`turbo.json` and changesets are complementary — they operate at different layers:
+`turbo.json` and changesets are complementary; they operate at different layers:
 
 ```
 turbo.json          → build, test, lint, typecheck (per-package, per-task)
@@ -255,23 +255,23 @@ changesets          → version calculation, changelog generation, npm publish
 
 The CI already uses `fetch-depth: 0` for changelog-aware git history. Adding changesets means adding a `changesets.yml` workflow that runs on `main` pushes, parallel to or after the existing CI pipeline.
 
-`turbo build` runs before `changeset version` in the release workflow — this is necessary so that the `dist/` outputs exist for publishing.
+`turbo build` runs before `changeset version` in the release workflow. This ordering is necessary so that the `dist/` outputs exist for publishing.
 
 ## Gotchas for pnpm 11 + turbo v2
 
 ### pnpm 11 Specifics
 
 - `pnpm/action-setup@v6` in GitHub Actions (as used in `ci.yml`).
-- pnpm 11's **catalog mode** (`catalog:` in `pnpm-workspace.yaml`) is fully compatible with changesets — changesets reads `package.json` normally.
+- pnpm 11's **catalog mode** (`catalog:` in `pnpm-workspace.yaml`) is fully compatible with changesets. Changesets reads `package.json` normally.
 - pnpm 11's strict mode (`catalogMode: strict`) means all dependencies must come from the catalog or workspace. Changesets `publish` respects this.
-- When running `pnpm changeset version`, always follow with `pnpm install` to update the lockfile after version bumps — required before `pnpm publish -r`.
+- When running `pnpm changeset version`, always follow with `pnpm install` to update the lockfile after version bumps. This is required before `pnpm publish -r`.
 
 ### turbo v2 Specifics
 
 - `turbo build` in CI should run **before** `changeset version` so that `dist/` folders are fresh for publishing.
 - The `version: pnpm changeset version` and `publish: pnpm changeset publish` steps in the changesets action run after the build job, not instead of it.
 - `changesets/action@v1` is compatible with turbo v2. No special integration is needed.
-- If using `turbo@2` with remote caching (`TURBO_TOKEN`/`TURBO_TEAM`), note that `changeset version` modifies files — ensure the Version PR pipeline does not incorrectly serve cached artifacts for the `build` task. The `--force` flag should be used in CI to bypass remote cache for build steps preceding publish.
+- If using `turbo@2` with remote caching (`TURBO_TOKEN`/`TURBO_TEAM`), note that `changeset version` modifies files. Ensure the Version PR pipeline does not incorrectly serve cached artifacts for the `build` task. The `--force` flag should be used in CI to bypass remote cache for build steps preceding publish.
 
 ### Common Mistakes
 
@@ -306,18 +306,18 @@ If changesets were added to this monorepo, the config at `.changeset/config.json
 ```
 
 Key settings:
-- `access: "restricted"` — since all packages are currently `private: true`, this prevents accidental public publishing.
-- `privatePackages.version: false` — changesets skips versioning for `private: true` packages (which all current packages are).
-- `bumpVersionsWithWorkspaceProtocolOnly: true` — ensures workspace protocol dependencies are handled correctly with pnpm 11.
+- `access: "restricted"`: since all packages are currently `private: true`, this prevents accidental public publishing.
+- `privatePackages.version: false`: changesets skips versioning for `private: true` packages (which all current packages are).
+- `bumpVersionsWithWorkspaceProtocolOnly: true`: ensures workspace protocol dependencies are handled correctly with pnpm 11.
 
 ## Further Reading
 
-- [Changesets GitHub](https://github.com/changesets/changesets) — source, docs, releases
-- [pnpm.io: Using Changesets](https://pnpm.io/using-changesets) — pnpm-specific setup guide
-- [changesets/action](https://github.com/changesets/action) — GitHub Actions integration
+- [Changesets GitHub](https://github.com/changesets/changesets), source, docs, releases
+- [pnpm.io: Using Changesets](https://pnpm.io/using-changesets), pnpm-specific setup guide
+- [changesets/action](https://github.com/changesets/action), GitHub Actions integration
 - [Intro to using changesets](https://github.com/changesets/changesets/blob/main/docs/intro-to-using-changesets.md)
 - [Detailed explanation](https://github.com/changesets/changesets/blob/main/docs/detailed-explanation.md)
 - [Adding a changeset](https://github.com/changesets/changesets/blob/main/docs/adding-a-changeset.md)
 - [Config file options](https://github.com/changesets/changesets/blob/main/docs/config-file-options.md)
-- [Prereleases](https://github.com/changesets/changesets/blob/main/docs/prereleases.md) — alpha/beta/canary workflow
-- [Snapshot releases](https://github.com/changesets/changesets/blob/main/docs/snapshot-releases.md) — CI-driven canary previews
+- [Prereleases](https://github.com/changesets/changesets/blob/main/docs/prereleases.md), alpha/beta/canary workflow
+- [Snapshot releases](https://github.com/changesets/changesets/blob/main/docs/snapshot-releases.md), CI-driven canary previews
