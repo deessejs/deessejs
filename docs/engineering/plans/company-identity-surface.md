@@ -14,7 +14,7 @@ The deessejs main app monorepo hosts `apps/web`, the public site of `deessejs`. 
 - **Structured placeholders**: no copy-writing in this PR. Sections marked `REPLACE WITH COPY` / `TODO:`. <!-- vale fix: write-good.Weasel -->
 - Scope "the more the better," every page and artifact that makes sense, without bloating. <!-- vale fix: Microsoft.Quotes -->
 
-**What this plan explicitly excludes:** refactoring `apps/web/src/app/page.tsx` (landing still boilerplate), `apps/web/src/app/.well-known/agent-card.json` (A2A figure, reserved for real callable agents), `llms-full.txt` (consistent with Supabase's "small root, defer to docs"), `humans.txt`, `/.well-known/ai` (IETF draft, unstable).
+**What this plan explicitly excludes:** refactoring `apps/web/src/app/page.tsx` (landing still boilerplate), `apps/web/src/app/.well-known/agent-card.json` (A2A figure, reserved for real callable agents), `llms-full.txt` (consistent with the `Supabase` guidance "small root, defer to docs"), `humans.txt`, `/.well-known/ai` (IETF draft, unstable).
 
 ## Recommended approach
 
