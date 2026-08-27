@@ -2,9 +2,9 @@
 
 [← Index](README.md) · **Prev: [11-templates-not-cli.md](11-templates-not-cli.md)**
 
-Step-by-step procedure for the npm side of the senior pattern. The user explicitly asked for this — the audit's high-level "one-time setup" line was too hand-wavy.
+Step-by-step procedure for the npm side of the senior pattern. The user explicitly asked for this; the audit's high-level "one-time setup" line was too hand-wavy.
 
-## 12.1 TL;DR — the chicken-and-egg
+## 12.1 TL;DR: the chicken-and-egg
 
 **The first publish of `@deessejs/cli` cannot use trusted publishing.** npm has no "pending publisher" feature (unlike PyPI). Before the package exists on npm, no trusted publisher is configured for it. Therefore:
 
@@ -12,7 +12,7 @@ Step-by-step procedure for the npm side of the senior pattern. The user explicit
 - **After the first publish succeeds**: configure the trusted publisher on `https://www.npmjs.com/package/@deessejs/cli/access`.
 - **Second publish onward**: automatic via `.github/workflows/release.yml` with OIDC + provenance.
 
-This is documented as [npm/documentation#1926](https://github.com/npm/documentation/issues/1926) — the docs don't currently explain this gap. PyPI has a "pending publisher" feature that npm doesn't.
+This is documented as [npm/documentation#1926](https://github.com/npm/documentation/issues/1926): the docs don't currently explain this gap. PyPI has a "pending publisher" feature that npm doesn't.
 
 ## 12.2 Prerequisites
 
@@ -21,9 +21,9 @@ Before any of this:
 - An npmjs.com account with publish rights on the `deessejs` org (the maintainer who publishes `@deessejs/cli` for the first time)
 - 2FA enabled on that npm account (required to publish under the `deessejs` org)
 - The `deessejs` npm org exists (one-time setup, presumably already done)
-- PR 1 + PR 2 + PR 3 from [08-execution-plan.md](08-execution-plan.md) all merged to `staging` and promoted to `main` — i.e. `apps/cli/package.json#private` is `false`, the LICENSE + repository + module + types fields are filled, `tsup.config.ts` has `dts: true`, `.github/workflows/release.yml` is the senior-pattern version, `.changeset/config.json` is updated.
+- PR 1 + PR 2 + PR 3 from [08-execution-plan.md](08-execution-plan.md) all merged to `staging` and promoted to `main` (i.e. `apps/cli/package.json#private` is `false`, the LICENSE + repository + module + types fields are filled, `tsup.config.ts` has `dts: true`, `.github/workflows/release.yml` is the senior-pattern version, `.changeset/config.json` is updated).
 
-## 12.3 Step 1 — First publish (manual, from a maintainer's machine)
+## 12.3 Step 1: First publish (manual, from a maintainer's machine)
 
 This creates the package on npmjs.com. After it succeeds, the package exists and the trusted publisher can be configured.
 
@@ -60,9 +60,9 @@ pnpm --filter @deessejs/cli publish --access public --no-git-checks
 - The package appears at `https://www.npmjs.com/package/@deessejs/cli`.
 - Provenance is **NOT** generated for this first publish (no OIDC). This is a known limitation; documented in npm/documentation#1926.
 
-**If anything fails:** fix the issue (probably a missing `LICENSE` file, wrong `repository`, etc.) and retry. The package either exists or it doesn't — there's no half-state.
+**If anything fails:** fix the issue (probably a missing `LICENSE` file, wrong `repository`, etc.) and retry. The package either exists or it doesn't; there's no half-state.
 
-## 12.4 Step 2 — Configure the trusted publisher on npm
+## 12.4 Step 2: Configure the trusted publisher on npm
 
 **Browser action, one-time.**
 
@@ -75,12 +75,12 @@ pnpm --filter @deessejs/cli publish --access public --no-git-checks
    - **Repository**: `deessejs` (this repo's name)
    - **Workflow filename**: `release.yml` (just the filename, not the path)
    - **Environment name**: leave blank initially (we don't use GitHub environments; can be added later for hardening)
-   - **Allowed actions**: select `npm publish` (not `npm stage publish` — that's the staged-2FA variant, see 12.7)
+   - **Allowed actions**: select `npm publish` (not `npm stage publish`, which is the staged-2FA variant; see 12.7)
 5. Save.
 
-**Verify the config** by re-loading the page — the trusted publisher entry should be listed.
+**Verify the config** by re-loading the page; the trusted publisher entry should be listed.
 
-## 12.5 Step 3 — Verify the second publish works via the workflow
+## 12.5 Step 3: Verify the second publish works via the workflow
 
 **After** the trusted publisher is configured, the next release goes through the workflow automatically.
 
@@ -127,9 +127,9 @@ Trusted publishers are tied to specific GitHub users/orgs + repos + workflow fil
 
 ### 12.6.4 Lost NPM_TOKEN, no recovery
 
-There's no `NPM_TOKEN` in the senior pattern. If trusted publishing is misconfigured, the maintainer can't fall back to a long-lived token — because none exists. Recovery options:
+There's no `NPM_TOKEN` in the senior pattern. If trusted publishing is misconfigured, the maintainer can't fall back to a long-lived token, because none exists. Recovery options:
 
-- Re-do the manual first publish from a developer's machine (12.3) — overwrites the published version if no published version exists at that name, but if versions exist, `npm unpublish` within 72h.
+- Re-do the manual first publish from a developer's machine (12.3): overwrites the published version if no published version exists at that name, but if versions exist, `npm unpublish` within 72h.
 - Disable the trusted publisher on npm, publish a new version with a temporary manual `npm publish --access public` from a developer's machine, re-enable the trusted publisher, fix the workflow.
 
 ### 12.6.5 `catalog:` deps don't survive `npm publish`
@@ -141,7 +141,7 @@ npm error code EUNSUPPORTEDPROTOCOL
 npm error Unsupported URL Type "catalog:": catalog:
 ```
 
-**Rule**: only monorepo-internal packages (the `packages/*` workspace) can use `catalog:`. A workspace package that's going to be published to npm must use real semver ranges for its `dependencies`. `devDependencies` can stay in `catalog:` — they don't ship to the registry.
+**Rule**: only monorepo-internal packages (the `packages/*` workspace) can use `catalog:`. A workspace package that's going to be published to npm must use real semver ranges for its `dependencies`. `devDependencies` can stay in `catalog:`; they don't ship to the registry.
 
 **Recovery**: `npm unpublish @deessejs/cli@<broken-version>` (within 72h), fix the deps to real semver, then re-publish at the next version (e.g. `1.0.1` if `1.0.0` was the broken one).
 

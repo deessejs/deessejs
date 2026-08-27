@@ -4,13 +4,13 @@
 
 ## 3.1 `@changesets/cli` is still on v2
 
-`@changesets/cli@^2.31.0` is current. No v3 exists for the CLI. The companion `changesets/action` has a v2 in pre-release (`v2.0.0-next.3`, 2026-07-01) targeting changesets v3. **For our `@changesets/cli@^2.31.0`, the action must be pinned to `changesets/action@v1`** — not `@v2`. This is a non-obvious gotcha that is easy to miss when copying snippets from `changesets/action`'s README (which shows `@v2` in its examples as the future default).
+`@changesets/cli@^2.31.0` is current. No v3 exists for the CLI. The companion `changesets/action` has a v2 in pre-release (`v2.0.0-next.3`, 2026-07-01) targeting changesets v3. **For our `@changesets/cli@^2.31.0`, the action must be pinned to `changesets/action@v1`**, not `@v2`. This is a non-obvious gotcha that is easy to miss when copying snippets from `changesets/action`'s README (which shows `@v2` in its examples as the future default).
 
-## 3.2 npm trusted publishers — current state
+## 3.2 npm trusted publishers: current state
 
 - **GA since 2025-07-31** (over a year of stable operation).
 - npm CLI v11.5.1+ required. Node v22.14.0+ required.
-- Configuration is **per-package**, not per-org: each package gets exactly one trusted publisher. Path on npmjs.com is `https://www.npmjs.com/package/{name}/access` (not under `/settings/{username}/packages` — easy to miss).
+- Configuration is **per-package**, not per-org: each package gets exactly one trusted publisher. Path on npmjs.com is `https://www.npmjs.com/package/{name}/access` (not under `/settings/{username}/packages`; easy to miss).
 - GitHub-hosted runners only (CircleCI and GitLab also supported). Self-hosted runners not yet supported.
 - `id-token: write` permission is the only mandatory permission change beyond the workflow's existing needs.
 - After enabling, npm strongly recommends restricting traditional token publishing ("disallow tokens"). Optional further hardening: allow `npm stage publish` only, requiring 2FA review per publish.
@@ -26,12 +26,12 @@ From `changesets/changesets/docs/config-file-options.md`:
 - `baseBranch: "master"`
 - `updateInternalDependencies: "patch"` ← our recommendation matches the default
 - `access: "restricted"` ← matches our current setting
-- `privatePackages: { version: true, tag: false }` ← by default, private packages ARE version-bumped but NOT tag-published. We may want `{ version: false, tag: false }` to fully skip them — see [07-decisions.md](07-decisions.md) §2.5.
+- `privatePackages: { version: true, tag: false }` (note: by default private packages ARE version-bumped but NOT tag-published). We may want `{ version: false, tag: false }` to fully skip them; see [07-decisions.md](07-decisions.md) §2.5.
 - `bumpVersionsWithWorkspaceProtocolOnly: false` ← for our setup, `workspace:*` is the right tool; we don't need this flag.
 
 ## 3.5 Known issues
 
-- **changesets #1209** (open since 2023): changesets fails to detect pnpm workspaces if the `packages` globs end with `/`. Our `pnpm-workspace.yaml` uses `apps/*` and `packages/*` (no trailing slash) — not affected.
+- **changesets #1209** (open since 2023): changesets fails to detect pnpm workspaces if the `packages` globs end with `/`. Our `pnpm-workspace.yaml` uses `apps/*` and `packages/*` (no trailing slash), so not affected.
 - **changesets #647** (open since 2021): no first-class Dependabot/Renovate integration. Convention is to hand-write `.changeset/*.md` markdown files. Acceptable for a repo with one public package and infrequent dep bumps.
 
 ## 3.6 Source list (external)

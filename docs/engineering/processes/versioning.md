@@ -37,8 +37,8 @@ The four steps are the entire pipeline. Hotfixes follow the same path with `patc
 2. A human promotes `staging` → `main`.
 3. `.github/workflows/release.yml` triggers (gated on `.changeset` in commit message, or manual).
 4. `pnpm install --frozen-lockfile`.
-5. `pnpm changeset version` — bumps `apps/cli/package.json#version`, regenerates `apps/cli/CHANGELOG.md`, deletes consumed `.changeset/*.md` files, commits the version bump.
-6. `pnpm changeset publish --provenance --access public` with `NPM_CONFIG_PROVENANCE=true` — publishes via OIDC + provenance.
+5. `pnpm changeset version`: bumps `apps/cli/package.json#version`, regenerates `apps/cli/CHANGELOG.md`, deletes consumed `.changeset/*.md` files, commits the version bump.
+6. `pnpm changeset publish --provenance --access public` with `NPM_CONFIG_PROVENANCE=true`: publishes via OIDC + provenance.
 7. `git tag -f release/v{VERSION}` (where `{VERSION}` is read from `apps/cli/package.json#version`).
 8. `gh release create release/v{VERSION} --generate-notes`.
 9. Done. The new `@deessejs/cli` version is live on npm, the tag is in git, the GitHub Release notes are published.
@@ -49,7 +49,7 @@ The four steps are the entire pipeline. Hotfixes follow the same path with `patc
 
 In addition to the `@latest` channel above, two other release channels are available:
 
-### `@canary` — on-demand pre-release
+### `@canary`: on-demand pre-release
 
 Triggered manually: `Actions → release.yml → Run workflow → ☑ canary`. The workflow:
 
@@ -70,7 +70,7 @@ Triggered automatically: every PR targeting `staging` or `main` that touches `ap
 2. Runs `pnpm exec pkg-pr-new publish ./apps/cli --pnpm --compact --bin --comment=update`.
 3. Posts or updates a sticky PR comment with the install URL for each of `pnpm`, `npm`, `yarn`, `bun`.
 
-Previews are stored on pkg.pr.new's own infrastructure (Cloudflare R2) — NOT on npmjs.org. Retention is best-effort: ~1 month without a download OR ~6 months of age, whichever comes first.
+Previews are stored on pkg.pr.new's own infrastructure (Cloudflare R2), NOT on npmjs.org. Retention is best-effort: ~1 month without a download OR ~6 months of age, whichever comes first.
 
 ### Why three channels, one workflow
 
@@ -83,7 +83,7 @@ The single trusted-publisher-per-package constraint from npm Trusted Publishing 
 - **`apps/cli/package.json#private: true` left in place**: changesets refuses to publish. Verify PR 3 landed.
 - **Lockfile drift**: `pnpm install --frozen-lockfile` fails. Re-run `pnpm install` locally, commit the lockfile, re-trigger.
 
-## Contributor — adding a changeset
+## Contributor: adding a changeset
 
 **What:** A contributor opens a PR against `staging` with a `.changeset/<name>.md` file describing their change's bump type (`patch`, `minor`, or `major`). CI verifies presence if the PR touches `apps/cli/**`.
 
@@ -98,11 +98,11 @@ Do not add a changeset for:
 - Test-only changes in `apps/cli/test/**`.
 - Catalog dependency bumps that don't affect CLI behavior.
 - Docs, comments, or formatting changes.
-- **Adding, updating, or removing a template entry** in `packages/api/src/templates.ts`. Templates are content, not CLI features — the CLI is just a client of the templates API. See [the templates-not-cli section](../reports/versioning/11-templates-not-cli.md) for the full reasoning and the few edge cases (schema changes) where a template-related change IS a CLI change.
+- **Adding, updating, or removing a template entry** in `packages/api/src/templates.ts`. Templates are content, not CLI features; the CLI is just a client of the templates API. See [the templates-not-cli section](../reports/versioning/11-templates-not-cli.md) for the full reasoning and the few edge cases (schema changes) where a template-related change IS a CLI change.
 
 **Format, bump types, examples, lifecycle, common mistakes**: see [`.changeset/README.md`](../../.changeset/README.md).
 
-## Maintainer — hotfix
+## Maintainer: hotfix
 
 **What:** Fast-track a critical `@deessejs/cli` bug or security fix from branch → staging → main. Same workflow runs; just skip the normal staging wait time. End-to-end target: under 2 hours for a critical security fix.
 
@@ -117,11 +117,11 @@ Do not add a changeset for:
 5. Fast-track `staging` → `main` promotion.
 6. `release.yml` runs the same flow as a normal release.
 
-## Maintainer — yanking a version
+## Maintainer: yanking a version
 
 **What:** Removes or deprecates a published `@deessejs/cli` version using `npm unpublish` (within 72 hours of publish) or `npm deprecate` (after 72 hours). Records the yank in the next release notes.
 
-**Why:** A bad published version can break consumers — installs error out, code paths silently fail. Yanking limits damage and signals to upgrade. The 72-hour boundary exists because npm allows total unpublish only when the version has very few dependents, to protect the ecosystem.
+**Why:** A bad published version can break consumers; installs error out, code paths silently fail. Yanking limits damage and signals to upgrade. The 72-hour boundary exists because npm allows total unpublish only when the version has very few dependents, to protect the ecosystem.
 
 **Within 72 hours of publish:**
 
@@ -141,7 +141,7 @@ Record the yank in the next release notes.
 
 **What:** Publishes `@deessejs/cli` directly from a maintainer's machine using their local npm auth, bypassing `release.yml`. The publish uses `--provenance` but provenance attestation will fail (no OIDC available outside GitHub Actions). The tag and GitHub Release need to be applied manually.
 
-**Why:** The automated workflow can fail (npm outage, OIDC misconfiguration, runner outage, a bug in `release.yml`). A documented manual path lets maintainers ship a critical fix even when automation is down. Provenance is sacrificed for that run, which is acceptable for a degraded mode — the next automated run resumes provenance.
+**Why:** The automated workflow can fail (npm outage, OIDC misconfiguration, runner outage, a bug in `release.yml`). A documented manual path lets maintainers ship a critical fix even when automation is down. Provenance is sacrificed for that run, which is acceptable for a degraded mode; the next automated run resumes provenance.
 
 **When:** `release.yml` is broken but a release is needed urgently.
 
@@ -168,8 +168,8 @@ Record the yank in the next release notes.
 
 ## Related docs
 
-- [Audit report (2026-07-31)](../reports/versioning/README.md) — full context, decisions, and sources.
-- [`.changeset/README.md`](../../.changeset/README.md) — changeset quick reference for contributors.
-- [CONTRIBUTING.md](../../CONTRIBUTING.md) — contributor workflow (includes changeset requirement).
-- `AGENTS.md` — staging-first git workflow.
-- `apps/cli/CHANGELOG.md` — auto-generated by changesets, source of truth for `@deessejs/cli` consumer changelog.
+- [Audit report (2026-07-31)](../reports/versioning/README.md): full context, decisions, and sources.
+- [`.changeset/README.md`](../../.changeset/README.md): changeset quick reference for contributors.
+- [CONTRIBUTING.md](../../CONTRIBUTING.md): contributor workflow (includes changeset requirement).
+- `AGENTS.md`: staging-first git workflow.
+- `apps/cli/CHANGELOG.md`: auto-generated by changesets, source of truth for `@deessejs/cli` consumer changelog.

@@ -24,7 +24,7 @@ Concrete changes to apply once the architecture in [05-strategy.md](05-strategy.
 
 - `baseBranch: "staging"` aligns with the staging-first workflow in `AGENTS.md`.
 - `updateInternalDependencies: "patch"` matches the changesets default and the documented recommendation. Has minimal real-world effect in this repo since `@deessejs/cli` has no workspace deps; included for hygiene.
-- `privatePackages: { version: false, tag: false }` keeps changesets from bumping private workspace `package.json#version` (the packages in `packages/*`, `apps/*` excluding `apps/cli`). The bump is cosmetic since private packages never publish — no changeset for them is needed.
+- `privatePackages: { version: false, tag: false }` keeps changesets from bumping private workspace `package.json#version` (the packages in `packages/*`, `apps/*` excluding `apps/cli`). The bump is cosmetic since private packages never publish; no changeset for them is needed.
 
 ## 6.2 `apps/cli` package.json (proposed)
 
@@ -61,13 +61,13 @@ Concrete changes to apply once the architecture in [05-strategy.md](05-strategy.
 }
 ```
 
-**Dependencies must be real semver, not `catalog:`** — The `catalog:` protocol is pnpm-specific; npm doesn't understand it. When `apps/cli/package.json` shipped with `"@deessejs/errors": "catalog:"`, the published package could not be installed by `npm install` or `npx` (`EUNSUPPORTEDPROTOCOL` error). The catalog is fine for **internal** package deps (workspace packages stay in the monorepo) but **published** packages must have concrete semver ranges. Keep `devDependencies` in `catalog:` if you want — they don't get published.
+**Dependencies must be real semver, not `catalog:`**: The `catalog:` protocol is pnpm-specific; npm doesn't understand it. When `apps/cli/package.json` shipped with `"@deessejs/errors": "catalog:"`, the published package could not be installed by `npm install` or `npx` (`EUNSUPPORTEDPROTOCOL` error). The catalog is fine for **internal** package deps (workspace packages stay in the monorepo) but **published** packages must have concrete semver ranges. Keep `devDependencies` in `catalog:` if you want; they don't get published.
 
 Corresponding `apps/cli/tsup.config.ts` change: add `dts: true` so `dist/index.d.ts` is emitted. Verify CI still passes on the existing test suite.
 
 ## 6.3 Release workflow (proposed)
 
-`.github/workflows/release.yml` — REPLACES the existing file. The existing one (177 lines) handles root VERSION bumps, `template/v*` tags, and root CHANGELOG patches. The new one is single-job, single-purpose.
+`.github/workflows/release.yml` REPLACES the existing file. The existing one (177 lines) handles root VERSION bumps, `template/v*` tags, and root CHANGELOG patches. The new one is single-job, single-purpose.
 
 ```yaml
 name: Release

@@ -36,7 +36,7 @@ Caveats (from the official docs):
 
 - Pre-releases block other releases on the same branch until you exit pre mode.
 - Switching between pre-release tags (e.g. `alpha` → `beta`) is not officially supported and has been an open Q&A since 2023 ([discussion #1078](https://github.com/changesets/changesets/discussions/1078)).
-- New packages published during a pre-release get the `latest` dist-tag (not the pre-release tag) on their first publish — surprising and worth documenting.
+- New packages published during a pre-release get the `latest` dist-tag (not the pre-release tag) on their first publish, which is surprising and worth documenting.
 
 ## When to revisit
 

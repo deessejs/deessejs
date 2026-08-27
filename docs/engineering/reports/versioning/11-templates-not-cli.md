@@ -10,9 +10,9 @@ This section was added after a user challenge: **why would adding a template eve
 
 `@deessejs/cli` is a **client** of the templates endpoint at `https://deessejs.com/api/templates` (served by `packages/api/src/index.ts:73`, data sourced from `packages/api/src/templates.ts`). The CLI's contract is:
 
-- `deessejs list` — give me the list of templates.
-- `deessejs info <slug>` — give me the details for one template.
-- `deessejs init <slug>` — clone the template at `<owner>/<repo>` (per the entry's data).
+- `deessejs list`: give me the list of templates.
+- `deessejs info <slug>`: give me the details for one template.
+- `deessejs init <slug>`: clone the template at `<owner>/<repo>` (per the entry's data).
 
 **What the templates ARE is not the CLI's concern.** A new template entry is a content change. The CLI's behavior with respect to that entry is the same as for any other entry: list it, show it, clone it. No new code path. No new flag. No API surface change.
 
@@ -22,15 +22,15 @@ This principle holds whether templates are hand-curated (today) or database-back
 
 ## 11.2 Today's data source
 
-`packages/api/src/templates.ts` exports a `TEMPLATES: Template[]` array with three hand-curated entries. Each entry is content: `slug`, `name`, `description`, `owner`, `repo`, `license`, `category`, `labels`, plus optional `image` and `cloneUrl`. To add a template today, you edit this array and ship a server-side deploy — no CLI involved.
+`packages/api/src/templates.ts` exports a `TEMPLATES: Template[]` array with three hand-curated entries. Each entry is content: `slug`, `name`, `description`, `owner`, `repo`, `license`, `category`, `labels`, plus optional `image` and `cloneUrl`. To add a template today, you edit this array and ship a server-side deploy. No CLI is involved.
 
 When the data source moves to a database, the same principle applies: an `INSERT` into the templates table is content, not a CLI change. When external submissions are enabled, the same again: a third-party submission is content, not a CLI change.
 
-## 11.3 Edge cases — when a template change IS a CLI change
+## 11.3 Edge cases: when a template change IS a CLI change
 
 The principle above is simple, but three edge cases deserve explicit handling. These are the only situations where a template-related change requires a CLI version bump:
 
-### Edge case A — Template schema change (new required field)
+### Edge case A: Template schema change (new required field)
 
 If a new field is added to the `Template` type in `packages/api/src/templates.ts` AND it is required (no `?` suffix), then:
 
@@ -40,7 +40,7 @@ If a new field is added to the `Template` type in `packages/api/src/templates.ts
 
 **Rule**: required field added to template schema → CLI changeset required, bump at least `minor`.
 
-### Edge case B — Template schema change (new optional field that the CLI displays)
+### Edge case B: Template schema change (new optional field that the CLI displays)
 
 If a new field is added AND the CLI renders it (e.g. in `deessejs info` output), then:
 
@@ -49,16 +49,16 @@ If a new field is added AND the CLI renders it (e.g. in `deessejs info` output),
 
 **Rule**: new optional field that the CLI renders → CLI changeset required, `minor`.
 
-### Edge case C — Template schema change (new optional field that the CLI ignores)
+### Edge case C: Template schema change (new optional field that the CLI ignores)
 
-If a new field is added AND the CLI does not read it (defensive parsing — unknown fields are ignored), then:
+If a new field is added AND the CLI does not read it (defensive parsing; unknown fields are ignored), then:
 
 - No CLI change.
 - Old CLI versions keep working with new API responses.
 
 **Rule**: new optional field, CLI ignores it → no CLI changeset.
 
-The CLI's `isTemplate` validator SHOULD be defensive about unknown fields (forward compat). If it isn't today, this is a separate hardening task — see [06-implementation-specs.md §6.2](06-implementation-specs.md#62-appscli-packagejson-proposed) for related work.
+The CLI's `isTemplate` validator SHOULD be defensive about unknown fields (forward compat). If it isn't today, this is a separate hardening task; see [06-implementation-specs.md §6.2](06-implementation-specs.md#62-appscli-packagejson-proposed) for related work.
 
 ## 11.4 Decision table
 
@@ -87,16 +87,16 @@ If template additions ever triggered a CLI version bump, three things would brea
 
 1. **External submissions become impossible.** A third-party submitting a template would have to wait for the maintainers to release a new CLI version, defeating the purpose of accepting external submissions.
 2. **Operational overhead explodes.** Every template addition would be a release PR, a tag, an npm publish, and a GitHub Release. The maintainers' review bandwidth gets eaten by content changes.
-3. **SemVer loses meaning.** A CLI version would no longer track the CLI's own behavior — it would track the size of the template registry. Consumers reading `0.5.0 → 0.6.0` wouldn't know what changed in the CLI without diffing the registry.
+3. **SemVer loses meaning.** A CLI version would no longer track the CLI's own behavior; it would track the size of the template registry. Consumers reading `0.5.0 → 0.6.0` wouldn't know what changed in the CLI without diffing the registry.
 
-The decoupling is not just good practice — it is required for the architecture to scale.
+The decoupling is not just good practice; it is required for the architecture to scale.
 
 ## 11.7 Related changes in this audit
 
 This section clarifies (but does not contradict) the process described in the project-side [`docs/engineering/processes/versioning.md`](../../../processes/versioning.md) (contributor changeset workflow):
 
-- [`docs/engineering/processes/versioning.md` — Contributor — adding a changeset](../../../processes/versioning.md#contributor--adding-a-changeset) — when to add a changeset.
-- [06-implementation-specs.md §6.2](06-implementation-specs.md#62-appscli-packagejson-proposed) — `apps/cli/package.json` entrypoints.
-- [02-problems.md §2.8](02-problems.md#28-p3--no-dependabot--changesets-integration) — dependency bumps don't need changesets.
+- [`docs/engineering/processes/versioning.md` Contributor: adding a changeset](../../../processes/versioning.md#contributor--adding-a-changeset): when to add a changeset.
+- [06-implementation-specs.md §6.2](06-implementation-specs.md#62-appscli-packagejson-proposed): `apps/cli/package.json` entrypoints.
+- [02-problems.md §2.8](02-problems.md#28-p3--no-dependabot--changesets-integration): dependency bumps don't need changesets.
 
 The rule of thumb: **if your change can be described as "the registry now has one more template", it's a content change. If it can be described as "the CLI now does X", it's a CLI change.** Only the second warrants a CLI version bump.

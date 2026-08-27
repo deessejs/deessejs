@@ -6,7 +6,7 @@ PRs target `staging` per the staging-first workflow documented in `AGENTS.md`. E
 
 The senior pattern has 3 PRs (was 4 in the dual-flow draft, since the two-workflow PR and the root-bump PR are merged into one).
 
-## PR 1 — Cleanup (mechanical)
+## PR 1: Cleanup (mechanical)
 
 - Add `license`, `repository`, `keywords`, `module`, `types`, and an updated `publishConfig` to `apps/cli/package.json`.
 - Add `dts: true` to `apps/cli/tsup.config.ts`. Verify `dist/` contains `index.d.ts`.
@@ -15,7 +15,7 @@ The senior pattern has 3 PRs (was 4 in the dual-flow draft, since the two-workfl
 - Delete `VERSION` at the repo root (no consumer after the senior pattern lands).
 - Run `pnpm install --frozen-lockfile` to sync lockfile.
 
-## PR 2 — `release.yml` + CI
+## PR 2: `release.yml` + CI
 
 - Replace `.github/workflows/release.yml` with the senior-pattern version (~50 lines, single job).
   - In the same commit, also update `AGENTS.md` or `CONTRIBUTING.md` if any staging-first notes need adjusting (none expected).
@@ -23,12 +23,12 @@ The senior pattern has 3 PRs (was 4 in the dual-flow draft, since the two-workfl
 - Add a new workflow (`.github/workflows/changesets-check.yml`) that triggers on `pull_request: branches: [staging, main]` and fails the PR if `.changeset/*.md` is missing AND the PR touches `apps/cli/**`.
 - Update `.github/workflows/ci.yml` to trigger on `pull_request: branches: [staging, main]` so staging PRs actually run CI.
 
-## PR 3 — `apps/cli` flip
+## PR 3: `apps/cli` flip
 
 - Flip `apps/cli/package.json#private` to `false`.
 - Create the project-side process docs:
-  - `docs/engineering/processes/versioning.md` — canonical process doc (maintainer playbook).
-  - `.changeset/README.md` — quick reference for contributors.
+  - `docs/engineering/processes/versioning.md`: canonical process doc (maintainer playbook).
+  - `.changeset/README.md`: quick reference for contributors.
   - Update `CONTRIBUTING.md` with the changeset requirement.
 
 ## One-time setup (not in a PR)
@@ -45,7 +45,7 @@ Full step-by-step walkthrough at [12-npm-setup-walkthrough.md](12-npm-setup-walk
 
 ## First release (actual sequence)
 
-The npm namespace `@deessejs/cli` already had 46 versions published (up to `0.6.46`) from previous unrelated work, so the first publish of the current code uses `1.0.x` to skip past the 0.x range cleanly. The very first attempt (`1.0.0`) shipped with `catalog:` deps, which npm can't resolve — the published package was broken at install time (`EUNSUPPORTEDPROTOCOL`). The fix was `1.0.1` with real semver for `@deessejs/*` deps.
+The npm namespace `@deessejs/cli` already had 46 versions published (up to `0.6.46`) from previous unrelated work, so the first publish of the current code uses `1.0.x` to skip past the 0.x range cleanly. The very first attempt (`1.0.0`) shipped with `catalog:` deps, which npm can't resolve; the published package was broken at install time (`EUNSUPPORTEDPROTOCOL`). The fix was `1.0.1` with real semver for `@deessejs/*` deps.
 
 - **Bump `apps/cli/package.json#version` from `0.1.0` to `1.0.1`** (manual edit, committed to main via PR).
 - **Replace `catalog:` deps with real semver**: `@deessejs/errors: "^1.1.1"`, `@deessejs/fp: "^1.0.0"`. `devDependencies` can stay in `catalog:` (don't ship).
