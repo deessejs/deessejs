@@ -93,8 +93,10 @@ export default function HomePage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-20 px-4 py-16 sm:px-6 lg:gap-32 lg:py-24">
       {/* 1. Hero */}
       <section className="flex flex-col items-center gap-6 pt-12 text-center lg:pt-24">
-        <Badge variant="outline" className="text-label-13 uppercase tracking-wider">
-          Stop rewriting the same SaaS
+        <Badge asChild variant="outline" className="text-label-13 uppercase tracking-wider">
+          <Link href="/blog/getting-started">
+            Read: Getting Started with DeesseJS &rarr;
+          </Link>
         </Badge>
         <h1 className="text-heading-48 sm:text-heading-64 lg:text-heading-72 tracking-tighter text-balance max-w-4xl">
           Your coding agent should ship from contracts, not from scratch.
