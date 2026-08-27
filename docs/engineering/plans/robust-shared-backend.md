@@ -1,5 +1,5 @@
 ---
-title: "Robust shared backend (REST + RPC) consumed by web and CLI"
+title: "Robust shared backend consumed by web and CLI"
 author: martyy-code
 generated: 2026-08-03
 status: approved
@@ -27,7 +27,7 @@ decisions:
     rationale: "Aligns apps/web with the shared contract, single source of truth for the registry, SEO-friendly without coupling build to data freshness."
 ---
 
-# Robust shared backend (REST + RPC) consumed by web and CLI
+# Robust shared backend consumed by web and CLI
 
 _Date: 2026-08-03. Status: approved. Analysis with locked implementation decisions. No code changes yet._
 
@@ -250,7 +250,7 @@ The four questions that gated this plan closed out (see frontmatter `decisions:`
 - **Differing Hono versions across consumers.** Already mitigated by the `pnpm-workspace.yaml` `hono: ^4.12.28` override (see the comment in the catalog). Keep this override discipline as new middleware arrives.
 - **Vercel cold start + `/ready`.** When `apps/app` cold-starts, `/ready` will 503 until Postgres is reachable from the new region. Document this in the deployment runbook rather than papering over it with retries.
 - **Breaking changes during the migration.** The plan must preserve wire compatibility: while the contract is moving from inline to `@workspace/contracts`, the JSON shape on the wire must not change. The migration is a refactor, not a release.
-- **`apps/web` now depends on `app.deessejs.com` uptime.** Today `apps/web` has zero runtime dependency on the product app. Once the templates pages fetch from `/api/v1/templates`, a Vercel incident on `apps/app` will surface as empty grids on the marketing site. Mitigate by: (a) ISR with `revalidate: 600` so the cache absorbs short blips; (b) a fallback that renders the last known list from the ISR cache, not a hard error; (c) a published runbook for "marketing site shows empty templates" that points to ISR cache warming, not on-call for the backend team.
+- **`apps/web` now depends on `app.deessejs.com` uptime.** Today `apps/web` has zero runtime dependency on the product app. Once the templates pages fetch from `/api/v1/templates`, a Vercel incident on `apps/app` will surface as empty grids on the marketing site. Mitigate by: (1) ISR with `revalidate: 600` so the cache absorbs short blips; (2) a fallback that renders the last known list from the ISR cache, not a hard error; (3) a published runbook for "marketing site shows empty templates" that points to ISR cache warming, not on-call for the backend team.
 
 ## Follow-up work
 
