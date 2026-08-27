@@ -4,7 +4,6 @@ import { ArrowRight, Bot, LayoutTemplate, Rocket } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Card } from "@workspace/ui/components/card"
-import { Separator } from "@workspace/ui/components/separator"
 import { cn } from "@workspace/ui/lib/utils"
 
 /**
@@ -128,13 +127,13 @@ export default function HomePage() {
         </pre>
       </section>
 
-      <Separator />
+      <div className="border-t border-border" />
 
       {/* 2. Featured Templates */}
       <section className="flex flex-col gap-6">
         <header className="flex items-end justify-between gap-4">
           <div className="flex flex-col gap-2">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            <p className="text-label-13 text-muted-foreground">
               From the registry
             </p>
             <h2 className="text-heading-32 tracking-tight">
@@ -143,9 +142,10 @@ export default function HomePage() {
           </div>
           <Link
             href="/templates"
-            className="text-label-14 text-foreground underline-offset-4 hover:underline shrink-0"
+            className="text-label-14 text-foreground underline-offset-4 hover:underline inline-flex items-center gap-1 shrink-0"
           >
-            All templates &rarr;
+            All templates
+            <ArrowRight className="size-3" aria-hidden />
           </Link>
         </header>
 
@@ -178,11 +178,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      <Separator />
+      <div className="border-t border-border" />
 
       {/* 3. Manifesto teaser */}
       <section className="mx-auto flex max-w-3xl flex-col gap-6 text-center">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <p className="text-label-13 text-muted-foreground">
           Why we build this
         </p>
         <blockquote className="text-heading-32 tracking-tight text-balance">
@@ -201,13 +201,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      <Separator />
+      <div className="border-t border-border" />
 
       {/* 4. Knowledge Base teaser */}
       <section className="flex flex-col gap-6">
         <header className="flex items-end justify-between gap-4">
           <div className="flex flex-col gap-2">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            <p className="text-label-13 text-muted-foreground">
               Learn by doing
             </p>
             <h2 className="text-heading-32 tracking-tight">
@@ -216,9 +216,10 @@ export default function HomePage() {
           </div>
           <Link
             href="/knowledge-base"
-            className="text-label-14 text-foreground underline-offset-4 hover:underline shrink-0"
+            className="text-label-14 text-foreground underline-offset-4 hover:underline inline-flex items-center gap-1 shrink-0"
           >
-            All guides &rarr;
+            All guides
+            <ArrowRight className="size-3" aria-hidden />
           </Link>
         </header>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -228,7 +229,7 @@ export default function HomePage() {
               href={`/knowledge-base/guide/${guide.slug}`}
               className="group"
             >
-              <Card className="flex h-full flex-col gap-2 p-6 transition-colors group-hover:bg-accent/30">
+              <Card className="bg-background flex h-full flex-col gap-2 rounded-none p-4 transition-colors group-hover:bg-accent/50">
                 <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
                   {guide.title}
                 </h3>
@@ -241,12 +242,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      <Separator />
+      <div className="border-t border-border" />
 
       {/* 5. Use cases band */}
       <section className="flex flex-col gap-6">
         <header className="flex flex-col gap-2">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 text-muted-foreground">
             Build with DeesseJS
           </p>
           <h2 className="text-heading-32 tracking-tight">
@@ -268,7 +269,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <Separator />
+      <div className="border-t border-border" />
 
       {/* 6. Closing CTA */}
       <section className="flex flex-col items-center gap-6 text-center">
