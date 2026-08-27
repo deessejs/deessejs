@@ -49,7 +49,7 @@ A first attempt introduced `RPCLink({ url, fetch: orpcFetch })` with a custom `f
 const orpcFetch: typeof fetch = (request, init) => { /* ... */ }
 ```
 
-That signature is **wrong**. The actual `RPCLink` hook signature, found in `@orpc/client/dist/adapters/fetch/index.d.ts`, is:
+That signature is **wrong**. The actual `RPCLink` hook signature, found in the `@orpc/client` adapters fetch type declarations (the file path under `dist/adapters/fetch/index.d.ts`), is:
 
 ```ts
 fetch?: (
@@ -265,7 +265,7 @@ Earlier drafts of this plan asked whether ISR directives should live at the call
 
 ### Phase 3, test refactor with server-side client and Mock Service Worker
 
-This phase started vague ("rewrite tests as server mocks using Mock Service Worker"). After working through the command-line tests and watching `vi.stubGlobal("fetch", ...)` fail with RPCLink, the [official oRPC testing pattern](https://orpc.dev/docs/advanced/testing-mocking) plus Mock Service Worker landed as the approach for HTTP-level tests.
+This phase started vague ("rewrite tests as server mocks using Mock Service Worker"). After working through the command-line tests and watching `vi.stubGlobal("fetch", ...)` fail with RPCLink, the [official oRPC testing pattern][orpc-testing] plus Mock Service Worker landed as the approach for HTTP-level tests.
 
 #### Why `vi.stubGlobal("fetch", ...)` doesn't work with `RPCLink`
 
@@ -291,7 +291,7 @@ expect(result.templates).toEqual(validTemplates)
 
 Trade-offs:
 
-- **Pro**: Type-safe via the shared contract. Fast. No mocks. No flakiness.
+- **Pro**: type-safe via the shared contract. Fast. No mocks. No flakiness.
 - **Pro**: Tests the procedure handler logic + middleware chain, which is the bulk of what can go wrong on the server.
 - **Con**: Doesn't test RPCLink's serialization, retry, or `isOrpcErrorBody` mapping. Tests cover those against a real HTTP fixture.
 - **Con**: Tests can't run in a pure-Node environment if the router pulls in env-only modules (auth, db). Workaround: import the procedure definition only, or stub the env at the test boundary.
@@ -300,7 +300,7 @@ For the CLI, this means: **tests of the templates procedure logic** use the Serv
 
 #### Pattern B, Mock Service Worker with `@dansnow/orpc-msw` (recommended for web tests)
 
-The web side needs to test React Server Components and client components that consume the typed RPCLink. Mocker `fetch` is wrong for the same reason as the CLI. The recommended pattern is [MSW](https://mswjs.io/) with type-safe oRPC handlers via [DanSnow/orpc-msw](https://github.com/DanSnow/orpc-msw):
+The web side needs to test React Server Components and client components that consume the typed RPCLink. Mocker `fetch` is wrong for the same reason as the CLI. The recommended pattern is [MSW](https://mswjs.io/) with type-safe oRPC handlers via [DanSnow's oRPC MSW adapter][orpc-msw]:
 
 ```ts
 import { createORPCMsw } from "@dansnow/orpc-msw"
@@ -321,7 +321,7 @@ it("renders templates on success", async () => {
 
 Trade-offs:
 
-- **Pro**: Type-safe. Handler inputs/outputs come from the router contract. Adding a field to `TemplateV1` flags every test that needs updating.
+- **Pro**: type-safe. Handler inputs/outputs come from the router contract. Adding a field to `TemplateV1` flags every test that needs updating.
 - **Pro**: Tests the full client → link → serialization stack, including ISR via `context.next`.
 - **Con**: New dev dependency: `@dansnow/orpc-msw`. The trade-off accepts this dependency for the type-safety gain. Pin to a known-good version; revisit if the project goes unmaintained.
 - **Con**: Requires Next.js fetch extension support. MSW must intercept the same `fetch` that Next.js extends for ISR. Verified to work with MSW v2.
@@ -403,5 +403,8 @@ The plan picks **A** because the codes cross the wire and the contract shape alr
 - **2026-08-10**: audited `packages/api/src/index.ts` against the oRPC Hono guide. Current implementation follows the recommended patterns (RPCHandler, body-parser Proxy, prefix, c.newResponse, await next()).
 - **2026-08-10**: confirmed two error channels on the wire. `ORPCError` from procedures (decoded by the typed client) and the custom `{ code, message, requestId }` envelope from Hono middleware (NOT decoded).
 - **2026-08-10** (revised): decided to absorb the server-side error unification into Phase 1 instead of treating it as a separate long-term task. Rationale: the two-channel error model is a permanent anti-pattern; every new client would have to handle it; the cost of unifying now (half a day) is much smaller than the cost of carrying the debt forward. The plan now ships a single error channel end-to-end.
-- **2026-08-10** (revised): after working through the CLI tests, discovered that `vi.stubGlobal("fetch", ...)` is the wrong mocking layer for RPCLink tests. The mock sits below RPCLink and bypasses it, so the typed client never runs and the wire contract never gets validated. Initial reaction was to roll back to direct fetch + unwrap; correct reaction is to use the [official oRPC testing pattern](https://orpc.dev/docs/advanced/testing-mocking) (Server-Side Client) plus MSW with `@dansnow/orpc-msw` for HTTP-level tests. Phase 3 rewritten around these patterns. The CLI keeps RPCLink for production; only the test approach changes.
+- **2026-08-10** (revised): after working through the CLI tests, discovered that `vi.stubGlobal("fetch", ...)` is the wrong mocking layer for RPCLink tests. The mock sits below RPCLink and bypasses it, so the typed client never runs and the wire contract never gets validated. Initial reaction was to roll back to direct fetch + unwrap; correct reaction is to use the [official oRPC testing pattern][orpc-testing] (Server-Side Client) plus MSW with `@dansnow/orpc-msw` for HTTP-level tests. Phase 3 rewritten around these patterns. The CLI keeps RPCLink for production; only the test approach changes.
 - **2026-08-10** (revised): Phase 2 ISR strategy corrected. Earlier drafts called for threading `next.revalidate` and `next.tags` through the RPCLink `context` (the third argument of the custom `fetch` hook). The oRPC docs cover client context but don't document Next.js ISR forwarding. The mechanism Next.js exposes for ISR is the standard `fetch` extension: Next reads `init.next.revalidate` and `init.next.tags` directly when `globalThis.fetch(url, init)` runs. The correct pattern adds the directives to `init` inside the custom `fetch` hook, not via `context`. This simplifies both the wrapper and the call sites.
+
+[orpc-testing]: https://orpc.dev/docs/advanced/testing-mocking
+[orpc-msw]: https://github.com/DanSnow/orpc-msw
