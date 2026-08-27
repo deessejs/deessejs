@@ -1,0 +1,8 @@
+extends: existence
+message: "Remove the em dash (—) or en dash (–). Use a colon, semicolon, parentheses, or rephrase."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  - "—"
+  - "–"
