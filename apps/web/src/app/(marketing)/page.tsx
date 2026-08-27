@@ -94,27 +94,28 @@ export default function HomePage() {
       {/* 1. Hero */}
       <section className="flex flex-col items-center gap-6 pt-12 text-center lg:pt-24">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          The SaaS template that never sleeps
+          A registry of templates
         </p>
         <h1 className="text-heading-72 tracking-tight text-balance max-w-3xl">
-          Software that builds software.
+          DeesseJS is a registry of templates for Next.js SaaS.
         </h1>
         <p className="text-muted-foreground text-copy-20 leading-7 max-w-2xl text-balance [&:not(:first-child)]:mt-0">
-          DeesseJS ships opinionated templates, a registry, and a CLI
-          for the next era of agent-driven development. Install a
-          starter, build on top of contracts that already work, and
-          ship.
+          Each template ships with TypeScript contracts, a CLI, and an
+          AGENTS.md. Install a starter, point your coding agent at it,
+          and ship.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           <Button asChild size="lg">
-            <Link href="/templates">Browse templates</Link>
+            <Link href="/knowledge-base/guide/install-deessejs-cli">
+              Install the CLI
+            </Link>
           </Button>
           <Button variant="outline" size="lg" asChild>
-            <Link href="/manifesto">Read the manifesto</Link>
+            <Link href="/templates">Browse templates</Link>
           </Button>
         </div>
         <pre className="mt-4 rounded-md border border-border bg-muted/40 px-4 py-2 text-copy-14-mono text-foreground">
-          <code>npx deessejs@latest init saas-starter</code>
+          <code>npm install -g @deessejs/cli@latest</code>
         </pre>
       </section>
 
