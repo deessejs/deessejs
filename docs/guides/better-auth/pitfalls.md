@@ -1,4 +1,4 @@
-# Better-Auth — Known Pitfalls
+# Better-Auth: Known Pitfalls
 
 **Read this before any implementation.** These are behavioral bugs, non-obvious defaults, and gotchas that have caused issues in this repo.
 
@@ -12,13 +12,13 @@ Setting `useSecureCookies: true` forces the `Secure` cookie attribute in **all e
 
 **Current state in this repo (verified 2026-07-28):** guarded on `NODE_ENV` at `packages/auth/src/auth.ts:55-57`. Production HTTPS still gets `Secure`; local HTTP does not. Local onboarding works on plain `http://localhost:3000`.
 
-**Source:** [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies) — "cookies are secure only in production by default."
+**Source:** [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies), "cookies are secure only in production by default."
 
 ---
 
 ## 2. `localhost` in `trustedOrigins` Risks Prod Leak
 
-`trustedOrigins` previously included hardcoded `http://localhost:3000` and `http://localhost:3001` regardless of environment. The CSRF / callback gates in Better Auth 1.6.x delegate to whatever list they receive — so in a self-hosted / Codespaces / on-prem deploy that exposes `localhost`, an attacker reaching those URLs could pass the CSRF check.
+`trustedOrigins` previously included hardcoded `http://localhost:3000` and `http://localhost:3001` regardless of environment. The CSRF / callback gates in Better Auth 1.6.x delegate to whatever list they receive. In a self-hosted / Codespaces / on-prem deploy that exposes `localhost`, an attacker reaching those URLs could pass the CSRF check.
 
 **Current state in this repo (verified 2026-07-28):** gated on `NODE_ENV` at `packages/auth/src/auth.ts:12-17`. The localhost entries are only spread when `NODE_ENV === "development"`.
 
@@ -31,7 +31,7 @@ trustedOrigins: [
 ],
 ```
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options) — `trustedOrigins` config.
+**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `trustedOrigins` config.
 
 ---
 
@@ -41,9 +41,9 @@ Setting `emailAndPassword.requireEmailVerification: true` **without** also setti
 
 **Current state in this repo (verified 2026-07-28):** both `sendOnSignUp: true` and `sendOnSignIn: true` are explicit at `packages/auth/src/auth.ts:38-39`. `apps/app/proxy.ts` redirects unverified users on protected prefixes (`/home`, `/settings`) to `/verify-email`.
 
-**If you ever need to bypass verification during development**, do not comment these lines out — set `emailAndPassword.requireEmailVerification: false` temporarily and revert before commit. Do not change `sendOnSignUp` back to `false` (or `undefined`-implicit) as a "shortcut".
+**If you ever need to bypass verification during development**, do not comment these lines out. Set `emailAndPassword.requireEmailVerification: false` temporarily and revert before commit. Do not change `sendOnSignUp` back to `false` (or `undefined`-implicit) as a "shortcut".
 
-**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password) — `sendOnSignUp`, `sendOnSignIn` options.
+**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `sendOnSignUp`, `sendOnSignIn` options.
 
 ---
 

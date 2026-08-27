@@ -1,4 +1,4 @@
-# Better-Auth — Setup
+# Better-Auth: Setup
 
 Base configuration for better-auth in this repo. See [`index.md`](./index.md) first for locked-in decisions.
 
@@ -36,9 +36,9 @@ export const auth = betterAuth({
 })
 ```
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options) — base config reference.
+**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), base config reference.
 
-> **Note:** this template is **single-tenant** (see `index.md` "Locked-in Decisions"). No organization plugin, no org schema — do not reintroduce.
+> **Note:** this template is **single-tenant** (see `index.md` "Locked-in Decisions"). There is no organization plugin and no org schema. Do not reintroduce.
 
 ---
 
@@ -53,7 +53,7 @@ export const auth = betterAuth({
 
 `AUTH_SECRET` is accepted as an alias for `BETTER_AUTH_SECRET`. See `packages/env/src/schema.ts`.
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options) — `baseURL`, `secret`, `trustedOrigins`.
+**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `baseURL`, `secret`, `trustedOrigins`.
 
 ---
 
@@ -74,7 +74,7 @@ secret: "new-secret",
 secrets: ["new-secret", "old-secret"], // old-secret is decrypt-only
 ```
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options) — `secret` and `secrets`.
+**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `secret` and `secrets`.
 
 ---
 
@@ -93,7 +93,7 @@ trustedOrigins: [
 
 **Warning:** hardcoded localhost origins in `trustedOrigins` are a prod risk if `ALLOWED_ORIGINS` is empty. See [`pitfalls.md`](./pitfalls.md) §5.
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options) — `trustedOrigins` with wildcard patterns.
+**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `trustedOrigins` with wildcard patterns.
 
 ---
 
@@ -121,7 +121,7 @@ advanced: {
 },
 ```
 
-**Source:** [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies) — cookie config, `crossSubDomainCookies`.
+**Source:** [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies), cookie config, `crossSubDomainCookies`.
 
 ---
 
@@ -144,7 +144,7 @@ pnpm auth:generate   # or: better-auth generate --config ./src/auth.ts --output 
 
 **Important:** after running `pnpm auth:generate`, review the diff before committing. The CLI may overwrite custom field names or indexes.
 
-**Source:** [better-auth.com/docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle) — adapter docs with `usePlural`, `modelName`, `fields` options.
+**Source:** [better-auth.com/docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle), adapter docs with `usePlural`, `modelName`, `fields` options.
 
 ---
 
@@ -166,7 +166,7 @@ api.on(["POST", "GET"], "/auth/*", (c) => {
 })
 ```
 
-**Source:** [better-auth.com/docs/integrations/next-js](https://better-auth.com/docs/integrations/next-js) — Next.js integration docs.
+**Source:** [better-auth.com/docs/integrations/next-js](https://better-auth.com/docs/integrations/next-js), Next.js integration docs.
 
 ---
 
@@ -180,17 +180,17 @@ experimental: {
 },
 ```
 
-This is **experimental** — test thoroughly on each better-auth upgrade.
+This is **experimental**. Test thoroughly on each better-auth upgrade.
 
-**Source:** [better-auth.com/docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle) — joins (experimental) section.
+**Source:** [better-auth.com/docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle), joins (experimental) section.
 
 ---
 
 ## Health Checks
 
 The API exposes:
-- `GET /api/health` — always returns `{ status: "ok" }`
-- `GET /api/ready` — readiness probe (currently no DB check — see [`pitfalls.md`](./pitfalls.md))
+- `GET /api/health` always returns `{ status: "ok" }`
+- `GET /api/ready` is a readiness probe (currently no DB check; see [`pitfalls.md`](./pitfalls.md))
 
 For a proper readiness probe, add a DB ping:
 ```ts

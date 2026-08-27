@@ -1,10 +1,10 @@
-# Better-Auth — Client Integration
+# Better-Auth: Client Integration
 
 React hooks and auth client setup. See [`index.md`](./index.md) first and read [`pitfalls.md`](./pitfalls.md) before implementing anything.
 
-> **Single-tenant:** the organization client plugin (`useActiveOrganization`, `authClient.organization.*`) is intentionally not wired. This doc reflects that. Patterns historically documented here for the org plugin are removed — see [`org.md`](./org.md) for archived reference.
+> **Single-tenant:** the organization client plugin (`useActiveOrganization`, `authClient.organization.*`) is intentionally not wired. This doc reflects that. Patterns historically documented here for the org plugin are removed. See [`org.md`](./org.md) for archived reference.
 
-**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client) — React client reference.
+**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), React client reference.
 
 ---
 
@@ -25,7 +25,7 @@ The client is instantiated in the Next.js app. It reads from:
 
 > Single-tenant reminder: `organizationClient()` is intentionally **not** wired. Anything in `useSession().session.activeOrganizationId` will be `undefined`.
 
-**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client) — `createAuthClient`.
+**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), `createAuthClient`.
 
 ---
 
@@ -38,12 +38,12 @@ const { data: session, isLoading } = useSession()
 ```
 
 Returns:
-- `session.user` — the user object
-- `session.session` — the session object (does **not** include `activeOrganizationId` in single-tenant mode)
-- `session.session.expiresAt` — session expiry
-- `isLoading` — `true` while fetching session state
+- `session.user` is the user object
+- `session.session` is the session object (does **not** include `activeOrganizationId` in single-tenant mode)
+- `session.session.expiresAt` is the session expiry
+- `isLoading` is `true` while fetching session state
 
-**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client) — `useSession`.
+**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), `useSession`.
 
 ---
 
@@ -57,7 +57,7 @@ const { user, session, isLoading } = useAuth()
 
 Shorthand for `useSession()` + direct user access. `user` is `null` when not authenticated.
 
-**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client) — `useAuth`.
+**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), `useAuth`.
 
 ---
 
@@ -94,7 +94,7 @@ await authClient.signIn.email(
 )
 ```
 
-**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password) — `signIn.email`, `signUp.email`. [better-auth.com/docs/client](https://better-auth.com/docs/client) — `onError` callback pattern.
+**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `signIn.email`, `signUp.email`. [better-auth.com/docs/client](https://better-auth.com/docs/client), `onError` callback pattern.
 
 ---
 
@@ -106,7 +106,7 @@ await authClient.signOut({
 })
 ```
 
-**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client) — `signOut`.
+**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), `signOut`.
 
 ---
 
@@ -119,7 +119,7 @@ await authClient.sendVerificationEmail({
 })
 ```
 
-**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password) — `sendVerificationEmail`.
+**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `sendVerificationEmail`.
 
 ---
 
@@ -135,4 +135,4 @@ authClient.$sessionSignal.subscribe((session) => {
 })
 ```
 
-**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client) — `$sessionSignal` reference.
+**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), `$sessionSignal` reference.

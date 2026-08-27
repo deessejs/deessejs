@@ -1,10 +1,10 @@
-# Better-Auth — Database Hooks
+# Better-Auth: Database Hooks
 
 Lifecycle hooks for database operations. See [`index.md`](./index.md) first.
 
-**Source:** [better-auth.com/docs/concepts/hooks](https://better-auth.com/docs/concepts/hooks) — core hooks concept. [better-auth.com/docs/concepts/database](https://better-auth.com/docs/concepts/database) — databaseHooks reference.
+**Source:** [better-auth.com/docs/concepts/hooks](https://better-auth.com/docs/concepts/hooks), core hooks concept. [better-auth.com/docs/concepts/database](https://better-auth.com/docs/concepts/database), databaseHooks reference.
 
-> See [`org.md`](./org.md) (historical) for the auto-create-org pattern this template used to rely on — **not applicable here** since the repo is single-tenant.
+> See [`org.md`](./org.md) (historical) for the auto-create-org pattern this template used to rely on. It is **not applicable here** since the repo is single-tenant.
 
 ---
 
@@ -45,19 +45,19 @@ databaseHooks: {
 
 The `before` hook can **merge** data back into the session object via `{ data: ... }`. The `after` hook receives the final row.
 
-**Source:** [better-auth.com/docs/concepts/database](https://better-auth.com/docs/concepts/database) — hook signature documentation.
+**Source:** [better-auth.com/docs/concepts/database](https://better-auth.com/docs/concepts/database), hook signature documentation.
 
 ---
 
-## Session.create.before — Known Caveat ([#9070](https://github.com/better-auth/better-auth/issues/9070))
+## Session.create.before, Known Caveat ([#9070](https://github.com/better-auth/better-auth/issues/9070))
 
 > ⚠️ **Note:** this caveat applies to any code path that touches `session.create.before`. This template is single-tenant and currently does **not** define any such hook; do not add one without first reading the upstream issue.
 
-On signup, the execution order of the create flow is: `session.create.before` → session row written → `user.create.before` → user row written → `user.create.after`. The original report in #9070 concerned an org-auto-create flow that wrote an `activeOrganizationId` from inside this hook — that flow is org-specific and not applicable here. If you ever add a `session.create.before` for an unrelated reason, verify the user row exists at write time.
+On signup, the execution order of the create flow is: `session.create.before` → session row written → `user.create.before` → user row written → `user.create.after`. The original report in #9070 concerned an org-auto-create flow that wrote an `activeOrganizationId` from inside this hook. That flow is org-specific and not applicable here. If you ever add a `session.create.before` for an unrelated reason, verify the user row exists at write time.
 
 ---
 
-## User.create.after — Async Side Effects
+## User.create.after, Async Side Effects
 
 Use for fire-and-forget operations that need the committed user row:
 
@@ -74,7 +74,7 @@ databaseHooks: {
 },
 ```
 
-Always use `void` or `waitUntil` for async side effects — do not await in `after` hooks as it blocks the response.
+Always use `void` or `waitUntil` for async side effects. Do not await in `after` hooks as it blocks the response.
 
 ---
 
@@ -107,7 +107,7 @@ On signup, the execution order is:
 5. User row written
 6. `user.create.after` (if new user)
 
-**Do not** assume `user` exists when `session.create.before` runs — on first signup it does not yet. (Step 7 from the pre-single-tenant ordering — "organization plugin creates membership row" — has been removed.)
+**Do not** assume `user` exists when `session.create.before` runs; on first signup it does not yet. (Step 7 from the pre-single-tenant ordering, "organization plugin creates membership row", has been removed.)
 
 ---
 
@@ -119,6 +119,6 @@ If `experimental.joins: true`, the schema must include Drizzle `relations()` for
 pnpm auth:generate
 ```
 
-Review the diff — the CLI regenerates the entire `schema/auth.ts` and may overwrite customizations.
+Review the diff. The CLI regenerates the entire `schema/auth.ts` and may overwrite customizations.
 
-**Source:** [better-auth.com/docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle) — joins section.
+**Source:** [better-auth.com/docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle), joins section.

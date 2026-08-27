@@ -1,8 +1,8 @@
-# Better-Auth — Session Management
+# Better-Auth: Session Management
 
 Session lifecycle, cookie configuration, and expiration tuning. See [`index.md`](./index.md) first.
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options) — session config reference. [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies) — cookie docs. [better-auth.com/docs/concepts/session-management](https://better-auth.com/docs/concepts/session-management) — session management concept.
+**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), session config reference. [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies), cookie docs. [better-auth.com/docs/concepts/session-management](https://better-auth.com/docs/concepts/session-management), session management concept.
 
 ---
 
@@ -27,13 +27,13 @@ Shorter `updateAge` = more DB writes but faster session revocation. Longer = few
 
 ### disableSessionRefresh
 
-Set to `true` to never update `updatedAt` — session is only validated on `expiresIn`, never on `updateAge`. Useful for high-traffic read-heavy apps.
+Set to `true` to never update `updatedAt`. The session is only validated on `expiresIn`, never on `updateAge`. Useful for high-traffic read-heavy apps.
 
 ### storeSessionInDatabase
 
 Set to `true` when using secondary storage adapters. Default: `false` (session stored in cookies only).
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options) — session options.
+**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), session options.
 
 ---
 
@@ -54,7 +54,7 @@ session: {
 
 Cached sessions are encrypted (JWE) using the auth secret. The DB is still queried every `maxAge` interval.
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options) — `cookieCache`.
+**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `cookieCache`.
 
 ---
 
@@ -62,9 +62,9 @@ Cached sessions are encrypted (JWE) using the auth secret. The DB is still queri
 
 ### Secure Cookies
 
-Cookies are `httpOnly` and `secure` by default in production (`NODE_ENV=production`). Do **not** set `useSecureCookies: true` unconditionally — it breaks local dev without HTTPS. See [`pitfalls.md`](./pitfalls.md) §4.
+Cookies are `httpOnly` and `secure` by default in production (`NODE_ENV=production`). Do **not** set `useSecureCookies: true` unconditionally; it breaks local dev without HTTPS. See [`pitfalls.md`](./pitfalls.md) §4.
 
-**Source:** [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies) — "cookies are secure only in production by default."
+**Source:** [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies), "cookies are secure only in production by default."
 
 ### Cookie Prefix
 
@@ -78,7 +78,7 @@ advanced: {
 
 Resulting cookies: `my-app.session_token`, `my-app.session_data`.
 
-**Source:** [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies) — cookie prefix.
+**Source:** [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies), cookie prefix.
 
 ### Cross-Subdomain Cookies
 
@@ -104,7 +104,7 @@ Rules:
 2. Set the most specific domain possible
 3. Do not share with untrusted subdomains
 
-**Source:** [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies) — cross-subdomain cookies.
+**Source:** [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies), cross-subdomain cookies.
 
 ### Custom Cookie Names
 
@@ -135,7 +135,7 @@ Or manually:
 await auth.api.deleteSession({ body: { id: sessionId }, headers })
 ```
 
-**Source:** [better-auth.com/docs/concepts/session-management](https://better-auth.com/docs/concepts/session-management) — session lifecycle.
+**Source:** [better-auth.com/docs/concepts/session-management](https://better-auth.com/docs/concepts/session-management), session lifecycle.
 
 ---
 
@@ -157,7 +157,7 @@ if (!session) {
 const { user, session: sess } = session
 ```
 
-For oRPC middleware integration, see [`client.md`](./client.md) — the auth middleware wraps `getSession`.
+For oRPC middleware integration, see [`client.md`](./client.md). The auth middleware wraps `getSession`.
 
 ---
 
@@ -174,7 +174,7 @@ trustedOrigins: [
 ],
 ```
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options) — `trustedOrigins` with wildcard support.
+**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `trustedOrigins` with wildcard support.
 
 ---
 
@@ -195,4 +195,4 @@ Via environment variable: `BETTER_AUTH_SECRETS=2:new,1:old`.
 
 After rotation: keep the old secret in `secrets` for the duration of the longest session (`expiresIn`). Then remove it.
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options) — `secret` and `secrets` for rotation.
+**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `secret` and `secrets` for rotation.
