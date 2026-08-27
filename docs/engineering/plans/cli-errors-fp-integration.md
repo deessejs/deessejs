@@ -1,4 +1,4 @@
-# apps/cli — @deessejs/errors and @deessejs/fp integration plan
+# apps/cli: @deessejs/errors and @deessejs/fp integration plan
 
 _Date: 2026-07-30. Status: Phase 1 FAILED on upstream issue. Stopped per plan §"If any exit criterion fails, file the upstream issue with a repro and stop."_
 
@@ -38,7 +38,7 @@ This plan covers a pre-flight validation plus a two-phase integration of errors 
 
 ## Phases
 
-### Phase 1 — Pre-flight spike (~15 min)
+### Phase 1: Pre-flight spike (~15 min)
 
 Validate the libs work in our setup before committing to a migration.
 
@@ -59,7 +59,7 @@ Exit criteria:
 
 If any exit criterion fails, file the upstream issue with a repro and stop. Do not proceed to Phase 2.
 
-### Phase 2 — Decide target
+### Phase 2: Decide target
 
 Present the spike outcome to the user. Decision points:
 
@@ -69,7 +69,7 @@ Present the spike outcome to the user. Decision points:
 
 Exit: explicit user sign-off before any code change in apps/cli.
 
-### Phase 3 — Integrate @deessejs/errors
+### Phase 3: Integrate @deessejs/errors
 
 Per-command order (least surface first):
 
@@ -90,7 +90,7 @@ Exit criteria:
 - Every `name === "CliError"` check replaced with `is(...)`.
 - vitest green (after [cli-v1-testing.md](./cli-v1-testing.md) lands).
 
-### Phase 4 — Integrate @deessejs/fp
+### Phase 4: Integrate @deessejs/fp
 
 After errors is stable:
 
@@ -111,7 +111,7 @@ Exit criteria:
 - JSON shapes unchanged or documented improvement (issue if a shape must change).
 - vitest green.
 
-### Phase 5 — Issue workflow (continuous, not a separate phase)
+### Phase 5: Issue workflow (continuous, not a separate phase)
 
 Per AGENTS.md policy: every friction becomes one upstream issue. Examples:
 

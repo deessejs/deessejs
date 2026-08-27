@@ -162,7 +162,7 @@ precedence (`.env.local` > `.env.{NODE_ENV}` > `.env`). The result
 is a plain object snapshot; `createEnv` reads it via a destructured
 literal, never via `process.env`. The `@next/env` dependency and
 its open cache bug (`#92040`, status Open as of 2026-08, no merged
-fix) are removed from the package — `dotenv` has no cache, no
+fix) are removed from the package: `dotenv` has no cache, no
 `forceReload` workaround, no global `process.env` mutation inside
 the loader itself.
 

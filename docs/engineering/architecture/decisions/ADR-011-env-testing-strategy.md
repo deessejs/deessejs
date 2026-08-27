@@ -40,7 +40,7 @@ fits one of the three tiers and ties to one of the three failures.
 `packages/env/` ships five test files. Three are unit-tier and load-
 bearing; two are integration-tier and surface the loader's filesystem
 behaviour. The tests are organised so each file answers one question,
-not so each tests one thing — failures should localise to a single
+not so each tests one thing; failures should localise to a single
 file, and the file name should name what it covers, not the schema
 it happens to exercise.
 
@@ -86,7 +86,7 @@ correct value when either name is set in the snapshot, and pass the
 secret to the caller when both are unset. Three cases that exercise
 the `loadDotenvSnapshot` mock to feed controlled snapshots. This test
 catches regressions where the schema resolves correctly but the
-consumer forgets the boundary resolution — a class of bug the schema
+consumer forgets the boundary resolution, a class of bug the schema
 test cannot see.
 
 ### 4. `tests/unit/server.leak-guard.test.ts`
@@ -127,7 +127,7 @@ fragility than the value gained.
   the test directory layout.
 - **`vi.stubEnv` and `vi.unstubAllEnvs` for test isolation** when a
   test needs to set `process.env`. The shared config sets
-  `unstubEnvs: true`, which auto-restores between tests — the
+  `unstubEnvs: true`, which auto-restores between tests, the
   documented Vitest pattern for environment mutation.
 - **A `@ts-expect-error` directive** in test files that exercise
   type-level guarantees (e.g. asserting that a server var carrying a
