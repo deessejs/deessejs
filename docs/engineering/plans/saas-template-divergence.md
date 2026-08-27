@@ -49,7 +49,7 @@ Status legend:
 
 ## Phases
 
-### Phase 0 — Catalog the divergence
+### Phase 0: Catalog the divergence
 
 Goal: every intentional change has an entry in a living doc.
 
@@ -63,7 +63,7 @@ Exit criteria:
 - Every change on top of `102d837` is represented in the catalog with a reason.
 - Classifications sum to 100% of changes (no "unknown" rows).
 
-### Phase 1 — Classify with the user
+### Phase 1: Classify with the user
 
 Goal: confirm classifications, especially for ambiguous rows (apps/web route handlers, vitest config patterns).
 
@@ -75,7 +75,7 @@ Exit criteria:
 - Every row has an explicit decision signed off by the user.
 - Upstream-trackable rows include whether a PR is queued now or held.
 
-### Phase 2 — Set up passive monitoring
+### Phase 2: Set up passive monitoring
 
 Goal: detect upstream changes without polling.
 
@@ -88,7 +88,7 @@ Exit criteria:
 - Watch is set in GitHub.
 - A short note lands in AGENTS.md under a new `### Upstream template` subsection, mirrored from the `### Internal packages` policy ("version checks on user signal only").
 
-### Phase 3 — Issue-first policy and optional push-back
+### Phase 3: Issue-first policy and optional push-back
 
 Goal: every template-owned bug gets an upstream issue alongside the local fix. PRs are optional and decided per case. Mirrors the [Internal packages rule in AGENTS.md](../../AGENTS.md) for a different upstream.
 
@@ -115,7 +115,7 @@ Exit criteria:
 - At least one upstream PR opened (the strongest candidates).
 - Each open PR has a divergence-catalog row with a status.
 
-### Phase 4 — Pull cycle (on user signal)
+### Phase 4: Pull cycle (on user signal)
 
 Goal: absorb upstream changes without disrupting fork-specific work.
 
@@ -141,12 +141,12 @@ Otherwise, keep it local and document the reason in the divergence catalog.
 
 ## Open questions
 
-1. **apps/web route handlers (`apps/web/src/app/api/`)** — created during the templates-endpoint move, currently empty or in flux. Locked-local, transient, or remove-by-resync?
-2. **CLI workspace as upstream PR** — the apps/cli itself is fork-specific (consumer of our registry). But the *patterns* (vitest config, fork spawn, fake-api helper) generalize. Ship as a doc-only PR, or wait until a separate template genuinely needs CLI?
-3. **Pull cadence** — review upstream `main` on each release, quarterly, or only when the user asks? Recommendation: on user signal only, matching the @deessejs/* packages rule.
-4. **Long-term posture** — stay as a fork forever, or design a path to merge back into the template (e.g. apps/cli becomes an upstream addon)? Worth re-evaluating annually.
-5. **Divergence catalog location** — `docs/internal/template-divergence.md` (suggested) or somewhere else? Trivial to decide later; just keep it next to other internal docs.
-6. **Watch scope** — `github.com/deessejs/saas-template` only, or also `deessejs/saas-template-multi-tenant` (referenced in upstream README for the multi-tenant sister repo)? Probably no (we are single-tenant by design), but worth confirming.
+1. **apps/web route handlers (`apps/web/src/app/api/`)**: created during the templates-endpoint move, currently empty or in flux. Locked-local, transient, or remove-by-resync?
+2. **CLI workspace as upstream PR**: the apps/cli itself is fork-specific (consumer of our registry). But the *patterns* (vitest config, fork spawn, fake-api helper) generalize. Ship as a doc-only PR, or wait until a separate template genuinely needs CLI?
+3. **Pull cadence**: review upstream `main` on each release, quarterly, or only when the user asks? Recommendation: on user signal only, matching the @deessejs/* packages rule.
+4. **Long-term posture**: stay as a fork forever, or design a path to merge back into the template (e.g. apps/cli becomes an upstream addon)? Worth re-evaluating annually.
+5. **Divergence catalog location**: `docs/internal/template-divergence.md` (suggested) or somewhere else? Trivial to decide later; just keep it next to other internal docs.
+6. **Watch scope**: `github.com/deessejs/saas-template` only, or also `deessejs/saas-template-multi-tenant` (referenced in upstream README for the multi-tenant sister repo)? Probably no (we are single-tenant by design), but worth confirming.
 
 ## Next steps
 

@@ -35,8 +35,8 @@ _Date: 2026-08-03. Status: approved. Analysis with locked implementation decisio
 
 The same backend (`packages/api`, a Hono app) is consumed by two distinct surfaces:
 
-1. **`apps/cli`** — a published Node ESM CLI (`@deessejs/cli`) that today only calls `GET /api/templates` to discover and clone templates from GitHub.
-2. **`apps/app`** — the authenticated Next.js 16 product, which mounts the same Hono app via `handle(api)` in `apps/app/app/api/[[...route]]/route.ts` and consumes both REST (`/auth/*`, `/health`, `/ready`) and oRPC (`/rpc/*`) endpoints, the latter through a typed RPC client in `apps/app/lib/orpc.ts`.
+1. **`apps/cli`**: a published Node ESM CLI (`@deessejs/cli`) that today only calls `GET /api/templates` to discover and clone templates from GitHub.
+2. **`apps/app`**: the authenticated Next.js 16 product, which mounts the same Hono app via `handle(api)` in `apps/app/app/api/[[...route]]/route.ts` and consumes both REST (`/auth/*`, `/health`, `/ready`) and oRPC (`/rpc/*`) endpoints, the latter through a typed RPC client in `apps/app/lib/orpc.ts`.
 
 `apps/web` (marketing site) currently exposes only static pages (blog, changelog, legal). This plan adds two new routes: `/templates` and `/templates/[template_slug]`, both backed by the same `/api/v1/templates` endpoint that the CLI consumes. The "web" surface in this plan therefore covers both `apps/app` (authenticated product) and `apps/web` (marketing, with the new templates pages).
 
@@ -44,7 +44,7 @@ The current architecture is functional but lacks the affordances of a multi-cons
 
 - The `Template` schema is duplicated between `packages/api/src/templates.ts` and `apps/cli/src/api.ts`, validated at runtime by a hand-written `isTemplate` type guard.
 - The REST surface is unversioned (`/api/templates` with no `/v1/` prefix), unauthenticated by design, has no caching headers, no rate limiting, no pagination, no request IDs, and no global error handler beyond Hono's defaults.
-- The CLI has no retry, no offline cache, no version negotiation, and no degraded mode — a single network failure aborts the run.
+- The CLI has no retry, no offline cache, no version negotiation, and no degraded mode; a single network failure aborts the run.
 - `/templates` is documented as "public for V1; gate behind `authGuard` in V1.1" in `packages/api/src/index.ts`, but no coexistence path exists for the in-the-wild CLI clients.
 - The API package's tests (`packages/api/tests/routes.test.ts`) construct local `new Hono()` instances with the same patterns; the real exported `api` is not integration-tested, and there is no end-to-end test that proves `apps/app`'s catch-all actually mounts it.
 
@@ -94,7 +94,7 @@ This plan is strategy. It does not write implementation code, open PRs, or touch
 ### What works today
 
 - One Hono app, one deployment, one set of env vars (`turbo.json` propagates `DATABASE_URL`, `BETTER_AUTH_SECRET`, etc.).
-- `apps/app/app/api/[[...route]]/route.ts` uses `handle(api)` from `hono/vercel` — no `as any`, no per-route dispatch.
+- `apps/app/app/api/[[...route]]/route.ts` uses `handle(api)` from `hono/vercel`: no `as any`, no per-route dispatch.
 - Session middleware runs once per request and populates `c.var.user/session`, consumed by `authGuard` in `packages/api/src/router/auth-middleware.ts`.
 - The body-parser `Proxy` wrapping `c.req.raw` for oRPC prevents the "Body Already Used" issue.
 - `/health` and `/ready` are split: the former for liveness, the latter pings Postgres and returns 503 on failure.
@@ -111,7 +111,7 @@ This plan is strategy. It does not write implementation code, open PRs, or touch
 | Observability | Hono default logger, `console.error("[oRPC]", error)` | No request ID, no structured errors, no trace propagation |
 | Auth | `/templates` is public; comment in `packages/api/src/index.ts` says "V1.1 will gate this" | No coexistence plan for installed CLI V1 |
 | Tests | API tests construct local `new Hono()` instances | Real `api` export is not integration-tested |
-| Hosting | API served from `apps/app/app/api/[[...route]]/route.ts` via `handle(api)` on `app.deessejs.com` | Product surface (HTML, marketing pages, marketing cookies) and API surface share one origin, one CDN, one Vercel project — coupling that limits some optimizations but also means a single deployment unit |
+| Hosting | API served from `apps/app/app/api/[[...route]]/route.ts` via `handle(api)` on `app.deessejs.com` | Product surface (HTML, marketing pages, marketing cookies) and API surface share one origin, one CDN, one Vercel project, coupling that limits some optimizations but also means a single deployment unit |
 
 ## Target architecture
 
@@ -156,7 +156,7 @@ This plan is strategy. It does not write implementation code, open PRs, or touch
 
 > **Hosting note.** The API is not a separate microservice. It is served by the Next.js catch-all in `apps/app/app/api/[[...route]]/route.ts`, on the same origin (`app.deessejs.com`) as the authenticated product. `packages/api` exports a Hono app; `handle(api)` from `hono/vercel` makes it routable from Next.js. Any optimization that would normally require a separate origin (isolated CDN cache, separate rate-limit budgets, dedicated auth cookie scope) has to be applied within this single deployment unit, or accepted as a known coupling.
 
-> **`apps/web` placement.** `apps/web` is a separate Vercel project. The new templates pages fetch from `https://app.deessejs.com/api/v1/templates` server-side (RSC, not browser), so the request never crosses the user's browser — the marketing origin pulls from the product origin over the same Vercel edge network. CORS is not in the path because the request is server-to-server.
+> **`apps/web` placement.** `apps/web` is a separate Vercel project. The new templates pages fetch from `https://app.deessejs.com/api/v1/templates` server-side (RSC, not browser), so the request never crosses the user's browser. The marketing origin pulls from the product origin over the same Vercel edge network. CORS is not in the path because the request is server-to-server.
 
 ### What changes for each surface
 
@@ -225,9 +225,9 @@ Ranked by cost / benefit. The first three are mutually compatible and can ship t
 | 2 | `X-Request-Id` middleware + global error handler + structured logs | Debuggability, support, compliance, no vendor lock-in | ~30 lines of middleware | **Now** |
 | 3 | `ETag` + CLI disk cache + retry with jitter | CLI resilience, offline-first, bandwidth savings | Small on both sides | **Now** |
 | 4 | Cookie scoping audit on the shared origin (no behavioral change in this plan) | Threat-model the shared cookie jar; only act if a concrete vector is found | One audit document, no code changes | Before CLI V1.1 (gated on threat model) |
-| 5 | OAuth 2.0 Device Authorization Grant + keychain tokens | Unlocks private / pro templates | ~1–2 sprints, spec to follow | CLI V1.1 |
+| 5 | OAuth 2.0 Device Authorization Grant + keychain tokens | Unlocks private / pro templates | ~1-2 sprints, spec to follow | CLI V1.1 |
 | 6 | DB-backed templates registry + admin write endpoints | Scales registry, enables dynamic curation | Schema migration + write endpoints with `templates:write` scope | When count > ~10 templates |
-| 7 | Marketing pages `/templates` and `/templates/[template_slug]` in `apps/web` | Surfaces the registry on the public site; aligns web with the shared contract; SEO-friendly with ISR | 2 new RSC routes, `apps/web` adds `@workspace/contracts` dep, OG metadata per template | **Now** (same sprint as items 1–3) |
+| 7 | Marketing pages `/templates` and `/templates/[template_slug]` in `apps/web` | Surfaces the registry on the public site; aligns web with the shared contract; SEO-friendly with ISR | 2 new RSC routes, `apps/web` adds `@workspace/contracts` dep, OG metadata per template | **Now** (same sprint as items 1-3) |
 
 > **Why no subdomain split.** A separate `api.deessejs.com` would require a second Vercel project, a second deployment pipeline, and a separate env contract. The shared-origin design is intentional and load-bearing for the current operational model (one app, one deploy, one set of env vars propagated by `turbo.json`). The recommendations in this plan stay within that model. If the product grows enough to justify the split, it is a separate plan.
 
@@ -267,16 +267,16 @@ Concrete items not in the implementation sprint but tracked as separate tasks.
 
 ## Out of scope (deferred plans)
 
-- Replacing `TEMPLATES` with a DB-backed registry — separate plan once the registry exceeds ~10 entries or needs per-tenant scoping.
-- Multi-region deployment and read replicas — separate plan once traffic justifies it.
-- Webhooks for registry events (e.g. "new template version published") — separate plan.
-- Switching from oRPC to something else — explicitly not planned.
+- Replacing `TEMPLATES` with a DB-backed registry, separate plan once the registry exceeds ~10 entries or needs per-tenant scoping.
+- Multi-region deployment and read replicas, separate plan once traffic justifies it.
+- Webhooks for registry events (e.g. "new template version published"), separate plan.
+- Switching from oRPC to something else, explicitly not planned.
 
 ## Related documents
 
-- `docs/engineering/plans/saas-template-divergence.md` — fork relationship with `deessejs/saas-template` upstream.
-- `docs/engineering/plans/cli-v1-testing.md` — CLI test strategy.
-- `docs/engineering/plans/cli-errors-fp-integration.md` — error model used by the CLI.
-- `docs/engineering/reports/versioning/11-templates-not-cli.md` — why template content is not part of CLI versioning.
-- `docs/guides/better-auth/index.md` — locked decisions around Better Auth that this plan must respect (no organization plugin, single-tenant).
-- `DESIGN.md` §4.3 — empty / loading / error state patterns the new `apps/web` templates pages must follow.
+- `docs/engineering/plans/saas-template-divergence.md`: fork relationship with `deessejs/saas-template` upstream.
+- `docs/engineering/plans/cli-v1-testing.md`: CLI test strategy.
+- `docs/engineering/plans/cli-errors-fp-integration.md`: error model used by the CLI.
+- `docs/engineering/reports/versioning/11-templates-not-cli.md`: why template content is not part of CLI versioning.
+- `docs/guides/better-auth/index.md`: locked decisions around Better Auth that this plan must respect (no organization plugin, single-tenant).
+- `DESIGN.md` §4.3: empty / loading / error state patterns the new `apps/web` templates pages must follow.
