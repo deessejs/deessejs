@@ -39,7 +39,7 @@ _Date: 2026-08-10. Status: draft. Working document, not yet approved._
 
 The shared backend (`packages/api`) exposes procedures through `RPCHandler` mounted at `/api/v1/rpc/*`. The CLI (`apps/cli`) and the marketing site (`apps/web`) already migrated to talk oRPC at the wire level (PR #45, commits `179e9e9` and `0b3568b`), but they speak raw HTTP + manual envelope unwrap.
 
-The pattern is verbose at the call site, error-prone (one missed `data.` throws a confusing `parse_error`), and it doesn't leverage the type guarantees of `@orpc/client`. We want to use the typed client everywhere, but the migration has surfaced a non-trivial gap in our retry-and-error machinery.
+The pattern is verbose at the call site, error-prone (one missed `data.` throws a confusing `parse_error`), and it doesn't leverage the type guarantees of `@orpc/client`. The migration aims to use the typed client everywhere, but it has surfaced a non-trivial gap in the retry-and-error machinery. <!-- vale fix: Microsoft.We -->
 
 ## What we tried (and why it broke)
 
@@ -71,7 +71,7 @@ We committed the broken state as `9b003da` (work in progress checkpoint) before 
 
 `RPCLink` (`@orpc/client/adapters/fetch`) accepts a `fetch` option typed as above. It is the canonical way to inject retry/auth/observability around the wire call. We have to type our wrapper correctly and accept all five arguments.
 
-### The error model: TWO channels
+### The error model, two channels <!-- vale fix: Microsoft.HeadingAcronyms, Microsoft.HeadingColons -->
 
 After deeper investigation, the wire has **two distinct error channels**, and the client has to handle both:
 
@@ -110,7 +110,7 @@ The Hono-level middleware (`notFound`, `onError`, rate-limit) currently bypass o
 { "code": "not_found", "message": "Route not found", "requestId": "..." }
 ```
 
-The shape is `{ code, message, requestId }`. The client oRPC **does not decode this** as `ORPCError`. It sees a response without the `{ defined, code, status, message, data }` shape and throws `INTERNAL_SERVER_ERROR` (or similar) with the raw body as `data`.
+The shape is `{ code, message, requestId }`. The client oRPC **doesn't decode this** as `ORPCError`. It sees a response without the `{ defined, code, status, message, data }` shape and throws `INTERNAL_SERVER_ERROR` (or similar) with the raw body as `data`. <!-- vale fix: Microsoft.Contractions -->
 
 Consequence: any error coming from a Hono middleware is opaque to the typed client.
 
@@ -120,11 +120,11 @@ The third argument of the `fetch` hook carries `context`, which oRPC also passes
 
 ### `apps/app` is already on the typed client
 
-`apps/app/lib/orpc.ts` uses `RPCLink` with the default global fetch. No custom retry, no error mapping: errors propagate to the React UI as native thrown `ORPCError`. No changes required there for this migration; it's the reference implementation we pattern-match against.
+`apps/app/lib/orpc.ts` uses `RPCLink` with the default global fetch. No custom retry, no error mapping: errors propagate to the React UI as native thrown `ORPCError`. No changes required there for this migration; it's the reference implementation that `apps/cli` and `apps/web` pattern-match against. <!-- vale fix: Microsoft.We -->
 
 ## Plan
 
-### Phase 1: typed CLI client AND unified server error format
+### Phase 1, typed command-line client and unified server error format <!-- vale fix: Microsoft.HeadingColons, Microsoft.HeadingAcronyms -->
 
 The CLI migration and the server-side error unification land in the same phase. Two error channels on the wire is an anti-pattern we won't ship: it forces every client to handle two decoders, doubles the test surface, and creates silent drift between server codes and client mappers. Better to fix it now while we're already touching both sides.
 
@@ -133,7 +133,7 @@ The CLI migration and the server-side error unification land in the same phase. 
 In `packages/api/src/index.ts` and `packages/api/src/middleware/`:
 
 - **Rate-limit middleware** (`middleware/rate-limit.ts:80`): replace the `c.json(errorBody(...), 429)` call with `throw new ORPCError("RATE_LIMITED", { status: 429, data: { retryAfter: <seconds> } })`.
-- **Global `onError`** (`index.ts:57`): keep it as a Hono-level handler that maps unknown errors to `INTERNAL_SERVER_ERROR`. We don't throw ORPCError from `onError` because Hono's error handling runs at the Hono layer, not the oRPC layer. By the time we get there, the response shape is already decided. The pragmatic fix is to make sure the response is `ORPCError`-shaped: `c.body(JSON.stringify({ defined: false, code: "INTERNAL_SERVER_ERROR", status: 500, message: "...", data: {} }), { status: 500, headers: { "content-type": "application/json" } })`. The client will decode it as a `defined: false` `ORPCError`.
+- **Global `onError`** (`index.ts:57`): keep it as a Hono-level handler that maps unknown errors to `INTERNAL_SERVER_ERROR`. The onError handler doesn't throw `ORPCError` because Hono's error handling runs at the Hono layer, not the oRPC layer. By the time execution gets there, the response shape is already decided. The pragmatic fix is to make sure the response is `ORPCError`-shaped: `c.body(JSON.stringify({ defined: false, code: "INTERNAL_SERVER_ERROR", status: 500, message: "...", data: {} }), { status: 500, headers: { "content-type": "application/json" } })`. The client will decode it as a `defined: false` `ORPCError`. <!-- vale fix: Microsoft.We -->
 - **404 handler** (`index.ts:181`): `throw new ORPCError("NOT_FOUND", { status: 404 })` instead of `c.json(errorBody(...), 404)`. But wait. Hono's `api.notFound` doesn't run inside the oRPC middleware. It runs when the oRPC middleware calls `next()` and Hono can't find a route. The 404 path lives outside the oRPC handler.
 
   Resolution: replace the Hono `notFound` with a fallback oRPC middleware mounted on `*` (after the `/rpc/*` one) that throws `NOT_FOUND`. Cleaner: extend the `/rpc/*` middleware to handle unmatched paths inside oRPC's envelope.
@@ -168,7 +168,7 @@ The `defined: true` flag on the wire tells the typed client this code is known.
 
 Once nothing references `errorBody`, the file is dead. Verify with `grep -rn "errorBody" packages/` before deleting.
 
-#### 1.4: Type the CLI fetch wrapper correctly
+#### 1.4, type the command-line fetch wrapper correctly <!-- vale fix: Microsoft.HeadingColons, Microsoft.HeadingAcronyms -->
 
 ```ts
 import type { ClientOptions } from "@orpc/client"
@@ -202,13 +202,13 @@ export const orpcToCliError = (e: unknown): CliError => {
 }
 ```
 
-With Phase 1.1-1.3 done, every error from the server is an `ORPCError`. The mapper only needs the `ORPCError` branch and the network-error fallback. **The two-channel mapper from the previous version of this plan is now obsolete**, and that is the win.
+With Phase 1.1-1.3 done, every error from the server is an `ORPCError`. The mapper only needs the `ORPCError` branch and the network-error fallback. **The two-channel mapper from the previous version of this plan is now obsolete**, and that's the win. <!-- vale fix: Microsoft.Contractions -->
 
 #### 1.6: Drop the manual unwrap
 
 No more `ORPC_NO_INPUT_BODY` constant; the client builds the body. No more `unwrapOrpc` helper. The client wraps the response in `ORPCError` if the envelope is wrong.
 
-### Phase 2: typed web client (RSC-aware)
+### Phase 2, typed web client (server-component aware) <!-- vale fix: Microsoft.Headings, Microsoft.HeadingColons, Microsoft.HeadingAcronyms -->
 
 The marketing site runs on Next.js App Router. The marketing pages use ISR via `next.revalidate` and `next.tags`, which Next reads from the standard `fetch` API's `init.next` extension.
 

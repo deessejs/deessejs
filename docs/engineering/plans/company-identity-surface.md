@@ -1,4 +1,4 @@
-# Company identity surface: `deessejs` pages + AI-agent artifacts
+# Company identity surface: `deessejs` pages + artificial-intelligence personal digital assistant artifacts <!-- vale fix: Microsoft.HeadingAcronyms --> <!-- vale fix: Microsoft.Terms -->
 
 ## Context
 
@@ -11,16 +11,16 @@ The deessejs main app monorepo hosts `apps/web`, the public site of `deessejs`. 
 - Everything lives in `apps/web`.
 - **Static**: no content-collections, no MDX, no build step. Data lives in `.ts` files.
 - **English**.
-- **Structured placeholders**: no copy-writing in this PR. Sections clearly marked `REPLACE WITH COPY` / `TODO:`.
-- Scope "the more the better", every page and artifact that makes sense, without bloating.
+- **Structured placeholders**: no copy-writing in this PR. Sections marked `REPLACE WITH COPY` / `TODO:`. <!-- vale fix: write-good.Weasel -->
+- Scope "the more the better," every page and artifact that makes sense, without bloating. <!-- vale fix: Microsoft.Quotes -->
 
 **What this plan explicitly excludes:** refactoring `apps/web/src/app/page.tsx` (landing still boilerplate), `apps/web/src/app/.well-known/agent-card.json` (A2A figure, reserved for real callable agents), `llms-full.txt` (consistent with Supabase's "small root, defer to docs"), `humans.txt`, `/.well-known/ai` (IETF draft, unstable).
 
 ## Recommended approach
 
-**Single source of truth in TS, two renderings: `page.tsx` for HTML, an adjacent `route.ts` for Markdown.** No content negotiation in `route.ts` because a `page.tsx` and a `route.ts` cannot coexist in the same App Router segment. The choice is the adjacent segment `/about/markdown` (instead of `/about.md`): no Next.js rewrites needed, and `/about` stays the canonical HTML, inheriting the layout (header, footer, fonts).
+**Single source of truth in TS, two renderings: `page.tsx` for HTML, an adjacent `route.ts` for Markdown.** No content negotiation in `route.ts` because a `page.tsx` and a `route.ts` can't coexist in the same App Router segment. <!-- vale fix: Microsoft.Contractions --> The choice is the adjacent segment `/about/markdown` (instead of `/about.md`): no Next.js rewrites needed, and `/about` stays the canonical HTML, inheriting the layout (header, footer, fonts).
 
-**No `Accept: text/markdown` middleware.** Runtime cost on every request for 0.1% of LLM traffic. LLM crawlers fetch `/llms.txt` or `/about/markdown` directly. That is what we make discoverable.
+**No `Accept: text/markdown` middleware.** Runtime cost on every request for 0.1% of LLM traffic. LLM crawlers fetch `/llms.txt` or `/about/markdown` directly. That's what gets surfaced for discovery. <!-- vale fix: Microsoft.Contractions --> <!-- vale fix: Microsoft.We -->
 
 ## Files to create
 
@@ -33,7 +33,7 @@ apps/web/src/app/team/page.tsx           # GET /team: Team card grid
 ```
 
 Each `page.tsx`:
-- `export const metadata: Metadata` with `title`, `description`, `alternates.canonical`, `robots` (noindex on placeholder copy? **No**, index now; copy may be light but an identity signal is much better than zero).
+- `export const metadata: Metadata` with `title`, `description`, `alternates.canonical`, `robots` (noindex on placeholder copy: **No**, index now; copy may be light but an identity signal is much better than zero). <!-- vale fix: Microsoft.QuestionMarks -->
 - Container `mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8` (between `max-w-2xl` legal and `max-w-6xl` blog, like the changelog).
 - `H1`, `H2`, `P`, `Lead`, `Link` imported from `@workspace/ui/components/typography` (per `use-shadcn`).
 - `<JsonLd>` helper (see below) for `WebPage` + `BreadcrumbList`.

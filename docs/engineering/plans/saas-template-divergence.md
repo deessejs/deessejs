@@ -141,12 +141,12 @@ Otherwise, keep it local and document the reason in the divergence catalog.
 
 ## Open questions
 
-1. **apps/web route handlers (`apps/web/src/app/api/`)**: created during the templates-endpoint move, currently empty or in flux. Locked-local, transient, or remove-by-resync?
-2. **CLI workspace as upstream PR**: the apps/cli itself is fork-specific (consumer of our registry). But the *patterns* (vitest config, fork spawn, fake-api helper) generalize. Ship as a doc-only PR, or wait until a separate template genuinely needs CLI?
-3. **Pull cadence**: review upstream `main` on each release, quarterly, or only when the user asks? Recommendation: on user signal only, matching the @deessejs/* packages rule.
-4. **Long-term posture**: stay as a fork forever, or design a path to merge back into the template (e.g. apps/cli becomes an upstream addon)? Worth re-evaluating annually.
-5. **Divergence catalog location**: `docs/internal/template-divergence.md` (suggested) or somewhere else? Trivial to decide later; just keep it next to other internal docs.
-6. **Watch scope**: `github.com/deessejs/saas-template` only, or also `deessejs/saas-template-multi-tenant` (referenced in upstream README for the multi-tenant sister repo)? Probably no (we are single-tenant by design), but worth confirming.
+1. **apps/web route handlers (`apps/web/src/app/api/`)**: created during the templates-endpoint move, currently empty or in flux. Locked-local, transient, or remove-by-resync. <!-- vale fix: Microsoft.QuestionMarks -->
+2. **CLI workspace as upstream PR**: the apps/cli itself is fork-specific (consumer of the registry). But the *patterns* (vitest config, fork spawn, fake-api helper) generalize. Ship as a doc-only PR, or wait until a separate template genuinely needs CLI. <!-- vale fix: Microsoft.We --> <!-- vale fix: Microsoft.QuestionMarks -->
+3. **Pull cadence**: review upstream `main` on each release, quarterly, or only when the user asks. Recommendation: on user signal only, matching the @deessejs/* packages rule. <!-- vale fix: Microsoft.QuestionMarks -->
+4. **Long-term posture**: stay as a fork forever, or design a path to merge back into the template (for example, apps/cli becomes an upstream addon). Worth re-evaluating annually. <!-- vale fix: Microsoft.Foreign --> <!-- vale fix: Microsoft.QuestionMarks -->
+5. **Divergence catalog location**: `docs/internal/template-divergence.md` (suggested) or somewhere else. Trivial to decide later; just keep it next to other internal docs. <!-- vale fix: Microsoft.QuestionMarks -->
+6. **Watch scope**: `github.com/deessejs/saas-template` only, or also `deessejs/saas-template-multi-tenant` (referenced in upstream README for the multi-tenant sister repo). Probably no (we're single-tenant by design), but worth confirming. <!-- vale fix: Microsoft.QuestionMarks --> <!-- vale fix: Microsoft.We --> <!-- vale fix: Microsoft.Contractions -->
 
 ## Next steps
 

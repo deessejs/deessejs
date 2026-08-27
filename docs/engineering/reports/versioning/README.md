@@ -24,21 +24,21 @@ This document is the index for the audit. Read it first, then jump into the sect
 
 The monorepo has 14 workspace projects across `apps/*` (4) and `packages/*` (10), plus 2 external `@deessejs/*` packages. Versioning is inconsistent in the source tree, but **changesets is already partially adopted**: five packages have auto-generated `CHANGELOG.md` files in changesets format. `@deessejs/cli` will be the first package to go through a changesets-driven public release.
 
-The senior pattern adopted here: **one source of truth** (changesets), **one workflow** (`release.yml` does version bump + npm publish + tag in one job), **no root versioning** (root `VERSION`, root `package.json#version`, `template/v*` tags all dropped). The maintainer's mental load collapses to one rule: *"if your PR changes the CLI surface, add a changeset."* The earlier dual-flow design (separate `release.yml` for root + `publish-cli.yml` for npm with commit-message string filters coupling them) was rejected as too much engineering tax for one published package.
+The senior pattern adopted here: **one source of truth** (changesets), **one workflow** (`release.yml` does version bump + npm publish + tag in one job), **no root versioning** (root `VERSION`, root `package.json#version`, `template/v*` tags all dropped). The maintainer's mental load collapses to one rule: *"if your PR changes the CLI surface, add a changeset."* The earlier dual-flow design (separate `release.yml` for root + `publish-cli.yml` for npm with commit-message string filters coupling them) costs too much engineering tax for one published package, so the audit dropped it. <!-- vale fix: write-good.Passive -->
 
 Key gaps to fix before implementation:
 
 - `apps/cli/package.json` missing `license`, `repository`, `keywords`, `module`, `types`
 - tsup emits ESM only: needs `dts: true` for `.d.ts`
-- Existing `release.yml` needs to be replaced (not extended) by the senior version
-- `ci.yml` triggers on `main` but not `staging`: must be fixed for staging-PR CI
-- A trusted publisher must be configured on `https://www.npmjs.com/package/@deessejs/cli/access` (one-time npm-side setup)
+- Existing `release.yml` must give way to the senior version (replace, don't extend)
+- `ci.yml` triggers on `main` but not `staging`: the maintainer must fix this for staging-PR CI <!-- vale fix: write-good.Passive -->
+- A trusted publisher must get configured on `https://www.npmjs.com/package/@deessejs/cli/access` (one-time npm-side setup) <!-- vale fix: write-good.Passive -->
 
 ## The senior pattern, in 3 sentences
 
-Contributors adding changesets in their PRs is the **only** manual step. The single `release.yml` workflow runs `pnpm changeset version` then `pnpm changeset publish` then tags `release/v{VERSION}` and creates a GitHub Release, with no human in the loop. Hotfixes, yanks, and rollbacks are handled with the same primitives, not separate code paths.
+Contributors adding changesets in their PRs is the **only** manual step. The single `release.yml` workflow runs `pnpm changeset version` then `pnpm changeset publish` then tags `release/v{VERSION}` and creates a GitHub Release, with no human in the loop. Hotfixes, yanks, and rollbacks all reuse the same primitives, not separate code paths. <!-- vale fix: write-good.Passive -->
 
-**One nuance**: the **first ever publish** of `@deessejs/cli` is manual from a maintainer's machine (npm has no "pending publisher" feature; the package must exist before a trusted publisher can be configured for it). After the first publish, the trusted publisher is configured, and from the second publish onward everything is automatic. Full walkthrough: [12-npm-setup-walkthrough.md](12-npm-setup-walkthrough.md).
+**One nuance**: the **first ever publish** of `@deessejs/cli` is manual from a maintainer's machine (npm has no "pending publisher" feature; the package must exist before anyone can configure a trusted publisher for it). After the first publish, the trusted publisher gets configured, and from the second publish onward everything is automatic. Full walkthrough: [12-npm-setup-walkthrough.md](12-npm-setup-walkthrough.md). <!-- vale fix: write-good.Passive -->
 
 ## Status
 

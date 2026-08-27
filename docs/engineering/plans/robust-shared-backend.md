@@ -269,7 +269,7 @@ Concrete items not in the implementation sprint but tracked as separate tasks.
 
 - Replacing `TEMPLATES` with a DB-backed registry, separate plan once the registry exceeds ~10 entries or needs per-tenant scoping.
 - Multi-region deployment and read replicas, separate plan once traffic justifies it.
-- Webhooks for registry events (e.g. "new template version published"), separate plan.
+- Webhooks for registry events (for example, "new template version published"), separate plan. <!-- vale fix: Microsoft.Foreign -->
 - Switching from oRPC to something else, explicitly not planned.
 
 ## Related documents
@@ -277,6 +277,6 @@ Concrete items not in the implementation sprint but tracked as separate tasks.
 - `docs/engineering/plans/saas-template-divergence.md`: fork relationship with `deessejs/saas-template` upstream.
 - `docs/engineering/plans/cli-v1-testing.md`: CLI test strategy.
 - `docs/engineering/plans/cli-errors-fp-integration.md`: error model used by the CLI.
-- `docs/engineering/reports/versioning/11-templates-not-cli.md`: why template content is not part of CLI versioning.
+- `docs/engineering/reports/versioning/11-templates-not-cli.md`: why template content isn't part of CLI versioning. <!-- vale fix: Microsoft.Contractions -->
 - `docs/guides/better-auth/index.md`: locked decisions around Better Auth that this plan must respect (no organization plugin, single-tenant).
 - `DESIGN.md` §4.3: empty / loading / error state patterns the new `apps/web` templates pages must follow.

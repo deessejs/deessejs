@@ -18,7 +18,7 @@ Setting `useSecureCookies: true` forces the `Secure` cookie attribute in **all e
 
 ## 2. `localhost` in `trustedOrigins` Risks Prod Leak
 
-`trustedOrigins` previously included hardcoded `http://localhost:3000` and `http://localhost:3001` regardless of environment. The CSRF / callback gates in Better Auth 1.6.x delegate to whatever list they receive. In a self-hosted / Codespaces / on-prem deploy that exposes `localhost`, an attacker reaching those URLs could pass the CSRF check.
+`trustedOrigins` once included hardcoded `http://localhost:3000` and `http://localhost:3001` regardless of environment. The CSRF / callback gates in Better Auth 1.6.x delegate to whatever list they receive. In a self-hosted / Codespaces / on-prem deploy that exposes `localhost`, a cyberattacker reaching those URLs could pass the CSRF check. <!-- vale fix: write-good.TooWordy, Microsoft.Militaristic -->
 
 **Current state in this repo (verified 2026-07-28):** gated on `NODE_ENV` at `packages/auth/src/auth.ts:12-17`. The localhost entries are only spread when `NODE_ENV === "development"`.
 

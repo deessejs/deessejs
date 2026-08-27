@@ -37,7 +37,7 @@ decisions:
     rationale: "Categories are independent, easier review, easier revert if needed. Per AGENTS.md staging-first workflow."
 ---
 
-# DeesseJS main app: identity repositioning
+# DeesseJS main app, identity repositioning <!-- vale fix: Microsoft.Headings --> <!-- vale fix: Microsoft.HeadingColons -->
 
 _Date: 2026-08-04. Status: draft, pending user review. This plan is analysis + a file-by-file change list. No code is written until the user approves._
 
@@ -59,7 +59,7 @@ This plan **repositions the repo as the DeesseJS main app** while keeping a clea
 
 - The repo's identity is **DeesseJS** (product name Title Case; namespace lowercase `deessejs`).
 - The upstream relationship is **explicit and visible**: a "Started from [saas-template](github-url)" note in the root README, plus the existing `docs/engineering/plans/saas-template-divergence.md` plan, which describes the divergence.
-- **Zero mention of "SaaS Template" as the project's identity** in user-facing files (categories A, B, C, E). Generic market term "SaaS template" (lowercase, plural, generic: "SaaS templates", "the SaaS template market") is kept in marketing/positioning docs where it's a category descriptor, not the project's name.
+- **Zero mention of "SaaS Template" as the project's identity** in user-facing files (categories A, B, C, E). Generic market term "SaaS template" (lowercase, plural, generic: "SaaS templates," "the SaaS template market") stays in marketing/positioning docs where it functions as a category descriptor, not the project's name. <!-- vale fix: Microsoft.Quotes --> <!-- vale fix: write-good.Passive -->
 - **Coordinated with `company-identity-surface.md`** so the public `/about`, `/principles`, `/team` pages (when implemented) use the same `DeesseJS` name and the same data file (`apps/web/src/lib/site/identity.ts`).
 - All changes are **tracked in commits on `chore/deessejs-main-app-repositioning`** (branched from `staging`, per AGENTS.md), grouped by category. No direct push to `main`.
 
@@ -123,7 +123,7 @@ Files: `README.md`, `AGENTS.md`, `CLAUDE.md`, `package.json` (root).
 - "What's included" table, line about apps: keep wording but remove any "SaaS Template" frame (the apps are listed as `apps/web (marketing)`, `apps/app (authenticated product)`, `apps/docs (Fumadocs)`, which is already fine).
 - Add the **"Started from" upstream note** under the badges block, after the Quick start block, before "## What's included".
 - **Keep** the sister-repo pointer to [`deessejs/saas-template-multi-tenant`](https://github.com/deessejs/saas-template-multi-tenant) (user decision 2026-08-04, relevant for single-tenant → multi-tenant upgrade path).
-- "Quick start" `git clone` URL: change `https://github.com/deessejs/saas-template.git` → `https://github.com/deessejs/deessejs.git` (or whatever the GitHub repo is renamed to, pending decision).
+- "Quick start" `git clone` address: change `https://github.com/deessejs/saas-template.git` → `https://github.com/deessejs/deessejs.git` (or whatever the GitHub repo is renamed to, pending decision). <!-- vale fix: Microsoft.GeneralURL -->
 - "Support" section: keep `support@deessejs.com` (already correct).
 - License: MIT (already correct).
 
@@ -199,7 +199,7 @@ Files (28 total under `documents/internal/` and `docs/engineering/`). Strategy:
 
 | File | Lines | Change |
 |---|---|---|
-| `DESIGN.md` | L11, L449 | "The Apple of SaaS templates" → "The Apple of SaaS templates" stays (it's the marketing wedge). But "The SaaS template that never sleeps" wedge reframes to "DeesseJS, the SaaS template that never sleeps". |
+| `DESIGN.md` | L11, L449 | "The Apple of SaaS templates" → "The Apple of SaaS templates" stays (it's the marketing wedge). But "The SaaS template that never sleeps" wedge reframes to "DeesseJS, the SaaS template that never sleeps." | <!-- vale fix: Microsoft.Quotes -->
 | `documents/internal/product/README.md` | L19, L145, L154, L197, L198 | Where "SaaS Template" names the project, replace with "DeesseJS". |
 | `documents/internal/product/positioning.md` | L7, L14, L16, L26, L99, L129, L132 | Same. |
 | `documents/internal/product/pricing.md` | L21 | Same. |
@@ -220,7 +220,7 @@ Files (28 total under `documents/internal/` and `docs/engineering/`). Strategy:
 | `documents/internal/architecture/12-apps/cli/README.md` | L18 | Same. |
 | `documents/internal/architecture/12-apps/cli/research.md` | L155 | Same. |
 | `documents/internal/architecture/12-apps/cli/decisions/0003-cli-stack.md` | L75 | Same. |
-| `documents/internal/architecture/11-packages/database/decisions/0001-application-layer-isolation-vs-rls.md` | L11 | "DeesseJS is a multi-tenant SaaS template" → "DeesseJS is a multi-tenant SaaS template" stays (it's the category descriptor), but if the line is naming DeesseJS as the project itself, replace "SaaS template" with "SaaS application" or "product". |
+| `documents/internal/architecture/11-packages/database/decisions/0001-application-layer-isolation-vs-rls.md` | L11 | "DeesseJS is a multi-tenant SaaS template" → "DeesseJS is a multi-tenant SaaS template" stays (it's the category descriptor), but if the line is naming DeesseJS as the project itself, replace "SaaS template" with "SaaS application" or "product." | <!-- vale fix: Microsoft.Quotes -->
 
 **Keep unchanged (generic market term; 8 files):**
 
@@ -277,7 +277,7 @@ Files (12 total). Strategy:
 
 The root README's `git clone` URL currently is `https://github.com/deessejs/saas-template.git`. If the GitHub repo is renamed (e.g. to `deessejs/deessejs`), update the URL here and in all `.claude/skills/**` files.
 
-**If the GitHub repo is NOT renamed** (stays as `deessejs/saas-template`): the "Started from" line is still valid. `deessejs/saas-template` is the upstream that was cloned from, and the same path now points to this repo.
+**If the GitHub repo isn't renamed** (stays as `deessejs/saas-template`): the "Started from" line is still valid. `deessejs/saas-template` is the upstream that this repo originated from, and the same path now points here. <!-- vale fix: Microsoft.Contractions --> <!-- vale fix: write-good.Passive -->
 
 This is the **only open question** that gates the implementation. See "Open questions" below.
 
