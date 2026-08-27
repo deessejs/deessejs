@@ -275,7 +275,7 @@ Files (12 total). Strategy:
 
 ### GitHub repo address
 
-The root README's `git clone` address currently is `https://github.com/deessejs/saas-template.git`. If the GitHub repo gets a new name (e.g. `deessejs/deessejs`), update the address here and in all `.claude/skills/**` files.
+The root README's `git clone` address currently is `https://github.com/deessejs/saas-template.git`. If the GitHub repo gets a new name (for example `deessejs/deessejs`), update the address here and in all `.claude/skills/**` files.
 
 **If the GitHub repo isn't renamed** (stays as `deessejs/saas-template`): the "Started from" line is still valid. `deessejs/saas-template` is the upstream that this repo originated from, and the same path now points here. <!-- vale fix: Microsoft.Contractions --> <!-- vale fix: write-good.Passive -->
 
