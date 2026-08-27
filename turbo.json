@@ -54,6 +54,15 @@
         "GITHUB_TOKEN"
       ],
       "outputs": ["coverage/**"]
+    },
+    "complexity:json": {
+      "dependsOn": [],
+      "inputs": ["$TURBO_DEFAULT$", ".env", ".env.local"],
+      "outputs": ["reports/complexity/**"]
+    },
+    "complexity-report": {
+      "dependsOn": ["complexity:json"],
+      "outputs": ["reports/complexity/**"]
     }
   }
 }
