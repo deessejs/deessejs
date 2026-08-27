@@ -38,6 +38,12 @@ catalog:
   "@react-email/render": ^2.0.6
   '@shikijs/rehype': ^4.3.1
 
+  # Markdown rendering (apps/web — untrusted GitHub READMEs on /templates/[slug])
+  react-markdown: ^10.1.0
+  rehype-pretty-code: ^0.14.5
+  remark-gfm: ^4.0.1
+  rehype-sanitize: ^6.0.0
+
   # Shared tooling
   "@tailwindcss/postcss": ^4.3.2
   '@tanstack/react-form': ^1.33.0
