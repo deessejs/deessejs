@@ -1,14 +1,36 @@
 import js from "@eslint/js"
 import tseslint from "typescript-eslint"
+import sonarjs from "eslint-plugin-sonarjs"
 
 const config = [
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  sonarjs.configs.recommended,
   {
     ignores: ["dist/**", ".next/**", "**/.turbo/**", "**/coverage/**", "node_modules/**"],
   },
   {
     rules: {
+      // Cognitive-complexity guard. SonarJS' metric is closer to a human's
+      // reading cost than raw cyclomatic: nested branches weigh more than
+      // sibling branches, || / ?. chains are counted, etc.
+      // Phase 1 starts at warn@15 — the default from sonarjs.configs.recommended.
+      // Phase 4 (target) is warn@10/error@20. See docs/engineering/complexity-rollout.md.
+      "sonarjs/cognitive-complexity": [
+        "warn",
+        15,
+      ],
+      "sonarjs/no-collapsible-if": "error",
+      "sonarjs/no-duplicate-string": "off",
+      "sonarjs/no-nested-switch": "error",
+
+      // Phase 0 — SonarJS recommended config is fully enabled below. The two
+      // rules below were being flagged against existing security-test fixtures
+      // (`packages/utils/tests/safe-redirect.test.ts` exercises http /
+      // javascript: prefixes on purpose). Re-enable them in a focused follow-up
+      // once those fixtures are updated.
+      "sonarjs/no-clear-text-protocols": "off",
+      "sonarjs/code-eval": "off",
       // Defeat open-redirect via protocol-relative URLs (//evil.com) and
       // backslash bypass (/\\evil.com). See CVE-2025-27143. Any router.push,
       // window.location, or NextResponse.redirect whose first argument calls
@@ -48,6 +70,19 @@ const config = [
             "authClient.useSession() is a React hook (returns a cached signal value). Calling it inside an async callback is a Rules of Hooks violation and returns a stale value. For one-shot reads, use authClient.getSession() instead.",
         },
       ],
+    },
+  },
+  // Relaxed scope for generated / schema-heavy code where cognitive complexity
+  // is high by design (Zod unions, CLI dispatch tables). They still warn so
+  // authors see when they're above target, but never block PRs.
+  // Tighten these at the same cadence as the global rules when the debt is paid off.
+  {
+    files: [
+      "apps/cli/**/*.{ts,tsx}",
+      "packages/contracts/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "sonarjs/cognitive-complexity": ["warn", 30],
     },
   },
 ]
