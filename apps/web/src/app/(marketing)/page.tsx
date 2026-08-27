@@ -6,6 +6,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Card } from "@workspace/ui/components/card"
 import { cn } from "@workspace/ui/lib/utils"
 
+
 /**
  * Marketing homepage at `/`. Renders the surface a first-time
  * visitor sees when they land on deessejs.com — the same one
@@ -80,16 +81,6 @@ const FEATURED_GUIDES: ReadonlyArray<{
     title: "Deploy to Vercel",
     body: "From git push to a production build with env vars and a custom domain.",
   },
-]
-
-const USE_CASES: ReadonlyArray<{ slug: string; label: string }> = [
-  { slug: "saas-apps", label: "SaaS apps" },
-  { slug: "ai-products", label: "AI products" },
-  { slug: "landing-pages", label: "Landing pages" },
-  { slug: "api-backends", label: "API backends" },
-  { slug: "internal-tools", label: "Internal tools" },
-  { slug: "open-source", label: "Open source" },
-  { slug: "mobile-backend", label: "Mobile backend" },
 ]
 
 export default function HomePage() {
@@ -243,52 +234,6 @@ export default function HomePage() {
       </section>
 
       <div className="border-t border-border" />
-
-      {/* 5. Use cases band */}
-      <section className="flex flex-col gap-6">
-        <header className="flex flex-col gap-2">
-          <p className="text-label-13 text-muted-foreground">
-            Build with DeesseJS
-          </p>
-          <h2 className="text-heading-32 tracking-tight">
-            What you ship with it.
-          </h2>
-        </header>
-        <div className="flex flex-wrap gap-2">
-          {USE_CASES.map((useCase) => (
-            <Link
-              key={useCase.slug}
-              href={`/use-cases/${useCase.slug}`}
-              className={cn(
-                "rounded-md border border-border px-4 py-2 text-label-14 text-foreground transition-colors hover:bg-accent/30",
-              )}
-            >
-              {useCase.label}
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <div className="border-t border-border" />
-
-      {/* 6. Closing CTA */}
-      <section className="flex flex-col items-center gap-6 text-center">
-        <h2 className="text-heading-40 tracking-tight">
-          Ready to ship?
-        </h2>
-        <p className="text-muted-foreground text-copy-18 leading-7 max-w-xl [&:not(:first-child)]:mt-0">
-          Bootstrap a working SaaS, AI, or landing project in under a
-          minute.
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button asChild size="lg">
-            <Link href="/templates">Start with a template</Link>
-          </Button>
-          <Button variant="outline" size="lg" asChild>
-            <Link href="/enterprise">Talk to the team</Link>
-          </Button>
-        </div>
-      </section>
     </div>
   )
 }
