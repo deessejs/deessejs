@@ -114,7 +114,7 @@ export default function HomePage() {
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           <Button asChild size="lg">
-            <Link href="/knowledge-base/guide/install-deessejs-cli">
+            <Link href="/knowledge-base/guides/install-deessejs-cli">
               Install the CLI
             </Link>
           </Button>
@@ -226,7 +226,7 @@ export default function HomePage() {
           {FEATURED_GUIDES.map((guide) => (
             <Link
               key={guide.slug}
-              href={`/knowledge-base/guide/${guide.slug}`}
+              href={`/knowledge-base/guides/${guide.slug}`}
               className="group"
             >
               <Card className="bg-background flex h-full flex-col gap-2 rounded-none p-4 transition-colors group-hover:bg-accent/50">
