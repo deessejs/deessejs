@@ -129,7 +129,7 @@ tabs in `internal-documentation/`. The first tab labels
 ("DeesseJS", "Rules", "Decisions", "Knowledge Base") set
 the bar at one word. The rules list grew to sixteen
 entries and the longest entry, "Functions Over Classes
-for Public API", was the first to feel cramped in the
+for Public API," was the first to feel cramped in the <!-- vale fix: Microsoft.Quotes -->
 sidebar. The pattern repeated in the KB entries and the
 ADRs. The cap is the longest entry that does not feel
 cramped, rounded down for safety.

@@ -127,7 +127,7 @@ fragility than the value gained.
   the test directory layout.
 - **`vi.stubEnv` and `vi.unstubAllEnvs` for test isolation** when a
   test needs to set `process.env`. The shared config sets
-  `unstubEnvs: true`, which auto-restores between tests, the
+  `unstubEnvs: true`, which autorestores between tests, the <!-- vale fix: Microsoft.Auto -->
   documented Vitest pattern for environment mutation.
 - **A `@ts-expect-error` directive** in test files that exercise
   type-level guarantees (e.g. asserting that a server var carrying a
