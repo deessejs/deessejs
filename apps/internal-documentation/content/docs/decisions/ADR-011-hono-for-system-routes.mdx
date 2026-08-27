@@ -14,13 +14,13 @@ Accepted (2026-08). Non-negotiable.
 `packages/api/` mounts HTTP routes in two places:
 `mountHttp` (Hono direct) and `mountRpc` (oRPC via
 `RPCHandler`). The split exists; the rule that governs which
-routes go where has never been pinned.
+routes go where has never reached paper, leaving every new contributor to guess.
 
 Today the four routes mounted by `mountHttp` are:
 
 | Route | Purpose | Mounted by |
 |---|---|---|
-| `GET /api/v1/health` | Liveness probe, no dependencies | `mountHttp` |
+| `GET /api/v1/health` | liveness probe, no dependencies | `mountHttp` |
 | `GET /api/v1/version` | Server version probe, public, rate-limited, cached | `mountHttp` |
 | `GET /api/v1/ready` | Readiness probe, pings Postgres | `mountHttp` |
 | `* /api/v1/auth/*` | Better Auth handler, delegated | `mountHttp` |
@@ -31,9 +31,9 @@ neither `mountHttp` nor `mountRpc` matched the request).
 
 The boundary between the two layers is load-bearing. ADR-001
 says "every endpoint uses oRPC"; that rule, read literally,
-would forbid `mountHttp` outright. Read as written, it is
+would forbid `mountHttp` outright. Read as written, it's
 in tension with the four routes that `mountHttp` mounts, and
-the tension is unresolved. The result today is that a
+the tension stays unresolved. The result today is that a
 contributor who adds a fifth route to `mountHttp` is making
 an unannounced architectural choice; a contributor who adds
 a route to `mountRpc` may not realise that Hono-direct
@@ -44,26 +44,26 @@ The two layers serve two different kinds of concern:
 - **Business routes** are the things the consumers (CLI,
   web, app) call to read or mutate domain data. They have
   a typed contract (`TemplatesListResponseV1` today, more
-  procedures tomorrow). They are wrapped in `ORPCError`
-  envelopes on error. They are the public API surface.
+  procedures tomorrow). The package wraps them in `ORPCError`
+  envelopes on error. They're the public API surface.
 - **System routes** are the things the platform calls to
   observe the server itself: liveness probes, readiness
-  probes, version probes, and Better Auth's session and
-  login handlers. They are not domain data; they are
+  probes, version probes, and Better Auth session and
+  login handlers. They're not domain data; they're
   observability and identity plumbing. Their wire shape
   is whatever the platform expects (Kubernetes liveness
-  contract, Resend transport contract, Better Auth's
-  internal envelope). They do not have a typed contract
+  contract, Resend transport contract, the Better Auth
+  internal envelope). They don't carry a typed contract
   in `@workspace/contracts`.
 
 oRPC is the right shape for the first kind, wrong for the
 second. The first needs the typed client and the typed
-errors; the second does not benefit from them because no
+errors; the second gains nothing from them because no
 typed client consumes them.
 
 ## Decision
 
-`packages/api/` routes are split by concern:
+`packages/api/` splits routes by concern:
 
 - **Business routes** go through oRPC. Mounted under
   `/api/v1/rpc/*` via `RPCHandler`. The wire shape is the
@@ -85,15 +85,15 @@ the following is true:
 
 - The route's consumer is a platform primitive (Kubernetes
   liveness/readiness, a load balancer health check, a CDN
-  origin probe, an uptime monitor) rather than a user-facing
+  origin probe, an uptime watcher) rather than a user-facing
   app.
-- The route is delegated to an upstream service that owns
+- The route hands off to an upstream service that owns
   its own wire format (Better Auth's `/auth/*`, future
   integrations that the server forwards to without owning
   the contract).
 - The route returns server metadata (version, build SHA,
   uptime) rather than domain data.
-- The route's wire shape is defined by an external standard
+- An external standard defines the route's wire shape
   (HTTP semantics, RFC 7231, a vendor's API) rather than by
   `@workspace/contracts`.
 
@@ -105,7 +105,7 @@ business route belongs under `mountRpc` and through
 
 The rule forbids adding a **business** route to `mountHttp`.
 The system routes that exist today stay; new system routes
-are added with a comment justifying the system classification
+land with a comment justifying the system classification
 (see "How to add a system route" below). Adding a
 non-system route to `mountHttp` is a regression.
 
@@ -113,7 +113,7 @@ Concrete examples of forbidden additions:
 
 - `api.get('/api/v1/templates', ...)` is a business route.
   `templates` is domain data; the route belongs under
-  `mountRpc`. There is already a procedure that exposes this
+  `mountRpc`. A procedure already exposes this
   (`orpc/routes/templates.ts`).
 - `api.get('/api/v1/users/me', ...)` is a business route.
   Domain data; same treatment as templates.
@@ -126,12 +126,12 @@ Concrete examples of forbidden additions:
 
 Concrete examples of allowed additions:
 
-- A new probe (e.g. `GET /api/v1/metrics` for Prometheus
+- A new probe (for instance `GET /api/v1/metrics` for Prometheus
   scraping) is a system route. Observability primitive.
-- A new build-info endpoint (e.g. `GET /api/v1/build`) is
+- A new build-info endpoint (for instance `GET /api/v1/build`) is
   a system route. Server metadata.
 - A new auth integration that ships its own wire format
-  (e.g. a webhook receiver from a vendor) is a system
+  (for instance, a webhook receiver from a vendor) is a system
   route. Delegated to upstream.
 
 ### What the rule forbids in oRPC
@@ -139,28 +139,28 @@ Concrete examples of allowed additions:
 The rule forbids adding a **system** route to `mountRpc` /
 `appRouter`. The system routes that exist today stay in
 `mountHttp`. Adding a system-shaped thing to oRPC wraps it
-in a contract it does not need.
+in a contract it doesn't need.
 
 Concrete examples of forbidden additions:
 
 - A `health` procedure that returns the same payload as
-  `GET /api/v1/health`. The Kubernetes probe does not
-  benefit from the typed client; wrapping it adds a layer
+  `GET /api/v1/health`. The Kubernetes probe gains nothing
+  from the typed client; wrapping it adds a layer
   with no consumer.
 - A `version` procedure that duplicates `GET /api/v1/version`.
   The CLI's version probe (per ADR-010 §3) talks to the
   Hono-direct endpoint. Moving the endpoint under oRPC
   forces the CLI to decode an `ORPCError` for a probe that
   intentionally returns raw HTTP semantics.
-- An `auth.session` procedure that wraps Better Auth's
-  `/auth/get-session`. Better Auth owns the wire format;
+- An `auth.session` procedure that wraps the Better Auth
+  `/auth/get-session` endpoint. Better Auth owns the wire format;
   the server delegates to it; the typed client adds no
   value here.
 
 ### What this rule allows
 
 - **The four system routes that exist today.** They stay in
-  `mountHttp`. The rule preserves them; it does not migrate
+  `mountHttp`. The rule preserves them; it doesn't migrate
   them.
 - **A new system route in `mountHttp`** with a comment that
   names the platform primitive or the delegated upstream.
@@ -169,7 +169,7 @@ Concrete examples of forbidden additions:
 - **A new business route in `mountRpc`** as long as it has a
   typed contract in `@workspace/contracts` and a procedure
   in `orpc/routes/`.
-- **The `notFound` fallback in Hono direct.** It is a system
+- **The `notFound` fallback in Hono direct.** It's a system
   route by definition (it runs when no business route
   matched).
 - **Reading the Hono docs and the oRPC docs in parallel.**
@@ -186,16 +186,16 @@ Concrete examples of forbidden additions:
   system route stays single-sourced; the typed wrapper is
   removed.
 - **A duplicate of a business route in `mountHttp`.** The
-  business route stays single-sourced; the Hono-direct
-  shortcut is removed.
+  business route stays single-sourced; reviewers remove the
+  Hono-direct shortcut.
 - **A "compatibility" route in `mountHttp` that mirrors a
   business procedure.** The wire format is the contract;
   two shapes is a drift vector.
 
-### What this rule does not change
+### What this rule doesn't change
 
 - **The boundary between `http/` and `orpc/` layers** as
-  defined by ADR-004. The split between `mountHttp` and
+  ADR-004 defines it. The split between `mountHttp` and
   `mountRpc` lives inside the `http/` layer; `orpc/` does
   not import from Hono and never will.
 - **The error envelope.** System routes return whatever the
@@ -203,17 +203,17 @@ Concrete examples of forbidden additions:
   two envelopes coexist on the same server because they
   serve different consumers (platforms vs apps).
 - **The `RPCHandler` and the Hono adapter machinery** in
-  `http/mount-rpc.ts` and `http/hono-adapter.ts`. They are
+  `http/mount-rpc.ts` and `http/hono-adapter.ts`. They're
   unchanged.
 - **The middleware chain.** `requestId`, `secureHeaders`,
-  `cors`, `honoLogger`, and `session` are mounted globally
+  `cors`, `honoLogger`, and `session` mount globally
   and apply to both Hono-direct routes and oRPC procedures.
   The rule is about route classification, not middleware
   scope.
 
 ## How to add a system route
 
-Adding a system route to `mountHttp` is allowed but requires
+Adding a system route to `mountHttp` works but requires
 a comment in the file that justifies the classification. The
 comment is one or two lines and answers:
 
@@ -221,10 +221,10 @@ comment is one or two lines and answers:
   CDN, a vendor integration.)
 - **Why is the wire format not the typed contract?** (The
   consumer is a platform primitive; it has its own wire
-  format; the typed contract does not apply.)
+  format; the typed contract doesn't apply.)
 
-The comment is reviewed at PR time. A system route without
-the comment is rejected; the contributor either adds the
+The reviewer checks the comment at PR time. A system route without
+the comment gets rejected; the contributor either adds the
 comment or moves the route to `mountRpc`.
 
 ## How to add a business route
@@ -237,7 +237,7 @@ Adding a business route is the standard oRPC workflow:
 4. The route is automatically mounted under
    `/api/v1/rpc/*` via `mountRpc`.
 
-No change to `mountHttp` is required. The route is live
+No change to `mountHttp` is needed. The route goes online
 when the contracts package, the procedures file, and the
 router registration land in the same PR.
 
@@ -255,15 +255,15 @@ Each Hono-direct business route is a small architectural
 loss:
 
 - The wire shape diverges from `appRouter`; the typed
-  client cannot consume it.
+  client can't consume it.
 - The error envelope is `errorBody(c, ...)` (or whatever the
   platform expects) rather than `ORPCError`; consumers have
   to decode two envelopes.
 - The route is invisible to `@workspace/contracts`; the
   contract package drifts from the wire.
 - The next contributor who reads `mountHttp` sees a route
-  that does not look like the others and asks why it is
-  there. The answer is usually "because the platform
+  that doesn't look like the others and asks why it's
+  there. The answer is "because the platform
   needs it", and the next contributor copies the pattern
   for the next business route, and the divergence compounds.
 
@@ -276,8 +276,8 @@ when the answer is yes.
 
 ## How to migrate
 
-No migration is required. The four routes that exist today
-are correctly classified:
+No migration applies. The four routes that exist today
+fall under the right classification:
 
 - `/health`, `/version`, `/ready` are system routes.
 - `/auth/*` is a delegated system route (Better Auth owns
@@ -288,14 +288,14 @@ The next cleanup task that emerges from this ADR:
 1. Add the "consumer + rationale" comment to each of the
    four system routes in `http/routes/http.ts`. The
    comments already exist in part (the file header and
-   the per-route docstrings) but they are prose, not
-   structured; tightening them is a one-PR change.
+   the per-route doc comments) but they're prose, not
+   structured; tightening them takes a single PR.
 2. Add a CI lint that fails when `mountHttp` gains a route
-   that does not match the system classification. The lint
+   that doesn't match the system classification. The lint
    is heuristic (a route is "system" if its path matches
    one of `/health`, `/version`, `/ready`, `/auth/*`,
    `/metrics`, `/build`) and explicit (a contributor can
-   add a new system path to the allowlist with a comment).
+   add a new system path to the allow list with a comment).
 3. Document the system-route classification in a
    knowledge-base entry under
    `apps/internal-documentation/content/docs/knowledge-base/api/`.
@@ -304,26 +304,26 @@ The next cleanup task that emerges from this ADR:
 
 ## Consequences
 
-- A PR that adds a business route to `mountHttp` is
-  rejected. The contributor moves it to `mountRpc`.
-- A PR that adds a system route to `mountRpc` is
-  rejected. The contributor moves it to `mountHttp`.
-- A PR that adds a system route to `mountHttp` without
-  the "consumer + rationale" comment is rejected.
-- A PR that mirrors a business procedure as a
-  Hono-direct "compatibility" route is rejected. The wire
+- Reviewers reject a PR that adds a business route to `mountHttp`.
+  The contributor moves it to `mountRpc`.
+- Reviewers reject a PR that adds a system route to `mountRpc`.
+  The contributor moves it to `mountHttp`.
+- Reviewers reject a PR that adds a system route to `mountHttp`
+  without the "consumer + rationale" comment.
+- Reviewers reject a PR that mirrors a business procedure as a
+  Hono-direct "compatibility" route. The wire
   format divergence is the bug; the contributor removes the
   mirror.
-- A PR that mirrors a system endpoint as an oRPC procedure
-  is rejected. The system endpoint stays single-sourced.
+- Reviewers reject a PR that mirrors a system endpoint as an oRPC procedure.
+  The system endpoint stays single-sourced.
 
 ## Where this rule came from
 
-The split between `mountHttp` and `mountRpc` was introduced
-by ADR-004 (the four-layer structure). The split was
+ADR-004 introduced the split between `mountHttp` and `mountRpc`
+(the four-layer structure). The split was
 correct but under-justified: the file header in
-`http/routes/http.ts` says "Direct HTTP routes that do not go
-through oRPC" and lists the four routes, but does not name
+`http/routes/http.ts` says "Direct HTTP routes that don't go
+through oRPC" and lists the four routes, but doesn't name
 the classification rule. The classification was implicit in
 the four routes' purposes (probes, auth delegation) but not
 pinned.
@@ -331,16 +331,15 @@ pinned.
 The first time the under-justification mattered was when a
 PR proposed `api.get('/api/v1/templates', ...)` in
 `mountHttp` as a "shortcut" for the existing `templates.list`
-procedure. The shortcut was reviewed out (the wire format
+procedure. Reviewers sent the shortcut back (the wire format
 divergence is the bug), but the review comment had to spell
-out the rule from scratch because the rule was not in an
-ADR. The next PR would have to do the same work. The rule
+out the rule from scratch because no ADR covered it yet. The next PR would have to do the same work. The rule
 now lives here.
 
 ## Related
 
 - [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md).
-  The global rule that "every endpoint uses oRPC". This ADR
+  The global rule that every endpoint uses oRPC. This ADR
   pins the exception: system endpoints are exempt from the
   rule, by reason of their consumer (platform primitive)
   rather than by reason of convenience.
@@ -352,13 +351,13 @@ now lives here.
 - [ADR-005: API is consumer-agnostic](./ADR-005-api-consumer-agnostic.md).
   The server-side counterpart. The system routes here are
   consumer-agnostic by design: they serve platforms, not
-  consumers. The classification does not name a consumer.
+  consumers. The classification names no consumer.
 - [ADR-010: CLI public surface](./ADR-010-cli-public-surface.md).
   The CLI's version probe (per ADR-010 §3) calls the
   Hono-direct `/api/v1/version` endpoint, not an oRPC
   procedure. This ADR is the server-side rule that makes
   that call correct.
-- [knowledge-base/api/system-routes.md](../knowledge-base/api/system-routes.md).
+- [knowledge-base/api/system-routes.md](../knowledge-base/api/system-routes.md). <!-- vale fix: Vale.Terms -->
   The conceptual companion: the rationale for the four
   routes that exist today, written for the contributor who
   has to decide whether a new route is system or business.
