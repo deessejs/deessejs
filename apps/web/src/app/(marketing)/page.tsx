@@ -102,7 +102,7 @@ export default function HomePage() {
         <p className="text-muted-foreground text-copy-20 leading-7 max-w-2xl text-balance [&:not(:first-child)]:mt-0">
           DeesseJS is a registry of Next.js SaaS templates with the
           contracts already wired — auth, billing, jobs, storage. Your
-          agent reads them, builds on them, can't break them.
+          agent reads them, builds on them, can&apos;t break them.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           <Button asChild size="lg">
