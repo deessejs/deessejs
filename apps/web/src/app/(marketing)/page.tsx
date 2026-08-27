@@ -149,7 +149,7 @@ export default function HomePage() {
           </Link>
         </header>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="divide-border grid grid-cols-1 divide-y md:grid-cols-3 md:divide-x md:divide-y-0">
           {FEATURED_TEMPLATES.map((template) => {
             const Icon = template.icon
             return (
@@ -158,7 +158,7 @@ export default function HomePage() {
                 href={`/templates/${template.slug}`}
                 className="group"
               >
-                <Card className="flex h-full flex-col gap-3 rounded-sm p-4 transition-colors group-hover:bg-accent/50">
+                <Card className="bg-background flex h-full flex-col gap-3 rounded-none p-4 transition-colors group-hover:bg-accent/50">
                   <div className="flex items-start justify-between gap-2">
                     <Badge variant="outline" className="self-start">
                       {template.category}
