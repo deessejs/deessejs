@@ -2,7 +2,7 @@
 
 **Read this before any implementation.** These are behavioral bugs, non-obvious defaults, and gotchas that have caused issues in this repo.
 
-> **Single-tenant reminder:** this template does not use the organization plugin. Pitfalls historically tracked here for org-related behaviour (`autoCreateOrganizationOnSignUp`, `session.create.before` org auto-create, `useActiveOrganization` stale cache) have been **removed** from this file and are documented in [`org.md`](./org.md) (historical only). They do not apply here.
+> **Single-tenant reminder:** this template doesn't use the organization plugin. Pitfalls historically tracked here for org-related behaviour (`autoCreateOrganizationOnSignUp`, `session.create.before` org autocreate, `useActiveOrganization` stale cache) are no longer in this file; [`org.md`](./org.md) documents them (historical only). They don't apply here. <!-- vale fix: write-good.Passive, Microsoft.Contractions, Microsoft.Auto -->
 
 ---
 
@@ -62,4 +62,4 @@ import { ORPCError } from "@orpc/server"
 throw new ORPCError({ code: "UNAUTHORIZED", message: "Authentication required" })
 ```
 
-This is tracked as a minor issue since oRPC may still surface the message, but the status code may be wrong (500 instead of 401).
+The team tracks this as a minor issue since oRPC may still surface the message, but the status code may be wrong (500 instead of 401). <!-- vale fix: write-good.Passive -->

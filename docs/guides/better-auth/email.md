@@ -47,7 +47,7 @@ emailVerification: {
 | `false` | Never sends on signup |
 | `undefined` (default) | Sends on signup only if `requireEmailVerification: true` |
 
-**Our choice:** explicit `true` (locked in `auth.ts:38`). More robust than relying on the `undefined` default, which depends on `requireEmailVerification` to trigger the send.
+**Choice made here:** explicit `true` (locked in `auth.ts:38`). More robust than relying on the `undefined` default, which depends on `requireEmailVerification` to trigger the send. <!-- vale fix: Microsoft.We -->
 
 **Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `sendOnSignUp`, `sendOnSignIn` options.
 
@@ -220,4 +220,4 @@ To add a new template:
 2. Export from `packages/email/src/templates/index.ts`
 3. Add to the `templates` namespace export in `packages/email/src/index.ts`
 
-> An `InvitationEmail` template is documented at [`org.md`](./org.md) for historical reference; it is not used in this repo.
+> [`org.md`](./org.md) documents an `InvitationEmail` template for historical reference; it's not used in this repo. <!-- vale fix: write-good.Passive, Microsoft.Contractions -->

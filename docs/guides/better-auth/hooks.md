@@ -4,7 +4,7 @@ Lifecycle hooks for database operations. See [`index.md`](./index.md) first.
 
 **Source:** [better-auth.com/docs/concepts/hooks](https://better-auth.com/docs/concepts/hooks), core hooks concept. [better-auth.com/docs/concepts/database](https://better-auth.com/docs/concepts/database), databaseHooks reference.
 
-> See [`org.md`](./org.md) (historical) for the auto-create-org pattern this template used to rely on. It is **not applicable here** since the repo is single-tenant.
+> See [`org.md`](./org.md) (historical) for the autocreate-org pattern this template used to rely on. It's **not applicable here** since the repo is single-tenant. <!-- vale fix: Microsoft.Auto, Microsoft.Contractions -->
 
 ---
 
@@ -74,7 +74,7 @@ databaseHooks: {
 },
 ```
 
-Always use `void` or `waitUntil` for async side effects. Do not await in `after` hooks as it blocks the response.
+Always use `void` or `waitUntil` for async side effects. Don't await in `after` hooks as it blocks the response. <!-- vale fix: Microsoft.Contractions -->
 
 ---
 
@@ -107,7 +107,7 @@ On signup, the execution order is:
 5. User row written
 6. `user.create.after` (if new user)
 
-**Do not** assume `user` exists when `session.create.before` runs; on first signup it does not yet. (Step 7 from the pre-single-tenant ordering, "organization plugin creates membership row", has been removed.)
+**Don't** assume `user` exists when `session.create.before` runs; on first signup it doesn't yet. (Step 7 from the pre-single-tenant ordering, "organization plugin creates membership row.," the team removed it.) <!-- vale fix: Microsoft.Contractions, Microsoft.Quotes, write-good.Passive -->
 
 ---
 

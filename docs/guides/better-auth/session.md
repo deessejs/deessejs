@@ -1,6 +1,6 @@
 # Better-Auth: Session Management
 
-Session lifecycle, cookie configuration, and expiration tuning. See [`index.md`](./index.md) first.
+Session lifecycle, cookie configuration, and expiry tuning. See [`index.md`](./index.md) first. <!-- vale fix: write-good.TooWordy -->
 
 **Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), session config reference. [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies), cookie docs. [better-auth.com/docs/concepts/session-management](https://better-auth.com/docs/concepts/session-management), session management concept.
 
@@ -52,7 +52,7 @@ session: {
 },
 ```
 
-Cached sessions are encrypted (JWE) using the auth secret. The DB is still queried every `maxAge` interval.
+The auth secret encrypts cached sessions (JWE). The DB is still queried every `maxAge` interval. <!-- vale fix: write-good.Passive -->
 
 **Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `cookieCache`.
 
@@ -121,9 +121,9 @@ advanced: {
 
 ## Sign-out
 
-Sessions are revoked by calling `auth.api.signOut()` (server) or `authClient.signOut()` (client). This deletes the session row from the DB and clears the cookie.
+Call `auth.api.signOut()` (server) or `authClient.signOut()` (client) to revoke sessions. This deletes the session row from the DB and clears the cookie. <!-- vale fix: write-good.Passive -->
 
-To revoke **all** sessions for a user (e.g., on password reset):
+To revoke **all** sessions for a user (for example, on password reset):
 
 ```ts
 // In emailAndPassword.onPasswordReset callback

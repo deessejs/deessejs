@@ -2,7 +2,7 @@
 
 React hooks and auth client setup. See [`index.md`](./index.md) first and read [`pitfalls.md`](./pitfalls.md) before implementing anything.
 
-> **Single-tenant:** the organization client plugin (`useActiveOrganization`, `authClient.organization.*`) is intentionally not wired. This doc reflects that. Patterns historically documented here for the org plugin are removed. See [`org.md`](./org.md) for archived reference.
+> **Single-tenant:** the codebase intentionally doesn't wire the organization client plugin (`useActiveOrganization`, `authClient.organization.*`). This doc reflects that. The team removed patterns historically documented here for the org plugin. See [`org.md`](./org.md) for archived reference. <!-- vale fix: write-good.Passive -->
 
 **Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), React client reference.
 
@@ -39,7 +39,7 @@ const { data: session, isLoading } = useSession()
 
 Returns:
 - `session.user` is the user object
-- `session.session` is the session object (does **not** include `activeOrganizationId` in single-tenant mode)
+- `session.session` is the session object (**doesn't** include `activeOrganizationId` in single-tenant mode)
 - `session.session.expiresAt` is the session expiry
 - `isLoading` is `true` while fetching session state
 
@@ -125,7 +125,7 @@ await authClient.sendVerificationEmail({
 
 ## Sign-out Signal
 
-If other tabs need to react to sign-out (e.g., to close WebSocket connections):
+If other tabs need to react to sign-out (for example, to close WebSocket connections):
 
 ```ts
 authClient.$sessionSignal.subscribe((session) => {
