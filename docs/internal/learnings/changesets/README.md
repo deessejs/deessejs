@@ -197,7 +197,8 @@ docs(api): document rate limiting headers
 
 ### Use Changesets When
 
-- A registry hosts the package (npm, GitHub Packages, and so on).
+- A registry hosts the package (npm, GitHub Packages, or similar). <!-- vale fix: Microsoft.Avoid -->
+
 - Packages share interdependencies that need coordinated version bumps.
 - You want changelogs generated per-release from developer-authored prose.
 - You need the "Version PR" as a release gate for team review.
