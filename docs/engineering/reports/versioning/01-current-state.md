@@ -8,56 +8,56 @@ Verified by reading every `package.json` in the tree:
 
 | Package | Version | `private` | `publishConfig` | Has CHANGELOG |
 |---|---|---|---|---|
-| Root `package.json` (`next-monorepo`) | 0.0.1 | true | — | yes (will become historical artifact) |
-| `apps/app` | 0.1.2 | true | — | yes |
-| `apps/web` | 0.0.1 | true | — | no |
-| `apps/docs` (`@workspace/docs`) | 0.0.0 | true | — | no |
-| `apps/cli` (`@deessejs/cli`) | 0.1.0 | **true** | `{"access":"public"}` (dead) | no (will be auto-generated) |
-| `packages/api` | 0.0.2 | true | — | yes (changesets format) |
-| `packages/auth` | 0.0.2 | true | — | yes |
-| `packages/cookies` | 0.0.1 | true | — | yes |
-| `packages/database` | 0.0.1 | true | — | yes |
-| `packages/email` | 0.0.0 | true | — | no |
-| `packages/env` | 0.0.0 | true | — | no |
-| `packages/eslint-config` | 0.0.0 | true | — | no |
+| Root `package.json` (`next-monorepo`) | 0.0.1 | true | none | yes (will become historical artifact) |
+| `apps/app` | 0.1.2 | true | none | yes |
+| `apps/web` | 0.0.1 | true | none | no |
+| `apps/docs` (`@workspace/docs`) | 0.0.0 | true | none | no |
+| `apps/cli` (`@deessejs/cli`) | 0.1.0 | **true** | `{"access":"public"}` (dead) | no (changesets will autogenerate) | <!-- vale fix: Microsoft.Auto, write-good.Passive -->
+| `packages/api` | 0.0.2 | true | none | yes (changesets format) |
+| `packages/auth` | 0.0.2 | true | none | yes |
+| `packages/cookies` | 0.0.1 | true | none | yes |
+| `packages/database` | 0.0.1 | true | none | yes |
+| `packages/email` | 0.0.0 | true | none | no |
+| `packages/env` | 0.0.0 | true | none | no |
+| `packages/eslint-config` | 0.0.0 | true | none | no |
 | `packages/typescript-config` | 0.0.0 | **true** | `{"access":"public"}` (dead) | no |
-| `packages/ui` | 0.0.0 | true | — | no |
-| `packages/utils` | 0.0.0 | true | — | no |
+| `packages/ui` | 0.0.0 | true | none | no |
+| `packages/utils` | 0.0.0 | true | none | no |
 | `@deessejs/errors` (external) | 1.1.1 | n/a | n/a | n/a |
 | `@deessejs/fp` (external) | 1.0.0 | n/a | n/a | n/a |
 
 **Notes for the senior pattern:**
 
-- **`@deessejs/cli` is the only package meant for npm**. All other workspaces are and will remain `private: true`. Root versioning is being dropped (no more `VERSION` file, no more `template/v*` tags, no more root `CHANGELOG.md` auto-patching).
-- `apps/cli` and `packages/typescript-config` have `publishConfig: { access: "public" }` while still being `private: true`. Dead code. The `typescript-config` one is leftover boilerplate — to be removed.
-- `apps/cli`'s README says "UNLICENSED for V1 (private). License TBD before npm publish." — license is a precondition.
+- **`@deessejs/cli` is the only package meant for npm**. All other workspaces are and will remain `private: true`. The senior pattern drops root versioning (no more `VERSION` file, no more `template/v*` tags, no more root `CHANGELOG.md` autopatching). <!-- vale fix: write-good.Passive, Microsoft.Auto -->
+- `apps/cli` and `packages/typescript-config` have `publishConfig: { access: "public" }` while still being `private: true`. Dead code. Remove the `typescript-config` entry; it's leftover boilerplate. <!-- vale fix: write-good.Passive, Microsoft.Contractions -->
+- `apps/cli`'s README says "UNLICENSED for V1 (private). License TBD before npm publish." License is a precondition.
 
 ## 1.2 Changesets state
 
-- `.changeset/config.json`: `changelog: "@changesets/changelog-git"`, `commit: true`, `access: "restricted"`, `baseBranch: "main"`, `updateInternalDependencies: "minor"`, `ignore: []`. To be updated per [06-implementation-specs.md §6.1](06-implementation-specs.md#61-changesets-config-proposed).
-- `.changeset/` directory contains **only** `config.json` — no `<feature>.md` files.
-- `packages/api/CHANGELOG.md` (and 4 others) shows the changesets-generated format. Changesets has been run historically; it's dormant, not absent.
+- `.changeset/config.json`: `changelog: "@changesets/changelog-git"`, `commit: true`, `access: "restricted"`, `baseBranch: "main"`, `updateInternalDependencies: "minor"`, `ignore: []`. Update per [06-implementation-specs.md §6.1](06-implementation-specs.md#61-changesets-config-proposed). <!-- vale fix: write-good.Passive -->
+- `.changeset/` directory contains **only** `config.json`; no `<feature>.md` files.
+- `packages/api/CHANGELOG.md` (and 4 others) shows the changesets-generated format. The team has run changesets historically; it's dormant, not absent. <!-- vale fix: write-good.Passive -->
 
-## 1.3 Existing release pipeline (verified) — TO BE REPLACED
+## 1.3 Existing release pipeline (verified), slated for replacement <!-- vale fix: Microsoft.HeadingAcronyms, write-good.Passive -->
 
 `.github/workflows/release.yml` (177 lines) handles the current dual-purpose flow:
 
 - Triggers on `push: branches: [main]` and `workflow_dispatch`, gated on commit message containing `.changeset`.
 - Reads root `VERSION`.
 - Runs `pnpm changeset version` (bumps root + any workspace with a changeset; root is `private: true` so changesets ignores it).
-- Creates a git tag `template/v{VERSION}` (e.g. `template/v0.1.0`).
+- Creates a git tag `template/v{VERSION}` (for example, `template/v0.1.0`). <!-- vale fix: Microsoft.Foreign -->
 - Creates a GitHub Release via `softprops/action-gh-release@v2`.
 - Manually patches root `CHANGELOG.md` via `node -e`.
 - Does **not** publish anything to npm.
 
 The senior pattern [**replaces** this file entirely](06-implementation-specs.md#63-release-workflow-proposed) with a single-purpose workflow (~50 lines) that does version bump + npm publish + tag + GitHub Release in one job. No root versioning, no `template/v*` tags.
 
-## 1.4 CI scope
+## 1.4 Continuous integration scope <!-- vale fix: Microsoft.HeadingAcronyms -->
 
-`.github/workflows/ci.yml` triggers on `pull_request: branches: [main]` and `push: branches: [main]`. **It does not trigger on PRs targeting `staging`.** This contradicts `AGENTS.md`'s staging-first workflow. The new `changesets-check.yml` workflow (PR 2) must use `pull_request: branches: [staging, main]`.
+`.github/workflows/ci.yml` triggers on `pull_request: branches: [main]` and `push: branches: [main]`. **It doesn't trigger on pull requests targeting `staging`.** This contradicts `AGENTS.md`'s staging-first workflow. The new `changesets-check.yml` workflow (PR 2) must use `pull_request: branches: [staging, main]`. <!-- vale fix: Microsoft.Contractions -->
 
 ## 1.5 `apps/cli` build and entrypoints
 
 - `tsup.config.ts`: emits `format: ["esm"]`, single entry `src/index.ts`, target `node18`, banner `#!/usr/bin/env node`, sourcemap, **no `dts`**. Output: `dist/index.js` + `dist/index.js.map`. No `.d.ts` files in `dist/`.
 - `apps/cli/package.json` declares `"type": "module"`, `main: "./dist/index.js"`, `bin: { "deessejs": "./dist/index.js" }`, `files: ["dist", "README.md"]`. Missing: `module`, `types`, `repository`, `license`, `keywords`.
-- Tests live in `apps/cli/test/{helpers,integration,unit}/`. Per commit `261d074`, init tests are currently skipped in CI ("fork spawn can't find git") — out of scope here.
+- Tests live in `apps/cli/test/{helpers,integration,unit}/`. Per commit `261d074`, init tests are currently skipped in CI ("fork spawn can't find git"), out of scope here.

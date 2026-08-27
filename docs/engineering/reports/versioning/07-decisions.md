@@ -4,7 +4,7 @@
 
 ## 7.1 Resolved decisions (architecture)
 
-These are baked into the senior pattern and don't need a separate decision per item — they fall out of the architecture chosen in [05-strategy.md](05-strategy.md).
+These ship with the senior pattern; they don't need a separate decision per item because they fall out of the architecture chosen in [05-strategy.md](05-strategy.md). <!-- vale fix: write-good.Passive -->
 
 | Decision | Choice | Rationale |
 |---|---|---|
@@ -35,7 +35,7 @@ These are choices that need explicit confirmation before the implementation PRs 
 
 ### 7.2.2 Drop root `VERSION` file
 
-The repo currently has a `VERSION` file at the root with value `0.0.1`. The senior pattern drops it entirely — it has no consumer that can't be served by git commit hash.
+The repo currently has a `VERSION` file at the root with value `0.0.1`. The senior pattern drops it entirely; every consumer can use git commit hash instead. <!-- vale fix: write-good.Passive -->
 
 **Recommended**: delete `VERSION` as part of PR 1.
 

@@ -1,4 +1,4 @@
-# Better-Auth — Email
+# Better-Auth: Email
 
 Email verification and password reset via `@workspace/email`. See [`index.md`](./index.md) first and read [`hooks.md`](./hooks.md) before this guide.
 
@@ -37,7 +37,7 @@ emailVerification: {
 },
 ```
 
-**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password) — `emailVerification` config options.
+**Source:** [Better-Auth docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `emailVerification` config options.
 
 ### sendOnSignUp Options
 
@@ -47,9 +47,9 @@ emailVerification: {
 | `false` | Never sends on signup |
 | `undefined` (default) | Sends on signup only if `requireEmailVerification: true` |
 
-**Our choice:** explicit `true` (locked in `auth.ts:38`). More robust than relying on the `undefined` default, which depends on `requireEmailVerification` to trigger the send.
+**Choice made here:** explicit `true` (locked in `auth.ts:38`). More robust than relying on the `undefined` default, which depends on `requireEmailVerification` to trigger the send. <!-- vale fix: Microsoft.We -->
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options) — `sendOnSignUp`, `sendOnSignIn` options.
+**Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), `sendOnSignUp`, `sendOnSignIn` options.
 
 ### Verification Token
 
@@ -62,7 +62,7 @@ emailVerification: {
 },
 ```
 
-**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password) — `expiresIn`, `autoSignInAfterVerification`.
+**Source:** [Better-Auth docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `expiresIn`, `autoSignInAfterVerification`.
 
 ---
 
@@ -89,7 +89,7 @@ emailAndPassword: {
 
 Default token expiry: 30 minutes. Configurable via `resetPasswordTokenExpiresIn`.
 
-**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password) — `sendResetPassword`, `onPasswordReset`, `revokeSessionsOnPasswordReset`.
+**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `sendResetPassword`, `onPasswordReset`, `revokeSessionsOnPasswordReset`.
 
 ---
 
@@ -121,7 +121,7 @@ void sendAuthEmail({
 
 > "Avoid awaiting the email sending to prevent timing attacks. On serverless platforms, use `waitUntil` or similar."
 
-**Source:** [better-auth.com/docs/concepts/email](https://better-auth.com/docs/concepts/email) — timing attack guidance.
+**Source:** [better-auth.com/docs/concepts/email](https://better-auth.com/docs/concepts/email), timing attack guidance.
 
 In our Hono-based API, use `void`:
 
@@ -135,7 +135,7 @@ await sendAuthEmail({ to: user.email, ... })
 
 ---
 
-## Idempotency Keys
+## idempotency Keys
 
 For Resend, pass an idempotency key to prevent duplicate sends on retries:
 
@@ -150,7 +150,7 @@ void sendAuthEmail({
 
 Use the user ID for verification and password-reset emails.
 
-**Source:** [better-auth.com/docs/infrastructure/services/email](https://better-auth.com/docs/infrastructure/services/email) — email service reference.
+**Source:** [Better-Auth docs/infrastructure/services/email](https://better-auth.com/docs/infrastructure/services/email), email service reference.
 
 ---
 
@@ -168,7 +168,7 @@ MAIL_TRANSPORT=resend     # production
 
 ---
 
-## Console Transport (Dev)
+## Console Transport (dev)
 
 Logs a grep-friendly format to stdout:
 
@@ -200,13 +200,13 @@ if (error) return { error: error.message }
 return { id: data!.id }
 ```
 
-**Source:** [better-auth.com/docs/infrastructure/services/email](https://better-auth.com/docs/infrastructure/services/email) — email service docs.
+**Source:** [better-auth.com/docs/infrastructure/services/email](https://better-auth.com/docs/infrastructure/services/email), email service docs.
 
 ---
 
 ## Templates
 
-Two transactional templates ship with this template (single-tenant — no org-invitation template):
+Two transactional templates ship with this template (single-tenant, no org-invitation template):
 
 | Template | Trigger | Component |
 |---|---|---|
@@ -220,4 +220,4 @@ To add a new template:
 2. Export from `packages/email/src/templates/index.ts`
 3. Add to the `templates` namespace export in `packages/email/src/index.ts`
 
-> An `InvitationEmail` template is documented at [`org.md`](./org.md) for historical reference; it is not used in this repo.
+> [`org.md`](./org.md) documents an `InvitationEmail` template for historical reference; it's not used in this repo. <!-- vale fix: write-good.Passive, Microsoft.Contractions -->

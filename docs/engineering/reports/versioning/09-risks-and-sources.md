@@ -6,10 +6,10 @@
 
 - **Risk: someone forgets a changeset.** Mitigated by [08-execution-plan.md](08-execution-plan.md) PR 2's `changesets-check.yml` workflow.
 - **Risk: `pnpm changeset publish` publishes the wrong package.** Mitigated by `private: true` on every other workspace and `publishConfig` only on `apps/cli`. With the senior pattern (single workflow, no manual `publish-cli.yml`), this becomes a one-time setup risk rather than an ongoing one.
-- **Risk: trusted publisher not configured → publish silently falls back to NPM_TOKEN (which doesn't exist).** This will fail loudly. If maintainers want a fallback path, add a manual `workflow_dispatch` job that runs `pnpm changeset publish` with a maintainer-supplied `NPM_TOKEN` secret. **Decision pending**.
-- **Risk: a hotfix is needed and `release.yml` is broken.** Manual fallback in [06-implementation-specs.md §6.4](06-implementation-specs.md#64-manual-fallback-unchanged-from-dual-flow-draft) — copy/paste from the workflow.
+- **Risk: trusted publisher not configured → publish falls back to NPM_TOKEN (which doesn't exist).** This fails with an error. If maintainers want a fallback path, add a manual `workflow_dispatch` job that runs `pnpm changeset publish` with a maintainer-supplied `NPM_TOKEN` secret. **Decision pending**. <!-- vale fix: Microsoft.Adverbs -->
+- **Risk: a hotfix can't wait and `release.yml` breaks.** Manual fallback in [06-implementation-specs.md §6.4](06-implementation-specs.md#64-manual-fallback-unchanged-from-dual-flow-draft): copy/paste from the workflow. <!-- vale fix: write-good.Passive -->
 - **Risk: yank a bad version.** `pnpm unpublish @deessejs/cli@x.y.z` (npm allows within 72h). For yanks after 72h, use `npm deprecate` with a clear message.
-- **Risk: divergence from upstream `deessejs/saas-template`.** The release workflow is fork-specific. Per the `saas-template-divergence.md` plan, this falls under Phase 4 (pull cycle) and won't conflict with upstream sync as long as the new `release.yml` and `.changeset/config.json` changes are categorized as locked-local in the divergence catalog.
+- **Risk: divergence from upstream `deessejs/saas-template`.** The release workflow is fork-specific. Per the `saas-template-divergence.md` plan, this falls under Phase 4 (pull cycle) and won't conflict with upstream sync as long as the new `release.yml` and `.changeset/config.json` changes fall under locked-local in the divergence catalog. <!-- vale fix: write-good.Passive -->
 
 ## 9.2 Internal sources
 
