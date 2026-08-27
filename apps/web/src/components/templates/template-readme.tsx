@@ -1,4 +1,4 @@
-import Markdown from "react-markdown"
+import { MarkdownAsync } from "react-markdown"
 
 import { Prose } from "@/components/blog/prose"
 import { safeReadmeOptions } from "@/lib/templates/safe-readme"
@@ -20,13 +20,24 @@ export type TemplateReadmeProps = {
  *   - Reuses the marketing-site `Prose` typography styles so headings, code
  *     blocks, tables, and lists match the rest of the templates surface.
  *
- * Server-rendered: `react-markdown` executes in the RSC payload, no client JS
- * is shipped for the Markdown pipeline.
+ * **Async.** Uses `MarkdownAsync` (not the sync `Markdown`) because the
+ * rehype pipeline contains `rehype-pretty-code`, which returns an async
+ * transformer (it has to load shiki grammars on first use, which is
+ * inherently async). The sync `Markdown` component calls
+ * `processor.runSync(...)` internally and throws
+ * `runSync finished async. Use run instead` (digest 2953611744 on
+ * production) when it hits that plugin. Server Components may be
+ * async in Next App Router, so the cost is one extra microtask at
+ * render time.
  *
- * @see `apps/web/src/lib/templates/safe-readme.ts` — sanitizer config.
+ * Server-rendered: rendering happens in the RSC payload, no client JS
+ * is shipped for the Markdown pipeline (or for shiki).
+ *
+ * @see `apps/web/src/lib/templates/safe-readme.tsx` — sanitizer config.
  */
-export const TemplateReadme = ({ readme }: TemplateReadmeProps) => {
+export const TemplateReadme = async ({ readme }: TemplateReadmeProps) => {
   if (!readme) return null
+  const rendered = await MarkdownAsync({ ...safeReadmeOptions, children: readme })
   return (
     <section
       aria-label="README"
@@ -35,7 +46,7 @@ export const TemplateReadme = ({ readme }: TemplateReadmeProps) => {
     >
       <h2 className="text-label-14 text-muted-foreground">Overview</h2>
       <Prose id="template-readme">
-        <Markdown {...safeReadmeOptions}>{readme}</Markdown>
+        {rendered}
       </Prose>
     </section>
   )
