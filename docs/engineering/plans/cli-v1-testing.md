@@ -17,7 +17,7 @@ PR #1 (`chore/cli: scaffold apps/cli workspace`) shipped the `@deessejs/cli` pac
 
 - 100% line/branch coverage
 - Cross-platform tests (Windows is V1.x)
-- NPM publish workflow tests (V1.1)
+- npm publish workflow tests (V1.1)
 - Snapshot testing (overkill for current CLI shape)
 - A test for every `init` edge case (grow the matrix when something breaks)
 
@@ -98,7 +98,7 @@ export async function createGitFixture(opts: {
 
 ### `test/helpers/fake-api.ts`
 
-Stdlib HTTP server. Default handler returns `{ templates: Template[] }` on `/api/templates`. Test can override the handler to drive error paths (404, 500, malformed JSON).
+stdlib HTTP server. Default handler returns `{ templates: Template[] }` on `/api/templates`. Test can override the handler to drive error paths (404, 500, malformed JSON).
 
 ```ts
 export type FakeApi = {
@@ -221,7 +221,7 @@ Add to `apps/cli/package.json`:
 | `vitest` | Already in deps |
 | `node:http` | Fake API server, stdlib |
 | `node:child_process` | `runCli` + git fixtures, stdlib |
-| `os.tmpdir()` | Tmp dirs for fixtures, stdlib |
+| `os.tmpdir()` | tmp dirs for fixtures, stdlib |
 | `node:fs` / `node:path` | Cleanup, stdlib |
 
 Zero new deps.
@@ -232,7 +232,7 @@ Zero new deps.
 - V1.1: comprehensive `init` test matrix (15 cases enumerated earlier can land as bugs surface)
 - V1.1: coverage threshold and CI enforcement (V1 ships coverage info, no gate)
 - V1.1: snapshot testing for output formatting
-- V1.1: NPM publish integration tests
+- V1.1: npm publish integration tests
 
 ## Platform notes
 
