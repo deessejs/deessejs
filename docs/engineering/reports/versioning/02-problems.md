@@ -32,7 +32,7 @@ The senior pattern rejects the dual-flow design (separate `release.yml` for root
 
 ## 2.5 P2: No first-class trusted publisher config yet
 
-Per npm trusted publishers docs ([docs.npmjs.com/trusted-publishers](https://docs.npmjs.com/trusted-publishers/), GA since 2025-07-31): publishing via OIDC requires (a) per-package config on `https://www.npmjs.com/package/@deessejs/cli/access`, (b) `id-token: write` permission in the workflow, (c) `npm` CLI v11.5.1+ on the runner, (d) GitHub-hosted runners only.
+Per npm trusted publishers docs ([docs.npmjs.com/trusted-publishers](https://docs.npmjs.com/trusted-publishers/), GA since 2025-07-31): publishing via OIDC requires (1) per-package config on `https://www.npmjs.com/package/@deessejs/cli/access`, (2) `id-token: write` permission in the workflow, (3) `npm` CLI v11.5.1+ on the runner, (4) GitHub-hosted runners only. <!-- vale fix: proselint.Typography -->
 
 One-time setup; covered in [08-execution-plan.md](08-execution-plan.md) §"One-time setup." <!-- vale fix: Microsoft.Quotes -->
 

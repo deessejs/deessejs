@@ -26,7 +26,7 @@ Concrete changes to apply once [05-strategy.md](05-strategy.md) gets approval. <
 - `updateInternalDependencies: "patch"` matches the changesets default and the documented recommendation. Has minimal real-world effect in this repo since `@deessejs/cli` has no workspace deps; included for hygiene.
 - `privatePackages: { version: false, tag: false }` keeps changesets from bumping private workspace `package.json#version` (the packages in `packages/*`, `apps/*` excluding `apps/cli`). The bump is cosmetic since private packages never publish; they don't need a changeset. <!-- vale fix: write-good.Passive -->
 
-## 6.2 `apps/cli` package.json (proposed)
+## 6.2 `apps/cli` `package.json` (proposed)
 
 ```jsonc
 {

@@ -119,7 +119,7 @@ Per Jurij Tokarski's [April 2026 writeup](https://varstatt.com/jurij/p/npm-trust
 
 ### 12.6.2 Provenance flag despite the docs
 
-The npm docs say `--provenance` is automatic with trusted publishing. Real-world reports (Phil Nash, 2026-01-31) and the audit's own [02-problems.md §2.7](02-problems.md#27-p3--provenance-documentation-vs-reality) note that `--provenance` is still needed in practice. The senior pattern uses the triple belt: `publishConfig.provenance: true` in package.json, `--provenance` flag, and `NPM_CONFIG_PROVENANCE=true` env var. Belt + suspenders + belt.
+The npm docs say `--provenance` is automatic with trusted publishing. Real-world reports (Phil Nash, 2026-01-31) and the audit's own [02-problems.md §2.7](02-problems.md#27-p3--provenance-documentation-vs-reality) note that `--provenance` is still needed in practice. The senior pattern uses the triple belt: `publishConfig.provenance: true` in `package.json`, `--provenance` flag, and `NPM_CONFIG_PROVENANCE=true` env var. Belt + suspenders + belt.
 
 ### 12.6.3 Maintainer leaves the org
 
