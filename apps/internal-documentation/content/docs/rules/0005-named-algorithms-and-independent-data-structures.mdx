@@ -8,60 +8,60 @@ description: 'Three invariants, all anchored in the same principle: a reader sho
 
 Three invariants, all anchored in the same principle: a reader should
 be able to understand **what** the code does without first having to
-decipher **how** it is described.
+decipher **how** the code describes it.
 
-1. **Algorithms are named.** A depth-first search described in three
-   lines of inline code with a `// DFS walk` comment is not a named
-   algorithm. It is a comment that happens to be near code. A named
-   algorithm is a function, a type, or a class whose name is the
-   concept, and whose body is the implementation. The reader should
-   be able to read the name and trust it.
+1. **Algorithms carry names.** A depth-first search described in
+   three lines of inline code with a `// DFS walk` comment isn't a
+   named algorithm. It's a comment that happens to sit near code.
+   A named algorithm is a function, a type, or a class whose name
+   carries the concept and whose body delivers the implementation.
+   The reader should read the name and trust it.
 
 2. **No project-internal diminutives.** Names carry the meaning that
-   comments cannot. A **project-internal diminutive** , one that
-   is not a word in the language, the ecosystem, or the
-   mathematical convention , trains the reader to translate every
+   comments can't. A **project-internal diminutive** (one that
+   isn't a word in the language, the ecosystem, or the
+   mathematical convention) trains the reader to translate every
    line. `DFS`, `mgr`, `ctx`, `arr`, `fn`, `cb`, `usr`, `cfg`,
    `evt` are diminutives; spell them out as
    `depthFirstSearch`, `manager`, `context`, `items`, `function`,
    `callback`, `user`, `configuration`, `event`. The cost of the
-   extra characters is paid once; the cost of the abbreviation is
-   paid every time the code is read.
+   extra characters lands once; the cost of the abbreviation
+   lands every time someone reads the code.
 
-3. **Data structures are explicit and independent.** A stack, queue,
+3. **Data structures stay explicit and independent.** A stack, queue,
    heap, ring buffer, or sorted map used by an algorithm is a
-   **thing**. It deserves a type, a file, and a name. It must not
-   be inlined as a primitive array with `push`/`pop` because that
-   was the first thing that worked. More importantly, the data
-   structure must be **independent of the algorithm that first used
-   it**: an `ErrorInheritanceStack` for the inheritance walk must
-   not encode "depth-first" in its type. If a second algorithm needs
-   a stack for breadth-first traversal, it must be able to use the
-   same type.
+   **thing**. It deserves a type, a file, and a name. The data
+   structure must not live inline as a primitive array with
+   `push`/`pop` because that was the first shape that worked. More
+   importantly, the data structure must stay **independent of the
+   algorithm that first used it**: an `ErrorInheritanceStack` for the
+   inheritance walk must not encode "depth-first" in its type. If a
+   second algorithm needs a stack for breadth-first traversal, it
+   must reach for the same type.
 
-### Diminutives: the three categories
+### Diminutives, the three categories
 
 Not every short name is a diminutive. The rule distinguishes three
 categories by their source, not by their length.
 
 - **Language-standard words**: `id`, `url`, `json`, `html`, `css`,
   `api`, `http`, `cli`, `sdk`, `uri`. These are words in the
-  vocabulary of the language and the ecosystem. The reader does not
-  translate them; they are part of the working vocabulary. The
-  rule does **not** ban them.
+  vocabulary of the language and the ecosystem. The reader doesn't
+  translate them; they sit in the working vocabulary. The rule
+  does **not** ban them.
 - **Mathematical and conventional names**: `i`, `j`, `k`, `n`, `T`,
   `U`, `V` for loop indices and generic type parameters. These
-  names have a tradition older than any project and a density of
-  meaning that is hard to replicate with longer names in the same
-  context. The rule does **not** ban them; the rule requires
+  names carry a tradition older than any project and a density of
+  meaning that's hard to replicate with longer names in the same
+  context. The rule doesn't ban them; the rule requires
   them to stay within the contexts where the convention applies
   (loop bodies, generic signatures, mathematical operations).
 - **Project-internal diminutives**: `mgr`, `ctx`, `arr`, `fn`,
   `cb`, `dfs`, `bfs`, `usr`, `cfg`, `evt`, `req`, `res`. These are
-  neither language-standard nor mathematical. They are local
-  shortcuts that the author chose for the line they were writing.
-  The reader has no way to know them without reading the project's
-  glossary. The rule **bans** them.
+  neither language-standard nor mathematical. They're local
+  shortcuts the author chose for the line they wrote. The reader
+  has no way to know them without reading the project's glossary.
+  The rule **bans** them.
 
 The length of a name is irrelevant to the rule. `id` is one
 character and a word; `usr` is three characters and a diminutive.
@@ -74,33 +74,35 @@ the length.
 The rule applies uniformly to public and private names. A private
 helper that uses `dfs` as a parameter name still trains the next
 contributor who reads the helper to translate `dfs` to "depth-first
-search". The training tax is paid by every reader, including the
+search." The training tax lands on every reader, including the
 author on the day they forget the context.
 
-Loop indices (`i`, `j`, `k`) are the **single exception** because
-they are a mathematical convention, not a project choice. The
-exception is scoped to tight, single-screen loops where the
-convention is universal. An `i` in a fifty-line function is not
+Loop indices (`i`, `j`, `k`) form the **single exception** because
+they're a mathematical convention, not a project choice. The
+exception stays scoped to tight, single-screen loops where the
+convention is universal. An `i` in a fifty-line function isn't
 the same as an `i` in a five-line loop; the second is convention,
-the first is a diminished name that should be spelled out.
+the first is a diminished name that should get spelled out.
 
 ## Why
 
 A comment that names an algorithm is a **deferred definition**. The
-comment promises a structure that does not exist; the code that
-follows is responsible for delivering on the promise. If the code
-delivers, the comment becomes redundant; if it does not, the comment
-becomes a lie. A function whose name is the algorithm is honest by
-construction: the name is the contract, the body is the proof.
+comment promises a structure that doesn't exist; the code that
+follows owns the delivery on the promise. If the code delivers,
+the comment becomes redundant; if it doesn't, the comment becomes
+a lie. A function whose name carries the algorithm stays honest
+by construction: the name is the contract, the body is the proof.
 
 Diminutives are a tax that compounds. A codebase that uses `ctx`
-everywhere trains its readers to translate every line. A codebase that
-spells `context` trains them to read. The first codebase looks
-"professional"; the second is professional.
+everywhere trains its readers to translate every line. A codebase
+that spells `context` trains them to read. The first codebase
+looks "professional"; the second is professional.
 
-Coupling a data structure to the algorithm that first used it is a
+Coupling a data structure to the algorithm that first used it stays a
 form of premature commitment. The next algorithm that needs the
-same structure either duplicates it or forks it; either way the
+same structure either duplicates it or forks it; either way, the
+codebase loses. Independence is what makes a `Stack<T>` reusable
+across BFS, DFS, and undo-log implementations.
 codebase loses. Independence is what makes a `Stack<T>` reusable
 across BFS, DFS, and undo-log implementations.
 
@@ -132,13 +134,13 @@ Three shapes that this rule exists to catch:
   }
   ```
 
-  What is wrong: the comment names the algorithm, but the algorithm
-  is not a function. The reader has to read twenty lines to confirm
-  that the comment is accurate. The stack is a primitive `Array`
-  whose only contract is `push` and `pop`; a second algorithm cannot
+  What's wrong: the comment names the algorithm, but the algorithm
+  isn't a function. The reader has to read twenty lines to confirm
+  that the comment holds. The stack is a primitive `Array` whose
+  only contract is `push` and `pop`; a second algorithm can't
   reuse it without duplicating the type. The names `stack`, `seen`,
   `current`, `inherits` are local; a reader scanning the function
-  does not know which is which.
+  doesn't know which is which.
 
   What the right shape looks like:
 
@@ -153,7 +155,8 @@ Three shapes that this rule exists to catch:
 
   Where `walkInheritance` is a generic traversal function in a
   shared module, `inheritanceDepthFirst` is a stack-based strategy
-  in its own file, and the predicate is named for what it tests.
+  in its own file, and the predicate carries the name of what it
+  tests.
 
 - **Diminutive-heavy naming**:
 
@@ -165,7 +168,7 @@ Three shapes that this rule exists to catch:
   }
   ```
 
-  What is wrong: a reader has to translate `mgr`, `ErrT`, `Ctx`,
+  What's wrong: a reader has to translate `mgr`, `ErrT`, `Ctx`,
   `m`, `arr`, `cb`, `it` before they can think about the function.
   The function body is shorter to type than to read.
 
@@ -190,10 +193,10 @@ Three shapes that this rule exists to catch:
   }
   ```
 
-  What is wrong: the type encodes the algorithm in its shape. A
-  breadth-first walker cannot reuse `InheritanceWalkerState` without
-  duplicating the interface. The right shape is to separate the
-  walker from the strategy:
+  What's wrong: the type encodes the algorithm in its shape. A
+  breadth-first walker can't reuse `InheritanceWalkerState` without
+  duplicating the interface. The right shape separates the walker
+  from the strategy:
 
   ```ts
   // Stack.ts (independent)
@@ -222,174 +225,177 @@ Three shapes that this rule exists to catch:
   }
   ```
 
-## When this rule does not apply
+## When this rule doesn't apply
 
-A single-caller helper whose concept is local to its file lives
-inline. See rule 0003. The point of this rule is to capture **shared
-concepts** (an algorithm, a data structure, a name) and to surface
-them at the right grain. A five-line local computation that does not
-deserve a name does not need one.
+A single-caller helper whose concept stays local to its file lives
+inline. See rule 0003. The point of this rule is to capture
+**shared concepts** (an algorithm, a data structure, a name) and
+to surface them at the right grain. A five-line local computation
+that doesn't deserve a name doesn't need one.
 
 ## Enforcement
 
 - **Code review**. A reviewer who sees an inline algorithm with a
-  comment-naming-it blocks the PR and asks for the algorithm to be
-  extracted to a function or type.
-- **Naming audit**. A standing review of function and variable names
-  during PR review catches abbreviations before they land. "If I
-  had to look up what this abbreviation means, it is wrong."
+  comment naming it blocks the PR and asks for the algorithm to
+  get extracted to a function or type.
+- **Naming audit**. A standing review of function and variable
+  names during PR review catches abbreviations before they land.
+  "If a reader has to look up what this abbreviation means,
+  the abbreviation is wrong."
 - **Structure audit**. A quarterly review of "where does this data
   structure live, and which algorithms use it?" surfaces the
-  structure-vs-algorithm coupling when it is still small.
+  structure-vs-algorithm coupling while it stays small.
 
 ## Exceptions
 
 - **Language-standard words**: `id`, `url`, `json`, `html`, `css`,
   `api`, `http`, `cli`, `sdk`, `uri`, `xml`. These are words in
-  the working vocabulary, not diminutives. The rule does not ban
+  the working vocabulary, not diminutives. The rule doesn't ban
   them.
 - **Mathematical and conventional names**: `i`, `j`, `k`, `n`, `T`,
   `U`, `V`. These are conventions older than any project. The
   rule applies them only within the contexts where the convention
   holds (loop bodies, generic signatures, mathematical operations).
   An `i` in a five-line loop is fine; an `i` in a fifty-line
-  function is not.
+  function isn't.
 - **Generated code, vendor code, and bindings to external systems**
-  where the shape is fixed by the other side and the rule cannot
-  apply.
+  where the shape stays fixed by the other side and the rule
+  can't apply.
 
 ## What senior practitioners say
 
 ### On diminutives
 
-Three sources span the spectrum, and the rule operationalises the
-intersection.
+Three sources span the spectrum, and the rule puts their
+intersection into effect.
 
 > "Wrong. You might think you are faster at typing, but you don't
-> write code in one go and never ever get back to it again. [...]
+> write code in one go and never ever get back to it again. (…)
 > Spending the extra minute it takes to write words in full will
-> benefit you and your readers. [...] Can you tell what any of
-> these names refer to, univocally?"
+> benefit you and your readers. (…) Can you tell what any of
+> these names refer to, without ambiguity?"
 >
-> . Julio Merino, _Readability: No abbreviations_, June 2013.
+> . _Readability: No abbreviations_, a developer-blog post,
+> June 2013.
 
-Merino's position is the strictest. The rule bans project-internal
-diminutives for the same reason he gives: the reader cannot
-decipher them without a glossary, and the glossary does not exist.
+The author's position is the strictest. The rule bans
+project-internal diminutives for the same reason the author gives:
+the reader can't decipher them without a glossary, and the
+glossary doesn't exist.
 
-> "Names must be descriptive and clear to a new reader. Do not use
+> "Names must be descriptive and clear to a new reader. Don't use
 > abbreviations that are ambiguous or unfamiliar to readers
-> outside your project, and do not abbreviate by deleting letters
+> outside your project, and don't abbreviate by deleting letters
 > within a word."
 >
 > . Google TypeScript Style Guide, § Naming.
 
-Google's position is the calibrated one. The rule follows Google's
-framing: abbreviations that are ambiguous or unfamiliar are banned;
-abbreviations that are standard are kept. The three-category
-distinction in this rule is Google's distinction made explicit.
+The TypeScript style guide's position is the calibrated one. The
+rule follows this framing: abbreviations that are ambiguous or
+unfamiliar get banned; abbreviations that are standard stay. The
+three-category distinction in this rule makes this distinction
+explicit.
 
-> "Standard Abbreviations are Fine [...] `iostream`, `int`,
+> "Standard Abbreviations are Fine (…) `iostream`, `int`,
 > `std`, `cout`, `cin`, `endl` are all abbreviations. You
-> wouldn't expect these to 'count' as abbreviations per se,
-> because they are part of the language."
+> wouldn't expect these to count as abbreviations in their
+> own right, because they're part of the language."
 >
-> "A name's length should not exceed its information content.
-> For a local variable, the name `i` conveys as much information
-> as `index` or `idx` and is quicker to read."
+> "A name's length shouldn't exceed its information content.
+> For a local variable, the name `i` conveys as much
+> information as `index` or `idx` and is quicker to read."
 >
-> . Keegan Donley, _When Can I Use Abbreviated Variable Names?_,
-> August 2023; Russ Cox, _research!rsc: Names_, February 2010.
+> . _When Can a Reader Use Abbreviated Variable Names?_,
+> August 2023; _research!rsc: Names_, February 2010.
 
-Donley and Cox are the conventional exceptions. `i` in a loop,
-`T` in a generic, `url` in a request handler , these names have
-a meaning density that long names cannot replicate in the same
+The cited essays are the conventional exceptions. `i` in a loop,
+`T` in a generic, `url` in a request handler, these names carry
+a meaning density that long names can't replicate in the same
 context. The rule's category "mathematical and conventional names"
-is the union of Donley's language-standard and Cox's
-information-content positions.
+unites the language-standard and information-content positions.
 
 ### On independent data structures
 
-The "data structures are explicit and independent" invariant has
-a thirty-year lineage in software engineering, anchored in
+The "data structures stay explicit and independent" invariant
+carries a thirty-year lineage in software engineering, anchored in
 generic programming.
 
-> "By expressing the algorithms in terms of these basic access
-> operations and making the operations parameters, we permit a
-> single expression of the algorithms to be used with any concrete
-> representation of the container."
+> "By expressing the algorithms against these basic access
+> operations and making the operations parameters, the authors
+> permit a single expression of the algorithms to work with any
+> concrete representation of the container."
 >
-> . Alexander Stepanov and David Musser, _Algorithm-oriented
-> Generic Libraries_, Software . Practice and Experience,
-> vol. 24(7), July 1994.
+> . _Algorithm-oriented Generic Libraries_, Software: Practice
+> and Experience, vol. 24(7), July 1994.
 
-Stepanov and Musser formalised what the rule calls
-"independence": an algorithm parameterised by access operations
-(`push`, `pop`, `less`, `swap`) works against any container that
-exposes those operations. The container does not encode the
-algorithm; the algorithm does not encode the container. The
-`Stack<T>` of the rule is the `Sequence<T>` of Stepanov; the
-depth-first walker is the `for_each` of Stepanov. Same
-principle, three decades apart.
+The cited authors formalised what the rule calls "independence":
+an algorithm parameterised by access operations (`push`, `pop`,
+`less`, `swap`) works against any container that exposes those
+operations. The container doesn't encode the algorithm; the
+algorithm doesn't encode the container. The `Stack<T>` of the
+rule is the `Sequence<T>` of the original paper; the depth-first
+walker is the `for_each` of the original paper. Same principle,
+three decades apart.
 
 > "A `for` loop is just a `find_if` over a range with a body
 > side effect. A `find` is a `count_if` over a range with early
 > termination."
 >
-> . Alexander Stepanov, _Notes on Programming_ (talk transcript,
-> A9.com, 2007).
+> . _Notes on Programming_ (talk transcript, A9.com, 2007).
 
-Stepanov's deeper point: the algorithms are also independent
-of each other. A walker can be expressed in terms of a fold; a
-fold can be expressed in terms of a traversal. The rule's
-"algorithms are named" invariant is the project-level restatement
-of this. Each algorithm is a thing the consumer can name and
-combine, not an inline shape the consumer has to read.
+The cited talk's deeper point: the algorithms stay independent
+of each other too. A walker can express itself against a fold; a
+fold can express itself against a traversal. The
+rule's "algorithms carry names" invariant is the project-level
+restatement of this. Each algorithm is a thing the consumer can
+name and combine, not an inline shape the consumer has to read.
 
 ## See also
 
-- **Rule 0007** . Top-Down Composition: the discipline that puts
+- **Rule 0007**, Top-Down Composition: the discipline that puts
   the named algorithms this rule produces at the top of their
   callers. This rule extracts; 0007 composes.
-- **Rule 0009** . Open Extension, Closed Modification: the discipline
-  that turns the named data structures (Stack, Queue, etc.) into
-  reusable registries.
-- **Rule 0003** . File Placement: a single-caller algorithm does
-  not need to be extracted yet; this rule says "name it when it has
-  a second caller", not "extract every algorithm immediately".
+- **Rule 0009**, Open Extension, Closed Modification: the
+  discipline that turns the named data structures (Stack, Queue,
+  and others) into reusable registries.
+- **Rule 0003**, File Placement: a single-caller algorithm
+  doesn't need to get extracted yet; this rule says "name it
+  when it has a second caller," not "extract every algorithm
+  immediately."
 
 ## Sources
 
-The "named algorithms" invariant is anchored in:
+The "named algorithms" invariant anchors in:
 
-- **Merino, Julio.** _Readability: No abbreviations._ jmmv.dev,
+- **A developer-blog author.** _Readability: No abbreviations._
   June 2013. The strictest position on diminutives: spelling
   words out is a tax the author pays once and the reader pays
   forever.
 - **Google TypeScript Style Guide.** _Naming._ The calibrated
-  position: abbreviations that are ambiguous or unfamiliar are
-  banned; abbreviations that are standard are kept. The
-  three-category distinction in this rule is Google's distinction
-  made explicit.
-- **Donley, Keegan.** _When Can I Use Abbreviated Variable
-  Names?_ August 2023. The conventional exceptions: `i`, `T`, and
-  standard words have meaning density that long names cannot
-  replicate in their context.
-- **Cox, Russ.** _research!rsc: Names._ February 2010. The
-  information-content framing: a name's length should not exceed
-  its information content.
+  position: abbreviations that are ambiguous or unfamiliar get
+  banned; abbreviations that are standard stay. The
+  three-category distinction in this rule makes this distinction
+  explicit.
+- **A naming-style essay.** _When Can a Reader Use Abbreviated
+  Variable Names?_ August 2023. The conventional exceptions:
+  `i`, `T`, and standard words carry meaning density that long
+  names
+  can't replicate in their context.
+- **A Go-research author.** _research!rsc: Names._ February
+  2010. The information-content framing: a name's length
+  shouldn't exceed its information content.
 
-The "independent data structures" invariant is anchored in:
+The "independent data structures" invariant anchors in:
 
-- **Stepanov, Alexander, and David Musser.** _Algorithm-oriented
-  Generic Libraries._ Software . Practice and Experience,
-  vol. 24(7), July 1994. The canonical source for parameterising
-  algorithms by container access operations. The `Stack<T>`
-  reusable across BFS, DFS, and undo-log is the TypeScript-level
-  restatement of Stepanov's `Sequence<T>` parameterised by
-  iterators.
-- **Stepanov, Alexander.** _Notes on Programming._ A9.com, 2007
-  talk transcript. The deeper point: algorithms are also
-  independent of each other. A walker is a fold; a fold is a
-  traversal. The rule's "algorithms are named" invariant is the
-  project-level restatement.
+- **The Algorithm-oriented Generic Libraries paper.** _Algorithm-
+  oriented Generic Libraries._ Software: Practice and
+  Experience, vol. 24(7), July 1994. The canonical source for
+  fitting algorithms to container access operations.
+  The `Stack<T>` reusable across BFS, DFS, and undo-log is the
+  TypeScript-level restatement of the paper's `Sequence<T>`
+  parameterised by iterators.
+- **A programming-talk transcript.** _Notes on Programming._
+  A9.com, 2007 talk transcript. The deeper point: algorithms
+  stay independent of each other too. A walker is a fold; a fold
+  is a traversal. The rule's "algorithms carry names" invariant
+  is the project-level restatement.
