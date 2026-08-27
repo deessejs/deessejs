@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { ArrowRight } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -93,9 +94,11 @@ export default function HomePage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-20 px-4 py-16 sm:px-6 lg:gap-32 lg:py-24">
       {/* 1. Hero */}
       <section className="flex flex-col items-center gap-6 pt-12 text-center lg:pt-24">
-        <Badge asChild variant="outline" className="text-label-13 uppercase tracking-wider">
-          <Link href="/blog/getting-started">
-            Read: Getting Started with DeesseJS &rarr;
+        <Badge asChild variant="outline" className="text-label-13">
+          <Link href="/blog/getting-started" className="flex items-center gap-2">
+            <span className="size-1.5 shrink-0 rounded-full bg-green-500" aria-hidden />
+            Getting Started with DeesseJS
+            <ArrowRight className="size-3 shrink-0" aria-hidden />
           </Link>
         </Badge>
         <h1 className="text-heading-48 sm:text-heading-64 lg:text-heading-72 tracking-tighter text-balance max-w-4xl">
