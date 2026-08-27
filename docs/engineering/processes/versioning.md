@@ -81,7 +81,7 @@ The single trusted-publisher-per-package constraint from npm Trusted Publishing 
 - **Trusted publisher not configured**: workflow fails with 403 from npm. Configure on `https://www.npmjs.com/package/@deessejs/cli/access` and re-run.
 - **Provenance rejected**: in manual mode (no OIDC). Use the workflow, not a local publish.
 - **`apps/cli/package.json#private: true` left in place**: changesets refuses to publish. Verify PR 3 landed.
-- **Lockfile drift**: `pnpm install --frozen-lockfile` fails. Re-run `pnpm install` locally, commit the lockfile, re-trigger.
+- **lockfile drift**: `pnpm install --frozen-lockfile` fails. Re-run `pnpm install` locally, commit the lockfile, re-trigger.
 
 ## Contributor, adding a changeset
 
@@ -104,7 +104,7 @@ Don't add a changeset for:
 
 ## Maintainer, hotfix
 
-**What:** Fast-track a critical `@deessejs/cli` bug or security fix from branch → staging → main. Same workflow runs; just skip the normal staging wait time. End-to-end target: under 2 hours for a critical security fix.
+**What:** Fast-track a critical `@deessejs/cli` bug or security fix from branch → staging → main. Same workflow runs; just skip the normal staging wait time. end-to-end target: under 2 hours for a critical security fix.
 
 **Why:** Critical bugs (data loss, security CVEs, broken init) can't wait for the normal staging window. Documenting the fast-track keeps the response time low without bypassing CODEOWNERS review.
 
