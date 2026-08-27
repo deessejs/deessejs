@@ -1,31 +1,30 @@
 import Link from "next/link"
 import { ArrowRight, Bot, LayoutTemplate, Rocket } from "lucide-react"
 
+import { getAllReleases } from "@/lib/blog/releases"
+import { allKbGuides } from "content-collections"
+
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Card } from "@workspace/ui/components/card"
-import { cn } from "@workspace/ui/lib/utils"
 
 
 /**
  * Marketing homepage at `/`. Renders the surface a first-time
  * visitor sees when they land on deessejs.com — the same one
  * that drives the brand explainer, the registry, the knowledge
- * base, and the use-case pages.
+ * base, and the changelog.
  *
  * Sections, top to bottom:
- *   1. Hero: slogan + value prop + dual CTA
+ *   1. Hero: blog badge + value prop + dual CTA + install snippet
  *   2. Featured Templates: 3 spotlighted slugs from the registry
- *   3. Manifesto teaser: pull-quote + CTA into /manifesto
- *   4. Knowledge Base teaser: 3 featured guides
- *   5. Use cases band: 7 outcome clusters linking to /use-cases/[slug]
- *   6. Closing CTA: two primary actions
+ *   3. Authority: manifesto quote, KB guides, changelog, stack
+ *   4. Cloud: subtle link to the dashboard
  *
- * Data is hard-coded here for V1. The pages linked from each
- * section fetch their own data via ISR — the home page stays
- * a thin shell. When content volumes grow, the constants
- * move to a dedicated data module and the homepage shell
- * stays a server component.
+ * KB guides and changelog releases are pulled live from
+ * `content-collections`. The rest is hard-coded here for V1.
+ * When content volumes grow, the constants move to a dedicated
+ * data module and the homepage shell stays a server component.
  */
 
 const FEATURED_TEMPLATES: ReadonlyArray<{
@@ -61,29 +60,21 @@ const FEATURED_TEMPLATES: ReadonlyArray<{
   },
 ]
 
-const FEATURED_GUIDES: ReadonlyArray<{
-  slug: string
-  title: string
-  body: string
-}> = [
-  {
-    slug: "install-deessejs-cli",
-    title: "Install the deessejs CLI",
-    body: "Set up the CLI, authenticate, and discover templates in under two minutes.",
-  },
-  {
-    slug: "first-agent-stack",
-    title: "Build your first agent stack",
-    body: "Compose an AI agent with a typed tool registry in one afternoon.",
-  },
-  {
-    slug: "deploy-to-vercel",
-    title: "Deploy to Vercel",
-    body: "From git push to a production build with env vars and a custom domain.",
-  },
+const STACK_BADGES: ReadonlyArray<string> = [
+  "Next.js",
+  "Better Auth",
+  "Drizzle",
+  "Postgres",
+  "Tailwind v4",
+  "shadcn",
+  "Motion",
+  "TypeScript",
 ]
 
 export default function HomePage() {
+  const featuredGuides = allKbGuides.slice(0, 3)
+  const releases = getAllReleases().slice(0, 3)
+
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-20 px-4 py-16 sm:px-6 lg:gap-32 lg:py-24">
       {/* 1. Hero */}
@@ -171,69 +162,123 @@ export default function HomePage() {
 
       <div className="border-t border-border" />
 
-      {/* 3. Manifesto teaser */}
-      <section className="mx-auto flex max-w-3xl flex-col gap-6 text-center">
-        <p className="text-label-13 text-muted-foreground">
-          Why we build this
-        </p>
-        <blockquote className="text-heading-32 tracking-tight text-balance">
-          &ldquo;If a template can&apos;t be navigated by a coding
-          agent, it isn&apos;t done.&rdquo;
-        </blockquote>
-        <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-          DeesseJS is the main app of a small team building the
-          templates, contracts, and tooling we wished existed when
-          we shipped our last product.
-        </p>
-        <div className="flex justify-center">
-          <Button variant="outline" asChild>
-            <Link href="/manifesto">Read the manifesto</Link>
-          </Button>
-        </div>
-      </section>
-
-      <div className="border-t border-border" />
-
-      {/* 4. Knowledge Base teaser */}
-      <section className="flex flex-col gap-6">
-        <header className="flex items-end justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <p className="text-label-13 text-muted-foreground">
-              Learn by doing
-            </p>
-            <h2 className="text-heading-32 tracking-tight">
-              Knowledge Base
-            </h2>
+      {/* 3. Authority */}
+      <section className="flex flex-col gap-12">
+        {/* Manifesto quote */}
+        <div className="mx-auto flex max-w-3xl flex-col gap-6 text-center">
+          <p className="text-label-13 text-muted-foreground">
+            Why we build this
+          </p>
+          <blockquote className="text-heading-32 tracking-tight text-balance">
+            &ldquo;If a template can&apos;t be navigated by a coding
+            agent, it isn&apos;t done.&rdquo;
+          </blockquote>
+          <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+            DeesseJS is the main app of a small team building the
+            templates, contracts, and tooling we wished existed when
+            we shipped our last product.
+          </p>
+          <div className="flex justify-center">
+            <Button variant="outline" asChild>
+              <Link href="/manifesto">Read the manifesto</Link>
+            </Button>
           </div>
-          <Link
-            href="/knowledge-base"
-            className="text-label-14 text-foreground underline-offset-4 hover:underline inline-flex items-center gap-1 shrink-0"
-          >
-            All guides
-            <ArrowRight className="size-3" aria-hidden />
-          </Link>
-        </header>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {FEATURED_GUIDES.map((guide) => (
-            <Link
-              key={guide.slug}
-              href={`/knowledge-base/guides/${guide.slug}`}
-              className="group"
-            >
-              <Card className="bg-background flex h-full flex-col gap-2 rounded-none p-4 transition-colors group-hover:bg-accent/50">
-                <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
-                  {guide.title}
-                </h3>
-                <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-                  {guide.body}
-                </p>
-              </Card>
-            </Link>
-          ))}
+        </div>
+
+        {/* KB + Changelog side-by-side */}
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
+          {/* Knowledge Base */}
+          <div className="flex flex-col gap-6">
+            <header className="flex items-end justify-between gap-4">
+              <p className="text-label-13 text-muted-foreground">
+                Learn by doing
+              </p>
+              <Link
+                href="/knowledge-base"
+                className="text-label-14 text-foreground underline-offset-4 hover:underline inline-flex items-center gap-1 shrink-0"
+              >
+                All guides
+                <ArrowRight className="size-3" aria-hidden />
+              </Link>
+            </header>
+            <div className="divide-border flex flex-col divide-y">
+              {featuredGuides.map((guide) => (
+                <Link
+                  key={guide.slug}
+                  href={guide.url}
+                  className="group py-3 transition-colors hover:bg-accent/50"
+                >
+                  <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                    {guide.title}
+                  </h3>
+                  <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-1">
+                    {guide.description}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Changelog */}
+          <div className="flex flex-col gap-6">
+            <header className="flex items-end justify-between gap-4">
+              <p className="text-label-13 text-muted-foreground">
+                Recent changes
+              </p>
+              <Link
+                href="/changelog"
+                className="text-label-14 text-foreground underline-offset-4 hover:underline inline-flex items-center gap-1 shrink-0"
+              >
+                All releases
+                <ArrowRight className="size-3" aria-hidden />
+              </Link>
+            </header>
+            <div className="divide-border flex flex-col divide-y">
+              {releases.map((release) => (
+                <Link
+                  key={release.slug}
+                  href={release.url}
+                  className="group flex items-baseline justify-between gap-4 py-3 transition-colors hover:bg-accent/50"
+                >
+                  <span className="text-copy-13-mono text-muted-foreground">
+                    v{release.version}
+                  </span>
+                  <span className="text-heading-20 tracking-tight text-foreground flex-1 !m-0">
+                    {release.title}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Stack badges */}
+        <div className="flex flex-col gap-4">
+          <p className="text-label-13 text-muted-foreground text-center">
+            Built on
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {STACK_BADGES.map((badge) => (
+              <Badge key={badge} variant="outline">
+                {badge}
+              </Badge>
+            ))}
+          </div>
         </div>
       </section>
 
       <div className="border-t border-border" />
+
+      {/* 4. Cloud */}
+      <section className="flex flex-col items-center gap-4 text-center">
+        <Link
+          href="/dashboard"
+          className="text-label-14 text-foreground underline-offset-4 hover:underline inline-flex items-center gap-2"
+        >
+          Sign in to your dashboard
+          <ArrowRight className="size-3" aria-hidden />
+        </Link>
+      </section>
     </div>
   )
 }
