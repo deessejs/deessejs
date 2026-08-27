@@ -8,7 +8,7 @@
 
 | Decision | Status | See |
 |---|---|---|
-| better-auth with drizzle-adapter + PostgreSQL | Locked | `setup.md` |
+| Better-Auth with drizzle-adapter + PostgreSQL | Locked | `setup.md` |
 | **Single-tenant**: no organization plugin, no org schema, no org client | Locked | this file + code note below |
 | Email via `@workspace/email` (Resend + console dev) | Locked | `email.md` |
 | Session 7 days, `updateAge` 1 day | Locked | `session.md` |
@@ -19,10 +19,10 @@
 | `trustedOrigins` localhost gated on `NODE_ENV === "development"` | Locked | `session.md`, `pitfalls.md` §5 |
 
 **Sources:**
-- Session defaults: [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options)
-- Email verification: [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password)
-- Drizzle adapter: [better-auth.com/docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle)
-- Organization plugin, **historical reference only** (not used in this repo): [better-auth.com/docs/plugins/organization](https://better-auth.com/docs/plugins/organization)
+- Session defaults: [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options)
+- Email verification: [Better-Auth docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password)
+- drizzle adapter: [Better-Auth docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle)
+- Organization plugin, **historical reference only** (not used in this repo): [Better-Auth docs/plugins/organization](https://better-auth.com/docs/plugins/organization)
 
 ---
 
@@ -40,7 +40,7 @@ packages/database/src/schema/auth.ts   — drizzle tables + relations (CLI-gener
 packages/email/                       — email transport + transactional templates
 ```
 
-**Rule:** all better-auth configuration lives in `packages/auth/src/auth.ts`. Never inline auth config in routes or components.
+**Rule:** all Better-Auth configuration lives in `packages/auth/src/auth.ts`. Never inline auth config in routes or components.
 
 ---
 
@@ -67,7 +67,7 @@ index.md (you are here)
 ```
 
 > Hono-specific integration (handler mount, CORS, session middleware, typed env) lives at
-> [`docs/engineering/architecture/knowledge-base/better-auth/hono-integration.md`](../../engineering/architecture/knowledge-base/better-auth/hono-integration.md). It's a study of a better-auth + Hono cross-cutting pattern, not a better-auth guide proper. <!-- vale fix: Microsoft.Contractions -->
+> [`docs/engineering/architecture/knowledge-base/better-auth/hono-integration.md`](../../engineering/architecture/knowledge-base/better-auth/hono-integration.md). It's a study of a Better-Auth + Hono cross-cutting pattern, not a Better-Auth guide proper. <!-- vale fix: Microsoft.Contractions -->
 
 > `org.md` is historical reference only (single-tenant); no longer in the read path.
 
@@ -76,7 +76,7 @@ index.md (you are here)
 ## Code State (verified 2026-07-28)
 
 - `auth.ts` (`packages/auth/src/auth.ts:64`): wires only `nextCookies()`. The codebase doesn't include an `organization(...)` plugin and has no `databaseHooks`. <!-- vale fix: write-good.Passive -->
-- `schema/auth.ts`: `pnpm auth:generate` generates it. Drizzle relations defined for `experimental.joins`.
+- `schema/auth.ts`: `pnpm auth:generate` generates it. drizzle relations defined for `experimental.joins`.
 - Email verification: `requireEmailVerification: true`, `sendOnSignUp: true`, `sendOnSignIn: true` (auth.ts:24-48).
 - `apps/app/proxy.ts` gates unverified users on protected prefixes and redirects them to `/verify-email`.
 - The team closed the `@better-auth/cli` legacy / version-mismatch blocker. `auth` ships with `better-auth@^1.6.23` (same release line as runtime and adapter). <!-- vale fix: write-good.Passive -->

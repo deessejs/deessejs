@@ -2,7 +2,7 @@
 
 Lifecycle hooks for database operations. See [`index.md`](./index.md) first.
 
-**Source:** [better-auth.com/docs/concepts/hooks](https://better-auth.com/docs/concepts/hooks), core hooks concept. [better-auth.com/docs/concepts/database](https://better-auth.com/docs/concepts/database), databaseHooks reference.
+**Source:** [Better-Auth docs/concepts/hooks](https://better-auth.com/docs/concepts/hooks), core hooks concept. [Better-Auth docs/concepts/database](https://better-auth.com/docs/concepts/database), databaseHooks reference.
 
 > See [`org.md`](./org.md) (historical) for the autocreate-org pattern this template used to rely on. It's **not applicable here** since the repo is single-tenant. <!-- vale fix: Microsoft.Auto, Microsoft.Contractions -->
 
@@ -45,7 +45,7 @@ databaseHooks: {
 
 The `before` hook can **merge** data back into the session object via `{ data: ... }`. The `after` hook receives the final row.
 
-**Source:** [better-auth.com/docs/concepts/database](https://better-auth.com/docs/concepts/database), hook signature documentation.
+**Source:** [Better-Auth docs/concepts/database](https://better-auth.com/docs/concepts/database), hook signature documentation.
 
 ---
 
@@ -57,7 +57,7 @@ On signup, the execution order of the create flow is: `session.create.before` â†
 
 ---
 
-## User.create.after, Async Side Effects
+## User.create.after, async Side Effects
 
 Use for fire-and-forget operations that need the committed user row:
 
@@ -111,9 +111,9 @@ On signup, the execution order is:
 
 ---
 
-## Drizzle Relations for Joins
+## drizzle Relations for Joins
 
-If `experimental.joins: true`, the schema must include Drizzle `relations()` for every table. Regenerate with:
+If `experimental.joins: true`, the schema must include drizzle `relations()` for every table. Regenerate with:
 
 ```bash
 pnpm auth:generate
@@ -121,4 +121,4 @@ pnpm auth:generate
 
 Review the diff. The CLI regenerates the entire `schema/auth.ts` and may overwrite customizations.
 
-**Source:** [better-auth.com/docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle), joins section.
+**Source:** [Better-Auth docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle), joins section.

@@ -2,7 +2,7 @@
 
 Session lifecycle, cookie configuration, and expiry tuning. See [`index.md`](./index.md) first. <!-- vale fix: write-good.TooWordy -->
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), session config reference. [better-auth.com/docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies), cookie docs. [better-auth.com/docs/concepts/session-management](https://better-auth.com/docs/concepts/session-management), session management concept.
+**Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), session config reference. [Better-Auth docs/concepts/cookies](https://better-auth.com/docs/concepts/cookies), cookie docs. [Better-Auth docs/concepts/session-management](https://better-auth.com/docs/concepts/session-management), session management concept.
 
 ---
 
@@ -54,7 +54,7 @@ session: {
 
 The auth secret encrypts cached sessions (JWE). The DB is still queried every `maxAge` interval. <!-- vale fix: write-good.Passive -->
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `cookieCache`.
+**Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), `cookieCache`.
 
 ---
 
@@ -135,7 +135,7 @@ Or manually:
 await auth.api.deleteSession({ body: { id: sessionId }, headers })
 ```
 
-**Source:** [better-auth.com/docs/concepts/session-management](https://better-auth.com/docs/concepts/session-management), session lifecycle.
+**Source:** [Better-Auth docs/concepts/session-management](https://better-auth.com/docs/concepts/session-management), session lifecycle.
 
 ---
 
@@ -174,13 +174,13 @@ trustedOrigins: [
 ],
 ```
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `trustedOrigins` with wildcard support.
+**Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), `trustedOrigins` with wildcard support.
 
 ---
 
 ## Secret Rotation
 
-better-auth supports versioned secrets for non-disruptive rotation:
+Better-Auth supports versioned secrets for non-disruptive rotation:
 
 ```ts
 export const auth = betterAuth({
@@ -195,4 +195,4 @@ Via environment variable: `BETTER_AUTH_SECRETS=2:new,1:old`.
 
 After rotation: keep the old secret in `secrets` for the duration of the longest session (`expiresIn`). Then remove it.
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `secret` and `secrets` for rotation.
+**Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), `secret` and `secrets` for rotation.

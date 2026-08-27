@@ -33,9 +33,9 @@ export const auth = betterAuth({
 })
 ```
 
-### Autocreate org on signup (archived)
+### autocreate org on signup (archived)
 
-Upstream removed `autoCreateOrganizationOnSignUp` in [PR #4755](https://github.com/better-auth/better-auth/pull/4755). The "supported" replacement in many guides used `databaseHooks.session.create.before` to call `auth.api.createOrganization` and stamp the org id onto the new session. That hook is buggy on first signup. See [issue #9070](https://github.com/better-auth/better-auth/issues/9070). <!-- vale fix: write-good.Passive -->
+upstream removed `autoCreateOrganizationOnSignUp` in [PR #4755](https://github.com/better-auth/better-auth/pull/4755). The "supported" replacement in many guides used `databaseHooks.session.create.before` to call `auth.api.createOrganization` and stamp the org id onto the new session. That hook is buggy on first signup. See [issue #9070](https://github.com/better-auth/better-auth/issues/9070). <!-- vale fix: write-good.Passive -->
 
 ### Invitations, roles, `requireEmailVerificationOnInvitation` (archived)
 
@@ -55,5 +55,5 @@ Do not try to graft the org plugin back into this template. Start from a fresh b
 
 ## Sources
 
-- Plugin docs (kept for link integrity): [better-auth.com/docs/plugins/organization](https://better-auth.com/docs/plugins/organization)
+- Plugin docs (kept for link integrity): [Better-Auth docs/plugins/organization](https://better-auth.com/docs/plugins/organization)
 - Closed upstream bugs: [#9070](https://github.com/better-auth/better-auth/issues/9070), [#9710](https://github.com/better-auth/better-auth/issues/9710)

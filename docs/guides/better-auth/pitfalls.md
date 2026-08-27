@@ -31,7 +31,7 @@ trustedOrigins: [
 ],
 ```
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `trustedOrigins` config.
+**Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), `trustedOrigins` config.
 
 ---
 
@@ -47,7 +47,7 @@ Setting `emailAndPassword.requireEmailVerification: true` **without** also setti
 
 ---
 
-## 4. Auth Middleware Throws Plain `Error`, Not `ORPCError`
+## 4. Auth middleware Throws Plain `Error`, Not `ORPCError`
 
 In `packages/api/src/router/auth-middleware.ts`:
 

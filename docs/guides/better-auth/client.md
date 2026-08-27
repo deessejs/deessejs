@@ -4,7 +4,7 @@ React hooks and auth client setup. See [`index.md`](./index.md) first and read [
 
 > **Single-tenant:** the codebase intentionally doesn't wire the organization client plugin (`useActiveOrganization`, `authClient.organization.*`). This doc reflects that. The team removed patterns historically documented here for the org plugin. See [`org.md`](./org.md) for archived reference. <!-- vale fix: write-good.Passive -->
 
-**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), React client reference.
+**Source:** [Better-Auth docs/client](https://better-auth.com/docs/client), React client reference.
 
 ---
 
@@ -25,7 +25,7 @@ The client is instantiated in the Next.js app. It reads from:
 
 > Single-tenant reminder: `organizationClient()` is intentionally **not** wired. Anything in `useSession().session.activeOrganizationId` will be `undefined`.
 
-**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), `createAuthClient`.
+**Source:** [Better-Auth docs/client](https://better-auth.com/docs/client), `createAuthClient`.
 
 ---
 
@@ -43,7 +43,7 @@ Returns:
 - `session.session.expiresAt` is the session expiry
 - `isLoading` is `true` while fetching session state
 
-**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), `useSession`.
+**Source:** [Better-Auth docs/client](https://better-auth.com/docs/client), `useSession`.
 
 ---
 
@@ -57,7 +57,7 @@ const { user, session, isLoading } = useAuth()
 
 Shorthand for `useSession()` + direct user access. `user` is `null` when not authenticated.
 
-**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), `useAuth`.
+**Source:** [Better-Auth docs/client](https://better-auth.com/docs/client), `useAuth`.
 
 ---
 
@@ -94,7 +94,7 @@ await authClient.signIn.email(
 )
 ```
 
-**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `signIn.email`, `signUp.email`. [better-auth.com/docs/client](https://better-auth.com/docs/client), `onError` callback pattern.
+**Source:** [Better-Auth docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `signIn.email`, `signUp.email`. [Better-Auth docs/client](https://better-auth.com/docs/client), `onError` callback pattern.
 
 ---
 
@@ -106,7 +106,7 @@ await authClient.signOut({
 })
 ```
 
-**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), `signOut`.
+**Source:** [Better-Auth docs/client](https://better-auth.com/docs/client), `signOut`.
 
 ---
 
@@ -119,7 +119,7 @@ await authClient.sendVerificationEmail({
 })
 ```
 
-**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `sendVerificationEmail`.
+**Source:** [Better-Auth docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `sendVerificationEmail`.
 
 ---
 
@@ -135,4 +135,4 @@ authClient.$sessionSignal.subscribe((session) => {
 })
 ```
 
-**Source:** [better-auth.com/docs/client](https://better-auth.com/docs/client), `$sessionSignal` reference.
+**Source:** [Better-Auth docs/client](https://better-auth.com/docs/client), `$sessionSignal` reference.

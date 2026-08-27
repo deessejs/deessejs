@@ -1,6 +1,6 @@
 # Better-Auth: Setup
 
-Base configuration for better-auth in this repo. See [`index.md`](./index.md) first for locked-in decisions.
+Base configuration for Better-Auth in this repo. See [`index.md`](./index.md) first for locked-in decisions.
 
 ---
 
@@ -36,7 +36,7 @@ export const auth = betterAuth({
 })
 ```
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), base config reference.
+**Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), base config reference.
 
 > **Note:** this template is **single-tenant** (see `index.md` "Locked-in Decisions"). The codebase doesn't include an organization plugin or an org schema. Don't reintroduce. <!-- vale fix: write-good.ThereIs, Microsoft.Contractions -->
 
@@ -53,7 +53,7 @@ export const auth = betterAuth({
 
 `AUTH_SECRET` works as an alias for `BETTER_AUTH_SECRET`. See `packages/env/src/schema.ts`. <!-- vale fix: write-good.Passive -->
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `baseURL`, `secret`, `trustedOrigins`.
+**Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), `baseURL`, `secret`, `trustedOrigins`.
 
 ---
 
@@ -93,7 +93,7 @@ trustedOrigins: [
 
 **Warning:** hardcoded localhost origins in `trustedOrigins` are a prod risk if `ALLOWED_ORIGINS` is empty. See [`pitfalls.md`](./pitfalls.md) §5.
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `trustedOrigins` with wildcard patterns.
+**Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), `trustedOrigins` with wildcard patterns.
 
 ---
 
@@ -125,7 +125,7 @@ advanced: {
 
 ---
 
-## Drizzle Adapter
+## drizzle Adapter
 
 Provider options: `"pg"`, `"sqlite"`, `"mysql"`, `"sqlite/wasm"`, `"libsql"`.
 
@@ -144,7 +144,7 @@ pnpm auth:generate   # or: better-auth generate --config ./src/auth.ts --output 
 
 **Important:** after running `pnpm auth:generate`, review the diff before committing. The CLI may overwrite custom field names or indexes.
 
-**Source:** [better-auth.com/docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle), adapter docs with `usePlural`, `modelName`, `fields` options.
+**Source:** [Better-Auth docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle), adapter docs with `usePlural`, `modelName`, `fields` options.
 
 ---
 
@@ -172,7 +172,7 @@ api.on(["POST", "GET"], "/auth/*", (c) => {
 
 ## Experimental Features
 
-`experimental.joins: true` enables eager-loading relations. The schema must define Drizzle `relations()` and pass them through the adapter's `schema` object. <!-- vale fix: write-good.Passive -->
+`experimental.joins: true` enables eager-loading relations. The schema must define drizzle `relations()` and pass them through the adapter's `schema` object. <!-- vale fix: write-good.Passive -->
 
 ```ts
 experimental: {
@@ -180,9 +180,9 @@ experimental: {
 },
 ```
 
-This is **experimental**. Test on each better-auth upgrade. <!-- vale fix: Microsoft.Adverbs -->
+This is **experimental**. Test on each Better-Auth upgrade. <!-- vale fix: Microsoft.Adverbs -->
 
-**Source:** [better-auth.com/docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle), joins (experimental) section.
+**Source:** [Better-Auth docs/adapters/drizzle](https://better-auth.com/docs/adapters/drizzle), joins (experimental) section.
 
 ---
 

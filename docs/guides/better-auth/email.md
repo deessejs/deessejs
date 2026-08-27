@@ -37,7 +37,7 @@ emailVerification: {
 },
 ```
 
-**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `emailVerification` config options.
+**Source:** [Better-Auth docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `emailVerification` config options.
 
 ### sendOnSignUp Options
 
@@ -49,7 +49,7 @@ emailVerification: {
 
 **Choice made here:** explicit `true` (locked in `auth.ts:38`). More robust than relying on the `undefined` default, which depends on `requireEmailVerification` to trigger the send. <!-- vale fix: Microsoft.We -->
 
-**Source:** [better-auth.com/docs/reference/options](https://better-auth.com/docs/reference/options), `sendOnSignUp`, `sendOnSignIn` options.
+**Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), `sendOnSignUp`, `sendOnSignIn` options.
 
 ### Verification Token
 
@@ -62,7 +62,7 @@ emailVerification: {
 },
 ```
 
-**Source:** [better-auth.com/docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `expiresIn`, `autoSignInAfterVerification`.
+**Source:** [Better-Auth docs/authentication/email-password](https://better-auth.com/docs/authentication/email-password), `expiresIn`, `autoSignInAfterVerification`.
 
 ---
 
@@ -135,7 +135,7 @@ await sendAuthEmail({ to: user.email, ... })
 
 ---
 
-## Idempotency Keys
+## idempotency Keys
 
 For Resend, pass an idempotency key to prevent duplicate sends on retries:
 
@@ -150,7 +150,7 @@ void sendAuthEmail({
 
 Use the user ID for verification and password-reset emails.
 
-**Source:** [better-auth.com/docs/infrastructure/services/email](https://better-auth.com/docs/infrastructure/services/email), email service reference.
+**Source:** [Better-Auth docs/infrastructure/services/email](https://better-auth.com/docs/infrastructure/services/email), email service reference.
 
 ---
 
@@ -168,7 +168,7 @@ MAIL_TRANSPORT=resend     # production
 
 ---
 
-## Console Transport (Dev)
+## Console Transport (dev)
 
 Logs a grep-friendly format to stdout:
 
