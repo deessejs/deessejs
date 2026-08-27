@@ -2,11 +2,11 @@
 
 [← Index](README.md) · **Prev: [07-decisions.md](07-decisions.md)** · **Next: [09-risks-and-sources.md](09-risks-and-sources.md)**
 
-PRs target `staging` per the staging-first workflow documented in `AGENTS.md`. Each PR is gated on the previous one being merged.
+Pull requests target `staging` per the staging-first workflow documented in `AGENTS.md`. Each PR waits on the previous one before merging. <!-- vale fix: write-good.Passive -->
 
-The senior pattern has 3 PRs (was 4 in the dual-flow draft, since the two-workflow PR and the root-bump PR are merged into one).
+The senior pattern has 3 PRs (was 4 in the dual-flow draft, since the two-workflow PR and the root-bump PR merge into one). <!-- vale fix: write-good.Passive -->
 
-## PR 1: Cleanup (mechanical)
+## Pull request 1: Cleanup (mechanical) <!-- vale fix: Microsoft.HeadingAcronyms -->
 
 - Add `license`, `repository`, `keywords`, `module`, `types`, and an updated `publishConfig` to `apps/cli/package.json`.
 - Add `dts: true` to `apps/cli/tsup.config.ts`. Verify `dist/` contains `index.d.ts`.
@@ -15,7 +15,7 @@ The senior pattern has 3 PRs (was 4 in the dual-flow draft, since the two-workfl
 - Delete `VERSION` at the repo root (no consumer after the senior pattern lands).
 - Run `pnpm install --frozen-lockfile` to sync lockfile.
 
-## PR 2: `release.yml` + CI
+## Pull request 2: `release.yml` + continuous integration <!-- vale fix: Microsoft.HeadingAcronyms -->
 
 - Replace `.github/workflows/release.yml` with the senior-pattern version (~50 lines, single job).
   - In the same commit, also update `AGENTS.md` or `CONTRIBUTING.md` if any staging-first notes need adjusting (none expected).
@@ -23,22 +23,22 @@ The senior pattern has 3 PRs (was 4 in the dual-flow draft, since the two-workfl
 - Add a new workflow (`.github/workflows/changesets-check.yml`) that triggers on `pull_request: branches: [staging, main]` and fails the PR if `.changeset/*.md` is missing AND the PR touches `apps/cli/**`.
 - Update `.github/workflows/ci.yml` to trigger on `pull_request: branches: [staging, main]` so staging PRs actually run CI.
 
-## PR 3: `apps/cli` flip
+## Pull request 3: `apps/cli` flip <!-- vale fix: Microsoft.HeadingAcronyms -->
 
 - Flip `apps/cli/package.json#private` to `false`.
 - Create the project-side process docs:
   - `docs/engineering/processes/versioning.md`: canonical process doc (maintainer playbook).
   - `.changeset/README.md`: quick reference for contributors.
-  - Update `CONTRIBUTING.md` with the changeset requirement.
+  - Update `CONTRIBUTING.md` with the changeset need. <!-- vale fix: write-good.TooWordy -->
 
-## One-time setup (not in a PR)
+## One-time setup (not in a pull request) <!-- vale fix: Microsoft.HeadingAcronyms -->
 
-The npm side has a chicken-and-egg: the package must exist on npm before a trusted publisher can be configured for it. The first publish is therefore manual from a maintainer's machine; the second publish onward uses the trusted publisher.
+The npm side has a chicken-and-egg: the package must exist on npm before a maintainer can configure a trusted publisher for it. The first publish runs manually from a maintainer's machine; the second publish onward uses the trusted publisher. <!-- vale fix: write-good.Passive, write-good.TooWordy -->
 
 Full step-by-step walkthrough at [12-npm-setup-walkthrough.md](12-npm-setup-walkthrough.md). Quick summary:
 
 1. **First publish (manual)**: a maintainer runs `pnpm --filter @deessejs/cli publish --access public --no-git-checks` from their machine. Uses their npm auth. Creates the package on npmjs.com. No provenance (no OIDC yet).
-2. **Configure trusted publisher**: manually on `https://www.npmjs.com/package/@deessejs/cli/access` (not `/settings/...`). Fields: org `deessejs`, repo `deessejs` (this repo's name), workflow filename `release.yml`, allowed action `npm publish`.
+2. **Configure trusted publisher**: manually on `https://www.npmjs.com/package/@deessejs/cli/access` (not `/settings/…`). Fields: org `deessejs`, repo `deessejs` (this repo's name), workflow filename `release.yml`, allowed action `npm publish`. <!-- vale fix: Microsoft.Ellipses, proselint.Typography -->
 3. **Verify**: next PR through the workflow → staging → main → release.yml → publish with OIDC + provenance. Check the provenance badge on npmjs.com.
 
 **Common gotcha**: a misconfigured trusted publisher gives a misleading 404 from npm, not a meaningful error. Full diagnosis in [12-npm-setup-walkthrough.md §12.6](12-npm-setup-walkthrough.md#126-common-gotchas).

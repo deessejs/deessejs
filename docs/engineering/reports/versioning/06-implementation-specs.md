@@ -2,7 +2,7 @@
 
 [← Index](README.md) · **Prev: [05-strategy.md](05-strategy.md)** · **Next: [07-decisions.md](07-decisions.md)**
 
-Concrete changes to apply once the architecture in [05-strategy.md](05-strategy.md) is approved.
+Concrete changes to apply once [05-strategy.md](05-strategy.md) gets approval. <!-- vale fix: write-good.Passive -->
 
 ## 6.1 Changesets config (proposed)
 
@@ -24,7 +24,7 @@ Concrete changes to apply once the architecture in [05-strategy.md](05-strategy.
 
 - `baseBranch: "staging"` aligns with the staging-first workflow in `AGENTS.md`.
 - `updateInternalDependencies: "patch"` matches the changesets default and the documented recommendation. Has minimal real-world effect in this repo since `@deessejs/cli` has no workspace deps; included for hygiene.
-- `privatePackages: { version: false, tag: false }` keeps changesets from bumping private workspace `package.json#version` (the packages in `packages/*`, `apps/*` excluding `apps/cli`). The bump is cosmetic since private packages never publish; no changeset for them is needed.
+- `privatePackages: { version: false, tag: false }` keeps changesets from bumping private workspace `package.json#version` (the packages in `packages/*`, `apps/*` excluding `apps/cli`). The bump is cosmetic since private packages never publish; they don't need a changeset. <!-- vale fix: write-good.Passive -->
 
 ## 6.2 `apps/cli` package.json (proposed)
 
@@ -61,9 +61,9 @@ Concrete changes to apply once the architecture in [05-strategy.md](05-strategy.
 }
 ```
 
-**Dependencies must be real semver, not `catalog:`**: The `catalog:` protocol is pnpm-specific; npm doesn't understand it. When `apps/cli/package.json` shipped with `"@deessejs/errors": "catalog:"`, the published package could not be installed by `npm install` or `npx` (`EUNSUPPORTEDPROTOCOL` error). The catalog is fine for **internal** package deps (workspace packages stay in the monorepo) but **published** packages must have concrete semver ranges. Keep `devDependencies` in `catalog:` if you want; they don't get published.
+**Dependencies must be real semver, not `catalog:`**: The `catalog:` protocol is pnpm-specific; npm doesn't understand it. When `apps/cli/package.json` shipped with `"@deessejs/errors": "catalog:"`, consumers couldn't install the published package via `npm install` or `npx` (`EUNSUPPORTEDPROTOCOL` error). The catalog works for **internal** package deps (workspace packages stay in the monorepo), but **published** packages need concrete semver ranges. Keep `devDependencies` in `catalog:` if you want; they don't get published. <!-- vale fix: Microsoft.Contractions, write-good.Passive -->
 
-Corresponding `apps/cli/tsup.config.ts` change: add `dts: true` so `dist/index.d.ts` is emitted. Verify CI still passes on the existing test suite.
+Corresponding `apps/cli/tsup.config.ts` change: add `dts: true` so `dist/index.d.ts` gets emitted. Verify CI still passes on the existing test suite. <!-- vale fix: write-good.Passive -->
 
 ## 6.3 Release workflow (proposed)
 
@@ -136,7 +136,7 @@ jobs:
 
 ## 6.4 Manual fallback
 
-If the workflow is broken but a release is needed urgently:
+If the workflow breaks and a release can't wait: <!-- vale fix: write-good.Passive, Microsoft.Adverbs -->
 
 ```bash
 pnpm --filter @deessejs/cli build
@@ -159,9 +159,9 @@ File an issue to fix the workflow so the next release doesn't need manual interv
 |---|---|
 | Root `VERSION` | Delete file |
 | Root `package.json#version` | Leave at `0.0.1` (or set to `0.0.0`); remove any tooling that requires a stamp |
-| Root `CHANGELOG.md` | Keep existing content but stop auto-patching it (it becomes a historical artifact, no longer auto-maintained) |
+| Root `CHANGELOG.md` | Keep existing content but stop autopatching it (it becomes a historical artifact, no longer automaintained) | <!-- vale fix: Microsoft.Auto -->
 | `.github/workflows/release.yml` | REPLACE with the new ~50-line single-purpose workflow |
 | `template/v*` tags | Stop creating them. Existing tags stay as historical references but no new ones. |
-| The "Flow A vs Flow B" mental model | Eliminate from docs |
+| The "Flow A vs Flow B" mental model | Remove from docs | <!-- vale fix: write-good.TooWordy -->
 
 The deletion of root versioning removes the three-sources-of-version drift that exists today.
