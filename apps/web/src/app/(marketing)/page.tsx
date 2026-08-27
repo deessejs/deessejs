@@ -94,7 +94,7 @@ export default function HomePage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-20 px-4 py-16 sm:px-6 lg:gap-32 lg:py-24">
       {/* 1. Hero */}
       <section className="flex flex-col items-center gap-6 pt-12 text-center lg:pt-24">
-        <Badge asChild variant="outline" className="text-label-13">
+        <Badge asChild variant="outline">
           <Link href="/blog/getting-started" className="flex items-center gap-2">
             <span className="size-1.5 shrink-0 rounded-full bg-green-500" aria-hidden />
             Getting Started with DeesseJS
