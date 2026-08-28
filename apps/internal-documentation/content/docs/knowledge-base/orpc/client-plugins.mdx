@@ -6,22 +6,18 @@ description: 'Retry, retry-after, headers, and the gap with custom fetch.'
 # oRPC client plugins
 
 A study of the official client plugins oRPC publishes for
-transport-layer concerns. Built on
-[orpc.dev/docs/plugins/client-retry](https://orpc.dev/docs/plugins/client-retry)
-and
-[orpc.dev/docs/plugins/retry-after](https://orpc.dev/docs/plugins/retry-after)
-, the upstream pages are the source of truth when the lib
-changes; this entry exists to document the plugin surface
-and the gap between what the plugins cover and what the
-CLI's custom fetch hook
-([KB entry](./fetch-hook)) does today.
+transport-layer concerns. Built on the upstream oRPC docs,
+this entry exists to document the plugin surface and the
+gap between what the plugins cover and what the CLI's
+custom fetch hook ([KB entry](./fetch-hook)) does today.
 
 ## Plugin shape
 
-The plugins are passed to `RPCLink` via the `plugins`
-array. Each plugin is a class with configuration options;
-multiple plugins can be composed on the same link.
+`RPCLink` accepts the plugins via the `plugins` array. Each
+plugin is a class with configuration options; the same link
+can compose many.
 
+{/* vale off: Vale.Terms — code block uses lowercase @orpc package name */}
 ```ts
 import { RPCLink } from "@orpc/client/fetch"
 import { ClientRetryPlugin } from "@orpc/client/plugins"
@@ -35,10 +31,11 @@ const link = new RPCLink({
   ],
 })
 ```
+{/* vale on */}
 
 A plugin's `default` block sets the fallback for every
-procedure; per-call overrides are passed via the
-`context` argument of the typed client call.
+procedure; the typed client call's `context` argument
+accepts per-call overrides.
 
 ## ClientRetryPlugin
 
@@ -71,7 +68,7 @@ Options:
 
 | Option | Default | Purpose |
 |---|---|---|
-| `retry` | `0` | Maximum retry attempts before throwing. |
+| `retry` | `0` | Cap on retry attempts before throwing. |
 | `retryDelay` | `(o) => o.lastEventRetry ?? 2000` | Delay between retries in ms. |
 | `shouldRetry` | `true` | Filter to decide which failures retry. |
 
@@ -116,14 +113,14 @@ Defaults:
 | Option | Default | Purpose |
 |---|---|---|
 | `condition` | `status === 429 \|\| status === 503` | Which status codes trigger a retry. |
-| `maxAttempts` | `3` | Maximum retry attempts. |
-| `timeout` | `5 * 60 * 1000` | Maximum total time spent retrying. |
+| `maxAttempts` | `3` | Cap on retry attempts. |
+| `timeout` | `5 * 60 * 1000` | Cap on total time spent retrying. |
 
 The plugin reads the standard `Retry-After` header
-(RFC 7231 §7.1.3) to compute the delay. It does **not**
+(RFC 7231 §7.1.3) to compute the delay. It doesn't
 read `X-RateLimit-Reset` or any vendor-specific header;
-if the server uses those, the plugin will silently use
-its own delay logic.
+if the server uses those, the plugin uses its own delay
+logic.
 
 ## Coverage vs the CLI's custom fetch
 
@@ -136,14 +133,14 @@ The CLI's `apps/cli/src/api/retry.ts` and
 | Retry on `429` | `fetchWithRetry` (lines 72-84) | Yes, via `RetryAfterPlugin.condition` (default). |
 | Read `Retry-After` (seconds) | Not implemented today | Yes, `RetryAfterPlugin` reads it. |
 | Read `X-RateLimit-Reset` | `fetchWithRetry` (lines 75-79) | **No.** Plugins read `Retry-After`, not custom headers. |
-| User-Agent header | `fetchWithRetry` (line 48) | Partial. The `RequestHeaders` plugin (see sidebar) can inject static headers but does not interpolate the installed CLI version. |
+| `User-Agent` header | `fetchWithRetry` (line 48) | Partial. The `RequestHeaders` plugin (see sidebar) injects static headers but doesn't interpolate the installed CLI version. |
 | Jitter on retry delay | `fetchWithRetry` (lines 18, 23-24) | No. Plugin delay is a constant or a function of `lastEventRetry`. |
 | Cap retry delay at 30s | `fetchWithRetry` (line 78) | No. Plugin timeout is total, not per-attempt. |
 | Atomic retry + cache fallback | `apps/cli/src/cache/index.ts` + `fetchTemplates` | Out of scope for plugins; the cache is application-layer, above the fetch hook. |
 
-**Roughly 70% of the wrapper's behavior is covered by the
-official plugins.** The remaining 30% is what justifies
-keeping the custom hook:
+**About 70% of the wrapper's behavior matches what the
+official plugins cover.** The remaining 30% is what
+justifies keeping the custom hook:
 
 - `X-RateLimit-Reset` is the header the CLI's server
   actually sends. The plugin reads the standard
@@ -152,10 +149,10 @@ keeping the custom hook:
   or adding a custom condition callback that derives the
   delay from the response headers.
 - Jitter and per-attempt caps protect against thundering
-  herd when many CLIs retry the same endpoint at once.
+  herd when many `CLIs` retry the same endpoint at once.
   The plugin's `retryDelay` is a constant or a function;
-  it does not cap per-attempt or jitter.
-- The User-Agent header carries the installed CLI
+  it doesn't cap per-attempt or jitter.
+- The `User-Agent` header carries the installed CLI
   version (read at runtime from the bundled package).
   The plugin layer injects static headers, not
   per-process values without an interceptor.
@@ -164,7 +161,7 @@ keeping the custom hook:
 
 A migration makes sense when the upstream server sends
 standard `Retry-After` headers (not `X-RateLimit-Reset`)
-and the deployment does not need jitter. Until then,
+and the deployment doesn't need jitter. Until then,
 keeping the custom hook is the lower-risk choice.
 
 If a future contributor migrates, the migration looks
@@ -175,7 +172,7 @@ like:
    `RPCLink` constructor that adds `ClientRetryPlugin`
    and `RetryAfterPlugin`.
 3. Keep `apps/cli/src/api/self-version.ts` (the runtime
-   User-Agent source) and feed its value into the
+   `User-Agent` source) and feed its value into the
    `RequestHeaders` plugin via a closure.
 4. Update `apps/cli/test/http/fetch-templates.test.ts`
    to mock the plugins instead of `fetchWithRetry`.
@@ -183,13 +180,13 @@ like:
 The migration is a one-PR change once the server contract
 moves to `Retry-After`.
 
-## What this entry is not
+## What this entry isn't
 
 This is a knowledge-base entry, not an ADR. It documents
 the official oRPC plugins in the current version of the
 lib, and the gap between the plugins and the CLI's
 custom implementation. The **decisions** (which approach
-we use today, when to migrate) live in
+this entry covers today and when to migrate) live in
 `docs/engineering/architecture/decisions/`. When a future
 change conflicts with this entry, the entry is wrong, not
 the code.

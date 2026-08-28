@@ -193,3 +193,4 @@ Codespaces
 [Bb]oolean
 [Vv]ariadic
 OTPs
+User-Agent
