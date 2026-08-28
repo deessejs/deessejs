@@ -136,7 +136,7 @@ import { API_RPC_PATH } from "@workspace/api/base-path"
 import { clientEnv } from "@workspace/env/client"
 
 const link = new RPCLink({
-  url: new URL(API_RPC_PATH, clientEnv.NEXT_PUBLIC_API_BASE_URL).toString(),   // vale off
+  url: new URL(API_RPC_PATH, clientEnv.NEXT_PUBLIC_API_BASE_URL).toString(),
   // …existing fetch hook with ISR directives
 })
 ```
