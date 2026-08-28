@@ -88,7 +88,7 @@ the following is true:
   origin probe, an uptime watcher) rather than a user-facing
   app.
 - The route hands off to an upstream service that owns
-  its own wire format (Better Auth's `/auth/*`, future
+  its own wire format (the Better Auth `/auth/*` paths, future
   integrations that the server forwards to without owning
   the contract).
 - The route returns server metadata (version, build SHA,
@@ -237,7 +237,7 @@ Adding a business route is the standard oRPC workflow:
 4. The route is automatically mounted under
    `/api/v1/rpc/*` via `mountRpc`.
 
-No change to `mountHttp` is needed. The route goes online
+No change to `mountHttp` happens. The route goes online
 when the contracts package, the procedures file, and the
 router registration land in the same PR.
 
@@ -357,7 +357,7 @@ now lives here.
   Hono-direct `/api/v1/version` endpoint, not an oRPC
   procedure. This ADR is the server-side rule that makes
   that call correct.
-- [knowledge-base/api/system-routes.md](../knowledge-base/api/system-routes.md). <!-- vale fix: Vale.Terms -->
-  The conceptual companion: the rationale for the four
+- The conceptual companion document on system routes (TBD),
+  which will live alongside this ADR. It states the rationale for the four
   routes that exist today, written for the contributor who
   has to decide whether a new route is system or business.
