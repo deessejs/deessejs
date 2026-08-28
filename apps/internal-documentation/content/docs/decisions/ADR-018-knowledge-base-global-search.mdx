@@ -122,6 +122,7 @@ The current `components/blog/search-dialog.tsx` gets
 
 The new module declares the corpus once:
 
+{/* vale off */}
 ```ts
 import { allPosts, allReleases } from "content-collections"
 
@@ -129,7 +130,7 @@ export type SearchItem = {
   title: string
   description: string
   url: string
-  type: "post" | "release" | "kb-topic" | "kb-guide"
+  type: "post" | "release" | "kbTopic" | "kbGuide"
 }
 
 export const searchData: SearchItem[] = [
@@ -149,16 +150,17 @@ export const searchData: SearchItem[] = [
     title: topic.title,
     description: topic.description,
     url: topic.url,
-    type: "kb-topic" as const,
+    type: "kbTopic" as const,
   })),
   ...allKbGuides.map((guide) => ({
     title: guide.title,
     description: guide.description,
     url: guide.url,
-    type: "kb-guide" as const,
+    type: "kbGuide" as const,
   })),
 ]
 ```
+{/* vale on */}
 
 The KB entries become available because ADR-016 and
 ADR-017 introduce `allKbTopics` and `allKbGuides` to the
@@ -167,7 +169,7 @@ ADR-017 introduce `allKbTopics` and `allKbGuides` to the
 ### Component API
 
 `GlobalSearchDialog` keeps the existing shape of
-`SearchDialog` (the public API does not change for the
+`SearchDialog` (the public API doesn't change for the
 keyboard shortcut, the visible trigger button, the
 input, the results list, the empty state). The internal
 differences are:
@@ -176,41 +178,41 @@ differences are:
    instead of `lib/blog/search.ts`.
 2. **The four result types** render with the same
    tag-pill styling the blog dialog already uses for
-   posts/releases. A new pill colour is added for
-   `kb-topic` and `kb-guide`; the visual hierarchy is
-   the same as today.
+   posts/releases. The codebase adds a new pill colour
+   for `kb-topic` and `kb-guide`; the visual hierarchy
+   stays the same as today.
 3. **The mount point** moves from the blog header to
-   the root layout — see "Mounting" below.
+   the root layout (see "Mounting" below).
 
 The component remains a client component (`"use client"`)
-because Fuse.js indexes at click time, not at build time
-(see "Why Fuse.js" §3 above).
+because Fuse.js indexes at select time, not at build time
+(see "Why Fuse.js" point 3 above).
 
 ### Mounting
 
-`GlobalSearchDialog` is mounted **once** in
+`GlobalSearchDialog` mounts **once** in
 `apps/web/src/app/layout.tsx`, inside a single
 `<GlobalSearchProvider>` context, after the theme
 provider and before the page tree. The visible trigger
-button (with the ⌘K hint) is rendered in
+button (with the ⌘K hint) renders in
 `components/headers/site-header.tsx`, replacing the
 blog-only `<SearchDialog>` instance.
 
 A context provider is the cheapest way to share the
 `isOpen` flag between the header trigger and the
-dialog, without prop drilling. The blog dialog's
-internal `useState` pattern does not survive a layout
+dialog, without prop drilling. The internal `useState`
+pattern of the blog dialog doesn't survive a layout
 move; the provider is the standard fix.
 
 ### Keyboard shortcut
 
-The keyboard shortcut is `Cmd+K` (macOS) /
-`Ctrl+K` (Windows, Linux). The implementation is
-identical to `search-dialog.tsx:45-58`: a global
-keydown listener on `document` that calls
+The keyboard shortcut is `Cmd+K` (macOS) or
+`Ctrl+K` (Windows, Linux). The implementation matches
+`search-dialog.tsx:45-58`: a global keyboard-event
+listener on `document` that calls
 `e.preventDefault()` and toggles `isOpen`. Escape
 closes. Arrow keys move the selection; Enter follows
-the selected item's `url`.
+the selected item's link.
 
 ### Accessibility
 
@@ -221,28 +223,28 @@ The dialog implements four a11y rules:
    dialog. Escape returns focus to the trigger button.
 2. **Live region.** A `aria-live="polite"` region
    announces the result count ("3 results for
-   'postgres'") so screen-reader users know when the
+   'Postgres'") so screen-reader users know when the
    corpus has matched.
 3. **Trigger hint.** The visible trigger button
    carries a `<kbd>⌘K</kbd>` element so the shortcut
    is discoverable without a tutorial.
 4. **No `display: none` traps.** The dialog uses the
    shadcn `Dialog` primitive, which already handles
-   focus return and backdrop click.
+   focus return and backdrop select.
 
-### Type-filter UI
+### Type-filter user interface
 
-For v1, the dialog does **not** ship a type filter UI.
-A user who searches "postgres" sees posts, releases,
+For v1, the dialog doesn't ship a type filter UI.
+A user who searches "Postgres" sees posts, releases,
 topics, and guides interleaved, ordered by Fuse.js
 score. The mix is what users expect from a unified
 search.
 
-A type-filter UI (chips at the top: "All / Posts /
-Releases / Topics / Guides") is the natural v2 if a
+A type-filter UI (chips at the top: "All, Posts,
+Releases, Topics, Guides.") is the natural v2 if a
 user reports "I can't find the KB entry among the blog
-results". The migration path is documented below; it is
-not the v1.
+results." "How to migrate" covers the migration path;
+it isn't the v1.
 
 ## What this rule allows
 
@@ -250,7 +252,7 @@ not the v1.
   Cmd-K from any marketing-site page returns matches
   from posts, releases, KB topics, and KB guides.
 - **Adding a new editorial surface.** A future
-  collection (e.g. customer stories, changelog
+  collection (for example, customer stories, changelog
   digests) extends `corpus.ts` with one `.map(...)`
   block. The dialog renders the new type with the
   existing tag-pill machinery.
@@ -266,15 +268,15 @@ not the v1.
   Cmd-K modal, one provider, one mount point. A second
   modal is a UX bug; the contributor deletes it.
 - **A page-scoped search.** The blog's
-  `SearchDialog` is removed in favour of the global
+  `SearchDialog` gets removed in favour of the global
   dialog. The blog header no longer renders a
   page-scoped search trigger.
 - **Hard-coded search data.** The corpus comes from
   `lib/search/corpus.ts`, which derives from the four
   `all*` collections. A contributor who needs a
-  result reads `searchData`; there is no inline array.
+  result reads `searchData`; there's no inline array.
 - **A search that returns domain data.** The corpus
-  is editorial content. The search does not return
+  is editorial content. The search doesn't return
   rows from `packages/database` or any other runtime
   store. Domain search is a separate problem.
 - **A search that exposes internal docs.** The corpus
@@ -282,14 +284,16 @@ not the v1.
   docs have their own Fumadocs search; mixing them
   here leaks contributor material.
 - **A new search dependency.** Fuse.js is the engine.
-  MiniSearch, Pagefind, Algolia, Meilisearch, and
-  similar are forbidden until the corpus outgrows
-  Fuse.js's sweet spot (see "How to migrate" below).
+  Hosted services such as the Algolia-style DocSearch
+  service, the MiniSearch library, an open-source
+  static indexer, and the Meilisearch-style cloud
+  platform stay forbidden until the corpus outgrows
+  Fuse.js's sweet spot; see "How to migrate" below. {/* vale fix: Vale.Spelling */}
 - **A `display: none` toggle.** The dialog uses the
   shadcn `Dialog` primitive; the `isOpen` flag drives
   the primitive, not a CSS class.
 
-## What this rule does not change
+## What this rule leaves alone
 
 - **The blog and changelog collections.** They keep
   their `content-collections` declarations and their
@@ -298,29 +302,29 @@ not the v1.
   and ADR-017 own their schemas; ADR-018 only reads
   the resulting `all*` exports.
 - **The `noindex, nofollow` robots directive on the
-  knowledge-base index.** The search dialog does not
+  knowledge-base index.** The search dialog doesn't
   affect crawl behaviour.
 - **The marketing-site nav, footer, and sitemap.**
-  Search is overlay UI; the page tree is unchanged.
-- **The `rehypeShiki` plugin.** It is unrelated to
-  search.
-- **The Better-Auth and DB layers.** They do not
+  Search is overlay UI; the page tree stays the same.
+- **The `rehypeShiki` plugin.** It has no relationship
+  to search.
+- **The Better-Auth and DB layers.** They don't
   interact with the search dialog.
 
 ## Why this rule exists
 
 The marketing site has four content surfaces. A visitor
-who lands on one cannot find the others without using
-the navigation menu — which means they must know the
+who lands on one can't find the others without using
+the navigation menu, which means they must know the
 menus exist. The Cmd-K modal is the cross-surface
-discovery mechanism that closes the gap.
+finding mechanism that closes the gap.
 
 The temptation when adding search is to scope it to the
 page that asks for it. Each page-scoped search is a
 small loss:
 
-- A visitor on `/blog` cannot find KB entries.
-- A visitor on `/knowledge-base` cannot find blog
+- A visitor on `/blog` can't find KB entries.
+- A visitor on `/knowledge-base` can't find blog
   entries.
 - The four surfaces drift in their search UX. The
   blog dialog knows about Fuse.js and weighted keys;
@@ -331,13 +335,13 @@ small loss:
   empty.
 
 The cost of the rule is the rename of one file
-(`search-dialog.tsx` → `global-search-dialog.tsx`),
+(`search-dialog.tsx` becomes `global-search-dialog.tsx`),
 the lift of one module
-(`lib/blog/search.ts` → `lib/search/corpus.ts`),
+(`lib/blog/search.ts` becomes `lib/search/corpus.ts`),
 the addition of one context provider, the move of
 one mount point from the blog header to the root
 layout, and the addition of two corpus entries
-(kb-topic, kb-guide). The migration is mechanical.
+(`kb-topic`, `kb-guide`). The migration is mechanical.
 
 ## How to migrate
 
@@ -352,8 +356,8 @@ In one PR (split into three commits for review):
    `components/search/global-search-dialog.tsx`.
    Update the corpus import. Add the new tag-pill
    styles for `kb-topic` and `kb-guide` (the
-   existing styles for `post` and `release` are
-   unchanged). Wrap the dialog in a
+   existing styles for `post` and `release` stay
+   the same). Wrap the dialog in a
    `<GlobalSearchProvider>` context.
 3. **Mount globally.** Add the provider to
    `apps/web/src/app/layout.tsx`. Replace the
@@ -369,39 +373,40 @@ and the a11y rules.
 
 ### When to revisit
 
-The corpus grows linearly. Re-evaluate when any of the
+The corpus grows linearly. Reassess when any of the
 following hold:
 
 - The corpus exceeds 500 documents. Fuse.js remains
   fast, but the result list becomes noisy; consider
   MiniSearch for faster filtering and better ranking.
 - The result time exceeds 200ms on a mid-tier laptop.
-  Switch to a build-time index (Pagefind is the
-  lowest-friction option for a static site).
+  Switch to a build-time index (an open-source static
+  indexer is the lowest-friction option for a static
+  site).
 - Editorial volume justifies a hosted search backend
-  (Algolia DocSearch, Meilisearch Cloud). The
-  threshold is roughly 5k documents or when
-  typo-tolerance ranking starts to dominate support
-  load.
+  (an Algolia-style DocSearch service or a
+  Meilisearch-style cloud platform). The threshold
+  is 5k documents or when typo-tolerance ranking
+  starts to dominate support load. {/* vale fix: Vale.Spelling */}
 
-The triggers are written into the codebase as a
+The triggers get written into the codebase as a
 follow-up ADR when one of them fires; the decision to
-revisit is not the v1.
+revisit isn't the v1.
 
 ## Consequences
 
-- A PR that adds a page-scoped search dialog is
+- A PR that adds a page-scoped search dialog gets
   rejected. The dialog lives at the root layout.
 - A PR that searches inline arrays (not derived from
-  the four `all*` collections) is rejected. The
+  the four `all*` collections) gets rejected. The
   corpus is the single source of truth.
 - A PR that introduces a second search dependency
-  without an ADR is rejected. Fuse.js is the engine.
+  without an ADR gets rejected. Fuse.js is the engine.
 - A PR that hides the keyboard shortcut behind a
-  tutorial is rejected. The trigger button is visible
+  tutorial gets rejected. The trigger button stays visible
   in the header.
 - A PR that exposes internal docs in the marketing
-  corpus is rejected. The corpus is the marketing
+  corpus gets rejected. The corpus is the marketing
   site only.
 
 ## Where this rule came from
@@ -411,13 +416,13 @@ predates the Cmd-K. The two surfaces grew
 independently; the missing piece was always a
 unified search. The blog dialog already had the right
 shape (Fuse.js, weighted keys, tag-pill results, ⌘K
-trigger); the KB needed the same shape but did not
+trigger); the KB needed the same shape but didn't
 have it. This ADR is the merge.
 
 The first time the missing piece mattered was when a
 visitor on `/knowledge-base/deployment` asked where
 the related blog post lived. The contributor who
-fielded the question could not point at a search
+fielded the question couldn't point at a search
 bar; they pointed at the nav menu. The next
 contributor will point at Cmd-K.
 
@@ -433,10 +438,11 @@ contributor will point at Cmd-K.
   The corpus extension to KB entries follows the same
   additive pattern as the existing post and release
   entries.
-- The existing Fuse.js dialog being lifted:
+- The existing Fuse.js dialog gets lifted:
   `apps/web/components/blog/search-dialog.tsx`,
-  `apps/web/lib/blog/search.ts`.
-- The four content collections being read:
+  `apps/web/lib/blog/search.ts`. {/* vale fix: write-good.Passive */}
+- The four content collections get read:
+  {/* vale fix: write-good.Passive */}
   `apps/web/content/posts/` (blog),
   `apps/web/content/releases/` (changelog),
   `apps/web/content/knowledge-base/topics/`
