@@ -271,13 +271,17 @@ export default function HomePage() {
 
       {/* 4. Cloud */}
       <section className="flex flex-col items-center gap-4 text-center">
-        <Link
-          href="/dashboard"
-          className="text-label-14 text-foreground underline-offset-4 hover:underline inline-flex items-center gap-2"
-        >
-          Sign in to your dashboard
-          <ArrowRight className="size-3" aria-hidden />
-        </Link>
+        <Button asChild variant="outline" size="lg">
+          <a
+            href="https://app.deessejs.com/signup"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2"
+          >
+            Try the cloud
+            <ArrowRight className="size-3.5" aria-hidden />
+          </a>
+        </Button>
       </section>
     </div>
   )
