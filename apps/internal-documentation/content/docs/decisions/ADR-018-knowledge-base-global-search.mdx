@@ -3,7 +3,7 @@ title: 'Knowledge Base global search'
 description: 'A single Cmd-K search modal mounted at the root layout covers the entire marketing-site corpus (blog, changelog, KB topics, KB guides) with Fuse.js.'
 ---
 
-# ADR-018: Knowledge Base global search
+# ADR-018, Knowledge Base global search
 
 ## Status
 
@@ -14,33 +14,33 @@ Accepted (2026-08). Non-negotiable.
 The marketing site at `apps/web/` ships four content
 surfaces today:
 
-- Blog (`content/posts/*.mdx`) — `allPosts` from
+- Blog (`content/posts/*.mdx`), `allPosts` from
   `content-collections`.
-- Changelog (`content/releases/*.mdx`) — `allReleases`
+- Changelog (`content/releases/*.mdx`), `allReleases`
   from `content-collections`.
-- Knowledge base topics (`content/knowledge-base/topics/*.mdx`)
-  — `allKbTopics`, added by
+- Knowledge base topics (`content/knowledge-base/topics/*.mdx`),
+  `allKbTopics`, added by
   [ADR-016](./ADR-016-knowledge-base-topics.md).
-- Knowledge base guides (`content/knowledge-base/guides/*.mdx`)
-  — `allKbGuides`, added by
+- Knowledge base guides (`content/knowledge-base/guides/*.mdx`),
+  `allKbGuides`, added by
   [ADR-017](./ADR-017-knowledge-base-guides.md).
 
-A search bar exists, but it is **partial and page-scoped**:
+A search bar exists, but it's **partial and page-scoped**:
 
 - `app/(content)/knowledge-base/page.tsx:171-175` renders a
-  placeholder div (`aria-hidden`, "Search Knowledge Base —
-  coming soon"). It is not an input, not a button, not
+  placeholder div (`aria-hidden`, "Search Knowledge Base,
+  coming soon"). It's not an input, not a button, not
   wired to anything.
 - `components/blog/search-dialog.tsx` ships a real Cmd-K
-  modal, but it is wired only to the blog header. Pressing
+  modal, but it's wired only to the blog header. Pressing
   Cmd-K from `/knowledge-base` does nothing. The dialog
-  only searches posts and releases — KB topics and guides
+  only searches posts and releases; KB topics and guides
   are missing entirely (`lib/blog/search.ts:1-23` declares
   the union as `"post" | "release"` only).
 
 The result: a visitor on `/knowledge-base/deployment` who
 hits Cmd-K gets no KB results. A visitor who reads the
-changelog cannot find the matching blog post. The four
+changelog can't find the matching blog post. The four
 surfaces are visible to humans but invisible to search.
 
 This ADR pins the shape of the unified search.
@@ -52,7 +52,7 @@ layout, covers the entire marketing-site corpus. The
 corpus is the union of `allPosts`, `allReleases`,
 `allKbTopics`, and `allKbGuides`. The search engine is
 **Fuse.js** (already in the catalog). The trigger is the
-keyboard shortcut `Cmd+K` (macOS) / `Ctrl+K` (Windows,
+keyboard shortcut `Cmd+K` (macOS) or `Ctrl+K` (Windows,
 Linux), plus a visible button in the header.
 
 ### Why Fuse.js
@@ -66,14 +66,14 @@ decision rests on four points:
    today. This ADR extends an existing pipeline; it does
    not introduce one.
 2. **Right-sized for the corpus.** The marketing-site
-   corpus is roughly 20 documents (2 posts, 1 release,
+   corpus is 20 documents (2 posts, 1 release,
    8 KB topics, 9 KB guides) and grows linearly with
    editorial output, not exponentially. Fuse.js indexes
    this corpus in single-digit milliseconds; sub-200ms
-   result time — the SaaS UI bar for Cmd-K — is trivial.
+   result time, the SaaS UI bar for Cmd-K, is trivial.
 3. **Catalog-neutral.** MiniSearch is faster on corpora
    above 1k documents, but the marketing site is two
-   orders of magnitude away from that threshold. The
+   orders of size away from that threshold. The
    catalogue stays single-pinned; no new dependency.
 4. **Acceptable defaults.** Fuse.js ships with
    typo-tolerance, weighted-field ranking, and a
@@ -83,38 +83,39 @@ decision rests on four points:
    `threshold: 0.3` (`search-dialog.tsx:22-30`); the
    global search inherits the same configuration.
 
-A build-time index (Pagefind, MiniSearch, custom) is the
-right move at ~1k documents. The migration path is
-documented in "How to migrate" below; it is not the v1.
+A build-time index (a custom indexer, MiniSearch,
+an open-source static indexer) is the right move at
+~1k documents. "How to migrate" notes the migration
+path; it isn't the v1.
 
 ### Why the marketing corpus only
 
 The corpus covers the marketing site (blog, changelog,
-KB topics, KB guides). It **does not** cover:
+KB topics, KB guides). It **doesn't** cover:
 
-- `apps/internal-documentation` — the internal docs
+- `apps/internal-documentation`. The internal docs
   app is a separate Fumadocs surface at a separate URL,
   with its own search story. Mixing internal docs into
   the marketing search would expose contributor-only
   material to public visitors.
-- The codebase (`packages/`, `apps/app/`) — the CLI is
+- The codebase (`packages/`, `apps/app/`). The CLI is
   the consumer of the API; the API has its own
-  discoverability story (`packages/api/src/http/routes/http.ts`
-  routes). Code search is a different problem; it does
-  not belong in a marketing-site Cmd-K.
+  visibility story (`packages/api/src/http/routes/http.ts`
+  routes). Code search is a different problem; it
+  doesn't belong in a marketing-site Cmd-K.
 
 The boundary is the marketing-site URL space. ADR-018
-owns search within that space; it does not own search
+owns search within that space; it doesn't own search
 across the monorepo.
 
 ### Component shape
 
-The current `components/blog/search-dialog.tsx` is
+The current `components/blog/search-dialog.tsx` gets
 **renamed and lifted**:
 
 - New location: `apps/web/src/components/search/global-search-dialog.tsx`.
 - New name: `GlobalSearchDialog`.
-- The `lib/blog/search.ts` module is renamed and lifted
+- The `lib/blog/search.ts` module gets renamed and lifted
   to `apps/web/src/lib/search/corpus.ts`. Its single
   export `searchData` becomes the marketing-site corpus,
   derived from the four `all*` collections.
