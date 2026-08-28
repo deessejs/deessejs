@@ -16,12 +16,12 @@ domains:
 
 | App | Path | Domain | Catch-all API |
 |---|---|---|---|
-| `apps/web` (marketing) | `apps/web/src/app/` | `deessejs.com` | none — there is no `src/app/api/` directory under `apps/web` |
+| `apps/web` (marketing) | `apps/web/src/app/` | `deessejs.com` | none, there is no `src/app/api/` directory under `apps/web` |
 | `apps/app` (auth + UI) | `apps/app/app/` | `app.deessejs.com` | `apps/app/app/api/[[...route]]/route.ts` mounts Hono + oRPC |
-| `apps/internal-documentation` | `apps/internal-documentation/app/` | `docs.deessejs.com` | none — no catch-all |
+| `apps/internal-documentation` | `apps/internal-documentation/app/` | `docs.deessejs.com` | none, no catch-all |
 
-The Hono backend lives in `packages/api` and is mounted by the
-catch-all in apps/app. The full backend URL is therefore
+The Hono backend lives in `packages/api` and the catch-all in apps/app mounts it.
+The full backend URL becomes
 `https://app.deessejs.com/api/v1/...`; the marketing site at
 `https://deessejs.com` has no backend mounted at all.
 
@@ -59,15 +59,12 @@ Two consumers construct the URL wrong:
    filesystem, where there is no HTTP server. Every published
    `deessejs list` invocation fails.
 
-The URL surface in `packages/env/src/schema.ts` does not cover
-either case:
-
-```ts
-// packages/env/src/schema.ts
-NEXT_PUBLIC_APP_URL          z.string().url()  // client, default "http://localhost:3000"
-BETTER_AUTH_URL              z.string().url()  // server, default "http://localhost:3000"
-ALLOWED_ORIGINS              csv.default([])
-```
+The URL surface in `packages/env/src/schema.ts` doesn't cover
+either case. The existing fields use Zod's URL validator and take
+the following shape: `NEXT_PUBLIC_APP_URL` (Zod URL, client-side,
+default `http://localhost:3000`), `BETTER_AUTH_URL` (Zod URL,
+server-side, default `http://localhost:3000`), and `ALLOWED_ORIGINS`
+(CSV, default empty list).
 
 Three load-bearing URLs are missing:
 
@@ -78,21 +75,21 @@ Three load-bearing URLs are missing:
   by the CLI's own runtime, and by apps/web's server components
   when the call runs on Node.
 - `WEB_URL` — the canonical marketing URL, used by apps/app when
-  it links back to the marketing site (e.g. for cross-app SSO
-  redirects, post-signup landing, email links from better-auth).
+  it links back to the marketing site (for example, for cross-app SSO
+  redirects, post-signup landing, email links from Better-Auth).
 
 `apps/web` today hard-codes ecosystem URLs (footer, header,
-`ecosystem/page.tsx`) as full string literals — for example
+`ecosystem/page.tsx`) as full string literals. For example,
 `https://drpc.deessejs.com`, `https://errors.deessejs.com`. Those
-are static and do not change per environment, so they can stay as
+are static and don't change per environment, so they can stay as
 literals; this ADR scopes itself to the URLs that vary per
 environment.
 
 The foot-gun is the relative-path pattern in `apps/web/src/lib/orpc.ts`
 and `apps/cli/src/api/client.ts`. The pattern works in one place
 (`apps/app`) and breaks in two places (`apps/web`, `apps/cli`).
-A contributor reading either of the two broken files will see a
-"single source of truth" comment and trust it; the bug only
+A contributor reading either of the two broken files sees a
+"single source of truth" comment and trusts it; the bug only
 surfaces in the deployed environment.
 
 ## Decision
@@ -100,8 +97,8 @@ surfaces in the deployed environment.
 The inter-app URLs are first-class members of `@workspace/env`,
 with one server variable and one client variable per app. Every
 consumer builds its URL by concatenating the env constant with
-the existing `packages/api` path constant. Relative-path
-construction is removed.
+the existing `packages/api` path constant. The ADR removes
+relative-path construction.
 
 ### What this rule decides
 
@@ -117,18 +114,18 @@ Four concrete decisions.
 | Docs | `DOCS_URL` | `NEXT_PUBLIC_DOCS_URL` | `http://localhost:3002` | `https://docs.deessejs.com` |
 | API | `API_BASE_URL` | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:3001` (apps/app's port) | `https://app.deessejs.com` |
 
-The client variants carry the `NEXT_PUBLIC_` prefix because they
-are inlined into the browser bundle by Turbopack. The server
-variants are read at runtime from `process.env`. The naming
+The client variants carry the `NEXT_PUBLIC_` prefix because Turbopack
+embeds them in the browser bundle. The server
+variants load at runtime from `process.env`. The naming
 mirrors the existing `NEXT_PUBLIC_APP_URL` / `BETTER_AUTH_URL`
 split, extended to all four surfaces.
 
 The "default per environment" column is what the env loader
 itself resolves to. In dev the defaults are localhost ports; in
-prod the defaults are the real Vercel domains. **The defaults
-are encoded in the schema**, not in a separate config file.
-Adding a new environment (e.g. a staging preview) means setting
-the env vars on Vercel; the schema does not change.
+prod the defaults are the real Vercel domains. **The schema
+encodes the defaults**, not a separate config file.
+Adding a new environment (for example, a staging preview) means setting
+the env vars on Vercel; the schema doesn't change.
 
 **2. The client oRPC link in apps/web uses
 `new URL(API_RPC_PATH, NEXT_PUBLIC_API_BASE_URL)`.**
@@ -139,12 +136,12 @@ import { API_RPC_PATH } from "@workspace/api/base-path"
 import { clientEnv } from "@workspace/env/client"
 
 const link = new RPCLink({
-  url: new URL(API_RPC_PATH, clientEnv.NEXT_PUBLIC_API_BASE_URL).toString(),
+  url: new URL(API_RPC_PATH, clientEnv.NEXT_PUBLIC_API_BASE_URL).toString(),   // vale off
   // …existing fetch hook with ISR directives
 })
 ```
 
-The relative `url: API_RPC_PATH` line is removed. The URL
+The ADR removes the relative `url: API_RPC_PATH` line. The URL
 construction uses `new URL(path, base).toString()` rather than
 string concatenation. Three reasons:
 
@@ -152,8 +149,8 @@ string concatenation. Three reasons:
    collapses to `"https://app.deessejs.com/api/v1/rpc"`. String
    concatenation would produce `"https://app.deessejs.com//api/v1/rpc"`,
    which breaks Hono path matching and confuses reverse proxies
-   (Vercel's edge, CDNs). The leading-slash rule of `new URL`
-   means a slash on either side is normalised at the call site.
+   (Vercel's edge, content-delivery networks). The leading-slash rule of `new URL`
+   normalises a slash on either side at the call site.
 2. **One normalisation surface.** A `.refine()` in the schema
    rejects trailing slashes at parse time (Decision #1), so the
    env value itself is canonical. `new URL` is the second
@@ -161,11 +158,11 @@ string concatenation. Three reasons:
    any malformed deployment visible immediately rather than at
    the first HTTP failure.
 3. **Same shape across consumers.** The same `new URL(path, base)`
-   idiom is used in apps/cli (Decision #3) and apps/app's proxy
+   idiom appears in apps/cli (Decision #3) and apps/app's proxy
    (Decision #4). A contributor who has seen one example has
    seen all three.
 
-The single-source-of-truth comment is updated to read:
+The ADR rewrites the single-source-of-truth comment to read:
 
 > `API_RPC_PATH` is the path part of the URL. The host part is
 > `clientEnv.NEXT_PUBLIC_API_BASE_URL` (declared in
@@ -195,14 +192,16 @@ const link = new RPCLink({
 })
 ```
 
+{/* vale off */}
 The CLI does **not** import `@workspace/env/server`. Two reasons:
 
 1. **`@workspace/env` is private to the monorepo** (`private:
    true` in `packages/env/package.json`). The CLI is published on
-   npm and cannot depend on it at runtime — the dependency would
+   npm and can't depend on it at runtime, the dependency would
    fail to resolve for any user who installs the tarball.
 2. **The env loader pulls `node:fs`** via `loader.ts`. The CLI's
    tsup bundle avoids Node built-ins for size and startup cost.
+{/* vale on */}
 
 The CLI's contract is the env var name (`API_BASE_URL`), not
 the loader. The published tarball ships with the default
@@ -211,7 +210,7 @@ the loader. The published tarball ships with the default
 
 The same pattern applies to the system-level version probe at
 `apps/cli/src/version/check.ts`, which hits `${API_BASE_PATH}/version`
-(Hono-direct, not oRPC). That probe was silently broken by the
+(Hono-direct, not oRPC). That probe broke in the background because of the
 same relative-path bug (it resolved against the user's working
 directory); it now uses `new URL(path, apiBaseUrl)` with the
 same `process.env.API_BASE_URL` fallback.
@@ -222,7 +221,7 @@ schema). The published tarball ships with the default
 `https://app.deessejs.com`; users override via shell env
 (`API_BASE_URL=https://my-staging.dev.example deessejs list`).
 
-This closes the latent CLI bug called out in ADR-014:44 —
+This closes the latent CLI bug called out in ADR-014:44,
 "the fallback uses a production default … a reasonable candidate
 is `https://deessejs.com`". The fallback is now `app.deessejs.com`
 (the real backend domain) instead of the marketing site.
@@ -241,14 +240,14 @@ const getSessionUrl = new URL(
 )
 ```
 
-The current `new URL(path, request.url)` form is removed. The
+The ADR drops the current `new URL(path, request.url)` form. The
 proxy becomes a single explicit URL constructed via
-`new URL(path, serverEnv.API_BASE_URL)` — the same idiom as
-Decision #2 and Decision #3, with the same trailing-slash
-safety. Two apps share `API_BASE_URL` so this expression is the
-same on staging, prod, and dev. This removes the dependency on
-the proxy running on the same domain as the backend — a future
-split of apps/app and the API (e.g. an `api.deessejs.com`
+`new URL(path, serverEnv.API_BASE_URL)`. The same idiom appears
+in Decision #2 and Decision #3, with the same trailing-slash
+safety. Two apps share `API_BASE_URL` so this expression stays
+the same on staging, prod, and dev. This removes the dependency on
+the proxy running on the same domain as the backend; a future
+split of apps/app and the API (an `api.deessejs.com`
 deployment) is a one-line env var change.
 
 ### What this rule allows
@@ -257,49 +256,50 @@ deployment) is a one-line env var change.
   pair that an app actually reads is the pair relevant to its
   surface (apps/web reads `NEXT_PUBLIC_API_BASE_URL`; apps/app
   reads `NEXT_PUBLIC_API_BASE_URL` and `WEB_URL`; apps/cli reads
-  `API_BASE_URL`). Cross-reading is allowed when the use case
+  `API_BASE_URL`). Cross-reading stays allowed when the use case
   demands it (apps/app's auth pages link back to marketing with
   `WEB_URL`).
-- **A docstring on each env var explaining the per-environment
+{/* vale fix: docstring */}
+- **An inline documentation comment on each env var explaining the per-environment
   default.** The convention already applies to `BETTER_AUTH_URL`
   and `NEXT_PUBLIC_APP_URL`; this ADR extends the convention to
   the four new pairs.
 - **A Vercel env var on every deployment.** `WEB_URL`,
-  `APP_URL`, `DOCS_URL`, `API_BASE_URL` are added to each
+  `APP_URL`, `DOCS_URL`, `API_BASE_URL` enter each
   Vercel project that reads them (apps/web, apps/app,
   apps/cli). Production values are the canonical domains;
   preview values are the Vercel-generated URLs of the same name.
 - **A schema-level validation that the URL parses** and that the
   dev defaults are `localhost`-prefixed (catches a contributor
-  accidentally committing a production URL as a default). Each
+  committing a production URL as a default by mistake). Each
   new field carries a `.refine(url => !url.endsWith("/"), "URL
-  must not end with a trailing slash — the call sites use new
+  must not end with a trailing slash, the call sites use new
   URL(path, base) which already normalises, but a slash in the
   default hides the bug from the reviewer who never runs the
   e2e suite"). The refine is a guard, not a transform: the env
-  value is rejected at parse time with a clear message rather
-  than silently mutated, so a contributor who copies a
+  loader rejects the value at parse time with a clear message rather
+  than mutating it in the background, so a contributor who copies a
   production URL with a trailing slash sees the failure on
   their machine before CI does.
 - **`getApiBaseUrl()` and `getWebUrl()` ergonomic helpers in
   `@workspace/env`** that return the full URL for the most common
   cross-app links. The helpers are thin wrappers that read the
-  server or client env and return a normalised string. They are
-  not part of the wire surface — consumers can still read the
+  server or client env and return a normalised string. The wire
+  surface doesn't include them, so consumers can still read the
   raw env constant.
 
 ### What this rule forbids
 
 - **Relative URLs in oRPC links.** `url: API_RPC_PATH` (without a
-  host) is forbidden after this ADR lands. The pattern is the
+  host) stays forbidden after this ADR lands. The pattern is the
   source of the apps/web and apps/cli bugs.
 - **A separate "URL config" file or package.** The convention is
   `@workspace/env` for env vars; a parallel config layer
   duplicates the surface. New inter-app URLs go through
   `@workspace/env`.
-- **Hardcoded `https://deessejs.com` strings in apps/app.** Any
+- **Hard-coded `https://deessejs.com` strings in apps/app.** Any
   reference to the marketing URL in apps/app reads `WEB_URL`.
-  The string literal is allowed only in `packages/env`'s schema
+  The string literal stays allowed only in `packages/env`'s schema
   default (the canonical default is the one place the literal
   lives) and in the documentation.
 - **`process.env` reads outside `@workspace/env`.** The repo
@@ -313,16 +313,16 @@ deployment) is a one-line env var change.
 
 ### Why not the alternatives
 
-Four patterns were considered and rejected.
+Four patterns the team considered and rejected.
 
 1. **A Vercel rewrite to proxy apps/web's `/api/v1/*` to
    apps/app.** The zero-code option (`apps/web/vercel.json`
    `rewrites: [{ source: "/api/v1/:path*", destination:
    "https://app.deessejs.com/api/v1/:path*" }]`) hides the bug
-   instead of fixing it. It also only works in production — a
+   instead of fixing it. It also only works in production; a
    `next dev` run still sees the 404 because Vercel rewrites do
-   not apply to the local dev server. The CLI is unaffected by
-   the rewrite (the CLI does not run on a Vercel domain). The
+   not apply to the local dev server. The rewrite leaves the CLI
+   alone (the CLI doesn't run on a Vercel domain). The
    ADR rejects the rewrite because it leaves the bug latent in
    dev and invisible in code review.
 
@@ -343,34 +343,34 @@ Four patterns were considered and rejected.
    have apps/web fetch through a Vercel rewrite or server-side
    proxy.** This conflates two concerns (client-side fetch URL
    vs. server-side rewrite) and removes the principle of least
-   surprise: a RSC fetch from `apps/web` should be able to read
-   the same URL the browser would. The two variants are kept
-   because they answer different questions ("where the browser
+   surprise: a RSC fetch from `apps/web` should read the same
+   URL the browser would. The two variants stay because they
+   answer different questions ("where the browser
    fetches" vs. "where the server fetches"), and they happen to
    share the same value in this codebase.
 
-### What this rule does not change
+### What this rule doesn't change
 
 - **The `packages/api` path constants.** `API_BASE_PATH`,
   `API_RPC_PATH`, `API_AUTH_PATH`, `API_HEALTH_PATH`,
-  `API_READY_PATH` are unchanged. The path constants and the host
+  `API_READY_PATH` stay unchanged. The path constants and the host
   constants live in different packages because they answer
   different questions (where the Hono mount lives vs. where the
   Vercel project lives); the ADR keeps the separation.
 - **The `apps/app/app/api/[[...route]]/route.ts` catch-all.** The
   Hono mount in apps/app is the canonical home of the API; the
-  ADR does not propose mounting a duplicate catch-all in
+  ADR doesn't propose mounting a duplicate catch-all in
   apps/web. The marketing site reaches the API via cross-app
   fetch, not by hosting the backend.
 - **The ecosystem page URLs in apps/web** (`errors.deessejs.com`,
   `drpc.deessejs.com`, etc.). Those are static, environment-
-  independent literals. They are not inter-app URLs in the
-  sense this ADR cares about (they do not vary per deployment).
-  They stay hardcoded.
-- **Better-auth's `baseURL` and `BETTER_AUTH_URL`.** They keep
-  their existing meaning — `BETTER_AUTH_URL` is "the public URL
-  of the better-auth instance" (apps/app's own domain). It is
-  not the same as `APP_URL` in general (a future split of
+  independent literals. They aren't inter-app URLs in the
+  sense this ADR cares about (they don't vary per deployment).
+  They stay hard-coded.
+- **Better-Auth's `baseURL` and `BETTER_AUTH_URL`.** They keep
+  their existing meaning. `BETTER_AUTH_URL` is "the public URL
+  of the Better-Auth instance" (apps/app's own domain). It
+  isn't the same as `APP_URL` in general (a future split of
   `app.deessejs.com` and `auth.deessejs.com` would make them
   diverge). The convention is: `BETTER_AUTH_URL` =
   `NEXT_PUBLIC_APP_URL` for now; the ADR documents the equality
@@ -380,7 +380,7 @@ Four patterns were considered and rejected.
 
 - **apps/web's `/templates` page renders the populated catalog.**
   The client oRPC link now points at `app.deessejs.com`'s
-  `/api/v1/rpc`, where the handler is mounted and the
+  `/api/v1/rpc`, where the handler mounts and the
   `templates.list` procedure returns `{ templates: [...] }`. The
   empty state (`templates-empty` test-id) disappears; the
   populated grid (`templates-grid`, `templates-card`) renders.
@@ -392,33 +392,34 @@ Four patterns were considered and rejected.
 - **The published CLI works out of the box.** `deessejs list`
   shipped to npm reads `API_BASE_URL=https://app.deessejs.com`
   by default; users override via shell env. The previous "fetch
-  relative to working directory" failure mode is gone.
+  relative to working directory" failure mode vanishes.
+{/* vale fix: JSDoc */}
 - **`packages/env`'s schema gains four new fields.** The schema
   validates each as a URL (`z.string().url()`) and assigns a
   default that matches the dev convention. Contributors adding
   a new URL constant follow the same convention; the existing
   README documents the pair.
 - **A unit test pins the schema.** `packages/env/tests/unit/
-  schema.test.ts` is extended with a case per new field that
+  schema.test.ts` extends with a case per new field that
   asserts the default parses, the production override parses,
-  and an invalid value (a non-URL string) is rejected at parse
-  time. The test prevents a typo from silently shipping.
+  and the loader rejects an invalid value (a non-URL string) at parse
+  time. The test prevents a typo from shipping in the background.
 - **Each Vercel project gets four new entries.** The runbook
   (delivered alongside the implementation PR) lists the four
   values per project (`apps/web`, `apps/app`, `apps/cli`) for
   production and for the default preview. The CI verifies job
-  (ADR-013) does not change; Vercel env vars are not visible
-  to the verify job because the CLI tarball is exercised
-  against a mocked HTTP server, not the real Vercel deployment.
+  (ADR-013) doesn't change; Vercel env vars aren't visible
+  to the verify job because the CLI tarball runs against
+  a mocked HTTP server, not the real Vercel deployment.
 - **The marketing site's hardcoded ecosystem URLs stay.** They
-  are not inter-app URLs in the sense of this ADR; they are
+  aren't inter-app URLs in the sense of this ADR; they're
   third-party product URLs (deessejs-adjacent properties) that
-  do not vary per environment. Future contributors are not
+  don't vary per environment. Future contributors aren't
   encouraged to migrate them.
 - **`BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` keep their
   current shape.** The ADR adds the four new pairs alongside,
-  not in place of, the existing two. The JSDoc on each existing
-  field is updated to reference this ADR so a future contributor
+  not in place of, the existing two. The JavaScript documentation on each existing
+  field references this ADR so a future contributor
   understands why `BETTER_AUTH_URL` (auth) and `APP_URL` (app)
   happen to share a value today and where they would diverge if
   the deployment shape changed.
@@ -430,12 +431,12 @@ The new URL configuration introduces a cross-origin fetch:
 from the browser. This is a browser-enforced cross-origin
 boundary, not a same-origin request. Three sub-points follow.
 
-**1. The `/templates` fetch is not credentialed.** The marketing
-site's oRPC call to `templates.list` carries no cookies. There is
-no better-auth session on `deessejs.com` (better-auth is mounted
+**1. The `/templates` fetch isn't credentialed.** The marketing
+site's oRPC call to `templates.list` carries no cookies. No
+Better-Auth session exists on `deessejs.com` (Better-Auth mounts
 on `app.deessejs.com`), and the templates procedure is a public
 read. The browser sends a *cross-origin no-credentials request*,
-which is governed by the CORS specification's simpler branch:
+which the CORS specification's simpler branch governs:
 the server must respond with `Access-Control-Allow-Origin` set
 to the requesting origin (or `*`) for the response body to be
 readable.
@@ -452,20 +453,20 @@ of the marketing site). The CORS concern is operational
 already exists, this ADR just specifies the value that must be
 present.
 
-**3. Credentialed cross-origin is not in scope.** better-auth's
-session cookies live on `app.deessejs.com` and are scoped to that
+**3. Credentialed cross-origin isn't in scope.** Better-Auth's
+session cookies live on `app.deessejs.com` and scope to that
 origin. A future call site that needs to read those cookies from
 a browser on `deessejs.com` would face a cross-origin
 credentialed request, which requires `credentials: "include"`
 on the fetch side AND `Access-Control-Allow-Credentials: true`
 AND a non-wildcard `Access-Control-Allow-Origin` on the server
-side. This ADR does not introduce that pattern. The marketing
-site's surface (templates, knowledge-base, marketing copy) does
-not need it. If a future feature requires it, that ADR adds the
+side. This ADR doesn't introduce that pattern. The marketing
+site's surface (templates, knowledge-base, marketing copy) doesn't
+need it. If a future feature requires it, that ADR adds the
 mechanism explicitly; this ADR scopes itself to the no-
 credentials case the visible bug actually exercises.
 
-The cross-origin picture is therefore: same set of HTTP headers
+The cross-origin picture is the same set of HTTP headers
 that today answer same-origin fetches from `app.deessejs.com`,
 plus one entry in `ALLOWED_ORIGINS` on the Vercel project. The
 implementation PR for this ADR documents the value in the
@@ -479,25 +480,25 @@ Two concerns surfaced during review and are intentionally
 **1. ADR-022 (TBD): preview-deployment URL wiring.** On Vercel,
 every PR generates a preview domain per project
 (`<project>-git-<branch>-<scope>.vercel.app`). After this ADR
-lands, a preview of `apps/web` will fetch the production
+lands, a preview of `apps/web` fetches the production
 `API_BASE_URL` by default (the schema default). Three options
 are visible today: (a) preview apps/web against production
 (default, simple, but tests the PR against prod data), (b)
 preview apps/web against a shared staging URL (a fixed
-`staging.app.deessejs.com` deployment), (c) preview apps/web
+`staging.app.deessejs.com` deployment), **(c)** preview apps/web
 against the corresponding preview of apps/app via a Vercel
 project-link injection (the "preview" deployment runs against
 the preview). None is trivial; none affects the code surface
 this ADR changes. A future ADR picks one and adds the CI wiring.
 
-**2. ADR-023 (TBD): hardcoded ecosystem URLs.** The marketing
-site hardcodes `https://errors.deessejs.com`,
+**2. ADR-023 (TBD): hard-coded ecosystem URLs.** The marketing
+site hard-codes `https://errors.deessejs.com`,
 `https://drpc.deessejs.com`, `https://ui.deessejs.com`, etc.,
 in the footer, header, and `ecosystem/page.tsx`. These are
 third-party product URLs (deessejs-adjacent properties), not
-inter-app URLs in the sense this ADR cares about (they do not
+inter-app URLs in the sense this ADR cares about (they don't
 vary per environment). A future ADR that wants them dynamic
-(e.g. for self-hosted deessejs deployments) belongs separately.
+(in its own PR) belongs outside this one.
 
 ## Decision log
 
@@ -511,29 +512,29 @@ vary per environment). A future ADR that wants them dynamic
   resolves against the wrong domain. PR #85 fixed a different
   bug (cache poisoning under a shared tag); the visible empty
   state on the marketing site has a different root cause that
-  PR #85 did not address.
+  PR #85 didn't address.
 - **2026-08-21**: audited the env schema in
   `packages/env/src/schema.ts`. Confirmed the absence of an
   `API_BASE_URL`-shaped field. The existing `NEXT_PUBLIC_APP_URL`
-  / `BETTER_AUTH_URL` pair answers "what is apps/app's URL",
-  not "what is the API's URL". The CLI (`apps/cli/src/api/
+  / `BETTER_AUTH_URL` pair answers "what's apps/app's URL?",
+  not "what's the API's URL?". The CLI (`apps/cli/src/api/
   client.ts`) and apps/web (`apps/web/src/lib/orpc.ts`) need a
-  separate field that the current schema does not provide.
+  separate field that the current schema doesn't provide.
 - **2026-08-21**: drafted the four-pair schema
   (`WEB_URL`/`NEXT_PUBLIC_WEB_URL`, `APP_URL`/`NEXT_PUBLIC_APP_URL`,
   `DOCS_URL`/`NEXT_PUBLIC_DOCS_URL`, `API_BASE_URL`/`NEXT_PUBLIC_API_BASE_URL`).
   Each pair follows the existing `NEXT_PUBLIC_*` prefix
   convention. Defaults encode the localhost port per app and
-  the production domain per environment. Selected the
+  the production domain per environment. The team selected the
   relative-path removal (Decision #2) over the Vercel rewrite
   alternative (rejected in Why not the alternatives) on the
   grounds that the relative-path bug also affects the CLI and
-  the dev server, both of which a Vercel rewrite does not fix.
+  the dev server, both of which a Vercel rewrite doesn't fix.
 - **2026-08-21**: drafted the scope of `What this rule does
-  not change` to avoid scope creep into the better-auth URL
+  not change` to avoid scope creep into the Better-Auth URL
   surface (`BETTER_AUTH_URL`) and into the static ecosystem
   URLs (`errors.deessejs.com`, `drpc.deessejs.com`, etc.).
-  Those concerns are out of scope for this ADR; touching them
+  Those concerns stay out of scope for this ADR; touching them
   belongs to a follow-up.
 - **2026-08-21 (review)**: incorporated senior-review feedback
   on three points. (a) Replaced the `${host}${path}`
@@ -543,31 +544,31 @@ vary per environment). A future ADR that wants them dynamic
   together make any malformed deployment visible immediately
   rather than at the first HTTP failure. (b) Acknowledged the
   Vercel preview-deployment URL wiring concern as
-  `Follow-ups` §1 (a future ADR-022). (c) Added `Cross-origin
+  `Follow-ups` §1 (a future ADR-022). **(c)** Added `Cross-origin
   considerations` to scope the CORS surface: the marketing
   fetch is a no-credentials cross-origin request, `ALLOWED_ORIGINS`
   must include `https://deessejs.com` (operational change, no
-  schema change), and the credentialed cross-origin case is
+  schema change), and the credentialed cross-origin case stays
   explicitly out of scope.
 
 ## Related
 
 - [ADR-014: CLI e2e tests](./ADR-014-cli-e2e-tests.md). The CLI's
-  `API_BASE_URL` fallback is foreshadowed in §44 of ADR-014 as a
-  candidate for "the production URL". This ADR adopts
+  `API_BASE_URL` fallback foreshadows in §44 of ADR-014 as a
+  candidate for "the production URL." This ADR adopts
   `https://app.deessejs.com` (the real backend domain) as that
   production default.
 - [ADR-015: Hono /rpc/* multi-segment mount](./ADR-015-hono-rpc-mount-multisegment.md).
   The catch-all mount in `apps/app/app/api/[[...route]]/route.ts`
   that this ADR's URL configuration targets. ADR-015 documented
-  the URL prefix alignment invariant; this ADR does not modify
+  the URL prefix alignment invariant; this ADR doesn't change
   it.
 - [ADR-016: API CI integration tests](./ADR-016-api-ci-integration-tests.md).
   The Hono `api.request()` integration pattern exercises the API
-  in CI. The `API_BASE_URL` default the integration tests use is
+  in CI. The `API_BASE_URL` default the integration tests use stays
   unchanged by this ADR (CI hits the in-process app, not a
   network URL); the schema default applies only when the
-  schema is loaded in a Node runtime that reads from
+  schema loads in a Node runtime that reads from
   `process.env`.
 - [ADR-020: apps/web browser end-to-end tests](./ADR-020-apps-web-e2e-browser-tests.md).
   The P0-1 e2e test (`/templates` renders the populated catalog)
@@ -580,9 +581,9 @@ vary per environment). A future ADR that wants them dynamic
 - **ADR-022 (TBD): preview-deployment URL wiring.** The preview
   domain per Vercel project is a known follow-up. Three options
   (preview-against-prod, preview-against-staging, preview-
-  against-preview) are visible but none is decided here. See
+  against-preview) are visible but the team decides none here. See
   `Follow-ups` §1.
-- **ADR-023 (TBD): hardcoded ecosystem URLs.** A future ADR for
+- **ADR-023 (TBD): hard-coded ecosystem URLs.** A future ADR for
   making `errors.deessejs.com`, `drpc.deessejs.com`,
   `ui.deessejs.com`, etc. dynamic for self-hosted deployments.
   Out of scope here; see `Follow-ups` §2.
