@@ -96,8 +96,8 @@ sendNotification({ content: 'Hello, world!', type: 'text' }, { value: 'usr_123' 
 The literal unions extract as named types (`MessageType`,
 `MessagePriority`) rather than appear inline because:
 
-- The same set of literals appears in several places (the type,
-  the validation function, the rendering function). Extracting
+- The same set of literals appears across the type, the
+  validation function, and the rendering function. Extracting
   them once keeps the literal strings in **one place**; adding a
   new value is one line in the type and the compiler enforces
   that every consumer handles it.
@@ -124,7 +124,7 @@ function transfer(fromAccountId: string, toAccountId: string, amount: number): v
 }
 ```
 
-When the right shape applies (several semantic IDs in the same
+When the right shape applies (many semantic IDs in the same
 context):
 
 ```ts
@@ -203,22 +203,23 @@ order of expressiveness.
   domain cares about.
 - **Discriminated union**:
   `type Event = { kind: 'click'; x: number; y: number } | { kind:
-  'key'; key: string }`. Use when the value has several shapes
+  'key'; key: string }`. Use when the value has many shapes
   the consumer switches on.
 - **Branded record** (identifier with metadata):
   `type UserId = { readonly value: string; readonly tenantId:
   string }`. Use when the identifier carries metadata the domain
   cares about.
 
-The pattern follows **what the value carries**, not preference.
-A `UserId` that is just a string gets the branded pattern; a
-`UserId` that carries tenant info gets the branded record. A
+The pattern follows **what the value carries**, not on
+preference. A `UserId` carrying only a string gets the branded
+pattern; a
+`UserId` carrying tenant info gets the branded record. A
 `Message` with content and type gets the record; an `Event`
-with several shapes gets the discriminated union.
+with many shapes gets the discriminated union.
 
 ## When the rule doesn't apply
 
-The rule applies to **values that participate in the domain**.
+The rule applies to **values that appear in the domain**.
 It doesn't apply to:
 
 - **Truly local values** that never escape a single function.
@@ -345,7 +346,7 @@ author's pattern.
 > provide checks for more nuanced cases. […] The author may not
 > notice the error during runtime. Only at a later time when
 > the author has forgotten about writing this could the issue
-> pop up again unexpectedly."
+> pop up again."
 >
 > . _Opaque / Branded Types in TypeScript_, a 2022 article.
 
@@ -398,8 +399,8 @@ local values have neither.
 
 A boundary conversion is exempt: the conversion function
 **accepts** the primitive. The conversion produces the domain
-type. After the conversion, the primitive is gone from the
-codebase's vocabulary.
+type. After the conversion, the primitive leaves the project
+vocabulary.
 
 Algorithm-internal primitives are exempt. A `Stack<T>` may use
 `T[]` internally; the public type hides the array. The
