@@ -270,18 +270,29 @@ export default function HomePage() {
       <div className="border-t border-border" />
 
       {/* 4. Cloud */}
-      <section className="flex flex-col items-center gap-4 text-center">
-        <Button asChild variant="outline" size="lg">
-          <a
-            href="https://app.deessejs.com/signup"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2"
-          >
-            Try the cloud
-            <ArrowRight className="size-3.5" aria-hidden />
-          </a>
-        </Button>
+      <section className="border-t border-border bg-muted/30">
+        <div className="flex flex-col items-start gap-4 px-6 py-10 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+          <div className="flex flex-col gap-2">
+            <p className="text-label-13 text-muted-foreground">
+              DeesseJS Cloud
+            </p>
+            <h2 className="text-heading-24 tracking-tight text-balance">
+              Don&apos;t host it yourself. We run the auth, the DB, the
+              billing. You build the features.
+            </h2>
+          </div>
+          <Button asChild variant="outline" size="lg" className="shrink-0">
+            <a
+              href="https://app.deessejs.com/signup"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2"
+            >
+              Try the cloud
+              <ArrowRight className="size-3.5" aria-hidden />
+            </a>
+          </Button>
+        </div>
       </section>
     </div>
   )
