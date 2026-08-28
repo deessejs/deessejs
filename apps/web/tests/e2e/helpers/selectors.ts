@@ -79,3 +79,22 @@ export const notFoundHeading = (page: Page) =>
 /** Not-found back-link to /templates. */
 export const browseAllTemplatesLink = (page: Page) =>
   page.getByRole("link", { name: "Browse all templates" })
+
+// Session-aware header selectors (ADR-023).
+// Root container for the right-side header control (always present).
+export const headerUserMenu = (page: Page) =>
+  page.getByTestId("header-user-menu")
+
+// Anonymous visitors: "Log in" and "Sign up" buttons.
+export const headerSignInButton = (page: Page) =>
+  page.getByRole("link", { name: "Log in", exact: true })
+export const headerSignUpButton = (page: Page) =>
+  page.getByRole("link", { name: "Sign up", exact: true })
+
+// Authenticated visitors: avatar dropdown trigger.
+export const headerAvatarTrigger = (page: Page) =>
+  page.getByTestId("header-avatar-trigger")
+
+// Sign-out flow.
+export const headerSignOutMenuItem = (page: Page) =>
+  page.getByTestId("header-sign-out")
