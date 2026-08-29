@@ -1,0 +1,17 @@
+# Next.js build output
+.next/
+.next-turbo/
+
+# content-collections build cache
+.content-collections/
+
+# Next.js type file (auto-generated)
+next-env.d.ts
+
+# Local env files
+.env*.local
+.env.local
+
+# OS / editor
+.DS_Store
+*.swp
