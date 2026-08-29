@@ -1,31 +1,18 @@
 import Link from "next/link"
 import {
-  Activity,
   AlertTriangle,
   ArrowRight,
-  Boxes,
-  Check,
-  CircleDollarSign,
   Cloud,
-  CloudUpload,
   Component,
-  Database,
-  FileText,
-  Folder,
-  GitBranch,
   Globe,
-  Image as ImageIcon,
   Layers,
-  LineChart,
   ListTree,
-  Loader,
   Radio,
   Settings,
   Sigma,
   Sparkles,
   TerminalSquare,
   Workflow,
-  Zap,
 } from "lucide-react"
 
 import { getAllReleases } from "@/lib/blog/releases"
@@ -34,6 +21,8 @@ import { allKbGuides } from "content-collections"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
+
+import { ContractsGrid, type Contract } from "./_components/contracts-grid"
 
 /**
  * Marketing homepage at `/`.
@@ -125,31 +114,13 @@ const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
   },
 ]
 
-type Provider = { name: string; logo: string }
-
-type Contract = {
-  title: string
-  description: string
-  icon: React.ComponentType<{ className?: string }>
-  /** Stack matrix: providers wired by this contract. */
-  providers: ReadonlyArray<Provider>
-  /** Mockup variant — drives which inner UI we render. */
-  mockup:
-    | "auth-form"
-    | "db-terminal"
-    | "billing-widget"
-    | "jobs-trace"
-    | "storage-browser"
-    | "otel-waterfall"
-}
-
 /** The six contracts wired into every template. */
 const CONTRACTS: ReadonlyArray<Contract> = [
   {
     title: "Auth",
     description:
       "Sessions, organizations, invitations, OAuth — typed against whichever provider you bring.",
-    icon: Zap,
+    icon: "auth",
     providers: [
       { name: "Better Auth", logo: "betterauth" },
       { name: "Clerk", logo: "clerk" },
@@ -162,7 +133,7 @@ const CONTRACTS: ReadonlyArray<Contract> = [
     title: "Database",
     description:
       "Drizzle schemas, migrations, typed queries. Postgres by default, swappable to any provider.",
-    icon: Database,
+    icon: "database",
     providers: [
       { name: "Postgres", logo: "postgresql" },
       { name: "Neon", logo: "neon" },
@@ -177,7 +148,7 @@ const CONTRACTS: ReadonlyArray<Contract> = [
     title: "Billing",
     description:
       "Subscriptions, usage metering, webhooks. The shape your agent can already call.",
-    icon: CircleDollarSign,
+    icon: "billing",
     providers: [
       { name: "Stripe", logo: "stripe" },
       { name: "Resend", logo: "resend" },
@@ -188,7 +159,7 @@ const CONTRACTS: ReadonlyArray<Contract> = [
     title: "Jobs",
     description:
       "Queues, retries, dead-letter handling. Async work that does not block the request path.",
-    icon: GitBranch,
+    icon: "jobs",
     providers: [
       { name: "Upstash", logo: "upstash" },
       { name: "Cloudflare", logo: "cloudflare" },
@@ -201,7 +172,7 @@ const CONTRACTS: ReadonlyArray<Contract> = [
     title: "Storage",
     description:
       "Object storage with signed URLs and presigned uploads. Drop-in S3-compatible.",
-    icon: Boxes,
+    icon: "storage",
     providers: [
       { name: "Supabase", logo: "supabase" },
       { name: "Cloudflare", logo: "cloudflare" },
@@ -212,7 +183,7 @@ const CONTRACTS: ReadonlyArray<Contract> = [
     title: "Observability",
     description:
       "Logs, traces, metrics — the three signals that catch production issues.",
-    icon: LineChart,
+    icon: "observability",
     providers: [
       { name: "Sentry", logo: "sentry" },
       { name: "Better Stack", logo: "betterstack" },
@@ -490,9 +461,12 @@ export default function HomePage() {
           })}
         </div>
 
-        {/* 4. Contracts — 3-col bento with mini-UI mockups + stack matrix */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-y divide-border sm:divide-y-0 sm:divide-x divide-border border-b border-border">
-          <Cell className="col-span-1 sm:col-span-2 lg:col-span-3 !p-0 border-0">
+        {/* 4. Contracts — 3-col bento with mini-UI mockups + stack matrix.
+            The grid lives in a client component so Motion can run; the
+            mockups are also animated (typed lines, bar fills, trace cascades,
+            OTel waterfall). */}
+        <div className="border-b border-border">
+          <Cell className="col-span-full !p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
               <p className="text-label-13 text-muted-foreground">
                 Wired into every starter
@@ -507,58 +481,7 @@ export default function HomePage() {
               </p>
             </div>
           </Cell>
-          {CONTRACTS.map((contract) => (
-            <article
-              key={contract.title}
-              className="flex flex-col gap-4 p-6"
-            >
-              <div className="flex items-center gap-2">
-                <span className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40">
-                  <contract.icon
-                    className="text-foreground size-4"
-                    aria-hidden
-                  />
-                </span>
-                <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
-                  {contract.title}
-                </h3>
-              </div>
-
-              {/* Mini-UI mockup — the promise rendered as a tiny interface */}
-              <div className="rounded-md border border-border bg-background overflow-hidden">
-                <ContractMockup kind={contract.mockup} />
-              </div>
-
-              <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-                {contract.description}
-              </p>
-
-              {/* Stack matrix — providers wired behind the contract */}
-              <ul className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
-                {contract.providers.map((provider) => (
-                  <li
-                    key={provider.name}
-                    className="inline-flex items-center gap-1.5 text-label-12 text-muted-foreground"
-                  >
-                    {provider.logo.endsWith("-missing") ? null : (
-                      // Plain <img>: SVG already vector-optimized, and next/image
-                      // returns 400 on width=12 (below its deviceSizes floor).
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={`/logos/${provider.logo}.svg`}
-                        alt=""
-                        width={12}
-                        height={12}
-                        className="size-3 shrink-0 dark:invert"
-                        aria-hidden
-                      />
-                    )}
-                    {provider.name}
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
+          <ContractsGrid contracts={CONTRACTS} />
         </div>
 
         {/* 5. CLI in action — 2 cols, shared borders */}
@@ -980,229 +903,3 @@ function TerminalMockup({
   )
 }
 
-/** Mini-UI mockup per contract — concrete visualization of the promise. */
-function ContractMockup({
-  kind,
-}: {
-  kind:
-    | "auth-form"
-    | "db-terminal"
-    | "billing-widget"
-    | "jobs-trace"
-    | "storage-browser"
-    | "otel-waterfall"
-}) {
-  switch (kind) {
-    case "auth-form":
-      return (
-        <div className="p-3">
-          <div className="mb-2 flex items-center gap-1.5 border-b border-border pb-1.5">
-            <span className="size-2 rounded-full bg-muted-foreground/30" aria-hidden />
-            <span className="size-2 rounded-full bg-muted-foreground/30" aria-hidden />
-            <span className="size-2 rounded-full bg-muted-foreground/30" aria-hidden />
-            <span className="ml-1 font-mono text-[10px] text-muted-foreground/70">
-              sign-in
-            </span>
-          </div>
-          <div className="flex flex-col gap-2 p-1.5">
-            <FieldRow label="email">
-              <span className="font-mono text-[11px] text-foreground/90">
-                ●●●●●●●
-              </span>
-            </FieldRow>
-            <FieldRow label="password">
-              <span className="font-mono text-[11px] text-foreground/90">
-                ●●●●●●●
-              </span>
-            </FieldRow>
-            <div className="mt-1 flex items-center justify-end">
-              <span className="rounded-sm border border-zinc-800 bg-zinc-950 px-2 py-0.5 font-mono text-[10px] text-zinc-100">
-                Continue →
-              </span>
-            </div>
-          </div>
-        </div>
-      )
-    case "db-terminal":
-      return (
-        <div className="bg-zinc-950 p-3 font-mono text-[11px] leading-5 text-zinc-100">
-          <p className="text-white">$ drizzle-kit generate</p>
-          <p className="text-white/70">✓ 4 schemas generated</p>
-          <p className="text-white">$ drizzle-kit migrate</p>
-          <p className="text-white/70">✓ 12 tables created</p>
-          <p className="text-white/70">
-            users · orgs · sessions · invoices ...
-          </p>
-        </div>
-      )
-    case "billing-widget":
-      return (
-        <div className="flex flex-col gap-2 p-3">
-          <div className="flex items-baseline justify-between">
-            <span className="font-mono text-[11px] text-muted-foreground">
-              Pro Plan
-            </span>
-            <span className="font-mono text-[11px] text-foreground">$49/mo</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-              <div
-                aria-hidden
-                className="h-full w-[74%] rounded-full bg-foreground"
-              />
-            </div>
-            <span className="font-mono text-[10px] text-muted-foreground">
-              74%
-            </span>
-          </div>
-          <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
-            <span>7,423 / 10,000</span>
-            <span>MRR $1,127</span>
-          </div>
-        </div>
-      )
-    case "jobs-trace":
-      return (
-        <ul className="flex flex-col divide-y divide-border">
-          <TraceRow icon={Check} label="email.send" status="ok" duration="1.2s" />
-          <TraceRow
-            icon={Loader}
-            label="slack.notify"
-            status="running"
-            duration="1.1s"
-          />
-          <TraceRow icon={Check} label="db.write" status="ok" duration="240ms" />
-          <TraceRow
-            icon={Check}
-            label="webhook.dispatch"
-            status="ok"
-            duration="80ms"
-          />
-        </ul>
-      )
-    case "storage-browser":
-      return (
-        <ul className="flex flex-col gap-1 p-3 font-mono text-[11px]">
-          <li className="flex items-center gap-1.5 text-muted-foreground">
-            <Folder className="size-3" aria-hidden /> uploads/
-          </li>
-          <li
-            className="flex items-center gap-1.5"
-            style={{ paddingLeft: "12px" }}
-          >
-            <FileText className="size-3 text-muted-foreground" aria-hidden />
-            invoice-2024-q4.pdf
-            <span className="ml-auto text-muted-foreground/70">4 MB</span>
-          </li>
-          <li
-            className="flex items-center gap-1.5"
-            style={{ paddingLeft: "12px" }}
-          >
-            <ImageIcon className="size-3 text-muted-foreground" aria-hidden />
-            avatar-3x.png
-            <span className="ml-auto text-muted-foreground/70">240 KB</span>
-          </li>
-          <li
-            className="flex items-center gap-1.5"
-            style={{ paddingLeft: "12px" }}
-          >
-            <Boxes className="size-3 text-muted-foreground" aria-hidden />
-            export.zip
-            <span className="ml-auto text-muted-foreground/70">12 MB</span>
-          </li>
-          <li className="mt-1 flex items-center gap-1.5 text-foreground/80">
-            <CloudUpload className="size-3" aria-hidden /> + Upload
-          </li>
-        </ul>
-      )
-    case "otel-waterfall":
-      return (
-        <ul className="flex flex-col gap-1.5 p-3 font-mono text-[11px]">
-          <li className="flex items-center gap-2 text-foreground">
-            <Activity className="size-3" aria-hidden />
-            <span>GET /checkout</span>
-            <span className="ml-auto text-muted-foreground">142ms</span>
-          </li>
-          <li
-            className="flex items-center gap-2 text-muted-foreground"
-            style={{ paddingLeft: "12px" }}
-          >
-            <span className="text-muted-foreground/60">├</span>
-            <span>auth.verify</span>
-            <span className="ml-auto">12ms</span>
-          </li>
-          <li
-            className="flex items-center gap-2 text-muted-foreground"
-            style={{ paddingLeft: "12px" }}
-          >
-            <span className="text-muted-foreground/60">├</span>
-            <span>fetch</span>
-            <span className="ml-auto">45ms</span>
-          </li>
-          <li
-            className="flex items-center gap-2 text-muted-foreground"
-            style={{ paddingLeft: "12px" }}
-          >
-            <span className="text-muted-foreground/60">├</span>
-            <span>db.query</span>
-            <span className="ml-auto">62ms</span>
-          </li>
-          <li
-            className="flex items-center gap-2 text-muted-foreground"
-            style={{ paddingLeft: "12px" }}
-          >
-            <span className="text-muted-foreground/60">└</span>
-            <span>cache.set</span>
-            <span className="ml-auto">23ms</span>
-          </li>
-        </ul>
-      )
-    default:
-      return null
-  }
-}
-
-function FieldRow({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-sm border border-border bg-background px-2 py-1">
-      <span className="font-mono text-[10px] text-muted-foreground">
-        {label}
-      </span>
-      <span className="ml-auto">{children}</span>
-    </div>
-  )
-}
-
-function TraceRow({
-  icon: Icon,
-  label,
-  status,
-  duration,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  status: "ok" | "running" | "error"
-  duration: string
-}) {
-  return (
-    <li className="flex items-center gap-2 px-3 py-1.5 font-mono text-[11px]">
-      <Icon
-        className={cn(
-          "size-3 shrink-0",
-          status === "ok" && "text-foreground",
-          status === "running" && "text-muted-foreground animate-pulse",
-          status === "error" && "text-destructive",
-        )}
-        aria-hidden
-      />
-      <span className="text-foreground/90">{label}</span>
-      <span className="ml-auto text-muted-foreground">{duration}</span>
-    </li>
-  )
-}

@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google"
+import { MotionConfig } from "motion/react"
 
 import "@workspace/ui/globals.css"
 import { APP_CONFIG } from "@workspace/ui/lib/config"
@@ -35,17 +36,19 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", geist.variable)}
     >
       <body>
-        <AppProviders>
-          <div className="flex min-h-screen flex-col">
-            <SiteHeader />
-            <main className="flex-1">{children}</main>
-            <AppFooter />
-            <CookieConsent />
-            <Toaster />
-          </div>
-          <GlobalSearchShortcut />
-          <GlobalSearchDialog />
-        </AppProviders>
+        <MotionConfig reducedMotion="user">
+          <AppProviders>
+            <div className="flex min-h-screen flex-col">
+              <SiteHeader />
+              <main className="flex-1">{children}</main>
+              <AppFooter />
+              <CookieConsent />
+              <Toaster />
+            </div>
+            <GlobalSearchShortcut />
+            <GlobalSearchDialog />
+          </AppProviders>
+        </MotionConfig>
       </body>
     </html>
   )
