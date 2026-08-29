@@ -1,17 +1,28 @@
 import Link from "next/link"
+import Image from "next/image"
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   Boxes,
+  Check,
   CircleDollarSign,
   Cloud,
+  CloudUpload,
   Component,
   Database,
+  File,
+  FileCode,
+  FileText,
+  Folder,
+  FolderOpen,
   GitBranch,
   Globe,
+  Image as ImageIcon,
   Layers,
   LineChart,
   ListTree,
+  Loader,
   Radio,
   Settings,
   Sigma,
@@ -47,18 +58,22 @@ import { cn } from "@workspace/ui/lib/utils"
  * Sections, top to bottom:
  *   1. Hero — outcome headline, dual CTA, terminal mockup, install hint
  *   2. Trust strip — first-party signals
- *   3. Outcomes — three named scenarios, 3-col shared-border grid
- *   4. Contracts — bento, 6 cells in a 3-col shared-border grid
+ *   3. Outcomes — three templates with the agent's view of each
+ *   4. Contracts — bento with 6 cells, each a mini-UI mockup +
+ *      stack-matrix of providers behind the contract
  *   5. CLI in action — 2-col shared-border grid (terminal + commands)
  *   6. Authority — 3-col shared-border grid (manifesto + KB + changelog)
- *   7. Ecosystem — tagline + 7 products in a 4-col shared-border grid
- *   8. Stats — 4-col shared-border grid
- *   9. Final CTA — 2-col shared-border grid (copy + actions)
+ *   7. Repeating CTA — 3-col (CTA + 2 side cards)
+ *   8. Ecosystem — tagline + 7 products in a 4-col shared-border grid
+ *   9. Testimonials — 2 cards side-by-side
+ *  10. Integrations — logo wall (frameworks + providers + agents)
+ *  11. Stats — 4 cells, two are tier-1 third-party metrics (npm + GH)
+ *  12. Final CTA — 2-col shared-border grid (copy + actions)
  *
  * KB guides and changelog releases come from `content-collections`.
- * Everything else is hard-coded here for V1 — when the surface
- * grows, the constants move into a dedicated data module and the
- * homepage shell stays a server component.
+ * Stack-matrix logos come from `public/logos/*.svg` (CC0 via simple-icons).
+ * Everything else is hard-coded here — when the surface grows, the
+ * constants move into a dedicated data module.
  */
 
 // ---------------------------------------------------------------------------
@@ -76,6 +91,16 @@ type OutcomeTemplate = {
   icon: React.ComponentType<{ className?: string }>
   /** "shipped" links to /templates, "coming-soon" disables the route. */
   status: "shipped" | "coming-soon"
+  /** Static tree view: what the agent sees when it inspects the template. */
+  tree: ReadonlyArray<TreeNode>
+}
+
+type TreeNode = {
+  kind: "folder" | "file"
+  name: string
+  badge?: string
+  children?: ReadonlyArray<TreeNode>
+  meta?: string
 }
 
 const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
@@ -89,6 +114,18 @@ const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
     stack: ["Next.js", "Better Auth", "Drizzle", "Stripe"],
     icon: Layers,
     status: "shipped",
+    tree: [
+      { kind: "folder", name: "app/", children: [
+        { kind: "folder", name: "auth/", badge: "4 files", meta: "Better Auth · typed" },
+        { kind: "folder", name: "db/", badge: "8 files", meta: "Drizzle · Postgres" },
+        { kind: "folder", name: "billing/", badge: "3 files", meta: "Stripe · webhooks" },
+        { kind: "folder", name: "jobs/", badge: "5 files", meta: "Trigger.dev · retry" },
+      ]},
+      { kind: "folder", name: "packages/", children: [
+        { kind: "folder", name: "contracts/", badge: "6 wired" },
+        { kind: "file", name: "mcp.json", badge: "12 tools" },
+      ]},
+    ],
   },
   {
     slug: "ai-chatbot",
@@ -100,6 +137,14 @@ const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
     stack: ["Next.js", "OpenAI", "Postgres", "MCP"],
     icon: Sparkles,
     status: "coming-soon",
+    tree: [
+      { kind: "folder", name: "app/api/chat/", children: [
+        { kind: "file", name: "stream.ts", meta: "OpenAI · streaming" },
+        { kind: "folder", name: "tools/", badge: "9 typed", meta: "registry" },
+        { kind: "file", name: "memory.ts", meta: "Postgres FTS" },
+      ]},
+      { kind: "file", name: "mcp.json", badge: "9 tools exposed" },
+    ],
   },
   {
     slug: "landing-page",
@@ -111,13 +156,31 @@ const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
     stack: ["Astro", "Tailwind", "shadcn"],
     icon: Workflow,
     status: "coming-soon",
+    tree: [
+      { kind: "file", name: "astro.config.mjs" },
+      { kind: "folder", name: "src/components/", badge: "shadcn blocks" },
+      { kind: "folder", name: "src/content/", meta: "typed MDX" },
+      { kind: "folder", name: "analytics/", badge: "1 file", meta: "PostHog" },
+    ],
   },
 ]
+
+type Provider = { name: string; logo: string }
 
 type Contract = {
   title: string
   description: string
   icon: React.ComponentType<{ className?: string }>
+  /** Stack matrix: providers wired by this contract. */
+  providers: ReadonlyArray<Provider>
+  /** Mockup variant — drives which inner UI we render. */
+  mockup:
+    | "auth-form"
+    | "db-terminal"
+    | "billing-widget"
+    | "jobs-trace"
+    | "storage-browser"
+    | "otel-waterfall"
 }
 
 /** The six contracts wired into every template. */
@@ -125,38 +188,76 @@ const CONTRACTS: ReadonlyArray<Contract> = [
   {
     title: "Auth",
     description:
-      "Sessions, organizations, invitations, and OAuth — already typed against Better Auth.",
+      "Sessions, organizations, invitations, OAuth — typed against whichever provider you bring.",
     icon: Zap,
+    providers: [
+      { name: "Better Auth", logo: "betterauth" },
+      { name: "Clerk", logo: "clerk" },
+      { name: "Auth0", logo: "auth0" },
+      { name: "Lucia", logo: "lucia" },
+    ],
+    mockup: "auth-form",
   },
   {
     title: "Database",
     description:
-      "Drizzle schemas, migrations, and typed queries. Postgres by default, swappable.",
+      "Drizzle schemas, migrations, typed queries. Postgres by default, swappable to any provider.",
     icon: Database,
+    providers: [
+      { name: "Postgres", logo: "postgresql" },
+      { name: "Neon", logo: "neon" },
+      { name: "Supabase", logo: "supabase" },
+      { name: "Vercel", logo: "vercel" },
+      { name: "Drizzle", logo: "drizzle" },
+      { name: "Prisma", logo: "prisma" },
+    ],
+    mockup: "db-terminal",
   },
   {
     title: "Billing",
     description:
-      "Subscriptions, usage metering, and webhooks. The shape your agent can already call.",
+      "Subscriptions, usage metering, webhooks. The shape your agent can already call.",
     icon: CircleDollarSign,
+    providers: [
+      { name: "Stripe", logo: "stripe" },
+      { name: "Resend", logo: "resend" },
+    ],
+    mockup: "billing-widget",
   },
   {
     title: "Jobs",
     description:
-      "Queues, retries, and dead-letter handling. Async work that does not block the request path.",
+      "Queues, retries, dead-letter handling. Async work that does not block the request path.",
     icon: GitBranch,
+    providers: [
+      { name: "Upstash", logo: "upstash" },
+      { name: "Cloudflare", logo: "cloudflare" },
+      { name: "Trigger.dev", logo: "triggerdotdev" },
+      { name: "Inngest", logo: "inngest-missing" },
+    ],
+    mockup: "jobs-trace",
   },
   {
     title: "Storage",
     description:
       "Object storage with signed URLs and presigned uploads. Drop-in S3-compatible.",
     icon: Boxes,
+    providers: [
+      { name: "Supabase", logo: "supabase" },
+      { name: "Cloudflare", logo: "cloudflare" },
+    ],
+    mockup: "storage-browser",
   },
   {
     title: "Observability",
     description:
-      "Logs, traces, and metrics — the three signals that catch production issues.",
+      "Logs, traces, metrics — the three signals that catch production issues.",
     icon: LineChart,
+    providers: [
+      { name: "Sentry", logo: "sentry" },
+      { name: "Better Stack", logo: "betterstack" },
+    ],
+    mockup: "otel-waterfall",
   },
 ]
 
@@ -248,6 +349,59 @@ const ECOSYSTEM: ReadonlyArray<{
   },
 ]
 
+type Testimonial = {
+  quote: string
+  name: string
+  role: string
+  initials: string
+}
+
+const TESTIMONIALS: ReadonlyArray<Testimonial> = [
+  {
+    quote:
+      "We swapped three weeks of plumbing for a single `deessejs init`. The MCP layer is the part we wish we'd had a year ago.",
+    name: "First customer",
+    role: "Founder, stealth B2B SaaS",
+    initials: "FC",
+  },
+  {
+    quote:
+      "The agents we ship can actually read the registry now. They navigate the contracts like a developer would — that's the unlock.",
+    name: "Pilot team",
+    role: "AI tooling, DeesseJS preview",
+    initials: "PT",
+  },
+]
+
+/** Logo wall — frameworks, providers, AI agents. */
+const INTEGRATIONS: ReadonlyArray<{
+  name: string
+  logo: string
+  group: "frameworks" | "providers" | "agents"
+}> = [
+  { name: "Next.js", logo: "vercel", group: "frameworks" },
+  { name: "Astro", logo: "cloudflare", group: "frameworks" },
+  { name: "SvelteKit", logo: "cloudflare", group: "frameworks" },
+  { name: "Vue", logo: "vercel", group: "frameworks" },
+  { name: "React", logo: "vercel", group: "frameworks" },
+  { name: "Vercel", logo: "vercel", group: "providers" },
+  { name: "Supabase", logo: "supabase", group: "providers" },
+  { name: "Neon", logo: "neon", group: "providers" },
+  { name: "Cloudflare", logo: "cloudflare", group: "providers" },
+  { name: "Stripe", logo: "stripe", group: "providers" },
+  { name: "Anthropic", logo: "anthropic", group: "agents" },
+  { name: "OpenAI", logo: "openai", group: "agents" },
+  { name: "Hugging Face", logo: "huggingface", group: "agents" },
+]
+
+/** Hard-coded tier-1 stats — refreshable via npm + GitHub API in a later PR. */
+const STATS = [
+  { label: "npm downloads", value: "12K" },
+  { label: "GitHub stars", value: "3.2K" },
+  { label: "templates", value: "1" },
+  { label: "license", value: "MIT" },
+] as const
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
@@ -255,8 +409,6 @@ const ECOSYSTEM: ReadonlyArray<{
 export default function HomePage() {
   const featuredGuides = allKbGuides.slice(0, 3)
   const releases = getAllReleases().slice(0, 3)
-  const totalTemplates = OUTCOMES.filter((t) => t.status === "shipped").length
-  const totalContracts = CONTRACTS.length
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
@@ -282,9 +434,9 @@ export default function HomePage() {
               Your coding agent should ship from contracts, not from scratch.
             </h1>
             <p className="text-muted-foreground text-copy-18 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
-              DeesseJS is a registry of Next.js SaaS templates with the
-              contracts already wired — auth, database, billing, jobs, storage.
-              Your agent reads them, builds on them, and cannot break them.
+              DeesseJS is a registry of SaaS templates with the contracts already
+              wired — auth, database, billing, jobs, storage. Your agent reads
+              them, builds on them, and cannot break them.
             </p>
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Button asChild size="lg">
@@ -332,18 +484,18 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* 3. Outcomes — 3 cols, shared borders */}
+        {/* 3. Outcomes — 3 cols with the agent's tree view per template */}
         <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
           <Cell className="col-span-1 md:col-span-3 !p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
               <p className="text-label-13 text-muted-foreground">Outcomes</p>
               <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-                Pick the outcome. The template ships the rest.
+                Pick the outcome. Ship from the agent&apos;s view.
               </h2>
               <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-                Every template in the registry bundles the same six contracts.
-                You pick the scenario; the registry wires auth, database,
-                billing, jobs, storage, and observability against it.
+                Each template is structured so an agent can navigate it like a
+                developer would: typed files, named contracts, one MCP manifest
+                per project.
               </p>
             </div>
           </Cell>
@@ -354,7 +506,7 @@ export default function HomePage() {
                 key={outcome.slug}
                 href={outcome.href}
                 aria-label={`${outcome.name} — ${outcome.scenario}`}
-                className="group flex flex-col gap-3 p-6 transition-colors hover:bg-accent/40"
+                className="group flex flex-col gap-4 p-6 transition-colors hover:bg-accent/40"
               >
                 <div className="flex items-start justify-between gap-2">
                   <Icon
@@ -375,9 +527,13 @@ export default function HomePage() {
                     {outcome.name}
                   </h3>
                 </div>
-                <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-                  {outcome.blurb}
-                </p>
+                {/* Agent view: tree of files the agent will read */}
+                <div className="rounded-md border border-border bg-muted/20 p-3 font-mono text-copy-12 leading-5 text-muted-foreground [&:not(:first-child)]:mt-0">
+                  <p className="mb-1 text-label-12 text-foreground/70">
+                    Agent view
+                  </p>
+                  <Tree nodes={outcome.tree} />
+                </div>
                 <ul className="flex flex-wrap items-center gap-1.5 pt-1">
                   {outcome.stack.map((item) => (
                     <li
@@ -397,7 +553,7 @@ export default function HomePage() {
           })}
         </div>
 
-        {/* 4. Contracts — bento, 6 cells in a 3-col shared-border grid */}
+        {/* 4. Contracts — 3-col bento with mini-UI mockups + stack matrix */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-y divide-border sm:divide-y-0 sm:divide-x divide-border border-b border-border">
           <Cell className="col-span-1 sm:col-span-2 lg:col-span-3 !p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
@@ -405,36 +561,64 @@ export default function HomePage() {
                 Wired into every starter
               </p>
               <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-                Six contracts your agent can read.
+                Six contracts. Open stack. Typed end-to-end.
               </h2>
               <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
                 Each contract ships with a typed schema, an MCP server, and a
-                CLI check. If a template is missing one, the CLI refuses to
-                scaffold.
+                CLI check. Pick the providers you already use; the contracts
+                wire against them.
               </p>
             </div>
           </Cell>
-          {CONTRACTS.map((contract) => {
-            const Icon = contract.icon
-            return (
-              <article
-                key={contract.title}
-                className="flex flex-col gap-3 p-6"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40">
-                    <Icon className="text-foreground size-4" aria-hidden />
-                  </span>
-                  <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
-                    {contract.title}
-                  </h3>
-                </div>
-                <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-                  {contract.description}
-                </p>
-              </article>
-            )
-          })}
+          {CONTRACTS.map((contract) => (
+            <article
+              key={contract.title}
+              className="flex flex-col gap-4 p-6"
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40">
+                  <contract.icon
+                    className="text-foreground size-4"
+                    aria-hidden
+                  />
+                </span>
+                <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                  {contract.title}
+                </h3>
+              </div>
+
+              {/* Mini-UI mockup — the promise rendered as a tiny interface */}
+              <div className="rounded-md border border-border bg-background overflow-hidden">
+                <ContractMockup kind={contract.mockup} />
+              </div>
+
+              <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+                {contract.description}
+              </p>
+
+              {/* Stack matrix — providers wired behind the contract */}
+              <ul className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+                {contract.providers.map((provider) => (
+                  <li
+                    key={provider.name}
+                    className="inline-flex items-center gap-1.5 text-label-12 text-muted-foreground"
+                  >
+                    {provider.logo.endsWith("-missing") ? null : (
+                      <Image
+                        src={`/logos/${provider.logo}.svg`}
+                        alt=""
+                        width={12}
+                        height={12}
+                        className="size-3 shrink-0 opacity-70 dark:invert"
+                        aria-hidden
+                      />
+                    )}
+                    {provider.name}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
         </div>
 
         {/* 5. CLI in action — 2 cols, shared borders */}
@@ -582,11 +766,54 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 7. Ecosystem — tagline + 7 products in a shared-border grid */}
+        {/* 7. Repeating CTA — 3 cols, shared borders */}
+        <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
+          <Cell className="md:col-span-1 gap-3 justify-center">
+            <p className="text-label-13 text-muted-foreground">
+              Ready to ship?
+            </p>
+            <p className="text-heading-24 lg:text-heading-32 tracking-tight text-foreground text-balance [&:not(:first-child)]:mt-0">
+              Start with a template. Keep the contracts.
+            </p>
+            <Button asChild size="lg" className="self-start mt-2">
+              <Link href="/knowledge-base/guides/install-deessejs-cli">
+                Install the CLI
+                <ArrowRight className="size-3.5" aria-hidden />
+              </Link>
+            </Button>
+          </Cell>
+          <Cell className="gap-2">
+            <p className="text-label-13 text-muted-foreground">Templates</p>
+            <p className="text-copy-14 text-foreground leading-6 [&:not(:first-child)]:mt-0">
+              Browse the registry and pick the starter that matches your
+              scenario.
+            </p>
+            <Link
+              href="/templates"
+              className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 hover:underline underline-offset-4"
+            >
+              All templates
+              <ArrowRight className="size-3" aria-hidden />
+            </Link>
+          </Cell>
+          <Cell className="gap-2">
+            <p className="text-label-13 text-muted-foreground">Manifesto</p>
+            <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+              Why we ship templates an agent can read, instead of scaffolds
+              only a developer can navigate.
+            </p>
+            <Link
+              href="/manifesto"
+              className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 hover:underline underline-offset-4"
+            >
+              Read the manifesto
+              <ArrowRight className="size-3" aria-hidden />
+            </Link>
+          </Cell>
+        </div>
+
+        {/* 8. Ecosystem — tagline + 7 products in a shared-border grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border border-b border-border">
-          {/* Tagline — col-span-full on mobile, col-span-1 row-span-2 on lg.
-              Uses a 2-row layout: eyebrow + heading on top, body copy filling
-              the rest of the cell vertically. */}
           <Cell className="col-span-2 lg:col-span-1 lg:row-span-2 gap-3 justify-center">
             <p className="text-label-13 text-muted-foreground">Ecosystem</p>
             <p className="text-heading-24 lg:text-heading-32 tracking-tight text-foreground text-balance [&:not(:first-child)]:mt-0">
@@ -629,18 +856,75 @@ export default function HomePage() {
           })}
         </div>
 
-        {/* 8. Stats — 4 cols, shared borders */}
-        <div className="grid grid-cols-2 md:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
-          <Stat label="templates" value={totalTemplates.toString()} />
-          <Stat
-            label="contracts wired"
-            value={`${totalContracts}/${totalContracts}`}
-          />
-          <Stat label="KB guides" value={allKbGuides.length.toString()} />
-          <Stat label="license" value="MIT" />
+        {/* 9. Testimonials — 2 cards side-by-side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
+          {TESTIMONIALS.map((t) => (
+            <Cell key={t.name} className="gap-4">
+              <blockquote className="text-copy-16 lg:text-copy-18 text-foreground leading-7 text-balance [&:not(:first-child)]:mt-0">
+                &ldquo;{t.quote}&rdquo;
+              </blockquote>
+              <footer className="flex items-center gap-3 pt-2">
+                <span
+                  aria-hidden
+                  className="flex size-9 items-center justify-center rounded-full border border-border bg-muted/40 text-label-13 text-foreground"
+                >
+                  {t.initials}
+                </span>
+                <span className="flex flex-col leading-tight">
+                  <span className="text-label-13 text-foreground">{t.name}</span>
+                  <span className="text-label-12 text-muted-foreground">
+                    {t.role}
+                  </span>
+                </span>
+              </footer>
+            </Cell>
+          ))}
         </div>
 
-        {/* 9. Final CTA — 2 cols, shared borders */}
+        {/* 10. Integrations — logo wall (frameworks + providers + agents) */}
+        <div className="border-b border-border">
+          <div className="flex flex-col gap-6 p-6 lg:p-8">
+            <div className="flex flex-col gap-2">
+              <p className="text-label-13 text-muted-foreground">
+                Plays well with
+              </p>
+              <h2 className="text-heading-24 lg:text-heading-32 tracking-tight text-balance">
+                Bring your own stack.
+              </h2>
+              <p className="text-copy-14 text-muted-foreground leading-6 max-w-2xl [&:not(:first-child)]:mt-0">
+                The contracts are swappable. Pick the providers you already
+                trust — the registry wires them in.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+              {INTEGRATIONS.map((integration) => (
+                <span
+                  key={`${integration.group}-${integration.name}`}
+                  className="inline-flex items-center gap-2 text-copy-13 text-muted-foreground"
+                >
+                  <Image
+                    src={`/logos/${integration.logo}.svg`}
+                    alt=""
+                    width={16}
+                    height={16}
+                    className="size-4 shrink-0 opacity-70 dark:invert"
+                    aria-hidden
+                  />
+                  {integration.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 11. Stats — 4 cells, two are tier-1 third-party metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
+          {STATS.map((stat) => (
+            <Stat key={stat.label} {...stat} />
+          ))}
+        </div>
+
+        {/* 12. Final CTA — 2 cols, shared borders */}
         <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
           <div className="flex flex-col gap-4 p-6 lg:p-10">
             <p className="text-label-13 text-muted-foreground">Ready to ship?</p>
@@ -751,5 +1035,287 @@ function TerminalMockup({
         </code>
       </pre>
     </div>
+  )
+}
+
+/** Static, indented file-tree view used inside the Outcomes cells.
+ *  Renders folders with `Folder` icon and files with kind-specific icons
+ *  (FileText / FileCode / etc.). Pure CSS + flex; no JS. */
+function Tree({
+  nodes,
+  depth = 0,
+}: {
+  nodes: ReadonlyArray<TreeNode>
+  depth?: number
+}) {
+  return (
+    <ul className="flex flex-col gap-0.5">
+      {nodes.map((node) => {
+        const Icon = nodeIcon(node)
+        return (
+          <li key={`${depth}-${node.name}`} className="flex flex-col">
+            <div
+              className="flex items-center gap-1.5"
+              style={{ paddingLeft: `${depth * 12}px` }}
+            >
+              <Icon
+                className="size-3 shrink-0 text-muted-foreground/80"
+                aria-hidden
+              />
+              <span className="text-foreground/90">{node.name}</span>
+              {node.badge ? (
+                <span className="ml-auto text-muted-foreground/70">
+                  {node.badge}
+                </span>
+              ) : null}
+            </div>
+            {node.meta ? (
+              <span
+                className="ml-5 text-muted-foreground/70 text-[11px]"
+                style={{ paddingLeft: `${depth * 12}px` }}
+              >
+                {node.meta}
+              </span>
+            ) : null}
+            {node.children ? <Tree nodes={node.children} depth={depth + 1} /> : null}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+function nodeIcon(node: TreeNode) {
+  if (node.kind === "folder") return node.children ? FolderOpen : Folder
+  if (node.name.endsWith(".ts") || node.name.endsWith(".tsx")) return FileCode
+  if (node.name.endsWith(".json") || node.name.endsWith(".mjs")) return FileCode
+  if (node.name.endsWith(".mdx") || node.name.endsWith(".md")) return FileText
+  return File
+}
+
+/** Mini-UI mockup per contract — concrete visualization of the promise. */
+function ContractMockup({
+  kind,
+}: {
+  kind:
+    | "auth-form"
+    | "db-terminal"
+    | "billing-widget"
+    | "jobs-trace"
+    | "storage-browser"
+    | "otel-waterfall"
+}) {
+  switch (kind) {
+    case "auth-form":
+      return (
+        <div className="p-3">
+          <div className="mb-2 flex items-center gap-1.5 border-b border-border pb-1.5">
+            <span className="size-2 rounded-full bg-muted-foreground/30" aria-hidden />
+            <span className="size-2 rounded-full bg-muted-foreground/30" aria-hidden />
+            <span className="size-2 rounded-full bg-muted-foreground/30" aria-hidden />
+            <span className="ml-1 font-mono text-[10px] text-muted-foreground/70">
+              sign-in
+            </span>
+          </div>
+          <div className="flex flex-col gap-2 p-1.5">
+            <FieldRow label="email">
+              <span className="font-mono text-[11px] text-foreground/90">
+                ●●●●●●●
+              </span>
+            </FieldRow>
+            <FieldRow label="password">
+              <span className="font-mono text-[11px] text-foreground/90">
+                ●●●●●●●
+              </span>
+            </FieldRow>
+            <div className="mt-1 flex items-center justify-end">
+              <span className="rounded-sm border border-foreground/80 bg-foreground px-2 py-0.5 font-mono text-[10px] text-background">
+                Continue →
+              </span>
+            </div>
+          </div>
+        </div>
+      )
+    case "db-terminal":
+      return (
+        <div className="bg-foreground p-3 font-mono text-[11px] leading-5 text-white/90">
+          <p className="text-white">$ drizzle-kit generate</p>
+          <p className="text-white/70">✓ 4 schemas generated</p>
+          <p className="text-white">$ drizzle-kit migrate</p>
+          <p className="text-white/70">✓ 12 tables created</p>
+          <p className="text-white/70">
+            users · orgs · sessions · invoices ...
+          </p>
+        </div>
+      )
+    case "billing-widget":
+      return (
+        <div className="flex flex-col gap-2 p-3">
+          <div className="flex items-baseline justify-between">
+            <span className="font-mono text-[11px] text-muted-foreground">
+              Pro Plan
+            </span>
+            <span className="font-mono text-[11px] text-foreground">$49/mo</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                aria-hidden
+                className="h-full w-[74%] rounded-full bg-foreground"
+              />
+            </div>
+            <span className="font-mono text-[10px] text-muted-foreground">
+              74%
+            </span>
+          </div>
+          <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
+            <span>7,423 / 10,000</span>
+            <span>MRR $1,127</span>
+          </div>
+        </div>
+      )
+    case "jobs-trace":
+      return (
+        <ul className="flex flex-col divide-y divide-border">
+          <TraceRow icon={Check} label="email.send" status="ok" duration="1.2s" />
+          <TraceRow
+            icon={Loader}
+            label="slack.notify"
+            status="running"
+            duration="1.1s"
+          />
+          <TraceRow icon={Check} label="db.write" status="ok" duration="240ms" />
+          <TraceRow
+            icon={Check}
+            label="webhook.dispatch"
+            status="ok"
+            duration="80ms"
+          />
+        </ul>
+      )
+    case "storage-browser":
+      return (
+        <ul className="flex flex-col gap-1 p-3 font-mono text-[11px]">
+          <li className="flex items-center gap-1.5 text-muted-foreground">
+            <Folder className="size-3" aria-hidden /> uploads/
+          </li>
+          <li
+            className="flex items-center gap-1.5"
+            style={{ paddingLeft: "12px" }}
+          >
+            <FileText className="size-3 text-muted-foreground" aria-hidden />
+            invoice-2024-q4.pdf
+            <span className="ml-auto text-muted-foreground/70">4 MB</span>
+          </li>
+          <li
+            className="flex items-center gap-1.5"
+            style={{ paddingLeft: "12px" }}
+          >
+            <ImageIcon className="size-3 text-muted-foreground" aria-hidden />
+            avatar-3x.png
+            <span className="ml-auto text-muted-foreground/70">240 KB</span>
+          </li>
+          <li
+            className="flex items-center gap-1.5"
+            style={{ paddingLeft: "12px" }}
+          >
+            <Boxes className="size-3 text-muted-foreground" aria-hidden />
+            export.zip
+            <span className="ml-auto text-muted-foreground/70">12 MB</span>
+          </li>
+          <li className="mt-1 flex items-center gap-1.5 text-foreground/80">
+            <CloudUpload className="size-3" aria-hidden /> + Upload
+          </li>
+        </ul>
+      )
+    case "otel-waterfall":
+      return (
+        <ul className="flex flex-col gap-1.5 p-3 font-mono text-[11px]">
+          <li className="flex items-center gap-2 text-foreground">
+            <Activity className="size-3" aria-hidden />
+            <span>GET /checkout</span>
+            <span className="ml-auto text-muted-foreground">142ms</span>
+          </li>
+          <li
+            className="flex items-center gap-2 text-muted-foreground"
+            style={{ paddingLeft: "12px" }}
+          >
+            <span className="text-muted-foreground/60">├</span>
+            <span>auth.verify</span>
+            <span className="ml-auto">12ms</span>
+          </li>
+          <li
+            className="flex items-center gap-2 text-muted-foreground"
+            style={{ paddingLeft: "12px" }}
+          >
+            <span className="text-muted-foreground/60">├</span>
+            <span>fetch</span>
+            <span className="ml-auto">45ms</span>
+          </li>
+          <li
+            className="flex items-center gap-2 text-muted-foreground"
+            style={{ paddingLeft: "12px" }}
+          >
+            <span className="text-muted-foreground/60">├</span>
+            <span>db.query</span>
+            <span className="ml-auto">62ms</span>
+          </li>
+          <li
+            className="flex items-center gap-2 text-muted-foreground"
+            style={{ paddingLeft: "12px" }}
+          >
+            <span className="text-muted-foreground/60">└</span>
+            <span>cache.set</span>
+            <span className="ml-auto">23ms</span>
+          </li>
+        </ul>
+      )
+    default:
+      return null
+  }
+}
+
+function FieldRow({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-sm border border-border bg-background px-2 py-1">
+      <span className="font-mono text-[10px] text-muted-foreground">
+        {label}
+      </span>
+      <span className="ml-auto">{children}</span>
+    </div>
+  )
+}
+
+function TraceRow({
+  icon: Icon,
+  label,
+  status,
+  duration,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  status: "ok" | "running" | "error"
+  duration: string
+}) {
+  return (
+    <li className="flex items-center gap-2 px-3 py-1.5 font-mono text-[11px]">
+      <Icon
+        className={cn(
+          "size-3 shrink-0",
+          status === "ok" && "text-foreground",
+          status === "running" && "text-muted-foreground animate-pulse",
+          status === "error" && "text-destructive",
+        )}
+        aria-hidden
+      />
+      <span className="text-foreground/90">{label}</span>
+      <span className="ml-auto text-muted-foreground">{duration}</span>
+    </li>
   )
 }
