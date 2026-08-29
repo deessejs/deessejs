@@ -406,7 +406,7 @@ export default function HomePage() {
       <div className="border border-border bg-background rounded-none">
         {/* 1. Hero — centered, no image, lighter title */}
         <div className="flex justify-center border-b border-border">
-          <Cell className="items-center gap-6 lg:gap-8 text-center max-w-3xl !p-8 lg:!p-16">
+          <Cell className="items-center gap-6 lg:gap-8 text-center max-w-5xl !p-8 lg:!p-16">
             <Badge asChild variant="outline">
               <Link
                 href="/blog/getting-started"
@@ -420,7 +420,7 @@ export default function HomePage() {
                 <ArrowRight className="size-3 shrink-0" aria-hidden />
               </Link>
             </Badge>
-            <h1 className="text-heading-48 sm:text-heading-56 lg:text-heading-64 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
+            <h1 className="max-w-5xl text-heading-48 sm:text-heading-56 lg:text-heading-64 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
               Your coding agent should ship from contracts, not from scratch.
             </h1>
             <p className="text-muted-foreground text-copy-18 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
