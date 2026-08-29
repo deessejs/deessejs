@@ -89,8 +89,6 @@ function getServerEnv(): Readonly<ServerEnv> {
     APP_URL: env.APP_URL,
     DOCS_URL: env.DOCS_URL,
     API_BASE_URL: env.API_BASE_URL,
-    // Cross-subdomain parent domain (ADR-023). Read by
-    // packages/auth/src/auth.ts to enable crossSubDomainCookies.
     PARENT_DOMAIN: env.PARENT_DOMAIN,
   } as ServerEnv) as Readonly<ServerEnv>
 

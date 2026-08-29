@@ -50,10 +50,6 @@ export const auth = betterAuth({
     ...(process.env.NODE_ENV === "development"
       ? ["http://localhost:3000", "http://localhost:3001"]
       : []),
-    // Env-driven production origins (ADR-023). Built from the
-    // inter-app URL fields so adding a new deployed origin only
-    // requires updating WEB_URL / APP_URL / DOCS_URL — no code
-    // change here. new URL(x).origin strips path and query.
     ...[serverEnv.WEB_URL, serverEnv.APP_URL, serverEnv.DOCS_URL].map(
       (u) => new URL(u).origin,
     ),
@@ -111,13 +107,6 @@ export const auth = betterAuth({
 
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production",
-    // Cross-subdomain cookies (ADR-023). When PARENT_DOMAIN is set
-    // (production only), Better Auth sets Domain=.PARENT_DOMAIN on
-    // the session cookie so apps/web (deessejs.com) and apps/app
-    // (app.deessejs.com) share it. The `!` is safe: the env schema's
-    // superRefine gate fails in production if PARENT_DOMAIN is unset,
-    // so this code path never runs with an undefined value in prod.
-    // In dev/test the feature is a no-op because the gate short-circuits.
     ...(serverEnv.PARENT_DOMAIN
       ? {
           crossSubDomainCookies: {

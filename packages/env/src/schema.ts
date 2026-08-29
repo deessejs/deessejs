@@ -122,14 +122,6 @@ export const serverInputShape = {
   DOCS_URL: canonicalUrl.default("http://localhost:3002"),
   API_BASE_URL: canonicalUrl.default("http://localhost:3001"),
 
-  // Cross-subdomain parent domain for the Better Auth session cookie
-  // (ADR-023). When set, Better Auth sets `Domain=.${PARENT_DOMAIN}` on
-  // the session cookie so apps/web (deessejs.com) and apps/app
-  // (app.deessejs.com) share the same cookie. The value is the BARE
-  // HOSTNAME (e.g. `deessejs.com`), NOT a URL. Leading dot is added
-  // by Better Auth — do not include it here. Required in production
-  // for the apps/web session-aware header (avatar dropdown) to work;
-  // optional in dev/test where the cookie stays first-party.
   PARENT_DOMAIN: z.string().min(1).optional(),
 }
 
@@ -172,10 +164,6 @@ export const serverSchema = z.object(serverInputShape).superRefine(
       })
     }
 
-    // PARENT_DOMAIN gates cross-subdomain cookie sharing (ADR-023).
-    // Without it, apps/web's authClient.useSession() silently returns
-    // null in production because the cookie stays first-party
-    // app.deessejs.com and never reaches the marketing origin.
     if (!data.PARENT_DOMAIN) {
       ctx.addIssue({
         code: "custom",
