@@ -21,8 +21,7 @@ import { allKbGuides } from "content-collections"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import { Card } from "@workspace/ui/components/card"
-import { Separator } from "@workspace/ui/components/separator"
+import { cn } from "@workspace/ui/lib/utils"
 
 /**
  * Marketing homepage at `/`.
@@ -30,14 +29,25 @@ import { Separator } from "@workspace/ui/components/separator"
  * Single source of truth for the surface a first-time visitor sees
  * when they land on deessejs.com. Renders as a server component.
  *
+ * Layout — Vercel-style shared-border grid:
+ *   • The hero is detached (no outer card) and sits above the wrapper.
+ *   • Every other section lives inside a single wrapper div with a
+ *     `border border-border bg-background rounded-none` outline.
+ *   • Each section inside the wrapper is a CSS grid with `gap-0` and
+ *     `divide-x divide-y divide-border` so cells share borders — no
+ *     double strokes, no internal padding-rounding seams.
+ *   • Sections are separated by `border-b border-border` on the last
+ *     row of the previous grid (inherited from the wrapper outline).
+ *
  * Sections, top to bottom:
- *   1. Hero — outcome headline, dual CTA, terminal mockup, install snippet
- *   2. Trust strip — first-party / community logos
- *   3. Outcomes — three named scenarios with the template that ships each
- *   4. Contracts — bento grid of the six contracts wired into every template
- *   5. CLI in action — three real commands with a terminal mockup
- *   6. Authority — manifesto quote + KB + changelog side-by-side
- *   7. Final CTA — repeated end-of-page call to start
+ *   1. Hero — outcome headline, dual CTA, terminal mockup, install hint
+ *   2. Trust strip — first-party signals
+ *   3. Outcomes — three named scenarios, 3-col shared-border grid
+ *   4. Contracts — bento, 6 cells in a 3-col shared-border grid
+ *   5. CLI in action — 2-col shared-border grid (terminal + commands)
+ *   6. Authority — 3-col shared-border grid (manifesto + KB + changelog)
+ *   7. Stats — 4-col shared-border grid
+ *   8. Final CTA — 2-col shared-border grid (copy + actions)
  *
  * KB guides and changelog releases come from `content-collections`.
  * Everything else is hard-coded here for V1 — when the surface
@@ -192,9 +202,9 @@ export default function HomePage() {
   const totalContracts = CONTRACTS.length
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-24 px-4 py-16 sm:px-6 lg:gap-32 lg:py-24">
-      {/* 1. Hero */}
-      <section className="grid grid-cols-1 items-center gap-12 pt-12 lg:grid-cols-2 lg:gap-16 lg:pt-20">
+    <div className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-12 sm:px-6 sm:py-16 lg:gap-16 lg:py-20">
+      {/* 1. Hero — detached, no outer card */}
+      <section className="grid grid-cols-1 items-center gap-12 pt-8 lg:grid-cols-2 lg:gap-16 lg:pt-12">
         <div className="flex flex-col items-start gap-6 text-left">
           <Badge asChild variant="outline">
             <Link
@@ -236,14 +246,15 @@ export default function HomePage() {
         <TerminalMockup lines={HERO_TERMINAL} label="~/projects" />
       </section>
 
-      {/* 2. Trust strip */}
-      <section aria-label="Trusted by" className="flex flex-col gap-4">
-        <p className="text-label-13 text-muted-foreground text-center">
-          Built and shipped by
-        </p>
-        <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+      {/* Shared-border wrapper — every section below this lives inside one card */}
+      <div className="border border-border bg-background rounded-none">
+        {/* 2. Trust strip — 4 cols, shared borders */}
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
           {TRUST_SIGNALS.map((signal) => (
-            <li key={signal.label}>
+            <Cell
+              key={signal.label}
+              className="items-center justify-center text-center"
+            >
               {signal.href ? (
                 <Link
                   href={signal.href}
@@ -256,28 +267,25 @@ export default function HomePage() {
                   {signal.label}
                 </span>
               )}
-            </li>
+            </Cell>
           ))}
-        </ul>
-      </section>
+        </div>
 
-      <Separator />
-
-      {/* 3. Outcomes — three named scenarios */}
-      <section className="flex flex-col gap-10">
-        <header className="mx-auto flex max-w-2xl flex-col gap-3 text-center">
-          <p className="text-label-13 text-muted-foreground">Outcomes</p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-            Pick the outcome. The template ships the rest.
-          </h2>
-          <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-            Every template in the registry bundles the same six contracts. You
-            pick the scenario; the registry wires auth, database, billing,
-            jobs, storage, and observability against it.
-          </p>
-        </header>
-
-        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-3">
+        {/* 3. Outcomes — 3 cols, shared borders */}
+        <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
+          <Cell className="col-span-1 md:col-span-3 !p-0 border-0">
+            <div className="flex flex-col gap-2 p-6 border-b border-border">
+              <p className="text-label-13 text-muted-foreground">Outcomes</p>
+              <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+                Pick the outcome. The template ships the rest.
+              </h2>
+              <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
+                Every template in the registry bundles the same six contracts.
+                You pick the scenario; the registry wires auth, database,
+                billing, jobs, storage, and observability against it.
+              </p>
+            </div>
+          </Cell>
           {OUTCOMES.map((outcome) => {
             const Icon = outcome.icon
             return (
@@ -285,80 +293,72 @@ export default function HomePage() {
                 key={outcome.slug}
                 href={outcome.href}
                 aria-label={`${outcome.name} — ${outcome.scenario}`}
-                className="group block bg-background transition-colors hover:bg-accent/40"
+                className="group flex flex-col gap-3 p-6 transition-colors hover:bg-accent/40"
               >
-                <Card className="rounded-none border-0 ring-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <Icon
-                      className="text-foreground size-5 shrink-0"
-                      aria-hidden
-                    />
-                    {outcome.status === "coming-soon" ? (
-                      <Badge variant="outline" className="text-label-12">
-                        Coming soon
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-label-12">
-                        Shipped
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-label-13 text-muted-foreground">
-                      {outcome.scenario}
-                    </p>
-                    <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
-                      {outcome.name}
-                    </h3>
-                  </div>
-                  <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-                    {outcome.blurb}
+                <div className="flex items-start justify-between gap-2">
+                  <Icon
+                    className="text-foreground size-5 shrink-0"
+                    aria-hidden
+                  />
+                  <Badge variant="outline" className="text-label-12">
+                    {outcome.status === "coming-soon"
+                      ? "Coming soon"
+                      : "Shipped"}
+                  </Badge>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="text-label-13 text-muted-foreground">
+                    {outcome.scenario}
                   </p>
-                  <ul className="flex flex-wrap items-center gap-1.5 pt-1">
-                    {outcome.stack.map((item) => (
-                      <li
-                        key={item}
-                        className="text-label-12 text-muted-foreground"
-                      >
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 transition-transform group-hover:translate-x-0.5">
-                    Open the template
-                    <ArrowRight className="size-3" aria-hidden />
-                  </p>
-                </Card>
+                  <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                    {outcome.name}
+                  </h3>
+                </div>
+                <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+                  {outcome.blurb}
+                </p>
+                <ul className="flex flex-wrap items-center gap-1.5 pt-1">
+                  {outcome.stack.map((item) => (
+                    <li
+                      key={item}
+                      className="text-label-12 text-muted-foreground"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 transition-transform group-hover:translate-x-0.5">
+                  Open the template
+                  <ArrowRight className="size-3" aria-hidden />
+                </p>
               </Link>
             )
           })}
         </div>
-      </section>
 
-      <Separator />
-
-      {/* 4. Contracts — bento grid */}
-      <section className="flex flex-col gap-10">
-        <header className="mx-auto flex max-w-2xl flex-col gap-3 text-center">
-          <p className="text-label-13 text-muted-foreground">
-            Wired into every starter
-          </p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-            Six contracts your agent can read.
-          </h2>
-          <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-            Each contract ships with a typed schema, an MCP server, and a CLI
-            check. If a template is missing one, the CLI refuses to scaffold.
-          </p>
-        </header>
-
-        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+        {/* 4. Contracts — bento, 6 cells in a 3-col shared-border grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-y divide-border sm:divide-y-0 sm:divide-x divide-border border-b border-border">
+          <Cell className="col-span-1 sm:col-span-2 lg:col-span-3 !p-0 border-0">
+            <div className="flex flex-col gap-2 p-6 border-b border-border">
+              <p className="text-label-13 text-muted-foreground">
+                Wired into every starter
+              </p>
+              <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+                Six contracts your agent can read.
+              </h2>
+              <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
+                Each contract ships with a typed schema, an MCP server, and a
+                CLI check. If a template is missing one, the CLI refuses to
+                scaffold.
+              </p>
+            </div>
+          </Cell>
           {CONTRACTS.map((contract) => {
             const Icon = contract.icon
             return (
               <article
                 key={contract.title}
-                className="flex flex-col gap-3 bg-background p-6"
+                className="flex flex-col gap-3 p-6"
               >
                 <div className="flex items-center gap-2">
                   <span className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40">
@@ -375,94 +375,89 @@ export default function HomePage() {
             )
           })}
         </div>
-      </section>
 
-      <Separator />
+        {/* 5. CLI in action — 2 cols, shared borders */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border border-b border-border">
+          <div className="flex flex-col gap-6 p-6 lg:p-8">
+            <p className="text-label-13 text-muted-foreground">CLI in action</p>
+            <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+              Three commands. Zero config.
+            </h2>
+            <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+              The CLI is the single entry point to the registry. It scaffolds a
+              template, lists what is available, and tells you which contracts
+              are wired against your project.
+            </p>
+            <ul className="flex flex-col gap-3">
+              <li className="flex items-start gap-2 text-copy-14 text-muted-foreground leading-6">
+                <TerminalSquare
+                  className="text-foreground mt-0.5 size-4 shrink-0"
+                  aria-hidden
+                />
+                <span>
+                  <span className="text-foreground">init</span> — scaffold a
+                  project from a template, with every contract wired.
+                </span>
+              </li>
+              <li className="flex items-start gap-2 text-copy-14 text-muted-foreground leading-6">
+                <Radio
+                  className="text-foreground mt-0.5 size-4 shrink-0"
+                  aria-hidden
+                />
+                <span>
+                  <span className="text-foreground">list</span> — browse the
+                  registry and check what is shipped vs coming.
+                </span>
+              </li>
+              <li className="flex items-start gap-2 text-copy-14 text-muted-foreground leading-6">
+                <Cloud
+                  className="text-foreground mt-0.5 size-4 shrink-0"
+                  aria-hidden
+                />
+                <span>
+                  <span className="text-foreground">info</span> — verify the
+                  contracts in your project are present and in sync.
+                </span>
+              </li>
+            </ul>
+            <div className="pt-2">
+              <Button asChild variant="outline">
+                <Link href="/knowledge-base/guides/install-deessejs-cli">
+                  Read the install guide
+                  <ArrowRight className="size-3.5" aria-hidden />
+                </Link>
+              </Button>
+            </div>
+          </div>
 
-      {/* 5. CLI in action */}
-      <section className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
-        <div className="flex flex-col gap-6">
-          <p className="text-label-13 text-muted-foreground">CLI in action</p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-            Three commands. Zero config.
-          </h2>
-          <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-            The CLI is the single entry point to the registry. It scaffolds a
-            template, lists what is available, and tells you which contracts are
-            wired against your project.
-          </p>
-          <ul className="flex flex-col gap-3">
-            <li className="flex items-start gap-2 text-copy-14 text-muted-foreground leading-6">
-              <TerminalSquare
-                className="text-foreground mt-0.5 size-4 shrink-0"
-                aria-hidden
-              />
-              <span>
-                <span className="text-foreground">init</span> — scaffold a project
-                from a template, with every contract wired.
-              </span>
-            </li>
-            <li className="flex items-start gap-2 text-copy-14 text-muted-foreground leading-6">
-              <Radio
-                className="text-foreground mt-0.5 size-4 shrink-0"
-                aria-hidden
-              />
-              <span>
-                <span className="text-foreground">list</span> — browse the
-                registry and check what is shipped vs coming.
-              </span>
-            </li>
-            <li className="flex items-start gap-2 text-copy-14 text-muted-foreground leading-6">
-              <Cloud
-                className="text-foreground mt-0.5 size-4 shrink-0"
-                aria-hidden
-              />
-              <span>
-                <span className="text-foreground">info</span> — verify the
-                contracts in your project are present and in sync.
-              </span>
-            </li>
-          </ul>
-          <div className="pt-2">
-            <Button asChild variant="outline">
-              <Link href="/knowledge-base/guides/install-deessejs-cli">
-                Read the install guide
-                <ArrowRight className="size-3.5" aria-hidden />
-              </Link>
-            </Button>
+          <div className="p-6 lg:p-8">
+            <TerminalMockup lines={CLI_LINES} label="~/projects" />
           </div>
         </div>
 
-        <TerminalMockup lines={CLI_LINES} label="~/projects" />
-      </section>
-
-      <Separator />
-
-      {/* 6. Authority — manifesto + KB + changelog */}
-      <section className="flex flex-col gap-12">
-        <div className="mx-auto flex max-w-3xl flex-col gap-6 text-center">
-          <p className="text-label-13 text-muted-foreground">
-            Why we build this
-          </p>
-          <blockquote className="text-heading-24 lg:text-heading-32 tracking-tight text-balance">
-            &ldquo;If a template can&apos;t be navigated by a coding agent, it
-            isn&apos;t done.&rdquo;
-          </blockquote>
-          <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-            DeesseJS is the main app of a small team building the templates,
-            contracts, and tooling we wished existed when we shipped our last
-            product.
-          </p>
-          <div className="flex justify-center">
-            <Button variant="outline" asChild>
+        {/* 6. Authority — 3 cols, shared borders */}
+        <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
+          {/* Manifesto quote */}
+          <div className="flex flex-col gap-4 p-6 lg:p-8">
+            <p className="text-label-13 text-muted-foreground">
+              Why we build this
+            </p>
+            <blockquote className="text-heading-20 lg:text-heading-24 tracking-tight text-balance">
+              &ldquo;If a template can&apos;t be navigated by a coding agent, it
+              isn&apos;t done.&rdquo;
+            </blockquote>
+            <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+              DeesseJS is the main app of a small team building the templates,
+              contracts, and tooling we wished existed when we shipped our last
+              product.
+            </p>
+            <Button variant="outline" asChild className="self-start">
               <Link href="/manifesto">Read the manifesto</Link>
             </Button>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
           {/* Knowledge Base */}
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 p-6 lg:p-8">
             <header className="flex items-end justify-between gap-4">
               <p className="text-label-13 text-muted-foreground">
                 Learn by doing
@@ -475,7 +470,7 @@ export default function HomePage() {
                 <ArrowRight className="size-3" aria-hidden />
               </Link>
             </header>
-            <div className="divide-border flex flex-col divide-y">
+            <div className="flex flex-col divide-y divide-border border-y border-border">
               {featuredGuides.map((guide) => (
                 <Link
                   key={guide.slug}
@@ -494,7 +489,7 @@ export default function HomePage() {
           </div>
 
           {/* Changelog */}
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 p-6 lg:p-8">
             <header className="flex items-end justify-between gap-4">
               <p className="text-label-13 text-muted-foreground">
                 Recent changes
@@ -507,7 +502,7 @@ export default function HomePage() {
                 <ArrowRight className="size-3" aria-hidden />
               </Link>
             </header>
-            <div className="divide-border flex flex-col divide-y">
+            <div className="flex flex-col divide-y divide-border border-y border-border">
               {releases.map((release) => (
                 <Link
                   key={release.slug}
@@ -526,8 +521,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Stats strip */}
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-x-12 gap-y-4 pt-2 text-center">
+        {/* 7. Stats — 4 cols, shared borders */}
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
           <Stat label="templates" value={totalTemplates.toString()} />
           <Stat
             label="contracts wired"
@@ -536,22 +531,20 @@ export default function HomePage() {
           <Stat label="KB guides" value={allKbGuides.length.toString()} />
           <Stat label="license" value="MIT" />
         </div>
-      </section>
 
-      <Separator />
-
-      {/* 7. Final CTA — repeated */}
-      <section className="rounded-lg border border-border bg-muted/30">
-        <div className="flex flex-col items-center gap-6 px-6 py-16 text-center sm:px-12">
-          <p className="text-label-13 text-muted-foreground">Ready to ship?</p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance max-w-2xl">
-            Start with a template. Keep the contracts.
-          </h2>
-          <p className="text-copy-16 text-muted-foreground leading-7 max-w-xl [&:not(:first-child)]:mt-0">
-            Install the CLI, pick a starter, and your agent gets every contract
-            it needs to navigate the rest of the project.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
+        {/* 8. Final CTA — 2 cols, shared borders */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
+          <div className="flex flex-col gap-4 p-6 lg:p-10">
+            <p className="text-label-13 text-muted-foreground">Ready to ship?</p>
+            <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+              Start with a template. Keep the contracts.
+            </h2>
+            <p className="text-copy-16 text-muted-foreground leading-7 max-w-xl [&:not(:first-child)]:mt-0">
+              Install the CLI, pick a starter, and your agent gets every
+              contract it needs to navigate the rest of the project.
+            </p>
+          </div>
+          <div className="flex flex-col items-stretch justify-center gap-4 p-6 lg:p-10">
             <Button asChild size="lg">
               <Link href="/knowledge-base/guides/install-deessejs-cli">
                 Install the CLI
@@ -561,20 +554,20 @@ export default function HomePage() {
             <Button variant="outline" size="lg" asChild>
               <Link href="/templates">Browse the registry</Link>
             </Button>
+            <p className="text-copy-13-mono text-muted-foreground inline-flex items-center gap-2 pt-1">
+              <Globe className="size-3.5" aria-hidden />
+              <Link
+                href="https://github.com/deessejs"
+                className="underline-offset-4 hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                github.com/deessejs
+              </Link>
+            </p>
           </div>
-          <p className="text-copy-13-mono text-muted-foreground inline-flex items-center gap-2 pt-1">
-            <Globe className="size-3.5" aria-hidden />
-            <Link
-              href="https://github.com/deessejs"
-              className="underline-offset-4 hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              github.com/deessejs
-            </Link>
-          </p>
         </div>
-      </section>
+      </div>
     </div>
   )
 }
@@ -583,14 +576,29 @@ export default function HomePage() {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Generic shared-border cell. The wrapper card supplies the outer
+ *  borders; cells contribute only their own padding + optional flex
+ *  layout. */
+function Cell({
+  className,
+  children,
+}: {
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={cn("flex flex-col p-6", className)}>{children}</div>
+  )
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-1">
+    <Cell className="items-center justify-center text-center gap-1">
       <span className="text-heading-32 lg:text-heading-40 tracking-tight text-foreground">
         {value}
       </span>
       <span className="text-label-13 text-muted-foreground">{label}</span>
-    </div>
+    </Cell>
   )
 }
 
