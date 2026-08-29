@@ -85,7 +85,7 @@ export function UserMenu({ variant }: { variant: "desktop" | "mobile" }) {
 		const signupHref = appUrl("/signup")
 		if (variant === "desktop") {
 			return (
-				<div data-testid="header-user-menu" className="flex items-center gap-2">
+				<div data-testid="header-user-menu" className="flex items-center gap-1.5">
 					<Button asChild variant="outline">
 						<Link href={loginHref}>Log in</Link>
 					</Button>
