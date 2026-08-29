@@ -549,7 +549,7 @@ export default function HomePage() {
                         alt=""
                         width={12}
                         height={12}
-                        className="size-3 shrink-0"
+                        className="size-3 shrink-0 dark:invert"
                         aria-hidden
                       />
                     )}
@@ -849,7 +849,7 @@ export default function HomePage() {
                     alt=""
                     width={16}
                     height={16}
-                    className="size-4 shrink-0"
+                    className="size-4 shrink-0 dark:invert"
                     aria-hidden
                   />
                   {integration.name}
