@@ -86,10 +86,10 @@ export function UserMenu({ variant }: { variant: "desktop" | "mobile" }) {
 		if (variant === "desktop") {
 			return (
 				<div data-testid="header-user-menu" className="flex items-center gap-2">
-					<Button asChild variant="outline" size="sm">
+					<Button asChild variant="outline">
 						<Link href={loginHref}>Log in</Link>
 					</Button>
-					<Button asChild size="sm">
+					<Button asChild>
 						<Link href={signupHref}>Sign up</Link>
 					</Button>
 				</div>
