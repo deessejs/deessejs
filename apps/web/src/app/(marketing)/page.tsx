@@ -11,11 +11,8 @@ import {
   CloudUpload,
   Component,
   Database,
-  File,
-  FileCode,
   FileText,
   Folder,
-  FolderOpen,
   GitBranch,
   Globe,
   Image as ImageIcon,
@@ -91,16 +88,6 @@ type OutcomeTemplate = {
   icon: React.ComponentType<{ className?: string }>
   /** "shipped" links to /templates, "coming-soon" disables the route. */
   status: "shipped" | "coming-soon"
-  /** Static tree view: what the agent sees when it inspects the template. */
-  tree: ReadonlyArray<TreeNode>
-}
-
-type TreeNode = {
-  kind: "folder" | "file"
-  name: string
-  badge?: string
-  children?: ReadonlyArray<TreeNode>
-  meta?: string
 }
 
 const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
@@ -114,18 +101,6 @@ const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
     stack: ["Next.js", "Better Auth", "Drizzle", "Stripe"],
     icon: Layers,
     status: "shipped",
-    tree: [
-      { kind: "folder", name: "app/", children: [
-        { kind: "folder", name: "auth/", badge: "4 files", meta: "Better Auth · typed" },
-        { kind: "folder", name: "db/", badge: "8 files", meta: "Drizzle · Postgres" },
-        { kind: "folder", name: "billing/", badge: "3 files", meta: "Stripe · webhooks" },
-        { kind: "folder", name: "jobs/", badge: "5 files", meta: "Trigger.dev · retry" },
-      ]},
-      { kind: "folder", name: "packages/", children: [
-        { kind: "folder", name: "contracts/", badge: "6 wired" },
-        { kind: "file", name: "mcp.json", badge: "12 tools" },
-      ]},
-    ],
   },
   {
     slug: "ai-chatbot",
@@ -137,14 +112,6 @@ const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
     stack: ["Next.js", "OpenAI", "Postgres", "MCP"],
     icon: Sparkles,
     status: "coming-soon",
-    tree: [
-      { kind: "folder", name: "app/api/chat/", children: [
-        { kind: "file", name: "stream.ts", meta: "OpenAI · streaming" },
-        { kind: "folder", name: "tools/", badge: "9 typed", meta: "registry" },
-        { kind: "file", name: "memory.ts", meta: "Postgres FTS" },
-      ]},
-      { kind: "file", name: "mcp.json", badge: "9 tools exposed" },
-    ],
   },
   {
     slug: "landing-page",
@@ -156,12 +123,6 @@ const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
     stack: ["Astro", "Tailwind", "shadcn"],
     icon: Workflow,
     status: "coming-soon",
-    tree: [
-      { kind: "file", name: "astro.config.mjs" },
-      { kind: "folder", name: "src/components/", badge: "shadcn blocks" },
-      { kind: "folder", name: "src/content/", meta: "typed MDX" },
-      { kind: "folder", name: "analytics/", badge: "1 file", meta: "PostHog" },
-    ],
   },
 ]
 
@@ -510,13 +471,6 @@ export default function HomePage() {
                   <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
                     {outcome.name}
                   </h3>
-                </div>
-                {/* Agent view: tree of files the agent will read */}
-                <div className="rounded-md border border-border bg-muted/20 p-3 font-mono text-copy-12 leading-5 text-muted-foreground [&:not(:first-child)]:mt-0">
-                  <p className="mb-1 text-label-12 text-foreground/70">
-                    Agent view
-                  </p>
-                  <Tree nodes={outcome.tree} />
                 </div>
                 <ul className="flex flex-wrap items-center gap-1.5 pt-1">
                   {outcome.stack.map((item) => (
@@ -1020,61 +974,6 @@ function TerminalMockup({
       </pre>
     </div>
   )
-}
-
-/** Static, indented file-tree view used inside the Outcomes cells.
- *  Renders folders with `Folder` icon and files with kind-specific icons
- *  (FileText / FileCode / etc.). Pure CSS + flex; no JS. */
-function Tree({
-  nodes,
-  depth = 0,
-}: {
-  nodes: ReadonlyArray<TreeNode>
-  depth?: number
-}) {
-  return (
-    <ul className="flex flex-col gap-0.5">
-      {nodes.map((node) => {
-        const Icon = nodeIcon(node)
-        return (
-          <li key={`${depth}-${node.name}`} className="flex flex-col">
-            <div
-              className="flex items-center gap-1.5"
-              style={{ paddingLeft: `${depth * 12}px` }}
-            >
-              <Icon
-                className="size-3 shrink-0 text-muted-foreground/80"
-                aria-hidden
-              />
-              <span className="text-foreground/90">{node.name}</span>
-              {node.badge ? (
-                <span className="ml-auto text-muted-foreground/70">
-                  {node.badge}
-                </span>
-              ) : null}
-            </div>
-            {node.meta ? (
-              <span
-                className="ml-5 text-muted-foreground/70 text-[11px]"
-                style={{ paddingLeft: `${depth * 12}px` }}
-              >
-                {node.meta}
-              </span>
-            ) : null}
-            {node.children ? <Tree nodes={node.children} depth={depth + 1} /> : null}
-          </li>
-        )
-      })}
-    </ul>
-  )
-}
-
-function nodeIcon(node: TreeNode) {
-  if (node.kind === "folder") return node.children ? FolderOpen : Folder
-  if (node.name.endsWith(".ts") || node.name.endsWith(".tsx")) return FileCode
-  if (node.name.endsWith(".json") || node.name.endsWith(".mjs")) return FileCode
-  if (node.name.endsWith(".mdx") || node.name.endsWith(".md")) return FileText
-  return File
 }
 
 /** Mini-UI mockup per contract — concrete visualization of the promise. */
