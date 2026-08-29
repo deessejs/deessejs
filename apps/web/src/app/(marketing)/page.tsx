@@ -951,7 +951,7 @@ function TerminalMockup({
       aria-label={`Terminal showing: ${lines
         .map((l) => l.prompt)
         .join(" / ")}`}
-      className="overflow-hidden rounded-lg border border-border bg-foreground text-foreground shadow-sm"
+      className="overflow-hidden rounded-lg border border-border bg-zinc-950 text-zinc-100 shadow-sm"
     >
       <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2">
         <span className="size-2.5 rounded-full bg-white/20" aria-hidden />
@@ -1016,7 +1016,7 @@ function ContractMockup({
               </span>
             </FieldRow>
             <div className="mt-1 flex items-center justify-end">
-              <span className="rounded-sm border border-foreground/80 bg-foreground px-2 py-0.5 font-mono text-[10px] text-background">
+              <span className="rounded-sm border border-zinc-800 bg-zinc-950 px-2 py-0.5 font-mono text-[10px] text-zinc-100">
                 Continue →
               </span>
             </div>
@@ -1025,7 +1025,7 @@ function ContractMockup({
       )
     case "db-terminal":
       return (
-        <div className="bg-foreground p-3 font-mono text-[11px] leading-5 text-white/90">
+        <div className="bg-zinc-950 p-3 font-mono text-[11px] leading-5 text-zinc-100">
           <p className="text-white">$ drizzle-kit generate</p>
           <p className="text-white/70">✓ 4 schemas generated</p>
           <p className="text-white">$ drizzle-kit migrate</p>
