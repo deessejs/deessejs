@@ -30,12 +30,12 @@ import { cn } from "@workspace/ui/lib/utils"
  * when they land on deessejs.com. Renders as a server component.
  *
  * Layout — Vercel-style shared-border grid:
- *   • The hero is detached (no outer card) and sits above the wrapper.
- *   • Every other section lives inside a single wrapper div with a
- *     `border border-border bg-background rounded-none` outline.
- *   • Each section inside the wrapper is a CSS grid with `gap-0` and
- *     `divide-x divide-y divide-border` so cells share borders — no
- *     double strokes, no internal padding-rounding seams.
+ *   • Every section — including the hero — lives inside a single wrapper
+ *     div with a `border border-border bg-background rounded-none`
+ *     outline.
+ *   • Each section is a CSS grid with `gap-0` and `divide-x divide-y
+ *     divide-border` so cells share borders — no double strokes, no
+ *     internal padding-rounding seams.
  *   • Sections are separated by `border-b border-border` on the last
  *     row of the previous grid (inherited from the wrapper outline).
  *
@@ -202,52 +202,56 @@ export default function HomePage() {
   const totalContracts = CONTRACTS.length
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-12 sm:px-6 sm:py-16 lg:gap-16 lg:py-20">
-      {/* 1. Hero — detached, no outer card */}
-      <section className="grid grid-cols-1 items-center gap-12 pt-8 lg:grid-cols-2 lg:gap-16 lg:pt-12">
-        <div className="flex flex-col items-start gap-6 text-left">
-          <Badge asChild variant="outline">
-            <Link
-              href="/blog/getting-started"
-              className="flex items-center gap-2"
-            >
-              <span
-                className="size-1.5 shrink-0 rounded-full bg-green-500"
-                aria-hidden
-              />
-              Getting started with DeesseJS
-              <ArrowRight className="size-3 shrink-0" aria-hidden />
-            </Link>
-          </Badge>
-          <h1 className="text-heading-48 sm:text-heading-56 lg:text-heading-64 font-bold tracking-tighter text-balance max-w-2xl">
-            Your coding agent should ship from contracts, not from scratch.
-          </h1>
-          <p className="text-muted-foreground text-copy-18 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
-            DeesseJS is a registry of Next.js SaaS templates with the contracts
-            already wired — auth, database, billing, jobs, storage. Your agent
-            reads them, builds on them, and cannot break them.
-          </p>
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <Button asChild size="lg">
-              <Link href="/knowledge-base/guides/install-deessejs-cli">
-                Install the CLI
-                <ArrowRight className="size-3.5" aria-hidden />
+    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
+      {/* Shared-border wrapper — every section lives inside one card, including the hero */}
+      <div className="border border-border bg-background rounded-none">
+        {/* 1. Hero — 2 cols, shared borders */}
+        <div className="grid grid-cols-1 items-stretch divide-y divide-border lg:grid-cols-2 lg:divide-y-0 lg:divide-x divide-border border-b border-border">
+          <Cell className="gap-6 lg:gap-8 !p-8 lg:!p-12">
+            <Badge asChild variant="outline">
+              <Link
+                href="/blog/getting-started"
+                className="flex items-center gap-2"
+              >
+                <span
+                  className="size-1.5 shrink-0 rounded-full bg-green-500"
+                  aria-hidden
+                />
+                Getting started with DeesseJS
+                <ArrowRight className="size-3 shrink-0" aria-hidden />
               </Link>
-            </Button>
-            <Button variant="outline" size="lg" asChild>
-              <Link href="/templates">Browse templates</Link>
-            </Button>
-          </div>
-          <p className="text-copy-13-mono text-muted-foreground">
-            <span aria-hidden>⌘</span> Free · MIT · no vendor lock-in
-          </p>
+            </Badge>
+            <h1 className="text-heading-48 sm:text-heading-56 lg:text-heading-64 font-bold tracking-tighter text-balance max-w-2xl">
+              Your coding agent should ship from contracts, not from scratch.
+            </h1>
+            <p className="text-muted-foreground text-copy-18 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
+              DeesseJS is a registry of Next.js SaaS templates with the
+              contracts already wired — auth, database, billing, jobs, storage.
+              Your agent reads them, builds on them, and cannot break them.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <Button asChild size="lg">
+                <Link href="/knowledge-base/guides/install-deessejs-cli">
+                  Install the CLI
+                  <ArrowRight className="size-3.5" aria-hidden />
+                </Link>
+              </Button>
+              <Button variant="outline" size="lg" asChild>
+                <Link href="/templates">Browse templates</Link>
+              </Button>
+            </div>
+            <p className="text-copy-13-mono text-muted-foreground">
+              <span aria-hidden>⌘</span> Free · MIT · no vendor lock-in
+            </p>
+          </Cell>
+
+          <Cell className="!p-0 border-0">
+            <div className="flex h-full items-center p-6 lg:p-10">
+              <TerminalMockup lines={HERO_TERMINAL} label="~/projects" />
+            </div>
+          </Cell>
         </div>
 
-        <TerminalMockup lines={HERO_TERMINAL} label="~/projects" />
-      </section>
-
-      {/* Shared-border wrapper — every section below this lives inside one card */}
-      <div className="border border-border bg-background rounded-none">
         {/* 2. Trust strip — 4 cols, shared borders */}
         <div className="grid grid-cols-2 md:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
           {TRUST_SIGNALS.map((signal) => (
