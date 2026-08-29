@@ -1,15 +1,20 @@
 import Link from "next/link"
 import {
+  AlertTriangle,
   ArrowRight,
   Boxes,
   CircleDollarSign,
   Cloud,
+  Component,
   Database,
   GitBranch,
   Globe,
   Layers,
   LineChart,
+  ListTree,
   Radio,
+  Settings,
+  Sigma,
   Sparkles,
   TerminalSquare,
   Workflow,
@@ -46,8 +51,9 @@ import { cn } from "@workspace/ui/lib/utils"
  *   4. Contracts — bento, 6 cells in a 3-col shared-border grid
  *   5. CLI in action — 2-col shared-border grid (terminal + commands)
  *   6. Authority — 3-col shared-border grid (manifesto + KB + changelog)
- *   7. Stats — 4-col shared-border grid
- *   8. Final CTA — 2-col shared-border grid (copy + actions)
+ *   7. Ecosystem — tagline + 7 products in a 4-col shared-border grid
+ *   8. Stats — 4-col shared-border grid
+ *   9. Final CTA — 2-col shared-border grid (copy + actions)
  *
  * KB guides and changelog releases come from `content-collections`.
  * Everything else is hard-coded here for V1 — when the surface
@@ -188,6 +194,57 @@ const CLI_LINES: ReadonlyArray<{ prompt: string; output?: string }> = [
     prompt: "$ npx deessejs info my-saas",
     output:
       "6 contracts wired · 0 missing · 0 outdated\nMCP server: ready · 12 tools exposed",
+  },
+]
+
+/** Ecosystem products shown as a 4-col grid next to the tagline. */
+const ECOSYSTEM: ReadonlyArray<{
+  name: string
+  href: string
+  description: string
+  icon: React.ComponentType<{ className?: string }>
+}> = [
+  {
+    name: "Errors",
+    href: "https://errors.deessejs.com",
+    description: "Structured error tracking",
+    icon: AlertTriangle,
+  },
+  {
+    name: "DRPC",
+    href: "https://drpc.deessejs.com",
+    description: "Durable RPC for agent workflows",
+    icon: Radio,
+  },
+  {
+    name: "Collections",
+    href: "https://collections.deessejs.com",
+    description: "Type-safe data access",
+    icon: ListTree,
+  },
+  {
+    name: "FP",
+    href: "https://fp.deessejs.com",
+    description: "Functional primitives",
+    icon: Sigma,
+  },
+  {
+    name: "UI",
+    href: "https://ui.deessejs.com",
+    description: "Component library",
+    icon: Component,
+  },
+  {
+    name: "Admin",
+    href: "https://admin.deessejs.com",
+    description: "Operator console",
+    icon: Settings,
+  },
+  {
+    name: "Cloud",
+    href: "https://cloud.deessejs.com",
+    description: "Hosted runtime, coming soon",
+    icon: Cloud,
   },
 ]
 
@@ -525,7 +582,54 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 7. Stats — 4 cols, shared borders */}
+        {/* 7. Ecosystem — tagline + 7 products in a shared-border grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border border-b border-border">
+          {/* Tagline — col-span-full on mobile, col-span-1 row-span-2 on lg.
+              Uses a 2-row layout: eyebrow + heading on top, body copy filling
+              the rest of the cell vertically. */}
+          <Cell className="col-span-2 lg:col-span-1 lg:row-span-2 gap-3 justify-center">
+            <p className="text-label-13 text-muted-foreground">Ecosystem</p>
+            <p className="text-heading-24 lg:text-heading-32 tracking-tight text-foreground text-balance [&:not(:first-child)]:mt-0">
+              Software engineering as a commodity.
+            </p>
+            <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+              Agents that code, workflows that scale, infrastructure that
+              works. Built with the DeesseJS ecosystem.
+            </p>
+          </Cell>
+          {ECOSYSTEM.map((product) => {
+            const Icon = product.icon
+            return (
+              <Link
+                key={product.name}
+                href={product.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${product.name} — ${product.description}`}
+                className="group flex flex-col gap-2 p-6 transition-colors hover:bg-accent/40"
+              >
+                <div className="flex items-center gap-2">
+                  <Icon
+                    className="text-foreground size-4 shrink-0"
+                    aria-hidden
+                  />
+                  <span className="text-heading-20 tracking-tight text-foreground">
+                    {product.name}
+                  </span>
+                </div>
+                <p className="text-copy-13 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+                  {product.description}
+                </p>
+                <span className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  Open
+                  <ArrowRight className="size-3" aria-hidden />
+                </span>
+              </Link>
+            )
+          })}
+        </div>
+
+        {/* 8. Stats — 4 cols, shared borders */}
         <div className="grid grid-cols-2 md:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
           <Stat label="templates" value={totalTemplates.toString()} />
           <Stat
@@ -536,7 +640,7 @@ export default function HomePage() {
           <Stat label="license" value="MIT" />
         </div>
 
-        {/* 8. Final CTA — 2 cols, shared borders */}
+        {/* 9. Final CTA — 2 cols, shared borders */}
         <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
           <div className="flex flex-col gap-4 p-6 lg:p-10">
             <p className="text-label-13 text-muted-foreground">Ready to ship?</p>
