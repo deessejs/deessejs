@@ -1,5 +1,4 @@
 import Link from "next/link"
-import Image from "next/image"
 import {
   Activity,
   AlertTriangle,
@@ -542,7 +541,10 @@ export default function HomePage() {
                     className="inline-flex items-center gap-1.5 text-label-12 text-muted-foreground"
                   >
                     {provider.logo.endsWith("-missing") ? null : (
-                      <Image
+                      // Plain <img>: SVG already vector-optimized, and next/image
+                      // returns 400 on width=12 (below its deviceSizes floor).
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
                         src={`/logos/${provider.logo}.svg`}
                         alt=""
                         width={12}
@@ -840,7 +842,9 @@ export default function HomePage() {
                   key={`${integration.group}-${integration.name}`}
                   className="inline-flex items-center gap-2 text-copy-13 text-muted-foreground"
                 >
-                  <Image
+                  {/* Plain <img>: see note above on Contracts cells. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={`/logos/${integration.logo}.svg`}
                     alt=""
                     width={16}
