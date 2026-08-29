@@ -97,11 +97,6 @@ const cell = {
   },
 }
 
-const icon = {
-  rest: { rotate: 0, scale: 1 },
-  hover: { rotate: 8, scale: 1.1, transition: { duration: 0.25 } },
-}
-
 export function ContractsGrid({
   contracts,
 }: {
@@ -127,12 +122,9 @@ export function ContractsGrid({
             className="flex flex-col gap-4 p-6"
           >
             <div className="flex items-center gap-2">
-              <motion.span
-                variants={icon}
-                className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40"
-              >
+              <span className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40">
                 <Icon className="text-foreground size-4" aria-hidden />
-              </motion.span>
+              </span>
               <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
                 {contract.title}
               </h3>
@@ -182,9 +174,8 @@ export function ContractsGrid({
 // ---------------------------------------------------------------------------
 
 /**
- * The auth form reveals its two fields in sequence, then the "Continue"
- * button pulses. The fields are CSS-only — we animate `width` from 0 to
- * 100% on a fixed-width container.
+ * The auth form reveals its two fields in sequence. The fields are
+ * CSS-only — we animate `width` from 0 to 100% on a fixed-width container.
  */
 function AuthFormMockup() {
   return (
@@ -206,24 +197,9 @@ function AuthFormMockup() {
           transition={{ delay: 0.85, duration: 0.3 }}
           className="mt-1 flex items-center justify-end"
         >
-          <motion.span
-            animate={{
-              boxShadow: [
-                "0 0 0 0 rgba(255,255,255,0)",
-                "0 0 0 4px rgba(255,255,255,0.15)",
-                "0 0 0 0 rgba(255,255,255,0)",
-              ],
-            }}
-            transition={{
-              delay: 1.1,
-              duration: 1.6,
-              repeat: Infinity,
-              repeatDelay: 1.6,
-            }}
-            className="rounded-sm border border-zinc-800 bg-zinc-950 px-2 py-0.5 font-mono text-[10px] text-zinc-100"
-          >
+          <span className="rounded-sm border border-zinc-800 bg-zinc-950 px-2 py-0.5 font-mono text-[10px] text-zinc-100">
             Continue →
-          </motion.span>
+          </span>
         </motion.div>
       </div>
     </div>
