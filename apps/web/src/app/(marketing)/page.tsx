@@ -56,7 +56,7 @@ import { cn } from "@workspace/ui/lib/utils"
  *     row of the previous grid (inherited from the wrapper outline).
  *
  * Sections, top to bottom:
- *   1. Hero — outcome headline, dual CTA, terminal mockup, install hint
+ *   1. Hero — centered headline, dual CTA, no image, install hint
  *   2. Trust strip — first-party signals
  *   3. Outcomes — three templates with the agent's view of each
  *   4. Contracts — bento with 6 cells, each a mini-UI mockup +
@@ -269,16 +269,6 @@ const TRUST_SIGNALS: ReadonlyArray<{ label: string; href?: string }> = [
   { label: "MIT licensed", href: "https://github.com/deessejs" },
 ]
 
-/** Terminal lines shown in the hero mockup. */
-const HERO_TERMINAL: ReadonlyArray<{
-  prompt: string
-  output?: string
-}> = [
-  { prompt: "$ npx deessejs init my-saas", output: "✔ Selected template: saas-starter" },
-  { prompt: "$ deessejs info", output: "6 contracts wired · 0 missing · ready" },
-  { prompt: "$ pnpm dev", output: "▸ http://localhost:3000" },
-]
-
 /** Lines shown in the CLI-in-action section. */
 const CLI_LINES: ReadonlyArray<{ prompt: string; output?: string }> = [
   {
@@ -414,9 +404,9 @@ export default function HomePage() {
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
       {/* Shared-border wrapper — every section lives inside one card, including the hero */}
       <div className="border border-border bg-background rounded-none">
-        {/* 1. Hero — 2 cols, shared borders */}
-        <div className="grid grid-cols-1 items-stretch divide-y divide-border lg:grid-cols-2 lg:divide-y-0 lg:divide-x divide-border border-b border-border">
-          <Cell className="gap-6 lg:gap-8 !p-8 lg:!p-12">
+        {/* 1. Hero — centered, no image, lighter title */}
+        <div className="flex justify-center border-b border-border">
+          <Cell className="items-center gap-6 lg:gap-8 text-center max-w-3xl !p-8 lg:!p-16">
             <Badge asChild variant="outline">
               <Link
                 href="/blog/getting-started"
@@ -430,7 +420,7 @@ export default function HomePage() {
                 <ArrowRight className="size-3 shrink-0" aria-hidden />
               </Link>
             </Badge>
-            <h1 className="text-heading-48 sm:text-heading-56 lg:text-heading-64 font-bold tracking-tighter text-balance max-w-2xl">
+            <h1 className="text-heading-48 sm:text-heading-56 lg:text-heading-64 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
               Your coding agent should ship from contracts, not from scratch.
             </h1>
             <p className="text-muted-foreground text-copy-18 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
@@ -438,7 +428,7 @@ export default function HomePage() {
               wired — auth, database, billing, jobs, storage. Your agent reads
               them, builds on them, and cannot break them.
             </p>
-            <div className="flex flex-wrap items-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Button asChild size="lg">
                 <Link href="/knowledge-base/guides/install-deessejs-cli">
                   Install the CLI
@@ -452,12 +442,6 @@ export default function HomePage() {
             <p className="text-copy-13-mono text-muted-foreground">
               <span aria-hidden>⌘</span> Free · MIT · no vendor lock-in
             </p>
-          </Cell>
-
-          <Cell className="!p-0 border-0">
-            <div className="flex h-full items-center p-6 lg:p-10">
-              <TerminalMockup lines={HERO_TERMINAL} label="~/projects" />
-            </div>
           </Cell>
         </div>
 
