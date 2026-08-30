@@ -194,3 +194,9 @@ Codespaces
 [Vv]ariadic
 OTPs
 User-Agent
+shiki
+rehype
+ADRs
+unindexed
+enum
+kbTopics
