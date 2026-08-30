@@ -1,0 +1,183 @@
+---
+title: 'apps/web session-aware header'
+description: 'Replace the disabled Coming soon button on the marketing site with a Better Auth client that reads the cross-subdomain session cookie and renders Log in, Sign up, or an avatar dropdown.'
+---
+
+# ADR-023: apps/web session-aware header
+
+## Status
+
+Draft (2026-08). Awaiting review.
+
+## Context
+
+`apps/web` is the marketing site at `deessejs.com`.
+The site is anonymous today.
+The right side of `SiteHeader` (`apps/web/src/components/headers/site-header.tsx:69-72, 102`) renders a disabled `Coming soon` button on both desktop and mobile.
+The doc-comment at lines 20 to 28 explicitly flags the intent to wire the client session and replace the placeholder with an avatar dropdown.
+
+Three obstacles block the wiring.
+
+1. `apps/web` has no Better Auth client today.
+   `apps/web/package.json` does not depend on `better-auth` or on `@workspace/auth`.
+   The header has no way to read the session from the browser.
+2. The session cookie is first-party `app.deessejs.com` only.
+   `packages/auth/src/auth.ts:105-107` sets no `crossSubDomainCookies`.
+   A Better Auth client created in `apps/web` would call `get-session`, the cookie would not be sent, the server would resolve the request as anonymous, and the marketing header would always show the anonymous state.
+3. No env field carries the bare parent hostname that Better Auth needs for the `Domain=.parent` cookie attribute.
+   `PARENT_DOMAIN` is referenced once in `documents/internal/architecture/11-packages/auth/setup.md:276` but is not declared in any env schema.
+
+ADR-021 already mandated the cross-origin prerequisites this ADR relies on.
+`ALLOWED_ORIGINS=https://deessejs.com` is already required on `apps/app`'s Vercel project for the credentialed templates fetch (`.changeset/feat-inter-app-url-config.md:54-58`).
+That same value now also covers the credentialed `get-session` fetch the new auth client issues.
+
+## Decision
+
+### What this rule decides
+
+**1. Server-side cookie sharing.**
+`packages/auth/src/auth.ts:105-107` enables Better Auth `crossSubDomainCookies` with the singular `domain` field set to `serverEnv.PARENT_DOMAIN`.
+`defaultCookieAttributes` adds `sameSite: "none"` so the cookie is delivered across subdomains.
+`useSecureCookies: process.env.NODE_ENV === "production"` covers the `secure` flag.
+The cookie block is only emitted when `PARENT_DOMAIN` is set (no-op in dev).
+
+**2. Env contract for the parent domain.**
+`packages/env/src/schema.ts` gains `PARENT_DOMAIN: z.string().min(1).optional()` in `serverInputShape`.
+The bare hostname (e.g. `deessejs.com`) is the value.
+The leading dot is added by Better Auth.
+The existing `serverSchema.superRefine` production gate fails when `PARENT_DOMAIN` is undefined under `NODE_ENV=production`, so the cookie block in decision 1 cannot run with an undefined value in prod.
+The materialised `serverEnv` exposes `PARENT_DOMAIN` (`packages/env/src/server.ts:91`).
+
+**3. Env-driven `trustedOrigins`.**
+`packages/auth/src/auth.ts:49-54` derives the production origin list from `serverEnv.WEB_URL`, `serverEnv.APP_URL`, `serverEnv.DOCS_URL`, each normalised through `new URL(x).origin`.
+No hardcoded hostnames.
+The dev branch keeps the existing `localhost:3000` and `localhost:3001` pair.
+
+**4. Better Auth client in `apps/web`.**
+A new file `apps/web/src/lib/auth-client.ts` instantiates `createAuthClient` from `better-auth/react` with `baseURL: clientEnv.NEXT_PUBLIC_API_BASE_URL` and `basePath: API_AUTH_PATH` (imported from the `@workspace/api/base-path` subpath).
+The barrel `@workspace/api` is not imported because it would drag `@workspace/auth` to `@workspace/database` to `postgres` into the client bundle, which Turbopack cannot satisfy (`apps/web/src/lib/orpc.ts:103-105` and `apps/app/lib/auth-client.ts:18-21` document this constraint).
+The `deviceAuthorizationClient` plugin is intentionally omitted (the device flow lives on `apps/app`).
+
+**5. Header right-side surface.**
+A new file `apps/web/src/components/headers/user-menu.tsx` renders three branches keyed off `authClient.useSession()`.
+The `isPending` branch shows a Skeleton placeholder.
+The anonymous branch shows `Log in` plus `Sign up` buttons that link to `new URL("/login", clientEnv.NEXT_PUBLIC_APP_URL)` and `new URL("/signup", clientEnv.NEXT_PUBLIC_APP_URL)`.
+The authenticated branch shows an `Avatar` trigger plus a `DropdownMenu` with `Dashboard` and `Sign out`.
+`Sign out` opens a confirmation `Dialog` and then calls `authClient.signOut()` followed by a `window.location.href` full reload to `apps/app`'s `/login`.
+The avatar source falls back to the Vercel avatar endpoint (`vercel.com/api/www/avatar`) when the OAuth provider image is missing, mirroring `apps/app/components/sidebars/nav-user.tsx:53-56`.
+`SiteHeader` mounts `<UserMenu variant="desktop" />` in the desktop right cluster and `<UserMenu variant="mobile" />` in the mobile Sheet footer.
+
+### What this rule allows
+
+- Anonymous visitors see `Log in` and `Sign up` buttons that navigate cross-app to `apps/app`.
+- Authenticated visitors see an avatar dropdown with `Dashboard` and `Sign out` on every public page.
+- The marketing origin reads the same Better Auth session as `apps/app` in production.
+- The helper functions `getInitials` and `getAvatarUrl` are extracted to `user-menu-helpers.ts` and unit tested without pulling the React component or the env schema.
+
+### What this rule forbids
+
+- Importing `@workspace/auth` or `@workspace/auth/types` from `apps/web` client code (bundle pollution).
+- Importing `@workspace/api` (the barrel) from `apps/web` client code (same reason).
+- Hardcoding production hostnames in `packages/auth/src/auth.ts` `trustedOrigins` (must come from `serverEnv`).
+- Setting `sameSite: "lax"` for the cross-subdomain cookie (the cookie would not be delivered cross-subdomain).
+- Calling `authClient.useSession()` outside a top-level component scope (the ESLint rule in `packages/eslint-config/base.js:111-116` bans it).
+
+### What this rule does not change
+
+- `apps/web` remains anonymous-first.
+  No page is gated on session state.
+- `apps/app`'s auth client and surface are unchanged.
+- `apps/cli`'s auth client is unchanged.
+- `cookieCache` is not enabled (deferred to a follow-up if benchmarks justify it).
+- The `adminClient` plugin is not added to `apps/web`'s client (YAGNI; the marketing surface has no admin UI).
+- The footer `AppFooter` is not modified.
+  It stays a server component with no auth surface.
+
+## Consequences
+
+- **User-visible**: anonymous visitors get `Log in` and `Sign up` in the header.
+  Authenticated visitors get an avatar dropdown with `Dashboard` and `Sign out`.
+- **Operational prerequisites** on Vercel:
+  1. Set `PARENT_DOMAIN=deessejs.com` on `apps/app`'s Vercel project for production.
+  2. Confirm `ALLOWED_ORIGINS` on `apps/app`'s Vercel project already includes `https://deessejs.com` (mandated by ADR-021 for the templates fetch; the same value now also covers the credentialed auth fetch).
+- **Bundle impact**: `apps/web` adds `better-auth` (catalog version) to its dependencies.
+  The `better-auth/react` subpath does not transitively pull `@workspace/database` or `postgres` into the client bundle.
+  Verified by reading the workspace `pnpm-lock.yaml` after install.
+- **Type impact**: `ServerEnv` gains the optional `PARENT_DOMAIN` field.
+  `serverEnv` consumers do not change their access pattern.
+- **Cookie scope**: the session cookie becomes shared across `.deessejs.com`.
+  This is the intended scope (three sub-apps under the same apex); no `Document.cookie` writes from other origins are affected.
+
+## Test strategy
+
+### Unit
+
+- `apps/web/test/unit/user-menu.test.ts` covers `getInitials` (empty input, single word, multi-word) and `getAvatarUrl` (explicit image wins, Vercel fallback otherwise).
+  The component itself is exercised by Playwright.
+
+### E2E (Playwright)
+
+- `apps/web/tests/e2e/header-auth.spec.ts` covers:
+  - Anonymous visitor on `/` sees `Log in` and `Sign up`.
+  - Anonymous visitor on `/blog` sees the same CTAs (header is global).
+  - Clicking `Log in` navigates to `apps/app`'s `/login` (full cross-app navigation).
+- Authenticated-avatar e2e tests are deferred (require either a real sign-up roundtrip or a fabricated session cookie).
+- Helpers in `apps/web/tests/e2e/helpers/selectors.ts` add `headerUserMenu`, `headerSignInButton`, `headerSignUpButton`, `headerAvatarTrigger`, `headerSignOutMenuItem`.
+
+### Manual staging smoke (Vercel preview)
+
+- Sign up on the `apps/app` preview.
+- Without signing out, open the `apps/web` preview in the same browser session.
+- Assert the avatar appears (cookie was shared across subdomains).
+- Click the avatar, click `Sign out`, confirm the dialog appears, click `Sign out`.
+- Assert the page redirects to `app.deessejs.com/login` and the `apps/web` header shows `Log in` plus `Sign up` after a hard refresh.
+- Repeat on Safari (macOS or iOS).
+  The shared cookie should still work because both origins are under the same eTLD+1 (`.deessejs.com`).
+
+## Known limitations in this version
+
+### Limitation 1: dev cookie sharing on `*.localhost` is Safari-incompatible
+
+Chrome and Firefox support `*.localhost` per the WHATWG spec.
+Safari does not.
+On Safari in dev (`localhost:3000` vs `localhost:3001`), the marketing site and `apps/app` will not share the cookie, so the marketing header will always show the anonymous state even after signing in on `apps/app`.
+Workaround: use Chrome or Firefox for dev end-to-end testing.
+Production under `deessejs.com` and `app.deessejs.com` is unaffected.
+
+### Limitation 2: Vercel preview isolation
+
+A Vercel preview of `apps/web` (e.g. `apps-web-git-impl-session-header-staging.vercel.app`) hits the auth `get-session` against production `app.deessejs.com` by default.
+The cross-subdomain cookie domain of `deessejs.com` does not apply to the `*.vercel.app` preview URL (different parent domain).
+Manual staging smoke per preview is required.
+The ADR-021 §Follow-ups §1 preview-isolation work is the structural fix.
+
+### Limitation 3: cookieCache deferred
+
+`cookieCache` is not enabled in `packages/auth/src/auth.ts:100-103` today.
+The marketing `useSession()` therefore issues a fresh `get-session` request on every page mount.
+Acceptable for an anonymous-first site.
+If benchmarks justify the change, enable `cookieCache: { enabled: true, maxAge: 60 * 5 }` in a follow-up.
+
+### Limitation 4: `apps/web` env load on the client
+
+The marketing client uses `clientEnv.NEXT_PUBLIC_API_BASE_URL` for the auth client's `baseURL`.
+The Next.js bundler inlines `NEXT_PUBLIC_*` values at build time, so changing the backend host on Vercel requires a redeploy of `apps/web`.
+The runtime contract matches the oRPC client's contract (`apps/web/src/lib/orpc.ts:119`), so the operational model is already in place.
+
+## Where this rule came from
+
+- The doc-comment at `apps/web/src/components/headers/site-header.tsx:20-28` explicitly plans this change.
+- ADR-021 §"Cross-origin considerations" §2 already mandates `ALLOWED_ORIGINS=https://deessejs.com` on `apps/app` for the cross-origin credentialed templates fetch.
+  This ADR reuses the same Vercel env var.
+- The architecture docs at `documents/internal/architecture/03-web-app/pages.md:233`, `setup.md:293`, `11-packages/auth/admin.md:99`, and `11-packages/auth/README.md:94` all refer to an `apps/web` auth client that does not exist in the code today.
+  This ADR makes the client real.
+
+## Related
+
+- [ADR-020: Device authorization for the CLI auth surface](./ADR-020-device-auth-cli).
+- [ADR-021: Inter-app URL configuration](./ADR-021-inter-app-url-config).
+- [ADR-022: CLI device-auth fix-ups](./ADR-022-cli-device-auth-fixes).
+- [Better Auth: Cookies](https://better-auth.com/docs/concepts/cookies).
+- [Better Auth: Options reference](https://better-auth.com/docs/reference/options).
+- [Better Auth: GitHub discussion #5670, centralised authentication across subdomains](https://github.com/better-auth/better-auth/discussions/5670).
+- [Better Auth: GitHub discussion #6055, multi-zone Next.js setup](https://github.com/better-auth/better-auth/discussions/6055).

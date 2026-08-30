@@ -37,6 +37,11 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
       NEXT_PUBLIC_APP_URL: https://ci.example.com
+      # ADR-023: production superRefine gate requires PARENT_DOMAIN
+      # for cross-subdomain cookie sharing. Stubbed in CI so the
+      # gate passes; the real value is set on Vercel per the
+      # changeset operational prerequisites.
+      PARENT_DOMAIN: ci.example.com
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,6 +65,11 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
       NEXT_PUBLIC_APP_URL: https://ci.example.com
+      # ADR-023: production superRefine gate requires PARENT_DOMAIN
+      # for cross-subdomain cookie sharing. Stubbed in CI so the
+      # gate passes; the real value is set on Vercel per the
+      # changeset operational prerequisites.
+      PARENT_DOMAIN: ci.example.com
     steps:
       - uses: actions/checkout@v4
         with:

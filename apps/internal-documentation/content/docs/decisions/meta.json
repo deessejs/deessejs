@@ -27,6 +27,7 @@
     "ADR-020-apps-web-e2e-browser-tests",
     "ADR-020-device-auth-cli",
     "ADR-021-inter-app-url-config",
-    "ADR-022-cli-device-auth-fixes"
+    "ADR-022-cli-device-auth-fixes",
+    "ADR-023-apps-web-session-aware-header"
   ]
 }

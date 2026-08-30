@@ -10,6 +10,7 @@ import { APP_NAME } from "@workspace/ui/lib/config"
 import { useSearchDialogStore } from "@/lib/search/store"
 
 import { NavSections } from "./nav-sections"
+import { UserMenu } from "./user-menu"
 
 /**
  * Marketing site header. Sticky with a solid `bg-background` (no
@@ -17,11 +18,14 @@ import { NavSections } from "./nav-sections"
  * primitive (Radix) for the four top-level sections; mobile collapses
  * into a Sheet with categories rendered as nested groups.
  *
- * Auth state: the marketing site does not currently expose a
- * client-side session, so the right-side CTA stays as a disabled
- * "Coming soon". When the client session is wired, the desktop
- * right-side button can be replaced by an avatar dropdown without
- * changing the public URL surface.
+ * Auth surface (ADR-023): the right-side control is rendered by
+ * `<UserMenu />`, which reads the Better Auth session via
+ * `authClient.useSession()`. Anonymous visitors see Log in / Sign
+ * up buttons linking to apps/app; authenticated visitors see an
+ * avatar dropdown with Dashboard and Sign out (with a confirmation
+ * dialog). The cross-subdomain cookie share is enabled server-side
+ * via `packages/auth/src/auth.ts` so the same session is visible
+ * from deessejs.com and app.deessejs.com.
  *
  * Both DesktopNav and MobileNav read from the same NAV_SECTIONS list
  * in nav-sections.tsx — adding a link once updates both viewports.
@@ -65,11 +69,7 @@ export function SiteHeader() {
                   ⌘K
                 </kbd>
               </Button>
-              <div className="mt-auto flex flex-col gap-2">
-                <Button disabled className="w-full">
-                  Coming soon
-                </Button>
-              </div>
+              <UserMenu variant="mobile" />
             </SheetContent>
           </Sheet>
           <Link
@@ -99,7 +99,7 @@ export function SiteHeader() {
               ⌘K
             </kbd>
           </Button>
-          <Button disabled>Coming soon</Button>
+          <UserMenu variant="desktop" />
         </div>
       </div>
     </header>

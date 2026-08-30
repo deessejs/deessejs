@@ -22,6 +22,7 @@
     "@workspace/contracts": "workspace:*",
     "@workspace/env": "workspace:*",
     "@workspace/ui": "workspace:*",
+    "better-auth": "catalog:",
     "fuse.js": "catalog:",
     "lucide-react": "catalog:",
     "next": "catalog:",
