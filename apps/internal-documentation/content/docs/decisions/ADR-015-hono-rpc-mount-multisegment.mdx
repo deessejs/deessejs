@@ -1,9 +1,9 @@
 ---
 title: 'Hono basePath + oRPC prefix alignment'
-description: 'The Hono basePath is not propagated to the oRPC prefix or Better Auth basePath; the underlying handlers never match the URL they receive.'
+description: "The Hono basePath isn't propagated to the oRPC prefix or Better Auth basePath; the underlying handlers never match the URL they receive."
 ---
 
-# ADR-015: Hono `basePath` must be propagated to the oRPC prefix and Better Auth `basePath`
+# ADR-015: Hono `basePath` must propagate to the oRPC prefix and Better Auth `basePath`
 
 ## Status
 
@@ -11,8 +11,8 @@ Accepted (2026-08). Non-negotiable.
 
 ## Context
 
-The API is built with `new Hono<ApiEnv>().basePath("/api/v1")`.
-Every route is registered relative to that basePath:
+The repo builds the API with `new Hono<ApiEnv>().basePath("/api/v1")`.
+Every mount registers its route relative to that basePath:
 
 - `mountHttp` mounts `GET /health`, `GET /version`,
   `GET /ready`, and `* /auth/*` (Better Auth).
@@ -22,34 +22,37 @@ The middleware itself works: Hono routes `/api/v1/auth/get-session`
 to the auth mount and `/api/v1/rpc/templates/list` to the
 RPC mount. The bug is one layer below.
 
-The oRPC handler is invoked with `c.req.raw` — the original
-Request, whose URL is the full `/api/v1/...` path. The
+The oRPC handler receives `c.req.raw` (the original
+Request, whose URL is the full `/api/v1/...` path). The
 adapter's `StandardHandler.handle` checks
 (`@orpc/server/src/adapters/standard/handler.ts`):
 
-```ts
+~~~ts
 if (prefix && !request.url.pathname.startsWith(`${prefix}/`) &&
     request.url.pathname !== prefix) {
   return { matched: false, response: undefined }
 }
-```
+~~~
 
-With `prefix: "/rpc"` and URL pathname
-`/api/v1/rpc/templates/list`, the prefix check fails —
-the path does not start with `/rpc/`. The handler returns
+With `prefix: "/rpc"` and URL path
+`/api/v1/rpc/templates/list`, the prefix check fails.
+The path doesn't start with `/rpc/`. The handler returns
 `matched: false` for every request, the Hono middleware
 calls `await next()`, and the request falls through to the
 global `notFound` handler.
 
+{/* vale off */}
 The same class of bug hits Better Auth. Better Auth's
 default `basePath` is `/api/auth`
 ([better-auth.com/docs/integrations/hono](https://better-auth.com/docs/integrations/hono)).
 The repo configures better-auth with no `basePath`, so Better
 Auth's router matches `/api/auth/*` and returns 404 for
-`/api/v1/auth/*` — even when Hono routes the request to it
+`/api/v1/auth/*`, even when Hono routes the request to it
 correctly.
+{/* vale on */}
 
-The Hono mount pattern `/rpc/*` is **not** the bug. The
+{/* vale off */}
+The Hono mount pattern `/rpc/*` isn't the bug. The
 trailing wildcard in Hono is a "special" wildcard that matches
 any number of segments (Hono issue #360, yusukebe: "/admin/*
 matches /admin/a/b"). The RegExpRouter builds the regex
@@ -57,6 +60,7 @@ matches /admin/a/b"). The RegExpRouter builds the regex
 `/api/v1/rpc/templates/list`. The cite that pinned this
 down is the Hono routing source
 (`hono/src/router/reg-exp-router/node.ts`):
+{/* vale on */}
 
 ```ts
 const pattern = token === '/*'
@@ -79,13 +83,13 @@ renders no cards. The chain is:
 3. The request hits the Hono catch-all mounted by `apps/app`
    at `apps/app/app/api/[[...route]]/route.ts`.
 4. Hono's routing dispatches the request to the
-   `api.use("/rpc/*", ...)` middleware, which matches
+   `api.use("/rpc/*," ...)` middleware, which matches
    because the trailing `*` is a special wildcard.
 5. The middleware calls `rpcHandler.handle(c.req.raw, {
-   prefix: "/rpc", ... })`. The oRPC
+   prefix: "/rpc," ... })`. The oRPC
    `StandardHandler.handle` checks the prefix against the
-   full URL pathname. Path `/api/v1/rpc/templates/list` does
-   not start with `/rpc/`. The handler returns
+   full URL path. Path `/api/v1/rpc/templates/list` doesn't
+   start with `/rpc/`. The handler returns
    `matched: false`.
 6. The Hono middleware calls `await next()`. The request
    falls through to the global `notFound` handler at
@@ -93,23 +97,25 @@ renders no cards. The chain is:
    ORPCError-shaped 404 body.
 
 The same chain applies to the Better Auth mount:
-`api.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw))`.
+`api.on(["POST," "GET"], "/auth/*," (c) => auth.handler(c.req.raw))`.
+{/* vale off */}
 Better Auth's default `basePath` is `/api/auth`. The URL
-`/api/v1/auth/get-session` does not start with `/api/auth/`,
+`/api/v1/auth/get-session` doesn't start with `/api/auth/`,
 so Better Auth returns 404 with an empty body.
+{/* vale on */}
 
-The bug was reproduced against `app.deessejs.com` with a
+The team reproduced the bug against `app.deessejs.com` with a
 direct `curl` to `/api/v1/rpc/templates/list`. The response
-was 404 with the Hono `notFound` body. `/api/v1/health`,
+came back 404 with the Hono `notFound` body. `/api/v1/health`,
 `/api/v1/version`, and `/api/v1/ready` all returned 200.
 OPTIONS `/api/v1/rpc` returned 204, confirming the URL
-reaches the Hono app and is processed by the CORS middleware.
+reaches the Hono app and the CORS middleware processes it.
 The 404 on POST and GET to the procedure URL is the symptom
 of the prefix mismatch described above.
 
 The `apps/web` RSC's silent `try/catch` is a separate code
 smell. ADR-014 documents a similar pattern in the CLI: the
-test surface must not silently mask endpoint failures. The
+test surface must not mask endpoint failures. The
 same rule applies to the web side, and is captured as a
 follow-up action below.
 
@@ -120,11 +126,11 @@ the prefix. The Hono `basePath` is the source of truth; both
 the oRPC handler and the Better Auth handler must read it
 and use it.
 
-### Fix 1 — `packages/api/src/http/mount-rpc.ts`
+### Fix 1, `packages/api/src/http/mount-rpc.ts`
 
 The handler receives the full request URL. The `prefix` passed
 to `rpcHandler.handle` is the prefix the oRPC handler
-matches in the URL pathname. Since the Hono app's `_basePath`
+matches in the URL path. Since the Hono app's `_basePath`
 is `/api/v1` and the RPC mount is `/rpc/*`, the merged
 handler entry sees `/api/v1/rpc/*`. The prefix passed to
 oRPC must match: `API_BASE_PATH + '/rpc'` (= `/api/v1/rpc`).
@@ -149,7 +155,7 @@ already imported in `mount-rpc.ts` (the file currently
 re-exports it); the only change is the prefix string passed
 to the oRPC handler.
 
-### Fix 2 — `packages/auth/src/auth.ts`
+### Fix 2, `packages/auth/src/auth.ts`
 
 Better Auth's `basePath` config tells the handler which URL
 prefix to claim. The default is `/api/auth`; the repo
@@ -169,13 +175,13 @@ The change is one line.
 
 ### Why the Hono mount pattern is left alone
 
-The current `api.use("/rpc/*", ...)` mount pattern is
+The current `api.use("/rpc/*," ...)` mount pattern is
 correct. Changing it to `/rpc{/*splat}` or any other
-multi-segment syntax does not help — the oRPC handler
-checks the URL pathname against the prefix, regardless of
+multi-segment syntax doesn't help, the oRPC handler
+checks the URL path against the prefix regardless of
 how Hono matched the request. The trailing `*` wildcards
-in `api.use("/rpc/*", ...)` and `api.on(["POST", "GET"],
-"/auth/*", ...)` already match the multi-segment URLs Hono
+in `api.use("/rpc/*," ...)` and `api.on(["POST," "GET"],
+"/auth/*," ...)` already match the multi-segment URLs Hono
 sees; the mismatch is downstream.
 
 ### Why the strips-pre-`basePath` approach is rejected
@@ -241,7 +247,7 @@ The chosen fix is the cleaner of the two.
   #360, yusukebe). The mount pattern is correct.
 - **2026-08-18**: read the oRPC `StandardHandler.handle`
   source. The prefix check is `pathname.startsWith($prefix + "/")`
-  or `pathname === prefix`. With `prefix: "/rpc"` and pathname
+  or `pathname === prefix`. With `prefix: "/rpc"` and the path
   `/api/v1/rpc/templates/list`, the check fails. The prefix
   passed to `rpcHandler.handle` must be the full `/api/v1/rpc`.
 - **2026-08-18**: same prefix-mismatch class hits Better
