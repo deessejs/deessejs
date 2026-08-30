@@ -262,12 +262,6 @@ const ECOSYSTEM: ReadonlyArray<{
     description: "Operator console",
     icon: Settings,
   },
-  {
-    name: "Cloud",
-    href: "https://cloud.deessejs.com",
-    description: "Hosted runtime, coming soon",
-    icon: Cloud,
-  },
 ]
 
 type Testimonial = {
