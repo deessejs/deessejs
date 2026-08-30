@@ -7,7 +7,9 @@ description: 'RPCLink fetch signature, custom hooks, and common pitfalls.'
 
 A study of the `RPCLink.fetch` option, the hook oRPC exposes
 for transport-layer concerns. Built on
+<!-- vale off: Vale.Terms, URL contains lowercase orpc -->
 [orpc.dev/docs/client/rpc-link](https://orpc.dev/docs/client/rpc-link)
+<!-- vale on -->
 , the upstream page is the source of truth when the lib
 changes; this entry exists to surface the parts of the API
 that bite contributors and to document the wrapper shape
@@ -29,7 +31,7 @@ wire, the hook is where the work goes.
 
 ## The signature
 
-The hook is **not** `(request, init) => Response`. It is
+The hook isn't `(request, init) => Response`. It's
 five arguments, taken straight from
 `@orpc/client/adapters/fetch/index.d.ts`:
 
@@ -48,17 +50,17 @@ fetch?: (
 | `request` | The outgoing `Request` oRPC built (URL + headers + body). |
 | `init` | The `RequestInit` shape oRPC will pass to `fetch`. Used by `RPCLink` for `redirect` overrides. |
 | `options` | Per-call oRPC context (headers, interceptors, plugins). Surfaced for plugin and interceptor use; the CLI ignores it. |
-| `path` | The procedure path segments as an array (e.g. `["templates", "list"]`). Surfaced for plugin and interceptor use; the CLI ignores it. |
+| `path` | The procedure path segments as an array (for example `["templates," "list"]`). Surfaced for plugin and interceptor use; the CLI ignores it. |
 | `input` | The serialized input for the procedure. Surfaced for plugin and interceptor use; the CLI ignores it. |
 
 The last three arguments exist to let interceptors and
 plugins read per-call state without re-parsing the request.
-A wrapper that does not need them should accept them with
+A wrapper that doesn't need them should accept them with
 `_` prefixes (TypeScript convention) and ignore them.
 
 ## The hidden pitfall
 
-A wrapper typed `(request, init) => Response` will not
+A wrapper typed `(request, init) => Response` won't
 match the hook signature. The compile-time error is easy
 to silence:
 
@@ -69,12 +71,12 @@ const orpcFetch: typeof fetch = async (request, init) => {
 }
 ```
 
-The runtime behavior is broken: oRPC calls the hook with
+The runtime behavior breaks: oRPC calls the hook with
 five arguments; the wrapper accepts two; the extra
-arguments are discarded. For most calls this works
-because JavaScript does not enforce argument arity. But
+arguments get discarded. For most calls this works
+because JavaScript doesn't enforce argument arity. But
 when oRPC later changes the contract (a new option, an
-extra metadata argument), the wrapper silently drops the
+extra metadata argument), the wrapper drops the
 new value and the behavior diverges from what the typed
 client expects.
 
@@ -97,9 +99,9 @@ the wire boundary:
    call site. The wrapper accepts both and builds a single
    `Request` shape.
 2. Read the request body once. The `Request.body` is a
-   stream that can only be consumed once. The wrapper
+   stream that nothing can consume twice. The wrapper
    reads it via `req.text()` and passes the string to the
-   inner retry helper. A second read would throw.
+   inner retry helper. A second read throws.
 3. Delegate to `fetchWithRetry`. The retry helper owns
    the actual HTTP resilience: retry on 5xx, retry on 429
    honoring `X-RateLimit-Reset`, jitter, and the
@@ -114,9 +116,9 @@ the network. The retry helper (`apps/cli/src/api/retry.ts`)
 is the only place that knows about HTTP status codes. The
 contract decoding is the only place that knows about the
 wire envelope. The split keeps each concern testable and
-swappable.
+replaceable.
 
-## What the hook is NOT for
+## What the hook isn't for
 
 - **Business-logic middleware.** Things like auth headers
   derived from a token store, tracing spans, or per-tenant
@@ -126,34 +128,33 @@ swappable.
   the procedure layer.
 - **Contract decoding.** oRPC handles the wire envelope
   inside `RPCLink` after the hook returns. The hook should
-  not parse JSON, validate shapes, or throw typed errors.
+  not parse JSON, check shapes, or throw typed errors.
 - **Caching.** The CLI's disk cache (`apps/cli/src/cache/`)
   sits **above** the hook in the call stack: the cache
   returns a cached payload before the hook is invoked. The
-  hook is not the right layer for cache reads or writes.
+  hook isn't the right layer for cache reads or writes.
 
-## Common question: should we replace the hook with a
+## Common question, should the team replace the hook with a
 plugin?
 
 oRPC publishes two official plugins that cover most of
 what the wrapper does: `ClientRetryPlugin` and
-`RetryAfterPlugin`. They are documented in the companion
-KB entry
-[oRPC client plugins](./client-plugins). The short answer
+`RetryAfterPlugin`. The companion KB entry
+[oRPC client plugins](./client-plugins) covers them. The short answer
 is that the plugins cover about 70% of the wrapper's
 behavior. The remaining 30% (custom rate-limit header,
-User-Agent injection, jitter) is what justifies keeping
+User-Agent injection, jitter) justifies keeping
 the hook as the implementation layer. A future migration
 to the plugins is possible once oRPC exposes hooks for
 custom rate-limit headers; until then, the custom hook is
 the right choice.
 
-## What this entry is not
+## What this entry isn't
 
 This is a knowledge-base entry, not an ADR. It documents
 how `RPCLink.fetch` works in the current version of the
 lib, and the shape of the integration the CLI uses. The
-**decisions** (which patterns we picked and why) live in
+**decisions** (which patterns the team picked and why) live in
 `docs/engineering/architecture/decisions/`. When a future
 change conflicts with this entry, the entry is wrong, not
 the code.
