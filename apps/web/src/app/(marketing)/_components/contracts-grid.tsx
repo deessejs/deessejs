@@ -108,7 +108,7 @@ export function ContractsGrid({
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.2 }}
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-y divide-border sm:divide-y-0 sm:divide-x divide-border"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-x divide-y divide-border"
     >
       {contracts.map((contract) => {
         const Icon = ICON_MAP[contract.icon]
