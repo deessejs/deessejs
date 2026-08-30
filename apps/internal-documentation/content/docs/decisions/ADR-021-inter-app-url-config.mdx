@@ -42,8 +42,8 @@ consumer is the problem. The pattern in use today:
 | `apps/app/lib/orpc.ts:20` | `url: API_RPC_PATH` (relative) | `https://app.deessejs.com/api/v1/rpc` ✓ |
 | `apps/app/lib/auth-client.ts:22` | `baseURL: clientEnv.NEXT_PUBLIC_APP_URL` (full URL) | depends on env var |
 | `apps/app/proxy.ts:57-60` | `new URL(path, request.url)` (relative-to-host) | `https://app.deessejs.com/api/v1/auth/get-session` ✓ |
-| `apps/cli/src/api/client.ts:44` | `url: API_RPC_PATH` (relative) | **breaks** — the CLI runs from the user's working directory, not from a domain |
-| `apps/web/src/lib/orpc.ts:103` | `url: API_RPC_PATH` (relative) | **breaks** — resolves against `deessejs.com`, where the backend is not mounted |
+| `apps/cli/src/api/client.ts:44` | `url: API_RPC_PATH` (relative) | **breaks**, the CLI runs from the user's working directory, not from a domain |
+| `apps/web/src/lib/orpc.ts:103` | `url: API_RPC_PATH` (relative) | **breaks**, resolves against `deessejs.com`, where the backend isn't mounted |
 
 Two consumers construct the URL wrong:
 
@@ -68,13 +68,13 @@ server-side, default `http://localhost:3000`), and `ALLOWED_ORIGINS`
 
 Three load-bearing URLs are missing:
 
-- `NEXT_PUBLIC_API_BASE_URL` — the URL of the backend API as seen
+- `NEXT_PUBLIC_API_BASE_URL`, the URL of the backend API as seen
   by clients in the same browser (used by apps/web's RSC and
   client fetches).
-- `API_BASE_URL` — the same URL, server-side, used by apps/cli and
+- `API_BASE_URL`, the same URL, server-side, used by apps/cli and
   by the CLI's own runtime, and by apps/web's server components
   when the call runs on Node.
-- `WEB_URL` — the canonical marketing URL, used by apps/app when
+- `WEB_URL`, the canonical marketing URL, used by apps/app when
   it links back to the marketing site (for example, for cross-app SSO
   redirects, post-signup landing, email links from Better-Auth).
 
@@ -130,6 +130,7 @@ the env vars on Vercel; the schema doesn't change.
 **2. The client oRPC link in apps/web uses
 `new URL(API_RPC_PATH, NEXT_PUBLIC_API_BASE_URL)`.**
 
+<!-- vale off: Vale.Terms, code block uses lowercase url -->
 ```ts
 // apps/web/src/lib/orpc.ts
 import { API_RPC_PATH } from "@workspace/api/base-path"
@@ -140,12 +141,13 @@ const link = new RPCLink({
   // …existing fetch hook with ISR directives
 })
 ```
+<!-- vale on -->
 
 The ADR removes the relative `url: API_RPC_PATH` line. The URL
 construction uses `new URL(path, base).toString()` rather than
 string concatenation. Three reasons:
 
-1. **Trailing-slash safety.** `new URL("/api/v1/rpc", "https://app.deessejs.com/")`
+1. **Trailing-slash safety.** `new URL("/api/v1/rpc," "https://app.deessejs.com/")`
    collapses to `"https://app.deessejs.com/api/v1/rpc"`. String
    concatenation would produce `"https://app.deessejs.com//api/v1/rpc"`,
    which breaks Hono path matching and confuses reverse proxies
@@ -306,7 +308,7 @@ deployment) is a one-line env var change.
   convention is to centralise env reads in `@workspace/env`.
   The CLI is the **explicit exception**: it reads
   `process.env.API_BASE_URL` directly (with a fallback) because
-  the published tarball cannot depend on the private
+  the published tarball can't depend on the private
   `@workspace/env` package, and the env loader's `node:fs`
   footprint would bloat the bundle. Every other consumer
   (apps/web, apps/app) reads through `@workspace/env`.
@@ -317,7 +319,7 @@ Four patterns the team considered and rejected.
 
 1. **A Vercel rewrite to proxy apps/web's `/api/v1/*` to
    apps/app.** The zero-code option (`apps/web/vercel.json`
-   `rewrites: [{ source: "/api/v1/:path*", destination:
+   `rewrites: [{ source: "/api/v1/:path*," destination:
    "https://app.deessejs.com/api/v1/:path*" }]`) hides the bug
    instead of fixing it. It also only works in production; a
    `next dev` run still sees the 404 because Vercel rewrites do
@@ -516,8 +518,8 @@ vary per environment). A future ADR that wants them dynamic
 - **2026-08-21**: audited the env schema in
   `packages/env/src/schema.ts`. Confirmed the absence of an
   `API_BASE_URL`-shaped field. The existing `NEXT_PUBLIC_APP_URL`
-  / `BETTER_AUTH_URL` pair answers "what's apps/app's URL?",
-  not "what's the API's URL?". The CLI (`apps/cli/src/api/
+  / `BETTER_AUTH_URL` pair answers "what's apps/app's URL?,"
+  not "what's the API's URL?." The CLI (`apps/cli/src/api/
   client.ts`) and apps/web (`apps/web/src/lib/orpc.ts`) need a
   separate field that the current schema doesn't provide.
 - **2026-08-21**: drafted the four-pair schema
@@ -589,5 +591,5 @@ vary per environment). A future ADR that wants them dynamic
   Out of scope here; see `Follow-ups` §2.
 - [MDN: `new URL()` resolution rules](https://developer.mozilla.org/en-US/docs/Web/API/URL/URL#examples).
   Source for the trailing-slash semantics Decisions #2/#3/#4
-  rely on (`new URL("/api/v1/rpc", "https://app.deessejs.com/")`
+  rely on (`new URL("/api/v1/rpc," "https://app.deessejs.com/")`
   resolves to `https://app.deessejs.com/api/v1/rpc`).
