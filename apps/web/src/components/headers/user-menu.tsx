@@ -131,7 +131,13 @@ export function UserMenu({ variant }: { variant: "desktop" | "mobile" }) {
 
 	if (variant === "desktop") {
 		return (
-			<div data-testid="header-user-menu" data-authenticated="true">
+			<div data-testid="header-user-menu" data-authenticated="true" className="flex items-center gap-1.5">
+				<Button asChild variant="outline" data-testid="header-dashboard-button">
+					<Link href={dashboardHref}>
+						<LayoutDashboardIcon />
+						Dashboard
+					</Link>
+				</Button>
 				<DropdownMenu>
 					<DropdownMenuTrigger
 						className="flex size-8 items-center justify-center rounded-full ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
