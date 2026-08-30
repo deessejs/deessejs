@@ -25,6 +25,7 @@
     "better-auth": "catalog:",
     "fuse.js": "catalog:",
     "lucide-react": "catalog:",
+    "motion": "catalog:",
     "next": "catalog:",
     "next-themes": "^0.4.6",
     "react": "catalog:",
