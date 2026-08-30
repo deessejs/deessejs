@@ -109,13 +109,13 @@ not produce a matching migration. The CI blocks the PR either way.
 
 The second layer uses `git status --porcelain` on
 `packages/database/drizzle`. This catches modifications AND
-untracked files (a freshly created `0004_*.sql` and
-`meta/0004_snapshot.json` show up as `??`). It {/* vale fix: Microsoft.Adverbs */}deliberately{/* vale fix: Microsoft.Adverbs */}
+newly added files (a freshly created `0004_*.sql` and
+`meta/0004_snapshot.json` show up as `??`). It does
 not exclude `_journal.json` or any snapshot: if `db:generate`
 rewrites them on a fresh run, that rewrite is the signal. drizzle's
 default prefix is `index`, so snapshots accumulate as
 `0000_snapshot.json`, `0001_snapshot.json`, etc. No safe
-{/* vale fix: Vale.Spelling */}allowlist{/* vale fix: Vale.Spelling */} of snapshot filenames to skip exists, and the snapshot
+skip-list of snapshot filenames to skip exists, and the snapshot
 list grows with every migration, so nobody can maintain it by
 hand.
 
@@ -202,9 +202,9 @@ The audit step uses `git diff --name-only` between the previous
 and current commit on `staging`. It only prints SQL files that
 were actually added by this push, so:
 
-- A push that bundles several migrations prints each one, in
-  the order added. No more `tail -1` hiding batch
-  migrations.
+- A push that bundles many migrations prints each one, in
+  the order they appear in the journal. No more `tail -1` hiding
+  batch migrations.
 - A push that touches no migration prints a clear
   "No new migrations in this push." line. No more stale SQL from
   three weeks ago polluting the audit trail.
@@ -227,8 +227,8 @@ staging database. If staging runs on AWS RDS, GCP Cloud SQL, or
 any provider inside a private VPC with no public IP, a standard
 `ubuntu-latest` runner can't connect. Two valid resolutions:
 
-- Expose the database through a tunnel (Tailscale, Cloudflare
-  Tunnel) that the runner reaches via a known hostname.
+- Expose the database through a tunnel that the runner reaches via a
+  stable host name.
 - Use a self-hosted runner inside the same VPC.
 
 The implementation provisions the `STAGING_DATABASE_URL` secret,
@@ -244,7 +244,7 @@ to work, the order must be:
 1. Migrations apply to the staging database.
 2. The new app version starts against the updated schema.
 
-A migration that adds a nullable column is backward-compatible
+A migration that adds a column without a `NOT NULL` constraint is backward-compatible
 with the old app version, so the order can relax. A
 migration that drops a column isn't backward-compatible; the old
 app must retire before the drop migration runs. This is the
@@ -289,13 +289,12 @@ gate, and fixing them retroactively is
 a separate piece of work. The per-PR scope makes the gate
 focused on the SQL a contributor is actually adding.
 
-#### Squawk is configured to target drizzle's perimeter, not all rules
+#### Squawk targets drizzle's perimeter, not all rules
 
 Squawk has no warning-vs-error exit-code distinction today
 (issue sbdchd/squawk#348 is open with no resolution), so each
 rule is either active (fails CI) or excluded. The configuration
-in `.squawk.toml` acts as a positive allowlist of the
-rules the team wants enforced, with all others excluded by name and
+in `.squawk.toml` lists the rules the team wants enforced, with all others excluded by name and
 with a one-line justification per exclusion.
 
 Two classes of Squawk rules get excluded because of their
@@ -334,8 +333,8 @@ don't apply to migrations in this repo:
   under a deployment-controlled DDL session; the project doesn't
   use live-traffic DDL tools.
 
-The rules kept active are the destructive- and renaming-shaped
-ones, which `drizzle-kit generate` does emit correctly and
+The rules kept active cover destructive and rename operations,
+which `drizzle-kit generate` does emit correctly and
 which an expand-and-contract gate must catch: `ban-drop-column`,
 `ban-drop-table`, `ban-drop-database`, `ban-drop-not-null`,
 `ban-truncate-cascade`, `renaming-column`, `renaming-table`,
@@ -344,7 +343,7 @@ which an expand-and-contract gate must catch: `ban-drop-column`,
 Each `excluded_rules` entry has a one-line justification in the
 TOML so a future contributor can challenge the exclusion with
 the original reasoning in hand. Only a follow-up ADR can
-reverse an exclusion. The pattern is borrowed from the
+reverse an exclusion. The pattern comes from the
 `longterm-wiki` project's `.squawk.toml`, which documents its
 drizzle-specific exclusions the same way.
 
@@ -372,11 +371,12 @@ Three things are out of scope for this ADR:
   validated that the audit step, the Squawk gate, and the PR drift
   gate together catch the failure modes the team cares about. The
   follow-up ADR lives in the "Future work" section.
-- **A preview database per PR.** Neon branching and Supabase
-  branching both offer a database-per-PR pattern. They're the
-  right answer when the team needs to exercise the app against
+- **A preview database per PR.** Neon branching and hosted
+  Postgres providers both offer a database-per-PR pattern. They're
+  the right answer when the team needs to exercise the app against
   schema changes that can't go through on a shared staging
-  database (destructive migrations, data backfills). The cost is
+  database (destructive migrations, filling historical rows). The
+  cost is
   about a developer-week per provider integration plus a monthly
   hosting line item. The staging autoapply covers the schema-drift
   and collision cases; the preview-DB pattern covers the destructive
@@ -420,27 +420,28 @@ Three things are out of scope for this ADR:
   failure as a schema edit without regeneration.
 - **Destructive migrations must follow the expand-and-contract
   pattern**. With Squawk on, a single-commit column drop fails
-  CI. Squawk forces the contributor to split: add nullable, ship the
-  app change, then backfill, then drop. The ADR documents the pattern
-  for posterity.
+  CI. Squawk forces the contributor to split: add the column without a
+  `NOT NULL` constraint, ship the app change, then copy the data, then
+  drop. The ADR documents the pattern for posterity.
 
 ## Expand-and-contract for destructive changes
 
 Two changes in particular must always land as separate PRs:
 
-1. **Renaming a column.** First PR adds the new column nullable,
-   ships the app writing to both columns, backfills data in a
-   separate batch. Second PR sets the new column to `NOT NULL`
+1. **Renaming a column.** First PR adds the new column without a
+   `NOT NULL` constraint, ships the app writing to both columns,
+   and copies data from the old column to the new one
+   in a separate batch. Second PR sets the new column to `NOT NULL`
    (after a `NOT VALID` + `VALIDATE CONSTRAINT` for large tables)
    and drops the old column. Both PRs pass the drift gate, the
    Squawk lint, and the staging autoapply.
 
 2. **Adding a `NOT NULL` constraint on a populated table.** First
-   PR adds the column nullable and backfills. Second PR runs
-   `ADD CONSTRAINT ... NOT VALID` followed by `VALIDATE CONSTRAINT`
-   on a separate statement. Third PR (if needed) sets the
-   column-level `NOT NULL`. A reviewer reviews each PR's SQL
-   independently.
+   PR adds the column without a `NOT NULL` constraint and populates it.
+   Second PR runs `ADD CONSTRAINT ... NOT VALID` followed by
+   `VALIDATE CONSTRAINT` on a separate statement. Third PR (if needed)
+   sets the column-level `NOT NULL`. A reviewer reviews each pull
+   request SQL independently.
 
 This is the same pattern documented in drizzle's production guides.
 The CI gate enforces it because Squawk is on.
@@ -474,10 +475,10 @@ Three extensions are out of scope here but worth flagging:
    push to `main` and applies against `secrets.PRODUCTION_DATABASE_URL`.
    The gate is the team's confidence in the staging autoapply
    after one month of observed runs.
-2. **Preview database per PR.** A Neon or Supabase integration
-   that provisions a database per PR, applies migrations against it,
-   and tears it down on close. Necessary for destructive migration
-   PRs that can't go through on a shared staging database.
+2. **Preview database per PR.** A Neon or hosted-Postgres provider
+   integration that provisions a database per PR, applies migrations
+   against it, and tears it down on close. Necessary for destructive
+   migration PRs that can't go through on a shared staging database.
    The cost is the provider integration plus the monthly hosting
    line item.
 3. **A `drizzle-migration-guard` GitHub Action.** The community
@@ -511,8 +512,8 @@ deessejs/
                     └── ADR-015-drizzle-migrations-ci.mdx  # THIS FILE
 ```
 
-`packages/database/drizzle.config.ts` is listed for completeness
-only. Earlier revisions of this ADR proposed a `strict: true`
+The list above names `packages/database/drizzle.config.ts`
+for completeness only. Earlier revisions of this ADR proposed a `strict: true`
 edit there; the team retracted that proposal. The current shape
 leaves drizzle's config untouched. CI workflows, not the config,
 catch drift or destructive SQL.
@@ -521,14 +522,15 @@ catch drift or destructive SQL.
 because Squawk's CLI looks for it there by default. The
 file holds an `excluded_rules` list keyed by Squawk rule name
 with a one-line justification per entry, and a `pg_version`.
-No `[upload_to_github]` table, that block gets read only by the
-GitHub Action, which the team doesn't use (see the section above).
-The actual TOML content is committed alongside this ADR and
-is the source of truth, not a copy in this document.
+No `[upload_to_github]` table exists, because only the GitHub
+Action reads that block, and the team doesn't use the action
+(see the section above). This ADR commits the actual TOML content
+alongside itself and treats it as the source of truth, not a copy
+in this document.
 
 If a future contributor removes a rule from `excluded_rules`
 in the TOML, the corresponding change goes through a follow-up
-ADR; the TOML's inline comment per row is the entry point for
+ADR; the inline comment per row in the TOML is the entry point for
 that discussion.
 
 ## How to verify
