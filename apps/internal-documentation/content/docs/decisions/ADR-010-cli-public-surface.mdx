@@ -70,7 +70,7 @@ manifest, every other concept in its own folder. No `.ts`
 file at the package root except `index.ts`; no `.ts` file
 under `src/` at the root either. The single-source-of-truth
 exception that ADR-004 makes for `templates.ts` (the static
-template registry) doesn't apply here; the CLI hasn'thing
+template registry) doesn't apply here; the CLI has nothing
 analogous. The structure is `one folder per concept` end
 to end.
 
@@ -277,7 +277,7 @@ turn into CLI codes. A new upstream error shape requires a
 new branch in the relevant mapper, not a new error code in
 the public list.
 
-The error code list is **closed**. Adding a code is a
+The error code list stays **closed**. Adding a code is a
 breaking change for downstream tooling that pattern-matches
 on the code (analytics, telemetry, scripted error handling).
 ADR-019 added the two device-flow codes in lockstep with
@@ -306,7 +306,7 @@ The probe's contract:
   removing a field is breaking.
 - The warning emits to `stderr`; the exit code stays
   unchanged.
-- A probe failure (network, parse, 5xx) runs silently. The user
+- A probe failure (network, parse, 5xx) fails without notice. The user
   sees no warning, the command continues.
 
 The probe is **{/* vale fix: Vale.Spelling */}skippable{/* vale fix: Vale.Spelling */}** through an internal flag used by
@@ -326,16 +326,16 @@ The cache contract:
 - The cache stays opaque to the user. It's an internal
   optimisation, not a user-visible artifact.
 - A cache write that fails (disk full, permission denied) runs
- . The next command retries; the cache is best-effort.
+  without raising. The next command retries; the cache is best-effort.
 - The `--offline` flag falls back to the cache when the
-  network is unreachable. The fallback runs unless the
+  network is unreachable. The fallback runs without raising unless the
   network failure itself surfaces.
 - The cache file format is **not** part of the public
   surface. The CLI may change the cache shape between
   versions without bumping the major. Users who reach into
   the cache do so at their own risk.
 
-### 5. HTTP wire format
+### 5. Wire format
 
 The CLI talks to the upstream through the typed
 oRPC client (`@orpc/client` + `RPCLink`). The client wraps
@@ -493,7 +493,7 @@ The next cleanup task that emerges from this ADR:
 - [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md). The
   contract discipline that this ADR reinforces on the CLI
   side. ADR-001 says the contract is the API; this ADR says
-  the CLI is bound to that contract and only to that contract.
+  the CLI binds to that contract and only to that contract.
 - [ADR-005: API is consumer-agnostic](./ADR-005-api-consumer-agnostic.md). The
   server-side counterpart. ADR-005 says the server does
   not name the consumer; this ADR says the consumer (the
