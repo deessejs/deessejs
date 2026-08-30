@@ -130,9 +130,9 @@ Four concrete decisions.
     callback, but the Playwright ergonomics compose
     cleanly with the
     TypeScript page-object style the team will adopt.
-  - **Native parallel mode and sharding.** The PR gate runs
+  - **Native parallel mode and split runs.** The PR gate runs
     in less than two minutes on three browsers; nightly can
-    shard. Cypress parallel execution requires a paid
+    split runs. Cypress parallel execution requires a paid
     Dashboard.
   - **Ergonomics: the canonical Next example uses it.** Vercel
     maintains the official `with-playwright` example
@@ -1206,11 +1206,11 @@ The P0-P3 test scope above grounds in the following
   override to one sentence: *"the production cache headers
   are observable only in the production environment."*
 - [Next.js Playwright guide](https://nextjs.org/docs/app/guides/testing/playwright)
-  (v16.3.1, lastUpdated 2026-02-11). The canonical pattern
+  (v16.3.1, last updated 2026-02-11). The canonical pattern
   this ADR adopts, with two overrides: `webServer.command`
   and the Vercel preview trigger.
 - [Next.js `fetch` API reference](https://nextjs.org/docs/app/API-reference/functions/fetch)
-  (v16.3.1, lastUpdated 2026-08-18). Source for the
+  (v16.3.1, last updated 2026-08-18). Source for the
   `revalidate: 0` semantic and the `x-nextjs-cache` header.
 - [Playwright CI docs](https://playwright.dev/docs/ci). The
   `workers: 1` on CI, `reuseExistingServer: !CI`,
@@ -1221,14 +1221,14 @@ The P0-P3 test scope above grounds in the following
   `repository_dispatch` documentation is from Vercel KB
   (see below).
 - [Vercel generated URLs](https://vercel.com/docs/deployments/generated-urls)
-  (lastUpdated 2025-09-24). The commit-URL format and the
+  (last updated 2025-09-24). The commit-URL format and the
   public-by-default caveat.
 - [Vercel KB, How can I run end-to-end tests after a
   Vercel preview deployment?](https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment).
   The trigger this ADR adopts (`on: repository_dispatch` {/* vale fix: Vale.Spelling */}
   with `vercel.deployment.success` and `client_payload.url`).
 - [Vercel Protection Bypass for Automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation)
-  (lastUpdated 2026-04-30, fetched 2026-08-20). The
+  (last updated 2026-04-30, fetched 2026-08-20). The
   secret-management scheme this ADR adopts: the
   Vercel-managed `VERCEL_AUTOMATION_BYPASS_SECRET`
   system env var, the `x-vercel-protection-bypass`
