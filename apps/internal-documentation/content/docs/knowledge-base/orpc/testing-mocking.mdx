@@ -6,9 +6,9 @@ description: 'A study of the official oRPC testing patterns. Built on'
 # oRPC Testing & Mocking
 
 A study of the official oRPC testing patterns. Built on
-<!-- vale off: Vale.Terms, URL contains lowercase orpc -->
+{/* vale off: Vale.Terms, URL contains lowercase orpc */}
 [orpc.dev/docs/advanced/testing-mocking](https://orpc.dev/docs/advanced/testing-mocking)
-<!-- vale on -->
+{/* vale on */}
 , the upstream page is the source of truth when the lib
 changes; this entry exists to show the shape of the
 integration and the discipline that separates testing from
@@ -21,7 +21,7 @@ No HTTP, no transport, no RPC envelope. The test invokes
 the procedure as a function with its input; the output is
 what the client sees after the wire.
 
-<!-- vale off: Vale.Terms, package path uses lowercase api -->
+{/* vale off: Vale.Terms, package path uses lowercase api */}
 ```ts
 import { call } from "@orpc/server"
 import { router } from "@workspace/api/router"
@@ -31,7 +31,7 @@ it("returns the templates from the registry", async () => {
   expect(result.templates).toHaveLength(1)
 })
 ```
-<!-- vale on -->
+{/* vale on */}
 ```
 
 This is the pattern of choice for procedure contract tests.

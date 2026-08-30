@@ -130,7 +130,7 @@ the env vars on Vercel; the schema doesn't change.
 **2. The client oRPC link in apps/web uses
 `new URL(API_RPC_PATH, NEXT_PUBLIC_API_BASE_URL)`.**
 
-<!-- vale off: Vale.Terms, code block uses lowercase url -->
+{/* vale off: Vale.Terms, code block uses lowercase url */}
 ```ts
 // apps/web/src/lib/orpc.ts
 import { API_RPC_PATH } from "@workspace/api/base-path"
@@ -141,7 +141,7 @@ const link = new RPCLink({
   // …existing fetch hook with ISR directives
 })
 ```
-<!-- vale on -->
+{/* vale on */}
 
 The ADR removes the relative `url: API_RPC_PATH` line. The URL
 construction uses `new URL(path, base).toString()` rather than
