@@ -35,9 +35,6 @@ jobs:
           version: 3.11.2
           files: '["docs", "apps/internal-documentation/content/docs"]'
           config: .vale.ini
-          # Exclude files with accumulated style debt that is not in scope for
-          # this PR; tracked separately for cleanup.
-          vale_flags: --no-exit --ignore='docs/engineering/processes/complexity-rollout.md'
           sync: ${{ steps.styles.outputs.cache-hit != 'true' }}
           reporter: github-pr-check
           filter_mode: added
