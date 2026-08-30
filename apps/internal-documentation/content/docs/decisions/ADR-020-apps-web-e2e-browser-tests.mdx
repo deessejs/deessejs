@@ -233,7 +233,7 @@ Local development runs against `pnpm dev` instead, using a
     the same `apps/web/` root means a future contributor
     finds all tests by descending one directory. The
     Vitest `include` glob extends (see below).
-  - **Discoverability over Next-example parity.** The
+  - **Discoverable naming over Next-example parity.** The
     divergence from Next's `e2e/` naming is small (a
     trailing `s`) but the upside is real: the
     convention becomes self-documenting for anyone reading
@@ -1139,7 +1139,7 @@ All three sit on the list so the next iteration of this ADR {/* vale fix: write-
   drops out; the Playwright config snippet adapts
   verbatim from Vercel's canonical example. Added the
   `x-vercel-set-bypass-cookie: true` follow-up header so
-  client-side navigations (the issue #81 recovery
+  client-side navigation events (the issue #81 recovery
   scenario in P0-3) inherit the bypass automatically via
   `Set-Cookie`. Deployment Protection is now required
   on the Vercel project; the activation is in scope of
@@ -1223,9 +1223,8 @@ The P0-P3 test scope above grounds in the following
 - [Vercel generated URLs](https://vercel.com/docs/deployments/generated-urls)
   (last updated 2025-09-24). The commit-URL format and the
   public-by-default caveat.
-- [Vercel KB, How can I run end-to-end tests after a
-  Vercel preview deployment?](https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment).
-  The trigger this ADR adopts (`on: repository_dispatch` {/* vale fix: Vale.Spelling */}
+- [Vercel KB, How to run end-to-end tests after a Vercel preview deployment](https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment).
+  The trigger this ADR adopts (`on: repository_dispatch`
   with `vercel.deployment.success` and `client_payload.url`).
 - [Vercel Protection Bypass for Automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation)
   (last updated 2026-04-30, fetched 2026-08-20). The
@@ -1237,5 +1236,5 @@ The P0-P3 test scope above grounds in the following
   follow-up pattern. The Playwright config snippet in
   Decision #5 adapts verbatim from this page's
   canonical Playwright example.
-- [GitHub Actions, repository_dispatch event](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#repository_dispatch).
+- [GitHub Actions, repository dispatch event](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#repository_dispatch).
   Reference for the trigger semantics.
