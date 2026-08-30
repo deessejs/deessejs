@@ -33,9 +33,7 @@ jobs:
         uses: vale-cli/vale-action@v3
         with:
           version: 3.11.2
-          files: |
-            docs
-            apps/internal-documentation/content/docs
+          files: '["docs", "apps/internal-documentation/content/docs"]'
           config: .vale.ini
           # Exclude files with accumulated style debt that is not in scope for
           # this PR; tracked separately for cleanup.
