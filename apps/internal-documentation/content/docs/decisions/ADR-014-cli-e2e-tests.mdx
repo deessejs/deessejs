@@ -61,13 +61,13 @@ The current `@workspace/api/base-path` module exports two constants: `API_BASE_P
 
 Three files in this repo:
 
-- `apps/cli/src/api/client.ts`, replace `RPCLink({ url: API_RPC_PATH })` with a function call.
-- `apps/cli/src/version/check.ts`, replace the template-literal URL with a function call.
+- `apps/cli/src/api/client.ts`, replacing `RPCLink({ url: API_RPC_PATH })` with a function call.
+- `apps/cli/src/version/check.ts`, replacing the template-literal URL with a function call.
 {/* vale fix: write-good.Passive */}
 - A new file under `apps/cli/src/api/`, the resolver module. The implementation PR picks the location and the exact name.
 
 {/* vale fix: Microsoft.Contractions */}
-The change doesn't touch the `@workspace/api` package. The path constants stay where they are; the CLI gains a runtime resolver that lives in the CLI itself.
+The change doesn't touch the `@workspace/api` package. The path constants stay put; the CLI gains a runtime resolver that lives in the CLI itself.
 
 #### Behavior in each environment
 
@@ -78,7 +78,7 @@ The change doesn't touch the `@workspace/api` package. The path constants stay w
 | Local dev (`pnpm dev`) | unset | Same as production user. The CLI talks to the production registry. |
 | Local dev (overrides) | `http://localhost:4873` | Resolver returns the override. The CLI talks to a local mock. |
 | E2E test | `http://localhost:<random-port>` | Resolver returns the override. The CLI talks to the in-process mock server. |
-| E2E test (unset, broken) | unset | Resolver returns the production default. The CLI talks to the real API. The test fails with a clear network error. The test runner is responsible for setting the env var. |
+| E2E test (unset, broken) | unset | Resolver returns the production default. The CLI talks to the real API. The test fails with a clear network error. Setting the env var is the test runner's job. |
 
 {/* vale fix: Microsoft.Contractions */}
 This is the four-line change in concrete terms: one env var read, one validation, one fallback constant, one resolver function. The rest of the CLI calls the resolver instead of the hardcoded constants. The change is local to two CLI files and one new file. It doesn't change the public surface of the CLI.
@@ -297,10 +297,10 @@ The runner returns a structured result rather than throwing on non-zero exit cod
 #### Tarball resolution
 
 {/* vale fix: Microsoft.Contractions */}
-The runner reads the tarball path from the env var `DEESSEJS_CLI_TARBALL`. The verify workflow sets this env var before invoking the tests. If the env var is unset, the runner fails the test with a clear error message: `DEESSEJS_CLI_TARBALL isn't set; the e2e suite requires the verify workflow to run first.` The runner doesn't invoke the source TypeScript directly; the e2e suite tests the published artifact, not the source.
+The runner reads the tarball path from the env var `DEESSEJS_CLI_TARBALL`. The verify workflow sets this env var before invoking the tests. If the env var is unset, the runner fails the test with a clear error message: `DEESSEJS_CLI_TARBALL is not set; the e2e suite requires the verify workflow to run first.` The runner doesn't invoke the source TypeScript directly; the e2e suite tests the published artifact, not the source.
 
-{/* vale fix: write-good.TooWordy, Microsoft.Foreign, Microsoft.Contractions */}
-The verify workflow produces the tarball at `apps/cli/dist/deessejs-cli-*.tgz`. The runner uses `glob` to find the file. When several tarballs exist (for example, from a previous run that didn't clean up), the runner uses the most recent one by `mtime`.
+{/* vale fix: write-good.TooWordy, Microsoft.Foreign, Microsoft.Contractions, write-good.Weasel */}
+The verify workflow produces the tarball at `apps/cli/dist/deessejs-cli-*.tgz`. The runner uses `glob` to find the file. When two or more tarballs exist (for example, from a previous run that didn't clean up), the runner uses the most recent one by `mtime`.
 
 #### Stream handling
 
@@ -341,8 +341,8 @@ try {
 }
 ```
 
-{/* vale fix: Microsoft.Contractions, Microsoft.Auto */}
-The `try/finally` is the test's responsibility. The fixture doesn't autoclean because the test might want to inspect the repo after failure.
+{/* vale fix: Microsoft.Contractions, Microsoft.Auto, Vale.Spelling */}
+The `try/finally` is the test's responsibility. The fixture skips any automatic cleanup because the test might want to inspect the repo after failure.
 
 #### What the fixture creates
 
@@ -400,7 +400,7 @@ Failures in the nightly workflow post a GitHub issue with the captured output. T
 #### Why two workflows
 
 {/* vale fix: write-good.Passive, Microsoft.Adverbs */}
-The split is cost. The PR workflow is the gate; it must run on every PR and stay fast. The nightly workflow is the deep check; it can take its time and tolerate flakiness. Combining them would either slow PRs (extended matrix on every PR) or weaken the gate (PR workflow skips important tests). The split is the standard pattern for CI matrices that have a fast-slow split.
+The split comes down to cost. The PR workflow is the gate; it must run on every PR and stay fast. The nightly workflow is the deep check; it can take its time and tolerate flakiness. Combining them would either slow PRs (extended matrix on every PR) or weaken the gate (PR workflow skips important tests). The split is the standard pattern for CI matrices that have a fast-slow split.
 
 ### Why not the alternatives
 
