@@ -753,11 +753,11 @@ export default function HomePage() {
                 trust — the registry wires them in.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-border">
               {INTEGRATIONS.map((integration) => (
                 <span
                   key={`${integration.group}-${integration.name}`}
-                  className="inline-flex items-center gap-2 text-copy-13 text-muted-foreground"
+                  className="inline-flex items-center gap-2 p-3 text-copy-13 text-muted-foreground"
                 >
                   {/* Plain <img>: see note above on Contracts cells. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
