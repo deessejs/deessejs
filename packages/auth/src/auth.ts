@@ -50,6 +50,9 @@ export const auth = betterAuth({
     ...(process.env.NODE_ENV === "development"
       ? ["http://localhost:3000", "http://localhost:3001"]
       : []),
+    ...[serverEnv.WEB_URL, serverEnv.APP_URL, serverEnv.DOCS_URL].map(
+      (u) => new URL(u).origin,
+    ),
     ...serverEnv.ALLOWED_ORIGINS,
   ],
 
@@ -104,6 +107,17 @@ export const auth = betterAuth({
 
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production",
+    ...(serverEnv.PARENT_DOMAIN
+      ? {
+          crossSubDomainCookies: {
+            enabled: true,
+            domain: serverEnv.PARENT_DOMAIN,
+          },
+          defaultCookieAttributes: {
+            sameSite: "none",
+          },
+        }
+      : {}),
   },
 
   experimental: {

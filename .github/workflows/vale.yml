@@ -1,0 +1,44 @@
+name: vale
+
+on:
+  pull_request:
+    branches: [staging]
+  push:
+    branches: [staging]
+
+permissions:
+  contents: read
+
+jobs:
+  vale:
+    name: lint docs with vale
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: cache vale styles
+        uses: actions/cache@v4
+        id: styles
+        with:
+          path: .github/styles
+          key: vale-${{ hashFiles('.vale.ini') }}
+          restore-keys: vale-
+
+      - name: run vale
+        uses: vale-cli/vale-action@v3
+        with:
+          version: 3.11.2
+          files: docs
+          config: .vale.ini
+          sync: ${{ steps.styles.outputs.cache-hit != 'true' }}
+          reporter: github-pr-review
+          filter_mode: added
+          fail_level: warning
+          min_alert_level: suggestion
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

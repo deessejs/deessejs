@@ -89,6 +89,7 @@ function getServerEnv(): Readonly<ServerEnv> {
     APP_URL: env.APP_URL,
     DOCS_URL: env.DOCS_URL,
     API_BASE_URL: env.API_BASE_URL,
+    PARENT_DOMAIN: env.PARENT_DOMAIN,
   } as ServerEnv) as Readonly<ServerEnv>
 
   // Runtime assertion: no NEXT_PUBLIC_* may leak through the server face.

@@ -1,4 +1,4 @@
-# CLI V1 testing plan
+# Command-line interface V1 testing plan
 
 _Date: 2026-07-30. Status: draft, pending review._
 
@@ -17,7 +17,7 @@ PR #1 (`chore/cli: scaffold apps/cli workspace`) shipped the `@deessejs/cli` pac
 
 - 100% line/branch coverage
 - Cross-platform tests (Windows is V1.x)
-- NPM publish workflow tests (V1.1)
+- npm publish workflow tests (V1.1)
 - Snapshot testing (overkill for current CLI shape)
 - A test for every `init` edge case (grow the matrix when something breaks)
 
@@ -29,7 +29,7 @@ Pure functions, mocked fs/fetch/spawn. Fast, deterministic. Each module gets one
 
 ### Layer 2: Integration tests (~12 cases)
 
-Real subprocess invocation of `node ./dist/index.js ...`. Real git fixtures, real fs (tmp dirs), real spawn. Only the HTTP API is mocked (local server).
+Real subprocess invocation of `node ./dist/index.js ...`. Real git fixtures, real fs (tmp dirs), real spawn. Only the HTTP API uses a mock (local server).
 
 This is the "does the CLI actually work end-to-end" verification. Unit tests alone wouldn't catch a broken exit code or a misordered output.
 
@@ -55,7 +55,7 @@ apps/cli/
   vitest.config.ts       # new
 ```
 
-Flat by phase (`unit/` vs `integration/`), not by command. Helpers are shared.
+Flat by phase (`unit/` vs `integration/`), not by command. Helpers span both layers.
 
 ## Helpers
 
@@ -74,7 +74,7 @@ export async function runCli(
 ): Promise<CliResult>
 ```
 
-Spawns the binary, captures stdio, returns a structured result. The path to the binary is fixed at `apps/cli/dist/index.js` (built once before tests via a `pretest` script).
+Spawns the binary, captures stdio, returns a structured result. The path resolves to `apps/cli/dist/index.js` (built once before tests via a `pretest` script).
 
 ### `test/helpers/git-fixture.ts`
 
@@ -98,7 +98,7 @@ export async function createGitFixture(opts: {
 
 ### `test/helpers/fake-api.ts`
 
-Stdlib HTTP server. Default handler returns `{ templates: Template[] }` on `/api/templates`. Test can override the handler to drive error paths (404, 500, malformed JSON).
+stdlib HTTP server. Default handler returns `{ templates: Template[] }` on `/api/templates`. Test can override the handler to drive error paths (404, 500, malformed JSON).
 
 ```ts
 export type FakeApi = {
@@ -127,7 +127,7 @@ export async function startFakeApi(opts: {
 
 - `printJson` produces valid JSON ending with `\n`
 - `printError` includes the message, code, and hint when present
-- `printError` skips the hint line when hint is undefined
+- `printError` skips the hint line when hint is missing
 - `printTemplatesTable` aligns columns (widest cell per column drives width)
 - `printTemplateInfo` prints all fields including optional `image`
 - Empty templates array prints the "No templates available" message
@@ -174,7 +174,7 @@ export async function startFakeApi(opts: {
 2. Refuses when target dir exists (exits 1 with `target_exists`)
 3. `--force` overwrites an existing target dir
 4. Falls back to `master` when the remote's default branch is master (git-fixture uses `master` by default)
-5. Reads `packageManager` field from cloned `package.json` (verified via `--no-install` + assert subsequent `install` would use the right PM)
+5. Reads `packageManager` field from cloned `package.json` (verified via `--no-install` + assert the following `install` would use the right PM)
 6. Exits 1 with `not_found` for unknown slug
 
 Total: ~37 tests. Down from an earlier draft of ~65, which was over-invested for V1.
@@ -221,7 +221,7 @@ Add to `apps/cli/package.json`:
 | `vitest` | Already in deps |
 | `node:http` | Fake API server, stdlib |
 | `node:child_process` | `runCli` + git fixtures, stdlib |
-| `os.tmpdir()` | Tmp dirs for fixtures, stdlib |
+| `os.tmpdir()` | tmp dirs for fixtures, stdlib |
 | `node:fs` / `node:path` | Cleanup, stdlib |
 
 Zero new deps.
@@ -229,24 +229,24 @@ Zero new deps.
 ## What's out of V1 scope
 
 - V1.1: cross-platform tests (Windows Path handling in `git clone file://`)
-- V1.1: comprehensive `init` test matrix (15 cases I enumerated earlier can land as bugs surface)
+- V1.1: comprehensive `init` test matrix (15 cases enumerated earlier can land as bugs surface)
 - V1.1: coverage threshold and CI enforcement (V1 ships coverage info, no gate)
 - V1.1: snapshot testing for output formatting
-- V1.1: NPM publish integration tests
+- V1.1: npm publish integration tests
 
 ## Platform notes
 
-**Init tests are skipped on Windows and in CI** (via `describe.skipIf(process.platform === "win32" || !!process.env.CI || !gitAvailable)`). Reason: in the test fork (`pool: "forks"`), `child_process.spawn` of `git` fails with ENOENT even on Linux CI — the fork's PATH lookup is stripped. The unit, list, and info tests run in any environment. Init tests run locally when the user invokes `pnpm --filter @deessejs/cli test` outside CI.
+**The platform skips init tests on Windows and in CI** (via `describe.skipIf(process.platform === "win32" || !!process.env.CI || !gitAvailable)`). Reason: in the test fork (`pool: "forks"`), `child_process.spawn` of `git` fails with ENOENT even on Linux CI, since the fork's PATH lookup strips the PATH. <!-- vale fix: write-good.Passive --> The unit, list, and info tests run in any environment. Init tests run locally when the user invokes `pnpm --filter @deessejs/cli test` outside CI.
 
 ## Open questions
 
-1. **Do we want a `pretest` script or a `globalSetup`?** My pick: `pretest` (simpler, runs once via `pnpm` lifecycle). `globalSetup` is justified only if we want to skip the build when `dist/` is already fresh.
-2. **Integration tests in parallel?** My pick: each test creates its own `gitFixture` (no shared state), so parallel within a file is safe. Different files can run in parallel by default.
-3. **Coverage report in CI?** My pick: yes, install `@vitest/coverage-v8` and add `vitest run --coverage` to a `test:coverage` script. No threshold, just report.
+1. **`pretest` script or `globalSetup`?** Recommended: `pretest` (simpler, runs once via `pnpm` lifecycle). `globalSetup` only makes sense for skipping the build when `dist/` is already fresh.
+2. **Integration tests in parallel?** Recommended: each test creates its own `gitFixture` (no shared state), so parallel within a file is safe. Different files can run in parallel by default.
+3. **Coverage report in CI?** Recommended: yes, install `@vitest/coverage-v8` and add `vitest run --coverage` to a `test:coverage` script. No threshold, just report.
 
 ## Why this is the cut-down version
 
-I initially proposed ~65 tests with `globalSetup`, per-file coverage thresholds, and 15 detailed `init` cases. That's principal-level over-confidence for V1 surface area. This plan is V1-grade: ship the tests that catch the regressions we'd actually block a PR for, grow the matrix when something breaks. ~37 tests is enough for what's there today.
+An earlier draft proposed ~65 tests with `globalSetup`, per-file coverage thresholds, and 15 detailed `init` cases. That's principal-level over-confidence for V1 surface area. This plan is V1-grade: ship the tests that catch the regressions worth blocking a PR for, grow the matrix when something breaks. ~37 tests is enough for what's there today.
 
 ## Next steps
 

@@ -152,6 +152,26 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+/*
+ * Shiki dual-theme swap.
+ *
+ * shiki's `themes: { light, dark }` mode emits inline `color`/`background-color`
+ * for the light theme plus CSS variables `--shiki-dark` and `--shiki-dark-bg`
+ * for the dark theme. `html.dark` is set by next-themes in
+ * apps/web/src/components/providers/theme-provider.tsx, so this single
+ * rule flips all shiki tokens to dark colors when the user toggles
+ * themes. `!important` is required because shiki's inline `color` style
+ * otherwise wins over the CSS variable (shiki docs explicitly recommend
+ * it).
+ *
+ * See https://shiki.style/guide/dual-themes#class-based-dark-mode
+ */
+html.dark .shiki,
+html.dark .shiki span {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

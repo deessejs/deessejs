@@ -121,6 +121,8 @@ export const serverInputShape = {
   APP_URL: canonicalUrl.default("http://localhost:3001"),
   DOCS_URL: canonicalUrl.default("http://localhost:3002"),
   API_BASE_URL: canonicalUrl.default("http://localhost:3001"),
+
+  PARENT_DOMAIN: z.string().min(1).optional(),
 }
 
 export const serverSchema = z.object(serverInputShape).superRefine(
@@ -159,6 +161,15 @@ export const serverSchema = z.object(serverInputShape).superRefine(
         message:
           "RESEND_API_KEY is required when MAIL_TRANSPORT=resend (or use MAIL_TRANSPORT=console for dev)",
         path: ["RESEND_API_KEY"],
+      })
+    }
+
+    if (!data.PARENT_DOMAIN) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "PARENT_DOMAIN is required in production for cross-subdomain cookie sharing. Set to the bare hostname (e.g. deessejs.com).",
+        path: ["PARENT_DOMAIN"],
       })
     }
   }

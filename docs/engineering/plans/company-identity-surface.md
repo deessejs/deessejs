@@ -1,39 +1,39 @@
-# Company identity surface — `deessejs` pages + AI-agent artifacts
+# Company identity surface: `deessejs` pages + artificial-intelligence personal digital assistant artifacts <!-- vale fix: Microsoft.HeadingAcronyms --> <!-- vale fix: Microsoft.Terms -->
 
 ## Context
 
-The deessejs main app monorepo hosts `apps/web`, the public site of `deessejs`. Started from [`deessejs/saas-template`](https://github.com/deessejs/saas-template). Today, there is **no page** that explains who `deessejs` is, what the company builds, or why — `apps/web/src/app/` only contains `blog`, `changelog`, `cookies`, `privacy`, `terms`, plus a landing template default. The landing `app/page.tsx` is still the starter boilerplate.
+The deessejs main app monorepo hosts `apps/web`, the public site of `deessejs`. Started from [`deessejs/saas-template`](https://github.com/deessejs/saas-template). Today, there is **no page** that explains who `deessejs` is, what the company builds, or why. `apps/web/src/app/` only contains `blog`, `changelog`, `cookies`, `privacy`, `terms`, plus a landing template default. The landing `app/page.tsx` is still the starter boilerplate.
 
-**Goal:** Add a "company identity" surface that is quickly readable by both humans (visitors, contributors, GitHub stars) and AI agents (LLM crawlers, coding agents consulting the docs). The surface can be filled in later, but the infrastructure (routes, JSON-LD, `llms.txt`, markdown mirrors) must be in place now.
+**Goal:** Add a "company identity" surface that's readable by both humans (visitors, contributors, GitHub stars) and AI agents (LLM crawlers, coding agents consulting the docs). The editor fills it in later, but the infrastructure (routes, JSON-LD, `llms.txt`, markdown mirrors) must be in place now.
 
 **Decisions locked with the user:**
 - Pages authored as **deessejs** (the company), not template-agnostic.
 - Everything lives in `apps/web`.
-- **Static** — no content-collections, no MDX, no build step. Data lives in `.ts` files.
+- **Static**: no content-collections, no MDX, no build step. Data lives in `.ts` files.
 - **English**.
-- **Structured placeholders** — no copy-writing in this PR. Sections clearly marked `REPLACE WITH COPY` / `TODO:`.
-- Scope "the more the better" — every page and artifact that makes sense, without bloating.
+- **Structured placeholders**: no copy-writing in this PR. Sections marked `REPLACE WITH COPY` / `TODO:`. <!-- vale fix: write-good.Weasel -->
+- Scope "the more the better," every page and artifact that makes sense, without bloating. <!-- vale fix: Microsoft.Quotes -->
 
-**What this plan explicitly excludes:** refactoring `apps/web/src/app/page.tsx` (landing still boilerplate), `apps/web/src/app/.well-known/agent-card.json` (A2A figure — reserved for real callable agents), `llms-full.txt` (consistent with Supabase's "small root, defer to docs"), `humans.txt`, `/.well-known/ai` (IETF draft, unstable).
+**What this plan explicitly excludes:** refactoring `apps/web/src/app/page.tsx` (landing still boilerplate), `apps/web/src/app/.well-known/agent-card.json` (A2A figure, reserved for real callable agents), `llms-full.txt` (consistent with the `Supabase` guidance "small root, defer to docs"), `humans.txt`, `/.well-known/ai` (IETF draft, unstable).
 
 ## Recommended approach
 
-**Single source of truth in TS, two renderings: `page.tsx` for HTML, an adjacent `route.ts` for Markdown.** No content negotiation in `route.ts` because a `page.tsx` and a `route.ts` cannot coexist in the same App Router segment. The choice is the adjacent segment `/about/markdown` (instead of `/about.md`) — no Next.js rewrites needed, and `/about` stays the canonical HTML, inheriting the layout (header, footer, fonts).
+**Single source of truth in TS, two renderings: `page.tsx` for HTML, an adjacent `route.ts` for Markdown.** No content negotiation in `route.ts` because a `page.tsx` and a `route.ts` can't coexist in the same App Router segment. <!-- vale fix: Microsoft.Contractions --> The choice is the adjacent segment `/about/markdown` (instead of `/about.md`): no Next.js rewrites needed, and `/about` stays the canonical HTML, inheriting the layout (header, footer, fonts).
 
-**No `Accept: text/markdown` middleware.** Runtime cost on every request for 0.1% of LLM traffic. LLM crawlers fetch `/llms.txt` or `/about/markdown` directly — that is what we make discoverable.
+**No `Accept: text/markdown` middleware.** Runtime cost on every request for 0.1% of LLM traffic. LLM crawlers fetch `/llms.txt` or `/about/markdown` directly. That's what gets surfaced for discovery. <!-- vale fix: Microsoft.Contractions --> <!-- vale fix: Microsoft.We -->
 
 ## Files to create
 
-### HTML pages (server components)
+### HyperText Markup Language pages (server components)
 
 ```
-apps/web/src/app/about/page.tsx          # GET /about  — Hero + 5 placeholder sections
-apps/web/src/app/principles/page.tsx     # GET /principles — Dated principles list
-apps/web/src/app/team/page.tsx           # GET /team — Team card grid
+apps/web/src/app/about/page.tsx          # GET /about: Hero + 5 placeholder sections
+apps/web/src/app/principles/page.tsx     # GET /principles: Dated principles list
+apps/web/src/app/team/page.tsx           # GET /team: Team card grid
 ```
 
 Each `page.tsx`:
-- `export const metadata: Metadata` with `title`, `description`, `alternates.canonical`, `robots` (noindex on placeholder copy? **No** — index now; copy may be light but an identity signal is much better than zero).
+- `export const metadata: Metadata` with `title`, `description`, `alternates.canonical`, `robots` (noindex on placeholder copy: **No**, index now; copy may be light but an identity signal is much better than zero). <!-- vale fix: Microsoft.QuestionMarks -->
 - Container `mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8` (between `max-w-2xl` legal and `max-w-6xl` blog, like the changelog).
 - `H1`, `H2`, `P`, `Lead`, `Link` imported from `@workspace/ui/components/typography` (per `use-shadcn`).
 - `<JsonLd>` helper (see below) for `WebPage` + `BreadcrumbList`.
@@ -51,21 +51,21 @@ Each `route.ts`:
 - Returns `new Response(md, { headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": "public, max-age=3600" } })`.
 - No `Vary: Accept` needed (no negotiation).
 
-### AI-agent artifacts
+### Artificial-intelligence personal digital assistant artifacts
 
 ```
-apps/web/src/app/llms.txt/route.ts     # GET /llms.txt — 300–800 word index
-apps/web/src/app/.well-known/route.ts  # GET /.well-known/security.txt — RFC 9116
+apps/web/src/app/llms.txt/route.ts     # GET /llms.txt: 300-800 word index
+apps/web/src/app/.well-known/route.ts  # GET /.well-known/security.txt: RFC 9116
 ```
 
-**`/llms.txt`** follows the strict spec (per Phase 1.B research):
+**`/llms.txt`** follows the strict specification (per Phase 1.B research):
 
 ```md
 # deessejs
 
 > One-paragraph mission statement. Add at build time.
 
-We build modern SaaS infrastructure for developers — opinionated starters,
+We build modern SaaS infrastructure for developers, with opinionated starters,
 production-ready defaults, and tools that compose. Deessejs is the company
 behind [project A], [project B], and this very site.
 
@@ -85,9 +85,9 @@ behind [project A], [project B], and this very site.
 - [Blog](https://deessejs.com/blog): what we think
 ```
 
-Content templated from `lib/site/llms-sections.ts` — a single human editor modifies this file and all pages update.
+Content templated from `lib/site/llms-sections.ts`: a single human editor modifies this file and all pages update.
 
-**`/.well-known/security.txt`** — RFC 9116 minimal:
+**`/.well-known/security.txt`**: RFC 9116 minimal:
 
 ```
 Contact: mailto:security@deessejs.com
@@ -95,9 +95,9 @@ Expires: 2027-08-03T00:00:00.000Z
 Preferred-Languages: en
 ```
 
-The `route.ts` handles a `KNOWN: Record<string, Response>` map to support future additions (`mcp.json` when a callable agent exists).
+The `route.ts` handles a `KNOWN: Record<string, Response>` map to support future additions (`mcp.json` when a callable personal digital assistant exists).
 
-### Single source of truth (TS data files)
+### Single source of truth (TypeScript data files)
 
 ```
 apps/web/src/lib/site/identity.ts      # name, legalName, tagline, foundingDate, url, email, social[]
@@ -107,7 +107,7 @@ apps/web/src/lib/site/llms-sections.ts # Array<{ section, items: [{ name, url, d
 apps/web/src/lib/site/markdown.ts      # renderAboutMarkdown(), renderPrinciplesMarkdown(), renderTeamMarkdown()
 ```
 
-`identity.ts` exports a `SITE` object consumed by the layout (JSON-LD), the pages, and `llms.txt`. If someone adds `twitter.com/deessejs`, they add it **once** — every surface picks it up.
+`identity.ts` exports a `SITE` object consumed by the layout (JSON-LD), the pages, and `llms.txt`. If someone adds `twitter.com/deessejs`, they add it **once**, and every surface picks it up.
 
 `markdown.ts` is ~50 lines, no external library. Each function takes data, returns a string. Template-driven:
 
@@ -131,7 +131,7 @@ export function renderAboutMarkdown(): string {
 ### Shared components
 
 ```
-apps/web/src/components/seo/json-ld.tsx           # <JsonLd data={...} /> — server component
+apps/web/src/components/seo/json-ld.tsx           # <JsonLd data={...} />: server component
 apps/web/src/components/site/identity-layout.tsx  # Shared wrapper: container + Breadcrumb
 ```
 
@@ -147,7 +147,7 @@ export function JsonLd({ data }: { data: object }) {
 }
 ```
 
-No `"use client"` — server component, JSON serialized at render time.
+No `"use client"`: server component, JSON serialized at render time.
 
 `<IdentityLayout>`:
 ```tsx
@@ -174,11 +174,11 @@ export function IdentityLayout({ children, breadcrumb }: {
 }
 ```
 
-## Files to modify
+## Files to change
 
-### Header nav — `apps/web/src/components/headers/site-header.tsx`
+### Header nav: `apps/web/src/components/headers/site-header.tsx`
 
-Append to `NAV_LINKS` (lines 9–13):
+Append to `NAV_LINKS` (lines 9-13):
 
 ```ts
 const NAV_LINKS = [
@@ -192,17 +192,17 @@ const NAV_LINKS = [
 
 Order chosen: content surfaces on the left, identity on the right. `Team` stays footer-only (quiet).
 
-### Footer — `apps/web/src/components/footers/app-footer.tsx`
+### Footer: `apps/web/src/components/footers/app-footer.tsx`
 
-Add `<Link href="/about">About</Link>` inside the existing `<nav>`, after "Docs".
+Add `<Link href="/about">About</Link>` inside the existing `<nav>`, after the "Docs" link.
 
-### Root layout — `apps/web/src/app/layout.tsx`
+### Root layout: `apps/web/src/app/layout.tsx`
 
 Add `<JsonLd data={ORGANIZATION_LD} />` inside `<body>` (before `<AppProviders>`). Data sourced from `lib/site/identity.ts`.
 
-Existing `metadata`: `title: APP_CONFIG.name` → sufficient. No template needed because each page's title overrides via local `export const metadata`.
+Existing `metadata`: `title: APP_CONFIG.name` → enough as-is. No template needed because each page's title overrides via local `export const metadata`.
 
-### Sitemap — `apps/web/src/app/sitemap.ts`
+### Sitemap: `apps/web/src/app/sitemap.ts`
 
 Append to `staticPages` (after line 8, before `blogPosts`):
 
@@ -218,9 +218,9 @@ Append to `staticPages` (after line 8, before `blogPosts`):
 { url: `${APP_URL}/.well-known/security.txt`, lastModified: new Date(), changeFrequency: "yearly" as const, priority: 0.1 },
 ```
 
-### Robots — `apps/web/src/app/robots.ts`
+### Robots: `apps/web/src/app/robots.ts`
 
-**No changes.** `allow: "/"` already covers all new routes. **Do not** add `Disallow: /llms.txt` (Phase 1.B research forbids it).
+**No changes.** `allow: "/"` already covers all new routes. **Don't** add `Disallow: /llms.txt` (Phase 1.B research forbids it).
 
 ## Placeholder strategy
 
@@ -230,17 +230,17 @@ Three markers, in a cascade of urgency:
 |---|---|---|
 | `REPLACE WITH COPY` | In `lib/site/*.ts` (data) | Urgent: factual copy (mission, dates, founders). grep-friendly. |
 | `TODO:` | In `page.tsx` (sections) | Less urgent: editorial copy. |
-| `<Muted>Placeholder for X — see TODO in lib/site/X.ts</Muted>` | On every section reading from data | In-page breadcrumb for the copywriter. |
+| `<Muted>Placeholder for X, see TODO in lib/site/X.ts</Muted>` | On every section reading from data | In-page breadcrumb for the copywriter. |
 
 `/about` pattern:
 ```tsx
 <section>
   <H2>Mission</H2>
   <P>
-    {/* TODO: 2–3 sentences. First sentence declarative, no marketing fluff.
+    {/* TODO: 2-3 sentences. First sentence declarative, no marketing fluff.
         Example shape: "We build [X] for [Y] because [Z]." */}
   </P>
-  <Muted>Placeholder for mission — see TODO in lib/site/identity.ts</Muted>
+  <Muted>Placeholder for mission, see TODO in lib/site/identity.ts</Muted>
 </section>
 ```
 
@@ -250,7 +250,7 @@ Three markers, in a cascade of urgency:
 {
   date: "2026-08-01",
   title: "Principle placeholder 1",
-  body: "REPLACE WITH COPY — one short paragraph stating a guiding belief. Date is the date this principle was adopted, not authored.",
+  body: "REPLACE WITH COPY: one short paragraph stating a guiding belief. Date is the date this principle was adopted, not authored.",
 }
 ```
 
@@ -275,7 +275,7 @@ curl -I http://localhost:3000/team/markdown
 
 # 4. AI artifacts
 curl -I http://localhost:3000/llms.txt
-# Expected: 200, content-type: text/plain; charset=utf-8, 300–800 words
+# Expected: 200, content-type: text/plain; charset=utf-8, 300-800 words
 curl -I http://localhost:3000/.well-known/security.txt
 # Expected: 200, content-type: text/plain; charset=utf-8
 
@@ -289,7 +289,7 @@ curl -s http://localhost:3000/robots.txt
 
 # 7. JSON-LD validation
 # Open view-source:http://localhost:3000/about, copy each <script type="application/ld+json">
-# Paste into https://search.google.com/test/rich-results — no errors.
+# Paste into https://search.google.com/test/rich-results, no errors.
 
 # 8. Lint + typecheck
 pnpm --filter web lint
@@ -300,7 +300,7 @@ Final manual check: open `/about` and `/about/markdown` side-by-side. The facts 
 
 ## Explicit trade-offs
 
-1. **URL `/about/markdown` instead of `/about.md`.** App Router constraint (`page.tsx` + `route.ts` in the same segment = error). We accept a slightly different URL to keep `page.tsx` as the canonical HTML (which inherits the layout, fonts, header, footer). Agents that hardcode `.md` will miss the mirror — but `llms.txt` points to the HTML URL, so they follow.
+1. **URL `/about/markdown` instead of `/about.md`.** App Router constraint (`page.tsx` + `route.ts` in the same segment = error). We accept a slightly different URL to keep `page.tsx` as the canonical HTML (which inherits the layout, fonts, header, footer). Agents that hardcode `.md` will miss the mirror, but `llms.txt` points to the HTML URL, so they follow.
 2. **No `Accept: text/markdown` content negotiation.** Middleware cost on every request for 0.1% of traffic. The Cloudflare/Vercel spec is otherwise satisfied (the Markdown mirror has `Content-Type: text/markdown`).
 3. **No MDX, no content-collections, no `remark`.** User's choice. Trade-off: a non-engineer copywriter must edit `.ts` strings. Mitigation: `REPLACE WITH COPY` markers are grep-friendly.
 4. **Team page = 4-row placeholder.** When the team grows, either bump the cap or move to MDX. The structure (card grid) stays.
@@ -321,10 +321,10 @@ Final manual check: open `/about` and `/about/markdown` side-by-side. The facts 
 
 ## Critical files
 
-- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\app\layout.tsx` — root JSON-LD injection
-- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\lib\site\identity.ts` — single source of truth; everything else depends on it
-- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\lib\site\markdown.ts` — markdown renderer reused by `/about/markdown`, `/principles/markdown`, `/team/markdown`
-- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\components\seo\json-ld.tsx` — `<JsonLd>` server component used by layout + every page
-- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\components\headers\site-header.tsx` — `NAV_LINKS` array (l. 9–13) controls desktop + mobile nav order
-- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\app\sitemap.ts` — `staticPages` (l. 6–55) receives the new entries
-- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\app\robots.ts` — **not modified**; verify only
+- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\app\layout.tsx`: root JSON-LD injection
+- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\lib\site\identity.ts`: single source of truth; everything else depends on it
+- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\lib\site\markdown.ts`: markdown renderer reused by `/about/markdown`, `/principles/markdown`, `/team/markdown`
+- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\components\seo\json-ld.tsx`: `<JsonLd>` server component used by layout + every page
+- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\components\headers\site-header.tsx`: `NAV_LINKS` array (l. 9-13) controls desktop + mobile nav order
+- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\app\sitemap.ts`: `staticPages` (l. 6-55) receives the new entries
+- `C:\Users\dpereira\Documents\github\ecosystem\d\apps\web\src\app\robots.ts`: **not modified**; verify only
