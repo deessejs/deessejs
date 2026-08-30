@@ -44,6 +44,9 @@ catalog:
   remark-gfm: ^4.0.1
   rehype-sanitize: ^6.0.0
 
+  # Motion (apps/web — homepage contract cell animations)
+  motion: ^13.1.1
+
   # Shared tooling
   "@tailwindcss/postcss": ^4.3.2
   '@tanstack/react-form': ^1.33.0
