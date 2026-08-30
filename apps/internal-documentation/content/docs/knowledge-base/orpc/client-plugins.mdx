@@ -17,7 +17,7 @@ custom fetch hook ([KB entry](./fetch-hook)) does today.
 plugin is a class with configuration options; the same link
 can compose many.
 
-{/* vale off: Vale.Terms — code block uses lowercase @orpc package name */}
+<!-- vale off: Vale.Terms, code block uses lowercase @orpc package name -->
 ```ts
 import { RPCLink } from "@orpc/client/fetch"
 import { ClientRetryPlugin } from "@orpc/client/plugins"
@@ -85,7 +85,7 @@ shouldRetry: ({ failure }) =>
 The plugin does **not** read HTTP headers to compute the
 delay. It uses the static `retryDelay` function. For
 custom rate-limit headers (`X-RateLimit-Reset`, vendor
-extensions), the plugin is not enough.
+extensions), the plugin isn't enough.
 
 ## RetryAfterPlugin
 
