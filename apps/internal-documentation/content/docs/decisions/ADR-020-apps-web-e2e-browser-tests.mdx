@@ -233,7 +233,7 @@ Local development runs against `pnpm dev` instead, using a
     the same `apps/web/` root means a future contributor
     finds all tests by descending one directory. The
     Vitest `include` glob extends (see below).
-  - **Findability over Next-example parity.** The {/* vale fix: Vale.Spelling */}
+  - **Discoverability over Next-example parity.** The
     divergence from Next's `e2e/` naming is small (a
     trailing `s`) but the upside is real: the
     convention becomes self-documenting for anyone reading
@@ -428,11 +428,11 @@ The implementation lands the `data-testid` attributes in the
         extraHTTPHeaders: {
           "x-vercel-protection-bypass":
             process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-          // Required so follow-up navigations (next/link
+          // Required so follow-up navigation steps (next/link
           // client transitions) inherit the bypass.
           // The first response sets a Set-Cookie header
-          // on the preview domain; subsequent navigations {/* vale fix: Vale.Spelling */}
-          // carry the cookie automatically.
+          // on the preview domain; subsequent navigation {/* vale fix: Vale.Spelling */}
+          // steps carry the cookie automatically.
           "x-vercel-set-bypass-cookie": "true",
         },
       },
