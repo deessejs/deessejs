@@ -491,7 +491,7 @@ move defers until a second consumer exists.
 - **A MDX render that bypasses `MdxRenderer`.** The
   guide page imports `MdxRenderer` and `Prose` the same
   way the blog does. A bespoke renderer would fork the
-  Shiki-and-`rehype` pipeline.
+  shiki-and-`rehype` pipeline.
 - **Hard-coded guide slugs anywhere on the guide side
   of the knowledge base.** A contributor who needs a
   guide slug reads `allKbGuides.map((g) => g.slug)`. No
@@ -649,7 +649,7 @@ page rewrite.
 - A PR that adds a guide body in JSX instead of MDX gets
   rejected. The body is the MDX file.
 - A PR that bypasses `MdxRenderer` for guide bodies gets
-  rejected. The guide body shares the Shiki-and-`rehype`
+  rejected. The guide body shares the shiki-and-`rehype`
   pipeline with the blog.
 - A PR that hides `draft: true` guides in dev gets
   rejected. The filter is build-time only; dev shows
