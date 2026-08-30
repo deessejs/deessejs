@@ -628,7 +628,7 @@ Four patterns got considered and rejected.
 - **Booting `next start` in CI via Docker and hitting
   localhost.** ADR-016 rejects this pattern for API
   integration tests (boot cost, port collisions, double
-  surface). The argument applies a fortiori to a UI test {/* vale fix: Vale.Spelling */}
+  surface). The argument applies even more strongly to a UI test {/* vale fix: Vale.Spelling */}
   that needs RSC *and* Hono *and* ISR *and* Vercel edge
   cache headers. The Vercel preview URL is the production
   surface; localhost isn't.
@@ -916,7 +916,7 @@ Three implementation details pinned here so a future
   the `TEMPLATES_FETCH_FAILED` wire-code from PR #85).
   The handler reads the request headers via Next's
   `headers()` async API (Next 16 makes the request headers
-  available to RSCs {/* vale fix: Vale.Spelling */} through this primitive; cited in
+  available to React Server Components through this primitive; cited in
   [nextjs.org/docs/API-reference/functions/headers](https://nextjs.org/docs/api-reference/functions/headers)
   fetched 2026-08-20) and gates on the Vercel
   Automation Bypass secret:
