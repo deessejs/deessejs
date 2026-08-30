@@ -87,6 +87,7 @@ Automirroring
 Automonitoring
 autobump
 automaintained
+basePath
 autopatching
 autorestores
 bundler
