@@ -49,7 +49,7 @@ import { ContractsGrid, type Contract } from "./_components/contracts-grid"
  *   5. CLI in action — 2-col shared-border grid (terminal + commands)
  *   6. Authority — 3-col shared-border grid (manifesto + KB + changelog)
  *   7. Repeating CTA — 3-col (CTA + 2 side cards)
- *   8. Ecosystem — tagline + 7 products in a 4-col shared-border grid
+ *   8. Ecosystem — tagline + 6 products in a 4-col shared-border grid
  *   9. Testimonials — 2 cards side-by-side
  *  10. Integrations — logo wall (frameworks + providers + agents)
  *  11. Stats — 4 cells, two are tier-1 third-party metrics (npm + GH)
@@ -669,8 +669,8 @@ export default function HomePage() {
           </Cell>
         </div>
 
-        {/* 8. Ecosystem — tagline + 7 products in a shared-border grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border border-b border-border">
+        {/* 8. Ecosystem — tagline + 6 products in a 4-col shared-border grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-border border-b border-border">
           <Cell className="col-span-2 lg:col-span-1 lg:row-span-2 gap-3 justify-center">
             <p className="text-label-13 text-muted-foreground">Ecosystem</p>
             <p className="text-heading-24 lg:text-heading-32 tracking-tight text-foreground text-balance [&:not(:first-child)]:mt-0">
