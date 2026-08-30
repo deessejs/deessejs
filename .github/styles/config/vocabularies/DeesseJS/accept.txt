@@ -79,6 +79,7 @@ best-in-class
 state-of-the-art
 Astro
 async
+[Aa]utoapply
 autocreate
 [Aa]utogenerated
 autogenerate

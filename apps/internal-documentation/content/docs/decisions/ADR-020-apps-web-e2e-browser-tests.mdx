@@ -392,8 +392,8 @@ The implementation lands the `data-testid` attributes in the
     settings. Vercel automatically injects that secret
     value into the deployed runtime as
     `process.env.VERCEL_AUTOMATION_BYPASS_SECRET`
-    ([Vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation); {/* vale fix: Vale.Terms */}
-    lastUpdated 2026-04-30, fetched 2026-08-20). {/* vale fix: Vale.Spelling */} The
+    ([Vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation);
+    last updated 2026-04-30, fetched 2026-08-20). The
     preview URL becomes inaccessible without the
     secret; the secret is the gate.
 
@@ -1033,8 +1033,8 @@ Three implementation details pinned here so a future
   coexist under `apps/web/` because their `*.test.ts` vs
   `*.spec.ts` extensions keep the runners disjoint.
 - **Vercel preview URLs are publicly accessible by default**
-  ([Vercel.com/docs/deployments/generated-urls](https://vercel.com/docs/deployments/generated-urls); {/* vale fix: Vale.Terms */}
-  lastUpdated 2025-09-24). {/* vale fix: Vale.Spelling */} The e2e tests run against the
+  ([Vercel.com/docs/deployments/generated-urls](https://vercel.com/docs/deployments/generated-urls);
+  last updated 2025-09-24). The e2e tests run against the
   preview; a misconfigured preview env that exposes
   real-user data fails the e2e tests because the assertions
   include a populated catalog and a non-2xx upstream
@@ -1092,7 +1092,7 @@ All three sit on the list so the next iteration of this ADR {/* vale fix: write-
 - **2026-08-20**: investigated browser E2E options for
   Next.js 16. Confirmed via the Next docs
   ([nextjs.org/docs/app/guides/testing](https://nextjs.org/docs/app/guides/testing);
-  v16.3.1, lastUpdated 2026-02-03) that Next lists Playwright
+  v16.3.1, last updated 2026-02-03) that Next lists Playwright
   and Cypress as peer-supported without preference.
   Selected Playwright on the multi-browser, native
   DOM-assertion primitives, and canonical-presentation
