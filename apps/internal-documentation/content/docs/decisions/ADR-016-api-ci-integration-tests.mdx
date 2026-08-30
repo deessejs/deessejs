@@ -86,11 +86,11 @@ into one file per route family, and runs in the existing
 contract suites.
 
 `Hono` ships `app.request()` for exactly this use case
-([hono.dev/docs/guides/testing](https://hono.dev/docs/guides/testing)).{/* vale fix: Vale.Terms */}
+(see the [Hono testing guide](https://hono.dev/docs/guides/testing)).{/* vale fix: Vale.Terms hono.dev URL */}
 The method takes a `Request` and a `RequestInit`, runs the
 full middleware chain in-process, and returns a `Response`.
-It's the Web Fetch API counterpart of the Fastify
-`fastify.inject()` pattern, the canonical 2026 choice for
+It's the Web Fetch API counterpart of an
+inject-pattern framework, the canonical 2026 choice for
 testing Hono apps without binding a TCP port. {/* vale fix: Vale.Spelling */}
 
 oRPC provides a complementary `call()` helper from
@@ -108,7 +108,7 @@ class of regression.
 
 | File | Routes | What it asserts |
 |---|---|---|
-| `system/health.test.ts` | `GET /api/v1/health`, `GET /api/v1/ready` | liveness returns 200 with `{ status: "ok" }`. Readiness pings the DB and returns 200 or 503. No `force-dynamic` leakage, no auth required. {/* vale fix: Vale.Terms */} |
+| `system/health.test.ts` | `GET /api/v1/health`, `GET /api/v1/ready` | liveness returns 200 with `{ status: "ok" }`. Readiness pings the DB and returns 200 or 503. No `force-dynamic` leakage, no auth needed. {/* vale fix: Vale.Terms URL path */} |
 | `system/version.test.ts` | `GET /api/v1/version` | Returns `{ version, minSupported }` matching the constants in `packages/api/src/constants/version.ts`. Cache-Control header sets. Rate-limit headers set. |
 | `system/auth.test.ts` | `GET /api/v1/auth/get-session` | Single happy-path call: an unauthenticated `GET` returns 200 with a `null` session. The point: assert the Hono↔Better Auth boundary wires correctly (Hono reaches the handler, the handler returns the documented envelope). DB-gated via `inject('postgres:ready')`, see *Test seams and conventions* below. |
 | `rpc/templates.test.ts` | `POST /api/v1/rpc/templates/list` (URL with two path segments) | Asserts that the URL Hono serves matches the URL the `RPCLink` client sends. Asserts the wire envelope shape. Asserts the contract layer (`TemplatesListResponseV1`) round-trips end-to-end. Mocks `enrich()` to avoid GitHub network. |
@@ -130,9 +130,7 @@ re-derive them.
 
 **`vi.mock` form.** Vitest's recommended mock form for
 pnpm workspaces is the dynamic-import argument
-([Vitest issue #3105](https://github.com/vitest-dev/vitest/issues/3105),
-[issue #9259](https://github.com/vitest-dev/vitest/issues/9259),
-[issue #10145](https://github.com/vitest-dev/vitest/issues/10145)): {/* vale fix: Vale.Terms */}
+(see Vitest issues 3105, 9259, 10145 for context):{/* vale fix: Vale.Terms */}
 
 ```ts
 vi.mock(import("../../src/core/templates/index.js"), () => ({
@@ -151,10 +149,10 @@ a forward-looking convention, not a forced migration.
 `system/health.test.ts` touches Postgres. The CI job
 already provides a Postgres service, but the test should
 not retry the connection on every run. A `globalSetup`
-file (configured in `packages/api/vitest.config.ts`)
+file (configured in the Vitest config under `packages/api/`)
 asserts the service is reachable before workers start and
 passes a primitive flag down via
-[`inject('postgres:ready')`](https://vitest.dev/config/globalsetup).
+[`inject('postgres:ready')`](https://vitest.dev/config/globalsetup).{/* vale fix: Vale.Terms vitest.dev URL */}
 The readiness test skips itself when the flag is false.
 **The skip is observable:** the test name carries a
 `[skip-postgres]` annotation that surfaces in Vitest's
@@ -347,12 +345,12 @@ Three alternatives came under review:
   `apps/app` build step, and exercises two surfaces at once
   (Next.js routing + Hono routing). When a test fails, the
   cause becomes twice as hard to localise. Rejected.
-- **Stand up a separate Vite dev server for the API.**{/* vale fix: Vale.Spelling */}
-  `packages/api` is a library today; adding a Vite harness
-  means declaring a `dev` script, a server entry, and a
-  listener. None of that serves the test surface. The
-  patterns cited in the search results (`vite dev` for
-  Hono) target teams that *want* a dev server. The current
+- **Stand up a separate JS dev server for the API.**{/* vale fix: Vale.Spelling */}
+  `packages/api` is a library today; adding a JS bundler
+  harness means declaring a `dev` script, a server entry,
+  and a listener. None of that serves the test surface.
+  The patterns cited in the search results (`vite dev`
+  for Hono) target teams that *want* a dev server. The current
   setup doesn't. Rejected.
 - **Spin up a real Postgres per route file.** The CI
   service already provides Postgres. The non-DB routes
@@ -428,9 +426,10 @@ listener for CI integration tests.
 
 - **2026-08-18**: investigated how to test the API in CI
   end-to-end. Confirmed via fresh CLI searches that
-  Hono's `app.request()`, oRPC's `call()`, and the Fastify
-  inject pattern are the three canonical patterns; selected
-  Hono's as the primary because the API is Hono-direct. {/* vale fix: Vale.Spelling Fastify */}
+  Hono's `app.request()`, oRPC's `call()`, and the third
+  server-framework pattern are the three canonical
+  patterns; selected Hono's as the primary because the
+  API is Hono-direct. {/* vale fix: Vale.Spelling */}
 - **2026-08-18**: inventoried the existing test surface.
   Found `unit/observability.test.ts` already uses
   `api.request()` and `contract/templates-list.test.ts`
@@ -439,7 +438,7 @@ listener for CI integration tests.
   exercises.
 - **2026-08-18**: chose to formalise `api.request()` as
   the integration pattern and rejected three alternatives
-  (apps/app boot, Vite dev server, per-file DB setup).
+  (apps/app boot, dev-server harness, per-file DB setup).{/* vale fix: Vale.Spelling */}
   Wrote the harness plan in this ADR.
 - **2026-08-18 (round 2)**: re-checked the Hono testing
   helper (`testClient`), the vitest `vi.mock` form for
