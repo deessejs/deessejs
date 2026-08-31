@@ -29,12 +29,11 @@ export const auth = betterAuth({
       "app.deessejs.com",
       "deessejs.com",
       "docs.deessejs.com",
+      "*.deessejs.com",
       "*.vercel.app",
       // Spread localhost in dev only; see pitfalls.md §5 for the
-      // NODE_ENV-gated reason.
-      ...(process.env.NODE_ENV === "development"
-        ? ["localhost:3000", "localhost:3001"]
-        : []),
+      // NODE_ENV-gated reason. `localhost:*` matches any port.
+      ...(process.env.NODE_ENV === "development" ? ["localhost:*"] : []),
     ],
     protocol: process.env.NODE_ENV === "development" ? "http" : "https",
   },

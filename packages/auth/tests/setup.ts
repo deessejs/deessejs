@@ -33,7 +33,14 @@ export const auth = betterAuth({
   // config at construction time, so we duplicate the value here. See
   // packages/auth/src/auth.ts and pitfalls.md §5 for the rationale.
   baseURL: {
-    allowedHosts: ["localhost:3000", "localhost:3001", "*.vercel.app"],
+    allowedHosts: [
+      "app.deessejs.com",
+      "deessejs.com",
+      "docs.deessejs.com",
+      "*.deessejs.com",
+      "*.vercel.app",
+      "localhost:*",
+    ],
     protocol: "http",
     fallback: "http://localhost:3000",
   },
