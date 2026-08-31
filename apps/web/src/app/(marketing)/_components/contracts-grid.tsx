@@ -389,28 +389,28 @@ const traceRows: ReadonlyArray<TraceRowSpec> = [
     label: "email.send",
     status: "ok",
     duration: "1.2s",
-    completesAt: 600,
+    completesAt: 1800,
   },
   {
     icon: Loader,
     label: "slack.notify",
     status: "running",
     duration: "1.1s",
-    completesAt: 1100,
+    completesAt: 3300,
   },
   {
     icon: Check,
     label: "db.write",
     status: "ok",
     duration: "240ms",
-    completesAt: 1500,
+    completesAt: 4500,
   },
   {
     icon: Check,
     label: "webhook.dispatch",
     status: "ok",
     duration: "80ms",
-    completesAt: 1900,
+    completesAt: 5700,
   },
 ]
 
