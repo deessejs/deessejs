@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { AnimatePresence } from "motion/react"
 
 /**
  * Animated Contracts grid for the marketing homepage.
@@ -180,15 +181,53 @@ export function ContractsGrid({
 // ---------------------------------------------------------------------------
 
 /**
- * The auth form reveals its two fields in sequence. The fields are
- * CSS-only — we animate `width` from 0 to 100% on a fixed-width container.
+ * Three-phase authentication flow: form → loading → success.
  *
- * The only colour on this cell is the macOS traffic-light dots — the
- * rest of the mockup stays monochrome to match the rest of the home.
+ *   1. form    — email + password fill in, Continue button appears
+ *   2. loading — form fades, spinner + "Signing in…" appears
+ *   3. success — avatar + "Welcome back" + green check
+ *
+ * The phase progresses on a setTimeout schedule once the cell has
+ * entered the viewport (viewport={{ once: true }} on the parent
+ * grid handles the trigger). Phase transitions are sequenced with
+ * AnimatePresence mode="wait" so one view fully exits before the
+ * next enters — no overlap.
+ *
+ * Colour discipline: only the macOS traffic-light dots and the
+ * final success check carry colour. Everything else stays
+ * monochrome, matching the rest of the home.
  */
-function AuthFormMockup() {
+type AuthPhase = "form" | "loading" | "success"
+
+const AUTH_TIMINGS = {
+  /** How long the form sits filled before the auto-submit fires. */
+  formHoldMs: 900,
+  /** How long the loading state stays before flipping to success. */
+  loadingMs: 1400,
+} as const
+
+function AuthFlowMockup() {
+  const [phase, setPhase] = useState<AuthPhase>("form")
+
+  useEffect(() => {
+    const formTimer = window.setTimeout(
+      () => setPhase("loading"),
+      AUTH_TIMINGS.formHoldMs,
+    )
+    const loadingTimer = window.setTimeout(
+      () => setPhase("success"),
+      AUTH_TIMINGS.formHoldMs + AUTH_TIMINGS.loadingMs,
+    )
+    return () => {
+      window.clearTimeout(formTimer)
+      window.clearTimeout(loadingTimer)
+    }
+  }, [])
+
   return (
     <div className="p-3">
+      {/* Window chrome stays mounted through all phases so the
+          "this is a browser" framing is consistent. */}
       <div className="mb-2 flex items-center gap-1.5 border-b border-border pb-1.5">
         <span className="size-2 rounded-full bg-red-500" aria-hidden />
         <span className="size-2 rounded-full bg-amber-500" aria-hidden />
@@ -197,31 +236,80 @@ function AuthFormMockup() {
           sign-in
         </span>
       </div>
-      <div className="flex flex-col gap-2 p-1.5">
-        <FillField label="email" delay={0.1} />
-        <FillField label="password" delay={0.45} />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.85, duration: 0.3 }}
-          className="mt-1 flex items-center justify-end"
-        >
-          <span className="rounded-sm border border-zinc-800 bg-zinc-950 px-2 py-0.5 font-mono text-[10px] text-zinc-100">
-            Continue →
-          </span>
-        </motion.div>
+
+      <div className="relative flex h-[88px] items-center justify-center p-1.5">
+        <AnimatePresence mode="wait" initial={false}>
+          {phase === "form" && (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.25 }}
+              className="absolute inset-x-1.5 inset-y-0 flex flex-col gap-2 justify-center"
+            >
+              <FillField label="email" delay={0.1} />
+              <FillField label="password" delay={0.45} />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.85, duration: 0.3 }}
+                className="mt-1 flex items-center justify-end"
+              >
+                <span className="rounded-sm border border-zinc-800 bg-zinc-950 px-2 py-0.5 font-mono text-[10px] text-zinc-100">
+                  Continue →
+                </span>
+              </motion.div>
+            </motion.div>
+          )}
+          {phase === "loading" && (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-x-1.5 inset-y-0 flex flex-col items-center justify-center gap-2"
+            >
+              <Loader
+                className="size-4 animate-spin text-foreground"
+                aria-hidden
+              />
+              <span className="font-mono text-[10px] text-muted-foreground">
+                Signing in…
+              </span>
+            </motion.div>
+          )}
+          {phase === "success" && (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-x-1.5 inset-y-0 flex items-center justify-center gap-2"
+            >
+              <span
+                aria-hidden
+                className="flex size-6 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/15"
+              >
+                <Check
+                  className="size-3 text-emerald-500"
+                  strokeWidth={3}
+                  aria-hidden
+                />
+              </span>
+              <span className="font-mono text-[10px] text-foreground">
+                Authenticated
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )
 }
 
-function FillField({
-  label,
-  delay,
-}: {
-  label: string
-  delay: number
-}) {
+function FillField({ label, delay }: { label: string; delay: number }) {
   return (
     <div className="flex items-center gap-2 rounded-sm border border-border bg-background px-2 py-1">
       <span className="font-mono text-[10px] text-muted-foreground">{label}</span>
@@ -701,7 +789,7 @@ function ContractMockup({
 }) {
   switch (kind) {
     case "auth-form":
-      return <AuthFormMockup />
+      return <AuthFlowMockup />
     case "db-terminal":
       return <DbTerminalMockup />
     case "billing-widget":
