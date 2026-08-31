@@ -5,6 +5,8 @@
   "root": true,
   "pages": [
     "index",
-    "release-engineering"
+    "latest-release",
+    "canary-releases",
+    "pr-previews"
   ]
 }
