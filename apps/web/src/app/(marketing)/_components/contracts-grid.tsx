@@ -200,15 +200,18 @@ export function ContractsGrid({
 type AuthPhase = "form" | "loading" | "success"
 
 /** Per-character typing speed for the Auth fields (ms / char). */
-const TYPING_SPEED_MS = 60
+const TYPING_SPEED_MS = 100
 
 /** How long the loading state stays before flipping to success. */
 const LOADING_MS = 1400
 
 /** How long the filled form sits before the auto-submit fires.
- *  Must be at least the full password typing duration, otherwise
- *  the typing gets cut off mid-char. */
-const FORM_HOLD_MS = 1700
+ *  Must be at least the full password typing duration (startMs +
+ *  text.length × speedMs) plus a small breath. With the current
+ *  1100ms password start and 9-char password at 100ms/char, the
+ *  last char lands at 1100 + 9*100 = 2000ms; we round up to
+ *  2300ms. */
+const FORM_HOLD_MS = 2300
 
 function AuthFlowMockup() {
   const [phase, setPhase] = useState<AuthPhase>("form")
