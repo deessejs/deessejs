@@ -37,6 +37,7 @@ import { useEffect, useState } from "react"
 import * as motion from "motion/react-client"
 import {
   Activity,
+  AlertTriangle,
   Boxes,
   Check,
   CircleDollarSign,
@@ -452,7 +453,15 @@ function JobsTraceMockup() {
   return (
     <ul className="flex flex-col divide-y divide-border">
       {traceRows.map((row, i) => {
-        const RowIcon = row.icon
+        // Icon is driven by the *current* status, not the row's
+        // static field — every row starts as running, so they all
+        // show the spinning Loader until their timer flips them.
+        const RowIcon =
+          (overrides[i] ?? row.status) === "running"
+            ? Loader
+            : (overrides[i] ?? row.status) === "error"
+              ? AlertTriangle
+              : Check
         const status = overrides[i] ?? row.status
         const color =
           status === "ok"
