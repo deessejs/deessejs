@@ -199,24 +199,25 @@ export function ContractsGrid({
  */
 type AuthPhase = "form" | "loading" | "success"
 
-const AUTH_TIMINGS = {
-  /** How long the form sits filled before the auto-submit fires. */
-  formHoldMs: 900,
-  /** How long the loading state stays before flipping to success. */
-  loadingMs: 1400,
-} as const
+/** Per-character typing speed for the Auth fields (ms / char). */
+const TYPING_SPEED_MS = 60
+
+/** How long the loading state stays before flipping to success. */
+const LOADING_MS = 1400
+
+/** How long the filled form sits before the auto-submit fires.
+ *  Must be at least the full password typing duration, otherwise
+ *  the typing gets cut off mid-char. */
+const FORM_HOLD_MS = 1700
 
 function AuthFlowMockup() {
   const [phase, setPhase] = useState<AuthPhase>("form")
 
   useEffect(() => {
-    const formTimer = window.setTimeout(
-      () => setPhase("loading"),
-      AUTH_TIMINGS.formHoldMs,
-    )
+    const formTimer = window.setTimeout(() => setPhase("loading"), FORM_HOLD_MS)
     const loadingTimer = window.setTimeout(
       () => setPhase("success"),
-      AUTH_TIMINGS.formHoldMs + AUTH_TIMINGS.loadingMs,
+      FORM_HOLD_MS + LOADING_MS,
     )
     return () => {
       window.clearTimeout(formTimer)
@@ -337,7 +338,7 @@ function TypingField({
   text,
   mask = false,
   startMs,
-  speedMs = 60,
+  speedMs = TYPING_SPEED_MS,
 }: {
   label: string
   text: string
@@ -348,16 +349,27 @@ function TypingField({
   const [shown, setShown] = useState("")
 
   useEffect(() => {
-    let i = 0
-    const interval = window.setInterval(() => {
-      i++
+    // Recursive setTimeout instead of setInterval — easier to cancel
+    // cleanly, no risk of overlapping fires if a tab was throttled,
+    // and the last character still lands at the right time.
+    let cancelled = false
+    let timer: number | undefined
+
+    const tick = (i: number) => {
+      if (cancelled) return
       setShown(mask ? "●".repeat(i) : text.slice(0, i))
-      if (i >= text.length) {
-        window.clearInterval(interval)
+      if (i < text.length) {
+        timer = window.setTimeout(() => tick(i + 1), speedMs)
       }
-    }, startMs + speedMs)
+    }
+
+    timer = window.setTimeout(() => tick(1), startMs)
+
     return () => {
-      window.clearInterval(interval)
+      cancelled = true
+      if (timer !== undefined) {
+        window.clearTimeout(timer)
+      }
     }
   }, [text, mask, startMs, speedMs])
 
