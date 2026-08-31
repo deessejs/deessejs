@@ -128,58 +128,75 @@ export function ContractsGrid({
             initial="rest"
             whileHover="hover"
             animate="rest"
-            className="group relative flex flex-col gap-4 p-6 pr-14"
+            className="group relative flex flex-col gap-4 p-6"
           >
+            {/* Ghost overlay — entire cell surface is a link to the
+                same destination. Sits at z-0 so the content layer can
+                stack above it. The corner button at z-20 also sits
+                above, so the corner target wins when both overlap. */}
+            <Link
+              href={`/templates?tags=["${contract.title.toLowerCase()}"]`}
+              aria-label={`Browse all ${contract.title} templates`}
+              className="absolute inset-0 z-0"
+            />
+            {/* Corner button — same destination, but opens in a new
+                tab so the user can keep the homepage open. Stacks
+                above both the ghost link and the content. */}
             <Link
               href={`/templates?tags=["${contract.title.toLowerCase()}"]`}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`Browse all ${contract.title} templates`}
-              className="absolute top-0 right-0 z-10 flex size-9 items-center justify-center border-l border-b border-border text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
+              aria-label={`Open ${contract.title} templates in a new tab`}
+              className="absolute top-0 right-0 z-20 flex size-9 items-center justify-center border-l border-b border-border text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
             >
               <ArrowUpRight className="size-3.5" aria-hidden />
             </Link>
-            <div className="flex items-center gap-2">
-              <span className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40">
-                <Icon className="text-foreground size-4" aria-hidden />
-              </span>
-              <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
-                {contract.title}
-              </h3>
+            {/* Content layer — sits above the ghost link so cards
+                remain clickable but the mockup / text / chips stay
+                readable and selectable. */}
+            <div className="relative z-10 flex flex-col gap-4 pr-14">
+              <div className="flex items-center gap-2">
+                <span className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40">
+                  <Icon className="text-foreground size-4" aria-hidden />
+                </span>
+                <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                  {contract.title}
+                </h3>
+              </div>
+
+              <div className="rounded-md border border-border bg-background overflow-hidden">
+                <ContractMockup kind={contract.mockup} />
+              </div>
+
+              <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+                {contract.description}
+              </p>
+
+              <ul className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+                {contract.providers.map((provider) => (
+                  <li
+                    key={provider.name}
+                    className="inline-flex items-center gap-1.5 text-label-12 text-muted-foreground"
+                  >
+                    {provider.logo.endsWith("-missing") ? null : (
+                      // Plain <img> — see the ContractsGrid note in
+                      // apps/web/src/app/(marketing)/page.tsx for why next/image
+                      // is not used.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/logos/${provider.logo}.svg`}
+                        alt=""
+                        width={12}
+                        height={12}
+                        className="size-3 shrink-0 dark:invert"
+                        aria-hidden
+                      />
+                    )}
+                    {provider.name}
+                  </li>
+                ))}
+              </ul>
             </div>
-
-            <div className="rounded-md border border-border bg-background overflow-hidden">
-              <ContractMockup kind={contract.mockup} />
-            </div>
-
-            <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-              {contract.description}
-            </p>
-
-            <ul className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
-              {contract.providers.map((provider) => (
-                <li
-                  key={provider.name}
-                  className="inline-flex items-center gap-1.5 text-label-12 text-muted-foreground"
-                >
-                  {provider.logo.endsWith("-missing") ? null : (
-                    // Plain <img> — see the ContractsGrid note in
-                    // apps/web/src/app/(marketing)/page.tsx for why next/image
-                    // is not used.
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={`/logos/${provider.logo}.svg`}
-                      alt=""
-                      width={12}
-                      height={12}
-                      className="size-3 shrink-0 dark:invert"
-                      aria-hidden
-                    />
-                  )}
-                  {provider.name}
-                </li>
-              ))}
-            </ul>
           </motion.article>
         )
       })}
