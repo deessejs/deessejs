@@ -1,0 +1,10 @@
+{
+  "title": "Processes",
+  "description": "Operational procedures for recurring engineering tasks.",
+  "icon": "Workflow",
+  "root": true,
+  "pages": [
+    "index",
+    "release-engineering"
+  ]
+}
