@@ -128,14 +128,14 @@ export function ContractsGrid({
             initial="rest"
             whileHover="hover"
             animate="rest"
-            className="relative flex flex-col gap-4 p-6 pr-14"
+            className="group relative flex flex-col gap-4 p-6 pr-14"
           >
             <Link
               href={`/templates?tags=["${contract.title.toLowerCase()}"]`}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`Browse all ${contract.title} templates`}
-              className="absolute top-0 right-0 z-10 flex size-9 items-center justify-center border-l border-b border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="absolute top-0 right-0 z-10 flex size-9 items-center justify-center border-l border-b border-border text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
             >
               <ArrowUpRight className="size-3.5" aria-hidden />
             </Link>
