@@ -16,7 +16,8 @@
 | `emailVerification.sendOnSignUp: true` (and `sendOnSignIn: true`) | Locked | `email.md` |
 | `experimental.joins: true` | Locked | `setup.md` |
 | `advanced.useSecureCookies = NODE_ENV === "production"` | Locked | `session.md`, `pitfalls.md` §4 |
-| `trustedOrigins` localhost gated on `NODE_ENV === "development"` | Locked | `session.md`, `pitfalls.md` §5 |
+| `baseURL: { allowedHosts, protocol }` with `*.vercel.app` wildcard for previews | Locked | `setup.md`, `pitfalls.md` §5 |
+| `trustedOrigins` ad-hoc extras from `ALLOWED_ORIGINS` env (prod origins auto-added via `allowedHosts`) | Locked | `session.md`, `pitfalls.md` §5 |
 
 **Sources:**
 - Session defaults: [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options)

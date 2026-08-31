@@ -63,3 +63,15 @@ throw new ORPCError({ code: "UNAUTHORIZED", message: "Authentication required" }
 ```
 
 The team tracks this as a minor issue since oRPC may still surface the message, but the status code may be wrong (500 instead of 401). <!-- vale fix: write-good.Passive -->
+
+---
+
+## 5. Fixed `baseURL` Breaks Vercel Preview Deployments
+
+A single fixed `baseURL` (e.g. `serverEnv.BETTER_AUTH_URL`) is captured at construction time. On a Vercel preview deployment (`<app>-git-<branch>-<user>.vercel.app`), the preview origin is neither the configured `baseURL` nor in the explicit `trustedOrigins` list, so the handler rejects every request with `Invalid Origin`. Even when a request slips through, the URLs Better Auth generates for reset-password, verify-email, and the device-flow are baked with the prod `baseURL`, so the user lands on `app.deessejs.com` instead of the preview host.
+
+**Current state in this repo (verified 2026-09-01):** `packages/auth/src/auth.ts:81-84` configures `baseURL` as `{ allowedHosts, protocol }`. `allowedHosts` is built from `PRODUCTION_ALLOWED_HOSTS` (`app.deessejs.com`, `deessejs.com`, `docs.deessejs.com`, `*.vercel.app`) plus `DEV_ALLOWED_HOSTS` (`localhost:3000`, `localhost:3001`) when `NODE_ENV === "development"`. The wildcard `*.vercel.app` covers every preview URL without per-preview env configuration. `protocol` is `"http"` in dev, `"https"` otherwise. The previous `trustedOrigins` spread that re-derived the prod origins from `WEB_URL`/`APP_URL`/`DOCS_URL` is gone — Better Auth auto-adds each `allowedHosts` entry to `trustedOrigins` (with both `http` and `https` for localhost). `ALLOWED_ORIGINS` remains for ad-hoc extras (staging, partner origins).
+
+The pre-existing `serverEnv.BETTER_AUTH_URL` env field is kept for tooling (`drizzle-kit`, scripts) but is no longer read by the auth handler. Do not remove it from the env schema as part of an unrelated PR.
+
+**Source:** [better-auth.com/docs/guides/dynamic-base-url](https://better-auth.com/docs/guides/dynamic-base-url), [better-auth#2203](https://github.com/better-auth/better-auth/issues/2203) (initial report, workarounds), [better-auth#8009](https://github.com/better-auth/better-auth/commit/197792318) (introduced `allowedHosts`).

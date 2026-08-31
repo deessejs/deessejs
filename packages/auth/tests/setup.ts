@@ -19,7 +19,16 @@ const db = drizzle(pool)
 
 // Test auth instance with testUtils
 export const auth = betterAuth({
-  baseURL: serverEnv.BETTER_AUTH_URL,
+  // Mirror the production dynamic form so tests exercise the same
+  // per-request host resolution. Test runs are always local; localhost
+  // is included via the NODE_ENV=development branch in the prod config.
+  // We pin the object here (instead of importing from src/auth.ts) to
+  // keep this file free of the email/transport wiring — the test auth
+  // intentionally drops those plugins.
+  baseURL: {
+    allowedHosts: ["localhost:3000", "localhost:3001", "*.vercel.app"],
+    protocol: "http",
+  },
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,
