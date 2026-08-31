@@ -154,7 +154,7 @@ export function ContractsGrid({
             {/* Content layer — sits above the ghost link so cards
                 remain clickable but the mockup / text / chips stay
                 readable and selectable. */}
-            <div className="relative z-10 flex flex-col gap-4 pr-14">
+            <div className="relative z-10 flex flex-col gap-4">
               <div className="flex items-center gap-2">
                 <span className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40">
                   <Icon className="text-foreground size-4" aria-hidden />
