@@ -139,18 +139,27 @@ export function ContractsGrid({
               aria-label={`Browse all ${contract.title} templates`}
               className="absolute inset-0 z-0"
             />
-            {/* Corner button — same destination, but opens in a new
-                tab so the user can keep the homepage open. Stacks
-                above both the ghost link and the content. */}
-            <Link
-              href={`/templates?tags=["${contract.title.toLowerCase()}"]`}
-              target="_blank"
-              rel="noopener noreferrer"
+            {/* Corner indicator — purely visual cue that the card
+                links to the filtered registry. Opens the same
+                destination in a new tab via window.open so the
+                user can keep the homepage open. e.stopPropagation()
+                keeps the parent ghost link from also firing. */}
+            {/* eslint-disable-next-line react/forbid-elements */}
+            <button
+              type="button"
               aria-label={`Open ${contract.title} templates in a new tab`}
-              className="absolute top-0 right-0 z-20 flex size-9 items-center justify-center border-l border-b border-border text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
+              onClick={(e) => {
+                e.stopPropagation()
+                window.open(
+                  `/templates?tags=["${contract.title.toLowerCase()}"]`,
+                  "_blank",
+                  "noopener,noreferrer",
+                )
+              }}
+              className="absolute top-0 right-0 z-20 flex size-9 cursor-pointer items-center justify-center border-l border-b border-border text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
             >
               <ArrowUpRight className="size-3.5" aria-hidden />
-            </Link>
+            </button>
             {/* Content layer — sits above the ghost link so cards
                 remain clickable but the mockup / text / chips stay
                 readable and selectable. */}
