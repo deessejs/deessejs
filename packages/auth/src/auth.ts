@@ -81,6 +81,18 @@ export const auth = betterAuth({
   baseURL: {
     allowedHosts: [...AUTH_ALLOWED_HOSTS],
     protocol: process.env.NODE_ENV === "development" ? "http" : "https",
+    // Fallback used only when a direct `auth.api.X()` call doesn't forward
+    // request headers and no host can be resolved from `x-forwarded-host` /
+    // `host` / request URL. Production requests always arrive with a `host`
+    // header (Vercel sets it), so this is never reached in normal operation.
+    // It does kick in for in-process Hono requests that omit the host
+    // header (e.g. tests calling `api.request("/...")` directly without
+    // forwarding request context) and for misconfigured reverse proxies
+    // that strip `host` upstream. See pitfalls.md §5 for the rationale.
+    fallback:
+      process.env.NODE_ENV === "development"
+        ? "http://localhost:3000"
+        : "https://app.deessejs.com",
   },
   basePath: AUTH_BASE_PATH,
   secret: serverEnv.BETTER_AUTH_SECRET,
