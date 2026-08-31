@@ -520,7 +520,11 @@ export default function HomePage() {
             OTel waterfall). */}
         <div className="border-b border-border">
           <Cell className="col-span-full !p-0 border-0">
-            <div className="flex flex-col gap-2 p-6 border-b border-border">
+            <div className="relative flex flex-col gap-2 p-6 pr-16 border-b border-border">
+              <OutcomeCardCornerLink
+                href="/contracts"
+                ariaLabel="Browse all contracts"
+              />
               <p className="text-label-13 text-muted-foreground">
                 Wired into every starter
               </p>
