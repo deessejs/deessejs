@@ -188,20 +188,8 @@ const PricingPage = () => {
         </p>
       </header>
 
-      <Separator />
-
       {/* Three-layer cards */}
-      <section className="flex flex-col gap-8" aria-labelledby="layers-heading">
-        <div className="flex flex-col gap-2">
-          <h2 id="layers-heading" className="text-heading-32 tracking-tight">
-            The three layers
-          </h2>
-          <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Every template ships complete. A free landing template is a
-            complete landing template, not a stripped-down Pro. Pro contains
-            more built-in work, not more knobs.
-          </p>
-        </div>
+      <section className="flex flex-col gap-8">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {PRICING_LAYERS.map((layer) => (
             <LayerCard key={layer.id} layer={layer} />
