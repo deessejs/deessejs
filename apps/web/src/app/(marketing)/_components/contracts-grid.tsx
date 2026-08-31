@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useState } from "react"
+
 /**
  * Animated Contracts grid for the marketing homepage.
  *
@@ -377,31 +379,85 @@ type TraceRowSpec = {
   label: string
   status: "ok" | "running" | "error"
   duration: string
+  /** Delay (ms) before this row transitions from running to ok. */
+  completesAt: number
 }
 
 const traceRows: ReadonlyArray<TraceRowSpec> = [
-  { icon: Check, label: "email.send", status: "ok", duration: "1.2s" },
-  { icon: Loader, label: "slack.notify", status: "running", duration: "1.1s" },
-  { icon: Check, label: "db.write", status: "ok", duration: "240ms" },
-  { icon: Check, label: "webhook.dispatch", status: "ok", duration: "80ms" },
+  {
+    icon: Check,
+    label: "email.send",
+    status: "ok",
+    duration: "1.2s",
+    completesAt: 600,
+  },
+  {
+    icon: Loader,
+    label: "slack.notify",
+    status: "running",
+    duration: "1.1s",
+    completesAt: 1100,
+  },
+  {
+    icon: Check,
+    label: "db.write",
+    status: "ok",
+    duration: "240ms",
+    completesAt: 1500,
+  },
+  {
+    icon: Check,
+    label: "webhook.dispatch",
+    status: "ok",
+    duration: "80ms",
+    completesAt: 1900,
+  },
 ]
 
 /**
- * Per-row colour mapping:
- *   - ok      → emerald (Check + green dot)
- *   - running → violet  (Loader + violet dot, kept the existing pulse)
- *   - error   → red
- * The running pulse is colour-agnostic so it stays on the violet dot.
+ * Top-level helper so the per-row status setter doesn't deepen the
+ * useEffect's callback nesting past the 4-level lint ceiling.
+ */
+function markComplete(
+  setOverrides: React.Dispatch<
+    React.SetStateAction<Record<number, TraceRowSpec["status"]>>
+  >,
+  i: number,
+  status: TraceRowSpec["status"],
+) {
+  setOverrides((prev) => ({ ...prev, [i]: status }))
+}
+
+/**
+ * All four rows start in `running` and complete one by one. We keep a
+ * per-row override in state so the static `status` field in the spec
+ * becomes a starting hint only — the actual transition is driven by
+ * the timer set up in the useEffect below.
  */
 function JobsTraceMockup() {
+  // index → status override
+  const [overrides, setOverrides] = useState<Record<number, TraceRowSpec["status"]>>(
+    () => Object.fromEntries(traceRows.map((_, i) => [i, "running" as const])),
+  )
+
+  useEffect(() => {
+    const timers = traceRows.map((row, i) =>
+      window.setTimeout(() => markComplete(setOverrides, i, row.status), row.completesAt),
+    )
+    return () => {
+      timers.forEach(clearTimeout)
+    }
+  }, [])
+
   return (
     <ul className="flex flex-col divide-y divide-border">
       {traceRows.map((row, i) => {
         const RowIcon = row.icon
+        const status = overrides[i] ?? row.status
         const color =
-          row.status === "ok"
+          status === "ok"
             ? "text-emerald-500"
-            : row.status === "running"
+            : status === "running"
               ? "text-violet-500"
               : "text-red-500"
         return (
@@ -417,7 +473,7 @@ function JobsTraceMockup() {
               className={cn(
                 "size-3 shrink-0",
                 color,
-                row.status === "running" && "animate-spin",
+                status === "running" && "animate-spin",
               )}
               aria-hidden
             />
@@ -425,7 +481,7 @@ function JobsTraceMockup() {
             <span
               className={cn(
                 "ml-auto",
-                row.status === "error" ? color : "text-muted-foreground",
+                status === "error" ? color : "text-muted-foreground",
               )}
             >
               {row.duration}
