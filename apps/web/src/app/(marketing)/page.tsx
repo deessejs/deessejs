@@ -22,6 +22,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
+import { OutcomeCardCornerLink } from "@/components/outcome-card-link"
 import { ContractsGrid, type Contract } from "./_components/contracts-grid"
 
 /**
@@ -431,76 +432,84 @@ export default function HomePage() {
           {OUTCOMES.map((outcome) => {
             const Icon = outcome.icon
             return (
-              <Link
+              <div
                 key={outcome.slug}
-                href={outcome.href}
-                aria-label={`${outcome.name} — ${outcome.scenario}`}
-                className="group flex flex-col gap-4 p-6 transition-colors hover:bg-accent/40"
+                className="group relative transition-colors hover:bg-accent/40"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <Icon
-                    className="text-foreground size-5 shrink-0"
-                    aria-hidden
-                  />
-                  {outcome.status === "shipped" ? (
-                    <Badge
-                      variant="success"
-                      className="text-label-12 gap-1.5"
-                    >
-                      <span
-                        className="size-1.5 rounded-full bg-emerald-500"
-                        aria-hidden
-                      />
-                      Shipped
-                    </Badge>
-                  ) : (
-                    <Badge
-                      variant="warning"
-                      className="text-label-12 gap-1.5"
-                    >
-                      <span
-                        className="size-1.5 rounded-full bg-amber-500"
-                        aria-hidden
-                      />
-                      Coming soon
-                    </Badge>
-                  )}
-                </div>
-                <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
-                  {outcome.name}
-                </h3>
-                <p className="text-copy-14 text-muted-foreground leading-6 line-clamp-4 [&:not(:first-child)]:mt-0">
-                  {outcome.blurb}
-                </p>
-                <ul className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
-                  {outcome.stack.map((item) => {
-                    const logo = STACK_LOGO[item]
-                    return (
-                      <li
-                        key={item}
-                        className="inline-flex items-center gap-1.5 text-label-12 text-muted-foreground"
+                <OutcomeCardCornerLink
+                  href={`/templates?tags=["${outcome.slug}"]`}
+                  ariaLabel={`Browse all ${outcome.name} templates`}
+                />
+                <Link
+                  href={outcome.href}
+                  aria-label={`${outcome.name} — ${outcome.scenario}`}
+                  className="flex flex-col gap-4 p-6 pr-14"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <Icon
+                      className="text-foreground size-5 shrink-0"
+                      aria-hidden
+                    />
+                    {outcome.status === "shipped" ? (
+                      <Badge
+                        variant="success"
+                        className="text-label-12 gap-1.5"
                       >
-                        {logo ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={`/logos/${logo}.svg`}
-                            alt=""
-                            width={12}
-                            height={12}
-                            className="size-3 shrink-0 dark:invert"
-                            aria-hidden
-                          />
-                        ) : null}
-                        {item}
-                      </li>
-                    )
-                  })}
-                </ul>
-                <p className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 transition-transform group-hover:translate-x-0.5">
-                  Open the template
-                  <ArrowRight className="size-3" aria-hidden />
-                </p>
-              </Link>
+                        <span
+                          className="size-1.5 rounded-full bg-emerald-500"
+                          aria-hidden
+                        />
+                        Shipped
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="warning"
+                        className="text-label-12 gap-1.5"
+                      >
+                        <span
+                          className="size-1.5 rounded-full bg-amber-500"
+                          aria-hidden
+                        />
+                        Coming soon
+                      </Badge>
+                    )}
+                  </div>
+                  <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                    {outcome.name}
+                  </h3>
+                  <p className="text-copy-14 text-muted-foreground leading-6 line-clamp-4 [&:not(:first-child)]:mt-0">
+                    {outcome.blurb}
+                  </p>
+                  <ul className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+                    {outcome.stack.map((item) => {
+                      const logo = STACK_LOGO[item]
+                      return (
+                        <li
+                          key={item}
+                          className="inline-flex items-center gap-1.5 text-label-12 text-muted-foreground"
+                        >
+                          {logo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={`/logos/${logo}.svg`}
+                              alt=""
+                              width={12}
+                              height={12}
+                              className="size-3 shrink-0 dark:invert"
+                              aria-hidden
+                            />
+                          ) : null}
+                          {item}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  <p className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 transition-transform group-hover:translate-x-0.5">
+                    Open the template
+                    <ArrowRight className="size-3" aria-hidden />
+                  </p>
+                </Link>
+              </div>
             )
           })}
         </div>
