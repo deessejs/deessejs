@@ -28,6 +28,9 @@
     "ADR-020-device-auth-cli",
     "ADR-021-inter-app-url-config",
     "ADR-022-cli-device-auth-fixes",
-    "ADR-023-apps-web-session-aware-header"
+    "ADR-023-apps-web-session-aware-header",
+    "ADR-024-auto-publish-on-main",
+    "ADR-025-auto-canary-on-staging",
+    "ADR-026-changesets-merge-gate"
   ]
 }

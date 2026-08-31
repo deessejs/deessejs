@@ -1,0 +1,112 @@
+---
+title: Auto-publish on main
+description: Remove the human gate at staging to main. Promote the human gate to PR-approval time via branch protection.
+---
+
+# ADR-024: Auto-publish on main
+
+## Status
+
+Proposed (2026-09). Supersedes the staging-first human-promotion rule in `AGENTS.md` for the release path on `main`. Awaiting review.
+
+## Context
+
+Today, releasing `@deessejs/cli@latest` requires a human to merge a promotion PR from `staging` to `main`. The release workflow (`release.yml`) then runs on push to `main`, gated by `.changeset` in the commit message. The manual gate exists because `AGENTS.md` says:
+
+> `staging → main` is the release path — done manually by a human, after CI green and review approval.
+
+The intent is to give a human a window to abort the release if something looks wrong on staging before it reaches production.
+
+In practice, the gate produces three concrete frictions:
+
+1. **The release is gated on whoever is on call.** A green staging build at 22:00 on a Friday waits for a human Monday morning. Releases are not continuous.
+2. **The promotion PR adds no review value.** It is `staging → main` with no new code; reviewers approve it on autopilot. The "human approval" is procedural, not substantive.
+3. **The same conditions are already enforced at PR merge time.** A PR landing on `staging` already passed code review, CI, and changesets-check. By the time staging is green, the work has been approved twice (once per feature PR, once implicitly by the absence of a revert).
+
+This ADR moves the human gate from `merge to main` to `approve the feature PR on staging`. The promotion becomes automatic once the human-approved work reaches `main`.
+
+## Decision
+
+Push to `main` whose commit message contains `.changeset` triggers `release.yml` and publishes `@latest` automatically, without a human merge step. The release.yml workflow stays unchanged; only its trigger semantics are clarified.
+
+### What the new gate looks like
+
+Three conditions must be true on the PR before it can land on staging, and therefore before it propagates to main:
+
+1. **CI is green.** The existing `ci.yml` workflow.
+2. **changesets-check is green.** The check that the PR contains a `.changeset/*.md` file when it touches `apps/cli/**`, `packages/contracts/**`, or `packages/api/**`. See [ADR-026](./ADR-026-changesets-merge-gate.mdx).
+3. **At least one approving code review.** GitHub branch protection on `staging` and `main`.
+
+These three conditions replace the manual merge step. The protection on `main` is configured to require the same checks as `staging` plus a `main` branch-specific CI run, so a merge from `staging` to `main` cannot bypass any gate.
+
+### What changes in `AGENTS.md`
+
+The two relevant lines are replaced:
+
+> ~~`staging → main` is the release path — done manually by a human, after CI green and review approval.~~
+
+> The release path is `staging → main`. The human gate lives at PR-approval time (code review on the feature PR). A merge to `staging` whose CI and changesets-check are green auto-propagates to `main` once `main`'s protection checks pass.
+
+> ~~Never merge a PR into `main` from the agent — `main` is owned by the human release process.~~
+
+> Agents must not bypass the branch protection on `main`. A human can disable protection for an emergency hotfix, document the reason in the merge commit body, and re-enable it within 24 hours.
+
+### What changes in `release.yml`
+
+Nothing. The workflow already triggers on `push: branches: [main]` and gates on `contains(github.event.head_commit.message, '.changeset')`. The condition is now sufficient for publication; the human merge step is removed.
+
+### Commit message contract
+
+The existing convention is that merge commits to `main` carry `.changeset` in their message. This convention is enforced by `changesets-check.yml` failing the PR if no changeset is present. Auto-merge on `staging` (squash or rebase) preserves the commit message; the squash-merge PR title (typically the PR title prefixed with the PR number) is `.changeset` only when the changesets-check job wrote that token into the body. We rely on the existing squash-merge convention; no new tooling is needed.
+
+If a future change introduces a merge path that drops `.changeset` from the message, the release.yml job will skip publish (its `if:` filter is `contains(...message, '.changeset')`). The commit lands on `main` without a release, and a follow-up commit with the right message triggers it. This is a degraded state, not a hard failure.
+
+## Consequences
+
+**Wins:**
+
+- Releases are continuous. A green staging build with a changeset auto-propagates to `@latest`.
+- The human work shifts from procedural (merge approvals) to substantive (code review).
+- The release pipeline gets shorter end-to-end.
+
+**Losses:**
+
+- The window to abort a release after staging goes green disappears. A bad commit on staging reaches `@latest` within the time it takes CI on `main` to complete (~5 minutes).
+- Reverts become the only safety net. A revert merged on staging propagates as a release with the revert changeset.
+
+**What stays locked:**
+
+- `staging → main` is unchanged as the integration-then-release path.
+- `release.yml` does not gain any new trigger.
+- The two-tier release (canary on `staging`, latest on `main`) is unchanged. See [ADR-025](./ADR-025-auto-canary-on-staging.mdx) for the canary trigger change.
+
+## How to verify
+
+After the change:
+
+1. Open a feature PR touching `apps/cli/**`. Add a changeset.
+2. Get code review approval. CI and changesets-check pass.
+3. Merge to `staging`. Observe `staging-canary.yml` (per ADR-025) publishes `@canary`.
+4. Auto-merge to `main` propagates. Observe `release.yml` publishes `@latest` within ~5 minutes.
+5. `git log main` shows the same commit that landed on staging.
+
+**Negative test:** open a PR touching `apps/cli/**` without a changeset. The PR is mergeable in the UI but the changesets-check status is red. Branch protection blocks the merge.
+
+## Where this rule came from
+
+The decision inverts the staging-first workflow documented in `AGENTS.md`. The reasoning is that the procedural gate (a human merging staging to main) carries no information that the substantive gate (a human approving the feature PR) does not already carry. Both gates check "has a human looked at this?" but only the second one is attached to the diff.
+
+The risk that this introduces is the loss of the post-staging abort window. We accept that risk because:
+
+- The abort window is rarely used. Reverts are more common than aborts.
+- The pre-staging human gate (code review) is the substantive one. Replicating it at merge time is procedural.
+- Continuous releases shorten the feedback loop for consumers, which is the user-facing value of the pipeline.
+
+## Related
+
+- [ADR-025: Auto-canary on staging](./ADR-025-auto-canary-on-staging.mdx), the companion change that makes every merge to `staging` publish `@canary`.
+- [ADR-026: Changesets as merge gate](./ADR-026-changesets-merge-gate.mdx), the rule that makes changesets required for any PR touching CLI-relevant paths.
+- [ADR-021: CLI three-tier release pipeline](./ADR-021-cli-three-tier-release.mdx), the design that this rule inherits from.
+- [AGENTS.md](../../../../AGENTS.md), the file whose staging-first human-promotion rule this ADR replaces.
+- [`.github/workflows/release.yml`](../../../../.github/workflows/release.yml), the workflow whose behavior is unchanged.
+- [`.github/workflows/staging-canary.yml`](../../../../.github/workflows/staging-canary.yml), the new workflow introduced by ADR-025.

@@ -1,0 +1,142 @@
+---
+title: Changesets as merge gate
+description: Every PR touching CLI-relevant paths must include a changeset. The check is required for branch protection on staging and main.
+---
+
+# ADR-026: Changesets as merge gate
+
+## Status
+
+Proposed (2026-09). Awaiting review.
+
+## Context
+
+`changesets-check.yml` today enforces that any PR touching `apps/cli/**` includes a `.changeset/*.md` file. The check runs on every `pull_request` against `staging` or `main` and emits `:error:` annotations if no changeset is present. The check passes or fails per PR but does not block merges — branch protection does not require it.
+
+In practice, the gated behavior is weak:
+
+1. **The check is advisory.** A maintainer can merge a red changesets-check by overriding the branch protection or by ignoring the failure. Most merges go through code review, so the check is rarely overridden, but the option exists.
+2. **The paths filter is narrow.** Only `apps/cli/**` is checked. Changes to `packages/contracts/**` or `packages/api/**` (which `cli-preview.yml` watches for preview rebuilds) do not require a changeset, even though they can change the CLI's effective behavior.
+3. **The check does not run on pushes to `staging` after a fast-forward merge.** A force-push or direct push to staging is not gated.
+
+This ADR strengthens the changeset rule to be a required status check on the branch protection of `staging` and `main`, and extends the path filter to all CLI-relevant paths.
+
+## Decision
+
+`changesets-check.yml` becomes a required status check on the branch protection of `staging` and `main`. The check is extended to cover `packages/contracts/**` and `packages/api/**` in addition to `apps/cli/**`. The check continues to run on every pull_request event; it is now load-bearing for mergeability.
+
+### Why branch protection and not a GitHub rule
+
+GitHub branch protection is the documented enforcement point for required status checks. Using a GitHub rule (`rulesets/`) is equivalent but adds a parallel configuration surface. Branch protection is configured per branch in the repo settings UI and is the existing pattern.
+
+The required status check is the workflow's job name (`check-changeset`). When branch protection is configured to require `check-changeset` on `staging` and `main`, the GitHub merge button is disabled for any PR where the check is red or pending.
+
+### Why extend the path filter
+
+`packages/contracts/**` defines the API contracts that `apps/cli` consumes. A change to the contracts is a change to the CLI's effective surface (different command output, different error messages, different parameters). Likewise `packages/api/**` defines endpoints the CLI talks to; changes there propagate to the CLI behavior.
+
+The CLI preview workflow `cli-preview.yml` already triggers on these three path prefixes. The changeset check now matches that surface: anything that triggers a preview rebuild also requires a changeset.
+
+### What stays locked
+
+- The check runs on `pull_request` events only. Direct pushes to `staging` (force-pushes, hotfixes) are not gated by this check; they are gated by the human who pushes.
+- The check does not validate the changeset format or bump type. `pnpm changeset status` and `pnpm changeset version` (run by `release.yml` on push to `main`) catch malformed changesets.
+- A PR that touches none of the three paths (`apps/cli/**`, `packages/contracts/**`, `packages/api/**`) is mergeable without a changeset. This is the expected behavior for docs, infrastructure, and app-only changes.
+
+### Implementation outline
+
+```yaml
+name: Changesets check
+
+on:
+  pull_request:
+    branches: [staging, main]
+
+permissions:
+  contents: read
+
+jobs:
+  check-changeset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Detect changes to CLI-relevant paths
+        id: changed
+        run: |
+          BASE=${{ github.event.pull_request.base.ref }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+          git fetch origin "$BASE" --depth=1
+          TOUCHED=$(git diff --name-only "origin/$BASE...$HEAD" \
+            | grep -E '^(apps/cli/|packages/contracts/|packages/api/)/' \
+            || true)
+          if [ -n "$TOUCHED" ]; then
+            echo "touched=true" >> "$GITHUB_OUTPUT"
+            echo "Files changed:"
+            echo "$TOUCHED"
+          else
+            echo "touched=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify changeset is present
+        if: steps.changed.outputs.touched == 'true'
+        run: |
+          COUNT=$(ls .changeset/*.md 2>/dev/null | wc -l)
+          if [ "$COUNT" -le 1 ]; then
+            echo "::error::CLI-relevant paths were modified but no changeset file was added."
+            echo "::error::Add a changeset under .changeset/ describing the bump type."
+            exit 1
+          fi
+```
+
+The only structural change from today is the extended grep pattern. The rest is unchanged.
+
+### Branch protection configuration
+
+The branch protection on `staging` and `main` must require:
+
+- `check-changeset` (this workflow)
+- `claude-review` or equivalent code review approval (existing)
+- The full `ci` job set (existing)
+
+The branch protection is configured via the GitHub UI on `https://github.com/deessejs/deessejs/settings/branches` or via `gh api` against the `/branches/{branch}/protection` endpoint. The change is admin-only.
+
+## Consequences
+
+**Wins:**
+
+- A PR without a changeset cannot be merged to `staging` or `main`. The release pipeline (per [ADR-024](./ADR-024-auto-publish-on-main.mdx) and [ADR-025](./ADR-025-auto-canary-on-staging.mdx)) is guaranteed a changeset-bearing tree.
+- The path filter matches the preview surface. A change to `packages/contracts/` requires a changeset, matching the fact that it triggers a preview rebuild.
+
+**Losses:**
+
+- A PR that touches the CLI for a non-consumer-facing reason (a test-only change, a docs string in error output, a performance refactor) still requires a changeset. The check is path-based, not impact-based.
+- The branch protection change is admin-only. If the protection is removed or misconfigured, the check is no longer enforced.
+
+**What stays locked:**
+
+- `pnpm changeset` (the interactive command) remains the recommended way to author a changeset. The check does not require a specific format.
+- The `private` field on `apps/cli/package.json` is not validated by this check. That is a `release.yml` concern.
+
+## How to verify
+
+After the change:
+
+1. Open a PR touching `apps/cli/**` without a changeset. The changesets-check job fails. The GitHub merge button is disabled with the message "Changesets check / check-changeset — Expected".
+2. Add a changeset under `.changeset/`. Push. The check passes. The merge button is enabled.
+3. Open a PR touching `packages/contracts/**`. The check requires a changeset (this is the new behavior; previously it did not).
+4. Open a PR touching only `apps/web/**`. The check passes (no path match), and no changeset is required.
+
+## Where this rule came from
+
+The decision strengthens an existing advisory rule to a required one. The trigger is the auto-publish rule (ADR-024): if releases are continuous, a missing changeset at merge time means the release pipeline sees a tree without a `.changeset/*.md` to consume, and `release.yml` skips publish on push to `main`. The branch-protection promotion prevents that by guaranteeing every merge carries its changeset.
+
+The path extension (contracts and api) is a hygiene alignment: the preview workflow already rebuilds on these paths, so the release pipeline already treats them as CLI-relevant. The check now matches.
+
+## Related
+
+- [ADR-024: Auto-publish on main](./ADR-024-auto-publish-on-main.mdx), the rule whose pre-condition this ADR enforces.
+- [ADR-025: Auto-canary on staging](./ADR-025-auto-canary-on-staging.mdx), the rule whose pre-condition this ADR enforces.
+- [`changesets-check.yml`](../../../../.github/workflows/changesets-check.yml), the workflow this ADR strengthens.
+- [`cli-preview.yml`](../../../../.github/workflows/cli-preview.yml), the workflow whose path filter this check now matches.
