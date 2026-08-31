@@ -248,8 +248,17 @@ function AuthFlowMockup() {
               transition={{ duration: 0.25 }}
               className="absolute inset-x-1.5 inset-y-0 flex flex-col gap-2 justify-center"
             >
-              <FillField label="email" delay={0.1} />
-              <FillField label="password" delay={0.45} />
+              <TypingField
+                label="email"
+                text="sarah@acme.io"
+                startMs={300}
+              />
+              <TypingField
+                label="password"
+                text="hunter22!"
+                mask
+                startMs={1100}
+              />
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -309,18 +318,59 @@ function AuthFlowMockup() {
   )
 }
 
-function FillField({ label, delay }: { label: string; delay: number }) {
+/**
+ * A form field that types its content character-by-character on mount.
+ *
+ * For the password field we keep the masking convention: `text` holds
+ * the real string but the rendered characters are `●`. This way the
+ * typing animation still shows progress without ever revealing the
+ * secret.
+ *
+ * Speed (60ms/char) lands in the "human typing" zone — fast enough
+ * to keep the cell moving, slow enough that the eye can follow
+ * each character landing. The blinking cursor sits at the end of
+ * the typed string and stays visible for the lifetime of the field
+ * (AnimatePresence tears the field down on phase change).
+ */
+function TypingField({
+  label,
+  text,
+  mask = false,
+  startMs,
+  speedMs = 60,
+}: {
+  label: string
+  text: string
+  mask?: boolean
+  startMs: number
+  speedMs?: number
+}) {
+  const [shown, setShown] = useState("")
+
+  useEffect(() => {
+    let i = 0
+    const interval = window.setInterval(() => {
+      i++
+      setShown(mask ? "●".repeat(i) : text.slice(0, i))
+      if (i >= text.length) {
+        window.clearInterval(interval)
+      }
+    }, startMs + speedMs)
+    return () => {
+      window.clearInterval(interval)
+    }
+  }, [text, mask, startMs, speedMs])
+
   return (
     <div className="flex items-center gap-2 rounded-sm border border-border bg-background px-2 py-1">
       <span className="font-mono text-[10px] text-muted-foreground">{label}</span>
-      <motion.span
-        initial={{ width: 0 }}
-        animate={{ width: "70%" }}
-        transition={{ delay, duration: 0.5, ease: "easeOut" }}
-        className="ml-auto flex h-2.5 max-w-[60%] items-center overflow-hidden whitespace-nowrap font-mono text-[11px] text-foreground/90"
-      >
-        ●●●●●●●
-      </motion.span>
+      <span className="ml-auto flex max-w-[60%] items-center gap-0.5 overflow-hidden whitespace-nowrap font-mono text-[11px] text-foreground/90">
+        <span>{shown}</span>
+        <span
+          aria-hidden
+          className="inline-block h-3 w-px animate-pulse bg-foreground/70"
+        />
+      </span>
     </div>
   )
 }
