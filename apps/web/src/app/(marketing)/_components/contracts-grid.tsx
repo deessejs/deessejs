@@ -13,18 +13,20 @@
  *   2. Each cell has a `whileHover` lift (`y: -4`, `scale: 1.01`).
  *   3. The icon inside each cell rotates 8° on hover, inherited from the
  *      parent's hover state via variants.
- *   4. The mockup inside each cell runs its own per-kind animation:
- *      - auth-form       — email field fills, then password, then button
- *        pulses
- *      - db-terminal     — two `$` lines type out character-by-character,
- *        then the checkmark pops in
- *      - billing-widget  — the usage bar fills from 0 to 74% (1.2s ease)
- *      - jobs-trace      — four trace rows fade in top-to-bottom, the
- *        running one keeps a subtle pulse
- *      - storage-browser — the folder appears, then files fade in one
- *        by one, then the "+ Upload" hint slides up
- *      - otel-waterfall  — the parent request bar slides in, then the
- *        four sub-traces fade in top-to-bottom
+ *   4. The mockup inside each cell runs its own per-kind animation and
+ *      carries semantic colour:
+ *      - auth-form       — macOS traffic-light dots (red/amber/green);
+ *        blue/violet field labels; emerald Continue button
+ *      - db-terminal     — cyan `$` prompt, white command, emerald ✓
+ *        success lines, zinc table list
+ *      - billing-widget  — emerald usage bar fills 0 → 74% (1.2s ease)
+ *      - jobs-trace      — emerald for ok, violet for running, red for
+ *        error; the running row keeps its pulse
+ *      - storage-browser — folder=amber, PDF=red, image=emerald,
+ *        archive=violet (VS Code / Finder convention)
+ *      - otel-waterfall  — the parent progress bar is segmented by
+ *        log level (blue/blue/amber/red) and the four sub-traces
+ *        take the colour of their level (info / warn / error)
  *
  * `MotionConfig reducedMotion="user"` lives in `apps/web/src/app/layout.tsx`
  * — users with the OS-level preference set get opacity-only animations.
@@ -46,6 +48,7 @@ import {
   Loader,
   Zap,
 } from "lucide-react"
+import { cn } from "@workspace/ui/lib/utils"
 
 type Provider = { name: string; logo: string }
 
@@ -176,28 +179,33 @@ export function ContractsGrid({
 /**
  * The auth form reveals its two fields in sequence. The fields are
  * CSS-only — we animate `width` from 0 to 100% on a fixed-width container.
+ *
+ * Colours:
+ *   - macOS traffic-light dots (red / amber / green) for the window chrome
+ *   - blue label for the focused field
+ *   - green Continue button to mirror the OS "primary action" cue
  */
 function AuthFormMockup() {
   return (
     <div className="p-3">
       <div className="mb-2 flex items-center gap-1.5 border-b border-border pb-1.5">
-        <span className="size-2 rounded-full bg-muted-foreground/30" aria-hidden />
-        <span className="size-2 rounded-full bg-muted-foreground/30" aria-hidden />
-        <span className="size-2 rounded-full bg-muted-foreground/30" aria-hidden />
+        <span className="size-2 rounded-full bg-red-500" aria-hidden />
+        <span className="size-2 rounded-full bg-amber-500" aria-hidden />
+        <span className="size-2 rounded-full bg-emerald-500" aria-hidden />
         <span className="ml-1 font-mono text-[10px] text-muted-foreground/70">
           sign-in
         </span>
       </div>
       <div className="flex flex-col gap-2 p-1.5">
-        <FillField label="email" delay={0.1} />
-        <FillField label="password" delay={0.45} />
+        <FillField label="email" delay={0.1} focusedColor="text-blue-500" />
+        <FillField label="password" delay={0.45} focusedColor="text-violet-500" />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.85, duration: 0.3 }}
           className="mt-1 flex items-center justify-end"
         >
-          <span className="rounded-sm border border-zinc-800 bg-zinc-950 px-2 py-0.5 font-mono text-[10px] text-zinc-100">
+          <span className="rounded-sm border border-emerald-700 bg-emerald-600 px-2 py-0.5 font-mono text-[10px] text-white">
             Continue →
           </span>
         </motion.div>
@@ -206,10 +214,18 @@ function AuthFormMockup() {
   )
 }
 
-function FillField({ label, delay }: { label: string; delay: number }) {
+function FillField({
+  label,
+  delay,
+  focusedColor,
+}: {
+  label: string
+  delay: number
+  focusedColor: string
+}) {
   return (
     <div className="flex items-center gap-2 rounded-sm border border-border bg-background px-2 py-1">
-      <span className="font-mono text-[10px] text-muted-foreground">{label}</span>
+      <span className={cn("font-mono text-[10px]", focusedColor)}>{label}</span>
       <motion.span
         initial={{ width: 0 }}
         animate={{ width: "70%" }}
@@ -224,7 +240,13 @@ function FillField({ label, delay }: { label: string; delay: number }) {
 
 /**
  * Two `$` lines type out character-by-character; on completion a third
- * "tables" line fades in with the checkmark.
+ * "tables" line fades in.
+ *
+ * Colours (terminal colour scheme, fixed regardless of theme):
+ *   - prompt `$`  → cyan
+ *   - command     → white
+ *   - success ✓   → emerald
+ *   - table list  → zinc-400 (muted)
  */
 function DbTerminalMockup() {
   const line1 = "$ drizzle-kit generate"
@@ -234,14 +256,30 @@ function DbTerminalMockup() {
   const line3 = "users · orgs · sessions · invoices ..."
 
   return (
-    <div className="bg-zinc-950 p-3 font-mono text-[11px] leading-5 text-zinc-100">
-      <TypedLine text={line1} delay={0.05} />
-      <TypedLine text={line1Out} delay={0.05 + line1.length * 0.025 + 0.1} dim />
-      <TypedLine text={line2} delay={0.05 + line1.length * 0.025 + 0.35} />
+    <div className="bg-zinc-950 p-3 font-mono text-[11px] leading-5">
       <TypedLine
-        text={line2Out}
-        delay={0.05 + line1.length * 0.025 + 0.35 + line2.length * 0.025 + 0.1}
-        dim
+        segments={[
+          { text: "$ ", color: "text-cyan-400" },
+          { text: "drizzle-kit generate", color: "text-zinc-100" },
+        ]}
+        delay={0.05}
+      />
+      <TypedLine
+        segments={[{ text: line1Out, color: "text-emerald-400" }]}
+        delay={0.05 + line1.length * 0.025 + 0.1}
+      />
+      <TypedLine
+        segments={[
+          { text: "$ ", color: "text-cyan-400" },
+          { text: "drizzle-kit migrate", color: "text-zinc-100" },
+        ]}
+        delay={0.05 + line1.length * 0.025 + 0.35}
+      />
+      <TypedLine
+        segments={[{ text: line2Out, color: "text-emerald-400" }]}
+        delay={
+          0.05 + line1.length * 0.025 + 0.35 + line2.length * 0.025 + 0.1
+        }
       />
       <motion.p
         initial={{ opacity: 0, x: -4 }}
@@ -264,25 +302,27 @@ function DbTerminalMockup() {
 }
 
 function TypedLine({
-  text,
+  segments,
   delay,
-  dim = false,
 }: {
-  text: string
+  segments: ReadonlyArray<{ text: string; color: string }>
   delay: number
-  dim?: boolean
 }) {
   return (
-    <p className={dim ? "text-zinc-400" : "text-white"}>
-      {text.split("").map((char, i) => (
-        <motion.span
-          key={i}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: delay + i * 0.025, duration: 0.05 }}
-        >
-          {char}
-        </motion.span>
+    <p>
+      {segments.map((seg, segIdx) => (
+        <span key={segIdx} className={seg.color}>
+          {seg.text.split("").map((char, i) => (
+            <motion.span
+              key={`${segIdx}-${i}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: delay + i * 0.025, duration: 0.05 }}
+            >
+              {char}
+            </motion.span>
+          ))}
+        </span>
       ))}
     </p>
   )
@@ -309,7 +349,7 @@ function BillingWidgetMockup() {
             whileInView={{ width: "74%" }}
             viewport={{ once: true }}
             transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-            className="h-full rounded-full bg-foreground"
+            className="h-full rounded-full bg-emerald-500"
           />
         </div>
         <motion.span
@@ -339,7 +379,7 @@ function BillingWidgetMockup() {
 type TraceRowSpec = {
   icon: React.ComponentType<{ className?: string }>
   label: string
-  status: "ok" | "running"
+  status: "ok" | "running" | "error"
   duration: string
 }
 
@@ -351,14 +391,23 @@ const traceRows: ReadonlyArray<TraceRowSpec> = [
 ]
 
 /**
- * Each trace row fades in from the left, with a 0.1s stagger. The
- * "running" status keeps a subtle pulse so the cell feels alive.
+ * Per-row colour mapping:
+ *   - ok      → emerald (Check + green dot)
+ *   - running → violet  (Loader + violet dot, kept the existing pulse)
+ *   - error   → red
+ * The running pulse is colour-agnostic so it stays on the violet dot.
  */
 function JobsTraceMockup() {
   return (
     <ul className="flex flex-col divide-y divide-border">
       {traceRows.map((row, i) => {
         const RowIcon = row.icon
+        const color =
+          row.status === "ok"
+            ? "text-emerald-500"
+            : row.status === "running"
+              ? "text-violet-500"
+              : "text-red-500"
         return (
           <motion.li
             key={row.label}
@@ -369,15 +418,22 @@ function JobsTraceMockup() {
             className="flex items-center gap-2 px-3 py-1.5 font-mono text-[11px]"
           >
             <RowIcon
-              className={
-                row.status === "ok"
-                  ? "size-3 shrink-0 text-foreground"
-                  : "size-3 shrink-0 text-muted-foreground"
-              }
+              className={cn(
+                "size-3 shrink-0",
+                color,
+                row.status === "running" && "animate-pulse",
+              )}
               aria-hidden
             />
             <span className="text-foreground/90">{row.label}</span>
-            <span className="ml-auto text-muted-foreground">{row.duration}</span>
+            <span
+              className={cn(
+                "ml-auto",
+                row.status === "error" ? color : "text-muted-foreground",
+              )}
+            >
+              {row.duration}
+            </span>
           </motion.li>
         )
       })}
@@ -390,13 +446,39 @@ type StorageRowSpec = {
   name: string
   size: string
   indent: number
+  /** Tailwind text-* class applied to the row icon and name. */
+  color: string
 }
 
 const storageRows: ReadonlyArray<StorageRowSpec> = [
-  { icon: Folder, name: "uploads/", size: "", indent: 0 },
-  { icon: FileText, name: "invoice-2024-q4.pdf", size: "4 MB", indent: 1 },
-  { icon: ImageIcon, name: "avatar-3x.png", size: "240 KB", indent: 1 },
-  { icon: Boxes, name: "export.zip", size: "12 MB", indent: 1 },
+  {
+    icon: Folder,
+    name: "uploads/",
+    size: "",
+    indent: 0,
+    color: "text-amber-500",
+  },
+  {
+    icon: FileText,
+    name: "invoice-2024-q4.pdf",
+    size: "4 MB",
+    indent: 1,
+    color: "text-red-500",
+  },
+  {
+    icon: ImageIcon,
+    name: "avatar-3x.png",
+    size: "240 KB",
+    indent: 1,
+    color: "text-emerald-500",
+  },
+  {
+    icon: Boxes,
+    name: "export.zip",
+    size: "12 MB",
+    indent: 1,
+    color: "text-violet-500",
+  },
 ]
 
 /**
@@ -419,10 +501,10 @@ function StorageBrowserMockup() {
             style={{ paddingLeft: `${row.indent * 12}px` }}
           >
             <RowIcon
-              className="size-3 text-muted-foreground"
+              className={cn("size-3 shrink-0", row.color)}
               aria-hidden
             />
-            <span>{row.name}</span>
+            <span className={row.color}>{row.name}</span>
             {row.size ? (
               <span className="ml-auto text-muted-foreground/70">{row.size}</span>
             ) : null}
@@ -447,20 +529,36 @@ type OtelRowSpec = {
   label: string
   duration: string
   branch: "├" | "└" | null
+  /** Log severity — drives the row colour. */
+  level: "info" | "warn" | "error"
 }
 
 const otelRows: ReadonlyArray<OtelRowSpec> = [
-  { indent: 0, label: "GET /checkout", duration: "142ms", branch: null },
-  { indent: 1, label: "auth.verify", duration: "12ms", branch: "├" },
-  { indent: 1, label: "fetch", duration: "45ms", branch: "├" },
-  { indent: 1, label: "db.query", duration: "62ms", branch: "├" },
-  { indent: 1, label: "cache.set", duration: "23ms", branch: "└" },
+  { indent: 0, label: "GET /checkout", duration: "142ms", branch: null, level: "info" },
+  { indent: 1, label: "auth.verify", duration: "12ms", branch: "├", level: "info" },
+  { indent: 1, label: "fetch", duration: "45ms", branch: "├", level: "info" },
+  { indent: 1, label: "db.query", duration: "62ms", branch: "├", level: "warn" },
+  { indent: 1, label: "cache.set", duration: "23ms", branch: "└", level: "error" },
 ]
+
+const LEVEL_COLOR = {
+  info: "text-blue-500",
+  warn: "text-amber-500",
+  error: "text-red-500",
+} as const
 
 /**
  * The parent request row slides in from the top. The four sub-traces
  * then fade in top-to-bottom. A small progress bar fills in under the
  * parent label so the waterfall reads visually.
+ *
+ * Colours by log level (a single multi-colour waterfall, not a
+ * single-tone mockup):
+ *   - info  → blue
+ *   - warn  → amber
+ *   - error → red
+ * The four sub-traces show one of each level on purpose, so the
+ * reader sees the severity scale at a glance.
  */
 function OtelWaterfallMockup() {
   return (
@@ -477,14 +575,38 @@ function OtelWaterfallMockup() {
           <span>GET /checkout</span>
           <span className="ml-auto text-muted-foreground">142ms</span>
         </div>
-        <div className="h-1 overflow-hidden rounded-full bg-muted">
+        <div className="flex h-1 gap-0.5 overflow-hidden rounded-full bg-muted">
           <motion.div
             aria-hidden
             initial={{ width: 0 }}
-            whileInView={{ width: "100%" }}
+            whileInView={{ width: "12%" }}
             viewport={{ once: true }}
-            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-            className="h-full bg-foreground"
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="h-full bg-blue-500"
+          />
+          <motion.div
+            aria-hidden
+            initial={{ width: 0 }}
+            whileInView={{ width: "32%" }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="h-full bg-blue-500"
+          />
+          <motion.div
+            aria-hidden
+            initial={{ width: 0 }}
+            whileInView={{ width: "44%" }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="h-full bg-amber-500"
+          />
+          <motion.div
+            aria-hidden
+            initial={{ width: 0 }}
+            whileInView={{ width: "12%" }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.3, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            className="h-full bg-red-500"
           />
         </div>
       </motion.li>
@@ -495,14 +617,16 @@ function OtelWaterfallMockup() {
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.4 + i * 0.12, duration: 0.3 }}
-          className="flex items-center gap-2 text-muted-foreground"
+          className="flex items-center gap-2"
           style={{ paddingLeft: `${row.indent * 12}px` }}
         >
           {row.branch ? (
             <span className="text-muted-foreground/60">{row.branch}</span>
           ) : null}
-          <span>{row.label}</span>
-          <span className="ml-auto">{row.duration}</span>
+          <span className={LEVEL_COLOR[row.level]}>{row.label}</span>
+          <span className={cn("ml-auto", LEVEL_COLOR[row.level])}>
+            {row.duration}
+          </span>
         </motion.li>
       ))}
     </ul>
