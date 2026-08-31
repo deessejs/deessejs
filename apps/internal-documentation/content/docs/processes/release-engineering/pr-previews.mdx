@@ -7,7 +7,7 @@ description: Per-PR ephemeral @deessejs/cli preview packages via pkg.pr.new. Rev
 
 Every push to a PR that touches CLI-relevant paths rebuilds `@deessejs/cli` and uploads a tarball to pkg.pr.new. Reviewers can install the preview with the URL posted as a sticky comment on the PR. The tarball lives on pkg.pr.new's infrastructure (Cloudflare R2), not on npmjs.org.
 
-This is **Tier 1** of the three-tier release pipeline defined in [ADR-021](../decisions/ADR-021-cli-three-tier-release.mdx). It is a separate workflow from `release.yml` because pkg.pr.new authenticates via its own GitHub App, not via OIDC to npm.
+This is **Tier 1** of the three-tier release pipeline defined in [ADR-021](../../decisions/ADR-021-cli-three-tier-release.mdx). It is a separate workflow from `release.yml` because pkg.pr.new authenticates via its own GitHub App, not via OIDC to npm.
 
 ## When this process applies
 

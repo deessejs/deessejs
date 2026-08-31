@@ -71,7 +71,7 @@ After the workflow completes:
 
 **`apps/cli/package.json#private: true` left in place:** changesets refuses to publish. Verify the field is `false` before re-running.
 
-**Workflow misbehaves and a release must still go out today:** use the [manual fallback](../../../../documents/internal/process/release-engineering.md#manual-fallback) — publish from a maintainer machine, accept the loss of provenance for that one release, and file an issue to repair `release.yml`.
+**Workflow misbehaves and a release must still go out today:** use the [manual fallback](../../../../../documents/internal/process/release-engineering.md#manual-fallback) — publish from a maintainer machine, accept the loss of provenance for that one release, and file an issue to repair `release.yml`.
 
 **Within 72 hours of a bad publish:** `npm unpublish @deessejs/cli@x.y.z` removes the version entirely.
 
@@ -81,10 +81,10 @@ After the workflow completes:
 
 - [Canary releases](./canary-releases.mdx), the on-demand auxiliary channel.
 - [PR previews](./pr-previews.mdx), the per-PR pkg.pr.new channel.
-- [ADR-021: CLI three-tier release pipeline](../decisions/ADR-021-cli-three-tier-release.mdx), the decision that shaped the three-channel design.
-- [ADR-012: Changesets private workspace deps](../decisions/ADR-012-changesets-private-workspace-deps.mdx), the changeset config for workspace-internal packages.
-- [ADR-013: CLI publish verify](../decisions/ADR-013-cli-publish-verify.mdx), the verification gates applied before and after publish.
-- [ADR-019: CLI version build injection](../decisions/ADR-019-cli-version-build-injection.mdx), how `apps/cli/package.json#version` reaches the published binary.
-- [AGENTS.md](../../../../AGENTS.md), the staging-first git workflow this process depends on.
-- [`.changeset/README.md`](../../../../.changeset/README.md), the changeset quick reference for contributors.
-- [CONTRIBUTING.md](../../../../CONTRIBUTING.md), the contributor workflow that includes the changeset requirement.
+- [ADR-021: CLI three-tier release pipeline](../../decisions/ADR-021-cli-three-tier-release.mdx), the decision that shaped the three-channel design.
+- [ADR-012: Changesets private workspace deps](../../decisions/ADR-012-changesets-private-workspace-deps.mdx), the changeset config for workspace-internal packages.
+- [ADR-013: CLI publish verify](../../decisions/ADR-013-cli-publish-verify.mdx), the verification gates applied before and after publish.
+- [ADR-019: CLI version build injection](../../decisions/ADR-019-cli-version-build-injection.mdx), how `apps/cli/package.json#version` reaches the published binary.
+- [AGENTS.md](../../../../../AGENTS.md), the staging-first git workflow this process depends on.
+- [`.changeset/README.md`](../../../../../.changeset/README.md), the changeset quick reference for contributors.
+- [CONTRIBUTING.md](../../../../../CONTRIBUTING.md), the contributor workflow that includes the changeset requirement.
