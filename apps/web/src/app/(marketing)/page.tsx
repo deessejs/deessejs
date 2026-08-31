@@ -22,7 +22,6 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { OutcomeCardCornerLink } from "@/components/outcome-card-link"
 import { ContractsGrid, type Contract } from "./_components/contracts-grid"
 
 /**
@@ -434,12 +433,8 @@ export default function HomePage() {
             return (
               <div
                 key={outcome.slug}
-                className="group relative transition-colors hover:bg-accent/40"
+                className="group transition-colors hover:bg-accent/40"
               >
-                <OutcomeCardCornerLink
-                  href={`/templates?tags=["${outcome.slug}"]`}
-                  ariaLabel={`Browse all ${outcome.name} templates`}
-                />
                 <Link
                   href={outcome.href}
                   aria-label={`${outcome.name} — ${outcome.scenario}`}
@@ -520,11 +515,7 @@ export default function HomePage() {
             OTel waterfall). */}
         <div className="border-b border-border">
           <Cell className="col-span-full !p-0 border-0">
-            <div className="relative flex flex-col gap-2 p-6 pr-16 border-b border-border">
-              <OutcomeCardCornerLink
-                href="/contracts"
-                ariaLabel="Browse all contracts"
-              />
+            <div className="flex flex-col gap-2 p-6 border-b border-border">
               <p className="text-label-13 text-muted-foreground">
                 Wired into every starter
               </p>

@@ -39,6 +39,7 @@ import * as motion from "motion/react-client"
 import {
   Activity,
   AlertTriangle,
+  ArrowUpRight,
   Boxes,
   Check,
   CircleDollarSign,
@@ -52,6 +53,7 @@ import {
   Loader,
   Zap,
 } from "lucide-react"
+import Link from "next/link"
 import { cn } from "@workspace/ui/lib/utils"
 
 type Provider = { name: string; logo: string }
@@ -126,8 +128,17 @@ export function ContractsGrid({
             initial="rest"
             whileHover="hover"
             animate="rest"
-            className="flex flex-col gap-4 p-6"
+            className="relative flex flex-col gap-4 p-6 pr-14"
           >
+            <Link
+              href={`/templates?tags=["${contract.title.toLowerCase()}"]`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Browse all ${contract.title} templates`}
+              className="absolute top-0 right-0 z-10 flex size-9 items-center justify-center border-l border-b border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <ArrowUpRight className="size-3.5" aria-hidden />
+            </Link>
             <div className="flex items-center gap-2">
               <span className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40">
                 <Icon className="text-foreground size-4" aria-hidden />
