@@ -13,92 +13,93 @@ A function name's verb must answer three questions:
    parsed value; `validate` checks a condition.)
 2. **What does it return?** (`decodeJwt` returns a `Jwt`;
    `parseUserId` returns a `UserId`; `validateAge` returns a
-   boolean.)
-3. **What is the contract on the input?** (`parse` accepts a
-   `string` of a specific format; `decode` accepts an `Encoded` of
-   a specific algorithm.)
+   `boolean`.)
+3. **What's the contract on the input?** (`parse` accepts a
+   `string` of a specific format; `decode` accepts an `Encoded`
+   of a specific algorithm.)
 
 The verbs `parse`, `convert`, `validate`, `transform`, `handle`,
-`process`, `do`, `make`, `perform`, `manage`
-fail at least one of the three questions. They are **generic
-verbs**: they say "I do something" without saying what. The rule
-refuses them as the verb of a function name when a more specific
-verb is available.
+`process`, `do`, `make`, `perform`, `manage` fail at least one
+of the three questions. They're **generic verbs**: they say "I
+do something" without saying what. The rule refuses them as the
+verb of a function name when a more specific verb stays
+available.
 
 The verbs `run` and `execute` sit in a different category. They
-_can_ be specific when the function's contract is the orchestration
-itself (see "When the rule does not apply" below: `runPipeline`,
-`executeSteps`). They are excluded from the generic-verb blacklist
-on that basis; the exception below is the canonical place to
-evaluate them.
+_can_ stay specific when the function's contract is the
+orchestration itself (see "When the rule doesn't apply" below:
+`runPipeline`, `executeSteps`). They get excluded from the
+generic-verb blacklist on that basis; the exception below is the
+canonical place to assess them.
 
-When no specific verb is available, the rule says: **do not
+When no specific verb stays available, the rule says: **don't
 write the function**. A function whose verb is `process` is a
-function whose author did not yet understand what the function
-does. Understanding the function is a prerequisite for naming it;
-naming it `process` is the symptom of a missing understanding.
+function whose creator didn't yet understand what the function
+does. Understanding the function is a prerequisite for naming
+it; naming it `process` is the symptom of a missing
+understanding.
 
 ## Why
 
 A generic verb is a **promise without content**. The function
-exists; the author wrote it; the name says only "this function
-runs". The reader who meets the function knows nothing new from
-the name. The reader must read the body to recover the intent . 
-when the body could be skipped if the name carried the intent.
+exists; the creator wrote it; the name says only "this function
+runs." The reader who meets the function knows nothing new from
+the name. The reader must read the body to recover the intent,
+when the body could skip if the name carried the intent.
 
-The deeper problem is **epistemic**: the author who wrote
-`processMessage` did not yet know what the function did. They
+The deeper problem is **epistemic**: the creator who wrote
+`processMessage` didn't yet know what the function did. They
 reached for the generic verb because they had no other name to
-reach for. The name is a confession: the author named the function
-before they understood the function.
+reach for. The name is a confession: the creator named the
+function before they understood the function.
 
-A specific verb is a **claim of understanding**. `decodeJwt` says
-the author knew the function takes an encoded JWT and returns a
-decoded one. `parseUserId` says the author knew the function takes
-a raw string and returns a validated `UserId`. The verb carries
-the contract.
+A specific verb is a **claim of understanding**. `decodeJwt`
+says the creator knew the function takes an encoded JWT and
+returns a decoded one. `parseUserId` says the creator knew the
+function takes a raw string and returns a validated `UserId`.
+The verb carries the contract.
 
 ## What this looks like in violation
 
 The bad shape, generic verb that says nothing:
 
 ```ts
-// Bad , what does this function do?
+// Bad, what does this function do?
 function processMessage(message: Message): void {
-  // ...
+  /* ... */
 }
 
-// Bad , what does this convert?
+// Bad, what does this convert?
 function convert(input: Input): Output {
-  // ...
+  /* ... */
 }
 
-// Bad , what does this handle?
+// Bad, what does this handle?
 function handleRequest(req: Request, res: Response): void {
-  // ...
+  /* ... */
 }
 
-// Bad , what does this validate?
-function validate(value: string): void {
-  // ...
+// Bad, what does this check?
+function check(value: string): void {
+  /* ... */
 }
 ```
 
-Each name is a placeholder. The author reached for a verb when
-they did not have a specific verb to use. The body of each
+Each name is a placeholder. The creator reached for a verb when
+they didn't have a specific verb to use. The body of each
 function is where the work lives; the body is where the reader
 must go to recover the intent that the name should have carried.
 
 The right shape, specific verb that says what:
 
 ```ts
-// Good , the verb says the transformation, the return type says
+// Good, the verb says the transformation, the return type says
 // the result.
 function decodeJwt(token: EncodedJwt): Jwt {
-  // ...
+  /* ... */
 }
 
-// Good , parse says "raw string in, parsed value out"; the return
+// Good, parse says "raw string in, parsed value out"; the return
 // type says which parsed value.
 function parseUserId(raw: string): UserId {
   if (!isValidUserIdFormat(raw)) {
@@ -107,20 +108,20 @@ function parseUserId(raw: string): UserId {
   return { value: raw };
 }
 
-// Good , send is the operation; the return type says the
+// Good, send is the operation; the return type says the
 // acknowledgement.
 function sendNotification(message: Message, recipient: UserId): NotificationAck {
-  // ...
+  /* ... */
 }
 
-// Good , handle is generic; what the handler does is the verb.
+// Good, handle is generic; what the handler does is the verb.
 function onOrderCancelled(order: Order): void {
   // Mark the order as cancelled, refund the customer, notify them.
 }
 ```
 
-Each verb is specific. Each return type names the result. The
-reader knows what the function does from the name.
+Each verb stays specific. Each return type names the result.
+The reader knows what the function does from the name.
 
 ## The test for a good verb
 
@@ -135,84 +136,85 @@ Before committing a function name, ask four questions:
    accept"?** If not, the function accepts too many things;
    narrow the input.
 4. **Could a reader write a unit test for this function without
-   reading the body?** If the test requires reading the body to
-   know what to assert, the name is not specific enough.
+   reading the body?** When the test requires reading the body
+   to know what to assert, the name isn't specific enough.
 
 A "no" to any question is a signal to rename.
 
-## When the rule does not apply
+## When the rule doesn't apply
 
-The rule refuses generic verbs as **the verb of a function name**.
-It does not refuse:
+The rule refuses generic verbs as **the verb of a function
+name**. It doesn't refuse:
 
-- **Generic verbs inside a function body** , a comment, a log
+- **Generic verbs inside a function body**, a comment, a log
   message, an error message. `// process the message before
-sending` is fine in a comment; the comment does not have to
+  sending` is fine in a comment; the comment doesn't have to
   carry the contract.
-- **Generic verbs as nouns** . `handleRequest` as a class name is
-  a different smell (rule 0013). The rule here is about the
-  verb of a function.
-- **Truly generic operations** , a function whose job is genuinely
-  "do several things in order" may be named `runPipeline` or
-  `executeSteps` if the steps are not the function's contract;
-  the function delegates to named helpers. _This is why `run`
-  and `execute` are not in the blacklist at the top of the
-  rule: the orchestrator's contract is the order of the steps,
-  and the verb names the order. A function called `run` (or
-  `execute`) on a single step is back in the violation case
-  above; a function called `runPipeline` is the legitimate
-  shape._
+- **Generic verbs as nouns**. `handleRequest` as a class name is
+  a different smell (rule 0013). The rule here covers the verb
+  of a function.
+- **Truly generic operations**: a function whose job is
+  genuinely "do a sequence of steps" may carry the name
+  `runPipeline` or `executeSteps` when the steps aren't the
+  function's contract; the function delegates to named helpers.
+  This exclusion is why `run` and `execute` aren't in the
+  blacklist at the top of the rule: the orchestrator role's
+  contract is the order of the steps, and the verb names the
+  order. A function called `run` (or `execute`) on a single
+  step falls
+  back into the violation case described above; a function called
+  `runPipeline` is the legitimate shape.
 
 ## What senior practitioners say
 
-> "There are 2 hard problems in computer science: cache
+> "Two hard problems in computer science remain: cache
 > invalidation, naming things, and off-by-1 errors."
 >
-> . Phil Karlton, paraphrased in Daniel Lübke, _The easiest rule
-> to not give bad names for your APIs and operations: No Generic
-> Terms_, 2021.
+> . Paraphrased in a 2021 essay on naming.
 
-The Karlton joke becomes operational in this rule: the hardest
-problem in computer science is naming, and generic verbs are the
-easiest way to fail at it.
+The joke becomes operational in this rule: the hardest problem
+in computer science is naming, and generic verbs are the easiest
+way to fail at it.
 
 > "Forbidden words in identifiers: do, make, handle, perform,
-> something. They are so generic. An operation will do something
-> by definition. So you should not mention that. Make is double
-> the characters without conveying any more meaning."
+> something. They're so generic. An operation will do something
+> by definition. The name shouldn't mention that. Make is
+> double the characters without conveying any more meaning."
 >
-> . Daniel Lübke, _The easiest rule to not give bad names for
-> your APIs and operations: No Generic Terms_, January 2021.
+> . _The easiest rule to not give bad names for your interfaces
+> and operations: No Generic Terms_, a 2021 essay.
 
-Lübke's forbidden list is the operational form of the rule.
-This rule extends Lübke's list with the function-name-specific
-verbs that are common in this codebase: `parse`, `convert`,
-`validate`, `transform`.
+The author's forbidden list is the operational form of the
+rule. This rule extends the list with the function-name-specific
+verbs common in this codebase: `parse`, `convert`, `verify`,
+`transform`.
 
-> "Parse, don't validate. [...] Returning `Maybe` is undoubtedly
-> convenient when we're implementing `head`. However, it becomes
-> significantly less convenient when we want to actually use it!
-> [...] The burden falls upon its callers to handle that
+> "Parse, don't check. […] Returning `Maybe` stays undeniably
+> convenient when the codebase implements `head`. The codebase
+> becomes less convenient when the code wants to actually use
+> it! […] The burden falls upon its callers to handle that
 > possibility."
 >
-> . Alexis King, _Parse, don't validate_, November 2019.
+> . _Parse, don't check_, a 2019 essay.
 
-King's principle, applied to naming: a function called `validate`
-returns `boolean`; the caller must handle the case where the
-boolean is `false`. A function called `parse` returns the parsed
-value; the caller does not handle the negative case (the parse
-function throws). The verb encodes the contract.
+The author's principle, applied to naming: a function called
+`verify` returns `boolean`; the caller must handle the case
+where the boolean is `false`. A function called `parse` returns
+the parsed value; the caller doesn't handle the negative case
+(the parse function throws). The verb encodes the contract.
 
 > "An `AutoMakersList : List<String>` adds complexity without
-> adding information. [...] The list is still of `string`, and
-> the last time I checked, there were no validation methods on
-> `string` that validate they are auto maker's names."
+> adding information. […] The list stays of `string`, and the
+> last time the author checked, there were no checking
+> methods on `string` that confirm any single string is an
+> auto maker's name."
 >
-> . Andrew Theken, _The "Named Generic" Anti-pattern_, June 2010.
+> . _The "Named Generic" Anti-pattern_, a 2010 essay.
 
-Theken targets types; this rule targets verbs. Both are instances
-of the same principle: a name that adds zero information is a
-smell, whether it is a class name or a function name.
+The author targets types; this rule targets verbs. Both stand as
+instances of the same principle: a name that adds zero
+information is a smell, whether it's a class name or a function
+name.
 
 The four sources converge on the operational rule: a function
 name's verb must encode the transformation, the return type must
@@ -220,63 +222,66 @@ encode the result. Generic verbs fail both tests.
 
 ## Enforcement
 
-- **Code review**. A reviewer who sees a generic verb (`process`,
-  `convert`, `validate`, `transform`, `handle`) in a function
-  name blocks the PR and asks for a specific verb.
-- **Naming audit**. A standing review of "which function names in
-  this codebase use a generic verb?" surfaces the candidates that
-  slipped through. Each is a rename candidate.
+- **Code review**. A reviewer who sees a generic verb
+  (`process`, `convert`, `validate`, `transform`, `handle`) in
+  a function name blocks the PR and asks for a specific verb.
+- **Naming audit**. A standing review of "which function names
+  in this codebase use a generic verb?" surfaces the candidates
+  that slipped through. Each becomes a rename candidate.
 - **Lint rule** (future). A custom ESLint rule can flag function
-  names that match a list of generic verbs. The rule's existence
-  is the enforcement signal even before it is automated.
+  names that match a list of generic verbs. The rule's
+  existence is the enforcement signal even before automation
+  lands.
 
 ## Exceptions
 
-A function whose job is genuinely "do several things in order"
-may use a verb that names the orchestration (`runPipeline`,
-`executeSteps`) when the function's contract is the order, not the
-work. The work is done by named helpers; the function delegates.
-The rule is not against orchestration verbs; it is against
+A function whose job is genuinely "do a sequence of steps"
+may carry a verb that names the orchestration (`runPipeline`,
+`executeSteps`) when the function's contract is the order, not
+the work. The named helpers do the work; the function delegates.
+The rule isn't against orchestration verbs; it's against
 naming-without-understanding.
 
 A test or fixture name may use a generic verb (`setupTest`,
-`createFixture`) because the test's contract is "set up state",
-not "do domain work". The rule applies to production code; test
-code is exempt.
+`createFixture`) because the test's contract is "set up state,"
+not "do domain work." The rule applies to production code; test
+code stays exempt.
 
 ## See also
 
-- **Rule 0005** . Named Algorithms and Independent Data Structures:
-  a function whose verb is `process` is a function whose algorithm
-  is not named. Rule 0005 captures the algorithm naming;
-  rule 0016 captures the verb naming.
-- **Rule 0013** . Entity-First Naming: a class named `Handler`
-  is the noun-level equivalent of a function named `handle*`. The
+- **Rule 0005**, Named Algorithms and Independent Data
+  Structures: a function whose verb is `process` is a function
+  whose algorithm isn't named. Rule 0005 captures the algorithm
+  naming; rule 0016 captures the verb naming.
+- **Rule 0013**, Entity-First Naming: a class named `Handler` is
+  the noun-level counterpart of a function named `handle*`. The
   two rules compound; the suffix smell and the verb smell are
   instances of the same "named generic" anti-pattern.
-- **Rule 0015** . Domain-Specific Types Over Primitives: a generic
-  verb often pairs with a primitive return type. `processMessage`
-  returns `void`; the verb is generic because the return is
-  generic. The fix for both is the same: pick a specific verb and
-  a specific type.
+- **Rule 0015**, Domain-Specific Types Over Primitives: a generic
+  verb often pairs with a primitive return type.
+  `processMessage` returns `void`; the verb is generic because
+  the return is generic. The fix for both is the same: pick a
+  specific verb and a specific type.
 
 ## Sources
 
-- **Lübke, Daniel.** _The easiest rule to not give bad names for
-  your APIs and operations: No Generic Terms!_ January 2021. The
-  forbidden-words list (`do`, `make`, `handle`, `perform`,
-  `something`) is the operational form of this rule; the rule
-  extends the list with the function-name-specific generic verbs
-  the codebase encounters (`parse`, `convert`, `validate`,
-  `transform`).
-- **King, Alexis.** _Parse, don't validate._ November 2019. The
-  principle that a function's verb encodes the contract: `validate`
-  returns a boolean; `parse` returns the parsed value. The rule
-  applies the principle to naming , the verb says what the
-  function returns.
-- **Theken, Andrew.** _The "Named Generic" Anti-pattern._ June 2010. Targets types; this rule targets verbs. Both are instances
-  of the same principle: a name that adds zero information is a
-  smell.
-- **Karlton, Phil.** Paraphrased by Lübke, the canonical
-  formulation of the naming problem. The rule operationalises the
-  joke.
+- **A naming-essay author.** _The easiest rule to not give bad
+  names for your interfaces and operations: No Generic Terms!_
+  January 2021. The forbidden-words list (`do`, `make`,
+  `handle`, `perform`, `something`) is the operational form of
+  this rule; the rule extends the list with the
+  function-name-specific generic verbs the codebase encounters
+  (`parse`, `convert`, `verify`, `transform`).
+- **An author writing on parsing over checking.** _Parse, don't verify_
+  (paraphrased title), November 2019. The principle that a
+  function's verb encodes the contract: a check returns a
+  boolean; `parse` returns the parsed value. The rule applies
+  the principle to naming:
+  the verb says what the function returns.
+- **A named-generic-anti-pattern author.** _The "Named Generic"
+  Anti-pattern._ June 2010. Targets types; this rule targets
+  verbs. Both are instances of the same principle: a name that
+  adds zero information is a smell.
+- **A naming-joke contributor.** Paraphrased in a 2021 essay,
+  the canonical formulation of the naming problem. The rule
+  puts the joke into effect.

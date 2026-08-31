@@ -6,7 +6,7 @@ description: 'A study of Hono''s middleware patterns. Built on'
 # Hono middleware
 
 A study of Hono's middleware patterns. Built on
-[hono.dev/docs/guides/middleware](https://hono.dev/docs/guides/middleware)
+[Hono.dev/docs/guides/middleware](https://hono.dev/docs/guides/middleware)
 , the upstream page is the source of truth when the lib
 changes; this entry exists to show the shape of the
 integration and the discipline that orders the middleware
@@ -34,7 +34,7 @@ Three registration shapes:
 
 ## Execution order
 
-Order is determined by registration order, and the
+Registration order determines execution order, and the
 middleware runs as nested `await next()`:
 
 ```
@@ -47,16 +47,16 @@ mw1 start
 mw1 end
 ```
 
-A throw anywhere in the chain is caught by `api.onError(...)`
-if one is registered. The `await next()` in upstream
+A throw anywhere in the chain lands in `api.onError(...)`
+when the app registers one. The `await next()` in upstream
 middleware never throws.
 
 ## The error handler
 
 `app.onError(handler)` is the global catch. It runs after
-**any** middleware or handler throws. It is not strictly a
-middleware , it is registered with `onError`, not `use` . 
-but it lives in the same chain conceptually.
+**any** middleware or handler throws. It isn't a middleware
+in the technical sense, it registers with `onError`, not `use`.
+Still, it lives in the same chain conceptually.
 
 ```ts
 api.onError(onApiError)
@@ -69,7 +69,7 @@ Hono-level errors that never reached the procedure.
 
 ## Categories of middleware in a Hono app
 
-The middlewares an app actually mounts fall into seven
+The middleware an app actually mounts falls into seven
 categories, with a recommended order:
 
 | Category | Purpose | Where it runs |
@@ -78,10 +78,10 @@ categories, with a recommended order:
 | Request ID | Mints a per-request correlation ID, sets a context variable, echoes the header | `app.use("*", ...)` |
 | Session | Calls the auth lib, sets the user/session context variables | `app.use("*", ...)` |
 | CORS | Headers for cross-origin requests | `app.use("*", ...)` |
-| Security headers | HSTS, nosniff, CSP defaults | `app.use("*", ...)` |
+| Security headers | HSTS, `nosniff`, CSP defaults | `app.use("*", ...)` |
 | Logger | Request/response logging | `app.use("*", ...)` |
 | Rate limit | Per-IP or per-route throttling | Per-route, when needed |
-| ETag | Weak ETag handler for cacheable routes | Per-route, when needed |
+| `ETag` | Weak `ETag` handler for cacheable routes | Per-route, when needed |
 
 The composition order in the composer:
 
@@ -107,15 +107,15 @@ to extract middleware with type safety. The inline form
 `c` parameter is already typed by Hono's inference from
 the Hono instance. The `createMiddleware<Env>(...)` form
 becomes necessary when a middleware needs an explicit
-`Env` that differs from the app's, or when the middleware
-is exported for reuse across apps.
+`Env` that differs from the app's, or when the codebase
+exports the middleware for reuse across apps.
 
-## What this entry is not
+## What this entry isn't
 
 This is a knowledge-base entry, not an ADR. It documents
 how Hono middleware patterns work in the current version of
 the lib, and the shape of the integration. The
-**decisions** (which patterns we picked and why) live in
+**decisions** (which patterns this entry covers and why) live in
 `docs/engineering/architecture/decisions/` and
 `docs/engineering/architecture/rules/`. When a future
 change conflicts with this entry, the entry is wrong, not

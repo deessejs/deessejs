@@ -1,20 +1,18 @@
 ---
-title: Middleware composition
+title: middleware composition
 description: Group or not, and when each is right.
 ---
 
-A study of the patterns for grouping middlewares in a Hono
-app. Built on
-[hono.dev/docs/middleware/builtin/combine](https://hono.dev/docs/middleware/builtin/combine)
-and the [Hono source](https://github.com/honojs/hono) —
+A study of the patterns for grouping middleware in a Hono
+app. Built on the upstream Hono docs and the Hono source,
 specifically `src/middleware/combine/` and the `compose`
 machinery. The upstream page is the source of truth when the
-lib changes; this entry exists to show when to group middlewares
-and when to leave them separate.
+lib changes; this entry exists to show when to group the
+middleware chain and when to leave it separate.
 
 ## The question
 
-Given a chain of middlewares applied to every request:
+Given a chain of middleware applied to every request:
 
 ```ts
 api.use("*", requestId())
@@ -24,33 +22,32 @@ api.use("*", honoLogger())
 api.use("*", session())
 ```
 
-Should this be wrapped in a single `app.use("*", compose(...))`
-or in a helper that groups the five middlewares, or left as-is?
+Should the codebase wrap this in a single `app.use("*", compose(...))`,
+or use a helper that groups the five middleware, or leave it as-is?
 
 ## The short answer
 
 **Leave them as separate `app.use` calls.** The composition
-cost is paid once per request when `compose()` walks the
+cost happens once per request when `compose()` walks the
 matched middleware array, regardless of whether the array has
-five entries or one. There is no runtime savings to grouping.
+five entries or one. Grouping offers no runtime savings.
 
-The PR [honojs/hono#495](https://github.com/honojs/hono/pull/495)
-("perf: Remove `await composed()` from hono.ts") shows that
+The PR [Hono PR #495](https://github.com/honojs/hono/pull/495) shows that
 Hono has even **removed** an internal `await` on the composed
 function to avoid the per-request cost. The takeaway:
-Hono's composition is already cheap, and adding an extra
+Hono's composition runs cheaply already, and adding an extra
 `compose(...)` layer on top is a no-op for performance.
 
 ## When to group
 
-There are three real reasons to group middleware, none of
-which are about performance.
+Three real reasons exist to group middleware, and none of
+them concern performance.
 
-### 1. Conditional branching — `hono/combine`
+### 1. Conditional branching, `hono/combine`
 
-The `some`, `every`, and `except` helpers are for **conditional
-composition** (try A or B, run all of A and B, or run A
-unless X). They are not for grouping a fixed chain.
+The `some`, `every`, and `except` helpers serve **conditional
+composition** (try A or B, run A and B together, or run A
+unless X). They don't serve grouping a fixed chain.
 
 ```ts
 import { some, every } from 'hono/combine'
@@ -67,10 +64,10 @@ app.use(
 ```
 
 Use `some` / `every` / `except` when the composition is
-**conditional**. Do not use them to merge a fixed chain — they
-add an `await` and a try/catch for no functional gain.
+**conditional**. Don't use them to merge a fixed chain, since
+they add an `await` and a try/catch with no functional gain.
 
-### 2. Logical grouping — application-level helper
+### 2. Logical grouping, application-level helper
 
 If the chain has a clear **name** (a layer of concerns), a
 helper factory is the right shape:
@@ -90,22 +87,22 @@ export const requestPipeline = () =>
 api.use("*", requestPipeline())
 ```
 
-This is not about performance; it is about giving the chain
+This isn't about performance; it's about giving the chain
 a name and a single edit point. The cost is the same five
 `compose()` walks per request. The gain is a meaningful
 `requestPipeline` symbol in the composer.
 
 Use a helper when the chain is **named, repeated, or
-mutated as a unit**. A one-off chain of five middlewares in
-the composer does not need a helper.
+mutated as a unit**. A one-off chain of five middleware in
+the composer doesn't need a helper.
 
-### 3. Domain-scoped middleware — `app.use(path, mw)`
+### 3. Domain-scoped middleware, `app.use(path, mw)`
 
 Path-scoped middleware is a different operation, not a
 grouping. The dispatcher **excludes** non-matching routes
 from the match result, which reduces per-request composition
 work. Use it when a middleware applies only to a subset of
-routes (e.g. `/api/*` for rate limiting, `/auth/*` for
+routes (for example `/api/*` for rate limiting, `/auth/*` for
 session).
 
 ## What the cost is
@@ -116,16 +113,16 @@ Per the Hono source (`src/compose.ts`), the dispatcher:
 2. Updates `context.req.routeIndex` at each step.
 3. Awaits each middleware's `next()` and unwinds the stack.
 
-For five unscoped middlewares on every route, all five are
-matched on every request. The cost is five `await next()`
-awaits and five function calls. This is cheap — the per-request
-cost is dominated by the handler itself, not by the
+For five middleware on every route, all five match on
+every request. The cost is five `await next()` awaits
+and five function calls. This runs cheaply; the per-request
+cost stems from the handler itself, not from the
 middleware count.
 
 The risk of **adding** a `compose(...)` layer is that the
-indirection makes the chain harder to read for no measurable
-gain. The docstring in `compose.ts` notes that the dispatch
-path is already optimised.
+indirection makes the chain harder to read with no measurable
+gain. The inline note in `compose.ts` mentions that the dispatch
+path runs optimised already.
 
 ## Recommended shape for the API
 
@@ -146,8 +143,8 @@ Each line is **what it does**, not **how it composes**. A
 reader can scan the chain at a glance. The dispatcher
 optimises the cost.
 
-If the chain grows to 10+ middlewares or the same chain
-appears in multiple places, **then** extract a helper:
+If the chain grows to 10+ middleware or the same chain
+appears in many places, **then** extract a helper:
 
 ```ts
 // http/middleware/pipeline.ts
@@ -161,14 +158,14 @@ export const securityPipeline = () =>
   )
 ```
 
-But the threshold is "duplicated or named", not "more than
-five". Five middlewares in a row is fine.
+Still, the threshold is "duplicated or named," not "more
+than five." Five middleware in a row is fine.
 
-## What this entry is not
+## What this entry isn't
 
 This is a knowledge-base entry, not an ADR. The decision to
 keep the chain separate is a **discipline**, not a
 load-bearing invariant. If a future contributor wants to
-extract a helper, the extraction is mechanical and not
-architecturally significant. The structural decision is
-captured in ADR-004; the operational pattern lives here.
+extract a helper, the extraction runs as a refactor and isn't
+architecturally significant. The structural decision lives
+in ADR-004; the operational pattern lives here.

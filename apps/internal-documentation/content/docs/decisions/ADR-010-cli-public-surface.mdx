@@ -11,12 +11,11 @@ Accepted (2026-08). Non-negotiable.
 
 ## Context
 
-`apps/cli/` is the published package `@deessejs/cli`. It ships to
-npm and is consumed by every user of the DeesseJS template
-registry. Once published, the CLI's public surface is
+`apps/cli/` ships as the published package `@deessejs/cli`.
+npm carries it; every user of the DeesseJS template registry
+consumes it. Once published, the CLI's public surface is
 load-bearing: a user that depends on `deessejs list` or on the
-shape of `CliError` cannot be asked to change without a major
-bump.
+shape of `CliError` can't change without a major bump.
 
 The CLI sits between two consumers with opposite needs. On
 one side, the human at a terminal expects a stable command set,
@@ -26,39 +25,39 @@ failing code. On the other side, the upstream server
 the contract changes when the API gains procedures or
 deprecates paths. The CLI is the buffer between the two.
 
-Today, the CLI's public surface is described across several
-files with no single source of truth:
+Today, the CLI's public surface spans a handful of files, with
+no single source of truth:
 
 - The published commands live in `apps/cli/src/commands/`,
   one file per command (`list.ts`, `info.ts`, `init.ts`),
   each free to set its own flags and output format.
-- The error model is split between `apps/cli/src/errors.ts`
+- The error model splits between `apps/cli/src/errors.ts`
   (`networkError`, `parseError`, `notFoundError`) and the
   mapper `apps/cli/src/api/index.ts:38` (`orpcToCliError`)
-  that turns upstream errors into CLI codes. The mapping is
-  not documented; the codes drift between server and client.
+  that turns upstream errors into CLI codes. The mapping
+  lacks documentation; the codes drift between server and client.
 - The version probe (`maybeWarnAboutOutdatedCli`) lives in
-  `apps/cli/src/version-check.ts` and is called as a
-  side-effect of `fetchTemplates`. The contract of the probe
-  (which fields, which threshold, which warning shape) is
-  not pinned anywhere.
-- The cache directory and cache key format are described in
-  `apps/cli/src/cache.ts` and in inline comments. A
+  `apps/cli/src/version-check.ts` and runs as a side-effect
+  of `fetchTemplates`. The contract of the probe
+  (which fields, which threshold, which warning shape)
+  lacks a pinned source.
+- The cache directory and cache key format split across
+  `apps/cli/src/cache.ts` and inline comments. A
   contributor who renames a cache file ships an
   incompatible cache to every installed user.
 - The published `package.json` `bin`, `engines`, and
-  `publishConfig` fields are in `apps/cli/package.json`, but
+  `publishConfig` fields live in `apps/cli/package.json`, but
   the rationale for the choices (`engines.node >= 18.18.0`,
-  `provenance: true`) is not.
+  `provenance: true`) doesn't.
 
 The CLI is the only published artifact in the monorepo. Every
 other package is private (`@workspace/*`). The discipline
-that the published surface is fenced off from the internal
-structure does not yet exist in an ADR.
+that fences the published surface off from the internal
+structure doesn't yet exist in an ADR.
 
 ## Decision
 
-The CLI's public surface is fenced off from its internal
+The CLI's public surface splits from its internal
 implementation by **six invariants**. Each invariant names a
 piece of the surface, the file that owns it, and what a
 breaking change looks like.
@@ -71,8 +70,8 @@ manifest, every other concept in its own folder. No `.ts`
 file at the package root except `index.ts`; no `.ts` file
 under `src/` at the root either. The single-source-of-truth
 exception that ADR-004 makes for `templates.ts` (the static
-template registry) does not apply here; the CLI has no
-equivalent. The structure is `one folder per concept` end
+template registry) doesn't apply here; the CLI has nothing
+analogous. The structure is `one folder per concept` end
 to end.
 
 ```
@@ -158,8 +157,8 @@ The structure has **three layers**, mirroring the
   the `retry.ts` inside `api/` are the implementation layer.
   Each folder owns one invariant (2, 3, 4, 5). The boundary
   with `commands/` is one-way: `commands/` imports from the
-  implementation layer; the implementation layer does not
-  import from `commands/`.
+  implementation layer; the implementation layer imports
+  nothing from `commands/`.
 - `constants/` and `utils/` are pure code with no I/O, no
   state, no upstream coupling. Per ADR-002 Rule 2 they live
   in their own folders and never mix with the implementation
@@ -186,13 +185,13 @@ existing implementation file needs to change.
 
 ### What this rule allows
 
-- A new file under `utils/` for a pure helper that does not
+- A new file under `utils/` for a pure helper that doesn't
   fit any existing utility's concern.
 - A new file under `commands/` for a new public command,
   following the command-file invariants (own flag list, own
   formatter, own exit-code mapping).
-- A new file under `api/` when a new contract type is added
-  to `@workspace/contracts/v1` and the typed client grows.
+- A new file under `api/` when `@workspace/contracts/v1`
+  adds a new contract type and the typed client grows.
 - A new file at any package root only for `index.ts` and
   `package.json`. Any other root file is a smell.
 
@@ -203,7 +202,7 @@ existing implementation file needs to change.
   is the same as `@workspace/api`: every concept lives in
   its own folder, the entry is the only root file.
 - A second folder at the package root. Today only `src/`,
-  `tests/`, and `dist/` are allowed (per ADR-002). Adding
+  `tests/`, and `dist/` count (per ADR-002). Adding
   `scripts/`, `bin/`, `lib/`, or `runtime/` is a sign the
   structure is drifting.
 - A `types.ts` at the `apps/cli/` root or under `src/`. Types
@@ -230,17 +229,17 @@ three is a breaking change.
 
 | Command | Purpose | Exit codes | Output |
 |---|---|---|---|
-| `deessejs init <slug>` | Clone a template repo + install dependencies | `0` success, `1` error | progress to stderr, final summary to stdout |
+| `deessejs init <slug>` | Clone a template repo + install dependencies | `0` success, `1` error | progress to {/* vale fix: Vale.Spelling */}stderr{/* vale fix: Vale.Spelling */}, final summary to stdout |
 | `deessejs list` | List available templates | `0` success, `1` error | templates table to stdout |
 | `deessejs info <slug>` | Show details for one template | `0` success, `1` error | template details to stdout |
 
 Every command accepts `--offline`. No other flag is part
-of the public surface in V1. The previous `--api-url <url>`
-flag was removed because no concrete use case surfaced in V1
+of the public surface in V1. V1 dropped the `--api-url <url>`
+flag because no concrete use case surfaced in V1
 and the URL is a server-side concern (defined by
 `API_RPC_PATH` in `@workspace/api/base-path`). Per-command
-flags (`--category`, `--json`) are public but are reviewed
-against the same rule.
+flags (`--category`, `--json`) are public but reviewers check
+them against the same rule.
 
 If a future V needs per-command URL overrides, the
 re-introduction must come with a V-bump and a deprecation
@@ -263,9 +262,9 @@ maps to one of these codes:
 
 | Code | Meaning | Source |
 |---|---|---|
-| `network_error` | The upstream endpoint could not be reached | `networkError(...)` |
-| `parse_error` | The upstream returned a body that does not match the contract | `parseError(...)` |
-| `not_found` | The requested resource does not exist | `notFoundError(...)` |
+| `network_error` | The CLI can't reach the upstream endpoint | `networkError(...)` |
+| `parse_error` | The upstream returned a body that doesn't match the contract | `parseError(...)` |
+| `not_found` | The requested resource doesn't exist | `notFoundError(...)` |
 | `cli_outdated` | The installed CLI version is below the server's `MIN_SUPPORTED_VERSION` | `maybeWarnAboutOutdatedCli` |
 | `cli_device_denied` | The user denied the device-flow authorization in the browser | `cliDeviceDenied(...)` |
 | `cli_device_expired` | The device code expired before the user approved it | `cliDeviceExpired(...)` |
@@ -278,76 +277,76 @@ turn into CLI codes. A new upstream error shape requires a
 new branch in the relevant mapper, not a new error code in
 the public list.
 
-The error code list is **closed**. Adding a code is a
+The error code list stays **closed**. Adding a code is a
 breaking change for downstream tooling that pattern-matches
 on the code (analytics, telemetry, scripted error handling).
-The two device-flow codes were added in lockstep with
-ADR-019 (device authorization for the CLI auth surface) to
+ADR-019 added the two device-flow codes in lockstep with
+the device authorization flow for the CLI auth surface, to
 preserve the principle that every error the user sees names
 the actual cause; mapping `access_denied` and `expired_token`
 to the generic `not_found` would have hidden the cause from
 the user. The closed-list rule still applies; the device-flow
-codes are not a precedent for opening open-ended additions.
+codes open no precedent for further additions.
 
 ### 3. Version probe
 
 The CLI calls `GET /api/v1/version` on every command by
 default. The probe is best-effort: failure to reach the
-endpoint does not change the exit code. The probe compares
+endpoint doesn't change the exit code. The probe compares
 the installed CLI version (read from the package's own
 `package.json`) against the server's `MIN_SUPPORTED_VERSION`
 and warns when the installed version is below.
 
 The probe's contract:
 
-- The endpoint path is fixed at `/api/v1/version`. Renaming
+- The endpoint path stays fixed at `/api/v1/version`. Renaming
   the path is a breaking change for the probe.
 - The response shape is `{ version: string, minSupported:
   string }`. Adding a field is non-breaking; renaming or
   removing a field is breaking.
-- The warning is emitted to `stderr`; the exit code is
+- The warning emits to `stderr`; the exit code stays
   unchanged.
-- A probe failure (network, parse, 5xx) is silent. The user
+- A probe failure (network, parse, 5xx) fails without notice. The user
   sees no warning, the command continues.
 
-The probe is **skippable** through an internal flag used by
+The probe is **{/* vale fix: Vale.Spelling */}skippable{/* vale fix: Vale.Spelling */}** through an internal flag used by
 the probe itself (to avoid recursion) and by tests. The
-skip flag is not part of the public surface.
+skip flag isn't part of the public surface.
 
 ### 4. Cache
 
 The CLI maintains a disk cache of templates and version
-metadata. The cache lives under the user's home directory in
+metadata. The cache lives under the user's {/* vale fix: Microsoft.Terms */}root directory{/* vale fix: Microsoft.Terms */} in
 a fixed location (`apps/cli/src/constants.ts`, `CACHE_DIR`).
-The cache file format is JSON; the file name is fixed
+The cache file format is JSON; the file name stays fixed
 (`templates.json`).
 
 The cache contract:
 
-- The cache is opaque to the user. It is an internal
+- The cache stays opaque to the user. It's an internal
   optimisation, not a user-visible artifact.
-- A cache write that fails (disk full, permission denied) is
-  silent. The next command retries; the cache is best-effort.
+- A cache write that fails (disk full, permission denied) runs
+  without raising. The next command retries; the cache is best-effort.
 - The `--offline` flag falls back to the cache when the
-  network is unreachable. The fallback is silent unless the
+  network is unreachable. The fallback runs without raising unless the
   network failure itself surfaces.
 - The cache file format is **not** part of the public
   surface. The CLI may change the cache shape between
   versions without bumping the major. Users who reach into
   the cache do so at their own risk.
 
-### 5. HTTP wire format
+### 5. Wire format
 
-The CLI talks to the upstream exclusively through the typed
+The CLI talks to the upstream through the typed
 oRPC client (`@orpc/client` + `RPCLink`). The client wraps
 the retry-aware fetch hook; the wrapper's signature comes
 from `@orpc/client` directly (five arguments: `request`,
 `init`, `options`, `path`, `input`).
 
 The wire format is whatever the upstream server publishes.
-The CLI does not interpret the wire format directly; every
-response is decoded by the typed client into a contract
-shape (`TemplatesListResponseV1`). A change in the upstream
+The CLI doesn't interpret the wire format directly; the typed
+client decodes every response into a contract shape
+(`TemplatesListResponseV1`). A change in the upstream
 wire format is a contract change, governed by ADR-001 and
 the `@workspace/contracts` package, not by this ADR.
 
@@ -357,7 +356,7 @@ The `apps/cli/package.json` `bin`, `engines`, `publishConfig`,
 and `provenance` fields are part of the public surface.
 Changing `bin` from `deessejs` to anything else is breaking;
 narrowing `engines.node` is breaking; widening is non-breaking
-but is reviewed for unintended consequences.
+but reviewers check for unintended consequences.
 
 `@deessejs/cli` is the only published package in the monorepo.
 The release workflow (`pnpm changeset version && pnpm
@@ -369,20 +368,20 @@ already enforced by `.changeset/README.md` and the CI
 ## What this rule allows
 
 - **Adding a new command** to the CLI as long as the new
-  command does not collide with the three existing ones and
+  command doesn't collide with the three existing ones and
   follows the same exit-code and output-format conventions.
-  The new command is reviewed against the same invariants.
+  Reviewers check the new command against the same invariants.
 - **Adding a new flag** to an existing command as long as the
-  flag is documented in the command's `--help` output and the
-  flag does not change the meaning of an existing flag.
+  `--help` output documents the flag and the flag
+  doesn't change the meaning of an existing flag.
 - **Adding a new internal error code** (used only inside the
   CLI, not surfaced to the user) without bumping the public
   list.
 - **Widening the supported Node version range** (`engines.node`)
-  as long as the lower bound is preserved.
+  as long as the lower bound stays intact.
 - **Changing the cache file format** between versions without
-  bumping the major, as long as a stale cache is detected and
-  silently discarded.
+  bumping the major, as long as stale-cache detection catches
+  and discards the stale entry.
 - **Adding a new optional field** to the version probe's
   response shape.
 
@@ -391,14 +390,14 @@ already enforced by `.changeset/README.md` and the CI
 - **Removing or renaming a command**. `deessejs list` exists
   forever or the CLI ships a major bump with a deprecation
   warning for at least one minor.
-- **Changing an existing flag's meaning** (e.g. flipping
+- **Changing an existing flag's meaning** (for example, flipping
   `--offline` from "fallback to cache" to "skip cache"). The
-  flag either keeps its meaning or is removed.
-- **Adding a new public error code**. The list is closed; new
+  flag either keeps its meaning or review removes it.
+- **Adding a new public error code**. The list stays closed; new
   upstream errors map to existing codes or to the generic
   `network_error` / `parse_error`. The two device-flow
   codes (`cli_device_denied`, `cli_device_expired`) are the
-  only sanctioned additions; they are not a precedent for
+  only sanctioned additions; they're not a precedent for
   opening the list further.
 - **Renaming the version probe endpoint path** (`/api/v1/version`).
   The path is part of the wire contract; the rename ships in
@@ -407,14 +406,14 @@ already enforced by `.changeset/README.md` and the CI
   breaking way. A field rename is breaking; a field removal
   is breaking; a new field is non-breaking.
 - **Reading the cache from outside the CLI** (a tool that
-  parses `templates.json` directly). The cache is opaque; the
+  parses `templates.json` directly). The cache stays opaque; the
   next CLI version may change the format.
 - **Publishing a CLI that talks to the upstream through
   anything other than the typed oRPC client**. Direct
   `fetch`, a second client, a custom envelope: all forbidden
   by ADR-001 and reinforced here.
 
-## What this rule does not change
+## What this rule doesn't change
 
 - The upstream API contract. The CLI consumes the contract
   as published by `@workspace/contracts/v1`; changes to the
@@ -425,28 +424,28 @@ already enforced by `.changeset/README.md` and the CI
   internal; their shape may change between CLI versions
   without a major bump.
 - The CI workflow. The `check-changeset` job and the release
-  workflow (`pnpm changeset publish`) are unchanged.
+  workflow (`pnpm changeset publish`) stay as they are.
 
 ## Consequences
 
-- A PR that adds a command without following the
+- Review rejects a PR that adds a command without following the
   command-file invariants (own flag list, own formatter, own
-  exit-code mapping) is rejected. The author refactors the
+  exit-code mapping). The author refactors the
   command file to match.
-- A PR that introduces a new public error code is rejected.
+- Review rejects a PR that introduces a new public error code.
   The author maps the new upstream shape to an existing code
   or escalates the public-list change to a new ADR.
-- A PR that bypasses the typed client (e.g. a direct `fetch`
-  in a command) is rejected per ADR-001.
-- A PR that renames or removes a public command, flag, or
-  error code is rejected unless the PR also includes a
+- Review rejects a PR that bypasses the typed client (for example, a direct `fetch`
+  in a command) per ADR-001.
+- Review rejects a PR that renames or removes a public command, flag, or
+  error code unless the PR also includes a
   deprecation warning and a major bump.
-- A PR that touches `apps/cli/**` without a changeset is
-  rejected by the CI `check-changeset` job.
-- A PR that changes the cache file format must also include
-  a stale-cache-detection mechanism (e.g. a `version` field
+- Review rejects a PR that touches `apps/cli/**` without a changeset
+  via the CI `check-changeset` job.
+- Review rejects a PR that changes the cache file format without also adding
+  a stale-cache-detection mechanism (for example, a `version` field
   in the cache header). A silent breakage that ships an
-  incompatible cache to existing users is rejected.
+  incompatible cache to existing users fails review.
 
 ## Where this rule came from
 
@@ -467,8 +466,8 @@ The opacity rule prevents recurrence.
 
 ## How to migrate
 
-No migration is required. The invariants above describe the
-CLI as it is. A contributor who adds to the CLI follows the
+No migration requires work. The invariants above describe the
+CLI as it stands. A contributor who adds to the CLI follows the
 invariants; a reviewer who approves a CLI PR checks the
 invariants; a release engineer who bumps the CLI checks the
 invariants before tagging.
@@ -477,24 +476,24 @@ The next cleanup task that emerges from this ADR:
 
 1. Move the public error code list from the comments in
    `errors/` to a `CliErrorCode` union type, exported from
-   `apps/cli/src/errors/index.ts`. Today the codes are documented
-   in prose; a union type makes the closed-list rule
+   `apps/cli/src/errors/index.ts`. Today the codes live in prose;
+   a union type makes the closed-list rule
    machine-checkable.
 2. Document the version probe in a knowledge-base entry
    under `apps/internal-documentation/content/docs/knowledge-base/cli/`.
-   The probe's invariants are scattered across `version/check.ts`,
+   The probe's invariants scatter across `version/check.ts`,
    `api/index.ts` (`fetchTemplates`), and the inline comments in
    `commands/*.ts`.
-3. Add a CI lint that rejects a CLI PR that does not include
+3. Add a CI lint that rejects a CLI PR that doesn't include
    a changeset. The job exists (`check-changeset`); the rule
-   is enforced; this ADR documents the rationale.
+   applies; this ADR documents the rationale.
 
 ## Related
 
 - [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md). The
   contract discipline that this ADR reinforces on the CLI
   side. ADR-001 says the contract is the API; this ADR says
-  the CLI is bound to that contract and only to that contract.
+  the CLI binds to that contract and only to that contract.
 - [ADR-005: API is consumer-agnostic](./ADR-005-api-consumer-agnostic.md). The
   server-side counterpart. ADR-005 says the server does
   not name the consumer; this ADR says the consumer (the

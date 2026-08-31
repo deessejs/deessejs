@@ -1,9 +1,9 @@
 ---
-title: 'ADR-008: doc titles cap at four words'
+title: 'ADR-008, doc titles cap at four words'
 description: 'Accepted (2026-08). Non-negotiable.'
 ---
 
-# ADR-008: doc titles cap at four words
+# ADR-008, doc titles cap at four words
 
 ## Status
 
@@ -45,48 +45,48 @@ sidebar full of entries stays scannable.
 The cap applies to the frontmatter `title` field only. The
 section header on the page (the `## ...` inside the body
 where the prose begins) is a separate concept with its own
-length budget, and is governed by the prose rules of the
-body content, not this ADR.
+length budget, and the prose rules of the
+body content govern it, not this ADR.
 
 A title that needs more than four words is **a signal**:
-either the entry is conflating two concepts, or the entry
-needs a section of its own, or the entry should be split
+either the entry conflates two concepts, or the entry
+needs a section of its own, or the author should split it
 into two. The author restructures, not truncates.
 
 ## What this rule allows
 
 - **Single-word titles** for pages that are genuinely
   one-word concepts (the section index pages:
-  "Decisions", "Rules", "Knowledge Base").
+  "Decisions," "Rules," "Knowledge Base").
 - **Two-word titles** for entries whose concept is a pair
-  ("Project Mindset", "Domain-Specific Types", "Hono
+  ("Project Mindset," "Domain-Specific Types," "Hono
   Integration").
 - **Three-word titles** for entries whose concept is a
-  short phrase ("Top-Down Composition", "No Speculative
-  Defences", "Functions Over Classes").
+  short phrase ("Top-Down Composition," "No Speculative
+  Defences," "Functions Over Classes").
 - **Four-word titles** for entries whose concept is the
-  longest allowed phrase ("Prefer `type` Over `interface`",
-  "Entity-First Naming", "Open Extension", "Closed
-  Modification", "Functions Over Classes for Public API",
+  longest allowed phrase ("Prefer `type` Over `interface`,"
+  "Entity-First Naming," "Open Extension," "Closed
+  Modification," "Functions Over Classes for Public API,"
   "Domain-Specific Types Over Primitives").
 - **Hyphenated compounds** count as one word. "Domain-
   Specific" is one word in the title.
 - **Code in backticks** counts as one word per backtick
   expression. `\`type\`` is one word; the four-word
   budget still applies.
-- **The path** (folder + filename) is unaffected. A long
+- **The path** (folder + filename) stays unaffected. A long
   path is acceptable; the title rendered is the
-  frontmatter `title`, which is capped.
+  frontmatter `title`, which the rule caps.
 
 ## What this rule forbids
 
-- **Five-word or longer titles**. Rejected in review.
+- **Five-word or longer titles**. The reviewer rejects them.
 - **Truncation as a fix**: a title that reads as "Function
   Over Class for Public API" (cut from "Functions Over
-  Classes for Public API") is rejected; the author
+  Classes for Public API") leads to rejection; the author
   splits the entry, or restructures, or renames the
   concept.
-- **Acronyms** that hide length. "HonoEnv" is not a way
+- **Acronyms** that hide length. "HonoEnv" isn't a way
   to fit "Hono Environment" in one word; the title stays
   spelled out.
 - **Re-introducing a section heading inside the body** that
@@ -95,20 +95,20 @@ into two. The author restructures, not truncates.
   `## ...` heading, and is the right place for longer
   prose, not the title.
 
-## What this rule does not change
+## What this rule doesn't change
 
-- **The meta.json `title`** field, which is the section
+- **The `meta.json` `title`** field, which is the section
   tab name (DeesseJS, Rules, Decisions, Knowledge Base).
   The tab is peer-level with three siblings, and the
-  budget is different. The tab title is the right length
+  budget differs. The tab title is the right length
   if it fits in one or two words; four words would be a
   different smell (too long for a tab).
-- **The meta.json `description`** field, which is capped
-  by an earlier convention at six words and a single list.
+- **The `meta.json` `description`** field, which an earlier convention caps
+  at six words and a single list.
   The description is the hover tooltip, not the page title.
 - **The folder names and file slugs** in
   `content/docs/**/`. These are URLs, not titles. A slug
-  can be longer than four words; the URL is read, not
+  can run longer than four words; the URL gets read, not
   scanned.
 - **The page body**. The body has no length cap beyond
   the prose rules already documented in the rest of the
@@ -116,7 +116,7 @@ into two. The author restructures, not truncates.
 
 ## How to enforce
 
-The cap is checked at build time by the typecheck pass. A
+The typecheck pass checks the cap at build time. A
 small script reads every `.mdx` file under
 `content/docs/`, parses the frontmatter, and rejects any
 `title` field whose word count exceeds four. The script
@@ -131,22 +131,22 @@ machine-checkable guarantees for the rendering site.
 
 The rule emerged from the implementation of the four root
 tabs in `internal-documentation/`. The first tab labels
-("DeesseJS", "Rules", "Decisions", "Knowledge Base") set
+("DeesseJS," "Rules," "Decisions," "Knowledge Base") set
 the bar at one word. The rules list grew to sixteen
-entries and the longest entry .  "Functions Over Classes
-for Public API" , was the first to feel cramped in the
+entries and the longest entry—"Functions Over Classes
+for Public API"—was the first to feel cramped in the
 sidebar. The pattern repeated in the KB entries and the
-ADRs. The cap is the longest entry that does not feel
+architectural decision records. The cap is the longest entry that doesn't feel
 cramped, rounded down for safety.
 
 ## Related
 
-- [ADR-006: Fumadocs Cards design rules](./ADR-006-fumadocs-card-design.md) . 
+- [ADR-006: Fumadocs Cards design rules](./ADR-006-fumadocs-card-design.md),
   the description-length rule (six words, single list) on
   Cards. Different surface, same principle: sidebar text
   stays scannable.
-- [ADR-007: no em dash in internal doc](./ADR-007-no-em-dash-in-internal-doc.md) . 
+- [ADR-007: no em dash in internal doc](./ADR-007-no-em-dash-in-internal-doc.md),
   the other rendering-site convention. The two together
   shape the writing style of the site.
-- The `meta.json` schema, which carries its own length
+- The metadata schema file, which carries its own length
   budget per field.

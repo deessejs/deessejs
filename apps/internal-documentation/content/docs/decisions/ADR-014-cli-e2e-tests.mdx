@@ -11,15 +11,16 @@ Accepted (2026-08). Non-negotiable.
 
 ## Context
 
-`@deessejs/cli` is the only surface of the monorepo that users actually run. The unit tests (`apps/cli/test/contract/`, `apps/cli/test/unit/`) cover the internal logic: error mapping, output formatting, and a small set of git helpers. They do not cover the published artifact as a whole.
+`@deessejs/cli` is the only surface of the monorepo that users actually run. The unit tests (`apps/cli/test/contract/`, `apps/cli/test/unit/`) cover the internal logic: error mapping, output formatting, and a small set of git helpers. They don't cover the published artifact as a whole.
 
-The verify workflow (ADR-013) catches publish-path regressions: `npx @deessejs/cli@latest --help` runs against the just-packed tarball. It catches broken installs and missing runtimes. It does not catch commands that run but return the wrong thing.
+{/* vale fix: Microsoft.Contractions, Vale.Spelling */}
+The verify workflow (ADR-013) catches publish-path regressions: `npx @deessejs/cli@latest --help` runs against the just-packed tarball. It catches broken installs and a missing runtime. It doesn't catch commands that run but return the wrong thing.
 
-Three failure modes the unit tests and the verify job do not catch:
+Three failure modes the unit tests and the verify job don't catch:
 
 1. A command that returns the wrong templates. The mock-free path is `pnpm dev` + a hand-edited server. Beyond manual smoke testing, nothing.
-2. A command that crashes on a specific input shape. `cli info <unknown-slug>` should print a `not_found` CliError, not a stack trace. The unit tests cover the mapping; they do not cover what happens when the oRPC procedure returns a typed error.
-3. `cli init` cloning the wrong repository. The unit tests mock `cloneRepo`; the real `git clone` path is untested.
+2. A command that crashes on a specific input shape. `cli info <unknown-slug>` should print a `not_found` CliError, not a stack trace. The unit tests cover the mapping; they don't cover what happens when the oRPC procedure returns a typed error.
+3. `cli init` cloning the wrong repository. The unit tests mock `cloneRepo`; nothing exercises the real `git clone` path.
 
 For the published `@deessejs/cli@2.0.1`, the verify job caught a broken install. It would not have caught a CLI that installs cleanly but returns garbage.
 
@@ -31,33 +32,42 @@ The suite runs in CI on every PR touching `apps/cli/**` and in a deeper nightly 
 
 ### One prerequisite: `API_BASE_URL` env var
 
-The CLI hardcodes `API_RPC_PATH` and `API_BASE_PATH` as path constants and lets `globalThis.fetch` resolve them as relative URLs. A reproduction confirms that `fetch("/api/v1/rpc")` in Node fails with `TypeError: fetch failed` — there is no `window.location.origin` to resolve against in non-browser environments. The CLI cannot be pointed at a different server today.
+{/* vale fix: Vale.Spelling, Microsoft.Contractions, write-good.Passive */}
+The CLI treats `API_RPC_PATH` and `API_BASE_PATH` as hardcoded path constants and lets `globalThis.fetch` resolve them as relative URLs. A reproduction confirms that `fetch("/api/v1/rpc")` in Node fails with `TypeError: fetch failed`, because no `window.location.origin` exists to resolve against in non-browser environments. Nothing today can point the CLI at a different server.
 
-This is what makes the e2e suite possible. Before any e2e test can run, the CLI must accept an `API_BASE_URL` environment variable that prefixes the path constants. The override is read at startup, fails loudly if the env var is malformed, and falls back to a production default when unset (so existing consumers are not affected).
+{/* vale fix: write-good.Passive, Microsoft.Adverbs, Microsoft.Contractions */}
+This is what makes the e2e suite possible. Before any e2e test can run, the CLI must accept an `API_BASE_URL` environment variable that prefixes the path constants. The CLI reads the override at startup, raises a clear failure when the env var carries a malformed value, and falls back to a production default when unset (so the change spares existing consumers).
 
 #### What the modification is
 
 The behavior change is small but not trivial. It has three parts.
 
-**1. A new module exposes the resolved URL.** Today, `apps/cli/src/api/client.ts` and `apps/cli/src/version/check.ts` import `API_RPC_PATH` and `API_BASE_PATH` directly from `@workspace/api/base-path`. A new module — for example `apps/cli/src/api/runtime.ts` — exposes `getApiRpcUrl()` and `getApiVersionUrl()` instead. The functions read `API_BASE_URL` from the environment at call time and return a fully resolved URL. The CLI calls these functions where it currently uses the path constants.
+{/* vale fix: Microsoft.Dashes */}
+**1. A new module exposes the resolved URL.** Today, `apps/cli/src/api/client.ts` and `apps/cli/src/version/check.ts` import `API_RPC_PATH` and `API_BASE_PATH` directly from `@workspace/api/base-path`. A new module, for example `apps/cli/src/api/runtime.ts`, exposes `getApiRpcUrl()` and `getApiVersionUrl()` instead. The functions read `API_BASE_URL` from the environment at call time and return a fully resolved URL. The CLI calls these functions where it currently uses the path constants.
 
-**2. The fallback uses a production default.** When `API_BASE_URL` is unset, the resolver returns the production URL. The exact value is decided at implementation time; the canonical production API host is `https://app.deessejs.com` (per ADR-015 and ADR-016, which both reproduce / test against `app.deessejs.com/api/v1/...`). The marketing apex `deessejs.com` is a separate host and does not serve the API. This preserves current behavior for users who do not set the env var. Users who run the CLI against a self-hosted registry get to override the URL without rebuilding.
+{/* vale fix: write-good.Passive, Microsoft.Contractions */}
+**2. The fallback uses a production default.** When `API_BASE_URL` is unset, the resolver returns the production URL. The implementation PR picks the exact value; the canonical production API host is `https://app.deessejs.com` (per ADR-015 and ADR-016, which both reproduce and test against `app.deessejs.com/api/v1/...`). The marketing apex `deessejs.com` is a separate host and doesn't serve the API. This preserves current behavior for users who don't set the env var. Users who run the CLI against a self-hosted registry get to override the URL without rebuilding.
 
-**3. Malformed values fail loudly.** If `API_BASE_URL` is set but not a valid URL (e.g., empty, missing scheme, trailing whitespace), the CLI exits with a non-zero code and a clear error message before making any request. The validation is cheap and prevents confusing failures deep in the network stack.
+{/* vale fix: Microsoft.Adverbs, write-good.Passive, Microsoft.Foreign */}
+**3. Malformed values fail fast.** When `API_BASE_URL` carries something other than a valid URL (for example, an empty string, a missing scheme, or trailing whitespace), the CLI exits with a non-zero code and a clear error message before making any request. The validation is cheap and prevents confusing failures deep in the network stack.
 
 #### Naming
 
-The current `@workspace/api/base-path` module exports two constants: `API_BASE_PATH` (the path prefix, e.g. `/api/v1`) and `API_RPC_PATH` (the RPC endpoint, e.g. `/api/v1/rpc`). Adding an `API_BASE_URL` env var to the CLI creates a naming collision with the existing `API_BASE_PATH` constant. The implementation will rename one of the two. The implementation PR resolves the naming before this ADR is implemented.
+{/* vale fix: Microsoft.Foreign, write-good.Passive */}
+The current `@workspace/api/base-path` module exports two constants: `API_BASE_PATH` (the path prefix, such as `/api/v1`) and `API_RPC_PATH` (the RPC endpoint, such as `/api/v1/rpc`). Adding an `API_BASE_URL` env var to the CLI creates a naming collision with the existing `API_BASE_PATH` constant. The implementation will rename one of the two. The implementation PR resolves the naming before this ADR reaches the codebase.
 
-#### Files impacted
+{/* vale fix: write-good.TooWordy */}
+#### Files affected
 
 Three files in this repo:
 
-- `apps/cli/src/api/client.ts` — replace `RPCLink({ url: API_RPC_PATH })` with a function call.
-- `apps/cli/src/version/check.ts` — replace the template-literal URL with a function call.
-- A new file under `apps/cli/src/api/` — the resolver module. The location and the exact name are decided at implementation time.
+- `apps/cli/src/api/client.ts`, replacing `RPCLink({ url: API_RPC_PATH })` with a function call.
+- `apps/cli/src/version/check.ts`, replacing the template-literal URL with a function call.
+{/* vale fix: write-good.Passive */}
+- A new file under `apps/cli/src/api/`, the resolver module. The implementation PR picks the location and the exact name.
 
-The change does not touch the `@workspace/api` package. The path constants stay where they are; the CLI gains a runtime resolver that lives in the CLI itself.
+{/* vale fix: Microsoft.Contractions */}
+The change doesn't touch the `@workspace/api` package. The path constants stay put; the CLI gains a runtime resolver that lives in the CLI itself.
 
 #### Behavior in each environment
 
@@ -68,13 +78,15 @@ The change does not touch the `@workspace/api` package. The path constants stay 
 | Local dev (`pnpm dev`) | unset | Same as production user. The CLI talks to the production registry. |
 | Local dev (overrides) | `http://localhost:4873` | Resolver returns the override. The CLI talks to a local mock. |
 | E2E test | `http://localhost:<random-port>` | Resolver returns the override. The CLI talks to the in-process mock server. |
-| E2E test (unset, broken) | unset | Resolver returns the production default. The CLI talks to the real API. The test fails with a clear network error. The test runner is responsible for setting the env var. |
+| E2E test (unset, broken) | unset | Resolver returns the production default. The CLI talks to the real API. The test fails with a clear network error. Setting the env var is the test runner's job. |
 
-This is the four-line change in concrete terms: one env var read, one validation, one fallback constant, one resolver function. The rest of the CLI calls the resolver instead of the hardcoded constants. The change is local to two CLI files and one new file. It does not change the public surface of the CLI.
+{/* vale fix: Microsoft.Contractions */}
+This is the four-line change in concrete terms: one env var read, one validation, one fallback constant, one resolver function. The rest of the CLI calls the resolver instead of the hardcoded constants. The change is local to two CLI files and one new file. It doesn't change the public surface of the CLI.
 
 ### Code surface
 
-The implementation lands the following additions. None of this is code yet — it is the public shape the implementation PR will produce.
+{/* vale fix: Microsoft.Dashes */}
+The implementation lands the following additions. None of this is code yet; it's the public shape the implementation PR will produce.
 
 #### New module: `apps/cli/src/api/runtime.ts`
 
@@ -82,17 +94,20 @@ Three exports. The module is the only place in the CLI that reads `process.env.A
 
 | Export | Type | Purpose |
 |---|---|---|
-| `getApiBaseUrl` | `() => string` | Returns the resolved base URL. Reads `API_BASE_URL` from the env, validates it, returns the production default if unset. Memoized after the first call. |
+| `getApiBaseUrl` | `() => string` | Returns the resolved base URL. Reads `API_BASE_URL` from the env, validates it, returns the production default if unset. Caches the result after the first call. |
 | `getApiRpcUrl` | `() => string` | Returns `${getApiBaseUrl()}/api/v1/rpc`. |
 | `getApiVersionUrl` | `() => string` | Returns `${getApiBaseUrl()}/api/v1/version`. |
 
-The memoization matters. The CLI calls `getApiRpcUrl` once at startup (in `client.ts`) and `getApiVersionUrl` once at startup (in `version/check.ts`). If the env var were read at every call, a test that wraps spawn in a way that mutates the env would have surprising behavior. The memoization makes the resolution deterministic.
+{/* vale fix: write-good.Passive */}
+The memoization matters. The CLI calls `getApiRpcUrl` once at startup (in `client.ts`) and `getApiVersionUrl` once at startup (in `version/check.ts`). A resolver that hit the env var on every call would give surprising behavior to a test that wraps spawn in a way that mutates the env. The memoization makes the resolution deterministic.
 
 #### Validation
 
-The validation rules are tight enough to catch obvious mistakes but lenient enough to accept any well-formed URL. The format is `https://example.com` or `http://localhost:4873`. Empty strings, missing scheme, whitespace, and `null` are rejected. The CLI throws a `CliError` with code `internal_error` and a message that includes the offending value. The failure happens before any network call so it does not mask deeper issues.
+{/* vale fix: write-good.Passive, Microsoft.Contractions */}
+The validation rules are tight enough to catch obvious mistakes but lenient enough to accept any well-formed URL. The format is `https://example.com` or `http://localhost:4873`. The validator rejects empty strings, a missing scheme, whitespace, and `null`. The CLI throws a `CliError` with code `internal_error` and a message that includes the offending value. The failure happens before any network call so it doesn't mask deeper issues.
 
-The regex is small. It rejects anything that does not match `^https?://[^/\s]+(:\d+)?(/.*)?$`. URLs with credentials, query strings, and fragments are accepted; we do not need that surface area yet.
+{/* vale fix: Microsoft.Contractions, write-good.Passive, Microsoft.The team */}
+The regex is small. It rejects anything that doesn't match `^https?://[^/\s]+(:\d+)?(/.*)?$`. The validator still lets through URLs with credentials, query strings, and fragments; that surface area stays out of scope for now.
 
 #### Call sites
 
@@ -119,7 +134,8 @@ Two call sites change. Both are local replacements of a constant with a function
 + const versionUrl = getApiVersionUrl()
 ```
 
-The `@workspace/api/base-path` imports stay in `@workspace/api`. The CLI still gets the path constants for places that need them (e.g., the Readme mentions the API path; the cli-self-version test exists; the version probe shape). Only the runtime URL resolution moves to the CLI.
+{/* vale fix: Microsoft.Foreign, Vale.Terms */}
+The `@workspace/api/base-path` imports stay in `@workspace/api`. The CLI still gets the path constants for places that need them (the README mentions the API path; the cli-self-version test exists; the version probe shape). Only the runtime URL resolution moves to the CLI.
 
 #### Unit tests
 
@@ -131,64 +147,74 @@ The new module is small enough to test in isolation. The implementation PR adds 
 4. `API_BASE_URL` set to a malformed value (no scheme, whitespace) → throws `CliError`.
 5. `getApiRpcUrl` and `getApiVersionUrl` join paths correctly with the resolved base.
 
-The tests do not spawn the CLI. They call the resolver functions directly. The integration with the CLI is verified by the e2e suite that this ADR mandates.
+{/* vale fix: Microsoft.Contractions, write-good.Passive */}
+The tests don't spawn the CLI. They call the resolver functions directly. The e2e suite that this ADR mandates verifies the integration with the CLI.
 
 #### Changeset
 
-The implementation ships with a patch changeset for `@deessejs/cli`. The body documents the new env var override, the fallback, and the validation. It does not document the e2e suite — that lands in a follow-up PR.
+{/* vale fix: Microsoft.Contractions, Microsoft.Dashes */}
+The implementation ships with a patch changeset for `@deessejs/cli`. The body documents the new env var override, the fallback, and the validation. It doesn't document the e2e suite, which lands in a follow-up PR.
 
-#### What does NOT change
+{/* vale fix: Microsoft.Contractions, Microsoft.HeadingAcronyms */}
+#### What stays the same
 
 Three things this ADR leaves out of scope:
 
-- The `@workspace/api` package. The path constants stay. The CLI gains a runtime resolver; the API package does not gain a runtime counterpart.
-- The constants `API_BASE_PATH` and `API_RPC_PATH` are still exported from `@workspace/api/base-path`. Web, app, and tests use them. The CLI gains a runtime resolver; the other consumers keep the constants.
-- The error code for malformed `API_BASE_URL`. The current proposal is `internal_error`. The choice is decided at implementation time. `invalid_env` is a candidate if the team prefers a more specific code.
+{/* vale fix: Microsoft.Contractions */}
+- The `@workspace/api` package. The path constants stay. The CLI gains a runtime resolver; the API package doesn't gain a runtime counterpart.
+{/* vale fix: write-good.Passive */}
+- The constants `API_BASE_PATH` and `API_RPC_PATH` still ship from `@workspace/api/base-path`. Web, app, and tests use them. The CLI gains a runtime resolver; the other consumers keep the constants.
+- The error code for malformed `API_BASE_URL`. The current proposal is `internal_error`. The implementation PR settles the choice. `invalid_env` is a candidate if the team prefers a more specific code.
 
 ### The tests
 
 Three commands, three suites. Each suite covers the happy path plus at least one error path. The suites live in `apps/cli/test/e2e/` as `list.test.ts`, `info.test.ts`, `init.test.ts`. Each suite is a `describe` block with at least one `it` per scenario.
 
-The convention is that every test follows the same shape: bootstrap fixtures, run the CLI, assert on stdout, stderr, and exit code. The convention is enforced by the `run()` helper, which returns `{ stdout, stderr, exitCode, durationMs }` and exposes a `expect*` API for the common assertions.
+{/* vale fix: Vale.Spelling, write-good.Passive */}
+The convention is that every test follows the same shape: bootstrap fixtures, run the CLI, assert on stdout, `stderr`, and exit code. The `run()` helper enforces the convention, returning `{ stdout, stderr, exitCode, durationMs }` and exposing an `expect*` API for the common assertions.
 
 #### `list` suite
 
 Two tests. The mock server has two modes: returns a fixed list, or returns a 500.
 
-| Test | Mock returns | Assert on stdout | Assert on stderr | Assert on exit |
+| Test | Mock returns | Assert on stdout | Assert on `stderr` | Assert on exit |
 |---|---|---|---|---|
 | `list happy path` | Two templates, full schema | stdout contains both slugs, both names, both categories | empty | 0 |
-| `list server error` | HTTP 500 with body `{"message": "internal"}` | empty | stderr contains `Error` and `network_error` code | 1 |
+| `list server error` | HTTP 500 with body `{"message": "internal"}` | empty | `stderr` contains `Error` and `network_error` code | 1 |
 
-The happy-path test asserts on the table format only (the contract is the slugs and names, not the exact column positions). The server-error test asserts on the CliError code in stderr's `Code:` line, which is the contract the unit tests in `apps/cli/test/unit/errors.test.ts` already pin.
+{/* vale fix: Vale.Spelling */}
+The happy-path test asserts on the table format only (the contract is the slugs and names, not the exact column positions). The server-error test asserts on the CliError code in the `Code:` line of `stderr`, which is the contract the unit tests in `apps/cli/test/unit/errors.test.ts` already pin.
 
 #### `info` suite
 
 Three tests. The mock server has three modes: returns one template, returns 404, returns malformed data.
 
-| Test | Mock returns | Assert on stdout | Assert on stderr | Assert on exit |
+| Test | Mock returns | Assert on stdout | Assert on `stderr` | Assert on exit |
 |---|---|---|---|---|
 | `info happy path` | One template matching the slug | stdout contains the slug, name, description | empty | 0 |
-| `info not found` | HTTP 404 with body `{"message": "template not found"}` | empty | stderr contains `not_found` code | 1 |
-| `info malformed data` | HTTP 200 with `{"templates": [{"slug": "x"}]}` (missing required fields) | empty | stderr contains `parse_error` code | 1 |
+| `info not found` | HTTP 404 with body `{"message": "template not found"}` | empty | `stderr` contains `not_found` code | 1 |
+| `info malformed data` | HTTP 200 with `{"templates": [{"slug": "x"}]}` (missing required fields) | empty | `stderr` contains `parse_error` code | 1 |
 
-The malformed-data test is the one that catches CLI regressions where the runtime parser silently accepts malformed data. The contract test in `apps/cli/test/contract/orpc-to-cli-error.test.ts` already pins that `parse_error` is the right code; the e2e test pins that the `info` command actually emits the code on malformed data.
+{/* vale fix: Microsoft.Adverbs */}
+The malformed-data test is the one that catches CLI regressions where the runtime parser accepts malformed data without complaint. The contract test in `apps/cli/test/contract/orpc-to-cli-error.test.ts` already pins that `parse_error` is the right code; the e2e test pins that the `info` command actually emits the code on malformed data.
 
 #### `init` suite
 
 Three tests. The git fixture has one mode: a bare repo with a single file. The mock server always returns one template pointing at that bare repo.
 
-| Test | CLI args | Assert on filesystem | Assert on stderr | Assert on exit |
+{/* vale fix: Vale.Spelling */}
+| Test | CLI arguments | Assert on filesystem | Assert on `stderr` | Assert on exit |
 |---|---|---|---|---|
 | `init happy path` | `init <slug> --no-install --dir <tmpdir>/dest` | `<tmpdir>/dest/<expected-file>` exists and matches the fixture's commit | empty | 0 |
-| `init clone refused (existing dir)` | `init <slug> --no-install` (target dir already exists) | nothing created | stderr contains `target_exists` code | 1 |
-| `init network error` | `init <slug> --no-install` (mock returns 500) | nothing created | stderr contains `network_error` code | 1 |
+| `init clone refused (existing dir)` | `init <slug> --no-install` (target dir already exists) | nothing created | `stderr` contains `target_exists` code | 1 |
+| `init network error` | `init <slug> --no-install` (mock returns 500) | nothing created | `stderr` contains `network_error` code | 1 |
 
-The `--no-install` flag is the only path that skips the package-manager step. The unit tests in `apps/cli/test/unit/git.test.ts` already cover the spawn helper, so the e2e suite does not duplicate that. The `--no-install` path is the only one that completes in CI without a network round-trip to a package manager.
+{/* vale fix: Microsoft.Contractions */}
+The `--no-install` flag is the only path that skips the package-manager step. The unit tests in `apps/cli/test/unit/git.test.ts` already cover the spawn helper, so the e2e suite doesn't duplicate that. The `--no-install` path is the only one that completes in CI without a network round-trip to a package manager.
 
-The existing-dir test asserts that the CLI refuses to overwrite without `--force`. The current behavior is correct; the test pins it so a future regression is caught.
+The existing-dir test asserts that the CLI refuses to overwrite without `--force`. The current behavior is correct; the test pins it so a future regression surfaces.
 
-The network-error test pins that the CLI fails fast on the first request, before invoking `git clone`. A regression where the CLI clones first and reports the network error after would be caught here.
+The network-error test pins that the CLI fails fast on the first request, before invoking `git clone`. This test would flag a regression where the CLI clones first and reports the network error after.
 
 ### The mock server
 
@@ -200,31 +226,35 @@ The server exposes two endpoints. Both are the ones the CLI invokes in productio
 
 | Method | Path | Purpose | Response |
 |---|---|---|---|
-| `GET` | `/api/v1/version` | Returns the version probe. The CLI calls this at startup to warn about outdated versions. | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-| `POST` | `/api/v1/rpc` | The ORPC endpoint. The CLI calls this for `list` and `info`. | `200 {"result": {"data": "...", "..."}}` or `4xx {"message": "..."}` |
+| `GET` | `/api/v1/version` | Returns the version probe. The CLI calls this at startup to warn about outdated versions. | `200 {"version": "1.0.0," "minSupported": "0.0.0"}` |
+| `POST` | `/api/v1/rpc` | The ORPC endpoint. The CLI calls this for `list` and `info`. | `200 {"result": {"data": ."..," .".."}}` or `4xx {"message": .".."}` |
 
-The server does not validate auth. It does not interpolate GitHub data. It serves the contract shapes that the CLI client expects and that the unit tests already pin. Anything outside the contract is the CLI's problem to detect and surface.
+{/* vale fix: Microsoft.Contractions */}
+The server doesn't validate auth. It doesn't interpolate GitHub data. It serves the contract shapes that the CLI client expects and that the unit tests already pin. Anything outside the contract is the CLI's problem to detect and surface.
 
 #### Request validation
 
-The `/api/v1/rpc` handler parses the request body as JSON and checks the shape. A malformed body returns `400 {"message": "invalid request"}`. The server does not validate the ORPC envelope beyond the `jsonrpc` field, because the CLI does not either. Tightening the server past what the client sends would mask bugs.
+{/* vale fix: Microsoft.Contractions */}
+The `/api/v1/rpc` handler parses the request body as JSON and checks the shape. A malformed body returns `400 {"message": "invalid request"}`. The server doesn't validate the ORPC envelope beyond the `jsonrpc` field, because the CLI doesn't either. Tightening the server past what the client sends would mask bugs.
 
 #### Scenario mode
 
-The server accepts a mode parameter at startup. The mode controls which canned responses the server returns. The mode is set by the test that boots the server, not by the request.
+{/* vale fix: write-good.Passive */}
+The server accepts a mode parameter at startup. The mode controls which canned responses the server returns. The test that boots the server picks the mode, not the request.
 
 | Mode | `/api/v1/rpc` response | `/api/v1/version` response |
 |---|---|---|
-| `success` | `200 {"result": {"data": "<templates>"}}` where `<templates>` is the configured list | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-| `not_found` | `404 {"message": "template not found"}` | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-| `malformed` | `200 {"templates": [{"slug": "x"}]}` (missing required fields) | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
-| `server_error` | `500 {"message": "internal"}` | `200 {"version": "1.0.0", "minSupported": "0.0.0"}` |
+| `success` | `200 {"result": {"data": "<templates>"}}` where `<templates>` is the configured list | `200 {"version": "1.0.0," "minSupported": "0.0.0"}` |
+| `not_found` | `404 {"message": "template not found"}` | `200 {"version": "1.0.0," "minSupported": "0.0.0"}` |
+| `malformed` | `200 {"templates": [{"slug": "x"}]}` (missing required fields) | `200 {"version": "1.0.0," "minSupported": "0.0.0"}` |
+| `server_error` | `500 {"message": "internal"}` | `200 {"version": "1.0.0," "minSupported": "0.0.0"}` |
 
 The mode is per-server-instance. A test that needs both `success` and `not_found` responses starts two server instances.
 
 #### Lifecycle
 
-The server is a class with `start(): Promise<{ url, port }>` and `stop(): Promise<void>`. `start` binds to `127.0.0.1` on port `0` (the OS picks a free port) and resolves once the server is listening. `stop` closes the server and waits for the close callback. The class is a single-use resource; tests that need multiple modes start multiple instances.
+{/* vale fix: write-good.TooWordy, write-good.Weasel */}
+The server is a class with `start(): Promise<{ url, port }>` and `stop(): Promise<void>`. `start` binds to `127.0.0.1` on port `0` (the OS picks a free port) and resolves once the server is listening. `stop` closes the server and waits for the close callback. The class is a single-use resource; a test that needs two modes starts one instance per mode.
 
 The runner uses the port from `start()` to set `API_BASE_URL` in the CLI's environment. The URL is `http://127.0.0.1:<port>`.
 
@@ -266,17 +296,21 @@ The runner returns a structured result rather than throwing on non-zero exit cod
 
 #### Tarball resolution
 
-The runner reads the tarball path from the env var `DEESSEJS_CLI_TARBALL`. The verify workflow sets this env var before invoking the tests. If the env var is unset, the runner fails the test with a clear error message: `DEESSEJS_CLI_TARBALL is not set; the e2e suite requires the verify workflow to run first.` The runner does not invoke the source TypeScript directly; the e2e suite tests the published artifact, not the source.
+{/* vale fix: Microsoft.Contractions */}
+The runner reads the tarball path from the env var `DEESSEJS_CLI_TARBALL`. The verify workflow sets this env var before invoking the tests. If the env var is unset, the runner fails the test with a clear error message: `DEESSEJS_CLI_TARBALL is not set; the e2e suite requires the verify workflow to run first.` The runner doesn't invoke the source TypeScript directly; the e2e suite tests the published artifact, not the source.
 
-The verify workflow produces the tarball at `apps/cli/dist/deessejs-cli-*.tgz`. The runner uses `glob` to find the file. If multiple tarballs exist (e.g., from a previous run that did not clean up), the runner uses the most recent one by `mtime`.
+{/* vale fix: write-good.TooWordy, Microsoft.Foreign, Microsoft.Contractions, write-good.Weasel */}
+The verify workflow produces the tarball at `apps/cli/dist/deessejs-cli-*.tgz`. The runner uses `glob` to find the file. When two or more tarballs exist (for example, from a previous run that didn't clean up), the runner uses the most recent one by `mtime`.
 
 #### Stream handling
 
-The runner captures stdout and stderr separately. This is what makes the test assertions on `Code:` lines in stderr work. The runner does not pipe them through a TTY; the CLI is invoked with a non-interactive stdin.
+{/* vale fix: Vale.Spelling, Microsoft.Adverbs, Microsoft.Contractions, write-good.Passive */}
+The runner captures stdout and `stderr` as two distinct streams. This is what makes the test assertions on `Code:` lines in `stderr` work. The runner doesn't pipe them through a TTY; the CLI runs with a non-interactive `stdin`.
 
 #### Cleanup
 
-The runner kills the child process on timeout or on parent test failure. The cleanup uses `SIGTERM` first, then `SIGKILL` after a 5-second grace period. The runner does not leak child processes when a test fails.
+{/* vale fix: Microsoft.Contractions */}
+The runner kills the child process on timeout or on parent test failure. The cleanup uses `SIGTERM` first, then `SIGKILL` after a 5-second grace period. The runner doesn't leak child processes when a test fails.
 
 ### The git fixture
 
@@ -307,72 +341,91 @@ try {
 }
 ```
 
-The `try/finally` is the test's responsibility. The fixture does not auto-cleanup because the test might want to inspect the repo after failure.
+{/* vale fix: Microsoft.Contractions, Microsoft.Auto, Vale.Spelling */}
+The `try/finally` is the test's responsibility. The fixture skips any automatic cleanup because the test might want to inspect the repo after failure.
 
 #### What the fixture creates
 
 A bare git repo at `<tmpdir>/repo.git`. The repo has a `main` branch with a single commit. The commit contains one file, `README.md`, with a fixed content. The `main` branch is the default branch because the CLI clones with `git clone --branch main` (the default).
 
-The fixture does not create a working tree. The CLI clones the bare repo at clone time, so the working tree is the test's actual assertion target.
+{/* vale fix: Microsoft.Contractions */}
+The fixture doesn't create a working tree. The CLI clones the bare repo at clone time, so the working tree is the test's actual assertion target.
 
 #### Cleanup
 
-The cleanup removes the entire `tmpdir`. The cleanup runs on test failure too. The fixture does not leave orphan repos behind.
+{/* vale fix: Microsoft.Contractions */}
+The cleanup removes the entire `tmpdir`. The cleanup runs on test failure too. The fixture doesn't leave orphan repos behind.
 
-### CI integration
+{/* vale fix: Microsoft.HeadingAcronyms */}
+### Continuous integration
 
 Two workflows. The implementation is in `.github/workflows/`, named `cli-e2e.yml` and `cli-e2e-extended.yml`.
 
-#### `cli-e2e.yml` (PR blocking)
+{/* vale fix: Microsoft.HeadingAcronyms */}
+#### `cli-e2e.yml`, the blocking workflow
 
 The PR workflow is the gating one. It runs on every PR that touches `apps/cli/**`. It runs the three suites. Failures block merge.
 
 The workflow has three jobs:
 
-1. **`pack`**: produces the tarball. Runs `pnpm --filter @deessejs/cli build` and `npm pack`. The tarball is uploaded as an artifact.
+{/* vale fix: write-good.Passive */}
+1. **`pack`**: produces the tarball. Runs `pnpm --filter @deessejs/cli build` and `npm pack`. The job then publishes the tarball as an artifact.
 2. **`e2e`**: runs the three suites. Downloads the tarball artifact, sets `DEESSEJS_CLI_TARBALL`, runs `pnpm --filter @deessejs/cli test:e2e`. The mock server is in-process, no external service to start.
 3. **`cleanup`**: removes the tarball artifact after 7 days. The cleanup is automatic via the `actions/upload-artifact@v4` retention setting.
 
-The workflow uses `ubuntu-latest` and `node-version: 24` (matching the verify workflow). The total runtime is under 2 minutes. The old `pnpm install` step is replaced by `pnpm install --frozen-lockfile` to keep the install fast.
+{/* vale fix: write-good.Passive */}
+The workflow uses `ubuntu-latest` and `node-version: 24` (matching the verify workflow). The total runtime is under 2 minutes. The workflow swaps the old `pnpm install` step for `pnpm install --frozen-lockfile` to keep the install fast.
 
-#### `cli-e2e-extended.yml` (nightly non-blocking)
+{/* vale fix: Microsoft.HeadingAcronyms */}
+#### `cli-e2e-extended.yml`, the nightly workflow
 
-The nightly workflow is the deep one. It runs on a schedule (cron: `0 3 * * *`) and on manual dispatch. It runs an extended matrix that the PR workflow skips.
+{/* vale fix: Vale.Spelling */}
+The nightly workflow is the deep one. It runs on a schedule (`cron: 0 3 * * *`) and on manual dispatch. It runs an extended matrix that the PR workflow skips.
 
-The matrix dimension is "scenario". Each scenario tests a different aspect of the CLI that is too slow or too flaky for PR gating:
+{/* vale fix: Microsoft.Quotes, Microsoft.Contractions */}
+The matrix dimension is "scenario." Each scenario tests a different aspect of the CLI that's too slow or too flaky for PR gating:
 
-| Scenario | What it covers | Why nightly-only |
+{/* vale fix: Microsoft.Hyphens, Vale.Spelling, Microsoft.BiasFree */}
+| Scenario | What it covers | Why nightly only |
 |---|---|---|
 | `large-fixture` | Mock returns 100 templates; CLI prints them. | Slow. Takes 10s. Acceptable for nightly. |
 | `slow-network` | Mock delays responses by 2s. | Tests timeouts. Too slow for PR. |
 | `flaky-network` | Mock returns 500 on the first request, 200 on the second. | Tests retry logic. Flaky in normal CI. |
 | `real-pm` | Skips `--no-install` and runs the actual package manager. | Slow; depends on pnpm in CI. |
-| `unicode` | Mock returns templates with unicode names. | Sanity check; not part of the PR contract. |
+| `unicode` | Mock returns templates with `unicode` names. | Quick check; not part of the PR contract. |
 
-Failures in the nightly workflow post a GitHub issue with the captured output. The issue template is pre-populated with the workflow run URL, the scenario that failed, and the stdout/stderr of the failing test. The post is done via `peter-evans/create-or-update-comment` or a custom action; the choice is decided at implementation time.
+{/* vale fix: write-good.Passive, Vale.Spelling */}
+Failures in the nightly workflow post a GitHub issue with the captured output. The issue template arrives pre-populated with the workflow run URL, the scenario that failed, and the stdout and `stderr` of the failing test. The post goes out via `peter-evans/create-or-update-comment` or a custom action; the implementation PR settles the choice.
 
 #### Why two workflows
 
-The split is cost. The PR workflow is the gate; it must run on every PR and stay fast. The nightly workflow is the deep check; it can run slowly and tolerate flakiness. Combining them would either slow PRs (extended matrix on every PR) or weaken the gate (PR workflow skips important tests). The split is the standard pattern for CI matrices that have a fast-slow split.
+{/* vale fix: write-good.Passive, Microsoft.Adverbs */}
+The split comes down to cost. The PR workflow is the gate; it must run on every PR and stay fast. The nightly workflow is the deep check; it can take its time and tolerate flakiness. Combining them would either slow PRs (extended matrix on every PR) or weaken the gate (PR workflow skips important tests). The split is the standard pattern for CI matrices that have a fast-slow split.
 
 ### Why not the alternatives
 
-Three patterns were considered and rejected:
+{/* vale fix: write-good.Passive */}
+This ADR weighs three patterns and rejects all three:
 
-- **Tighten the contract tests.** The unit tests already pin the request/response shapes. Tightening further would catch fewer bugs at a higher cost. The e2e suite tests the integration, not the shape.
+- **Tighten the contract tests.** The unit tests already pin the request and response shapes. Tightening further would catch fewer bugs at a higher cost. The e2e suite tests the integration, not the shape.
 - **Spin up the real API in CI.** The real API depends on Postgres and the GitHub REST API. Both add flakiness and a maintenance burden. The mock server is the test surface; the real API is the production surface.
-- **Run the CLI against a `verdaccio` registry.** Verdaccio is the senior pattern for packages that depend on other packages published separately. The CLI is its own dependency tree after the publish fix (ADR-013). Verdaccio is the wrong tool.
+{/* vale fix: Vale.Spelling, Microsoft.Adverbs */}
+- **Run the CLI against a `verdaccio` registry.** That registry is the senior pattern for packages that depend on other packages with their own publish cadence. The CLI is its own dependency tree after the publish fix (ADR-013), so the registry is the wrong tool.
 
 ### Cost
 
 One developer-week for the prerequisites: `API_BASE_URL` override, `cli-runner` helper, `http-server` helper, `git-fixture` helper. One developer-day for the three test suites. One developer-day for the CI workflows. Total: one developer-week for the senior pattern.
 
-The cost is bounded and the value compounds: every future change to the CLI is automatically tested against the published artifact on a real install.
+{/* vale fix: write-good.Passive */}
+The cost has a ceiling and the value compounds: every future change to the CLI gets an automatic test against the published artifact on a real install.
 
 ## Consequences
 
-- Every PR that touches `apps/cli/**` runs the e2e suite. Bugs of the form "the CLI runs but returns the wrong thing" are caught at PR time, not at release time.
+{/* vale fix: write-good.Passive */}
+- Every PR that touches `apps/cli/**` runs the e2e suite. The suite surfaces bugs of the form "the CLI runs but returns the wrong thing" at PR time, not at release time.
 - A nightly run exercises a wider matrix. Bugs that are too slow or too flaky for PR gating surface in a GitHub issue, not as a CI failure.
-- The CLI gains an `API_BASE_URL` env var override. This is a small ergonomic improvement for users who run the CLI against a self-hosted registry, and it is the prerequisite that makes the e2e suite possible.
+{/* vale fix: Microsoft.Contractions, write-good.TooWordy */}
+- The CLI gains an `API_BASE_URL` env var override. This is a small ergonomic improvement for users who run the CLI against a self-hosted registry, and it's the prerequisite that makes the e2e suite possible.
 - The verify job (ADR-013) and the e2e suite are complementary. The verify job catches broken publishes; the e2e suite catches broken behavior. A release is green only when both pass.
-- `pkg.pr.new` is a future option. It would let reviewers run the actual CLI from a PR preview URL. It is out of scope here; ADR-013 explains why.
+{/* vale fix: Microsoft.Contractions, write-good.TooWordy */}
+- `pkg.pr.new` is a future option. It would let reviewers run the actual CLI from a PR preview URL. It's out of scope here; ADR-013 explains why.

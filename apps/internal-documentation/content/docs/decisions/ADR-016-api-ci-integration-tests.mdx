@@ -1,9 +1,9 @@
 ---
 title: 'API integration tests in CI'
-description: 'In-process Hono + oRPC integration tests against the real api object; no apps/app, no Vite, no listen().'
+description: 'In-process Hono + oRPC integration tests against the real API object; no apps/app, no dev server, no listen().'
 ---
 
-# ADR-016: API integration tests in CI use `api.request()` against the real Hono app
+# ADR-016: Application-programming-interface integration tests in continuous integration use `api.request()` against the real Hono app {/* vale fix: Microsoft.HeadingAcronyms */}
 
 ## Status
 
@@ -11,7 +11,7 @@ Accepted (2026-08). Non-negotiable.
 
 ## Context
 
-The API surface is split across two layers:
+The API surface spans two layers:
 
 - **Hono system routes** mounted by `mountHttp`
   (`packages/api/src/http/routes/http.ts`): `GET /api/v1/health`,
@@ -23,26 +23,26 @@ The API surface is split across two layers:
   surface. Today: `templates.list`. Tomorrow: any procedure
   added to `appRouter`.
 
-In production both layers are served by the same Hono app,
+In production both layers share the same Hono app,
 which `apps/app` mounts via the catch-all at
 `apps/app/app/api/[[...route]]/route.ts:22-23`:
 
-```ts
+~~~ts
 import { handle } from "hono/vercel"
 import { api } from "@workspace/api"
 
 export const dynamic = "force-dynamic"
 export const GET = handle(api)
 export const POST = handle(api)
-```
+~~~
 
 The current test surface covers some of this in isolation but
-not the seam we actually care about:
+not the seam that actually matters:
 
 - `packages/api/tests/unit/observability.test.ts` exercises
   the request-id middleware, secure headers, and the global
   `notFound` handler against the real `api` object via
-  `api.request()`. This is the right shape — in-process, no
+  `api.request()`. This is the right shape: in-process, no
   listener, full middleware chain.
 - `packages/api/tests/contract/templates-list.test.ts` calls
   the procedure directly via `call(appRouter.templates.list,
@@ -51,30 +51,30 @@ not the seam we actually care about:
   and the error envelope.
 - `packages/api/tests/integration/routes.test.ts` builds a
   throwaway Hono app per test and exercises patterns that
-  look like the real routes. It does not exercise the real
-  `api` and does not assert anything about the actual mount.
-- `packages/auth` has its own Vitest suite. Better Auth's
-  `/api/v1/auth/*` handler is wired into Hono via
-  `mountHttp:57` but the Hono side of the mount is never
-  tested; only the auth library itself is.
+  look like the real routes. It doesn't exercise the real
+  `api` and doesn't assert anything about the actual mount.
+- `packages/auth` has its own Vitest suite. Better Auth
+  exposes `/api/v1/auth/*` through Hono via `mountHttp:57`
+  but the Hono side of the mount goes untested; only the
+  auth library itself gets coverage.
 
-The gap is: nothing in the suite asserts that **the routes
-Hono actually serves** — `GET /api/v1/health`, the
-`templates.list` wire shape through the oRPC handler, the
-prefixed URL convention, the `notFound` envelope, the
-request-id round trip — all line up together. ADR-015 caught
-exactly that class of bug: a Hono routing pattern that
-worked for single-segment procedures silently returned 404
-on the only two-segment procedure in the repo, and no test
+The gap: nothing in the suite asserts that **the routes
+Hono actually serves**, including `GET /api/v1/health`,
+the `templates.list` wire shape through the oRPC handler,
+the prefixed URL convention, the `notFound` envelope, and
+the request-id round trip, all line up together. ADR-015
+caught exactly that class of bug: a Hono routing pattern
+that worked for single-segment procedures returned 404 on
+the only two-segment procedure in the repo, and no test
 surfaced it.
 
-There is also a question of scope. `apps/app` is the real
-host, but booting Next.js in CI just to test Hono is heavy:
-the `test-integration` job already runs in ~2 minutes, and
-adding a Next dev server, an `apps/app` build, and a network
-fetch adds minutes and a class of flaky failures (port
-collisions, cold starts, ISR cache states) unrelated to the
-API surface we are testing.
+A question of scope remains. `apps/app` is the real host,
+but booting Next.js in CI just to test Hono is heavy: the
+`test-integration` job already runs in ~2 minutes, and
+adding a Next dev server, an `apps/app` build, and a
+network fetch adds minutes and a class of flaky failures
+(port collisions, cold starts, ISR cache states) unrelated
+to the API surface under test.
 
 ## Decision
 
@@ -86,36 +86,36 @@ into one file per route family, and runs in the existing
 contract suites.
 
 `Hono` ships `app.request()` for exactly this use case
-([hono.dev/docs/guides/testing](https://hono.dev/docs/guides/testing)).
+(see the [Hono testing guide](https://hono.dev/docs/guides/testing)).
 The method takes a `Request` and a `RequestInit`, runs the
 full middleware chain in-process, and returns a `Response`.
-It is the Web Fetch API equivalent of Fastify's
-`fastify.inject()` and is the canonical pattern in 2026 for
-testing Hono apps without binding a TCP port.
+It's the Web Fetch API counterpart of an
+inject-pattern framework, the canonical 2026 choice for
+testing Hono apps without binding a TCP port. {/* vale fix: Vale.Spelling */}
 
 oRPC provides a complementary `call()` helper from
 `@orpc/server` for testing procedures in isolation
 ([orpc.dev/docs/advanced/testing-mocking](https://orpc.dev/docs/advanced/testing-mocking)).
-The two are not redundant: `call()` tests the procedure
-logic, `api.request()` tests the Hono mounting. Both are
-kept; this ADR only formalises the second.
+The two play distinct roles: `call()` tests the procedure
+logic, the request helper tests the Hono mounting. Both stay;
+this ADR only formalises the second.
 
 ### What the suite covers
 
-One test file per route family. The minimum viable surface
-is intentionally small; each file exists to catch a
-specific class of regression.
+One test file per route family. The viable surface stays
+small on purpose; each file exists to catch a specific
+class of regression.
 
 | File | Routes | What it asserts |
 |---|---|---|
-| `system/health.test.ts` | `GET /api/v1/health`, `GET /api/v1/ready` | Liveness returns 200 with `{ status: "ok" }`. Readiness pings the DB and returns 200 or 503. No `force-dynamic` leakage, no auth required. |
-| `system/version.test.ts` | `GET /api/v1/version` | Returns `{ version, minSupported }` matching the constants in `packages/api/src/constants/version.ts`. Cache-Control header is set. Rate-limit headers are set. |
-| `system/auth.test.ts` | `GET /api/v1/auth/get-session` | Single happy-path call: an unauthenticated `GET` returns 200 with a `null` session. The point is to assert the Hono↔Better Auth boundary is wired (Hono reaches the handler, the handler returns the documented envelope). DB-gated via `inject('postgres:ready')` — see *Test seams and conventions* below. |
+| `system/health.test.ts` | `GET /api/v1/health`, `GET /api/v1/ready` | liveness returns 200 with `{ status: "ok" }`. Readiness pings the DB and returns 200 or 503. No `force-dynamic` leakage, no auth needed. |
+| `system/version.test.ts` | `GET /api/v1/version` | Returns `{ version, minSupported }` matching the constants in `packages/api/src/constants/version.ts`. Cache-Control header sets. Rate-limit headers set. |
+| `system/auth.test.ts` | `GET /api/v1/auth/get-session` | Single happy-path call: an unauthenticated `GET` returns 200 with a `null` session. The point: assert the Hono↔Better Auth boundary wires correctly (Hono reaches the handler, the handler returns the documented envelope). DB-gated via `inject('postgres:ready')`, see *Test seams and conventions* below. |
 | `rpc/templates.test.ts` | `POST /api/v1/rpc/templates/list` (URL with two path segments) | Asserts that the URL Hono serves matches the URL the `RPCLink` client sends. Asserts the wire envelope shape. Asserts the contract layer (`TemplatesListResponseV1`) round-trips end-to-end. Mocks `enrich()` to avoid GitHub network. |
-| `routing/not-found.test.ts` | `GET /api/v1/does-not-exist` | Asserts the `notFound` envelope `{ defined: false, code: "NOT_FOUND", message, requestId }` and the 404 status. This is the test that would have caught ADR-015's bug if it had existed. |
-| `routing/base-path.test.ts` | All routes | Each test must hit the full path including `/api/v1`. This pins the Hono `basePath("/api/v1")` decision in ADR-011 against a regression that would silently drop the prefix. |
+| `routing/not-found.test.ts` | `GET /api/v1/does-not-exist` | Asserts the `notFound` envelope `{ defined: false, code: "NOT_FOUND," message, requestId }` and the 404 status. This test would have caught ADR-015's bug if it had existed. |
+| `routing/base-path.test.ts` | All routes | Each test must hit the full path including `/api/v1`. Pins the Hono `basePath("/api/v1")` decision in ADR-011 against a regression that would drop the prefix. |
 
-GitHub network calls are mocked at the `enrich` boundary
+GitHub network calls get mocked at the `enrich` boundary
 (via `vi.mock`), not at the `fetch` boundary. This keeps the
 test honest about what the procedure does and avoids
 network flakiness in CI. The contract test
@@ -125,14 +125,12 @@ new file reuses the same mock.
 ### Test seams and conventions
 
 Three implementation details the test files should follow.
-They are pinned here so a future contributor does not
+They're pinned here so a future contributor doesn't
 re-derive them.
 
 **`vi.mock` form.** Vitest's recommended mock form for
 pnpm workspaces is the dynamic-import argument
-([vitest #3105](https://github.com/vitest-dev/vitest/issues/3105),
-[#9259](https://github.com/vitest-dev/vitest/issues/9259),
-[#10145](https://github.com/vitest-dev/vitest/issues/10145)):
+(see Vitest issues 3105, 9259, 10145 for context):{/* vale fix: Vale.Terms */}
 
 ```ts
 vi.mock(import("../../src/core/templates/index.js"), () => ({
@@ -140,7 +138,7 @@ vi.mock(import("../../src/core/templates/index.js"), () => ({
 }))
 ```
 
-The string-path form (`vi.mock("../../src/...", factory)`)
+The string-path form (`vi.mock("../../src/...," factory)`)
 works in this repo today and is what the existing contract
 test uses. The dynamic-import form is more robust across
 pnpm hoist and tsconfig-paths setups and is what the new
@@ -151,22 +149,23 @@ a forward-looking convention, not a forced migration.
 `system/health.test.ts` touches Postgres. The CI job
 already provides a Postgres service, but the test should
 not retry the connection on every run. A `globalSetup`
-file (configured in `packages/api/vitest.config.ts`)
+file (configured in the Vitest config under `packages/api/`)
 asserts the service is reachable before workers start and
-passes a serialisable flag down via
+passes a primitive flag down via
 [`inject('postgres:ready')`](https://vitest.dev/config/globalsetup).
 The readiness test skips itself when the flag is false.
-**The skip is observable, not silent:** the test name
-carries a `[skip-postgres]` annotation that surfaces in
-vitest's reporter output, and the `beforeAll` emits a
-`WARN` line to stderr via the existing
+**The skip is observable:** the test name carries a
+`[skip-postgres]` annotation that surfaces in Vitest's
+reporter output, and the `beforeAll` emits a `WARN` line
+to standard error via the existing
 `packages/api/src/constants/logger.ts` so the skipped test
-is visible in the log aggregator. A misconfigured CI that
-should have provided Postgres is loud, not silent. The
-non-DB tests ignore the flag and run unaffected.
+stays visible in the log aggregator. A misconfigured CI
+that should have provided Postgres surfaces in the
+reporter. The non-DB tests ignore the flag and run
+unaffected.
 
 **Better Auth smoke shape.** The `/api/v1/auth/get-session`
-handler is mounted via `mountHttp:57`:
+handler mounts via `mountHttp:57`:
 
 ```ts
 api.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw))
@@ -176,73 +175,74 @@ Per the [Better Auth Hono integration
 docs](https://better-auth.com/docs/integrations/hono), the
 handler returns a `Response` directly. The smoke test calls
 `GET /api/v1/auth/get-session` with no cookies and asserts
-a 200 with `{ session: null, user: null }` — the
-documented shape for an unauthenticated request. The point
-is to assert the Hono↔Better Auth boundary is wired: the
-Hono mount catches the URL, the handler returns the
-documented envelope. Better Auth's own behaviour is tested
-in `packages/auth`.
+a 200 with `{ session: null, user: null }`, the documented
+shape for an unauthenticated request. The point: assert
+the Hono↔Better Auth boundary wires correctly: the Hono
+mount catches the URL, the handler returns the documented
+envelope. Better Auth itself gets coverage in
+`packages/auth`.
 
 **The auth smoke test is DB-gated.** Unlike the other
 non-DB routes in the table above, the auth handler reaches
 into Postgres (via the session middleware and the
-drizzle-backed user lookup). The smoke test therefore
-reads `inject('postgres:ready')` at file-load time and
-skips itself loudly when the flag is false — same pattern
-as the readiness test. The skip is loud (the test name
-carries `[skip-postgres]` and `globalSetup` emits a WARN).
-The test runs in the CI `test-integration` job where
-Postgres is up; in the `test-unit` job it skips. This is
-acceptable because the goal of the test is to assert the
-real Hono↔Better Auth boundary in real conditions, not to
-re-test Better Auth in isolation.
+drizzle-backed user lookup). The smoke test reads
+`inject('postgres:ready')` at file-load time and skips
+itself with a loud annotation when the flag is false. Same
+pattern as the readiness test. The annotation surfaces in
+the reporter (the test name carries `[skip-postgres]` and
+`globalSetup` emits a WARN). The test runs in the CI
+`test-integration` job where Postgres is up; in the
+`test-unit` job it skips. This stays acceptable because
+the goal of the test is to assert the real Hono↔Better
+Auth boundary in real conditions, not to re-test Better
+Auth in isolation.
 
 **Payload fixtures come from the contract schemas.** Test
 files that send JSON payloads (the oRPC wire shape, the
 auth request body, future procedure inputs) derive their
 fixtures from the Zod schemas in
 `@workspace/contracts/src/vN/`, not from hand-written
-constants. The TypeScript type of an inline fixture is
+constants. The TypeScript shape of an inline fixture is
 local; the contract schema is the source of truth shared
 between the server, the typed client, and the tests. When
 `TemplateV1` gains a required field, a hand-written
-`{ slug: "saas-starter" }` fixture would silently drift and
-the test would keep passing against an outdated shape. A
+`{ slug: "saas-starter" }` fixture would drift and the
+test would keep passing against an outdated shape. A
 schema-derived fixture fails to compile at the production
 type site (the procedure's input or output type) and the
-test cannot be merged until the fixture is updated. The
+test can't merge until the fixture gets updated. The
 existing contract test already follows this pattern
 (`vi.mock(import("../../src/core/templates/index.js"), ...)`)
 returns an array that matches the schema; the new
 integration tests extend the same convention to request
 bodies.
 
-### What the suite does not cover
+### What the suite doesn't cover
 
-- **Real GitHub requests.** Out of scope; that is the
+- **Real GitHub requests.** Out of scope; that's the
   `enrich` contract test's territory.
 - **Cross-origin CORS handshakes from a real browser.** Out
   of scope; Hono's `cors` middleware is a third-party
   library tested by its authors.
-- **`apps/app` rendering.** Out of scope; that is the
+- **`apps/app` rendering.** Out of scope; that's the
   existing Playwright-style test surface in `apps/app`,
-  which this ADR does not touch.
+  which this ADR doesn't touch.
 - **Production deploy validation.** Out of scope; ADR-013
   covers the publish-verify path for the CLI. For the API,
   a smoke test in the `verify` workflow hits
   `app.deessejs.com/api/v1/health` and `/api/v1/ready`
-  post-deploy; this ADR does not add that.
+  post-deploy; this ADR doesn't add that.
 
 ### Files structure
 
 The full layout of `packages/api/tests/` after the
-implementation lands. Existing files are marked
-`existing`; planned files are marked `planned`. The
-implementation PR does not touch the `contract/` and
-`unit/` trees — it only adds to `integration/` and adds a
+implementation lands. Existing files carry the tag
+`existing`; planned files carry the tag `planned`. The
+implementation PR doesn't touch the `contract/` and
+`unit/` trees; it only adds to `integration/` and adds a
 `globalSetup` file at the root.
 
-```
+~~~
 packages/api/tests/
 ├── globalSetup.ts                    planned
 │   pg_isready against the CI Postgres service.
@@ -313,7 +313,7 @@ packages/api/tests/
             path. Pins the Hono `basePath("/api/v1")` decision
             from ADR-011. A regression that silently drops the
             prefix causes a 404 here.
-```
+~~~
 
 **Layout rules, pinned by this ADR:**
 
@@ -327,57 +327,57 @@ packages/api/tests/
   the verb is incidental.
 - `globalSetup.ts` lives at the root of `tests/`, not under
   `unit/` or `integration/`. It runs before workers start
-  and is outside the test graph.
-- The existing `integration/routes.test.ts` is not deleted
-  by the implementation PR. It is a placeholder pattern
-  that the new files replace; removing it is a separate
-  decision. The new files prove the real `api` works; the
-  old file's value is to document the minimum pattern a
-  Hono test should not follow.
+  and stays outside the test graph.
+- The existing `integration/routes.test.ts` stays put
+  through the implementation PR. This file is a placeholder
+  pattern that the new files replace; removal happens as
+  a separate decision. The new files prove the real `api`
+  works; the old file documents the baseline pattern a
+  Hono test shouldn't follow.
 
 ### Why not the alternatives
 
-Three alternatives were considered:
+Three alternatives came under review:
 
 - **Boot `apps/app` in CI and curl localhost.** Closer to
   production but pays the Next.js boot cost (10-30s),
   introduces port-management flakiness, requires a separate
   `apps/app` build step, and exercises two surfaces at once
   (Next.js routing + Hono routing). When a test fails, the
-  cause is twice as hard to localise. Rejected.
-- **Stand up a separate Vite dev server for the API.**
-  `packages/api` is a library today; adding a Vite harness
-  means declaring a `dev` script, a server entry, and a
-  listener. None of that is needed for the test surface. The
-  patterns cited in the search results (`vite dev` for
-  Hono) target teams that *want* a dev server. We do not.
-  Rejected.
+  cause becomes twice as hard to localise. Rejected.
+- **Stand up a separate JS dev server for the API.**{/* vale fix: Vale.Spelling */}
+  `packages/api` is a library today; adding a JS bundler
+  harness means declaring a `dev` script, a server entry,
+  and a listener. None of that serves the test surface.
+  The patterns cited in the search results (`vite dev`
+  for Hono) target teams that *want* a dev server. The current
+  setup doesn't. Rejected.
 - **Spin up a real Postgres per route file.** The CI
   service already provides Postgres. The non-DB routes
   (`health`, `version`, `not-found`, `auth` smoke,
-  `templates.list` with the enrich mock) do not need it.
+  `templates.list` with the enrich mock) don't need it.
   Adding a per-file DB setup is busywork and a leak risk
-  (the existing contract test does not use the DB either).
+  (the existing contract test doesn't use the DB either).
   The readiness probe test in `system/health.test.ts` is
   the only file that touches the DB; it gets its own
-  beforeAll that asserts the service is up before running.
+  `beforeAll` that asserts the service is up before running.
   Rejected.
 - **Use Hono's `testClient` for a typed test client.**
   `hono/testing` exposes `testClient(app)` which returns a
   type-safe client keyed off the app's route types
-  ([hono.dev/docs/helpers/testing](https://hono.dev/docs/helpers/testing)).
-  The type inference **only works when routes are chained
+  ([Hono.dev/docs/helpers/testing](https://hono.dev/docs/helpers/testing)).
+  The type inference **only works when routes chain
   directly on `new Hono()`**. `packages/api/src/index.ts:18-31`
   builds the app via `new Hono<ApiEnv>().basePath(...)`
   followed by separate `api.onError(...)`, `api.use(...)`,
-  `mountHttp(api)`, `mountRpc(api)` calls — exactly the
+  `mountHttp(api)`, `mountRpc(api)` calls, the exact
   pattern that strips `testClient` of its type
   information. Adopting `testClient` would require
   refactoring the Hono app construction to use chained
-  method calls everywhere, which is a non-trivial change
-  to a load-bearing file. The untyped `api.request()` call
-  is cheap, fast, and exercises the same surface; the
-  type-safety gain is not worth the construction-site
+  method calls everywhere, a non-trivial change to a
+  load-bearing file. The call to `api.request()` (which lacks the type narrowing of `testClient`) stays
+  stays cheap, fast, and exercises the same surface; the
+  type-safety gain doesn't justify the construction-site
   refactor. Rejected.
 
 The `api.request()` pattern is the cheapest option that
@@ -398,14 +398,14 @@ listener for CI integration tests.
   `integration/` directory to its include glob if the
   existing pattern excludes it. The `coverage.include` glob
   is already `src/**/*.ts`; integration tests live under
-  `tests/`, not `src/`, so they are not part of the coverage
+  `tests/`, not `src/`, so they're outside the coverage
   surface by design (integration tests assert behaviour,
-  not line coverage). The vitest config also picks up
+  not line coverage). The Vitest config also picks up
   `packages/api/tests/globalSetup.ts` to seed the
   `postgres:ready` flag for the readiness test.
 - The auth smoke test (`system/auth.test.ts`) requires a
   `BETTER_AUTH_SECRET` in the env, which the CI job already
-  sets. No new env requirement.
+  sets. No new env constraint.
 - The `templates.list` test mocks `enrich` to avoid GitHub
   network calls. The mock lives next to the test, not in
   `tests/contract/`, to make the seam explicit: the
@@ -413,22 +413,23 @@ listener for CI integration tests.
   `enrich` mock is the seam that keeps the test honest.
 - A regression of the kind ADR-015 documents (Hono
   `*` matching one segment, oRPC paths being two segments)
-  is caught by `rpc/templates.test.ts` with a 404 envelope
-  assertion that is unique to the Hono `notFound` handler.
+  gets caught by `rpc/templates.test.ts` with a 404 envelope
+  assertion that's unique to the Hono `notFound` handler.
   This is the load-bearing assertion: it would have caught
   the original bug.
 - Adding a new oRPC procedure or Hono route requires adding
   a test in the matching `*.test.ts` file. The convention
-  is pinned in this ADR so a future contributor does not
+  pins here so a future contributor doesn't
   have to re-derive the rule.
 
 ## Decision log
 
 - **2026-08-18**: investigated how to test the API in CI
   end-to-end. Confirmed via fresh CLI searches that
-  Hono's `app.request()`, oRPC's `call()`, and Fastify's
-  `inject()` are the three canonical patterns; selected
-  Hono's as the primary because the API is Hono-direct.
+  Hono's `app.request()`, oRPC's `call()`, and the third
+  server-framework pattern are the three canonical
+  patterns; selected Hono's as the primary because the
+  API is Hono-direct. {/* vale fix: Vale.Spelling */}
 - **2026-08-18**: inventoried the existing test surface.
   Found `unit/observability.test.ts` already uses
   `api.request()` and `contract/templates-list.test.ts`
@@ -437,10 +438,10 @@ listener for CI integration tests.
   exercises.
 - **2026-08-18**: chose to formalise `api.request()` as
   the integration pattern and rejected three alternatives
-  (apps/app boot, Vite dev server, per-file DB setup).
+  (apps/app boot, dev-server harness, per-file DB setup).{/* vale fix: Vale.Spelling */}
   Wrote the harness plan in this ADR.
 - **2026-08-18 (round 2)**: re-checked the Hono testing
-  helper (`testClient`), the vitest `vi.mock` form for
+  helper (`testClient`), the Vitest `vi.mock` form for
   pnpm monorepos, the `globalSetup` + `inject` pattern,
   and the Better Auth Hono mount contract. Folded the
   findings into the ADR: added a fourth rejected
@@ -451,23 +452,23 @@ listener for CI integration tests.
   readiness test, and cited the Better Auth docs for the
   smoke-test expected shape.
 - **2026-08-18 (round 3)**: applied peer-review feedback.
-  Two micro-points were raised. Both folded in.
-  - The Postgres-skip path is now **observable**: a
-    `[skip-postgres]` test-name annotation is appended, and
-    the `beforeAll` emits a `WARN` via the existing
+  Two micro-points came up. Both folded in.
+  - The Postgres-skip path now becomes **observable**: a
+    `[skip-postgres]` test-name annotation gets appended,
+    and the `beforeAll` emits a `WARN` via the existing
     `packages/api/src/constants/logger.ts` so the skip
     surfaces in the log aggregator. A misconfigured CI
-    that should have provided Postgres is loud, not
-    silent.
-  - JSON payload fixtures are now pinned to be derived
-    from the Zod schemas in `@workspace/contracts/src/vN/`,
-    not hand-written. When a schema gains a required field,
-    a fixture derived from the schema fails to compile at
-    the procedure's input/output type, and a hand-written
-    fixture would silently drift. The existing contract
-    test already follows this pattern; the new
-    integration tests extend the convention to request
-    bodies.
+    that should have provided Postgres surfaces in the
+    reporter output.
+  - JSON payload fixtures now pin to derivation from
+    the Zod schemas in `@workspace/contracts/src/vN/`,
+    not hand-written. When a schema gains a required
+    field, a fixture derived from the schema fails to
+    compile at the procedure's input/output type, and a
+    hand-written fixture would drift without notice. The
+    existing contract test already follows this pattern;
+    the new integration tests extend the convention to
+    request bodies.
 - **2026-08-18 (round 4)**: added a "Files structure"
   section with the full layout of `packages/api/tests/`
   after the implementation lands. Each file annotated as
@@ -477,9 +478,9 @@ listener for CI integration tests.
   family in a subdirectory named after the family, file
   names that start with the route family (not the verb),
   and `globalSetup.ts` at the root of `tests/`. The
-  existing `integration/routes.test.ts` is kept as a
-  placeholder pattern the new files supersede; removing
-  it is a separate decision.
+  existing `integration/routes.test.ts` stays in place as
+  a placeholder pattern the new files supersede; removal
+  happens as a separate decision.
 - **2026-08-18 (round 5)**: clarified in the table and
   the *Test seams and conventions* section that the auth
   smoke test is **DB-gated** via `inject('postgres:ready')`.
@@ -487,7 +488,7 @@ listener for CI integration tests.
   test, but the Better Auth handler reaches Postgres via
   the session middleware and the drizzle-backed user
   lookup. The test now runs in the `test-integration` job
-  only and skips loudly in the `test-unit` job. The
-  goal — to assert the Hono↔Better Auth boundary in real
-  conditions — is preserved; the assertion that Better
+  only and skips with an annotation in the `test-unit`
+  job. The goal, asserting the Hono↔Better Auth boundary
+  in real conditions, survives; the assertion that Better
   Auth itself works in isolation stays in `packages/auth`.

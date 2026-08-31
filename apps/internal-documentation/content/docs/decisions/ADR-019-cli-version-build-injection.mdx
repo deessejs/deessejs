@@ -1,6 +1,6 @@
 ---
 title: 'CLI version build injection'
-description: 'Inject the CLI version from package.json at build time via tsup define, instead of a hand-maintained constant.'
+description: 'Inject the CLI version from the package manifest at build time via tsup define, instead of a hand-maintained constant.'
 ---
 
 # ADR-019: CLI version build injection
@@ -11,7 +11,7 @@ Draft (2026-08). Awaiting review.
 
 ## Context
 
-`@deessejs/cli` is the only published package in the monorepo. Its self-version probe (`apps/cli/src/version/check.ts`) compares the locally running version against `minSupported` returned by the server, and warns the user when the local version is below the floor. The probe is non-blocking and best-effort, but it must read a coherent version: a wrong local value means either a missing warning (user runs an old CLI, the warning never fires) or a spurious warning (user runs a fresh CLI, the warning claims it is too old).
+`@deessejs/cli` is the only published package in the monorepo. Its self-version probe (`apps/cli/src/version/check.ts`) compares the locally running version against `minSupported` returned by the server, and warns the user when the local version is below the floor. The probe is non-blocking and best-effort, but it must read a coherent version: a wrong local value means either a missing warning (user runs an old CLI, the warning never fires) or a spurious warning (user runs a fresh CLI, the warning claims it's too old).
 
 Today the local version is a hand-maintained constant.
 
@@ -33,11 +33,11 @@ export const CLI_PACKAGE_VERSION = "2.0.0"
 export const readPackageVersion = (): string => CLI_PACKAGE_VERSION
 ```
 
-The file's own comment admits the design is a workaround. The justification ("`import.meta.url` is fragile after bundling") is correct for runtime resolution, but does not apply to a build-time substitute: the bundler can read `package.json` directly and inline the string before the runtime ever sees the bundle.
+The file's own comment admits the design is a workaround. The justification ("`import.meta.url` is fragile after bundling") is correct for runtime resolution, but doesn't apply to a build-time substitute: the bundler can read `package.json` directly and inline the string before the runtime ever sees the bundle.
 
-The release pipeline bakes `apps/cli/package.json` automatically. Changesets owns the version field on every release (`docs/engineering/processes/versioning.md`). The current value is `2.0.0`. The hand-maintained constant also reads `2.0.0`. They are in sync today, but the sync is enforced by a comment in a source file and nothing else. The next release will bump `package.json` to `2.0.1` (or whatever the changeset dictates); nothing will bump `self-version.ts`. The two values will drift on the very next release.
+The release pipeline bakes `apps/cli/package.json` automatically. Changesets owns the version field on every release (`docs/engineering/processes/versioning.md`). The current value is `2.0.0`. The hand-maintained constant also reads `2.0.0`. They're in sync today, but a comment in a source file is the only thing keeping them aligned. The next release will bump `package.json` to `2.0.1` (or whatever the changeset dictates); nothing will bump `self-version.ts`. The two values will drift on the first release after this lands.
 
-This is a load-bearing duplication. The CLI publishes to npm on every release; the published artifact will advertise the wrong version the first time someone bumps `package.json` without remembering to edit `self-version.ts`. The warning system that the rest of the version probe is built around becomes unreliable precisely when the version changes.
+This is a load-bearing duplication. The CLI publishes to npm on every release; the published artifact will advertise the wrong version the first time someone bumps `package.json` without remembering to edit `self-version.ts`. The warning system that the rest of the version probe relies on becomes unreliable precisely when the version changes.
 
 A second, smaller duplication exists in `apps/cli/src/index.ts:12`:
 
@@ -48,11 +48,11 @@ program
   .version("0.1.0")
 ```
 
-Commander's `.version()` reads a third hardcoded value. It is decoratively wired (not consumed by the version probe) but it is a third place where the version can drift, and it has already drifted: the package is at `2.0.0`, the constant is at `2.0.0`, and Commander prints `0.1.0`.
+Commander's `.version()` reads a third hardcoded value. It's decoratively wired (not consumed by the version probe) but it's a third place where the version can drift, and it has already drifted: the package is at `2.0.0`, the constant is at `2.0.0`, and Commander prints `0.1.0`.
 
 ## Decision
 
-The CLI version is injected at build time from `apps/cli/package.json` via tsup's `define` option. The hand-maintained constant is removed. Commander's `.version()` reads the same injected value.
+The CLI version gets injected at build time from `apps/cli/package.json` via tsup's `define` option. The hand-maintained constant goes away. Commander's `.version()` reads the same injected value.
 
 ### Implementation
 
@@ -72,7 +72,7 @@ export default defineConfig({
 })
 ```
 
-`tsup` is built on esbuild. The `define` option replaces matched identifiers at bundle time. After bundling, `process.env.CLI_PACKAGE_VERSION` does not exist in the source — esbuild inlines the literal string. Runtime resolution of `package.json` is not involved.
+`tsup` builds on top of `esbuild`. The `define` option replaces matched identifiers at bundle time. After bundling, `process.env.CLI_PACKAGE_VERSION` doesn't exist in the source; `esbuild` substitutes the literal string in place. Runtime resolution of `package.json` isn't involved.
 
 The `with { type: "json" }` import attribute is the form that works in both Node 18 (the CLI's `engines.node` floor) and Node 20+. A static `import pkg from "./package.json"` would fail typecheck under strict ESM resolution.
 
@@ -89,9 +89,9 @@ declare const process: { env: { CLI_PACKAGE_VERSION: string } }
 export const readPackageVersion = (): string => process.env.CLI_PACKAGE_VERSION
 ```
 
-The `declare const process` is local to this file. It tells TypeScript that the ambient `process.env` carries a `CLI_PACKAGE_VERSION: string` field, so the call typechecks. The field does not need to exist at runtime — esbuild replaces the reference before the bundle ships.
+The `declare const process` is local to this file. It tells TypeScript that the ambient `process.env` carries a `CLI_PACKAGE_VERSION: string` field, so the call passes the type checker. The field doesn't need to exist at runtime; `esbuild` replaces the reference before the bundle ships.
 
-The `CLI_PACKAGE_VERSION` constant export is removed. Callers (`apps/cli/src/version/check.ts`) use `readPackageVersion()` only; the function is the single public surface of the module.
+The `CLI_PACKAGE_VERSION` constant export goes away. Callers (`apps/cli/src/version/check.ts`) use `readPackageVersion()` only; the function becomes the single public surface of the module.
 
 **3. `apps/cli/src/index.ts` reads the same value for Commander.**
 
@@ -99,46 +99,46 @@ The `CLI_PACKAGE_VERSION` constant export is removed. Callers (`apps/cli/src/ver
 program.version(readPackageVersion())
 ```
 
-The `0.1.0` literal is removed. Commander's `--version` flag now reports the same value the self-version probe reads.
+The `0.1.0` literal goes away. Commander's `--version` flag now reports the same value the self-version probe reads.
 
 ### Why this and not the alternatives
 
-Four patterns were considered. Each is rejected for a concrete reason.
+Four patterns came under review. Each fails on a concrete reason.
 
-1. **Keep the hand-maintained constant and add a CI check.** A pre-release job reads `package.json` and `self-version.ts` and fails if they disagree. This catches drift but does not prevent it. The fix still depends on a human editing the right file; the constant is still a duplicate. The senior pattern is to remove the duplicate, not police it.
+1. **Keep the hand-maintained constant and add a CI check.** A pre-release job reads `package.json` and `self-version.ts` and fails if they disagree. This catches drift but doesn't prevent it. The fix still depends on a human editing the right file; the constant remains a duplicate. The senior pattern removes the duplicate, not polices it.
 
-2. **Resolve `package.json` at runtime via `import.meta.url` or `createRequire(import.meta.url)`.** This is the path the existing comment dismisses. The dismissal is correct in spirit: `npx`, `pnpm dlx`, global install, and direct invocation each place `package.json` at different relative paths from the bundle, and several of those paths do not exist on the user's machine. The runtime-resolved value is unreliable, and the unreliability is silent. The build-time injection sidesteps the problem entirely.
+2. **Resolve `package.json` at runtime via `import.meta.url` or `createRequire(import.meta.url)`.** This is the path the existing comment dismisses. The dismissal is correct in spirit: `npx`, `pnpm dlx`, global install, and direct invocation each place `package.json` at different relative paths from the bundle, and many of those paths don't exist on the user's machine. The runtime-resolved value is unreliable, and the unreliability is silent. The build-time injection sidesteps the problem entirely.
 
-3. **Resolve via `git describe --tags` at build time.** This works for tagged releases and produces a sensible value (`v2.0.0`) for clean tags. It fails for non-tagged builds (a pre-release tarball from a feature branch returns `v2.0.0-3-gdeadbeef`, which is not a semver the warning system can compare). The tsup `define` path works for any semver in `package.json` and is no harder to wire up. Git describe is a follow-up option if the team ever wants build metadata beyond what `package.json` carries; it is out of scope here.
+3. **Resolve via `git describe --tags` at build time.** This works for tagged releases and produces a sensible value (`v2.0.0`) for clean tags. It fails for non-tagged builds (a pre-release tarball from a feature branch returns `v2.0.0-3-gdeadbeef`, which isn't a semver the warning system can compare). The tsup `define` path works for any semver in `package.json` and is no harder to wire up. Git describe is a follow-up option if the team ever wants build metadata beyond what `package.json` carries; it's out of scope here.
 
-4. **Read `package.json` at runtime through a well-known file path (e.g., the `bin` symlink resolution).** Same fragility as option 2, with extra moving parts (filesystem, symlink, race conditions). Rejected on the same grounds.
+4. **Read `package.json` at runtime through a well-known file path (for example, the `bin` symlink resolution).** Same fragility as option 2, with extra moving parts (filesystem, symlink, race conditions). Rejected on the same grounds.
 
-The [tsup `define` option](https://tsup.egoist.dev/) is the documented mechanism for compile-time constant injection. esbuild's [define documentation](https://esbuild.github.io/api/#define) is the underlying primitive. The pattern is the standard answer for "I want this value baked into the bundle" in any esbuild-based toolchain.
+The [tsup `define` option](https://tsup.egoist.dev/) is the documented mechanism for compile-time constant injection. [`esbuild`'s `define` documentation](https://esbuild.github.io/api/#define) is the underlying primitive. The pattern is the standard answer for "I want this value baked into the bundle" in any `esbuild`-based build chain.
 
 ### Cost
 
-The change is roughly 15 lines across three files: 4 lines added to `tsup.config.ts`, 8 lines rewritten in `self-version.ts`, 1 line changed in `index.ts`. The `declare const process` block is the only non-obvious part and is documented inline.
+The change spans 15 lines across three files: 4 lines added to `tsup.config.ts`, 8 lines rewritten in `self-version.ts`, 1 line changed in `index.ts`. The `declare const process` block is the only non-obvious part, with an inline comment that explains it.
 
-There is no runtime cost. The injected value is a literal string, identical in cost to the constant it replaces.
+Runtime cost stays at zero. The injected value is a literal string, identical in cost to the constant it replaces.
 
-There is no CI cost. No new workflow is needed. The verify job (ADR-013) and the e2e suite (ADR-014) already exercise the published tarball; if the injection is wrong, the verify job's `npx @deessejs/cli --version` will print the wrong value and a unit test can pin the right one.
+CI cost also stays at zero. No new workflow enters the pipeline. The verify job (ADR-013) and the e2e suite (ADR-014) already exercise the published tarball; if the injection is wrong, the verify job's `npx @deessejs/cli --version` will print the wrong value and a unit test can pin the right one.
 
-A unit test is added to `apps/cli/test/unit/self-version.test.ts` that asserts `readPackageVersion()` matches `import pkg from "../../package.json" with { type: "json" }`. The test runs against the source (not the bundle) via vitest's regular import pipeline, but the assertion is identical to what tsup would produce at build time. A second test calls `readPackageVersion()` and asserts the result is a valid `X.Y.Z` semver; this catches the case where the `with { type: "json" }` resolution fails at build time and tsup leaves the literal `undefined` in the bundle.
+The implementation adds a unit test to `apps/cli/test/unit/self-version.test.ts` that asserts `readPackageVersion()` matches `import pkg from "../../package.json" with { type: "json" }`. The test runs against the source (not the bundle) via Vitest's regular import pipeline, but the assertion matches what tsup would produce at build time. A second test calls `readPackageVersion()` and asserts the result is a valid `X.Y.Z` semver; this catches the case where the `with { type: "json" }` resolution fails at build time and tsup leaves the literal `undefined` in the bundle.
 
-### What this ADR does not change
+### What this ADR doesn't change
 
-- The `minSupported` floor. The server-side logic that decides the floor is unchanged. The CLI side now reads a correct value, which is what the rest of the probe was always expecting.
-- The version probe itself (`apps/cli/src/version/check.ts`). The function signature and the network behavior are unchanged. Only the value fed into `compareSemver` becomes reliable.
-- The `package.json` `version` field. The release pipeline (changesets, `release.yml`) still owns this field. The injection reads it; it does not own it.
+- The `minSupported` floor. The server-side logic that decides the floor stays the same. The CLI side now reads a correct value, which is what the rest of the probe was always expecting.
+- The version probe itself (`apps/cli/src/version/check.ts`). The function signature and the network behavior stay the same. Only the value fed into `compareSemver` becomes reliable.
+- The `package.json` `version` field. The release pipeline (changesets, `release.yml`) still owns this field. The injection reads it; it doesn't own it.
 - The `@workspace/api` boundary. The CLI keeps importing `API_BASE_PATH` and `API_RPC_PATH` from `@workspace/api/base-path` for path-only purposes. This ADR is about version, not about path constants.
-- The `with { type: "json" }` import attribute. The form is the same as the one used in other packages in the monorepo; if the team prefers a different mechanism (e.g., `createRequire` in `tsup.config.ts` only), the implementation PR can swap it without reopening the ADR.
+- The `with { type: "json" }` import attribute. The form is the same as the one used in other packages in the monorepo; if the team prefers a different mechanism (for example, `createRequire` in `tsup.config.ts` only), the implementation PR can swap it without reopening the ADR.
 
 ## Consequences
 
 - The CLI version printed by `deessejs --version` matches `apps/cli/package.json` on every release, automatically. No human edits a constant.
-- The self-version probe (`maybeWarnAboutOutdatedCli`) reads a coherent value. Warnings are accurate on day one of every release, including the case where `minSupported` is bumped on the server and the published CLI is a day behind.
-- The hand-maintained `CLI_PACKAGE_VERSION = "2.0.0"` constant is removed. The file `self-version.ts` becomes a thin wrapper around the injected value; the misleading comment about "bake the version into the bundle as a constant" no longer applies and is replaced by a comment that describes the actual mechanism.
-- Commander's `.version("0.1.0")` is replaced by `.version(readPackageVersion())`. The `deessejs --version` flag prints the real version, not a placeholder.
+- The self-version probe (`maybeWarnAboutOutdatedCli`) reads a coherent value. Warnings are accurate on day one of every release, including the case where `minSupported` moves on the server and the published CLI is a day behind.
+- The hand-maintained `CLI_PACKAGE_VERSION = "2.0.0"` constant goes away. The file `self-version.ts` becomes a thin wrapper around the injected value; the misleading comment about "bake the version into the bundle as a constant" no longer applies and a comment that describes the actual mechanism takes its place.
+- Commander's `.version("0.1.0")` gives way to `.version(readPackageVersion())`. The `deessejs --version` flag prints the real version, not a placeholder.
 - The release workflow's relationship to `apps/cli/package.json` becomes the single point of control. Changesets bumps the field; tsup reads the field; the bundle carries the field. Three steps, no human in the loop.
-- A new unit test pins the invariant. A regression where tsup fails to read `package.json` (e.g., the import attribute is wrong, or the file is moved) is caught at test time, not at release time.
+- A new unit test pins the invariant. A regression where tsup fails to read `package.json` (for example, the import attribute is wrong, or the file moves) surfaces at test time, not at release time.
 - The duplicated version literal disappears from the codebase. The `0.1.0` in `index.ts` and the `2.0.0` in `self-version.ts` are both gone after this lands.

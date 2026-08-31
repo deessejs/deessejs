@@ -6,7 +6,9 @@ description: 'A study of the oRPC `RPCHandler` mount on Hono. Built on'
 # oRPC Hono adapter
 
 A study of the oRPC `RPCHandler` mount on Hono. Built on
+{/* vale off: Vale.Terms, URL contains lowercase orpc/hono */}
 [orpc.dev/docs/adapters/hono](https://orpc.dev/docs/adapters/hono)
+{/* vale on */}
 , the upstream page is the source of truth when the lib
 changes; this entry exists to show the shape of the
 integration and the divergences that a contributor needs to
@@ -44,25 +46,26 @@ export const mountRpcProcedures = (api: Hono<AppEnv>): void => {
 ```
 
 The `api.use(...)` + `await next()` pattern is what allows
-unmatched paths to fall through to other middlewares (e.g.
-the not-found handler). Short-circuiting on the `use`
-itself would break that.
+unmatched paths to fall through to other middleware
+(for example the not-found handler). Short-circuiting on
+the `use` itself would break that.
 
 `interceptors` is the oRPC error pipeline , every error
-raised inside a procedure passes through it. We log via
-the structured logger so the request ID from the
-upstream middleware is attached.
+raised inside a procedure passes through it. The team logs via
+the structured logger so the upstream middleware attaches
+the request ID.
 
 ## Body parser Proxy . "Body Already Used"
 
 If a Hono middleware **before** the oRPC handler reads the
-request body (e.g. the logger, the rate limiter, anything
-that calls `c.req.json()` or `c.req.text()`), the body is
-consumed once. oRPC then sees a drained stream and throws.
+request body (for example the logger, the rate limiter, anything
+that calls `c.req.json()` or `c.req.text()`), something
+consumes the body once. oRPC then sees a drained stream and
+throws.
 
 The adapter's recommended fix is a `Proxy` that intercepts
 the body-parser methods on the raw `Request` and delegates
-them to Hono's parsed getters , so the body is parsed once,
+them to Hono's parsed accessors , so the body is parsed once,
 cached by Hono, and re-readable by oRPC.
 
 ```ts
@@ -92,7 +95,7 @@ export const proxyRawRequest = (c: Context): Request =>
 ```
 
 The Proxy is the entire reason a separate helper exists.
-It is pure adapter machinery, not application logic. It is
+It's pure adapter machinery, not application logic. It's
 called right before `rpcHandler.handle(...)`:
 
 ```ts
@@ -113,8 +116,8 @@ restored.
 
 The upstream basic example returns
 `c.newResponse(response.body, response)` , the `Response`
-is passed as-is. A common divergence is to add a custom
-header (e.g. the request ID) to the response:
+flows through as-is. A common divergence adds a custom
+header (for example the request ID) to the response:
 
 ```ts
 const headers = new Headers(response.headers)
@@ -122,9 +125,9 @@ headers.set(REQUEST_ID_HEADER, c.get("requestId"))
 return c.newResponse(response.body, { ...response, headers })
 ```
 
-Reason: oRPC constructs the response internally and does
-not know about request metadata that the upstream
-middleware set. The header is needed on the wire so
+Reason: oRPC constructs the response internally and doesn't
+know about request metadata that the upstream
+middleware set. The wire carries the header so
 clients can correlate a failure to a request in server
 logs. `...response` spreads the `status`, `statusText`,
 and other `ResponseInit` fields; the explicit `headers`
@@ -144,12 +147,12 @@ procedures read are the canonical contract:
 - The request ID , populated by the request ID middleware,
   reused for structured logging on the error path.
 
-## What this entry is not
+## What this entry isn't
 
 This is a knowledge-base entry, not an ADR. It documents
 how the oRPC Hono adapter works in the current version of
 the lib, and the shape of the integration. The
-**decisions** (which patterns we picked and why) live in
+**decisions** (which patterns the team picked and why) live in
 `docs/engineering/architecture/decisions/`. When a future
 change conflicts with this entry, the entry is wrong, not
 the code.
