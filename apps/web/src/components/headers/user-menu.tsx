@@ -133,10 +133,7 @@ export function UserMenu({ variant }: { variant: "desktop" | "mobile" }) {
 		return (
 			<div data-testid="header-user-menu" data-authenticated="true" className="flex items-center gap-1.5">
 				<Button asChild variant="outline" data-testid="header-dashboard-button">
-					<Link href={dashboardHref}>
-						<LayoutDashboardIcon />
-						Dashboard
-					</Link>
+					<Link href={dashboardHref}>Dashboard</Link>
 				</Button>
 				<DropdownMenu>
 					<DropdownMenuTrigger
