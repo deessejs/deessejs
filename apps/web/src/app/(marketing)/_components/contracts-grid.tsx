@@ -16,17 +16,17 @@
  *   4. The mockup inside each cell runs its own per-kind animation and
  *      carries semantic colour:
  *      - auth-form       — macOS traffic-light dots (red/amber/green);
- *        blue/violet field labels; emerald Continue button
+ *        everything else stays monochrome
  *      - db-terminal     — cyan `$` prompt, white command, emerald ✓
  *        success lines, zinc table list
  *      - billing-widget  — emerald usage bar fills 0 → 74% (1.2s ease)
  *      - jobs-trace      — emerald for ok, violet for running, red for
  *        error; the running row keeps its pulse
- *      - storage-browser — folder=amber, PDF=red, image=emerald,
- *        archive=violet (VS Code / Finder convention)
- *      - otel-waterfall  — the parent progress bar is segmented by
- *        log level (blue/blue/amber/red) and the four sub-traces
- *        take the colour of their level (info / warn / error)
+ *      - storage-browser — folder/PDF/image/archive icon colour
+ *        cues at 60% opacity; row text stays monochrome
+ *      - otel-waterfall  — parent progress bar is segmented by level
+ *        (zinc/zinc/amber/red); the four sub-traces take the colour
+ *        of their level (info = zinc muted, warn = amber, error = red)
  *
  * `MotionConfig reducedMotion="user"` lives in `apps/web/src/app/layout.tsx`
  * — users with the OS-level preference set get opacity-only animations.
@@ -180,10 +180,8 @@ export function ContractsGrid({
  * The auth form reveals its two fields in sequence. The fields are
  * CSS-only — we animate `width` from 0 to 100% on a fixed-width container.
  *
- * Colours:
- *   - macOS traffic-light dots (red / amber / green) for the window chrome
- *   - blue label for the focused field
- *   - green Continue button to mirror the OS "primary action" cue
+ * The only colour on this cell is the macOS traffic-light dots — the
+ * rest of the mockup stays monochrome to match the rest of the home.
  */
 function AuthFormMockup() {
   return (
@@ -197,15 +195,15 @@ function AuthFormMockup() {
         </span>
       </div>
       <div className="flex flex-col gap-2 p-1.5">
-        <FillField label="email" delay={0.1} focusedColor="text-blue-500" />
-        <FillField label="password" delay={0.45} focusedColor="text-violet-500" />
+        <FillField label="email" delay={0.1} />
+        <FillField label="password" delay={0.45} />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.85, duration: 0.3 }}
           className="mt-1 flex items-center justify-end"
         >
-          <span className="rounded-sm border border-emerald-700 bg-emerald-600 px-2 py-0.5 font-mono text-[10px] text-white">
+          <span className="rounded-sm border border-zinc-800 bg-zinc-950 px-2 py-0.5 font-mono text-[10px] text-zinc-100">
             Continue →
           </span>
         </motion.div>
@@ -217,15 +215,13 @@ function AuthFormMockup() {
 function FillField({
   label,
   delay,
-  focusedColor,
 }: {
   label: string
   delay: number
-  focusedColor: string
 }) {
   return (
     <div className="flex items-center gap-2 rounded-sm border border-border bg-background px-2 py-1">
-      <span className={cn("font-mono text-[10px]", focusedColor)}>{label}</span>
+      <span className="font-mono text-[10px] text-muted-foreground">{label}</span>
       <motion.span
         initial={{ width: 0 }}
         animate={{ width: "70%" }}
@@ -501,10 +497,10 @@ function StorageBrowserMockup() {
             style={{ paddingLeft: `${row.indent * 12}px` }}
           >
             <RowIcon
-              className={cn("size-3 shrink-0", row.color)}
+              className={cn("size-3 shrink-0 opacity-60", row.color)}
               aria-hidden
             />
-            <span className={row.color}>{row.name}</span>
+            <span>{row.name}</span>
             {row.size ? (
               <span className="ml-auto text-muted-foreground/70">{row.size}</span>
             ) : null}
@@ -542,7 +538,7 @@ const otelRows: ReadonlyArray<OtelRowSpec> = [
 ]
 
 const LEVEL_COLOR = {
-  info: "text-blue-500",
+  info: "text-muted-foreground",
   warn: "text-amber-500",
   error: "text-red-500",
 } as const
@@ -582,7 +578,7 @@ function OtelWaterfallMockup() {
             whileInView={{ width: "12%" }}
             viewport={{ once: true }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="h-full bg-blue-500"
+            className="h-full bg-zinc-400"
           />
           <motion.div
             aria-hidden
@@ -590,7 +586,7 @@ function OtelWaterfallMockup() {
             whileInView={{ width: "32%" }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="h-full bg-blue-500"
+            className="h-full bg-zinc-400"
           />
           <motion.div
             aria-hidden
