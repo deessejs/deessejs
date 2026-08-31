@@ -1,53 +1,76 @@
 ---
 title: Canary releases
-description: Publish @deessejs/cli@canary on demand from release.yml via workflow_dispatch. Bleeding-edge, no changeset consumption.
+description: Auto-publish @deessejs/cli@canary on every push to staging. Bleeding-edge, no changeset consumption, no human click.
 ---
 
 # Canary releases
 
-The `@canary` channel publishes a bleeding-edge build of `@deessejs/cli` without consuming changesets and without touching the `@latest` dist-tag. It runs in the same workflow as the `@latest` release (`release.yml`) because npm Trusted Publishing allows only one trusted publisher per package.
+The `@canary` channel publishes a bleeding-edge build of `@deessejs/cli` on every push to `staging`, without consuming changesets and without touching the `@latest` dist-tag. The canary job lives inside `release.yml` because npm Trusted Publishing allows only one trusted publisher per package. A thin wrapper (`staging-canary.yml`) calls `release.yml` via `workflow_call` so npm still sees the trusted publisher as `release.yml`.
 
 ## When this process applies
 
-- A maintainer wants to dogfood a feature on `staging` before promoting to `main`.
-- A consumer asks for a build that contains a fix or feature not yet released on `@latest`.
-- A short-loop feedback cycle is needed between contributors and consumers between formal releases.
+- A feature PR has been merged to `staging`.
+- Anyone (maintainer, contributor, consumer) wants an installable bleeding-edge build of the staged work.
+
+There is no on-demand trigger anymore. The previous manual `workflow_dispatch` with `canary: true` is preserved for emergency dogfooding but is no longer the primary path.
 
 ## Prerequisites
 
 - Branch `staging` carries the work to ship.
-- `release.yml` is configured with a `workflow_dispatch` input that accepts `canary: true`.
-- The npm Trusted Publisher for `@deessejs/cli` accepts `workflow_dispatch` invocations from this workflow.
+- The Trusted Publisher for `@deessejs/cli` accepts `release.yml` as the publisher. The new `staging-canary.yml` wrapper is not separately registered; it inherits the trusted publisher via `workflow_call`.
+- A contributor has merged a PR touching CLI-relevant paths to `staging`, including a changeset (enforced by `changesets-check.yml`, see [ADR-026](../../decisions/ADR-026-changesets-merge-gate.mdx)).
 
 ## Procedure
 
-### 1. Trigger the canary workflow
+### 1. The push to staging triggers the workflow
 
-In the GitHub Actions tab, open `release.yml`, choose **Run workflow**, and check the `canary` input.
+A merge (or direct push) to `staging` triggers `.github/workflows/staging-canary.yml`. The workflow calls `release.yml` via `workflow_call` with `channel: canary`.
 
-### 2. Workflow computes a synthetic version
+```yaml
+# staging-canary.yml (abridged)
+on:
+  push:
+    branches: [staging]
 
-The workflow computes `<base>-canary.<UTC-timestamp>.<short-sha>`. Example: `2.1.0-canary.20260821143022.a832a55`. The version is written back into `apps/cli/package.json#version` via `jq`. Changesets are **not** consumed at this step. They stay available for the eventual `@latest` release on `main`.
+concurrency:
+  group: staging-canary-${{ github.sha }}
+  cancel-in-progress: false
 
-### 3. Workflow publishes under the canary dist-tag
+jobs:
+  canary:
+    uses: ./.github/workflows/release.yml
+    with:
+      channel: canary
+    secrets: inherit
+```
+
+### 2. release.yml computes a synthetic version
+
+The canary job inside `release.yml` reads `apps/cli/package.json#version`, computes `<base>-canary.<UTC-timestamp>.<short-sha>`, and writes it back to `apps/cli/package.json` via `jq`. Changesets are **not** consumed at this step; they stay available for the eventual `@latest` publish on `main`.
+
+### 3. release.yml publishes under the canary dist-tag
 
 ```bash
 npm publish --tag canary --provenance --no-git-checks
 ```
 
-Provenance is attached. `--no-git-checks` prevents the publish from failing on a dirty working tree.
+Provenance is attached. `--no-git-checks` prevents the publish from failing on the dirty working tree.
 
-### 4. Workflow re-pins @latest defensively
+### 4. release.yml re-pins @latest defensively
 
-After the canary publish completes, the workflow re-pins `@latest` to its previous value. This guards against any accidental tag move in step 3.
+After the canary publish completes, the workflow re-pins `@latest` to its previous value (reads it from `npm view @deessejs/cli@latest version`). This guards against any accidental tag move in step 3.
 
-### 5. Workflow creates a GitHub Release
+### 5. release.yml creates a GitHub Release
 
 ```bash
 gh release create release/v<canary-version> --prerelease
 ```
 
 The release is marked `prerelease: true`. The tag format matches the `@latest` flow for tooling consistency.
+
+## Manual on-demand (deprecated)
+
+The previous on-demand path — `workflow_dispatch` on `release.yml` with `canary: true` — still works. It triggers the same canary implementation but bypasses the `staging-canary.yml` wrapper. Use it for emergency dogfooding on a non-`staging` branch (for example, a feature branch that you want to test without merging).
 
 ## Artefacts
 
@@ -66,11 +89,13 @@ npm deprecate @deessejs/cli@<canary-version> "Superseded by @deessejs/cli@<lates
 
 Within 72 hours of publish, `npm unpublish @deessejs/cli@<canary-version>` is also available. After 72 hours, deprecate instead.
 
+With ADR-025 turning canary publication into an automatic trigger, the rate of accumulation increases. Expect several canarys per week. A periodic cleanup is recommended: run `npm deprecate` on canarys older than 14 days, or build a small GitHub Action that does it on a cron.
+
 ## Recovery
 
-**Trusted publisher does not accept workflow_dispatch:** the workflow fails with a 403 from npm. Verify the trusted publisher is configured for the `@deessejs/cli` package and accepts this workflow file's path.
+**Trusted publisher does not accept workflow_call from staging-canary.yml:** npm sees the publish as originating from `release.yml` (the call site). The trusted publisher is configured against `release.yml`'s path. Verify the OIDC configuration matches.
 
-**Canary version collides with an existing dist-tag:** the `npm publish` step rejects the duplicate. Bump the UTC timestamp suffix by re-running the workflow.
+**Canary version collides with an existing dist-tag:** the `npm publish` step rejects the duplicate. Bump the UTC timestamp suffix by pushing a new commit.
 
 **`@latest` dist-tag was accidentally moved during step 3:** the defensive re-pin in step 4 catches this in the same workflow run. If the workflow aborts before step 4, manually re-pin:
 
@@ -80,6 +105,7 @@ npm dist-tag add @deessejs/cli@<previous-latest-version> latest
 
 ## See also
 
-- [Latest release](./latest-release.mdx), the canonical release path on `main`.
+- [Latest release](./latest-release.mdx), the auto-publish path on `main`.
 - [PR previews](./pr-previews.mdx), the per-PR pkg.pr.new channel.
-- [ADR-021: CLI three-tier release pipeline](../../decisions/ADR-021-cli-three-tier-release.mdx), the decision that introduced the canary channel and explains why it shares `release.yml` with the `@latest` flow.
+- [ADR-025: Auto-canary on staging](../../decisions/ADR-025-auto-canary-on-staging.mdx), the decision that introduces the auto-trigger and explains the `workflow_call` boundary.
+- [ADR-021: CLI three-tier release pipeline](../../decisions/ADR-021-cli-three-tier-release.mdx), the design this rule inherits from.
