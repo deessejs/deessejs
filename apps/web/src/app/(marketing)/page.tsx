@@ -422,11 +422,29 @@ export default function HomePage() {
                     className="text-foreground size-5 shrink-0"
                     aria-hidden
                   />
-                  <Badge variant="outline" className="text-label-12">
-                    {outcome.status === "coming-soon"
-                      ? "Coming soon"
-                      : "Shipped"}
-                  </Badge>
+                  {outcome.status === "shipped" ? (
+                    <Badge
+                      variant="success"
+                      className="text-label-12 gap-1.5"
+                    >
+                      <span
+                        className="size-1.5 rounded-full bg-emerald-500"
+                        aria-hidden
+                      />
+                      Shipped
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="warning"
+                      className="text-label-12 gap-1.5"
+                    >
+                      <span
+                        className="size-1.5 rounded-full bg-amber-500"
+                        aria-hidden
+                      />
+                      Coming soon
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1">
                   <p className="text-label-13 text-muted-foreground">
