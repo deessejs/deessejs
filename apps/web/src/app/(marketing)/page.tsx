@@ -454,6 +454,9 @@ export default function HomePage() {
                     {outcome.name}
                   </h3>
                 </div>
+                <p className="text-copy-14 text-muted-foreground leading-6 line-clamp-4 [&:not(:first-child)]:mt-0">
+                  {outcome.blurb}
+                </p>
                 <ul className="flex flex-wrap items-center gap-1.5 pt-1">
                   {outcome.stack.map((item) => (
                     <li
