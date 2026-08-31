@@ -466,14 +466,9 @@ export default function HomePage() {
                     </Badge>
                   )}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <p className="text-label-13 text-muted-foreground">
-                    {outcome.scenario}
-                  </p>
-                  <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
-                    {outcome.name}
-                  </h3>
-                </div>
+                <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                  {outcome.name}
+                </h3>
                 <p className="text-copy-14 text-muted-foreground leading-6 line-clamp-4 [&:not(:first-child)]:mt-0">
                   {outcome.blurb}
                 </p>
