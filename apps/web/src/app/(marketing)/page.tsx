@@ -78,6 +78,26 @@ type OutcomeTemplate = {
   status: "shipped" | "coming-soon"
 }
 
+/**
+ * Map a tech name (as it appears in the template's stack array) to the
+ * slug used by `public/logos/<slug>.svg`. Frameworks without a dedicated
+ * brand icon fall back to a close neighbour from the same ecosystem —
+ * Next.js → Vercel, Astro → Cloudflare — so every chip gets a logo
+ * instead of text-only.
+ */
+const STACK_LOGO: Record<string, string> = {
+  "Next.js": "vercel",
+  "Better Auth": "betterauth",
+  Drizzle: "drizzle",
+  Stripe: "stripe",
+  OpenAI: "openai",
+  Postgres: "postgresql",
+  MCP: "modelcontextprotocol",
+  Astro: "astro",
+  Tailwind: "tailwindcss",
+  shadcn: "shadcnui",
+}
+
 const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
   {
     slug: "saas-starter",
@@ -457,15 +477,29 @@ export default function HomePage() {
                 <p className="text-copy-14 text-muted-foreground leading-6 line-clamp-4 [&:not(:first-child)]:mt-0">
                   {outcome.blurb}
                 </p>
-                <ul className="flex flex-wrap items-center gap-1.5 pt-1">
-                  {outcome.stack.map((item) => (
-                    <li
-                      key={item}
-                      className="text-label-12 text-muted-foreground"
-                    >
-                      {item}
-                    </li>
-                  ))}
+                <ul className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+                  {outcome.stack.map((item) => {
+                    const logo = STACK_LOGO[item]
+                    return (
+                      <li
+                        key={item}
+                        className="inline-flex items-center gap-1.5 text-label-12 text-muted-foreground"
+                      >
+                        {logo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={`/logos/${logo}.svg`}
+                            alt=""
+                            width={12}
+                            height={12}
+                            className="size-3 shrink-0 dark:invert"
+                            aria-hidden
+                          />
+                        ) : null}
+                        {item}
+                      </li>
+                    )
+                  })}
                 </ul>
                 <p className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 transition-transform group-hover:translate-x-0.5">
                   Open the template
