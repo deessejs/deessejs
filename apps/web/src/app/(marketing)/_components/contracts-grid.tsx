@@ -417,7 +417,7 @@ function JobsTraceMockup() {
               className={cn(
                 "size-3 shrink-0",
                 color,
-                row.status === "running" && "animate-pulse",
+                row.status === "running" && "animate-spin",
               )}
               aria-hidden
             />
