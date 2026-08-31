@@ -9,7 +9,7 @@ Accepted (2026-08). Non-negotiable.
 
 ## Context
 
-The monorepo has seven Vitest configs across seven packages
+The monorepo has seven Vitest config files across seven packages
 (`apps/cli`, `packages/api`, `packages/auth`, `packages/contracts`,
 `packages/database`, `packages/email`, `packages/utils`). Each
 config repeats the same boilerplate with small variations:
@@ -17,38 +17,39 @@ config repeats the same boilerplate with small variations:
   - Six of seven use `tests/**` as the include glob; one
     (`apps/cli`) uses `test/**` (no `s`).
   - Five of seven have `coverage: { provider: "v8", ... }`;
-    two do not.
+    two don't.
   - Four of seven set `setupFiles: ["@workspace/env/server"]`;
-    three do not.
+    three don't.
   - One (`apps/cli`) sets `testTimeout: 30_000` and
     `pool: "forks"`; the others rely on the Vitest default
     (5s timeout, in-process pool).
   - None of the seven has a coverage threshold, a coverage
     reporter, or a `clearMocks` / `restoreMocks` configuration.
   - None of the seven wires the `RPCHandler` contract tests
-    (Pattern A in `rules/test-mocking.md`) — the contract is
+    (Pattern A in `rules/test-mocking.md`), the contract is
     only tested indirectly through the CLI integration tests
     that mock the server.
 
 The CI runs each package's tests independently via Turbo.
 The duplication has visible costs:
 
-  - When a Vitest option is added (e.g. `coverage.thresholds`),
-    it must be added to seven configs.
-  - The 30s timeout in `apps/cli` does not apply to the
+  - Adding a Vitest option (for example
+    `coverage.thresholds`) means editing seven config
+    files.
+  - The 30s timeout in `apps/cli` doesn't apply to the
     package tests; slow package tests time out at 5s.
-  - `packages/contracts` has no coverage because it was
-    added before the coverage convention; the next
-    contributor must notice and fix.
+  - `packages/contracts` has no coverage because the package
+    predates the coverage convention; the next contributor
+    must notice and fix.
   - The `RPCHandler` contract has no direct tests; the
     only signal that a procedure wire-shape changed is a
     test in `apps/cli` that mocks the response. The server
     can break the contract and tests still pass.
 
 The duplication is a **maintenance hazard**. Every fix is
-seven PRs. Every divergence (e.g. `apps/cli` timeout 30s vs
-others 5s) is a silent bug that future contributors
-discover at runtime.
+seven PRs. Every divergence (`apps/cli` timeout 30s vs
+others 5s, for example) is a silent bug that future
+contributors discover at runtime.
 
 ## Decision
 
@@ -83,15 +84,15 @@ else.
 
 ### Standardised test directory
 
-All packages use `tests/` (plural). The `apps/cli/test/`
-directory is renamed to `apps/cli/tests/`. The seven include
-globs collapse to one shared glob: `["tests/**/*.test.ts",
-"tests/**/*.test.tsx"]`.
+All packages use `tests/` (plural). Rename the
+`apps/cli/test/` directory to `apps/cli/tests/`. The seven
+include globs collapse to one shared glob:
+`["tests/**/*.test.ts", "tests/**/*.test.tsx"]`.
 
 The CLI's `pool: "forks"` and `testTimeout: 30_000` stay
-per-package (they are **CLI-specific** because the CLI
-spawns real subprocesses). They are explicit overrides in
-`apps/cli/vitest.config.ts`, not the default.
+per-package (they're **CLI-specific** because the CLI
+spawns real subprocess instances). They're explicit
+overrides in `apps/cli/vitest.config.ts`, not the default.
 
 #### Folder structure within `tests/`
 
@@ -123,32 +124,32 @@ The three layers are the boundary between **fast and slow**:
 
   - **Unit** exercises one module in isolation. No network,
     no real database, no real subprocess. Mocks are local
-    to the test file. The test file is named after the
-    module it tests: `tests/unit/<module>.test.ts`.
+    to the test file. Name the test file after the module
+    it tests: `tests/unit/<module>.test.ts`.
   - **Integration** exercises a cross-module flow with real
     dependencies. The setup starts a real Postgres, a real
     HTTP server, or a real subprocess; the scenario
-    exercises the flow; the teardown cleans up. The test
-    file is named after the flow, not the module: the
-    naming uses verbs or flow names (`health`,
-    `templates-list`).
+    exercises the flow; the cleanup runs at the end. Name
+    the test file after the flow, not the module: use
+    verbs or flow names (`health`, `templates-list`).
   - **Contract** exercises the procedure via the server-side
-    client (Pattern A in `rules/test-mocking.md`). It is
+    client (Pattern A in `rules/test-mocking.md`). It's
     fast (no DB, no network), it asserts the wire shape of
     the response, and it lives next to the procedure it
-    tests. The test file is named after the **procedure**,
-    not the source file: `tests/contract/<procedure>.test.ts`.
-    The contract layer is the **only** layer where the file
-    name does not mirror the source path; the test still
-    asserts the right thing after the procedure is moved
+    tests. Name the test file after the **procedure**, not
+    the source file:
+    `tests/contract/<procedure>.test.ts`. The contract
+    layer is the **only** layer where the file name doesn't
+    mirror the source path; the test still asserts the
+    right thing after a developer moves the procedure
     between files.
 
 The three layers have separate `_fixtures/` and
 `_helpers/` directories. A fixture or helper shared by
-**both** unit and integration tests does not exist: if a
-fixture is needed in both, it goes into the layer that owns
-the lifecycle. The leading underscore signals "not a test"
-to humans; the `**/*.test.ts` glob is the machine filter.
+**both** unit and integration tests doesn't exist: put
+shared fixtures in the layer that owns the lifecycle.
+The leading underscore signals "not a test" to humans;
+the `**/*.test.ts` glob is the machine filter.
 
 ### Contract test pattern
 
@@ -160,24 +161,24 @@ handler must have a contract test that:
      `rules/test-mocking.md`).
   2. Asserts the wire shape matches the procedure's declared
      contract.
-  3. Does not mock the procedure itself; mocks only the
+  3. Doesn't mock the procedure itself; mocks only the
      external dependencies (database, network, file system).
 
 The contract tests live in `packages/api/tests/contract/`,
-one file per procedure. They run on every PR. They are the
-**primary signal** that the server wire format has not
+one file per procedure. They run on every PR. They're the
+**primary signal** that the server wire format hasn't
 drifted.
 
-### Coverage gate in CI
+### Coverage gate in continuous integration
 
 A Turbo task `coverage` runs `vitest run --coverage` in each
 package that opts in (default: packages with a coverage
 preset in the shared config). The coverage threshold is
 **80% lines, 75% branches** per package. The CI step fails
-if any package drops below. The threshold is set in
-`@workspace/vitest-config` and overridable per package.
+if any package drops below. `@workspace/vitest-config`
+sets the threshold; packages can override it.
 
-The 80%/75% numbers are a starting point. They are a
+The 80%/75% numbers are a starting point. They're a
 **floor**, not a target: coverage above 80% with no real
 test of the contract is theatre. The contract tests are
 the real target; coverage is the smoke detector for
@@ -191,8 +192,8 @@ uncovered paths.
 - **A `setupFiles` per package** that imports the shared
   env setup and adds package-specific mocks.
 - **Coverage exclusions** for `*.test.ts`, generated code,
-  and `*.d.ts` files. The exclusions are explicit; a file
-  not in the exclusion list is covered.
+  and `*.d.ts` files. The exclusions are explicit; the
+  coverage step covers any file not in the exclusion list.
 
 ## What this rule forbids
 
@@ -207,17 +208,18 @@ uncovered paths.
   not optional; tests that are too slow or too
   non-deterministic to cover are a sign the test should be
   rewritten, not skipped.
-- **A test that mocks the procedure itself** (i.e. the
-  Server-Side Client pattern is bypassed). The contract is
-  the wire shape; testing a mock of the contract tests
-  nothing.
+- **A test that mocks the procedure itself** (that is,
+  tests that bypass the Server-Side Client pattern). The
+  contract is the wire shape; testing a mock of the
+  contract tests nothing.
 
-## What this rule does not change
+## What this rule doesn't change
 
 - The existing test files. They keep running as-is; the
   config change is mechanical.
-- The `apps/cli` fork pool. The CLI spawns subprocesses;
-  in-process would deadlock. The override stays.
+- The `apps/cli` fork pool. The CLI spawns child
+  processes; in-process would deadlock. The override
+  stays.
 - The CI workflow. Turbo already runs the per-package test
   tasks; the new `coverage` task is a Turbo add, not a
   workflow rewrite.
@@ -231,18 +233,18 @@ coverage, no contract test) is a per-package decision that
 adds up to a project-wide gap.
 
 The shared config is a **one-time cost** that pays for
-itself the first time we change a Vitest option. The
+itself the first time a Vitest option changes. The
 contract test pattern is a **one-time cost** that pays for
 itself the first time a procedure wire-format changes
 without the implementation changing. The coverage gate is
 a **one-time cost** that pays for itself the first time a
 PR ships with a real coverage gap.
 
-The cost of the rule is the migration of seven configs and
-the addition of contract tests. The migration is mechanical
-(replace the per-package config body with `vitestConfig(...)`
-plus overrides). The contract tests are not mechanical —
-they are the meaningful work.
+The cost of the rule is the migration of seven config
+files and the addition of contract tests. The migration
+is mechanical (replace the per-package config body with
+`vitestConfig(...)` plus overrides). The contract tests
+aren't mechanical; they're the meaningful work.
 
 ## How to migrate
 
@@ -252,9 +254,10 @@ In one PR (split into three commits for review):
    that exports `vitestConfig({ package })`. The default
    preset is the seven options that are common across
    packages. Add it to the workspace via `pnpm-workspace.yaml`.
-2. **Migrate the seven configs**: replace each `vitest.config.ts`
-   body with `defineConfig(vitestConfig({ package: 'X' }))`
-   plus per-package overrides (CLI's pool/timeout, etc.).
+2. **Migrate the seven config files**: replace each
+   `vitest.config.ts` body with
+   `defineConfig(vitestConfig({ package: 'X' }))` plus
+   per-package overrides (CLI's pool/timeout, etc.).
 3. **Standardise the test directory**: rename `apps/cli/test/`
    to `apps/cli/tests/`. The CLI config updates its include
    glob.
@@ -268,22 +271,22 @@ In one PR (split into three commits for review):
    task; the step fails on any drop below 80%/75%.
 
 The PR is large (one new package, seven config rewrites,
-ten new test files) but the diff is mostly mechanical. The
-reviewer load is the config rewrite + the contract tests;
-the rest is noise.
+ten new test files) but the diff is mechanical apart from
+the contract tests. The reviewer load is the config
+rewrite plus the contract tests; the rest is noise.
 
 ## Related
 
-- [Rule 0008: test-mocking.md](../rules/test-mocking.md) —
+- [Rule 0008: test-mocking.md](../rules/test-mocking.md),
   the Source-Side Client pattern (Pattern A) and the
   forbidden mocking patterns. The contract test pattern
   above is Pattern A applied to the procedure layer.
-- [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md) —
+- [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md),
   the contract that the tests must verify.
-- [ADR-002: file organization by sub-domain](./ADR-002-file-organization.md) —
+- [ADR-002: file organization by sub-domain](./ADR-002-file-organization.md),
   the convention that `vitest-config` follows (one file per
   concept; the concept is the shared config).
-- The seven per-package configs being replaced:
+- The seven per-package config files this rule replaces:
   `apps/cli/vitest.config.ts`,
   `packages/api/vitest.config.ts`,
   `packages/auth/vitest.config.ts`,
@@ -292,12 +295,12 @@ the rest is noise.
   `packages/email/vitest.config.ts`,
   `packages/utils/vitest.config.ts`.
 
-## What this rule is not
+## What this rule isn't
 
-This is an ADR for the test strategy, not a test
-implementation guide. The pattern (Pattern A in
+This isn't a test implementation guide; it's an ADR for the
+test strategy. The pattern (Pattern A in
 `rules/test-mocking.md`) is the implementation pattern; this
 ADR is the **shape** of the test suite. The ADR governs
-the Vitest configs, the coverage gate, and the
-contract-test requirement. The patterns in
+the Vitest config files, the coverage gate, and the
+contract test obligation. The patterns in
 `rules/test-mocking.md` govern what each test does.

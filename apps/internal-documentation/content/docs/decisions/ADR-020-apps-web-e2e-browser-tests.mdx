@@ -3,7 +3,7 @@ title: 'apps/web browser end-to-end tests'
 description: 'Smoke suite against the deployed marketing site. Pin the cache-poisoning regression for issue #81 and protect the user-visible contract.'
 ---
 
-# ADR-020: apps/web browser end-to-end tests
+# ADR-020, apps/web browser end-to-end tests
 
 ## Status
 
@@ -18,7 +18,7 @@ Accepted (2026-08). Implementation may begin.
   upstream call into `packages/api` via `orpc.templates.list`
   (`apps/web/src/lib/orpc.ts`, `packages/api/src/orpc/routes/templates.ts`).
 Every unit and integration test in this monorepo today exercises
-  one layer in isolation: vitest at the helper layer (ADR-009)
+  one layer in isolation: Vitest at the helper layer (ADR-009)
   for the `buildFetchIsrInit` translation contract, the API
   surface in-process via `api.request()` (ADR-016) for the
   Hono mount, and the CLI tarball in-process via the
@@ -29,11 +29,11 @@ Every unit and integration test in this monorepo today exercises
   to `/api/v1/rpc/templates/list`, and the Next.js Data Cache
   behavior for the `templates:live` tag introduced in PR #85.
 
-Three concrete failure modes the existing layer-cake does not catch:
+Three concrete failure modes the existing layer-cake doesn't catch:
 
 1. **The issue #81 cache-poisoning regression.** PR #85
    introduced `templates:live` (`revalidate: 0`) and a runtime
-   re-throw at the three call-sites. The fix is verified at
+   re-throw at the three call-sites. The fix passes at
    the unit level (`apps/web/test/unit/orpc.test.ts`) and
    the API-side unit level (`packages/api/tests/integration/rpc/templates.test.ts`).
    Nothing exercises it as a user: a real browser hitting
@@ -45,34 +45,33 @@ Three concrete failure modes the existing layer-cake does not catch:
    invisible to every existing test.
 2. **The wire-code `TEMPLATES_FETCH_FAILED` (502).** The new
    error contract in `packages/api/src/orpc/routes/templates.ts:58-62`
-   is exercised at the unit layer but never observed from a
-   client: the typed client should branch on
+   runs at the unit layer but no client observes it: the typed client should branch on
    `err instanceof ORPCError && err.code === "TEMPLATES_FETCH_FAILED"`
    and the marketing site's `error.tsx` should render the
    "Couldn't load templates" copy. No test pins that chain.
 3. **The new home-page -> detail links.** The marketing home
    (`apps/web/src/app/(marketing)/page.tsx`) hard-codes three
    featured slugs in `FEATURED_TEMPLATES` (lines 30-57). Only
-   `saas-starter` is registered server-side
-   (`packages/api/src/templates.ts:30-43`). Clicking the other
+   `saas-starter` registers server-side
+   (`packages/api/src/templates.ts:30-43`). Selecting the other
    two links today lands on `not-found.tsx`. The asymmetry is
    correct but unobservable; a regression that breaks even
-   the `saas-starter` link is not caught.
+   the `saas-starter` link isn't caught.
 
 Three patterns the existing test surface already provides, and
-  that this ADR deliberately re-uses rather than reimplements:
+  that this ADR reuses rather than re-implements:
 
 - **Vitest unit seam (ADR-009).** The translation contract
   `buildFetchIsrInit` lives at `apps/web/test/unit/orpc.test.ts`
   (8 tests). It pins the translation contract that the
-  browser-level test depends on. It is not enough on its own
+  browser-level test depends on. Alone, this isn't enough
   because the failure modes above need a real browser to be
   observable.
 - **Hono `api.request()` integration (ADR-016).** The
   `packages/api/tests/integration/rpc/templates.test.ts` block
   exercises the Hono mount end-to-end without booting
-  Next.js. It is the right shape for the Hono surface; it is
-  the wrong shape for a UI test that needs RSC, the Data
+  Next.js. The right shape for the Hono surface; the wrong
+  shape for a UI test that needs RSC, the Data
   Cache, and the segment `error.tsx` to be live.
 - **CLI `run()` e2e (ADR-014).** The published-artifact
   smoke suite under `apps/cli/test/e2e/` runs the tarball
@@ -89,7 +88,7 @@ Add a dedicated Playwright suite under `apps/web/tests/e2e/`
   `templates-detail`, `templates-cache`, `navigation`), plus a
   helpers folder for the page-object selectors and the
   Vercel preview URL resolution. The suite has **no network
-  interception helper** — the tests observe the rendered
+  interception helper**; the tests observe the rendered
   DOM, not the outbound API traffic (see Decision #5).
 
 The suite runs in CI against the Vercel preview deployment
@@ -103,14 +102,14 @@ Four concrete decisions.
 **1. Framework: Playwright.** Next's own testing guide lists
   Playwright and Cypress as peer-supported
   ([nextjs.org/docs/app/guides/testing](https://nextjs.org/docs/app/guides/testing),
-  v16.3.1, lastUpdated 2026-02-03). Next does not recommend one
+  v16.3.1, last updated 2026-02-03). Next doesn't recommend one
   over the other; both are equally listed. The choice for
   Playwright rests on three technical grounds and one
-  ergonomic ground:
+  ergonomic ground: {/* vale fix: Vale.Spelling */}
 
   - **First-class multi-browser support.** Playwright ships
     Chromium, Firefox, and WebKit drivers in one binary
-    ([playwright.dev/docs/browsers](https://playwright.dev/docs/browsers)).
+    ([Playwright.dev/docs/browsers](https://playwright.dev/docs/browsers)). {/* vale fix: Vale.Terms */}
     The repo will need real Firefox and WebKit coverage at
     some point; Cypress uses a remote-control architecture
     that requires Sauce Labs for non-Chromium browsers.
@@ -127,22 +126,22 @@ Four concrete decisions.
     header that the oRPC handler reads via Next's
     `headers()` to gate the failure path. The Playwright
     API is a first-class method on `Page`; Cypress exposes
-    the equivalent via `cy.intercept()` with a request
+    the same function via `cy.intercept()` with a request
     callback, but the Playwright ergonomics compose
     cleanly with the
-    TypeScript page-object style we will adopt.
-  - **Native parallel mode and sharding.** The PR gate runs
+    TypeScript page-object style the team will adopt.
+  - **Native parallel mode and split runs.** The PR gate runs
     in less than two minutes on three browsers; nightly can
-    shard. Cypress Parallelization requires a paid
+    split runs. Cypress parallel execution requires a paid
     Dashboard.
   - **Ergonomics: the canonical Next example uses it.** Vercel
-    maintains [`vercel/next.js/examples/with-playwright`](https://github.com/vercel/next.js/tree/canary/examples/with-playwright)
-    verbatim. Reviewers can read the official example and
-    find our config next to it; the cognitive cost of going
+    maintains the official `with-playwright` example
+    in the Next.js canary branch. Reviewers can read the official example and
+    find the team's config next to it; the cognitive cost of going
     against the example is higher than the cost of either
     framework's quirks.
 
-Cypress is rejected on three grounds: no first-class
+Three grounds reject Cypress: no first-class
   Firefox/WebKit, parallel mode requires the paid Dashboard,
   and the test suite would deviate from the canonical Next
   example.
@@ -157,18 +156,17 @@ Cypress is rejected on three grounds: no first-class
     signal.** Next.js emits `HIT | STALE | MISS | REVALIDATED`
     for ISR-rendered routes
     ([nextjs.org/docs/app/guides/incremental-static-regeneration](https://nextjs.org/docs/app/getting-started/revalidating);
-    v16.3.1). The header is populated by the production
-    runtime; `next dev` does not exercise it. The issue #81
+    v16.3.1). The production runtime populates the header; `next dev` doesn't exercise it. The issue #81
     regression test is meaningless against `next dev`.
   - **The `revalidate: 0` directive on `liveCache` is a
     production-only semantic.** Per the Next.js docs, `0`
     means *« Prevent the resource from being cached. »*
-    ([nextjs.org/docs/app/api-reference/functions/fetch](https://nextjs.org/docs/app/api-reference/functions/fetch);
+    ([nextjs.org/docs/app/API-reference/functions/fetch](https://nextjs.org/docs/app/api-reference/functions/fetch); {/* vale fix: Vale.Terms */}
     v16.3.1). In dev mode, the directive is short-circuited
     when the request carries `cache-control: no-cache`,
     which DevTools sends. Production assertions on this
-    directive cannot be made against `next start` either,
-    because the production app is not on the test machine;
+    directive fail against `next start` too,
+    because the production app isn't on the test machine;
     the Vercel preview URL is the only environment where
     the production code path runs at a stable URL.
 
@@ -176,14 +174,14 @@ Local development runs against `pnpm dev` instead, using a
   separate config preset (`baseURL: http://localhost:3000`,
   `webServer` block from the Playwright docs). Local runs
   exercise the same test code without asserting the cache
-  directive headers. The CI workflow does not use this
+  directive headers. The CI workflow doesn't use this
   preset.
 
   **Why `repository_dispatch`, not `deployment_status`.**
     Vercel documents `repository_dispatch` with
     `event_type: "vercel.deployment.success"` as the
-    alternative path in their KB for e2e-after-preview
-    ([vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment](https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment)).
+    alternative path in their Knowledge Base for e2e-after-preview
+    (see the Vercel Knowledge Base entry on e2e-after-preview). {/* vale fix: Vale.Terms */}
     Earlier drafts of this ADR used `on: deployment_status`,
     but the documentation path carries the deployment URL
     directly in `client_payload.url`, while
@@ -192,7 +190,7 @@ Local development runs against `pnpm dev` instead, using a
     `repository_dispatch` payload is also documented and
     trusted by Vercel in their own example workflows.
 
-    **Note on the comparison.** The Vercel KB does not
+    **Note on the comparison.** The Vercel KB doesn't
     formally recommend one trigger over the other; it
     documents both paths. The "one indirection closer"
     framing is the ADR's editorial choice, justified by
@@ -201,66 +199,66 @@ Local development runs against `pnpm dev` instead, using a
     `deployment_status` in their canonical example.
 
   **Fork-PR posture.** Per the Vercel for GitHub docs
-    ([vercel.com/docs/git/vercel-for-github](https://vercel.com/docs/git/vercel-for-github)):
+    (see the Vercel for GitHub integration page): {/* vale fix: Vale.Terms */}
     *"If you receive a pull request from a fork of your
     repository, Vercel will require authorization from you
     or a team member to deploy the pull request."* This
-    means fork PRs do not produce a Vercel deployment by
-    default, and therefore no `repository_dispatch` event
+    means fork PRs don't produce a Vercel deployment by
+    default, and no `repository_dispatch` event
     fires for them until a maintainer approves the deploy.
     Once approved, the workflow runs the same way as for
     an internal PR. The repo is internal-only today (no
-    fork-PR workflows exist); the ADR does not engineer
+    fork-PR workflows exist); the ADR doesn't engineer
     fork support into v1 but flags it as a known gap for
-    the day the repo is opened to external contributors.
+    the day the repo opens to external contributors.
     The alternative (`on: pull_request_target` for
-    permission-rich runs) is rejected because e2e
-    inherently executes the PR's code, which would create
-    a pwn-request path that exposes secrets to untrusted
-    code.
+    permission-rich runs) gets rejected because e2e
+    inherently executes the pull-request code, which would create
+    a pwn-request path that exposes secrets to risky
+    code. {/* vale fix: Vale.Spelling */}
 
 **3. Test placement: `apps/web/tests/e2e/`, deviating from
   Next's example project.** The canonical Next example
   uses `e2e/` at the project root
-  ([`vercel/next.js/examples/with-playwright`](https://github.com/vercel/next.js/tree/canary/examples/with-playwright)).
+  (see the official Next.js Playwright example). {/* vale fix: Vale.Terms */}
   The deessejs convention from ADR-009 (§87-89) is
   `tests/` (plural) for packages and `test/` (singular)
   for apps. This ADR adopts **`tests/` (plural)** for
   `apps/web` and places the Playwright suite under
   `apps/web/tests/e2e/`. Three reasons:
 
-  - **Consistency with the existing vitest unit tests at
+  - **Consistency with the existing Vitest unit tests at
     `apps/web/test/unit/orpc.test.ts` (PR #85).** Co-locating
-    `test/` (vitest) and `tests/e2e/` (Playwright) under
+    `test/` (Vitest) and `tests/e2e/` (Playwright) under
     the same `apps/web/` root means a future contributor
     finds all tests by descending one directory. The
-    vitest `include` glob is extended (see below).
-  - **Discoverability over Next-example parity.** The
+    Vitest `include` glob extends (see below).
+  - **Discoverable naming over Next-example parity.** The
     divergence from Next's `e2e/` naming is small (a
-    trailing `s`) but the benefit is real: the
-    convention is now self-documenting for anyone reading
+    trailing `s`) but the upside is real: the
+    convention becomes self-documenting for anyone reading
     the repo without external context.
-  - **No collision with vitest config.** Vitest's `include`
-    pattern is `["test/**/*.test.ts", "tests/**/*.test.ts"]`
+  - **No collision with Vitest config.** Vitest's `include`
+    pattern is `["test/**/*.test.ts," "tests/**/*.test.ts"]`
     (both globs). The Playwright `testDir` is
     `apps/web/tests/e2e/` and the test files use
-    `.spec.ts`. The two configs use disjoint file globs
+    `.spec.ts`. The two config files use disjoint file globs {/* vale fix: Vale.Spelling */}
     (`.test.ts` vs `.spec.ts`) so the inclusion of
-    `tests/**` in the vitest `include` does not pick up
+    `tests/**` in the Vitest `include` doesn't pick up
     Playwright suites.
 
-  **vitest config update (companion change to this ADR).**
+  **Vitest config update (companion change to this ADR).**
   `apps/web/vitest.config.ts` currently sets
-  `include: ["test/**/*.test.ts"]` (the vitest preset
+  `include: ["test/**/*.test.ts"]` (the Vitest preset
   default). The implementation PR for this ADR extends it
-  to `["test/**/*.test.ts", "tests/**/*.test.ts"]`. The
-  Playwright files (`.spec.ts`) are not picked up by the
-  vitest `include` glob because the `.test.ts` extension
+  to `["test/**/*.test.ts," "tests/**/*.test.ts"]`. The
+  Playwright files (`.spec.ts`) aren't picked up by the
+  Vitest `include` glob because the `.test.ts` extension
   filter excludes them.
 
 The directory tree after this ADR lands:
 
-```
+~~~
 apps/web/
 ├── tests/                                 new
 │   ├── e2e/                              new
@@ -280,7 +278,7 @@ apps/web/
 ├── playwright.config.ts                   new   CI only
 ├── package.json                          modified (scripts + devDeps)
 └── vitest.config.ts                      existing
-```
+~~~
 
 The `e2e.config.ts` and `playwright.config.ts` are two
   presets of the same config: `playwright.config.ts` is the
@@ -293,7 +291,7 @@ The `e2e.config.ts` and `playwright.config.ts` are two
 **4. Stable selectors: a `data-testid` strategy, with a
   fallback chain.** The audit at the end of this ADR
   identifies 8 surfaces where today's selectors rely on copy
-  and would benefit from explicit `data-testid` attributes.
+  and would gain from explicit `data-testid` attributes.
   The strategy is:
 
   - **Add `data-testid` on the four surfaces the load-bearing
@@ -301,16 +299,16 @@ The `e2e.config.ts` and `playwright.config.ts` are two
     the sidebar groups, and the search input. Total: 8
     `data-testid` attributes on 4 surfaces. The attributes
     cost zero runtime overhead and zero CSS specificity
-    (Tailwind does not see them).
+    (Tailwind doesn't see them).
   - **For surfaces the audit called out as P1/P2/P3, keep
     the existing selectors.** The role/name/aria selectors
-    work for "Try again", "Search templates", the breadcrumb,
+    work for "Try again," "Search templates," the breadcrumb,
     etc. Mixing test-ids in P0 and role-based selectors
     elsewhere keeps the diff small.
   - **Never depend on text content for assertions.** The
-    `error.tsx` deliberately suppresses `error.message`
+    `error.tsx` suppresses `error.message` by design
     (`apps/web/src/app/(product)/templates/error.tsx:7-11`),
-    so backend errors cannot leak to tests even by accident.
+    so backend errors can't leak to tests even by accident.
 
 The implementation lands the `data-testid` attributes in the
   same PR as the test files. Two PRs would let a UI change
@@ -324,26 +322,26 @@ The implementation lands the `data-testid` attributes in the
   **Why not `page.route()`.** Playwright's `page.route()`
   (and `browserContext.route()`) intercepts *"Any requests
   that a page does, including XHRs and fetch requests"*
-  ([playwright.dev/docs/network](https://playwright.dev/docs/network);
-  v1.5x, fetched 2026-08-20 — introduction section). The
+  ([Playwright.dev/docs/network](https://playwright.dev/docs/network);
+  v1.5x, fetched 2026-08-20, introduction section). The
   same page states the in-browser scope explicitly: *"Any
   requests that a page does … can be tracked, modified and
   handled."* The API reference page
   (`playwright.dev/docs/api/class-page#page-route`) provides
   the method signature and the Service Worker caveat; the
-  phrase *"requests that a page does"* does not appear there.
-  Out-of-browser traffic — anything running in Node — is
+  phrase *"requests that a page does"* doesn't appear there.
+  Out-of-browser traffic, anything running in Node, sits
   **out of scope** by design (issue #23705 on
   `microsoft/playwright` is the most-cited demonstration;
   confirmed by the primary doc above).
   `playwright.dev/docs/network`).
 
-  For our setup specifically, the oRPC `POST
+  For the setup specifically, the oRPC `POST
   /api/v1/rpc/templates/list` call inside
   `apps/web/src/app/(product)/templates/page.tsx:87` is an
-  async RSC. The fetch is **executed on the Next.js server
-  runtime during SSR/RSC rendering** (per the `fetch` API ref
-  in the bundled docs — `apps/web/node_modules/next/dist/
+  async RSC. The Next.js server runtime executes the fetch
+  during SSR/RSC rendering (per the `fetch` API ref
+  in the bundled docs, `apps/web/node_modules/next/dist/
   docs/01-app/03-api-reference/04-functions/fetch.md:8-10`:
   *"In the browser, the `cache` option indicates how a
   fetch request will interact with the browser's HTTP
@@ -352,12 +350,12 @@ The implementation lands the `data-testid` attributes in the
   framework's persistent cache. You can call fetch with
   async and await directly within Server Components."*).
   The browser never sees a `POST /api/v1/rpc/*` request on
-  initial paint; the result is interleaved in the HTTP
+  initial paint; the result interleaves in the HTTP
   response stream alongside the RSC payload.
 
-  Therefore `page.route('**/api/v1/rpc/**')` would silently
-  pass through — the request never reaches the browser, the
-  handler is never invoked, the test would return a false
+  As a result, `page.route('**/api/v1/rpc/**')` would {/* vale fix: write-good.So */}
+  pass through: the request never reaches the browser, the
+  handler never gets invoked, the test would return a false
   green against the real (or test) upstream API.
 
   **Why not a mutated `process.env` on the Vercel preview.**
@@ -370,12 +368,12 @@ The implementation lands the `data-testid` attributes in the
   1. Vercel preview deployments are **immutable mid-run**.
      The Vercel REST API for env vars (`/v9/projects/:id/env`)
      writes into a deployment-time snapshot that new
-     containers pick up at cold start; it does not mutate
+     containers pick up at cold start; it doesn't mutate
      running instances. Setting the env var requires either
      a new deployment or a multi-second wait for a cold
      start on an existing instance.
   2. **Concurrency scale.** Even if it worked, mutating the
-     preview env for each test (and unmutating after) would
+     preview env for each test (and clearing after) would
      destroy the parallelism of the PR gate. Two tests
      concurrently setting the flag to different values
      race; the matrix scenarios stack. The 3-minute budget
@@ -387,16 +385,16 @@ The implementation lands the `data-testid` attributes in the
 
   * **Activation.** The Vercel project has **Deployment
     Protection enabled** (Password Protection or Vercel
-    Authentication — either is fine; the choice is
+    Authentication, either is fine; the choice is
     operational). A dedicated bypass secret named
-    *"Playwright tests"* is created in the project's
+    *"Playwright tests"* gets created in the project's
     *Deployment Protection → Bypass for Automation*
     settings. Vercel automatically injects that secret
     value into the deployed runtime as
     `process.env.VERCEL_AUTOMATION_BYPASS_SECRET`
-    ([vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation);
-    lastUpdated 2026-04-30, fetched 2026-08-20). The
-    preview URL is therefore inaccessible without the
+    ([Vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation);
+    last updated 2026-04-30, fetched 2026-08-20). The
+    preview URL becomes inaccessible without the
     secret; the secret is the gate.
 
   * **One secret, two jobs.** The same secret that
@@ -404,7 +402,7 @@ The implementation lands the `data-testid` attributes in the
     `VERCEL_AUTOMATION_BYPASS_SECRET` is also read by the
     oRPC handler at
     `packages/api/src/orpc/routes/templates.ts:list` to
-    gate the test-only failure path. There is one secret
+    gate the test-only failure path. The project holds a single secret, {/* vale fix: write-good.ThereIs */}
     on the project, exposed in two places (the deployment
     runtime + the oRPC handler); the secret's value
     never leaves the trusted path (Vercel injects it as a
@@ -430,11 +428,11 @@ The implementation lands the `data-testid` attributes in the
         extraHTTPHeaders: {
           "x-vercel-protection-bypass":
             process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-          // Required so follow-up navigations (next/link
+          // Required so follow-up navigation steps (next/link
           // client transitions) inherit the bypass.
           // The first response sets a Set-Cookie header
-          // on the preview domain; subsequent navigations
-          // carry the cookie automatically.
+          // on the preview domain; subsequent navigation {/* vale fix: Vale.Spelling */}
+          // steps carry the cookie automatically.
           "x-vercel-set-bypass-cookie": "true",
         },
       },
@@ -443,17 +441,17 @@ The implementation lands the `data-testid` attributes in the
 
     The two headers are the exact pattern Vercel
     documents for "in-browser testing"
-    ([vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation#examples](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation#examples);
+    ([Vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation#examples](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation#examples);
     verbatim *"to bypass authorization on follow-up
-    requests (e.g. for **in-browser testing**) you can set
-    an additional header or query parameter named
+    requests (for example for **in-browser testing**) you can set
+    an extra header or query parameter named
     `x-vercel-set-bypass-cookie` with the value `true`.
     This will set the authorization bypass as a cookie
     using a redirect with a `Set-Cookie` header."*).
     Without `x-vercel-set-bypass-cookie`, the first SSR
     paint works but the next client-side navigation
-    (e.g. the `Try again` recovery in P0-3) loses the
-    header — the issue #81 regression test would fail
+    (for example the `Try again` recovery in P0-3) loses the
+    header; the issue #81 regression test would fail
     spuriously on the second navigation.
 
   * **Per-test guard inside Playwright tests.** On top of
@@ -470,8 +468,8 @@ The implementation lands the `data-testid` attributes in the
     The two headers travel together: `x-vercel-protection-bypass`
     authenticates the request past the Vercel edge; `x-e2e-force-fail`
     selects the test branch inside the handler. Both
-    are scoped per browser context, so two tests in
-    parallel do not race.
+    scope per browser context, so two tests in
+    parallel don't race.
 
   * **Server-side guard.** The oRPC handler reads both
     headers via Next's `headers()` async API at
@@ -498,7 +496,7 @@ The implementation lands the `data-testid` attributes in the
   * **`process.env.NODE_ENV !== "production"` is the
     load-bearing guard against accidental production
     behaviour.** A future contributor who adds the
-    test-only code path cannot enable it in production
+    test-only code path can't enable it in production
     by forwarding the bypass header from a public client
     (production has no `VERCEL_AUTOMATION_BYPASS_SECRET`
     set); the server-side NODE_ENV check blocks it
@@ -507,8 +505,8 @@ The implementation lands the `data-testid` attributes in the
   * **Contract pinning.** The values (`"1"` for failure,
     `"2"` for empty catalog) are part of the wire
     contract between the test runner and the handler and
-    are pinned here so a future refactor cannot introduce
-    a typo that silently falls back to the happy path.
+    pin here so a future refactor can't introduce
+    a typo that falls back to the happy path.
 
   Implications for the issue #81 regression test (P0-6):
   the test sets `x-vercel-protection-bypass` (via
@@ -518,12 +516,12 @@ The implementation lands the `data-testid` attributes in the
   (`role=heading[name="Couldn't load templates"]` and
   `role=button[name="Try again"]`), then asserts the
   `x-nextjs-cache` header on the **document response**
-  (the Next.js HTML/RSC stream — that **is**
+  (the Next.js HTML/RSC stream, which **is**
   browser-visible) for the cache-poisoning regression
-  signal. Clicking "Try again" issues a client-side
+  signal. Selecting "Try again" issues a client-side
   navigation; the bypass cookie set by the first
-  response is sent automatically. The oRPC POST itself
-  is not observable; we assert on its consequence in
+  response sends automatically. The oRPC POST itself
+  isn't observable; the test asserts on the consequence in
   the rendered tree and in the response cache header.
 
   **Why this is the correct senior-grade pattern, not a
@@ -548,9 +546,9 @@ The implementation lands the `data-testid` attributes in the
 - **DOM-only assertions via Playwright's browser
   primitives** (`page.goto`, `page.locator`,
   `expect(...).toBeVisible`). The test surface is the
-  rendered HTML — the same boundary a user observes. Tests
+  rendered HTML, the same boundary a user observes. Tests
   do **not** intercept any `/api/v1/rpc/*` traffic because
-  `page.route()` cannot intercept server-side fetches
+  `page.route()` can't intercept server-side fetches
   executed inside React Server Components during SSR/RSC
   rendering (see Decision #5 for the reasons).
 - **Vercel Protection Bypass for Automation as the
@@ -566,13 +564,13 @@ The implementation lands the `data-testid` attributes in the
   request header. The exact scheme is in Decision #5.
 - **Header values are an enum (`"1"` for forced failure,
   `"2"` for empty catalog)** so a typo in the test
-  silently no-ops rather than finding the happy path.
+  no-ops rather than finding the happy path.
 - **One suite per surface, named after the route family.**
   The convention follows ADR-016's `tests/integration/`
   rule: the file name mirrors the route, not the verb.
   `templates-index.spec.ts` exercises `/templates`;
   `templates-detail.spec.ts` exercises `/templates/[slug]`.
-- **Two CI workflows** (one PR-blocking, one nightly) —
+- **Two CI workflows** (one PR-blocking, one nightly),
   exactly the structure from ADR-014. The PR-blocking
   workflow runs in under three minutes on Chromium only;
   the nightly runs the multi-browser matrix.
@@ -580,31 +578,31 @@ The implementation lands the `data-testid` attributes in the
   runs `playwright test --config playwright.config.ts` for
   the CI preset and `playwright test --config e2e.config.ts`
   for the local preset. The convention matches ADR-014's
-  `apps/cli/package.json:33` (`"test:e2e": "..."`) so the
+  `apps/cli/package.json:33` (`"test:e2e": .".."`) so the
   two apps are addressable the same way from CI (`pnpm
-  --filter web test:e2e`). The vitest `test` script
-  (`apps/web/package.json`) is unaffected — vitest and
+  --filter web test:e2e`). The Vitest `test` script
+  (`apps/web/package.json`) stays unaffected, as Vitest and
   Playwright have independent runners.
 - **The `tests/` shape from ADR-009 continues to apply at
   the helper layer.** A `page-objects/` directory inside
-  `apps/web/tests/e2e/helpers/` is NOT a vitest test
-  directory; it is a Playwright fixture. The ADR-009 shape
-  applies to vitest unit tests only.
+  `apps/web/tests/e2e/helpers/` isn't a Vitest test
+  directory; it's a Playwright fixture. The ADR-009 shape
+  applies to Vitest unit tests only.
 
 ### What this rule forbids
 
 - **Booting `next dev` or `next start` in the PR-blocking
   workflow.** The PR workflow hits the Vercel preview
-  directly. Local booting is allowed only in the dev preset
+  directly. Local booting gets permitted only in the dev preset {/* vale fix: write-good.Passive */}
   and only on a developer machine, never in CI.
 - **A `vitest.config.ts` change for the Playwright suite.**
-  Playwright and vitest are independent runners. Adding the
-  `e2e/` directory to the vitest `include` glob would fail
-  the vitest parse step.
+  Playwright and Vitest are independent runners. Adding the
+  `e2e/` directory to the Vitest `include` glob would fail
+  the Vitest parse step.
 - **Test-ids on the empty / not-found / error states that
   duplicate role-based selectors.** Role-based
-  (`role=heading`, `role=button`) is more semantic. Test-ids
-  are added only where role-based selectors require copy that
+  (`role=heading`, `role=button`) is more semantic. Contributors add test-ids {/* vale fix: write-good.Passive */}
+  only where role-based selectors require copy that
   may change with i18n.
 - **Spying on `process.exit` or stubbing `globalThis.fetch`
   in the e2e suite.** The Playwright abstraction is the
@@ -616,7 +614,7 @@ The implementation lands the `data-testid` attributes in the
 
 ### Why not the alternatives
 
-Four patterns were considered and rejected.
+Four patterns got considered and rejected.
 
 - **Cypress.** No first-class Firefox/WebKit, parallel mode
   requires the paid Dashboard, deviates from the canonical
@@ -630,22 +628,22 @@ Four patterns were considered and rejected.
 - **Booting `next start` in CI via Docker and hitting
   localhost.** ADR-016 rejects this pattern for API
   integration tests (boot cost, port collisions, double
-  surface). The argument applies a fortiori to a UI test
+  surface). The argument applies even more strongly to a UI test {/* vale fix: Vale.Spelling */}
   that needs RSC *and* Hono *and* ISR *and* Vercel edge
   cache headers. The Vercel preview URL is the production
-  surface; localhost is not.
+  surface; localhost isn't.
 - **`chromium-only` smoke tests for the PR gate, Playwright
   multi-browser for nightly.** The P0 assertions are
   reproducible across browsers because they target
-  semantics the spec defines (HTTP 200 on `/templates`, a
+  semantics the specification defines (HTTP 200 on `/templates`, a
   `data-testid` present in the DOM, an `x-nextjs-cache`
   value). Browser-specific bugs land in the matrix, not in
-  the gate. Skipping the browser matrix is not the issue
+  the gate. Skipping the browser matrix isn't the issue
   here; the issue is whether the gate is fast enough.
 
 ### Test scope
 
-The first PR ships the P0 surface. Subsequent PRs add P1-P3
+The first PR ships the P0 surface. Further PRs add P1-P3
   in priority order; each PR is one feature area.
 
 **P0 - ship in this PR.**
@@ -653,22 +651,22 @@ The first PR ships the P0 surface. Subsequent PRs add P1-P3
   Driven from `/`. Asserts `role=heading[name="Templates"]`,
   sidebar `Type`/`Framework` groups, at least one card via
   `data-testid="templates-card"`, and the count summary
-  text. No env flag is set; the test hits the real
+  text. No env flag applies; the test hits the real {/* vale fix: write-good.Passive */}
   upstream via the Vercel preview.
 - P0-2: `/templates` empty catalog renders the empty state
   with `data-testid="templates-empty"`. The test sets the
   `x-e2e-force-fail: 2` request header (header-enum value 2,
   see Decision #5) via `page.setExtraHTTPHeaders`, navigates,
-  and asserts the DOM. There is no `page.route()` here —
-  the header is honoured on the server.
+  and asserts the DOM. There's no `page.route()` here;
+  the server honours the header.
 - P0-3: `/templates` error boundary renders on a forced
   oRPC failure. The test sets the `x-e2e-force-fail: 1`
   request header, navigates, and asserts the H1, body
-  copy, and the `role=button[name="Try again"]`. **Clicking
+  copy, and the `role=button[name="Try again"]`. **Selecting
   "Try again" re-runs the parent RSC** (the `reset()`
   behavior); the same test sends a second navigation
   **without** the `x-e2e-force-fail` header (the test clears
-  the header set before clicking) — the second render must
+  the header set before selecting), the second render must
   reach the populated state.
 - P0-4: `/templates/[slug]` renders the detail page for
   `saas-starter`. Asserts H1 matches `template.name`,
@@ -682,20 +680,20 @@ The first PR ships the P0 surface. Subsequent PRs add P1-P3
 - P0-6: **issue #81 regression guard.** Two assertions:
   (a) the **RSC document response** for `/templates` must
   carry `x-nextjs-cache != "HIT"` (or omit the header) on
-  every navigation — a `HIT` here is the smoking gun for a
+  every navigation. A `HIT` here is the smoking gun for a
   regression to the old site-wide tag; (b) under the
   `x-e2e-force-fail: 1` header, the `error.tsx` boundary
   renders the documented copy, the "Try again" button
   recovers the page to the populated state (after the
-  header is cleared in the `finally` block), and the
+  test clears the header in the `finally` block), and the
   `x-nextjs-cache` header still reads non-`HIT` on the
   recovered render. The oRPC POST itself is **not**
-  observable from the browser — the test asserts on the
+  observable from the browser; the test asserts on the
   consequence in the DOM and in the response cache header.
 
 **P1 - second PR.**
 - P1-7: sidebar filter toggles update the URL and re-filter
-  the grid. Asserts `aria-current="page"` after click.
+  the grid. Asserts `aria-current="page"` after select.
 - P1-8: search input filters client-side without firing
   the oRPC POST.
 - P1-9: load skeleton appears during the initial RSC
@@ -787,7 +785,7 @@ jobs:
 The `on: repository_dispatch` trigger with
   `vercel.deployment.success` is the pattern Vercel
   recommends in their own KB for e2e-after-preview
-  ([vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment](https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment)).
+  ([Vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment](https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment)).
   The `client_payload.url` is the preview URL with the
   authoritative `&lt;project&gt;-&lt;hash&gt;-&lt;scope&gt;.vercel.app`
   format. The earlier draft of this ADR used
@@ -796,14 +794,14 @@ The `on: repository_dispatch` trigger with
   CI docs themselves use `deployment_status` + `target_url`
   as their canonical example for *"Services like Vercel use
   this pattern so you can run their end-to-end tests on
-  their deployed environment"* ([playwright.dev/docs/ci](https://playwright.dev/docs/ci));
-  Playwright does not endorse `repository_dispatch` over
-  `deployment_status` — the editorial preference in this
+  their deployed environment"* ([Playwright.dev/docs/ci](https://playwright.dev/docs/ci));
+  Playwright doesn't endorse `repository_dispatch` over
+  `deployment_status`; the editorial preference in this
   ADR comes from Vercel's own KB on e2e-after-preview,
   which documents `repository_dispatch` with
   `vercel.deployment.success` and `client_payload.url` as
-  the alternative path. The two patterns coexist; we
-  chose `repository_dispatch` because
+  the alternative path. The two patterns coexist; the
+  ADR chose `repository_dispatch` because
   `github.event.client_payload.url` is one indirection
   closer to the call site than
   `github.event.deployment_status.target_url`.
@@ -814,8 +812,8 @@ The `on: repository_dispatch` trigger with
   | Dimension | Scenarios | Notes |
   |---|---|---|
   | Browser | Desktop Chrome, Desktop Firefox, Desktop Safari (WebKit), Mobile Chrome (Pixel 5), Mobile Safari (iPhone 12) | PR gate runs Chromium only; nightly covers the multi-browser matrix per the canonical Playwright config |
-  | Network | `real-network` (the Vercel preview hit by the PR gate); `forced-cache-poison` (a forced-handler failure path that re-runs the issue #81 regression against `x-e2e-force-fail: 1`); `slow-network` (e2e.config.ts only — local preset that delays the upstream); `flaky-network` (force the header to fail intermittently to test the `Try again` button) | Each scenario is a separate `matrix:` entry with its own header preset. **Note:** `page.route()` cannot simulate slow or flaky behaviour at the RSC layer — see Decision #5. The matrix exercises handler behaviour, not network behaviour. |
-  | Fixture | `populated-catalog` (the V1 single template); `empty-catalog` (`x-e2e-force-fail: 2`); `large-catalog` (custom registry fixture mounted at `apps/web/tests/fixtures/large-catalog.ts` — 100 templates, slow path, asserts the grid scroll + filter performance) | Cloned from the `large-fixture` / `unicode` / `real-pm` pattern in ADR-014:322-356 |
+  | Network | `real-network` (the Vercel preview hit by the PR gate); `forced-cache-poison` (a forced-handler failure path that re-runs the issue #81 regression against `x-e2e-force-fail: 1`); `slow-network` (e2e.config.ts only, local preset that delays the upstream); `flaky-network` (force the header to fail intermittently to test the `Try again` button) | Each scenario is a separate `matrix:` entry with its own header preset. **Note:** `page.route()` can't simulate slow or flaky behaviour at the RSC layer; see Decision #5. The matrix exercises handler behaviour, not network behaviour. |
+  | Fixture | `populated-catalog` (the V1 single template); `empty-catalog` (`x-e2e-force-fail: 2`); `large-catalog` (custom registry fixture mounted at `apps/web/tests/fixtures/large-catalog.ts`, 100 templates, slow path, asserts the grid scroll + filter performance) | Cloned from the `large-fixture` / `unicode` / `real-pm` pattern in ADR-014:322-356 |
 
   Failures in any nightly scenario post a GitHub issue
   with the workflow run URL, the scenario, and the
@@ -828,20 +826,20 @@ The `on: repository_dispatch` trigger with
   `x-e2e-force-fail: 1` request header (with the bypass
   cookie already set by the first navigation via
   `x-vercel-set-bypass-cookie: true`). The handler throws
-  `ORPCError("TEMPLATES_FETCH_FAILED", { status: 502 })`
+  `ORPCError("TEMPLATES_FETCH_FAILED," { status: 502 })`
   on the first `/templates` request. The scenario asserts:
     1. The `error.tsx` boundary renders the documented
        copy.
     2. The `role=button[name="Try again"]` recovers to a
        fresh populated state (the test clears the
-       `x-e2e-force-fail` header before clicking, so the
+       `x-e2e-force-fail` header before selecting, so the
        next navigation reaches the real handler).
     3. The `x-nextjs-cache` header is **not** `HIT` after
        the recovery.
 
-  If a contributor reintroduces the cache-poisoning bug —
+  If a contributor reintroduces the cache-poisoning bug,
   the same re-throw path, the same page-side error
-  swallow — this scenario catches it on the same day. It
+  swallow, this scenario catches it on the same day. It
   is the load-bearing nightly assertion.
 
 ### Files structure
@@ -875,16 +873,16 @@ apps/web/
 +-- src/app/(product)/templates/page.tsx            modified (test-id)
 ```
 
-The vitest config and the playwright config are
-  independent files. The vitest `include` glob stays
-  `test/**/*.test.ts`. The playwright `testDir` is
-  `e2e/`. They cannot collide because the test extensions
-  differ (`.test.ts` for vitest, `.spec.ts` for Playwright).
+The Vitest config and the Playwright config are
+  independent files. The Vitest `include` glob stays
+  `test/**/*.test.ts`. The Playwright `testDir` is
+  `e2e/`. They can't collide because the test extensions
+  differ (`.test.ts` for Vitest, `.spec.ts` for Playwright).
 
 ### Test seams and conventions
 
 Three implementation details pinned here so a future
-  contributor does not re-derive them.
+  contributor doesn't re-derive them.
 
 **`expect.toPass()` for retry-aware assertions on the
   DOM.** When the test sets the env flag and then asserts
@@ -892,11 +890,11 @@ Three implementation details pinned here so a future
   edge cache can race the assertion (the preview may
   serve a cached success body for the first ~100ms after
   the env flag flip). `expect.toPass()`
-  ([playwright.dev/docs/test-assertions](https://playwright.dev/docs/test-assertions#expecttopass))
+  ([Playwright.dev/docs/test-assertions](https://playwright.dev/docs/test-assertions#expecttopass))
   is the canonical retry primitive. The default polling
-  is fine; the test does not need to tune `intervals`.
+  is fine; the test doesn't need to tune `intervals`.
 
-**`page.on('response')` listeners are cleaned up per-test.**
+**`page.on('response')` listeners clean up per-test.** {/* vale fix: write-good.Passive */}
   The `x-nextjs-cache` header assertion in P0-6 subscribes
   via `page.on('response')`. Without cleanup, the listeners
   accumulate across tests and the regression guard reports
@@ -908,7 +906,7 @@ Three implementation details pinned here so a future
   (`apps/web/e2e.config.ts`) extends the CI preset with
   three lines: `webServer: { command: 'pnpm dev', port: 3000,
   reuseExistingServer: !process.env.CI }`, `use.baseURL:
-  'http://localhost:3000'`. No test file is duplicated. The
+  'http://localhost:3000'`. No test file gets duplicated. The
   `playwright.config.ts` and `e2e.config.ts` files together
   total under 80 lines.
 
@@ -918,8 +916,8 @@ Three implementation details pinned here so a future
   the `TEMPLATES_FETCH_FAILED` wire-code from PR #85).
   The handler reads the request headers via Next's
   `headers()` async API (Next 16 makes the request headers
-  available to RSCs through this primitive; cited in
-  [nextjs.org/docs/api-reference/functions/headers](https://nextjs.org/docs/api-reference/functions/headers)
+  available to React Server Components through this primitive; cited in
+  [nextjs.org/docs/API-reference/functions/headers](https://nextjs.org/docs/api-reference/functions/headers)
   fetched 2026-08-20) and gates on the Vercel
   Automation Bypass secret:
 
@@ -944,27 +942,28 @@ Three implementation details pinned here so a future
   1. **Closed by default.** When
      `process.env.VERCEL_AUTOMATION_BYPASS_SECRET` is unset
      **or** when the
-     `x-vercel-protection-bypass` header value does not
+     `x-vercel-protection-bypass` header value doesn't
      match, `bypassAllowed` is false and the guard is a
-     no-op — the handler proceeds to the real `enrich()`
+     no-op; the handler proceeds to the real `enrich()`
      path. **This is the load-bearing test against a
-     forgotten secret rotation** — if the Vercel dashboard
-     secret is revoked but the deployed runtime still
+     forgotten secret rotation**: if the Vercel dashboard
+     secret gets revoked but the deployed runtime still
      carries the old value, the handler proceeds without
      enabling the test path (the handler reads from the
      process env, not the header, for comparison).
   2. **Production-impervious.** When `NODE_ENV ===
      "production"`, the guard is a no-op regardless of
      header content. A future contributor who enables
-     the code path cannot accidentally fire it from
+     the code path can't fire it by accident from
      production traffic; the server-side env check
      blocks it.
   3. **Header mismatch.** A test pins that a
      `x-vercel-protection-bypass` value different from
-     `VERCEL_AUTOMATION_BYPASS_SECRET` does not enable the
+     `VERCEL_AUTOMATION_BYPASS_SECRET` doesn't enable the
      path. This rules out a future refactor that
-     accidentally switches to a truthy-coercion
-     comparison (`if (h.get(...))`) and would expose the
+     switches to a truthy-coercion
+     comparison (`if (h.get(...))`) by accident
+     and would expose the
      test path to anyone able to send a header.
 
   These three tests are part of
@@ -972,26 +971,26 @@ Three implementation details pinned here so a future
   (next to the existing `enrich()` failure block from
   PR #85). They run on every PR.
 
-### What this rule does not change
+### What this rule doesn't change
 
 - **`apps/web/test/unit/orpc.test.ts` (8 tests, PR #85
   addition).** Stays. The unit tests pin the translation
   contract; the e2e tests pin the user-visible behavior.
   Removing the unit tests would weaken the regression net
-  by an order of magnitude.
+  by an order of size.
 - **`packages/api/tests/integration/rpc/templates.test.ts`.**
   Stays. The Hono-mount integration tests are the right
   shape for Hono; the e2e tests are the right shape for the
-  rendered UI. Both are needed.
+  rendered UI. Both stay needed.
 - **The Vercel preview deployment surface.** The
   `apps/app/app/api/[[...route]]/route.ts` and the existing
   CI workflows for Vercel deployments stay. The new
-  workflows add a `repository_dispatch` listener; they do
-  not modify existing workflows.
+  workflows add a `repository_dispatch` listener; they
+  leave existing workflows alone.
 - **Deployment Protection is now required on the Vercel
   project.** The implementation PR for this ADR activates
   Deployment Protection (Password Protection or Vercel
-  Authentication — either is acceptable) on the deessejs
+  Authentication, either is acceptable) on the deessejs
   Vercel project, with a dedicated bypass secret named
   *"Playwright tests"*. The runtime receives the secret
   as `VERCEL_AUTOMATION_BYPASS_SECRET` (Vercel-managed);
@@ -1000,8 +999,8 @@ Three implementation details pinned here so a future
   future contributor can rotate the secret from the
   Vercel dashboard; doing so invalidates the running
   preview, which requires a redeploy to pick up the new
-  value. The rotation policy is documented in the
-  implementation runbook; ADR-020 does not formalise
+  value. The rotation policy gets documented in the
+  implementation runbook; ADR-020 doesn't formalize
   the rotation schedule (out of scope).
 
 ### Consequences
@@ -1021,21 +1020,21 @@ Three implementation details pinned here so a future
   consequence of the ADR.
 - **This is the first `e2e/` test tier materialised in the
   monorepo.** ADR-009 (Accepted, line 87-89) defines three
-  vitest tiers (`unit/`, `integration/`, `contract/`) for
+  Vitest tiers (`unit/`, `integration/`, `contract/`) for
   packages and the singular `test/` tier for apps. ADR-014
   (Accepted, line 150) calls for an `apps/cli/test/e2e/`
-  fourth tier but has not been implemented. ADR-020 ships
+  fourth tier but nobody has implemented it yet. {/* vale fix: write-good.Passive */} ADR-020 ships
   the first materialised `e2e/` tier under `apps/web/tests/`.
-  Naming: the vitest `include` glob is extended (see
+  Naming: the Vitest `include` glob extends (see
   Decision #3 companion change) to
-  `["test/**/*.test.ts", "tests/**/*.test.ts"]`; Playwright
+  `["test/**/*.test.ts," "tests/**/*.test.ts"]`; Playwright
   files use `.spec.ts` and live under `tests/e2e/`, so the
-  vitest glob does not pick them up. The two directories
+  Vitest glob doesn't pick them up. The two directories
   coexist under `apps/web/` because their `*.test.ts` vs
   `*.spec.ts` extensions keep the runners disjoint.
 - **Vercel preview URLs are publicly accessible by default**
-  ([vercel.com/docs/deployments/generated-urls](https://vercel.com/docs/deployments/generated-urls);
-  lastUpdated 2025-09-24). The e2e tests run against the
+  ([Vercel.com/docs/deployments/generated-urls](https://vercel.com/docs/deployments/generated-urls);
+  last updated 2025-09-24). The e2e tests run against the
   preview; a misconfigured preview env that exposes
   real-user data fails the e2e tests because the assertions
   include a populated catalog and a non-2xx upstream
@@ -1045,10 +1044,10 @@ Three implementation details pinned here so a future
   Vercel project (see Decision #5 and Consequences §5);
   the e2e tests authenticate past the protection via the
   `x-vercel-protection-bypass` header. The bypass secret
-  is **not** embedded in `target_url` — it travels as a
+  is **not** embedded in `target_url`; it travels as a
   request header (or query parameter). Public-by-default
-  therefore refers to the *unauthenticated* default for
-  human visitors; the e2e test runner is not a human
+  refers to the *unauthenticated* default for
+  human visitors; the e2e test runner isn't a human
   visitor and uses the documented bypass mechanism.
 
 ### Future work
@@ -1063,7 +1062,7 @@ Three extensions are out of scope for this ADR but worth
    `apps/web`; `apps/app` is a separate ADR.
    **Note on the current state:** `apps/app/` today has
    no `tests/` directory, no `vitest.config.ts`, and no
-   Playwright dependency — the future Playwright suite is
+   Playwright dependency; the future Playwright suite is
    a greenfield adoption, not an extension of existing
    infrastructure. ADR-016:228 contains a factually
    incorrect reference to *« the existing Playwright-style
@@ -1072,20 +1071,20 @@ Three extensions are out of scope for this ADR but worth
 2. **Pixel-level visual regression on the populated grid.**
    Playwright supports visual diffs natively. This ADR
    defers it; the next iteration can adopt it if a UI
-   rebrand or template-card redesign is planned.
+   rebrand or template-card redesign lands.
 3. **Closing the `vitestConfig` signature drift.** ADR-009
    line 70-72 shows `vitestConfig({ package: 'X' })`, but
    the actual
    `packages/vitest-config/src/index.ts:3-13` exports
    `VitestOverrides` with `include?, testTimeout?,
    hookTimeout?, pool?, setupFiles?, coverage?,
-   clearMocks?, restoreMocks?, environment?` — no
-   `package` key. This ADR does not use `vitestConfig`,
-   so it does not trip the drift, but a follow-up should
+   clearMocks?, restoreMocks?, environment?`, no
+   `package` key. This ADR doesn't use `vitestConfig`,
+   so it doesn't trip the drift, but a follow-up should
    align ADR-009's example with the implementation before
-   the next consumer is misled.
+   the next consumer gets misled.
 
-All three are listed so the next iteration of this ADR
+All three sit on the list so the next iteration of this ADR {/* vale fix: write-good.Passive */}
   can incorporate them without re-justifying the choices.
 
 ## Decision log
@@ -1093,32 +1092,32 @@ All three are listed so the next iteration of this ADR
 - **2026-08-20**: investigated browser E2E options for
   Next.js 16. Confirmed via the Next docs
   ([nextjs.org/docs/app/guides/testing](https://nextjs.org/docs/app/guides/testing);
-  v16.3.1, lastUpdated 2026-02-03) that Next lists Playwright
+  v16.3.1, last updated 2026-02-03) that Next lists Playwright
   and Cypress as peer-supported without preference.
   Selected Playwright on the multi-browser, native
   DOM-assertion primitives, and canonical-presentation
   grounds.
 - **2026-08-20**: inventoried the existing test surface in
   the repo. Confirmed that ADR-009 (unit/integration/contract
-  vitest) and ADR-016 (Hono `api.request()`) cover the
+  Vitest) and ADR-016 (Hono `api.request()`) cover the
   helper layer and the API layer but not the rendered UI.
   ADR-014 (CLI tarball) is the closest analogue in spirit
-  but does not cover the browser surface.
+  but doesn't cover the browser surface.
 - **2026-08-20**: drafted the test scope (P0-P3) by auditing
   the rendered templates tree. Pinned 8 `data-testid`
   attributes on 4 surfaces; the remaining 17+ assertions
   reuse role/name selectors.
 - **2026-08-20**: chose `tests/e2e/` (under `apps/web/`,
-  with the vitest `include` glob extended to
-  `["test/**/*.test.ts", "tests/**/*.test.ts"]`) to align
+  with the Vitest `include` glob extended to
+  `["test/**/*.test.ts," "tests/**/*.test.ts"]`) to align
   with the repo convention (ADR-009:87-89) while keeping
-  Playwright (`.spec.ts`) and vitest (`.test.ts`) on
+  Playwright (`.spec.ts`) and Vitest (`.test.ts`) on
   disjoint file extensions. Earlier drafts used `e2e/`
   (matching Next's canonical example) and then
   `test/e2e/` (matching the singular `apps/cli/test/`
   convention); the final placement preserves both
   conventions by using the plural `tests/` for the app
-  and the singular `test/` for the existing vitest
+  and the singular `test/` for the existing Vitest
   unit suite at `apps/web/test/unit/orpc.test.ts`
   (PR #85).
 - **2026-08-20**: chose Vercel preview URL over `next
@@ -1132,23 +1131,23 @@ All three are listed so the next iteration of this ADR
   [Protection Bypass for Automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation).
   Earlier drafts proposed either a separate e2e-only
   secret (v2 of this ADR) or a runtime-mutated env flag
-  (v1). The Vercel-managed bypass secret is exposed as
+  (v1). Vercel exposes the Vercel-managed bypass secret as {/* vale fix: write-good.Passive */}
   `VERCEL_AUTOMATION_BYPASS_SECRET` system env var, serves
   as the gate that unlocks the preview URL, AND is the
   single secret the oRPC handler reads to enable the
-  test-only failure path. The duplicate-secret surface is
-  eliminated; the Playwright config snippet is adapted
+  test-only failure path. The duplicate-secret surface
+  drops out; the Playwright config snippet adapts
   verbatim from Vercel's canonical example. Added the
   `x-vercel-set-bypass-cookie: true` follow-up header so
-  client-side navigations (the issue #81 recovery
+  client-side navigation events (the issue #81 recovery
   scenario in P0-3) inherit the bypass automatically via
   `Set-Cookie`. Deployment Protection is now required
-  on the Vercel project — the activation is in scope of
+  on the Vercel project; the activation is in scope of
   this ADR.
 
-## Audit: rendered `apps/web` surface (the data the ADR is based on)
+## Audit, rendered `apps/web` surface (the data the ADR Rests on)
 
-The P0-P3 test scope above is grounded in the following
+The P0-P3 test scope above grounds in the following
   audit. Each row lists the file:line of the load-bearing
   surface, the assertion strategy, and the regression
   class the test catches. Audit performed 2026-08-20.
@@ -1170,7 +1169,7 @@ The P0-P3 test scope above is grounded in the following
 | Detail page H1 | `apps/web/src/components/templates/template-detail.tsx:68` | `role=heading[name={template.name}]` | Detail page broken |
 | Detail breadcrumb | `apps/web/src/components/templates/template-detail.tsx:54` | `role=link[name="Templates"]` | Breadcrumb broken |
 | Detail Install link | `apps/web/src/components/templates/template-detail.tsx:80` | `role=link[name="Install CLI"]` | CTA broken |
-| oRPC POST | `apps/web/src/lib/orpc.ts:102-108` | The POST itself is **not** observable from the browser (RSC fetch — see Decision #5). The test instead asserts on the **document response** for `/templates`: `x-nextjs-cache != "HIT"` on every nav. A `HIT` value here is the smoking gun for a regression to the old site-wide tag. | issue #81 regression |
+| oRPC POST | `apps/web/src/lib/orpc.ts:102-108` | The POST itself is **not** observable from the browser (RSC fetch; see Decision #5). The test instead asserts on the **document response** for `/templates`: `x-nextjs-cache != "HIT"` on every nav. A `HIT` value here is the smoking gun for a regression to the old site-wide tag. | issue #81 regression |
 | `x-nextjs-cache` | `apps/web/src/lib/orpc.ts:62-94` | response header != `HIT` for `templates:live` | issue #81 regression |
 | `Cache-Control: no-store` on `/api/v1/rpc/*` | `packages/api/src/http/mount-rpc.ts:70` | response header == `no-store` | CDN safety regression |
 | Wire-code `TEMPLATES_FETCH_FAILED` | `packages/api/src/orpc/routes/templates.ts:58-62` (and the new `x-e2e-force-fail` guard) | `x-e2e-force-fail: 1` request header on the Vercel preview; the handler throws the wire-code; DOM-only assertion on `error.tsx` + `Try again` | PR #85 wire-code regression; issue #81 regression when paired with P0-6 |
@@ -1180,38 +1179,38 @@ The P0-P3 test scope above is grounded in the following
 - [ADR-009: Test strategy](./ADR-009-test-strategy.md). The
   monorepo-level rule: shared Vitest config, three test
   directories, contract-test pattern, coverage gate.
-  ADR-020 is a tour outside the vitest umbrella for one
-  app; the directory shape (`unit/`) at the vitest layer
+  ADR-020 is a tour outside the Vitest umbrella for one
+  app; the directory shape (`unit/`) at the Vitest layer
   stays.
-- [ADR-011: Env package testing strategy](./ADR-011-env-testing-strategy.md).
-  The contract-test pattern for env. ADR-020 does not
+- [ADR-011: env package testing strategy](./ADR-011-env-testing-strategy.md).
+  The contract-test pattern for env. ADR-020 doesn't
   contract-test env; it exercises the env-resolved URL
   flow indirectly via the Vercel preview.
 - [ADR-014: CLI e2e tests](./ADR-014-cli-e2e-tests.md).
   The two-workflow shape (PR-blocking + nightly extended)
-  is inherited verbatim. The CLI uses a mock HTTP server
+  inherits verbatim. The CLI uses a mock HTTP server
   and a tarball runner; the web e2e observes the deployed
   app's DOM against a test-only header scoped by the
-  Vercel Protection Bypass secret. ADR-014 has not been
+  Vercel Protection Bypass secret. ADR-014 hasn't been
   implemented at the time of this ADR; three pivot
   commits (`327bd6f`, `da8b8f9`, `1684623`) and two
   aborted code spikes (`2e1b6ad`, `3e2d6e3`) document the
   design reasoning. ADR-020 benefits from the same shape without
   inheriting the failed design choices.
 - [ADR-016: API integration tests in CI](./ADR-016-api-ci-integration-tests.md).
-  The Hono `api.request()` integration pattern is rejected
-  for the UI smoke because the failure modes above (issue
+  Three grounds reject the Hono `api.request()` integration
+  pattern for the UI smoke: the failure modes above (issue
   #81, `x-nextjs-cache` directive, segment `error.tsx`)
   require RSC + Data Cache + segment error boundary, which
-  `api.request()` does not exercise. ADR-020 narrows the
+  `api.request()` doesn't exercise. ADR-020 narrows the
   override to one sentence: *"the production cache headers
   are observable only in the production environment."*
 - [Next.js Playwright guide](https://nextjs.org/docs/app/guides/testing/playwright)
-  (v16.3.1, lastUpdated 2026-02-11). The canonical pattern
+  (v16.3.1, last updated 2026-02-11). The canonical pattern
   this ADR adopts, with two overrides: `webServer.command`
   and the Vercel preview trigger.
-- [Next.js `fetch` API reference](https://nextjs.org/docs/app/api-reference/functions/fetch)
-  (v16.3.1, lastUpdated 2026-08-18). Source for the
+- [Next.js `fetch` API reference](https://nextjs.org/docs/app/API-reference/functions/fetch)
+  (v16.3.1, last updated 2026-08-18). Source for the
   `revalidate: 0` semantic and the `x-nextjs-cache` header.
 - [Playwright CI docs](https://playwright.dev/docs/ci). The
   `workers: 1` on CI, `reuseExistingServer: !CI`,
@@ -1222,21 +1221,20 @@ The P0-P3 test scope above is grounded in the following
   `repository_dispatch` documentation is from Vercel KB
   (see below).
 - [Vercel generated URLs](https://vercel.com/docs/deployments/generated-urls)
-  (lastUpdated 2025-09-24). The commit-URL format and the
+  (last updated 2025-09-24). The commit-URL format and the
   public-by-default caveat.
-- [Vercel KB — How can I run end-to-end tests after my
-  Vercel preview deployment?](https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment).
+- [Vercel KB, How to run end-to-end tests after a Vercel preview deployment](https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment).
   The trigger this ADR adopts (`on: repository_dispatch`
   with `vercel.deployment.success` and `client_payload.url`).
 - [Vercel Protection Bypass for Automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation)
-  (lastUpdated 2026-04-30, fetched 2026-08-20). The
-  secret-management scheme this ADR adopts — the
+  (last updated 2026-04-30, fetched 2026-08-20). The
+  secret-management scheme this ADR adopts: the
   Vercel-managed `VERCEL_AUTOMATION_BYPASS_SECRET`
   system env var, the `x-vercel-protection-bypass`
   request header, and the
   `x-vercel-set-bypass-cookie: true` cookie-bearing
   follow-up pattern. The Playwright config snippet in
-  Decision #5 is adapted verbatim from this page's
+  Decision #5 adapts verbatim from this page's
   canonical Playwright example.
-- [GitHub Actions — repository_dispatch event](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#repository_dispatch).
+- [GitHub Actions, repository dispatch event](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#repository_dispatch).
   Reference for the trigger semantics.

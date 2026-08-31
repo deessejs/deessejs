@@ -20,17 +20,19 @@ The other sixteen workspace packages (`@workspace/api`,
 Since the oRPC migration, the CLI depends on two of those
 private packages at the source level:
 
-- `@workspace/api` — provides `appRouter` (type-only) and the
+- `@workspace/api` provides `appRouter` (type-only) and the
   routing path constants (`API_BASE_PATH`, `API_RPC_PATH`).
-- `@workspace/contracts` — provides the Zod-derived type
+  The lowercase `api` segment is the npm package name; the
+  constant prefixes use the canonical casing.
+- `@workspace/contracts` provides the Zod-derived type
   `TemplatesListResponseV1` (type-only at the CLI side).
 
 The dependency is real at the TypeScript level. The CLI imports
-from `@workspace/api/router` and `@workspace/contracts/v1` to
+from the API package's router module and from contracts v1 to
 let `tsc` infer `RouterClient<typeof appRouter>` and
-`TemplatesListResponseV1`. At runtime, tsup inlines the code via
-`noExternal: [/^@workspace\//]`, so the published bundle does not
-require these packages to be installed.
+`TemplatesListResponseV1`. At runtime, tsup bundles the code via
+`noExternal: [/^@workspace\//]`, so the published bundle doesn't
+require these packages to ship with the bundle.
 
 The `.changeset/config.json` currently declares
 `"privatePackages": { "version": false, "tag": false }`. This
@@ -39,28 +41,32 @@ the release workflow reaches `pnpm changeset version`, Changesets
 runs a dependency-graph consistency check and refuses to bump a
 versioned package that depends on a skipped one. The CLI's two
 private workspace deps trigger this check. The release fails at
-the `Bump versions` step with:
+the `Bump versions` step with this message:
 
-> The package "@deessejs/cli" depends on the skipped package
-> "@workspace/api", but "@deessejs/cli" is not being skipped.
-> Please add "@deessejs/cli" to the `ignore` option.
+~~~
+The package "@deessejs/cli" depends on the skipped package
+"@workspace/api", but "@deessejs/cli" is not being skipped.
+Please add "@deessejs/cli" to the `ignore` option.
+~~~
 
-The original config was set by
+The fix targets the config rather than the CLI itself.
+
+The original config came from
 `docs/engineering/reports/versioning/06-implementation-specs.md`
 section 6.1 with the rationale: *"Suppresses cosmetic version
 bumps on private packages."* That assumption was correct in
 July 2026, when the CLI had no workspace dependencies. It became
 stale after the oRPC migration added two. The release workflow
-has not produced a successful `@deessejs/cli` release since the
+hasn't produced a successful `@deessejs/cli` release since the
 2.0.0 bump, even though `apps/cli/package.json` carries `2.0.0`.
 
 ## Decision
 
 `.changeset/config.json` carries
-`"privatePackages": { "version": true, "tag": false }`. Private
-workspace packages are versioned when other packages they
-participate in (directly or transitively) are versioned; they
-are not tagged or published.
+`"privatePackages": { "version": true, "tag": false }`. Changesets
+versions private workspace packages whenever other packages they
+sit beneath (directly or transitively) ship a release. The
+private packages don't get tagged or pushed to npm.
 
 ### Why this and not the alternatives
 
@@ -82,34 +88,35 @@ have a load-bearing flaw:
    observable gain.
 3. **A `prepublishOnly` script that rewrites `workspace:*` to
    real versions.** This solves a different problem (the
-   `EUNSUPPORTEDPROTOCOL` error at `npm install`) and does not
+   `EUNSUPPORTEDPROTOCOL` error at `npm install`) and doesn't
    address Changesets' graph check, which runs before publish.
 4. **Extracting the path constants into a new
    `@workspace/api-paths` package.** Conceptually cleaner, but
    the path constants are a side concern. The load-bearing
-   dep is `@workspace/contracts`, which cannot be moved. A
+   dep is `@workspace/contracts`, which no one can move. A
    new package would resolve only the path constants and leave
-   the contracts dep behind, requiring a follow-up ADR.
+   the contracts dep behind, which forces a follow-up ADR.
 
 The
 [Changesets `privatePackages` configuration](https://changesets.dev/guide/config)
 documents `{ version: true, tag: false }` as the canonical
-pattern for a monorepo where exactly one package is published
-and the others are private workspace deps. It satisfies the
+pattern for a monorepo where exactly one package ships to npm
+and the others stay private workspace deps. Changesets passes
+the graph check because it knows each private package has a
 graph check because Changesets knows each private package has a
 version, even though no tag or publish happens for them.
 
 ### Cost
 
 Every release bumps the version field of all sixteen private
-workspace packages and regenerates their `CHANGELOG.md`. This
-is cosmetic — the packages are never published, never tagged,
+workspace packages and regenerates their `CHANGELOG.md`. The
+churn is cosmetic. The packages never ship to npm, never get tagged,
 never imported from npm. The CHANGELOG noise is the price of
 keeping the CLI on the senior release pattern.
 
-### What this ADR does not change
+### What this ADR doesn't change
 
-- `@workspace/contracts` remains `private: true`. It is not
+- `@workspace/contracts` remains `private: true`. It's never
   published to npm. The hotfix in CLI 1.1.1 stands.
 - The CLI's `package.json` keeps the `workspace:*` entry for
   `@workspace/api`. The dependency serves two roles: type-only
@@ -131,19 +138,19 @@ keeping the CLI on the senior release pattern.
   release workflow unblocks.
 - The CLI ships `2.0.1` (or whatever the current bump lands
   on) on the next workflow run after this ADR lands on
-  `staging` and is promoted to `main`.
+  `staging` and reaches `main`.
 - Private package `CHANGELOG.md` files gain entries on every
   release. The entries are real (the version did move) but
   carry no consumer-facing meaning. A noise filter at
-  consumption time is not worth the complexity.
+  consumption time isn't worth the complexity.
 - The versioning report (`docs/engineering/reports/versioning/
   01-current-state.md`) needs an update to reflect that the
   assumption *"@deessejs/cli has no workspace deps"* (line 27
-  of `06-implementation-specs.md`) is no longer true. This is
-  tracked separately; the report's recommendation is
+  of `06-implementation-specs.md`) no longer holds. Tracking
+  happens in a separate issue; the report's recommendation is
   superseded by this ADR.
 - `apps/cli/package.json` no longer carries the duplicate
   `@workspace/contracts` entry (it stays in `devDependencies`
   for typecheck). The package is still consumed at build time
-  via tsup `noExternal`, and via tsc via `devDependencies`.
+  via tsup `noExternal`, and via TypeScript's compiler under `devDependencies`.
   No runtime behavior change.

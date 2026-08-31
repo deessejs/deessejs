@@ -49,7 +49,7 @@ import { ContractsGrid, type Contract } from "./_components/contracts-grid"
  *   5. CLI in action — 2-col shared-border grid (terminal + commands)
  *   6. Authority — 3-col shared-border grid (manifesto + KB + changelog)
  *   7. Repeating CTA — 3-col (CTA + 2 side cards)
- *   8. Ecosystem — tagline + 7 products in a 4-col shared-border grid
+ *   8. Ecosystem — tagline + 6 products in a 4-col shared-border grid
  *   9. Testimonials — 2 cards side-by-side
  *  10. Integrations — logo wall (frameworks + providers + agents)
  *  11. Stats — 4 cells, two are tier-1 third-party metrics (npm + GH)
@@ -76,6 +76,26 @@ type OutcomeTemplate = {
   icon: React.ComponentType<{ className?: string }>
   /** "shipped" links to /templates, "coming-soon" disables the route. */
   status: "shipped" | "coming-soon"
+}
+
+/**
+ * Map a tech name (as it appears in the template's stack array) to the
+ * slug used by `public/logos/<slug>.svg`. Frameworks without a dedicated
+ * brand icon fall back to a close neighbour from the same ecosystem —
+ * Next.js → Vercel, Astro → Cloudflare — so every chip gets a logo
+ * instead of text-only.
+ */
+const STACK_LOGO: Record<string, string> = {
+  "Next.js": "vercel",
+  "Better Auth": "betterauth",
+  Drizzle: "drizzle",
+  Stripe: "stripe",
+  OpenAI: "openai",
+  Postgres: "postgresql",
+  MCP: "modelcontextprotocol",
+  Astro: "astro",
+  Tailwind: "tailwindcss",
+  shadcn: "shadcnui",
 }
 
 const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
@@ -262,12 +282,6 @@ const ECOSYSTEM: ReadonlyArray<{
     description: "Operator console",
     icon: Settings,
   },
-  {
-    name: "Cloud",
-    href: "https://cloud.deessejs.com",
-    description: "Hosted runtime, coming soon",
-    icon: Cloud,
-  },
 ]
 
 type Testimonial = {
@@ -417,46 +431,80 @@ export default function HomePage() {
           {OUTCOMES.map((outcome) => {
             const Icon = outcome.icon
             return (
-              <Link
+              <div
                 key={outcome.slug}
-                href={outcome.href}
-                aria-label={`${outcome.name} — ${outcome.scenario}`}
-                className="group flex flex-col gap-4 p-6 transition-colors hover:bg-accent/40"
+                className="group transition-colors hover:bg-accent/40"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <Icon
-                    className="text-foreground size-5 shrink-0"
-                    aria-hidden
-                  />
-                  <Badge variant="outline" className="text-label-12">
-                    {outcome.status === "coming-soon"
-                      ? "Coming soon"
-                      : "Shipped"}
-                  </Badge>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <p className="text-label-13 text-muted-foreground">
-                    {outcome.scenario}
-                  </p>
+                <Link
+                  href={outcome.href}
+                  aria-label={`${outcome.name} — ${outcome.scenario}`}
+                  className="flex flex-col gap-4 p-6 pr-14"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <Icon
+                      className="text-foreground size-5 shrink-0"
+                      aria-hidden
+                    />
+                    {outcome.status === "shipped" ? (
+                      <Badge
+                        variant="success"
+                        className="text-label-12 gap-1.5"
+                      >
+                        <span
+                          className="size-1.5 rounded-full bg-emerald-500"
+                          aria-hidden
+                        />
+                        Shipped
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="warning"
+                        className="text-label-12 gap-1.5"
+                      >
+                        <span
+                          className="size-1.5 rounded-full bg-amber-500"
+                          aria-hidden
+                        />
+                        Coming soon
+                      </Badge>
+                    )}
+                  </div>
                   <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
                     {outcome.name}
                   </h3>
-                </div>
-                <ul className="flex flex-wrap items-center gap-1.5 pt-1">
-                  {outcome.stack.map((item) => (
-                    <li
-                      key={item}
-                      className="text-label-12 text-muted-foreground"
-                    >
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 transition-transform group-hover:translate-x-0.5">
-                  Open the template
-                  <ArrowRight className="size-3" aria-hidden />
-                </p>
-              </Link>
+                  <p className="text-copy-14 text-muted-foreground leading-6 line-clamp-4 [&:not(:first-child)]:mt-0">
+                    {outcome.blurb}
+                  </p>
+                  <ul className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+                    {outcome.stack.map((item) => {
+                      const logo = STACK_LOGO[item]
+                      return (
+                        <li
+                          key={item}
+                          className="inline-flex items-center gap-1.5 text-label-12 text-muted-foreground"
+                        >
+                          {logo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={`/logos/${logo}.svg`}
+                              alt=""
+                              width={12}
+                              height={12}
+                              className="size-3 shrink-0 dark:invert"
+                              aria-hidden
+                            />
+                          ) : null}
+                          {item}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  <p className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 transition-transform group-hover:translate-x-0.5">
+                    Open the template
+                    <ArrowRight className="size-3" aria-hidden />
+                  </p>
+                </Link>
+              </div>
             )
           })}
         </div>
@@ -675,8 +723,8 @@ export default function HomePage() {
           </Cell>
         </div>
 
-        {/* 8. Ecosystem — tagline + 7 products in a shared-border grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border border-b border-border">
+        {/* 8. Ecosystem — tagline + 6 products in a 4-col shared-border grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-border border-b border-border">
           <Cell className="col-span-2 lg:col-span-1 lg:row-span-2 gap-3 justify-center">
             <p className="text-label-13 text-muted-foreground">Ecosystem</p>
             <p className="text-heading-24 lg:text-heading-32 tracking-tight text-foreground text-balance [&:not(:first-child)]:mt-0">
@@ -759,11 +807,11 @@ export default function HomePage() {
                 trust — the registry wires them in.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-border">
               {INTEGRATIONS.map((integration) => (
                 <span
                   key={`${integration.group}-${integration.name}`}
-                  className="inline-flex items-center gap-2 text-copy-13 text-muted-foreground"
+                  className="inline-flex items-center gap-2 p-3 text-copy-13 text-muted-foreground"
                 >
                   {/* Plain <img>: see note above on Contracts cells. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}

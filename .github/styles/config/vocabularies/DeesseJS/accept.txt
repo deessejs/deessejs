@@ -79,6 +79,7 @@ best-in-class
 state-of-the-art
 Astro
 async
+[Aa]utoapply
 autocreate
 [Aa]utogenerated
 autogenerate
@@ -86,6 +87,7 @@ Automirroring
 Automonitoring
 autobump
 automaintained
+basePath
 autopatching
 autorestores
 bundler
@@ -189,3 +191,14 @@ wagmi
 walkthrough
 worktree
 Codespaces
+[Ss]ubcommands?
+[Bb]oolean
+[Vv]ariadic
+OTPs
+User-Agent
+shiki
+rehype
+ADRs
+unindexed
+enum
+kbTopics

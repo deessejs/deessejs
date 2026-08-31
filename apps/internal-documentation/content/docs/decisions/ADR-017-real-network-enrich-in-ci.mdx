@@ -28,25 +28,25 @@ class of bug that lives between the `enrich()` boundary and
 the real GitHub REST API:
 
 - A typo in `packages/api/src/core/github/client.ts` (wrong
-  endpoint, wrong header, missing auth) — never caught here.
+  endpoint, wrong header, missing auth) never caught here.
 - A regression in `fetchRepo` / `fetchReadme` payload parsing
-  (e.g. the base64-with-newlines handling at
-  `client.ts:60-61`) — never caught here.
-- A contract change on GitHub's side (e.g. they rename
-  `stargazers_count` or `pushed_at`) — never caught here.
-- A timeout, rate-limit, or 5xx from GitHub — never caught
+  (for example, the base64-with-newlines handling at
+  `client.ts:60-61`) never caught here.
+- A contract change on GitHub's side (for example, a rename
+  of `stargazers_count` or `pushed_at`) never caught here.
+- A timeout, rate-limit, or 5xx from GitHub never caught
   here. The mock returns instantly.
 
 The pre-existing `packages/api/tests/contract/templates-list.test.ts`
 already exercises the procedure logic via `call()` with a mock.
-The `enrich()` boundary itself is the only place where the
-real GitHub wire is consumed; mocking it shifts every
+The `enrich()` boundary itself is the only place where code
+consumes the real GitHub wire; mocking it shifts every
 contract regression from "test fails" to "production
-breaks".
+breaks."
 
 The user's stance in 2026-08 was: "if the test fails because
-of a real GH error, that's a real problem we want to test and
-fix if it becomes recurrent." The current test hides that
+of a real GH error, that's a real problem to test and fix
+if it becomes recurrent." The current test hides that
 category of failure entirely.
 
 ## Decision
@@ -64,19 +64,19 @@ which calls `fetchRepo("deessejs", "saas-template")` and
 `fetchReadme("deessejs", "saas-template")` against
 `api.github.com`.
 
-### What this catches that the mock does not
+### What this catches that the mock doesn't
 
-- GitHub response shape drift (e.g. a field removed or
-  renamed).
+- GitHub response shape drift (for example, a field removed
+  or renamed).
 - Auth header bug (`Bearer` prefix, `X-GitHub-Api-Version`
   pinning, `User-Agent`).
-- Base64 readme decoding (the `Buffer.from(content, "base64")`
+- Base64 README decoding (the `Buffer.from(content, "base64")`
   call at `client.ts:61` is easy to break with whitespace or
   encoding changes).
 - Rate-limit / 5xx handling: the route currently returns
   503 on any failure. A real test confirms the 503 path is
   wired (the route catches, the envelope is correct).
-- The `GITHUB_TOKEN` plumbing — `serverEnv.GITHUB_TOKEN` is
+- The `GITHUB_TOKEN` plumbing: `serverEnv.GITHUB_TOKEN` is
   read by `enrich.ts:27`. Without a real test, a regression
   in the env resolution is invisible.
 
@@ -88,24 +88,25 @@ which calls `fetchRepo("deessejs", "saas-template")` and
   once on nightly + verify workflows. Each test invocation
   fires 2 GitHub requests (`repos/{owner}/{repo}` +
   `repos/{owner}/{repo}/readme`). With ~30 CI runs/day, the
-  anonymous budget is exhausted in minutes. **A
-  `GITHUB_TOKEN` is mandatory.**
+  anonymous budget exhausts in minutes. **A `GITHUB_TOKEN`
+  is mandatory.**
 - **Latency.** GitHub's REST API averages 200-500ms. The
   test currently runs in 92ms (mock). Real-GitHub latency
   is 400ms-1s for the two parallel requests in
-  `enrich.ts:29-54`. The vitest hook timeout is 10s
+  `enrich.ts:29-54`. The Vitest hook timeout is 10s
   (set in `packages/vitest-config/src/index.ts:17`); the
   test fits with margin.
 - **Flakiness.** Any GitHub outage or rate-limit failure
-  becomes a CI failure. ADR-016 round 3 deliberately added
-  a loud-skip pattern for Postgres (`postgres:ready`).
-  GitHub deserves the same: skip loudly when rate-limited,
-  fail loudly when the response shape is unexpected.
+  becomes a CI failure. ADR-016 round 3 added a loud-skip
+  pattern for Postgres (`postgres:ready`). GitHub deserves
+  the same approach: skip with a clear signal when
+  rate-limited, fail with a clear signal when the response
+  shape drifts.
 - **Network in CI.** Most CI providers allow outbound
-  HTTPS. GitHub is whitelisted everywhere. No exception
-  needed in `.github/workflows/ci.yml`.
+  HTTPS. GitHub works everywhere. No exception needed in
+  `.github/workflows/ci.yml`.
 
-### What we add to make this work
+### What the change adds
 
 Three concrete changes. They land in the same PR as the test
 update; together they make the test stable on real network.
@@ -115,9 +116,9 @@ update; together they make the test stable on real network.
 Same pattern as the `postgres:ready` flag. The test reads
 `inject('github:ready')` at file load. The global setup does
 a low-cost GitHub `GET /rate_limit` probe. If the response
-shows remaining quota below a threshold, skip the test
-loudly (test name carries `[skip-github]`, global setup emits
-a WARN).
+shows remaining quota below a threshold, skip the test with
+a clear signal (test name carries `[skip-github]`, global
+setup emits a WARN).
 
 The skip is **conditional**, not silent. A CI job that
 loses network or quota shows the skip in the test name and
@@ -125,10 +126,10 @@ in the log aggregator. A CI job with full quota runs the
 test and asserts the real response.
 
 The threshold is 10 remaining requests (anonymous quota
-resets hourly; with a token we get 5000/h so threshold is
-irrelevant). Below 10, the test skips.
+resets hourly; a token grants 5000/h so the threshold is
+irrelevant there). Below 10, the test skips.
 
-#### 2. `GITHUB_TOKEN` as a CI secret
+#### 2. `GITHUB_TOKEN` as a Continuous Integration secret
 
 The repo already references `GITHUB_TOKEN` for release and
 changesets workflows (per
@@ -143,12 +144,12 @@ env:
 
 The token is the standard GitHub Actions token (`secrets.GITHUB_TOKEN`).
 Its scope is the workflow run, its rate-limit budget is
-1000 req/min — enough for hundreds of CI runs per day.
-The token does not need any specific permissions for
+1000 req/min, which is enough for hundreds of CI runs per
+day. The token doesn't need any specific permissions for
 `GET /repos/...` and `GET /repos/.../readme` on a public
 repo.
 
-#### 3. Test-classification: real-network vs pure
+#### 3. Test-classification, real-network vs pure
 
 ADR-016's test seams include a fixture convention that
 fixtures must derive from the Zod schemas
@@ -157,7 +158,7 @@ fixtures must derive from the Zod schemas
 ADR-017 adds a second convention: tests that hit the real
 network must declare it. Concretely:
 
-- File-level comment comment comment at the top of
+- File-level annotation at the top of
   `rpc/templates.test.ts`:
 
   ```ts
@@ -168,17 +169,17 @@ network must declare it. Concretely:
    */
   ```
 
-- The CI workflow comment annotates the integration job
+- The CI workflow annotation tags the integration job
   with the same fields. A future contributor running a
   subset of tests locally can skip network-touching tests
   via `vitest --testNamePattern="network:"` (negative
   filter) or similar.
 
 This is documentation, not enforcement. The alternative is a
-custom vitest reporter that reads file comments — overkill
-for two tests today.
+custom Vitest reporter that reads file annotations, which
+is overkill for two tests today.
 
-### The four failure modes and how each is handled
+### The four failure modes and how each scenario lands
 
 | Failure mode | Symptom | Test behaviour | CI signal |
 |---|---|---|---|
@@ -191,7 +192,7 @@ The two middle rows are why the test stays in CI even when
 the happy path is intermittent: every failure mode exercises
 the route's failure envelope. The mock hid these.
 
-### Why a separate ADR, not an ADR-016 amendment
+### Why a separate ADR, not an ADR-016 revision
 
 ADR-016 is about the harness structure (in-process
 `api.request()`, schema-derived fixtures, loud Postgres skip).
@@ -199,8 +200,8 @@ ADR-017 is about a single test's mocking strategy and the
 operational cost (rate limits, latency, CI secret). Mixing
 them obscures the decision. A separate ADR also lets the
 PR that adds the real-network test land independently of
-the rest of ADR-016's surface — the change is a 3-line
-diff in the test file plus a CI secret wiring.
+the rest of ADR-016's surface. The change is a 3-line diff
+in the test file plus a CI secret wiring.
 
 ## Consequences
 
@@ -229,10 +230,10 @@ diff in the test file plus a CI secret wiring.
 - Real-network tests for the Better Auth `/api/v1/auth/get-session`
   smoke test (it already hits the auth library in-process,
   not a network endpoint).
-- A custom vitest reporter for the `@network` annotation.
+- A custom Vitest reporter for the `@network` annotation.
   ADR-017 keeps the annotation as documentation only.
 - Rate-limit budget tracking across CI runs. The threshold
-  is local to the test; we don't track cumulative usage.
+  is local to the test; cumulative usage isn't tracked.
 
 ## Decision log
 
@@ -241,9 +242,9 @@ diff in the test file plus a CI secret wiring.
   the real network in CI, with rate-limit-aware skip for
   flakiness. Drafted this ADR.
 - **2026-08-18**: chose the three changes (rate-limit skip,
-  CI secret, file annotation) as the minimum viable set.
+  CI secret, file annotation) as the smallest viable set.
   Rejected alternatives: dedicated `octokit` dependency
   (overkill for two endpoints), per-test mock with golden
-  snapshots (defeats the purpose), nightly-only real-network
+  snapshots (defeats the purpose), nightly only real-network
   test (delays detection by 24h, defeats the user's
   stated goal).

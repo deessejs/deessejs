@@ -3,7 +3,7 @@ title: 'API package structure'
 description: 'Accepted (2026-08). Non-negotiable.'
 ---
 
-# ADR-004: API package structure , separate Hono from oRPC
+# ADR-004, API package structure, separate Hono from oRPC
 
 ## Status
 
@@ -11,48 +11,48 @@ Accepted (2026-08). Non-negotiable.
 
 ## Context
 
-`packages/api/src/` has grown to mix five concerns under one
+`packages/api/src/` mixes five concerns under one
 name. The folder layout pretends to be flat, but the contents
-are layered, and the names of the layers lie about what they
+stack in layers, and the names of the layers lie about what they
 hold.
 
 Three structural lies:
 
-1. **`router/` is not a router.** It holds oRPC primitives
+1. **`router/` isn't a router.** It holds oRPC primitives
    (`base`, `base-context`, `authGuard`), the Hono↔oRPC
    adapter (`hono-adapter`, `mount`), direct HTTP routes
    (`routes/http.ts`), and oRPC routes (`routes/templates.ts`).
-   The word "router" is used in the oRPC sense, but the
+   The word "router" gets used in the oRPC sense, but the
    folder also contains pure Hono machinery. A reader
-   opening `router/` cannot tell which file is Hono and
+   opening `router/` can't tell which file is Hono and
    which is oRPC.
 
 2. **`core/` is half-applied.** It contains `github/` and
    `templates/` as sub-domains (one folder per concept), but
-   the equivalent concepts at the package root . 
-   `base-path.ts`, `version.ts`, `logger.ts` , sit
-   loose. Either every "code pur" goes under `core/`, or
+   the same concepts at the package root—
+   `base-path.ts`, `version.ts`, `logger.ts`—sit
+   loose. Either every "code purpose" goes under `core/`, or
    none does. The current state is asymmetric.
 
 3. **`middleware/` mixes registered vs inline.** Custom
-   middlewares (`requestId`, `session`, `error-handler`,
+   {/* vale fix: Vale.Spelling */}middlewares (`requestId`, `session`, `error-handler`,
    `rate-limit`, `etag`, `bucket`) live in `middleware/`,
-   but `cors`, `honoLogger`, and `secureHeaders` are
-   inlined in `index.ts`. There is no architectural reason
-   for the split; it is historical.
+   but `cors`, `honoLogger`, and `secureHeaders` get
+   {/* vale fix: Vale.Spelling */}inlined in `index.ts`. No architectural reason
+   drives the split; it's historical.
 
 The Hono↔oRPC boundary is the load-bearing distinction in
 this package. Hono handles HTTP concerns (env, middleware,
 direct routes, error handling, security headers). oRPC
 handles procedure concerns (the contract, the typed client,
 the per-procedure auth guard, the error envelope). Today
-the boundary is blurred; tomorrow, when a contributor adds
-the first real protected procedure, they will be unsure
+the boundary stays blurred; tomorrow, when a contributor adds
+the first real protected procedure, they remain unsure
 where it belongs.
 
 ## Decision
 
-`packages/api/src/` is organized as **four layers at the
+`packages/api/src/` organizes as **four layers at the
 root**, each in its own sub-directory, plus the conventional
 package root. The root-level `index.ts` is the only composer.
 
@@ -60,7 +60,7 @@ package root. The root-level `index.ts` is the only composer.
 packages/api/src/
 │
 ├── index.ts                composer: instantiate Hono, mount
-│                           middlewares, mount http routes, mount
+│                           `middlewares`, mount http routes, mount
 │                           oRPC, set notFound, export
 │
 ├── http/                   Hono layer
@@ -68,7 +68,7 @@ packages/api/src/
 │   ├── middleware/         every Hono middleware lives here
 │   │   ├── error-handler.ts    onError handler (funnels to ORPCError wire shape)
 │   │   ├── request-id.ts       mints X-Request-Id, sets c.var.requestId
-│   │   ├── session.ts          calls better-auth, sets c.var.user / session
+│   │   ├── session.ts          calls `better-auth`, sets c.var.user / session
 │   │   ├── rate-limit.ts       per-IP fixed-window rate limiter
 │   │   ├── etag.ts             weak ETag handler
 │   │   ├── bucket.ts           Bucket type (rate-limit internal)
@@ -80,7 +80,7 @@ packages/api/src/
 │   │   ├── health.ts            GET /health
 │   │   ├── version.ts            GET /version
 │   │   ├── ready.ts             GET /ready
-│   │   └── auth.ts              *  /auth/*  (better-auth handler)
+│   │   └── auth.ts              *  /auth/*  (`better-auth` handler)
 │   ├── mount.ts            mountHttp() factory , composes the direct routes
 │   ├── mount-rpc.ts        mountRpc() factory . Hono↔oRPC adapter
 │   └── hono-adapter.ts     wrapForOrpc() , body-parser Proxy
@@ -112,23 +112,23 @@ packages/api/src/
 - **Hono layer (`http/`)** is the only place that imports
   from `hono`, `hono/cors`, `hono/logger`, `hono/secure-headers`.
   The rest of the package imports types from `http/env.ts`
-  (`ApiEnv`) but does not touch Hono directly.
-- **oRPC layer (`orpc/`)** is the only place that imports
-  from `@orpc/server`. The rest of the package uses the
-  oRPC router and the `BaseContext` type, but does not
+  (`ApiEnv`) but doesn't touch Hono directly.
+- **oRPC layer (the `orpc/` folder)** is the only place that imports
+  from the oRPC server package. The rest of the package uses the
+  oRPC router and the `BaseContext` type, but doesn't
   touch the builder.
 - **Hono↔oRPC bridge** is exactly one file: `http/mount-rpc.ts`.
-  It is the only place the two layers meet. The
+  It's the only place the two layers meet. The
   `wrapForOrpc` Proxy in `http/hono-adapter.ts` is
-  adapter machinery that the oRPC layer does not know
+  adapter machinery that the oRPC layer doesn't know
   about.
 - **Core layer (`core/`)** imports from neither Hono nor
-  oRPC. It is pure server-side code. Procedure handlers
+  oRPC. It stays pure server-side code. Procedure handlers
   in `orpc/routes/` import from it; the Hono layer
-  does not.
-- **`packages/auth`** (better-auth) is imported only by
+  doesn't.
+- **`packages/auth`** (the auth service) gets imported only by
   `http/middleware/session.ts` and `http/routes/auth.ts`.
-  The oRPC layer does not import better-auth directly;
+  The oRPC layer doesn't import the auth package directly;
   it reads the populated `c.var.user` and `c.var.session`
   via `BaseContext`.
 
@@ -136,16 +136,16 @@ packages/api/src/
 
 - A folder at `packages/api/src/` root names a **layer**,
   not a file type. `http/` is a layer, `utils/` would be
-  a file type and is forbidden by ADR-002 Rule 2.
+  a file type and ADR-002 Rule 2 forbids it.
 - A folder at `http/` or `orpc/` names a **sub-concept**
   of that layer. `http/middleware/` is the Hono
   middleware sub-concept; `http/routes/` is the direct
   HTTP routes sub-concept. `orpc/routes/` is the oRPC
-  routes sub-concept (not the Hono routes , see
+  routes sub-concept (not the Hono routes; see
   boundary above).
 - File names within a sub-concept carry the **concept**,
   not the framework. `orpc/base.ts`, not
-  `orpc/orpc-base.ts`. The parent folder disambiguates
+  `orpc/orpc-base.ts`. The parent folder {/* vale fix: Vale.Spelling */}disambiguates
   the framework; the filename is the concept.
 
 ## What this means in practice
@@ -153,7 +153,7 @@ packages/api/src/
 - The package root contains exactly one code file:
   `index.ts`. Everything else is a folder.
 - Adding a new Hono middleware means creating a file in
-  `http/middleware/`, not inlining in `index.ts`.
+  `http/middleware/`, not {/* vale fix: Vale.Spelling */}inlining in `index.ts`.
 - Adding a new oRPC procedure means creating a file in
   `orpc/routes/`, registering the router in
   `orpc/routes/app-router.ts`, and (if the procedure is
@@ -166,37 +166,37 @@ packages/api/src/
   description.
 - Adding a new external integration means creating a
   sub-domain under `core/`, not a top-level folder.
-  The pattern is `core/{lib}/`. If we add a Stripe
-  integration tomorrow, it lives at `core/stripe/`, not
+  The pattern is `core/{lib}/`. If a Stripe
+  integration lands tomorrow, it lives at `core/stripe/`, not
   at `stripe/` or `services/stripe/`.
 
 ## Consequences
 
 - A PR that puts a Hono file (`app.use(...)` or any
   import of `hono`, `hono/cors`, etc.) under `orpc/`
-  is rejected. The author moves it to `http/`.
-- A PR that names a file, constant, route, or docstring in
+  leads to rejection. The author moves it to `http/`.
+- A PR that names a file, constant, route, or {/* vale fix: Vale.Spelling */}docstring in
   `packages/api/` after a consumer (any consumer, in any
-  form) is rejected per
+  form) leads to rejection per
   [ADR-005](./ADR-005-api-consumer-agnostic.md). The author
   renames to the server's view. The four consumer-named
-  leaks that pre-existed ADR-005 have been migrated to
+  leaks that pre-existed ADR-005 have already migrated to
   server-side names; the rule keeps the next leak from
   landing.
 - A PR that puts an oRPC file (`os.$context(...)`,
-  `os.middleware(...)`, any import of `@orpc/server`)
-  under `http/` is rejected. The author moves it to
+  `os.middleware(...)`, any import of the oRPC server package)
+  under `http/` leads to rejection. The author moves it to
   `orpc/`.
-- A PR that re-introduces a `router/` folder is rejected.
-  The boundary is Hono/oRPC, not "router". The word
+- A PR that re-introduces a `router/` folder leads to rejection.
+  The boundary is Hono/oRPC, not "router." The word
   "router" survives only as the oRPC export name
   (`appRouter`, `<thing>Router`).
-- A PR that inlines a Hono middleware factory in
-  `index.ts` is rejected. Every middleware lives in
-  `http/middleware/` and is mounted by name.
+- A PR that {/* vale fix: Vale.Spelling */}inlines a Hono middleware factory in
+  `index.ts` leads to rejection. Every middleware lives in
+  `http/middleware/` and gets mounted by name.
 - A PR that puts a constant at the package root
   (`base-path.ts`, `version.ts`, `logger.ts` at
-  root) is rejected. Constants go in `constants/` (or
+  root) leads to rejection. Constants go in `constants/` (or
   in the file of the sub-concept they belong to, per
   ADR-002 Rule 1).
 
@@ -205,7 +205,7 @@ packages/api/src/
 - One folder per layer at the package root. Today:
   `http/`, `orpc/`, `core/`, `constants/`. Adding a new
   layer requires its own ADR (the next likely candidate
-  is `db/` if Drizzle queries grow large enough to
+  is `db/` if drizzle queries grow large enough to
   warrant their own sub-domain).
 - One file per concept within a layer. `http/middleware/`
   has seven files, each named after a single concern.
@@ -220,37 +220,37 @@ packages/api/src/
   any level (ADR-002 Rule 2).
 - `types.ts` at any package or sub-package root. Types
   live next to the concept they describe. A per-sub-domain
-  `types.ts` is allowed only when strictly internal
+  `types.ts` stays allowed only when kept internal
   (ADR-002 Rule 2 exception).
 - A `router/` folder. The boundary is Hono/oRPC.
-- A `services/` folder. The concept is called `core/`
-  in this package. The word "service" is reserved for
-  `packages/auth` (the better-auth service) and
-  external services (Stripe, Resend, GitHub , see
+- A `services/` folder. The concept goes by `core/`
+  in this package. The word "service" stays reserved for
+  `packages/auth` (the auth service) and
+  external services (Stripe, Resend, GitHub; see
   `core/{lib}/`).
 - An `adapters/` folder for the Hono↔oRPC bridge. The
   bridge lives in `http/mount-rpc.ts` because the bridge
   is a Hono concern (it mounts the oRPC handler on the
   Hono app). An `adapters/` folder would suggest a
-  neutral zone that does not exist; the bridge has a
+  neutral zone that doesn't exist; the bridge has a
   home, in the Hono layer.
 
 ## Where this rule came from
 
-The current `packages/api/src/` was built by accumulation.
+The current `packages/api/src/` got built by accumulation.
 The first commit on this branch had everything in
-`index.ts`. Subsequent PRs extracted `core/`, then
+`index.ts`. Later PRs extracted `core/`, then
 `router/`, then split `router/` into `procedures/` and
-`routes/`, then introduced barrels. Each step was
+`routes/`, then introduced barrels. Each step stayed
 defensible in isolation. The cumulative effect is a
 layout where the word "router" describes one folder
 that holds two frameworks, the word "core" describes
 one folder that holds two of the four concepts it
 should hold, and the word "middleware" describes one
-folder that holds six of the nine middlewares the
+folder that holds six of the nine {/* vale fix: Vale.Spelling */}middlewares the
 package uses.
 
-The split into `http/` vs `orpc/` was not visible until
+The split into `http/` vs `orpc/` wasn't visible until
 the knowledge-base entries for the two frameworks
 surfaced the boundary explicitly. The KB entry for
 [oRPC Hono adapter](../knowledge-base/orpc/hono-adapter.md)
@@ -263,28 +263,28 @@ the layer names.
 
 ## Related
 
-- [ADR-002: File organization by sub-domain](./ADR-002-file-organization.md) . 
+- [ADR-002: File organization by sub-domain](./ADR-002-file-organization.md),
   the rule that a sub-directory names a concept, not a
   file type. This ADR is a specialisation of that rule
-  for the api package.
-- [ADR-003: Hono env typing is per-app, not global](./ADR-003-hono-env-typing.md) . 
+  for the API package.
+- [ADR-003: Hono env typing is per-app, not global](./ADR-003-hono-env-typing.md),
   the single source of truth for the Hono env, which
   becomes `http/env.ts` under this structure.
-- [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md) . 
+- [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md),
   the load-bearing role of oRPC justifies giving it a
   dedicated layer rather than burying it under
-  "router/".
-- [ADR-005: API is consumer-agnostic](./ADR-005-api-consumer-agnostic.md) . 
+  "router/."
+- [ADR-005: API is consumer-agnostic](./ADR-005-api-consumer-agnostic.md),
   the structure above is consumer-agnostic by definition
-  (the four layers are named after what the server does,
+  (the four layers take their names from what the server does,
   not who consumes it). ADR-005 is the sibling invariant
   that names the discipline; this ADR is the structural
   consequence.
-- [knowledge-base/hono/middleware.md](../knowledge-base/hono/middleware.md) . 
-  the seven custom Hono middlewares that live in
+- [`knowledge-base/hono/middleware.md`](../knowledge-base/hono/middleware.md),
+  the seven custom Hono {/* vale fix: Vale.Spelling */}middlewares that live in
   `http/middleware/`.
-- [knowledge-base/orpc/middleware.md](../knowledge-base/orpc/middleware.md) . 
+- [`knowledge-base/orpc/middleware.md`](../knowledge-base/orpc/middleware.md),
   the `authGuard` that lives in `orpc/auth-middleware.ts`.
-- [knowledge-base/orpc/hono-adapter.md](../knowledge-base/orpc/hono-adapter.md) . 
+- [`knowledge-base/orpc/hono-adapter.md`](../knowledge-base/orpc/hono-adapter.md),
   the bridge (`http/mount-rpc.ts` + `http/hono-adapter.ts`)
   between the two layers.

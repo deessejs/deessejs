@@ -14,26 +14,26 @@ Accepted (2026-08). Non-negotiable.
 `apps/cli/` is the only published package in the monorepo
 (`@deessejs/cli`, per ADR-010). Today its public surface is
 three commands (`init`, `list`, `info`) that talk to the
-upstream server exclusively through the typed oRPC client and
+upstream server through the typed oRPC client and
 never carry an identity. The server's public routes
 (`/api/v1/rpc/*`, `/api/v1/auth/*`) are reachable anonymously
 for everything the CLI does today: listing templates, fetching
 template metadata, cloning a repo. The CLI has no notion of
-"who is running this command", and the server has no notion of
-"this is an authenticated CLI".
+"who is running this command," and the server has no notion of
+"this is an authenticated CLI."
 
 This changes with the next feature surface. Two consumers
 need to know who the caller is:
 
 - A user running `deesse auth login` on a fresh machine
-  needs to obtain a session token without typing a password
+  needs to get a session token without typing a password
   into a terminal.
 - The server, when it eventually exposes authenticated
   procedures (per the broader roadmap), needs a wire
   format that identifies the caller.
 
-The CLI cannot store a long-lived password. The server
-cannot ask the CLI for a password either. The shape that
+The CLI can't store a long-lived password. The server
+can't ask the CLI for a password either. The shape that
 fits both is **device authorization** (RFC 8628): the CLI
 requests a code, the user approves the code in a browser,
 the CLI polls for a token, and the token is a Better Auth
@@ -43,27 +43,27 @@ present in `node_modules/better-auth@1.6.23`.
 
 The temptation when wiring device auth is to build a custom
 flow: a parallel REST endpoint that returns a token, a CLI
-subcommand that posts credentials directly, a webhook the
+child command that posts credentials directly, a webhook the
 server calls back to. Each custom flow fragments the auth
 surface, doubles the wire-format surface, and forces every
 consumer to learn a new path. The cost compounds: the
 custom endpoint becomes a public surface that future
-contributors must understand, the parallel CLI subcommand
+contributors must understand, the parallel CLI child command
 becomes a second way to authenticate, the callback becomes
-a second wire format the server must validate.
+a second wire format the server must check.
 
 The Better Auth device-authorization plugin is the
-load-bearing shape. We do not work around it. We do not
-reimplement it. We do not add a second auth surface.
+load-bearing shape. The CLI doesn't work around it.
+The CLI doesn't rewrite it. The CLI doesn't add a second auth surface.
 
 ## Decision
 
-The CLI auth surface is driven by the Better Auth
-device-authorization plugin. The plugin is wired once, on
-the server, and the CLI consumes it through the same
-`/api/v1/auth/*` mount that already serves Better Auth's
-session endpoints. No new HTTP surface is added. No new
-wire format is introduced.
+The Better Auth device-authorization plugin drives the
+CLI auth surface. The wiring happens once, on the server,
+and the CLI consumes it through the same
+`/api/v1/auth/*` mount that already serves the Better Auth
+session endpoints. The CLI adds no new HTTP surface. The
+CLI introduces no new wire format.
 
 ### Server-side wiring
 
@@ -125,7 +125,7 @@ The client plugin adds five methods (`device.code`,
 `device.token`, `device`, `device.approve`, `device.deny`)
 that map one-to-one to the server endpoints. The wire
 shape is whatever Better Auth publishes; the typed client
-does not invent a parallel shape.
+doesn't invent a parallel shape.
 
 ### CLI commands
 
@@ -139,7 +139,7 @@ invariants:
 | `deesse auth status` | `status.ts` | Read token from disk, hit `/get-session`, show user |
 | `deesse auth logout` | `logout.ts` | Hit server-side sign-out, delete token file |
 
-The three commands are registered in `apps/cli/src/index.ts`
+The CLI registers the three commands in `apps/cli/src/index.ts`
 under the `auth` parent:
 
 ```ts
@@ -152,14 +152,14 @@ authCommand.addCommand(logoutCommand)
 program.addCommand(authCommand)
 ```
 
-The new subcommand tree is reviewed against ADR-010 §1
+The review of the new child-command tree checks ADR-010 §1
 (commands are siblings, not nested features). The `auth`
 parent is a sibling of `init`, `list`, `info`; the three
 children are siblings of each other.
 
 ### Token storage
 
-The session token returned by `/device/token` is persisted
+The CLI persists the session token returned by `/device/token`
 on disk at `~/.deessejs/auth.json`. The file lives in the
 same `~/.deessejs/` directory that already hosts the
 templates cache (`apps/cli/src/cache/location.ts`). The
@@ -173,7 +173,7 @@ file format:
 }
 ```
 
-The file is owned by a new module
+A new module owns the file
 `apps/cli/src/auth-store/index.ts` (one concept per folder,
 per ADR-002). The module exposes `readAuth`, `writeAuth`,
 `clearAuth`: three pure file-IO helpers. The token file
@@ -183,38 +183,38 @@ the contract. The format may change between CLI minor
 versions without bumping the major, on the same opacity
 rule that ADR-010 §4 pins for the templates cache.
 
-The token file is **not encrypted at rest** in V1. The
-threat model is "someone with shell access to my machine",
-not "someone who steals my laptop's encrypted home
-directory". If the threat model widens, encryption at rest
+The token file **isn't encrypted at rest** in V1. The
+threat model is "someone with shell access to the user's machine,"
+not "someone who steals the user's laptop's encrypted home
+directory." If the threat model widens, encryption at rest
 ships as a separate ADR.
 
-The token file is written with mode **`0600`** (read/write
+The CLI writes the token file with mode **`0600`** (read/write
 for the owner only). The `writeAuth` helper calls
 `fs.writeFile(path, body, { mode: 0o600 })` and explicitly
-`fs.chmod(path, 0o600)` after the write. `writeFile`'s
-mode is masked by the process umask, so the chmod is the
+`fs.chmod(path, 0o600)` after the write. The process `umask`
+masks `writeFile`'s mode, so the `chmod` is the
 authoritative step. On Windows (which has no `0600`
-equivalent), the helper falls back to `icacls` to grant
+match), the helper falls back to `icacls` to grant
 the current user only; the rule is "the file is readable
-only by the user running the CLI", not "the bits are 0600".
-The `readAuth` and `clearAuth` helpers do not change the
-mode (the file's owner is set once, at write time).
-A `writeAuth` call that fails the chmod check is treated
+only by the user running the CLI," not "the bits are 0600."
+The `readAuth` and `clearAuth` helpers don't change the
+mode (the CLI sets the file's owner once, at write time).
+A `writeAuth` call that fails the `chmod` check counts
 as a write failure: the CLI exits through `CliError`
 with an internal error code, not a public code. The
-permission hardening is not a user-facing concern.
+permission hardening isn't a user-facing concern.
 
 ### Wire format for the polling loop
 
-The CLI does not invent a wire format for the polling
+The CLI doesn't invent a wire format for the polling
 loop. The loop calls the typed Better Auth client method
 `authClient.device.token({ grant_type, device_code,
 client_id })` and decodes the response into the shape
 Better Auth publishes. The error codes
 (`authorization_pending`, `slow_down`, `expired_token`,
 `access_denied`, `invalid_grant`, `invalid_client`)
-are Better Auth's codes, not CLI codes. The CLI maps
+are codes from Better Auth, not CLI codes. The CLI maps
 them to behavior, not to user-facing labels.
 
 The mapping table lives in
@@ -225,13 +225,13 @@ pure function `mapPollingError(code: BetterAuthErrorCode): CliError`:
 - `expired_token` → `cliDeviceExpired(...)` with message
   "Device code expired before approval. Run `deesse auth login` again."
 - `access_denied` → `cliDeviceDenied(...)` with message
-  "Authorization was denied in the browser."
+  "The browser denied authorization."
 - `invalid_grant`, `invalid_client` → `cliDeviceExpired(...)`
   with a "code invalid or already used" message (the user
   has no way to recover without restarting the flow)
 
-The `interval` returned by `/device/code` is the minimum
-polling interval. Better Auth's default is `"5s"`; the
+The `interval` returned by `/device/code` is the lower-bound
+polling interval. The Better Auth default is `"5s"`; the
 CLI respects whatever the server publishes. On `slow_down`,
 the CLI increases its local interval by 5 seconds and
 continues. On `expired_token`, `access_denied`,
@@ -250,8 +250,8 @@ interval; no second timing mechanism.
 The user-facing surface for the device flow lives in
 `apps/app/`. The plugin's `verificationUri: "/device"`
 points to a page that handles four states; the page is
-reachable without a session, the session is established
-on the fly when the user signs in. The CLI never sees
+reachable without a session, the user signs in to establish
+the session on the fly. The CLI never sees
 the page directly. The CLI's `deesse auth login`
 command opens the browser to the `verification_uri_complete`
 returned by `/device/code`, which already carries the
@@ -284,22 +284,22 @@ flows already use. The form-based flow and the device
 flow share the same panel shape (a heading, a caption,
 one or two primary actions, a "go back" link); the
 shared layout is the right fit. The
-`(unprotected)/layout.tsx` is unchanged.
+`(unprotected)/layout.tsx` stays as-is.
 
-The page is **public**: `apps/app/proxy.ts` does not
-gate it. The proxy's `AUTH_PREFIXES` allowlist is the
+The page is **public**: `apps/app/proxy.ts` doesn't
+gate it. The proxy's `AUTH_PREFIXES` `allowlist` is the
 list of routes that bounce a signed-in user to `/home`;
-the device page is added to this list so a user who is
-already authenticated is forwarded to the approve/deny
-view directly instead of being bounced to `/login`. The
-allowlist gains `/device`; the rest of the proxy is
+the proxy adds the device page to this list so a user who is
+already authenticated lands on the approve/deny
+view directly instead of bouncing to `/login`. The
+`allowlist` gains `/device`; the rest of the proxy stays
 unchanged.
 
 #### The page component
 
 `apps/app/app/(unprotected)/device/page.tsx` is a
-server component that reads `user_code` from the search
-params, validates the shape (8 chars, charset
+server component that reads `user_code` from the `searchParams`,
+validates the shape (8 chars, `charset`
 `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`), and renders the
 matching state. The validation lives in a small Zod
 schema (`userCodeSchema = z.string().regex(/^[A-HJ-NP-Z2-9]{8}$/)`)
@@ -307,10 +307,10 @@ imported from the auth components barrel; the page
 calls `userCodeSchema.safeParse(searchParams.user_code)`
 and renders the "Expired" panel on a parse failure
 (invalid or missing `user_code` is the same as
-expired. There is no point telling an unauthenticated
-visitor why the URL was bad). The page types
+expired. Telling an unauthenticated
+visitor why the URL was bad serves no purpose). The page types
 `searchParams` as `Promise<{ user_code?: string | string[] }>`
-(the Next.js 16 searchParams shape), narrows to
+(the Next.js 16 `searchParams` shape), narrows to
 `{ user_code: string }` after the Zod check, and passes
 the narrowed value down to `DeviceForm`. The four states:
 
@@ -397,29 +397,29 @@ wire format, per ADR-001.
 
 The device page is reachable by an unverified user
 (they may have just signed up to approve their CLI).
-The page itself does not gate on `emailVerified`; the
+The page itself doesn't gate on `emailVerified`; the
 flow is "sign in, approve". The existing
-`apps/app/proxy.ts` gate (per
-`docs/guides/better-auth/pitfalls.md` §3) redirects
+`apps/app/proxy.ts` gate (per the Better-Auth
+pitfalls guide, §3) redirects
 unverified users on protected prefixes to
 `/verify-email`. The device page is **not** a
-protected prefix, so the gate does not apply; the
+protected prefix, so the gate doesn't apply; the
 approve flow proceeds, and the CLI receives a session
 token whose cookie is subject to the same verification
 gate on its next visit to a protected route. A user who
 signs in to approve a CLI without verifying their
-email gets a token, but cannot use the web app until
+email gets a token, but can't use the web app until
 they verify. This is the intended behavior: the device
 flow is a wire-level approval, not an onboarding step.
 
 #### Settings integration
 
-The device flow does not add a new entry to the
+The device flow doesn't add a new entry to the
 settings home. The existing `/settings/sessions` page
 already lists active sessions via the Better Auth
 `session` table; the CLI session appears there like
 any other session. A future ADR may add a "pending
-device authorizations" panel; it does not belong in
+device authorizations" panel; it doesn't belong in
 this ADR.
 
 ## What this rule allows
@@ -440,11 +440,11 @@ this ADR.
   `pnpm auth:generate` to add the `deviceCode` table.
 - Reading the Better Auth docs and the plugin source to
   understand the polling protocol and the error codes.
-  Reading is not bypassing.
-- Mapping Better Auth's error codes to local CLI exit
+  Reading isn't bypassing.
+- Mapping the error codes from Better Auth to local CLI exit
   codes through the existing `CliError` machinery. The
   mapping is internal; the public error code list (per
-  ADR-010 §2) does not gain new entries for the polling
+  ADR-010 §2) doesn't gain new entries for the polling
   loop.
 - The CLI opening the browser to the
   `verification_uri_complete` returned by `/device/code`,
@@ -510,11 +510,11 @@ this ADR.
 - **A custom envelope alongside `ORPCError` for the
   polling loop.** ADR-001 forbids custom envelopes; this
   ADR reinforces the rule for the auth path. If a polling
-  response cannot be decoded into the Better Auth shape,
+  response can't be decoded into the Better Auth shape,
   the error is a `network_error` or `parse_error` per
   ADR-010 §2, not a new code.
 - **Storing the token outside `~/.deessejs/auth.json`.**
-  The CLI does not read `~/.config/`, `~/.cache/`,
+  The CLI doesn't read `~/.config/`, `~/.cache/`,
   environment variables, or the macOS Keychain for the
   session token in V1. The home-directory path is the
   contract.
@@ -534,7 +534,8 @@ this ADR.
 - **Adding `deviceAuthorization` to `packages/api/` or
   `packages/api/src/http/`.** The plugin lives in
   `packages/auth/`, which is the single source of truth
-  per the better-auth guides (`docs/guides/better-auth/index.md`).
+  per the Better-Auth guides (see the knowledge-base
+  index entry for the link).
 - **Bypassing `nextCookies()` to put `deviceAuthorization`
   last.** `nextCookies()` must be last in the plugin
   array; moving it is a Next.js integration regression.
@@ -551,8 +552,8 @@ this ADR.
   (`device-container.tsx` or a generic
   `WideAuthContainer`) for V1.** The `AuthContainer`
   `max-w-md` panel fits the approve/deny caption and
-  the two buttons. A wider container is added only if
-  a future ADR surfaces a layout that does not fit
+  the two buttons. A future ADR adds a wider container only if
+  it surfaces a layout that doesn't fit
   the existing panel, and it lands in the design
   system, not in `components/auth/`.
 - **Bypassing `authClient` for the four device methods
@@ -566,23 +567,23 @@ this ADR.
   page is reachable by a user who has not yet verified
   their email; the flow is "sign in, approve". The
   verification gate that protects `/home` and
-  `/settings` (per `docs/guides/better-auth/pitfalls.md`
-  §3) is unchanged; the device page is not a protected
-  prefix and the gate does not apply here.
+  `/settings` (per the Better-Auth pitfalls guide)
+  stays as-is; the device page isn't a protected
+  prefix and the gate doesn't apply here.
 - **Putting the device page under a protected route
   group.** The page is `(unprotected)`; a protected
   wrapper would block the very users the flow is
   designed to serve (a fresh CLI user who has never
   signed in to the web app).
 
-## What this rule does not change
+## What this rule doesn't change
 
 - **The single-tenant decision.** The
-  device-authorization plugin does not introduce
+  device-authorization plugin doesn't introduce
   organization concepts; it adds a `deviceCode` table
   and five endpoints that operate on user identity, not
   on organization membership. The locked-in decisions in
-  `docs/guides/better-auth/index.md` (no
+  `docs/guides/Better-Auth/index.md` (no
   `organization(...)`, no `databaseHooks.session.create.before`,
   no `useActiveOrganization`) are unchanged.
 - **The session cookie configuration.** The device flow
@@ -600,8 +601,8 @@ this ADR.
   codes (`cli_device_denied`, `cli_device_expired`) added
   in lockstep by ADR-010 §2 (the public-list amendment
   this ADR required). The polling loop maps Better Auth
-  error codes to these via the `CliError` machinery; no
-  other new public code is added by this ADR.
+  error codes to these via the `CliError` machinery; this
+  ADR adds no other new public code.
 - **The CLI's HTTP wire format.** The CLI still talks to
   the upstream through the Better Auth client for the
   auth endpoints. The typed oRPC client (per ADR-001)
@@ -612,15 +613,14 @@ this ADR.
   versions without bumping the major.
 - **The `trustedOrigins` configuration.** The device
   verification page lives on the same origin as the rest
-  of `apps/app/`; no new origin is added to the
-  allowlist.
+  of `apps/app/`; the allowlist gains no new origin.
 - **The `apps/cli/` folder structure.** The new
   `commands/auth/` and `auth-store/` folders follow the
   one-folder-per-concept rule (ADR-002); no new file at
   the `apps/cli/` root.
-- **The OAuth-device path is not in scope here.** Better
+- **The OAuth-device path isn't in scope here.** Better
   Auth ships a sibling plugin, `oauthDeviceAuthorization`,
-  under the separate `@better-auth/oauth-provider`
+  under the separate Better-Auth OAuth-provider
   package. That plugin adds `POST /oauth2/token` for
   registered OAuth clients and is the right shape for
   machine-to-machine consumers (other CLIs, CI bots).
@@ -629,7 +629,7 @@ this ADR.
   ships in a separate change with its own ADR. The
   single-tenant decision, the `deviceCode` table, and
   the `verificationUri` page are shared, but the
-  plumbing does not change here.
+  plumbing doesn't change here.
 
 ## Test strategy
 
@@ -666,7 +666,7 @@ building the fixture (a fake Better Auth server that
 returns `authorization_pending` then `approved` after
 N polls) is a separate concern. The follow-up PR
 "add device-auth CLI tests" lands alongside the
-implementation PR but is not part of it.
+implementation PR but isn't part of it.
 
 A PR that adds a unit test for the web side or the
 CLI side is **not rejected** by this ADR. The ADR
@@ -682,7 +682,7 @@ here so a future contributor (and the planned follow-up ADRs)
 can find them without re-discovering them. None blocks this
 ADR; each is bounded, scoped, and has a concrete forward path.
 
-### Limitation 1: the user does not know a CLI is connected
+### Limitation 1: the user doesn't know a CLI is connected
 
 `/settings/sessions` lists active Better Auth sessions, but
 the device-flow session created by `deesse auth login` is
@@ -691,7 +691,7 @@ like `127.0.0.1 / Node fetch / 2 days ago` without any
 context that this is their CLI. They will not recognise the
 session row as theirs unless we label it.
 
-**V1 mitigation** (cheap, in scope, does not require a new ADR):
+**V1 mitigation** (cheap, in scope, doesn't require a new ADR):
 the CLI sends `User-Agent: DeesseJS CLI/<version>` on its
 `authClient.device.code(...)` and `authClient.device.token(...)`
 calls, and on subsequent calls that carry the session cookie.
@@ -728,7 +728,7 @@ populated only when the user clicks `approve`; the
 `GET /device?user_code=...` endpoint side-effects a claim and
 binds the calling session. There is no documented Better Auth
 endpoint to list a user's pending device-code records, and the
-plugin does not expose one.
+plugin doesn't expose one.
 
 **V1 limitation**: a user who loses track of an issued code
 (laptop closed, browser tab killed) has no way to see that a
@@ -740,72 +740,72 @@ expire silently.
 The plugin's `expiresIn` is enforced server-side on the
 polling response (`expired_token` error code), but the
 underlying rows are not deleted when they expire. They stay
-in the table forever unless a cron or hook removes them.
+in the table forever unless a `cron` job or hook removes them.
 
-**V1 limitation**: table growth over time; eventually a
-retention / vacuum job is needed. Not a security or
+**V1 limitation**: table growth over time; eventually the
+team needs a retention / vacuum job. Not a security or
 correctness issue.
 
 ### Where these limitations live in the ADRs
 
 | Limitation | Planned follow-up ADR | Notes |
 |---|---|---|
-| 1 + 2 | **ADR-021** (next, planned) | Activate the `multiSession` plugin, add `/settings/devices` page that calls `listDeviceSessions` and labels rows by `userAgent` prefix. Add a "Revoke" button per row via `multiSession.revoke`. Detail to be settled when ADR-021 lands. |
+| 1 + 2 | **ADR-021** (next, planned) | Activate the `multiSession` plugin, add `/settings/devices` page that calls `listDeviceSessions` and labels rows by `userAgent` prefix. Add a "Revoke" button per row via `multiSession.revoke`. Detail settles when ADR-021 lands. |
 | 3 | **ADR-022** (backlog) | Add a server endpoint `GET /device/pending` (custom route on the Hono mount at `/api/v1/auth/device/pending`, DB-gated to `deviceCode.userId = session.userId` AND `status = pending` AND `expiresAt > now()`). Pair with a `/settings/devices/pending` page. |
-| 4 | **ADR-022** or follow-up | Add a cleanup job (cron or `pg_cron` extension) that purges expired `deviceCode` rows. The retention window is TBD; default proposal is to drop rows older than 30 days past `expiresAt`. |
+| 4 | **ADR-022** or follow-up | Add a cleanup job (`cron` or `pg_cron` extension) that purges expired `deviceCode` rows. The retention window is TBD; default proposal is to drop rows older than 30 days past `expiresAt`. |
 
 The "V1 mitigation" of Limitation 1 (the `User-Agent` header
-from the CLI) ships in this PR's CLI implementation. The
+from the CLI) ships in the CLI implementation of this PR. The
 remaining three limitations are out of scope; the user
 explicitly accepts the existing `/settings/sessions` as the
 sole session management surface for V1.
 
 ## Consequences
 
-- A PR that adds a device-auth endpoint outside
-  `/api/v1/auth/*` is rejected. The contributor moves the
+- Review rejects a PR that adds a device-auth endpoint outside
+  `/api/v1/auth/*`. The contributor moves the
   endpoint under the Better Auth mount.
-- A PR that adds a CLI command without a sibling file in
-  `commands/auth/` is rejected. The contributor splits
+- Review rejects a PR that adds a CLI command without a sibling file in
+  `commands/auth/`. The contributor splits
   the command into one file per command.
-- A PR that adds `deviceAuthorization` after
-  `nextCookies()` in the plugin array is rejected. The
+- Review rejects a PR that adds `deviceAuthorization` after
+  `nextCookies()` in the plugin array. The
   plugin must sit before `nextCookies()`.
-- A PR that introduces a custom auth wire format is
-  rejected. The wire format is whatever Better Auth
+- Review rejects a PR that introduces a custom auth wire format.
+  The wire format is whatever Better Auth
   publishes.
-- A PR that stores the token outside
-  `~/.deessejs/auth.json` is rejected. The home-directory
+- Review rejects a PR that stores the token outside
+  `~/.deessejs/auth.json`. The home-directory
   path is the contract.
-- A PR that adds a new public CLI error code for the
-  polling loop is rejected per ADR-010 §2. The
+- Review rejects a PR that adds a new public CLI error code for the
+  polling loop per ADR-010 §2. The
   contributor maps Better Auth codes to existing CLI
   codes or escalates the public-list change to a new ADR.
-- A PR that adds `organization(...)` or
+- Review rejects a PR that adds `organization(...)` or
   `useActiveOrganization` in the same change as
-  `deviceAuthorization(...)` is rejected. The
-  device-auth plugin does not require the org plugin;
+  `deviceAuthorization(...)`. The
+  device-auth plugin doesn't require the org plugin;
   the contributor splits the change.
-- A PR that regenerates `schema/auth.ts` without
-  reviewing the diff is rejected. The generator may
+- Review rejects a PR that regenerates `schema/auth.ts` without
+  reviewing the diff. The generator may
   overwrite custom field names or indexes (per
   `docs/guides/better-auth/setup.md`).
-- A PR that ships a CLI binary with the auth commands
-  without a changeset is rejected by the
-  `check-changeset` CI job (per ADR-010 §6).
+- Review rejects a PR that ships a CLI binary with the auth commands
+  without a changeset. The
+  `check-changeset` CI job rejects it (per ADR-010 §6).
 
 ## Where this rule came from
 
 The CLI shipped V1 (`@deessejs/cli@1.x`) without an auth
 surface. The three commands that exist today
 (`init`, `list`, `info`) are anonymous on the wire: the
-server does not know who is calling, and the CLI does not
+server doesn't know who is calling, and the CLI doesn't
 carry identity. The first feature that requires identity
 on the CLI side. A roadmap item that surfaces a
 "personal registry" experience for authenticated users.
 forces the question: how does the CLI authenticate?
 
-Three options were considered:
+Three options:
 
 1. **Username and password in the CLI.** The user types
    credentials on every command (or stores them in the
@@ -813,7 +813,7 @@ Three options were considered:
    history, copy-paste, screen sharing. It also fails
    the email-verification gate (per
    `docs/guides/better-auth/email.md`): a CLI that
-   requires verified email cannot verify a user who has
+   requires verified email can't verify a user who has
    not yet logged in to the web app.
 2. **A long-lived API key issued from the web app.** The
    user creates a key in `/settings/connections`, pastes
@@ -823,11 +823,11 @@ Three options were considered:
    second wire format that the CLI must learn.
 3. **Device authorization.** The CLI requests a code, the
    user approves in the browser, the CLI polls for a
-   token. The wire format is Better Auth's wire format;
+   token. The wire format comes from Better Auth;
    the token is a session token that the existing
    `/get-session` endpoint already knows how to decode;
    the verification page is the user-facing surface;
-   no new key-management UI is needed.
+   no new key-management UI needs to ship.
 
 Option 3 wins on three counts:
 
@@ -840,7 +840,7 @@ Option 3 wins on three counts:
   cache.
 
 The risk of option 3 is the polling protocol: a CLI that
-polls too aggressively could DDoS the server. Better Auth's
+polls too aggressively could DDoS the server. The Better Auth
 plugin enforces this: the `pollingInterval` field and the
 `slow_down` error code prevent abuse. The CLI respects
 the protocol; the server enforces it.
@@ -849,16 +849,16 @@ the protocol; the server enforces it.
 
 - [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md).
   The contract discipline that this ADR reinforces on the
-  CLI auth side. The five device-auth endpoints are
-  Better Auth's wire format, not a custom envelope;
-  ADR-001 says "every endpoint uses oRPC", and Better
-  Auth's auth mount is the documented exception per
+  CLI auth side. The five device-auth endpoints follow the
+  wire format that Better Auth publishes, not a custom envelope;
+  ADR-001 says "every endpoint uses oRPC," and the auth
+  mount of Better Auth is the documented exception per
   ADR-011.
 - [ADR-010: CLI public surface](./ADR-010-cli-public-surface.md).
   The CLI invariants that this ADR extends. The `auth`
   parent command is a new sibling under ADR-010 §1. The
   token file inherits the opacity rule from ADR-010 §4.
-  The error code list from ADR-010 §2 is unchanged. The
+  The error code list from ADR-010 §2 stays as-is. The
   changesets rule from ADR-010 §6 applies to every PR
   that touches `apps/cli/**`.
 - [ADR-011: Hono for system routes](./ADR-011-hono-for-system-routes.md).
@@ -866,12 +866,12 @@ the protocol; the server enforces it.
   device-auth endpoints live under the existing
   Better Auth `/auth/*` mount, which ADR-011 classifies
   as a delegated system route. The CLI consumes them
-  through the same mount; no new mount is added.
+  through the same mount; nothing adds a new mount.
 - [`docs/guides/better-auth/index.md`](../knowledge-base/better-auth/index.md).
-  The single-tenant rules that this ADR does not change.
-  The device-authorization plugin does not require
-  `organization(...)`, does not require
-  `databaseHooks.session.create.before`, and does not
+  The single-tenant rules that this ADR doesn't change.
+  The device-authorization plugin doesn't require
+  `organization(...)`, doesn't require
+  `databaseHooks.session.create.before`, and doesn't
   require `useActiveOrganization`.
 - [`docs/guides/better-auth/setup.md`](../knowledge-base/better-auth/setup.md).
   The `nextCookies()`-must-be-last rule and the
@@ -884,6 +884,6 @@ the protocol; the server enforces it.
   implicit) applies to the device-auth plugin; the
   contributor reads pitfalls.md before implementing.
 - Better Auth device-authorization plugin docs:
-  [better-auth.com/docs/plugins/device-authorization](https://www.better-auth.com/docs/plugins/device-authorization).
+  [the Better-Auth plugin docs site](https://www.better-auth.com/docs/plugins/device-authorization).
   The upstream source of truth for the five endpoints,
   the polling protocol, and the error codes.
