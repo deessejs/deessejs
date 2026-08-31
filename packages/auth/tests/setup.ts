@@ -25,9 +25,16 @@ export const auth = betterAuth({
   // We pin the object here (instead of importing from src/auth.ts) to
   // keep this file free of the email/transport wiring — the test auth
   // intentionally drops those plugins.
+  //
+  // `fallback` lets direct `auth.api.X({ ... })` calls in tests resolve
+  // a baseURL when no `host` header is forwarded (Better Auth throws
+  // `APIError: Dynamic baseURL could not be resolved` otherwise — see
+  // https://better-auth.com/docs/guides/dynamic-base-url). Production
+  // intentionally does NOT set a fallback so unknown hosts fail loudly.
   baseURL: {
     allowedHosts: ["localhost:3000", "localhost:3001", "*.vercel.app"],
     protocol: "http",
+    fallback: "http://localhost:3000",
   },
   database: drizzleAdapter(db, {
     provider: "pg",
