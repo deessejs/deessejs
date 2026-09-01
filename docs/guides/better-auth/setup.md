@@ -26,10 +26,11 @@ import { db } from "@workspace/database"
 export const auth = betterAuth({
   baseURL: {
     allowedHosts: [
-      "app.deessejs.com",
+      // Apex — `*.deessejs.com` does NOT match the apex.
       "deessejs.com",
-      "docs.deessejs.com",
+      // Every subdomain (app, docs, api, future ones).
       "*.deessejs.com",
+      // Every Vercel preview without per-preview env config.
       "*.vercel.app",
       // Spread localhost in dev only; see pitfalls.md §5 for the
       // NODE_ENV-gated reason. `localhost:*` matches any port.

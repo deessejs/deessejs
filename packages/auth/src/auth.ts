@@ -37,12 +37,12 @@ const AUTH_BASE_PATH = "/api/v1/auth"
  * for localhost). The wildcard `*.vercel.app` covers every Vercel
  * preview deployment without per-preview env configuration.
  *
- * Production origins mirror the ADR-021 prod defaults
- * (`WEB_URL` / `APP_URL` / `DOCS_URL`). Changing those ADRs'
- * defaults requires updating this list in lock-step. The
- * `*.deessejs.com` wildcard additionally covers any future
- * subdomains (e.g. `api.deessejs.com`, `marketing.deessejs.com`)
- * without an allowlist edit.
+ * `deessejs.com` is the apex and is listed explicitly because
+ * `*.deessejs.com` does NOT match the apex (the `*` requires at
+ * least one subdomain segment — verified against better-auth's
+ * wildcard matcher at packages/auth/node_modules/better-auth/
+ * dist/utils/wildcard.mjs). `*.deessejs.com` covers every subdomain
+ * (app, docs, api, marketing, future ones) without an allowlist edit.
  *
  * Localhost entries are spread only when `NODE_ENV === "development"`
  * to keep the prod allowlist minimal (matches `pitfalls.md` §2).
@@ -53,9 +53,7 @@ const AUTH_BASE_PATH = "/api/v1/auth"
  * `docs/guides/better-auth/pitfalls.md` §5.
  */
 const PRODUCTION_ALLOWED_HOSTS = [
-  "app.deessejs.com",
   "deessejs.com",
-  "docs.deessejs.com",
   "*.deessejs.com",
   "*.vercel.app",
 ] as const

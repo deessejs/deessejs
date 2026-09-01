@@ -34,9 +34,7 @@ export const auth = betterAuth({
   // packages/auth/src/auth.ts and pitfalls.md §5 for the rationale.
   baseURL: {
     allowedHosts: [
-      "app.deessejs.com",
       "deessejs.com",
-      "docs.deessejs.com",
       "*.deessejs.com",
       "*.vercel.app",
       "localhost:*",
