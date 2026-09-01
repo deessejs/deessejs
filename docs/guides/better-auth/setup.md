@@ -24,7 +24,20 @@ import { nextCookies } from "better-auth/next-js"
 import { db } from "@workspace/database"
 
 export const auth = betterAuth({
-  baseURL: serverEnv.BETTER_AUTH_URL,
+  baseURL: {
+    allowedHosts: [
+      // Apex — `*.deessejs.com` does NOT match the apex.
+      "deessejs.com",
+      // Every subdomain (app, docs, api, future ones).
+      "*.deessejs.com",
+      // Every Vercel preview without per-preview env config.
+      "*.vercel.app",
+      // Spread localhost in dev only; see pitfalls.md §5 for the
+      // NODE_ENV-gated reason. `localhost:*` matches any port.
+      ...(process.env.NODE_ENV === "development" ? ["localhost:*"] : []),
+    ],
+    protocol: process.env.NODE_ENV === "development" ? "http" : "https",
+  },
   secret: serverEnv.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -36,7 +49,7 @@ export const auth = betterAuth({
 })
 ```
 
-**Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), base config reference.
+**Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), base config reference; [Better-Auth docs/guides/dynamic-base-url](https://better-auth.com/docs/guides/dynamic-base-url) for the dynamic `baseURL` form and Vercel preview support.
 
 > **Note:** this template is **single-tenant** (see `index.md` "Locked-in Decisions"). The codebase doesn't include an organization plugin or an org schema. Don't reintroduce. <!-- vale fix: write-good.ThereIs, Microsoft.Contractions -->
 
@@ -46,10 +59,10 @@ export const auth = betterAuth({
 
 | Variable | Required | Notes |
 |---|---|---|
-| `BETTER_AUTH_URL` | Yes | Defaults to `http://localhost:3000` |
 | `BETTER_AUTH_SECRET` | Yes | Min 32 chars. Generate: `openssl rand -base64 32` |
 | `DATABASE_URL` | Yes (runtime) | Postgres connection string. CLI scripts tolerate absence |
-| `ALLOWED_ORIGINS` | No | CSV list. Defaults to `localhost:3000,localhost:3001` |
+| `BETTER_AUTH_URL` | No | Legacy single-origin reference for tooling (`drizzle-kit`, scripts). The auth handler resolves the per-request origin from the `x-forwarded-host` / `host` headers against the `allowedHosts` list. See [`pitfalls.md`](./pitfalls.md) §5. |
+| `ALLOWED_ORIGINS` | No | CSV list of ad-hoc extras for `trustedOrigins` (staging, partner origins). The prod origins and `*.vercel.app` are auto-added via `allowedHosts`. Defaults to `localhost:3000,localhost:3001` in dev only. |
 
 `AUTH_SECRET` works as an alias for `BETTER_AUTH_SECRET`. See `packages/env/src/schema.ts`. <!-- vale fix: write-good.Passive -->
 
@@ -80,18 +93,13 @@ secrets: ["new-secret", "old-secret"], // old-secret is decrypt-only
 
 ## Trusted Origins
 
-Defaults to `baseURL`. Other origins can go in statically or via patterns: <!-- vale fix: write-good.TooWordy, write-good.Passive -->
+Each entry in `allowedHosts` is auto-added to `trustedOrigins` (with both `http` and `https` for localhost). Use `ALLOWED_ORIGINS` for ad-hoc extras that aren't in `allowedHosts` — staging, partner origins, etc.: <!-- vale fix: write-good.TooWordy, write-good.Passive -->
 
 ```ts
-trustedOrigins: [
-  "http://localhost:3000",
-  "https://*.vercel.app",        // wildcard subdomain
-  "exp://192.168.*.*:*/**",      // Expo dev URLs
-  ...serverEnv.ALLOWED_ORIGINS,
-],
+trustedOrigins: serverEnv.ALLOWED_ORIGINS,
 ```
 
-**Warning:** hardcoded localhost origins in `trustedOrigins` are a prod risk if `ALLOWED_ORIGINS` is empty. See [`pitfalls.md`](./pitfalls.md) §5.
+**Warning:** hardcoded localhost origins in `trustedOrigins` are a prod risk if `ALLOWED_ORIGINS` is empty. See [`pitfalls.md`](./pitfalls.md) §2 (the `localhost` gate) and §5 (the dynamic `baseURL` form that supersedes this list).
 
 **Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), `trustedOrigins` with wildcard patterns.
 

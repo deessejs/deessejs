@@ -30,6 +30,44 @@ import { sendAuthEmail, templates } from "@workspace/email"
 const AUTH_BASE_PATH = "/api/v1/auth"
 
 /**
+ * Hosts the auth handler will accept requests from. Better Auth
+ * resolves the per-request origin from `x-forwarded-host` → `host`
+ * → request URL, validates it against this list, and auto-adds
+ * each entry to `trustedOrigins` (with both `http` and `https`
+ * for localhost). The wildcard `*.vercel.app` covers every Vercel
+ * preview deployment without per-preview env configuration.
+ *
+ * `deessejs.com` is the apex and is listed explicitly because
+ * better-auth's wildcard matcher requires at least one subdomain
+ * segment for `*` to match (the apex `deessejs.com` itself is not
+ * matched by `*.deessejs.com`). `*.deessejs.com` then covers every
+ * subdomain (app, docs, api, marketing, future ones) without an
+ * allowlist edit.
+ *
+ * Localhost entries are spread only when `NODE_ENV === "development"`
+ * to keep the prod allowlist minimal (matches `pitfalls.md` §2).
+ * `localhost:*` matches any port — dev tooling, the CLI, and apps
+ * running on non-default ports all resolve without per-port edits.
+ *
+ * See https://better-auth.com/docs/guides/dynamic-base-url and
+ * `docs/guides/better-auth/pitfalls.md` §5.
+ */
+const PRODUCTION_ALLOWED_HOSTS = [
+  "deessejs.com",
+  "*.deessejs.com",
+  "*.vercel.app",
+] as const
+
+const DEV_ALLOWED_HOSTS = [
+  "localhost:*",
+] as const
+
+const AUTH_ALLOWED_HOSTS = [
+  ...PRODUCTION_ALLOWED_HOSTS,
+  ...(process.env.NODE_ENV === "development" ? DEV_ALLOWED_HOSTS : []),
+]
+
+/**
  * Log a transactional email failure. Hook your observability vendor here
  * (Sentry.captureException, metrics.increment("email_send_failure_total", {flow}),
  * structured log shipping, etc.). Kept as a thin local function so the auth
@@ -43,18 +81,32 @@ function logEmailFailure(flow: string, userId: string, error: string): void {
 }
 
 export const auth = betterAuth({
-  baseURL: serverEnv.BETTER_AUTH_URL,
+  baseURL: {
+    allowedHosts: AUTH_ALLOWED_HOSTS,
+    protocol: process.env.NODE_ENV === "development" ? "http" : "https",
+    // Fallback used only when a direct `auth.api.X()` call doesn't forward
+    // request headers and no host can be resolved from `x-forwarded-host` /
+    // `host` / request URL. Production requests always arrive with a `host`
+    // header (Vercel sets it), so this is never reached in normal operation.
+    // It does kick in for in-process Hono requests that omit the host
+    // header (e.g. tests calling `api.request("/...")` directly without
+    // forwarding request context) and for misconfigured reverse proxies
+    // that strip `host` upstream. See pitfalls.md §5 for the rationale.
+    fallback:
+      process.env.NODE_ENV === "development"
+        ? "http://localhost:3000"
+        : "https://app.deessejs.com",
+  },
   basePath: AUTH_BASE_PATH,
   secret: serverEnv.BETTER_AUTH_SECRET,
-  trustedOrigins: [
-    ...(process.env.NODE_ENV === "development"
-      ? ["http://localhost:3000", "http://localhost:3001"]
-      : []),
-    ...[serverEnv.WEB_URL, serverEnv.APP_URL, serverEnv.DOCS_URL].map(
-      (u) => new URL(u).origin,
-    ),
-    ...serverEnv.ALLOWED_ORIGINS,
-  ],
+  // Ad-hoc extras only (staging, partner origins). Prod origins and
+  // Vercel previews are auto-added via `allowedHosts` above. Gated
+  // on NODE_ENV to keep the localhost defaults in .env.example from
+  // leaking into prod (the same hazard pitfalls.md §2 warns about).
+  trustedOrigins:
+    process.env.NODE_ENV === "development"
+      ? serverEnv.ALLOWED_ORIGINS
+      : serverEnv.ALLOWED_ORIGINS.filter((origin) => !origin.includes("localhost")),
 
   database: drizzleAdapter(db, {
     provider: "pg",
