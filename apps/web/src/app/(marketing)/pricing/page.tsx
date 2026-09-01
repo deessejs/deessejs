@@ -175,16 +175,18 @@ const LayerCard = ({ layer }: { layer: PricingLayer }) => {
         {layer.cta.external ? (
           <Button
             asChild
+            size="lg"
             variant={isPro ? "default" : "outline"}
-            className="min-h-12 w-full"
+            className="w-full"
           >
             <a href={layer.cta.href}>{layer.cta.label}</a>
           </Button>
         ) : (
           <Button
             asChild
+            size="lg"
             variant={isPro ? "default" : "outline"}
-            className="min-h-12 w-full"
+            className="w-full"
           >
             <Link href={layer.cta.href}>{layer.cta.label}</Link>
           </Button>

@@ -32,22 +32,24 @@ strict.
 
 ## What DeesseJS ships
 
-Primary CTAs on the marketing surface target **48px minimum
-height** (`min-h-12` in Tailwind). The reasoning:
+The `@workspace/ui` `<Button>` component ships with five size
+variants: `xs` (24px), `sm` (28px), `default` (32px), `lg` (36px),
+and `icon-*` (24/28/32/36px square). None of them reach the
+48px accessibility target on their own.
 
-- 48px is **above all three minimums** simultaneously
-  (WCAG AA, Apple HIG, Material).
-- It is below the visual ceiling that would feel oversized on
-  a desktop hero.
-- It is the default height Material components ship with, so
-  the codebase already renders correctly at this size in many
-  inherited places.
+Primary CTAs on the marketing surface use `size="lg"` (36px)
+when they sit inside dense layouts like the pricing cards — the
+visual rhythm of the card matters more than the WCAG target,
+and 36px remains above WCAG 2.5.8's 24px AA minimum. Hero
+CTAs and the footer "Talk to us" panel use `size="lg"` too,
+where the surrounding whitespace carries the visual weight.
 
-Secondary buttons (variant="outline" inside a card, "Email us"
-in the footer CTA) inherit the same `min-h-12` from the same
-component. We do not differentiate by variant for height; we
-differentiate by **fill weight** (default vs outline), not by
-size.
+When a primary CTA must reach 48px — for example a full-width
+"Get started" CTA inside an empty state or a marketing modal —
+add `min-h-12` as a one-off override on that specific instance.
+Do not bake `min-h-12` into the `<Button>` component itself;
+the design system stays canonical, and the override stays
+visible at the call site.
 
 ## What the research says
 
@@ -90,7 +92,7 @@ audit. Other marketing pages can copy them.
 
 | Rule | Where | Tailwind |
 |---|---|---|
-| Primary CTA buttons reach 48px height | `LayerCard` CTA, footer CTA | `min-h-12` |
+| Primary CTA buttons inside cards | `LayerCard` CTA, footer CTA | `size="lg"` on `<Button>` |
 | Trust band mono stays readable in narrow viewports | Trust band under the cards | `text-left sm:text-center sm:text-copy-14-mono` |
 | Persona card bodies align in height in `md:grid-cols-2` | Personas block | `line-clamp-4` on the body `<p>` |
 | Comparison table scrolls horizontally on `<sm` | "Side by side" section | `overflow-x-auto` + `min-w-[640px]` on the `<table>` |
@@ -99,8 +101,13 @@ audit. Other marketing pages can copy them.
 
 ## What this reference allows
 
-- Adding `min-h-12` to a primary CTA is the default fix when a
-  page audit flags a touch-target undersize.
+- Using `size="lg"` on `<Button>` for any primary CTA inside a
+  card or a panel. Stays above WCAG 2.5.8 (24 px) without
+  overpowering dense layouts.
+- Adding `min-h-12` on a specific CTA call site when the
+  surrounding whitespace can carry the visual weight (hero
+  CTAs, modals, empty states). Keep the override at the call
+  site, never inside the Button component.
 - Adding `line-clamp-N` to balance heterogeneous card heights
   inside a `grid-cols-N md:grid-cols-M` layout.
 - Centering dense mono copy at `sm+` while leaving it
