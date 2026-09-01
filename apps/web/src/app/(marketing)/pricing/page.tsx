@@ -353,7 +353,7 @@ const PricingPage = () => {
                 Grouped by topic — skip to what you need.
               </h2>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
+            <div className="flex flex-col divide-y divide-border">
               {PRICING_FAQ_GROUPS.map((group) => (
                 <FaqCell key={group.heading} group={group} />
               ))}
