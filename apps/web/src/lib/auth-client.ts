@@ -2,7 +2,8 @@
 
 import { createAuthClient } from "better-auth/react"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
-import { clientEnv } from "@workspace/env/client"
+
+import { apiBaseUrl } from "./preview-urls"
 
 /**
  * Better Auth client for the marketing site (ADR-023).
@@ -44,6 +45,6 @@ import { clientEnv } from "@workspace/env/client"
  * static — browsers call the same origin they loaded from.
  */
 export const authClient = createAuthClient({
-  baseURL: clientEnv.NEXT_PUBLIC_API_BASE_URL,
+  baseURL: apiBaseUrl,
   basePath: API_AUTH_PATH,
 })

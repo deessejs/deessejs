@@ -42,15 +42,25 @@ if (!clientParsed.success) {
   }
 }
 
-// Client-side production invariant: NEXT_PUBLIC_APP_URL gets inlined at
-// build time. The schema accepts the default (localhost) for dev, but in
-// production we want the real URL.
+// Client-side production invariant: every NEXT_PUBLIC_* URL gets inlined
+// at build time. The schema accepts the localhost defaults for dev, but in
+// production we want the real per-Vercel-environment URL. ADR-028
+// Decision #5 parameterises this check across all four URL vars so CI
+// catches a missing override before deploy does.
 if (NODE_ENV === "production") {
-  const url = process.env.NEXT_PUBLIC_APP_URL
-  if (!url || url === "http://localhost:3000") {
-    errors.push(
-      "client.NEXT_PUBLIC_APP_URL must be set to the deployment URL in production (no localhost fallback)",
-    )
+  const SCHEMA_DEFAULTS = {
+    NEXT_PUBLIC_APP_URL: "http://localhost:3001",
+    NEXT_PUBLIC_WEB_URL: "http://localhost:3000",
+    NEXT_PUBLIC_DOCS_URL: "http://localhost:3002",
+    NEXT_PUBLIC_API_BASE_URL: "http://localhost:3001",
+  } as const
+  for (const [name, devDefault] of Object.entries(SCHEMA_DEFAULTS)) {
+    const value = process.env[name]
+    if (!value || value === devDefault) {
+      errors.push(
+        `client.${name} must be set to the deployment URL in production (got ${value ?? "unset"}, schema default is ${devDefault})`,
+      )
+    }
   }
 }
 

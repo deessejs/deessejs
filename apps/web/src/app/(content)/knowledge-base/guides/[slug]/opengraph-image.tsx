@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og"
 import { allKbGuides, allKbTopics } from "content-collections"
-import { APP_NAME, APP_URL } from "@workspace/ui/lib/config"
+import { APP_NAME, WEB_URL } from "@workspace/ui/lib/config"
 
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
@@ -83,7 +83,7 @@ export default async function Image({
             {description}
           </div>
         </div>
-        <div style={{ fontSize: 16, opacity: 0.5 }}>{APP_URL}</div>
+        <div style={{ fontSize: 16, opacity: 0.5 }}>{WEB_URL}</div>
       </div>
     ),
     { ...size }

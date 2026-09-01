@@ -28,9 +28,9 @@ import {
 	LayoutDashboardIcon,
 	LogOutIcon,
 } from "lucide-react"
-import { clientEnv } from "@workspace/env/client"
 
 import { authClient } from "@/lib/auth-client"
+import { appUrl as appUrlBase } from "@/lib/preview-urls"
 import { getAvatarUrl, getInitials } from "./user-menu-helpers"
 
 /**
@@ -53,7 +53,7 @@ import { getAvatarUrl, getInitials } from "./user-menu-helpers"
  */
 
 function appUrl(path: string): string {
-	return new URL(path, clientEnv.NEXT_PUBLIC_APP_URL).toString()
+	return new URL(path, appUrlBase).toString()
 }
 
 export function UserMenu({ variant }: { variant: "desktop" | "mobile" }) {

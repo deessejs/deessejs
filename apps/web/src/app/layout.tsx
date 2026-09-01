@@ -22,6 +22,11 @@ const fontMono = Geist_Mono({
 export const metadata = {
   title: APP_CONFIG.name,
   description: APP_CONFIG.description,
+  // ADR-028 Decision #6: pin the metadata base to the marketing
+  // canonical so OG / canonical URLs resolve against `deessejs.com`
+  // on every deployment (including Vercel previews) instead of
+  // falling back to Next.js's built-in `VERCEL_URL` heuristic.
+  metadataBase: new URL(APP_CONFIG.webURL),
 }
 
 export default function RootLayout({

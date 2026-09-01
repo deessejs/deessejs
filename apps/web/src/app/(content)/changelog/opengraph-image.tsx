@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og"
-import { APP_NAME, APP_URL } from "@workspace/ui/lib/config"
+import { APP_NAME, WEB_URL } from "@workspace/ui/lib/config"
 
 export const runtime = "edge"
 export const size = { width: 1200, height: 630 }
@@ -48,7 +48,7 @@ export default async function Image() {
           </div>
         </div>
         <div style={{ fontSize: 16, opacity: 0.5 }}>
-          {APP_URL}
+          {WEB_URL}
         </div>
       </div>
     ),

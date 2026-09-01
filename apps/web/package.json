@@ -18,6 +18,7 @@
   "dependencies": {
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
+    "@vercel/related-projects": "catalog:",
     "@workspace/api": "workspace:*",
     "@workspace/contracts": "workspace:*",
     "@workspace/env": "workspace:*",
