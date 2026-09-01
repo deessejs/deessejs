@@ -1,0 +1,78 @@
+---
+title: Version bump orphan by design
+description: The changesets version-bump commit sits only on the runner; main is advanced by the next staging to main promotion.
+---
+
+# ADR-027: Version bump orphan by design
+
+## Status
+
+Accepted (2026-09). Non-negotiable.
+
+## Context
+
+The release workflow (`release.yml`) calls `pnpm changeset version` to bump `apps/cli/package.json#version`, regenerate `apps/cli/CHANGELOG.md`, and consume the pending `.changeset/*.md` files. Changesets is configured with `commit: true`, so the bump is a real git commit, not a working-tree-only edit. Without an explicit push, the commit sits only in the runner's workspace.
+
+An earlier attempt at closing that gap added a step `Push version bump` (`git push origin HEAD:main`). The step violated the ruleset "protect main" (ruleset id `20040100`), which requires changes to reach `main` through a pull request. Every push from `github-actions[bot]` was refused with `GH013: Changes must be made through a pull request.`
+
+That state was inconsistent:
+
+- The `Push version bump` step had been on `main` for three weeks and had never succeeded. Every `release.yml` run on the `@latest` path terminated in red at that step.
+- The npm publish, git tag, and GitHub Release steps upstream of the failed step continued to work — they don't depend on the bump commit landing on `main`. So the pipeline continued to publish `@latest` despite the red step.
+- The step's only effect was to produce a red status on the workflow run and to confuse downstream debugging.
+
+The proposed fixes (push via PR auto-merge, exempt `github-actions[bot]` from the ruleset, adopt `@changesets/action`) all carry trade-offs that are documented as future work below.
+
+## Decision
+
+The `Push version bump` step is removed from `release.yml`. The pipeline accepts that the bump commit stays on the runner. Coherence between `apps/cli/package.json#version` on `main` and `@deessejs/cli@latest` on npm is restored by the next human-driven `staging → main` promotion, which re-runs `pnpm changeset version` against the same changesets consumed in the previous release.
+
+This is not a regression. Before the `Push version bump` step was added (PR #116), the bump commit sat on the runner by default and the pipeline behaved correctly. PR #116 attempted a fix that could not succeed under the ruleset; that fix is now reverted.
+
+## Consequences
+
+**Wins:**
+
+- `AGENTS.md` is restored to its binding form. The line "Never push directly to main — even for hotfixes, branch from staging and PR there" now holds for all actors, including `github-actions[bot]`. The release workflow does not push directly to `main`.
+- The workflow no longer has a step that systematically fails. CI status reflects the real state of the pipeline: green when the publish succeeds, red when something genuinely blocks.
+- The orphan bump commit is documented and explicit. New contributors reading `release.yml` see the comment block explaining the design and pointing at this ADR.
+
+**Losses:**
+
+- Between an `@latest` publish and the next `staging → main` promotion, `apps/cli/package.json#version` on `main` lags behind the published npm version. A fresh clone of `main` reports `2.0.0` while npm reports `2.1.0`.
+- The consumed `.changeset/*.md` files do not reach `origin/main`. The next time changesets runs (on the next promotion), it processes the same changesets again. Because `pnpm changeset version` is idempotent on already-bumped state, this is not a correctness issue, but it does mean the next promotion's `CHANGELOG.md` will reflect the changesets twice unless they're cleaned up.
+- A reviewer who fetches `origin/main` cannot verify the package version directly. The `apps/cli/src/api/self-version.ts` constant (injected by tsup's `define` from the package.json at build time) is what reaches the published CLI. The published CLI's `--version` output is the source of truth, not the in-repo `package.json`.
+
+**What stays locked:**
+
+- The canary path is unchanged. Push to `staging` continues to publish `@canary` automatically per ADR-025.
+- `pnpm changeset version` continues to run on the `@latest` path, consuming changesets and bumping the version. Only the post-bump push is removed.
+- npm Trusted Publishing remains the publish path. OIDC + provenance attestation are unaffected.
+- The ruleset `protect main` remains active. The release workflow respects it implicitly by not pushing to main.
+
+## What this rule forbids
+
+- A direct `git push` to `main` from any release workflow, including under any future automation that might be tempted to "fix" the orphan bump. The fix belongs to a human promotion or to a future release PR pattern.
+- An exemption on the ruleset for `github-actions[bot]` for the sole purpose of pushing the bump. The exemption widens the trust surface for all workflows, not just this one, and the senior direction (AGENTS.md) forbids it.
+
+## Future work
+
+Three directions are, each closing the gap in a different way. None is committed.
+
+1. **Refactor to release PR pattern.** Split `release.yml` into two workflows: one creates a release PR with the bump on push to main, the other publishes `@latest` when the release PR is merged. The release PR is the artifact that lands the bump on `main`. Merge is manual or via `--auto-merge`. Aligns with the Release Please / `@changesets/action` patterns used in Sentry, Linear, and similar projects. ~80–120 lines of YAML.
+2. **Adopt `@changesets/action` upstream.** The official action from the changesets team. Note: as of 2026-09, the action's own `publish.yml` uses a GitHub App to bypass branch protection (its `setup-bot-auth` step grants `permission-contents: write`). Adopting it does not solve GH013 on its own; the bypass must be configured separately on our ruleset, which we have decided not to do.
+3. **Bootstrap script that resyncs `package.json` from npm.** A small standalone script (cron or manual) that runs `npm view @deessejs/cli@latest version` and writes the result to `apps/cli/package.json`. Catches the rare case where main drifts too far from npm. Low priority — the next promotion cycle re-aligns anyway.
+
+## Where this rule came from
+
+The decision is forced by the ruleset and `AGENTS.md` together. The ruleset forbids direct pushes to `main`. `AGENTS.md` forbids even the bypass exemption that would unblock the push. The only consistent policy is "the release workflow does not push to `main`," and the orphan bump is the natural consequence.
+
+The orphan is not new — it has been the default state of the repo since the first changesets release. PR #116's `Push version bump` step was an attempted fix that did not respect the ruleset, and is therefore reverted. Documenting the orphan explicitly (this ADR) makes the state discoverable and removes the temptation for a future contributor to re-add the broken step.
+
+## Related
+
+- [AGENTS.md](../../../../AGENTS.md), the staging-first workflow whose `main` ownership rule this ADR aligns with.
+- [`.github/workflows/release.yml`](../../../../.github/workflows/release.yml), the workflow modified by this ADR. The comment block in section `1a` references this ADR.
+- [`docs/engineering/processes/release-engineering/latest-release.mdx`](../../../../processes/release-engineering/latest-release.mdx), the operational process page that documents the orphan behavior for contributors.
+- [ADR-024: Auto-publish on main](./ADR-024-auto-publish-on-main.mdx), the rule that allows push to `main` to trigger `@latest` publication without human intervention. This ADR is the boundary of that rule — ADR-024 governs the publish trigger, this ADR governs the absence of a push-back-to-main step.
+- [ADR-025: Auto-canary on staging](./ADR-025-auto-canary-on-staging.mdx), the canary path that is unchanged by this ADR.
