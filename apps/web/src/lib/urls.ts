@@ -4,5 +4,5 @@
 //
 // ADR-028 forbids aliasing `APP_URL` (apps/app origin) into a marketing role;
 // consumers that need the apps/app origin import `APP_URL` directly from
-// `@workspace/ui/lib/config`.
-export { WEB_URL } from "@workspace/ui/lib/config"
+// `@/lib/app-config` in `apps/app`.
+export { WEB_URL } from "@/lib/app-config"

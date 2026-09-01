@@ -40,15 +40,17 @@ buckets.
 
 ### 1. The `NEXT_PUBLIC_APP_URL` semantic collision
 
-`apps/web/src/lib/urls.ts` is three lines:
+`apps/web/src/lib/urls.ts` was three lines (the implementation
+commit reduced it to a single re-export; the historical shape was):
 
 ```ts
 import { APP_URL } from "@workspace/ui/lib/config"
 export const WEB_URL = APP_URL
 ```
 
-`packages/ui/src/lib/config.ts:10,21` re-exports
-`APP_URL = clientEnv.NEXT_PUBLIC_APP_URL`. The same env var carries two
+`packages/ui/src/lib/config.ts:10,21` (deleted by the
+implementation commit — see Decision #1 below) used to re-export
+`APP_URL = clientEnv.NEXT_PUBLIC_APP_URL`. The same env var carried two
 contradictory meanings:
 
 - On `apps/app`, `NEXT_PUBLIC_APP_URL` means "apps/app's origin." It defaults
@@ -228,22 +230,30 @@ shipping any one without the others leaves a broken inter-app surface.
 
 **1. Repoint the marketing canonical to `NEXT_PUBLIC_WEB_URL`.**
 
-- `packages/ui/src/lib/config.ts:10` reads `clientEnv.NEXT_PUBLIC_WEB_URL`,
-  not `clientEnv.NEXT_PUBLIC_APP_URL`. The `APP_URL` re-export on `:21`
-  is removed; consumers that need `NEXT_PUBLIC_APP_URL` import
-  `clientEnv.NEXT_PUBLIC_APP_URL` directly from `@workspace/env/client`.
+- `packages/ui/src/lib/config.ts` is **deleted**. The `@workspace/ui`
+  package hosts UI primitives only (shadcn components, hooks, styles);
+  runtime config does not belong there. A dedicated config module per
+  app replaces the central re-export:
+  - `apps/web/src/lib/app-config.ts` (marketing canonical)
+  - `apps/app/lib/app-config.ts` (apps/app's own origin and the
+    back-link to the marketing site)
+
+  Both files import the role-specific helper from
+  `@workspace/env/client` (`webURL()`, `appURL()`, `docsURL()`,
+  `apiBaseURL()` — see Decision #6 follow-up). The convention is
+  "one env var per role, import the helper directly."
 - `apps/web/src/lib/urls.ts:3` becomes
-  `export const WEB_URL = clientEnv.NEXT_PUBLIC_WEB_URL`, fixing the
+  `export { WEB_URL } from "@/lib/app-config"`, fixing the
   sitemap / OG / RSS / JSON-LD chain in one place. The three importers
   of `urls.ts` (`apps/web/src/app/(content)/blog/[slug]/page.tsx:7`,
   `apps/web/src/app/(content)/blog/feed.xml/route.ts:3`,
   `apps/web/src/app/(content)/changelog/feed.xml/route.ts:3`) flip
   from the alias to the marketing origin in the same commit.
-- `packages/ui/src/lib/config.ts` keeps `name`, `description`, and the
-  `links` object (those are app-agnostic). `url` becomes the marketing
-  origin via `NEXT_PUBLIC_WEB_URL`. The `APP_URL` re-export is removed
-  to keep the aliasing surface honest; the convention is "one env var
-  per role, import the env var directly."
+- The six `opengraph-image.tsx` files, `sitemap.ts`, and `robots.ts`
+  switch from `APP_URL` to `WEB_URL` in the same commit (the
+  `sitemap.ts` and `robots.ts` previously imported via
+  `@workspace/ui/lib/config`; they now import via
+  `@/lib/app-config`).
 
 **2. Hono CORS accepts the same wildcard as better-auth.**
 

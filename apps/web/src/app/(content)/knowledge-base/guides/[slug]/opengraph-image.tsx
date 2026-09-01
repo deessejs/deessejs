@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og"
 import { allKbGuides, allKbTopics } from "content-collections"
-import { APP_NAME, WEB_URL } from "@workspace/ui/lib/config"
+import { APP_NAME, WEB_URL } from "@/lib/app-config"
 
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"

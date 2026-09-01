@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next"
-import { WEB_URL } from "@workspace/ui/lib/config"
+import { WEB_URL } from "@/lib/app-config"
 import { allPosts, allReleases, allAuthors, allKbTopics, allKbGuides } from "content-collections"
 
 export default function sitemap(): MetadataRoute.Sitemap {

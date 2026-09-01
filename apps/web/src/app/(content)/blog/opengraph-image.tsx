@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og"
-import { APP_NAME, WEB_URL } from "@workspace/ui/lib/config"
+import { APP_NAME, WEB_URL } from "@/lib/app-config"
 
 export const runtime = "edge"
 export const size = { width: 1200, height: 630 }

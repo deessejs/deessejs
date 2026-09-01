@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 import "@workspace/ui/globals.css"
-import { APP_CONFIG } from "@workspace/ui/lib/config"
+import { APP_CONFIG } from "@/lib/app-config"
 import { AppProviders } from "@/components/providers"
 
 export const metadata: Metadata = {

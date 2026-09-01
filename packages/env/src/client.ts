@@ -51,3 +51,31 @@ export const clientEnv: Readonly<ClientEnv> = Object.freeze({
   NEXT_PUBLIC_DOCS_URL: env.NEXT_PUBLIC_DOCS_URL,
   NEXT_PUBLIC_API_BASE_URL: env.NEXT_PUBLIC_API_BASE_URL,
 } as ClientEnv) as Readonly<ClientEnv>
+
+/**
+ * Ergonomic URL helpers (ADR-021 §"What this rule allows" §4 + ADR-028
+ * Decision #6 follow-up). Each helper returns the role-specific origin
+ * as a string. Callers compose with `new URL(path, helper)` rather
+ * than concatenating — trailing-slash safety comes from `new URL`.
+ *
+ * Naming convention: the helper is named after the **role**, not the
+ * variable. `webURL()` returns the marketing origin
+ * (`deessejs.com` in prod), `appURL()` returns the apps/app origin
+ * (`app.deessejs.com` in prod). Each role maps to exactly one env
+ * var; aliasing across roles is forbidden (ADR-028 Decision #1).
+ */
+export function webURL(): string {
+  return clientEnv.NEXT_PUBLIC_WEB_URL
+}
+
+export function appURL(): string {
+  return clientEnv.NEXT_PUBLIC_APP_URL
+}
+
+export function docsURL(): string {
+  return clientEnv.NEXT_PUBLIC_DOCS_URL
+}
+
+export function apiBaseURL(): string {
+  return clientEnv.NEXT_PUBLIC_API_BASE_URL
+}

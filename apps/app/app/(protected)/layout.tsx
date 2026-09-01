@@ -1,6 +1,6 @@
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@workspace/ui/components/sidebar"
 
-import { APP_NAME } from "@workspace/ui/lib/config"
+import { APP_NAME } from "@/lib/app-config"
 import { AppSidebar } from "@/components/sidebars/app-sidebar"
 import { Separator } from "@workspace/ui/components/separator"
 export default async function ProtectedLayout({

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { Menu, Search } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@workspace/ui/components/sheet"
 import { Button } from "@workspace/ui/components/button"
-import { APP_NAME } from "@workspace/ui/lib/config"
+import { APP_NAME } from "@/lib/app-config"
 
 import { useSearchDialogStore } from "@/lib/search/store"
 
