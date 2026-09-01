@@ -38,11 +38,11 @@ const AUTH_BASE_PATH = "/api/v1/auth"
  * preview deployment without per-preview env configuration.
  *
  * `deessejs.com` is the apex and is listed explicitly because
- * `*.deessejs.com` does NOT match the apex (the `*` requires at
- * least one subdomain segment — verified against better-auth's
- * wildcard matcher at packages/auth/node_modules/better-auth/
- * dist/utils/wildcard.mjs). `*.deessejs.com` covers every subdomain
- * (app, docs, api, marketing, future ones) without an allowlist edit.
+ * better-auth's wildcard matcher requires at least one subdomain
+ * segment for `*` to match (the apex `deessejs.com` itself is not
+ * matched by `*.deessejs.com`). `*.deessejs.com` then covers every
+ * subdomain (app, docs, api, marketing, future ones) without an
+ * allowlist edit.
  *
  * Localhost entries are spread only when `NODE_ENV === "development"`
  * to keep the prod allowlist minimal (matches `pitfalls.md` §2).
@@ -82,7 +82,7 @@ function logEmailFailure(flow: string, userId: string, error: string): void {
 
 export const auth = betterAuth({
   baseURL: {
-    allowedHosts: [...AUTH_ALLOWED_HOSTS],
+    allowedHosts: AUTH_ALLOWED_HOSTS,
     protocol: process.env.NODE_ENV === "development" ? "http" : "https",
     // Fallback used only when a direct `auth.api.X()` call doesn't forward
     // request headers and no host can be resolved from `x-forwarded-host` /
@@ -99,7 +99,14 @@ export const auth = betterAuth({
   },
   basePath: AUTH_BASE_PATH,
   secret: serverEnv.BETTER_AUTH_SECRET,
-  trustedOrigins: serverEnv.ALLOWED_ORIGINS,
+  // Ad-hoc extras only (staging, partner origins). Prod origins and
+  // Vercel previews are auto-added via `allowedHosts` above. Gated
+  // on NODE_ENV to keep the localhost defaults in .env.example from
+  // leaking into prod (the same hazard pitfalls.md §2 warns about).
+  trustedOrigins:
+    process.env.NODE_ENV === "development"
+      ? serverEnv.ALLOWED_ORIGINS
+      : serverEnv.ALLOWED_ORIGINS.filter((origin) => !origin.includes("localhost")),
 
   database: drizzleAdapter(db, {
     provider: "pg",
