@@ -1,14 +1,8 @@
 name: Changesets check
 
-# Verify that any PR touching CLI-relevant paths also includes a changeset.
+# Verify that any PR touching apps/cli/** also includes a changeset.
 # This is the senior-pattern contribution gate: contributors add a changeset
 # if their PR changes the CLI surface, and CI enforces it.
-#
-# Per ADR-026, this check is a required status check on the branch
-# protection of staging and main. The path filter covers the same surface
-# that triggers cli-preview.yml (apps/cli, packages/contracts, packages/api).
-# See docs/engineering/decisions/ADR-026-changesets-merge-gate.mdx for the
-# rule that promotes this check from advisory to required.
 
 on:
   pull_request:
@@ -24,26 +18,22 @@ jobs:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
 
-      - name: Detect changes to CLI-relevant paths
+      - name: Detect changes to apps/cli/**
         id: changed
         run: |
-          # Compare PR head against the merge base. If any diff touched the
-          # CLI-relevant paths (apps/cli/**, packages/contracts/**,
-          # packages/api/**), a changeset is required. This matches the
-          # surface that cli-preview.yml triggers on.
+          # Compare PR head against the merge base. If any diff touched apps/cli/**,
+          # a changeset is required.
           BASE=${{ github.event.pull_request.base.ref }}
           HEAD=${{ github.event.pull_request.head.sha }}
           git fetch origin "$BASE" --depth=1
-          TOUCHED=$(git diff --name-only "origin/$BASE...$HEAD" \
-            | grep -E '^(apps/cli/|packages/contracts/|packages/api/)/' \
-            || true)
+          TOUCHED=$(git diff --name-only "origin/$BASE...$HEAD" | grep -E '^apps/cli/' || true)
           if [ -n "$TOUCHED" ]; then
             echo "touched=true" >> "$GITHUB_OUTPUT"
-            echo "Files changed under CLI-relevant paths:"
+            echo "Files changed under apps/cli/:"
             echo "$TOUCHED"
           else
             echo "touched=false" >> "$GITHUB_OUTPUT"
-            echo "No files changed under CLI-relevant paths — changeset not required."
+            echo "No files changed under apps/cli/ — changeset not required."
           fi
 
       - name: Verify changeset is present
@@ -53,7 +43,7 @@ jobs:
           if [ "$COUNT" -le 1 ]; then
             # Only config.json is always present; otherwise there should be
             # at least one *.md changeset file.
-            echo "::error::CLI-relevant paths were modified but no changeset file was added."
+            echo "::error::Apps/cli/** was modified but no changeset file was added."
             echo "::error::Add a changeset under .changeset/ describing the bump type."
             echo "::error::See .changeset/README.md for the format."
             exit 1

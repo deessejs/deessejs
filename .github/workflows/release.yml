@@ -3,23 +3,19 @@ name: Release
 # Senior release pattern: single workflow does version bump + npm publish +
 # tag + GitHub Release in one job. Triggered by push to main whose commit
 # message contains '.changeset' (the convention for commits that include
-# changeset files), by manual workflow_dispatch with `canary: true`, or by
-# workflow_call from staging-canary.yml (which passes channel=canary).
+# changeset files), or by manual workflow_dispatch.
 #
 # Two publish channels:
-#   - @latest: push to main (Tier 3). Changesets-driven version bump;
-#     pnpm changeset publish; stable GitHub Release.
-#   - @canary: workflow_dispatch with `canary: true`, or workflow_call
-#     from staging-canary.yml on push to staging (Tier 2). Synthetic
-#     version string (date+SHA); npm publish --tag canary; GitHub Release
-#     marked as prerelease.
+#   - @latest: human-promoted push to main (Tier 3). Changesets-driven
+#     version bump; pnpm changeset publish; stable GitHub Release.
+#   - @canary: on-demand workflow_dispatch with `canary: true` input
+#     (Tier 2). Synthetic version string (date+SHA); npm publish --tag canary;
+#     GitHub Release marked as prerelease.
 #
 # Both channels share the same npm trusted publisher entry (release.yml);
 # npm Trusted Publishing allows only one trusted publisher per package, so
 # the canary channel lives inside this same workflow rather than in its
-# own file. The staging-canary.yml wrapper calls this workflow via
-# workflow_call so npm still sees the trusted publisher as release.yml.
-# See ADR-021 §"Decision" and ADR-025 for the auto-canary trigger.
+# own file. See ADR-021 §"Decision".
 #
 # First-ever publish of @deessejs/cli is manual from a maintainer's machine
 # (npm has no "pending publisher" feature). See
@@ -35,12 +31,6 @@ on:
         type: boolean
         required: true
         default: false
-  workflow_call:
-    inputs:
-      channel:
-        description: 'Pre-selected channel: latest or canary. Used by staging-canary.yml to bypass input detection.'
-        type: string
-        required: true
 
 concurrency:
   group: release-${{ github.ref }}
@@ -56,7 +46,6 @@ jobs:
     runs-on: ubuntu-latest      # GitHub-hosted only — trusted publishers don't support self-hosted
     if: |
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'workflow_call' ||
       contains(github.event.head_commit.message, '.changeset')
     steps:
       - uses: actions/checkout@v4
@@ -76,30 +65,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # 0b. Determine release channel.
-      #   workflow_call with channel=canary → canary/prerelease.
-      #     (called from staging-canary.yml on push to staging.)
-      #   workflow_dispatch with canary=true → canary/prerelease.
-      #     (manual on-demand run by a maintainer.)
-      #   push to main (commit message contains .changeset) → latest/stable.
+      # 0b. Determine release channel. Push to main → latest/stable.
+      # workflow_dispatch with canary=true → canary/prerelease.
       # Downstream steps condition their behavior on these outputs.
       - name: Determine release channel
         id: channel
         run: |
-          if [ -n "${{ inputs.channel }}" ]; then
-            case "${{ inputs.channel }}" in
-              canary)
-                echo "dist_tag=canary"          >> "$GITHUB_OUTPUT"
-                echo "release_type=prerelease"  >> "$GITHUB_OUTPUT"
-                echo "version_source=synthetic" >> "$GITHUB_OUTPUT"
-                ;;
-              latest)
-                echo "dist_tag=latest"        >> "$GITHUB_OUTPUT"
-                echo "release_type=stable"    >> "$GITHUB_OUTPUT"
-                echo "version_source=changeset" >> "$GITHUB_OUTPUT"
-                ;;
-            esac
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.canary }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.canary }}" = "true" ]; then
             echo "dist_tag=canary"          >> "$GITHUB_OUTPUT"
             echo "release_type=prerelease"  >> "$GITHUB_OUTPUT"
             echo "version_source=synthetic" >> "$GITHUB_OUTPUT"
