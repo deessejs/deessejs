@@ -1,6 +1,7 @@
 import Link from "next/link"
 import type { Metadata } from "next"
 
+import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Card } from "@workspace/ui/components/card"
 import { Separator } from "@workspace/ui/components/separator"
@@ -12,10 +13,12 @@ import {
 } from "@workspace/ui/components/accordion"
 
 import {
+  COMPARISON_GROUPS,
   COMPARISON_LAYERS,
-  COMPARISON_ROWS,
-  PRICING_FAQ,
+  PRICING_FAQ_GROUPS,
   PRICING_LAYERS,
+  type ComparisonGroup as ComparisonGroupData,
+  type FaqGroup,
   type PricingLayer,
   type PricingPrice,
 } from "@/lib/pricing"
@@ -38,11 +41,12 @@ export const metadata: Metadata = {
  * Layout (in order):
  *   ┌─ Hero: title + lead ──────────────────────────────────────┐
  *   ├─ 3 cards (Open Community, Pro, Enterprise) ───────────────┤
- *   ├─ Detailed comparison table (3 columns) ────────────────────┤
+ *   │  └─ Trust band + single testimonial ───────────────────────┤
+ *   ├─ Detailed comparison table (3 columns, grouped by category) ┤
+ *   ├─ Persona block (freelance, in-house, enterprise, floor) ───┤
  *   ├─ Lifetime access ──────────────────────────────────────────┤
  *   ├─ Refund & license terms (+ Pro Education note) ────────────┤
- *   ├─ Persona block (freelance, in-house, enterprise, floor) ───┤
- *   ├─ FAQ (Accordion) ──────────────────────────────────────────┤
+ *   ├─ FAQ (3 grouped accordions) ───────────────────────────────┤
  *   └─ Footer CTA strip ─────────────────────────────────────────┘
  *
  * Pro Education is documented in the Refund and license section and
@@ -124,13 +128,20 @@ const LayerCard = ({ layer }: { layer: PricingLayer }) => {
   return (
     <Card
       className={`flex h-full flex-col gap-5 p-6 ${
-        isPro ? "border-foreground/20" : ""
+        isPro ? "border-foreground/30 bg-muted/20 shadow-sm" : ""
       }`}
     >
       <header className="flex flex-col gap-2">
-        <span className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          {LAYER_KICKER[layer.id]}
-        </span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            {LAYER_KICKER[layer.id]}
+          </span>
+          {isPro ? (
+            <Badge variant="outline" className="text-label-12">
+              Recommended
+            </Badge>
+          ) : null}
+        </div>
         <h3 className="text-heading-24 tracking-tight text-foreground !m-0">
           {layer.name}
         </h3>
@@ -140,6 +151,10 @@ const LayerCard = ({ layer }: { layer: PricingLayer }) => {
       </header>
 
       <PriceBlock price={layer.price} />
+
+      <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
+        {layer.forWho}
+      </p>
 
       <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
         {layer.positioning}
@@ -158,11 +173,19 @@ const LayerCard = ({ layer }: { layer: PricingLayer }) => {
 
       <div className="mt-auto pt-2">
         {layer.cta.external ? (
-          <Button asChild variant="outline" className="w-full">
+          <Button
+            asChild
+            variant={isPro ? "default" : "outline"}
+            className="w-full"
+          >
             <a href={layer.cta.href}>{layer.cta.label}</a>
           </Button>
         ) : (
-          <Button asChild className="w-full">
+          <Button
+            asChild
+            variant={isPro ? "default" : "outline"}
+            className="w-full"
+          >
             <Link href={layer.cta.href}>{layer.cta.label}</Link>
           </Button>
         )}
@@ -195,6 +218,30 @@ const PricingPage = () => {
             <LayerCard key={layer.id} layer={layer} />
           ))}
         </div>
+        {/* Trust band — anchors the buying decision immediately after the cards */}
+        <p className="text-copy-13-mono text-muted-foreground text-center">
+          14-day refund on Pro · MIT for Open Community · Source code shipped with
+          every Pro template · No subscription, no renewal
+        </p>
+        {/* Social proof — single testimonial near the pricing decision */}
+        <figure className="flex flex-col items-center gap-3 border-t border-border pt-6 text-center">
+          <blockquote className="text-copy-16 text-foreground leading-7 max-w-2xl text-balance [&:not(:first-child)]:mt-0">
+            &ldquo;We swapped three weeks of plumbing for a single{" "}
+            <code className="rounded bg-muted px-1.5 py-0.5 text-copy-13-mono">
+              deessejs init
+            </code>
+            . The MCP layer is the part we wish we&apos;d had a year ago.&rdquo;
+          </blockquote>
+          <figcaption className="flex items-center gap-3 text-label-13 text-muted-foreground">
+            <span
+              aria-hidden
+              className="flex size-7 items-center justify-center rounded-full border border-border bg-muted/40 text-label-12 text-foreground"
+            >
+              FC
+            </span>
+            <span>First customer — Founder, stealth B2B SaaS</span>
+          </figcaption>
+        </figure>
       </section>
 
       <Separator />
@@ -228,26 +275,41 @@ const PricingPage = () => {
               </tr>
             </thead>
             <tbody>
-              {COMPARISON_ROWS.map((row) => (
-                <tr key={row.attribute} className="border-b border-border/60">
-                  <th
-                    scope="row"
-                    className="py-3 pr-4 text-left align-top font-medium text-foreground"
-                  >
-                    {row.attribute}
-                  </th>
-                  {COMPARISON_LAYERS.map((layer) => (
-                    <td
-                      key={`${row.attribute}-${layer.id}`}
-                      className="py-3 pr-4 align-top text-muted-foreground"
-                    >
-                      {row.values[layer.id]}
-                    </td>
-                  ))}
-                </tr>
+              {COMPARISON_GROUPS.map((group) => (
+                <ComparisonGroup key={group.heading} group={group} />
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <Separator />
+
+      {/* Persona block — sits next to the buying decision, before the legal copy */}
+      <section className="flex flex-col gap-6" aria-labelledby="persona-heading">
+        <div className="flex flex-col gap-2">
+          <h2 id="persona-heading" className="text-heading-32 tracking-tight">
+            Who buys what
+          </h2>
+          <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
+            The four buyers we built the catalog around. Find the one closest to
+            you.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {PERSONAS.map((persona) => (
+            <Card key={persona.label} className="flex h-full flex-col gap-3 p-6">
+              <span className="text-label-13 font-mono uppercase tracking-wider text-muted-foreground">
+                {persona.label}
+              </span>
+              <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                {persona.title}
+              </h3>
+              <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+                {persona.body}
+              </p>
+            </Card>
+          ))}
         </div>
       </section>
 
@@ -335,51 +397,21 @@ const PricingPage = () => {
 
       <Separator />
 
-      {/* Persona block */}
-      <section className="flex flex-col gap-6" aria-labelledby="persona-heading">
-        <div className="flex flex-col gap-2">
-          <h2 id="persona-heading" className="text-heading-32 tracking-tight">
-            Who buys what
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {PERSONAS.map((persona) => (
-            <Card key={persona.label} className="flex h-full flex-col gap-3 p-6">
-              <span className="text-label-13 font-mono uppercase tracking-wider text-muted-foreground">
-                {persona.label}
-              </span>
-              <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
-                {persona.title}
-              </h3>
-              <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-                {persona.body}
-              </p>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      <Separator />
-
       {/* FAQ */}
       <section className="flex flex-col gap-6" aria-labelledby="faq-heading">
         <div className="flex flex-col gap-2">
           <h2 id="faq-heading" className="text-heading-32 tracking-tight">
             Frequently asked
           </h2>
+          <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
+            Grouped by topic — skip to what you need.
+          </p>
         </div>
-        <Accordion type="single" collapsible className="w-full">
-          {PRICING_FAQ.map((item, index) => (
-            <AccordionItem key={item.question} value={`faq-${index}`}>
-              <AccordionTrigger>{item.question}</AccordionTrigger>
-              <AccordionContent>
-                <p className="text-copy-14 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-                  {item.answer}
-                </p>
-              </AccordionContent>
-            </AccordionItem>
+        <div className="flex flex-col gap-8">
+          {PRICING_FAQ_GROUPS.map((group) => (
+            <FaqGroup key={group.heading} group={group} />
           ))}
-        </Accordion>
+        </div>
       </section>
 
       <Separator />
@@ -414,3 +446,62 @@ const PricingPage = () => {
 }
 
 export default PricingPage
+
+function ComparisonGroup({ group }: { group: ComparisonGroupData }) {
+  return (
+    <>
+      <tr className="border-b border-border/60 bg-muted/30">
+        <th
+          scope="colgroup"
+          colSpan={1 + COMPARISON_LAYERS.length}
+          className="py-2 pr-4 text-left text-label-13 uppercase tracking-wider text-muted-foreground"
+        >
+          {group.heading}
+        </th>
+      </tr>
+      {group.rows.map((row) => (
+        <tr key={row.attribute} className="border-b border-border/60">
+          <th
+            scope="row"
+            className="py-3 pr-4 text-left align-top font-medium text-foreground"
+          >
+            {row.attribute}
+          </th>
+          {COMPARISON_LAYERS.map((layer) => (
+            <td
+              key={`${row.attribute}-${layer.id}`}
+              className="py-3 pr-4 align-top text-muted-foreground"
+            >
+              {row.values[layer.id]}
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  )
+}
+
+function FaqGroup({ group }: { group: FaqGroup }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        {group.heading}
+      </h3>
+      <Accordion type="single" collapsible className="w-full">
+        {group.items.map((item, index) => (
+          <AccordionItem
+            key={item.question}
+            value={`${group.heading}-${index}`}
+          >
+            <AccordionTrigger>{item.question}</AccordionTrigger>
+            <AccordionContent>
+              <p className="text-copy-14 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+                {item.answer}
+              </p>
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </div>
+  )
+}
