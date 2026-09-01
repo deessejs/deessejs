@@ -176,7 +176,7 @@ const LayerCard = ({ layer }: { layer: PricingLayer }) => {
           <Button
             asChild
             variant={isPro ? "default" : "outline"}
-            className="w-full"
+            className="min-h-12 w-full"
           >
             <a href={layer.cta.href}>{layer.cta.label}</a>
           </Button>
@@ -184,7 +184,7 @@ const LayerCard = ({ layer }: { layer: PricingLayer }) => {
           <Button
             asChild
             variant={isPro ? "default" : "outline"}
-            className="w-full"
+            className="min-h-12 w-full"
           >
             <Link href={layer.cta.href}>{layer.cta.label}</Link>
           </Button>
@@ -219,7 +219,7 @@ const PricingPage = () => {
           ))}
         </div>
         {/* Trust band — anchors the buying decision immediately after the cards */}
-        <p className="text-copy-13-mono text-muted-foreground text-center">
+        <p className="text-copy-13-mono text-muted-foreground text-left sm:text-center sm:text-copy-14-mono">
           14-day refund on Pro · MIT for Open Community · Source code shipped with
           every Pro template · No subscription, no renewal
         </p>
@@ -286,7 +286,7 @@ const PricingPage = () => {
               <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
                 {persona.title}
               </h3>
-              <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+              <p className="text-copy-14 text-muted-foreground leading-7 line-clamp-4 [&:not(:first-child)]:mt-0">
                 {persona.body}
               </p>
             </Card>
