@@ -1,6 +1,8 @@
 import Link from "next/link"
 import type { Metadata } from "next"
 
+import { ArrowRight } from "lucide-react"
+
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Card } from "@workspace/ui/components/card"
@@ -133,7 +135,7 @@ const LayerCard = ({ layer }: { layer: PricingLayer }) => {
     >
       <header className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <span className="text-label-13 text-muted-foreground">
             {LAYER_KICKER[layer.id]}
           </span>
           {isPro ? (
@@ -201,13 +203,11 @@ const PricingPage = () => {
     <article className="mx-auto flex max-w-6xl flex-col gap-16 px-4 py-16 sm:px-6 lg:gap-20 lg:py-24">
       {/* Hero */}
       <header className="flex flex-col gap-6">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          Pricing
-        </p>
-        <h1 className="text-heading-56 tracking-tight">
+        <p className="text-label-13 text-muted-foreground">Pricing</p>
+        <h1 className="text-heading-48 sm:text-heading-56 lg:text-heading-64 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
           Pricing.
         </h1>
-        <p className="text-muted-foreground text-copy-20 leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
+        <p className="text-muted-foreground text-copy-18 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
           Three layers in one catalog. Pay once or pay nothing. No
           subscriptions, no per-seat counts, no renewals.
         </p>
@@ -232,7 +232,7 @@ const PricingPage = () => {
       {/* Detailed comparison table */}
       <section className="flex flex-col gap-6" aria-labelledby="comparison-heading">
         <div className="flex flex-col gap-2">
-          <h2 id="comparison-heading" className="text-heading-32 tracking-tight">
+          <h2 id="comparison-heading" className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
             Side by side
           </h2>
           <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
@@ -271,7 +271,7 @@ const PricingPage = () => {
       {/* Persona block — sits next to the buying decision, before the legal copy */}
       <section className="flex flex-col gap-6" aria-labelledby="persona-heading">
         <div className="flex flex-col gap-2">
-          <h2 id="persona-heading" className="text-heading-32 tracking-tight">
+          <h2 id="persona-heading" className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
             Who buys what
           </h2>
           <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
@@ -282,7 +282,7 @@ const PricingPage = () => {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {PERSONAS.map((persona) => (
             <Card key={persona.label} className="flex h-full flex-col gap-3 p-6">
-              <span className="text-label-13 font-mono uppercase tracking-wider text-muted-foreground">
+              <span className="text-label-13 font-mono text-muted-foreground">
                 {persona.label}
               </span>
               <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
@@ -301,7 +301,7 @@ const PricingPage = () => {
       {/* Lifetime access */}
       <section className="flex flex-col gap-6" aria-labelledby="lifetime-heading">
         <div className="flex flex-col gap-2">
-          <h2 id="lifetime-heading" className="text-heading-32 tracking-tight">
+          <h2 id="lifetime-heading" className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
             What lifetime means here
           </h2>
           <p className="text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
@@ -342,7 +342,7 @@ const PricingPage = () => {
       {/* Refund & license */}
       <section className="flex flex-col gap-6" aria-labelledby="refund-heading">
         <div className="flex flex-col gap-2">
-          <h2 id="refund-heading" className="text-heading-32 tracking-tight">
+          <h2 id="refund-heading" className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
             Refund and license
           </h2>
         </div>
@@ -383,7 +383,7 @@ const PricingPage = () => {
       {/* FAQ */}
       <section className="flex flex-col gap-6" aria-labelledby="faq-heading">
         <div className="flex flex-col gap-2">
-          <h2 id="faq-heading" className="text-heading-32 tracking-tight">
+          <h2 id="faq-heading" className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
             Frequently asked
           </h2>
           <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
@@ -402,25 +402,30 @@ const PricingPage = () => {
       {/* Footer CTA */}
       <section
         aria-labelledby="cta-heading"
-        className="flex flex-col items-start gap-6 rounded-lg border border-border bg-muted/30 p-8 md:flex-row md:items-center md:justify-between"
+        className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border rounded-lg border border-border"
       >
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 p-6 lg:p-10">
+          <p className="text-label-13 text-muted-foreground">Ready to ship?</p>
           <h2
             id="cta-heading"
-            className="text-heading-24 tracking-tight text-foreground !m-0"
+            className="text-heading-32 lg:text-heading-40 tracking-tight text-foreground text-balance [&:not(:first-child)]:mt-0"
           >
-            Talk to us
+            Start with a template. Keep the contracts.
           </h2>
-          <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Email is the fastest path. We read everything that comes in.
+          <p className="text-copy-16 text-muted-foreground leading-7 max-w-xl [&:not(:first-child)]:mt-0">
+            Install the CLI, pick a starter, and your agent gets every
+            contract it needs to navigate the rest of the project.
           </p>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button asChild>
-            <Link href="/templates">Browse the catalog</Link>
+        <div className="flex flex-col items-stretch justify-center gap-4 p-6 lg:p-10">
+          <Button asChild size="lg">
+            <Link href="/knowledge-base/guides/install-deessejs-cli">
+              Install the CLI
+              <ArrowRight className="size-3.5" aria-hidden />
+            </Link>
           </Button>
-          <Button asChild variant="outline">
-            <a href="mailto:support@deessejs.com?subject=Pricing">Email us</a>
+          <Button variant="outline" size="lg" asChild>
+            <Link href="/templates">Browse the registry</Link>
           </Button>
         </div>
       </section>
