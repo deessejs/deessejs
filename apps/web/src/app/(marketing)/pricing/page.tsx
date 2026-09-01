@@ -48,15 +48,14 @@ export const metadata: Metadata = {
  * previous grid (inherited from the wrapper outline).
  *
  * Sections, top to bottom:
- *   1. Hero — centered title + lead, no image
- *   2. Three-layer cards — 3 cols with the "Recommended" lift on Pro
- *   3. Trust band — single-row mono statement under the cards
- *   4. Side-by-side comparison — 3 columns, grouped by category
- *   5. Who buys what — 2-col grid of 4 personas
- *   6. Lifetime access — full-width prose block
- *   7. Refund and license — full-width prose block
- *   8. FAQ — 3 grouped accordions in a single column
- *   9. Footer CTA — 2-col grid (copy + actions)
+ *   1. Three-layer cards — 3 cols with the "Recommended" lift on Pro
+ *   2. Trust band — single-row mono statement under the cards
+ *   3. Side-by-side comparison — 3 columns, grouped by category
+ *   4. Who buys what — 2-col grid of 4 personas
+ *   5. Lifetime access — full-width prose block
+ *   6. Refund and license — full-width prose block
+ *   7. FAQ — 3 grouped accordions stacked in a single column
+ *   8. Footer CTA — 2-col grid (copy + actions)
  *
  * Pro Education is documented in the Refund and license section and
  * in the FAQ, not as a card or a comparison column, because it shares
@@ -133,41 +132,16 @@ const LAYER_KICKER: Record<PricingLayer["id"], string> = {
 const PricingPage = () => {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      {/* Shared-border wrapper — every section lives inside one card, including the hero */}
+      {/* Shared-border wrapper — every section lives inside one card */}
       <div className="border border-border bg-background rounded-none">
-        {/* 1. Hero — centered, no image */}
-        <div className="flex justify-center border-b border-border">
-          <Cell className="items-center gap-6 lg:gap-8 text-center max-w-5xl !p-8 lg:!p-16">
-            <p className="text-label-13 text-muted-foreground">Pricing</p>
-            <h1 className="max-w-5xl text-heading-48 sm:text-heading-56 lg:text-heading-64 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
-              Pricing.
-            </h1>
-            <p className="text-muted-foreground text-copy-18 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
-              Three layers in one catalog. Pay once or pay nothing. No
-              subscriptions, no per-seat counts, no renewals.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <Button asChild size="lg">
-                <Link href="/knowledge-base/guides/install-deessejs-cli">
-                  Install the CLI
-                  <ArrowRight className="size-3.5" aria-hidden />
-                </Link>
-              </Button>
-              <Button variant="outline" size="lg" asChild>
-                <Link href="/templates">Browse templates</Link>
-              </Button>
-            </div>
-          </Cell>
-        </div>
-
-        {/* 2. Three-layer cards — 3 cols with the "Recommended" lift on Pro */}
+        {/* 1. Three-layer cards — 3 cols with the "Recommended" lift on Pro */}
         <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
           {PRICING_LAYERS.map((layer) => (
             <LayerCell key={layer.id} layer={layer} />
           ))}
         </div>
 
-        {/* 3. Trust band — single-row statement */}
+        {/* 2. Trust band — single-row statement */}
         <Cell className="items-center text-center border-b border-border !py-4 bg-muted/20">
           <p className="text-copy-13-mono text-muted-foreground text-left sm:text-center sm:text-copy-14-mono">
             14-day refund on Pro · MIT for Open Community · Source code shipped
@@ -175,7 +149,7 @@ const PricingPage = () => {
           </p>
         </Cell>
 
-        {/* 4. Side-by-side comparison — full-width row containing the table */}
+        {/* 3. Side-by-side comparison — full-width row containing the table */}
         <div className="border-b border-border">
           <Cell className="!p-0 border-0">
             {/* Header row inside the cell */}
@@ -215,7 +189,7 @@ const PricingPage = () => {
           </Cell>
         </div>
 
-        {/* 5. Who buys what — 2-col grid of 4 personas */}
+        {/* 4. Who buys what — 2-col grid of 4 personas */}
         <div className="border-b border-border">
           <Cell className="!p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
@@ -250,7 +224,7 @@ const PricingPage = () => {
           </Cell>
         </div>
 
-        {/* 6. Lifetime access — full-width prose */}
+        {/* 5. Lifetime access — full-width prose */}
         <div className="border-b border-border">
           <Cell className="!p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
@@ -293,7 +267,7 @@ const PricingPage = () => {
           </Cell>
         </div>
 
-        {/* 7. Refund and license — full-width prose */}
+        {/* 6. Refund and license — full-width prose */}
         <div className="border-b border-border">
           <Cell className="!p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
@@ -342,7 +316,7 @@ const PricingPage = () => {
           </Cell>
         </div>
 
-        {/* 8. FAQ — 3 grouped accordions */}
+        {/* 7. FAQ — 3 grouped accordions */}
         <div className="border-b border-border">
           <Cell className="!p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
@@ -361,7 +335,7 @@ const PricingPage = () => {
           </Cell>
         </div>
 
-        {/* 9. Footer CTA — 2-col grid (copy + actions) */}
+        {/* 8. Footer CTA — 2-col grid (copy + actions) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
           <Cell className="gap-2 lg:!p-10">
             <p className="text-label-13 text-muted-foreground">
