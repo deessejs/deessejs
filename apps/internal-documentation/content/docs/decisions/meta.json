@@ -31,6 +31,7 @@
     "ADR-023-apps-web-session-aware-header",
     "ADR-024-auto-publish-on-main",
     "ADR-025-auto-canary-on-staging",
-    "ADR-026-changesets-merge-gate"
+    "ADR-026-changesets-merge-gate",
+    "ADR-027-version-bump-orphan"
   ]
 }
