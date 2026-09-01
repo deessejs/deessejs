@@ -63,7 +63,21 @@ fi
 
 The synthetic canary version `<base>-canary.<UTC-timestamp>.<short-sha>` is computed and written back to `apps/cli/package.json` via `jq`. Changesets are **not** consumed at this step; they stay available for the eventual `@latest` publish on `main`.
 
-### 3. release.yml publishes under the canary dist-tag
+### 3. release.yml validates the base version
+
+Before publishing, the workflow checks that `apps/cli/package.json#version` is a clean `X.Y.Z` semver (no pre-release suffix). The check reads from the committed tree (`git show HEAD:apps/cli/package.json`), not from the working tree, so a polluted value from a previous canary run cannot poison the check.
+
+```bash
+BASE=$(git show HEAD:apps/cli/package.json | jq -r '.version')
+if ! echo "$BASE" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+  echo "::error::apps/cli/package.json#version is '$BASE', expected X.Y.Z."
+  exit 1
+fi
+```
+
+If a previous run left the file dirty (e.g. `2.1.0-canary.x.y.z`), this step fails the job with a clear message instead of publishing a chained version. See [ADR-025](../../decisions/ADR-025-auto-canary-on-staging.mdx#base-version-guards) for the rationale.
+
+### 4. release.yml publishes under the canary dist-tag
 
 ```bash
 npm publish --tag canary --provenance --no-git-checks
@@ -71,11 +85,30 @@ npm publish --tag canary --provenance --no-git-checks
 
 Provenance is attached. `--no-git-checks` prevents the publish from failing on the dirty working tree.
 
-### 4. release.yml re-pins @latest defensively
+### 5. release.yml re-pins @latest defensively
 
-After the canary publish completes, the workflow re-pins `@latest` to its previous value (reads it from `npm view @deessejs/cli@latest version`). This guards against any accidental tag move in step 3.
+After the canary publish completes, the workflow re-pins `@latest` to its previous value (reads it from `npm view @deessejs/cli@latest version`). This guards against any accidental tag move in step 4.
 
-### 5. release.yml creates a GitHub Release
+### 6. release.yml restores the package.json version
+
+The canary rewrite in step 2 leaves `apps/cli/package.json` set to the synthetic version. After the publish succeeds, the workflow rewrites the file back to the committed base version:
+
+```bash
+BASE=$(git show HEAD:apps/cli/package.json | jq -r '.version')
+CURRENT=$(node -e "console.log(require('./package.json').version)")
+if [ "$CURRENT" != "$BASE" ]; then
+  jq --arg v "$BASE" '.version = $v' package.json > package.json.tmp
+  mv package.json.tmp package.json
+fi
+```
+
+The published tarball is already on npm; only the next canary run sees the clean base. Without this restore, the next run would compute `<synthetic>-canary.<new-timestamp>.<new-sha>`, producing a suffix chain that grows without bound.
+
+### 7. release.yml reads the version for tagging
+
+The `Read new version` step reads from `steps.canary-version.outputs.canary_version` (the synthetic value computed in step 2), not from `package.json`. Reading from the file would yield the base (because step 6 has just reset it) and the tag would name the wrong release.
+
+### 8. release.yml creates a GitHub Release
 
 ```bash
 gh release create release/v<canary-version> --prerelease

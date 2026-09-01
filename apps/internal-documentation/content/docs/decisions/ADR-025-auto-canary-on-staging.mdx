@@ -119,6 +119,20 @@ npm Trusted Publishing allows only one trusted publisher per package, keyed on t
 - The `workflow_dispatch` input stays available for on-demand dogfooding from a non-`staging` branch.
 - `cli-preview.yml` is unchanged. The per-PR preview channel still uses pkg.pr.new for ephemeral PR-feedback tarballs.
 
+## Base version guards
+
+The canary rewrite leaves `apps/cli/package.json#version` set to the synthetic version, and `--no-git-checks` allows `npm publish` to accept the dirty tree. Without explicit guards, two failure modes appear:
+
+1. **Suffix chain.** A subsequent canary run reads the polluted `package.json`, computes its synthetic version from a string that already contains `-canary.<...>`, and produces a chained version like `2.1.0-canary.x.y.z-canary.a.b.c`. After a handful of runs the version is unparseable.
+2. **Published tarball mismatch.** Without the post-publish restore, `Read new version` reads the synthetic version, which is correct, but a future refactor that moves the read step earlier (or that drops the post-publish step) would silently tag and release with the wrong version.
+
+The canary path is therefore surrounded by two guards:
+
+- **Pre-publish validation (`Validate base version (canary)`).** Reads `apps/cli/package.json#version` from the committed tree (`git show HEAD:apps/cli/package.json`) and fails the job if it does not match `X.Y.Z`. A previous dirty run that left a polluted value triggers a clear error message that names the offending value and points the operator at the missing restore.
+- **Post-publish restore (`Restore apps/cli version after canary publish`).** After `npm publish` succeeds, rewrites `apps/cli/package.json#version` back to the committed value. The published tarball is already on npm; only the next canary run sees the clean base.
+
+`Read new version` reads from `steps.canary-version.outputs.canary_version` on the canary path, not from `package.json`, so the post-publish restore does not corrupt the tag or release name.
+
 ## How to verify
 
 After the change:

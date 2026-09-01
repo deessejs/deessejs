@@ -98,6 +98,40 @@ jobs:
       # on main, dirty the working tree, and produce a `0.0.0-<date>` snapshot
       # version that does not match our `2.1.0-canary.<date>.<sha>` naming.
       # Instead we rewrite apps/cli/package.json#version in place via jq.
+      #
+      # Two guards surround the canary publish:
+      #
+      #   - Validate base version (pre-publish). The canary string is built
+      #     by appending `-canary.<UTC-timestamp>.<short-sha>` to whatever
+      #     apps/cli/package.json#version currently reads. If a previous
+      #     run left a polluted value (e.g. `2.1.0-canary.x.y.z`), the next
+      #     run would compute `2.1.0-canary.x.y.z-canary.a.b.c`. The
+      #     validation step fails the job when the base is not a strict
+      #     X.Y.Z. The validation reads from the committed version
+      #     (`git show HEAD:apps/cli/package.json`), not from the working
+      #     tree, so a previous dirty run cannot poison this check.
+      #
+      #   - Restore apps/cli version (post-publish). The canary rewrite
+      #     leaves apps/cli/package.json dirty (set to the synthetic
+      #     version). Without restoration, the next canary run sees the
+      #     polluted value and computes a longer suffix chain. After the
+      #     publish succeeds, this step rewrites the file back to the
+      #     committed version. The published tarball is already on npm
+      #     by the time the restore runs, so npm does not see the
+      #     reset; only the next canary run sees the clean base.
+      - name: Validate base version (canary)
+        if: steps.channel.outputs.version_source == 'synthetic'
+        run: |
+          BASE=$(git show HEAD:apps/cli/package.json | jq -r '.version')
+          if ! echo "$BASE" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::apps/cli/package.json#version is '$BASE', expected X.Y.Z."
+            echo "::error::The committed version must be a clean semver release."
+            echo "::error::If a previous canary run left the working tree dirty,"
+            echo "::error::the post-publish restore step did not run; investigate."
+            exit 1
+          fi
+          echo "Base version validated: $BASE"
+
       - name: Compute canary version
         if: steps.channel.outputs.version_source == 'synthetic'
         id: canary-version
@@ -184,11 +218,42 @@ jobs:
             echo "@latest unchanged; no defensive re-pin needed."
           fi
 
+      # Post-publish restore. The canary rewrite (step above) leaves
+      # apps/cli/package.json dirty (set to the synthetic canary version).
+      # Without this step, the next canary run would compute
+      # `<synthetic>-canary.<new-timestamp>.<new-sha>`, producing a
+      # suffix chain that grows without bound. After the publish
+      # succeeds, this step rewrites the file back to the committed
+      # version (X.Y.Z). The published tarball is already on npm; only
+      # the next canary run sees the clean base.
+      - name: Restore apps/cli version after canary publish
+        if: steps.channel.outputs.dist_tag == 'canary'
+        working-directory: apps/cli
+        run: |
+          BASE=$(git show HEAD:apps/cli/package.json | jq -r '.version')
+          CURRENT=$(node -e "console.log(require('./package.json').version)")
+          if [ "$CURRENT" = "$BASE" ]; then
+            echo "Version already at base ($BASE); no restore needed."
+            exit 0
+          fi
+          echo "Restoring apps/cli/package.json#version from $CURRENT to $BASE"
+          jq --arg v "$BASE" '.version = $v' package.json > package.json.tmp
+          mv package.json.tmp package.json
+
       # 3. Read the new CLI version.
+      # On the @canary path, the post-publish restore step has reset
+      # apps/cli/package.json#version to the base value, so reading the
+      # file would yield the base instead of the synthetic canary
+      # version. We use steps.canary-version.outputs.canary_version when
+      # available, falling back to the file read on the @latest path.
       - name: Read new version
         id: version
         run: |
-          VERSION=$(node -e "console.log(require('./apps/cli/package.json').version)")
+          if [ -n "${{ steps.canary-version.outputs.canary_version }}" ]; then
+            VERSION="${{ steps.canary-version.outputs.canary_version }}"
+          else
+            VERSION=$(node -e "console.log(require('./apps/cli/package.json').version)")
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       # 4. Tag + push tag (force-update for idempotency).
