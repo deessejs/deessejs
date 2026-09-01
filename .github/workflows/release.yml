@@ -165,15 +165,21 @@ jobs:
         if: steps.channel.outputs.version_source == 'changeset'
         run: pnpm install --frozen-lockfile
 
-      # 1a. Push the changesets commit back to main. Changesets (with
-      # `commit: true` in .changeset/config.json) creates the version-bump
-      # commit locally; without this push, the commit sits only in the
-      # runner's working tree. The next release would then try to re-bump
-      # and double-publish, and the consumed .changeset/ files would never
-      # reach origin/main — leaving the repo with a stale .changeset/ and
-      # a published npm version that doesn't exist on the main branch.
-      - name: Push version bump
-        run: git push origin HEAD:main
+      # 1a. Note: pnpm changeset version creates the version-bump commit
+      # locally (commit: true in .changeset/config.json). That commit is
+      # intentionally NOT pushed to origin/main in this workflow — the
+      # ruleset 'protect main' (ruleset id 20040100) requires changes to
+      # reach main through a pull request, and a direct push from
+      # github-actions[bot] is refused with GH013. The bump commit
+      # therefore sits only on the runner; the consumed .changeset/*.md
+      # files are also lost. main is advanced by the next human-driven
+      # staging -> main promotion, which re-runs changeset version
+      # against the same changesets that were consumed here.
+      #
+      # Implication: between a @latest publish and the next promotion,
+      # apps/cli/package.json#version on main may lag behind the
+      # published npm version. This is by design; see ADR-027 for the
+      # rationale and the follow-up plan.
 
       # 1b. Build all packages that produce publishable artifacts.
       # Without this, `dist/` (the actual bundle) is missing from the
