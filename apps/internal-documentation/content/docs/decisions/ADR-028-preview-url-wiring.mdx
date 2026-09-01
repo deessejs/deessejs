@@ -157,17 +157,67 @@ preview-against-preview wiring:
 - `VERCEL_PROJECT_PRODUCTION_URL` — always set, even in preview, the
   canonical production host of this project.
 - `VERCEL_ENV` — `production` / `preview` / `development`.
+- `VERCEL_RELATED_PROJECTS` — JSON list of linked sibling projects'
+  preview and production hosts, auto-injected by Vercel when
+  `relatedProjects` is declared in `vercel.json` (or the dashboard).
 
 None of these is read by any app code today. `VERCEL_URL` is also disabled
 when Standard Deployment Protection is on, so it cannot be the load-bearing
 mechanism.
 
-`@vercel/related-projects` (npm) is the supported path for option (c). The
-package exposes a `withRelatedProject({ projectName, defaultHost })`
-helper that returns the linked sibling project's preview URL at build and
-runtime, falling back to `defaultHost` (an env var like `NEXT_PUBLIC_API_BASE_URL`)
-when no sibling link exists. Linking is done in the Vercel dashboard once
-per project pair, by Vercel project ID; no `vercel.json` change is needed.
+### 6. `.env.example` is incomplete and the runbook is missing
+
+The repo's only `.env.example` (at the repo root) declares four URL vars:
+`BETTER_AUTH_URL`, `ALLOWED_ORIGINS`, `PARENT_DOMAIN`, and
+`NEXT_PUBLIC_APP_URL`. The seven other URL vars the schema declares
+(`WEB_URL`, `APP_URL`, `DOCS_URL`, `API_BASE_URL`, and the three
+`NEXT_PUBLIC_WEB_URL`, `NEXT_PUBLIC_DOCS_URL`, `NEXT_PUBLIC_API_BASE_URL`)
+plus the CLI's `DEESSEJS_API_URL` are missing. The team cannot discover
+the contract from `.env.example` alone; a contributor copying the file
+gets Zod defaults that happen to work in dev (`localhost:3000/3001/3002`)
+but break silently in production.
+
+The companion runbook promised by Decision #4
+(`documents/internal/runbooks/preview-url-wiring.md`) does not yet exist
+on disk. The only concrete runbook today is `apps/web/tests/e2e/RUNBOOK.md`,
+which covers Vercel Deployment Protection and the
+`VERCEL_AUTOMATION_BYPASS_SECRET` wiring, not the preview URL flow.
+
+### 7. The apex wildcard gap (Better Auth `allowedHosts` semantics)
+
+Better Auth's `allowedHosts` pattern table (per the Better Auth docs /
+options reference) supports three patterns: `?` (one character), `*`
+(zero or more characters, not crossing `/`), and `**` (zero or more,
+crossing `/`). The wildcard `*.vercel.app` matches `apps-web-git-foo.vercel.app`
+but does **not** match the apex `vercel.app` itself. The same applies to
+`*.deessejs.com` and the apex `deessejs.com`. This is why
+`PRODUCTION_ALLOWED_HOSTS` at `packages/auth/src/auth.ts:55-59` lists
+both the apex (`deessejs.com`) and the wildcard (`*.deessejs.com`,
+`*.vercel.app`):
+
+```ts
+const PRODUCTION_ALLOWED_HOSTS = [
+  "deessejs.com",
+  "*.deessejs.com",
+  "*.vercel.app",
+] as const
+```
+
+The Decision #2 shared `host-allowlist.ts` must preserve this three-entry
+shape, not collapse it to the wildcard-only form. A future contributor
+trimming the apex entry reintroduces the bug better-auth's
+`docs/guides/dynamic-base-url` exists to avoid.
+
+### 8. Credentialed CORS does not allow a wildcard origin
+
+`packages/api/src/index.ts:25` configures Hono CORS with
+`credentials: true`. The CORS specification forbids a wildcard
+`Access-Control-Allow-Origin: *` response when credentials are
+included — the server must echo the requesting origin verbatim. Decision #2
+must therefore use Hono's function form of `origin` (returning the
+request's `Origin` header when it matches the allowlist) rather than a
+static array. Hono supports this; a static array would not match every
+`*.vercel.app` preview without manual enumeration.
 
 ## Decision
 
@@ -179,12 +229,16 @@ shipping any one without the others leaves a broken inter-app surface.
 **1. Repoint the marketing canonical to `NEXT_PUBLIC_WEB_URL`.**
 
 - `packages/ui/src/lib/config.ts:10` reads `clientEnv.NEXT_PUBLIC_WEB_URL`,
-  not `clientEnv.NEXT_PUBLIC_APP_URL`. `APP_URL` (the re-export on `:21`)
-  is removed; consumers that needed `NEXT_PUBLIC_APP_URL` import
+  not `clientEnv.NEXT_PUBLIC_APP_URL`. The `APP_URL` re-export on `:21`
+  is removed; consumers that need `NEXT_PUBLIC_APP_URL` import
   `clientEnv.NEXT_PUBLIC_APP_URL` directly from `@workspace/env/client`.
-- `apps/web/src/lib/urls.ts:3` becomes `export const WEB_URL = APP_URL`
-  where `APP_URL` now resolves to `deessejs.com` in prod, fixing the
-  sitemap / OG / RSS / JSON-LD chain in one place.
+- `apps/web/src/lib/urls.ts:3` becomes
+  `export const WEB_URL = clientEnv.NEXT_PUBLIC_WEB_URL`, fixing the
+  sitemap / OG / RSS / JSON-LD chain in one place. The three importers
+  of `urls.ts` (`apps/web/src/app/(content)/blog/[slug]/page.tsx:7`,
+  `apps/web/src/app/(content)/blog/feed.xml/route.ts:3`,
+  `apps/web/src/app/(content)/changelog/feed.xml/route.ts:3`) flip
+  from the alias to the marketing origin in the same commit.
 - `packages/ui/src/lib/config.ts` keeps `name`, `description`, and the
   `links` object (those are app-agnostic). `url` becomes the marketing
   origin via `NEXT_PUBLIC_WEB_URL`. The `APP_URL` re-export is removed
@@ -194,19 +248,24 @@ shipping any one without the others leaves a broken inter-app surface.
 **2. Hono CORS accepts the same wildcard as better-auth.**
 
 - `packages/api/src/index.ts:25` replaces the static
-  `serverEnv.ALLOWED_ORIGINS` allowlist with a function form that mirrors
-  `PRODUCTION_ALLOWED_HOSTS` from `packages/auth/src/auth.ts:55-59`:
+  `serverEnv.ALLOWED_ORIGINS` allowlist with a **function form** that
+  mirrors `PRODUCTION_ALLOWED_HOSTS` from `packages/auth/src/auth.ts:55-59`:
   `["deessejs.com", "*.deessejs.com", "*.vercel.app"]` in production,
-  `["localhost:*"]` added in development. The wildcard covers every
-  Vercel preview, the same shape better-auth already uses.
+  `["localhost:*"]` added in development. The function echoes the
+  requesting `Origin` header when it matches the allowlist (required
+  because `cors({ credentials: true })` forbids the wildcard
+  `Access-Control-Allow-Origin: *` response — see Context §8).
 - `ALLOWED_ORIGINS` remains in the schema (CSV for ad-hoc staging /
   partner origins) but loses its load-bearing role. The wildcard is the
-  default; the CSV adds to it.
+  default; the CSV adds to it via a union in the function form.
 - The single source of truth for the host list is extracted to
   `packages/auth/src/host-allowlist.ts` and re-imported by both
   `packages/auth/src/auth.ts` and `packages/api/src/index.ts`. The shared
   constant is the canonical answer to "which hosts does this app
-  trust?". A new app on a new domain edits one file.
+  trust?". A new app on a new domain edits one file. The constant is
+  an array of three entries (apex + two wildcards); the apex entry is
+  load-bearing because Better Auth's pattern table does not let
+  `*.vercel.app` match the apex `vercel.app` (see Context §7).
 
 **3. Turbo `build.env` covers every URL pair.**
 
@@ -221,9 +280,14 @@ shipping any one without the others leaves a broken inter-app surface.
 
 **4. `withRelatedProject` for preview-against-preview wiring.**
 
-- `apps/web` and `apps/app` link to each other in the Vercel dashboard
-  (project ID to project ID). This is a one-time dashboard operation;
-  no code change is needed to establish the link.
+- `apps/web/vercel.json` and `apps/app/vercel.json` (new files, one per
+  app, declaring up to three `relatedProjects` IDs each) link the two
+  Vercel projects. Per the Vercel docs §"How to link projects together
+  in a monorepo", `vercel.json` is the recommended shape over the
+  dashboard "Related Projects" UI — it makes the link auditable in
+  code review. CLI deploys are explicitly unsupported (`vercel deploy`
+  from the CLI does not honour `relatedProjects`); the team accepts
+  this constraint because production deploys go through Git.
 - `packages/api/src/client-env.ts` (new file) wraps every
   `NEXT_PUBLIC_*` URL read behind a thin helper:
 
@@ -267,6 +331,36 @@ export const webUrl = withRelatedProject({
   pinned to `:3000`.
 - The check exits non-zero on the first miss so CI surfaces the
   regression immediately.
+
+**6. `.env.example` and the runbook page close the operational gap.**
+
+- `.env.example` at the repo root gains the seven schema-declared URL
+  vars that are missing today (`WEB_URL`, `APP_URL`, `DOCS_URL`,
+  `API_BASE_URL`, `NEXT_PUBLIC_WEB_URL`, `NEXT_PUBLIC_DOCS_URL`,
+  `NEXT_PUBLIC_API_BASE_URL`) and `DEESSEJS_API_URL` for the CLI.
+  Every var carries a comment naming its role ("marketing origin",
+  "apps/app's origin", "apps/internal-documentation's origin", "API
+  base URL as seen by clients", "CLI override") and the production
+  default per Vercel environment. The line "One source of truth for
+  all env vars across the monorepo" at `.env.example:2` becomes
+  literal rather than aspirational.
+- `documents/internal/runbooks/preview-url-wiring.md` (new) walks the
+  Vercel dashboard click-path to record the two project IDs, edit the
+  `vercel.json` per app, mirror `VERCEL_RELATED_PROJECTS` to the
+  GitHub Actions secret if a CI consumer needs it, and smoke-test the
+  link by visiting both preview URLs and asserting the cross-app nav
+  lands on the sibling preview, not on production. The existing
+  `apps/web/tests/e2e/RUNBOOK.md` covers Deployment Protection and
+  `VERCEL_AUTOMATION_BYPASS_SECRET`; the new runbook does not
+  duplicate that surface.
+- `apps/web/src/app/layout.tsx` adds
+  `metadataBase: new URL(clientEnv.NEXT_PUBLIC_WEB_URL)` so the
+  implicit Next.js OG / canonical resolution no longer falls back to
+  its built-in `VERCEL_URL` heuristic. This is a small follow-up
+  included here because the runbook's manual smoke step asks the
+  reviewer to inspect the page source for `<link rel="canonical">`
+  and the OG meta tag — without `metadataBase`, those resolve against
+  the wrong host on a preview.
 
 ### What this rule allows
 
@@ -368,10 +462,20 @@ Three patterns the team considered and rejected.
 - **The better-auth `*.vercel.app` wildcard** at
   `packages/auth/src/auth.ts:58`. The wildcard is correct; it
   becomes the shared source of truth, not the change.
-- **`metadataBase` in `apps/web/src/app/layout.tsx`.** Adding
-  `metadataBase: new URL(clientEnv.NEXT_PUBLIC_WEB_URL)` is a small
-  follow-up; it is out of scope here and belongs to a separate ADR
-  if anyone wants to land it.
+- **`metadataBase` in `apps/web/src/app/layout.tsx`.** Decision #6
+  adds `metadataBase: new URL(clientEnv.NEXT_PUBLIC_WEB_URL)` so the
+  manual smoke step can assert against a stable value. The change is
+  one line in `apps/web/src/app/layout.tsx`; it does not affect the
+  per-page metadata blocks that already use relative paths.
+- **OAuth callback URLs.** All `callbackURL` values in the Better Auth
+  client today are relative paths (the codebase has no
+  `socialProviders` config; only `signIn.social({ provider,
+  callbackURL: safeCallback })` flows with `safeRedirect` filtering
+  absolute URLs out — `apps/app/components/auth/oauth-buttons.tsx:15-25`,
+  `apps/app/components/settings/email-form.tsx:20-25`,
+  `apps/app/components/settings/delete-account-dialog.tsx:32`). No
+  cross-Vercel-project URL is wired today, so Decision #4 does not
+  introduce any new callback surface.
 
 ## Consequences
 
@@ -383,21 +487,35 @@ Three patterns the team considered and rejected.
 - **The marketing sitemap, robots, OG images, RSS, and JSON-LD all
   advertise `deessejs.com` in production.** The PR that previously
   silently leaked `app.deessejs.com` to search engines is fixed by
-  Decision #1.
+  Decision #1. The three importers of `urls.ts`
+  (`apps/web/src/app/(content)/blog/[slug]/page.tsx:7`,
+  `apps/web/src/app/(content)/blog/feed.xml/route.ts:3`,
+  `apps/web/src/app/(content)/changelog/feed.xml/route.ts:3`) flip
+  in the same commit; `sitemap.ts` and `robots.ts` import
+  `clientEnv.NEXT_PUBLIC_APP_URL` indirectly via
+  `packages/ui/src/lib/config.ts` and need a one-line change there.
 - **Hono CORS accepts every `*.vercel.app` preview.** No
   per-preview env line in `ALLOWED_ORIGINS`. The PR that previously
   hit CORS errors against `app.deessejs.com` from a `web-*.vercel.app`
-  page is fixed by Decision #2.
+  page is fixed by Decision #2. The wildcard is the function form
+  (echoing the requesting `Origin` header), not a static array,
+  because `cors({ credentials: true })` forbids the wildcard
+  response shape.
 - **Turbo cache invalidates on URL var changes.** A Vercel operator
   rotating `NEXT_PUBLIC_API_BASE_URL` (for example, after the
   hypothetical `api.deessejs.com` split ADR-021 mentions) gets a
   fresh build, not a stale bundle. The PR that previously missed the
-  cache invalidation is fixed by Decision #3.
-- **`apps/web` and `apps/app` are linked in the Vercel dashboard.**
-  The link is durable; future preview deployments inherit it without
-  per-PR configuration. The dashboard operation is documented in
-  `documents/internal/runbooks/preview-url-wiring.md` (new file, in
-  the implementation PR).
+  cache invalidation is fixed by Decision #3. `VERCEL_RELATED_PROJECTS`
+  is added to `turbo.json` per the Vercel docs note for Turborepo
+  Strict Mode.
+- **`apps/web` and `apps/app` are linked via `vercel.json`.** Each
+  app declares the sibling's project ID in a new
+  `vercel.json` at its root; the link is durable and lives in
+  code review. The Vercel docs explicitly mark CLI deploys as
+  unsupported, but the team's deploy path is Git-based so this
+  constraint is acceptable. The dashboard click-path is documented
+  in `documents/internal/runbooks/preview-url-wiring.md` (new file,
+  Decision #6).
 - **`@vercel/related-projects` is added to the workspace dependency
   graph.** The package is small (no transitive server deps for the
   client import), Vercel-maintained, and the only path that does
@@ -409,14 +527,33 @@ Three patterns the team considered and rejected.
   (`DEESSEJS_API_URL` is still the primary, with
   `https://app.deessejs.com` as the hardcoded fallback); the
   companion var is internal-tooling oriented (CI, dev workflows
-  pointing at a preview deploy).
+  pointing at a preview deploy). The CLI is the explicit exception
+  documented in ADR-021 §"What this rule forbids" §4 — the published
+  tarball cannot depend on the private `@workspace/env` package.
 - **`scripts/env-check.ts` covers eight vars instead of one.** The
   production check exits non-zero on any of them being left at its
   schema default. CI catches a missing env var before the deploy
   catches it.
 - **`packages/auth/src/host-allowlist.ts` is a new file.** Two
   consumers (auth, api), one shared constant. The follow-up
-  contract is "if you add a host, edit one file."
+  contract is "if you add a host, edit one file." The constant is
+  a three-entry array (apex + two wildcards); the apex entry is
+  load-bearing for the pattern table reason documented in Context
+  §7.
+- **`.env.example` and the runbook close the operational gap.** A
+  new contributor can read `.env.example` and discover every URL
+  var the schema declares. A new operator can read
+  `documents/internal/runbooks/preview-url-wiring.md` and execute
+  the Vercel dashboard + `vercel.json` + smoke-test sequence in one
+  sitting. The runbook complements (does not duplicate)
+  `apps/web/tests/e2e/RUNBOOK.md`, which covers Deployment Protection
+  and `VERCEL_AUTOMATION_BYPASS_SECRET`.
+- **`apps/web/src/app/layout.tsx` gains `metadataBase`.** Next.js
+  resolves relative OG / canonical URLs against `metadataBase`
+  instead of its built-in `VERCEL_URL` heuristic. On a preview, the
+  resolution is now `deessejs.com` (the marketing canonical), not
+  the preview host. The manual smoke step in Test Strategy can
+  assert against a stable value.
 
 ## Cross-origin considerations
 
@@ -537,34 +674,86 @@ because removing it would silently change the cache-key computation
 for builds that depend on it for the original Turbo cache hashing;
 this ADR scopes itself to URL wiring, not Turbo cache key shape.
 
-### Limitation 4: `@vercel/related-projects` requires a Vercel
-dashboard operation
+### Limitation 4: `@vercel/related-projects` requires `vercel.json`
+and a dashboard operation
 
-The package cannot link projects on its own. A human runs the
-dashboard "link projects" step once per project pair. The
-implementation PR includes a runbook page that documents the
-click-path; this ADR scopes itself to the code shape, not the
-dashboard operation. If the dashboard link is missing, the
-`defaultHost` fallback applies (the production URL), and the
-preview behaves like a preview-against-prod deployment — the same
-bug the option (c) wiring fixes. The link is therefore load-bearing
-for the preview-against-preview behaviour.
+The package cannot link projects on its own. The link is declared
+in two places:
+
+1. A new `vercel.json` per app at the app's root (Decision #4) lists
+   up to three sibling project IDs.
+2. The Vercel dashboard's **Settings → General → Related Projects**
+   for each project records the cross-link.
+
+A human runs the dashboard step once per project pair; the
+`vercel.json` keeps the link auditable in code review afterwards.
+The implementation PR includes a runbook page that documents both
+the dashboard click-path and the `vercel.json` shape; this ADR
+scopes itself to the code shape. CLI deploys (`vercel deploy`) are
+explicitly unsupported by Vercel — production deploys go through
+Git, so the constraint is acceptable.
+
+If the link is missing (the `VERCEL_RELATED_PROJECTS` env var is
+unset or malformed), `withRelatedProject` falls back to `defaultHost`
+in four documented cases (`projects.length === 0`, project name not
+found, preview env info missing, production alias and url both
+empty). The `defaultHost` is the production URL, so the preview
+behaves like a preview-against-prod deployment — the same bug the
+option (c) wiring fixes. The link is therefore load-bearing for the
+preview-against-preview behaviour; the runbook's smoke step asserts
+the link is wired before relying on it.
+
+### Limitation 5: CLI preview wiring is opt-in, not auto
+
+The CLI is the explicit exception documented in ADR-021 §"What this
+rule forbids" §4 — the published tarball cannot depend on the
+private `@workspace/env` package, so the `withRelatedProject`
+helper is not available there. Decision #4 adds
+`DEESSEJS_PREVIEW_API_URL` as an opt-in companion to the existing
+`DEESSEJS_API_URL`; setting it points the CLI at a specific Vercel
+preview. The companion var is internal-tooling oriented; end users
+of the published CLI keep the hardcoded `https://app.deessejs.com`
+default unless they opt in. A future ADR scopes the
+`@vercel/related-projects` integration for the CLI if the team
+adopts CLI-based preview deploys.
 
 ## Where this rule came from
 
 - The Vercel docs page on system env vars documents
   `VERCEL_URL`, `VERCEL_BRANCH_URL`, `VERCEL_PROJECT_PRODUCTION_URL`,
-  and `VERCEL_ENV` as the canonical runtime vars per preview
-  deployment.
+  `VERCEL_ENV`, and `VERCEL_RELATED_PROJECTS` as the canonical
+  runtime vars per preview deployment. The system env vars page
+  also notes the Standard Deployment Protection interaction:
+  `VERCEL_URL` is unavailable under Standard Protection, while
+  `VERCEL_BRANCH_URL`, `VERCEL_PROJECT_PRODUCTION_URL`, and
+  `VERCEL_ENV` remain set.
+- The Vercel docs page on using monorepos documents the official
+  "How to link projects together in a monorepo" flow:
+  `vercel.json` `relatedProjects` (up to three per app, same repo
+  only, CLI deploys unsupported), and `@vercel/related-projects` as
+  the npm helper package.
 - The Vercel changelog post "Sync projects with vercel related
   projects" documents the `@vercel/related-projects` package and
   its `withRelatedProject({ projectName, defaultHost })` helper as
   the supported path for preview-against-preview wiring across
   multiple Vercel projects in the same monorepo.
+- The `@vercel/related-projects` package source (read on the
+  `vercel/vercel` monorepo at
+  `packages/related-projects/src/with-related-project.ts` and
+  `packages/related-projects/src/related-projects.ts`) documents the
+  four fallback cases for `defaultHost` and the `noThrow: true`
+  behaviour of `relatedProjects()`.
 - The Better Auth docs page "Dynamic base URL" documents
   `allowedHosts` with wildcard support and the `fallback` field,
   and confirms that wildcard entries in `allowedHosts` are
-  auto-added to `trustedOrigins`.
+  auto-added to `trustedOrigins`. The Better Auth options
+  reference documents the pattern table (`?`, `*`, `**`) and the
+  apex-non-match behaviour that motivates the three-entry host
+  list in `PRODUCTION_ALLOWED_HOSTS`.
+- The Better Auth guide `pitfalls.md` §5 (in
+  `docs/guides/better-auth/pitfalls.md`) is the canonical doc for
+  the dynamic `baseURL` fix; it pins the production fallback to
+  `https://app.deessejs.com` and `protocol: "https"`.
 - ADR-021 §"Follow-ups" §1 explicitly defers the preview-deployment
   wiring to a future ADR with the three options. This ADR picks
   option (c) and implements it.
@@ -572,6 +761,10 @@ for the preview-against-preview behaviour.
   cookie gap on previews; this ADR does not change it but does
   scope the preview-against-preview wiring as the structural
   prerequisite for any future per-preview cookie work.
+- The Hono `cors()` middleware docs document the function form of
+  `origin` (echoing the requesting `Origin` header) and the
+  credentialed-mode constraint that forbids the wildcard
+  `Access-Control-Allow-Origin: *` response.
 
 ## Related
 
@@ -586,9 +779,22 @@ for the preview-against-preview behaviour.
 - [Better Auth: Dynamic base URL](https://better-auth.com/docs/guides/dynamic-base-url).
   Source for the `allowedHosts` / `fallback` shape this ADR reuses
   in the shared `host-allowlist.ts`.
+- [Better Auth: Options reference](https://better-auth.com/docs/reference/options).
+  Source for the `allowedHosts` pattern table that motivates the
+  three-entry apex-plus-wildcards shape.
+- [Better Auth pitfalls guide §5](../../../../docs/guides/better-auth/pitfalls#5-fixed-baseurl-breaks-vercel-preview-deployments).
+  Canonical doc for the dynamic `baseURL` fix; pins the production
+  fallback and protocol that Decision #2 mirrors in
+  `packages/auth/src/host-allowlist.ts`.
+- [Better Auth setup guide](../../../../docs/guides/better-auth/setup).
+  Canonical `baseURL.allowedHosts` config block; documents
+  `ALLOWED_ORIGINS` as the ad-hoc-only mechanism.
 - [Vercel: System environment variables](https://vercel.com/docs/environment-variables/system-environment-variables).
   Source for `VERCEL_BRANCH_URL`, `VERCEL_PROJECT_PRODUCTION_URL`,
-  and `VERCEL_ENV` semantics.
+  `VERCEL_ENV`, and `VERCEL_RELATED_PROJECTS` semantics.
+- [Vercel: Using monorepos — How to link projects together](https://vercel.com/docs/monorepos#how-to-link-projects-together-in-a-monorepo).
+  Source for the `vercel.json` `relatedProjects` shape and the
+  `VERCEL_RELATED_PROJECTS` auto-injection.
 - [Vercel: Sync projects with `@vercel/related-projects`](https://vercel.com/changelog/sync-projects-with-vercel-related-projects).
   Source for the `withRelatedProject` helper.
 - [Vercel: Full-stack preview deployments](https://vercel.com/kb/guide/full-stack-preview-deployments-on-vercel).
