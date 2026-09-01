@@ -1,37 +1,37 @@
 ---
 title: Latest release
-description: Promote staging to main, ship @deessejs/cli to npm @latest via release.yml, verify and recover.
+description: Auto-publish @deessejs/cli to npm @latest on every push to main whose commit message contains .changeset. No human gate.
 ---
 
 # Latest release
 
-This process covers shipping `@deessejs/cli` from a merged PR on `staging` to a tagged release on `main`. The `@latest` channel is the canonical release path. Two auxiliary channels (`@canary`, per-PR previews) live in their own pages.
+This process covers shipping `@deessejs/cli` from a merged PR on `staging` to a tagged release on `main`. The `@latest` channel is the canonical release path. It runs automatically on push to `main`; the human gate lives at PR-approval time, not at promotion time. Two auxiliary channels (`@canary`, per-PR previews) live in their own pages.
 
 ## When this process applies
 
-- A PR touching `apps/cli/**` has been merged to `staging` and the maintainer is ready to promote a release.
-- The maintainer has confirmed the staging build is green and wants to ship it.
-- A bad version on npm has to be yanked or deprecated after a release.
+- A PR touching `apps/cli/**`, `packages/contracts/**`, or `packages/api/**` has been merged to `staging`.
+- The merge commit message contains `.changeset` (enforced by `changesets-check.yml` as a required status check on branch protection).
+- Branch protection on `main` passes: CI is green, the changeset check is green, and at least one approving code review is recorded.
 
 ## Prerequisites
 
-- Branch `staging` is up to date with the work to ship.
-- The contributor added a `.changeset/<slug>.md` file if their PR changed the CLI's public surface. The `changesets-check.yml` workflow enforces this on PRs against staging.
-- The maintainer has `gh` CLI authenticated and write access to the repository.
-- The npm Trusted Publisher is configured for `@deessejs/cli` on `https://www.npmjs.com/package/@deessejs/cli/access`.
+- Branch `staging` carries the work to ship.
+- The contributor added a `.changeset/<slug>.md` file if their PR touched CLI-relevant paths. The `changesets-check.yml` workflow enforces this as a required status check on `staging` and `main` (see [ADR-026](../../decisions/ADR-026-changesets-merge-gate.mdx)).
+- The npm Trusted Publisher is configured for `@deessejs/cli` on `https://www.npmjs.com/package/@deessejs/cli/access` against `.github/workflows/release.yml`.
 - `NPM_CONFIG_PROVENANCE=true` is available to GitHub Actions via OIDC.
 
 ## Procedure
 
-### 1. Promote staging to main
+### 1. The merge to staging auto-propagates to main
 
-After the PR is approved and CI is green on `staging`, a human creates the promotion PR or runs the merge:
+Once a feature PR lands on `staging` with green CI and a green changesets-check, the branch-protection rules on `staging` and `main` together propagate the work. A human does not run `gh pr create --base main` or click any merge button for `main`. The release is the natural consequence of the feature PR's approval.
 
-```bash
-gh pr create --base main --head staging --title "chore: promote staging to main" --body "Promotes the latest staging work to main for release."
-```
+The two branch protections enforce:
 
-The PR review confirms no `staging`-only commits are missing from `main`, then merges. This step is **human-owned** per `AGENTS.md`; agents do not run it.
+- **On `staging`**: required checks `ci` and `check-changeset`, plus an approving code review.
+- **On `main`**: required checks `ci` and `check-changeset` against the propagated commit.
+
+A merge to `staging` that lands a commit with `.changeset` in the message reaches `main` through the standard propagation flow. `release.yml` then runs.
 
 ### 2. Verify the release workflow runs
 
@@ -77,14 +77,18 @@ After the workflow completes:
 
 **After 72 hours:** `npm unpublish` is no longer allowed. Use `npm deprecate @deessejs/cli@x.y.z "Critical bug: see <link> — upgrade to x.y.z+1"` and record the yank in the next release notes.
 
+**Commit message on main is missing `.changeset`:** the workflow's `if:` filter rejects the run; no release happens. Re-run with the correct message, or push a follow-up commit whose message contains the token. Branch protection makes this rare but not impossible (force-pushes bypass protection rules).
+
 ## See also
 
-- [Canary releases](./canary-releases.mdx), the on-demand auxiliary channel.
+- [Canary releases](./canary-releases.mdx), the auto-triggered auxiliary channel on `staging`.
 - [PR previews](./pr-previews.mdx), the per-PR pkg.pr.new channel.
-- [ADR-021: CLI three-tier release pipeline](../../decisions/ADR-021-cli-three-tier-release.mdx), the decision that shaped the three-channel design.
+- [ADR-024: Auto-publish on main](../../decisions/ADR-024-auto-publish-on-main.mdx), the rule that removes the human merge to `main`.
+- [ADR-021: CLI three-tier release pipeline](../../decisions/ADR-021-cli-three-tier-release.mdx), the design this rule inherits from.
 - [ADR-012: Changesets private workspace deps](../../decisions/ADR-012-changesets-private-workspace-deps.mdx), the changeset config for workspace-internal packages.
 - [ADR-013: CLI publish verify](../../decisions/ADR-013-cli-publish-verify.mdx), the verification gates applied before and after publish.
 - [ADR-019: CLI version build injection](../../decisions/ADR-019-cli-version-build-injection.mdx), how `apps/cli/package.json#version` reaches the published binary.
+- [ADR-026: Changesets as merge gate](../../decisions/ADR-026-changesets-merge-gate.mdx), the rule that makes changesets required for any PR touching CLI-relevant paths.
 - [AGENTS.md](../../../../../AGENTS.md), the staging-first git workflow this process depends on.
 - [`.changeset/README.md`](../../../../../.changeset/README.md), the changeset quick reference for contributors.
 - [CONTRIBUTING.md](../../../../../CONTRIBUTING.md), the contributor workflow that includes the changeset requirement.
