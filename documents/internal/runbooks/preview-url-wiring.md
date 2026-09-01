@@ -31,8 +31,8 @@ Open each project's **Settings** page and copy the **Project ID**.
 
 | Project | ID | Notes |
 |---|---|---|
-| `apps/web` | `prj_REPLACE_ME` | the marketing site |
-| `apps/app` | `prj_REPLACE_ME` | auth + UI + API |
+| `apps/web` | `prj_EDu0GMa3fKaInW6f3MBiLCiewi6O` | the marketing site |
+| `apps/app` | `prj_IOf5cRl1rkbc6SfSMzLsKsneYPdb` | auth + UI + API |
 
 ### 2. Edit the two `vercel.json` files
 
@@ -43,16 +43,15 @@ the real IDs from step 1.
 
 ```json
 {
-  "relatedProjects": ["prj_apps_app_id"]
+  "relatedProjects": ["prj_IOf5cRl1rkbc6SfSMzLsKsneYPdb"]
 }
 ```
 
-**`apps/app/vercel.json`** (new file — needs to be created with the
-same shape, pointing at the web project):
+**`apps/app/vercel.json`:**
 
 ```json
 {
-  "relatedProjects": ["prj_apps_web_id"]
+  "relatedProjects": ["prj_EDu0GMa3fKaInW6f3MBiLCiewi6O"]
 }
 ```
 
