@@ -35,6 +35,14 @@ on:
 
 concurrency:
   group: release-${{ github.ref }}
+  # cancel-in-progress: false is load-bearing. We never cancel an in-flight
+  # release: a partially-published canary on npm is worse than a serialized
+  # wait. cli-preview.yml uses cancel-in-progress: true because pkg.pr.new
+  # builds are stateless and ephemeral; this workflow mutates npm state and
+  # must run to completion. Two rapid pushes to the same branch serialize;
+  # pushes to different refs (staging vs main, or different PRs against
+  # the same ref via workflow_dispatch) run in parallel because the group
+  # key includes github.ref.
   cancel-in-progress: false
 
 permissions:
