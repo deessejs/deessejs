@@ -1,6 +1,6 @@
 ---
 title: Auto-canary on staging
-description: Every push to staging publishes a @canary build, no human click. The canary job is extracted from release.yml into a reusable workflow_call.
+description: Every push to staging publishes a @canary build, in the same release.yml workflow that handles @latest on main.
 ---
 
 # ADR-025: Auto-canary on staging
@@ -19,63 +19,30 @@ Three concrete consequences:
 2. **Staging work is invisible to consumers.** A consumer who wants to test the next release against their integration cannot `npx @deessejs/cli@canary` until a maintainer publishes one. The work on staging does not flow to npm.
 3. **The release pipeline has a hidden hole.** `release.yml` already does the canary work; it just requires a human to trigger it. The pipeline is 90% automatic and 10% manual. Closing the 10% removes the surprise.
 
-This ADR moves the canary trigger from `workflow_dispatch` to `push: branches: [staging]`. Every merge to staging publishes a `@canary` build automatically.
+This ADR moves the canary trigger from `workflow_dispatch` to `push: branches: [staging]`. Every merge to staging publishes a `@canary` build automatically, in the same workflow that handles `@latest` on `main`.
 
 ## Decision
 
-A new workflow `.github/workflows/staging-canary.yml` triggers on every push to `staging` and publishes `@canary`. The canary publish logic is extracted from `release.yml` into a reusable job and exposed via `workflow_call`, so both workflows share the same implementation.
+`release.yml` triggers on push to **both** `staging` and `main`. The branch that triggered the run determines the channel: `staging` → `@canary`, `main` → `@latest`. The existing `workflow_dispatch` input stays available for emergency on-demand dogfooding from a non-`staging` branch.
 
-### Why a new workflow and not a new trigger on `release.yml`
+### Why a single workflow
 
-`release.yml` triggers on `push: branches: [main]` and on `workflow_dispatch`. Adding `push: branches: [staging]` would conflate two release tiers on the same workflow file, which conflicts with the "single canonical release workflow" property that ADR-021 records as the load-bearing design. Splitting the trigger into two workflows preserves that property.
+The original draft of this ADR proposed extracting the canary logic into a new `staging-canary.yml` wrapper that called `release.yml` via `workflow_call`. The reasoning was to honour the "single canonical release workflow" property that ADR-021 records as load-bearing.
 
-The shared job inside `release.yml` is declared with `workflow_call` so `staging-canary.yml` can invoke it without duplicating the canary implementation. This is the only structural change to `release.yml`.
+The review rejected that draft: a thin wrapper adds a second workflow file, a second concurrency configuration, and a second permission grant (`id-token: write`), without any functional benefit. The publish must come from `release.yml` regardless because of npm Trusted Publishing, and the channel-dispatch logic (`Determine release channel`) is already structured to honour inputs.
 
-### What the new workflow does
-
-`staging-canary.yml`:
-
-```yaml
-name: staging-canary
-
-on:
-  push:
-    branches: [staging]
-
-concurrency:
-  group: staging-canary-${{ github.sha }}
-  cancel-in-progress: false
-
-permissions:
-  contents: write
-  id-token: write
-
-jobs:
-  canary:
-    uses: ./.github/workflows/release.yml
-    with:
-      channel: canary
-    secrets: inherit
-```
-
-The `secrets: inherit` is required because the canary publish needs `NPM_CONFIG_PROVENANCE` (inherited as an env var via OIDC) and no additional secrets. `permissions: id-token: write` is required because the called workflow requests OIDC for npm Trusted Publishing.
-
-### Why the concurrency group is keyed on SHA
-
-A push to staging that contains multiple commits (rare but possible, e.g. force-pushes) results in a single SHA at the end. The concurrency group `${{ github.sha }}` means a SHA in flight will not be re-published by a subsequent push that lands on the same SHA. If a force-push changes the SHA, the previous run completes (cancel-in-progress: false) and a new one starts.
-
-`cancel-in-progress: false` is deliberate. A canary publish carries side effects (a tag, a GitHub Release, an npm publish). Canceling mid-publish would leave a partial artifact. We let the in-flight publish finish and discard any newer publishes that race with it.
+A single workflow, triggered by two branches, is simpler and easier to audit. The "single canonical release workflow" property is preserved in spirit: there is one workflow, and its job is "publish a release of `@deessejs/cli`." The branch trigger is configuration, not architecture.
 
 ### What changes in `release.yml`
 
 Two changes:
 
-1. The `release` job gains a `workflow_call` trigger and accepts a `channel` input:
+1. The `on.push.branches` list gains `staging`:
 
 ```yaml
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
     inputs:
       canary:
@@ -83,34 +50,33 @@ on:
         type: boolean
         required: true
         default: false
-  workflow_call:
-    inputs:
-      channel:
-        description: 'Pre-selected channel: latest or canary. Bypasses input detection.'
-        type: string
-        required: true
 ```
 
-2. The `Determine release channel` step is updated to honor the `channel` input:
+2. The `if:` gate on the `release` job is unchanged. The `.changeset` filter on the commit message applies to both branches, but it would gate the canary incorrectly: a canary should publish from any commit on staging, not only those whose message contains `.changeset`. The fix is to remove the `.changeset` filter from the gate and rely on the changesets-check workflow (per ADR-026) to ensure every merge carries one before it reaches `main` or `staging`:
+
+```yaml
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '.changeset') ||
+      github.ref == 'refs/heads/staging'
+```
+
+The third clause exempts the canary path from the `.changeset` filter. The `@latest` path (push to `main`) still requires `.changeset` in the message; the canary path does not.
+
+3. The `Determine release channel` step is updated to inspect the source branch:
 
 ```yaml
 - name: Determine release channel
   id: channel
   run: |
-    if [ -n "${{ inputs.channel }}" ]; then
-      case "${{ inputs.channel }}" in
-        canary)
-          echo "dist_tag=canary"          >> "$GITHUB_OUTPUT"
-          echo "release_type=prerelease"  >> "$GITHUB_OUTPUT"
-          echo "version_source=synthetic" >> "$GITHUB_OUTPUT"
-          ;;
-        latest)
-          echo "dist_tag=latest"        >> "$GITHUB_OUTPUT"
-          echo "release_type=stable"    >> "$GITHUB_OUTPUT"
-          echo "version_source=changeset" >> "$GITHUB_OUTPUT"
-          ;;
-      esac
-    elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.canary }}" = "true" ]; then
+    if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.canary }}" = "true" ]; then
+      echo "dist_tag=canary"          >> "$GITHUB_OUTPUT"
+      echo "release_type=prerelease"  >> "$GITHUB_OUTPUT"
+      echo "version_source=synthetic" >> "$GITHUB_OUTPUT"
+    elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
       echo "dist_tag=canary"          >> "$GITHUB_OUTPUT"
       echo "release_type=prerelease"  >> "$GITHUB_OUTPUT"
       echo "version_source=synthetic" >> "$GITHUB_OUTPUT"
@@ -121,15 +87,15 @@ on:
     fi
 ```
 
-When the workflow is called from `staging-canary.yml`, the `inputs.channel` is set and the step emits the canary outputs immediately. The detection logic for `workflow_dispatch` and `push: main` paths stays intact.
+The canary path on `staging` does not consume changesets and computes a synthetic version, exactly like the existing `workflow_dispatch` canary path. The downstream steps (Compute canary version, Rewrite apps/cli version for canary, Publish to npm (canary), Defensive re-pin) are unchanged.
+
+### Concurrency
+
+The existing `concurrency: group: release-${{ github.ref }}` stays. `github.ref` differs between `staging` and `main`, so a push to `staging` and a concurrent push to `main` do not block each other. Two rapid pushes to the same branch do serialize (`cancel-in-progress: false`).
 
 ### Trusted publisher constraint
 
-npm Trusted Publishing allows only one trusted publisher per package, keyed on the workflow file path. `release.yml` is already configured on `https://www.npmjs.com/package/@deessejs/cli/access`. Adding `staging-canary.yml` as a separate publisher would be rejected.
-
-This is why the canary job is invoked via `workflow_call` from `release.yml`: npm sees the call site as a run of `release.yml`, the trusted publisher matches, and the publish succeeds. The `staging-canary.yml` file is a trigger wrapper, not a publisher.
-
-The trust boundary is therefore the same as today: only `release.yml` has OIDC. `staging-canary.yml` inherits OIDC via `workflow_call`. If `staging-canary.yml` is compromised, the attacker still needs the trusted publisher to match, which is checked by GitHub Actions at the publish step. A `workflow_call` that surfaces a job from a compromised wrapper still runs the trusted workflow's steps; the wrapper cannot inject arbitrary publish commands.
+npm Trusted Publishing allows only one trusted publisher per package, keyed on the workflow file path. `release.yml` is already configured on `https://www.npmjs.com/package/@deessejs/cli/access`. Adding `staging` to its push triggers does not change the publisher key — the workflow file is the same. The constraint is preserved by construction: there is no new workflow file, so there is no second trusted publisher entry to configure.
 
 ## Consequences
 
@@ -138,16 +104,19 @@ The trust boundary is therefore the same as today: only `release.yml` has OIDC. 
 - Canaries are continuous. Every staging merge produces an installable canary.
 - Consumers can `npx @deessejs/cli@canary` at any time after a staging merge.
 - The release pipeline has zero human clicks for the canary path.
+- A single workflow file is easier to audit than two with a `workflow_call` boundary.
 
 **Losses:**
 
 - npm and the GitHub Releases feed accumulate more tags and releases. Canary retention was already best-effort (per the existing process page); the increased cadence makes the cleanup more important.
 - A broken staging build produces a broken canary on every merge. The canary is no longer a curated artifact.
+- The `if:` gate on the release job becomes branch-aware (`github.ref == 'refs/heads/staging'`), which is one more reason for it to be true. A future refactor that changes how branches are detected (for example, adding `release/staging` as an alternate ref) would silently break the canary trigger.
 
 **What stays locked:**
 
 - The canary job is unchanged in implementation. The synthetic version format (`<base>-canary.<UTC-timestamp>.<short-sha>`) stays.
-- The `@latest` channel is unchanged. `release.yml` continues to publish `@latest` on push to `main` via the `changeset` path. See [ADR-024](./ADR-024-auto-publish-on-main.mdx) for the human-gate removal on that path.
+- The `@latest` channel is unchanged in implementation. `release.yml` continues to publish `@latest` on push to `main` via the `changeset` path. See [ADR-024](./ADR-024-auto-publish-on-main.mdx) for the human-gate removal on that path.
+- The `workflow_dispatch` input stays available for on-demand dogfooding from a non-`staging` branch.
 - `cli-preview.yml` is unchanged. The per-PR preview channel still uses pkg.pr.new for ephemeral PR-feedback tarballs.
 
 ## How to verify
@@ -155,7 +124,7 @@ The trust boundary is therefore the same as today: only `release.yml` has OIDC. 
 After the change:
 
 1. Open a PR touching `apps/cli/**` with a changeset. Get approval. Merge to `staging`.
-2. Observe `staging-canary.yml` triggers within ~30 seconds. The job calls `release.yml` with `channel: canary`.
+2. Observe `release.yml` triggers within ~30 seconds on the staging push. The `Determine release channel` step emits `dist_tag=canary`.
 3. The canary publishes under `@canary`. `npm view @deessejs/cli@canary version` returns the synthetic version.
 4. A `release/v<canary-version>` tag exists on the merge commit. A GitHub Release marked `prerelease` exists.
 5. The `@latest` dist-tag is unchanged (`npm view @deessejs/cli@latest version` returns the previous stable).
@@ -168,10 +137,11 @@ The decision inverts the "manual canary" workflow that ADR-021 documented as on-
 
 The original ADR-021 reasoning for `workflow_dispatch` was risk-versus-payoff: changesets pre-release mode was operationally heavy and forced a separate branch. With the synthetic versioning scheme (which bypasses changesets pre-release mode entirely), the operational cost drops to near zero, and the on-demand trigger no longer earns its keep.
 
+The single-workflow design (versus the `workflow_call` draft) is a review-driven simplification. A second workflow file adds configuration surface without benefit; the npm Trusted Publisher constraint forces the publish through `release.yml` regardless, so wrapping adds nothing.
+
 ## Related
 
 - [ADR-024: Auto-publish on main](./ADR-024-auto-publish-on-main.mdx), the companion change that removes the human merge to `main`.
 - [ADR-021: CLI three-tier release pipeline](./ADR-021-cli-three-tier-release.mdx), the design this rule inherits the canary implementation from.
 - [ADR-026: Changesets as merge gate](./ADR-026-changesets-merge-gate.mdx), the rule that guarantees the canary is built from a changeset-bearing tree.
-- [`release.yml`](../../../../.github/workflows/release.yml), the workflow whose canary job is invoked via `workflow_call`.
-- [`staging-canary.yml`](../../../../.github/workflows/staging-canary.yml), the new wrapper workflow introduced by this ADR.
+- [`release.yml`](../../../../.github/workflows/release.yml), the workflow whose push triggers this ADR extends.

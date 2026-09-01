@@ -1,21 +1,22 @@
 name: Release
 
 # Senior release pattern: single workflow does version bump + npm publish +
-# tag + GitHub Release in one job. Triggered by push to main whose commit
-# message contains '.changeset' (the convention for commits that include
-# changeset files), or by manual workflow_dispatch.
+# tag + GitHub Release in one job. Triggered by push to main or staging, or
+# by manual workflow_dispatch.
 #
-# Two publish channels:
-#   - @latest: human-promoted push to main (Tier 3). Changesets-driven
-#     version bump; pnpm changeset publish; stable GitHub Release.
-#   - @canary: on-demand workflow_dispatch with `canary: true` input
-#     (Tier 2). Synthetic version string (date+SHA); npm publish --tag canary;
-#     GitHub Release marked as prerelease.
+# Two publish channels, both handled by this single workflow:
+#   - @latest: push to main (Tier 3). Changesets-driven version bump;
+#     pnpm changeset publish; stable GitHub Release. Auto-publishes
+#     when the commit message contains '.changeset'.
+#   - @canary: push to staging (Tier 2), or on-demand workflow_dispatch
+#     with `canary: true`. Synthetic version string (date+SHA);
+#     npm publish --tag canary; GitHub Release marked as prerelease.
 #
 # Both channels share the same npm trusted publisher entry (release.yml);
-# npm Trusted Publishing allows only one trusted publisher per package, so
-# the canary channel lives inside this same workflow rather than in its
-# own file. See ADR-021 §"Decision".
+# npm Trusted Publishing allows only one trusted publisher per package,
+# keyed on this workflow file's path. Adding staging to the push triggers
+# does not require a second trusted publisher entry.
+# See ADR-021 §"Decision" and ADR-025 for the auto-canary trigger.
 #
 # First-ever publish of @deessejs/cli is manual from a maintainer's machine
 # (npm has no "pending publisher" feature). See
@@ -23,7 +24,7 @@ name: Release
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
     inputs:
       canary:
@@ -46,6 +47,7 @@ jobs:
     runs-on: ubuntu-latest      # GitHub-hosted only — trusted publishers don't support self-hosted
     if: |
       github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/staging' ||
       contains(github.event.head_commit.message, '.changeset')
     steps:
       - uses: actions/checkout@v4
@@ -65,13 +67,22 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # 0b. Determine release channel. Push to main → latest/stable.
-      # workflow_dispatch with canary=true → canary/prerelease.
+      # 0b. Determine release channel.
+      #   workflow_dispatch with canary=true → canary/prerelease.
+      #     (manual on-demand run by a maintainer.)
+      #   push to staging → canary/prerelease.
+      #     (auto-trigger; the merge carries the changeset check via
+      #      changesets-check.yml on the feature PR, see ADR-026.)
+      #   push to main (commit message contains .changeset) → latest/stable.
       # Downstream steps condition their behavior on these outputs.
       - name: Determine release channel
         id: channel
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.canary }}" = "true" ]; then
+            echo "dist_tag=canary"          >> "$GITHUB_OUTPUT"
+            echo "release_type=prerelease"  >> "$GITHUB_OUTPUT"
+            echo "version_source=synthetic" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
             echo "dist_tag=canary"          >> "$GITHUB_OUTPUT"
             echo "release_type=prerelease"  >> "$GITHUB_OUTPUT"
             echo "version_source=synthetic" >> "$GITHUB_OUTPUT"
