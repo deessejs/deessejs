@@ -223,25 +223,6 @@ const PricingPage = () => {
           14-day refund on Pro · MIT for Open Community · Source code shipped with
           every Pro template · No subscription, no renewal
         </p>
-        {/* Social proof — single testimonial near the pricing decision */}
-        <figure className="flex flex-col items-center gap-3 border-t border-border pt-6 text-center">
-          <blockquote className="text-copy-16 text-foreground leading-7 max-w-2xl text-balance [&:not(:first-child)]:mt-0">
-            &ldquo;We swapped three weeks of plumbing for a single{" "}
-            <code className="rounded bg-muted px-1.5 py-0.5 text-copy-13-mono">
-              deessejs init
-            </code>
-            . The MCP layer is the part we wish we&apos;d had a year ago.&rdquo;
-          </blockquote>
-          <figcaption className="flex items-center gap-3 text-label-13 text-muted-foreground">
-            <span
-              aria-hidden
-              className="flex size-7 items-center justify-center rounded-full border border-border bg-muted/40 text-label-12 text-foreground"
-            >
-              FC
-            </span>
-            <span>First customer — Founder, stealth B2B SaaS</span>
-          </figcaption>
-        </figure>
       </section>
 
       <Separator />
