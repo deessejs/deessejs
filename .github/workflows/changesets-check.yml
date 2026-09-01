@@ -57,3 +57,54 @@ jobs:
             exit 1
           fi
           echo "Found $COUNT file(s) under .changeset/ — changeset present."
+
+      # Validate the frontmatter of every .changeset/*.md file. We only need
+      # to catch the three failure modes the team has actually hit:
+      #   - missing frontmatter (file starts with a non-`---` line)
+      #   - missing package entry (`"@deessejs/cli": <bump>` not present)
+      #   - invalid bump type (anything other than patch | minor | major)
+      # Catching these here means a malformed changeset fails the PR
+      # instead of `pnpm changeset version` on `main`, which would block
+      # the @latest publish.
+      #
+      # We deliberately do NOT add a YAML parser dependency: this stays
+      # dependency-free and avoids touching pnpm-lock.yaml (which is a
+      # path trigger on cli-preview.yml and cli-publish-verify.yml).
+      - name: Validate changeset frontmatter
+        if: steps.changed.outputs.touched == 'true'
+        run: |
+          set -eu
+          node -e '
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const PKG = "@deessejs/cli";
+            const VALID = new Set(["patch", "minor", "major"]);
+            const errors = [];
+            const files = fs.readdirSync(".changeset")
+              .filter(f => f.endsWith(".md"));
+            for (const f of files) {
+              const fp = path.join(".changeset", f);
+              const body = fs.readFileSync(fp, "utf8");
+              const m = body.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+              if (!m) {
+                errors.push(`${f}: missing or malformed frontmatter (must start with --- and end with ---)`);
+                continue;
+              }
+              const [, front] = m;
+              // Match a top-level "<pkg>": <bump> entry. Tolerates trailing
+              // whitespace; does not tolerate a nested object (we never use one).
+              const re = new RegExp(`^${PKG.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*(patch|minor|major)\\s*$`, "m");
+              const hit = front.match(re);
+              if (!hit) {
+                errors.push(`${f}: frontmatter missing entry \`"${PKG}": patch|minor|major\``);
+                continue;
+              }
+            }
+            if (errors.length) {
+              console.error("::error::Changeset frontmatter validation failed:");
+              for (const e of errors) console.error(`::error::  - ${e}`);
+              console.error("::error::See .changeset/README.md for the format.");
+              process.exit(1);
+            }
+            console.log(`Validated ${files.length} changeset file(s).`);
+          '
