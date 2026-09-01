@@ -127,7 +127,7 @@ const LayerCard = ({ layer }: { layer: PricingLayer }) => {
   const isPro = layer.id === "pro"
   return (
     <Card
-      className={`flex h-full flex-col gap-5 p-6 ${
+      className={`flex h-full flex-col gap-5 bg-background p-6 ${
         isPro ? "border-foreground/30 bg-muted/20 shadow-sm" : ""
       }`}
     >
