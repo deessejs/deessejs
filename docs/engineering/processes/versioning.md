@@ -49,18 +49,20 @@ The four steps are the entire pipeline. Hotfixes follow the same path with `patc
 
 Beyond the `@latest` channel above, two other release channels are available:
 
-### `@canary`, on-demand pre-release
+### `@canary`, auto on every staging push
 
-Triggered manually: `Actions → release.yml → Run workflow → ☑ canary`. The workflow:
+Triggered automatically: every push to `staging` (per [ADR-025](../../apps/internal-documentation/content/docs/decisions/ADR-025-auto-canary-on-staging.mdx)). The workflow also accepts `workflow_dispatch` with the `canary: true` input for on-demand dogfooding from a non-`staging` branch.
 
 1. Computes a synthetic version string `<base>-canary.<UTC-timestamp>.<short-sha>` (for example, `2.1.0-canary.20260821143022.a832a55`).
 2. Rewrites `apps/cli/package.json#version` in place via `jq`. Doesn't consume changesets (they stay available for the eventual `@latest` publish on `main`).
-3. Builds `@workspace/contracts` + `@deessejs/cli`.
-4. Publishes with `npm publish --tag canary --provenance --no-git-checks`.
-5. Defensively re-pins `@latest` to the previous `@latest` value to guard against any accidental tag move.
-6. Creates a GitHub Release tagged `release/v<canary-version>` with `prerelease: true`.
+3. Pre-publish guard validates the base version is a strict `X.Y.Z` from the committed tree (`git show HEAD:apps/cli/package.json`), failing the job if a previous dirty run left a polluted value.
+4. Builds `@workspace/contracts` + `@deessejs/cli`.
+5. Publishes with `npm publish --tag canary --provenance --no-git-checks`.
+6. Defensively re-pins `@latest` to the previous `@latest` value to guard against any accidental tag move.
+7. Post-publish restore rewrites `apps/cli/package.json#version` back to the committed value, so the next canary run sees a clean base (no suffix chain).
+8. Creates a GitHub Release tagged `release/v<canary-version>` with `prerelease: true`.
 
-The `@canary` dist-tag on npm updates on every dispatch. No automatic cleanup runs; canarys accumulate on npm until someone manually deprecates them (within 72h, an unpublish is the alternative).
+The `@canary` dist-tag on npm updates on every staging push. No automatic cleanup runs; canarys accumulate on npm until someone manually deprecates them (within 72h, an unpublish is the alternative).
 
 ### Per-pull-request ephemeral previews
 
@@ -165,6 +167,33 @@ Record the yank in the next release notes.
    gh release create "release/v$VERSION" --generate-notes
    ```
 4. File an issue to fix `release.yml`.
+
+## Operational notes
+
+### Changeset accumulation on `main`
+
+Per `AGENTS.md`, every change merges to `staging` first; `main` is updated only via a human-driven `staging → main` promotion. If `.changeset/*.md` files appear on `main`, it is a signal that either (a) a PR was opened directly against `main` and bypassed the staging-first gate, or (b) branch protection on `main` is misconfigured. Either case requires investigation before the next `@latest` release.
+
+If you see `.changeset/*.md` files on `main`, do **not** merge them through. Open an issue, check the branch protection settings (`https://github.com/deessejs/deessejs/settings/branches`), and decide case by case whether to consume them in the next promotion or revert them.
+
+### Cleaning up canarys
+
+`@canary` builds accumulate on every push to `staging` (per [ADR-025](../../apps/internal-documentation/content/docs/decisions/ADR-025-auto-canary-on-staging.mdx)). npm does not auto-prune; GitHub Releases accumulate the matching tags and prerelease entries. There is no automated cleanup today; a maintainer runs the following once a month (or whenever the `@canary` list becomes unwieldy):
+
+```bash
+# List all canary versions, newest first. Keep the 5 most recent.
+npm view @deessejs/cli dist-tags
+npm view @deessejs/cli versions --json | jq -r '.[] | select(contains("-canary."))' | head -n -5
+
+# Deprecate everything older than the 5 most recent canarys.
+for v in $(npm view @deessejs/cli versions --json | jq -r '.[] | select(contains("-canary."))' | head -n -5); do
+  npm deprecate "@deessejs/cli@${v}" "Superseded by a newer canary. Use @canary or @latest."
+done
+```
+
+For GitHub-side cleanup, use `gh release list --limit 100 --json tagName,isPrerelease -q '.[] | select(.isPrerelease) | .tagName'` to find canary release tags, then delete them individually via `gh release delete <tag> --yes`. (Bulk delete via the GitHub UI is faster for large backlogs.)
+
+Within 72h of a canary publish, `npm unpublish @deessejs/cli@<version>` is also available — prefer `deprecate` for anything older, since unpublish is disruptive to existing users.
 
 ## Related docs
 

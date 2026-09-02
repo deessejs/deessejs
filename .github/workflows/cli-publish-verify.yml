@@ -35,6 +35,8 @@ on:
     branches: [main, staging]
     paths:
       - "apps/cli/**"
+      - "packages/contracts/**"
+      - "packages/api/**"
       - ".github/workflows/cli-publish-verify.yml"
       - "pnpm-lock.yaml"
   workflow_dispatch:
