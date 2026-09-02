@@ -85,7 +85,7 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="h-14 border-b">
+      <SidebarHeader className="h-14 border-b bg-background">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -104,7 +104,7 @@ export function AppSidebar({
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="bg-background">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarBackAction />
@@ -117,7 +117,7 @@ export function AppSidebar({
         </SidebarGroup>
         {inSettings ? <SettingsNav /> : <SettingsShortcut />}
       </SidebarContent>
-      <SidebarFooter className="border-t">
+      <SidebarFooter className="border-t bg-background">
         <NavUser />
       </SidebarFooter>
       <SidebarRail />
