@@ -131,3 +131,4 @@ This app is one of three in the monorepo, each deployed independently:
 Links to `/login`, `/signup` in the header point to `apps/app`. Links to `/docs` point to `apps/docs`. Both are intentional cross-app navigation, not broken links.
 
 All three share `@workspace/ui` for components and styling. App-specific config (`APP_CONFIG`, `APP_NAME`, `WEB_URL`, `APP_URL`, etc.) lives at `@/lib/app-config` in each app and reads from `@workspace/env/client` via the `webURL()` / `appURL()` / `docsURL()` / `apiBaseURL()` helpers.
+
