@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
-import { serverEnv } from "@workspace/env/server"
 
 const PROTECTED_PREFIXES = ["/home", "/settings"]
 const AUTH_PREFIXES = [
@@ -73,16 +72,28 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Per ADR-021: the proxy URL is composed from the path
-  // constant and the host constant, no longer relative to the
-  // incoming request. The two apps share `API_BASE_URL`, so
-  // this expression is identical on staging, prod, and dev. A
-  // future split of apps/app and the API (e.g. an
-  // `api.deessejs.com` deployment) is a one-line env var change
-  // rather than a code refactor.
+  // The proxy self-fetches `/api/v1/auth/get-session` instead of
+  // importing `better-auth` directly. The fetch must hit the
+  // *same* origin the request is being processed under — never a
+  // hardcoded `API_BASE_URL` env var. On Vercel previews the
+  // origin is the per-branch hostname
+  // (`deessejs-app-git-<branch>.vercel.app`); on prod it's
+  // `app.deessejs.com`; in dev it's `localhost:3001`. Reading the
+  // origin off the incoming `request.nextUrl` makes the proxy
+  // adapt automatically without per-environment env wiring, and
+  // it keeps the self-fetch in the same Function (no DNS hop,
+  // no port resolution).
+  //
+  // ADR-021 §"Decision" #4 originally composed the URL from
+  // `serverEnv.API_BASE_URL`. That works for the cross-app case
+  // (`apps/web` calling into `apps/app`) but breaks for the
+  // self-fetch here, because `API_BASE_URL` is not set on every
+  // preview deploy and falls back to `http://localhost:3001` —
+  // which is not listening on Vercel. See the dev-comment on
+  // `serverEnv.API_BASE_URL` for the same caveat.
   const getSessionUrl = new URL(
     `${API_AUTH_PATH}/get-session`,
-    serverEnv.API_BASE_URL,
+    request.nextUrl.origin,
   )
   const response = await fetch(getSessionUrl, {
     headers: { cookie: request.headers.get("cookie") ?? "" },
