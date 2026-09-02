@@ -1,0 +1,237 @@
+---
+title: 'Vercel prebuilt deploy'
+description: 'Build outside Vercel, deploy the artifact to Vercel. The official workflow for escaping Vercel build-minute billing without losing the CDN, Edge, ISR, or Preview Deployments.'
+---
+
+# Vercel prebuilt deploy
+
+A study of the `vercel build` + `vercel deploy --prebuilt` workflow, the officially supported path for moving the build step out of Vercel's infrastructure while keeping every runtime feature (CDN, Edge Functions, ISR, Preview Deployments, Skew Protection) intact. The motivation is build-minute cost: at high deployment frequency, Vercel Pro's included minutes are consumed by minutes of wall-clock build, not by minutes of useful work.
+
+## What Vercel offers by default
+
+Vercel's Git integration couples three steps into a single unit per push:
+
+1. **Build.** Vercel clones the repo, runs the framework build, and produces a `.vercel/output` directory conforming to the [Build Output API](https://vercel.com/blog/build-output-api).
+2. **Upload.** Vercel uploads the artifact to its edge.
+3. **Serve.** Vercel maps the artifact onto the CDN, runs Edge Functions and middleware at the edge, exposes Preview URLs, and applies ISR / on-demand revalidation.
+
+The three steps are atomic from Vercel's billing perspective. Every push consumes one **build minute** per minute of wall-clock time during step 1, regardless of whether anything was rebuilt or whether the cache hit. At 300–600 deploys per day, the build step is the dominant cost.
+
+## What the prebuilt workflow changes
+
+The prebuilt workflow decouples step 1 from steps 2–3. The build runs in CI (GitHub Actions, GitLab Pipelines, a self-hosted runner), and Vercel only performs the upload and serve phases:
+
+```bash
+# in CI, on every push:
+vercel pull    --yes --environment=preview --token="$VERCEL_TOKEN"
+vercel build
+vercel deploy --prebuilt --token="$VERCEL_TOKEN"
+```
+
+Three artifacts matter:
+
+- **`vercel pull`** writes `.vercel/` containing the project's environment metadata (env vars, project ID, org ID). Required because Vercel would normally inject these into the build environment.
+- **`vercel build`** produces `.vercel/output/` (the Build Output API artifact). This is the same directory Vercel would have produced on its own infrastructure.
+- **`vercel deploy --prebuilt`** uploads `.vercel/output/` to Vercel's edge. Vercel skips its own build step and goes straight to upload + serve.
+
+From Vercel's billing perspective, the **build minute counter stays at zero** for this deploy. The deploy is still a deploy (functions, edge, ISR, previews all work), but no build time is accrued.
+
+## What works with `--prebuilt`
+
+Verified against the official Vercel documentation and the [Build Output API](https://vercel.com/blog/build-output-api) specification:
+
+| Feature | Status | Notes |
+|---|---|---|
+| Next.js SSR / SSG | Works | `vercel build` produces the correct `.vercel/output`. |
+| Next.js API Routes (Node runtime) | Works | Functions emitted under `.vercel/output/functions/`. |
+| ISR | Works | The revalidation logic is in the bundle; Vercel's CDN serves stale-while-revalidate. |
+| Middleware | Works | Included in `.vercel/output`. |
+| Image optimization (`next/image`) | Works | Bundle contains the image pipeline. |
+| Preview Deployments | Works | `vercel deploy --prebuilt` without `--prod` produces a Preview URL. |
+| Skew Protection | Works | Since 2024, supported via custom deployment ID. |
+| Edge runtime functions | Works | Must be compiled for Edge by `vercel build`; Vercel does not re-transform. |
+| Vercel Edge Cache / CDN | Works | Independent of the build step. |
+| On-demand revalidation (`revalidatePath` / `revalidateTag`) | Works | Server actions still hit Vercel's invalidation primitives. |
+
+## What breaks with `--prebuilt`
+
+There is exactly one documented break point: **Vercel System Environment Variables are not injected at build time**. With the Git integration, Vercel populates the build environment with values like `VERCEL_ENV`, `VERCEL_URL`, `VERCEL_GIT_COMMIT_SHA`, `VERCEL_GIT_REPO_OWNER`, `VERCEL_GIT_COMMIT_MESSAGE`, etc. None of these are present in CI.
+
+The build fails or produces incorrect output if the code reads them at build time:
+
+```ts
+// next.config.js — silently breaks under --prebuilt
+export default {
+  env: {
+    BUILD_ID: process.env.VERCEL_GIT_COMMIT_SHA, // undefined
+  },
+};
+
+// app/page.tsx — silently breaks under --prebuilt
+export const metadata = {
+  other: process.env.VERCEL_ENV, // undefined
+};
+```
+
+The fix is to populate the variables in the CI job before running `vercel build`:
+
+```yaml
+# .github/workflows/deploy.yml
+- name: Build
+  env:
+    VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
+    VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+    VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.actor }}
+    VERCEL_GIT_COMMIT_AUTHOR_NAME: ${{ github.actor }}
+    VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
+    VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
+    VERCEL_GIT_REF: ${{ github.ref }}
+    VERCEL_GIT_PROVIDER: github
+    VERCEL_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+    NEXT_PUBLIC_VERCEL_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+  run: pnpm vercel build
+```
+
+A complete reference for the variables lives at [System Environment Variables](https://vercel.com/docs/environment-variables/system-environment-variables). Every variable listed there that the build reads must be mapped.
+
+Non-System environment variables (project-level env vars added via the Vercel dashboard) **are** still resolved, because `vercel pull` downloads them into `.vercel/` and `vercel build` reads them from there.
+
+## Cost comparison
+
+The two pipelines compared at 600 deploys per day, 1 minute per build:
+
+### Native Vercel Git integration
+
+```
+600 deploys × 1 min × 30 days = 18 000 build minutes / month
+Vercel Pro: 6 000 included
+Overages: 12 000 × $0.40 = $4 800 / month
+Plus $20 / member / month
+```
+
+### Prebuilt via GitHub Actions
+
+```
+600 deploys × 1 min × 30 days = 18 000 CI minutes / month
+Public repo:  free
+Private repo: 2 000 min included (Linux), then $0.008 / min
+  → 18 000 − 2 000 = 16 000 × $0.008 = $128 / month
+Vercel build minutes: 0
+```
+
+### Prebuilt via self-hosted runner
+
+```
+Hetzner CX22:  €5 / month
+Vercel build minutes: 0
+GitHub Actions minutes: 0 (runner is on our infra)
+Total: ~€5 / month
+```
+
+The self-hosted runner path is the cost-floor. The runner registers with GitHub via a token and runs `runs-on: self-hosted` jobs. A single CX22 (2 vCPU, 4 GB RAM) easily handles 18 000 one-minute builds per month with headroom.
+
+## The full GitHub Actions workflow
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy
+on:
+  push:
+    branches: [staging]
+  pull_request:
+    branches: [staging]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest   # or self-hosted
+    permissions:
+      contents: read
+      pull-requests: write  # only for posting preview URLs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Pull Vercel project info
+        run: pnpm vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build
+        env:
+          VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
+          VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.actor }}
+          VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
+          VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
+          VERCEL_GIT_REF: ${{ github.ref }}
+          VERCEL_GIT_PROVIDER: github
+          VERCEL_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+          NEXT_PUBLIC_VERCEL_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+        run: pnpm vercel build
+
+      - name: Deploy preview
+        if: github.event_name == 'pull_request'
+        run: pnpm vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy production
+        if: github.ref == 'refs/heads/main'
+        run: pnpm vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+```
+
+Three points that bite people the first time:
+
+1. **`fetch-depth: 0`** is required. `vercel build` inspects git history to compute `VERCEL_GIT_COMMIT_*` values.
+2. **`VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`** must be exported in the environment for the CLI to identify the target project. They are not picked up from `.vercel/` alone.
+3. **`--archive=tgz`** is recommended when `.vercel/output/` contains thousands of files (monorepo case) to avoid the upload rate limit.
+
+## Disabling the Vercel Git integration
+
+Once CI owns the deploy, the Vercel Git integration must be turned off to prevent double builds. Either in the Vercel dashboard (Settings → Git → **Disable Auto-Deployments**) or in `vercel.json`:
+
+```json
+{
+  "github": {
+    "enabled": false
+  }
+}
+```
+
+With `github.enabled = false`, Vercel still recognises the linked GitHub repo for branch-protection integration and comment posting, but no build is triggered on push. CI is the single source of deploys.
+
+## What this entry doesn't use
+
+- **No Vercel Build Hooks.** A deploy hook is just a `curl` to a URL that triggers a fresh build on Vercel. It does not run `vercel build` externally and therefore does not save build minutes.
+- **No `vercel deploy` without `--prebuilt`.** Without `--prebuilt`, Vercel runs `vercel build` itself, which is the unit being replaced.
+- **No `vercel build` on a feature branch directly.** CI builds on the runner, not on Vercel, then uploads the artifact.
+
+## What this entry isn't
+
+This is a knowledge-base entry, not an ADR. It documents how the prebuilt workflow behaves in the current version of the Vercel CLI and where it diverges from the Git integration. The **decisions** — whether to use the workflow at all, whether to switch to a self-hosted runner, which secrets to expose in CI — live in `docs/engineering/architecture/decisions/`. When a future change in the Vercel CLI conflicts with this entry, the entry is wrong, not the code.
+
+## See also
+
+- [Vercel — Using GitHub Actions with Vercel](https://vercel.com/kb/guide/how-can-i-use-github-actions-with-vercel), the official workflow reference.
+- [Vercel — `vercel deploy` CLI](https://vercel.com/docs/cli/deploy#prebuilt), the `--prebuilt` semantics and the System Env Vars caveat.
+- [Vercel — `vercel build` CLI](https://vercel.com/docs/cli/build), the build subcommand.
+- [Vercel — System Environment Variables](https://vercel.com/docs/environment-variables/system-environment-variables), the variables to map in CI.
+- [Announcing the Build Output API](https://vercel.com/blog/build-output-api), the artifact format `.vercel/output` conforms to.
