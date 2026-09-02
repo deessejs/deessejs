@@ -20,6 +20,7 @@
     "orpc/client-plugins",
     "---standalone---",
     "commander",
-    "fumadocs"
+    "fumadocs",
+    "touch-targets-and-wcag"
   ]
 }

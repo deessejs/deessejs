@@ -1,0 +1,145 @@
+---
+title: 'Touch targets and WCAG'
+description: 'Reference for minimum touch target sizes, WCAG 2.5.8, mobile pricing-table patterns, and the conventions the DeesseJS marketing pages follow.'
+---
+
+# Touch targets and WCAG
+
+A reference for the accessibility and responsive-design rules that
+the marketing pages apply. Sources, current standards (2026), and
+the conventions we ship.
+
+> **Scope note.** The Knowledge Base is reserved for studies of
+> external libraries the codebase depends on (see ADR-016,
+> ADR-017). This entry is a transverse reference for accessibility
+> standards, not a library study. It lives here because the
+> marketing-site surface is the largest consumer of the rules and
+> needs a single place to look them up. Treat it as a reference
+> doc, not as a precedent for the KB structure.
+
+## The three minimums you must know
+
+| Standard | Source | Minimum | What it counts |
+|---|---|---|---|
+| **WCAG 2.5.8** (Level AA, WCAG 2.2) | [W3C](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html) | 24×24 CSS px | The full interactive bounding box |
+| **Apple HIG** | Apple developer docs | 44×44 pt | Hit area |
+| **Material Design 3** | Google M3 spec | 48×48 dp | Hit area |
+
+WCAG 2.5.8 has an **8px-spacing exception**: if adjacent targets
+have at least 8 CSS px of spacing between them, the minimum drops
+back to 24×24. Without the spacing, the minimum stays at 24×24
+strict.
+
+## What DeesseJS ships
+
+The `@workspace/ui` `<Button>` component ships with five size
+variants: `xs` (24px), `sm` (28px), `default` (32px), `lg` (36px),
+and `icon-*` (24/28/32/36px square). None of them reach the
+48px accessibility target on their own.
+
+Primary CTAs on the marketing surface use `size="lg"` (36px)
+when they sit inside dense layouts like the pricing cards — the
+visual rhythm of the card matters more than the WCAG target,
+and 36px remains above WCAG 2.5.8's 24px AA minimum. Hero
+CTAs and the footer "Talk to us" panel use `size="lg"` too,
+where the surrounding whitespace carries the visual weight.
+
+When a primary CTA must reach 48px — for example a full-width
+"Get started" CTA inside an empty state or a marketing modal —
+add `min-h-12` as a one-off override on that specific instance.
+Do not bake `min-h-12` into the `<Button>` component itself;
+the design system stays canonical, and the override stays
+visible at the call site.
+
+## What the research says
+
+The [NN/g study on touch targets](https://www.nngroup.com/articles/touch-target-size/)
+cites the MIT Touch Lab measurement of average fingertips
+(1.6-2cm wide) and thumb impact areas (~2.5cm). Even the
+1cm-physical minimum they propose is well below actual finger
+size. The practical conclusion:
+
+- **Primary CTA**: 48px+ height, no exception.
+- **Adjacent secondary targets**: 8px+ spacing between them.
+- **Icon-only buttons**: keep the icon visually small
+  (16-20px) but expand the hit area with `padding` to reach
+  48×48. Never rely on icon size alone.
+
+[web.dev's tap-targets guide](https://web.dev/articles/accessible-tap-targets)
+notes the same 48px target with 8px spacing, and adds a useful
+detection tip: use `@media (any-pointer: coarse)` to enlarge
+targets for any touchscreen user regardless of device class.
+
+## Pricing-page patterns we follow
+
+Three patterns exist for mobile pricing tables:
+
+| Pattern | When | Trade-off |
+|---|---|---|
+| **Vertical stacked cards** | Default. Use unless you have a reason not to. | Comparison requires scroll-back. Universally accessible. |
+| **Horizontal scroll with peek** | 3-4 plans, direct comparison matters. | Needs an explicit swipe affordance. |
+| **Accordion per tier** | Long feature lists, many add-ons. | Hidden content lowers conversion. Extra tap friction. |
+
+The pricing page at `/pricing` uses vertical stacked cards on
+`<md` and a horizontal-scroll comparison table on `<sm` (returning
+to a flat table at `sm+`). Both are the dominant 2026 convention
+(Stripe, Linear, Vercel).
+
+## Specific responsive rules the page applies
+
+These are the rules the pricing page follows after the responsive
+audit. Other marketing pages can copy them.
+
+| Rule | Where | Tailwind |
+|---|---|---|
+| Primary CTA buttons inside cards | `LayerCard` CTA, footer CTA | `size="lg"` on `<Button>` |
+| Trust band mono stays readable in narrow viewports | Trust band under the cards | `text-left sm:text-center sm:text-copy-14-mono` |
+| Persona card bodies align in height in `md:grid-cols-2` | Personas block | `line-clamp-4` on the body `<p>` |
+| Comparison table scrolls horizontally on `<sm` | "Side by side" section | `overflow-x-auto` + `min-w-[640px]` on the `<table>` |
+| Article wrapper breathes at every breakpoint | Outer `<article>` | `px-4 sm:px-6` + `gap-16 lg:gap-20` |
+| Long headings wrap evenly | All `h1` / `h2` | `text-balance` |
+
+## What this reference allows
+
+- Using `size="lg"` on `<Button>` for any primary CTA inside a
+  card or a panel. Stays above WCAG 2.5.8 (24 px) without
+  overpowering dense layouts.
+- Adding `min-h-12` on a specific CTA call site when the
+  surrounding whitespace can carry the visual weight (hero
+  CTAs, modals, empty states). Keep the override at the call
+  site, never inside the Button component.
+- Adding `line-clamp-N` to balance heterogeneous card heights
+  inside a `grid-cols-N md:grid-cols-M` layout.
+- Centering dense mono copy at `sm+` while leaving it
+  left-aligned on `<sm` to avoid awkward mid-word gaps.
+
+## What this reference does not cover
+
+- Keyboard navigation patterns (Radix primitives cover this).
+- Screen-reader semantics beyond what WCAG 2.5.8 enforces
+  (`aria-label`, `aria-hidden`, `role`, focus management).
+- Color contrast — handled by the design-token layer, not by
+  per-page code.
+- Reduced-motion (`prefers-reduced-motion`) — Motion components
+  in the homepage Contracts grid respect it; pricing has no
+  motion today.
+
+## Sources
+
+- [W3C — WCAG 2.5.8 Target Size (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)
+- [Apple Human Interface Guidelines — Layout](https://developer.apple.com/design/human-interface-guidelines/layout)
+- [Material Design 3 — Touch targets](https://m3.material.io/foundations/accessible-design/accessibility-basics)
+- [web.dev — Accessible tap targets](https://web.dev/articles/accessible-tap-targets)
+- [NN/g — Touch Targets on Touchscreens](https://www.nngroup.com/articles/touch-target-size/)
+- [NN/g — UI Patterns for Pricing Tables](https://www.nngroup.com/articles/pricing-tables/)
+- [Eleken — Pricing Table UX](https://www.eleken.co/blog/pricing-table-ux)
+- [Smashing Magazine — Pricing Page Design Patterns That Convert](https://www.smashingmagazine.com/2023/07/pricing-page-design-patterns-that-convert)
+- [LogRocket — Designing Pricing Pages: Patterns & Strategies](https://blog.logrocket.com/designing-pricing-pages-patterns-strategies)
+
+## Related
+
+- [ADR-016: Knowledge Base topics](../decisions/ADR-016-knowledge-base-topics.md).
+  The KB structure this reference sits inside.
+- [Rule 0006: technology choices](../rules/0006-technology-choices.md).
+  Why the design-token layer is the right place for color and
+  contrast decisions.
