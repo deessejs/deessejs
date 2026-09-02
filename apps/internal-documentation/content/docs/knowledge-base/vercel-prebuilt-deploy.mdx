@@ -101,16 +101,25 @@ Non-System environment variables (project-level env vars added via the Vercel da
 
 ## Cost comparison
 
-The two pipelines compared at 600 deploys per day, 1 minute per build:
+Vercel bills builds at **$0.0035 per CPU minute**, with the duration rounded up to the nearest minute and multiplied by the vCPU count of the build machine (source: [Vercel — Builds pricing](https://vercel.com/docs/pricing#builds)). The effective per-minute cost therefore depends on the build machine type:
+
+| Build machine | vCPUs | Cost per build minute |
+|---|---|---|
+| Standard (default) | 1 | $0.0035 |
+| Enhanced | 8 | $0.028 |
+
+The two pipelines below are compared at 600 deploys per day, 1 minute per build, on a Standard machine.
 
 ### Native Vercel Git integration
 
 ```
 600 deploys × 1 min × 30 days = 18 000 build minutes / month
-Vercel Pro: 6 000 included
-Overages: 12 000 × $0.40 = $4 800 / month
+Vercel Pro: 6 000 included (Standard machine)
+Overages: 12 000 × $0.0035 = $42 / month
 Plus $20 / member / month
 ```
+
+The number climbs fast when the build exceeds the 45-minute wall-clock cap and gets bumped to the Enhanced machine: 18 000 minutes × $0.028 = **$504 / month** before any team seats. If your builds regularly hit the 8 vCPU Enhanced machine, the prebuilt workflow's economics flip from "nice-to-have" to "must-have" in a single billing cycle.
 
 ### Prebuilt via GitHub Actions
 
@@ -399,6 +408,31 @@ Once CI owns the deploy, the Vercel Git integration must be turned off to preven
 ```
 
 With `github.enabled = false`, Vercel still recognises the linked GitHub repo for branch-protection integration and comment posting, but no build is triggered on push. CI is the single source of deploys.
+
+## Real-world implementations and adjacent references
+
+Several teams have published the same pattern (build in CI, deploy to Vercel with `--prebuilt`) with their own workflow shapes. None contradicts the entry above; each surfaces a different trade-off worth knowing about before adopting.
+
+### Two-job Build / Deploy with artifact handoff
+
+[Take control over your CI/CD process: Use GitHub Actions with Vercel](https://techhub.iodigital.com/articles/take-control-over-your-ci-cd-process-with-github-actions-vercel) splits the pipeline into separate `Build` and `Deploy` jobs that communicate via `actions/upload-artifact` and `actions/download-artifact`. The Deploy job pulls the artifact and runs `vercel deploy --prebuilt`. The article captures the preview URL via `tee deploy.log | tail -1` written to `$GITHUB_OUTPUT`, then uses `environment: { url: ... }` on the job to attach it to the PR.
+
+This shape is worth adopting when the build step is long enough that parallelising Lint / Test / Build gives a meaningful wall-clock win. The single-job shape in this entry is appropriate when the build is fast and the parallel jobs would just queue on the same runner.
+
+### Pipeline with required passing tests
+
+[The perfect Vercel + GitHub Actions deployment pipeline](https://aaronfrancis.com/2021/the-perfect-vercel-github-actions-deployment-pipeline-faa0d4ac) runs the build locally first, executes the test suite against the local build, and only then triggers the Vercel deploy. The motivation is explicit: *"I didn't have any confidence that I wasn't deploying a broken build"* — a sentiment that applies even more strongly on the prebuilt path, where a broken build now costs CI minutes instead of being caught at the Vercel step.
+
+### Cost framing from the field
+
+Cost analyses of Vercel-vs-alternatives consistently flag the build minute line as the symptom that pushes teams off Vercel when traffic crosses ~100K monthly visitors or the team grows past one contributor. Two representative samples:
+
+- [Vercel vs Self-Hosted Coolify: The True Cost Comparison](https://www.massivegrid.com/blog/vercel-vs-self-hosted-coolify-cost-comparison/) — production workload at 500K visitors/month shows a Vercel bill of $601/mo against $17–90/mo on Coolify, with build minutes being one of the named cost drivers.
+- [Self-Hosting on Hetzner vs. Deploying on Vercel: A Real Cost Comparison](https://olio.solutions/en/blog/self-hosting-hetzner-vs-vercel) — flags the hidden ops cost: *"If you spend 4 hours per month on server maintenance at a €100/hr rate, that's €400 in hidden ops cost."* The prebuilt workflow is the middle path: it keeps Vercel as the runtime (zero ops) while moving the build step (the metered line) off Vercel.
+
+### Inflection point
+
+The break-even for the prebuilt workflow is approximately the moment the monthly Vercel bill consistently exceeds **$50–100**. Below that, the operational complexity is not worth the saving; above that, it usually is.
 
 ## What this entry doesn't use
 
