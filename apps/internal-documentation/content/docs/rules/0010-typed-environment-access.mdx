@@ -7,33 +7,36 @@ description: 'No business-logic file reads `process.env`, `globalThis`, or any'
 ## Rule
 
 No business-logic file reads `process.env`, `globalThis`, or any
-other runtime global directly. Every environment value is read
-through a **typed accessor module** that:
+other runtime global directly. Every environment value reaches the
+codebase through a **typed access module** that:
 
 1. Declares the expected keys as a literal-union type or a schema.
 2. Reads the values exactly once at module load (or behind an
-   explicit, memoised function).
+   explicit, cached function).
 3. Returns typed values, not strings, to the rest of the codebase.
 
-The accessor module is the only place in the codebase that touches
-runtime globals. Every other file imports the typed accessor.
+The typed access module is the only place in the codebase that
+touches runtime global state. Every other file imports the typed
+access module.
 
 ## Why
 
-`process.env.X` is a `string | undefined` with no documentation, no
-type, and no validation. Every read repeats the same type assertion
-that hides the value's real shape. Two modules reading the same key
-may disagree about what it means. A typo in the key name compiles.
+`process.env.X` is a `string | undefined` with no documentation,
+no type, and no validation. Every read repeats the same type
+assertion that hides the value's real shape. Two modules reading
+the same key may disagree about what it means. A typo in the key
+name compiles.
 
-The typed accessor solves all four problems in one move. The keys
-are declared once; the values are parsed once; the rest of the
-codebase gets a function call that returns the right type. The
-accessor becomes the place where the runtime meets the type system,
-and there is exactly one such place.
+The typed access module solves all four problems in one move. The
+keys get declared once; the values get parsed once; the rest of
+the codebase gets a function call that returns the right type. The
+typed access module becomes the place where the runtime meets the
+type system, and exactly one such place exists.
 
 This is also the rule that lets the codebase avoid the runtime
-dependency on `@types/node` (rule 0006). The accessor declares its
-own ambient `process` shape; every other file does not have to.
+dependency on `@types/node` (rule 0006). The typed access module
+declares its own ambient `process` shape; every other file
+doesn't have to.
 
 ## What this looks like in practice
 
@@ -51,15 +54,16 @@ const logLevel = process?.env?.LOG_LEVEL ?? 'info';
 const apiKey = process?.env?.API_KEY;
 ```
 
-Each read redeclares `process` because `@types/node` is not in scope.
-Each read uses `?.` and `??` to defend against the absence of
-`process`. None of the keys are documented. None of the values are
-validated.
+Each read declares `process` again because `@types/node` isn't in
+scope. Each read uses `?.` and `??` to defend against the
+absence of `process`. None of the keys get documented. None of
+the values
+get validated.
 
 The same logic centralised:
 
 ```ts
-// env.ts , the only file that touches process.env
+// env.ts, the only file that touches process.env
 type Environment = {
   DEESSEJS_ERRORS_LEGACY_TEMPLATES?: '1' | undefined;
   LOG_LEVEL?: 'debug' | 'info' | 'warn' | 'error';
@@ -77,7 +81,7 @@ const environment: Environment = readEnvironment();
 // env.ts is also the only file allowed to declare `process`.
 ```
 
-Every other file imports the typed accessor:
+Every other file imports the typed access module:
 
 ```ts
 import { environment } from './env.js';
@@ -86,44 +90,44 @@ if (environment.DEESSEJS_ERRORS_LEGACY_TEMPLATES === '1') return;
 const logLevel = environment.LOG_LEVEL ?? 'info';
 ```
 
-No cast in any consumer. No duplicated `?.` chains. The keys are
-documented in one place. The values are validated in one place.
+No cast in any consumer. No duplicated `?.` chains. The keys get
+documented in one place. The values get validated in one place.
 
-## When the rule does not apply
+## When the rule doesn't apply
 
-A test fixture, a debug script, or a build-time tool that runs once
-is allowed to read `process.env` directly. The rule applies to
-**code that ships in the runtime**: the library, the apps, the
-shared modules. The boundary between "tooling" and "runtime" is
-sharp; do not blur it.
+A test fixture, a debug script, or a build-time tool that runs
+once stays allowed to read `process.env` directly. The rule
+applies to **code that ships in the runtime**: the library, the
+apps, the shared modules. The boundary between "tooling" and
+"runtime" is sharp; don't blur it.
 
-A Node-API integration that genuinely needs runtime global
-(`globalThis.crypto.subtle`, `process.versions.node` for capability
-detection) is allowed, but the read happens inside a small typed
-module and the rest of the codebase imports the typed accessor.
+A Node-API integration that genuinely needs a runtime global
+(`globalThis.crypto.subtle`, `process.versions.node` for
+capability detection) stays allowed, but the read happens inside
+a small typed module and the rest of the codebase imports the
+typed access module.
 
 ## Why the values stay primitives (rule 0015 carve-out)
 
 The `Environment` type in the example above declares
-`API_KEY?: string` , a primitive. Rule 0015 says a value that
-represents a domain concept should be typed as a domain-specific
-type, not a primitive. The carve-out is intentional: environment
-values are **runtime configuration**, not domain concepts. A
-`Message` is a `Message` because the application reasons about
-messages; an `API_KEY` is an opaque string the application passes
-to a third party. Wrapping `API_KEY` in a branded type would
-add ceremony without information , there is no second
-`API_KEY`-shaped value in the codebase that the brand would
-prevent the consumer from confusing it with.
+`API_KEY?: string`, a primitive. Rule 0015 says a value that
+represents a domain concept should carry a domain-specific type,
+not a primitive. The carve-out is intentional: environment values
+are **runtime configuration**, not domain concepts. A `Message`
+is a `Message` because the application reasons about messages; an
+`API_KEY` is an opaque string the application passes to a third
+party. Wrapping `API_KEY` in a branded type would add ceremony
+without information, because no second `API_KEY`-shaped value
+exists in the codebase for the brand to prevent confusion with.
 
 The carve-out has a sharp boundary: the moment a value crosses
-the typed accessor and enters the domain, it must be converted
-to the domain type (rule 0015). The accessor is the only place
-where the primitive is allowed to live.
+the typed access module and enters the domain, the code must
+convert it to the domain type (rule 0015). The typed access
+module is the only place where the primitive stays allowed.
 
 ## How to refactor a scattered read
 
-When you find `process.env` references in business code:
+When `process.env` references appear in business code:
 
 1. List every key that appears.
 2. Create `env.ts` (or `config.ts`) at the appropriate boundary
@@ -133,54 +137,58 @@ When you find `process.env` references in business code:
 4. Move the reads into `env.ts`. Each read happens once.
 5. Export a typed `environment` object or a typed `getEnv()`
    function.
-6. Replace every `process.env` reference in business code with the
-   import.
+6. Replace every `process.env` reference in business code with
+   the import.
 
 The refactor is mechanical and reviewable in one PR.
 
 ## Enforcement
 
-- **Code review**. A reviewer who sees `process.env` in a business
-  file (anything under `src/` that ships at runtime) blocks the PR.
+- **Code review**. A reviewer who sees `process.env` in a
+  business file (anything under `src/` that ships at runtime)
+  blocks the PR.
 - **Grep gate**. A standing check before release: `grep -r
-"process\.env" src/` returns only the accessor module. If any
-  other file shows up, the release is blocked until the references
-  are migrated.
+  "process\.env" src/` returns only the typed access module.
+  If any other file shows up, the release stays blocked until the
+  references get migrated.
 - **CI lint** (future). A custom rule or `no-restricted-syntax`
-  can flag `process.env` access outside the accessor module. The
-  rule's existence is the enforcement signal even before it is
-  automated.
+  can flag `process.env` access outside the typed access
+  module. The rule's existence is the enforcement signal even
+  before automation lands.
 
 ## Exceptions
 
-A file that **defines** the accessor (the file the rule says is the
-only place `process.env` is read) is allowed to access it. That
-file is the rule, not the exception.
+A file that **defines** the typed access module (the file the
+rule names as the only place `process.env` gets read) stays
+allowed to access it. That file is the rule, not the exception.
 
 ## See also
 
-- **Rule 0006** . Technology Choices: the rule that motivates
-  avoiding `@types/node` as a runtime dependency. This rule is the
-  operational form of "minimal dependencies, typed boundaries".
-- **Rule 0008** . No Chained Type Assertions: the type discipline
-  this rule relies on. A typed accessor that required an `as
-unknown as Environment` to construct is a violation of 0008; the
-  accessor module is the only file that legitimately narrows the
+- **Rule 0006**, Technology Choices: the rule that motivates
+  avoiding `@types/node` as a runtime dependency. This rule is
+  the operational form of "minimal dependencies, typed
+  boundaries."
+- **Rule 0008**, No Chained Type Assertions: the type discipline
+  this rule relies on. A typed access module that required an
+  `as unknown as Environment` to construct fails 0008; the typed
+  access module is the only file that legitimately narrows the
   ambient `process` shape.
-- **Rule 0015** . Domain-Specific Types Over Primitives: rule
-  0015 requires domain concepts to be domain types. Environment
-  values are configuration, not domain concepts , they remain
-  primitives inside the accessor (see "Why the values stay
-  primitives" above). The moment a value crosses the accessor
-  and enters the domain, rule 0015 applies in full.
+- **Rule 0015**, Domain-Specific Types Over Primitives: rule
+  0015 requires domain concepts to carry domain types.
+  Environment values stay configuration, not domain concepts;
+  they remain primitives inside the typed access module (see
+  "Why the values stay primitives" above). The moment a value
+  crosses the typed access module and enters the domain, rule
+  0015 applies in full.
 
 ## Sources
 
 This rule is a synthesis of the project's own architectural
-commitments. The pattern of a single typed accessor module is
-common in Node.js backends (NestJS ConfigService, Vite's
-`loadEnv`, Next.js env validation via `@t3-oss/env-nextjs`); the
-project does not adopt any of these libraries directly because
-the rule's discipline is one line of code, not a dependency.
-The rule is the lightweight version of a pattern those libraries
-formalise; the formalisation is left to the rule itself.
+commitments. The pattern of a single typed access module is
+common in Node.js backends (a popular backend framework's
+config service, a popular build tool's `loadEnv`, an env
+validation library popular in the TypeScript ecosystem); the
+project doesn't adopt any of these libraries directly because
+the rule's discipline is one line of code, not a dependency. The
+rule is the lightweight version of a pattern those libraries
+formalise; the formalisation stays in the rule itself.

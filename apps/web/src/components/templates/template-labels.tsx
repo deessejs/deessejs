@@ -2,7 +2,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { cn } from "@workspace/ui/lib/utils"
 
 export type TemplateLabelsProps = {
-  labels: string[]
+  labels: string[] | undefined
   /** Maximum number of badges to render before collapsing into "+N". */
   max?: number
   className?: string
@@ -12,13 +12,21 @@ export type TemplateLabelsProps = {
  * Render a template's labels as badges. The first `max` (default 3)
  * are shown as individual badges; the rest collapse into a single
  * muted "+N" pill so the card never grows taller than its grid siblings.
+ *
+ * Defensive against `labels === undefined`: a missing field on the
+ * upstream template payload (GitHub API hiccup, registry drift)
+ * previously threw `TypeError: Cannot read properties of undefined
+ * (reading 'length')` and broke the entire `/templates` SSR render.
+ * Production logs (digest `551940582`) confirmed the crash site.
+ * We now render nothing for an absent/empty array — same UX as the
+ * empty case, no exception.
  */
 export const TemplateLabels = ({
   labels,
   max = 3,
   className,
 }: TemplateLabelsProps) => {
-  if (labels.length === 0) return null
+  if (!labels || labels.length === 0) return null
   const visible = labels.slice(0, max)
   const overflow = labels.length - visible.length
 

@@ -16,13 +16,16 @@
     "db:studio": "pnpm --filter @workspace/database db:studio",
     "auth:generate": "pnpm --filter @workspace/auth auth:generate",
     "env:check": "node --experimental-strip-types scripts/env-check.ts",
-    "dedupe:check": "pnpm dedupe --check"
+    "dedupe:check": "pnpm dedupe --check",
+    "complex:collect": "node --experimental-strip-types scripts/complexity-collect.ts",
+    "complex:report": "node --experimental-strip-types scripts/complexity-report.ts"
   },
   "devDependencies": {
     "@changesets/changelog-git": "catalog:",
     "@changesets/cli": "catalog:",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
+    "pkg-pr-new": "catalog:",
     "prettier": "^3.9.4",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "turbo": "^2.10.4",

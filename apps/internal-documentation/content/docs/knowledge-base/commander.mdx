@@ -1,25 +1,22 @@
 ---
 title: 'Commander.js'
-description: 'A study of [commander.js](https://github.com/tj/commander.js),'
+description: 'A study of commander.js, the CLI framework.'
 ---
 
 # Commander.js
 
-A study of [commander.js](https://github.com/tj/commander.js),
-the CLI framework. Built on
-[tj.github.io/commander.js](https://tj.github.io/commander.js/)
-, the upstream page is the source of truth when the lib
-changes; this entry exists to show the shape of the
-integration and the patterns a new command should follow.
+A study of commander.js, the CLI framework. Built on
+the upstream docs, this entry exists to show the shape of
+the integration and the patterns a new command should follow.
 
-## What commander gives us
+## What commander offers
 
 Commander is a Command class with two responsibilities:
 
-1. **Argument parsing** , flags (`--api-url <url>`), options
+1. **Argument parsing**, flags (`--api-url <url>`), options
    (`--category <name>`), positional arguments
    (`teardown <dir> [otherDirs...]`).
-2. **Subcommand dispatch** . `program.command('list')` returns
+2. **Subcommand dispatch**. `program.command('list')` returns
    a Command for that subcommand; chained `.option()` and
    `.action()` register the handler.
 
@@ -30,7 +27,7 @@ when every handler is async (it touches the network).
 ## The two-call shape
 
 Commander's `command()` has two distinct shapes depending
-on whether a description is passed:
+on whether a description accompanies it:
 
 ```ts
 // With a description: registers a subcommand, returns the program.
@@ -46,10 +43,10 @@ program
 // (returns the new `Command`, so `.action()` is attached)
 ```
 
-The first form is used when the child command is loaded
+The first form fits cases where the child command loads
 from a separate file (the parent only knows the name).
-The second form is used when the child command is defined
-inline. The inline form is the right shape for a single-file
+The second form fits cases where the child command defines
+inline. The inline form works for a single-file
 CLI where each command lives in its own module.
 
 ## The action handler
@@ -85,11 +82,11 @@ The cast is necessary because `getOptionValue` returns
 the CLI, which is the right shape for a program-wide
 option.
 
-## Async and `parseAsync`
+## async and `parseAsync`
 
-Handlers are async. The error a handler throws is
-propagated to the caller of `parseAsync`. The
-top-level catch is the last-resort handler:
+Handlers are async. The error a handler throws propagates
+to the caller of `parseAsync`. The top-level catch serves
+as the last-resort handler:
 
 ```ts
 program.parseAsync(process.argv).catch((err) => {
@@ -117,7 +114,7 @@ that lands in the top-level catch is uncaught by design.
 
 **Options** are flags. The flag string uses comma, pipe,
 or space as separators: `-p, --pepper`, `-p|--pepper`,
-`-p --pepper`. The flag's name becomes the camelCase key
+`-p --pepper`. The flag's name becomes the `camelCase` key
 on the opts bag: `--api-url` becomes `opts.apiUrl`.
 
 **Arguments** are positional. The declaration uses `<>`
@@ -126,7 +123,7 @@ variadic. `teardown <dir> [otherDirs...]` declares one
 required and one variadic optional argument.
 
 When every command's inputs are flags, positional
-arguments are not needed.
+arguments aren't needed.
 
 ## Required options
 
@@ -141,7 +138,7 @@ program
 
 The user gets a parse error before the handler runs. The
 alternative is `.option()` plus a manual check in the
-handler; we keep that for optional flags.
+handler; the codebase keeps that for optional flags.
 
 ## Default values
 
@@ -156,7 +153,7 @@ program.option(
 ```
 
 The third argument is the default. The convention is to
-surface the environment variable as the default , the CLI
+surface the environment variable as the default; the CLI
 reads the env once, at parse time, and never re-reads it.
 
 ## Boolean flags
@@ -173,23 +170,24 @@ program.option('--json', 'JSON output for scripting', false);
 ```
 
 The default of `false` means `--json` is opt-in. This
-pattern is used for every boolean flag.
+pattern applies to every boolean flag.
 
-## What we don't use
+## What this entry doesn't use
 
-- **No `exitOverride()`** , the CLI is a real CLI, not a
-  library. `process.exit()` is the right behavior. If we
-  ever need to test command-line invocation
-  programmatically, we add `exitOverride()` then.
-- **No variadic arguments** , every input is a flag.
-- **No executable subcommands** . `program.command('list',
-  'List available templates')` is not used; we always
-  chain. The two-call form is for cases where the child
-  lives in a separate file (we don't need that yet).
-- **No custom help formatting** , commander's default help
-  is fine. `--help` is wired automatically.
+- **No `exitOverride()`**, the CLI is a real CLI, not a
+  library. `process.exit()` is the right behavior. Test code
+  that needs to invoke the CLI programmatically adds
+  `exitOverride()` then.
+- **No variadic arguments**, every input is a flag.
+- **No executable subcommands**. `program.command('list',
+  'List available templates')` doesn't apply; the code base
+  always chains. The two-call form is for cases where the
+  child lives in a separate file (the code base doesn't
+  need that yet).
+- **No custom help formatting**, commander's default help
+  works. `--help` wires automatically.
 
-## What this entry is not
+## What this entry isn't
 
 This is a knowledge-base entry, not an ADR. It documents
 how commander.js works in the current version of the lib,

@@ -1,0 +1,84 @@
+name: Complexity report
+
+# Runs on every push and every PR. Aggregates the cognitive-complexity findings
+# across all workspaces, uploads them as an artifact, and posts a top-10
+# summary as a PR comment (no-op on push events). Hard-blocking on findings
+# is intentionally disabled — see `docs/engineering/complexity-rollout.md`.
+
+on:
+  pull_request:
+  push:
+    branches: [staging, main]
+
+concurrency:
+  # Per-ref concurrency keeps older runs from racing newer ones; on PRs we
+  # cancel-in-progress to avoid stacking multiple stale comments.
+  group: complexity-report-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  report:
+    name: Generate / aggregate complexity report
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Produce per-package JSON reports under reports/complexity/<pkg>.json.
+      # `turbo` runs the new `complexity:json` script in each workspace and
+      # then the aggregator script via the `complex:report` root script.
+      - name: Generate per-package JSON
+        run: pnpm turbo run complexity:json --force --concurrency=4 --ui=stream
+
+      - name: Aggregate into summary
+        run: pnpm complex:report
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: complexity-report
+          path: reports/complexity/
+          retention-days: 30
+          if-no-files-found: error
+
+      # Comment only on PRs — the comment shouldn't be re-posted on every push
+      # to staging or main.
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: complexity-report
+          path: reports/complexity/summary.md
+
+      # Surface findings in the workflow summary so push events are visible
+      # from the Actions UI even when no PR comment exists.
+      - name: Append summary to run
+        if: always()
+        run: |
+          if [ -f reports/complexity/summary.md ]; then
+            cat reports/complexity/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ⚠ Complexity report skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "No summary file was produced (likely no source files matched)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Soft-fail if report missing
+        if: hashFiles('reports/complexity/summary.json') == ''
+        run: |
+          echo "::warning::Complexity aggregator did not produce summary.json"
+          exit 0

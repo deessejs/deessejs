@@ -6,8 +6,8 @@ description: 'A study of Hono''s testing patterns. Built on'
 # Hono testing
 
 A study of Hono's testing patterns. Built on
-[hono.dev/docs/guides/testing](https://hono.dev/docs/guides/testing)
-and [hono.dev/docs/helpers/testing](https://hono.dev/docs/helpers/testing)
+[Hono.dev/docs/guides/testing](https://hono.dev/docs/guides/testing)
+and [Hono.dev/docs/helpers/testing](https://hono.dev/docs/helpers/testing)
 , the upstream pages are the source of truth when the lib
 changes; this entry exists to show the shape of the
 integration and the discipline that distinguishes testing
@@ -36,7 +36,7 @@ Three call shapes:
   `RequestInit`.
 - `app.request(new Request("http://...", { ... }))` , pass a
   pre-built `Request` (useful when the body is non-trivial,
-  e.g. multipart/form-data, or when you need to set a custom
+  for example multipart/form-data, or when you need to set a custom
   URL the test cares about).
 
 The third argument accepts an `Env` for bindings injection
@@ -79,11 +79,11 @@ pattern for non-trivial apps), `testClient` types as
 `Record<string, never>` and is useless. The `app.request(...)`
 form is the fallback.
 
-## The discipline: test the app, not the framework
+## The discipline, test the app, not the framework
 
 A test that exercises a `new Hono()` with a single route
-tests that Hono itself routes correctly. It does not test
-that the app's middlewares run, that the composer's
+tests that Hono itself routes correctly. It doesn't test
+that the app's middleware runs, that the composer's
 factories mount, that the procedure handler runs, or that
 the wire envelope is correct.
 
@@ -119,14 +119,14 @@ the **real** request-id middleware, the **real** CORS, the
 the **real** procedure. The cost is a test database and a
 fake external dependency. The benefit is that the test
 exercises the wire that ships, end-to-end, without
-mocking any of our own code.
+mocking any of the in-house code.
 
-## What this entry is not
+## What this entry isn't
 
 This is a knowledge-base entry, not an ADR. It documents
 how Hono's testing patterns work in the current version of
 the lib, and the shape of the integration. The
-**decisions** (which patterns we picked and why) live in
+**decisions** (which patterns this entry covers and why) live in
 `docs/engineering/architecture/decisions/` and
 `docs/engineering/architecture/rules/`. When a future
 change conflicts with this entry, the entry is wrong, not

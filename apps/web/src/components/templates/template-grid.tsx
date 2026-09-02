@@ -28,6 +28,7 @@ export type TemplateGridProps = {
 export const TemplateGrid = ({ templates, className }: TemplateGridProps) => {
   return (
     <ul
+      data-testid="templates-grid"
       className={cn(
         "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
         "[&>li]:border-r [&>li]:border-b [&>li]:border-border",
@@ -39,7 +40,7 @@ export const TemplateGrid = ({ templates, className }: TemplateGridProps) => {
       )}
     >
       {templates.map((template) => (
-        <li key={template.slug}>
+        <li key={template.slug} data-testid="templates-card">
           <TemplateCard template={template} />
         </li>
       ))}

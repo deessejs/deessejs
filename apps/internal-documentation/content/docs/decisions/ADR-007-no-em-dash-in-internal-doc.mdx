@@ -13,15 +13,15 @@ Accepted (2026-08). Non-negotiable.
 
 The em dash (. ) is a typographic mark that AI tools emit
 constantly. In the rendering site, every em dash is a tell
-that the prose did not come from a human writer. The site
-is supposed to read as the project's voice; the em dash
+that the prose didn't come from a human writer. The site
+should read as the project's voice; the em dash
 breaks that voice.
 
-The em dash is not banned in the source `docs/engineering/`
-tree. The rules and ADRs are written by humans and edited
+The em dash isn't banned in the source `docs/engineering/`
+tree. The rules and architectural decision records get written by humans and edited
 by humans; the em dash is a stylistic choice the author
 makes. The rule in this ADR is **for the rendering site
-only** , the `apps/internal-documentation/content/docs/`
+only**, the `apps/internal-documentation/content/docs/`
 directory.
 
 ## Decision
@@ -29,49 +29,49 @@ directory.
 The rendering site uses no em dash. Two replacements are
 valid:
 
-- **A comma** , for a parenthetical aside that the reader
+- **A comma**, for a parenthetical aside that the reader
   can skip.
-- **A period** , for a full clause break that the reader
+- **A period**, for a full clause break that the reader
   should pause on.
 
 The choice is the author's; the only rule is **no em dash**.
 
-A single line of MDX containing an em dash is rejected in
+A single line of MDX containing an em dash leads to rejection in
 review. The contributor replaces the em dash with the
 chosen alternative and explains the choice in the diff if
-the alternative is not obvious.
+the alternative isn't obvious.
 
 ## Why
 
 The em dash is the AI writing signature. The upstream docs
-that the rendering site is built from are written by
-humans, and the prose reads as the project's voice. A
+that the rendering site gets built from start with humans writing them,
+and the prose reads as the project's voice. A
 single em dash in a paragraph reads as a tone break: the
 reader registers it, consciously or not, and the trust
 between the author and the reader erodes.
 
-The rule is **not** about the em dash itself. The em dash
-is a fine typographic mark. It is about the signature. The
+The rule isn't about the em dash itself. The em dash
+is a fine typographic mark. It's about the signature. The
 site reads as the project's voice when the prose is the
 project's prose; the em dash is the AI's, not the project's.
 
 The rule is also **not** about other AI tells. Those are
 subjective, library-by-library, and frequently updated by
 the AI tools. The em dash is the durable signal because it
-is universal across AI writing as of 2026. We add more
+is universal across AI writing as of 2026. The codebase adds more
 rules as more signals become durable.
 
 ## What this rule allows
 
 - **A comma** for the same role an em dash would play.
-  "The rule, not the rule's source, is what we follow."
+  "The rule, not the rule's source, is what the project follows."
 - **A period** for a clause break. Two sentences are
   clearer than one with an em dash.
 - **A hyphen** (`-`) for compound adjectives. "The
   no-em-dash rule" is a hyphen, not an em dash.
 - **An en dash** (`–`) for ranges. The rule is about the
   em dash, not the en dash.
-- **The em dash in source quotes** (a `>` blockquote of
+- **The em dash in source quotes** (a `>` {/* vale fix: Vale.Spelling */}blockquote of
   verbatim text from a rule or an ADR). The source quote
   reproduces the upstream; the em dash stays.
 
@@ -116,7 +116,7 @@ for (const file of await readdir(docsDir)) {
 }
 ```
 
-The script is invoked in CI on every PR that touches the
+The script gets invoked in CI on every PR that touches the
 rendering site. Failures block the PR.
 
 The script is fast. No parsing, no MDX, no file walking
@@ -128,17 +128,17 @@ content.
 The rule came from the second migration to the rendering
 site (rule 0001, project mindset). The migration used an
 em dash in the epigraph ("the trust-the-type principle").
-The em dash was inherited from the source rule's
-blockquote. The rendering site showed the em dash
+The em dash got inherited from the source rule's
+{/* vale fix: Vale.Spelling */}blockquote. The rendering site showed the em dash
 prominently in the layout. The proposer's reaction was
-"the AI did this" , and the rule emerged.
+"the AI did this," and the rule emerged.
 
 ## Related
 
-- [ADR-006: Fumadocs Cards design rules](./ADR-006-fumadocs-card-design.md) . 
+- [ADR-006: Fumadocs Cards design rules](./ADR-006-fumadocs-card-design.md),
   the same principle: a rendering convention the schema
-  cannot enforce, enforced by review.
-- [knowledge-base/fumadocs.md](../knowledge-base/fumadocs.md) . 
+  can't enforce, enforced by review.
+- [`knowledge-base/fumadocs.md`](../knowledge-base/fumadocs.md),
   the components reference and the contributor workflow.
-- The `apps/internal-documentation/` site , the rendering
+- The `apps/internal-documentation/` site, the rendering
   target this ADR governs.

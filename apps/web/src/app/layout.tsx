@@ -1,10 +1,13 @@
 import { Geist, Geist_Mono } from "next/font/google"
+import { MotionConfig } from "motion/react"
 
 import "@workspace/ui/globals.css"
 import { APP_CONFIG } from "@workspace/ui/lib/config"
 import { AppProviders } from "@/components/providers"
 import { AppFooter } from "@/components/footers/app-footer"
 import { SiteHeader } from "@/components/headers/site-header"
+import { GlobalSearchDialog } from "@/components/search/global-search-dialog"
+import { GlobalSearchShortcut } from "@/components/search/global-search-shortcut"
 import { CookieConsent } from "@workspace/cookies"
 import { Toaster } from "@workspace/ui/components/sonner"
 import { cn } from "@workspace/ui/lib/utils"
@@ -33,15 +36,19 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", geist.variable)}
     >
       <body>
-        <AppProviders>
-          <div className="flex min-h-screen flex-col">
-            <SiteHeader />
-            <main className="flex-1">{children}</main>
-            <AppFooter />
-            <CookieConsent />
-            <Toaster />
-          </div>
-        </AppProviders>
+        <MotionConfig reducedMotion="user">
+          <AppProviders>
+            <div className="flex min-h-screen flex-col">
+              <SiteHeader />
+              <main className="flex-1">{children}</main>
+              <AppFooter />
+              <CookieConsent />
+              <Toaster />
+            </div>
+            <GlobalSearchShortcut />
+            <GlobalSearchDialog />
+          </AppProviders>
+        </MotionConfig>
       </body>
     </html>
   )

@@ -37,6 +37,11 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
       NEXT_PUBLIC_APP_URL: https://ci.example.com
+      # ADR-023: production superRefine gate requires PARENT_DOMAIN
+      # for cross-subdomain cookie sharing. Stubbed in CI so the
+      # gate passes; the real value is set on Vercel per the
+      # changeset operational prerequisites.
+      PARENT_DOMAIN: ci.example.com
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,6 +65,11 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
       NEXT_PUBLIC_APP_URL: https://ci.example.com
+      # ADR-023: production superRefine gate requires PARENT_DOMAIN
+      # for cross-subdomain cookie sharing. Stubbed in CI so the
+      # gate passes; the real value is set on Vercel per the
+      # changeset operational prerequisites.
+      PARENT_DOMAIN: ci.example.com
     steps:
       - uses: actions/checkout@v4
         with:
@@ -123,6 +133,14 @@ jobs:
       # injected via ${{ secrets.* }} in deploy workflows.
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
+      # ADR-017: the templates integration test hits the real
+      # GitHub REST API. The standard `secrets.GITHUB_TOKEN`
+      # grants 1000 req/min on the workflow run; without it, the
+      # anonymous 60 req/h budget is exhausted in minutes. The
+      # probe in `packages/api/tests/globalSetup.ts` reads the
+      # rate limit and skips the test loudly when remaining
+      # quota is below the threshold.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:

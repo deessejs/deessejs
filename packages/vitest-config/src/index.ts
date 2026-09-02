@@ -16,6 +16,12 @@ const DEFAULT_OVERRIDES = {
   include: ["tests/**/*.test.ts"],
   testTimeout: 5_000,
   hookTimeout: 10_000,
+  // Env propagation: turbo.json's `test` task `env` allowlist
+  // forwards the keys the workers need from the parent shell. Do
+  // NOT add a `test.env` here — it runs at vitest config-load
+  // time, by which point turbo has already stripped non-listed
+  // vars, so reading `process.env` here would return undefined
+  // for them. See PR #75 for the full diagnosis.
   pool: "threads" as const,
   setupFiles: ["@workspace/env/server"],
   coverage: false as const,

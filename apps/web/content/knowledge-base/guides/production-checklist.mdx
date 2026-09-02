@@ -1,0 +1,53 @@
+---
+title: Production readiness checklist
+description: Auth, secrets, observability, rate limits — what to verify.
+topic: deployment
+products: [vercel, production]
+order: 1
+draft: false
+---
+
+Before the first real promotion to production, run
+through this checklist. Each item is a known failure
+mode that has bitten a team at some point.
+
+## Auth
+
+- Email verification is enforced server-side (better-auth
+  is configured in `packages/auth`).
+- The proxy redirects unverified users to `/verify-email`.
+- Password reset links expire in 15 minutes.
+
+## Secrets
+
+- All secrets live in Vercel's environment variable
+  store, never in the repo.
+- `BETTER_AUTH_SECRET` is at least 32 chars.
+- `DATABASE_URL` points at the production cluster with
+  TLS enabled.
+
+## Observability
+
+- Logs, traces, and metrics are wired
+  (see [Add observability](/knowledge-base/guides/observability-logging)).
+- Alerts fire on: 5xx rate > 1%, queue depth > 1000,
+  p95 latency > 2s.
+
+## Rate limits
+
+- The `rateLimit` middleware is mounted on every public
+  route.
+- Authenticated routes have a per-user budget;
+  unauthenticated routes have a per-IP budget.
+
+## Database
+
+- Migrations are applied before the deploy runs.
+- The rollback runbook is documented and rehearsed.
+
+## What's next
+
+- [Run background jobs](/knowledge-base/guides/background-jobs-queue)
+  — verify queue alarms before going live.
+- [Deploy to Vercel](/knowledge-base/guides/deploy-to-vercel)
+  — the actual promotion flow.

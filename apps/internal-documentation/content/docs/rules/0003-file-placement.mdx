@@ -1,75 +1,80 @@
 ---
 title: 'File placement'
-description: 'Every new file or directory is created **after** a deliberate decision'
+description: 'Every new file or directory lands only after a deliberate decision'
 ---
 
 
 ## Rule
 
-Every new file or directory is created **after** a deliberate decision
-about where it belongs. The decision is made before the file is
-written, not justified after.
+Every new file or directory lands only **after** a deliberate
+decision about where it belongs. The team makes the decision
+before the file gets written, not justified after.
 
 Concretely:
 
-1. Before creating the file, the author states (in the PR description,
-   in the commit body, or in code review) **why** this file lives
-   here and not somewhere else. "It felt right" is not a justification.
-2. If the file holds a single function, the default placement is **next
-   to its sole caller**, in the caller's concern folder. It is not a
-   "common utility" until there are at least two callers in different
-   concerns.
-3. If the file is a candidate for "common utils", the author must
-   demonstrate the **second use site** before extracting. Until then,
-   the duplication is the cheaper choice.
+1. Before creating the file, the author states (in the PR
+   description, in the commit body, or in code review) **why**
+   this file lives here and not somewhere else. "It felt right"
+   isn't a justification.
+2. If the file holds a single function, the default placement
+   sits **next to its sole caller**, in the caller's concern
+   folder. It isn't a "common utility" until at least two callers
+   in different concerns exist.
+3. If the file is a candidate for "common utils," the author
+   must show the **second use site** before extracting. Until
+   then, the duplication costs less.
 
 ## Why
 
-The instinct to drop a helper into a shared `utils.ts` (or to create a
-`utils.ts` to host it) is an act of **premature centralisation**. The
-function feels reusable, so we put it where "everyone can find it".
-Two months later, the function has one caller, the file is the
-graveyard of half-finished ideas, and the next contributor adds their
-own helper next to it without reading the first one. Six months later,
-the file has seventeen unrelated helpers and no shared concept.
+The instinct to drop a helper into a shared `utils.ts` (or to
+create a `utils.ts` to host it) is an act of **premature
+centralisation**. The function feels reusable, so the author
+puts it where "everyone can find it." Two months later, the
+function has one caller, the file is the graveyard of
+half-finished ideas, and the next contributor adds their own
+helper next to it without reading the first one. Six months
+later, the file has seventeen unrelated helpers and no shared
+concept.
 
-The cost of misplacing a file grows faster than the cost of a single
-duplicate. A duplicate is at worst two lines that say the same thing
-in two places; a misplaced file is a wrong contract that the rest of
-the codebase imports.
+The cost of misplacing a file grows faster than the cost of a
+single duplicate. A duplicate is at worst two lines that say
+the same thing in two places; a misplaced file is a wrong
+contract that the rest of the codebase imports.
 
-The discipline of "decide before you create" forces the author to
-think about the **lifetime** of the file. A helper next to its caller
-has the lifetime of the caller; a helper in `utils.ts` has the
-lifetime of "everything". The shorter lifetime is the honest
-contract.
+The discipline of "decide before you create" forces the author
+to think about the **lifetime** of the file. A helper next to
+its caller has the lifetime of the caller; a helper in
+`utils.ts` has the lifetime of "everything." The shorter
+lifetime is the honest contract.
 
 ## How to decide
 
-Ask four questions, in order. Any "no" answers the question of whether
-this file belongs at all.
+Ask four questions, in order. Any "no" answers the question of
+whether this file belongs at all.
 
 1. **What concern does it serve?** If the answer is "only one
-   concern", the file goes in that concern. If "two or more
-   concerns", continue.
-2. **Is the second use site already real?** Not "I imagine using
-   this elsewhere". A real second use site: a different concern that
-   already needs this function today. If the second site is
-   speculative, keep the function near its first caller.
-3. **Is the shared concept narrower than "utility"?** "Validation
-   helpers" is a concept. "String utilities" is not. A concept-narrow
-   module (`validation/helpers.ts`, `formatting/dates.ts`) ages
-   better than a generic `utils/`.
-4. **Does the name of the new file describe what it does?** A file
-   named `helpers.ts`, `misc.ts`, `stuff.ts` is almost always wrong.
-   A file named `date-formatter.ts`, `assert-never.ts`,
-   `http-status.ts` describes its purpose and ages well.
+   concern," the file goes in that concern. If "two or more
+   concerns," continue.
+2. **Is the second use site already real?** Not "I imagine
+   using this elsewhere." A real second use site, a different
+   concern that already needs this function today. If the
+   second site is speculative, keep the function near its
+   first caller.
+3. **Is the shared concept narrower than "utility"?**
+   "Validation helpers" is a concept. "String utilities"
+   isn't. A concept-narrow module (`validation/helpers.ts`,
+   `formatting/dates.ts`) ages better than a generic `utils/`.
+4. **Does the name of the new file describe what it does?** A
+   file named `helpers.ts`, `misc.ts`, `stuff.ts` is almost
+   always wrong. A file named `date-formatter.ts`,
+   `assert-never.ts`, `http-status.ts` describes its purpose
+   and ages well.
 
 ### Thresholds at a glance
 
-The codebase applies three different thresholds to three different
-decisions. The thresholds are not interchangeable; each answers a
-specific question.
+The codebase applies three different thresholds to three
+different decisions. The thresholds aren't interchangeable;
+each answers a specific question.
 
 | Decision                                          | Threshold           | Evidence required                                |
 | ------------------------------------------------- | ------------------- | ------------------------------------------------ |
@@ -77,34 +82,35 @@ specific question.
 | Move a file to a shared location across concerns  | 2 distinct concerns | A second concern already needs the file.        |
 | Introduce a generic abstraction (named algorithm) | 3 concrete cases    | The abstraction has paid for itself three times. |
 
-The first row is the file-level default (rule 0005). The second row
-is this rule's question 2. The third row is the _Rule of Three_
-named in rule 0001 (invariant 4). A reader applying the
-"second-caller" threshold of this rule to a _generic abstraction_
-is using the wrong number; a reader applying the "three-cases"
-threshold to a _file move_ is being over-cautious and accumulating
-duplication the codebase has already paid for.
+The first row is the file-level default (rule 0005). The second
+row is this rule's question 2. The third row is the _Rule of
+Three_ named in rule 0001 (invariant 4). A reader applying the
+"second-caller" threshold of this rule to a _generic
+abstraction_ is using the wrong number; a reader applying the
+"three-cases" threshold to a _file move_ is being over-cautious
+and accumulating duplication the codebase has already paid for.
 
 ## When extraction is appropriate
 
 A function moves to a shared location when:
 
-- It is called from at least two distinct concerns.
-- The concept the function represents is named (not "a thing that
-  trims strings" but "an RFC 3986 percent-encoder").
-- The signature is stable: no caller has needed to extend it with
-  optional flags yet.
+- Two distinct concerns already call it.
+- The concept has a name (not "a thing that trims strings" but
+  "an RFC 3986 percent-encoder").
+- The signature is stable: no caller has needed to extend it
+  with optional flags yet.
 
 A constant moves to a shared location when:
 
-- It is referenced from at least two concerns.
-- It is a value the rest of the codebase would otherwise have to
-  duplicate or hard-code.
+- At least two concerns reference it.
+- The rest of the codebase would otherwise have to duplicate or
+  hard-code the value.
 
 A type moves to a shared location when:
 
-- It is used as a contract by two or more concerns.
-- The type is small and self-contained (no cross-cutting dependencies).
+- Two or more concerns use it as a contract.
+- The type stays small and self-contained (no cross-cutting
+  dependencies).
 
 ## What this looks like in violation
 
@@ -120,13 +126,14 @@ src/
 ```
 
 Three files, three single callers, one shared parent. The parent
-exists because the author thought "these might be useful elsewhere".
-They were not useful elsewhere; they never will be. The author
-anticipated reuse that did not come. The right shape would have been
-to keep each helper inside its sole caller's concern folder.
+exists because the author thought "these might be useful
+elsewhere." They weren't useful elsewhere; they never will be.
+The author anticipated reuse that didn't come. The right shape
+would have kept each helper inside its sole caller's concern
+folder.
 
 ```ts
-// report/formatter.ts , the helper that should never have moved
+// report/formatter.ts, the helper that should never have moved
 import { formatIsoDate } from '../utils/date.js';
 
 export function formatReport(event: ReportEvent): string {
@@ -134,13 +141,13 @@ export function formatReport(event: ReportEvent): string {
 }
 ```
 
-The `formatIsoDate` import tells the reader the formatter depends on
-a shared utility. But there is no second caller. The "shared"
-utility is a single-caller helper dressed up as cross-cutting. The
-right shape:
+The `formatIsoDate` import tells the reader the formatter
+depends on a shared utility. But no second caller exists. The
+"shared" utility is a single-caller helper dressed up as
+cross-cutting. The right shape:
 
 ```ts
-// report/formatter.ts , the helper lives with its caller
+// report/formatter.ts, the helper lives with its caller
 export function formatReport(event: ReportEvent): string {
   const formattedDate = formatIsoDate(event.occurredAt);
   // ...
@@ -151,57 +158,60 @@ function formatIsoDate(input: Date): string {
 }
 ```
 
-The reader sees the helper and its caller in the same file. When a
-second concern genuinely needs the same formatter, the move to a
-shared location is justified by the second use site.
+The reader sees the helper and its caller in the same file.
+When a second concern genuinely needs the same formatter, the
+second use site justifies the move to a shared location.
 
 ## Enforcement
 
 - **Code review**. A reviewer who sees a new file under a
-  `utils/` or `common/` directory without a justifying comment
-  and a second use site blocks the PR.
-- **File naming**. Files named `utils.ts`, `helpers.ts`, `misc.ts`,
-  `common.ts`, `stuff.ts` are blocked at review. The author is
-  asked to name the file after what it does.
+  `utils/` or `common/` directory without a justifying
+  comment and a second use site blocks the PR.
+- **File naming**. Files named `utils.ts`, `helpers.ts`,
+  `misc.ts`, `common.ts`, `stuff.ts` get blocked at review.
+  The author names the file after what it does.
 - **Quarterly audit**. A standing review of "what lives in the
-  common directories" is part of release prep. Files that lost
-  their second use site are moved back to their last surviving
-  caller's folder.
+  common directories" is part of release prep. Files that
+  lost their second use site move back to their last
+  surviving caller's folder.
 
 ## Exceptions
 
-A genuine cross-cutting helper , for example, an `assertNever` exhaustiveness
-guard, or a date format shared by logs, reports, and tests , lives in
-a top-level module. The module's name must describe what it does
-(`assert-never.ts`, `iso-date.ts`), not what it is (`utils.ts`). The
-author must demonstrate the multiple use sites in the PR.
+A genuine cross-cutting helper, for example, an `assertNever`
+exhaustiveness guard, or a date format shared by logs,
+reports, and tests, lives in a top-level module. The module's
+name describes what it does (`assert-never.ts`,
+`iso-date.ts`), not the kind label (`utils.ts`). The author
+shows the use sites in the PR.
 
 ## See also
 
-- **Rule 0001** . Project Mindset: invariant 4 names the _Rule of
-  Three_ (abstraction = three cases) as a sibling threshold. The
-  "second use site" of this rule is the _file-level_ threshold; the
-  "three cases" of 0001 is the _abstraction-level_ threshold. The
-  two coexist by design.
-- **Rule 0002** . File Separation: the per-concern split this rule
-  assumes. This rule says "where does the file go"; 0002 says "what
-  kinds of files exist in a concern".
-- **Rule 0005** . Named Algorithms and Independent Data Structures:
-  the rule that captures the _one-caller_ default for helpers
-  (single-caller algorithm stays inline; see the "When this rule
-  does not apply" section of 0005).
-- **Rule 0007** . Top-Down Composition: the discipline that makes
-  the file the rule places read well from top to bottom.
-- **Rule 0011** . Filenames Are kebab-case: the casing discipline
-  that complements this rule's placement discipline.
+- **Rule 0001**, Project Mindset: invariant 4 names the _Rule
+  of Three_ (abstraction = three cases) as a sibling
+  threshold. The "second use site" of this rule is the
+  _file-level_ threshold; the "three cases" of 0001 is the
+  _abstraction-level_ threshold. The two coexist by design.
+- **Rule 0002**, File Separation: the per-concern split this
+  rule assumes. This rule says "where does the file go"; 0002
+  says "what kinds of files exist in a concern."
+- **Rule 0005**, Named Algorithms and Independent Data
+  Structures: the rule that captures the _one-caller_ default
+  for helpers (single-caller algorithm stays inline; see the
+  "When this rule doesn't apply" section of 0005).
+- **Rule 0007**, Top-Down Composition: the discipline that
+  makes the file the rule places read well from top to
+  bottom.
+- **Rule 0011**, Filenames Are kebab-case: the casing
+  discipline that complements this rule's placement
+  discipline.
 
 ## Sources
 
 This rule is a synthesis of the project's own working
-experience. The discipline of "decide before you create" is
-explicitly drawn from Rule of Three , a heuristic named
-informally in software folklore that an abstraction is
-worth its cost when three concrete cases exist. The rule names
-the heuristic without citing a single reference because the
-heuristic is older than the JavaScript ecosystem and predates
-the project's chosen stack.
+experience. The discipline of "decide before you create" draws
+explicitly from Rule of Three, a heuristic named informally
+in software folklore that an abstraction earns its cost when
+three concrete cases exist. The rule names the heuristic
+without citing a single reference because the heuristic is
+older than the JavaScript ecosystem and predates the
+project's chosen stack.

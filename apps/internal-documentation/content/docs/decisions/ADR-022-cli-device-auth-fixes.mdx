@@ -1,0 +1,428 @@
+---
+title: 'CLI device-auth fix-ups'
+description: 'Two gaps in the ADR-020 device flow: the CLI never learns the user identity after polling /device/token, and the web verification page has no sign-in gate. Implementation path documented here; runtime fixes land in follow-up PRs.'
+---
+
+# ADR-022: CLI device-auth fix-ups
+
+## Status
+
+Draft (2026-08). Awaiting review.
+
+Amends [ADR-020: Device authorization for the CLI auth surface](../ADR-020-device-auth-cli). Doesn't supersede it.
+
+## Context
+
+ADR-020 shipped the device-authorization flow end-to-end: the Better Auth plugin wires in on the server, the CLI's `deesse auth login` / `auth status` / `auth logout` commands exist, and the `/device` verification page is reachable at `apps/app/app/(unprotected)/(auth)/device/page.tsx`. The staging smoke after the staging-to-main promotion surfaced two gaps that the ADR didn't catch. These gaps load-bear this ADR's reason for existing.
+
+### The user-visible symptom
+
+A fresh run on a machine with no stored session:
+
+{/* vale off */}
+
+```
+$ pnpm dlx https://pkg.pr.new/@deessejs/cli@ffb7822 auth login
+
+Open the following URL in your browser if it doesn't open automatically:
+https://app.deessejs.com/device?user_code=9V6C7TWE
+
+✓ logged in as unknown user
+
+$ pnpm dlx https://pkg.pr.new/@deessejs/cli@ffb7822 auth status
+
+The stored token no longer matches an active session on the server. Run `deesse auth login` again.
+unknown user — token fetched 21/08/2026 13:37:39
+```
+
+{/* vale on */}
+
+The user reports they weren't prompted to sign in at any point during the flow, which is the third signal alongside the two above. Each symptom traces to a separate bug; both share the same investigation.
+
+### Bug A, the CLI never learns the user identity
+
+`apps/cli/src/lib/auth/flow/device-flow.ts:55-71` (`requestDeviceCode`) and `:73-118` (`pollForToken`) follow the Better Auth plugin's wire format exactly. The CLI requests a device code, opens the browser to `verification_uri_complete`, polls `/device/token`, and on success receives:
+
+```json
+{
+  "access_token": "tok_<session.token>",
+  "token_type": "Bearer",
+  "expires_in": 604800,
+  "scope": ""
+}
+```
+
+The shape is the Better Auth canonical response: `node_modules/better-auth/dist/plugins/device-authorization/routes.mjs:279-287` returns exactly `{ access_token, token_type, expires_in, scope }`. No `user` field, no `id_token`, no embedded identity. RFC 8628 §3.5 ("Device Access Token Response") explicitly defers to RFC 6749 §5.1, which mandates the same shape.
+
+The CLI then calls `fetchUserIdentity` (`device-flow.ts:120-125`) to learn who just authenticated:
+
+```ts
+export const fetchUserIdentity = async (): Promise<UserIdentity | null> => {
+  const authClient = createCliAuthClient()
+  const { data } = await authClient.getSession()
+  if (!data) return null
+  return data.user as UserIdentity
+}
+```
+
+`createCliAuthClient` (`apps/cli/src/lib/auth/store/better-auth-client.ts:86-98`) builds with `disableDefaultFetchPlugins: true` (the comment notes that the default plugins include a redirect handler that's meaningless in Node) and a `fetchOptions.headers.user-agent` only. No cookie jar exists, no session cookie exists, and no `Authorization` header exists. The CLI is a stateless Node process; it has never sent a session cookie.
+
+`authClient.getSession()` has nothing to resolve the session from, so the call returns null. Better Auth reads the cookie first and the `Authorization: Bearer <token>` header second. Without either, the response is `null`. `apps/cli/src/commands/auth/login.ts:65` then substitutes `user ?? { id: "" }`, and the print at `:74-76` falls through every chain (`email`, `name`, `id`) to the literal `"unknown user"`.
+
+A later `auth status` reads `~/.deessejs/auth.json`, sees a populated `access_token`, and re-uses it to call `/get-session` via `bearerFetch`. That helper (`apps/cli/src/lib/auth/store/bearer-fetch.ts:37-49`) sets the `Authorization: Bearer <token>` header correctly, so why does `auth status` still report "session invalid"? Better Auth ignores the `Authorization` header when the `bearer` plugin isn't registered on the server. The grep for `bearer|bearerPlugin|Bearer` in `packages/auth/src/auth.ts` returns zero matches; only `deviceAuthorization(...)` and `nextCookies()` are present. The CLI's bearer header goes discarded.
+
+### Bug B, the `/device` page has no sign-in gate
+
+The Better Auth `POST /device/approve` endpoint (`routes.mjs:371-442`) gates on a server-side session check:
+
+```ts
+const session = await getSessionFromCtx(ctx)
+if (!session) throw new APIError("UNAUTHORIZED", {
+  error: "unauthorized",
+  error_description: DEVICE_AUTHORIZATION_ERROR_CODES.AUTHENTICATION_REQUIRED.message,
+})
+```
+
+A user who selects Approve without a session gets HTTP 401. The `deviceCode` record's `userId` also stays unbound in this case, because the automatic bind runs on `GET /device?user_code=...` (`routes.mjs:343-365`) only when the caller already has a session.
+
+The web page at `apps/app/app/(unprotected)/(auth)/device/page.tsx` is a thin Server Component that reads `searchParams.user_code`, validates it against `userCodeSchema`, and renders `<DeviceForm userCode={userCode}>`. It doesn't check the session. `DeviceForm` (`apps/app/components/auth/device-form.tsx:65-97`) renders the Approve/Deny buttons as soon as `status === "pending"`. A user who lands on `/device?user_code=...` while anonymous sees a working-looking page with clickable buttons that fail when the user selects them.
+
+The proxy at `apps/app/proxy.ts:5-33` lists `/device` in `AUTH_PREFIXES`:
+
+```ts
+const AUTH_PREFIXES = [
+  "/login", "/signup", "/forgot-password",
+  "/reset-password", "/verify-email",
+  "/device", // ADR-020: bounce signed-in users to /home
+]
+```
+
+…but the `config.matcher` doesn't include `/device`:
+
+```ts
+export const config = {
+  matcher: [
+    "/home/:path*", "/settings/:path*",
+    "/login", "/signup", "/forgot-password",
+    "/reset-password", "/verify-email",
+  ],
+}
+```
+
+The `proxy(request)` function never runs for `/device`. The bounce branch at `proxy.ts:86-88` is dead code for the device path. And even if `/device` landed in the matcher, the bounce direction is wrong: the existing code redirects signed-in users *away* from auth pages to `/home`. The need for `/device` is the inverse, redirecting *anonymous* users *to* `/login?redirect=/device?user_code=...` so they sign in first and return to claim the code. The canonical Better Auth device-auth example implements exactly this server-side redirect (`better-auth.com/docs/plugins/device-authorization`, "Device page"):
+
+```ts
+if (!session?.user) {
+  const verificationPath = `/device?user_code=${encodeURIComponent(formattedCode)}`
+  window.location.href = `/login?redirect=${encodeURIComponent(verificationPath)}`
+  return
+}
+```
+
+### Why both bugs surface together
+
+A user who runs `deesse auth login` for the first time has no stored session, so no cookie travels with any CLI request. The CLI's bearer-fetch to `/device/token` works because that endpoint doesn't require auth on the device-code side; the server issues a session token tied to the user who just selected Approve. The user *did* approve the device code in the browser, but Bug B meant the Approve endpoint returned 401 to the browser, the device code stayed in `pending`, and the `userId` stayed unbound. The CLI's poll loop eventually times out, unless someone happens to have held a session before selecting Approve.
+
+The reproducer in the smoke came from a user who had an existing web session. Their Approve select succeeded (server saw a session, bound the `userId`, returned success), the CLI polled and got the token, then `fetchUserIdentity` returned null because the CLI itself has no session cookie. Result: the CLI holds a valid `access_token` that the server recognises, but the CLI has no idea who it belongs to.
+
+### Production comparison
+
+The investigation confirmed that the same pattern is universal in production device flows:
+
+| Company | CLI tool | Verification URL | Sign-in handling | Anonymous approval | Token-without-user |
+|---|---|---|---|---|---|
+| GitHub CLI (`gh`) | `https://github.com/login/device` (bare URL; no `_complete`) | Same page renders sign-in or code-entry based on session; `allow_signup=true` controls whether the page offers "Create an account" with `?return_to=` | No; `gh` calls `GET /user` with `Authorization: Bearer <token>` after the token arrives |
+| Vercel CLI | `verification_uri_complete` (CLI opens the URL with code embedded) | Page requires an authenticated Vercel session; surfaces IP/location/time | No; `GET /v1/user` with the bearer token resolves the user |
+| Microsoft identity platform | `https://microsoft.com/devicelogin` + separate `user_code` | Work/school: existing session reused; **personal: explicit re-auth required** because "the device is unable to access the user's cookies" | No; `id_token` JWT carries identity directly, no follow-up needed |
+| Auth0 (reference) | `verification_uri` + `_complete` + code | "redirects the user to the login and consent prompt, if needed" | Configurable; Universal Login can offer or hide signup |
+| Google | `https://www.google.com/device` + separate `user_code` | "After entering the code and, if not already logged-in, logging in to Google, the user sees a consent screen." | No; client resolves identity via `oauth2/v3/userinfo` |
+
+Every production implementation has a sign-in gate on the verification page and either resolves identity from token claims (Microsoft) or from a follow-up Bearer-authed API call (GitHub, Vercel, Linear, Google). The DeesseJS implementation missed both.
+
+## Decision
+
+This ADR mandates three changes in lockstep. They're scoped together because each one is necessary and none is enough on its own.
+
+### 1. CLI side, wire `bearerFetch` into `fetchUserIdentity`
+
+`apps/cli/src/lib/auth/flow/device-flow.ts:120-125` accepts the access token as a parameter and uses `bearerFetch` to resolve the user:
+
+```ts
+export const fetchUserIdentity = async (
+  accessToken: string,
+): Promise<UserIdentity> => {
+  const response = await bearerFetch("get-session", accessToken, { method: "GET" })
+  if (!response.ok) {
+    throw cliDeviceExpired("server issued a session token but /get-session rejected it")
+  }
+  const body = (await response.json()) as { user?: UserIdentity }
+  if (!body.user) {
+    throw cliDeviceExpired("server issued a session token but no user identity was attached")
+  }
+  return body.user
+}
+```
+
+`apps/cli/src/commands/auth/login.ts:62-67` becomes:
+
+```ts
+const token = await pollForToken(issued.deviceCode, issued.expiresBy)
+const user = await fetchUserIdentity(token.accessToken)
+writeAuth({
+  access_token: token.accessToken,
+  user,
+  fetchedAt: new Date().toISOString(),
+})
+```
+
+The PR drops the `?? { id: "" }` fallback. A token without a resolvable user is a server-side or wire-protocol regression, not a normal state; it surfaces as `cli_device_expired` (the existing closed-list code from ADR-020 + ADR-010 §2) with a hint that names the actual failure mode. No new public CLI error code ships.
+
+The `bearerFetch` helper at `apps/cli/src/lib/auth/store/bearer-fetch.ts:37-49` keeps its shape; the code reuses it as-is. The change adds no new helper. The change is one new parameter to `fetchUserIdentity`, one new argument at the call site, and a behavioural flip on the fallback.
+
+### 2. Server side, register the `bearer` plugin
+
+`packages/auth/src/auth.ts:113-126` adds `bearer()` to the plugin array, between `deviceAuthorization({ verificationUri: "/device" })` and `nextCookies()`. The plugin order is load-bearing:
+
+```ts
+plugins: [
+  deviceAuthorization({
+    verificationUri: "/device",
+  }),
+  // ADR-022: required for `Authorization: Bearer <access_token>`
+  // to resolve a session in /get-session from the CLI side. Without
+  // this, the CLI's bearerFetch("get-session", accessToken) call
+  // returns 401 even when the token is valid. Per Better Auth
+  // docs/plugins/bearer, the plugin must be registered for the
+  // header to be honored.
+  bearer(),
+  nextCookies(), // must remain last (ADR-020 invariant)
+]
+```
+
+The plugin is already in `node_modules` (`better-auth/plugins/bearer`); no new dependency. No schema change, the plugin is stateless.
+
+### 3. Web side, server-side sign-in gate on `/device`
+
+`apps/app/app/(unprotected)/(auth)/device/page.tsx` becomes a Server Component that checks the session before rendering the form. If null, it issues a server-side redirect to `/login` with a `redirect` query argument that round-trips the `user_code`:
+
+```ts
+import { redirect } from "next/navigation"
+import { headers } from "next/headers"
+import { auth } from "@workspace/auth"
+
+export default async function DevicePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ user_code: string | string[] | undefined }>
+}) {
+  const params = await searchParams
+  const rawCode = Array.isArray(params.user_code) ? params.user_code[0] : params.user_code
+  const parsed = userCodeSchema.safeParse(rawCode)
+
+  if (!parsed.success) {
+    // Unparseable URL is treated as expired (ADR-020): an anonymous
+    // visitor cannot act on the diagnostic. Show the ExpiredPanel.
+    return <DeviceForm userCode={null} />
+  }
+
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) {
+    const returnPath = `/device?user_code=${encodeURIComponent(parsed.data)}`
+    redirect(`/login?redirect=${encodeURIComponent(returnPath)}`)
+  }
+
+  return (
+    <AuthContainer.Root>
+      <AuthContainer.Header ... />
+      <AuthContainer.Content>
+        <DeviceForm userCode={parsed.data} />
+      </AuthContainer.Content>
+    </AuthContainer.Root>
+  )
+}
+```
+
+`apps/app/proxy.ts:22-33` adds `/device` to the `config.matcher`:
+
+```ts
+export const config = {
+  matcher: [
+    "/home/:path*",
+    "/settings/:path*",
+    "/login",
+    "/signup",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+    // ADR-022: the page-level redirect to /login handles the
+    // anonymous case. The proxy bounce branch keeps the
+    // signed-in case from rendering the auth flow.
+    "/device",
+  ],
+}
+```
+
+The existing `isAuthPage` block at `proxy.ts:86-88` already redirects a signed-in user away from auth pages; it now also fires on `/device`, so a user who is already authenticated and visits `/device?user_code=...` for any reason lands at `/home` (where they can hit the device page through the normal sign-in flow if needed). The page-level redirect handles the inverse direction.
+
+### What this rule allows
+
+- Modifying `apps/cli/src/lib/auth/flow/device-flow.ts:120-125` to accept an `accessToken` parameter and call `bearerFetch("get-session", accessToken)`. The function's return type narrows from `Promise<UserIdentity | null>` to `Promise<UserIdentity>`; the null branch turns into a thrown `cli_device_expired` with a specific message.
+- Modifying `apps/cli/src/commands/auth/login.ts:62-67` to pass the token and remove the `?? { id: "" }` fallback. The shape written to `~/.deessejs/auth.json` stays the same (the same `{ access_token, user, fetchedAt }` envelope, per ADR-020 §"Token storage").
+- Adding `bearer()` to `packages/auth/src/auth.ts`'s plugin array, between `deviceAuthorization(...)` and `nextCookies()`. The `nextCookies()`-last invariant from ADR-020 §"What this rule forbids" stays in force.
+- Modifying `apps/app/app/(unprotected)/(auth)/device/page.tsx` to do the server-side session check and the redirect. The four-state machine in `apps/app/components/auth/device-form.tsx:65-97` stays the same; the bug is upstream of the render.
+- Adding `"/device"` to the `config.matcher` array in `apps/app/proxy.ts:22-33`. The existing `AUTH_PREFIXES` array keeps `/device` and the existing bounce branch (`proxy.ts:86-88`) handles the signed-in case.
+- Reusing the existing `bearerFetch` helper at `apps/cli/src/lib/auth/store/bearer-fetch.ts:37-49`. No new CLI helper.
+- Reusing the existing `useDeviceClaim` / `useDeviceErrorMessage` hooks at `apps/app/hooks/use-device-flow.ts`. The error mapping at `use-device-flow.ts:131` already covers `unauthorized` with a sign-in-required message; there's no new error code.
+- A CLI integration test that asserts the `Authorization: Bearer <token>` header travels on `/get-session`. The fake server at `apps/cli/test/integration/fakes/better-auth.ts:215-233` updates to honour the header; the existing assertion at `apps/cli/test/integration/auth/login.test.ts:86-91` keeps passing, plus a new header assertion.
+- A server integration test that exercises the device flow end-to-end and asserts the CLI's bearer `/get-session` call returns the same user the approve endpoint bound. The test extends `packages/api/tests/integration/system/auth.test.ts`.
+
+### What this rule forbids
+
+- **A new public CLI error code for "user identity not resolved."** The closed list from ADR-010 §2 (amended in lockstep by ADR-020 to add `cli_device_denied` and `cli_device_expired`) doesn't gain a new entry. The "token issued but no user" case reuses `cli_device_expired` with a distinct hint. The pattern follows the original "closed-list amendment" rationale from ADR-010: each new public code is a breaking change for downstream tooling, and the user-action surface (rerun `deesse auth login`) is identical to a timeout or a stale code.
+- **A new wire envelope for the post-login identity call.** ADR-001 forbids custom envelopes. The `Authorization: Bearer <token>` header is the canonical RFC 6750 mechanism; the CLI doesn't invent a parallel one.
+- **Storing the user's password on disk.** ADR-020 §"What this rule forbids" already pins this; this ADR inherits it.
+- **Bypassing `nextCookies()` to put `bearer()` last.** The `nextCookies()`-must-be-last invariant from ADR-020 §"What this rule forbids" stays in force. The plugin order is `deviceAuthorization`, `bearer`, `nextCookies`.
+- **A parallel auth path or a custom `/device/*` endpoint outside the Better Auth mount.** ADR-020 §"What this rule forbids" pins the five endpoints under `/api/v1/auth/*`; this ADR inherits it.
+- **A client-only sign-in gate on the device page.** The redirect must be server-side (`redirect(...)` in the Server Component) so it works before the React tree hydrates. A `useEffect`-based check on the client lets the Approve/Deny buttons flash for one frame before the redirect happens; that flash is a regression from the user's perspective.
+- **Wrapping `auth.api.getSession` in a custom helper.** Per ADR-001, the typed client is the wire format. The page calls `auth.api.getSession({ headers: await headers() })` directly.
+- **Putting the device page under a protected route group.** ADR-020 §"What this rule forbids" already pins this; a protected wrapper would block the users the flow serves. The page is `(unprotected)`.
+- **A separate `/login?redirect=...` handler that doesn't preserve the original `user_code`.** The redirect target is always `/device?user_code=<code>` from the original URL; the page-level gate doesn't accept free-form redirects, and the login form's `redirect` query handling (`apps/app/components/auth/login-form.tsx`) already round-trips arbitrary paths back.
+- **Removing the `bearerFetch` helper or merging it into `createCliAuthClient`.** The helper exists exactly because the typed client can't drive the post-login Bearer path (`better-auth-client.ts:15-16`, comment). The two paths stay separate.
+- **Treating `user: null` from `/get-session` as "session expired."** It isn't expired; the CLI has never authenticated. Surfacing it as `cli_device_expired` ("device code expired") would mislead the user into re-running the login flow without addressing the actual problem (server misconfiguration, or a missing bearer plugin in a future revision of `packages/auth`).
+- **Shipping this ADR's three changes in separate PRs that land out of order.** The CLI fix without the server `bearer()` plugin still writes `user: null` (the header goes ignored). The server fix without the CLI change still writes `user: { id: "" }` (no Bearer header sent). The web fix without the other two is unreachable because the proxy bounces the user to `/login` and lands them back on `/device` with a session, but the CLI still has the broken identity resolution. The three land together, in one PR.
+
+### What this rule doesn't change
+
+- **The single-tenant decision.** `bearer()` doesn't introduce organization concepts; the locked-in rules from `docs/guides/better-auth/index.md` stay the same.
+- **The session cookie configuration.** The device flow still creates a session with the existing `session.expiresIn: 7 days`, `updateAge: 1 day` configuration (`packages/auth/src/auth.ts:100-103`). The bearer plugin reads the same session row.
+- **The CLI's public command set.** `deesse auth login`, `auth status`, `auth logout` keep their flags, output format, and exit codes (ADR-010 §1).
+- **The CLI's closed public error code list.** `cli_device_denied` and `cli_device_expired` keep their codes; the latter gains a new message variant but no new code.
+- **The CLI's HTTP wire format.** The CLI still talks to the upstream through the Better Auth typed client for the auth endpoints; the `Authorization: Bearer <token>` header is the standard RFC 6750 mechanism, not a custom envelope.
+- **The `~/.deessejs/auth.json` file format.** `StoredAuth` (`apps/cli/src/lib/auth/store/store.ts:41-45`) keeps its shape: `{ access_token, user, fetchedAt }`. The fix populates `user` correctly instead of substituting an empty id.
+- **The `/device` page's four-state machine.** `DeviceForm`'s render logic at `apps/app/components/auth/device-form.tsx:65-97` keeps its shape; the bug is upstream (page never reached the "claimed, pending" state because the user was anonymous).
+- **The device-flow polling protocol.** The CLI's `pollForToken` (`device-flow.ts:73-118`) still consumes the canonical Better Auth `{ access_token, token_type, expires_in, scope }` response. The only new behaviour is `fetchUserIdentity` taking the token to resolve identity from `/get-session`.
+- **The device-page route placement.** The page is still under `(unprotected)/(auth)/device/` (ADR-020 §"Route layout"); the redirect to `/login?redirect=...` exits this route group, lands on `/login` (also `(unprotected)/(auth)/login/`), and returns.
+- **The `nextCookies()` plugin ordering invariant.** ADR-020 §"What this rule forbids" already pins this; this ADR inherits it. The new ordering is `deviceAuthorization`, `bearer`, `nextCookies`.
+
+## Test strategy
+
+The implementation PR ships one test layer per touched surface:
+
+### CLI side
+
+Extend `apps/cli/test/integration/auth/login.test.ts` with a header assertion. The fake server at `apps/cli/test/integration/fakes/better-auth.ts:215-233` currently branches on `!state.accessToken` and ignores the `Authorization` header. The implementation PR updates the fake to capture the header on the most recent `/get-session` call and exposes it via `state.counters` (or a parallel `state.lastGetSessionAuthHeader`). The test asserts:
+
+```ts
+expect(fake?.state.lastGetSessionAuthHeader).toMatch(/^Bearer tok_/)
+```
+
+The existing assertion `expect(parsed.user.email).toBe("[email protected]")` (line 90) keeps passing; today it passes by accident because the fake doesn't check the header, so it returns the user whenever `state.accessToken` populates. After the fix, the test is honest: the fake rejects (or ignores) the request unless the header matches.
+
+### Server side
+
+Extend `packages/api/tests/integration/system/auth.test.ts` with a round-trip identity test:
+
+1. Issue a device code via `POST /api/v1/auth/device/code` with `client_id: "deessejs-cli"`.
+2. Simulate an authenticated user approving the code via `POST /api/v1/auth/device/approve` with the user's session cookie.
+3. Poll `POST /api/v1/auth/device/token` until success.
+4. Call `GET /api/v1/auth/get-session` with `Authorization: Bearer <access_token>`.
+5. Assert the response body matches the user from step 2.
+
+The test pins the round-trip: the CLI's bearer `/get-session` call returns the same user the approve endpoint bound. Without `bearer()` on the server, step 4 returns 401; the test would have caught Bug A in this exact configuration.
+
+### Web side
+
+The `/device` page's server-side redirect is best tested by a Next.js integration test that hits the page with an anonymous request and asserts a 307 to `/login?redirect=...`. The implementation PR picks the framework (Playwright, Vitest + Next test utilities, or `node:test` against the running dev server); this ADR documents the contract:
+
+- Anonymous `GET /device?user_code=<valid>` → `307 Location: /login?redirect=%2Fdevice%3Fuser_code%3D<valid>`.
+- Anonymous `GET /device` (no `user_code`) → `200` with the `ExpiredPanel` (ADR-020's "treat invalid as expired" rule).
+- Authenticated `GET /device?user_code=<valid>` → `200` with the `DeviceForm` rendering the Approve/Deny state.
+
+The proxy's bounce-to-`/home` branch on `/device` is already covered by the existing proxy tests; the addition of `/device` to the matcher is one line and doesn't warrant a dedicated test.
+
+### Existing tests
+
+- `apps/cli/test/integration/auth/status.test.ts` and `logout.test.ts` keep their behaviour; both already use `bearerFetch` for `/get-session` and `/sign-out` and will continue to pass once `bearer()` registers on the server.
+- `packages/api/tests/integration/system/auth.test.ts`'s existing device-flow tests keep their behaviour; the new round-trip identity test is an addition.
+- `apps/app/components/auth/device-form.tsx`'s render logic stays the same; no component test changes.
+
+## Known limitations in this version
+
+Two gaps identified during drafting but excluded from this ADR.
+
+### Limitation 1, A CLI user who closes the browser between the CLI opening the URL and the user landing on `/login` has no resume path
+
+The CLI opens the verification URL via `open(url, { wait: false })` (`apps/cli/src/lib/auth/flow/open-verification-url.ts:14-16`). If the user closes the browser immediately, the device code stays valid for 30 minutes (Better Auth default `expiresIn`) but the polling loop is the only thing that can drive it to completion. The CLI's `pollForToken` doesn't expose a "rerun in browser" option. A user who cancels the browser on accident has no recourse other than re-running `deesse auth login`.
+
+**V1 limitation**: acceptable because the device-code TTL (30 minutes) is long enough that the accidental-close window is small. A future ADR can add a CLI-side "reopen verification URL" command (for example, `deesse auth login --reopen`) that pulls the existing `user_code` from a per-flow cache. The cache would live in `~/.deessejs/` alongside `auth.json`; the ADR scope would be the cache layout, the TTL, and the cleanup semantics.
+
+### Limitation 2, The `/device` → `/login` redirect loses `user_code` if the user navigates manually inside the login form
+
+The Server Component's redirect target is `/login?redirect=/device?user_code=<code>`. The login form (`apps/app/components/auth/login-form.tsx`) reads `?redirect=...` and passes it to `router.push(redirect)` after `authClient.signIn.email` succeeds. If the user selects the "Sign up" or "Forgot password" link inside the login form, the navigation strips the `redirect` query string (the login layout doesn't preserve it across links). The user signs up, lands on `/home`, and the device code expires.
+
+**V1 limitation**: the `redirect` query only stays intact on direct sign-in. A future ADR can extend the login form's "Sign up" and "Forgot password" links to forward `redirect` so the round-trip survives manual navigation. The fix is a one-line query-string append in two `<Link>` components.
+
+## Consequences
+
+- An implementation PR that fixes Bug A without fixing Bug B can't land: the user lands on `/device` while anonymous, gets bounced to `/login`, and the `/get-session` Bearer resolution still succeeds, but the existing failure mode persists because the proxy bounce logic was dead and the page-level gate was missing. All three fixes land together in one PR, or not at all.
+- An implementation PR that adds the `bearer()` plugin without also wiring `bearerFetch` into `fetchUserIdentity` can't land: the plugin sits inert, no Bearer resolution happens, and the user-visible bug stays.
+- An implementation PR that adds a new public CLI error code (for example, `cli_device_no_user`) can't land per ADR-010 §2. The "token issued but no user" case reuses `cli_device_expired` with a new hint.
+- An implementation PR that modifies the Better Auth wire format (adds a `user` field to `/device/token`) can't land per ADR-001 / ADR-020. The CLI doesn't invent a parallel response shape.
+- An implementation PR that puts the sign-in gate client-side (for example, a `useEffect` that checks `authClient.getSession` and `router.replace` to `/login` if null) can't land. The redirect must be server-side so the Approve/Deny buttons never flash for an anonymous user.
+- An implementation PR that changes the plugin order to `bearer`, `deviceAuthorization`, `nextCookies` (or any other permutation) can't land. The order is `deviceAuthorization`, `bearer`, `nextCookies`; `nextCookies()` is last per ADR-020.
+- An implementation PR that removes the `bearerFetch` helper in favour of a generic `createCliAuthClient({ headers })` override can't land. The two paths (typed client + bearer fetch) stay separate per the existing rationale in `better-auth-client.ts:15-16`.
+
+## Where this rule came from
+
+The staging smoke after the staging-to-main promotion surfaced the bug. The user ran:
+
+```
+pnpm dlx https://pkg.pr.new/@deessejs/cli@ffb7822 auth login
+```
+
+…and observed:
+
+{/* vale off */}
+
+```
+Open the following URL in your browser if it doesn't open automatically:
+https://app.deessejs.com/device?user_code=9V6C7TWE
+
+✓ logged in as unknown user
+
+$ pnpm dlx https://pkg.pr.new/@deessejs/cli@ffb7822 auth status
+
+The stored token no longer matches an active session on the server. Run `deesse auth login` again.
+unknown user — token fetched 21/08/2026 13:37:39
+```
+
+{/* vale on */}
+
+The user reports they were never prompted to sign in. This is the third signal: a session-less user landed on `/device`, selected Approve (the server returned 401 because no session), the `userId` stayed unbound, but because the user *had* an existing web session from a prior visit, the device flow's GET `/device?user_code=...` bound the code automatically to that user, and the CLI received the token without a way to learn the binding.
+
+The investigation that traced it:
+
+- Read `apps/cli/src/lib/auth/flow/device-flow.ts` (the `pollForToken` and `fetchUserIdentity` functions).
+- Read `apps/cli/src/lib/auth/store/bearer-fetch.ts` (the helper that already does the right thing for `auth status` / `auth logout`).
+- Read `apps/cli/src/lib/auth/store/better-auth-client.ts` (the typed client that doesn't).
+- Read `apps/app/proxy.ts:5-33` (the dead `/device` bounce branch).
+- Read `apps/app/app/(unprotected)/(auth)/device/page.tsx` and `apps/app/components/auth/device-form.tsx:65-97` (the page that doesn't gate on session).
+- Read `packages/auth/src/auth.ts:113-126` (the plugin array that lacks `bearer()`).
+- Read `node_modules/better-auth/dist/plugins/device-authorization/routes.mjs` (the wire format and the `deviceApprove` session gate).
+- Read the Better Auth device-authorization docs (https://better-auth.com/docs/plugins/device-authorization) for the canonical CLI pattern.
+- Read the Better Auth Bearer plugin docs (https://better-auth.com/docs/plugins/bearer) for the `Authorization: Bearer <token>` server-side need.
+{/* vale fix: Vale.Spelling */}- Compared with the production implementations: GitHub CLI (`gh`), Vercel CLI, Microsoft identity platform, Auth0, Google. Every production flow has a sign-in gate on the verification page; every production CLI either reads identity from token claims (Microsoft `id_token`) or from a follow-up Bearer-authed API call (the rest).
+
+## Related
+
+- [ADR-001: oRPC is load-bearing](../ADR-001-orpc-is-load-bearing). The wire-format discipline that constrains how the CLI resolves user identity, with no custom envelopes.
+- [ADR-010: CLI public surface](../ADR-010-cli-public-surface). The closed-list rule that forbids new public error codes for the user-not-resolved case. The `?? { id: "" }` fallback becomes a hard `cli_device_expired` throw, which is a closed-list reuse, not an addition.
+- [ADR-014: CLI E2E tests](../ADR-014-cli-e2e-tests). The integration test discipline the implementation PR inherits. "Test strategy" documents the fake-server updates.
+- [ADR-015: Hono RPC multi-segment mount](../ADR-015-hono-rpc-mount-multisegment). The prefix-alignment invariant that makes the CLI's `get-session` URL predictable; this ADR doesn't touch it.
+- [ADR-020: Device authorization for the CLI auth surface](../ADR-020-device-auth-cli). The rule this ADR amends. The five endpoints, the `/device` page placement, the proxy `AUTH_PREFIXES` entry, and the `nextCookies()`-last invariant come from ADR-020; this ADR adds three specific fixes.
+- [ADR-021: CLI three-tier release pipeline](../ADR-021-cli-three-tier-release). Unrelated; cited only as the most recent ADR for numbering convention.
+- Better Auth device-authorization plugin docs: https://better-auth.com/docs/plugins/device-authorization. The upstream source of truth for the five endpoints, the wire format, and the canonical "redirect anonymous users to /login?redirect=" pattern.
+- Better Auth Bearer plugin docs: https://better-auth.com/docs/plugins/bearer. The `Authorization: Bearer <token>` server-side need and the `bearer()` plugin registration step.
+- RFC 8628 §3.5 (Device Access Token Response). Confirms the wire format has no `user` field; the CLI must resolve identity from a follow-up call.
+- RFC 6749 §5.1 (Successful Response). The token-response shape that RFC 8628 inherits.
+- RFC 6750 §2.1 (Authorization Request Header Field). The `Authorization: Bearer <token>` mechanism the CLI uses on the follow-up `/get-session` call.

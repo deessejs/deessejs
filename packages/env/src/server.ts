@@ -84,6 +84,14 @@ function getServerEnv(): Readonly<ServerEnv> {
     GITHUB_TOKEN: env.GITHUB_TOKEN,
     GITHUB_CLIENT_ID: env.GITHUB_CLIENT_ID,
     GITHUB_CLIENT_SECRET: env.GITHUB_CLIENT_SECRET,
+    // Inter-app URL configuration (ADR-021). Read from serverEnv
+    // by apps/app's proxy and apps/cli's RPCLink; apps/web reads
+    // the NEXT_PUBLIC_* mirror via clientEnv for browser-side code.
+    WEB_URL: env.WEB_URL,
+    APP_URL: env.APP_URL,
+    DOCS_URL: env.DOCS_URL,
+    API_BASE_URL: env.API_BASE_URL,
+    PARENT_DOMAIN: env.PARENT_DOMAIN,
   } as ServerEnv) as Readonly<ServerEnv>
 
   // Runtime assertion: no NEXT_PUBLIC_* may leak through the server face.

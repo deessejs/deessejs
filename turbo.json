@@ -39,7 +39,30 @@
     },
     "test": {
       "dependsOn": ["^build"],
+      "env": [
+        "DATABASE_URL",
+        "TEST_DATABASE_URL",
+        "BETTER_AUTH_SECRET",
+        "AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "ALLOWED_ORIGINS",
+        "RATE_LIMIT_PER_MINUTE",
+        "RESEND_API_KEY",
+        "RESEND_FROM_EMAIL",
+        "RESEND_FROM_NAME",
+        "MAIL_TRANSPORT",
+        "GITHUB_TOKEN"
+      ],
       "outputs": ["coverage/**"]
+    },
+    "complexity:json": {
+      "dependsOn": [],
+      "inputs": ["$TURBO_DEFAULT$", ".env", ".env.local"],
+      "outputs": ["reports/complexity/**"]
+    },
+    "complexity-report": {
+      "dependsOn": ["complexity:json"],
+      "outputs": ["reports/complexity/**"]
     }
   }
 }

@@ -1,0 +1,248 @@
+---
+title: 'CLI three-tier release pipeline'
+description: 'Per-PR ephemeral previews via pkg.pr.new, a @canary dist-tag published from release.yml via workflow_dispatch, and the existing @latest release on main. Lifts the V1 single-channel constraint; preserves the single trusted-publisher invariant.'
+---
+
+# ADR-021: CLI three-tier release pipeline
+
+## Status
+
+Draft (2026-08). Awaiting review.
+
+Supersedes the implicit constraint in [docs/engineering/reports/versioning/04-prereleases.md](../../../../docs/engineering/reports/versioning/04-prereleases.md), which deferred pre-release channels "until (if) the CLI ever needs an opt-in beta channel." This ADR revives that deferral with concrete triggers.
+
+## Context
+
+`@deessejs/cli` is the only published package in the monorepo. Today's release path is a single channel:
+
+- `apps/cli/**` changes ship via PR to `staging`.
+- A human promotes `staging` to `main` (per `AGENTS.md`).
+- `.github/workflows/release.yml` consumes changesets, bumps `apps/cli/package.json`, and publishes to npm under the `latest` dist-tag with Trusted Publishing (OIDC).
+
+That pipeline is correct for what it does, but it leaves three concrete feedback gaps that surface in our day-to-day work:
+
+1. **PR authors cannot give reviewers something to install.** Reviewers of a non-trivial CLI change (`apps/cli/src/commands/*`, the oRPC client in `apps/cli/src/api/client.ts`, the templates endpoint contract in `packages/contracts`) have to read the diff and reason about it. A reviewer who wants to run the change locally has to clone the branch, `pnpm install`, `pnpm build`, and link it. Most reviewers skip this. The feedback loop is "read the diff, trust the tests," which is exactly the gap the existing layer-cake (ADR-009) is honest about.
+
+2. **Staging cannot be consumed without a custom checkout.** After a merge to `staging`, the staged work is in `main` only at human-promotion time. The interval can be hours or days. Internal dogfooding — anyone on the team wanting to exercise a CLI change against a real target before the release — is gated on the human promotion.
+
+3. **`@deessejs/cli@canary` does not exist.** Consumers who want bleeding-edge builds have no install path that does not require cloning. The npm dist-tag namespace supports arbitrary user-defined tags, and `canary` is the canonical convention.
+
+The decision in `04-prereleases.md` explicitly deferred pre-releases for V1. The justification was risk-versus-payoff: changesets pre-release mode is operationally heavy, blocks other releases on the same branch, and forces you to maintain a separate branch for the prerelease line. That calculus was right when V1 had no consumers and no real beta demand. It is no longer right for the three gaps above.
+
+This ADR introduces a three-tier pipeline. Two of the tiers share `release.yml` (canary + latest), and the third tier is a separate workflow because its authentication mechanism is fundamentally different.
+
+## Decision
+
+Three release tiers:
+
+- **Tier 1 — pkg.pr.new previews on every PR.** New workflow `cli-preview.yml`. Separate because pkg.pr.new authenticates via its own GitHub App (not OIDC to npm).
+- **Tier 2 — `@canary` on demand.** Triggered manually via `workflow_dispatch` with an `canary: true` input. Lives inside `release.yml` as an alternative branch of the same job — separate from Tier 3 only by a conditional step.
+- **Tier 3 — `@latest` on human promotion to `main`.** Existing `release.yml` push-to-main path, unchanged.
+
+This split is dictated by a hard constraint discovered during drafting: **npm Trusted Publishing allows only one trusted publisher configuration per package**. See [npm Trusted Publishers documentation](https://docs.npmjs.com/trusted-publishers/): *"Each package can only have one trusted publisher configured at a time."* The original Tier 2 design (a separate `cli-canary.yml` workflow with its own OIDC config) is therefore mechanically impossible — npm would refuse the publish because the trusted publisher entry on `https://www.npmjs.com/package/@deessejs/cli/access` is keyed on `release.yml` and cannot list a second workflow filename.
+
+The better-auth project ([release.yml](https://github.com/better-auth/better-auth/blob/acbd6ef6/.github/workflows/release.yml)) uses the pattern adopted here: one workflow with a `Determine npm dist-tag` step that switches the publish tag based on the trigger (`main` → `latest`, `next` → changesets-managed prerelease, `workflow_dispatch` with `snapshot` input → custom tag). GitHub Releases are created for all three branches with `--prerelease` auto-detected when the version string contains a `-`. We adapt this pattern to our two-tier-in-one-workflow case.
+
+### Tier 1 — Per-PR ephemeral preview packages
+
+**Mechanism:** [pkg.pr.new](https://github.com/stackblitz-labs/pkg.pr.new), invoked from a new `.github/workflows/cli-preview.yml`.
+
+**When:** every `pull_request` event (`opened`, `synchronize`, `reopened`) on any branch targeting `staging` or `main`. Concurrency group `pkg-pr-new-${{ github.event.pull_request.number }}` with `cancel-in-progress: true` so each PR keeps only its latest build alive.
+
+**What it does:** packs the CLI via `pnpm exec pkg-pr-new publish ./apps/cli --pnpm --compact --comment=update --bin`, which uploads the tarball to the pkg.pr.new registry (their own infrastructure, not npm) keyed by commit SHA. The flag set mirrors the sanity-io/next-sanity workflow: `--pnpm` is required because the workspace uses `catalog:` protocol (see `pnpm-workspace.yaml`), `--compact` produces the short URL form, `--bin` switches the install comment from `npm install` to `npx`, and `--comment=update` reuses the existing sticky PR comment across pushes.
+
+**Install URL pattern** (from the pkg.pr.new README):
+
+```sh
+npx https://pkg.pr.new/@deessejs/cli@<commit-sha>
+# or, if compact URLs are unavailable:
+npx https://pkg.pr.new/deessejs/deessejs/@deessejs/cli@<commit-sha>
+```
+
+**PR comment contract:** the workflow uses `--comment=update` so each subsequent push rewrites the same sticky comment with the new SHA. The comment identifies itself with a stable marker string (`<!-- pkg.pr.new -->`) so a future workflow change can detect its own previous comments without collision. The PR comment also links the commit SHA so a reviewer who is debugging can correlate the install with the diff.
+
+**Permissions:** `contents: read`, `pull-requests: write`. **No** `id-token: write` — pkg.pr.new does its own authentication via its GitHub App, completely separate from npm Trusted Publishing. This is the load-bearing isolation: a compromise of this workflow's secrets cannot publish to npm.
+
+**Out of scope for v1:** fork PRs (the `pull_request` trigger does not fire on forks without write permissions; switching to `pull_request_target` would run trusted code against untrusted PR diff and is rejected for the same reasons as in [rethinkhealth/glion ADR 0016](https://github.com/rethinkhealth/glion/blob/main/docs/adr/0016-continuous-preview-releases.md)). PRs from forks will get a maintainer-pushed branch if previews are needed.
+
+**Visibility and retention:** pkg.pr.new publishes to its own ephemeral registry keyed by commit SHA, backed by [Cloudflare R2](https://blog.stackblitz.com/posts/cloudflare-backing-pkg-pr-new-data-infrastructure/) (storage is sponsored by Cloudflare via Project Alexandria, not a paid SLA). Preview tarballs are public by default; since `deessejs/deessejs` is a public repo, this matches the project's existing public-surface contract (ADR-010). Retention is documented by the maintainers and enforced automatically by the R2 storage layer:
+
+- a preview package is removed if it has had **no download in over one month**, OR
+- it is removed once it reaches **six months of age**, regardless of download activity.
+
+These limits exist because pkg.pr.new is a continuous-release service, not a permanent package registry. Reviewers who need durable references should bookmark the PR comment, not the raw `pkg.pr.new` URL. If we ever need long-term artifact retention for a specific build, we should not try to bend pkg.pr.new to provide it — we should download the tarball into our own storage (S3, GitHub Releases, or a future internal registry) as part of the CI step that consumes the preview.
+
+### Tier 2 + Tier 3 — `release.yml` with two branches on the same job
+
+**Mechanism:** `.github/workflows/release.yml` is modified to add a `workflow_dispatch` trigger with an `canary` boolean input. A new `Determine release channel` step at the top of the job inspects the trigger and sets three outputs: `dist_tag` (either `canary` or `latest`), `release_type` (either `prerelease` or `stable`), and `version_source` (either `changeset-synthesized` for canary or `changeset-bumped` for latest). Subsequent steps condition their behavior on these outputs.
+
+**Trigger surface for the workflow:**
+
+```yaml
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      canary:
+        description: 'Publish a @canary build from the current commit (instead of @latest).'
+        type: boolean
+        required: true
+        default: false
+```
+
+The `if:` gate on the existing `release` job (`contains(github.event.head_commit.message, '.changeset')`) stays unchanged for the push-to-main path; it does not affect the canary path because `workflow_dispatch` events carry no `head_commit.message` field, and the canary branch explicitly bypasses the changeset gate.
+
+**Channel determination step (the new switch):**
+
+```yaml
+- name: Determine release channel
+  id: channel
+  run: |
+    if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.canary }}" = "true" ]; then
+      echo "dist_tag=canary"        >> "$GITHUB_OUTPUT"
+      echo "release_type=prerelease" >> "$GITHUB_OUTPUT"
+      echo "version_source=synthetic" >> "$GITHUB_OUTPUT"
+    else
+      echo "dist_tag=latest"        >> "$GITHUB_OUTPUT"
+      echo "release_type=stable"    >> "$GITHUB_OUTPUT"
+      echo "version_source=changeset" >> "$GITHUB_OUTPUT"
+    fi
+```
+
+**Tier 2 — `@canary` on demand (workflow_dispatch with `canary: true`)**
+
+**Versioning scheme:** synthetic, computed at the runner level — `<major>.<minor>.<patch>-canary.<YYYYMMDDHHMMSS>.<short-sha>`. Example: if `apps/cli/package.json#version` reads `2.1.0` and the dispatch SHA is `a832a55` on 2026-08-21, the published version is `2.1.0-canary.20260821143022.a832a55`. The `-canary.<date>.<sha>` suffix satisfies npm's pre-release semver rules, so a normal `^2.1.0` consumer range will not match it accidentally.
+
+**Implementation outline (canary branch):**
+
+1. Read `apps/cli/package.json#version` and compute the synthetic canary string above (UTC timestamp + `${GITHUB_SHA::7}`).
+2. Rewrite `apps/cli/package.json#version` in place via `jq`. **Do not call `pnpm changeset version`** — that would consume the changesets, dirty the working tree, and produce a `0.0.0-<date>` snapshot version that does not match our naming.
+3. Run `pnpm install --no-frozen-lockfile` (lockfile drift is acceptable; canary tarballs are not reproducible), then `pnpm --filter @workspace/contracts build && pnpm --filter @deessejs/cli build`. The tsup `define` block in `apps/cli/tsup.config.ts` (L39-41) reads `package.json` at build time, so the rewritten version flows into the bundle automatically.
+4. Publish with `npm publish --tag canary --provenance --no-git-checks`. The three flags are all load-bearing: `--tag canary` (without it, npm moves `latest` to the new version and silently un-`latest` the previous stable), `--provenance` (belt-and-suspenders alongside `publishConfig.provenance: true` and `NPM_CONFIG_PROVENANCE=true`), `--no-git-checks` (suppresses npm's "dirty working tree" error caused by the synthetic bump). **We deliberately bypass `pnpm changeset publish`** — outside changesets pre-release mode it publishes to `latest` regardless of any `--tag` flag and refuses packages whose version was not bumped via `changeset version`.
+5. Defensive `npm dist-tag add @deessejs/cli@<previous-latest> latest` to guarantee that the `latest` pointer did not silently move. Belt-and-suspenders; the explicit `--tag canary` in step 4 is the primary control.
+6. GitHub Release creation (same step as Tier 3, but with `--prerelease` flag derived from `steps.channel.outputs.release_type`).
+
+**Tier 3 — `@latest` on human promotion to `main` (push)**
+
+The existing `release.yml` behavior, with one new conditional: steps that would do something different for canary vs latest are gated on `steps.channel.outputs.dist_tag`. Specifically:
+
+- The `pnpm changeset version` step runs unconditionally on this path (it is the only path that triggers it).
+- The `pnpm changeset publish` step is replaced with `npm publish --provenance` from `apps/cli/`. We deliberately do not pass a `--tag` flag because `npm publish` defaults to `latest`, which is what we want here. (Bypassing `changeset publish` is a Tier 2-only change; Tier 3 can keep using it because the canary-vs-latest switch is upstream of the publish step.)
+- The GitHub Release tag remains `release/v{VERSION}` (unchanged).
+
+**Concurrency:** the existing `concurrency: group: release-${{ github.ref }}, cancel-in-progress: false` stays. A `workflow_dispatch` event has its own ref (the branch it was triggered from), so a canary dispatch does not block a parallel main-branch publish and vice versa. The `cancel-in-progress: false` policy means neither tier cancels the other mid-flight.
+
+**GitHub Release for canarys:** the `softprops/action-gh-release@v2` invocation gets a new `prerelease: ${{ steps.channel.outputs.release_type == 'prerelease' }}` input. Canarys land in the Releases feed marked as prereleases (visible but visually distinct from stable). The tag follows the same `release/v{VERSION}` convention as stable, so canary tags look like `release/v2.1.0-canary.20260821143022.a832a55`.
+
+### Trusted publisher and security posture
+
+**One trusted publisher, one workflow filename, two publish paths.** The npm-side configuration on `https://www.npmjs.com/package/@deessejs/cli/access` does not change. `release.yml` remains the sole trusted publisher. Both Tier 2 and Tier 3 publish through that one entry.
+
+**No NPM_TOKEN introduced.** The OIDC-only invariant from `docs/engineering/processes/versioning.md` and ADR-013 is preserved. The original Tier 2 design (a separate `cli-canary.yml`) would have required either a second trusted publisher entry (impossible per npm's policy) or a long-lived NPM_TOKEN (rejected by the senior pattern). The single-workflow design sidesteps both.
+
+**Tier 1's auth path is completely separate.** `cli-preview.yml` does not have `id-token: write`; pkg.pr.new authenticates via its own GitHub App. A compromise of the Tier 1 workflow's secrets cannot affect Tier 2 or Tier 3 because the two workflows share zero authentication surface.
+
+## Consequences
+
+### Positive
+
+1. **PR authors get a one-click test surface.** Reviewers run `npx https://pkg.pr.new/@deessejs/cli@<sha>` against their own reproduction. The feedback loop is "open PR → see install comment → try it → comment on the PR," not "open PR → read the diff → trust the tests."
+2. **On-demand canary releases become one command.** Anyone with repo write access can `Actions → release.yml → Run workflow → ☑ canary` to publish the current commit's `staging` state to `@canary`. This is the explicit "internal dogfooding" trigger named in `04-prereleases.md` §"When to revisit." The on-demand nature (rather than automatic on every staging merge) keeps the blast radius small: a canary only ships when a human decides it should.
+3. **GitHub Releases are created for both tiers.** Canarys appear in the Releases feed marked as `--prerelease`, mirroring the better-auth pattern. Consumers monitoring the Releases page see canary activity alongside stable releases, with clear visual distinction. Tags follow the same `release/v{VERSION}` convention.
+4. **The `@latest` senior pattern is preserved unchanged.** The human-promotion gate, the changesets-driven version bump on the latest path, the OIDC trusted publishing, and the `release.yml` single-workflow model are all intact.
+5. **Failure isolation across tiers.** A pkg.pr.new outage does not affect canary or latest (different service). A bug in the canary branch of `release.yml` would in principle affect the latest branch — they share a file — but the new conditional steps are scoped narrowly enough that a regression would surface as a failed Tier 3 run, not a silent corruption of `@latest`.
+6. **The npm Trusted Publishing constraint becomes a feature, not a bug.** The "one trusted publisher per package" rule from npm's docs is exactly what makes the single-workflow pattern viable. A second workflow would be blocked by npm itself; we don't need to defend that boundary because npm enforces it.
+
+### Negative
+
+1. **External service dependency for Tier 1.** pkg.pr.new is operated by StackBlitz, not us. If it goes down, PR previews do not build. This is acceptable because Tier 1 is not on the critical path for any release — `release.yml` does not depend on pkg.pr.new, and bug-triage fallbacks (clone + `pnpm install`, manual canary dispatch) still work.
+2. **Tier 1 GitHub App permission matrix is outside our control.** The pkg.pr.new [GitHub App](https://github.com/apps/pkg-pr-new) requests exactly four permission families — `Checks: read+write`, `Contents: read`, `Pull requests: read+write`, and the mandatory `Metadata`. All four are documented and explained in upstream [issue #305](https://github.com/stackblitz-labs/pkg.pr.new/issues/305). The matrix is set by StackBlitz, not by us. The documented historical incident ([#300](https://github.com/stackblitz-labs/pkg.pr.new/issues/300), fixed by [PR #301](https://github.com/stackblitz-labs/pkg.pr.new/pull/301) and [PR #323](https://github.com/stackblitz-labs/pkg.pr.new/pull/323)) shows that a permission scope mismatch can make `pkg-pr-new publish` succeed while the PR-comment step silently fails with a 403. Mitigation: `--comment=off` is the documented fallback, and the Implementation checklist adds an explicit test step that catches this class of failure on day one of installation.
+3. **Tier 2 and Tier 3 share a workflow file.** The original ADR proposed three workflows for three blast radii; this revision puts Tier 2 and Tier 3 in the same file. A bug in the canary branch could affect the latest branch if the conditional logic is wrong. Mitigation: the `if:` conditions on every Tier 2-specific step are tested by the absence of the canary input, not by an `else` chain — a misconfigured canary step fails open (does nothing on Tier 3) rather than failing closed (corrupting Tier 3).
+4. **GitHub Actions minute cost.** Tier 1 runs on every PR push. Mitigations: `cancel-in-progress: true` keeps only the latest run alive per PR; the workflow does not re-run tests; the build is incremental via `pnpm` store cache.
+5. **Two workflows to maintain instead of three.** `cli-preview.yml` and `release.yml`. The canary branch lives inside `release.yml`. Mitigated by colocating both under `.github/workflows/` and by referencing each from this ADR in the next onboarding pass.
+6. **Fork PRs are not previewed.** Same trade-off as in rethinkhealth/glion's ADR 0016. Acceptable for v1 because external contributors are not yet routine.
+7. **The canary version string format is non-standard.** `2.1.0-canary.20260821143022.a832a55` mixes date, time, and commit SHA. It is parseable but not human-skimmable. Considered alternatives (`-canary.<short-sha>` alone, `-canary.N` with monotonic counter) were rejected as less unique; the date+time+sha combination guarantees no two canarys from different dispatches ever collide, which matters once more than one canary exists in flight.
+8. **On-demand canary means a human is in the loop.** Tier 2 is not automatic. This is a deliberate trade-off: an automatic "every staging merge publishes a canary" would require either the second-workflow pattern (blocked by npm) or an NPM_TOKEN (rejected by the senior pattern). The on-demand `workflow_dispatch` is the cheapest viable path.
+
+### Neutral
+
+1. **Tier 2 does not consume changesets at all.** The canary branch explicitly bypasses `pnpm changeset version`. Any `.changeset/*.md` files present on `staging` at the time of a canary dispatch stay present and are still available for the eventual Tier 3 `release.yml` run on main. The two branches are decoupled.
+2. **The `SEMVER_RE = /^\d+\.\d+\.\d+$/` regex in `apps/cli/src/version/check.ts` (L10) does not match canary versions.** `parseSemver` returns null on `2.1.0-canary.20260821143022.a832a55`, and `compareSemver` returns 0 (no warn). This means the probe silently treats canary builds as "unknown version" — exactly what we want for the canary tier (a user running canary should not be warned that canary is too old). Follow-up: the probe could be made aware of pre-release tags in a separate ADR.
+3. **Tier 3 still uses `pnpm changeset publish`.** Only Tier 2 bypasses changesets' publish command. Tier 3 keeps using it because the canary-vs-latest switch is upstream of the publish step, and `changeset publish` correctly defaults to `latest` on this path.
+
+## Alternatives considered
+
+### A. Three separate workflows (`cli-preview.yml` + `cli-canary.yml` + `release.yml`)
+
+The original draft of this ADR. Rejected because **npm Trusted Publishing allows only one trusted publisher per package**. A second workflow publishing via OIDC is mechanically impossible without either (a) a second trusted-publisher entry on npm (which npm does not support) or (b) a long-lived NPM_TOKEN (which the senior pattern rejects).
+
+### B. Three workflows with one NPM_TOKEN for the canary
+
+Considered. Rejected explicitly. The `04-prereleases.md` deferral, ADR-013, and the broader senior-pattern reasoning in `docs/engineering/processes/versioning.md` are all built on "no NPM_TOKEN, OIDC only." Trading that invariant for canary automation is the wrong call.
+
+### C. Changesets pre-release mode (`pre enter canary`)
+
+`pnpm changeset pre enter canary` enters a monorepo-wide pre-release state. Rejected for the reasons documented in `04-prereleases.md`: pre-releases block other releases on the same branch until you `pre exit`, switching between pre-release tags is not officially supported, new packages get the `latest` dist-tag on first publish (surprising), and the mode is monorepo-wide.
+
+### D. Single workflow with no canary trigger
+
+Considered — just leave Tier 1 (pkg.pr.new) as the only addition and skip canary. Rejected because the internal-dogfooding gap (feedback gap #2 in Context) is real. The `04-prereleases.md` §"When to revisit" trigger applies: a `@canary` alias for "latest merged but not yet released" is exactly what was named there as the criterion to revisit.
+
+### E. Skip Tier 1; rely on Tier 2 only
+
+Considered. Rejected because Tier 2 is on-demand (a human must dispatch it), so a reviewer who wants to test a PR before merge has nothing to install. Tier 1 fills the pre-merge gap; Tier 2 fills the post-merge-but-pre-promotion gap.
+
+### F. Skip Tier 2; rely on Tier 1 only
+
+Considered. Rejected because `npx https://pkg.pr.new/...` URLs are SHA-keyed and not human-memorable. A user who wants to dogfood "the latest staging work" needs a stable installable alias. `@canary` is that alias.
+
+### G. Use semantic-release instead of changesets for Tier 2
+
+Considered. Rejected because changesets is the project's chosen tool, and adding semantic-release as a second tool doubles the operational surface for marginal benefit.
+
+### H. Better-auth single-workflow with branch dispatch (`main` → `latest`, `next` → changesets-managed)
+
+Considered. Rejected because introducing a `next` branch is a workflow change orthogonal to the canary use case. The better-auth pattern that applies here is the **input-based** dispatch (`workflow_dispatch` with `canary: true`), not the branch-based one. See the [better-auth release.yml](https://github.com/better-auth/better-auth/blob/acbd6ef6/.github/workflows/release.yml) for the inspiration.
+
+## What this ADR does not change
+
+- `apps/cli/src/version/check.ts` (L67 upgrade hint, L10 SEMVER_RE). Flagged as follow-up; not changed in this ADR.
+- `.changeset/config.json`. Stays on `baseBranch: staging`. Tier 2 does not call `changeset version`; the config is for Tier 3 to use unchanged.
+- The `--previewVersion` flag from pkg.pr.new. Deliberately not used; the rationale is in §"Consequences / Neutral" of the original draft and applies equally to the revised design.
+- The npm trusted publisher entry on `https://www.npmjs.com/package/@deessejs/cli/access`. The single-workflow design reuses the existing `release.yml` entry; no change required on the npm side.
+
+## Implementation checklist
+
+For the PR that lands this ADR:
+
+1. **Create `.github/workflows/cli-preview.yml`** per Tier 1.
+2. **Modify `.github/workflows/release.yml`** to add the `workflow_dispatch` trigger with `canary` input, the `Determine release channel` step, the Tier 2-specific steps gated on `steps.channel.outputs.dist_tag == 'canary'`, and the `prerelease` conditional on the GitHub Release step. Replace the `pnpm changeset publish` step with a conditional: `npm publish --provenance` on Tier 3 (no `--tag` — default is `latest`), and the bypass-steps on Tier 2.
+3. **Update `cli-publish-verify.yml` header comment** to note that `release.yml` now publishes both canary and latest, and that the verify job's tarball inspection applies to both paths (the verify job packs and tests without publishing, so it is unaffected by the multi-dist-tag change — but the comment should acknowledge this).
+4. **Install the [pkg.pr.new GitHub App](https://github.com/apps/pkg-pr-new)** on `deessejs/deessejs`. Manual repo-admin step. Without this, Tier 1's workflow will fail at the `pkg-pr-new publish` step.
+5. **Smoke-test the PR comment on a real PR after installation.** Open a throwaway PR (a one-line `docs:` change is enough) and confirm that the bot posts a sticky comment with an installable URL. This catches the [issue #300](https://github.com/stackblitz-labs/pkg.pr.new/issues/300) failure mode — a stale or scope-mismatched App installation can let `pkg-pr-new publish` succeed while the comment step silently 403s. If the comment does not appear but the publish job is green, the documented workaround is `--comment=off`. Do not consider Tier 1 "shipped" until this step passes.
+6. **Smoke-test the canary path.** Trigger `Actions → release.yml → Run workflow → ☑ canary` from a `staging` branch ref. Confirm: the synthetic version string is computed correctly, the publish lands on the `canary` dist-tag (verify with `npm view @deessejs/cli dist-tags`), `latest` is unchanged, the GitHub Release is created with `--prerelease`. Then run the workflow once without the canary input (or via push to `main`) to confirm Tier 3 still works end-to-end.
+7. **Update `docs/engineering/processes/versioning.md`** to document the three tiers and the on-demand canary workflow.
+8. **Update `docs/engineering/reports/versioning/04-prereleases.md`** to mark this ADR as the superseding decision and link from §"When to revisit."
+9. **Update `apps/cli/README.md`** with a one-line note that `@canary` and per-PR previews are now available, pointing to the ADR for detail.
+
+## References
+
+- [pkg.pr.new](https://github.com/stackblitz-labs/pkg.pr.new) — Tier 1 mechanism
+- [pkg.pr.new announcement](https://blog.stackblitz.com/posts/pkg-pr-new/) — rationale and UX
+- [Cloudflare backing pkg.pr.new infrastructure](https://blog.stackblitz.com/posts/cloudflare-backing-pkg-pr-new-data-infrastructure/) — retention policy and R2 storage details
+- [rethinkhealth/glion ADR 0016: Continuous Preview Releases with pkg.pr.new](https://github.com/rethinkhealth/glion/blob/main/docs/adr/0016-continuous-preview-releases.md) — the closest published precedent for Tier 1
+- [better-auth release.yml](https://github.com/better-auth/better-auth/blob/acbd6ef6/.github/workflows/release.yml) — the pattern adopted for Tier 2 + Tier 3 in one workflow
+- [npm Trusted Publishers documentation](https://docs.npmjs.com/trusted-publishers/) — the constraint that forces this design (one trusted publisher per package)
+- [npm dist-tag documentation](https://docs.npmjs.com/cli/v12/commands/npm-dist-tag/) — confirms `canary` is a valid user-defined tag
+- [Changesets Prereleases guide](https://changesets.dev/guide/prereleases) — why we are not using it
+- [Changesets Snapshot Releases guide](https://changesets.dev/guide/snapshot-releases) — alternative flavor of the same idea, also rejected
+- [GitHub Changelog: npm trusted publishing with OIDC GA (2025-07-31)](https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/) — confirms OIDC is GA for all scoped and unscoped packages
+- [sanity-io/next-sanity `.github/workflows/pkg-pr-new.yml`](https://github.com/sanity-io/next-sanity/blob/fae841b09769c985e17b39ccb0c301d4aaf378bd/.github/workflows/pkg-pr-new.yml) — the Tier 1 workflow pattern
+- [ADR-013: CLI publish verify](../ADR-013-cli-publish-verify) — the pre-existing publish-path gate (unaffected by this ADR)
+- [ADR-019: CLI version build injection](../ADR-019-cli-version-build-injection) — the tsup `define` mechanism Tier 2 depends on
+- [ADR-020: apps/web browser end-to-end tests](../ADR-020-apps-web-e2e-browser-tests) — the most recent ADR; same numbering pattern
+- `docs/engineering/reports/versioning/04-prereleases.md` — the deferral this ADR supersedes
+- `docs/engineering/reports/versioning/12-npm-setup-walkthrough.md` §12.4 — the trusted publisher config that Tier 2+3 reuse unchanged
+- `docs/engineering/processes/versioning.md` — the operational doc that gets updated
+- `AGENTS.md` — the staging-first workflow that all three tiers respect

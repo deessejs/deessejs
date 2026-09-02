@@ -33,14 +33,26 @@ catalog:
   '@orpc/client': ^1.14.7
   "@orpc/server": ^1.14.7
   "@t3-oss/env-core": ^0.13.0
+  "@playwright/test": ^1.51.1
   "@react-email/components": ^1.0.12
   "@react-email/render": ^2.0.6
   '@shikijs/rehype': ^4.3.1
 
+  # Markdown rendering (apps/web — untrusted GitHub READMEs on /templates/[slug])
+  react-markdown: ^10.1.0
+  rehype-pretty-code: ^0.14.5
+  remark-gfm: ^4.0.1
+  rehype-sanitize: ^6.0.0
+
+  # Motion (apps/web — homepage contract cell animations)
+  motion: ^13.1.1
+
   # Shared tooling
   "@tailwindcss/postcss": ^4.3.2
   '@tanstack/react-form': ^1.33.0
+  '@tanstack/react-query': ^5.101.4
   "@turbo/gen": ^2.10.4
+  open: ^11.0.1
 
   # Types
   "@types/node": ^24
@@ -83,6 +95,9 @@ catalog:
   vitest: ^4.1.10
   zod: ^4.4.3
   zustand: ^5.0.14
+
+  # CI tooling
+  pkg-pr-new: ^0.0.88
 
 # Strict mode: all dependencies MUST come from a catalog
 catalogMode: strict

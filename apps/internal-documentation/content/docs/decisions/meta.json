@@ -17,6 +17,22 @@
     "ADR-010-cli-public-surface",
     "ADR-011-hono-for-system-routes",
     "ADR-012-changesets-private-workspace-deps",
-    "ADR-013-github-oauth-better-auth"
+    "ADR-013-cli-publish-verify",
+    "ADR-014-cli-e2e-tests",
+    "ADR-015-drizzle-migrations-ci",
+    "ADR-016-knowledge-base-topics",
+    "ADR-017-knowledge-base-guides",
+    "ADR-018-knowledge-base-global-search",
+    "ADR-019-cli-version-build-injection",
+    "ADR-020-apps-web-e2e-browser-tests",
+    "ADR-020-device-auth-cli",
+    "ADR-021-inter-app-url-config",
+    "ADR-022-cli-device-auth-fixes",
+    "ADR-023-apps-web-session-aware-header",
+    "ADR-024-auto-publish-on-main",
+    "ADR-025-auto-canary-on-staging",
+    "ADR-026-changesets-merge-gate",
+    "ADR-027-version-bump-orphan",
+    "ADR-028-github-oauth-better-auth"
   ]
 }

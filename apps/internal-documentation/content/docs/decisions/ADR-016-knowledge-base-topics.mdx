@@ -1,0 +1,439 @@
+---
+title: 'Knowledge Base topics'
+description: '`kbTopics` content-collection for the marketing-site knowledge base; topic pages are MDX-rendered, pre-rendered, and seeded with eight topics.'
+---
+
+# ADR-016: Knowledge Base topics
+
+## Status
+
+Accepted (2026-08). Non-negotiable.
+
+## Context
+
+The marketing site at `apps/web/` ships a knowledge base at
+`/(content)/knowledge-base`. The surface is two levels deep:
+a topic index at `/knowledge-base`, per-topic pages at
+`/knowledge-base/[topic]`, and per-guide pages at
+`/knowledge-base/guide/[slug]`.
+
+Today, every byte of content on the topic side is
+**hard-coded in TSX**:
+
+- `app/(content)/knowledge-base/page.tsx` declares
+  `FEATURED_TOPICS` and `ALL_TOPICS`, two inline constants
+  that list the topics.
+- `app/(content)/knowledge-base/[topic]/page.tsx` declares
+  `TOPIC_DESCRIPTIONS` (the description for each topic
+  slug), `TOPIC_GUIDES` (the mapping from topic slug to
+  guide list), and `KNOWN_TOPICS` (the whitelist of valid
+  slugs). The topic body is a one-line description, not
+  MDX.
+
+This shape has four costs:
+
+1. **Editor friction.** Adding a topic means a TSX edit,
+   a build, and a redeploy. The contributor who can write
+   MDX can't ship a topic without editing three files.
+2. **Drift.** The topic-slug whitelist duplicates
+   across `FEATURED_TOPICS`, `ALL_TOPICS`,
+   `TOPIC_DESCRIPTIONS`, and `KNOWN_TOPICS`. Rename a slug
+   and four files must move in lockstep.
+3. **No real topic body.** Topics are one-line
+   descriptions. The topic page has no intro paragraph, no
+   "About this topic" copy beyond a sentence, no rich
+   editorial surface.
+4. **No SSG.** No `generateStaticParams` exists on
+   `[topic]`. Each hit is a runtime lookup against
+   `KNOWN_TOPICS`. The blog already pre-renders every post
+   via `generateStaticParams` against
+   `content-collections`; the topic side can't.
+
+The blog already solves all four problems with
+`@content-collections/next`. The pipeline wires in
+`apps/web/next.config.ts` (`withContentCollections(nextConfig)`),
+`pageExtensions` includes `mdx` (`next.config.ts:6`), and
+shiki sits in `serverExternalPackages` (`next.config.ts:7`). {/* vale fix: Vale.Spelling */}
+The blog reads `allPosts` from `content-collections`
+(`lib/blog/posts.ts:1`), renders MDX through
+`components/blog/mdx-renderer.tsx`, styles prose via
+`components/blog/prose.tsx`, and pre-renders with
+`generateStaticParams`.
+
+This ADR is the topics half of the knowledge-base
+pipeline. ADR-017 builds on it with the guides half.
+
+## Decision
+
+The marketing-site knowledge base has a `kbTopics`
+content-collection. The collection declares in the
+same `content-collections.config.ts` that already declares
+`posts`, `releases`, and `authors`. The collection reuses
+the existing rendering stack unchanged.
+
+### Content layout
+
+```
+apps/web/content/
+  knowledge-base/
+    topics/
+      <topic-slug>.mdx
+```
+
+A topic is a file. The file's path (relative to the
+collection directory) is the topic slug. The
+`generateStaticParams` for `[topic]/page.tsx` reads the
+collection.
+
+### frontmatter
+
+**Topic** (`content/knowledge-base/topics/<slug>.mdx`):
+
+```mdx
+---
+title: Agents
+description: Patterns for AI agents that code, review, and operate on your infra.
+order: 0
+---
+```
+
+The body of the file is the topic's editorial content
+rendered on the topic page between the breadcrumb and the
+guide list.
+
+The Zod schema is:
+
+```ts
+const kbTopics = defineCollection({
+  name: "kbTopics",
+  directory: "content/knowledge-base/topics",
+  include: "**/*.mdx",
+  schema: (z) => ({
+    title: z.string(),
+    description: z.string(),
+    order: z.number().default(0),
+  }),
+  transform: async (doc, context) => {
+    const body = await compileMDX(context, doc, {
+      rehypePlugins: [rehypeShiki],
+    })
+    return {
+      ...doc,
+      body,
+      slug: doc._meta.path,
+      url: `/knowledge-base/${doc._meta.path}`,
+    }
+  },
+})
+```
+
+### Initial topic set
+
+The migration seeds eight topic files. Six are
+1:1 translations of the existing inline constants:
+
+| Slug | Source |
+|---|---|
+| `getting-started` | `FEATURED_TOPICS`, `ALL_TOPICS` |
+| `agents` | `FEATURED_TOPICS`, `ALL_TOPICS` |
+| `deployment` | `FEATURED_TOPICS`, `ALL_TOPICS` |
+| `databases` | `ALL_TOPICS` |
+| `ui` | `ALL_TOPICS` |
+| `cli` | `ALL_TOPICS` |
+
+Two are new, they close the orphan-guide gap identified
+in [ADR-017 §"Orphaned guides"](./ADR-017-knowledge-base-guides.md):
+
+| Slug | Source |
+|---|---|
+| `queue` | new, needed for `background-jobs-queue` guide |
+| `observability` | new, needed for `observability-logging` guide |
+
+Adding topics beyond the initial eight is mechanical; see
+"What this rule allows" below.
+
+### Page wiring
+
+The topic side of the knowledge base reads from
+`kbTopics`:
+
+- `app/(content)/knowledge-base/page.tsx`,
+  `FEATURED_TOPICS` and `ALL_TOPICS` constants removed;
+  the page reads `allKbTopics` (sorted by `order`) and
+  renders them in the Featured Topics and All Topics
+  sections.
+- `app/(content)/knowledge-base/[topic]/page.tsx`,
+  `KNOWN_TOPICS`, `TOPIC_DESCRIPTIONS`, `TOPIC_GUIDES`
+  constants removed; the page looks up the topic from
+  `allKbTopics` by slug, lists guides from
+  `allKbGuides.filter((g) => g.topic === slug)` (where
+  `allKbGuides` is the type imported from
+  `content-collections`, not a constant), and renders the
+  topic body via `MdxRenderer` wrapped in `Prose`.
+
+`generateStaticParams` adds on `[topic]/page.tsx`:
+
+```ts
+export function generateStaticParams(): Array<{ topic: string }> {
+  return allKbTopics.map((t) => ({ topic: t.slug }))
+}
+```
+
+### Sitemap
+
+`app/sitemap.ts:86-90` currently emits a single static
+entry for `/knowledge-base`. After this ADR it adds one
+entry per topic:
+
+```ts
+{
+  url: `${APP_URL}/knowledge-base`,
+  lastModified: new Date(),
+  changeFrequency: "monthly",
+  priority: 0.5,
+},
+...allKbTopics.map((topic) => ({
+  url: `${APP_URL}${topic.url}`,
+  lastModified: new Date(),
+  changeFrequency: "monthly" as const,
+  priority: 0.4,
+})),
+```
+
+The guide sitemap entries (`/knowledge-base/guide/<slug>`)
+land in [ADR-017](./ADR-017-knowledge-base-guides.md). The
+shared index entry above appears in both ADRs to
+avoid double-claiming it; this ADR's migration adds the
+entry once. {/* vale fix: Vale.Spelling */}
+
+### Search
+
+`lib/blog/search.ts` exports a `SearchItem` type with
+`type: "post" | "release"`. After this ADR the union
+extends to add `"kb-topic"`:
+
+```ts
+export type SearchItem = {
+  title: string
+  description: string
+  url: string
+  type: "post" | "release" | "kb-topic" | "kb-guide"
+}
+```
+
+The new entries derived from `allKbTopics`:
+
+```ts
+...allKbTopics.map((topic) => ({
+  title: topic.title,
+  description: topic.description,
+  url: topic.url,
+  type: "kb-topic" as const,
+})),
+```
+
+The `SearchDialog` component
+(`components/blog/search-dialog.tsx`) renders the new
+`kb-topic` type with the same tag-pill styling it uses
+for `kb-guide` (added in ADR-017); the existing Fuse.js
+keys (`title`, `description`) cover both.
+
+### Rendering stack
+
+The topic body renders through
+`components/blog/mdx-renderer.tsx`, wrapped in
+`components/blog/prose.tsx` for the same prose CSS used
+by the blog. The `<Prose>` component renames to a
+content-agnostic path only if a second consumer emerges;
+for the v1 the import lives in `components/blog/prose.tsx`
+and the knowledge base imports it from there. The cost of
+leaving it under `components/blog/` is a misleading
+directory name; the cost of moving it, a broken import
+in the blog. The move defers until a second consumer
+exists.
+
+## What this rule allows
+
+- **Adding a topic.** Drop a new `.mdx` in
+  `content/knowledge-base/topics/`. The index picks it up
+  on next build via `generateStaticParams`; the build
+  creates the topic page at the corresponding URL.
+- **Editing topic body content.** The MDX file is the
+  body. No TSX edit, no rebuild of the topic surface.
+- **Adding new frontmatter fields.** The collection is
+  declared in one place; a new field is a Zod schema
+  extension plus a read site in the relevant page.
+- **Reordering topics.** `order: number` on each file
+  controls sort. No file renames required.
+
+## What this rule forbids
+
+- **Inline constants for topics on the knowledge-base
+  pages.** This rule removes `FEATURED_TOPICS`,
+  `ALL_TOPICS`, `TOPIC_DESCRIPTIONS`, `TOPIC_GUIDES`, and
+  `KNOWN_TOPICS`. The pages read from `allKbTopics`.
+- **A `topic` field on the topic collection.** Topics do
+  not nest.
+- **A topic body in JSX instead of MDX.** The body is the
+  MDX file.
+- **A MDX render that bypasses `MdxRenderer`.** The
+  topic page imports `MdxRenderer` and `Prose` the same
+  way the blog does. A bespoke renderer would fork the
+  shiki + rehype pipeline. {/* vale fix: Vale.Spelling */}
+- **Hard-coded topic slugs anywhere on the topic side of
+  the knowledge base.** A contributor who needs a topic
+  slug reads `allKbTopics.map((t) => t.slug)`. No central
+  set of topic slugs exists; the filesystem stays the
+  source of truth. {/* vale fix: Vale.Spelling */}
+- **A new `next.config.ts` editor.** The collection
+  declaration lives in `content-collections.config.ts`;
+  the Next config stays unchanged.
+
+## What this rule doesn't change
+
+- **The marketing-site nav, footer, and OG image for the
+  knowledge base.** The surface stays
+  `/(content)/knowledge-base`. The links in
+  `components/headers/nav-sections.tsx:142-145` and
+  `components/footers/app-footer.tsx:29` stay.
+- **The `not-found.tsx` file on `[topic]/`.** It delegates
+  to `NotFoundPanel`; the panel stays unchanged.
+- **The `MdxRenderer` and `Prose` components.** Reuses
+  them verbatim.
+- **The `rehypeShiki` plugin.** The blog uses it; the
+  knowledge base uses it; the catalog pin stays where it
+  is.
+- **The `noindex, nofollow` robots directive on the
+  knowledge-base index.** The page stays unindexed by
+  search engines; the sitemap entries serve crawl
+  discovery, not search ranking. {/* vale fix: Vale.Spelling */}
+- **The Better-Auth and DB layers.** They don't interact
+  with the knowledge base.
+
+## Why this rule exists
+
+The hard-coded topic surface is a placeholder. The comment
+at `page.tsx:30-33` says it explicitly: "Data is hard-coded
+in this file for V1. Once the editorial pipeline
+stabilizes, swap these constants for a content source
+under `apps/web/content/knowledge-base/`." The pipeline
+stabilised when the blog shipped. The knowledge base is
+the next consumer.
+
+The temptation when extending the topic side is to add
+another inline constant for the new content, framed as
+"just one more list." Each new constant is a small loss:
+
+- The slug drift compounds; the next rename of a topic
+  is four files instead of three.
+- The drift is silent. The TypeScript compiler doesn't
+  flag a missing topic slug in `TOPIC_DESCRIPTIONS`
+  because the lists use `as const` arrays, not
+  discriminated unions.
+- The placeholder body stays. Every topic is one
+  sentence; the contributor who wants to write a real
+  topic intro must first replace the placeholder
+  component.
+- The pipeline stays bespoke. The topic side and the
+  guide side can't share content; they can't
+  cross-reference by FK; they can't reorder
+  independently.
+
+The cost of the rule is the migration of one page
+(`[topic]/page.tsx`), the rewrite of the index page's
+topic sections, the addition of one collection, and the
+writing of eight MDX files. The migration is mechanical
+(edit, rename, write frontmatter). The two new topic
+files (`queue`, `observability`) close the orphan-guide
+gap that [ADR-017](./ADR-017-knowledge-base-guides.md)
+inherits.
+
+## How to migrate
+
+In one PR (split into three commits for review):
+
+1. **Add `kbTopics` to `content-collections.config.ts`.**
+   The config must declare the Zod schema, the directory,
+   the include glob, and the `transform` that compiles
+   MDX with `rehypeShiki`.
+2. **Write the topic files.** Eight `.mdx` files land in
+   `content/knowledge-base/topics/`. The slug of every
+   file matches the slug that was in the TSX constant;
+   the redirect surface stays stable.
+3. **Rewrite the topic side of the pages.** Remove every
+   inline constant. Add `generateStaticParams` on
+   `[topic]`. Add `MdxRenderer` and `Prose` to the topic
+   page body. The index page reads `allKbTopics` for the
+   Featured Topics and All Topics sections.
+4. **Extend the sitemap and search.** Add the topic
+   entries to `app/sitemap.ts`. Extend
+   `lib/blog/search.ts` with `kb-topic` entries; the
+   `SearchDialog` component renders them with the
+   existing tag-pill logic.
+
+The PR is medium-sized (one collection declaration,
+eight new MDX files, one page rewrite, sitemap and search
+edits). The diff stays mechanical; the review load is
+the collection schema and the page rewrites.
+
+## Consequences
+
+- A PR that adds a hard-coded topic-slug list fails
+  review. The pages read from `allKbTopics`.
+- A PR that adds a topic body in JSX instead of MDX fails
+  review. The body is the MDX file.
+- A PR that adds a `topic` field on the topic collection
+  fails review. Topics don't nest.
+- A PR that bypasses `MdxRenderer` for the topic body
+  fails review. The shiki + rehype pipeline stays shared. {/* vale fix: Vale.Spelling */}
+- A PR that adds a guide without a `topic:` field that
+  names an existing topic fails review. The Zod schema in
+  [ADR-017](./ADR-017-knowledge-base-guides.md) enforces
+  it at build time.
+
+## Where this rule came from
+
+The knowledge-base hard-coded surface was the seed
+delivered when the marketing site launched. The seed
+intentionally deferred the content pipeline: the comment
+on `page.tsx:30-33` is explicit. The blog shipped first
+and proved the pipeline; the changelog shipped next and
+reused it. The knowledge base is the third consumer.
+
+The first time the placeholder mattered was when the
+editorial team asked to write a real topic intro. The
+contributor who picked it up had to replace the
+placeholder JSX and keep four slug lists in sync. The
+cost was high enough that the work stalled. The rule
+removes the stall: the pipeline is the path; the
+constants go away.
+
+The decision to split this ADR from
+[ADR-017](./ADR-017-knowledge-base-guides.md) split the
+guide surface off because topics are a prerequisite for
+guides. A guide without a topic is a schema error; a
+topic page without a list of guides is a partial surface.
+Topics land first in the architectural narrative.
+
+## Related
+
+- [ADR-002: file organization](./ADR-002-file-organization.md).
+  The convention that one concept is one file. The
+  topic collection is one concept; the file tree mirrors
+  it.
+- [ADR-006: Fumadocs card design](./ADR-006-fumadocs-card-design.md).
+  The card system used by the knowledge-base index. {/* vale fix: Vale.Terms */}
+- [ADR-017: Knowledge Base guides](./ADR-017-knowledge-base-guides.md).
+  The dependent ADR that owns `kbGuides`, the guide-page
+  wiring, and the `topic:` FK back to this collection.
+- [Rule 0009: open-extension closed-modification](../rules/open-extension-closed-modification.md).
+  The new collection extends the existing
+  `content-collections.config.ts`; the modification is
+  additive, not breaking.
+- The blog pipeline that this ADR reuses:
+  `apps/web/content/posts/`,
+  `apps/web/components/blog/mdx-renderer.tsx`,
+  `apps/web/components/blog/prose.tsx`,
+  `apps/web/lib/blog/posts.ts`,
+  `apps/web/lib/blog/search.ts`,
+  `apps/web/components/blog/search-dialog.tsx`.

@@ -13,6 +13,7 @@
     "@nanostores/react": "^1.0.0",
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "@workspace/api": "workspace:*",
     "@workspace/auth": "workspace:*",
     "@workspace/env": "workspace:*",

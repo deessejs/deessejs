@@ -1,6 +1,6 @@
 {
   "name": "@deessejs/cli",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "CLI for the DeesseJS template registry.",
   "type": "module",
   "license": "MIT",
@@ -34,7 +34,7 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "typecheck": "tsc --noEmit",
-    "pretest": "pnpm --filter @workspace/contracts build && tsup",
+    "pretest": "pnpm turbo build --filter=@deessejs/cli && tsup",
     "test": "vitest run",
     "test:watch": "vitest",
     "start": "node ./dist/index.js"
@@ -42,15 +42,17 @@
   "dependencies": {
     "@deessejs/errors": "^1.1.1",
     "@deessejs/fp": "^1.0.0",
-    "@orpc/client": "catalog:",
-    "@orpc/server": "catalog:",
-    "@workspace/api": "workspace:*",
+    "@orpc/client": "^1.14.7",
+    "@orpc/server": "^1.14.7",
+    "better-auth": "^1.6.23",
     "commander": "^12.1.0",
+    "open": "^11.0.1",
     "ora": "^8.1.1",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@workspace/api": "workspace:*",
     "@workspace/contracts": "workspace:*",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
@@ -62,7 +64,7 @@
     "vitest": "^2.1.5"
   },
   "engines": {
-    "node": ">=18.18.0"
+    "node": ">=20.0.0"
   },
   "publishConfig": {
     "access": "public",

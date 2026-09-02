@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 
 import type { TemplateV1 } from "@workspace/contracts/v1"
 
-import { orpc } from "@/lib/orpc"
+import { liveCache, orpc } from "@/lib/orpc"
 import { CategorySidebar } from "@/components/templates/category-sidebar"
 import { SearchableTemplateGrid } from "@/components/templates/search-bar"
 
@@ -15,22 +15,21 @@ export const metadata: Metadata = {
 /**
  * Index page at /templates.
  *
- * RSC: fetches the catalog server-side with ISR (revalidate: 600),
- * parses via @workspace/contracts, and renders a grid of cards.
+ * RSC: fetches the catalog server-side using `liveCache`
+ * (revalidate: 0, tag `templates:live`) so a transient failure cannot
+ * poison the Next.js data cache under a long-lived tag. On a runtime
+ * error the request propagates to the segment's `error.tsx` client
+ * boundary, which already renders a "Try again" state. We deliberately
+ * do NOT swallow errors as `[]` here — that was the source of the
+ * 10-minute pinned empty-state in issue #81.
  *
- * Three states:
- *   - ok + non-empty: render the grid.
- *   - ok + empty: empty-state copy pointing to the CLI.
- *   - error: degrade gracefully to a placeholder rather than throwing.
- *     This keeps the build green when the API is unreachable (CI without
- *     network access, transient outage during deploy). At runtime in
- *     production, the error.tsx client boundary catches errors that do
- *     surface so users see a retry-able state.
+ * During `next build` (`NEXT_PHASE === "phase-production-build"`) the
+ * API may not be reachable from the build worker. In that phase only,
+ * we fall back to an empty list so the page can still be prerendered
+ * without network access; production runtime always re-throws.
  *
- * The catch here is specifically about *build time* collection, where
- * Next.js walks the page tree statically and a thrown error fails the
- * entire build. In production runtime, the error propagates and the
- * error.tsx boundary takes over.
+ * The empty-state branch below still applies, but only to a
+ * successful fetch that legitimately returned no templates.
  */
 
 const KNOWN_TYPES = ["saas", "ai", "landing"] as const
@@ -85,15 +84,26 @@ const TemplatesIndexPage = async ({
 }) => {
   let templates: TemplateV1[] = []
   try {
-    const result = await orpc.templates.list()
+    const result = await orpc.templates.list(undefined, liveCache)
     templates = result.templates
-  } catch {
-    templates = []
+  } catch (error) {
+    // Build-time fallback: when the build worker has no network
+    // access to the API, swallow the error so the page can still be
+    // prerendered. Production runtime always re-throws so the
+    // segment's error.tsx renders. See issue #81.
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      templates = []
+    } else {
+      throw error
+    }
   }
 
   if (templates.length === 0) {
     return (
-      <section className="mx-auto max-w-6xl px-6 py-24">
+      <section
+        data-testid="templates-empty"
+        className="mx-auto max-w-6xl px-6 py-24"
+      >
         <h1 className="text-heading-32 tracking-tight">Templates</h1>
         <p className="text-copy-16 text-muted-foreground mt-4">
           No templates available right now. Try the CLI:

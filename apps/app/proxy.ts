@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
+import { serverEnv } from "@workspace/env/server"
 
 const PROTECTED_PREFIXES = ["/home", "/settings"]
 const AUTH_PREFIXES = [
@@ -9,6 +10,14 @@ const AUTH_PREFIXES = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
+  // Device verification page (ADR-020): the CLI's auth login
+  // command opens the browser to /device?user_code=XXX. A
+  // user already signed in lands directly on the
+  // approve / deny view instead of being bounced to /login.
+  // The prefix match (no trailing slash) is intentional: only
+  // /device itself and an exact match get the bypass; a
+  // future /device/<sub> route is opted in separately.
+  "/device",
 ]
 
 export const config = {
@@ -21,6 +30,16 @@ export const config = {
     "/forgot-password",
     "/reset-password",
     "/verify-email",
+    // Device verification page (ADR-022): the page-level
+    // `auth.api.getSession` check in `app/(unprotected)/(auth)/device/page.tsx`
+    // bounces anonymous visitors to /login. The proxy bounce
+    // branch below (line 86-88) covers the inverse case —
+    // a user who is already signed in and visits /device for
+    // any reason lands on /home instead. The page-level gate
+    // does its own session read; the proxy exists to skip the
+    // getSession call on static assets and to enforce the
+    // bounce-to-home invariant for auth pages.
+    "/device",
   ],
 }
 
@@ -54,9 +73,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Per ADR-021: the proxy URL is composed from the path
+  // constant and the host constant, no longer relative to the
+  // incoming request. The two apps share `API_BASE_URL`, so
+  // this expression is identical on staging, prod, and dev. A
+  // future split of apps/app and the API (e.g. an
+  // `api.deessejs.com` deployment) is a one-line env var change
+  // rather than a code refactor.
   const getSessionUrl = new URL(
-    `${API_AUTH_PATH.replace(/\/$/, "")}/get-session`,
-    request.url,
+    `${API_AUTH_PATH}/get-session`,
+    serverEnv.API_BASE_URL,
   )
   const response = await fetch(getSessionUrl, {
     headers: { cookie: request.headers.get("cookie") ?? "" },
