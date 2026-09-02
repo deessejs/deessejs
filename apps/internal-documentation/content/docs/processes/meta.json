@@ -1,0 +1,13 @@
+{
+  "title": "Processes",
+  "description": "Operational procedures for recurring engineering tasks.",
+  "icon": "Workflow",
+  "root": true,
+  "pages": [
+    "index",
+    "---Release engineering---",
+    "release-engineering/latest-release",
+    "release-engineering/canary-releases",
+    "release-engineering/pr-previews"
+  ]
+}

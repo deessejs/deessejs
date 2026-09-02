@@ -98,13 +98,16 @@ The CLI walks you through selecting the package, bump type, and message. It writ
 ## Lifecycle
 
 1. You commit the changeset file with your code change.
-2. PR is reviewed and merged to `staging`.
-3. Human promotes `staging` → `main` (per `AGENTS.md`).
-4. `.github/workflows/release.yml` runs:
-   - `pnpm changeset version` reads all `.changeset/*.md` files, bumps `apps/cli/package.json#version` per the frontmatter, regenerates `apps/cli/CHANGELOG.md`, **deletes the `.changeset/*.md` files** (they've been consumed), commits the version bump.
-   - `pnpm changeset publish` publishes the new version to npmjs.org with provenance (via trusted publisher + OIDC).
+2. PR is reviewed and merged to `staging`. `changesets-check.yml` (required status check) confirms the changeset is present before merge is allowed.
+3. Pushing to `staging` triggers `release.yml` in `@canary` mode (per [ADR-025](../apps/internal-documentation/content/docs/decisions/ADR-025-auto-canary-on-staging.mdx)). The canary path bypasses `pnpm changeset version` entirely — your changesets stay intact.
+4. Human promotes `staging` → `main` (per `AGENTS.md`).
+5. `.github/workflows/release.yml` runs on `main` in `@latest` mode:
+   - `pnpm changeset version` reads all `.changeset/*.md` files, bumps `apps/cli/package.json#version` per the frontmatter, and regenerates `apps/cli/CHANGELOG.md`. The bump is committed locally on the runner with `commit: true` in `.changeset/config.json`.
+   - The changesets are now "consumed" on the runner. **The bump commit and the deletion of the `.changeset/*.md` files are not pushed to `origin/main`** — the ruleset `protect main` (id 20040100) refuses direct pushes from `github-actions[bot]` with GH013. See [ADR-027](../apps/internal-documentation/content/docs/decisions/ADR-027-version-bump-orphan.mdx) for the rationale.
+   - `pnpm changeset publish` publishes the new version to npmjs.org with provenance (via trusted publisher + OIDC). The published version on npm is the source of truth.
    - `git tag -f release/v{VERSION}` and `gh release create` provide the GitHub Release.
-5. The new version of `@deessejs/cli` is live.
+6. The next `staging` → `main` promotion re-runs `pnpm changeset version` against the same changesets (still present on `staging`). This re-aligns `apps/cli/package.json#version` on `main` with the npm `@latest` version. See ADR-027 §"Consequences" for the orphan behavior and its mitigations.
+7. The new version of `@deessejs/cli` is live.
 
 ## Common mistakes
 

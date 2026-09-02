@@ -19,7 +19,29 @@ const db = drizzle(pool)
 
 // Test auth instance with testUtils
 export const auth = betterAuth({
-  baseURL: serverEnv.BETTER_AUTH_URL,
+  // Mirror the production dynamic form so tests exercise the same
+  // per-request host resolution. Test runs are always local; localhost
+  // is included via the NODE_ENV=development branch in the prod config.
+  // We pin the object here (instead of importing from src/auth.ts) to
+  // keep this file free of the email/transport wiring — the test auth
+  // intentionally drops those plugins.
+  //
+  // `fallback` mirrors the production value (http://localhost:3000 in
+  // dev). Without it, direct `auth.api.X({ ... })` calls that don't
+  // forward request headers throw "Dynamic baseURL could not be
+  // resolved". Better Auth reads fallback from each instance's own
+  // config at construction time, so we duplicate the value here. See
+  // packages/auth/src/auth.ts and pitfalls.md §5 for the rationale.
+  baseURL: {
+    allowedHosts: [
+      "deessejs.com",
+      "*.deessejs.com",
+      "*.vercel.app",
+      "localhost:*",
+    ],
+    protocol: "http",
+    fallback: "http://localhost:3000",
+  },
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,
