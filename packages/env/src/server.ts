@@ -82,6 +82,8 @@ function getServerEnv(): Readonly<ServerEnv> {
     MAIL_TRANSPORT: env.MAIL_TRANSPORT,
     RATE_LIMIT_PER_MINUTE: env.RATE_LIMIT_PER_MINUTE,
     GITHUB_TOKEN: env.GITHUB_TOKEN,
+    GITHUB_CLIENT_ID: env.GITHUB_CLIENT_ID,
+    GITHUB_CLIENT_SECRET: env.GITHUB_CLIENT_SECRET,
     // Inter-app URL configuration (ADR-021). Read from serverEnv
     // by apps/app's proxy and apps/cli's RPCLink; apps/web reads
     // the NEXT_PUBLIC_* mirror via clientEnv for browser-side code.

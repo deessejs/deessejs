@@ -7,7 +7,7 @@ description: Every push to staging publishes a @canary build, in the same releas
 
 ## Status
 
-Proposed (2026-09). Awaiting review.
+Accepted (2026-09). Implementation in `.github/workflows/release.yml` (push triggers extended to `[main, staging]`; `if:` gate extended to exempt staging from the `.changeset` filter; `Determine release channel` step inspects `github.ref`) lands in the same period.
 
 ## Context
 
@@ -118,6 +118,21 @@ npm Trusted Publishing allows only one trusted publisher per package, keyed on t
 - The `@latest` channel is unchanged in implementation. `release.yml` continues to publish `@latest` on push to `main` via the `changeset` path. See [ADR-024](./ADR-024-auto-publish-on-main.mdx) for the human-gate removal on that path.
 - The `workflow_dispatch` input stays available for on-demand dogfooding from a non-`staging` branch.
 - `cli-preview.yml` is unchanged. The per-PR preview channel still uses pkg.pr.new for ephemeral PR-feedback tarballs.
+
+## Trust surface
+
+The npm trusted publisher configuration on `https://www.npmjs.com/package/@deessejs/cli/access` is keyed on the workflow file path (`.github/workflows/release.yml`) plus the OIDC subject (`repo:deessejs/deessejs:ref:refs/heads/staging` for canary pushes, `repo:deessejs/deessejs:ref:refs/heads/main` for `@latest` pushes). The publisher does not verify that a particular commit was authored by a trusted human — it verifies that the workflow ran from the configured ref with a valid OIDC token from this repo. **Any commit that lands on `staging`, by any mechanism, produces a canary signed by the trusted publisher.**
+
+The `if:` filter on the release job (`github.ref == 'refs/heads/staging'` plus the `contains(...head_commit.message, '.changeset')` clause) gates *which* jobs run, not *who* can land a commit on staging. The trusted-publisher side does the rest.
+
+The mitigation is the standard trust surface around the `staging` branch itself, not the workflow:
+
+- **`staging` is protected.** Branch protection on `staging` requires `check-changeset` plus code review approval (CODEOWNERS). A direct push is refused with GH013 the same way `main` is. The only path to a staging commit is via a merged PR.
+- **Force-push is disabled on `staging`.** The branch history is append-only. A compromised contributor cannot rewrite a published canary's source commit.
+- **CODEOWNERS gates `apps/cli/**`.** Every CLI-touching PR requires an approving review from a `@deessejs/cli` code owner. A contributor with `write` access but not in CODEOWNERS cannot self-approve a malicious CLI change through to staging.
+- **OIDC subjects are scoped per ref.** A token issued for `refs/heads/staging` cannot be replayed against `refs/heads/main`. A compromise of the canary publish path does not widen to `@latest` publishes.
+
+A future hardening step would be to add a `github.event.head_commit.verification.verified == true` check at the top of the canary branch, requiring signed commits. We do not enable this here because it changes the contributor workflow (everyone must sign their commits) for a residual risk that the staging branch protections already address.
 
 ## Base version guards
 

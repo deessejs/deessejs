@@ -34,6 +34,14 @@ import { clientEnv } from "@workspace/env/client"
  * cookie is shared between `deessejs.com` and `app.deessejs.com`,
  * so `authClient.useSession()` returns the live session from
  * the marketing origin.
+ *
+ * The SERVER-side auth handler at `packages/auth/src/auth.ts`
+ * resolves its `baseURL` per request from `x-forwarded-host` /
+ * `host` via the dynamic `{ allowedHosts }` form (see
+ * `docs/guides/better-auth/pitfalls.md` §5). The CLIENT-side
+ * `baseURL` here is build-time-inlined from
+ * `clientEnv.NEXT_PUBLIC_API_BASE_URL` and is intentionally
+ * static — browsers call the same origin they loaded from.
  */
 export const authClient = createAuthClient({
   baseURL: clientEnv.NEXT_PUBLIC_API_BASE_URL,
