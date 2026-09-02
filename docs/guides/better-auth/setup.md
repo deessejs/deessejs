@@ -55,6 +55,39 @@ export const auth = betterAuth({
 
 ---
 
+## Social Providers
+
+GitHub OAuth is wired via the built-in `socialProviders.github` block. No extra package install is required. The OAuth App must grant the `user:email` scope on the GitHub side (Account Permissions > Email Addresses > Read-only).
+
+```ts
+export const auth = betterAuth({
+  // ...existing config
+  socialProviders: {
+    github: {
+      clientId: serverEnv.GITHUB_CLIENT_ID!,
+      clientSecret: serverEnv.GITHUB_CLIENT_SECRET!,
+    },
+  },
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["github"],
+      allowDifferentEmails: false,
+      updateUserInfoOnLink: true,
+    },
+  },
+})
+```
+
+Notes:
+- The credentials are read through `serverEnv` (validated by `packages/env/src/schema.ts`), never raw `process.env`.
+- `trustedProviders: ["github"]` lets a same-email GitHub sign-in auto-link to an existing email/password user. Email verification at signup is enforced by `emailAndPassword.requireEmailVerification: true`, so the auto-link is gated on a verified email.
+- `updateUserInfoOnLink: true` copies the GitHub `name` and `image` onto the local `user` row on each sign-in. The local `email` and `emailVerified` are never changed. This is what feeds the dashboard avatar.
+
+**Source:** [better-auth.com/docs/authentication/github](https://better-auth.com/docs/authentication/github) — GitHub plugin docs. [better-auth.com/docs/concepts/users-accounts](https://better-auth.com/docs/concepts/users-accounts) — `accountLinking`.
+
+---
+
 ## Environment Variables
 
 | Variable | Required | Notes |
@@ -63,6 +96,8 @@ export const auth = betterAuth({
 | `DATABASE_URL` | Yes (runtime) | Postgres connection string. CLI scripts tolerate absence |
 | `BETTER_AUTH_URL` | No | Legacy single-origin reference for tooling (`drizzle-kit`, scripts). The auth handler resolves the per-request origin from the `x-forwarded-host` / `host` headers against the `allowedHosts` list. See [`pitfalls.md`](./pitfalls.md) §5. |
 | `ALLOWED_ORIGINS` | No | CSV list of ad-hoc extras for `trustedOrigins` (staging, partner origins). The prod origins and `*.vercel.app` are auto-added via `allowedHosts`. Defaults to `localhost:3000,localhost:3001` in dev only. |
+| `GITHUB_CLIENT_ID` | No | OAuth client id for the `socialProviders.github` block. Set on the GitHub OAuth App side; matches the callback URL `${BETTER_AUTH_URL}/api/auth/callback/github`. Without these set, "Continue with GitHub" renders but fails server-side at click time — see [`pitfalls.md`](./pitfalls.md) §6. |
+| `GITHUB_CLIENT_SECRET` | No | OAuth client secret. Same OAuth App as `GITHUB_CLIENT_ID`. |
 
 `AUTH_SECRET` works as an alias for `BETTER_AUTH_SECRET`. See `packages/env/src/schema.ts`. <!-- vale fix: write-good.Passive -->
 
@@ -102,6 +137,8 @@ trustedOrigins: serverEnv.ALLOWED_ORIGINS,
 **Warning:** hardcoded localhost origins in `trustedOrigins` are a prod risk if `ALLOWED_ORIGINS` is empty. See [`pitfalls.md`](./pitfalls.md) §2 (the `localhost` gate) and §5 (the dynamic `baseURL` form that supersedes this list).
 
 **Source:** [Better-Auth docs/reference/options](https://better-auth.com/docs/reference/options), `trustedOrigins` with wildcard patterns.
+
+The OAuth callback at `/api/auth/callback/github` is mounted by Hono's catch-all at `apps/app/app/api/[[...route]]/route.ts` and delegated to `auth.handler`. The callback's CSRF check goes through the same `trustedOrigins` gate as the rest of better-auth — `ALLOWED_ORIGINS` must include the production origin, or users will land on a Better-Auth `origin_not_allowed` page after GitHub authorises them.
 
 ---
 

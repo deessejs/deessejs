@@ -29,7 +29,7 @@ export function OAuthButtons({ callbackURL = "/home" }: OAuthButtonsProps) {
 		if (error) {
 			toast.error(error.message ?? "Authentication failed")
 		}
-		// Redirect is handled automatically by better-auth's redirectPlugin
+		// better-auth handles the post-signIn.social redirect to callbackURL by default; no redirectPlugin() is wired (ADR-013).
 	}
 
 	return (

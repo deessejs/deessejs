@@ -32,6 +32,7 @@
     "ADR-024-auto-publish-on-main",
     "ADR-025-auto-canary-on-staging",
     "ADR-026-changesets-merge-gate",
-    "ADR-027-version-bump-orphan"
+    "ADR-027-version-bump-orphan",
+    "ADR-028-github-oauth-better-auth"
   ]
 }
