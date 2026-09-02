@@ -5,7 +5,7 @@ import "@workspace/ui/globals.css"
 import { APP_CONFIG } from "@/lib/app-config"
 import { AppProviders } from "@/components/providers"
 import { AppFooter } from "@/components/footers/app-footer"
-import { SiteHeader } from "@/components/headers/site-header"
+import { SiteHeaderServer } from "@/components/headers/site-header-server"
 import { GlobalSearchDialog } from "@/components/search/global-search-dialog"
 import { GlobalSearchShortcut } from "@/components/search/global-search-shortcut"
 import { CookieConsent } from "@workspace/cookies"
@@ -43,7 +43,7 @@ export default function RootLayout({
         <MotionConfig reducedMotion="user">
           <AppProviders>
             <div className="flex min-h-screen flex-col">
-              <SiteHeader />
+              <SiteHeaderServer />
               <main className="flex-1">{children}</main>
               <AppFooter />
               <CookieConsent />

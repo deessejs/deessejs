@@ -29,8 +29,7 @@ import {
 	LogOutIcon,
 } from "lucide-react"
 
-import { authClient } from "@/lib/auth-client"
-import { appUrl as appUrlBase } from "@/lib/preview-urls"
+import { useAuthClient } from "./auth-client-provider"
 import { getAvatarUrl, getInitials } from "./user-menu-helpers"
 
 /**
@@ -52,11 +51,26 @@ import { getAvatarUrl, getInitials } from "./user-menu-helpers"
  * disable directive below restores the top-level call.
  */
 
-function appUrl(path: string): string {
-	return new URL(path, appUrlBase).toString()
+function appUrl(path: string, baseUrl: string): string {
+	return new URL(path, baseUrl).toString()
 }
 
-export function UserMenu({ variant }: { variant: "desktop" | "mobile" }) {
+/**
+ * ADR-028: `baseUrl` is resolved server-side by `<UserMenuServer>`
+ * (a Server Component) because `withRelatedProject` reads
+ * `process.env.VERCEL_RELATED_PROJECTS`, which Vercel only injects
+ * at runtime on the server — not in the browser bundle. Passing the
+ * resolved URL as a prop lets the Client Component use the
+ * preview-aware value without re-reading env at runtime.
+ */
+export function UserMenu({
+  variant,
+  baseUrl,
+}: {
+  variant: "desktop" | "mobile"
+  baseUrl: string
+}) {
+	const authClient = useAuthClient()
 	// eslint-disable-next-line no-restricted-syntax
 	const { data: session, isPending } = authClient.useSession()
 	const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
@@ -81,8 +95,8 @@ export function UserMenu({ variant }: { variant: "desktop" | "mobile" }) {
 	}
 
 	if (!session) {
-		const loginHref = appUrl("/login")
-		const signupHref = appUrl("/signup")
+		const loginHref = appUrl("/login", baseUrl)
+		const signupHref = appUrl("/signup", baseUrl)
 		if (variant === "desktop") {
 			return (
 				<div data-testid="header-user-menu" className="flex items-center gap-1.5">
@@ -111,7 +125,7 @@ export function UserMenu({ variant }: { variant: "desktop" | "mobile" }) {
 	const user = session.user
 	const avatarUrl = getAvatarUrl(user.email, user.image)
 	const initials = getInitials(user.name)
-	const dashboardHref = appUrl("/home")
+	const dashboardHref = appUrl("/home", baseUrl)
 
 	async function handleLogout() {
 		setLoggingOut(true)
@@ -123,7 +137,7 @@ export function UserMenu({ variant }: { variant: "desktop" | "mobile" }) {
 					// router.push — the React signal must be cleared
 					// and the next paint must show the anonymous
 					// CTA set.
-					window.location.href = appUrl("/login")
+					window.location.href = appUrl("/login", baseUrl)
 				},
 			},
 		})
