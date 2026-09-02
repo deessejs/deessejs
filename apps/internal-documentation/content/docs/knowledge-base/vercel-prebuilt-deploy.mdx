@@ -76,7 +76,10 @@ export const metadata = {
 The fix is to populate the variables in the CI job before running `vercel build`:
 
 ```yaml
-# .github/workflows/deploy.yml
+# Illustrative mapping — the complete workflows below use guarded
+# expressions that work on both push and pull_request events.
+# github.event.head_commit is null on pull_request; use
+# github.event.pull_request.head.sha in that context.
 - name: Build
   env:
     VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
@@ -213,6 +216,9 @@ jobs:
       - name: Build Production Artifacts
         if: github.ref == 'refs/heads/main'
         env:
+          # Gated on refs/heads/main, so this only fires on a push to main.
+          # head_commit is defined in that context; the fallback makes the
+          # step safe even if the gate is later relaxed.
           VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
           VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.actor }}
@@ -295,7 +301,9 @@ on:
     types: [opened, synchronize, reopened]
 
 concurrency:
-  group: preview-${{ github.head_ref || github.ref }}
+  # Group on the PR number so multiple pushes to the same PR cancel each
+  # other cleanly, and so two PRs from the same branch do not collide.
+  group: preview-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -349,6 +357,11 @@ jobs:
           # Capture it so the next step (or a sticky PR comment) can reference it.
           DEPLOY_URL=$(pnpm vercel deploy --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          # Also surface it in the GitHub Actions step summary, so reviewers see
+          # the link directly in the run UI without scrolling to a PR comment.
+          echo "### Preview deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "🚀 $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
