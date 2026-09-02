@@ -33,6 +33,6 @@
     "ADR-025-auto-canary-on-staging",
     "ADR-026-changesets-merge-gate",
     "ADR-027-version-bump-orphan",
-    "ADR-028-preview-url-wiring"
+    "ADR-029-preview-url-wiring"
   ]
 }

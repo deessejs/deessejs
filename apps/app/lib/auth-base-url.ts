@@ -5,7 +5,7 @@ import { clientEnv } from "@workspace/env/client"
 /**
  * Runtime resolution of the auth backend origin in the browser.
  *
- * ADR-028 Decision #4 — `withRelatedProject` reads
+ * ADR-029 Decision #4 — `withRelatedProject` reads
  * `VERCEL_RELATED_PROJECTS`, which Vercel injects only at runtime
  * on the server. The browser bundle never sees it, so we can't
  * use `withRelatedProject` from a Client Component. The simplest

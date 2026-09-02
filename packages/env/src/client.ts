@@ -53,7 +53,7 @@ export const clientEnv: Readonly<ClientEnv> = Object.freeze({
 } as ClientEnv) as Readonly<ClientEnv>
 
 /**
- * Ergonomic URL helpers (ADR-021 §"What this rule allows" §4 + ADR-028
+ * Ergonomic URL helpers (ADR-021 §"What this rule allows" §4 + ADR-029
  * Decision #6 follow-up). Each helper returns the role-specific origin
  * as a string. Callers compose with `new URL(path, helper)` rather
  * than concatenating — trailing-slash safety comes from `new URL`.
@@ -62,7 +62,7 @@ export const clientEnv: Readonly<ClientEnv> = Object.freeze({
  * variable. `webURL()` returns the marketing origin
  * (`deessejs.com` in prod), `appURL()` returns the apps/app origin
  * (`app.deessejs.com` in prod). Each role maps to exactly one env
- * var; aliasing across roles is forbidden (ADR-028 Decision #1).
+ * var; aliasing across roles is forbidden (ADR-029 Decision #1).
  */
 export function webURL(): string {
   return clientEnv.NEXT_PUBLIC_WEB_URL

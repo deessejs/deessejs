@@ -37,7 +37,7 @@ import "./fetch-auth-interceptor"
  * build-time env var. On Vercel previews this resolves to the
  * production apex (`app.deessejs.com`); the fetch interceptor
  * installed via the side-effect import above rewrites the URL to
- * the page origin at request time. See ADR-028 Decision #4 for the
+ * the page origin at request time. See ADR-029 Decision #4 for the
  * full rationale.
  */
 export const authClient = createAuthClient({

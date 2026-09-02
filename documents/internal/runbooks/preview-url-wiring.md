@@ -1,6 +1,6 @@
 # Preview deployment URL wiring
 
-Operator runbook for ADR-028's `preview-against-preview` wiring across
+Operator runbook for ADR-029's `preview-against-preview` wiring across
 the three Vercel projects in the monorepo (`apps/web`, `apps/app`,
 `apps/internal-documentation`).
 
@@ -14,7 +14,7 @@ A Vercel preview of `apps/web` on branch `feat/foo` fetches the
 corresponding preview of `apps/app` on the same branch for oRPC, auth
 callbacks, and email magic links. Without this wiring, every preview
 of `apps/web` would default to the production `apps/app` — the bug
-ADR-028 §Context §1–§5 documents.
+ADR-029 §Context §1–§5 documents.
 
 ## Prerequisites
 
@@ -78,7 +78,7 @@ If the fetch still hits production, the link is not wired:
    actual ID (typo is the most common failure mode).
 3. Confirm Turborepo Strict Mode isn't silently dropping
    `VERCEL_RELATED_PROJECTS` — if it is, the variable must be added
-   to `turbo.json`'s `globalPassThroughEnv`. ADR-028 Decision #3
+   to `turbo.json`'s `globalPassThroughEnv`. ADR-029 Decision #3
    already includes it.
 
 ### 4. Smoke-test the cross-app navigation
@@ -107,19 +107,19 @@ automatically once the host is permitted.
 - **Database isolation is not part of the preview wiring.** The
   linked previews share the same `DATABASE_URL` Vercel env var. If
   PR-level database isolation is needed, scope a per-branch database
-  override in a follow-up ADR (Limitation #1 of ADR-028).
+  override in a follow-up ADR (Limitation #1 of ADR-029).
 - **Cross-subdomain cookies do not apply to previews.** The
   `deessejs.com` cookie scope from ADR-023 does not match
   `*.vercel.app`. A preview is always logged-out for marketing-page
   session-aware UI, even after signing in on `apps/app` (Limitation
-  #2 of ADR-028, also documented in ADR-023 §"Known limitations" §2).
+  #2 of ADR-029, also documented in ADR-023 §"Known limitations" §2).
 - **CLI deploys are unsupported.** `vercel deploy` from the CLI does
   not honour `relatedProjects`. Production deploys go through Git;
   the constraint is acceptable.
 
 ## Related
 
-- ADR-028: Vercel preview URL wiring across web, app, and docs
+- ADR-029: Vercel preview URL wiring across web, app, and docs
 - [Vercel docs: How to link projects together in a monorepo](https://vercel.com/docs/monorepos#how-to-link-projects-together-in-a-monorepo)
 - [`@vercel/related-projects` package source](https://github.com/vercel/vercel/tree/main/packages/related-projects)
 - `apps/web/tests/e2e/RUNBOOK.md` — Deployment Protection and

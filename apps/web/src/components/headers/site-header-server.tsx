@@ -14,7 +14,7 @@
 // fills them with Server-rendered Client Components that hold
 // server-resolved state. This is the standard Next.js App Router
 // escape hatch for server-only data inside an otherwise client
-// tree — see ADR-028 Decision #4 (server-resolved prop).
+// tree — see ADR-029 Decision #4 (server-resolved prop).
 
 import { UserMenuServer } from "./user-menu-server"
 import { SiteHeader } from "./site-header"

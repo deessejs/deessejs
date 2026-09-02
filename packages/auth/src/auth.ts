@@ -40,7 +40,7 @@ const AUTH_BASE_PATH = "/api/v1/auth"
  *
  * The list is shared with the Hono CORS layer in
  * `packages/api/src/index.ts` via `packages/auth/src/host-allowlist.ts`
- * (ADR-028 Decision #2). Apex entries are load-bearing — see
+ * (ADR-029 Decision #2). Apex entries are load-bearing — see
  * `host-allowlist.ts` for the rationale.
  *
  * See https://better-auth.com/docs/guides/dynamic-base-url and

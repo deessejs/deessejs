@@ -1,4 +1,4 @@
-// Preview-aware URL helpers for `apps/web` (ADR-028 Decision #4).
+// Preview-aware URL helpers for `apps/web` (ADR-029 Decision #4).
 //
 // `withRelatedProject` from `@vercel/related-projects` reads
 // `VERCEL_RELATED_PROJECTS` (auto-injected by Vercel when
@@ -6,7 +6,7 @@
 // returns the linked sibling project's preview URL when
 // `VERCEL_ENV === "preview"`, the production alias/url when
 // `VERCEL_ENV === "production"`, or the env var fallback otherwise
-// (development, missing link, malformed payload — see ADR-028
+// (development, missing link, malformed payload — see ADR-029
 // Limitation #4 for the four `defaultHost` cases).
 //
 // `projectName` matches the Vercel project slug as shown in the

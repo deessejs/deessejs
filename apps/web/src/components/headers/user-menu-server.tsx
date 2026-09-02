@@ -1,6 +1,6 @@
 // Server Component wrapper around `<UserMenu>` (Client Component).
 //
-// ADR-028 Decision #4 — `withRelatedProject` reads
+// ADR-029 Decision #4 — `withRelatedProject` reads
 // `process.env.VERCEL_RELATED_PROJECTS` directly. Vercel injects
 // that env var at runtime on the server (Node.js / Edge Functions),
 // NOT in the browser bundle — so calling `withRelatedProject`

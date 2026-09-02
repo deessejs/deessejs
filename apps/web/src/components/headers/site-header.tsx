@@ -25,7 +25,7 @@ import { NavSections } from "./nav-sections"
  * a Server Component parent (typically `site-header-server.tsx`) —
  * that lets the URL resolved by `withRelatedProject` (which reads
  * server-only env vars) flow into the Client Component as a
- * serializable string. See ADR-028 Decision #4 + the doc comment on
+ * serializable string. See ADR-029 Decision #4 + the doc comment on
  * `<UserMenuServer />` for the rationale.
  *
  * Both DesktopNav and MobileNav read from the same NAV_SECTIONS list

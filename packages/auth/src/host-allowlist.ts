@@ -2,7 +2,7 @@
  * Host allowlist — single source of truth for "which hosts does this
  * deployment trust?".
  *
- * ADR-028 Decision #2 makes this the shared module between
+ * ADR-029 Decision #2 makes this the shared module between
  * `packages/auth/src/auth.ts` (Better Auth `baseURL.allowedHosts`) and
  * `packages/api/src/index.ts` (Hono CORS `origin` function). The
  * apex+wildcards shape is load-bearing: Better Auth's `allowedHosts`

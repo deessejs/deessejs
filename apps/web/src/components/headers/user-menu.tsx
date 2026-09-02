@@ -56,7 +56,7 @@ function appUrl(path: string, baseUrl: string): string {
 }
 
 /**
- * ADR-028: `baseUrl` is resolved server-side by `<UserMenuServer>`
+ * ADR-029: `baseUrl` is resolved server-side by `<UserMenuServer>`
  * (a Server Component) because `withRelatedProject` reads
  * `process.env.VERCEL_RELATED_PROJECTS`, which Vercel only injects
  * at runtime on the server — not in the browser bundle. Passing the
