@@ -179,12 +179,15 @@ jobs:
       - name: Build Preview Artifacts
         if: github.ref != 'refs/heads/main'
         env:
-          VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
-          VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-          VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.actor }}
+          # On pull_request events, github.event.head_commit is null and
+          # github.sha points to the merge commit. Fall back to pull_request.head.*
+          # so Vercel gets the real PR commit metadata.
+          VERCEL_GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message }}
+          VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.event.pull_request.user.login || github.actor }}
           VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
           VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
-          VERCEL_GIT_REF: ${{ github.ref }}
+          VERCEL_GIT_REF: ${{ github.head_ref || github.ref }}
           VERCEL_GIT_PROVIDER: github
           VERCEL_ENV: preview
           NEXT_PUBLIC_VERCEL_ENV: preview
@@ -322,9 +325,15 @@ jobs:
 
       - name: Build Preview Artifacts
         env:
-          VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
-          VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-          VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.actor }}
+          # On pull_request events:
+          # - github.event.head_commit is null (it only exists on push events)
+          # - github.sha is the merge commit GitHub creates for the PR, not the
+          #   tip of the contributor's branch
+          # The pull_request.head.* values resolve to the real PR commit and
+          # author, which is what Vercel expects for trace correlation.
+          VERCEL_GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+          VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.pull_request.title }}
+          VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.event.pull_request.user.login }}
           VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
           VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
           VERCEL_GIT_REF: ${{ github.head_ref }}
@@ -334,10 +343,23 @@ jobs:
         run: pnpm vercel build
 
       - name: Deploy Preview to Vercel
-        run: pnpm vercel deploy --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }}
+        id: deploy
+        run: |
+          # vercel deploy prints the unique deployment URL on stdout.
+          # Capture it so the next step (or a sticky PR comment) can reference it.
+          DEPLOY_URL=$(pnpm vercel deploy --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Post Preview URL to PR
+        if: steps.deploy.outputs.url
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: vercel-preview
+          message: |
+            🚀 Preview deployed: ${{ steps.deploy.outputs.url }}
 ```
 
 ### Comparison
@@ -350,6 +372,8 @@ jobs:
 The hybrid path keeps production on Vercel's native integration (so every `VERCEL_*` env var, ISR cache, and Edge function works without ceremony) and only pays CI cost for the volume path (previews). For most projects this is the right starting point; the full prebuilt pipeline above is the right step when even the residual production cost is unacceptable.
 
 ## Disabling the Vercel Git integration
+
+> **⚠️ Only apply this section if you are running the full-prebuilt pipeline (every environment, including production, is built in CI).** The [hybrid strategy](#hybrid-strategy-keep-production-native-ship-previews-via-ci) keeps the Vercel Git integration enabled for production deploys and uses the Ignored Build Step to skip only previews. Disabling the Git integration in the hybrid setup would break the production deploy path with no CI workflow to take over.
 
 Once CI owns the deploy, the Vercel Git integration must be turned off to prevent double builds. Either in the Vercel dashboard (Settings → Git → **Disable Auto-Deployments**) or in `vercel.json`:
 
