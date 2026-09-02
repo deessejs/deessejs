@@ -65,6 +65,13 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
       NEXT_PUBLIC_APP_URL: https://ci.example.com
+      # ADR-028: every NEXT_PUBLIC_* URL var is checked against its schema
+      # default by `scripts/env-check.ts` (Decision #5). CI stubs all
+      # four so the production-mode gate passes; real values are set
+      # on Vercel per `.env.example`.
+      NEXT_PUBLIC_WEB_URL: https://ci.example.com
+      NEXT_PUBLIC_DOCS_URL: https://ci-docs.example.com
+      NEXT_PUBLIC_API_BASE_URL: https://ci-api.example.com
       # ADR-023: production superRefine gate requires PARENT_DOMAIN
       # for cross-subdomain cookie sharing. Stubbed in CI so the
       # gate passes; the real value is set on Vercel per the

@@ -28,6 +28,7 @@ catalog:
   '@content-collections/next': ^0.2.11
   '@deessejs/errors': ^1.1.1
   '@deessejs/fp': ^1.0.0
+  "@vercel/related-projects": ^1.1.1
 
   # Next.js
   '@orpc/client': ^1.14.7

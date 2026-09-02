@@ -2,10 +2,10 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { MotionConfig } from "motion/react"
 
 import "@workspace/ui/globals.css"
-import { APP_CONFIG } from "@workspace/ui/lib/config"
+import { APP_CONFIG } from "@/lib/app-config"
 import { AppProviders } from "@/components/providers"
 import { AppFooter } from "@/components/footers/app-footer"
-import { SiteHeader } from "@/components/headers/site-header"
+import { SiteHeaderServer } from "@/components/headers/site-header-server"
 import { GlobalSearchDialog } from "@/components/search/global-search-dialog"
 import { GlobalSearchShortcut } from "@/components/search/global-search-shortcut"
 import { CookieConsent } from "@workspace/cookies"
@@ -21,7 +21,11 @@ const fontMono = Geist_Mono({
 
 export const metadata = {
   title: APP_CONFIG.name,
-  description: APP_CONFIG.description,
+  // ADR-029 Decision #6: pin the metadata base to the marketing
+  // canonical so OG / canonical URLs resolve against `deessejs.com`
+  // on every deployment (including Vercel previews) instead of
+  // falling back to Next.js's built-in `VERCEL_URL` heuristic.
+  metadataBase: new URL(APP_CONFIG.url),
 }
 
 export default function RootLayout({
@@ -39,7 +43,7 @@ export default function RootLayout({
         <MotionConfig reducedMotion="user">
           <AppProviders>
             <div className="flex min-h-screen flex-col">
-              <SiteHeader />
+              <SiteHeaderServer />
               <main className="flex-1">{children}</main>
               <AppFooter />
               <CookieConsent />

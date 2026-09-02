@@ -9,6 +9,11 @@
       "import": "./dist/auth.js",
       "default": "./dist/auth.js"
     },
+    "./host-allowlist": {
+      "types": "./dist/host-allowlist.d.ts",
+      "import": "./dist/host-allowlist.js",
+      "default": "./dist/host-allowlist.js"
+    },
     "./types": {
       "types": "./dist/types.d.ts",
       "import": "./dist/types.js",

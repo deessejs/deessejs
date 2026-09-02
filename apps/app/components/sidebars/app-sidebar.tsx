@@ -17,7 +17,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@workspace/ui/components/sidebar"
-import { APP_NAME } from "@workspace/ui/lib/config"
+import { APP_NAME } from "@/lib/app-config"
 
 import { Home, Settings } from "lucide-react"
 
