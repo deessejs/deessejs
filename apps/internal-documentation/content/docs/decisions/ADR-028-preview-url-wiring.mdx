@@ -14,12 +14,16 @@ Draft (2026-09). Awaiting review.
 The monorepo deploys three Next.js apps as three distinct Vercel projects
 (each with `Root Directory` set to the corresponding `apps/<name>`): `apps/web`,
 `apps/app`, `apps/internal-documentation`. Each Vercel project gets a
-preview URL per PR:
+preview URL per PR. The preview URL uses the Vercel **project slug** as
+the host prefix — NOT the workspace-internal `package.json` `name`.
+The slugs today are `deessejs-web`, `deessejs-app`,
+`deessejs-internal-documentation` (set in the Vercel dashboard
+Settings → General → Project Name):
 
 ```
-https://apps-web-git-<branch>-<scope>.vercel.app
-https://apps-app-git-<branch>-<scope>.vercel.app
-https://apps-internal-documentation-git-<branch>-<scope>.vercel.app
+https://deessejs-web-git-<branch>-<scope>.vercel.app
+https://deessejs-app-git-<branch>-<scope>.vercel.app
+https://deessejs-internal-documentation-git-<branch>-<scope>.vercel.app
 ```
 
 ADR-021 declared the four inter-app URL pairs (`WEB_URL` / `NEXT_PUBLIC_WEB_URL`,
@@ -190,7 +194,7 @@ which covers Vercel Deployment Protection and the
 Better Auth's `allowedHosts` pattern table (per the Better Auth docs /
 options reference) supports three patterns: `?` (one character), `*`
 (zero or more characters, not crossing `/`), and `**` (zero or more,
-crossing `/`). The wildcard `*.vercel.app` matches `apps-web-git-foo.vercel.app`
+crossing `/`). The wildcard `*.vercel.app` matches `deessejs-web-git-foo.vercel.app`
 but does **not** match the apex `vercel.app` itself. The same applies to
 `*.deessejs.com` and the apex `deessejs.com`. This is why
 `PRODUCTION_ALLOWED_HOSTS` at `packages/auth/src/auth.ts:55-59` lists
@@ -306,17 +310,17 @@ import { withRelatedProject } from "@vercel/related-projects"
 import { clientEnv } from "@workspace/env/client"
 
 export const apiBaseUrl = withRelatedProject({
-  projectName: "apps-app",
+  projectName: "deessejs-app",
   defaultHost: clientEnv.NEXT_PUBLIC_API_BASE_URL,
 })
 
 export const appUrl = withRelatedProject({
-  projectName: "apps-app",
+  projectName: "deessejs-app",
   defaultHost: clientEnv.NEXT_PUBLIC_APP_URL,
 })
 
 export const webUrl = withRelatedProject({
-  projectName: "apps-web",
+  projectName: "deessejs-web",
   defaultHost: clientEnv.NEXT_PUBLIC_WEB_URL,
 })
 ```
@@ -616,7 +620,7 @@ var is opt-in.
 ### Integration
 
 - `packages/api/tests/integration/cors.test.ts` extends to assert
-  that an OPTIONS preflight from `https://apps-web-git-<branch>-<scope>.vercel.app`
+  that an OPTIONS preflight from `https://deessejs-web-git-<branch>-<scope>.vercel.app`
   returns the right `Access-Control-Allow-Origin` response. The test
   uses `cors()` directly with a synthetic `Origin` header; it does
   not need a live Vercel deployment.
@@ -626,14 +630,14 @@ var is opt-in.
 - Push a branch that touches both `apps/web` and `apps/app`.
 - Wait for the two preview URLs to deploy.
 - From the `apps/web` preview, open DevTools and confirm the oRPC
-  fetch hits `https://apps-app-git-<branch>-<scope>.vercel.app/api/v1/rpc/...`
+  fetch hits `https://deessejs-app-git-<branch>-<scope>.vercel.app/api/v1/rpc/...`
   (the linked preview), not `app.deessejs.com`.
 - From the same `apps/web` preview, view source on `/` and confirm
   the sitemap link in `robots.txt` and the OG image bottom bar
   advertise `https://deessejs.com` (the production marketing
   canonical, not the preview).
 - Click `Log in` in the header. Confirm the navigation target is
-  `https://apps-app-git-<branch>-<scope>.vercel.app/login` (the
+  `https://deessejs-app-git-<branch>-<scope>.vercel.app/login` (the
   linked preview).
 - Repeat on a second PR that touches only `apps/web`. Confirm the
   `apps/app` preview is the previous `apps/app` preview (the link
@@ -663,8 +667,8 @@ true isolation. Out of scope here.
 ### Limitation 2: cross-subdomain cookie does not apply to preview
 
 ADR-023 §"Known limitations" §2 documented the limitation; this ADR
-does not change it. A preview of `apps/web` on `apps-web-git-<branch>.vercel.app`
-and a preview of `apps/app` on `apps-app-git-<branch>.vercel.app`
+does not change it. A preview of `apps/web` on `deessejs-web-git-<branch>.vercel.app`
+and a preview of `apps/app` on `deessejs-app-git-<branch>.vercel.app`
 do not share the `deessejs.com`-scoped session cookie (the cookie
 domain does not match `*.vercel.app`). The preview is always
 logged-out for marketing-page surface, even after signing in on

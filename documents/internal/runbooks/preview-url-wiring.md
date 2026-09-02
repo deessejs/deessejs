@@ -67,7 +67,7 @@ both previews to deploy.
 
 From the `apps/web` preview, open DevTools → Network and confirm the
 oRPC fetch hits
-`https://apps-app-git-<branch>-<scope>.vercel.app/api/v1/rpc/...`
+`https://deessejs-app-git-<branch>-<scope>.vercel.app/api/v1/rpc/...`
 (the linked sibling preview), not `app.deessejs.com`.
 
 If the fetch still hits production, the link is not wired:
@@ -86,7 +86,7 @@ If the fetch still hits production, the link is not wired:
 From the `apps/web` preview:
 
 - Click **Log in** in the header. The navigation target must be
-  `https://apps-app-git-<branch>-<scope>.vercel.app/login`.
+  `https://deessejs-app-git-<branch>-<scope>.vercel.app/login`.
 - Click **Sign up**. Same target.
 - View source on `/` and confirm the sitemap link in `robots.txt`
   and the OG image bottom bar advertise `https://deessejs.com`
@@ -97,7 +97,7 @@ From the `apps/web` preview:
 
 Trigger a password reset from the `apps/app` preview. The email's
 `Reset your password` link must point at
-`https://apps-app-git-<branch>-<scope>.vercel.app/reset-password?token=...`
+`https://deessejs-app-git-<branch>-<scope>.vercel.app/reset-password?token=...`
 (the linked preview). The dynamic `baseURL` block in
 `packages/auth/src/auth.ts` (Decision #2 + ADR-021) handles this
 automatically once the host is permitted.

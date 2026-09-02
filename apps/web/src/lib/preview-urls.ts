@@ -9,29 +9,30 @@
 // (development, missing link, malformed payload — see ADR-028
 // Limitation #4 for the four `defaultHost` cases).
 //
-// `projectName` matches the Vercel project name (not the
-// workspace-internal `package.json` `name`). The team uses
-// `apps-app` and `apps-web` per the Vercel dashboard convention
-// for monorepo projects — confirm with the operator before
-// shipping.
+// `projectName` matches the Vercel project slug as shown in the
+// dashboard (Settings → General → Project Name) and embedded in the
+// preview URL (`<slug>-git-<branch>.vercel.app`). NOT the
+// workspace-internal `package.json` `name` and NOT the Vercel
+// Project ID (`prj_xxx`) — those are different identifiers. As of
+// this commit, the slugs are `deessejs-app` and `deessejs-web`.
 
 import { withRelatedProject } from "@vercel/related-projects"
 import { clientEnv } from "@workspace/env/client"
 
 /** API backend origin — used by the oRPC link and the Better Auth client. */
 export const apiBaseUrl = withRelatedProject({
-  projectName: "apps-app",
+  projectName: "deessejs-app",
   defaultHost: clientEnv.NEXT_PUBLIC_API_BASE_URL,
 })
 
 /** apps/app origin — used by the header cross-app links. */
 export const appUrl = withRelatedProject({
-  projectName: "apps-app",
+  projectName: "deessejs-app",
   defaultHost: clientEnv.NEXT_PUBLIC_APP_URL,
 })
 
 /** Marketing origin — used by apps/app when linking back to web. */
 export const webUrl = withRelatedProject({
-  projectName: "apps-web",
+  projectName: "deessejs-web",
   defaultHost: clientEnv.NEXT_PUBLIC_WEB_URL,
 })
