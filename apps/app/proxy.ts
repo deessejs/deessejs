@@ -26,7 +26,10 @@ const AUTH_PREFIXES = [
 export const config = {
   // Single matcher covering both directions of the auth gate.
   matcher: [
-    "/acme/home/:path*", // ADR-030 §"Decision #5" per-org dashboard (dummy slug).
+    // ADR-030 §"Decision #5" per-org dashboard. The `:orgSlug`
+    // placeholder accepts any single segment — the page-level gate
+    // does the actual slug validation in PR #4.
+    "/:orgSlug/home/:path*",
     "/settings/:path*",
     "/login",
     "/signup",

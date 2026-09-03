@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Check, ChevronsUpDown, Plus } from "lucide-react"
 
@@ -12,7 +13,6 @@ import {
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
-	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import {
@@ -22,6 +22,7 @@ import {
 	useSidebar,
 } from "@workspace/ui/components/sidebar"
 
+import { CreateOrganizationDialog } from "@/components/sidebars/create-organization-dialog"
 import { orgHomePath, ORG_SLUG } from "@/lib/org-route"
 
 type Organization = {
@@ -33,14 +34,10 @@ type Organization = {
 }
 
 /**
- * Dummy organizations list.
- *
- * ADR-030 §"Decision #5" + sidebar-07 pattern. The first entry is
- * the dummy "Acme Corp" workspace; the second is a placeholder
- * so the radio-group has a second option to switch to visually.
- * PR #4 will replace this with `auth.api.listOrganizations()`.
+ * Dummy seed. ADR-030 PR #4 will replace this with
+ * `auth.api.listOrganizations()`.
  */
-const DUMMY_ORGS: Organization[] = [
+const SEED_ORGS: Organization[] = [
 	{ id: "org_acme", slug: ORG_SLUG, name: "Acme Corp", role: "owner" },
 	{ id: "org_personal", slug: "personal", name: "Personal", role: "owner" },
 ]
@@ -52,17 +49,42 @@ function getInitials(name: string): string {
 	return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase()
 }
 
+/**
+ * Workspace switcher in the sidebar header.
+ *
+ * Pattern from shadcn/ui sidebar-07. The component owns two local
+ * pieces of state so the dummy stays interactive:
+ *   - `orgs` is the live list (the user can add a new one through
+ *     the Create dialog).
+ *   - `activeOrgId` tracks the currently-selected workspace and
+ *     drives the switcher trigger label plus the checkmark in the
+ *     radio group.
+ *
+ * Both are in-memory and reset on reload — PR #4 swaps them for
+ * better-auth calls (`listOrganizations` + `setActiveOrganization`).
+ */
 export function TeamSwitcher() {
 	const router = useRouter()
 	const { isMobile } = useSidebar()
-	// Dummy: "Acme Corp" is the active workspace.
-	const activeOrg = DUMMY_ORGS[0]!
+	const [orgs, setOrgs] = useState<Organization[]>(SEED_ORGS)
+	const [activeOrgId, setActiveOrgId] = useState<string>(SEED_ORGS[0]!.id)
+	const [createOpen, setCreateOpen] = useState(false)
 
-	function switchToOrg(org: Organization) {
-		// Dummy backend. PR #4 will call `authClient.organization.setActiveOrganization(...)`
-		// and route to `/${org.slug}/home`. For now we route via the
-		// URL — only the dummy "acme" slug resolves to a real route.
-		router.push(orgHomePath(org.slug))
+	const activeOrg = orgs.find((org) => org.id === activeOrgId) ?? orgs[0]!
+
+	function switchToOrg(orgId: string) {
+		const next = orgs.find((org) => org.id === orgId)
+		if (!next) return
+		setActiveOrgId(next.id)
+		router.push(orgHomePath(next.slug))
+	}
+
+	function handleCreated(org: { id: string; slug: string; name: string }) {
+		setOrgs((current) => [
+			...current,
+			{ ...org, role: "owner" },
+		])
+		switchToOrg(org.id)
 	}
 
 	return (
@@ -104,49 +126,61 @@ export function TeamSwitcher() {
 						</DropdownMenuLabel>
 						<DropdownMenuRadioGroup
 							value={activeOrg.id}
-							onValueChange={(value) => {
-								const next = DUMMY_ORGS.find((org) => org.id === value)
-								if (next) switchToOrg(next)
-							}}
+							onValueChange={(value) => switchToOrg(value)}
 						>
-							{DUMMY_ORGS.map((org, index) => (
-								<DropdownMenuRadioItem
-									key={org.id}
-									value={org.id}
-									className="gap-2 p-2"
-								>
-									<Avatar className="size-6 rounded-md">
-										{org.logo ? (
-											<AvatarImage src={org.logo} alt={org.name} />
+							{orgs.map((org) => {
+								const isActive = org.id === activeOrg.id
+								return (
+									<DropdownMenuRadioItem
+										key={org.id}
+										value={org.id}
+										className="gap-2 p-2"
+									>
+										<Avatar className="size-6 rounded-md">
+											{org.logo ? (
+												<AvatarImage src={org.logo} alt={org.name} />
+											) : null}
+											<AvatarFallback className="rounded-md text-xs">
+												{getInitials(org.name)}
+											</AvatarFallback>
+										</Avatar>
+										<span className="flex-1 truncate">{org.name}</span>
+										{isActive ? (
+											<Check className="size-4 text-primary" />
 										) : null}
-										<AvatarFallback className="rounded-md text-xs">
-											{getInitials(org.name)}
-										</AvatarFallback>
-									</Avatar>
-									<span className="flex-1 truncate">{org.name}</span>
-									{index === 0 ? (
-										<DropdownMenuShortcut>
-											<Check className="size-4" />
-										</DropdownMenuShortcut>
-									) : null}
-								</DropdownMenuRadioItem>
-							))}
+									</DropdownMenuRadioItem>
+								)
+							})}
 						</DropdownMenuRadioGroup>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem disabled className="gap-2 p-2">
+						<DropdownMenuItem
+							className="gap-2 p-2"
+							onSelect={(event) => {
+								event.preventDefault()
+								setCreateOpen(true)
+							}}
+						>
 							<div className="flex size-6 items-center justify-center rounded-md border bg-background">
 								<Plus className="size-4" />
 							</div>
 							<div className="flex flex-1 flex-col text-left text-sm leading-tight">
 								<span className="font-medium">Create organization</span>
 								<span className="truncate text-xs text-muted-foreground">
-									Dummy — ADR-030 PR #4
+									Dummy — lands in ADR-030 PR #4
 								</span>
 							</div>
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>
+
+			<CreateOrganizationDialog
+				open={createOpen}
+				onOpenChange={async (next) => {
+					setCreateOpen(next)
+				}}
+				onCreated={handleCreated}
+			/>
 		</SidebarMenu>
 	)
 }
