@@ -7,6 +7,10 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
+  // ADR-030: stamped by the /onboarding/complete server action once
+  // the user has finished the three-step wizard. Read by the
+  // onboarding state machine in apps/app/lib/onboarding.ts.
+  onboardingCompletedAt: timestamp("onboarding_completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -29,6 +33,12 @@ export const session = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    // ADR-030: the active org is stored on the session row so every
+    // org-aware API call resolves without an extra roundtrip. Set
+    // by better-auth's setActiveOrganization endpoint, which also
+    // reissues the session cookie (see plugins/organization in the
+    // better-auth docs).
+    activeOrganizationId: text("active_organization_id"),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );
@@ -133,6 +143,103 @@ export const sessionRelations = relations(session, ({ one }) => ({
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
+    references: [user.id],
+  }),
+}));
+
+/**
+ * Organization plugin tables (ADR-030 §"Decision #1").
+ *
+ * Hand-edited to mirror `pnpm auth:generate` output — re-running
+ * the CLI on the next better-auth upgrade is the canonical way to
+ * reconcile these definitions. The shape here matches the
+ * better-auth organization plugin defaults for `allowUserToCreateOrganization`,
+ * `creatorRole: "owner"`, `requireEmailVerificationOnInvitation: true`,
+ * `invitationExpiresIn: 60 * 60 * 48`, and a comma-joined string `teamId`.
+ */
+export const organization = pgTable(
+  "organization",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    logo: text("logo"),
+    // Metadata is a JSON string on disk; better-auth's adapter
+    // encodes/decodes at the boundary.
+    metadata: text("metadata"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("organization_slug_idx").on(table.slug)],
+);
+
+export const member = pgTable(
+  "member",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("member_organizationId_idx").on(table.organizationId),
+    index("member_userId_idx").on(table.userId),
+  ],
+);
+
+export const invitation = pgTable(
+  "invitation",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role"),
+    // `teamId` is a comma-joined string when the better-auth plugin
+    // accepts multiple teams per invitation. With `teams.enabled`
+    // false (the current V1 setting) it stays a single id.
+    teamId: text("team_id"),
+    status: text("status").notNull().default("pending"),
+    expiresAt: timestamp("expires_at").notNull(),
+    inviterId: text("inviter_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("invitation_organizationId_idx").on(table.organizationId),
+    index("invitation_email_idx").on(table.email),
+    index("invitation_status_idx").on(table.status),
+  ],
+);
+
+export const organizationRelations = relations(organization, ({ many }) => ({
+  members: many(member),
+  invitations: many(invitation),
+}));
+
+export const memberRelations = relations(member, ({ one }) => ({
+  organization: one(organization, {
+    fields: [member.organizationId],
+    references: [organization.id],
+  }),
+  user: one(user, {
+    fields: [member.userId],
+    references: [user.id],
+  }),
+}));
+
+export const invitationRelations = relations(invitation, ({ one }) => ({
+  organization: one(organization, {
+    fields: [invitation.organizationId],
+    references: [organization.id],
+  }),
+  inviter: one(user, {
+    fields: [invitation.inviterId],
     references: [user.id],
   }),
 }));
