@@ -88,12 +88,12 @@ export function AppSidebar({
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="h-14 border-b bg-background">
-        {/*
-          Brand header replaced by the workspace switcher (ADR-030
-          §"Decision #5"). The TeamSwitcher carries the active org
+        <div className="flex h-full w-full items-center">
+          {/*
           name + role and lets users hop between workspaces.
         */}
         <TeamSwitcher />
+        </div>
       </SidebarHeader>
       <SidebarContent className="bg-background">
         <SidebarGroup>
