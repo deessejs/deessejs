@@ -1,4 +1,5 @@
 export { BaseLayout } from "./layout.js"
 export { VerifyEmail } from "./verify-email.js"
 export { ResetPassword } from "./reset-password.js"
+export { InviteToOrganization } from "./invite-to-organization.js"
 export { CTAButton } from "./partials/button.js"

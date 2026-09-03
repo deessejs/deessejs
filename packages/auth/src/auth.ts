@@ -1,11 +1,12 @@
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { nextCookies } from "better-auth/next-js"
-import { bearer, deviceAuthorization } from "better-auth/plugins"
+import { bearer, deviceAuthorization, organization } from "better-auth/plugins"
 import { db } from "@workspace/database"
 import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
+import { ac, admin, member, owner } from "./access.js"
 import { HOST_ALLOWLIST } from "./host-allowlist.js"
 
 /**
@@ -173,6 +174,48 @@ export const auth = betterAuth({
   },
 
   plugins: [
+    // Organization plugin (ADR-030): multi-tenant workspaces. Adds
+    // organization/member/invitation tables on top of the user/session
+    // tables and an `activeOrganizationId` column on the session row
+    // the rest of the auth surface switches on. Inserted FIRST so the
+    // device flow and the bearer plugin see the active org context.
+    // Disabled sub-features: `teams.enabled` (V2), `dynamicAccessControl`
+    // (custom roles created at runtime — V2). `requireEmailVerificationOnInvitation`
+    // is true to gate accept-invite on the invitee's verified email.
+    organization({
+      ac,
+      roles: { owner, admin, member },
+      allowUserToCreateOrganization: true,
+      organizationLimit: 10,
+      creatorRole: "owner",
+      membershipLimit: 100,
+      invitationExpiresIn: 60 * 60 * 48,
+      invitationLimit: 100,
+      requireEmailVerificationOnInvitation: true,
+      cancelPendingInvitationsOnReInvite: false,
+      // Custom invitation URL — see ADR-030 §"Decision #1". The
+      // plugin emits `data.id`, `data.email`, `data.role`,
+      // `data.organization`, `data.inviter`; we build the URL from
+      // the request's resolved origin so Vercel previews receive
+      // their own hostname instead of the production apex.
+      sendInvitationEmail: async (data, request) => {
+        const origin =
+          new URL(request?.url ?? "http://localhost:3000").origin
+        const url = `${origin}/invite/${data.id}`
+        void sendAuthEmail({
+          to: data.email,
+          subject: `Invitation to join ${data.organization.name}`,
+          react: templates.InviteToOrganization({
+            url,
+            inviter: data.inviter.user.name,
+            organizationName: data.organization.name,
+          }),
+          tags: [{ name: "flow", value: "org-invitation" }],
+        }).then((result) => {
+          if (!result.ok) logEmailFailure("org-invitation", data.inviter.user.id, result.error)
+        })
+      },
+    }),
     // Device authorization (ADR-020): the device-code flow that lets the
     // CLI obtain a session token without a password. The plugin adds
     // /device/code, /device/token, /device, /device/approve, /device/deny
