@@ -233,11 +233,34 @@ comment block covering:
   signing secret).
 - The Dashboard click-path to obtain the price ids (Products →
   click product → copy price id from the pricing table).
-- The four webhook events to subscribe in the Dashboard:
-  `checkout.session.completed`,
-  `customer.subscription.created`,
-  `customer.subscription.updated`,
-  `customer.subscription.deleted`.
+- The webhook events to subscribe in the Dashboard. The
+  plugin handles the four lifecycle events internally;
+  six more events fall through to the `onEvent(event)` hook
+  configured in `packages/auth/src/auth.ts`. The complete
+  list (lifecycle plus operational):
+  - `checkout.session.completed` (lifecycle).
+  - `customer.subscription.created` (lifecycle).
+  - `customer.subscription.updated` (lifecycle).
+  - `customer.subscription.deleted` (lifecycle).
+  - `invoice.payment_failed` (operational: card declined,
+    funds insufficient, 3DS required; flips the local
+    subscription to `past_due` and powers the
+    `past_due` UI state in `billing-current-plan.tsx`).
+  - `invoice.payment_action_required` (operational: off-session
+    authentication required; the user is silently blocked
+    from the service until they confirm).
+  - `invoice.paid` (operational: recovery after a failed
+    payment; flips `past_due` back to `active`).
+  - `invoice.finalized` (operational: captures the latest
+    invoice id for the billing history UI).
+  - `checkout.session.expired` (lifecycle: cleans up rows
+    left at `status: "incomplete"` when a Checkout session
+    expires before completion).
+  - `payment_method.attached` and `payment_method.detached`
+    (operational: refreshes the payment-method cache that
+    `billing-payment-method.tsx` reads).
+  - `setup_intent.succeeded` (operational: billing-portal
+    flow attaching a new card without a checkout session).
 
 ### Database schema
 
@@ -264,6 +287,25 @@ locally before commit (the precedent is
 during `pnpm install` or during CI; staging and production
 apply it via `pnpm db:migrate` after the PR merges (per
 `ADR-015-drizzle-migrations-ci`).
+
+The plugin's published schema declares zero indexes on the
+`subscription` table. The project convention is to index
+every column that is read by an authorization or webhook
+backfill (see `packages/database/src/schema/auth.ts:33,57,73,116-117`
+for the precedent). The implementation PR adds an index on
+`subscription.referenceId` via the plugin's `schema:` option.
+The override is additive: it preserves the table name and all
+column names from the plugin default, and adds an index
+block. The override does not rename the model or any column,
+so the `What this rule forbids` §"Renaming the subscription
+table" rule stays intact.
+
+`stripeCustomerId` and `stripeSubscriptionId` carry implicit
+unique indexes from the plugin's `unique()` constraint
+(Postgres behavior), so lookups by those columns are fine
+without an explicit index. `referenceId` has no such
+constraint and would otherwise fall back to a sequential
+scan once the table grows past a few hundred rows.
 
 ### Client wiring
 
@@ -366,6 +408,19 @@ discoverability:
 
 ## Consequences
 
+- **Entitlements (server-side limits enforcement) is out of
+  scope for this DR.** The `limits` map returned by
+  `authClient.subscription.list()` is consumed by the client
+  UI (the `billing-current-plan.tsx` card shows the limit
+  values; future copy like "1 of 1 projects created" can be
+  derived from them). No oRPC procedure, no Hono middleware,
+  and no server action in `packages/api/` reads the `limits`
+  field today. A request to `/api/v1/templates/create` is not
+  gated by the user's plan; nothing in the codebase enforces
+  the limits yet. Server-side entitlement enforcement is a
+  separate concern that lands in a future DR (it touches the
+  templates router and the `oRPC` `base` middleware, both
+  outside this DR's surface).
 - The endpoints `POST /api/v1/auth/subscription/upgrade`,
   `GET /api/v1/auth/subscription/list`,
   `POST /api/v1/auth/subscription/cancel`,
@@ -837,7 +892,7 @@ The change required by this follow-up PR is **data-only**:
    `cta` shape changes from
    `{ label: "Email us about Pro", href: "mailto:support@deessejs.com?subject=Pro%20package", external: true }`
    to
-   `{ label: "Buy Pro", href: "/api/v1/auth/subscription/upgrade?plan=pro", external: true }`.
+   `{ label: "Buy Pro", href: "/api/v1/auth/checkout/marketing?plan=pro", external: true }`.
    The `external: true` flag stays (the destination is
    absolute, even though it lives on our own backend, because
    Stripe redirects the browser away from the page mid-click).
@@ -1041,14 +1096,57 @@ signal (a future Stripe route change would silently break the
 match); the follow-up PR adds an integration test that
 asserts the gate.
 
+### Risk 5: anonymous `subscription.upgrade` is not supported
+
+The plugin's `POST /subscription/upgrade` endpoint is
+guarded by better-auth's `authenticated` middleware (the
+plugin uses the standard `getSession()` guard on every
+`subscription.*` route). An anonymous call from the
+marketing `/pricing` page returns `401 Unauthorized` rather
+than initiating a guest checkout. The flow described in
+the *Server-side provisioning flow* section above assumes
+the endpoint will accept the anonymous visitor; it will
+not, without a code change.
+
+Two resolutions are visible:
+
+1. **Custom anonymous handler**. Add a Hono route at
+   `packages/api/src/http/routes/checkout.ts` that accepts
+   the anonymous POST, calls
+   `stripe.checkout.sessions.create({ mode: "subscription",
+   customer_email, line_items, success_url, cancel_url,
+   metadata: { source: "marketing-pricing" } })` with the
+   server-side Stripe SDK instance (the same one
+   `packages/auth/src/auth.ts` constructs), and returns the
+   Checkout URL to the browser. The handler does not
+   require a session; the Stripe customer is created
+   implicitly when the visitor completes Checkout. This is
+   the resolution this DR locks. The Hono route is added to
+   `mountHttp` per the existing ADR-011 pattern.
+2. **Require sign-in first**. Redirect the anonymous visitor
+   to `/signup?redirect=/pricing` before the Stripe
+   checkout. This breaks the marketing flow and is rejected.
+
+The custom anonymous handler is the chosen path. The
+implementation lands in the marketing follow-up PR, not
+in the implementation PR (the implementation PR has no
+marketing-side wiring). The handler is consumed by the
+Pro `PricingLayer.cta.href` update in
+`apps/web/src/lib/pricing.ts`; the data-only edit points
+at `/api/v1/auth/checkout/marketing?plan=pro` (the new
+Hono route), not at the plugin's
+`/subscription/upgrade` endpoint.
+
 ### Verification for the marketing follow-up PR
 
 1. Visit `/pricing` as an anonymous user. The Pro CTA reads
    "Buy Pro" and points at
-   `/api/v1/auth/subscription/upgrade?plan=pro`.
+   `/api/v1/auth/checkout/marketing?plan=pro`.
 2. Click the CTA. The browser follows the endpoint, which
    (because the visitor is anonymous) creates a Stripe
-   Checkout session and redirects to Stripe's hosted page.
+   Checkout session via the custom Hono handler
+   (`packages/api/src/http/routes/checkout.ts`) and
+   redirects to Stripe's hosted page.
 3. Complete checkout with the test card
    `4242 4242 4242 4242`. Stripe redirects to
    `/checkout-success?session_id=<id>`.
@@ -1168,11 +1266,17 @@ local dev:
 
 1. With `STRIPE_SECRET_KEY` / `_WEBHOOK_SECRET` /
    `_PRICE_STARTER` / `_PRICE_PRO` unset in `.env`, start the
-   dev server. The Stripe SDK constructor at
-   `packages/auth/src/auth.ts` fails loud (the `!` assertion
-   evaluates eagerly). The error message points at the
-   missing env var. This confirms the server-side failure mode
-   matches the rule.
+   dev server. The dev server boots; the Stripe SDK
+   constructor at `packages/auth/src/auth.ts` accepts an
+   `undefined` secret key (the constructor stores the value
+   without validating it; the `!` non-null assertion in
+   TypeScript has zero runtime effect). The first request
+   that touches Stripe (a `subscription.upgrade` call, a
+   webhook receipt, or a `createCustomerOnSignUp` write) is
+   the one that throws `StripeAuthenticationError` lazily.
+   This confirms the failure mode is request-time, not
+   module-load, and that CI / Vitest can import
+   `packages/auth/src/auth.ts` without a Stripe key on disk.
 2. With all four keys set, start the dev server. The server
    boots. `curl http://localhost:3001/api/v1/auth/get-session`
    returns the unauthenticated shape (no session cookie
