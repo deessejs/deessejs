@@ -43,7 +43,7 @@ const ONBOARDING_COMPLETE_COOKIE = "deessejs-onboarding-complete"
  * on the session row.
  */
 export async function getOnboardingState(
-	requestedStep?: OnboardingStep,
+	requestedStep?: string,
 ): Promise<OnboardingState | null> {
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session?.user) return null
@@ -67,7 +67,8 @@ export async function getOnboardingState(
 	// honor that step directly instead of computing from the dummy state.
 	// This lets us preview each page while the backend isn't wired yet.
 	// ADR-030 PR #4 will remove the override along with the dummy checks.
-	const finalStep = requestedStep ?? step
+	const overrideStep = isValidStep(requestedStep) ? requestedStep : undefined
+	const finalStep = overrideStep ?? step
 
 	return {
 		step: completed && !requestedStep ? "complete" : finalStep,

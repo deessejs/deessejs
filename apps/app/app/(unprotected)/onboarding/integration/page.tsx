@@ -42,9 +42,8 @@ export default async function OnboardingIntegrationPage({
 	if (!session?.user) redirect("/login")
 
 	const params = await searchParams
-	const requestedStep = isValidStep(params.onb) ? params.onb : undefined
 
-	const state = await getOnboardingState(requestedStep)
+	const state = await getOnboardingState(params.onb)
 	if (!state) redirect("/login")
 
 	// Forward-gate: integration is the first step. If the user has somehow

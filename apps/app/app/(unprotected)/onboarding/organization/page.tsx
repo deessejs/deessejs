@@ -6,7 +6,7 @@ import { AuthContainer } from "@/components/auth"
 import { CreateOrganizationForm } from "@/components/auth/create-organization-form"
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
 
-import { getOnboardingState, isValidStep } from "@/lib/onboarding"
+import { getOnboardingState } from "@/lib/onboarding"
 
 export default async function OnboardingOrganizationPage({
 	searchParams,
@@ -23,9 +23,8 @@ export default async function OnboardingOrganizationPage({
 	}
 
 	const params = await searchParams
-	const requestedStep = isValidStep(params.onb) ? params.onb : undefined
 
-	const state = await getOnboardingState(requestedStep)
+	const state = await getOnboardingState(params.onb)
 	if (!state) redirect("/login")
 
 	// Forward-gate: integration must be done before the user can land
