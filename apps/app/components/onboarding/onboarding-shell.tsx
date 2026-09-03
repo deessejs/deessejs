@@ -1,7 +1,5 @@
 import Link from "next/link"
-import { ArrowLeft, Check } from "lucide-react"
-
-import { Separator } from "@workspace/ui/components/separator"
+import { ArrowLeft } from "lucide-react"
 
 const STEPS = [
 	{ id: "integration", label: "Connect" },
@@ -18,15 +16,13 @@ type OnboardingShellProps = {
 
 /**
  * Shared wrapper for the three onboarding pages (ADR-030
- * §"Decision #8"). Renders a centered card with a 3-dot stepper
- * header, a back link, and the page-specific content. The stepper
- * shows progress and lets the user click back to any completed
- * step.
+ * §"Decision #8"). A thin progress bar fills from the left as the
+ * user advances, with a "Step N of 3 — Label" caption underneath.
+ * Pattern after Stripe Checkout / Linear onboarding: minimal
+ * chrome, the wizard state is felt without dominating the page.
  *
- * No client-side state: the current step and completed steps come
- * from the server (see `lib/onboarding.ts`). The shell is a Server
- * Component so it renders the stepper from the same source of
- * truth as the gating logic.
+ * The shell is a Server Component; current and completed steps
+ * come from `lib/onboarding.ts` server-side.
  */
 export function OnboardingShell({
 	currentStep,
@@ -34,76 +30,52 @@ export function OnboardingShell({
 	backHref,
 	children,
 }: OnboardingShellProps) {
+	const currentIndex = STEPS.findIndex((step) => step.id === currentStep)
+	// Fill stops mid-circle on the current step (e.g. step 2 of 3 = 50%).
+	// Once the user lands on the final step we snap to 100%.
+	const fillWidth =
+		currentIndex < 0
+			? "0%"
+			: currentIndex >= STEPS.length - 1
+				? "100%"
+				: `${Math.round(((currentIndex + 0.5) / STEPS.length) * 100)}%`
+
+	const currentLabel =
+		STEPS.find((step) => step.id === currentStep)?.label ?? ""
+	const stepPosition =
+		currentIndex >= 0 ? currentIndex + 1 : completedSteps.length + 1
+
 	return (
 		<div className="flex flex-1 items-center justify-center px-4 py-12">
 			<div className="w-full max-w-lg">
-				<nav className="mb-6 flex items-center justify-between">
-					{backHref ? (
-						<Link
-							href={backHref}
-							className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-						>
-							<ArrowLeft className="size-4" />
-							Back
-						</Link>
-					) : (
-						<span />
-					)}
-					<ol className="flex items-center gap-2" aria-label="Onboarding progress">
-						{STEPS.map((step, index) => {
-							const isComplete = completedSteps.includes(step.id)
-							const isCurrent = step.id === currentStep
-							// Resolve the dot's visual state outside the JSX
-							// className expression — nested ternaries inside
-							// `[...].join(" ")` confuse Turbopack's parser in
-							// Next 16 (see PR #126 CI failure).
-							let dotStateClass: string
-							if (isComplete) {
-								dotStateClass =
-									"border-primary bg-primary text-primary-foreground"
-							} else if (isCurrent) {
-								dotStateClass = "border-primary text-primary"
-							} else {
-								dotStateClass = "border-muted text-muted-foreground"
-							}
-							return (
-								<li key={step.id} className="flex items-center gap-2">
-									<Link
-										href={
-											isComplete || isCurrent
-												? `/onboarding/${step.id}`
-												: "#"
-										}
-										aria-current={isCurrent ? "step" : undefined}
-										className={[
-											"flex size-7 items-center justify-center rounded-full border text-xs font-medium",
-											dotStateClass,
-											isComplete || isCurrent ? "" : "pointer-events-none",
-										].join(" ")}
-									>
-										{isComplete ? <Check className="size-3.5" /> : index + 1}
-									</Link>
-									<span
-										className={[
-											"text-xs",
-											isCurrent
-												? "font-medium text-foreground"
-												: "text-muted-foreground",
-										].join(" ")}
-									>
-										{step.label}
-									</span>
-									{index < STEPS.length - 1 && (
-										<Separator
-											orientation="horizontal"
-											className="w-6"
-										/>
-									)}
-								</li>
-							)
-						})}
-					</ol>
-				</nav>
+				{backHref ? (
+					<Link
+						href={backHref}
+						className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+					>
+						<ArrowLeft className="size-4" />
+						Back
+					</Link>
+				) : null}
+
+				<div
+					className="mb-2 h-1 w-full overflow-hidden rounded-full bg-muted"
+					role="progressbar"
+					aria-valuenow={stepPosition}
+					aria-valuemin={1}
+					aria-valuemax={STEPS.length}
+					aria-label="Onboarding progress"
+				>
+					<div
+						className="h-full bg-primary transition-[width] duration-300"
+						style={{ width: fillWidth }}
+					/>
+				</div>
+
+				<p className="mb-6 text-xs text-muted-foreground">
+					Step {Math.min(stepPosition, STEPS.length)} of {STEPS.length}
+					{currentLabel ? ` — ${currentLabel}` : ""}
+				</p>
 
 				{children}
 			</div>
