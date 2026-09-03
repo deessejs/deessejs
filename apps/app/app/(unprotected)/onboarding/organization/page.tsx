@@ -6,9 +6,13 @@ import { AuthContainer } from "@/components/auth"
 import { CreateOrganizationForm } from "@/components/auth/create-organization-form"
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
 
-import { getOnboardingState } from "@/lib/onboarding"
+import { getOnboardingState, isValidStep } from "@/lib/onboarding"
 
-export default async function OnboardingOrganizationPage() {
+export default async function OnboardingOrganizationPage({
+	searchParams,
+}: {
+	searchParams: Promise<{ onb?: string }>
+}) {
 	// Server-side session gate (ADR-030 §"Decision #9", pattern from
 	// `app/(unprotected)/(auth)/device/page.tsx`). Anonymous visitors
 	// land on /login with a round-tripped redirect back to this page
@@ -18,7 +22,10 @@ export default async function OnboardingOrganizationPage() {
 		redirect("/login")
 	}
 
-	const state = await getOnboardingState()
+	const params = await searchParams
+	const requestedStep = isValidStep(params.onb) ? params.onb : undefined
+
+	const state = await getOnboardingState(requestedStep)
 	if (!state) redirect("/login")
 
 	// Forward-gate: integration must be done before the user can land

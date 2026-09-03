@@ -33,11 +33,18 @@ const INTEGRATIONS: Integration[] = [
 	},
 ]
 
-export default async function OnboardingIntegrationPage() {
+export default async function OnboardingIntegrationPage({
+	searchParams,
+}: {
+	searchParams: Promise<{ onb?: string }>
+}) {
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session?.user) redirect("/login")
 
-	const state = await getOnboardingState()
+	const params = await searchParams
+	const requestedStep = isValidStep(params.onb) ? params.onb : undefined
+
+	const state = await getOnboardingState(requestedStep)
 	if (!state) redirect("/login")
 
 	// Forward-gate: integration is the first step. If the user has somehow

@@ -9,13 +9,20 @@ import { Separator } from "@workspace/ui/components/separator"
 import { AuthContainer } from "@/components/auth"
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
 
-import { getOnboardingState, markOnboardingComplete } from "@/lib/onboarding"
+import { getOnboardingState, isValidStep, markOnboardingComplete } from "@/lib/onboarding"
 
-export default async function OnboardingCompletePage() {
+export default async function OnboardingCompletePage({
+	searchParams,
+}: {
+	searchParams: Promise<{ onb?: string }>
+}) {
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session?.user) redirect("/login")
 
-	const state = await getOnboardingState()
+	const params = await searchParams
+	const requestedStep = isValidStep(params.onb) ? params.onb : undefined
+
+	const state = await getOnboardingState(requestedStep)
 	if (!state) redirect("/login")
 
 	// Forward-gate: the user must have completed every prior step

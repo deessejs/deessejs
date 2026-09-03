@@ -5,6 +5,18 @@ import { auth } from "@workspace/auth"
 
 export type OnboardingStep = "integration" | "organization" | "complete"
 
+/**
+ * Type guard for the `?onb=` dev override query param. Anything else
+ * is ignored and the state machine falls back to the dummy step
+ * computation. ADR-030 PR #4 removes both the override and the
+ * dummy checks together.
+ */
+export function isValidStep(value: unknown): value is OnboardingStep {
+	return (
+		value === "integration" || value === "organization" || value === "complete"
+	)
+}
+
 export type OnboardingState = {
 	step: OnboardingStep
 	hasGithub: boolean
@@ -30,7 +42,9 @@ const ONBOARDING_COMPLETE_COOKIE = "deessejs-onboarding-complete"
  * for now; ADR-030 PR #4 will swap it for `user.onboardingCompletedAt`
  * on the session row.
  */
-export async function getOnboardingState(): Promise<OnboardingState | null> {
+export async function getOnboardingState(
+	requestedStep?: OnboardingStep,
+): Promise<OnboardingState | null> {
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session?.user) return null
 
@@ -49,8 +63,14 @@ export async function getOnboardingState(): Promise<OnboardingState | null> {
 	else if (!completed) step = "complete"
 	else step = "integration" // unreachable, but keeps the type exhaustive
 
+	// Dev override: when the user navigates with `?onb=integration|organization|complete`,
+	// honor that step directly instead of computing from the dummy state.
+	// This lets us preview each page while the backend isn't wired yet.
+	// ADR-030 PR #4 will remove the override along with the dummy checks.
+	const finalStep = requestedStep ?? step
+
 	return {
-		step: completed ? "complete" : step,
+		step: completed && !requestedStep ? "complete" : finalStep,
 		hasGithub,
 		hasOrganization,
 		completed,
