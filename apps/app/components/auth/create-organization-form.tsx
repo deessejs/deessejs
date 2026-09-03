@@ -7,15 +7,16 @@ import { Building2, Sparkles } from "lucide-react"
 
 import { Field } from "@/components/auth/field"
 import { onboardingSchema, slugify } from "@/components/auth/schemas"
+import { orgHomePath } from "@/lib/org-route"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 
 type CreateOrganizationFormProps = {
-	/** Path to navigate to after a successful submit. Defaults to /home. */
+	/** Path to navigate to after a successful submit. Defaults to the org-scoped dashboard. */
 	nextHref?: string
 }
 
-export function CreateOrganizationForm({ nextHref = "/home" }: CreateOrganizationFormProps) {
+export function CreateOrganizationForm({ nextHref = orgHomePath() }: CreateOrganizationFormProps) {
 	const router = useRouter()
 	// Tracks whether the user has manually focused/edited the slug
 	// field. While false, slug is derived from the name field via

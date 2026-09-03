@@ -35,7 +35,7 @@ function HomeShortcut() {
       <SidebarMenuButton
         asChild
         tooltip="Home"
-        isActive={pathname === homePath || pathname === "/home"}
+        isActive={pathname === homePath}
       >
         <Link href={homePath}>
           <Home />

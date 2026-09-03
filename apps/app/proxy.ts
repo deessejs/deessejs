@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
-import { LEGACY_HOME_PATH, ORG_SLUG, orgHomePath } from "@/lib/org-route"
+import { ORG_SLUG, orgHomePath } from "@/lib/org-route"
 
 // ADR-030 §"Decision #5": the dashboard is scoped to /[orgSlug]/home.
-// During the dummy phase the slug is hardcoded (`acme`), so we
-// protect both the new per-org route and the legacy `/home`
-// redirect. PR #4 will replace these entries with a dynamic matcher.
-const PROTECTED_PREFIXES = [orgHomePath(ORG_SLUG), LEGACY_HOME_PATH, "/settings"]
+// During the dummy phase the slug is hardcoded (`acme`); PR #4 will
+// replace this with a dynamic matcher and a real active-org lookup.
+const PROTECTED_PREFIXES = [orgHomePath(ORG_SLUG), "/settings"]
 const AUTH_PREFIXES = [
   "/login",
   "/signup",
@@ -28,7 +27,6 @@ export const config = {
   // Single matcher covering both directions of the auth gate.
   matcher: [
     "/acme/home/:path*", // ADR-030 §"Decision #5" per-org dashboard (dummy slug).
-    "/home/:path*", // Back-compat redirect target.
     "/settings/:path*",
     "/login",
     "/signup",
