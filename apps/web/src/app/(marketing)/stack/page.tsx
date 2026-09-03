@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
+import { ExternalLink } from "lucide-react"
 
 import {
   Breadcrumb,
@@ -204,40 +205,53 @@ function StackProviderCard({
   provider: (typeof STACK_PROVIDERS)[number]
 }) {
   return (
-    <Card
+    // The whole card is a single outbound link to the provider's
+    // homepage. The Card stays as a plain <div> inside the anchor
+    // (Next/Link and shadcn's Card are both wrappers, not anchors,
+    // so nesting an <a> around the Card is the cleanest path).
+    // The `ExternalLink` icon at the bottom of the card is a visual
+    // affordance — outbound link patterns should telegraph that
+    // the user is leaving the site. `aria-label` on the anchor
+    // gives screen readers the destination context.
+    <a
       id={`stack-${provider.slug}`}
-      className="flex h-full flex-col gap-3 p-5"
+      href={provider.homepage}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Visit ${provider.name} homepage (opens in a new tab)`}
+      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <header className="flex items-center gap-3">
-        <span
-          aria-hidden
-          className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-background p-1.5"
-        >
-          <Image
-            src={`/logos/${provider.logo}.svg`}
-            alt=""
-            width={24}
-            height={24}
-            className="size-6 dark:invert"
-          />
-        </span>
-        <div className="flex min-w-0 flex-col">
-          <a
-            href={provider.homepage}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-label-14 font-semibold tracking-tight text-foreground transition-colors hover:text-foreground/80"
+      <Card className="flex h-full flex-col gap-3 p-5 transition-colors group-hover:bg-accent/30 group-focus-visible:bg-accent/30">
+        <header className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-background p-1.5"
           >
-            {provider.name}
-          </a>
-          <span className="text-label-13 text-muted-foreground">
-            {provider.role}
+            <Image
+              src={`/logos/${provider.logo}.svg`}
+              alt=""
+              width={24}
+              height={24}
+              className="size-6 dark:invert"
+            />
           </span>
-        </div>
-      </header>
-      <p className="text-copy-13 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-        {provider.blurb}
-      </p>
-    </Card>
+          <div className="flex min-w-0 flex-col">
+            <span className="text-label-14 font-semibold tracking-tight text-foreground transition-colors group-hover:text-foreground/80">
+              {provider.name}
+            </span>
+            <span className="text-label-13 text-muted-foreground">
+              {provider.role}
+            </span>
+          </div>
+        </header>
+        <p className="text-copy-13 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+          {provider.blurb}
+        </p>
+        <span className="mt-auto inline-flex items-center gap-1 text-label-13 text-muted-foreground transition-colors group-hover:text-foreground">
+          <ExternalLink className="size-3 shrink-0" aria-hidden />
+          Visit homepage
+        </span>
+      </Card>
+    </a>
   )
 }
