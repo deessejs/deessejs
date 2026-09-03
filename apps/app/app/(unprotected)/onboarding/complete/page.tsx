@@ -1,50 +1,21 @@
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 
 import { CheckCircle2 } from "lucide-react"
 
 import { auth } from "@workspace/auth"
-import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 import { AuthContainer } from "@/components/auth"
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
 
-import { getOnboardingState, markOnboardingComplete } from "@/lib/onboarding"
-
-export default async function OnboardingCompletePage({
-	searchParams,
-}: {
-	searchParams: Promise<{ onb?: string }>
-}) {
+export default async function OnboardingCompletePage() {
+	// Anonymous-only gate. Forward-gate is disabled until ADR-030 PR #4.
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session?.user) redirect("/login")
 
-	const params = await searchParams
-
-	const state = await getOnboardingState(params.onb)
-	if (!state) redirect("/login")
-
-	// Forward-gate: the user must have completed every prior step
-	// before they can land here.
-	if (state.step !== "complete") {
-		redirect(`/onboarding/${state.step}`)
-	}
-
-	async function finish() {
-		"use server"
-		await markOnboardingComplete()
-		// Server actions can't easily return a redirect in Next 16;
-		// we read the cookie on the next request and let the proxy
-		// step do its thing. The dummy version below uses a meta
-		// refresh fallback.
-	}
-
-	const completedSteps: Array<"integration" | "organization" | "complete"> = []
-	if (state.hasGithub) completedSteps.push("integration")
-	if (state.hasOrganization) completedSteps.push("organization")
-
 	return (
-		<OnboardingShell currentStep="complete" completedSteps={completedSteps}>
+		<OnboardingShell currentStep="complete" completedSteps={[]}>
 			<AuthContainer.Root>
 				<div className="flex flex-col items-center gap-2">
 					<CheckCircle2 className="size-12 text-primary" />
@@ -86,14 +57,14 @@ export default async function OnboardingCompletePage({
 					</li>
 				</ul>
 
-				<form action={finish} className="mt-6 flex flex-col gap-2">
-					<Button type="submit" className="w-full">
+				<div className="mt-6">
+					<Link
+						href="/home"
+						className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-9 w-full items-center justify-center rounded-md text-sm font-medium transition-colors"
+					>
 						Go to dashboard
-					</Button>
-					<p className="text-center text-xs text-muted-foreground">
-						Dummy action — real backend lands in ADR-030 PR #4.
-					</p>
-				</form>
+					</Link>
+				</div>
 			</AuthContainer.Root>
 		</OnboardingShell>
 	)

@@ -8,8 +8,6 @@ import { GitHubIcon } from "@/components/auth/icons/github-icon"
 import { VercelIcon } from "@/components/auth/icons/vercel-icon"
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
 
-import { getOnboardingState } from "@/lib/onboarding"
-
 type Integration = {
 	id: "github" | "vercel"
 	name: string
@@ -32,29 +30,16 @@ const INTEGRATIONS: Integration[] = [
 	},
 ]
 
-export default async function OnboardingIntegrationPage({
-	searchParams,
-}: {
-	searchParams: Promise<{ onb?: string }>
-}) {
+export default async function OnboardingIntegrationPage() {
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session?.user) redirect("/login")
 
-	const params = await searchParams
-
-	const state = await getOnboardingState(params.onb)
-	if (!state) redirect("/login")
-
-	// Forward-gate: integration is the first step. If the user has somehow
-	// skipped ahead, push them to wherever they actually belong.
-	if (state.step !== "integration") {
-		redirect(`/onboarding/${state.step}`)
-	}
-
-	const completedSteps: Array<"integration" | "organization" | "complete"> = []
+	// Dummy: no state checks yet (ADR-030 PR #4 will wire the real
+	// account table). All badges read as "Not set up" and every
+	// step renders standalone so reviewers can navigate the wizard.
 
 	return (
-		<OnboardingShell currentStep="integration" completedSteps={completedSteps}>
+		<OnboardingShell currentStep="integration" completedSteps={[]}>
 			<AuthContainer.Root>
 				<header className="mb-6 flex items-start justify-between gap-4">
 					<div className="flex items-start gap-3">
@@ -74,16 +59,8 @@ export default async function OnboardingIntegrationPage({
 
 				<ul className="flex flex-col gap-3">
 					{INTEGRATIONS.map(({id, name, description, Icon}) => {
-						const isConnected = state.hasGithub && id === "github"
 						// Dummy: both read as not-set-up until PR #4 wires the
 						// real `account` table check.
-						const badgeState = isConnected ? "connected" : "not-set-up"
-						// Resolve outside JSX — Turbopack stumbles on ternaries
-						// inside `[...].join(" ")` className expressions.
-						const badgeClass =
-							badgeState === "connected"
-								? "border-primary bg-primary text-primary-foreground"
-								: "border-muted bg-muted text-muted-foreground"
 						return (
 							<li
 								key={id}
@@ -102,13 +79,8 @@ export default async function OnboardingIntegrationPage({
 										</span>
 									</div>
 								</div>
-								<span
-									className={[
-										"inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
-										badgeClass,
-									].join(" ")}
-								>
-									{badgeState === "connected" ? "Set up" : "Not set up"}
+								<span className="inline-flex items-center rounded-full border border-muted bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+									Not set up
 								</span>
 							</li>
 						)
@@ -116,12 +88,6 @@ export default async function OnboardingIntegrationPage({
 				</ul>
 
 				<div className="mt-6">
-					{/*
-					  Plain styled Link instead of <Button asChild><Link/></Button>.
-					  The asChild pattern in shadcn + Next 16 Turbopack was rendering
-					  the button without the underlying <a>, leaving clicks inert.
-					  The classes mirror @workspace/ui/components/button default.
-					*/}
 					<Link
 						href="/onboarding/organization"
 						className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-9 w-full items-center justify-center rounded-md text-sm font-medium transition-colors"

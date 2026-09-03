@@ -6,41 +6,16 @@ import { AuthContainer } from "@/components/auth"
 import { CreateOrganizationForm } from "@/components/auth/create-organization-form"
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
 
-import { getOnboardingState } from "@/lib/onboarding"
-
-export default async function OnboardingOrganizationPage({
-	searchParams,
-}: {
-	searchParams: Promise<{ onb?: string }>
-}) {
-	// Server-side session gate (ADR-030 §"Decision #9", pattern from
-	// `app/(unprotected)/(auth)/device/page.tsx`). Anonymous visitors
-	// land on /login with a round-tripped redirect back to this page
-	// once they authenticate, so they can complete onboarding.
+export default async function OnboardingOrganizationPage() {
+	// Anonymous-only gate. Forward-gate (integration done? org done?)
+	// is disabled until ADR-030 PR #4 wires the real backend.
 	const session = await auth.api.getSession({ headers: await headers() })
-	if (!session?.user) {
-		redirect("/login")
-	}
-
-	const params = await searchParams
-
-	const state = await getOnboardingState(params.onb)
-	if (!state) redirect("/login")
-
-	// Forward-gate: integration must be done before the user can land
-	// on the organization step. If they got here directly, push them
-	// to the current step.
-	if (state.step !== "organization") {
-		redirect(`/onboarding/${state.step}`)
-	}
-
-	const completedSteps: Array<"integration" | "organization" | "complete"> = []
-	if (state.hasGithub) completedSteps.push("integration")
+	if (!session?.user) redirect("/login")
 
 	return (
 		<OnboardingShell
 			currentStep="organization"
-			completedSteps={completedSteps}
+			completedSteps={[]}
 			backHref="/onboarding/integration"
 		>
 			<AuthContainer.Root>
