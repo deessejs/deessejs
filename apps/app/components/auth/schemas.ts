@@ -54,9 +54,10 @@ export const slugify = (input: string): string =>
 		// potentially backtracking, but `[^a-z0-9]+` has no backtracking:
 		// each character either matches the negated set or does not, with
 		// no overlap. The flag is a known false positive for negated
-		// classes.
+		// classes and for anchored alternations like `^-+|-+$`.
 		// eslint-disable-next-line sonarjs/slow-regex
 		.replace(/[^a-z0-9]+/g, "-")
+		// eslint-disable-next-line sonarjs/slow-regex
 		.replace(/^-+|-+$/g, "")
 
 export const resetPasswordSchema = z

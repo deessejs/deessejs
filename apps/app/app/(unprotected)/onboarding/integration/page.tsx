@@ -73,6 +73,12 @@ export default async function OnboardingIntegrationPage() {
 						// Dummy: both read as not-set-up until PR #4 wires the
 						// real `account` table check.
 						const badgeState = isConnected ? "connected" : "not-set-up"
+						// Resolve outside JSX — Turbopack stumbles on ternaries
+						// inside `[...].join(" ")` className expressions.
+						const badgeClass =
+							badgeState === "connected"
+								? "border-primary bg-primary text-primary-foreground"
+								: "border-muted bg-muted text-muted-foreground"
 						return (
 							<li
 								key={id}
@@ -94,9 +100,7 @@ export default async function OnboardingIntegrationPage() {
 								<span
 									className={[
 										"inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
-										badgeState === "connected"
-											: "border-primary bg-primary text-primary-foreground"
-											: "border-muted bg-muted text-muted-foreground",
+										badgeClass,
 									].join(" ")}
 								>
 									{badgeState === "connected" ? "Set up" : "Not set up"}
