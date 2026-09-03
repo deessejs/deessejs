@@ -19,6 +19,7 @@ import {
 import { allPosts } from "content-collections"
 import type { Post } from "@/lib/blog/types"
 import { ORG_ID } from "@/lib/seo/organization"
+import { buildPersonJsonLd } from "@/lib/seo/person-jsonld"
 
 type Params = { slug: string }
 
@@ -101,13 +102,11 @@ export default async function PostPage(
                   },
                 }
               : {}),
-            author: post.author
-              ? {
-                  "@type": "Person",
-                  name: post.author.name,
-                  worksFor: { "@id": ORG_ID },
-                }
-              : undefined,
+            // Person node uses the same factory as /blog/author/[handle],
+            // so the article-side and author-page-side Person share one
+            // @id anchor in the crawler graph. See
+            // `apps/web/src/lib/seo/person-jsonld.ts`.
+            author: post.author ? buildPersonJsonLd(post.author) : undefined,
             publisher: { "@id": ORG_ID },
           }),
         }}
