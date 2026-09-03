@@ -8,33 +8,59 @@ draft: false
 ---
 
 Vercel is the default deploy target for DeesseJS apps.
-The integration covers preview environments on every PR,
-production environments on `main`, and CI hooks for the
-better-auth and database packages.
+
+## Why Vercel
+
+Three things Vercel ships make the rest of this guide worth reading.
+
+First, **a preview URL per pull request**. Every push to a branch
+gets its own URL, with the same env vars, the same build pipeline,
+and the same preview-deploy contract. Reviewers can click the
+preview, exercise the auth flow, and check the OG image rendering
+before the PR lands.
+
+Second, **production environments on `main`** (or `staging` in
+this repo's flow). Promotion is a single click in the Vercel
+dashboard once the preview has been signed off.
+
+Third, **cross-project preview links** (`relatedProjects` in
+`vercel.json`). This monorepo ships three Vercel projects from one
+git repo: `deessejs-web` (the marketing site you are reading),
+`deessejs-app` (the authenticated app at `app.deessejs.com`), and
+`deessejs-docs`. When a PR touches `apps/web`, Vercel builds the
+marketing site preview; when a PR touches `apps/app`, it builds
+the app preview. The `relatedProjects` link makes the app preview
+URL resolve inside the marketing preview, so a reviewer can
+follow an "Open dashboard" link on the preview and land on a
+working dashboard, not a 404. No manual URL swapping.
+
+That last one is the reason DeesseJS picks Vercel over a generic
+PaaS. The other providers on the [stack](/stack) work without
+Vercel, but the preview-flow ergonomics fall off without the
+cross-project link.
 
 ## 1. Connect the repo
 
-In the Vercel dashboard, import your repo. The monorepo
-is auto-detected; configure three projects (one per app
-in `apps/`) and point each at the right root directory.
+In the Vercel dashboard, import your repo. The monorepo is
+auto-detected; configure three projects (one per app in `apps/`)
+and point each at the right root directory.
 
 ## 2. Configure environments
 
-Each app needs three environments: `development`,
-`preview`, `production`. The `DATABASE_URL` points at a
-throwaway Postgres for `development`, a branch database
-for `preview`, and the production cluster for
-`production`.
+Each app needs three environments: `development`, `preview`,
+`production`. The `DATABASE_URL` points at a throwaway Postgres
+for `development`, a branch database for `preview`, and the
+production cluster for `production`.
 
 ## 3. Trigger a build
 
-Push to `staging` to run a preview build. Promote via the
-Vercel dashboard to ship to production.
+Push to `staging` to run a preview build. Promote via the Vercel
+dashboard to ship to production.
 
 ## What's next
 
 - [Production readiness checklist](/knowledge-base/guides/production-checklist)
-  — verify auth, secrets, and rate limits before the
-  first real promotion.
+  — verify auth, secrets, and rate limits before the first real
+  promotion.
 - [Run background jobs](/knowledge-base/guides/background-jobs-queue)
   — move async work off the request path.
