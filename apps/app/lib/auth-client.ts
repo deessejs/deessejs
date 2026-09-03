@@ -2,8 +2,10 @@
 
 import { createAuthClient } from "better-auth/react"
 import { deviceAuthorizationClient } from "better-auth/client/plugins"
+import { organizationClient } from "better-auth/client/plugins"
 import { clientEnv } from "@workspace/env/client"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
+import { ac, admin, member, owner } from "@workspace/auth/access"
 
 // Side-effect import: installs a `window.fetch` interceptor that
 // rewrites `/api/v1/auth/*` requests to the page's origin on
@@ -33,6 +35,15 @@ import "./fetch-auth-interceptor"
  * plus `authClient.device.code(...)` and `authClient.device.token(...)`
  * for the CLI consumer.
  *
+ * The `organizationClient` plugin (ADR-030 §"Decision #7") mirrors
+ * the server-side `organization(...)` plugin. It exposes the typed
+ * `authClient.organization.*` surface (createOrganization,
+ * listOrganizations, setActiveOrganization, etc.) and wires the
+ * `$activeOrgSignal` nanostore so the workspace switcher
+ * re-renders automatically on switch. The `ac` and `roles` are
+ * imported from `@workspace/auth/access` so server and client
+ * stay in lockstep.
+ *
  * The `baseURL` here uses `clientEnv.NEXT_PUBLIC_APP_URL`, the
  * build-time env var. On Vercel previews this resolves to the
  * production apex (`app.deessejs.com`); the fetch interceptor
@@ -43,5 +54,8 @@ import "./fetch-auth-interceptor"
 export const authClient = createAuthClient({
   baseURL: clientEnv.NEXT_PUBLIC_APP_URL,
   basePath: API_AUTH_PATH,
-  plugins: [deviceAuthorizationClient()],
+  plugins: [
+    organizationClient({ ac, roles: { owner, admin, member } }),
+    deviceAuthorizationClient(),
+  ],
 })
