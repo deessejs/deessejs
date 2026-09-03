@@ -434,6 +434,87 @@ Cost analyses of Vercel-vs-alternatives consistently flag the build minute line 
 
 The break-even for the prebuilt workflow is approximately the moment the monthly Vercel bill consistently exceeds **$50–100**. Below that, the operational complexity is not worth the saving; above that, it usually is.
 
+## Security
+
+The prebuilt workflow expands the trust boundary beyond Vercel's own infrastructure. The GitHub Actions runner becomes a privileged actor in the deploy path, and any compromise of the runner, the repo secrets, or the actions it depends on can translate into a Vercel compromise. Five surfaces are worth hardening before adopting.
+
+### Use OIDC, not a long-lived `VERCEL_TOKEN`
+
+The workflows above pass `--token=${{ secrets.VERCEL_TOKEN }}`. A long-lived token is a static bearer credential: anyone who reads it gets the same powers Vercel grants to the CLI, which is everything the project allows. Vercel supports **OIDC federation** for GitHub Actions, where the runner exchanges a short-lived (≤1 h) signed token with Vercel on every run, scoped by a trust configuration JSON. There is nothing to rotate, nothing to leak from GitHub Secrets, and nothing for an attacker to replay.
+
+```yaml
+permissions:
+  id-token: write   # required for OIDC
+  contents: read
+
+steps:
+  - uses: actions/checkout@v4
+
+  - name: Get Vercel OIDC token
+    id: vercel-token
+    uses: vercel/login-oidc-action@v1
+
+  - name: Pull Vercel Environment
+    run: vercel pull --yes --environment=preview --token=${{ steps.vercel-token.outputs.VERCEL_OIDC_TOKEN }}
+```
+
+The trust configuration on the Vercel side restricts which repos and refs can exchange tokens:
+
+```json
+{
+  "subject": "repo:your-org/your-repo:pull_request",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "audience": "https://vercel.com"
+}
+```
+
+Reference: [Vercel — OIDC for GitHub Actions](https://vercel.com/docs/oidc). This is the default path for any new prebuilt workflow in 2026; the long-lived token shape exists for backward compatibility with other CI systems.
+
+### Mark every env var as sensitive on Vercel
+
+The Vercel April 2026 incident ([bulletin](https://vercel.com/kb/bulletin/vercel-april-2026-security-incident)) compromised **non-sensitive** environment variables across a subset of customer projects. The variables marked **sensitive** (encrypted at rest, decryptable only at runtime in the function sandbox) were not exposed. The lesson is hygiene: every credential — database URL, API key, signing key — must be marked sensitive on the Vercel dashboard. The prebuilt workflow does not change this rule, but it does add another path that can read those vars, so the protection matters more, not less.
+
+### Use ephemeral runners for self-hosted builds
+
+If the workflow runs on a self-hosted runner (the Hetzner CX22 path in the cost comparison), the runner is **persistent by default**: a malicious job can read secrets from prior jobs, plant backdoors, or pivot into other repos hosted on the same machine. GitHub's official guidance is that self-hosted runners should only be used for private repos and must run in `--ephemeral` mode for any untrusted code path. Reference: [GitHub Docs — Hardening for self-hosted runners](https://docs.github.com/en/actions/security-for-github-actions/security-guidance/security-hardening-for-github-actions#using-self-hosted-runners).
+
+```bash
+./config.sh --ephemeral ...
+```
+
+Forks of public repos can run arbitrary code in a `pull_request` workflow. With a persistent self-hosted runner, that code runs against your infra. Ephemeral mode is the mitigation.
+
+### Pin third-party actions by SHA
+
+The preview workflow uses `marocchino/sticky-pull-request-comment@v2`. A tag is mutable: the maintainer can publish a new commit under the same tag, and your next run picks it up. The recommended practice is to pin the action to a specific commit SHA:
+
+```yaml
+- uses: marocchino/sticky-pull-request-comment@<full-40-char-sha>
+```
+
+GitHub's [security hardening guide](https://docs.github.com/en/actions/security-for-github-actions/security-guidance/security-hardening-for-github-actions#using-third-party-actions) flags this as the default expectation for any third-party action. Dependabot can keep the pins current without forcing manual review.
+
+### Limit `GITHUB_TOKEN` permissions to the strict minimum
+
+The workflow-level `permissions` block should declare only what the job needs. Defaults vary, and many third-party action tutorials request broader scopes than necessary.
+
+```yaml
+jobs:
+  deploy-preview:
+    permissions:
+      contents: read             # checkout the repo
+      pull-requests: write       # post the sticky comment
+      id-token: write            # OIDC exchange
+```
+
+Do not request `actions: write` (lets the workflow trigger other workflows), `packages: write` (lets it publish packages), or `deployments: write` unless the workflow genuinely needs them. The principle is the same as the principle of least privilege for any other identity.
+
+### What the entry does not cover
+
+- **Network egress controls** on self-hosted runners. The runner can reach any host on the public internet during a build, including package registries and Vercel's API. Network isolation (firewall rules, egress allowlists) is the next layer if the runner handles sensitive code.
+- **Audit log retention**. With Vercel native, deploys are centralised in Vercel's audit log. With prebuilt, the trail is split between GitHub Actions and Vercel; correlation requires either timestamped `VERCEL_GIT_COMMIT_SHA` matching or a SIEM pipeline.
+- **Source maps**. `vercel build` disables production source maps by default for Next.js. If you opt in for error tracking (`productionBrowserSourceMaps: true`), the maps end up in `.vercel/output` and ship to Vercel's edge. Treat that as a deliberate trade-off, not a default.
+
 ## What this entry doesn't use
 
 - **No Vercel Build Hooks.** A deploy hook is just a `curl` to a URL that triggers a fresh build on Vercel. It does not run `vercel build` externally and therefore does not save build minutes.
@@ -450,4 +531,9 @@ This is a knowledge-base entry, not an ADR. It documents how the prebuilt workfl
 - [Vercel — `vercel deploy` CLI](https://vercel.com/docs/cli/deploy#prebuilt), the `--prebuilt` semantics and the System Env Vars caveat.
 - [Vercel — `vercel build` CLI](https://vercel.com/docs/cli/build), the build subcommand.
 - [Vercel — System Environment Variables](https://vercel.com/docs/environment-variables/system-environment-variables), the variables to map in CI.
+- [Vercel — OIDC for GitHub Actions](https://vercel.com/docs/oidc), short-lived token federation (preferred over long-lived tokens).
+- [Vercel — Pricing](https://vercel.com/docs/pricing), build machine tiers and per-CPU-minute cost.
 - [Announcing the Build Output API](https://vercel.com/blog/build-output-api), the artifact format `.vercel/output` conforms to.
+- [Vercel — April 2026 Security Incident](https://vercel.com/kb/bulletin/vercel-april-2026-security-incident), the supply-chain incident that motivates marking every env var as sensitive.
+- [GitHub Docs — Hardening for self-hosted runners](https://docs.github.com/en/actions/security-for-github-actions/security-guidance/security-hardening-for-github-actions#using-self-hosted-runners), the `--ephemeral` requirement.
+- [GitHub Docs — Hardening for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guidance/security-hardening-for-github-actions), third-party action pinning, `permissions` minimization, fork PR model.
