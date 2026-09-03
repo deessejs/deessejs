@@ -406,6 +406,12 @@ discoverability:
   `packages/database/src/schema/auth.ts` (the new column and
   table land). `pnpm db:generate` emits a new SQL file under
   `packages/database/drizzle/`.
+- The user-visible surface in `apps/app/` (the `/settings/billing`
+  route, the six billing components, the `use-billing` hook,
+  the sidebar and hub wiring, and the `BILLING_PLANS` source
+  of truth) lands in a follow-up PR whose scope is locked in
+  the `UI follow-up scope` section below. The follow-up PR
+  does not renegotiate that section; it inherits it.
 
 ## What this rule allows
 
@@ -440,7 +446,9 @@ discoverability:
 
 - Adding any UI surface in this PR (no `/billing` route in
   `apps/app`, no settings page edit, no sidebar wiring, no
-  `/pricing` CTA in `apps/web`). UI work is a follow-up DR.
+  `/pricing` CTA in `apps/web`). UI work is locked in the
+  `UI follow-up scope` section below and lands in a separate
+  PR.
 - Hardcoding Stripe price ids or webhook secrets anywhere in
   the monorepo outside server-env reads in
   `packages/auth/src/auth.ts`.
@@ -499,6 +507,306 @@ discoverability:
 - The `packages/auth/tests/` suite shape. No test is added in
   this DR; the verification is a manual smoke documented
   below.
+
+## UI follow-up scope
+
+This DR ships the server wiring and the client factory
+extensions only. The user-visible surface in `apps/app/` lands
+in a follow-up PR whose scope is locked here. The follow-up PR
+inherits this section's contract; it does not negotiate it.
+
+### Route
+
+`apps/app/app/(protected)/settings/billing/page.tsx` is a new
+Server Component. The shape is identical to the existing
+`apps/app/app/(protected)/settings/sessions/page.tsx`: the
+file imports `SettingsPage` and `SettingsCard` from
+`@/components/settings` and wraps three `SettingsCard` slots
+("Current plan", "Payment method", "Billing history"). No new
+`layout.tsx`. No metadata export. The `(protected)` route gate
+covers the path automatically because `"/settings"` is in
+`PROTECTED_PREFIXES` (see `apps/app/proxy.ts`); no proxy edit
+is needed. The Hono catch-all at
+`apps/app/app/api/[[...route]]/route.ts` already delegates
+`/api/v1/auth/*` to `auth.handler`; the plugin's
+`/subscription/*` endpoints flow through the same handler.
+
+### Components
+
+Six new files land under
+`apps/app/components/settings/billing/`, each a Client
+Component with plain `useState` and direct calls to
+`authClient.subscription.*`. The folder follows the existing
+pattern (`apps/app/components/settings/<subsection>/`) and is
+re-exported through `apps/app/components/settings/index.ts`
+via a new barrel `apps/app/components/settings/billing/index.ts`.
+
+The six files, in the order the implementation PR would write
+them:
+
+1. `billing-current-plan.tsx` renders the active subscription
+   (plan name, status `Badge` from
+   `@workspace/ui/components/badge`, the `limits` map, and
+   `cancelAtPeriodEnd`). Three actions: "Switch plan" opens
+   `billing-plan-picker-dialog.tsx`; "Manage in Stripe" calls
+   `authClient.subscription.billingPortal({ returnUrl })` and
+   redirects via `window.location.href = data.url`; "Cancel
+   subscription" opens `billing-cancel-dialog.tsx`. Loading
+   state uses `Skeleton` from `@workspace/ui/components/skeleton`.
+2. `billing-payment-method.tsx` shows the on-file method
+   (read from `authClient.subscription.list()`; only the brand
+   and last-four are surfaced, since Stripe is the source of
+   truth for the card itself). A single "Update payment
+   method" button calls `authClient.subscription.billingPortal(...)`
+   and redirects to the Stripe-hosted portal. Empty state is a
+   short "No payment method on file" line plus the same
+   portal action.
+3. `billing-invoices.tsx` documents that invoices are
+   Stripe-managed and offers a single "Open Stripe billing
+   portal" button (same `billingPortal` call). The section is
+   intentionally minimal; the plugin does not expose a
+   `listInvoices` method.
+4. `billing-plan-picker-dialog.tsx` is a `Dialog` from
+   `@workspace/ui/components/dialog` that lists the hardcoded
+   plans from `packages/auth/src/plans.ts` (see *Plans source
+   of truth* below). Each plan renders in a shadcn `Card` (a
+   first use of `Card` in `apps/app/`; imported from
+   `@workspace/ui/components/card`). "Choose plan" calls
+   `authClient.subscription.upgrade({ plan, successUrl,
+   cancelUrl })`; on success the component closes the dialog
+   and sets `window.location.href = data.url`. Errors go
+   through `toast.error(...)` from `sonner`. The pending label
+   is `"Redirecting…"`. No custom spinner.
+5. `billing-cancel-dialog.tsx` is the destructive confirmation.
+   The pattern is the type-to-confirm mirror of
+   `apps/app/components/settings/delete-account-dialog.tsx`,
+   with the input value `CANCEL` instead of `DELETE`. The
+   action calls
+   `authClient.subscription.cancel({ subscriptionId })` and
+   invalidates the `["billing"]` TanStack Query key on success.
+6. `index.ts` is the barrel that re-exports the five
+   components above. `apps/app/components/settings/index.ts`
+   adds a single re-export line `export * from "./billing"`.
+
+All six files follow the existing settings-form conventions:
+
+- `"use client"` at the top.
+- Plain `useState` and `useCallback`; **no** `react-hook-form`,
+  no TanStack Form, no zod schema, no react-query mutations
+  inside the component (the `use-billing` hook owns the
+  cache).
+- Errors flow through `toast.error(error.message ?? "<fallback>")`
+  from `sonner`. The `Toaster` is already mounted via
+  `@workspace/ui/components/sonner`.
+- Loading and disabled states use local booleans; the submit
+  label swaps to `"Working…"` / `"Redirecting…"` while in
+  flight.
+- **No raw `<input>`, `<button>`, `<select>`, `<textarea>`**.
+  Every form control and action comes from
+  `@workspace/ui/components/*` (per the `use-shadcn` skill).
+- `SettingsCard` (the hand-rolled wrapper at
+  `apps/app/components/settings/settings-card.tsx`) is reused
+  for the page-level cards, not the shadcn `Card`. The
+  shadcn `Card` is used only inside the picker dialog where
+  the visual is a side-by-side list of plans.
+
+### Hook
+
+`apps/app/hooks/use-billing.ts` is a new file that mirrors
+`apps/app/hooks/use-device-flow.ts`: TanStack Query's
+`useQuery` for the read and `useMutation` for each write,
+each `mutationFn` throwing a plain `Error` on `authClient.error`
+so React Query surfaces the message through `mutation.error`.
+The hook exports three symbols:
+
+- `useBilling()` reads
+  `authClient.subscription.list()` under the
+  `["billing", "subscription"]` key.
+- `useUpgradeSubscription()` mutates
+  `authClient.subscription.upgrade(...)` and invalidates
+  `["billing"]` on success.
+- `useCancelSubscription()` mutates
+  `authClient.subscription.cancel(...)` and invalidates
+  `["billing"]` on success.
+
+No other hooks are needed. The `use-device-flow` precedent
+already established that `@tanstack/react-query` is the query
+layer for `authClient.*` reads in `apps/app/`.
+
+### Plans source of truth
+
+`packages/auth/src/plans.ts` is a new file with a single
+`BILLING_PLANS` const array. The shape:
+
+```ts
+export const BILLING_PLANS = [
+  { name: "starter", priceIdEnvKey: "STRIPE_PRICE_STARTER", limits: { projects: 1, storageMb: 512 } },
+  { name: "pro",     priceIdEnvKey: "STRIPE_PRICE_PRO",     limits: { projects: 10, storageMb: 5120 } },
+] as const
+```
+
+The array is consumed in two places:
+
+1. `packages/auth/src/auth.ts` reads
+   `serverEnv[plan.priceIdEnvKey]` for each entry to build the
+   `subscription.plans` block. This is the only place the
+   price ids are resolved.
+2. `apps/app/components/settings/billing/billing-plan-picker-dialog.tsx`
+   imports the same const to render the plan name and the
+   `limits` map in each plan card.
+
+The const is re-exported through `packages/auth/src/index.ts`
+(the existing barrel). No new subpath export. Adding a plan
+means one line in the const plus one new `STRIPE_PRICE_*` env
+var; no DR amendment needed for routine additions.
+
+### Sidebar and settings hub
+
+Three files update to expose the new route in the navigation
+chrome:
+
+1. `apps/app/components/sidebars/settings-nav.tsx` appends
+   `{ title: "Billing", href: "/settings/billing", icon: CreditCardIcon }`
+   to `NAV_ITEMS`. The `CreditCardIcon` import is added to
+   the existing `lucide-react` import line (the icon is
+   already in use by `apps/app/components/sidebars/nav-user.tsx`,
+   so the dependency is already in the graph). No children
+   are declared; the sidebar renders a flat entry.
+2. `apps/app/components/sidebars/nav-user.tsx` converts the
+   existing inert `Billing` `DropdownMenuItem` (line158) to
+   `asChild` wrapping a Next `Link` to `/settings/billing`,
+   matching the `asChild` pattern already used by the sidebar
+   links. The `Upgrade to Pro` `DropdownMenuItem` at line145
+   is **removed** in the same edit; its copy is now redundant
+   with the new Billing page, which surfaces an upgrade CTA
+   for users without an active subscription. The dropdown
+   order becomes: avatar header, Account, Billing,
+   Notifications, Log out.
+3. `apps/app/app/(protected)/settings/page.tsx` appends
+   `{ title: "Billing", description: "Plan and payment method.", href: "/settings/billing", icon: CreditCardIcon }`
+   to the `SECTIONS` array that drives the settings hub tile
+   grid. The hub grows from five to six tiles.
+
+### Auth client
+
+`apps/app/lib/auth-client.ts` adds `stripeClient({ subscription: true })`
+to the `plugins` array, after `deviceAuthorizationClient()`
+and before the closing bracket. The import path is
+`@better-auth/stripe/client`. This is the only line change in
+the file. The change is the runtime prerequisite for every
+`authClient.subscription.*` call the new components make; it
+lands in the implementation PR (this DR's *server* scope), not
+in the UI follow-up PR.
+
+### What the follow-up PR allows
+
+- Creating `apps/app/app/(protected)/settings/billing/page.tsx`
+  with the shape documented above.
+- Creating the six files under
+  `apps/app/components/settings/billing/` per the spec above.
+- Creating `apps/app/hooks/use-billing.ts` per the spec above.
+- Creating `packages/auth/src/plans.ts` with the `BILLING_PLANS`
+  const, re-exported through the existing barrel.
+- Modifying `apps/app/components/sidebars/settings-nav.tsx`,
+  `apps/app/components/sidebars/nav-user.tsx`, and
+  `apps/app/app/(protected)/settings/page.tsx` per the
+  *Sidebar and settings hub* section above.
+- Re-exporting the new barrel from
+  `apps/app/components/settings/index.ts`.
+- Calling `authClient.subscription.{list,upgrade,cancel,restore,billingPortal}`
+  from the new components. `restore` is wired but unexercised
+  in this PR's UI (the use case is "user cancelled in error
+  and wants to undo before the period rolls over"); a future
+  iteration can add a `Restore` button to the cancel dialog.
+
+### What the follow-up PR forbids
+
+- Adding a `/billing` or `/subscription` route outside the
+  `(protected)/settings/` group. The settings hub is the
+  single entry point; a top-level `/billing` route would
+  duplicate the sidebar wiring.
+- Adding a marketing `/pricing` checkout CTA in `apps/web/`.
+  The marketing checkout flow is a separate scope (it lives
+  in a different auth context; see *Related* §"Marketing
+  pricing CTA" below).
+- Adding a CLI `subscribe` or `billing` command. The CLI's
+  billing surface is a third scope; it inherits the same plans
+  source of truth but ships separately.
+- Introducing a new shadcn primitive inside `apps/app/` (per
+  the `use-shadcn` skill). If a needed primitive is missing,
+  the implementation PR proposes it in `packages/ui` first.
+- Hand-rolling form state via `form.Field` (TanStack Form) in
+  the new components. The settings convention is plain
+  `useState`; introducing TanStack Form here would create a
+  one-off pattern.
+- Reaching for `useRouter()` to redirect to the Stripe
+  Checkout URL. The external redirect is `window.location.href =
+  data.url`; `useRouter()` is for in-app navigation only.
+- Reaching for `useRouter()` to navigate after a cancel
+  mutation. The convention is invalidating the TanStack Query
+  key; the user stays on `/settings/billing` and the page
+  re-renders with the new state.
+- Hardcoding the plan list in the dialog component. The
+  source of truth is `packages/auth/src/plans.ts`; the dialog
+  imports it.
+- Using `authClient.subscription.list()` for data that the
+  plugin's webhook already syncs into the database. The hook
+  pattern is the canonical read path; server-side fetches
+  via oRPC are out of scope.
+
+### Verification for the UI follow-up PR
+
+1. Visit `/settings/billing` as a user with no active
+   subscription. The page renders the three `SettingsCard`
+   slots; "Current plan" shows the empty state with a "Choose
+   plan" button that opens the picker dialog; "Payment
+   method" shows "No payment method on file"; "Billing
+   history" shows the portal CTA.
+2. Click "Choose plan". The picker dialog lists the two plans
+   from `packages/auth/src/plans.ts` with their `limits` map.
+3. Click "Choose plan" inside the dialog for the Pro tier.
+   The submit label flips to `"Redirecting…"`; the browser
+   navigates to a Stripe Checkout URL. Using the test card
+   `4242 4242 4242 4242` completes the test-mode checkout.
+4. After the webhook fires, the page (re-fetched via
+   `useBilling()`) shows the Pro plan, `status: "active"`,
+   and the `limits: { projects: 10, storageMb: 5120 }` map.
+   The "Cancel subscription" button is now enabled.
+5. Click "Cancel subscription". The destructive dialog opens;
+   the input field is empty; the destructive button is
+   `disabled`. Typing `CANCEL` enables the button.
+6. Click the enabled button. The mutation fires; the dialog
+   closes; the page re-renders with
+   `cancelAtPeriodEnd: true` and a status badge that reads
+   "Active until <period end>".
+7. The sidebar under `/settings` lists "Billing" as a new
+   entry, fourth in the list. The settings hub
+   (`/settings`) shows a sixth tile linking to
+   `/settings/billing`.
+8. The user dropdown in the top-right shows "Billing" as a
+   live link to `/settings/billing`. The "Upgrade to Pro"
+   entry is gone.
+9. `pnpm env:check` still passes (no new env var added by the
+   UI follow-up; the four `STRIPE_*` keys ship with the
+   implementation PR).
+10. `pnpm auth:generate` produces a byte-identical
+    `packages/database/src/schema/auth.ts`. The UI follow-up
+    does not add a column or table.
+
+### Marketing pricing CTA (separate scope)
+
+A marketing-side `/pricing` checkout button that triggers a
+Stripe Checkout for unauthenticated visitors is **not** in the
+follow-up PR. The marketing site has no `authClient` session
+for most visitors; the checkout flow has to either (a) defer
+auth to after checkout completion (Stripe Checkout collects
+the email and the implementation PR maps it to a
+`signUp.email` flow on success), or (b) require sign-in first
+(matching the existing `/login` redirect). Option (a) is the
+intended path; it requires a server-side webhook handler that
+provisions a `user` row from the Stripe customer email and
+links the subscription to the post-signup user. That handler
+is a third scope and lands in its own PR.
 
 ## Risks
 
@@ -733,3 +1041,35 @@ the `Configuration summary` section. No UI ships in this PR.
 - [Stripe: Webhook signatures](https://docs.stripe.com/webhooks/signatures).
   The reference for `constructEvent` /
   `constructEventAsync` and the `stripe-signature` header.
+- [`apps/app/hooks/use-device-flow.ts`](../../../../apps/app/hooks/use-device-flow.ts).
+  The TanStack Query precedent for `authClient.*` reads and
+  mutations in `apps/app/`. The `UI follow-up scope` section
+  mirrors this shape for `use-billing.ts`.
+- [`apps/app/components/settings/sessions-table.tsx`](../../../../apps/app/components/settings/sessions-table.tsx).
+  The pattern for a Client Component that fetches via
+  `authClient.*` and renders a list with destructive actions
+  guarded by a `Dialog` confirmation. The `billing-current-plan.tsx`
+  component in the `UI follow-up scope` section mirrors this
+  shape.
+- [`apps/app/components/settings/delete-account-dialog.tsx`](../../../../apps/app/components/settings/delete-account-dialog.tsx).
+  The type-to-confirm precedent for a destructive `Dialog`.
+  The `billing-cancel-dialog.tsx` component in the `UI follow-up
+  scope` section mirrors this shape with `CANCEL` instead of
+  `DELETE`.
+- [`apps/app/components/sidebars/settings-nav.tsx`](../../../../apps/app/components/sidebars/settings-nav.tsx).
+  The `NAV_ITEMS` array that the `UI follow-up scope` section
+  extends with the Billing entry.
+- [`apps/app/components/sidebars/nav-user.tsx`](../../../../apps/app/components/sidebars/nav-user.tsx).
+  The home of the existing inert `Billing` and `Upgrade to Pro`
+  `DropdownMenuItem` entries that the `UI follow-up scope`
+  section wires up with `asChild` + `<Link>`.
+- [`.claude/skills/use-shadcn/SKILL.md`](../../../../.claude/skills/use-shadcn/SKILL.md).
+  The shadcn import path convention (`@workspace/ui/components/*`),
+  the no-raw-HTML rule, and the `cn()` helper. The `UI
+  follow-up scope` section inherits this convention for every
+  new component.
+- [`packages/ui/src/components/`](../../../../packages/ui/src/components/).
+  The shadcn inventory. The `UI follow-up scope` section
+  introduces the first use of `Badge`, `Card`, `Skeleton`, and
+  the full `Dialog` family in `apps/app/`. Every import is
+  from this directory per the `use-shadcn` skill.
