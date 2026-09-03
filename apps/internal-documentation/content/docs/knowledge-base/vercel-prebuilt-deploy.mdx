@@ -1,0 +1,584 @@
+---
+title: 'Vercel prebuilt deploy'
+description: 'Build outside Vercel, deploy the artifact to Vercel. The official workflow for escaping Vercel build-minute billing without losing the CDN, Edge, ISR, or Preview Deployments.'
+---
+
+# Vercel prebuilt deploy
+
+A study of the `vercel build` + `vercel deploy --prebuilt` workflow, the officially supported path for moving the build step out of Vercel's infrastructure while keeping every runtime feature (CDN, Edge Functions, ISR, Preview Deployments, Skew Protection) intact. The motivation is build-minute cost: at high deployment frequency, Vercel Pro's included minutes are consumed by minutes of wall-clock build, not by minutes of useful work.
+
+## What Vercel offers by default
+
+Vercel's Git integration couples three steps into a single unit per push:
+
+1. **Build.** Vercel clones the repo, runs the framework build, and produces a `.vercel/output` directory conforming to the [Build Output API](https://vercel.com/blog/build-output-api).
+2. **Upload.** Vercel uploads the artifact to its edge.
+3. **Serve.** Vercel maps the artifact onto the CDN, runs Edge Functions and middleware at the edge, exposes Preview URLs, and applies ISR / on-demand revalidation.
+
+The three steps are atomic from Vercel's billing perspective. Every push consumes one **build minute** per minute of wall-clock time during step 1, regardless of whether anything was rebuilt or whether the cache hit. At 300–600 deploys per day, the build step is the dominant cost.
+
+## What the prebuilt workflow changes
+
+The prebuilt workflow decouples step 1 from steps 2–3. The build runs in CI (GitHub Actions, GitLab Pipelines, a self-hosted runner), and Vercel only performs the upload and serve phases:
+
+```bash
+# in CI, on every push:
+vercel pull    --yes --environment=preview --token="$VERCEL_TOKEN"
+vercel build
+vercel deploy --prebuilt --token="$VERCEL_TOKEN"
+```
+
+Three artifacts matter:
+
+- **`vercel pull`** writes `.vercel/` containing the project's environment metadata (env vars, project ID, org ID). Required because Vercel would normally inject these into the build environment.
+- **`vercel build`** produces `.vercel/output/` (the Build Output API artifact). This is the same directory Vercel would have produced on its own infrastructure.
+- **`vercel deploy --prebuilt`** uploads `.vercel/output/` to Vercel's edge. Vercel skips its own build step and goes straight to upload + serve.
+
+From Vercel's billing perspective, the **build minute counter stays at zero** for this deploy. The deploy is still a deploy (functions, edge, ISR, previews all work), but no build time is accrued.
+
+## What works with `--prebuilt`
+
+Verified against the official Vercel documentation and the [Build Output API](https://vercel.com/blog/build-output-api) specification:
+
+| Feature | Status | Notes |
+|---|---|---|
+| Next.js SSR / SSG | Works | `vercel build` produces the correct `.vercel/output`. |
+| Next.js API Routes (Node runtime) | Works | Functions emitted under `.vercel/output/functions/`. |
+| ISR | Works | The revalidation logic is in the bundle; Vercel's CDN serves stale-while-revalidate. |
+| Middleware | Works | Included in `.vercel/output`. |
+| Image optimization (`next/image`) | Works | Bundle contains the image pipeline. |
+| Preview Deployments | Works | `vercel deploy --prebuilt` without `--prod` produces a Preview URL. |
+| Skew Protection | Works | Since 2024, supported via custom deployment ID. |
+| Edge runtime functions | Works | Must be compiled for Edge by `vercel build`; Vercel does not re-transform. |
+| Vercel Edge Cache / CDN | Works | Independent of the build step. |
+| On-demand revalidation (`revalidatePath` / `revalidateTag`) | Works | Server actions still hit Vercel's invalidation primitives. |
+
+## What breaks with `--prebuilt`
+
+There is exactly one documented break point: **Vercel System Environment Variables are not injected at build time**. With the Git integration, Vercel populates the build environment with values like `VERCEL_ENV`, `VERCEL_URL`, `VERCEL_GIT_COMMIT_SHA`, `VERCEL_GIT_REPO_OWNER`, `VERCEL_GIT_COMMIT_MESSAGE`, etc. None of these are present in CI.
+
+The build fails or produces incorrect output if the code reads them at build time:
+
+```ts
+// next.config.js — silently breaks under --prebuilt
+export default {
+  env: {
+    BUILD_ID: process.env.VERCEL_GIT_COMMIT_SHA, // undefined
+  },
+};
+
+// app/page.tsx — silently breaks under --prebuilt
+export const metadata = {
+  other: process.env.VERCEL_ENV, // undefined
+};
+```
+
+The fix is to populate the variables in the CI job before running `vercel build`:
+
+```yaml
+# Illustrative mapping — the complete workflows below use guarded
+# expressions that work on both push and pull_request events.
+# github.event.head_commit is null on pull_request; use
+# github.event.pull_request.head.sha in that context.
+- name: Build
+  env:
+    VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
+    VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+    VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.actor }}
+    VERCEL_GIT_COMMIT_AUTHOR_NAME: ${{ github.actor }}
+    VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
+    VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
+    VERCEL_GIT_REF: ${{ github.ref }}
+    VERCEL_GIT_PROVIDER: github
+    VERCEL_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+    NEXT_PUBLIC_VERCEL_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+  run: pnpm vercel build
+```
+
+A complete reference for the variables lives at [System Environment Variables](https://vercel.com/docs/environment-variables/system-environment-variables). Every variable listed there that the build reads must be mapped.
+
+Non-System environment variables (project-level env vars added via the Vercel dashboard) **are** still resolved, because `vercel pull` downloads them into `.vercel/` and `vercel build` reads them from there.
+
+## Cost comparison
+
+Vercel bills builds at **$0.0035 per CPU minute**, with the duration rounded up to the nearest minute and multiplied by the vCPU count of the build machine (source: [Vercel — Builds pricing](https://vercel.com/docs/pricing#builds)). The effective per-minute cost therefore depends on the build machine type:
+
+| Build machine | vCPUs | Cost per build minute |
+|---|---|---|
+| Standard (default) | 1 | $0.0035 |
+| Enhanced | 8 | $0.028 |
+
+The two pipelines below are compared at 600 deploys per day, 1 minute per build, on a Standard machine.
+
+### Native Vercel Git integration
+
+```
+600 deploys × 1 min × 30 days = 18 000 build minutes / month
+Vercel Pro: 6 000 included (Standard machine)
+Overages: 12 000 × $0.0035 = $42 / month
+Plus $20 / member / month
+```
+
+The number climbs fast when the build exceeds the 45-minute wall-clock cap and gets bumped to the Enhanced machine: 18 000 minutes × $0.028 = **$504 / month** before any team seats. If your builds regularly hit the 8 vCPU Enhanced machine, the prebuilt workflow's economics flip from "nice-to-have" to "must-have" in a single billing cycle.
+
+### Prebuilt via GitHub Actions
+
+```
+600 deploys × 1 min × 30 days = 18 000 CI minutes / month
+Public repo:  free
+Private repo: 2 000 min included (Linux), then $0.008 / min
+  → 18 000 − 2 000 = 16 000 × $0.008 = $128 / month
+Vercel build minutes: 0
+```
+
+### Prebuilt via self-hosted runner
+
+```
+Hetzner CX22:  €5 / month
+Vercel build minutes: 0
+GitHub Actions minutes: 0 (runner is on our infra)
+Total: ~€5 / month
+```
+
+The self-hosted runner path is the cost-floor. The runner registers with GitHub via a token and runs `runs-on: self-hosted` jobs. A single CX22 (2 vCPU, 4 GB RAM) easily handles 18 000 one-minute builds per month with headroom.
+
+## The full GitHub Actions workflow
+
+The workflow splits cleanly on the **target environment** (preview vs production) because `vercel pull`, `vercel build`, and `vercel deploy` each take their environment from explicit flags or the absence of them. Mixing them across environments is the most common production bug on this path.
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest   # or self-hosted
+    permissions:
+      contents: read
+      pull-requests: write  # for posting preview URLs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # required: vercel build reads git history
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm         # restores .pnpm-store between runs
+
+      - run: pnpm install --frozen-lockfile
+
+      # ----------------------------------------------------------------
+      # PREVIEW path: pull_request + push to non-production branches
+      # ----------------------------------------------------------------
+      - name: Pull Vercel Preview Info
+        if: github.ref != 'refs/heads/main'
+        run: pnpm vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build Preview Artifacts
+        if: github.ref != 'refs/heads/main'
+        env:
+          # On pull_request events, github.event.head_commit is null and
+          # github.sha points to the merge commit. Fall back to pull_request.head.*
+          # so Vercel gets the real PR commit metadata.
+          VERCEL_GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message }}
+          VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.event.pull_request.user.login || github.actor }}
+          VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
+          VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
+          VERCEL_GIT_REF: ${{ github.head_ref || github.ref }}
+          VERCEL_GIT_PROVIDER: github
+          VERCEL_ENV: preview
+          NEXT_PUBLIC_VERCEL_ENV: preview
+        run: pnpm vercel build
+
+      - name: Deploy Preview
+        if: github.ref != 'refs/heads/main'
+        run: pnpm vercel deploy --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # ----------------------------------------------------------------
+      # PRODUCTION path: push to main only
+      # ----------------------------------------------------------------
+      - name: Pull Vercel Production Info
+        if: github.ref == 'refs/heads/main'
+        run: pnpm vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build Production Artifacts
+        if: github.ref == 'refs/heads/main'
+        env:
+          # Gated on refs/heads/main, so this only fires on a push to main.
+          # head_commit is defined in that context; the fallback makes the
+          # step safe even if the gate is later relaxed.
+          VERCEL_GIT_COMMIT_SHA: ${{ github.sha }}
+          VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.actor }}
+          VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
+          VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
+          VERCEL_GIT_REF: ${{ github.ref }}
+          VERCEL_GIT_PROVIDER: github
+          VERCEL_ENV: production
+          NEXT_PUBLIC_VERCEL_ENV: production
+        run: pnpm vercel build --prod
+
+      - name: Deploy Production
+        if: github.ref == 'refs/heads/main'
+        run: pnpm vercel deploy --prebuilt --prod --archive=tgz --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+```
+
+Four traps that bite people the first time. The workflow above avoids them; the list below explains why each matters:
+
+1. **`vercel pull --environment` must match the deploy target.** `pull --environment=preview` downloads the *preview-scoped* env vars (test keys, staging DBs, etc.). Running `pull --environment=preview` followed by `deploy --prod` would build the production bundle with preview secrets — the most common silent bug on this path.
+2. **`vercel build` needs `--prod` for production deploys.** Without it, `VERCEL_ENV` is `preview` even on a `--prod` deploy, and some framework flags (`generateBuildId`, conditional rewrites, branch-aware configs) resolve against the wrong environment. Source: [vercel community discussion #105977](https://github.com/orgs/community/discussions/105977).
+3. **`on.push.branches` must include every branch that should trigger a deploy.** A common slip is configuring `pull_request` to target `main` but `push` to only target `staging`, which silently breaks the production deploy path.
+4. **`--archive=tgz`** is recommended when `.vercel/output/` contains thousands of files (monorepo case) to avoid the upload rate limit.
+
+## Cache migration
+
+Moving the build out of Vercel forfeits Vercel's managed build cache. Without a replacement, every build pays the full cold-install cost (`pnpm install`, framework setup, TypeScript graph). At 600 deploys per day this dominates wall-clock time and makes the workflow slower than the native Git integration despite being free.
+
+Three replacements, ordered by complexity:
+
+### `actions/cache` for `pnpm`
+
+`actions/setup-node@v4` with `cache: 'pnpm'` handles `~/.local/share/pnpm-store` automatically. Add a second `actions/cache` step for `.next/cache` to keep Next.js incremental builds warm:
+
+```yaml
+- uses: actions/cache@v4
+  with:
+    path: |
+      .next/cache
+      apps/*/.next/cache
+      packages/*/.next/cache
+    key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}
+    restore-keys: |
+      ${{ runner.os }}-nextjs-
+```
+
+### Turborepo Remote Caching
+
+If the workspace uses Turborepo (this repo does), configure remote caching so every CI job shares the same artifact cache. The cheapest setup is `turbo` against an S3-compatible bucket (Cloudflare R2, MinIO, or AWS S3). The reference: [Turborepo — Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching).
+
+### `--with-cache` on Vercel deploy
+
+The `vercel deploy --prebuilt --force --with-cache` flag tells Vercel to **retain** its cache for the next deploy instead of purging it. Worth setting on the deploy step if the CI cache layer is incomplete.
+
+## Hybrid strategy: keep production native, ship previews via CI
+
+At high deploy frequency the cost distribution is heavily skewed: previews (PRs, ephemeral branches) represent 95–99% of the volume; production is a handful of deploys per day. A pragmatic alternative to moving **everything** off Vercel is to keep production native and route only previews through CI. This eliminates the dominant cost line while leaving the production path zero-touch.
+
+### Step 1 — Tell Vercel to skip preview builds
+
+In the Vercel dashboard (Project Settings → Git → **Ignored Build Step**), set the script:
+
+```bash
+if [ "$VERCEL_ENV" == "production" ]; then exit 1; else exit 0; fi
+```
+
+The convention: **`exit 0` = skip the build** (no build minutes), **`exit 1` = proceed** (build minutes billed). The script above lets only production builds through; everything else (PRs, ephemeral branches) is dropped at the source. Reference: [Vercel — Ignored Build Step](https://vercel.com/docs/project-configuration#ignored-build-step).
+
+### Step 2 — A preview-only GitHub Actions workflow
+
+With production handled by the native integration, the CI workflow only ships previews:
+
+```yaml
+# .github/workflows/preview-deploy.yml
+name: Preview Deployment
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  # Group on the PR number so multiple pushes to the same PR cancel each
+  # other cleanly, and so two PRs from the same branch do not collide.
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest   # or self-hosted
+    permissions:
+      contents: read
+      pull-requests: write   # for posting preview URLs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Pull Vercel Preview Environment
+        run: pnpm vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build Preview Artifacts
+        env:
+          # On pull_request events:
+          # - github.event.head_commit is null (it only exists on push events)
+          # - github.sha is the merge commit GitHub creates for the PR, not the
+          #   tip of the contributor's branch
+          # The pull_request.head.* values resolve to the real PR commit and
+          # author, which is what Vercel expects for trace correlation.
+          VERCEL_GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+          VERCEL_GIT_COMMIT_MESSAGE: ${{ github.event.pull_request.title }}
+          VERCEL_GIT_COMMIT_AUTHOR_LOGIN: ${{ github.event.pull_request.user.login }}
+          VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
+          VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
+          VERCEL_GIT_REF: ${{ github.head_ref }}
+          VERCEL_GIT_PROVIDER: github
+          VERCEL_ENV: preview
+          NEXT_PUBLIC_VERCEL_ENV: preview
+        run: pnpm vercel build
+
+      - name: Deploy Preview to Vercel
+        id: deploy
+        run: |
+          # vercel deploy prints the unique deployment URL on stdout.
+          # Capture it so the next step (or a sticky PR comment) can reference it.
+          DEPLOY_URL=$(pnpm vercel deploy --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          # Also surface it in the GitHub Actions step summary, so reviewers see
+          # the link directly in the run UI without scrolling to a PR comment.
+          echo "### Preview deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "🚀 $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Post Preview URL to PR
+        if: steps.deploy.outputs.url
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: vercel-preview
+          message: |
+            🚀 Preview deployed: ${{ steps.deploy.outputs.url }}
+```
+
+### Comparison
+
+| Environment | Where the build runs | Vercel build minutes | Operational notes |
+|---|---|---|---|
+| Preview (PRs) | GitHub Actions / self-hosted runner | 0 min | Artifact uploaded via `vercel deploy --prebuilt`. Preview URL is generated. |
+| Production (`main`) | Vercel native Git integration | A few minutes / day, well inside the included quota | Zero env-var mapping, zero workflow maintenance. |
+
+The hybrid path keeps production on Vercel's native integration (so every `VERCEL_*` env var, ISR cache, and Edge function works without ceremony) and only pays CI cost for the volume path (previews). For most projects this is the right starting point; the full prebuilt pipeline above is the right step when even the residual production cost is unacceptable.
+
+## Disabling the Vercel Git integration
+
+> **⚠️ Only apply this section if you are running the full-prebuilt pipeline (every environment, including production, is built in CI).** The [hybrid strategy](#hybrid-strategy-keep-production-native-ship-previews-via-ci) keeps the Vercel Git integration enabled for production deploys and uses the Ignored Build Step to skip only previews. Disabling the Git integration in the hybrid setup would break the production deploy path with no CI workflow to take over.
+
+Once CI owns the deploy, the Vercel Git integration must be turned off to prevent double builds. Either in the Vercel dashboard (Settings → Git → **Disable Auto-Deployments**) or in `vercel.json`:
+
+```json
+{
+  "github": {
+    "enabled": false
+  }
+}
+```
+
+With `github.enabled = false`, Vercel still recognises the linked GitHub repo for branch-protection integration and comment posting, but no build is triggered on push. CI is the single source of deploys.
+
+## Real-world implementations and adjacent references
+
+Several teams have published the same pattern (build in CI, deploy to Vercel with `--prebuilt`) with their own workflow shapes. None contradicts the entry above; each surfaces a different trade-off worth knowing about before adopting.
+
+### Two-job Build / Deploy with artifact handoff
+
+[Take control over your CI/CD process: Use GitHub Actions with Vercel](https://techhub.iodigital.com/articles/take-control-over-your-ci-cd-process-with-github-actions-vercel) splits the pipeline into separate `Build` and `Deploy` jobs that communicate via `actions/upload-artifact` and `actions/download-artifact`. The Deploy job pulls the artifact and runs `vercel deploy --prebuilt`. The article captures the preview URL via `tee deploy.log | tail -1` written to `$GITHUB_OUTPUT`, then uses `environment: { url: ... }` on the job to attach it to the PR.
+
+This shape is worth adopting when the build step is long enough that parallelising Lint / Test / Build gives a meaningful wall-clock win. The single-job shape in this entry is appropriate when the build is fast and the parallel jobs would just queue on the same runner.
+
+### Pipeline with required passing tests
+
+[The perfect Vercel + GitHub Actions deployment pipeline](https://aaronfrancis.com/2021/the-perfect-vercel-github-actions-deployment-pipeline-faa0d4ac) runs the build locally first, executes the test suite against the local build, and only then triggers the Vercel deploy. The motivation is explicit: *"I didn't have any confidence that I wasn't deploying a broken build"* — a sentiment that applies even more strongly on the prebuilt path, where a broken build now costs CI minutes instead of being caught at the Vercel step.
+
+### Cost framing from the field
+
+Cost analyses of Vercel-vs-alternatives consistently flag the build minute line as the symptom that pushes teams off Vercel when traffic crosses ~100K monthly visitors or the team grows past one contributor. Two representative samples:
+
+- [Vercel vs Self-Hosted Coolify: The True Cost Comparison](https://www.massivegrid.com/blog/vercel-vs-self-hosted-coolify-cost-comparison/) — production workload at 500K visitors/month shows a Vercel bill of $601/mo against $17–90/mo on Coolify, with build minutes being one of the named cost drivers.
+- [Self-Hosting on Hetzner vs. Deploying on Vercel: A Real Cost Comparison](https://olio.solutions/en/blog/self-hosting-hetzner-vs-vercel) — flags the hidden ops cost: *"If you spend 4 hours per month on server maintenance at a €100/hr rate, that's €400 in hidden ops cost."* The prebuilt workflow is the middle path: it keeps Vercel as the runtime (zero ops) while moving the build step (the metered line) off Vercel.
+
+### Inflection point
+
+The break-even for the prebuilt workflow is approximately the moment the monthly Vercel bill consistently exceeds **$50–100**. Below that, the operational complexity is not worth the saving; above that, it usually is.
+
+## Security
+
+The prebuilt workflow expands the trust boundary beyond Vercel's own infrastructure. The GitHub Actions runner becomes a privileged actor in the deploy path, and any compromise of the runner, the repo secrets, or the actions it depends on can translate into a Vercel compromise. Five surfaces are worth hardening before adopting.
+
+### Use OIDC, not a long-lived `VERCEL_TOKEN`
+
+The workflows above pass `--token=${{ secrets.VERCEL_TOKEN }}`. A long-lived token is a static bearer credential: anyone who reads it gets the same powers Vercel grants to the CLI, which is everything the project allows. Vercel supports **OIDC federation** for GitHub Actions, where the runner exchanges a short-lived (≤1 h) signed token with Vercel on every run, scoped by a trust configuration JSON. There is nothing to rotate, nothing to leak from GitHub Secrets, and nothing for an attacker to replay.
+
+```yaml
+permissions:
+  id-token: write   # required for OIDC
+  contents: read
+
+steps:
+  - uses: actions/checkout@v4
+
+  - name: Get Vercel OIDC token
+    id: vercel-token
+    uses: vercel/login-oidc-action@v1
+
+  - name: Pull Vercel Environment
+    run: vercel pull --yes --environment=preview --token=${{ steps.vercel-token.outputs.VERCEL_OIDC_TOKEN }}
+    env:
+      # OIDC handles authentication; project identity still requires the
+      # static VERCEL_ORG_ID / VERCEL_PROJECT_ID pair. These are not
+      # secrets — they are public identifiers visible on every Vercel
+      # deployment URL — so the exposure surface is the same as the
+      # long-lived-token workflow.
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+```
+
+The trust configuration on the Vercel side restricts which repos and refs can exchange tokens:
+
+```json
+{
+  "subject": "repo:your-org/your-repo:pull_request",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "audience": "https://vercel.com"
+}
+```
+
+Reference: [Vercel — OIDC for GitHub Actions](https://vercel.com/docs/oidc). This is the default path for any new prebuilt workflow in 2026; the long-lived token shape exists for backward compatibility with other CI systems.
+
+### Mark every env var as sensitive on Vercel
+
+The Vercel April 2026 incident ([bulletin](https://vercel.com/kb/bulletin/vercel-april-2026-security-incident)) compromised **non-sensitive** environment variables across a subset of customer projects. The variables marked **sensitive** (encrypted at rest, decryptable only at runtime in the function sandbox) were not exposed. The lesson is hygiene: every credential — database URL, API key, signing key — must be marked sensitive on the Vercel dashboard. The prebuilt workflow does not change this rule, but it does add another path that can read those vars, so the protection matters more, not less.
+
+### Use ephemeral runners for self-hosted builds
+
+If the workflow runs on a self-hosted runner (the Hetzner CX22 path in the cost comparison), the runner is **persistent by default**: a malicious job can read secrets from prior jobs, plant backdoors, or pivot into other repos hosted on the same machine. GitHub's official guidance is that self-hosted runners should only be used for private repos and must run in `--ephemeral` mode for any untrusted code path. Reference: [GitHub Docs — Hardening for self-hosted runners](https://docs.github.com/en/actions/security-for-github-actions/security-guidance/security-hardening-for-github-actions#using-self-hosted-runners).
+
+```bash
+./config.sh --ephemeral ...
+```
+
+Forks of public repos can run arbitrary code in a `pull_request` workflow. With a persistent self-hosted runner, that code runs against your infra. Ephemeral mode is the mitigation.
+
+### Pin third-party actions by SHA
+
+The preview workflow uses `marocchino/sticky-pull-request-comment@v2`. A tag is mutable: the maintainer can publish a new commit under the same tag, and your next run picks it up. The recommended practice is to pin the action to a specific commit SHA:
+
+```yaml
+- uses: marocchino/sticky-pull-request-comment@<full-40-char-sha>
+```
+
+GitHub's [security hardening guide](https://docs.github.com/en/actions/security-for-github-actions/security-guidance/security-hardening-for-github-actions#using-third-party-actions) flags this as the default expectation for any third-party action. Dependabot can keep the pins current without forcing manual review.
+
+### Limit `GITHUB_TOKEN` permissions to the strict minimum
+
+The workflow-level `permissions` block should declare only what the job needs. Defaults vary, and many third-party action tutorials request broader scopes than necessary.
+
+```yaml
+jobs:
+  deploy-preview:
+    permissions:
+      contents: read             # checkout the repo
+      pull-requests: write       # post the sticky comment
+      id-token: write            # OIDC exchange
+```
+
+Do not request `actions: write` (lets the workflow trigger other workflows), `packages: write` (lets it publish packages), or `deployments: write` unless the workflow genuinely needs them. The principle is the same as the principle of least privilege for any other identity.
+
+### What the entry does not cover
+
+- **Network egress controls** on self-hosted runners. The runner can reach any host on the public internet during a build, including package registries and Vercel's API. Network isolation (firewall rules, egress allowlists, the `169.254.169.254` metadata blocklist) is the next layer if the runner handles sensitive code. Tools like [StepSecurity Harden-Runner](https://github.com/step-security/harden-runner) automate egress monitoring for GitHub Actions runners and can refuse to run jobs that attempt unexpected outbound connections.
+- **Audit log retention**. With Vercel native, deploys are centralised in Vercel's audit log. With prebuilt, the trail is split between GitHub Actions and Vercel; correlation requires either timestamped `VERCEL_GIT_COMMIT_SHA` matching or a SIEM pipeline. Note that [Vercel Audit Logs](https://vercel.com/docs/audit-logs) are only available on **Pro and Enterprise plans** — Hobby teams have no programmatic audit trail at all and must rely on Log Drains (Enterprise only) or local CLI scraping.
+- **Anomaly detection on the deploy stream.** Without alerting, a compromised workflow can deploy at 3 AM and nobody notices. The standard mitigation is a Log Drain to Datadog/SIEM, plus threshold-based alerts (deploys/hour, deploys outside business hours, deploys from unusual runner IPs). Vercel's [Anomaly Detection](https://vercel.com/docs/security/anomaly-detection) covers traffic-level anomalies on the edge, not the deploy stream itself.
+- **Source maps**. `vercel build` disables production source maps by default for Next.js. If you opt in for error tracking (`productionBrowserSourceMaps: true`), the maps end up in `.vercel/output` and ship to Vercel's edge. Treat that as a deliberate trade-off, not a default.
+- **`set -x` and command-line expansion of secrets**. A `set -x` step echoes every command after expansion. `echo "$TOKEN"` becomes `+ echo <actual-token-value>` in the log, and GitHub's secret masking does not catch it because masking matches the literal secret value, not the expansion result. Reference: [GitHub Docs — Using secrets](https://docs.github.com/actions/security-for-github-actions/security-guidance/security-hardening-for-github-actions#using-secrets). The mitigations:
+  - Do not enable `set -x` in steps that reference secrets.
+  - Pass secrets via the step `env:` block to tools that read them natively (`AWS_ACCESS_KEY_ID` style), not as command-line arguments.
+  - For derived secrets (e.g. an OIDC token from `steps.vercel-token.outputs.VERCEL_OIDC_TOKEN`), register them with `::add-mask::` before logging anything that could include them: `echo "::add-mask::${{ steps.vercel-token.outputs.VERCEL_OIDC_TOKEN }}"`.
+
+## What this entry doesn't use
+
+- **No Vercel Build Hooks.** A deploy hook is just a `curl` to a URL that triggers a fresh build on Vercel. It does not run `vercel build` externally and therefore does not save build minutes. Combining a deploy hook with a GitHub Actions prebuild on the same branch is also a recipe for double deploys, because the hook rebuilds independently of the Ignored Build Step.
+- **No `vercel deploy` without `--prebuilt`.** Without `--prebuilt`, Vercel runs `vercel build` itself, which is the unit being replaced.
+- **No `vercel build` on a feature branch directly.** CI builds on the runner, not on Vercel, then uploads the artifact.
+- **No `next build` direct.** The artifact must come from `vercel build`, not from `next build` invoked directly. Vercel's Build Output API format is produced by Vercel's own CLI; raw `next build` (whether Turbopack or Webpack) emits a different directory structure that `vercel deploy --prebuilt` will reject. With Next.js 16 (stable since October 2025, Turbopack default for production), this distinction is even more important: Turbopack and Webpack output `.vercel/output` with different manifest shapes, and neither is interchangeable with the other via `--prebuilt`. Reference: [Next.js 16 release notes](https://nextjs.org/blog/next-16).
+
+## Adjacent failure modes
+
+The prebuilt workflow intersects with five adjacent systems. Each one can break the deploy silently if not aligned. None is unique to `--prebuilt` — they bite the Git integration too — but the prebuilt path surfaces them earlier because CI produces the artifact.
+
+### Pin the Vercel CLI version
+
+`pnpm vercel build` in the workflow resolves the Vercel CLI through the workspace. If a developer runs `npm i -g vercel@latest` locally and the CI resolves a different version, builds drift: a flag accepted locally is rejected in CI, or vice versa. The standard mitigation is to pin `vercel` in `devDependencies` to an exact version and run `pnpm vercel build` (which uses the workspace version), not a globally-installed `vercel`. Reference: [Vercel — Package managers](https://vercel.com/docs/package-managers).
+
+### `pnpm` catalogs and the `workspace:` protocol in monorepos
+
+Vercel's historical build container uses pnpm in **hoisted** mode for the root. A monorepo package that imports a sibling via `"dep": "workspace:*"` works locally (pnpm resolves symlinks) but can fail at build time if Vercel's hoisted install does not surface the dep at the top level. The two mitigations:
+
+1. Pin the sibling dep in the **root** `package.json` as well, so it appears in the hoisted tree.
+2. Set the package manager explicitly in `package.json`:
+   ```json
+   "packageManager": "pnpm@9.12.0"
+   ```
+   This forces Vercel to use the same pnpm version as local and disables the "oldest available" fallback.
+
+### Deploy hooks and GitHub Actions coexisting on the same branch
+
+The hybrid strategy configures the Vercel Git integration to skip previews via the Ignored Build Step. A deploy hook (Settings → Git → Deploy Hooks) is a separate trigger that ignores the Ignored Build Step and always rebuilds on Vercel. If both a deploy hook and a GitHub Actions workflow fire on the same push (for example, a CMS webhook calling the deploy hook while CI runs the prebuilt workflow), Vercel deploys twice: once from the hook (native build) and once from CI's `--prebuilt` upload. Pick one trigger per branch — either the hook or CI, never both.
+
+### Edge runtime middleware with Node-only imports
+
+`middleware.ts` runs on the Edge runtime by default. Packages that rely on Node.js built-ins (`fs`, `path`, native `.node` bindings) fail at runtime, not at build, because the bundler can't statically detect the dependency in some configurations. With `--prebuilt`, the failure surfaces on the first request to a route protected by the middleware, often without an obvious log entry. The mitigation is to either keep middleware Edge-compatible (use `fetch`, `Request`, `Response`, `Web Crypto`) or to opt the middleware into the Node runtime via `experimental.nodeMiddleware` in `next.config.js`. Reference: [Vercel Community — Next.js middleware Edge runtime](https://community.vercel.com/t/next-js-middleware-fails-on-edge-runtime-but-works-with-nodejs-runtime-on-vercel/35553).
+
+### ISR cache location is runtime, not artifact
+
+`revalidatePath()` and `revalidateTag()` mutate Vercel's edge cache at runtime — they have nothing to do with `.vercel/output`. They continue to work identically on the prebuilt path. But if the project uses a custom ISR cache (Redis, KV, R2 via `unstable_cache` or a manual fetch cache), that cache lives on Vercel's runtime side, not inside the build artifact. Migrating from Git integration to prebuilt does not touch the cache; migrating off Vercel entirely does. Be precise about which move you're making.
+
+## What this entry isn't
+
+This is a knowledge-base entry, not an ADR. It documents how the prebuilt workflow behaves in the current version of the Vercel CLI and where it diverges from the Git integration. The **decisions** — whether to use the workflow at all, whether to switch to a self-hosted runner, which secrets to expose in CI — live in `docs/engineering/architecture/decisions/`. When a future change in the Vercel CLI conflicts with this entry, the entry is wrong, not the code.
+
+## See also
+
+- [Vercel — Using GitHub Actions with Vercel](https://vercel.com/kb/guide/how-can-i-use-github-actions-with-vercel), the official workflow reference.
+- [Vercel — `vercel deploy` CLI](https://vercel.com/docs/cli/deploy#prebuilt), the `--prebuilt` semantics and the System Env Vars caveat.
+- [Vercel — `vercel build` CLI](https://vercel.com/docs/cli/build), the build subcommand.
+- [Vercel — System Environment Variables](https://vercel.com/docs/environment-variables/system-environment-variables), the variables to map in CI.
+- [Vercel — OIDC for GitHub Actions](https://vercel.com/docs/oidc), short-lived token federation (preferred over long-lived tokens).
+- [Vercel — Pricing](https://vercel.com/docs/pricing), build machine tiers and per-CPU-minute cost.
+- [Announcing the Build Output API](https://vercel.com/blog/build-output-api), the artifact format `.vercel/output` conforms to.
+- [Vercel — April 2026 Security Incident](https://vercel.com/kb/bulletin/vercel-april-2026-security-incident), the supply-chain incident that motivates marking every env var as sensitive.
+- [GitHub Docs — Hardening for self-hosted runners](https://docs.github.com/en/actions/security-for-github-actions/security-guidance/security-hardening-for-github-actions#using-self-hosted-runners), the `--ephemeral` requirement.
+- [GitHub Docs — Hardening for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guidance/security-hardening-for-github-actions), third-party action pinning, `permissions` minimization, fork PR model.
