@@ -173,6 +173,22 @@ export const auth = betterAuth({
     },
   },
 
+  user: {
+    // ADR-030: the /onboarding/complete server action stamps this
+    // timestamp so getOnboardingState() can detect that the
+    // three-step wizard finished. The column lives on `user`
+    // (not `session`) because the value is permanent — once a
+    // user has finished onboarding they don't go through it again
+    // even if their session rotates.
+    additionalFields: {
+      onboardingCompletedAt: {
+        type: "date",
+        required: false,
+        input: false,
+      },
+    },
+  },
+
   plugins: [
     // Organization plugin (ADR-030): multi-tenant workspaces. Adds
     // organization/member/invitation tables on top of the user/session

@@ -47,7 +47,7 @@ export function ConnectedAccountsList() {
 		}
 
 		setAccounts(
-			data.map((a) => ({
+			data.map((a: { id: string; providerId: string; [k: string]: unknown }) => ({
 				id: a.id,
 				providerId: a.providerId,
 				accountId: a.accountId,

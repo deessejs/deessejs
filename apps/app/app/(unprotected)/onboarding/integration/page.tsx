@@ -8,6 +8,8 @@ import { GitHubIcon } from "@/components/auth/icons/github-icon"
 import { VercelIcon } from "@/components/auth/icons/vercel-icon"
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
 
+import { getOnboardingState } from "@/lib/onboarding"
+
 type Integration = {
 	id: "github" | "vercel"
 	name: string
@@ -34,9 +36,13 @@ export default async function OnboardingIntegrationPage() {
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session?.user) redirect("/login")
 
-	// Dummy: no state checks yet (ADR-030 PR #4 will wire the real
-	// account table). All badges read as "Not set up" and every
-	// step renders standalone so reviewers can navigate the wizard.
+	// Forward-gate: integration is the first step. If the user has
+	// somehow skipped ahead (e.g. has an org already), push them
+	// to wherever they actually belong.
+	const state = await getOnboardingState()
+	if (state?.step && state.step !== "integration") {
+		redirect(`/onboarding/${state.step}`)
+	}
 
 	return (
 		<OnboardingShell currentStep="integration" completedSteps={[]}>
@@ -59,8 +65,7 @@ export default async function OnboardingIntegrationPage() {
 
 				<ul className="flex flex-col gap-3">
 					{INTEGRATIONS.map(({id, name, description, Icon}) => {
-						// Dummy: both read as not-set-up until PR #4 wires the
-						// real `account` table check.
+						const isConnected = state?.hasGithub && id === "github"
 						return (
 							<li
 								key={id}
@@ -79,8 +84,14 @@ export default async function OnboardingIntegrationPage() {
 										</span>
 									</div>
 								</div>
-								<span className="inline-flex items-center rounded-full border border-muted bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-									Not set up
+								<span
+									className={
+										isConnected
+											? "inline-flex items-center rounded-full border border-primary bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground"
+											: "inline-flex items-center rounded-full border border-muted bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+									}
+								>
+									{isConnected ? "Set up" : "Not set up"}
 								</span>
 							</li>
 						)
@@ -94,13 +105,6 @@ export default async function OnboardingIntegrationPage() {
 					>
 						Continue
 					</Link>
-					{/*
-					  Noop placeholder so future wiring of the real continue
-					  logic (PR #4) has a stable anchor; comment-only delta
-					  also gives Vercel a reason to re-deploy after the
-					  rate-limit window.
-					*/}
-					<span className="hidden" aria-hidden />
 				</div>
 			</AuthContainer.Root>
 		</OnboardingShell>

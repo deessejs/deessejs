@@ -32,7 +32,7 @@ export function SiteHeader() {
 	const initials = user
 		? (user.name ?? user.email ?? "U")
 				.split(/\s+/)
-				.map((part) => part[0])
+				.map((part: string) => part[0])
 				.filter(Boolean)
 				.slice(0, 2)
 				.join("")

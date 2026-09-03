@@ -57,7 +57,7 @@ export function SessionsTable() {
 		const currentToken = asCurrentSessionToken(currentSession.session?.token ?? "")
 
 		setSessions(
-			sessionList.map((s) => ({
+			sessionList.map((s: { id: string; token: string; [k: string]: unknown }) => ({
 				id: s.id,
 				token: s.token,
 				userAgent: s.userAgent ?? "Unknown",

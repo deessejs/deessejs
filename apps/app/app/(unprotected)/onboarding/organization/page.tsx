@@ -6,16 +6,25 @@ import { AuthContainer } from "@/components/auth"
 import { CreateOrganizationForm } from "@/components/auth/create-organization-form"
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
 
+import { getOnboardingState } from "@/lib/onboarding"
+
 export default async function OnboardingOrganizationPage() {
-	// Anonymous-only gate. Forward-gate (integration done? org done?)
-	// is disabled until ADR-030 PR #4 wires the real backend.
+	// Session gate: anonymous visitors bounce to /login.
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session?.user) redirect("/login")
+
+	// Forward-gate: integration must be done before the user can
+	// land on the organization step. If they got here directly,
+	// push them to the current step.
+	const state = await getOnboardingState()
+	if (state?.step && state.step !== "organization") {
+		redirect(`/onboarding/${state.step}`)
+	}
 
 	return (
 		<OnboardingShell
 			currentStep="organization"
-			completedSteps={[]}
+			completedSteps={state?.hasGithub ? ["integration"] : []}
 			backHref="/onboarding/integration"
 		>
 			<AuthContainer.Root>
@@ -24,11 +33,6 @@ export default async function OnboardingOrganizationPage() {
 					description="Workspaces group your projects, members, and settings. You can create more or accept invitations later."
 				/>
 				<AuthContainer.Content>
-					{/*
-					  Dummy form. PR #4 swaps the onSubmit to call
-					  `authClient.organization.createOrganization(...)`
-					  and route to /onboarding/complete (instead of /home).
-					*/}
 					<CreateOrganizationForm nextHref="/onboarding/complete" />
 				</AuthContainer.Content>
 			</AuthContainer.Root>

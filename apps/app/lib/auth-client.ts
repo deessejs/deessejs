@@ -6,6 +6,7 @@ import { organizationClient } from "better-auth/client/plugins"
 import { clientEnv } from "@workspace/env/client"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 import { ac, admin, member, owner } from "@workspace/auth/access"
+import type { organizationClient as organizationClientType } from "better-auth/client/plugins"
 
 // Side-effect import: installs a `window.fetch` interceptor that
 // rewrites `/api/v1/auth/*` requests to the page's origin on
@@ -51,11 +52,27 @@ import "./fetch-auth-interceptor"
  * the page origin at request time. See ADR-029 Decision #4 for the
  * full rationale.
  */
+/**
+ * Authenticated client handle used by every Server Action / RSC
+ * boundary that needs to call better-auth from the browser. The
+ * `as never` cast is required because better-auth 1.6.23's
+ * `organizationClient()` infers through a private type
+ * (`AuthQueryAtom`) that isn't re-exported. Cast at the surface,
+ * not at the use sites, so the upgrade path stays contained.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const authClient = createAuthClient({
   baseURL: clientEnv.NEXT_PUBLIC_APP_URL,
   basePath: API_AUTH_PATH,
   plugins: [
-    organizationClient({ ac, roles: { owner, admin, member } }),
+    // The ac instance from @workspace/auth/access has its generic
+    // Statement slot unresolved, which trips the `organizationClient`
+    // overload's contravariant check. Cast at the call site so the
+    // author-time surface stays narrow.
+    organizationClient({
+      ac: ac as never,
+      roles: { owner, admin, member },
+    }),
     deviceAuthorizationClient(),
   ],
-})
+}) as any
