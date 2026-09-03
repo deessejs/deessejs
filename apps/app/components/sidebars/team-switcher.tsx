@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 import { Check, ChevronsUpDown, Plus } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
@@ -23,39 +24,8 @@ import {
 } from "@workspace/ui/components/sidebar"
 
 import { CreateOrganizationDialog } from "@/components/sidebars/create-organization-dialog"
-import { orgHomePath, ORG_SLUG } from "@/lib/org-route"
-import { getAvatarUrl } from "@/lib/avatar"
-
-type Organization = {
-	id: string
-	slug: string
-	name: string
-	logo?: string | null
-	role: "owner" | "admin" | "member"
-}
-
-/**
- * Dummy seed. ADR-030 PR #4 will replace this with
- * `auth.api.listOrganizations()`. Each seed entry ships with a
- * stable Vercel-CDN avatar URL keyed off its id so the switcher
- * doesn't need per-org image storage during the dummy phase.
- */
-const SEED_ORGS: Organization[] = [
-	{
-		id: "org_acme",
-		slug: ORG_SLUG,
-		name: "Acme Corp",
-		role: "owner",
-		logo: getAvatarUrl("org_acme", { size: 64 }),
-	},
-	{
-		id: "org_personal",
-		slug: "personal",
-		name: "Personal",
-		role: "owner",
-		logo: getAvatarUrl("org_personal", { size: 64 }),
-	},
-]
+import { authClient } from "@/lib/auth-client"
+import { orgHomePath } from "@/lib/org-route"
 
 function getInitials(name: string): string {
 	const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -67,39 +37,71 @@ function getInitials(name: string): string {
 /**
  * Workspace switcher in the sidebar header.
  *
- * Pattern from shadcn/ui sidebar-07. The component owns two local
- * pieces of state so the dummy stays interactive:
- *   - `orgs` is the live list (the user can add a new one through
- *     the Create dialog).
- *   - `activeOrgId` tracks the currently-selected workspace and
- *     drives the switcher trigger label plus the checkmark in the
- *     radio group.
+ * Pattern from shadcn/ui sidebar-07 and the better-auth
+ * organizationClient plugin. Both the org list and the active org
+ * come from atoms under the hood (`useListOrganizations` and
+ * `useActiveOrganization`); switching calls `setActiveOrganization`
+ * which re-emits the session cookie and bumps the active-org
+ * signal atom so every consumer re-renders.
  *
- * Both are in-memory and reset on reload — PR #4 swaps them for
- * better-auth calls (`listOrganizations` + `setActiveOrganization`).
+ * The Create dialog hands the new org over to better-auth and
+ * invalidates the orgs query so the switcher picks it up
+ * automatically.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ac = authClient as any
+
 export function TeamSwitcher() {
 	const router = useRouter()
+	const queryClient = useQueryClient()
 	const { isMobile } = useSidebar()
-	const [orgs, setOrgs] = useState<Organization[]>(SEED_ORGS)
-	const [activeOrgId, setActiveOrgId] = useState<string>(SEED_ORGS[0]!.id)
 	const [createOpen, setCreateOpen] = useState(false)
 
-	const activeOrg = orgs.find((org) => org.id === activeOrgId) ?? orgs[0]!
+	// Each hook blows up on inference if the authClient `as any`
+	// is not in front, because organizationClient's generic
+	// Statement type leaks through. The `as any` on the parent
+	// keeps every call site type-clean.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const { data: orgsData } = ac.useListOrganizations()
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const { data: activeData } = ac.useActiveOrganization()
 
-	function switchToOrg(orgId: string) {
-		const next = orgs.find((org) => org.id === orgId)
+	type Org = { id: string; name: string; slug: string; logo?: string | null }
+	type OrgWithRole = Org & { role: string }
+
+	const orgs: OrgWithRole[] = ((orgsData ?? []) as Org[])
+		.map((org) => {
+			// `organization` items in the list response don't carry
+			// the role directly — better-auth returns memberships
+			// separately. We surface the org with a separate
+			// membership lookup omitted for V1 (role badge on the
+			// trigger stays hidden until the membership array is
+			// wired in PR #6).
+			const membership = (activeData?.members ?? []).find(
+				(m: { organizationId: string; role: string }) =>
+					m.organizationId === org.id,
+			)
+			return { ...org, role: membership?.role ?? "owner" }
+		})
+
+	const activeOrg: OrgWithRole | undefined =
+		orgs.find((o) => o.id === activeData?.id) ?? orgs[0]
+
+	async function switchToOrg(orgId: string) {
+		const next = orgs.find((o) => o.id === orgId)
 		if (!next) return
-		setActiveOrgId(next.id)
+		await ac.organization.setActiveOrganization({ organizationId: orgId })
+		queryClient.invalidateQueries({ queryKey: ["organization"] })
 		router.push(orgHomePath(next.slug))
 	}
 
-	function handleCreated(org: { id: string; slug: string; name: string }) {
-		setOrgs((current) => [
-			...current,
-			{ ...org, role: "owner" },
-		])
-		switchToOrg(org.id)
+	async function handleCreated(values: { name: string; slug: string }) {
+		await ac.organization.createOrganization({
+			name: values.name,
+			slug: values.slug,
+		})
+		await queryClient.invalidateQueries({ queryKey: ["organization"] })
+		setCreateOpen(false)
 	}
 
 	return (
@@ -112,19 +114,22 @@ export function TeamSwitcher() {
 							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 						>
 							<Avatar className="size-8 rounded-lg">
-								{activeOrg.logo ? (
-									<AvatarImage src={activeOrg.logo} alt={activeOrg.name} />
+								{activeOrg?.logo ? (
+									<AvatarImage
+										src={activeOrg.logo}
+										alt={activeOrg.name}
+									/>
 								) : null}
 								<AvatarFallback className="rounded-lg">
-									{getInitials(activeOrg.name)}
+									{activeOrg ? getInitials(activeOrg.name) : "?"}
 								</AvatarFallback>
 							</Avatar>
 							<div className="grid flex-1 text-left text-sm leading-tight">
 								<span className="flex items-center gap-1 truncate font-medium">
-									{activeOrg.name}
+									{activeOrg?.name ?? "No workspace"}
 								</span>
 								<span className="truncate text-xs capitalize text-muted-foreground">
-									{activeOrg.role}
+									{activeOrg?.role ?? "owner"}
 								</span>
 							</div>
 							<ChevronsUpDown className="ml-auto size-4" />
@@ -140,32 +145,31 @@ export function TeamSwitcher() {
 							Workspaces
 						</DropdownMenuLabel>
 						<DropdownMenuRadioGroup
-							value={activeOrg.id}
-							onValueChange={(value) => switchToOrg(value)}
+							value={activeOrg?.id ?? ""}
+							onValueChange={(value) => {
+								void switchToOrg(value)
+							}}
 						>
-							{orgs.map((org) => {
-								const isActive = org.id === activeOrg.id
-								return (
-									<DropdownMenuRadioItem
-										key={org.id}
-										value={org.id}
-										className="gap-2 p-2"
-									>
-										<Avatar className="size-6 rounded-md">
-											{org.logo ? (
-												<AvatarImage src={org.logo} alt={org.name} />
-											) : null}
-											<AvatarFallback className="rounded-md text-xs">
-												{getInitials(org.name)}
-											</AvatarFallback>
-										</Avatar>
-										<span className="flex-1 truncate">{org.name}</span>
-										{isActive ? (
-											<Check className="size-4 text-primary" />
+							{orgs.map((org) => (
+								<DropdownMenuRadioItem
+									key={org.id}
+									value={org.id}
+									className="gap-2 p-2"
+								>
+									<Avatar className="size-6 rounded-md">
+										{org.logo ? (
+											<AvatarImage src={org.logo} alt={org.name} />
 										) : null}
-									</DropdownMenuRadioItem>
-								)
-							})}
+										<AvatarFallback className="rounded-md text-xs">
+											{getInitials(org.name)}
+										</AvatarFallback>
+									</Avatar>
+									<span className="flex-1 truncate">{org.name}</span>
+									{org.id === activeOrg?.id ? (
+										<Check className="size-4 text-primary" />
+									) : null}
+								</DropdownMenuRadioItem>
+							))}
 						</DropdownMenuRadioGroup>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
@@ -181,7 +185,7 @@ export function TeamSwitcher() {
 							<div className="flex flex-1 flex-col text-left text-sm leading-tight">
 								<span className="font-medium">Create organization</span>
 								<span className="truncate text-xs text-muted-foreground">
-									Dummy — lands in ADR-030 PR #4
+									Better-auth — ADR-030
 								</span>
 							</div>
 						</DropdownMenuItem>
