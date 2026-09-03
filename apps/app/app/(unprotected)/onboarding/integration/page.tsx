@@ -94,6 +94,13 @@ export default async function OnboardingIntegrationPage() {
 					>
 						Continue
 					</Link>
+					{/*
+					  Noop placeholder so future wiring of the real continue
+					  logic (PR #4) has a stable anchor; comment-only delta
+					  also gives Vercel a reason to re-deploy after the
+					  rate-limit window.
+					*/}
+					<span className="hidden" aria-hidden />
 				</div>
 			</AuthContainer.Root>
 		</OnboardingShell>
