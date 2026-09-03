@@ -34,8 +34,6 @@ export function OnboardingShell({
 	backHref,
 	children,
 }: OnboardingShellProps) {
-	const currentIndex = STEPS.findIndex((step) => step.id === currentStep)
-
 	return (
 		<div className="flex flex-1 items-center justify-center px-4 py-12">
 			<div className="w-full max-w-lg">

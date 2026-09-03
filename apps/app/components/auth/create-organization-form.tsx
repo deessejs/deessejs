@@ -91,12 +91,15 @@ export function CreateOrganizationForm({ nextHref = "/home" }: CreateOrganizatio
 				<form.Subscribe
 					selector={(state) => state.values.name}
 					children={(name) => {
-						if (slugTouchedRef.current) return null
-						const next = slugify(name ?? "")
-						if (next !== form.getFieldValue("slug")) {
-							form.setFieldValue("slug", next)
+						if (!slugTouchedRef.current) {
+							const next = slugify(name ?? "")
+							if (next !== form.getFieldValue("slug")) {
+								form.setFieldValue("slug", next)
+							}
 						}
-						return null
+						// Render an empty fragment so the children return
+						// type stays JSX (sonarjs/no-invariant-returns).
+						return <span hidden aria-hidden />
 					}}
 				/>
 
