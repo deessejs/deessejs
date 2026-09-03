@@ -24,6 +24,7 @@ import {
 
 import { CreateOrganizationDialog } from "@/components/sidebars/create-organization-dialog"
 import { orgHomePath, ORG_SLUG } from "@/lib/org-route"
+import { getAvatarUrl } from "@/lib/avatar"
 
 type Organization = {
 	id: string
@@ -35,11 +36,25 @@ type Organization = {
 
 /**
  * Dummy seed. ADR-030 PR #4 will replace this with
- * `auth.api.listOrganizations()`.
+ * `auth.api.listOrganizations()`. Each seed entry ships with a
+ * stable Vercel-CDN avatar URL keyed off its id so the switcher
+ * doesn't need per-org image storage during the dummy phase.
  */
 const SEED_ORGS: Organization[] = [
-	{ id: "org_acme", slug: ORG_SLUG, name: "Acme Corp", role: "owner" },
-	{ id: "org_personal", slug: "personal", name: "Personal", role: "owner" },
+	{
+		id: "org_acme",
+		slug: ORG_SLUG,
+		name: "Acme Corp",
+		role: "owner",
+		logo: getAvatarUrl("org_acme", { size: 64 }),
+	},
+	{
+		id: "org_personal",
+		slug: "personal",
+		name: "Personal",
+		role: "owner",
+		logo: getAvatarUrl("org_personal", { size: 64 }),
+	},
 ]
 
 function getInitials(name: string): string {
