@@ -4,6 +4,9 @@ import { redirect } from "next/navigation"
 import { auth } from "@workspace/auth"
 import { AuthContainer } from "@/components/auth"
 import { CreateOrganizationForm } from "@/components/auth/create-organization-form"
+import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
+
+import { getOnboardingState } from "@/lib/onboarding"
 
 export default async function OnboardingOrganizationPage() {
 	// Server-side session gate (ADR-030 §"Decision #9", pattern from
@@ -15,19 +18,39 @@ export default async function OnboardingOrganizationPage() {
 		redirect("/login")
 	}
 
+	const state = await getOnboardingState()
+	if (!state) redirect("/login")
+
+	// Forward-gate: integration must be done before the user can land
+	// on the organization step. If they got here directly, push them
+	// to the current step.
+	if (state.step !== "organization") {
+		redirect(`/onboarding/${state.step}`)
+	}
+
+	const completedSteps: Array<"integration" | "organization" | "complete"> = []
+	if (state.hasGithub) completedSteps.push("integration")
+
 	return (
-		<div className="flex flex-1 items-center justify-center px-4 py-12">
-			<div className="w-full max-w-lg">
-				<AuthContainer.Root>
-					<AuthContainer.Header
-					 title="Create your organization"
-					 description="Workspaces group your projects, members, and settings. You can create more or accept invitations later."
-				 />
-					<AuthContainer.Content>
-						<CreateOrganizationForm />
-					</AuthContainer.Content>
-				</AuthContainer.Root>
-			</div>
-		</div>
+		<OnboardingShell
+			currentStep="organization"
+			completedSteps={completedSteps}
+			backHref="/onboarding/integration"
+		>
+			<AuthContainer.Root>
+				<AuthContainer.Header
+					title="Create your organization"
+					description="Workspaces group your projects, members, and settings. You can create more or accept invitations later."
+				/>
+				<AuthContainer.Content>
+					{/*
+					  Dummy form. PR #4 swaps the onSubmit to call
+					  `authClient.organization.createOrganization(...)`
+					  and route to /onboarding/complete (instead of /home).
+					*/}
+					<CreateOrganizationForm nextHref="/onboarding/complete" />
+				</AuthContainer.Content>
+			</AuthContainer.Root>
+		</OnboardingShell>
 	)
 }

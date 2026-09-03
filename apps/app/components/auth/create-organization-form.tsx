@@ -10,7 +10,12 @@ import { onboardingSchema, slugify } from "@/components/auth/schemas"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 
-export function CreateOrganizationForm() {
+type CreateOrganizationFormProps = {
+	/** Path to navigate to after a successful submit. Defaults to /home. */
+	nextHref?: string
+}
+
+export function CreateOrganizationForm({ nextHref = "/home" }: CreateOrganizationFormProps) {
 	const router = useRouter()
 	// Tracks whether the user has manually focused/edited the slug
 	// field. While false, slug is derived from the name field via
@@ -30,7 +35,7 @@ export function CreateOrganizationForm() {
 		onSubmit: async () => {
 			// Dummy: no backend. ADR-030 PR #4 will wire
 			// `authClient.organization.createOrganization(...)` here.
-			router.push("/home")
+			router.push(nextHref)
 		},
 	})
 
