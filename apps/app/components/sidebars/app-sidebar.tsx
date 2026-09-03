@@ -17,10 +17,10 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@workspace/ui/components/sidebar"
-import { APP_NAME } from "@/lib/app-config"
 import { orgHomePath } from "@/lib/org-route"
 
 import { Home, Settings } from "lucide-react"
+import { TeamSwitcher } from "@/components/sidebars/team-switcher"
 
 /**
  * Pinned "Home" entry rendered below the brand header. Always visible —
@@ -88,23 +88,12 @@ export function AppSidebar({
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="h-14 border-b bg-background">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              size="lg"
-              className="h-14 font-semibold"
-              tooltip={APP_NAME}
-            >
-              <Link href={orgHomePath()}>
-                <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm">
-                  {APP_NAME.charAt(0)}
-                </span>
-                <span>{APP_NAME}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        {/*
+          Brand header replaced by the workspace switcher (ADR-030
+          §"Decision #5"). The TeamSwitcher carries the active org
+          name + role and lets users hop between workspaces.
+        */}
+        <TeamSwitcher />
       </SidebarHeader>
       <SidebarContent className="bg-background">
         <SidebarGroup>
