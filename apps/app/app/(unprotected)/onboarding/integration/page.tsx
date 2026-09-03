@@ -6,7 +6,6 @@ import { auth } from "@workspace/auth"
 import { AuthContainer } from "@/components/auth"
 import { GitHubIcon } from "@/components/auth/icons/github-icon"
 import { VercelIcon } from "@/components/auth/icons/vercel-icon"
-import { Button } from "@workspace/ui/components/button"
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
 
 import { getOnboardingState } from "@/lib/onboarding"
@@ -117,9 +116,18 @@ export default async function OnboardingIntegrationPage({
 				</ul>
 
 				<div className="mt-6">
-					<Button type="button" className="w-full" asChild>
-						<Link href="/onboarding/organization">Continue</Link>
-					</Button>
+					{/*
+					  Plain styled Link instead of <Button asChild><Link/></Button>.
+					  The asChild pattern in shadcn + Next 16 Turbopack was rendering
+					  the button without the underlying <a>, leaving clicks inert.
+					  The classes mirror @workspace/ui/components/button default.
+					*/}
+					<Link
+						href="/onboarding/organization"
+						className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-9 w-full items-center justify-center rounded-md text-sm font-medium transition-colors"
+					>
+						Continue
+					</Link>
 				</div>
 			</AuthContainer.Root>
 		</OnboardingShell>
