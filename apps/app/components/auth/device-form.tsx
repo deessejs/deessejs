@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { toast } from "sonner"
 import { useDeviceClaim } from "@/hooks/use-device-flow"
+import { orgHomePath } from "@/lib/org-route"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 import { ShieldCheckIcon, ShieldXIcon } from "lucide-react"
@@ -112,7 +113,7 @@ function ExpiredPanel({ reason }: { reason?: string } = {}) {
 			<Separator />
 			<p className="text-center text-sm text-muted-foreground">
 				<Link
-					href="/home"
+					href={orgHomePath()}
 					className="text-primary underline-offset-4 hover:underline"
 				>
 					Back to home
@@ -135,7 +136,7 @@ function ApprovedPanel() {
 			</div>
 			<p className="text-center text-sm text-muted-foreground">
 				<Link
-					href="/home"
+					href={orgHomePath()}
 					className="text-primary underline-offset-4 hover:underline"
 				>
 					Back to home

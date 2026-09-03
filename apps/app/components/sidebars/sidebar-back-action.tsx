@@ -9,6 +9,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@workspace/ui/components/sidebar"
+import { orgHomePath } from "@/lib/org-route"
 
 function isSettingsPath(pathname: string): boolean {
   return pathname === "/settings" || pathname.startsWith("/settings/")
@@ -40,7 +41,7 @@ export function SidebarBackAction() {
     <SidebarMenu>
       <SidebarMenuItem>
         <SidebarMenuButton asChild tooltip="Back to home">
-          <Link href="/home">
+          <Link href={orgHomePath()}>
             <ArrowLeftIcon className="size-4" />
             <span>Back to home</span>
           </Link>

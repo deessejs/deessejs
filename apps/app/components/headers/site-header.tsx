@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import { authClient } from "@/lib/auth-client"
+import { orgHomePath } from "@/lib/org-route"
 import { Button } from "@workspace/ui/components/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
 import {
@@ -91,7 +92,7 @@ export function SiteHeader() {
 								</div>
 								<DropdownMenuSeparator />
 								<DropdownMenuItem asChild>
-									<Link href="/home">Dashboard</Link>
+									<Link href={orgHomePath()}>Dashboard</Link>
 								</DropdownMenuItem>
 								<DropdownMenuItem asChild>
 									<Link href="/settings/profile">Settings</Link>

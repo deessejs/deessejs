@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
+import { orgHomePath } from "@/lib/org-route"
 import { Button } from "@workspace/ui/components/button"
 import { safeRedirect } from "@workspace/utils/safe-redirect"
 import { GoogleIcon } from "./icons/google-icon"
@@ -12,7 +13,7 @@ interface OAuthButtonsProps {
 	callbackURL?: string
 }
 
-export function OAuthButtons({ callbackURL = "/home" }: OAuthButtonsProps) {
+export function OAuthButtons({ callbackURL = orgHomePath() }: OAuthButtonsProps) {
 	const [loading, setLoading] = useState<string | null>(null)
 
 	async function handleOAuth(provider: "google" | "github") {

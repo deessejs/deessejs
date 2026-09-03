@@ -18,24 +18,26 @@ import {
   SidebarRail,
 } from "@workspace/ui/components/sidebar"
 import { APP_NAME } from "@/lib/app-config"
+import { orgHomePath } from "@/lib/org-route"
 
 import { Home, Settings } from "lucide-react"
 
 /**
  * Pinned "Home" entry rendered below the brand header. Always visible —
- * the user needs an exit ramp from any nested route. `isActive` provides
- * the sidebar's active styling when on /home.
+ * the user needs an exit ramp from any nested route. `isActive` matches
+ * the per-org home at `/{ORG_SLUG}/home` (ADR-030 §"Decision #5").
  */
 function HomeShortcut() {
   const pathname = usePathname()
+  const homePath = orgHomePath()
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         asChild
         tooltip="Home"
-        isActive={pathname === "/home"}
+        isActive={pathname === homePath || pathname === "/home"}
       >
-        <Link href="/home">
+        <Link href={homePath}>
           <Home />
           <span>Home</span>
         </Link>
@@ -94,7 +96,7 @@ export function AppSidebar({
               className="h-14 font-semibold"
               tooltip={APP_NAME}
             >
-              <Link href="/home">
+              <Link href={orgHomePath()}>
                 <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm">
                   {APP_NAME.charAt(0)}
                 </span>

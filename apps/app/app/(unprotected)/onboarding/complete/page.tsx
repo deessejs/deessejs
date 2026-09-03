@@ -8,6 +8,7 @@ import { auth } from "@workspace/auth"
 import { Separator } from "@workspace/ui/components/separator"
 import { AuthContainer } from "@/components/auth"
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
+import { orgHomePath } from "@/lib/org-route"
 
 export default async function OnboardingCompletePage() {
 	// Anonymous-only gate. Forward-gate is disabled until ADR-030 PR #4.
@@ -59,7 +60,7 @@ export default async function OnboardingCompletePage() {
 
 				<div className="mt-6">
 					<Link
-						href="/home"
+						href={orgHomePath()}
 						className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-9 w-full items-center justify-center rounded-md text-sm font-medium transition-colors"
 					>
 						Go to dashboard
