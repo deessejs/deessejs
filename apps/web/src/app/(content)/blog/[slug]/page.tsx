@@ -18,6 +18,7 @@ import {
 } from "@/lib/blog/posts"
 import { allPosts } from "content-collections"
 import type { Post } from "@/lib/blog/types"
+import { ORG_ID } from "@/lib/seo/organization"
 
 type Params = { slug: string }
 
@@ -38,6 +39,8 @@ export async function generateMetadata(
     alternates: { canonical: post.url },
     openGraph: {
       type: "article",
+      siteName: "DeesseJS",
+      locale: "en_US",
       title: post.title,
       description: post.description,
       publishedTime: post.date,
@@ -45,6 +48,11 @@ export async function generateMetadata(
       authors: post.author ? [post.author.name] : [],
       tags: post.tags,
       url: post.url,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.description,
     },
   }
 }
@@ -69,14 +77,38 @@ export default async function PostPage(
             "@type": "Article",
             headline: post.title,
             description: post.description,
-            datePublished: post.date,
-            dateModified: post.updated ?? post.date,
-            author: {
-              "@type": "Person",
-              name: post.author?.name,
+            // schema.org expects ISO 8601 timestamps. Our frontmatter
+            // stores `date` as `YYYY-MM-DD`, so anchor it at start of
+            // day UTC. `updated` falls back to `datePublished` only
+            // when the editorial record has no `updated` field; never
+            // pretend an article was modified when it was not.
+            datePublished: `${post.date}T00:00:00.000Z`,
+            dateModified: post.updated
+              ? `${post.updated}T00:00:00.000Z`
+              : `${post.date}T00:00:00.000Z`,
+            inLanguage: "en",
+            keywords: post.tags,
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": `${WEB_URL}${post.url}`,
             },
             url: `${WEB_URL}${post.url}`,
-            ...(post.cover ? { image: post.cover } : {}),
+            ...(post.cover
+              ? {
+                  image: {
+                    "@type": "ImageObject",
+                    url: post.cover,
+                  },
+                }
+              : {}),
+            author: post.author
+              ? {
+                  "@type": "Person",
+                  name: post.author.name,
+                  worksFor: { "@id": ORG_ID },
+                }
+              : undefined,
+            publisher: { "@id": ORG_ID },
           }),
         }}
       />
