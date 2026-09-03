@@ -7,10 +7,6 @@ description: 'Build outside Vercel, deploy the artifact to Vercel. The official 
 
 A study of the `vercel build` + `vercel deploy --prebuilt` workflow, the officially supported path for moving the build step out of Vercel's infrastructure while keeping every runtime feature (CDN, Edge Functions, ISR, Preview Deployments, Skew Protection) intact. The motivation is build-minute cost: at high deployment frequency, Vercel Pro's included minutes are consumed by minutes of wall-clock build, not by minutes of useful work.
 
-# Vercel prebuilt deploy
-
-A study of the `vercel build` + `vercel deploy --prebuilt` workflow, the officially supported path for moving the build step out of Vercel's infrastructure while keeping every runtime feature (CDN, Edge Functions, ISR, Preview Deployments, Skew Protection) intact. The motivation is build-minute cost: at high deployment frequency, Vercel Pro's included minutes are consumed by minutes of wall-clock build, not by minutes of useful work.
-
 ## What Vercel offers by default
 
 Vercel's Git integration couples three steps into a single unit per push:
@@ -460,6 +456,14 @@ steps:
 
   - name: Pull Vercel Environment
     run: vercel pull --yes --environment=preview --token=${{ steps.vercel-token.outputs.VERCEL_OIDC_TOKEN }}
+    env:
+      # OIDC handles authentication; project identity still requires the
+      # static VERCEL_ORG_ID / VERCEL_PROJECT_ID pair. These are not
+      # secrets — they are public identifiers visible on every Vercel
+      # deployment URL — so the exposure surface is the same as the
+      # long-lived-token workflow.
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 ```
 
 The trust configuration on the Vercel side restricts which repos and refs can exchange tokens:
