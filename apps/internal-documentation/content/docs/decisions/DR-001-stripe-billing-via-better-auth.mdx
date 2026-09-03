@@ -1480,6 +1480,253 @@ webhook event) is a Stripe-side action, not a
 user authenticates the 3DS challenge; the codebase does not
 attempt to render 3DS itself.
 
+## Implementation order
+
+The follow-up work splits into three PRs. Each PR is
+self-contained: it merges on its own, it has its own
+changeset entry, and it does not block the others. The order
+below is the order the PRs should land on `staging`. The DR
+does not negotiate that order; the team can interleave the
+PRs in practice as long as the dependency constraints hold.
+
+### Dependency map
+
+```
+PR-1 (server runtime)
+   │
+   ├─▶ PR-2 (Hono marketing endpoint + apps/app UI)
+   │      │
+   │      └─▶ PR-3 (apps/web marketing CTA)
+   │
+   └─▶ PR-3 directly (the /pricing data-only edit does not
+          require PR-2; it requires the Hono endpoint
+          shipped in PR-2)
+```
+
+A reader that wants the surface collapsed to a single PR
+should read PR-1 + PR-3 as one runtime PR and PR-2 as the UI
+PR; the work does not get smaller, only the merge cadence
+does. The DR's three-PR shape exists so the highest-risk
+change (the better-auth 1.6 to 1.7 catalog bump in PR-1) can
+land in isolation, be reverted without touching UI code, and
+be validated against a known-good baseline.
+
+### PR-1: server runtime
+
+The implementation PR that closes this DR's *Decision*
+section. Scope, in the order the implementer should write
+it:
+
+1. **Catalog bump.** `pnpm-workspace.yaml` adds
+   `stripe@^18` and `@better-auth/stripe@^1.7.2` to the
+   `catalog:` block. The existing `better-auth@^1.6.x` and
+   `@better-auth/core@^1.6.x` entries bump to `^1.7.x`.
+   `pnpm install` is run locally; the lockfile is
+   regenerated.
+2. **Env contract.** `packages/env/src/schema.ts` adds the
+   four optional `STRIPE_*` server fields. `packages/env/src/server.ts`
+   exposes them in the `materialised` block. `.env.example`
+   at the repo root documents the four keys with the
+   Dashboard click-paths.
+3. **Schema generation.** `pnpm --filter @workspace/auth auth:generate`
+   regenerates `packages/database/src/schema/auth.ts` to
+   include `user.stripeCustomerId` and the `subscription`
+   table with the additive `referenceId` index (per the
+   *Database schema* section above). The implementer
+   reviews the diff for accidental schema damage.
+4. **Migration.** `pnpm --filter @workspace/database db:generate --name stripe_subscription`
+   emits a new SQL file under `packages/database/drizzle/`.
+   The implementer reviews the SQL (zero-downtime expected:
+   nullable column add, new table create).
+5. **`packages/auth/src/auth.ts`.** Add the `stripe({...})`
+   plugin entry before `nextCookies()`. Use the
+   `sk_test_placeholder` fallback in the Stripe SDK
+   constructor (per the *Server config* section). Add the
+   `getCustomerCreateParams` and `onEvent` callbacks.
+6. **`packages/auth/src/plans.ts`.** New file with the
+   `BILLING_PLANS` const array (per the *Plans source of
+   truth* section in *UI follow-up scope*). Re-export
+   through the existing barrel.
+7. **Auth client factories.** `apps/app/lib/auth-client.ts`,
+   `apps/web/src/lib/auth-client.ts`, and
+   `apps/cli/src/lib/auth/store/better-auth-client.ts` add
+   `stripeClient({ subscription: true })` to their `plugins`
+   array.
+8. **Proxy allowlist.** `apps/app/proxy.ts` adds
+   `/api/v1/auth/stripe/webhook` to the path allowlist
+   (per the *Webhook mount* section). Note: the matcher
+   already excludes `/api/*` paths, so the allowlist entry
+   is a documentation marker, not a runtime gate. The
+   implementer adds a comment that explains the omission is
+   intentional.
+9. **Guides.** `docs/guides/better-auth/setup.md` and
+   `docs/guides/better-auth/pitfalls.md` get the new
+   sections described in the *Configuration summary*
+   section.
+10. **Changeset.** A new file under `.changeset/` documents
+    the `packages/auth` bump (private workspace, still
+    versioned per ADR-012), the `packages/database` schema
+    add, and the `packages/ui` no-op (no UI primitive added
+    in this PR).
+
+PR-1 has no UI surface. The implementer validates the
+plugin wiring with the manual smoke documented in the
+*Verification after merge* section (the twelve steps
+covering the four-env-unset boot, the smoke through the
+Hono catch-all, the test-mode checkout, and the webhook
+receipt).
+
+PR-1 is the highest-risk PR. The catalog bump from 1.6 to
+1.7 may surface breaking changes in the `deviceAuthorization`,
+`bearer`, and `nextCookies` plugins (the three plugins
+pinned in `packages/auth/src/auth.ts:81-89`). The
+implementer reads the better-auth 1.7 changelog before
+opening the PR and audits the three plugins' public surface
+for any signature change. The audit is a half-day of work
+and is the gate to opening the PR.
+
+### PR-2: Hono marketing endpoint + apps/app UI
+
+The follow-up PR that closes both the *UI follow-up scope*
+and the *Marketing pricing follow-up scope* sections, in a
+single PR. Scope, in the order the implementer should
+write it:
+
+1. **Hono marketing handler.** New file
+   `packages/api/src/http/routes/checkout.ts` (a thin
+   Hono sub-app). Exports a `POST /auth/checkout/marketing`
+   route that takes `{ plan }` from the body, calls
+   `stripe.checkout.sessions.create({ mode: "subscription",
+   customer_email, line_items: [priceItem], success_url,
+   cancel_url, metadata: { source: "marketing-pricing",
+   plan } })` with the server-side Stripe SDK instance
+   imported from `@workspace/auth/stripe-client` (a new
+   subpath export the implementer adds in PR-1, or a
+   direct re-export of the `stripeClient` constant from
+   `packages/auth/src/auth.ts`). The handler does not
+   require a session; the Stripe customer is created
+   implicitly on Checkout completion. The handler is
+   mounted in `mountHttp` per the existing ADR-011
+   pattern.
+2. **`(marketing-onboarding)` route group.** New file
+   `apps/app/app/(marketing-onboarding)/checkout-success/page.tsx`
+   with the Server Component described in the
+   *Marketing pricing follow-up scope* section. The page
+   reads `searchParams.session_id`, calls
+   `auth.api.getSession({ headers: await headers() })`,
+   and either redirects to `/settings/billing` (if a
+   session exists) or to `/signup?email=...&plan=pro`
+   (if anonymous).
+3. **`databaseHooks`.** `packages/auth/src/auth.ts`
+   gains a `databaseHooks.user.create.before` block (the
+   `emailVerification.autoVerify` gate that matches
+   `request.url.endsWith("/stripe/webhook")`) and a
+   `databaseHooks.user.create.after` block (the
+   fire-and-forget back-fill of `subscription.referenceId`
+   from the Stripe customer email). Both blocks use the
+   `void ... .then(...)` pattern from
+   `docs/guides/better-auth/hooks.md` §"User.create.after,
+   async Side Effects".
+4. **`apps/app/app/(protected)/settings/billing/page.tsx`.**
+   New Server Component, default export. Wraps three
+   `SettingsCard` slots per the *UI follow-up scope*
+   *Route* section.
+5. **`apps/app/components/settings/billing/`** directory.
+   The six new files described in the *UI follow-up
+   scope* *Components* section:
+   `billing-current-plan.tsx`,
+   `billing-payment-method.tsx`,
+   `billing-invoices.tsx`,
+   `billing-plan-picker-dialog.tsx`,
+   `billing-cancel-dialog.tsx`,
+   and the `index.ts` barrel. All six are Client
+   Components using `useState` and `authClient.subscription.*`
+   directly. shadcn imports only.
+6. **`apps/app/hooks/use-billing.ts`.** New hook mirroring
+   `use-device-flow.ts`. Exports `useBilling`,
+   `useUpgradeSubscription`, `useCancelSubscription`.
+7. **Sidebar and hub wiring.** Update
+   `apps/app/components/sidebars/settings-nav.tsx`,
+   `apps/app/components/sidebars/nav-user.tsx` (wire the
+   `Billing` `DropdownMenuItem` via `asChild` + `<Link>`;
+   remove the redundant `Upgrade to Pro` item), and
+   `apps/app/app/(protected)/settings/page.tsx` (add
+   the Billing entry to the `SECTIONS` array).
+8. **Re-export.** Add a line to
+   `apps/app/components/settings/index.ts` that re-exports
+   the new `billing` barrel.
+9. **Changeset.** A new file under `.changeset/`
+   documents the `apps/app` UI surface add (the `Billing`
+   nav entry, the `/settings/billing` route, the
+   `use-billing` hook), the `apps/app` marketing route
+   add (the `(marketing-onboarding)` route group), and
+   the `packages/api` Hono handler add. The
+   `packages/auth` bump already shipped in PR-1; the
+   implementer does not re-bump.
+
+PR-2 is the largest PR by file count. It mixes two scopes
+(Hono marketing + apps/app UI) to keep the wiring atomic:
+the picker dialog in `apps/app` and the marketing handler
+in `packages/api` are tested together in the verification
+steps below. Splitting them into two PRs would require a
+throwaway "wiring" PR that lands between them; the
+two-scope shape is the smaller of the two evils.
+
+PR-2's verification follows both the *Verification for the
+UI follow-up PR* and the *Verification for the marketing
+follow-up PR* sections above, in that order. The
+verification ends with the full anonymous flow: visit
+`/pricing` as an anonymous user, click "Buy Pro", complete
+Stripe Checkout with the test card `4242 4242 4242 4242`,
+land on `/checkout-success`, submit the signup form, land
+on `/home`, and see the Pro plan on `/settings/billing`.
+
+### PR-3: apps/web marketing CTA
+
+The smallest PR. The DR-001 locks only the data-only edit
+to `apps/web/src/lib/pricing.ts`; the page itself does
+not change. Scope:
+
+1. **`apps/web/src/lib/pricing.ts`.** Change the Pro
+   `PricingLayer.cta` shape from the `mailto:` value to
+   `{ label: "Buy Pro", href: "/api/v1/auth/checkout/marketing?plan=pro", external: true }`.
+2. **Smoke test.** The implementer verifies the click
+   end-to-end with `stripe listen --forward-to
+   localhost:3001/api/v1/auth/stripe/webhook` and the
+   Stripe test card. The full anonymous flow lands on
+   `/home` and on `/settings/billing` with the Pro plan.
+3. **Changeset.** A new file under `.changeset/`
+   documents the `apps/web` pricing data change.
+
+PR-3 depends on PR-2's Hono handler. It does not depend
+on PR-2's UI work (the `/settings/billing` page is the
+landing target, not a prerequisite). PR-3 is the only PR
+that can land before PR-2 is merged, in theory; the
+implementer keeps it sequenced after PR-2 for review
+clarity.
+
+### What this section forbids
+
+- Merging PR-2 before PR-1. PR-2's Hono handler calls the
+  Stripe SDK directly; the SDK is wired in PR-1. The
+  handler fails to import if PR-1 has not landed.
+- Merging PR-3 before PR-2. PR-3's CTA points at the
+  Hono handler from PR-2; the CTA leads to a 404 if
+  PR-2 has not landed.
+- Skipping the PR-1 catalog bump audit (the
+  "half-day of work" gate in PR-1 step 10). The audit
+  catches breaking changes in the three pinned plugins
+  before the PR is opened.
+- Using `useRouter()` for the external Stripe redirect in
+  `billing-plan-picker-dialog.tsx`. The redirect is
+  `window.location.href = data.url`.
+- Adding a CI smoke that requires a real Stripe key. The
+  smoke uses the `sk_test_placeholder` fallback; the
+  `auth.api.getSession` and `subscription.list` calls
+  fail at the Stripe boundary, but the test infrastructure
+  (the Next.js dev server, the Hono catch-all, the
+  better-auth handler) boots and responds.
+
 ## Related
 
 - [`docs/guides/better-auth/setup.md`](../../../../docs/guides/better-auth/setup.md).
