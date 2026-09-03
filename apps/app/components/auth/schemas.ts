@@ -36,6 +36,23 @@ export const onboardingSchema = z.object({
 	slug: z.string().min(2, "Slug must be at least 2 characters"),
 })
 
+/**
+ * Slugify a free-form organization name into a URL slug.
+ *
+ * Mirrors the better-auth `organization.slug` constraints:
+ * lowercase, kebab-case, no leading or trailing dashes. The
+ * caller can still edit the slug after auto-fill; the
+ * `<CreateOrganizationForm />` listens to `name` changes and
+ * only fills the slug when the user has not touched it.
+ */
+export const slugify = (input: string): string =>
+	input
+		.normalize("NFKD")
+		.toLowerCase()
+		.replace(/[̀-ͯ]/g, "")
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+
 export const resetPasswordSchema = z
 	.object({
 		password: z.string().min(8, "Password must be at least 8 characters"),

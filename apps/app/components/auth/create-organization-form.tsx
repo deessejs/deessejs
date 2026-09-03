@@ -1,16 +1,22 @@
 "use client"
 
+import { useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { Building2, Sparkles } from "lucide-react"
 
 import { Field } from "@/components/auth/field"
-import { onboardingSchema } from "@/components/auth/schemas"
+import { onboardingSchema, slugify } from "@/components/auth/schemas"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 
 export function CreateOrganizationForm() {
 	const router = useRouter()
+	// Tracks whether the user has manually focused/edited the slug
+	// field. While false, slug is derived from the name field via
+	// `slugify`. Once true, the auto-fill stops so we never overwrite
+	// a deliberate edit.
+	const slugTouchedRef = useRef(false)
 
 	const form = useForm({
 		defaultValues: {
@@ -51,6 +57,12 @@ export function CreateOrganizationForm() {
 					name="slug"
 					label="URL slug"
 					autoComplete="off"
+					onFocus={() => {
+						// First focus marks the slug as user-owned. From
+						// here on, name → slug auto-fill stops so we never
+						// overwrite deliberate edits.
+						slugTouchedRef.current = true
+					}}
 				/>
 
 				<div className="rounded-md border border-dashed bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
@@ -64,6 +76,24 @@ export function CreateOrganizationForm() {
 						</p>
 					</div>
 				</div>
+
+				{/*
+				  Slug auto-fill from name. Runs whenever the name field
+				  changes: while the user has not touched the slug, we
+				  mirror the slugified name. Once focused, the ref flips
+				  and we leave the slug alone.
+				*/}
+				<form.Subscribe
+					selector={(state) => state.values.name}
+					children={(name) => {
+						if (slugTouchedRef.current) return null
+						const next = slugify(name ?? "")
+						if (next !== form.getFieldValue("slug")) {
+							form.setFieldValue("slug", next)
+						}
+						return null
+					}}
+				/>
 
 				<form.Subscribe
 					selector={(state) => [state.canSubmit, state.isSubmitting] as const}
