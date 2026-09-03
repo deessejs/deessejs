@@ -793,20 +793,294 @@ in the UI follow-up PR.
     `packages/database/src/schema/auth.ts`. The UI follow-up
     does not add a column or table.
 
-### Marketing pricing CTA (separate scope)
+## Marketing pricing follow-up scope
 
-A marketing-side `/pricing` checkout button that triggers a
-Stripe Checkout for unauthenticated visitors is **not** in the
-follow-up PR. The marketing site has no `authClient` session
-for most visitors; the checkout flow has to either (a) defer
-auth to after checkout completion (Stripe Checkout collects
-the email and the implementation PR maps it to a
-`signUp.email` flow on success), or (b) require sign-in first
-(matching the existing `/login` redirect). Option (a) is the
-intended path; it requires a server-side webhook handler that
-provisions a `user` row from the Stripe customer email and
-links the subscription to the post-signup user. That handler
-is a third scope and lands in its own PR.
+The implementation PR wires the Stripe plugin server-side and
+the three client factories. The UI follow-up PR ships the
+authenticated `/settings/billing` surface. Neither ships a
+way for an **unauthenticated** marketing visitor to start a
+subscription. This section locks the third follow-up PR that
+closes that gap. The follow-up PR inherits this section; it
+does not renegotiate it.
+
+The chosen path is **option (a) deferred auth**: the visitor
+clicks "Buy Pro" on the marketing `/pricing` page, completes
+Stripe Checkout with an email the visitor owns, lands on a
+post-checkout redirect into `apps/app/` where the codebase
+provisions a `user` row from the email and links the
+subscription to it. The path is the only one that respects
+the "marketing-first, no friction" stance the `/pricing` page
+already takes (the current Pro CTA is a `mailto:` link; the
+replacement is the same one-click shape, just routed through
+Stripe).
+
+### Why option (a) and not option (b)
+
+Option (b) would require the visitor to sign in (or sign up)
+before checkout. That breaks the marketing flow: a visitor
+who is not yet a customer is asked to create an account on
+the SaaS before paying for the SaaS. The friction is the
+exact reason the codebase has no top-level `/signup` →
+"buy" flow today; the design separates marketing from the
+authenticated product. Option (a) keeps the visitor out of
+the auth wall until Stripe confirms the payment, then
+provisions an account on the way back. The cost is one new
+server-side provisioning step (the webhook handler).
+
+### Page change in `apps/web`
+
+`apps/web/src/app/(marketing)/pricing/page.tsx` is currently
+a Server Component (no `"use client"`, no event handlers).
+The change required by this follow-up PR is **data-only**:
+
+1. In `apps/web/src/lib/pricing.ts`, the Pro `PricingLayer`'s
+   `cta` shape changes from
+   `{ label: "Email us about Pro", href: "mailto:support@deessejs.com?subject=Pro%20package", external: true }`
+   to
+   `{ label: "Buy Pro", href: "/api/v1/auth/subscription/upgrade?plan=pro", external: true }`.
+   The `external: true` flag stays (the destination is
+   absolute, even though it lives on our own backend, because
+   Stripe redirects the browser away from the page mid-click).
+   The Enterprise CTA is untouched (`/enterprise` stays a
+   page route; the team handles Enterprise sales manually).
+   The Open Community CTA is untouched (`/templates`).
+2. The Open Community and Enterprise cards stay as they are
+   (the page remains a Server Component). The Pro card's CTA
+   now points at the better-auth Stripe endpoint. The endpoint
+   redirects to Stripe Checkout when the visitor is anonymous,
+   and to the in-app `/settings/billing` plan picker when the
+   visitor has an active session (the endpoint handles both,
+   per the plugin's `subscription.upgrade` contract).
+3. The FAQ entry that currently mentions "Stripe" in the answer
+   is left unchanged. The pricing data shape stays
+   `{ id, name, tagline, price, positioning, ships, cta }`; no
+   new field is added.
+
+### Server-side provisioning flow
+
+The implementation PR's webhook handler at
+`/api/v1/auth/stripe/webhook` is the canonical entry point for
+Stripe events. The marketing follow-up PR adds a **second
+handler** for the post-checkout redirect:
+
+`apps/app/app/(marketing-onboarding)/checkout-success/page.tsx`
+(new route) is what Stripe Checkout's `success_url` points
+to. The page is a Server Component that:
+
+1. Reads `searchParams.session_id` (the Stripe Checkout
+   session id).
+2. Calls `auth.api.getSession({ headers: await headers() })`
+   (the standard better-auth session lookup).
+3. If the visitor already has a session, redirects to
+   `/settings/billing` (the in-app page from the
+   `UI follow-up scope` section).
+4. If the visitor is anonymous, redirects to
+   `/signup?email=<stripe.email>&plan=pro&session_id=<id>`.
+   The signup form reads the three query params and pre-fills
+   them.
+
+The Stripe webhook (`customer.subscription.created` /
+`updated` events) is the source of truth for the subscription
+row. The signup flow is the source of truth for the `user`
+row. The two are joined by `subscription.referenceId =
+user.id` once the signup completes. The plugin's webhook
+handler writes the subscription row with
+`referenceId = stripeCustomer.metadata.userId` (see the
+`getCustomerCreateParams` option in the `Server config`
+section above). The marketing follow-up PR sets
+`getCustomerCreateParams` to write
+`metadata.userId = session.userId` when a session exists, and
+leaves it empty when it does not; the webhook handler
+back-fills the empty case from the email after signup.
+
+The new code in the marketing follow-up PR is concentrated in
+one file:
+
+`apps/app/app/(marketing-onboarding)/checkout-success/page.tsx`
+(new) is the Server Component described above. Its
+`success_url` value is
+`${APP_URL}/checkout-success?session_id={CHECKOUT_SESSION_ID}`
+(the Stripe template literal in the `getCheckoutSessionParams`
+block of `packages/auth/src/auth.ts`).
+
+### Onboarding gate
+
+The codebase has no `/onboarding` page today. The only
+post-signup screen is `apps/app/app/(protected)/home/page.tsx`
+("Welcome back."). This follow-up PR does not introduce an
+onboarding wizard. The post-checkout redirect lands the
+visitor on the in-app home with a valid session and an active
+subscription; the `UI follow-up scope` section's
+`/settings/billing` page is the user's first stop if they
+want to see plan details, and the existing
+`apps/app/components/settings/profile-form.tsx` is the user's
+first stop if they want to set a display name.
+
+The "onboarding" the visitor experiences is:
+
+1. Stripe Checkout completes.
+2. Stripe redirects to `/checkout-success?session_id=...`.
+3. The new page signs the visitor up (if anonymous) and signs
+   them in (creates the session), then redirects to `/home`.
+4. The home page renders "Welcome back." (a small message
+   swap from "Welcome back." to "Welcome to DeesseJS Pro." for
+   the first session is a follow-up beyond this PR; it is
+   flagged in the `Marketing follow-up risks` section below).
+5. The `(protected)` proxy gate lets them through because the
+   new user is auto-verified (Stripe already confirmed the
+   email, so `emailVerification.autoVerify = true` is set in
+   `packages/auth/src/auth.ts` for the marketing follow-up
+   only; existing email/password signup keeps the manual
+   verify flow).
+
+### What the marketing follow-up PR allows
+
+- Modifying `apps/web/src/lib/pricing.ts` to change the Pro
+  `PricingLayer.cta` shape to point at the better-auth Stripe
+  endpoint. No other field changes.
+- Creating
+  `apps/app/app/(marketing-onboarding)/checkout-success/page.tsx`
+  as the post-checkout redirect target. New route group
+  `(marketing-onboarding)` keeps the layout convention
+  parallel to `(protected)` and `(unprotected)`.
+- Adding `emailVerification.autoVerify = true` to
+  `packages/auth/src/auth.ts` for sessions whose signup
+  originates from a Stripe webhook (the implementation
+  detects this via a `databaseHooks.user.create.before`
+  flag, gated on `request.url`).
+- Calling `auth.api.signUpEmail` from the new
+  `checkout-success` page when the visitor is anonymous
+  (the standard better-auth server-side signup call).
+- Calling `auth.api.createSession` from the new
+  `checkout-success` page to set the session cookie on the
+  response.
+- Adding `databaseHooks.user.create.after` (fire-and-forget)
+  to `packages/auth/src/auth.ts` to back-fill
+  `subscription.referenceId = user.id` when the user was
+  created via the Stripe webhook path. This is the only
+  `databaseHooks` block the codebase adds in the three-PR
+  series; the ADR-028 GitHub token encryption work inherits
+  the same shape later.
+
+### What the marketing follow-up PR forbids
+
+- Adding a `/billing` or `/onboarding` route outside the
+  `(protected)/settings/` group and outside the
+  `(marketing-onboarding)/` group introduced here.
+- Adding a CLI `subscribe` or `billing` command. The CLI
+  has no marketing surface; the third scope here is web-only.
+- Calling the Stripe SDK directly from `apps/web/` or
+  `apps/app/` components. The plugin is the only Stripe
+  touchpoint. (The SDK import remains in
+  `packages/auth/src/auth.ts` only.)
+- Auto-creating an account on the visitor without their
+  consent. The signup form must render (with the email
+  pre-filled) so the visitor sets a password and accepts the
+  terms. Frictionless means "no marketing-side wall," not
+  "no signup form at all."
+- Setting `emailVerification.autoVerify = true` globally. The
+  flag is scoped to the Stripe webhook path via the
+  `databaseHooks.user.create.before` gate. Existing
+  email/password signups keep the manual verify flow.
+- Reaching for `useRouter()` in the new
+  `checkout-success/page.tsx`. The page is a Server Component
+  and uses `redirect(...)` from `next/navigation`.
+- Storing the Stripe `customer.email` as the
+  `user.emailVerified` source without checking that the email
+  is owned by the same party. Stripe collects the email in
+  Checkout; the visitor types it. If the typed email does not
+  match the email the visitor confirmed in Stripe (the
+  `receipt_email` field on the session), the signup is
+  rejected.
+
+### Marketing follow-up risks
+
+### Risk 1: Stripe-collected email mismatch
+
+The visitor may type a different email at checkout completion
+than the one Stripe eventually sends in the webhook
+(`receipt_email`). The follow-up PR rejects the signup when
+the two emails differ. The error path is a "Something went
+wrong, contact support" page rendered at
+`/checkout-success?error=email-mismatch`. This risk is
+accepted by the follow-up PR; the alternative (auto-creating
+a user from an unverified email) is a security regression.
+
+### Risk 2: webhook race with signup
+
+The Stripe webhook (`customer.subscription.created`) may
+fire before the visitor finishes signup. The
+`subscription.referenceId` is empty until signup completes.
+The follow-up PR handles this with a fire-and-forget
+`databaseHooks.user.create.after` that re-queries Stripe for
+the customer by email and back-fills `subscription.referenceId`.
+The back-fill is idempotent (the unique key on
+`subscription.stripeCustomerId` makes a duplicate
+`UPDATE` a no-op).
+
+### Risk 3: partial flow failure
+
+The visitor may abandon the signup form mid-way. The Stripe
+subscription exists; the `user` row does not. The follow-up PR
+keeps the subscription row in `status: "incomplete"` until
+the signup form completes, then flips it to `active` via the
+back-fill. The Stripe customer is reusable: a follow-up
+signup from the same email picks up the orphan subscription.
+
+### Risk 4: `emailVerification.autoVerify` scope
+
+The flag is set via a hook that detects the Stripe webhook
+path. If the detection logic is wrong, the flag leaks to
+email/password signups and bypasses email verification
+globally. The follow-up PR uses
+`request.url` matching as the gate (the Stripe webhook path
+in `apps/app/app/api/[[...route]]/route.ts` is
+`/api/v1/auth/stripe/webhook`; the hook matches
+`request.url.endsWith("/stripe/webhook")`). This is a fragile
+signal (a future Stripe route change would silently break the
+match); the follow-up PR adds an integration test that
+asserts the gate.
+
+### Verification for the marketing follow-up PR
+
+1. Visit `/pricing` as an anonymous user. The Pro CTA reads
+   "Buy Pro" and points at
+   `/api/v1/auth/subscription/upgrade?plan=pro`.
+2. Click the CTA. The browser follows the endpoint, which
+   (because the visitor is anonymous) creates a Stripe
+   Checkout session and redirects to Stripe's hosted page.
+3. Complete checkout with the test card
+   `4242 4242 4242 4242`. Stripe redirects to
+   `/checkout-success?session_id=<id>`.
+4. The new page renders the signup form with the email
+   pre-filled from `searchParams.email`. The plan and
+   session_id are hidden inputs.
+5. Submit the signup form. The user row is created with
+   `emailVerified = true` (the webhook path gate).
+6. The page redirects to `/home`. The home page shows
+   "Welcome back." (the post-signup copy update is a
+   follow-up beyond this PR).
+7. Visit `/settings/billing`. The page shows the Pro plan
+   with `status: "active"`. The `UI follow-up scope` section's
+   components are the source of this UI; no new page is
+   needed here.
+8. Inspect the Stripe Dashboard: the customer has a
+   subscription row pointing at the new user's id. The
+   `metadata.userId` field matches the `user.id`.
+9. Inspect the database: the `subscription` table has a row
+   with `referenceId = <user.id>`, `stripeCustomerId =
+   <stripe_customer_id>`, and `stripeSubscriptionId =
+   <stripe_subscription_id>`.
+10. `pnpm auth:generate` produces a byte-identical
+    `packages/database/src/schema/auth.ts`. The marketing
+    follow-up does not add a column or table.
+11. `pnpm env:check` still passes. The four `STRIPE_*` keys
+    ship with the implementation PR; no new env var is added
+    here.
+12. The integration test asserts that an email/password
+    signup (not via Stripe) still hits the manual verify
+    flow (the webhook path gate is the only path that
+    auto-verifies).
 
 ## Risks
 
