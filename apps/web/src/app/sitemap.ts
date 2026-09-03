@@ -53,16 +53,46 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.5,
     },
     {
+      url: `${WEB_URL}/manifesto`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
+      url: `${WEB_URL}/principles`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
+      url: `${WEB_URL}/vision`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
+      url: `${WEB_URL}/ecosystem`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
+      url: `${WEB_URL}/stack`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${WEB_URL}/pricing`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
       url: `${WEB_URL}/help`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.4,
-    },
-    {
-      url: `${WEB_URL}/privacy-policy`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.5,
     },
     {
       url: `${WEB_URL}/oss`,
@@ -153,6 +183,27 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.4,
   }))
 
+  // Use cases — hardcoded list mirrors the same hardcoded record in
+  // apps/web/src/app/(product)/use-cases/[slug]/page.tsx. Single-source
+  // would mean a content collection; for now this stays in sync by
+  // virtue of being a small, hand-curated list.
+  const useCaseSlugs = [
+    "saas-apps",
+    "ai-products",
+    "landing-pages",
+    "api-backends",
+    "internal-tools",
+    "open-source",
+    "mobile-backend",
+  ] as const
+
+  const useCasePages: MetadataRoute.Sitemap = useCaseSlugs.map((slug) => ({
+    url: `${WEB_URL}/use-cases/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly" as const,
+    priority: 0.5,
+  }))
+
   return [
     ...staticPages,
     ...blogPosts,
@@ -161,5 +212,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...tagPages,
     ...kbTopicPages,
     ...kbGuidePages,
+    ...useCasePages,
   ]
 }

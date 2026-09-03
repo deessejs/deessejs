@@ -23,6 +23,7 @@ import { GuideCard } from "@/components/knowledge-base/guide-card"
 import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
 import { GuideProductPill } from "@/components/knowledge-base/badges"
 import { getRelatedGuides } from "@/lib/knowledge-base/guides"
+import { ORG_ID } from "@/lib/seo/organization"
 
 type Params = { slug: string }
 
@@ -89,9 +90,17 @@ export async function generateMetadata({
     alternates: { canonical: guide.url },
     openGraph: {
       type: "article",
+      siteName: "DeesseJS",
+      locale: "en_US",
       title: guide.title,
       description: guide.description,
       url: guide.url,
+      tags: guide.products,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: guide.title,
+      description: guide.description,
     },
   }
 }
@@ -135,6 +144,85 @@ export default async function KnowledgeGuidePage({
 
   return (
     <article className="mx-auto flex min-w-0 max-w-4xl flex-col gap-10 overflow-x-clip px-4 py-16 sm:px-6 lg:py-24">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "TechArticle",
+            headline: guide.title,
+            description: guide.description,
+            inLanguage: "en",
+            keywords: guide.products,
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": guide.url,
+            },
+            url: guide.url,
+            publisher: { "@id": ORG_ID },
+            author: {
+              "@type": "Organization",
+              name: "DeesseJS",
+              "@id": ORG_ID,
+            },
+            // `about` ties the guide to its KB topic as the parent
+            // definedTerm. Crawlers use this to build a topic graph
+            // alongside the BreadcrumbList below.
+            about: {
+              "@type": "DefinedTerm",
+              name: topic.title,
+              url: `/knowledge-base/topics/${topic.slug}`,
+            },
+            // `dependencies` surfaces the PaaS/products the guide
+            // touches. This is the JSON-LD counterpart of the
+            // `GuideProductPill` badges in the header — the visual
+            // representation alone is invisible to crawlers.
+            ...(guide.products.length > 0
+              ? {
+                  dependencies: guide.products.map((product) => ({
+                    "@type": "Service",
+                    name: product,
+                  })),
+                }
+              : {}),
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: "/",
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Knowledge Base",
+                item: "/knowledge-base",
+              },
+              {
+                "@type": "ListItem",
+                position: 3,
+                name: topic.title,
+                item: `/knowledge-base/topics/${topic.slug}`,
+              },
+              {
+                "@type": "ListItem",
+                position: 4,
+                name: guide.title,
+                item: guide.url,
+              },
+            ],
+          }),
+        }}
+      />
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { allAuthors, allPosts } from "content-collections"
 import { PostCard } from "@/components/blog/post-card"
+import { buildPersonJsonLd } from "@/lib/seo/person-jsonld"
 
 type Params = { handle: string }
 
@@ -16,9 +17,27 @@ export async function generateMetadata(
   const { handle } = await params
   const author = allAuthors.find((a) => a.handle === handle)
   if (!author) return {}
+  const description = author.bio ?? `Articles by ${author.name}.`
   return {
-    title: `${author.name}`,
-    description: author.bio ?? `Articles by ${author.name}.`,
+    title: author.name,
+    description,
+    alternates: {
+      canonical: `/blog/author/${encodeURIComponent(handle)}`,
+    },
+    openGraph: {
+      type: "profile",
+      siteName: "DeesseJS",
+      locale: "en_US",
+      title: author.name,
+      description,
+      url: `/blog/author/${encodeURIComponent(handle)}`,
+      ...(author.avatar ? { images: [{ url: author.avatar }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: author.name,
+      description,
+    },
   }
 }
 
@@ -45,6 +64,12 @@ export default async function AuthorPage({
 
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(buildPersonJsonLd(author)),
+        }}
+      />
       <Link
         href="/blog"
         className="mb-8 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"

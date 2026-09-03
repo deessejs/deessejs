@@ -14,6 +14,7 @@ import { H1, H2 } from "@workspace/ui/components/typography"
 import { Card } from "@workspace/ui/components/card"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
+import { ORG_ID } from "@/lib/seo/organization"
 
 type Params = { slug: string }
 
@@ -154,6 +155,59 @@ export default async function UseCasePage({
 
   return (
     <article className="mx-auto flex max-w-4xl flex-col gap-12 px-4 py-16 sm:px-6 lg:py-24">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: meta.title,
+            description: meta.tagline,
+            inLanguage: "en",
+            keywords: meta.stack,
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": `/use-cases/${slug}`,
+            },
+            url: `/use-cases/${slug}`,
+            publisher: { "@id": ORG_ID },
+            author: {
+              "@type": "Organization",
+              name: "DeesseJS",
+              "@id": ORG_ID,
+            },
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: "/",
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Use cases",
+                item: "/use-cases",
+              },
+              {
+                "@type": "ListItem",
+                position: 3,
+                name: meta.title,
+                item: `/use-cases/${slug}`,
+              },
+            ],
+          }),
+        }}
+      />
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
