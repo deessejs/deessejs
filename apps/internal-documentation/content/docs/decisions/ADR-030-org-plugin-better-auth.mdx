@@ -1,0 +1,602 @@
+---
+title: 'Better-auth organization plugin for multi-tenant onboarding'
+description: 'Adopt the better-auth organization plugin with explicit post-signup onboarding, multi-org switcher, and resource-scoped RBAC. Reverses the single-tenant lock and ships the table, schema, and proxy changes in a ten-PR sequence.'
+---
+
+# ADR-030: better-auth organization plugin
+
+## Status
+
+Proposed (2026-09). Under review. Reverses the single-tenant decision
+in [`docs/guides/better-auth/index.md`](../../../../docs/guides/better-auth/index.md).
+The implementation ships in ten PRs, each on its own branch from
+`staging`.
+
+## Context
+
+The repo is **single-tenant by explicit decision** since the 2026-07
+re-scoping. `packages/auth/src/auth.ts` instantiates `betterAuth({...})`
+with `deviceAuthorization(...)`, `bearer()`, and `nextCookies()` only.
+There is no `organization(...)` plugin, no `organizationHooks`, no
+`organizationClient()`. `packages/database/src/schema/auth.ts` exposes
+`user`, `session`, `account`, `verification`, and the custom
+`deviceCode` tables; the `session` row has no `activeOrganizationId`
+column. The `docs/guides/better-auth/org.md` file documents the
+historical multi-tenant pattern under the header "historical only" and
+warns against reintroducing it. `docs/guides/better-auth/index.md` §
+"Locked-in Decisions" lists "Single-tenant: no organization plugin,
+no org schema, no org client" as a locked row. `pitfalls.md` notes
+the upstream bugs #9070 (`session.create.before` auto-create) and
+#9710 (`$activeOrgSignal` stale cache) and explicitly excludes them
+from this repo's scope on the basis of single-tenant.
+
+The product surface needs multi-tenant behaviour. The first concrete
+signal came from the `/home` page
+(`apps/app/app/(protected)/home/page.tsx`), which today is a one-
+paragraph placeholder and the only authenticated page in the app.
+The roadmap calls for a dashboard that scopes every resource to a
+workspace the user owns. The dashboard reads from the same tables the
+auth layer populates; scoping to "the user" instead of "the user's
+organization" makes the schema a thin wrapper around `userId`, and
+the team has decided the domain model needs an organization between
+the user and the resource.
+
+The second signal came from `/settings/connections` and `/settings/sessions`.
+Those pages manage credentials and active sessions today; the product
+plan extends the settings tree with an organization-level settings
+page that lists members, roles, invitations, and a danger zone. The
+page cannot exist without an organization table.
+
+The third signal came from the CLI's `auth login` flow. The CLI
+today binds a single user to a single access token. The roadmap adds
+a "publish a template to a workspace" command that needs the same
+workspace scoping as the dashboard. The CLI is the consumer that makes
+the RBAC choice load-bearing: a CLI token must carry the active org
+identity so the API can authorize the publish against the correct
+workspace.
+
+### Why now
+
+The locked-in single-tenant decision was correct at re-scoping time.
+The implementation surface it enabled (single `userId` everywhere, no
+RBAC, no invitations, no multi-org switcher) was correct for a
+template repo. The product surface has moved past the template
+stage. The roadmap for the next quarter ships the dashboard and the
+CLI publish flow; both depend on the organization concept. The choice
+is between adopting the plugin now (when the auth layer is small and
+the surface to retest is small) and adopting it later (when the
+dashboard and the CLI publish flow have hardcoded `userId` semantics
+that need rewiring). The cost of the second path scales with how
+many resources have shipped; the cost of the first path is roughly
+constant. The team picks the first path.
+
+### Why the better-auth plugin instead of a custom layer
+
+`packages/auth/` is the single source of truth for auth wiring. Any
+multi-tenant layer built on top of it has to re-implement session
+scoping, invitation TTL, RBAC permission checks, the `creatorRole`
+inviolability rule (a non-owner cannot promote to owner), and the
+`activeOrganizationId` set/clear semantics that the existing
+`session` row needs to grow anyway. The better-auth plugin already
+ships these, with the bugs documented in
+[`docs/guides/better-auth/pitfalls.md`](../../../../docs/guides/better-auth/pitfalls.md)
+#9070 and #9710 explicitly excluded from the recommended wiring (this
+ADR picks "no auto-create on signup" + "client-side invalidation of
+`$activeOrgSignal` after sign-in", both of which sidestep the bugs
+rather than trigger them). Building a custom layer would re-discover
+the same bugs without the upstream patches. The team picks the
+plugin.
+
+### Alternatives considered
+
+Three options were on the table before this ADR landed.
+
+1. **Stay single-tenant and add a `workspace` table that is not
+   better-auth's organization plugin.** A custom `workspace` table
+   with a `workspaceMember` join row, a hand-rolled RBAC layer in
+   `packages/api/src/router/`, and a hand-rolled invitation flow.
+   Rejected: duplicates plugin functionality, gets the bugs wrong,
+   and ties the auth surface to a non-canonical model.
+2. **Adopt the plugin with auto-create on signup.** Hook
+   `databaseHooks.session.create.before` to call
+   `auth.api.createOrganization` and stamp the new org id onto the
+   session. Rejected: this is exactly the path that triggers bug
+   #9070 (`session.create.before` runs before the user row is written
+   on first signup). The upstream issue tracker confirms the bug is
+   unresolved at the time of this ADR.
+3. **Adopt the plugin with explicit post-signup onboarding.** This
+   ADR. The signup flow creates the user and session; the onboarding
+   route at `/onboarding/organization` blocks until the user creates
+   at least one organization or accepts at least one invitation. The
+   `proxy.ts` redirect enforces the block. RBAC is enforced through
+   `requirePermission` middleware on every oRPC procedure.
+
+## Decision
+
+This ADR mandates thirteen decisions, grouped into five buckets.
+They are interdependent and ship in a single release train.
+
+### Server-side plugin wiring
+
+1. **Adopt `organization(...)` as a server plugin.** Wire it into
+   `packages/auth/src/auth.ts` between `deviceAuthorization(...)` and
+   `bearer()`, with `nextCookies()` remaining last. The plugin
+   options are:
+
+   - `ac` and `roles` — custom access-control statement set, three
+     roles (owner, admin, member). The default `defaultRoles` matrix
+     is overridden because the team needs `project` and `billing`
+     permissions on the resources the roadmap is shipping.
+   - `allowUserToCreateOrganization: true`, `organizationLimit: 10`,
+     `creatorRole: "owner"`, `membershipLimit: 100`.
+   - `invitationExpiresIn: 60 * 60 * 48`, `invitationLimit: 100`,
+     `requireEmailVerificationOnInvitation: true`,
+     `cancelPendingInvitationsOnReInvite: false`.
+   - `sendInvitationEmail` — sends through `@workspace/email` with
+     the Resend transport in prod, the console transport in dev. The
+     callback URL is `${request.url.origin}/organization/accept-invitation?id=${data.id}`,
+     which the plugin's own docs recommend (it ships no URL of its
+     own).
+   - `organizationHooks.afterCreateOrganization` — fire-and-forget
+     audit log; no `beforeCreateOrganization` mutation, no
+     `databaseHooks` cascade.
+
+   The plugin does **not** enable `dynamicAccessControl` or
+   `teams` in this ADR. Both add surface area without a current
+   consumer. They are explicit follow-ups.
+
+2. **Re-export `ac`, `statement`, and `roles` from
+   `packages/auth/src/access.ts`.** The same instances feed both the
+   server plugin and the client plugin. Two independent instantiations
+   drift the moment the team adds a role. Single export, two
+   consumers.
+
+3. **Run `pnpm auth:generate` to regenerate
+   `packages/database/src/schema/auth.ts`.** The CLI will add the
+   `organization`, `member`, `invitation` tables; add
+   `activeOrganizationId` to `session`; add the corresponding
+   drizzle `relations()` declarations. The CLI regenerates the
+   entire file; the implementation PR reviews the diff against the
+   current `deviceCode` custom table to make sure the comments and
+   the column shape survive. After the diff review, run
+   `pnpm db:generate` (drizzle-kit) to produce the migration; the
+   migration SQL is reviewed manually before merge.
+
+4. **No `autoCreateOrganizationOnSignUp`.** The option was removed
+   upstream in PR #4755. The replacement pattern (auto-create via
+   `databaseHooks.session.create.before`) triggers bug #9070. The
+   flow is explicit: signup creates the user, the onboarding route
+   creates the first org, the proxy redirects until that step
+   completes.
+
+5. **Plugin order is `organization`, `deviceAuthorization`, `bearer`,
+   `nextCookies`.** The `nextCookies()`-last invariant from ADR-020
+   § "What this rule forbids" stays in force. Adding the org plugin
+   before `deviceAuthorization` is safe because the two plugins do
+   not overlap (the org plugin reads `session.activeOrganizationId`
+   on routes it owns; `deviceAuthorization` reads the session
+   cookie directly via its own middleware). Adding it after
+   `nextCookies` would be a Next.js wiring violation, not a
+   functional break.
+
+### Client-side plugin wiring
+
+6. **Adopt `organizationClient()` in `apps/app/lib/auth-client.ts`.**
+   Same `ac`, same `roles` from `packages/auth/src/access.ts`. The
+   `fetch-auth-interceptor` rewrite-on-preview mechanism
+   (`apps/app/lib/fetch-auth-interceptor.ts:33-77`) continues to
+   apply because the org client posts to the same `baseURL` /
+   `basePath` the existing client uses.
+
+7. **Invalidate `$activeOrgSignal` after sign-in.** Bug #9710 means
+   the atom does not refresh on `/sign-in/email`. The fix is a
+   one-line `authClient.getSession({ fetchOptions: { cache:
+   "no-store" } })` at the top of the `<OrganizationSwitcher />`
+   mount, plus a `useSession` listener that bumps
+   `$sessionSignal` (which the org client already watches).
+
+### Onboarding flow
+
+8. **Add the `/onboarding/organization` route under
+   `apps/app/app/(protected)/`.** It is a Server Component that calls
+   `auth.api.listOrganizations` and
+   `auth.api.listUserInvitations`. If both are empty, it renders the
+   `<CreateFirstOrgForm>` (TanStack Form + Zod, same pattern as
+   `apps/app/components/auth/signup-form.tsx`). If at least one
+   invitation is pending, it renders an accept-invitation list. If
+   the user already has an org, it redirects to `/home`. The route
+   is blocking: the proxy redirects to it whenever
+   `session.activeOrganizationId` is null and there is no pending
+   invitation. The matcher entry in `proxy.ts` is
+   `"/onboarding/:path*"`.
+
+9. **Update `apps/app/proxy.ts` to enforce the onboarding redirect.**
+   The new logic runs after the existing
+   `isAuthPage && session.session` bounce and the
+   `isProtected && !session.session` redirect. Pseudocode:
+
+   ```ts
+   if (
+     !pathname.startsWith("/onboarding") &&
+     session.session &&
+     !session.session.activeOrganizationId &&
+     !(await auth.api.listUserInvitations()).length
+   ) {
+     return NextResponse.redirect(
+       new URL("/onboarding/organization", request.url)
+     )
+   }
+   ```
+
+   The cost is one extra DB roundtrip per request on protected paths
+   when the user has no active org. The short-circuit `!session`
+   keeps the no-session case free. The implementation PR benchmarks
+   the path against the existing proxy latency budget.
+
+### Multi-org switcher
+
+10. **Add `<OrganizationSwitcher />` to
+    `apps/app/components/sidebars/app-sidebar.tsx`.** It replaces the
+    brand header (which today shows `APP_NAME.charAt(0)` +
+    `APP_NAME`). The component opens a `<DropdownMenu>` (shadcn)
+    listing `authClient.organization.listOrganizations()` (atom-
+    backed), a "Create organization" CTA, and the current selection
+    highlighted. Switching calls
+    `authClient.organization.setActiveOrganization({ organizationId })`
+    and re-renders the sidebar on `$activeOrgSignal` bump. The
+    invalidation step from Decision #7 runs at mount.
+
+11. **Add `/settings/organizations` and
+    `/settings/organizations/[orgId]` under
+    `apps/app/app/(protected)/settings/`.** The index page lists all
+    orgs with a CTA to create a new one. The per-org page has four
+    tabs: **General** (name, slug, logo, edit for owner/admin),
+    **Members** (list via `listMembers`, role update, invite modal,
+    remove), **Invitations** (list pending via `listInvitations`,
+    resend, cancel), **Danger zone** (delete for owner only). The
+    page uses `requirePermission` on every tab.
+
+### RBAC enforcement on oRPC
+
+12. **Add `requirePermission` middleware in
+    `packages/api/src/router/auth-middleware.ts`.** Today the
+    middleware throws `new Error("Authentication required")`
+    (`packages/api/src/router/auth-middleware.ts:55`), which is the
+    pitfall #4 pattern. The refactor:
+
+    ```ts
+    export const requireAuth = async (ctx: Context) => {
+      const session = await auth.api.getSession({
+        headers: ctx.req.headers,
+      })
+      if (!session) throw new ORPCError({ code: "UNAUTHORIZED" })
+      if (!session.session.activeOrganizationId) {
+        throw new ORPCError({
+          code: "FORBIDDEN",
+          message: "No active organization",
+        })
+      }
+      return session
+    }
+
+    export const requirePermission = (
+      resource: keyof typeof statement,
+      action: string,
+    ) => async (ctx: Context) => {
+      const session = await requireAuth(ctx)
+      const { success } = await auth.api.hasPermission({
+        headers: ctx.req.headers,
+        body: { permission: { [resource]: [action] } },
+      })
+      if (!success) throw new ORPCError({ code: "FORBIDDEN" })
+      return session
+    }
+    ```
+
+    Every existing oRPC procedure attaches the right
+    `requirePermission(...)` middleware at its `route({...}).handler(...)`
+    call site. The implementation PR enumerates the procedures and
+    the permissions they need against the statement set; the review
+    checks the matrix is exhaustive.
+
+### Email template
+
+13. **Add `InviteToOrganization` template in
+    `packages/email/src/templates/`.** The template renders the
+    inviter's name, the organization name, and the accept-invitation
+    link. The handler in
+    `packages/email/src/transport.ts` reuses the existing console
+    (dev) / Resend (prod) split; the subject line is `"You've been
+    invited to join {organizationName}"`.
+
+### What this rule allows
+
+- Wiring `organization(...)` and `organizationClient()` with the
+  options listed in Decision #1, exporting `ac`/`statement`/`roles`
+  from `packages/auth/src/access.ts`.
+- Running `pnpm auth:generate` and `pnpm db:generate`; merging the
+  generated migration after a manual diff review.
+- Adding the `/onboarding/organization` route and the proxy redirect
+  in Decision #9.
+- Adding `<OrganizationSwitcher />` to `AppSidebar` and the
+  `/settings/organizations*` pages, with the four tabs listed in
+  Decision #11.
+- Adding `requirePermission` middleware to every existing oRPC
+  procedure that needs RBAC enforcement.
+- Adding the `InviteToOrganization` email template.
+- Inverting the single-tenant row in
+  `docs/guides/better-auth/index.md` § "Locked-in Decisions", turning
+  `org.md` from "historical only" into a forward-looking guide, and
+  adding a §7 "Org plugin specifics" entry to
+  `docs/guides/better-auth/pitfalls.md`.
+
+### What this rule forbids
+
+- **Wiring `autoCreateOrganizationOnSignUp`** in any form, including
+  the `databaseHooks.session.create.before` replacement. The pattern
+  triggers bug #9070, which is unresolved upstream. The flow stays
+  explicit.
+- **A second host-allowlist file.** ADR-029 § "Decision #2" extracts
+  the allowlist to `packages/auth/src/host-allowlist.ts`. This ADR
+  reuses the existing file, not a parallel one.
+- **Reading `process.env.NEXT_PUBLIC_*` directly from any consumer
+  that adopts the org plugin.** URL reads still go through
+  `@workspace/env/client` (ADR-021 § "What this rule forbids") or
+  `packages/api/src/client-env.ts` (ADR-029 § "Decision #4").
+- **Renaming `BETTER_AUTH_URL`** or any of the eight URL vars ADR-021
+  / ADR-029 declared. The schema stays the single source of truth.
+- **Replacing `nextCookies()` last** in the plugin array. ADR-020
+  § "What this rule forbids" pins the invariant; this ADR inherits
+  it.
+- **Hardcoding `client_id: "deessejs-cli"`** in any new auth flow.
+  The CLI uses the existing device-authorization path
+  (ADR-020 / ADR-022) with `Authorization: Bearer <token>` and the
+  active org resolved via `getSession` on the server side.
+- **Reading the org plugin's `metadata` column as a JSON object at
+  the Drizzle layer.** The plugin stores `metadata` as a JSON string
+  (better-auth's adapter behaviour). Code that needs the object form
+  parses with `JSON.parse(metadata)`. Treating the column as JSONB
+  in a custom schema override triggers type errors on every read.
+- **Adding `dynamicAccessControl` or `teams` in this ADR.** Both
+  increase surface area; neither has a current consumer. They are
+  explicit follow-ups.
+- **Renaming the existing `GITHUB_TOKEN` env var.** ADR-028 § "What
+  this rule forbids" pins the rename; this ADR inherits it.
+- **Hiding the org switcher behind a feature flag.** Every user
+  lands on the switcher after the rollout lands; the flag is
+  irreversible once the first user creates a second org.
+- **Running this ADR's thirteen decisions out of order.** Decision #1
+  before #2, #3 before #5, and so on, breaks the build in ways that
+  are easy to overlook (e.g. running #8 without #1 means the
+  onboarding route calls `auth.api.listOrganizations` against an
+  unconfigured plugin and 500s). The ten-PR sequence in §
+  "Implementation surface" below is the only approved ordering.
+
+### What this rule does not change
+
+- **The single sign-in flow.** The `socialProviders.github` block
+  from ADR-028 stays as-is. The org plugin adds a session column; it
+  does not add a sign-in path. A user who signs in with GitHub still
+  lands on `/home` if they have an active org, or `/onboarding/organization`
+  if they don't.
+- **The device-authorization flow.** ADR-020 / ADR-022 stay as-is.
+  The CLI's `auth login` resolves the user; the org identity is
+  resolved on the server side at the first oRPC call (the API
+  requires `activeOrganizationId` via `requireAuth`).
+- **The cross-subdomain cookie.** ADR-023's `crossSubDomainCookies`
+  config stays as-is. The active org lives on the session row, not
+  on a separate cookie; the session cookie already crosses
+  subdomains.
+- **The Vercel preview wiring.** ADR-029's `withRelatedProject`
+  helper stays as-is. The org client posts to the same `baseURL`
+  the existing client uses, which ADR-029 already wires per branch.
+- **The session configuration.** `session.expiresIn: 7 days`,
+  `updateAge: 1 day` stay as-is. The org plugin does not override
+  the session row's TTL.
+- **The `deviceCode` custom table.** The CLI's device-flow table
+  stays. The `pnpm auth:generate` regeneration in Decision #3 must
+  preserve the table; the implementation PR's diff review catches
+  any regression.
+- **The CLI's public command set.** ADR-010 § "1" pins the closed
+  list. The org concept does not add a CLI command; the existing
+  commands resolve their workspace identity from the token's
+  `activeOrganizationId`.
+- **The eight URL vars** declared by ADR-021 / ADR-029. The org
+  plugin introduces no new URL.
+
+## Consequences
+
+- **The single-tenant lock is broken.** A new row in
+  `docs/guides/better-auth/index.md` § "Locked-in Decisions"
+  replaces the old row with the multi-tenant decision. `org.md` is
+  re-titled from "historical only" to a forward-looking guide. The
+  reader looking up "how does the multi-tenant layer work" finds a
+  single source of truth.
+- **`packages/auth/src/auth.ts` wires four plugins instead of three.**
+  The plugin array is `organization`, `deviceAuthorization`,
+  `bearer`, `nextCookies`. The file's
+  `experimental.joins: true` setting (ADR-028's predecessor) stays
+  on; the org plugin uses adapter joins for `getFullOrganization`.
+- **The `session` table grows one column.** `activeOrganizationId`
+  (text, nullable) is added by the CLI regen. Existing sessions
+  before the migration have `NULL`; the proxy's onboarding redirect
+  handles the resulting no-org state without code change.
+- **Three new tables.** `organization`, `member`, `invitation`. The
+  implementation PR runs `pnpm db:generate` and ships the
+  migration. The migration runs once in prod; staging sees the
+  migration on first deploy.
+- **Every authenticated user without an active org lands on
+  `/onboarding/organization` after sign-in.** Existing users (from
+  before this ADR) have no `activeOrganizationId`; their first
+  request after deploy triggers the redirect. The UX surface
+  accepts the bump as part of the rollout.
+- **Existing oRPC procedures that touch user-scoped data need
+  permission middleware.** The implementation PR #2 (server wiring)
+  and PR #8 (RBAC middleware) ship together; the procedures that
+  miss the middleware are caught in code review.
+- **The CLI gets the active org on every call.** The CLI's existing
+  `auth login` flow stores the access token; the server resolves
+  the org at `getSession` time. The CLI does not need a new env var
+  or command.
+- **`/settings/organizations*` is a new authenticated surface.** The
+  existing settings tree grows two routes. The settings index page
+  links to the new org page; the org page is the new home of the
+  members and invitations management.
+- **The `Cancel` button on the existing `/settings/connections`
+  page is unaffected.** The OAuth account linking is a
+  user-property, not an org-property. ADR-028 stays untouched.
+
+## Implementation surface
+
+The implementation lands in ten PRs. Each branch is cut from
+`staging` and merges back into `staging` per the workflow in
+[`AGENTS.md`](../../../AGENTS.md).
+
+| # | Branch | Sujet | Files touched (approx.) |
+|---|---|---|---|
+| 1 | `chore/ba-org-remove-single-tenant` | Update better-auth guides to declare the multi-tenant decision; `index.md`, `org.md`, `setup.md`, `pitfalls.md`, `hooks.md`, `client.md`. | 6 doc files |
+| 2 | `feat/ba-org-plugin-server` | Wire `organization(...)` in `packages/auth/src/auth.ts`; export `ac`/`statement`/`roles` from `packages/auth/src/access.ts`; regen `packages/database/src/schema/auth.ts`; ship drizzle migration. | 4 source files |
+| 3 | `feat/ba-org-plugin-client` | Wire `organizationClient()` in `apps/app/lib/auth-client.ts`; reuse the exported `ac`/`statement`/`roles`. | 1 source file |
+| 4 | `feat/app-onboarding-route` | `/onboarding/organization` Server Component; `<CreateFirstOrgForm>`; proxy redirect. | 1 new route, 1 form, 1 proxy edit |
+| 5 | `feat/app-org-switcher` | `<OrganizationSwitcher />` in `AppSidebar`; mount-time `$activeOrgSignal` invalidation. | 1 sidebar edit, 1 new component |
+| 6 | `feat/app-settings-organizations` | `/settings/organizations` and `/settings/organizations/[orgId]`; four tabs. | 3 new routes, 4 components |
+| 7 | `feat/email-invite-template` | `InviteToOrganization` template; wire into `sendInvitationEmail`. | 1 template, 1 transport edit |
+| 8 | `feat/api-rbac-middleware` | `requirePermission` middleware; wire into every existing oRPC procedure. | 1 middleware file, 6+ procedure edits |
+| 9 | `test/ba-org-pgmem` | pg-mem tests for the full flow (signup, create org, invite, accept). | 1 new test file |
+| 10 | `test/e2e-org-flow` | Playwright e2e signup to onboarding to invite to accept. | 1 new test file |
+
+PRs 1-2 must land together (the docs declare the decision, the code
+implements it; landing one without the other leaves the repo in an
+inconsistent state). PRs 4-6 land together (the onboarding route, the
+switcher, and the settings page are the user-visible surface of the
+plugin; landing one without the others is a UX regression). PRs 8-10
+land after 1-7 are stable in staging.
+
+### Files explicitly NOT touched
+
+- `packages/cli/` — the CLI's auth surface (ADR-010 / ADR-022) is
+  unchanged.
+- `apps/web/` — the marketing site does not consume the org plugin.
+- `apps/docs/` and `apps/internal-documentation/` — no change.
+- `packages/ui/` — the design system gets no new component in this
+  ADR; the `<OrganizationSwitcher />` uses the existing shadcn
+  primitives.
+
+## Test strategy
+
+### Unit
+
+- `packages/auth/tests/unit/access.test.ts` (new) — assert
+  `owner.role.hasPermission({ project: ["delete"] })` returns
+  `true`, `member.role.hasPermission({ project: ["delete"] })`
+  returns `false`. Pins the statement shape.
+- `packages/auth/tests/unit/host-allowlist.test.ts` already exists
+  from ADR-029; no change.
+
+### Integration (pg-mem)
+
+- `packages/api/tests/integration/org.test.ts` (new) — the flow:
+  signup user A, list orgs returns `[]`, create org returns the org
+  and the member row, session A carries `activeOrganizationId`,
+  invite user B, signup user B, list user invitations returns the
+  invitation, accept invitation returns the member row and the
+  active org. Pins the round-trip.
+
+### UI
+
+- `apps/app/tests/org/onboarding.test.tsx` — render
+  `<CreateFirstOrgForm>`, submit, assert the route navigates to
+  `/home` and the active org is set.
+- `apps/app/tests/org/switcher.test.tsx` — render
+  `<OrganizationSwitcher />` with two orgs, click switch, assert
+  the active org changes and the sidebar re-renders.
+
+### Manual staging smoke
+
+- Sign up a fresh user via email/password.
+- Confirm the user lands on `/onboarding/organization`.
+- Submit a name and slug; confirm the user lands on `/home` and the
+  sidebar shows the org name.
+- Open the switcher; confirm the org appears.
+- Invite a second user by email; confirm the invitation email
+  arrives (via console transport in dev).
+- Sign up the second user in a different browser session; confirm
+  the user lands on `/onboarding/organization` with the invitation
+  listed.
+- Accept the invitation; confirm the second user lands on `/home`
+  with the org as active.
+
+## Where this rule came from
+
+- The product roadmap for the next quarter ships the dashboard and
+  the CLI publish flow. Both depend on the organization concept.
+- The locked-in single-tenant decision in
+  [`docs/guides/better-auth/index.md`](../../../../docs/guides/better-auth/index.md)
+  § "Locked-in Decisions" was correct at the time it was locked.
+  The product surface has moved past it.
+- The better-auth organization plugin source
+  (`node_modules/better-auth/dist/plugins/organization/types.d.mts`)
+  documents the option set, the server-side endpoints, and the
+  client-side atoms this ADR consumes. The verbatim option shapes
+  in Decision #1 come from there.
+- The better-auth organization plugin source
+  (`node_modules/better-auth/dist/plugins/organization/access/statement.mjs`)
+  documents the default `ac` and `roles` matrix this ADR overrides.
+- The better-auth organization plugin source
+  (`node_modules/better-auth/dist/plugins/organization/routes/crud-org.mjs`
+  and `crud-invites.mjs`) documents the `setActiveOrganization`
+  semantics (the active org lives on the session row, not on a
+  cookie or header), the invitation TTL and email-match checks,
+  and the `creatorRole` inviolability rule.
+- Better Auth issue #9070 documents the `session.create.before`
+  auto-create bug this ADR sidesteps by picking the explicit
+  onboarding flow.
+- Better Auth issue #9710 documents the `$activeOrgSignal` stale
+  cache bug this ADR mitigates with the mount-time invalidation in
+  Decision #7.
+- ADR-020 § "What this rule forbids" pins the `nextCookies()`-last
+  invariant; this ADR inherits it.
+- ADR-022 § "Server side, register the `bearer` plugin" documents
+  the existing `bearer()` wiring; this ADR inherits the plugin
+  array position.
+- ADR-028 § "Decision #2: account-linking policy" documents the
+  existing GitHub OAuth wiring; this ADR does not change it.
+- ADR-029 § "Decision #4: `withRelatedProject` for preview-against-
+  preview wiring" documents the URL helpers; this ADR inherits
+  them.
+
+## Related
+
+- [ADR-020: Device authorization for the CLI auth surface](./ADR-020-device-auth-cli).
+  The device-auth flow that this ADR inherits. The CLI's
+  `auth login` does not change.
+- [ADR-022: CLI device-auth fix-ups](./ADR-022-cli-device-auth-fixes).
+  The `bearer()` plugin and the `/device` page gate; both
+  unaffected by this ADR.
+- [ADR-023: apps/web session-aware header](./ADR-023-apps-web-session-aware-header).
+  The cross-subdomain cookie config this ADR inherits.
+- [ADR-028: GitHub OAuth via better-auth](./ADR-028-github-oauth-better-auth).
+  The sign-in flow this ADR inherits. The GitHub OAuth callback
+  continues to work; the org plugin adds a session column, not a
+  sign-in path.
+- [ADR-029: Vercel preview URL wiring across web, app, and docs](./ADR-029-preview-url-wiring).
+  The URL helpers and the host-allowlist file this ADR inherits.
+- [ADR-021: Inter-app URL configuration](./ADR-021-inter-app-url-config).
+  The schema-locked URL vars this ADR inherits.
+- [`docs/guides/better-auth/org.md`](../../../../docs/guides/better-auth/org.md).
+  Re-titled from "historical only" to a forward-looking guide by
+  PR #1 of this ADR.
+- [`docs/guides/better-auth/pitfalls.md`](../../../../docs/guides/better-auth/pitfalls.md).
+  § "Org plugin specifics" added by PR #1 of this ADR.
+- Better Auth organization plugin docs:
+  https://better-auth.com/docs/plugins/organization. The upstream
+  option set, server endpoints, and client atoms this ADR consumes.
+- Better Auth access-control docs:
+  https://better-auth.com/docs/plugins/access. The
+  `createAccessControl` / `ac.newRole` pattern this ADR follows.
+- Better Auth issue #9070:
+  https://github.com/better-auth/better-auth/issues/9070. The
+  `session.create.before` auto-create bug this ADR sidesteps.
+- Better Auth issue #9710:
+  https://github.com/better-auth/better-auth/issues/9710. The
+  `$activeOrgSignal` stale cache bug this ADR mitigates.
