@@ -58,6 +58,18 @@ export const metadata = {
   alternates: {
     canonical: APP_CONFIG.url,
   },
+  manifest: "/manifest.webmanifest",
+  icons: {
+    // Multi-resolution coverage. The SVG is the source of truth;
+    // the favicon.ico and apple-icon.png are generated from it by
+    // apps/web/scripts/generate-favicons.mjs. Next.js auto-injects
+    // the right <link rel="..."> tags for each.
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 }
 
 export default function RootLayout({
