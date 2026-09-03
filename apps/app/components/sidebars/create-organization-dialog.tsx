@@ -62,7 +62,10 @@ export function CreateOrganizationDialog({
 		<Dialog
 			open={open}
 			onOpenChange={(next) => {
-				void onOpenChange(next)
+				// Promise-returning callback — swallow the rejection at the
+				// call site so an upstream error doesn't escape Radix's
+				// onOpenChange handler as an unhandled promise.
+				onOpenChange(next)?.catch(() => {})
 			}}
 		>
 			<DialogContent className="sm:max-w-md">
@@ -78,7 +81,7 @@ export function CreateOrganizationDialog({
 					id="create-org-form"
 					onSubmit={(event) => {
 						event.preventDefault()
-						void form.handleSubmit()
+						form.handleSubmit().catch(() => {})
 					}}
 					className="flex flex-col gap-4"
 				>
@@ -151,7 +154,7 @@ export function CreateOrganizationDialog({
 						type="button"
 						variant="ghost"
 						onClick={() => {
-							void onOpenChange(false)
+							onOpenChange(false)?.catch(() => {})
 						}}
 						disabled={submitting}
 					>
