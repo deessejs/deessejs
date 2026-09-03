@@ -24,6 +24,7 @@ import { APP_NAME } from "@/lib/app-config"
  */
 export function SiteHeader() {
 	const router = useRouter()
+	// eslint-disable-next-line no-restricted-syntax -- better-auth wrapper, not a React hook. Mirrors the disable in nav-user.tsx:65.
 	const { data: session } = authClient.useSession()
 
 	const user = session?.user
@@ -38,12 +39,14 @@ export function SiteHeader() {
 		: ""
 
 	async function handleSignOut() {
-		const { error } = await authClient.signOut()
-		if (error) {
-			toast.error(error.message ?? "Could not sign out")
-			return
+		try {
+			await authClient.signOut()
+			router.push("/login")
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Could not sign out",
+			)
 		}
-		router.push("/login")
 	}
 
 	return (
@@ -57,6 +60,11 @@ export function SiteHeader() {
 					{user ? (
 						<DropdownMenu>
 							<DropdownMenuTrigger
+								// Radix DropdownMenuTrigger requires a real <button>
+								// primitive — shadcn's <Button> doesn't expose the
+								// same render shape. Disable react/forbid-elements
+								// at the render= site.
+								// eslint-disable-next-line react/forbid-elements
 								render={
 									<button
 										type="button"
@@ -93,7 +101,9 @@ export function SiteHeader() {
 								<DropdownMenuSeparator />
 								<DropdownMenuItem
 									onClick={() => {
-										void handleSignOut()
+										handleSignOut().catch(() => {
+											// Error already toasted inside handleSignOut.
+										})
 									}}
 									variant="destructive"
 								>
