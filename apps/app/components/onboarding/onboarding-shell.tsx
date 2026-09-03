@@ -55,6 +55,19 @@ export function OnboardingShell({
 						{STEPS.map((step, index) => {
 							const isComplete = completedSteps.includes(step.id)
 							const isCurrent = step.id === currentStep
+							// Resolve the dot's visual state outside the JSX
+							// className expression — nested ternaries inside
+							// `[...].join(" ")` confuse Turbopack's parser in
+							// Next 16 (see PR #126 CI failure).
+							let dotStateClass: string
+							if (isComplete) {
+								dotStateClass =
+									"border-primary bg-primary text-primary-foreground"
+							} else if (isCurrent) {
+								dotStateClass = "border-primary text-primary"
+							} else {
+								dotStateClass = "border-muted text-muted-foreground"
+							}
 							return (
 								<li key={step.id} className="flex items-center gap-2">
 									<Link
@@ -66,11 +79,7 @@ export function OnboardingShell({
 										aria-current={isCurrent ? "step" : undefined}
 										className={[
 											"flex size-7 items-center justify-center rounded-full border text-xs font-medium",
-											isComplete
-												: "border-primary bg-primary text-primary-foreground"
-												: isCurrent
-													? "border-primary text-primary"
-													: "border-muted text-muted-foreground",
+											dotStateClass,
 											isComplete || isCurrent ? "" : "pointer-events-none",
 										].join(" ")}
 									>
