@@ -7,6 +7,10 @@ description: 'Build outside Vercel, deploy the artifact to Vercel. The official 
 
 A study of the `vercel build` + `vercel deploy --prebuilt` workflow, the officially supported path for moving the build step out of Vercel's infrastructure while keeping every runtime feature (CDN, Edge Functions, ISR, Preview Deployments, Skew Protection) intact. The motivation is build-minute cost: at high deployment frequency, Vercel Pro's included minutes are consumed by minutes of wall-clock build, not by minutes of useful work.
 
+# Vercel prebuilt deploy
+
+A study of the `vercel build` + `vercel deploy --prebuilt` workflow, the officially supported path for moving the build step out of Vercel's infrastructure while keeping every runtime feature (CDN, Edge Functions, ISR, Preview Deployments, Skew Protection) intact. The motivation is build-minute cost: at high deployment frequency, Vercel Pro's included minutes are consumed by minutes of wall-clock build, not by minutes of useful work.
+
 ## What Vercel offers by default
 
 Vercel's Git integration couples three steps into a single unit per push:
@@ -517,9 +521,41 @@ Do not request `actions: write` (lets the workflow trigger other workflows), `pa
 
 ## What this entry doesn't use
 
-- **No Vercel Build Hooks.** A deploy hook is just a `curl` to a URL that triggers a fresh build on Vercel. It does not run `vercel build` externally and therefore does not save build minutes.
+- **No Vercel Build Hooks.** A deploy hook is just a `curl` to a URL that triggers a fresh build on Vercel. It does not run `vercel build` externally and therefore does not save build minutes. Combining a deploy hook with a GitHub Actions prebuild on the same branch is also a recipe for double deploys, because the hook rebuilds independently of the Ignored Build Step.
 - **No `vercel deploy` without `--prebuilt`.** Without `--prebuilt`, Vercel runs `vercel build` itself, which is the unit being replaced.
 - **No `vercel build` on a feature branch directly.** CI builds on the runner, not on Vercel, then uploads the artifact.
+- **No `next build` direct.** The artifact must come from `vercel build`, not from `next build` invoked directly. Vercel's Build Output API format is produced by Vercel's own CLI; raw `next build` (whether Turbopack or Webpack) emits a different directory structure that `vercel deploy --prebuilt` will reject. With Next.js 16 (stable since October 2025, Turbopack default for production), this distinction is even more important: Turbopack and Webpack output `.vercel/output` with different manifest shapes, and neither is interchangeable with the other via `--prebuilt`. Reference: [Next.js 16 release notes](https://nextjs.org/blog/next-16).
+
+## Adjacent failure modes
+
+The prebuilt workflow intersects with five adjacent systems. Each one can break the deploy silently if not aligned. None is unique to `--prebuilt` — they bite the Git integration too — but the prebuilt path surfaces them earlier because CI produces the artifact.
+
+### Pin the Vercel CLI version
+
+`pnpm vercel build` in the workflow resolves the Vercel CLI through the workspace. If a developer runs `npm i -g vercel@latest` locally and the CI resolves a different version, builds drift: a flag accepted locally is rejected in CI, or vice versa. The standard mitigation is to pin `vercel` in `devDependencies` to an exact version and run `pnpm vercel build` (which uses the workspace version), not a globally-installed `vercel`. Reference: [Vercel — Package managers](https://vercel.com/docs/package-managers).
+
+### `pnpm` catalogs and the `workspace:` protocol in monorepos
+
+Vercel's historical build container uses pnpm in **hoisted** mode for the root. A monorepo package that imports a sibling via `"dep": "workspace:*"` works locally (pnpm resolves symlinks) but can fail at build time if Vercel's hoisted install does not surface the dep at the top level. The two mitigations:
+
+1. Pin the sibling dep in the **root** `package.json` as well, so it appears in the hoisted tree.
+2. Set the package manager explicitly in `package.json`:
+   ```json
+   "packageManager": "pnpm@9.12.0"
+   ```
+   This forces Vercel to use the same pnpm version as local and disables the "oldest available" fallback.
+
+### Deploy hooks and GitHub Actions coexisting on the same branch
+
+The hybrid strategy configures the Vercel Git integration to skip previews via the Ignored Build Step. A deploy hook (Settings → Git → Deploy Hooks) is a separate trigger that ignores the Ignored Build Step and always rebuilds on Vercel. If both a deploy hook and a GitHub Actions workflow fire on the same push (for example, a CMS webhook calling the deploy hook while CI runs the prebuilt workflow), Vercel deploys twice: once from the hook (native build) and once from CI's `--prebuilt` upload. Pick one trigger per branch — either the hook or CI, never both.
+
+### Edge runtime middleware with Node-only imports
+
+`middleware.ts` runs on the Edge runtime by default. Packages that rely on Node.js built-ins (`fs`, `path`, native `.node` bindings) fail at runtime, not at build, because the bundler can't statically detect the dependency in some configurations. With `--prebuilt`, the failure surfaces on the first request to a route protected by the middleware, often without an obvious log entry. The mitigation is to either keep middleware Edge-compatible (use `fetch`, `Request`, `Response`, `Web Crypto`) or to opt the middleware into the Node runtime via `experimental.nodeMiddleware` in `next.config.js`. Reference: [Vercel Community — Next.js middleware Edge runtime](https://community.vercel.com/t/next-js-middleware-fails-on-edge-runtime-but-works-with-nodejs-runtime-on-vercel/35553).
+
+### ISR cache location is runtime, not artifact
+
+`revalidatePath()` and `revalidateTag()` mutate Vercel's edge cache at runtime — they have nothing to do with `.vercel/output`. They continue to work identically on the prebuilt path. But if the project uses a custom ISR cache (Redis, KV, R2 via `unstable_cache` or a manual fetch cache), that cache lives on Vercel's runtime side, not inside the build artifact. Migrating from Git integration to prebuilt does not touch the cache; migrating off Vercel entirely does. Be precise about which move you're making.
 
 ## What this entry isn't
 
