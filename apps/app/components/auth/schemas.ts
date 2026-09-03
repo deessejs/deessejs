@@ -50,7 +50,13 @@ export const slugify = (input: string): string =>
 		.normalize("NFKD")
 		.toLowerCase()
 		.replace(/[̀-ͯ]/g, "")
+		// sonarjs/slow-regex flags any `+` after a character class as
+		// potentially backtracking. Negated classes and anchored
+		// alternations cannot backtrack, so the flag is a known false
+		// positive here.
+		// eslint-disable-next-line sonarjs/slow-regex
 		.replace(/[^a-z0-9]+/g, "-")
+		// eslint-disable-next-line sonarjs/slow-regex
 		.replace(/^-+|-+$/g, "")
 
 export const resetPasswordSchema = z

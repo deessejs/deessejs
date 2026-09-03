@@ -59,27 +59,25 @@ export function SiteHeader() {
 				<nav className="flex items-center gap-2">
 					{user ? (
 						<DropdownMenu>
-							<DropdownMenuTrigger
-								// Radix DropdownMenuTrigger requires a real <button>
-								// primitive — shadcn's <Button> doesn't expose the
-								// same render shape. Disable react/forbid-elements
-								// at the render= site.
-								// eslint-disable-next-line react/forbid-elements
-								render={
-									<button
-										type="button"
-										className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-										aria-label="Open user menu"
-									>
-										<Avatar className="size-8">
-											{user.image ? (
-												<AvatarImage src={user.image} alt={user.name ?? ""} />
-											) : null}
-											<AvatarFallback>{initials || "U"}</AvatarFallback>
-										</Avatar>
-									</button>
-								}
-							/>
+							{/*
+							  shadcn DropdownMenuTrigger expects plain children,
+							  not the Radix 1.x `render={…}` API. Wrap the avatar
+							  button directly — Radix wires the trigger handler.
+							*/}
+							<DropdownMenuTrigger asChild>
+								<button
+									type="button"
+									className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									aria-label="Open user menu"
+								>
+									<Avatar className="size-8">
+										{user.image ? (
+											<AvatarImage src={user.image} alt={user.name ?? ""} />
+										) : null}
+										<AvatarFallback>{initials || "U"}</AvatarFallback>
+									</Avatar>
+								</button>
+							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-56">
 								<div className="flex flex-col gap-0.5 px-2 py-1.5">
 									{user.name ? (
@@ -92,11 +90,11 @@ export function SiteHeader() {
 									) : null}
 								</div>
 								<DropdownMenuSeparator />
-								<DropdownMenuItem render={<Link href="/home" />}>
-									Dashboard
+								<DropdownMenuItem asChild>
+									<Link href="/home">Dashboard</Link>
 								</DropdownMenuItem>
-								<DropdownMenuItem render={<Link href="/settings/profile" />}>
-									Settings
+								<DropdownMenuItem asChild>
+									<Link href="/settings/profile">Settings</Link>
 								</DropdownMenuItem>
 								<DropdownMenuSeparator />
 								<DropdownMenuItem
