@@ -135,9 +135,10 @@ is that `nextCookies()` is last):
 import Stripe from "stripe"
 import { stripe } from "@better-auth/stripe"
 
-const stripeClient = new Stripe(serverEnv.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-12-18.acacia",
-})
+const stripeClient = new Stripe(
+  serverEnv.STRIPE_SECRET_KEY || "sk_test_placeholder",
+  { apiVersion: "2024-12-18.acacia" },
+)
 
 plugins: [
   deviceAuthorization({ verificationUri: "/device" }),
@@ -446,9 +447,14 @@ discoverability:
   gate change.
 - `packages/auth/src/auth.ts` instantiates the Stripe SDK
   exactly once at module load. The SDK instance is reused on
-  every Stripe call. Module load fails loud if
-  `STRIPE_SECRET_KEY` is unset (the `!` assertion in the
-  constructor evaluates eagerly, before any request lands).
+  every Stripe call. The instance uses a `sk_test_placeholder`
+  fallback when `STRIPE_SECRET_KEY` is unset, so the module
+  can be imported in CI / Vitest without a real Stripe key on
+  disk. Real API calls with the placeholder key fail at
+  request time with `StripeAuthenticationError`; that is the
+  intended failure mode for environments where Stripe is
+  intentionally absent. See the *Server config* section above
+  for the exact fallback expression.
 - Three client factories (`apps/app`, `apps/web`, `apps/cli`)
   gain `authClient.subscription.{upgrade,list,cancel,restore,billingPortal}`
   methods. None of the methods is called from the codebase
@@ -1266,17 +1272,17 @@ local dev:
 
 1. With `STRIPE_SECRET_KEY` / `_WEBHOOK_SECRET` /
    `_PRICE_STARTER` / `_PRICE_PRO` unset in `.env`, start the
-   dev server. The dev server boots; the Stripe SDK
-   constructor at `packages/auth/src/auth.ts` accepts an
-   `undefined` secret key (the constructor stores the value
-   without validating it; the `!` non-null assertion in
-   TypeScript has zero runtime effect). The first request
-   that touches Stripe (a `subscription.upgrade` call, a
-   webhook receipt, or a `createCustomerOnSignUp` write) is
-   the one that throws `StripeAuthenticationError` lazily.
-   This confirms the failure mode is request-time, not
-   module-load, and that CI / Vitest can import
-   `packages/auth/src/auth.ts` without a Stripe key on disk.
+   dev server. The dev server boots because the SDK
+   instantiation at `packages/auth/src/auth.ts` uses a
+   `sk_test_placeholder` fallback when the env var is unset
+   (per the *Server config* section). A smoke request that
+   reaches Stripe (a `subscription.upgrade` call, a webhook
+   receipt, or a `createCustomerOnSignUp` write) is the one
+   that throws `StripeAuthenticationError` because the
+   placeholder key is not a real Stripe key. This confirms
+   the failure mode is request-time, not module-load, and
+   that CI / Vitest can import `packages/auth/src/auth.ts`
+   without a real Stripe key on disk.
 2. With all four keys set, start the dev server. The server
    boots. `curl http://localhost:3001/api/v1/auth/get-session`
    returns the unauthenticated shape (no session cookie
@@ -1349,6 +1355,130 @@ The git context for this DR is the staging branch
 (`AGENTS.md`). The DR is the deliverable; the implementation
 PR that follows it lands the five file changes documented in
 the `Configuration summary` section. No UI ships in this PR.
+
+## Implementation notes
+
+These are non-blocking notes for the three follow-up PRs.
+They are not part of the locked scope; they document
+behaviors the implementer should preserve. They live here
+rather than in a follow-up DR because they are small enough
+to inline and do not change the file surface.
+
+### Note 1: marketing follow-up, orphan subscriptions
+
+The marketing flow described in the *Marketing pricing
+follow-up scope* section assumes the visitor reaches
+`/checkout-success?session_id=...` and submits the signup
+form. If the visitor pays on Stripe Checkout and closes the
+tab before submitting, the subscription exists in the
+`subscription` table with `referenceId = null` (or, after
+the `customer.subscription.created` webhook, with
+`referenceId = stripeCustomer.metadata.userId` if a
+`userId` was set in the metadata by the custom
+`/api/v1/auth/checkout/marketing` Hono handler).
+
+The marketing follow-up PR must handle two orphan paths:
+
+1. **Webhook with no matching email**: the
+   `customer.subscription.created` webhook fires before any
+   `user` row exists. The `databaseHooks.user.create.after`
+   back-fill described in *Risk 2* of the marketing section
+   does not run, because no user is being created. The
+   follow-up PR adds a server-side job (a cron, or a
+   background queue) that queries for `subscription` rows
+   with `referenceId = null` older than 30 minutes and
+   sends a transactional email via
+   `apps/app/components/auth/email-templates/finalize-account.tsx`
+   (a new template) prompting the visitor to complete the
+   signup. The email contains a magic-link token that
+   resumes the signup flow on the same Stripe session.
+2. **Customer with abandoned signup**, the visitor
+   submitted `/signup` once, abandoned the password step,
+   and never returned. The `user` row exists with
+   `emailVerified = false`. The follow-up PR adds a daily
+   job that re-sends the verification email (and a
+   "you have an active subscription, finalize your
+   account" copy variant) for `user` rows whose Stripe
+   customer has an active subscription but whose
+   `emailVerified = false` after 7 days.
+
+Both jobs use the existing `sendAuthEmail` fire-and-forget
+pattern (see `docs/guides/better-auth/hooks.md` and
+`packages/auth/src/auth.ts:103-132`). The follow-up PR does
+not introduce a new queue; it hooks into whatever the team
+eventually picks for the M0-deferred-work item 2
+(Upstash Redis). Until then, the jobs run on the same Vercel
+cron the project uses for other maintenance tasks.
+
+### Note 2: UI follow-up, downgrade behavior
+
+The `billing-plan-picker-dialog.tsx` component in the
+*UI follow-up scope* section calls
+`authClient.subscription.upgrade({ plan })` for both upgrade
+and downgrade directions. The same endpoint is used because
+the better-auth Stripe plugin treats them symmetrically:
+Stripe handles the proration automatically based on the
+plan change.
+
+The follow-up PR does not introduce a separate "downgrade"
+button or a different confirmation copy. The picker dialog
+shows the available plans with their `limits` map and the
+monthly price. When the visitor picks a lower-tier plan than
+their current one:
+
+- The button label stays "Choose plan" (no "Downgrade" copy
+  change in the DR's locked scope).
+- The dialog footer adds a one-line informational note:
+  "Proration is calculated automatically by Stripe and shown
+  on the Checkout page." This copy is not in the locked
+  scope but is a low-risk addition the implementer can ship
+  without renegotiating the DR.
+
+The follower must not pass `prorationBehavior: "none"` or
+similar to bypass the default proration. The default
+behavior is the user-facing one ("create_prorations").
+
+### Note 3: UI follow-up, past-due and 3DS states
+
+The `billing-current-plan.tsx` component in the
+*UI follow-up scope* section renders a `Badge` for the
+subscription status. The locked scope names the `Badge`
+primitive but does not enumerate every Stripe status
+variant. The follow-up PR must handle:
+
+- `status: "active"` → green Badge, label "Active".
+- `status: "trialing"` → outline Badge, label
+  "Trial until <trialEnd>".
+- `status: "past_due"` → destructive Badge, label
+  "Payment failed" plus a secondary line
+  "Update your payment method to restore access" and a
+  Button "Manage in Stripe" that calls
+  `authClient.subscription.billingPortal(...)`.
+- `status: "unpaid"` → destructive Badge, label "Unpaid"
+  plus a Button "Manage in Stripe" (same call).
+- `status: "incomplete"` → muted Badge, label
+  "Awaiting payment confirmation".
+- `status: "incomplete_expired"` → muted Badge, label
+  "Checkout expired" plus a Button "Choose plan" that
+  reopens the picker dialog.
+- `status: "canceled"` → muted Badge, label
+  "Subscription ended" plus a Button "Choose plan" that
+  reopens the picker dialog.
+
+The `past_due` and `unpaid` Badges are the only ones that
+trigger a direct user-visible alert. The `destructive`
+variant of the shadcn `Badge` primitive
+(`@workspace/ui/components/badge`) is the right tool; no
+new primitive is needed in `packages/ui`.
+
+The 3DS recovery path (the `invoice.payment_action_required`
+webhook event) is a Stripe-side action, not a
+`billing-current-plan.tsx` UI concern. The webhook updates
+`status: "past_due"` locally; the Badge above surfaces the
+"Payment failed" copy. The Stripe-hosted billing portal
+(`authClient.subscription.billingPortal(...)`) is where the
+user authenticates the 3DS challenge; the codebase does not
+attempt to render 3DS itself.
 
 ## Related
 
