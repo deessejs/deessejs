@@ -1,0 +1,10 @@
+{
+  "id": "0003_better_auth_1_7_account_issuer",
+  "prevId": "0002_add_organization_plugin_tables",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {},
+  "enums": {},
+  "schemas": {},
+  "_meta": { "schemas": {}, "tables": {}, "columns": {} }
+}
