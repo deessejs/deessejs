@@ -57,13 +57,7 @@ export function TeamSwitcher() {
 	const { isMobile } = useSidebar()
 	const [createOpen, setCreateOpen] = useState(false)
 
-	// Each hook blows up on inference if the authClient `as any`
-	// is not in front, because organizationClient's generic
-	// Statement type leaks through. The `as any` on the parent
-	// keeps every call site type-clean.
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const { data: orgsData } = ac.useListOrganizations()
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const { data: activeData } = ac.useActiveOrganization()
 
 	type Org = { id: string; name: string; slug: string; logo?: string | null }
@@ -147,7 +141,7 @@ export function TeamSwitcher() {
 						<DropdownMenuRadioGroup
 							value={activeOrg?.id ?? ""}
 							onValueChange={(value) => {
-								void switchToOrg(value)
+								switchToOrg(value)?.catch(() => {})
 							}}
 						>
 							{orgs.map((org) => (
