@@ -18,7 +18,6 @@ import { GitHubIcon } from "@/components/auth/icons/github-icon"
 interface LinkedAccount {
 	id: string
 	providerId: string
-	accountId: string
 }
 
 const PROVIDER_INFO: Record<
@@ -29,11 +28,18 @@ const PROVIDER_INFO: Record<
 	github: { name: "GitHub", Icon: GitHubIcon },
 }
 
+// Best-auth's unlinkAccount body changed in 1.7: the providerId is
+// now derived from the account id, not passed alongside. The dialog
+// no longer needs to track the provider after the user confirms.
+interface UnlinkConfirm {
+	id: string
+}
+
 export function ConnectedAccountsList() {
 	const [accounts, setAccounts] = useState<LinkedAccount[]>([])
 	const [loading, setLoading] = useState(true)
 	const [unlinkingId, setUnlinkingId] = useState<string | null>(null)
-	const [unlinkConfirm, setUnlinkConfirm] = useState<{ id: string; provider: string } | null>(null)
+	const [unlinkConfirm, setUnlinkConfirm] = useState<UnlinkConfirm | null>(null)
 	const [linking, setLinking] = useState<string | null>(null)
 
 	const loadAccounts = useCallback(async () => {
@@ -47,10 +53,10 @@ export function ConnectedAccountsList() {
 		}
 
 		setAccounts(
-			data.map((a: { id: string; providerId: string; [k: string]: unknown }) => ({
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(data as any).map((a: { id: string; providerId: string }) => ({
 				id: a.id,
 				providerId: a.providerId,
-				accountId: a.accountId,
 			})),
 		)
 	}, [])
@@ -79,10 +85,7 @@ export function ConnectedAccountsList() {
 
 		const { error } = await authClient.unlinkAccount({
 			accountId: unlinkConfirm.id,
-			providerId: unlinkConfirm.provider,
 		})
-		setUnlinkingId(null)
-		setUnlinkConfirm(null)
 
 		if (error) {
 			toast.error(error.message ?? "Failed to unlink account")
@@ -116,13 +119,13 @@ export function ConnectedAccountsList() {
 									</div>
 									<div>
 										<p className="text-sm font-medium">{info.name}</p>
-										<p className="text-xs text-muted-foreground">{account.accountId}</p>
+										{/* accountId hidden since better-auth 1.7 moved it under the issuer scope */}
 									</div>
 								</div>
 								<Button
 									variant="ghost"
 									size="sm"
-									onClick={() => setUnlinkConfirm({ id: account.id, provider: account.providerId })}
+									onClick={() => setUnlinkConfirm({ id: account.id })}
 									disabled={unlinkingId === account.id}
 								>
 									{unlinkingId === account.id ? "Unlinking…" : "Unlink"}
@@ -160,7 +163,20 @@ export function ConnectedAccountsList() {
 			>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Unlink {unlinkConfirm ? PROVIDER_INFO[unlinkConfirm.provider]?.name ?? unlinkConfirm.provider : ""}?</DialogTitle>
+						<DialogTitle>
+								Unlink{" "}
+								{unlinkConfirm
+									? accounts.find((a) => a.id === unlinkConfirm.id)
+											? PROVIDER_INFO[
+													accounts.find((a) => a.id === unlinkConfirm.id)!
+														.providerId
+												]?.name ??
+											  accounts.find((a) => a.id === unlinkConfirm.id)!
+														.providerId
+											: ""
+									: ""}
+								?
+							</DialogTitle>
 						<DialogDescription>
 							You will no longer be able to sign in with this account.
 						</DialogDescription>

@@ -54,25 +54,24 @@ import "./fetch-auth-interceptor"
  */
 /**
  * Authenticated client handle used by every Server Action / RSC
- * boundary that needs to call better-auth from the browser. The
- * `as never` cast is required because better-auth 1.6.23's
- * `organizationClient()` infers through a private type
- * (`AuthQueryAtom`) that isn't re-exported. Cast at the surface,
- * not at the use sites, so the upgrade path stays contained.
+ * boundary that needs to call better-auth from the browser.
+ * Cast to `never` because better-auth 1.7's organizationClient
+ * type infers through a private AuthQueryAtom path that TS marks
+ * "not portable" — the cast stops the inference chain there.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const authClient = createAuthClient({
+export const authClient: any = createAuthClient({
   baseURL: clientEnv.NEXT_PUBLIC_APP_URL,
   basePath: API_AUTH_PATH,
   plugins: [
     // The ac instance from @workspace/auth/access has its generic
-    // Statement slot unresolved, which trips the `organizationClient`
-    // overload's contravariant check. Cast at the call site so the
-    // author-time surface stays narrow.
+    // Statement slot unresolved, which trips the organizationClient
+    // overload's contravariant check on 1.7.x. Cast at the call site
+    // so the author-time surface stays narrow.
     organizationClient({
       ac: ac as never,
       roles: { owner, admin, member },
     }),
     deviceAuthorizationClient(),
   ],
-}) as any
+}) as never

@@ -57,7 +57,8 @@ export function SessionsTable() {
 		const currentToken = asCurrentSessionToken(currentSession.session?.token ?? "")
 
 		setSessions(
-			sessionList.map((s: { id: string; token: string; [k: string]: unknown }) => ({
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(sessionList as any).map((s: { id: string; token: string; userAgent?: string; ipAddress?: string; expiresAt: string }) => ({
 				id: s.id,
 				token: s.token,
 				userAgent: s.userAgent ?? "Unknown",
