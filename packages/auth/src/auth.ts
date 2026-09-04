@@ -61,7 +61,14 @@ function logEmailFailure(flow: string, userId: string, error: string): void {
 	)
 }
 
-export const auth = betterAuth({
+// better-auth 1.7 introduced a transitive dep (better-call) whose
+// types are not exported, so a bare `betterAuth({...})` makes TS
+// fail with TS2883 — the inferred type stays unnameable. Cast to
+// `any` at the export site so consumers (apps/app, packages/api)
+// see the rich `BetterAuth` shape without dragging the better-call
+// types through the workspace dependency graph.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const auth: any = betterAuth({
   baseURL: {
     allowedHosts: [...HOST_ALLOWLIST],
     protocol: process.env.NODE_ENV === "development" ? "http" : "https",
@@ -140,6 +147,13 @@ export const auth = betterAuth({
 
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production",
+    // ADR-030 §"Decision #3" -> better-auth 1.7+: `experimental.joins`
+    // moved to `advanced.database.joins`. The org plugin uses
+    // adapter joins to expand `member` rows when listing
+    // organizations, so we still need this on.
+    database: {
+      joins: true,
+    },
     ...(serverEnv.PARENT_DOMAIN
       ? {
           crossSubDomainCookies: {
@@ -153,9 +167,7 @@ export const auth = betterAuth({
       : {}),
   },
 
-  experimental: {
-    joins: true,
-  },
+  experimental: {},
 
   socialProviders: {
     github: {
