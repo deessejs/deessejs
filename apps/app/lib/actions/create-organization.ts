@@ -54,35 +54,46 @@ export async function createOrganization({
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session?.user) redirect("/login")
 
+	let createdId: string | null = null
 	try {
 		const created = await auth.api.createOrganization({
 			body: { name: parsed.data.name, slug: parsed.data.slug },
 			headers: await headers(),
 		})
-
-		// Switch the active org to the newly created workspace so
-		// the next request lands on its dashboard, not on whichever
-		// org was previously active.
-		const createdId = (created as { id?: string } | null)?.id
-		if (createdId) {
-			await auth.api.setActiveOrganization({
-				body: { organizationId: createdId },
-				headers: await headers(),
-			})
-		}
-
-		// Resolve the redirect target. "{slug}" tokens are
-		// substituted with the real workspace slug.
-		const target = (next ?? "/onboarding/complete").replace(
-			"{slug}",
-			parsed.data.slug,
-		)
-		redirect(target)
+		createdId = (created as { id?: string } | null)?.id ?? null
 	} catch (error) {
+		// redirect() throws — re-throw any sentinel so a NEXT_REDIRECT
+		// from better-auth (rare, but possible) is not swallowed.
+		if (error instanceof Error && /NEXT_REDIRECT/.test(error.message)) {
+			throw error
+		}
 		const message =
 			error instanceof Error ? error.message : "Could not create workspace"
 		redirect(
 			`/onboarding/organization?error=${encodeURIComponent(message)}`,
 		)
 	}
+
+	// Active-org switch is best-effort. If it fails we still
+	// navigate to the new workspace — better-auth falls back to
+	// the first org in the user's list when activeOrganizationId
+	// is null.
+	if (createdId) {
+		try {
+			await auth.api.setActiveOrganization({
+				body: { organizationId: createdId },
+				headers: await headers(),
+			})
+		} catch {
+			// ignore — the redirect below is the source of truth
+		}
+	}
+
+	// Resolve the redirect target outside the try/catch above so
+	// the NEXT_REDIRECT sentinel propagates cleanly through.
+	const target = (next ?? "/onboarding/complete").replace(
+		"{slug}",
+		parsed.data.slug,
+	)
+	redirect(target)
 }
