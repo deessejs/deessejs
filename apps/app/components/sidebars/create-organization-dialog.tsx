@@ -57,25 +57,30 @@ export function CreateOrganizationDialog({
 		validators: { onSubmit: onboardingSchema },
 		onSubmit: async ({ value }) => {
 			setSubmitting(true)
+			const slug = value.slug || slugify(value.name)
 			try {
-				const slug = value.slug || slugify(value.name)
 				await createOrganization({
 					name: value.name,
 					slug,
 					next: "/{slug}/home",
 				})
-				// The server action redirects; this branch is unreachable
-				// but kept for type-narrowing on the catch below.
 			} catch (error) {
-				// redirect() throws a NEXT_REDIRECT sentinel that we must
-				// re-throw so the redirect actually fires. Filter for it
-				// before reporting to the user.
-				if (error instanceof Error && /NEXT_REDIRECT/.test(error.message)) {
+				// NEXT_REDIRECT sentinels are Next.js's way of
+				// triggering a navigation. Re-throw so the runtime
+				// performs the redirect — but do it last so any
+				// other error path can still surface to the user.
+				if (
+					error instanceof Error &&
+					/NEXT_REDIRECT/.test(error.message)
+				) {
 					throw error
 				}
 				toast.error(
-					error instanceof Error ? error.message : "Could not create workspace",
+					error instanceof Error
+						? error.message
+						: "Could not create workspace",
 				)
+			} finally {
 				setSubmitting(false)
 			}
 		},
