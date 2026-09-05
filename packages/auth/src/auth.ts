@@ -192,11 +192,19 @@ export const auth: any = betterAuth({
     // (not `session`) because the value is permanent — once a
     // user has finished onboarding they don't go through it again
     // even if their session rotates.
+    //
+    // `input: true` is required by better-auth 1.7.2 to allow the
+    // field to be written through auth.api.updateUser (and thus the
+    // server action in /onboarding/complete). The proxy gate in
+    // apps/app/proxy.ts still requires `activeOrganizationId` to be
+    // set before the user can reach the dashboard, so a user that
+    // cheats and sets onboardingCompletedAt client-side cannot
+    // bypass the organization-creation step.
     additionalFields: {
       onboardingCompletedAt: {
         type: "date",
         required: false,
-        input: false,
+        input: true,
       },
     },
   },
