@@ -8,6 +8,7 @@
 // links back to marketing via `webURL()`.
 
 import { appURL, webURL } from "@workspace/env/client"
+import { orgHomePath } from "@/lib/org-route"
 
 export const APP_CONFIG = {
   name: "DeesseJS",
@@ -16,8 +17,10 @@ export const APP_CONFIG = {
   appURL: appURL(),
   webURL: webURL(),
   // Dashboard nav links (relative paths under the apps/app host).
+  // ADR-030 §"Decision #5": the dashboard lives at /[orgSlug]/home.
+  // Prefer orgHomePath() over this constant.
   links: {
-    home: "/home",
+    home: orgHomePath(),
     login: "/login",
     signup: "/signup",
     settings: "/settings",

@@ -22,6 +22,37 @@ export const forgotPasswordSchema = z.object({
 	email: z.email("Enter a valid email address"),
 })
 
+/**
+ * Onboarding organization form (ADR-030).
+ *
+ * Dummy schema for the placeholder page. The slug must match
+ * the better-auth `organization.slug` constraint once the
+ * plugin lands (lowercase, kebab-case, no leading/trailing
+ * dashes, 3-32 chars). Validation is permissive here so the
+ * dummy page accepts any non-empty input.
+ */
+export const onboardingSchema = z.object({
+	name: z.string().min(2, "Name must be at least 2 characters"),
+	slug: z.string().min(2, "Slug must be at least 2 characters"),
+})
+
+/**
+ * Slugify a free-form organization name into a URL slug.
+ *
+ * Mirrors the better-auth `organization.slug` constraints:
+ * lowercase, kebab-case, no leading or trailing dashes. The
+ * caller can still edit the slug after auto-fill; the
+ * `<CreateOrganizationForm />` listens to `name` changes and
+ * only fills the slug when the user has not touched it.
+ */
+export const slugify = (input: string): string =>
+	input
+		.normalize("NFKD")
+		.toLowerCase()
+		.replace(/[̀-ͯ]/g, "")
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+
 export const resetPasswordSchema = z
 	.object({
 		password: z.string().min(8, "Password must be at least 8 characters"),

@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
+import { ORG_SLUG, orgHomePath } from "@/lib/org-route"
 
-const PROTECTED_PREFIXES = ["/home", "/settings"]
+// ADR-030 §"Decision #5": the dashboard is scoped to /[orgSlug]/home.
+// During the dummy phase the slug is hardcoded (`acme`); PR #4 will
+// replace this with a dynamic matcher and a real active-org lookup.
+const PROTECTED_PREFIXES = [orgHomePath(ORG_SLUG), "/settings"]
 const AUTH_PREFIXES = [
   "/login",
   "/signup",
@@ -22,7 +26,10 @@ const AUTH_PREFIXES = [
 export const config = {
   // Single matcher covering both directions of the auth gate.
   matcher: [
-    "/home/:path*",
+    // ADR-030 §"Decision #5" per-org dashboard. The `:orgSlug`
+    // placeholder accepts any single segment — the page-level gate
+    // does the actual slug validation in PR #4.
+    "/:orgSlug/home/:path*",
     "/settings/:path*",
     "/login",
     "/signup",
@@ -56,7 +63,13 @@ export const config = {
 // time ("Route segment config is not allowed in Proxy file").
 
 interface GetSessionResponse {
-  session?: { user?: { emailVerified?: boolean } }
+  session?: {
+    activeOrganizationId?: string | null
+    user?: {
+      emailVerified?: boolean
+      onboardingCompletedAt?: string | Date | null
+    }
+  }
 }
 
 export async function proxy(request: NextRequest) {
@@ -112,9 +125,36 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/verify-email", request.url))
   }
 
-  if (isAuthPage && session?.session) {
-    return NextResponse.redirect(new URL("/home", request.url))
+  // ADR-031: enforce the onboarding gate at the edge so users
+  // cannot bypass the wizard via direct navigation to a
+  // protected page. The page-level requireCompleteSession() in
+  // (protected)/layout.tsx is the defense-in-depth check.
+  if (isProtected && session?.session?.user) {
+    if (session.session.user.onboardingCompletedAt == null) {
+      return NextResponse.redirect(
+        new URL("/onboarding/integration", request.url),
+      )
+    }
+    if (session.session.activeOrganizationId == null) {
+      return NextResponse.redirect(
+        new URL("/onboarding/organization", request.url),
+      )
+    }
   }
 
-  return NextResponse.next()
+  if (isAuthPage && session?.session) {
+    return NextResponse.redirect(new URL(orgHomePath(), request.url))
+  }
+
+  // Propagate the request pathname to Server Components via
+  // headers() so layouts can `key=` on it. Next.js 16 does not
+  // expose the pathname through `next/headers` by default. The
+  // header must ride on the forwarded REQUEST (not the response),
+  // because `headers()` in a Server Component reads request
+  // headers, not response headers.
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set("x-pathname", pathname)
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  })
 }

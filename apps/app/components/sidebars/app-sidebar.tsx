@@ -17,25 +17,27 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@workspace/ui/components/sidebar"
-import { APP_NAME } from "@/lib/app-config"
+import { orgHomePath } from "@/lib/org-route"
 
 import { Home, Settings } from "lucide-react"
+import { TeamSwitcher } from "@/components/sidebars/team-switcher"
 
 /**
  * Pinned "Home" entry rendered below the brand header. Always visible —
- * the user needs an exit ramp from any nested route. `isActive` provides
- * the sidebar's active styling when on /home.
+ * the user needs an exit ramp from any nested route. `isActive` matches
+ * the per-org home at `/{ORG_SLUG}/home` (ADR-030 §"Decision #5").
  */
 function HomeShortcut() {
   const pathname = usePathname()
+  const homePath = orgHomePath()
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         asChild
         tooltip="Home"
-        isActive={pathname === "/home"}
+        isActive={pathname === homePath}
       >
-        <Link href="/home">
+        <Link href={homePath}>
           <Home />
           <span>Home</span>
         </Link>
@@ -85,26 +87,15 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="h-14 border-b">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              size="lg"
-              className="h-14 font-semibold"
-              tooltip={APP_NAME}
-            >
-              <Link href="/home">
-                <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm">
-                  {APP_NAME.charAt(0)}
-                </span>
-                <span>{APP_NAME}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarHeader className="h-14 border-b bg-background">
+        <div className="flex h-full w-full items-center">
+          {/*
+          name + role and lets users hop between workspaces.
+        */}
+        <TeamSwitcher />
+        </div>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="bg-background">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarBackAction />
@@ -117,7 +108,7 @@ export function AppSidebar({
         </SidebarGroup>
         {inSettings ? <SettingsNav /> : <SettingsShortcut />}
       </SidebarContent>
-      <SidebarFooter className="border-t">
+      <SidebarFooter className="border-t bg-background">
         <NavUser />
       </SidebarFooter>
       <SidebarRail />

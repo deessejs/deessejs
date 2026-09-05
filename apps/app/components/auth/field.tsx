@@ -11,9 +11,10 @@ type FieldProps = {
 	type?: "text" | "email"
 	autoComplete?: string
 	autoFocus?: boolean
+	onFocus?: () => void
 }
 
-export function Field({ form, name, label, type = "text", autoComplete, autoFocus }: FieldProps) {
+export function Field({ form, name, label, type = "text", autoComplete, autoFocus, onFocus }: FieldProps) {
 	return (
 		<form.Field name={name}>
 			{
@@ -31,6 +32,7 @@ export function Field({ form, name, label, type = "text", autoComplete, autoFocu
 							autoFocus={autoFocus}
 							value={field.state.value}
 							onChange={(e) => field.handleChange(e.target.value)}
+							onFocus={onFocus}
 							aria-invalid={!!field.state.meta.errors.length}
 						/>
 						{field.state.meta.errors.map(

@@ -15,6 +15,20 @@
       "when": 1787131781490,
       "tag": "0001_magenta_firebrand",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788476116597,
+      "tag": "0002_add_organization_plugin_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788481063747,
+      "tag": "0003_better_auth_1_7_account_issuer",
+      "breakpoints": false
     }
   ]
 }

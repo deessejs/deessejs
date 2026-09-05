@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
+import { orgHomePath } from "@/lib/org-route"
 import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
 import { Separator } from "@workspace/ui/components/separator"
@@ -25,7 +26,7 @@ export function LoginForm() {
 		},
 		onSubmit: async ({ value }) => {
 			const { error } = await authClient.signIn.email(value, {
-				onSuccess: () => router.push("/home"),
+				onSuccess: () => router.push(orgHomePath()),
 			})
 			if (error) {
 				toast.error(error.message ?? "Invalid credentials")

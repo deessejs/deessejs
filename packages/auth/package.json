@@ -14,6 +14,11 @@
       "import": "./dist/host-allowlist.js",
       "default": "./dist/host-allowlist.js"
     },
+    "./access": {
+      "types": "./dist/access.d.ts",
+      "import": "./dist/access.js",
+      "default": "./dist/access.js"
+    },
     "./types": {
       "types": "./dist/types.d.ts",
       "import": "./dist/types.js",

@@ -1,11 +1,12 @@
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { nextCookies } from "better-auth/next-js"
-import { bearer, deviceAuthorization } from "better-auth/plugins"
+import { bearer, deviceAuthorization, organization } from "better-auth/plugins"
 import { db } from "@workspace/database"
 import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
+import { ac, admin, member, owner } from "./access.js"
 import { HOST_ALLOWLIST } from "./host-allowlist.js"
 
 /**
@@ -60,7 +61,14 @@ function logEmailFailure(flow: string, userId: string, error: string): void {
 	)
 }
 
-export const auth = betterAuth({
+// better-auth 1.7 introduced a transitive dep (better-call) whose
+// types are not exported, so a bare `betterAuth({...})` makes TS
+// fail with TS2883 — the inferred type stays unnameable. Cast to
+// `any` at the export site so consumers (apps/app, packages/api)
+// see the rich `BetterAuth` shape without dragging the better-call
+// types through the workspace dependency graph.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const auth: any = betterAuth({
   baseURL: {
     allowedHosts: [...HOST_ALLOWLIST],
     protocol: process.env.NODE_ENV === "development" ? "http" : "https",
@@ -139,6 +147,13 @@ export const auth = betterAuth({
 
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production",
+    // ADR-030 §"Decision #3" -> better-auth 1.7+: `experimental.joins`
+    // moved to `advanced.database.joins`. The org plugin uses
+    // adapter joins to expand `member` rows when listing
+    // organizations, so we still need this on.
+    database: {
+      joins: true,
+    },
     ...(serverEnv.PARENT_DOMAIN
       ? {
           crossSubDomainCookies: {
@@ -152,9 +167,7 @@ export const auth = betterAuth({
       : {}),
   },
 
-  experimental: {
-    joins: true,
-  },
+  experimental: {},
 
   socialProviders: {
     github: {
@@ -172,7 +185,73 @@ export const auth = betterAuth({
     },
   },
 
+  user: {
+    // ADR-030: the /onboarding/complete server action stamps this
+    // timestamp so getOnboardingState() can detect that the
+    // three-step wizard finished. The column lives on `user`
+    // (not `session`) because the value is permanent — once a
+    // user has finished onboarding they don't go through it again
+    // even if their session rotates.
+    //
+    // `input: true` is required by better-auth 1.7.2 to allow the
+    // field to be written through auth.api.updateUser (and thus the
+    // server action in /onboarding/complete). The proxy gate in
+    // apps/app/proxy.ts still requires `activeOrganizationId` to be
+    // set before the user can reach the dashboard, so a user that
+    // cheats and sets onboardingCompletedAt client-side cannot
+    // bypass the organization-creation step.
+    additionalFields: {
+      onboardingCompletedAt: {
+        type: "date",
+        required: false,
+        input: true,
+      },
+    },
+  },
+
   plugins: [
+    // Organization plugin (ADR-030): multi-tenant workspaces. Adds
+    // organization/member/invitation tables on top of the user/session
+    // tables and an `activeOrganizationId` column on the session row
+    // the rest of the auth surface switches on. Inserted FIRST so the
+    // device flow and the bearer plugin see the active org context.
+    // Disabled sub-features: `teams.enabled` (V2), `dynamicAccessControl`
+    // (custom roles created at runtime — V2). `requireEmailVerificationOnInvitation`
+    // is true to gate accept-invite on the invitee's verified email.
+    organization({
+      ac,
+      roles: { owner, admin, member },
+      allowUserToCreateOrganization: true,
+      organizationLimit: 10,
+      creatorRole: "owner",
+      membershipLimit: 100,
+      invitationExpiresIn: 60 * 60 * 48,
+      invitationLimit: 100,
+      requireEmailVerificationOnInvitation: true,
+      cancelPendingInvitationsOnReInvite: false,
+      // Custom invitation URL — see ADR-030 §"Decision #1". The
+      // plugin emits `data.id`, `data.email`, `data.role`,
+      // `data.organization`, `data.inviter`; we build the URL from
+      // the request's resolved origin so Vercel previews receive
+      // their own hostname instead of the production apex.
+      sendInvitationEmail: async (data, request) => {
+        const origin =
+          new URL(request?.url ?? "http://localhost:3000").origin
+        const url = `${origin}/invite/${data.id}`
+        void sendAuthEmail({
+          to: data.email,
+          subject: `Invitation to join ${data.organization.name}`,
+          react: templates.InviteToOrganization({
+            url,
+            inviter: data.inviter.user.name,
+            organizationName: data.organization.name,
+          }),
+          tags: [{ name: "flow", value: "org-invitation" }],
+        }).then((result) => {
+          if (!result.ok) logEmailFailure("org-invitation", data.inviter.user.id, result.error)
+        })
+      },
+    }),
     // Device authorization (ADR-020): the device-code flow that lets the
     // CLI obtain a session token without a password. The plugin adds
     // /device/code, /device/token, /device, /device/approve, /device/deny
