@@ -24,7 +24,7 @@ export default async function OnboardingOrganizationPage() {
 	return (
 		<OnboardingShell
 			currentStep="organization"
-			completedSteps={state?.hasGithub ? ["integration"] : []}
+			completedSteps={[]}
 			backHref="/onboarding/integration"
 		>
 			<AuthContainer.Root>

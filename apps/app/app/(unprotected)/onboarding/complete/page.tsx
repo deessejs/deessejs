@@ -42,8 +42,7 @@ export default async function OnboardingCompletePage() {
 		redirect(`/onboarding/${state.step}`)
 	}
 
-	const completedSteps: Array<"integration" | "organization" | "complete"> = []
-	if (state?.hasGithub) completedSteps.push("integration")
+	const completedSteps: Array<"organization" | "complete"> = []
 	if (state?.hasOrganization) completedSteps.push("organization")
 
 	return (

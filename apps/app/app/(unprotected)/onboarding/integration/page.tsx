@@ -8,8 +8,6 @@ import { GitHubIcon } from "@/components/auth/icons/github-icon"
 import { VercelIcon } from "@/components/auth/icons/vercel-icon"
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
 
-import { getOnboardingState } from "@/lib/onboarding"
-
 type Integration = {
 	id: "github" | "vercel"
 	name: string
@@ -36,13 +34,11 @@ export default async function OnboardingIntegrationPage() {
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session?.user) redirect("/login")
 
-	// Forward-gate: integration is the first step. If the user has
-	// somehow skipped ahead (e.g. has an org already), push them
-	// to wherever they actually belong.
-	const state = await getOnboardingState()
-	if (state?.step && state.step !== "integration") {
-		redirect(`/onboarding/${state.step}`)
-	}
+	// ADR-031 amendment 2026-09: the integration step is opt-in.
+	// The user can browse this page freely, skip every provider,
+	// and click Continue to reach the next step. The strict
+	// gate at the proxy only enforces activeOrganizationId +
+	// onboardingCompletedAt, so the wizard is not a blocker here.
 
 	return (
 		<OnboardingShell currentStep="integration" completedSteps={[]}>
@@ -65,7 +61,13 @@ export default async function OnboardingIntegrationPage() {
 
 				<ul className="flex flex-col gap-3">
 					{INTEGRATIONS.map(({id, name, description, Icon}) => {
-						const isConnected = state?.hasGithub && id === "github"
+						// The integration step is opt-in (ADR-031
+						// amendment 2026-09). We don't surface a
+						// "Set up" / "Not set up" badge here — the user
+						// can click Continue without connecting any
+						// provider. The connected-state read is deferred
+						// to the Vercel / GitHub connect flow that
+						// ships separately.
 						return (
 							<li
 								key={id}
@@ -84,15 +86,6 @@ export default async function OnboardingIntegrationPage() {
 										</span>
 									</div>
 								</div>
-								<span
-									className={
-										isConnected
-											? "inline-flex items-center rounded-full border border-primary bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground"
-											: "inline-flex items-center rounded-full border border-muted bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-									}
-								>
-									{isConnected ? "Set up" : "Not set up"}
-								</span>
 							</li>
 						)
 					})}

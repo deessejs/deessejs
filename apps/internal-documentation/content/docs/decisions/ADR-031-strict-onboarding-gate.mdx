@@ -194,6 +194,39 @@ because the proxy redirects before the layout runs.
   even if the client-side atom is stale, the proxy sees the
   authoritative value and redirects.
 
+### Amendment (2026-09): integration step is opt-in
+
+The original ADR-030 §"Decision #8" lists three wizard steps:
+`integration` (connect GitHub / Vercel), `organization` (create a
+workspace), `complete` (recap). This ADR inherits the wizard shape
+but **removes the integration step from the gate**.
+
+Practical consequence: a user on `/onboarding/integration` can
+click Continue without connecting any provider. The state
+machine in `apps/app/lib/onboarding.ts` no longer carries
+`hasGithub`; the derivation collapses to:
+
+```
+  hasOrganization ? completed ? null : "complete" : "organization"
+```
+
+The proxy still enforces the four invariants on protected routes,
+but invariant #3 (`activeOrganizationId`) and invariant #4
+(`onboardingCompletedAt`) are the load-bearing pair. The
+integration step is a surface for the product, not a precondition
+for the dashboard.
+
+Rationale: forcing every user to connect GitHub before they can
+land on the dashboard creates a conversion funnel that doesn't
+match the product surface. A user who just wants to log in and
+poke around should not have to wire OAuth first. The dashboard
+itself does not read from a provider until the user opens a
+project-level view.
+
+This amendment keeps the strictness policy unchanged: every
+other invariant is still enforced. It only removes the integration
+step from the gate.
+
 ## Cross-organization considerations
 
 The gate does not change the cross-app surface: `apps/web` still

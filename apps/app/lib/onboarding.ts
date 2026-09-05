@@ -2,24 +2,27 @@ import { headers } from "next/headers"
 
 import { auth } from "@workspace/auth"
 
-export type OnboardingStep = "integration" | "organization" | "complete"
+export type OnboardingStep = "organization" | "complete"
 
 export type OnboardingState = {
 	step: OnboardingStep | null
-	hasGithub: boolean
 	hasOrganization: boolean
 	completed: boolean
 }
 
 /**
  * Server-side onboarding state machine (ADR-030 §"Decision #8"
- * with backend). Reads the better-auth session and the account /
- * organization tables to decide which step the user should land on.
+ * with backend; ADR-031 amendment 2026-09).
  *
- * Three steps in order:
- *   1. integration   — connect GitHub (Vercel in V2)
- *   2. organization  — create the first workspace
- *   3. complete      — recap and exit to /home
+ * Two mandatory steps:
+ *   1. organization  — create the first workspace
+ *   2. complete      — recap and exit to /home
+ *
+ * The third step that ADR-030 originally scoped (`integration`
+ * for connecting GitHub / Vercel) was opt-in: the user can skip
+ * every integration and still reach the dashboard. The step is
+ * kept in the wizard for product surface but no longer feeds the
+ * gate, so it doesn't appear in `OnboardingState`.
  *
  * `step` is `null` once onboarding is finished — the proxy and
  * the page-level gates both treat null as "do not redirect, the
@@ -28,15 +31,6 @@ export type OnboardingState = {
 export async function getOnboardingState(): Promise<OnboardingState | null> {
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session?.user) return null
-
-	// Read the linked accounts. Note: better-auth names the endpoint
-	// `listUserAccounts` (singular) — it lists the calling user's
-	// own account rows, not arbitrary user rows.
-	const accountsRes = await auth.api.listUserAccounts({
-		headers: await headers(),
-	})
-	const accounts = (accountsRes ?? []) as { providerId: string }[]
-	const hasGithub = accounts.some((account) => account.providerId === "github")
 
 	// Org membership surfaces via listOrganizations.
 	const orgsRes = await auth.api.listOrganizations({ headers: await headers() })
@@ -49,14 +43,12 @@ export async function getOnboardingState(): Promise<OnboardingState | null> {
 			.onboardingCompletedAt != null
 
 	let step: OnboardingStep | null
-	if (!hasGithub) step = "integration"
-	else if (!hasOrganization) step = "organization"
+	if (!hasOrganization) step = "organization"
 	else if (!completed) step = "complete"
 	else step = null
 
 	return {
 		step,
-		hasGithub,
 		hasOrganization,
 		completed,
 	}
