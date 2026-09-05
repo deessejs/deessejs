@@ -10,9 +10,11 @@ import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 
 type CreateOrganizationFormProps = {
-	/** Server action wired at the page level. Receives FormData with
-	 *  fields `name` and `slug` populated from the form. */
-	action: (formData: FormData) => Promise<void>
+	/** Server action wired at the page level. Receives an object
+	 *  with `name`, `slug`, and an optional `next` path. */
+	action: (input: { name: string; slug: string; next?: string }) => Promise<void>
+	/** Path the server action redirects to on success. */
+	nextHref?: string
 }
 
 /**
@@ -24,7 +26,7 @@ type CreateOrganizationFormProps = {
  * native form action — TanStack Form mirrors its values into
  * hidden inputs so the server action sees the data as FormData.
  */
-export function CreateOrganizationForm({ action }: CreateOrganizationFormProps) {
+export function CreateOrganizationForm({ action, nextHref }: CreateOrganizationFormProps) {
 	// Tracks whether the user has manually focused/edited the slug
 	// field. While false, slug is derived from the name field via
 	// `slugify`. Once true, the auto-fill stops so we never overwrite
@@ -51,7 +53,18 @@ export function CreateOrganizationForm({ action }: CreateOrganizationFormProps) 
 	return (
 		<>
 			<form
-				action={action}
+				action={(formData) => {
+					const name = formData.get("name")?.toString() ?? ""
+					const slug = formData.get("slug")?.toString() ?? ""
+					// Build the payload conditionally so `next` is
+					// omitted when nextHref is undefined — exactOptional-
+					// PropertyTypes rejects passing `undefined` explicitly.
+					const payload: { name: string; slug: string; next?: string } =
+						nextHref === undefined
+							? { name, slug }
+							: { name, slug, next: nextHref }
+					void action(payload)
+				}}
 				noValidate
 				className="flex flex-col gap-5"
 			>

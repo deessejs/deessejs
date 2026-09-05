@@ -27,6 +27,25 @@ import { CreateOrganizationDialog } from "@/components/sidebars/create-organizat
 import { authClient } from "@/lib/auth-client"
 import { orgHomePath } from "@/lib/org-route"
 
+const VERCEL_AVATAR_BASE = "https://vercel.com/api/www/avatar"
+// Same deployment token as the NavUser avatar in
+// apps/app/components/sidebars/nav-user.tsx — shared CDN bucket.
+const VERCEL_AVATAR_DPL = "dpl_AS99V7XmtTzE4xdb72tYFtNTVV48"
+
+/**
+ * Vercel-CDN avatar URL keyed off the workspace id. Deterministic,
+ * so the same org always renders the same avatar. Used as a
+ * fallback when the org has no `logo` column set.
+ */
+function getVercelAvatarUrl(identifier: string, size = 40): string {
+	const params = new URLSearchParams({
+		s: String(size),
+		u: identifier,
+		dpl: VERCEL_AVATAR_DPL,
+	})
+	return `${VERCEL_AVATAR_BASE}?${params.toString()}`
+}
+
 function getInitials(name: string): string {
 	const parts = name.trim().split(/\s+/).filter(Boolean)
 	if (parts.length === 0) return "?"
@@ -89,15 +108,6 @@ export function TeamSwitcher() {
 		router.push(orgHomePath(next.slug))
 	}
 
-	async function handleCreated(values: { name: string; slug: string }) {
-		await ac.organization.createOrganization({
-			name: values.name,
-			slug: values.slug,
-		})
-		await queryClient.invalidateQueries({ queryKey: ["organization"] })
-		setCreateOpen(false)
-	}
-
 	return (
 		<SidebarMenu>
 			<SidebarMenuItem>
@@ -108,9 +118,9 @@ export function TeamSwitcher() {
 							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 						>
 							<Avatar className="size-8 rounded-lg">
-								{activeOrg?.logo ? (
+								{activeOrg ? (
 									<AvatarImage
-										src={activeOrg.logo}
+										src={activeOrg.logo ?? getVercelAvatarUrl(activeOrg.id, 64)}
 										alt={activeOrg.name}
 									/>
 								) : null}
@@ -151,9 +161,10 @@ export function TeamSwitcher() {
 									className="gap-2 p-2"
 								>
 									<Avatar className="size-6 rounded-md">
-										{org.logo ? (
-											<AvatarImage src={org.logo} alt={org.name} />
-										) : null}
+										<AvatarImage
+											src={org.logo ?? getVercelAvatarUrl(org.id, 40)}
+											alt={org.name}
+										/>
 										<AvatarFallback className="rounded-md text-xs">
 											{getInitials(org.name)}
 										</AvatarFallback>
@@ -192,7 +203,6 @@ export function TeamSwitcher() {
 				onOpenChange={async (next) => {
 					setCreateOpen(next)
 				}}
-				onCreated={handleCreated}
 			/>
 		</SidebarMenu>
 	)

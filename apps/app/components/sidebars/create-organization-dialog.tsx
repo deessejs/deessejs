@@ -15,7 +15,7 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Input } from "@workspace/ui/components/input"
 import { onboardingSchema, slugify } from "@/components/auth/schemas"
-import { authClient } from "@/lib/auth-client"
+import { createOrganization } from "@/lib/actions/create-organization"
 
 type CreatedOrg = {
 	name: string
@@ -34,18 +34,16 @@ type CreateOrganizationDialogProps = {
 }
 
 /**
- * Create-organization dialog driven by the better-auth
- * organizationClient plugin. The dialog submits the values to
- * `authClient.organization.createOrganization(...)` and reports
- * back to the parent for query invalidation.
+ * Create-organization dialog driven by the shared server action
+ * in `lib/actions/create-organization.ts`. The action routes the
+ * user to /{slug}/home after creating the workspace and
+ * switching the active org, so the dialog can rely on the
+ * browser navigation the action triggers — no manual router
+ * push needed.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const ac = authClient as any
-
 export function CreateOrganizationDialog({
 	open,
 	onOpenChange,
-	onCreated,
 }: CreateOrganizationDialogProps) {
 	const [submitting, setSubmitting] = useState(false)
 	// Tracks whether the slug field has been manually touched. While
@@ -61,22 +59,23 @@ export function CreateOrganizationDialog({
 			setSubmitting(true)
 			try {
 				const slug = value.slug || slugify(value.name)
-				const result = await ac.organization.createOrganization({
+				await createOrganization({
 					name: value.name,
 					slug,
+					next: "/{slug}/home",
 				})
-				toast.success(`Workspace "${value.name}" created.`)
-				onCreated?.({ name: value.name, slug })
-				form.reset()
-				slugTouchedRef.current = false
-				// best-effort: hide result in unused locals
-				void result
-				await onOpenChange(false)
+				// The server action redirects; this branch is unreachable
+				// but kept for type-narrowing on the catch below.
 			} catch (error) {
+				// redirect() throws a NEXT_REDIRECT sentinel that we must
+				// re-throw so the redirect actually fires. Filter for it
+				// before reporting to the user.
+				if (error instanceof Error && /NEXT_REDIRECT/.test(error.message)) {
+					throw error
+				}
 				toast.error(
 					error instanceof Error ? error.message : "Could not create workspace",
 				)
-			} finally {
 				setSubmitting(false)
 			}
 		},
