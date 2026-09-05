@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { Building2, Sparkles } from "lucide-react"
@@ -8,26 +8,22 @@ import { toast } from "sonner"
 
 import { Field } from "@/components/auth/field"
 import { onboardingSchema, slugify } from "@/components/auth/schemas"
-import { authClient } from "@/lib/auth-client"
 import { orgHomePath } from "@/lib/org-route"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 
 type CreateOrganizationFormProps = {
+	/** Server action wired at the page level. Receives { name, slug }. */
+	action: (formData: FormData) => Promise<void>
 	/** Path to navigate to after a successful submit. Defaults to the org-scoped dashboard. */
 	nextHref?: string
 }
 
-// better-auth 1.7's organizationClient plugin infers through a
-// private AuthQueryAtom type that breaks the authClient generic
-// surface. Cast at the call site so the typed body shape stays
-// usable — same workaround as CreateOrganizationDialog.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const ac = authClient as any
-
-export function CreateOrganizationForm({ nextHref = orgHomePath() }: CreateOrganizationFormProps) {
+export function CreateOrganizationForm({
+	action,
+	nextHref = orgHomePath(),
+}: CreateOrganizationFormProps) {
 	const router = useRouter()
-	const [submitting, setSubmitting] = useState(false)
 	// Tracks whether the user has manually focused/edited the slug
 	// field. While false, slug is derived from the name field via
 	// `slugify`. Once true, the auto-fill stops so we never overwrite
@@ -43,36 +39,27 @@ export function CreateOrganizationForm({ nextHref = orgHomePath() }: CreateOrgan
 		validators: {
 			onSubmit: onboardingSchema,
 		},
-		onSubmit: async ({ value }) => {
-			setSubmitting(true)
-			try {
-				const slug = value.slug || slugify(value.name)
-				await ac.organization.createOrganization({
-					name: value.name,
-					slug,
-				})
-				toast.success(`Workspace "${value.name}" created.`)
-				form.reset()
-				slugTouchedRef.current = false
-				router.push(nextHref)
-			} catch (error) {
-				toast.error(
-					error instanceof Error
-						? error.message
-						: "Could not create workspace",
-				)
-			} finally {
-				setSubmitting(false)
-			}
-		},
+		// Submit handler is the server action passed via props.
+		// The form values reach it as FormData because we render a
+		// hidden <input> per field and rely on native form submission.
+		onSubmit: () => undefined,
 	})
 
 	return (
 		<>
 			<form
-				onSubmit={(e) => {
-					e.preventDefault()
-					void form.handleSubmit()
+				action={action}
+				onSubmit={(event) => {
+					event.preventDefault()
+					// Validate client-side, then submit through the
+					// native form action — the server action receives
+					// the FormData and runs server-side.
+					void form.handleSubmit().then(() => {
+						// If validation failed, abort. Otherwise let the
+						// native submit fire.
+						if (Object.keys(form.state.errors).length > 0) return
+						event.currentTarget.requestSubmit()
+					})
 				}}
 				noValidate
 				className="flex flex-col gap-5"
@@ -91,9 +78,6 @@ export function CreateOrganizationForm({ nextHref = orgHomePath() }: CreateOrgan
 					label="URL slug"
 					autoComplete="off"
 					onFocus={() => {
-						// First focus marks the slug as user-owned. From
-						// here on, name → slug auto-fill stops so we never
-						// overwrite deliberate edits.
 						slugTouchedRef.current = true
 					}}
 				/>
@@ -111,18 +95,17 @@ export function CreateOrganizationForm({ nextHref = orgHomePath() }: CreateOrgan
 				</div>
 
 				{/*
-				  Slug auto-fill from name. Runs whenever the name field
-				  changes: while the user has not touched the slug, we
-				  mirror the slugified name. Once focused, the ref flips
-				  and we leave the slug alone.
+				  Slug auto-fill from name. Mirrors the sync in the
+				  dialog form: the user keeps manual control as soon as
+				  they focus the slug field.
 				*/}
 				<form.Subscribe
 					selector={(state) => state.values.name}
 					children={(name) => {
 						if (!slugTouchedRef.current) {
-							const next = slugify(name ?? "")
-							if (next !== form.getFieldValue("slug")) {
-								form.setFieldValue("slug", next)
+							const expected = slugify(name ?? "")
+							if (expected !== form.getFieldValue("slug")) {
+								form.setFieldValue("slug", expected)
 							}
 						}
 						// Render an empty fragment so the children return
@@ -131,8 +114,31 @@ export function CreateOrganizationForm({ nextHref = orgHomePath() }: CreateOrgan
 					}}
 				/>
 
+				{/* Hidden inputs bridge TanStack Form values to native
+				    form submission so the server action sees the data. */}
 				<form.Subscribe
-					selector={(state) => [state.canSubmit, state.isSubmitting] as const}
+					selector={(state) => state.values}
+					children={(values) => (
+						<>
+							<input
+								type="hidden"
+								name="name"
+								value={values.name ?? ""}
+							/>
+							<input
+								type="hidden"
+								name="slug"
+								value={values.slug ?? ""}
+							/>
+						</>
+					)}
+				/>
+
+				<form.Subscribe
+					selector={(state) => [
+						state.canSubmit,
+						state.isSubmitting,
+					] as const}
 					children={([canSubmit, isSubmitting]) => (
 						<Button type="submit" disabled={!canSubmit} aria-busy={isSubmitting}>
 							<Building2 className="size-4" />
