@@ -1,12 +1,14 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { Building2, Sparkles } from "lucide-react"
+import { toast } from "sonner"
 
 import { Field } from "@/components/auth/field"
 import { onboardingSchema, slugify } from "@/components/auth/schemas"
+import { authClient } from "@/lib/auth-client"
 import { orgHomePath } from "@/lib/org-route"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
@@ -16,8 +18,16 @@ type CreateOrganizationFormProps = {
 	nextHref?: string
 }
 
+// better-auth 1.7's organizationClient plugin infers through a
+// private AuthQueryAtom type that breaks the authClient generic
+// surface. Cast at the call site so the typed body shape stays
+// usable — same workaround as CreateOrganizationDialog.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ac = authClient as any
+
 export function CreateOrganizationForm({ nextHref = orgHomePath() }: CreateOrganizationFormProps) {
 	const router = useRouter()
+	const [submitting, setSubmitting] = useState(false)
 	// Tracks whether the user has manually focused/edited the slug
 	// field. While false, slug is derived from the name field via
 	// `slugify`. Once true, the auto-fill stops so we never overwrite
@@ -33,10 +43,27 @@ export function CreateOrganizationForm({ nextHref = orgHomePath() }: CreateOrgan
 		validators: {
 			onSubmit: onboardingSchema,
 		},
-		onSubmit: async () => {
-			// Dummy: no backend. ADR-030 PR #4 will wire
-			// `authClient.organization.createOrganization(...)` here.
-			router.push(nextHref)
+		onSubmit: async ({ value }) => {
+			setSubmitting(true)
+			try {
+				const slug = value.slug || slugify(value.name)
+				await ac.organization.createOrganization({
+					name: value.name,
+					slug,
+				})
+				toast.success(`Workspace "${value.name}" created.`)
+				form.reset()
+				slugTouchedRef.current = false
+				router.push(nextHref)
+			} catch (error) {
+				toast.error(
+					error instanceof Error
+						? error.message
+						: "Could not create workspace",
+				)
+			} finally {
+				setSubmitting(false)
+			}
 		},
 	})
 
