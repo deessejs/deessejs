@@ -1,0 +1,264 @@
+---
+title: 'Strict onboarding gate at the proxy and the protected layout'
+description: 'Enforce the four invariants (session, email verification, active organization, onboarding completion) at the edge and on every protected route. The proxy intercepts before the page renders; the layout double-checks.'
+---
+
+# ADR-031: Strict onboarding gate at the proxy and the protected layout
+
+## Status
+
+Approved (2026-09). Drafted alongside the better-auth 1.7 bump
+and the schema regen that exposed the missing `user.onboarding_completed_at`
+column. Implemented in PR #126 (commits "feat(app): onboarding wizard",
+"feat(auth): onboarding gate at proxy and layout").
+
+## Context
+
+Every protected page in `apps/app` was previously gated only on
+"does a session exist?". A user could sign up, verify their email,
+land on `/acme/home` without ever opening the onboarding wizard,
+and stay there indefinitely with `activeOrganizationId = null`
+and `onboardingCompletedAt = null`.
+
+Two concrete failures this surfaced:
+
+1. A newly-signed-up user on staging reached `/acme/home` and
+   triggered `42703 column session_user.onboarding_completed_at
+   does not exist` because the `additionalFields` column was never
+   populated by a wizard they never saw.
+2. The dashboard's `<TeamSwitcher />` reads
+   `activeOrganizationId` to label the active workspace; a user
+   without an org was reading `null` and getting a "Welcome back
+   to **null**" message.
+
+The ADR fixes both by enforcing the gate at two layers (edge +
+layout) and one helper (`requireCompleteSession()`).
+
+## Decision
+
+### What this rule decides
+
+Four invariants, evaluated in this order. The first one that fails
+short-circuits to the matching redirect.
+
+| # | Invariant | On failure | Source field |
+|---|---|---|---|
+| 1 | Session exists | `/login?redirect=<path>` | `auth.api.getSession` |
+| 2 | Email verified | `/verify-email` | `user.emailVerified` |
+| 3 | Active organization | `/onboarding/organization` | `session.activeOrganizationId` |
+| 4 | Onboarding completed | `/onboarding/integration` | `user.onboardingCompletedAt` |
+
+The order mirrors the onboarding flow itself: the user must finish
+each step before they can leave it. Step 3 (active org) comes
+before step 4 (onboarding completed) because `markOnboardingComplete`
+sets the timestamp *after* the user clicks "Go to dashboard" from
+`/onboarding/complete`, which is reachable only if an org exists.
+
+### Two enforcement layers
+
+**1. Edge (`apps/app/proxy.ts`).**
+
+The proxy already self-fetches `/api/v1/auth/get-session` for the
+existing email-verification gate. The four invariants extend the
+existing branch:
+
+```ts
+if (isProtected && session?.session?.user) {
+  if (session.session.user.onboardingCompletedAt == null) {
+    return NextResponse.redirect("/onboarding/integration")
+  }
+  if (session.session.activeOrganizationId == null) {
+    return NextResponse.redirect("/onboarding/organization")
+  }
+}
+```
+
+Cost: zero additional DB round-trips. The `getSession` call already
+performs a `findSession` join on `user` (1.7.x) which exposes
+`onboardingCompletedAt` via `additionalFields`. The active org id
+is on the session row directly.
+
+**2. Layout (`apps/app/app/(protected)/layout.tsx`).**
+
+A new helper `apps/app/lib/require-complete-session.ts` invokes the
+same four invariants server-side, returning `{ session }` to the
+caller. The protected layout calls it at the top of its body,
+before rendering the sidebar shell. Any page under `(protected)`
+that ever lands here is gated regardless of any future matcher
+change in the proxy.
+
+```ts
+export async function ProtectedLayout({ children }) {
+  await requireCompleteSession()
+  // ... sidebar shell
+}
+```
+
+The helper is exported so individual pages that need to read the
+session (e.g. `orgSlug` home pages) can call it themselves and
+read `session` from the return value. The page-level call avoids
+the proxy relying on `headers().get('x-forwarded-host')` resolution
+when the proxy bypasses a request.
+
+### Why both layers
+
+The proxy is the cheap path: it short-circuits before the
+Server Component tree materializes, so the user never sees a flash
+of the dashboard. The layout is the defense-in-depth: if the proxy
+matcher is ever loosened (a new public-but-protected route), the
+layout still gates. The two layers compose without duplicate work
+because the proxy redirects before the layout runs.
+
+### What this rule allows
+
+- A user can finish onboarding in any order (start at
+  `/onboarding/organization` even if they haven't connected GitHub;
+  the forward-gate inside each step redirects them appropriately).
+- The proxy bounces authenticated users off the auth pages
+  (`/login`, `/signup`, `/forgot-password`, `/reset-password`,
+  `/verify-email`, `/device`) so they can't sign in then re-render
+  the auth UI.
+- The active-org check runs at the edge; the user is never shown
+  `/acme/home` without an `activeOrganizationId`.
+
+### What this rule forbids
+
+- Bypassing the wizard via direct navigation. Every protected
+  prefix (`/:orgSlug/home/:path*`, `/settings/:path*`) is covered
+  by the matcher; the layout covers anything else that ever lands
+  under `(protected)`.
+- Skipping onboarding by manipulating the `activeOrganizationId`
+  cookie. The session row is server-signed by better-auth;
+  tampering invalidates the JWE.
+- A user with `activeOrganizationId = null` reaching any
+  `(protected)` page. The proxy redirects before rendering,
+  the layout blocks server-side.
+
+### Why not the alternatives
+
+1. **Laxist mode (gate only the dashboard, leave settings open).**
+   The settings tree includes `/settings/organizations/[orgId]/*`
+   which scopes to an org; without `activeOrganizationId` every
+   sub-page is broken. The strict gate catches the case once at
+   the layout instead of scattering the check across each page.
+2. **Skip-able (CTA banner on `/home` instead of redirect).**
+   The user can ignore the banner indefinitely; the bug it
+   surfaced (missing `onboarding_completed_at`) only shows up
+   when the user clicks into a page that reads the field. Strict
+   mode fails loud on the first wrong click.
+3. **Server-side only (no proxy gate).**
+   The user sees a flash of the dashboard content (sidebar,
+   TeamSwitcher reading `null`) before the redirect. The proxy
+   short-circuit is the only way to avoid the flash.
+
+### What this rule does not change
+
+- **The onboarding flow itself.** `/onboarding/integration` →
+  `/onboarding/organization` → `/onboarding/complete` keeps its
+  own forward-gating (the per-step check inside each page) so
+  the user is bounced forward when they reach a step they should
+  have skipped.
+- **The cookie cache.** The proxy reads session on every
+  protected request. `session.cookieCache` (better-auth option) is
+  not enabled today; the V1 cost is one `findSession` join per
+  protected request. If that becomes a hot path, a 5-second cookie
+  cache is a follow-up.
+- **The TeamSwitcher's reactivity.** The switcher still reads
+  from better-auth atoms; the gate just guarantees those atoms
+  are populated before the user reaches the sidebar.
+- **The `markOnboardingComplete` server action.** It still
+  persists `onboardingCompletedAt` via `auth.api.updateUser({ body:
+  { onboardingCompletedAt: new Date() } as any, headers })`. The
+  `as any` cast is a 1.7 type-inference workaround (the typed body
+  shape for `additionalFields` lags behind the schema regen) and
+  is a known cleanup item for better-auth > 1.7.3.
+
+## Consequences
+
+- **`requireCompleteSession()` is the canonical gate.** Any future
+  protected Server Component that needs to read the session calls
+  this helper and destructures `{ session }`. The four invariants
+  live in exactly one place; the proxy mirrors them.
+- **The proxy matcher becomes load-bearing for the gate.** A
+  future route that needs protection must be added to
+  `PROTECTED_PREFIXES` (or to a parallel prefix set when the route
+  moves out of `(protected)`). The layout gate is the safety net
+  for that contract.
+- **`user.onboardingCompletedAt` becomes a hard requirement.**
+  Existing users without a value (data drift, legacy signups) are
+  redirected to `/onboarding/integration` once on next visit;
+  the wizard then sets the timestamp. No backfill migration is
+  needed; the column is nullable on purpose.
+- **A stale `$activeOrgSignal` (#9710) cannot strand the user.**
+  The gate reads from the session row, which is server-signed;
+  even if the client-side atom is stale, the proxy sees the
+  authoritative value and redirects.
+
+## Cross-organization considerations
+
+The gate does not change the cross-app surface: `apps/web` still
+hits `apps/app`'s `/api/v1/auth/get-session` over its own session
+cookie. The gate runs in `apps/app`'s proxy, which means a user
+already signed in on `apps/web` and following a link into
+`apps/app` without having completed onboarding on `apps/app` is
+redirected to the wizard as expected.
+
+## Test strategy
+
+### Unit
+
+`packages/auth/tests/integration/onboarding-gate.test.ts` (new)
+covers the four invariants:
+
+- No session → expect redirect to `/login`.
+- Session without `emailVerified` → expect redirect to `/verify-email`.
+- Session with `emailVerified` but no `activeOrganizationId` →
+  expect redirect to `/onboarding/organization`.
+- Session with all three → expect no redirect.
+- Session with `onboardingCompletedAt = null` →
+  expect redirect to `/onboarding/integration`.
+
+### Manual staging smoke (Vercel preview)
+
+- Sign up a new user → click email-verify link → confirm the
+  landing page is `/onboarding/integration`, not `/acme/home`.
+- Skip the wizard by navigating directly to `/acme/home` →
+  proxy redirects to `/onboarding/integration`.
+- Connect GitHub, complete the org step, hit "Go to dashboard" →
+  the user lands on `/acme/home` with `activeOrganizationId`
+  populated.
+- Re-sign-in on a second device → confirm the same redirect
+  behavior. The cookie cache is not involved here.
+
+### Automated CI smoke (optional, deferred)
+
+A Vercel preview workflow that boots a fresh Neon DB branch,
+runs the migrations, signs up a test user via the better-auth
+HTTP API, and asserts the four gate states. Deferred — the
+manual smoke covers the critical paths.
+
+## Where this rule came from
+
+- `docs/guides/better-auth/pitfalls.md` §3 documents the
+  `/home` and `/settings` gate as the canonical pattern for
+  better-auth protected routes. ADR-031 extends it to four
+  invariants instead of two.
+- `apps/app/proxy.ts:69-127` (pre-ADR-031) shows the previous
+  two-invariant gate. ADR-031 supersedes that block.
+- `packages/auth/src/auth.ts` declares `user.additionalFields
+  .onboardingCompletedAt`; the field is the load-bearing piece
+  that ADR-031 depends on. If the field is removed in a future
+  better-auth upgrade, the gate falls back to "always assume
+  incomplete" — documented in §"What this rule does not change".
+
+## Related
+
+- [ADR-030: Better-auth organization plugin](./ADR-030-better-auth-organization-plugin).
+  Sets up the wizard and the `additionalFields` schema. ADR-031
+  is the gate that ensures the wizard actually runs.
+- [ADR-022: CLI device auth fixes](./ADR-022-cli-device-auth-fixes).
+  Defines the page-level session gate on `/device`; ADR-031's
+  `requireCompleteSession()` follows the same redirect order.
+- [Better Auth: Session cookies](https://better-auth.com/docs/concepts/session#cookie-cache).
+  Reference for the cookie cache that ADR-031 leaves untouched
+  in V1.

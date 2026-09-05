@@ -3,11 +3,19 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@workspace/ui/com
 import { APP_NAME } from "@/lib/app-config"
 import { AppSidebar } from "@/components/sidebars/app-sidebar"
 import { Separator } from "@workspace/ui/components/separator"
+import { requireCompleteSession } from "@/lib/require-complete-session"
+
 export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  // ADR-031: defense-in-depth gate. The proxy already enforces the
+  // four invariants at the edge; this Server-Component call makes
+  // sure every protected page is gated regardless of any future
+  // matcher change.
+	await requireCompleteSession()
+
   return (
     <SidebarProvider>
       <AppSidebar />

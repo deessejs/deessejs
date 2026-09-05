@@ -63,7 +63,13 @@ export const config = {
 // time ("Route segment config is not allowed in Proxy file").
 
 interface GetSessionResponse {
-  session?: { user?: { emailVerified?: boolean } }
+  session?: {
+    activeOrganizationId?: string | null
+    user?: {
+      emailVerified?: boolean
+      onboardingCompletedAt?: string | Date | null
+    }
+  }
 }
 
 export async function proxy(request: NextRequest) {
@@ -117,6 +123,23 @@ export async function proxy(request: NextRequest) {
 
   if (isProtected && session?.session?.user && !session.session.user.emailVerified) {
     return NextResponse.redirect(new URL("/verify-email", request.url))
+  }
+
+  // ADR-031: enforce the onboarding gate at the edge so users
+  // cannot bypass the wizard via direct navigation to a
+  // protected page. The page-level requireCompleteSession() in
+  // (protected)/layout.tsx is the defense-in-depth check.
+  if (isProtected && session?.session?.user) {
+    if (session.session.user.onboardingCompletedAt == null) {
+      return NextResponse.redirect(
+        new URL("/onboarding/integration", request.url),
+      )
+    }
+    if (session.session.activeOrganizationId == null) {
+      return NextResponse.redirect(
+        new URL("/onboarding/organization", request.url),
+      )
+    }
   }
 
   if (isAuthPage && session?.session) {
