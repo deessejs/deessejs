@@ -24,6 +24,7 @@ import {
 } from "@workspace/ui/components/sidebar"
 
 import { CreateOrganizationDialog } from "@/components/sidebars/create-organization-dialog"
+import { useActiveOrg } from "@/components/providers/active-org-provider"
 import { authClient } from "@/lib/auth-client"
 import { orgHomePath } from "@/lib/org-route"
 
@@ -77,7 +78,7 @@ export function TeamSwitcher() {
 	const [createOpen, setCreateOpen] = useState(false)
 
 	const { data: orgsData } = ac.useListOrganizations()
-	const { data: activeData } = ac.useActiveOrganization()
+	const serverActiveOrg = useActiveOrg()
 
 	type Org = { id: string; name: string; slug: string; logo?: string | null }
 	type OrgWithRole = Org & { role: string }
@@ -90,15 +91,23 @@ export function TeamSwitcher() {
 			// membership lookup omitted for V1 (role badge on the
 			// trigger stays hidden until the membership array is
 			// wired in PR #6).
-			const membership = (activeData?.members ?? []).find(
-				(m: { organizationId: string; role: string }) =>
-					m.organizationId === org.id,
-			)
-			return { ...org, role: membership?.role ?? "owner" }
+			return { ...org, role: serverActiveOrg?.role ?? "owner" }
 		})
 
-	const activeOrg: OrgWithRole | undefined =
-		orgs.find((o) => o.id === activeData?.id) ?? orgs[0]
+	// Active org comes from the Server Component Provider (keyed
+	// by pathname) — not from the better-auth atom, which can be
+	// stale after a server-side setActiveOrganization. The list
+	// still comes from the atom because the full membership list
+	// would balloon the server payload.
+	const activeOrg: OrgWithRole | undefined = serverActiveOrg
+		? ({
+				id: serverActiveOrg.id,
+				slug: serverActiveOrg.slug,
+				name: serverActiveOrg.name,
+				role: serverActiveOrg.role,
+				...(serverActiveOrg.logo ? { logo: serverActiveOrg.logo } : {}),
+			} satisfies OrgWithRole)
+		: orgs[0]
 
 	async function switchToOrg(orgId: string) {
 		const next = orgs.find((o) => o.id === orgId)

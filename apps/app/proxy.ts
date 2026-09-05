@@ -146,5 +146,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(orgHomePath(), request.url))
   }
 
-  return NextResponse.next()
+  // Propagate the request pathname to Server Components via
+  // headers() so layouts can `key=` on it. Next.js 16 does not
+  // expose the pathname through `next/headers` by default.
+  const passThrough = NextResponse.next()
+  passThrough.headers.set("x-pathname", pathname)
+  return passThrough
 }
