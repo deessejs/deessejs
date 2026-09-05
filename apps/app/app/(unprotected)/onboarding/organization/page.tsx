@@ -69,10 +69,7 @@ export default async function OnboardingOrganizationPage() {
 					description="Workspaces group your projects, members, and settings. You can create more or accept invitations later."
 				/>
 				<AuthContainer.Content>
-					<CreateOrganizationForm
-						action={createOrganizationAction}
-						nextHref="/onboarding/complete"
-					/>
+					<CreateOrganizationForm action={createOrganizationAction} />
 				</AuthContainer.Content>
 			</AuthContainer.Root>
 		</OnboardingShell>

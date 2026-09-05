@@ -1,29 +1,30 @@
 "use client"
 
 import { useRef } from "react"
-import { useRouter } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { Building2, Sparkles } from "lucide-react"
-import { toast } from "sonner"
 
 import { Field } from "@/components/auth/field"
 import { onboardingSchema, slugify } from "@/components/auth/schemas"
-import { orgHomePath } from "@/lib/org-route"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 
 type CreateOrganizationFormProps = {
-	/** Server action wired at the page level. Receives { name, slug }. */
+	/** Server action wired at the page level. Receives FormData with
+	 *  fields `name` and `slug` populated from the form. */
 	action: (formData: FormData) => Promise<void>
-	/** Path to navigate to after a successful submit. Defaults to the org-scoped dashboard. */
-	nextHref?: string
 }
 
-export function CreateOrganizationForm({
-	action,
-	nextHref = orgHomePath(),
-}: CreateOrganizationFormProps) {
-	const router = useRouter()
+/**
+ * Create-organization form bound to a server action. The Client
+ * Component handles validation UX (inline errors, auto-slug),
+ * the actual mutation runs server-side via the action prop.
+ *
+ * The form's `<input>` elements drive the hidden submission via
+ * native form action — TanStack Form mirrors its values into
+ * hidden inputs so the server action sees the data as FormData.
+ */
+export function CreateOrganizationForm({ action }: CreateOrganizationFormProps) {
 	// Tracks whether the user has manually focused/edited the slug
 	// field. While false, slug is derived from the name field via
 	// `slugify`. Once true, the auto-fill stops so we never overwrite
@@ -35,13 +36,15 @@ export function CreateOrganizationForm({
 			name: "",
 			slug: "",
 		},
+		// Server action handles validation; we don't block submission
+		// when client-side validation has open errors.
 		canSubmitWhenInvalid: true,
 		validators: {
 			onSubmit: onboardingSchema,
 		},
-		// Submit handler is the server action passed via props.
-		// The form values reach it as FormData because we render a
-		// hidden <input> per field and rely on native form submission.
+		// TanStack's onSubmit is a no-op — native form submission
+		// drives the action. We only run the validator to surface
+		// inline errors before submission.
 		onSubmit: () => undefined,
 	})
 
@@ -49,18 +52,6 @@ export function CreateOrganizationForm({
 		<>
 			<form
 				action={action}
-				onSubmit={(event) => {
-					event.preventDefault()
-					// Validate client-side, then submit through the
-					// native form action — the server action receives
-					// the FormData and runs server-side.
-					void form.handleSubmit().then(() => {
-						// If validation failed, abort. Otherwise let the
-						// native submit fire.
-						if (Object.keys(form.state.errors).length > 0) return
-						event.currentTarget.requestSubmit()
-					})
-				}}
 				noValidate
 				className="flex flex-col gap-5"
 			>
@@ -95,9 +86,8 @@ export function CreateOrganizationForm({
 				</div>
 
 				{/*
-				  Slug auto-fill from name. Mirrors the sync in the
-				  dialog form: the user keeps manual control as soon as
-				  they focus the slug field.
+				  Slug auto-fill from name. The user keeps manual
+				  control as soon as they focus the slug field.
 				*/}
 				<form.Subscribe
 					selector={(state) => state.values.name}
@@ -120,25 +110,14 @@ export function CreateOrganizationForm({
 					selector={(state) => state.values}
 					children={(values) => (
 						<>
-							<input
-								type="hidden"
-								name="name"
-								value={values.name ?? ""}
-							/>
-							<input
-								type="hidden"
-								name="slug"
-								value={values.slug ?? ""}
-							/>
+							<input type="hidden" name="name" value={values.name ?? ""} />
+							<input type="hidden" name="slug" value={values.slug ?? ""} />
 						</>
 					)}
 				/>
 
 				<form.Subscribe
-					selector={(state) => [
-						state.canSubmit,
-						state.isSubmitting,
-					] as const}
+					selector={(state) => [state.canSubmit, state.isSubmitting] as const}
 					children={([canSubmit, isSubmitting]) => (
 						<Button type="submit" disabled={!canSubmit} aria-busy={isSubmitting}>
 							<Building2 className="size-4" />
