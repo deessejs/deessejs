@@ -148,8 +148,13 @@ export async function proxy(request: NextRequest) {
 
   // Propagate the request pathname to Server Components via
   // headers() so layouts can `key=` on it. Next.js 16 does not
-  // expose the pathname through `next/headers` by default.
-  const passThrough = NextResponse.next()
-  passThrough.headers.set("x-pathname", pathname)
-  return passThrough
+  // expose the pathname through `next/headers` by default. The
+  // header must ride on the forwarded REQUEST (not the response),
+  // because `headers()` in a Server Component reads request
+  // headers, not response headers.
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set("x-pathname", pathname)
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  })
 }
