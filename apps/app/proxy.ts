@@ -9,14 +9,10 @@ const AUTH_PREFIXES = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
-  // Device verification page (ADR-020): the CLI's auth login
-  // command opens the browser to /device?user_code=XXX. A
-  // user already signed in lands directly on the
-  // approve / deny view instead of being bounced to /login.
-  // The prefix match (no trailing slash) is intentional: only
-  // /device itself and an exact match get the bypass; a
-  // future /device/<sub> route is opted in separately.
-  "/device",
+  // /device is intentionally NOT here: an authenticated user
+  // landing on /device from the CLI's auth login must see the
+  // approve / deny view, not /home. Routing is owned by the
+  // page-level Server Component. See ADR-022 §"Bug B".
 ]
 
 export const config = {
@@ -29,15 +25,6 @@ export const config = {
     "/forgot-password",
     "/reset-password",
     "/verify-email",
-    // Device verification page (ADR-022): the page-level
-    // `auth.api.getSession` check in `app/(unprotected)/(auth)/device/page.tsx`
-    // bounces anonymous visitors to /login. The proxy bounce
-    // branch below (line 86-88) covers the inverse case —
-    // a user who is already signed in and visits /device for
-    // any reason lands on /home instead. The page-level gate
-    // does its own session read; the proxy exists to skip the
-    // getSession call on static assets and to enforce the
-    // bounce-to-home invariant for auth pages.
     "/device",
   ],
 }
