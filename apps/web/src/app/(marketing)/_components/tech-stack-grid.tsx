@@ -52,16 +52,6 @@ function pickDifferentIndex(length: number, exclude: number): number {
   return pick
 }
 
-/** Fisher-Yates. Returns a new array, never mutates input. */
-function shuffle<T>(input: ReadonlyArray<T>): T[] {
-  const a = input.slice()
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
 /**
  * Swap two distinct positions in an array. Used to mutate the shared
  * order while preserving the uniqueness invariant.
@@ -69,7 +59,11 @@ function shuffle<T>(input: ReadonlyArray<T>): T[] {
 function swapAt<T>(input: ReadonlyArray<T>, i: number, j: number): T[] {
   if (i === j) return input.slice()
   const a = input.slice()
-  ;[a[i], a[j]] = [a[j], a[i]]
+  const ai = a[i]
+  const aj = a[j]
+  if (ai === undefined || aj === undefined) return a
+  a[i] = aj
+  a[j] = ai
   return a
 }
 
@@ -125,11 +119,6 @@ export function TechStackGrid({
     }
   }, [techs, reducedMotion])
 
-  // Helper to recompute order on demand (kept for future use; current
-  // implementation always mutates via swapAt above).
-  // Exposed through setOrder to keep the linter happy if we wire a manual
-  // "reshuffle" trigger later.
-  void shuffle
 
   return (
     <div
