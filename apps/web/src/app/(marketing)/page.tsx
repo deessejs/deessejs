@@ -2,13 +2,17 @@ import Link from "next/link"
 import {
   AlertTriangle,
   ArrowRight,
+  Boxes,
   Cloud,
+  Code2,
   Component,
   Globe,
   Layers,
   ListTree,
+  MonitorSmartphone,
   Radio,
   Settings,
+  ShoppingBag,
   Sigma,
   Sparkles,
   TerminalSquare,
@@ -41,95 +45,115 @@ import { ContractsGrid, type Contract } from "./_components/contracts-grid"
  *     row of the previous grid (inherited from the wrapper outline).
  *
  * Sections, top to bottom:
- *   1. Hero — centered headline, dual CTA, no image, install hint
- *   2. Trust strip — first-party signals
- *   3. Outcomes — three templates with the agent's view of each
- *   4. Contracts — bento with 6 cells, each a mini-UI mockup +
+ *   1. Hero — centered headline, three CTAs (install / ship / browse)
+ *   2. Trust strip — first-party signals + authority reference
+ *   3. Surfaces — 4-col grid enumerating the 8 surfaces the registry covers
+ *   4. Who it's for — 5-cell persona grid (indie / founder / agency / enterprise / AI-native)
+ *   5. What you skip — hour-counted list of plumbing you don't repeat
+ *   6. Contracts — bento with 6 cells, each a mini-UI mockup +
  *      stack-matrix of providers behind the contract
- *   5. CLI in action — 2-col shared-border grid (terminal + commands)
- *   6. Authority — 3-col shared-border grid (manifesto + KB + changelog)
- *   7. Repeating CTA — 3-col (CTA + 2 side cards)
- *   8. Ecosystem — tagline + 6 products in a 4-col shared-border grid
- *   9. Testimonials — 2 cards side-by-side
- *  10. Integrations — logo wall (frameworks + providers + agents)
- *  11. Stats — 4 cells, two are tier-1 third-party metrics (npm + GH)
- *  12. Final CTA — 2-col shared-border grid (copy + actions)
+ *   7. CLI in action — 2-col shared-border grid (terminal + commands)
+ *   8. Authority — 3-col shared-border grid (manifesto + KB + changelog)
+ *   9. Repeating CTA — 3-col with both columns (install / ship / manifesto)
+ *  10. Ecosystem — tagline + 6 products in a 4-col shared-border grid
+ *  11. Testimonials — 2 cards side-by-side
+ *  12. Integrations — logo wall (frameworks + providers + agents)
+ *  13. Stats — 4 cells, two are tier-1 third-party metrics (npm + GH)
+ *  14. Final CTA — 2-col shared-border grid carrying both columns (install / ship)
  *
  * KB guides and changelog releases come from `content-collections`.
  * Stack-matrix logos come from `public/logos/*.svg` (CC0 via simple-icons).
  * Everything else is hard-coded here — when the surface grows, the
  * constants move into a dedicated data module.
+ *
+ * Positioning rationale: see
+ * `apps/internal-documentation/content/docs/(root)/home-positioning-strategy.mdx`.
  */
 
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
 
-type OutcomeTemplate = {
+type Surface = {
   slug: string
-  /** Stable route. Templates not yet in the registry point to `/templates`. */
-  href: string
   name: string
-  scenario: string
+  /** One-line description of what kind of project this surface targets. */
   blurb: string
-  stack: ReadonlyArray<string>
+  href: string
   icon: React.ComponentType<{ className?: string }>
-  /** "shipped" links to /templates, "coming-soon" disables the route. */
   status: "shipped" | "coming-soon"
 }
 
 /**
- * Map a tech name (as it appears in the template's stack array) to the
- * slug used by `public/logos/<slug>.svg`. Frameworks without a dedicated
- * brand icon fall back to a close neighbour from the same ecosystem —
- * Next.js → Vercel, Astro → Cloudflare — so every chip gets a logo
- * instead of text-only.
+ * The eight surfaces the registry covers. Surfaces are not templates —
+ * each surface is a category that may contain one or more templates.
+ * The list is deliberately wider than what is shipped today: it tells
+ * every visitor that the registry probably has something for them,
+ * and lets them verify in one click.
  */
-const STACK_LOGO: Record<string, string> = {
-  "Next.js": "vercel",
-  "Better Auth": "betterauth",
-  Drizzle: "drizzle",
-  Stripe: "stripe",
-  OpenAI: "openai",
-  Postgres: "postgresql",
-  MCP: "modelcontextprotocol",
-  Astro: "astro",
-  Tailwind: "tailwindcss",
-  shadcn: "shadcnui",
-}
-
-const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
+const SURFACES: ReadonlyArray<Surface> = [
   {
-    slug: "saas-starter",
-    href: "/templates/saas-starter",
-    name: "SaaS Starter",
-    scenario: "Ship a multi-tenant B2B app",
-    blurb:
-      "Auth, billing, jobs, and a working dashboard wired to Postgres on day one.",
-    stack: ["Next.js", "Better Auth", "Drizzle", "Stripe"],
+    slug: "saas",
+    name: "SaaS",
+    blurb: "Multi-tenant B2B apps with auth, billing, and orgs wired.",
+    href: "/templates?surface=saas",
     icon: Layers,
     status: "shipped",
   },
   {
-    slug: "ai-chatbot",
-    href: "/templates",
-    name: "AI Chatbot",
-    scenario: "Ship an agent with a typed tool registry",
-    blurb:
-      "Streaming chat endpoint, typed tools, and persistence — wired against the same contracts your app uses.",
-    stack: ["Next.js", "OpenAI", "Postgres", "MCP"],
+    slug: "ai-agents",
+    name: "AI agents",
+    blurb: "Streaming chat endpoints, typed tools, and agent persistence.",
+    href: "/templates?surface=ai-agents",
     icon: Sparkles,
     status: "coming-soon",
   },
   {
-    slug: "landing-page",
-    href: "/templates",
-    name: "Landing Page",
-    scenario: "Ship a B2B landing page that converts",
-    blurb:
-      "Astro + Tailwind + shadcn blocks, tuned for the SaaS shelf. Pulled from the same registry as the rest.",
-    stack: ["Astro", "Tailwind", "shadcn"],
+    slug: "mobile",
+    name: "Mobile",
+    blurb: "React Native + Expo with the same contracts as the web stack.",
+    href: "/templates?surface=mobile",
+    icon: MonitorSmartphone,
+    status: "coming-soon",
+  },
+  {
+    slug: "desktop",
+    name: "Desktop",
+    blurb: "Electron or Tauri shells wired against the shared backend.",
+    href: "/templates?surface=desktop",
+    icon: Boxes,
+    status: "coming-soon",
+  },
+  {
+    slug: "clis",
+    name: "CLIs",
+    blurb: "Tool scaffolding that extends the same registry the web uses.",
+    href: "/templates?surface=clis",
+    icon: TerminalSquare,
+    status: "coming-soon",
+  },
+  {
+    slug: "apis",
+    name: "APIs",
+    blurb: "Standalone backends with oRPC, Hono, and typed contracts.",
+    href: "/templates?surface=apis",
     icon: Workflow,
+    status: "coming-soon",
+  },
+  {
+    slug: "blogs",
+    name: "Blogs",
+    blurb: "MDX-driven content sites with i18n and structured data.",
+    href: "/templates?surface=blogs",
+    icon: Code2,
+    status: "coming-soon",
+  },
+  {
+    slug: "ecommerce",
+    name: "E-commerce",
+    blurb: "Storefronts with Stripe Checkout, inventory, and order webhooks.",
+    href: "/templates?surface=ecommerce",
+    icon: ShoppingBag,
     status: "coming-soon",
   },
 ]
@@ -217,7 +241,7 @@ const TRUST_SIGNALS: ReadonlyArray<{ label: string; href?: string }> = [
   { label: "deessejs/saas-template", href: "https://github.com/deessejs/saas-template" },
   { label: "@deessejs/cli", href: "https://www.npmjs.com/package/@deessejs/cli" },
   { label: "MCP-ready", href: "/knowledge-base" },
-  { label: "MIT licensed", href: "https://github.com/deessejs" },
+  { label: "Built on the stack Vercel, Linear, and Stripe ship on", href: "/manifesto" },
 ]
 
 /** Lines shown in the CLI-in-action section. */
@@ -238,6 +262,96 @@ const CLI_LINES: ReadonlyArray<{ prompt: string; output?: string }> = [
       "6 contracts wired · 0 missing · 0 outdated\nMCP server: ready · 12 tools exposed",
   },
 ]
+
+/** The five personas the registry explicitly serves. */
+type Persona = {
+  slug: string
+  label: string
+  headline: string
+  outcome: string
+}
+
+const PERSONAS: ReadonlyArray<Persona> = [
+  {
+    slug: "indie-hackers",
+    label: "Indie hackers",
+    headline: "Ship your first $ online this weekend.",
+    outcome:
+      "From `npx deessejs init` to your first paying customer in days, not months.",
+  },
+  {
+    slug: "saas-founders",
+    label: "SaaS founders",
+    headline: "Skip 10 weeks of infra.",
+    outcome:
+      "Reach your first paying customer in 30 days, with contracts you can extend instead of rewrite.",
+  },
+  {
+    slug: "agencies",
+    label: "Agencies & studios",
+    headline: "White-label our contracts.",
+    outcome:
+      "Reuse the same conventions across every client engagement. Stop rebuilding the wheel per RFP.",
+  },
+  {
+    slug: "enterprise",
+    label: "Enterprise teams",
+    headline: "Stop rebuilding the same eight services.",
+    outcome:
+      "Skip the internal platform build. Use ours. Same contracts, same guarantees, same audit trail.",
+  },
+  {
+    slug: "ai-native",
+    label: "AI-native teams",
+    headline: "Ship with your agent, not against it.",
+    outcome:
+      "Templates an agent reads as well as you do. Typed end-to-end, MCP-ready, no plumbing to invent.",
+  },
+]
+
+/**
+ * Hour-counted plumbing the buyer does not have to repeat. Numbers are
+ * internal estimates and stay approximate; they exist to make the
+ * time-to-production metric legible to a non-engineer visitor.
+ */
+type SkipItem = { hours: string; label: string }
+
+const SKIP_ITEMS: ReadonlyArray<SkipItem> = [
+  {
+    hours: "40+ hrs",
+    label: "Auth wired with orgs, invitations, OAuth, and 2FA",
+  },
+  {
+    hours: "24+ hrs",
+    label: "Stripe webhooks, subscriptions, customer portal, dunning",
+  },
+  {
+    hours: "16+ hrs",
+    label: "Drizzle schema, migrations, typed queries, RLS",
+  },
+  {
+    hours: "12+ hrs",
+    label: "Background jobs with retries, dead-letter, observability",
+  },
+  {
+    hours: "8 hrs",
+    label: "Email transport with DKIM, SPF, and DMARC",
+  },
+  {
+    hours: "8 hrs",
+    label: "Object storage with signed URLs and presigned uploads",
+  },
+  {
+    hours: "8 hrs",
+    label: "Observability with traces, logs, metrics, and dashboards",
+  },
+  {
+    hours: "∞ hrs",
+    label: "Overthinking the architecture",
+  },
+]
+
+const SKIP_TOTAL_HOURS = "124+"
 
 /** Ecosystem products shown as a 4-col grid next to the tagline. */
 const ECOSYSTEM: ReadonlyArray<{
@@ -349,7 +463,7 @@ export default function HomePage() {
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
       {/* Shared-border wrapper — every section lives inside one card, including the hero */}
       <div className="border border-border bg-background rounded-none">
-        {/* 1. Hero — centered, no image, lighter title */}
+        {/* 1. Hero — centered, no image, three CTAs (install / ship / browse) */}
         <div className="flex justify-center border-b border-border">
           <Cell className="items-center gap-6 lg:gap-8 text-center max-w-5xl !p-8 lg:!p-16">
             <Badge asChild variant="outline">
@@ -373,6 +487,10 @@ export default function HomePage() {
               wired — auth, database, billing, jobs, storage. Your agent reads
               them, builds on them, and cannot break them.
             </p>
+            <p className="text-copy-13-mono text-muted-foreground [&:not(:first-child)]:mt-0">
+              Senior patterns. Modern stack. The shortest path from `npx
+              deessejs init` to a deployed app.
+            </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Button asChild size="lg">
                 <Link href="/knowledge-base/guides/install-deessejs-cli">
@@ -381,6 +499,9 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
+                <Link href="/delivery">Ship with us</Link>
+              </Button>
+              <Button variant="ghost" size="lg" asChild>
                 <Link href="/templates">Browse templates</Link>
               </Button>
             </div>
@@ -413,39 +534,39 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* 3. Outcomes — 3 cols with the agent's tree view per template */}
-        <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
-          <Cell className="col-span-1 md:col-span-3 !p-0 border-0">
+        {/* 3. Surfaces — 4-col grid enumerating the 8 surfaces the registry covers */}
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
+          <Cell className="col-span-2 md:col-span-4 !p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
-              <p className="text-label-13 text-muted-foreground">Outcomes</p>
+              <p className="text-label-13 text-muted-foreground">Surfaces</p>
               <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-                Pick the outcome. Ship from the agent&apos;s view.
+                Pick the surface. Get the convention.
               </h2>
               <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-                Each template is structured so an agent can navigate it like a
-                developer would: typed files, named contracts, one MCP manifest
-                per project.
+                Eight surfaces, one registry. Each surface ships with the
+                same contracts, the same patterns, and the same guarantees —
+                whether you build it yourself or ship with us.
               </p>
             </div>
           </Cell>
-          {OUTCOMES.map((outcome) => {
-            const Icon = outcome.icon
+          {SURFACES.map((surface) => {
+            const Icon = surface.icon
             return (
               <div
-                key={outcome.slug}
+                key={surface.slug}
                 className="group transition-colors hover:bg-accent/40"
               >
                 <Link
-                  href={outcome.href}
-                  aria-label={`${outcome.name} — ${outcome.scenario}`}
-                  className="flex flex-col gap-4 p-6 pr-14"
+                  href={surface.href}
+                  aria-label={`${surface.name} — ${surface.blurb}`}
+                  className="flex flex-col gap-3 p-6"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <Icon
                       className="text-foreground size-5 shrink-0"
                       aria-hidden
                     />
-                    {outcome.status === "shipped" ? (
+                    {surface.status === "shipped" ? (
                       <Badge
                         variant="success"
                         className="text-label-12 gap-1.5"
@@ -470,46 +591,90 @@ export default function HomePage() {
                     )}
                   </div>
                   <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
-                    {outcome.name}
+                    {surface.name}
                   </h3>
-                  <p className="text-copy-14 text-muted-foreground leading-6 line-clamp-4 [&:not(:first-child)]:mt-0">
-                    {outcome.blurb}
-                  </p>
-                  <ul className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
-                    {outcome.stack.map((item) => {
-                      const logo = STACK_LOGO[item]
-                      return (
-                        <li
-                          key={item}
-                          className="inline-flex items-center gap-1.5 text-label-12 text-muted-foreground"
-                        >
-                          {logo ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={`/logos/${logo}.svg`}
-                              alt=""
-                              width={12}
-                              height={12}
-                              className="size-3 shrink-0 dark:invert"
-                              aria-hidden
-                            />
-                          ) : null}
-                          {item}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                  <p className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 transition-transform group-hover:translate-x-0.5">
-                    Open the template
-                    <ArrowRight className="size-3" aria-hidden />
+                  <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+                    {surface.blurb}
                   </p>
                 </Link>
               </div>
             )
           })}
+          <Cell className="col-span-2 md:col-span-4 !p-0 border-0">
+            <div className="flex items-center justify-end gap-1 p-4 border-t border-border">
+              <Link
+                href="/templates"
+                className="text-label-13 text-foreground inline-flex items-center gap-1 hover:underline underline-offset-4"
+              >
+                Browse all 8 surfaces
+                <ArrowRight className="size-3" aria-hidden />
+              </Link>
+            </div>
+          </Cell>
         </div>
 
-        {/* 4. Contracts — 3-col bento with mini-UI mockups + stack matrix.
+        {/* 4. Who it's for — 5-cell persona grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
+          <Cell className="col-span-1 md:col-span-2 lg:col-span-5 !p-0 border-0">
+            <div className="flex flex-col gap-2 p-6 border-b border-border">
+              <p className="text-label-13 text-muted-foreground">Who it's for</p>
+              <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+                The same registry. Five doors in.
+              </h2>
+            </div>
+          </Cell>
+          {PERSONAS.map((persona) => (
+            <Cell key={persona.slug} className="gap-2">
+              <p className="text-label-13 text-muted-foreground">
+                {persona.label}
+              </p>
+              <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                {persona.headline}
+              </h3>
+              <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+                {persona.outcome}
+              </p>
+            </Cell>
+          ))}
+        </div>
+
+        {/* 5. What you skip — hour-counted list of plumbing you don't repeat */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border border-b border-border">
+          <div className="flex flex-col gap-4 p-6 lg:p-8">
+            <p className="text-label-13 text-muted-foreground">What you skip</p>
+            <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+              {SKIP_TOTAL_HOURS} hours of plumbing you don't have to repeat.
+            </h2>
+            <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+              Every template ships with the integrations, the configurations,
+              and the trade-offs already made. You start at the next problem,
+              not at the same one.
+            </p>
+            <Button variant="outline" asChild className="self-start">
+              <Link href="/blog/time-to-production">
+                See the math
+                <ArrowRight className="size-3.5" aria-hidden />
+              </Link>
+            </Button>
+          </div>
+          <ul className="flex flex-col divide-y divide-border">
+            {SKIP_ITEMS.map((item) => (
+              <li
+                key={item.label}
+                className="flex items-baseline gap-4 px-6 py-3 lg:px-8"
+              >
+                <span className="text-copy-13-mono text-foreground shrink-0 w-20">
+                  {item.hours}
+                </span>
+                <span className="text-copy-14 text-muted-foreground leading-6">
+                  {item.label}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* 6. Contracts — 3-col bento with mini-UI mockups + stack matrix.
             The grid lives in a client component so Motion can run; the
             mockups are also animated (typed lines, bar fills, trace cascades,
             OTel waterfall). */}
@@ -517,27 +682,27 @@ export default function HomePage() {
           <Cell className="col-span-full !p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
               <p className="text-label-13 text-muted-foreground">
-                Wired into every starter
+                Under the hood
               </p>
               <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
                 Six contracts. Open stack. Typed end-to-end.
               </h2>
               <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-                Each contract ships with a typed schema, an MCP server, and a
-                CLI check. Pick the providers you already use; the contracts
-                wire against them.
+                Auth, database, billing, jobs, storage, observability — typed
+                against whichever provider you bring. The contracts your agent
+                reads. The integration you don't have to write.
               </p>
             </div>
           </Cell>
           <ContractsGrid contracts={CONTRACTS} />
         </div>
 
-        {/* 5. CLI in action — 2 cols, shared borders */}
+        {/* 7. CLI in action — 2 cols, shared borders */}
         <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border border-b border-border">
           <div className="flex flex-col gap-6 p-6 lg:p-8">
-            <p className="text-label-13 text-muted-foreground">CLI in action</p>
+            <p className="text-label-13 text-muted-foreground">The entry point</p>
             <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-              Three commands. Zero config.
+              Three commands. Production-ready in one.
             </h2>
             <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
               The CLI is the single entry point to the registry. It scaffolds a
@@ -591,7 +756,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 6. Authority — 3 cols, shared borders */}
+        {/* 8. Authority — 3 cols, shared borders */}
         <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
           {/* Manifesto quote */}
           <div className="flex flex-col gap-4 p-6 lg:p-8">
@@ -677,7 +842,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 7. Repeating CTA — 3 cols, shared borders */}
+        {/* 9. Repeating CTA — 3 cols, both columns (install / ship / manifesto) */}
         <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
           <Cell className="md:col-span-1 gap-3 justify-center">
             <p className="text-label-13 text-muted-foreground">
@@ -694,16 +859,18 @@ export default function HomePage() {
             </Button>
           </Cell>
           <Cell className="gap-2">
-            <p className="text-label-13 text-muted-foreground">Templates</p>
+            <p className="text-label-13 text-muted-foreground">
+              Want us to ship it?
+            </p>
             <p className="text-copy-14 text-foreground leading-6 [&:not(:first-child)]:mt-0">
-              Browse the registry and pick the starter that matches your
-              scenario.
+              Same templates, same contracts. We run the build with you, you
+              ship to your customers.
             </p>
             <Link
-              href="/templates"
+              href="/delivery"
               className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 hover:underline underline-offset-4"
             >
-              All templates
+              Talk to delivery
               <ArrowRight className="size-3" aria-hidden />
             </Link>
           </Cell>
@@ -723,16 +890,16 @@ export default function HomePage() {
           </Cell>
         </div>
 
-        {/* 8. Ecosystem — tagline + 6 products in a 4-col shared-border grid */}
+        {/* 10. Ecosystem — tagline + 6 products in a 4-col shared-border grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-border border-b border-border">
           <Cell className="col-span-2 lg:col-span-1 lg:row-span-2 gap-3 justify-center">
             <p className="text-label-13 text-muted-foreground">Ecosystem</p>
             <p className="text-heading-24 lg:text-heading-32 tracking-tight text-foreground text-balance [&:not(:first-child)]:mt-0">
-              Software engineering as a commodity.
+              Six tools. One stack.
             </p>
             <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-              Agents that code, workflows that scale, infrastructure that
-              works. Built with the DeesseJS ecosystem.
+              Built on the same contracts you ship on. Errors, RPC,
+              collections, FP, UI, and the operator console — all DeesseJS.
             </p>
           </Cell>
           {ECOSYSTEM.map((product) => {
@@ -767,7 +934,7 @@ export default function HomePage() {
           })}
         </div>
 
-        {/* 9. Testimonials — 2 cards side-by-side */}
+        {/* 11. Testimonials — 2 cards side-by-side */}
         <div className="grid grid-cols-1 md:grid-cols-2 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
           {TESTIMONIALS.map((t) => (
             <Cell key={t.name} className="gap-4">
@@ -792,7 +959,7 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* 10. Integrations — logo wall (frameworks + providers + agents) */}
+        {/* 12. Integrations — logo wall (frameworks + providers + agents) */}
         <div className="border-b border-border">
           <div className="flex flex-col gap-6 p-6 lg:p-8">
             <div className="flex flex-col gap-2">
@@ -800,11 +967,12 @@ export default function HomePage() {
                 Plays well with
               </p>
               <h2 className="text-heading-24 lg:text-heading-32 tracking-tight text-balance">
-                Bring your own stack.
+                Bring your own providers.
               </h2>
               <p className="text-copy-14 text-muted-foreground leading-6 max-w-2xl [&:not(:first-child)]:mt-0">
-                The contracts are swappable. Pick the providers you already
-                trust — the registry wires them in.
+                The contracts consume whichever providers you trust. Swap
+                Stripe for Lemon Squeezy, Upstash for Trigger.dev, Sentry for
+                Better Stack. The interface does not change.
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-border">
@@ -830,23 +998,24 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 11. Stats — 4 cells, two are tier-1 third-party metrics */}
+        {/* 13. Stats — 4 cells, two are tier-1 third-party metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
           {STATS.map((stat) => (
             <Stat key={stat.label} {...stat} />
           ))}
         </div>
 
-        {/* 12. Final CTA — 2 cols, shared borders */}
+        {/* 14. Final CTA — 2 cols, both columns (install / ship) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
           <div className="flex flex-col gap-4 p-6 lg:p-10">
             <p className="text-label-13 text-muted-foreground">Ready to ship?</p>
             <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-              Start with a template. Keep the contracts.
+              Use the templates. Or ship with us.
             </h2>
             <p className="text-copy-16 text-muted-foreground leading-7 max-w-xl [&:not(:first-child)]:mt-0">
-              Install the CLI, pick a starter, and your agent gets every
-              contract it needs to navigate the rest of the project.
+              Install the CLI to scaffold a project in under five minutes. Or
+              talk to our delivery team — same templates, same contracts, same
+              guarantees.
             </p>
           </div>
           <div className="flex flex-col items-stretch justify-center gap-4 p-6 lg:p-10">
@@ -857,6 +1026,9 @@ export default function HomePage() {
               </Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
+              <Link href="/delivery">Talk to delivery</Link>
+            </Button>
+            <Button variant="ghost" size="lg" asChild>
               <Link href="/templates">Browse the registry</Link>
             </Button>
             <p className="text-copy-13-mono text-muted-foreground inline-flex items-center gap-2 pt-1">
@@ -950,4 +1122,3 @@ function TerminalMockup({
     </div>
   )
 }
-
