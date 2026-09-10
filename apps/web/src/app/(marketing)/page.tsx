@@ -463,33 +463,21 @@ export default function HomePage() {
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
       {/* Shared-border wrapper — every section lives inside one card, including the hero */}
       <div className="border border-border bg-background rounded-none">
-        {/* 1. Hero — centered, no image, three CTAs (install / ship / browse) */}
+        {/* 1. Hero — centered, no image, two CTAs (install / ship) */}
         <div className="flex justify-center border-b border-border">
           <Cell className="items-center gap-6 lg:gap-8 text-center max-w-5xl !p-8 lg:!p-16">
-            <Badge asChild variant="outline">
-              <Link
-                href="/blog/getting-started"
-                className="flex items-center gap-2"
-              >
-                <span
-                  className="size-1.5 shrink-0 rounded-full bg-green-500"
-                  aria-hidden
-                />
-                Getting started with DeesseJS
-                <ArrowRight className="size-3 shrink-0" aria-hidden />
-              </Link>
-            </Badge>
+            <p className="text-label-13 text-muted-foreground">
+              For teams shipping with AI agents in production
+            </p>
             <h1 className="max-w-5xl text-heading-48 sm:text-heading-56 lg:text-heading-64 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
-              Your coding agent should ship from contracts, not from scratch.
+              The registry for production-grade templates your agent can ship from.
             </h1>
             <p className="text-muted-foreground text-copy-18 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
-              DeesseJS is a registry of SaaS templates with the contracts already
-              wired — auth, database, billing, jobs, storage. Your agent reads
-              them, builds on them, and cannot break them.
-            </p>
-            <p className="text-copy-13-mono text-muted-foreground [&:not(:first-child)]:mt-0">
-              Senior patterns. Modern stack. The shortest path from `npx
-              deessejs init` to a deployed app.
+              Senior patterns. Modern stack. The shortest path from{" "}
+              <span className="font-mono text-foreground/90">
+                npx deessejs init
+              </span>{" "}
+              to a deployed app.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Button asChild size="lg">
@@ -501,13 +489,7 @@ export default function HomePage() {
               <Button variant="outline" size="lg" asChild>
                 <Link href="/delivery">Ship with us</Link>
               </Button>
-              <Button variant="ghost" size="lg" asChild>
-                <Link href="/templates">Browse templates</Link>
-              </Button>
             </div>
-            <p className="text-copy-13-mono text-muted-foreground">
-              <span aria-hidden>⌘</span> Free · MIT · no vendor lock-in
-            </p>
           </Cell>
         </div>
 
