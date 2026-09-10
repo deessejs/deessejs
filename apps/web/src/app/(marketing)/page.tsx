@@ -629,7 +629,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
           <Cell className="col-span-1 md:col-span-2 lg:col-span-4 !p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
-              <p className="text-label-13 text-muted-foreground">Who it's for</p>
+              <p className="text-label-13 text-muted-foreground">Who it&apos;s for</p>
               <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
                 The same registry. Four doors in.
               </h2>
@@ -664,7 +664,7 @@ export default function HomePage() {
           <div className="flex flex-col gap-4 p-6 lg:p-8">
             <p className="text-label-13 text-muted-foreground">What you skip</p>
             <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-              {SKIP_TOTAL_HOURS} hours of plumbing you don't have to repeat.
+              {SKIP_TOTAL_HOURS} hours of plumbing you don&apos;t have to repeat.
             </h2>
             <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
               Every template ships with the integrations, the configurations,
@@ -711,7 +711,7 @@ export default function HomePage() {
               <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
                 Auth, database, billing, jobs, storage, observability. Typed
                 against whichever provider you bring. The contracts your agent
-                reads. The integration you don't have to write.
+                reads. The integration you don&apos;t have to write.
               </p>
             </div>
           </Cell>
@@ -1111,7 +1111,7 @@ export default function HomePage() {
               </AccordionItem>
               <AccordionItem value="ship-with-us" className="last:border-b-0 border-b border-border py-4 first:pt-0">
                 <AccordionTrigger className="text-left no-underline hover:no-underline py-0 text-base font-medium">
-                  What does "ship with us" mean?
+                  What does &ldquo;ship with us&rdquo; mean?
                 </AccordionTrigger>
                 <AccordionContent>
                   Same templates, same contracts, same guarantees as the

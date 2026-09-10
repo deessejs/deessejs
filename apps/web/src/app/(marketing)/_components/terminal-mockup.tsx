@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { Input } from "@workspace/ui/components/input"
 import { cn } from "@workspace/ui/lib/utils"
 
 type TerminalLine = {
@@ -79,12 +80,9 @@ function runCommand(raw: string): CommandResult {
       return { kind: "output", lines: LIST_OUTPUT.split("\n") }
 
     case "info": {
-      const projectName = arg || "my-saas"
       return {
         kind: "output",
-        lines: INFO_OUTPUT.split("\n").map((l) =>
-          l === "" ? "" : l,
-        ),
+        lines: INFO_OUTPUT.split("\n"),
       }
     }
 
@@ -128,6 +126,18 @@ export function TerminalMockup({
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
+
+  /**
+   * Returns a new history with the last line's output replaced.
+   * Extracted from the submit() callback so the function stays under
+   * the sonarjs/no-nested-functions depth limit.
+   */
+  const replaceLastLineWith = (output: string) => {
+    return (h: TerminalLine[]) =>
+      h.map((line, i) =>
+        i === h.length - 1 ? { ...line, output } : line,
+      )
+  }
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -173,13 +183,7 @@ export function TerminalMockup({
     setInput("")
 
     window.setTimeout(() => {
-      setHistory((h) =>
-        h.map((line, i) =>
-          i === h.length - 1
-            ? { ...line, output: result.lines.join("\n") }
-            : line,
-        ),
-      )
+      setHistory(replaceLastLineWith(result.lines.join("\n")))
     }, result.delayMs)
   }
 
@@ -226,7 +230,7 @@ export function TerminalMockup({
         ))}
         <div className="flex items-center gap-1">
           <span className="text-white">$</span>
-          <input
+          <Input
             ref={inputRef}
             type="text"
             value={input}
@@ -237,8 +241,8 @@ export function TerminalMockup({
             autoCorrect="off"
             autoCapitalize="off"
             aria-label="Terminal input"
-            className="flex-1 bg-transparent outline-none border-none text-white caret-white placeholder:text-white/30"
             placeholder="Type 'help' and press Enter"
+            className="flex-1 h-auto bg-transparent border-transparent text-white caret-white placeholder:text-white/30 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-transparent px-0 py-0 text-sm"
           />
         </div>
       </div>

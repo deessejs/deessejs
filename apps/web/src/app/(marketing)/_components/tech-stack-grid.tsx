@@ -36,6 +36,22 @@ function randomCycleMs() {
   )
 }
 
+/**
+ * Pick a random index in `length` that differs from `exclude`.
+ * Retries up to 10 times to avoid the same-index collision; falls back
+ * to `exclude` if all retries collide (only possible when length < 2,
+ * which the caller filters out).
+ */
+function pickDifferentIndex(length: number, exclude: number): number {
+  let pick = Math.floor(Math.random() * length)
+  let safety = 0
+  while (pick === exclude && safety < 10) {
+    pick = Math.floor(Math.random() * length)
+    safety++
+  }
+  return pick
+}
+
 /** Fisher-Yates. Returns a new array, never mutates input. */
 function shuffle<T>(input: ReadonlyArray<T>): T[] {
   const a = input.slice()
@@ -69,6 +85,11 @@ export function TechStackGrid({
 
   useEffect(() => {
     const mql = window.matchMedia("(prefers-reduced-motion: reduce)")
+    // Reading the media query synchronously inside an effect is the
+    // intended pattern: we want the initial state to reflect the OS
+    // preference on mount. Cascading setState is acceptable here
+    // because nothing else has rendered yet.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReducedMotion(mql.matches)
     const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
     mql.addEventListener("change", onChange)
@@ -85,19 +106,7 @@ export function TechStackGrid({
     const armSlot = (slotIdx: number) => {
       const id = window.setTimeout(() => {
         setOrder((prev) => {
-          const otherIdx = (() => {
-            // Pick a different random slot
-            let pick = Math.floor(Math.random() * prev.length)
-            // Ensure distinct (with retry to avoid infinite loop on
-            // impossible cases; the do-while guarantees termination
-            // because prev.length >= 2)
-            let safety = 0
-            while (pick === slotIdx && safety < 10) {
-              pick = Math.floor(Math.random() * prev.length)
-              safety++
-            }
-            return pick
-          })()
+          const otherIdx = pickDifferentIndex(prev.length, slotIdx)
           return swapAt(prev, slotIdx, otherIdx)
         })
         // Re-arm this slot with a fresh random delay so the rhythm stays
