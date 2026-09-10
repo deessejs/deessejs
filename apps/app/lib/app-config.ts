@@ -16,11 +16,13 @@ export const APP_CONFIG = {
   appURL: appURL(),
   webURL: webURL(),
   // Dashboard nav links (relative paths under the apps/app host).
+  // `settings` was removed in ADR-030: the hub page at /settings is gone
+  // (it now server-redirects to /settings/profile). Consumers link
+  // directly to a settings leaf (e.g. /settings/security/password).
   links: {
     home: "/home",
     login: "/login",
     signup: "/signup",
-    settings: "/settings",
     device: "/device",
   },
 } as const

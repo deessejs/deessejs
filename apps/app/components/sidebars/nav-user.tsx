@@ -19,26 +19,10 @@ import {
 import {
 	DropdownMenu,
 	DropdownMenuContent,
-	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
-import {
-	SidebarMenu,
-	SidebarMenuButton,
-	SidebarMenuItem,
-	useSidebar,
-} from "@workspace/ui/components/sidebar"
-import {
-	ChevronsUpDownIcon,
-	SparklesIcon,
-	BadgeCheckIcon,
-	CreditCardIcon,
-	BellIcon,
-	LogOutIcon,
-} from "lucide-react"
+import { LogOutIcon } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 
 const VERCEL_AVATAR_BASE = "https://vercel.com/api/www/avatar"
@@ -57,7 +41,6 @@ function getAvatarUrl(email: string, image?: string | null): string {
 
 export function NavUser() {
 	const router = useRouter()
-	const { isMobile } = useSidebar()
 	// Top-level hook call: component top-level is a valid hook context per
 	// React's rules. The audit §3.5 bug was calling useSession() inside an
 	// async callback (useCallback body), which IS a violation. Here at
@@ -82,19 +65,9 @@ export function NavUser() {
 	// No session — render an anonymous "Guest" placeholder
 	if (!user) {
 		return (
-			<SidebarMenu>
-				<SidebarMenuItem>
-					<SidebarMenuButton size="lg" disabled>
-						<Avatar className="h-8 w-8 rounded-lg">
-							<AvatarFallback className="rounded-lg">?</AvatarFallback>
-						</Avatar>
-						<div className="grid flex-1 text-left text-sm leading-tight">
-							<span className="truncate font-medium">Guest</span>
-							<span className="truncate text-xs">Not signed in</span>
-						</div>
-					</SidebarMenuButton>
-				</SidebarMenuItem>
-			</SidebarMenu>
+			<Avatar className="h-8 w-8 rounded-lg">
+				<AvatarFallback className="rounded-lg">?</AvatarFallback>
+			</Avatar>
 		)
 	}
 
@@ -103,77 +76,32 @@ export function NavUser() {
 
 	return (
 		<>
-			<SidebarMenu>
-				<SidebarMenuItem>
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<SidebarMenuButton
-								size="lg"
-								className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-							>
-								<Avatar className="h-8 w-8 rounded-lg">
-									<AvatarImage src={avatarUrl} alt={user.name} />
-									<AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
-								</Avatar>
-								<div className="grid flex-1 text-left text-sm leading-tight">
-									<span className="truncate font-medium">{user.name}</span>
-									<span className="truncate text-xs">{user.email}</span>
-								</div>
-								<ChevronsUpDownIcon className="ml-auto size-4" />
-							</SidebarMenuButton>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent
-							className="w-fit"
-							side={isMobile ? "bottom" : "right"}
-							align="end"
-							sideOffset={4}
-						>
-							<DropdownMenuLabel className="p-0 font-normal">
-								<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-									<Avatar className="h-8 w-8 rounded-lg">
-										<AvatarImage src={avatarUrl} alt={user.name} />
-										<AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
-									</Avatar>
-									<div className="grid flex-1 text-left text-sm leading-tight">
-										<span className="truncate font-medium">{user.name}</span>
-										<span className="truncate text-xs">{user.email}</span>
-									</div>
-								</div>
-							</DropdownMenuLabel>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuItem>
-									<SparklesIcon />
-									Upgrade to Pro
-								</DropdownMenuItem>
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuItem>
-									<BadgeCheckIcon />
-									Account
-								</DropdownMenuItem>
-								<DropdownMenuItem>
-									<CreditCardIcon />
-									Billing
-								</DropdownMenuItem>
-								<DropdownMenuItem>
-									<BellIcon />
-									Notifications
-								</DropdownMenuItem>
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								onClick={() => setLogoutDialogOpen(true)}
-								disabled={loggingOut}
-							>
-								<LogOutIcon />
-								Log out
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-				</SidebarMenuItem>
-			</SidebarMenu>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="size-9 rounded-full p-0"
+						aria-label="Open user menu"
+					>
+						<Avatar className="h-8 w-8 rounded-lg">
+							<AvatarImage src={avatarUrl} alt={user.name} />
+							<AvatarFallback className="rounded-lg">
+								{initials}
+							</AvatarFallback>
+						</Avatar>
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent className="w-56" align="end" sideOffset={4}>
+					<DropdownMenuItem
+						onClick={() => setLogoutDialogOpen(true)}
+						disabled={loggingOut}
+					>
+						<LogOutIcon />
+						Log out
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
 
 			<Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
 				<DialogContent>
@@ -184,7 +112,10 @@ export function NavUser() {
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<Button variant="outline" onClick={() => setLogoutDialogOpen(false)}>
+						<Button
+							variant="outline"
+							onClick={() => setLogoutDialogOpen(false)}
+						>
 							Cancel
 						</Button>
 						<Button onClick={handleLogout} disabled={loggingOut}>
