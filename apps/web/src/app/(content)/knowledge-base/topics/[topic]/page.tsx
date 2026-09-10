@@ -15,6 +15,7 @@ import { Prose } from "@/components/blog/prose"
 import { GuideCard } from "@/components/knowledge-base/guide-card"
 import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
 import { TopicTagPill } from "@/components/knowledge-base/badges"
+import { ORG_ID } from "@/lib/seo/organization"
 
 type Params = { topic: string }
 
@@ -39,6 +40,59 @@ export default async function KnowledgeTopicPage({
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-10 px-4 py-16 sm:px-6 lg:py-24">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "TechArticle",
+            headline: topicDoc.title,
+            description: topicDoc.description,
+            inLanguage: "en",
+            keywords: topicDoc.tags,
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": `/knowledge-base/topics/${topicDoc.slug}`,
+            },
+            url: `/knowledge-base/topics/${topicDoc.slug}`,
+            publisher: { "@id": ORG_ID },
+            author: {
+              "@type": "Organization",
+              name: "DeesseJS",
+              "@id": ORG_ID,
+            },
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: "/",
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Knowledge Base",
+                item: "/knowledge-base",
+              },
+              {
+                "@type": "ListItem",
+                position: 3,
+                name: topicDoc.title,
+                item: `/knowledge-base/topics/${topicDoc.slug}`,
+              },
+            ],
+          }),
+        }}
+      />
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>

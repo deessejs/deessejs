@@ -174,6 +174,34 @@ const LayerCard = ({ layer }: { layer: PricingLayer }) => {
 const PricingPage = () => {
   return (
     <article className="mx-auto flex max-w-6xl flex-col gap-16 px-4 py-16 sm:px-6 lg:gap-20 lg:py-24">
+      {/* FAQPage JSON-LD: derived from PRICING_FAQ so the schema and the
+          visible accordion never drift apart. Triggering a rich-result
+          FAQ block in the SERPs hinges on having each question/answer
+          as a `Question` node, with `acceptedAnswer.text` carrying the
+          copy verbatim. The visible Accordion still owns the UI; the
+          script is crawler-only. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: PRICING_FAQ.map((item) => ({
+              "@type": "Question",
+              name: item.question,
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: item.answer,
+              },
+            })),
+            // No `publisher` here: the FAQPage lives inside a single
+            // page already covered by the global Organization entity,
+            // and linking it again would just duplicate `@id` references.
+            // The Organization is reachable via the root WebSite script
+            // emitted in apps/web/src/app/layout.tsx.
+          }),
+        }}
+      />
       {/* Hero */}
       <header className="flex flex-col gap-6">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
