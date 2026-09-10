@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@workspace/ui/components/button"
-import { APP_NAME } from "@workspace/ui/lib/config"
+import { APP_NAME } from "@/lib/app-config"
 
 export function SiteHeader() {
   return (

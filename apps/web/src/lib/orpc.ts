@@ -4,7 +4,8 @@ import type { RouterClient } from "@orpc/server"
 
 import { appRouter } from "@workspace/api/router"
 import { API_RPC_PATH } from "@workspace/api/base-path"
-import { clientEnv } from "@workspace/env/client"
+
+import { apiBaseUrl } from "./preview-urls"
 
 /**
  * Per-call context advertised by the marketing-site oRPC client.
@@ -116,7 +117,7 @@ const link = new RPCLink({
   // path erases the trailing slash on the base. The schema's
   // `.refine` rejects trailing slashes at parse time as a second
   // layer of defence.
-  url: new URL(API_RPC_PATH, clientEnv.NEXT_PUBLIC_API_BASE_URL).toString(),
+  url: new URL(API_RPC_PATH, apiBaseUrl).toString(),
   fetch: (request, init, options) => {
     const isrInit = buildFetchIsrInit(init, options?.context?.cache)
     return globalThis.fetch(request, isrInit)

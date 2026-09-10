@@ -15,7 +15,7 @@ Public marketing site for DeesseJS — the main app of the deessejs organization
 - **Zustand** for client-side state (cookie consent)
 - **Fuse.js** for client-side search
 - **next-themes** for dark mode
-- Shared config from `@workspace/ui/lib/config` (`APP_NAME`, `APP_CONFIG`)
+- Shared config from `@/lib/app-config` (`APP_NAME`, `APP_CONFIG`) — local to `apps/web`; the `@workspace/ui` package hosts UI primitives only.
 
 ## Setup
 
@@ -130,4 +130,5 @@ This app is one of three in the monorepo, each deployed independently:
 
 Links to `/login`, `/signup` in the header point to `apps/app`. Links to `/docs` point to `apps/docs`. Both are intentional cross-app navigation, not broken links.
 
-All three share `@workspace/ui` for components and styling, and `@workspace/ui/lib/config` for `APP_CONFIG`.
+All three share `@workspace/ui` for components and styling. App-specific config (`APP_CONFIG`, `APP_NAME`, `WEB_URL`, `APP_URL`, etc.) lives at `@/lib/app-config` in each app and reads from `@workspace/env/client` via the `webURL()` / `appURL()` / `docsURL()` / `apiBaseURL()` helpers.
+

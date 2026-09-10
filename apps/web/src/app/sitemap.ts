@@ -1,107 +1,107 @@
 import type { MetadataRoute } from "next"
-import { APP_URL } from "@workspace/ui/lib/config"
+import { WEB_URL } from "@/lib/app-config"
 import { allPosts, allReleases, allAuthors, allKbTopics, allKbGuides } from "content-collections"
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
     {
-      url: APP_URL,
+      url: WEB_URL,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 1,
     },
     {
-      url: `${APP_URL}/templates`,
+      url: `${WEB_URL}/templates`,
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 0.9,
     },
     {
-      url: `${APP_URL}/blog`,
+      url: `${WEB_URL}/blog`,
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 0.9,
     },
     {
-      url: `${APP_URL}/changelog`,
+      url: `${WEB_URL}/changelog`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.8,
     },
     {
-      url: `${APP_URL}/privacy`,
+      url: `${WEB_URL}/privacy`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
-      url: `${APP_URL}/cookies`,
+      url: `${WEB_URL}/cookies`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.3,
     },
     {
-      url: `${APP_URL}/terms`,
+      url: `${WEB_URL}/terms`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
-      url: `${APP_URL}/about`,
+      url: `${WEB_URL}/about`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
-      url: `${APP_URL}/help`,
+      url: `${WEB_URL}/help`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.4,
     },
     {
-      url: `${APP_URL}/privacy-policy`,
+      url: `${WEB_URL}/privacy-policy`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
-      url: `${APP_URL}/oss`,
+      url: `${WEB_URL}/oss`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
-      url: `${APP_URL}/students`,
+      url: `${WEB_URL}/students`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
-      url: `${APP_URL}/enterprise`,
+      url: `${WEB_URL}/enterprise`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.6,
     },
     {
-      url: `${APP_URL}/knowledge-base`,
+      url: `${WEB_URL}/knowledge-base`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
-      url: `${APP_URL}/customers`,
+      url: `${WEB_URL}/customers`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
-      url: `${APP_URL}/login`,
+      url: `${WEB_URL}/login`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.3,
     },
     {
-      url: `${APP_URL}/signup`,
+      url: `${WEB_URL}/signup`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.3,
@@ -109,21 +109,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ]
 
   const blogPosts: MetadataRoute.Sitemap = allPosts.map((post) => ({
-    url: `${APP_URL}${post.url}`,
+    url: `${WEB_URL}${post.url}`,
     lastModified: post.updated ?? post.date,
     changeFrequency: "monthly" as const,
     priority: post.tags.length > 0 ? 0.7 : 0.6,
   }))
 
   const changelogEntries: MetadataRoute.Sitemap = allReleases.map((release) => ({
-    url: `${APP_URL}${release.url}`,
+    url: `${WEB_URL}${release.url}`,
     lastModified: release.date,
     changeFrequency: "monthly" as const,
     priority: 0.6,
   }))
 
   const authorPages: MetadataRoute.Sitemap = allAuthors.map((author) => ({
-    url: `${APP_URL}/blog/author/${encodeURIComponent(author.handle)}`,
+    url: `${WEB_URL}/blog/author/${encodeURIComponent(author.handle)}`,
     lastModified: new Date(),
     changeFrequency: "weekly" as const,
     priority: 0.4,
@@ -133,21 +133,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const tagPages: MetadataRoute.Sitemap = Array.from(
     new Set(allPosts.flatMap((p) => p.tags))
   ).map((tag) => ({
-    url: `${APP_URL}/blog/tag/${encodeURIComponent(tag)}`,
+    url: `${WEB_URL}/blog/tag/${encodeURIComponent(tag)}`,
     lastModified: new Date(),
     changeFrequency: "weekly" as const,
     priority: 0.4,
   }))
 
   const kbTopicPages: MetadataRoute.Sitemap = allKbTopics.map((topic) => ({
-    url: `${APP_URL}${topic.url}`,
+    url: `${WEB_URL}${topic.url}`,
     lastModified: new Date(),
     changeFrequency: "monthly" as const,
     priority: 0.4,
   }))
 
   const kbGuidePages: MetadataRoute.Sitemap = allKbGuides.map((guide) => ({
-    url: `${APP_URL}${guide.url}`,
+    url: `${WEB_URL}${guide.url}`,
     lastModified: new Date(),
     changeFrequency: "monthly" as const,
     priority: 0.4,

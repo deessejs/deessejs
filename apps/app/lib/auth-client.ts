@@ -5,6 +5,13 @@ import { deviceAuthorizationClient } from "better-auth/client/plugins"
 import { clientEnv } from "@workspace/env/client"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
+// Side-effect import: installs a `window.fetch` interceptor that
+// rewrites `/api/v1/auth/*` requests to the page's origin on
+// Vercel previews. See `./fetch-auth-interceptor.ts` for the
+// rationale — `baseURL` here is build-time inlined and would
+// otherwise point at production on every preview.
+import "./fetch-auth-interceptor"
+
 /**
  * Better Auth is mounted on Hono at `${API_BASE_PATH}/auth/*` (see
  * `packages/api/src/index.ts` and `packages/api/src/constants/base-path.ts`).
@@ -25,6 +32,13 @@ import { API_AUTH_PATH } from "@workspace/api/base-path"
  * `authClient.device.approve(...)`, `authClient.device.deny(...)`,
  * plus `authClient.device.code(...)` and `authClient.device.token(...)`
  * for the CLI consumer.
+ *
+ * The `baseURL` here uses `clientEnv.NEXT_PUBLIC_APP_URL`, the
+ * build-time env var. On Vercel previews this resolves to the
+ * production apex (`app.deessejs.com`); the fetch interceptor
+ * installed via the side-effect import above rewrites the URL to
+ * the page origin at request time. See ADR-029 Decision #4 for the
+ * full rationale.
  */
 export const authClient = createAuthClient({
   baseURL: clientEnv.NEXT_PUBLIC_APP_URL,

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
-import { serverEnv } from "@workspace/env/server"
 
 const PROTECTED_PREFIXES = ["/home", "/settings"]
 const AUTH_PREFIXES = [
@@ -10,14 +9,10 @@ const AUTH_PREFIXES = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
-  // Device verification page (ADR-020): the CLI's auth login
-  // command opens the browser to /device?user_code=XXX. A
-  // user already signed in lands directly on the
-  // approve / deny view instead of being bounced to /login.
-  // The prefix match (no trailing slash) is intentional: only
-  // /device itself and an exact match get the bypass; a
-  // future /device/<sub> route is opted in separately.
-  "/device",
+  // /device is intentionally NOT here: an authenticated user
+  // landing on /device from the CLI's auth login must see the
+  // approve / deny view, not /home. Routing is owned by the
+  // page-level Server Component. See ADR-022 §"Bug B".
 ]
 
 export const config = {
@@ -30,15 +25,6 @@ export const config = {
     "/forgot-password",
     "/reset-password",
     "/verify-email",
-    // Device verification page (ADR-022): the page-level
-    // `auth.api.getSession` check in `app/(unprotected)/(auth)/device/page.tsx`
-    // bounces anonymous visitors to /login. The proxy bounce
-    // branch below (line 86-88) covers the inverse case —
-    // a user who is already signed in and visits /device for
-    // any reason lands on /home instead. The page-level gate
-    // does its own session read; the proxy exists to skip the
-    // getSession call on static assets and to enforce the
-    // bounce-to-home invariant for auth pages.
     "/device",
   ],
 }
@@ -73,16 +59,28 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Per ADR-021: the proxy URL is composed from the path
-  // constant and the host constant, no longer relative to the
-  // incoming request. The two apps share `API_BASE_URL`, so
-  // this expression is identical on staging, prod, and dev. A
-  // future split of apps/app and the API (e.g. an
-  // `api.deessejs.com` deployment) is a one-line env var change
-  // rather than a code refactor.
+  // The proxy self-fetches `/api/v1/auth/get-session` instead of
+  // importing `better-auth` directly. The fetch must hit the
+  // *same* origin the request is being processed under — never a
+  // hardcoded `API_BASE_URL` env var. On Vercel previews the
+  // origin is the per-branch hostname
+  // (`deessejs-app-git-<branch>.vercel.app`); on prod it's
+  // `app.deessejs.com`; in dev it's `localhost:3001`. Reading the
+  // origin off the incoming `request.nextUrl` makes the proxy
+  // adapt automatically without per-environment env wiring, and
+  // it keeps the self-fetch in the same Function (no DNS hop,
+  // no port resolution).
+  //
+  // ADR-021 §"Decision" #4 originally composed the URL from
+  // `serverEnv.API_BASE_URL`. That works for the cross-app case
+  // (`apps/web` calling into `apps/app`) but breaks for the
+  // self-fetch here, because `API_BASE_URL` is not set on every
+  // preview deploy and falls back to `http://localhost:3001` —
+  // which is not listening on Vercel. See the dev-comment on
+  // `serverEnv.API_BASE_URL` for the same caveat.
   const getSessionUrl = new URL(
     `${API_AUTH_PATH}/get-session`,
-    serverEnv.API_BASE_URL,
+    request.nextUrl.origin,
   )
   const response = await fetch(getSessionUrl, {
     headers: { cookie: request.headers.get("cookie") ?? "" },

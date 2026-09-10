@@ -6,6 +6,7 @@ import { db } from "@workspace/database"
 import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
+import { HOST_ALLOWLIST } from "./host-allowlist.js"
 
 /**
  * Better Auth `basePath` — the URL prefix the handler claims.
@@ -37,35 +38,14 @@ const AUTH_BASE_PATH = "/api/v1/auth"
  * for localhost). The wildcard `*.vercel.app` covers every Vercel
  * preview deployment without per-preview env configuration.
  *
- * `deessejs.com` is the apex and is listed explicitly because
- * better-auth's wildcard matcher requires at least one subdomain
- * segment for `*` to match (the apex `deessejs.com` itself is not
- * matched by `*.deessejs.com`). `*.deessejs.com` then covers every
- * subdomain (app, docs, api, marketing, future ones) without an
- * allowlist edit.
- *
- * Localhost entries are spread only when `NODE_ENV === "development"`
- * to keep the prod allowlist minimal (matches `pitfalls.md` §2).
- * `localhost:*` matches any port — dev tooling, the CLI, and apps
- * running on non-default ports all resolve without per-port edits.
+ * The list is shared with the Hono CORS layer in
+ * `packages/api/src/index.ts` via `packages/auth/src/host-allowlist.ts`
+ * (ADR-029 Decision #2). Apex entries are load-bearing — see
+ * `host-allowlist.ts` for the rationale.
  *
  * See https://better-auth.com/docs/guides/dynamic-base-url and
  * `docs/guides/better-auth/pitfalls.md` §5.
  */
-const PRODUCTION_ALLOWED_HOSTS = [
-  "deessejs.com",
-  "*.deessejs.com",
-  "*.vercel.app",
-] as const
-
-const DEV_ALLOWED_HOSTS = [
-  "localhost:*",
-] as const
-
-const AUTH_ALLOWED_HOSTS = [
-  ...PRODUCTION_ALLOWED_HOSTS,
-  ...(process.env.NODE_ENV === "development" ? DEV_ALLOWED_HOSTS : []),
-]
 
 /**
  * Log a transactional email failure. Hook your observability vendor here
@@ -82,7 +62,7 @@ function logEmailFailure(flow: string, userId: string, error: string): void {
 
 export const auth = betterAuth({
   baseURL: {
-    allowedHosts: AUTH_ALLOWED_HOSTS,
+    allowedHosts: [...HOST_ALLOWLIST],
     protocol: process.env.NODE_ENV === "development" ? "http" : "https",
     // Fallback used only when a direct `auth.api.X()` call doesn't forward
     // request headers and no host can be resolved from `x-forwarded-host` /

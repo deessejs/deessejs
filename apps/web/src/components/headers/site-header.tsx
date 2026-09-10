@@ -1,16 +1,16 @@
 "use client"
 
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { usePathname } from "next/navigation"
 import { Menu, Search } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@workspace/ui/components/sheet"
 import { Button } from "@workspace/ui/components/button"
-import { APP_NAME } from "@workspace/ui/lib/config"
+import { APP_NAME } from "@/lib/app-config"
 
 import { useSearchDialogStore } from "@/lib/search/store"
 
 import { NavSections } from "./nav-sections"
-import { UserMenu } from "./user-menu"
 
 /**
  * Marketing site header. Sticky with a solid `bg-background` (no
@@ -18,19 +18,26 @@ import { UserMenu } from "./user-menu"
  * primitive (Radix) for the four top-level sections; mobile collapses
  * into a Sheet with categories rendered as nested groups.
  *
- * Auth surface (ADR-023): the right-side control is rendered by
- * `<UserMenu />`, which reads the Better Auth session via
- * `authClient.useSession()`. Anonymous visitors see Log in / Sign
- * up buttons linking to apps/app; authenticated visitors see an
- * avatar dropdown with Dashboard and Sign out (with a confirmation
- * dialog). The cross-subdomain cookie share is enabled server-side
- * via `packages/auth/src/auth.ts` so the same session is visible
- * from deessejs.com and app.deessejs.com.
+ * This file is `"use client"` because `NavSections` (Radix
+ * NavigationMenu) and the search dialog need browser-side state.
+ * The cross-app auth UI lives in `user-menu.tsx` (also `"use client"`)
+ * and is rendered into the `rightSlot` / `mobileMenuSlot` props from
+ * a Server Component parent (typically `site-header-server.tsx`) —
+ * that lets the URL resolved by `withRelatedProject` (which reads
+ * server-only env vars) flow into the Client Component as a
+ * serializable string. See ADR-029 Decision #4 + the doc comment on
+ * `<UserMenuServer />` for the rationale.
  *
  * Both DesktopNav and MobileNav read from the same NAV_SECTIONS list
  * in nav-sections.tsx — adding a link once updates both viewports.
  */
-export function SiteHeader() {
+export function SiteHeader({
+  rightSlot,
+  mobileMenuSlot,
+}: {
+  rightSlot: ReactNode
+  mobileMenuSlot: ReactNode
+}) {
   const pathname = usePathname()
   const openSearch = useSearchDialogStore((s) => s.open)
 
@@ -69,7 +76,7 @@ export function SiteHeader() {
                   ⌘K
                 </kbd>
               </Button>
-              <UserMenu variant="mobile" />
+              {mobileMenuSlot}
             </SheetContent>
           </Sheet>
           <Link
@@ -99,7 +106,7 @@ export function SiteHeader() {
               ⌘K
             </kbd>
           </Button>
-          <UserMenu variant="desktop" />
+          {rightSlot}
         </div>
       </div>
     </header>

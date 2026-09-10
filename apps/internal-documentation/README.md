@@ -63,3 +63,4 @@ This app follows the DeesseJS monorepo conventions:
 
 - [Docs architecture overview](../docs/engineering/architecture/README.md)
 - [MDX content authoring guide](https://fumadocs.dev/docs/mdx)
+
