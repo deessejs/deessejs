@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Check, Copy } from "lucide-react"
 
+import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
 /**
@@ -48,12 +49,12 @@ export function CopyCommand({
   }
 
   return (
-    <button
+    <Button
       type="button"
       onClick={onCopy}
       aria-label={copied ? "Command copied to clipboard" : "Copy command to clipboard"}
       className={cn(
-        "group inline-flex items-center gap-3 rounded-none border border-border bg-background px-4 py-2.5 text-copy-13-mono text-foreground transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "group inline-flex h-auto items-center gap-3 rounded-none border border-border bg-background px-4 py-2.5 text-copy-13-mono text-foreground transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className,
       )}
     >
@@ -71,6 +72,6 @@ export function CopyCommand({
           <Copy className="size-3.5" />
         )}
       </span>
-    </button>
+    </Button>
   )
 }

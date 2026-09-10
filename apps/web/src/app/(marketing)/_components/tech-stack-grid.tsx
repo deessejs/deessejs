@@ -97,12 +97,16 @@ export function TechStackGrid({
     if (reducedMotion || techs.length < 2) return
     const timeouts: Array<number> = []
 
+    const fireSlot = (slotIdx: number) => {
+      setOrder((prev) => {
+        const otherIdx = pickDifferentIndex(prev.length, slotIdx)
+        return swapAt(prev, slotIdx, otherIdx)
+      })
+    }
+
     const armSlot = (slotIdx: number) => {
       const id = window.setTimeout(() => {
-        setOrder((prev) => {
-          const otherIdx = pickDifferentIndex(prev.length, slotIdx)
-          return swapAt(prev, slotIdx, otherIdx)
-        })
+        fireSlot(slotIdx)
         // Re-arm this slot with a fresh random delay so the rhythm stays
         // irregular across the lifetime of the page.
         armSlot(slotIdx)
@@ -139,7 +143,7 @@ export function TechStackGrid({
                 key={tech.name}
                 initial={reducedMotion ? false : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={reducedMotion ? undefined : { opacity: 0, y: -8 }}
+                {...(reducedMotion ? {} : { exit: { opacity: 0, y: -8 } })}
                 transition={{
                   duration: TRANSITION_MS,
                   ease: [0.16, 1, 0.3, 1],

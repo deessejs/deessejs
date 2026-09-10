@@ -89,8 +89,9 @@ function runCommand(raw: string): CommandResult {
     case "init": {
       const projectName = arg.match(/^(\S+)/)?.[1] || "my-saas"
       const templateMatch = arg.match(/--template=(\S+)/)
-      const template = templateMatch
-        ? INIT_TEMPLATE_NAMES[templateMatch[1]] || templateMatch[1]
+      const templateSlug = templateMatch?.[1]
+      const template = templateSlug
+        ? INIT_TEMPLATE_NAMES[templateSlug] || templateSlug
         : "saas-starter"
       const lines = INIT_OUTPUT_LINES.map((l) =>
         l
@@ -101,7 +102,7 @@ function runCommand(raw: string): CommandResult {
     }
 
     default:
-      return { kind: "unknown", cmd }
+      return { kind: "unknown", cmd: cmd ?? "" }
   }
 }
 
@@ -118,7 +119,7 @@ export function TerminalMockup({
   /** Optional className applied to the inner scroll region for size tuning per call site. */
   className?: string
 }) {
-  const [history, setHistory] = useState<TerminalLine[]>(initialLines)
+  const [history, setHistory] = useState<TerminalLine[]>([...initialLines])
   const [input, setInput] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
