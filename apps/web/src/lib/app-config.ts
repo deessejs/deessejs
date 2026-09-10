@@ -13,7 +13,7 @@ import { webURL } from "@workspace/env/client"
 export const APP_CONFIG = {
   name: "DeesseJS",
   description:
-    "SaaS application built with Next.js and shared UI components",
+    "A registry of production-ready SaaS templates with auth, database, billing, jobs, and storage contracts pre-wired for the agent era.",
   url: webURL(),
   // Marketing-site nav links (relative paths under the marketing host).
   links: {
