@@ -1,0 +1,21 @@
+---
+title: Documentation pass, broken-link sweep
+description: KB articles rewritten to match the new contracts. Dead links fixed across the changelog and blog.
+version: 0.2.1
+date: 2026-09-03
+authors: [admin]
+categories: [changed, security]
+---
+
+# 0.2.1 — Documentation pass, broken-link sweep
+
+Small follow-up to 0.2.0 — no API changes.
+
+## Changed
+
+- KB articles on auth, billing, and jobs have been rewritten to match the contracts shipped in 0.2.0.
+- The changelog and blog were scanned for dead links; 14 references to renamed routes have been updated.
+
+## Security
+
+- Hardened the `deessejs doctor` HTTP client: it now rejects redirects to non-loopback hosts, blocking a class of SSRF attempts against local services.
