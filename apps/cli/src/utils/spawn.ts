@@ -1,4 +1,9 @@
-import spawn from "cross-spawn"
+// `cross-spawn` ships as a pure CommonJS package without a TS declaration
+// file. Importing the namespace (rather than a default export) avoids the
+// TS7016 implicit-any error under our `tsc --noEmit` strict typecheck,
+// while still resolving to the same `spawn` callable at runtime via
+// tsup's CJS→ESM interop.
+import * as crossSpawn from "cross-spawn"
 
 // Dummy comment added to exercise the CI workflows on a no-op change.
 // No runtime behavior change; tests and bundle are unaffected.
@@ -24,7 +29,7 @@ export const spawn = (
   return new Promise((resolve, rejectFn) => {
     // `cross-spawn` resolves Windows `.cmd`/`.bat` shims automatically
     // (PATHEXT), unlike `node:child_process#spawn` with `shell: false`.
-    const child = spawn(command, args, {
+    const child = crossSpawn.spawn(command, args, {
       cwd,
       env: env ?? process.env,
       stdio,
