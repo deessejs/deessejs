@@ -109,6 +109,16 @@ jobs:
       # Step 3: dry-run install in a clean project. This catches the
       # 2.0.1 failure mode (workspace:* / catalog: in dependencies
       # that npm cannot resolve from the registry).
+      #
+      # The `--allow-remote=all` flag works around npm 12's default
+      # `allow-remote=none`, which trips an `EALLOWREMOTE` error when
+      # the dry-run ideal-tree build cracks open a transitive tarball
+      # that declares `bundleDependencies` (e.g. `@tailwindcss/oxide`
+      # pulled in via `better-auth@1.7+`). The bug is tracked upstream
+      # in npm/cli#9800 and fixed by PR #9818 (still open at the time
+      # of writing) — once a patched npm 12 is available we can drop
+      # this flag. Safe to relax here because the tarball under test
+      # is produced locally by Step 1, not fetched from a third party.
       - name: Verify npm install (dry-run)
         run: |
           set -eu
@@ -116,13 +126,18 @@ jobs:
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
           npm init -y > /dev/null
-          npm install --dry-run "$GITHUB_WORKSPACE/$TARBALL"
+          npm install --dry-run --allow-remote=all "$GITHUB_WORKSPACE/$TARBALL"
           popd > /dev/null
           rm -rf "$SCRATCH"
 
       # Step 4: real install + npx smoke test. This is what the user
       # actually does. Fails if the install cannot complete or the
       # binary cannot run.
+      #
+      # `--allow-remote=all` is applied here too for symmetry with
+      # Step 3. Real installs are not currently affected by npm/cli#9800,
+      # but keeping the flag consistent avoids future drift if the
+      # exemption path changes upstream.
       - name: Real install + npx smoke test
         run: |
           set -eu
@@ -130,7 +145,7 @@ jobs:
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
           npm init -y > /dev/null
-          npm install "$GITHUB_WORKSPACE/$TARBALL"
+          npm install --allow-remote=all "$GITHUB_WORKSPACE/$TARBALL"
           npx @deessejs/cli --help
           popd > /dev/null
           rm -rf "$SCRATCH"
