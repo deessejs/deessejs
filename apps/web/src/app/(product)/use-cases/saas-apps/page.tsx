@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowRight, Boxes, Database, GitBranch, LineChart, Mail } from "lucide-react"
 
+import { cn } from "@workspace/ui/lib/utils"
+
 import { UseCaseHero } from "../_components/use-case-page"
 import { UseCaseStack } from "../_components/use-case-stack"
 import { CopyCommand } from "../_components/copy-command"
@@ -317,6 +319,14 @@ export default function SaasAppsPage() {
  * Alternates left/right via the `reverse` flag so consecutive sections
  * feel like a zig-zag, not a column.
  *
+ * On lg viewports, `reverse=true` swaps the two columns: the copy sits
+ * on the right and the mockup sits on the left. The divide-x divider
+ * stays between them.
+ *
+ * On mobile (single column), the mockup appears first so the visitor
+ * sees the product before reading the copy. The flex-col-reverse helper
+ * on the copy column does that without touching source order.
+ *
  * Lives inside the page's shared-border wrapper, so each section
  * ends with a `border-t` (supplied by the parent's grid). The mockup
  * pane owns its own border for visual containment.
@@ -343,11 +353,12 @@ function SimulatedSection({
   return (
     <div className="grid grid-cols-1 border-t border-border lg:grid-cols-2 lg:divide-x lg:divide-border">
       <div
-        className={
-          reverse
-            ? "order-2 flex flex-col gap-4 p-6 lg:order-1 lg:p-10"
-            : "flex flex-col gap-4 p-6 lg:p-10"
-        }
+        className={cn(
+          // Mobile: copy sits below the mockup
+          "order-2 flex flex-col gap-4 p-6 lg:p-10",
+          // Desktop: copy on the left by default, on the right when reversed
+          reverse ? "lg:order-2" : "lg:order-1",
+        )}
       >
         <div className="flex items-center gap-3">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -381,13 +392,14 @@ function SimulatedSection({
         </ul>
       </div>
       <div
-        className={
-          reverse
-            ? "order-1 !p-0 border-0 lg:order-2"
-            : "!p-0 border-0"
-        }
+        className={cn(
+          // Mobile: mockup first
+          "order-1 !p-0 border-0",
+          // Desktop: mockup on the right by default, on the left when reversed
+          reverse ? "lg:order-1" : "lg:order-2",
+        )}
       >
-        <div className="overflow-hidden rounded-none border border-border bg-background m-4 lg:m-6">
+        <div className="m-4 overflow-hidden rounded-none border border-border bg-background lg:m-6">
           {mockup}
         </div>
       </div>
