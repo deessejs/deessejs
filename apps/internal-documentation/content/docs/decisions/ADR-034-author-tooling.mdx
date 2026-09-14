@@ -1,0 +1,205 @@
+---
+title: 'Author tooling for registry maintainers'
+description: 'Tooling for the DeesseJS internal team that maintains a catalogue of hundreds of registry items. A registry repo shape (registry.json at the root, items in sub-dirs), a separate @deessejs/author CLI distinct from the user-facing @deessejs/cli, and an offline validation package. Author-side concerns only; user-side consumption is documented in ADR-031 / ADR-032 / ADR-033.'
+---
+
+# ADR-034: Author tooling for registry maintainers
+
+## Status
+
+Accepted (2026-09). Approved as part of the registry trio expansion ([ADR-031](./ADR-031-deesse-json.mdx) + [ADR-032](./ADR-032-deesse-template.json.mdx) + [ADR-033](./ADR-033-deessejs-add.mdx) + this ADR), tracked by [PR #137](https://github.com/deessejs/deessejs/pull/137). Author-side implementation is gated on V2 shipping (the registry CDN at `registry.deessejs.dev` and the `TemplateV2` Zod schema in `@workspace/contracts`); the author tooling lands in V2.5 or V3 once the V2 surface stabilises.
+
+## Context
+
+The DeesseJS registry is a content-driven catalogue. The user-side consumption — `deessejs init`, `deessejs add`, `deessejs list`, `deessejs info` — is fully specified by [ADR-031](./ADR-031-deesse-json.mdx), [ADR-032](./ADR-032-deesse-template.json.mdx), and [ADR-033](./ADR-033-deessejs-add.mdx). That trio describes the contract: what the CLI reads, what it writes, what the registry ships.
+
+The other side of the system — how the DeesseJS internal team authors and maintains registry items at scale — is unspecified. The user has framed the planned scale as "hundreds of templates in internal production," which shifts the author-side problem from "one-off community contributions" (the shadcn model) to "internal team producing a catalogue" (the npm registry model). The shape, validation, and tooling needs are different at this scale.
+
+### What's missing on the author side today
+
+The team today maintains the registry by editing `packages/api/src/templates.ts` (one row per template, hand-curated). The row points at `deessejs/<slug>` on GitHub, and the API's enrichment layer fetches live data from `api.github.com`. There is no `deesse-template.json` co-located in the template repo today; the registry row is the entire metadata payload. This is fine for the one-entry V1 state. It does not scale to hundreds.
+
+Five gaps surface at "hundreds of internal templates":
+
+1. **No centralised index.** The team edits `packages/api/src/templates.ts` and pushes via PR for each new template. The PR-review overhead is the bottleneck. A `registry.json` at the root of a registry repo lets the team add templates by adding a directory and a row, validated by CI.
+2. **No validation at write time.** A malformed `deesse-template.json` (wrong shape, missing `files[]`, unknown placeholder) is caught only when the CLI fetches it. For an internal team shipping fast, the feedback loop is too long.
+3. **No scaffold for new templates.** A new author onboarding to write the 50th template reads [ADR-032](./ADR-032-deesse-template.json.mdx) and writes the descriptor from scratch. The shape is well-defined but tedious to type by hand for the first time.
+4. **No preview before publish.** An author cannot see how the item will render to a `deessejs add` consumer until they push to the CDN and run a test install locally. The cycle is minutes, not seconds.
+5. **No link between the registry repo and the published CDN.** Today, `packages/api` writes to `public/r/<slug>.json` and deploys to the CDN via the publication CI (per [ADR-032 Consequences](./ADR-032-deesse-template.json.mdx)). For a registry repo, the same publication logic must apply — but at the registry-repo level, not the API-repo level.
+
+### What shadcn does (and where it falls short for our scale)
+
+shadcn's authoring model is documented in [shadcn registry getting started](https://ui.shadcn.com/docs/registry/getting-started):
+
+- An author forks a public repo (or starts from scratch) and adds `registry.json` at the root plus per-item `registry-item.json` files.
+- The `shadcn build` command (in the author's local checkout, not distributed in the published CLI) generates the final `registry-item.json` from TSX sources.
+- A CI in the author's repo validates every item against the published JSON Schema.
+
+For shadcn's community of dozens of independent authors, this works because each author is a separate repo and a separate CI. For our internal team producing hundreds of templates, the per-template-repo model is the wrong granularity: 200 repos × CI configuration × publication pipeline is too much operational overhead. A **single registry repo** with 200 sub-directories is the right shape.
+
+shadcn also ships `ui.shadcn.com/create`, a web UI for composing a `registry:base` payload. That's a V3+ concern for DeesseJS (depends on user demand for non-technical authors); out of scope here.
+
+## Decision
+
+### What this rule decides
+
+Three concrete decisions. They ship together because shipping the registry-repo shape without the validation tooling (or vice versa) leaves the authoring workflow half-built.
+
+#### 1. The registry lives in one or more "registry repos" — items are sub-directories
+
+A registry repo contains:
+
+```
+<registry-repo>/
+├── registry.json                    # lists every item by slug + type + ref
+├── schemas/
+│   └── deesse-template.schema.json   # copy of the published schema for offline validation
+├── templates/
+│   ├── saas-starter/
+│   │   ├── deesse-template.json      # the item descriptor (matches ADR-032 shape)
+│   │   ├── files/                    # mirror of the template's source tree
+│   │   ├── docs.md                   # rendered by `deessejs info <slug>`
+│   │   └── README.md                 # human-facing overview for the author
+│   ├── auth-addon/
+│   │   ├── deesse-template.json
+│   │   ├── files/
+│   │   └── ...
+│   └── ... (one directory per item)
+└── .github/workflows/
+    ├── validate.yml                  # ajv validate every deesse-template.json
+    └── publish.yml                   # deploy to registry.deessejs.dev/r/<slug>.json
+```
+
+The `registry.json` is the single source of truth for what the registry ships. The shape is:
+
+```jsonc
+{
+  "$schema": "https://registry.deessejs.dev/schema/registry.json",
+  "name": "deessejs",
+  "homepage": "https://deessejs.com",
+  "items": [
+    {
+      "name": "saas-starter",
+      "type": "registry:item",          // shadcn-style discriminator
+      "title": "SaaS Starter",
+      "description": "...",
+      "dependencies": ["next@^15"],
+      "registryDependencies": [],
+      "files": ["templates/saas-starter/deesse-template.json"],
+      "categories": ["saas"]
+    }
+  ]
+}
+```
+
+The `files[]` entry is a relative path from the registry repo root to the item's `deesse-template.json`. The CI walks the registry, validates each referenced file, and emits the merged `TemplateV2` payload (registry data + on-disk metadata) to the CDN at `registry.deessejs.dev/r/<slug>.json`. The publication logic is the same as [ADR-032 Consequences](./ADR-032-deesse-template.json.mdx)'s `packages/api` CI job — the difference is that the source of truth is the registry repo's `registry.json`, not `packages/api/src/templates.ts`.
+
+**What this ADR does not decide.** Whether the team maintains one registry repo (`deessejs/templates`) or several repos split by stack (`deessejs/templates-saas`, `deessejs/templates-mobile`, `deessejs/templates-desktop`). That decision is operational and may evolve with the team's structure; this ADR's contract is "the registry repo shape is what ADR-034 documents," and the team is free to instantiate one or many. The publication CI runs per-repo; the CDN receives items from all repos.
+
+#### 2. `@deessejs/author` is a separate CLI, not a fourth command on `@deessejs/cli`
+
+The user-facing CLI (`@deessejs/cli`, per ADR-010 §1) has a closed-list surface of four commands (`init`, `list`, `info`, `add`). Adding author-side commands (`deessejs create`, `deessejs validate`, `deessejs publish`) to the user-facing CLI would:
+
+- Break the ADR-010 closed-list rule for the third time (after ADR-033's sanctioned `add`).
+- Bloat the published bundle with code that 99% of users never run.
+- Couple the author tooling's release cycle to the user's release cycle.
+
+Instead, author tooling ships as a **separate npm package**, `@deessejs/author`, with its own CLI binary (`deessejs-author`). It is published but is a dev-time dependency for the internal team only; end users never install it.
+
+The initial command set:
+
+```
+deessejs-author new <slug>             # scaffold a new template item from template-starter
+deessejs-author validate [--strict]    # validate every deesse-template.json in the repo
+deessejs-author preview <slug>         # render the item as the CLI would consume it
+deessejs-author dry-publish [--to staging] # validate + emit to a staging CDN without production deploy
+```
+
+The first three are local-only (no network); `dry-publish` is opt-in. None of these commands appears in the user-facing CLI's help output. The author's release cadence is independent: `1.0.0` lands when the team starts using it, with whatever command set is needed at that point.
+
+#### 3. `@deessejs/template-lint` validates `deesse-template.json` offline
+
+A small package (`@deessejs/template-lint`) exports `validateDeesseTemplate(path: string): ValidationResult`. It is the local counterpart to the CI's ajv check. The package is published and consumed by `@deessejs/author` (for `validate`) and by an optional pre-commit hook (out of scope for this ADR — see "What this rule does not change" below).
+
+The package implements two layers of validation:
+
+- **Shape** via the Zod schema exported from `@workspace/contracts` (`TemplateV2` and its sub-schemas). A malformed item fails with `parse_error`-equivalent details.
+- **Semantics** (light, optional behind a `--strict` flag):
+  - `files[].target` placeholders (`@components/`, `@lib/`, etc.) must be a closed list (no `@utils/`, no embedded placeholders).
+  - `dependencies` pinned with a version (`next@^15`) are flagged if no `packageManager` field is set in the item (a hint to authors).
+  - `prompts[].when` references identifiers that are not declared earlier in the `prompts[]` array (forward references are an authoring smell).
+  - `consumes[]` targets validate against the same closed list as the placeholder check.
+
+The semantic layer is **off by default**. The shape check is the contract; the semantic checks are authoring aids. A template that fails the semantic checks still publishes (the CLI tolerates them) but a `--strict` flag in `deessejs-author validate` blocks the commit.
+
+### What this rule allows
+
+- A new internal template author runs `deessejs-author new auth-addon` in a registry repo and gets a starter directory: `templates/auth-addon/deesse-template.json` (with comments), `templates/auth-addon/files/` (empty), `templates/auth-addon/docs.md` (boilerplate), and a row in `registry.json`. The author fills in the descriptor and commits.
+- A team member editing an existing template runs `deessejs-author validate` before pushing. A shape error (e.g. missing `source.ref`) is caught locally with a line:column pointer and a fix suggestion. No CI round-trip.
+- A team member preparing a release runs `deessejs-author preview <slug>` and sees the merged `TemplateV2` payload that will be emitted to the CDN: the resolved `aliases`, the substituted placeholders, the prompt `when` gates evaluated against example answers. The preview is what `deessejs add <slug> --dry-run` would produce against this item.
+- A release captain runs `deessejs-author dry-publish --to staging` to push every item in the repo to a staging CDN (`staging.registry.deessejs.dev`). The staging deploy is for smoke-testing; production deploy happens separately via the registry repo's CI on merge to `main`.
+- The registry repo's CI runs `validate.yml` on every PR, blocking merges that introduce a malformed item. The `publish.yml` runs on merge to `main`, deploying the merged items to `registry.deessejs.dev`. The two workflows are separate so a PR review can validate without deploying.
+
+### What this rule forbids
+
+- Author tooling shipped as part of `@deessejs/cli`. The user-facing CLI's closed-list rule (per ADR-010 §1) is preserved by keeping author commands in a separate package.
+- Pre-commit hooks mandated by this ADR. The team may adopt pre-commit hooks voluntarily, but ADR-034 does not require them; CI validation is the load-bearing safety net. (Pre-commit is a UX improvement, not a correctness requirement.)
+- Multiple `registry.json` per repo. A registry repo has exactly one `registry.json` at the root; if the team needs to split, they split into multiple repos.
+- Inline file contents in `deesse-template.json`. The descriptor carries metadata + paths; file contents live in the registry repo's `files/` subdirectory, just as in the user-template-repo model. The same rationale as [ADR-032 Decision #5](./ADR-032-deesse-template.json.mdx) (shadcn-style inlining is fine for small items, but our overlays are larger; co-located files scale better).
+- Validation that requires the network. `@deessejs/template-lint` runs offline; network-dependent checks (e.g. "does this version exist on npm") happen in CI, not in the local lint.
+
+### Why not the alternatives
+
+Three patterns the team considered and rejected.
+
+1. **Per-template repos with `registry.json` per repo (shadcn model).** Works for community authors with one template each. Does not scale to hundreds of internal templates maintained by one team — the operational overhead of 200 repos × CI × publication pipeline outweighs the modularity gain. A single registry repo with sub-directories is the right granularity.
+2. **No registry repo; keep editing `packages/api/src/templates.ts` for each new template.** This is the V1 state. Fine for 1-10 templates. Does not scale to hundreds because every new template is a PR to the API repo (review bottleneck, coupling between template content and API release).
+3. **`@deessejs/author` as a sub-command of `@deessejs/cli` (e.g. `deessejs author new <slug>`).** Rejected because it adds author commands to the user-facing CLI's surface. The closed-list rule per ADR-010 §1 would force a third sanctioned exception after `add`; the cleaner separation is a distinct package.
+
+### What this rule does not change
+
+- The user-facing CLI's closed-list rule per ADR-010 §1. `@deessejs/cli` does not gain author commands.
+- The wire contract `TemplateV2` per [ADR-032](./ADR-032-deesse-template.json.mdx). The registry repo's items describe themselves using the same shape; the CDN emits the same payload.
+- The publication pipeline from [ADR-032 Consequences](./ADR-032-deesse-template.json.mdx) (`packages/api` CI publishes `public/r/<slug>.json` to `registry.deessejs.dev`). For a registry-repo model, the publication moves to the registry repo's CI; the CDN layout and the schema URL stay the same.
+- The closed-list `CliErrorCode` per ADR-010 §2. `@deessejs/author` has its own error model (out of scope here); it does not affect the user-facing CLI's error surface.
+- The `templates-content-not-cli` invariant from `.claude/agent-memory/tech-lead/project/templates-content-not-cli.md`. Adding a row to `registry.json` is content; it does not trigger a `@deessejs/author` release. Only `TemplateV2` schema changes trigger an author release.
+
+## Consequences
+
+- **`@deessejs/author` package lands as a new workspace.** The package lives at `packages/author/` (next to `packages/api`, `packages/auth`, etc.) and is published to npm as a dev-only dependency. The CLI binary `deessejs-author` is the package's `bin` entry. The implementation lands in V2.5 or V3, gated on V2 shipping.
+- **`@deessejs/template-lint` package lands as a new workspace.** The package lives at `packages/template-lint/` and exports `validateDeesseTemplate(path): ValidationResult`. It is consumed by `@deessejs/author` (for `validate`) and is published for external teams who want to lint their own template forks.
+- **A `deessejs/templates` registry repo is created as a separate GitHub repo.** Out of scope for the PR that lands this ADR (it's a separate repo, owned by a separate org unit). The repo's `registry.json` references `deesse-template.json` files in sub-directories. The CI workflows (`validate.yml`, `publish.yml`) ship with the repo.
+- **The publication CI in `packages/api` (per ADR-032 Consequences) loses its responsibility for the registry.** Today, `packages/api` publishes items from `packages/api/src/templates.ts` (the V1 hand-curated array). After ADR-034, the `packages/api/src/templates.ts` array becomes a fallback or is removed entirely; the canonical registry data lives in the registry repo(s). The V2 transition is "both sources coexist, registry repo wins once V2.5 ships"; the V3 transition is "registry repo only."
+- **`docs/engineering/plans/registry-repo-bootstrap.md`** is the operational plan that walks through the first registry repo: directory structure, `registry.json` shape, the GitHub repo creation checklist, and the CI workflow files. The plan is out of scope for this ADR but is a follow-up doc.
+
+## Open questions
+
+Three design calls remain open and will be revisited in V2.5 or V3.
+
+### Question 1: one registry repo or many?
+
+The team may run one `deessejs/templates` repo or several repos split by stack (e.g. `deessejs/templates-saas`, `deessejs/templates-mobile`, `deessejs/templates-desktop`). The shape documented in this ADR supports both. The decision depends on team structure, access patterns, and the operational cost of running CI per repo. A single repo is simpler; multiple repos give per-stack autonomy. This ADR does not decide.
+
+### Question 2: how are author-side changes released?
+
+`@deessejs/author` ships its own package, but its release cadence is unspecified. The team may choose (a) lockstep with `@deessejs/cli` releases (one bump per CLI release), (b) independent (the author package releases whenever a feature lands), or (c) tag-driven (the author package releases only when a registry repo is being onboarded). The default is (b); a follow-up ADR may pin the choice if the team finds the cadence drift problematic.
+
+### Question 3: does the registry repo include private items?
+
+The registry CDN at `registry.deessejs.dev` is public by definition (per [ADR-032 Decision #4](./ADR-032-deesse-template.json.mdx)). A registry repo that wants to publish private items behind auth must use a different CDN (e.g. `private.registry.deessejs.dev`, gated by the existing `auth.*` oRPC procedures). This ADR covers the public-registry-repo model only; private items are out of scope until the team surfaces a concrete need.
+
+## Cross-references
+
+- **[ADR-031: deesse.json](./ADR-031-deesse-json.mdx).** The user-side project config. Author tooling does not touch this; the author does not edit `deesse.json` (the consumer does).
+- **[ADR-032: deesse-template.json](./ADR-032-deesse-template.json.mdx).** The item descriptor. Author tooling's primary artefact. The Zod schema in `@workspace/contracts` is the source of truth that `@deessejs/template-lint` consumes.
+- **[ADR-033: deessejs add <feature>](./ADR-033-deessejs-add.mdx).** The user-side overlay command. Author tooling does not interact with it; the consumer does.
+- **`docs/engineering/plans/registry-repo-bootstrap.md`** (to be written). The operational plan that lands the first registry repo.
+- **`.claude/agent-memory/tech-lead/project/templates-content-not-cli.md`.** The load-bearing governance rule. Adding a row to `registry.json` is content; it does not trigger a `@deessejs/author` release. Only `TemplateV2` schema changes do.
+
+## Related
+
+- [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md). The CLI's outbound transport discipline. `@deessejs/author` may use oRPC for staging-CDN smoke tests (out of scope here); it does not affect the user-facing CLI.
+- [ADR-004: API package structure](./ADR-004-api-package-structure.md). Pins `packages/api`'s structure. `@deessejs/author` lives at `packages/author/`, distinct from the API package; the API package's `templates.ts` array is a transitional artefact until V2.5 lands the registry repo.
+- [ADR-010: CLI public surface](./ADR-010-cli-public-surface.md). The user-facing CLI's closed-list rule. `@deessejs/author` is a separate package; this ADR does not amend ADR-010 §1.
+- [shadcn registry getting started](https://ui.shadcn.com/docs/registry/getting-started). The reference for the `registry.json` shape and the per-template-repo model. ADR-034 adapts this for the single-registry-repo + internal-team model.
+- [shadcn `shadcn build`](https://ui.shadcn.com/docs/registry/getting-started#build). The author-side command in the shadcn model. ADR-034 documents a similar but smaller command set (`new`, `validate`, `preview`, `dry-publish`); no `build` because the items are JSON, not TSX-derived.
