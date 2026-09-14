@@ -173,10 +173,7 @@ export default function SaasAppsPage() {
           mockup={<CmsEditorMockup />}
         />
 
-        {/* 7. And more - dense grid of remaining capabilities */}
-        <AndMoreSection tiles={AND_MORE} />
-
-        {/* 8. Multi-tenant switcher (premium preview, behind roadmap badge) */}
+        {/* 7. Multi-tenant switcher (roadmap Q4) */}
         <SimulatedSection
           eyebrow="Multi-tenant"
           title="Workspaces + orgs, one contract."
@@ -192,7 +189,7 @@ export default function SaasAppsPage() {
           reverse
         />
 
-        {/* 9. Admin dashboard (premium preview) */}
+        {/* 8. Admin dashboard (roadmap Q1) */}
         <SimulatedSection
           eyebrow="Admin"
           title="Operator console, on the same contracts."
@@ -206,6 +203,9 @@ export default function SaasAppsPage() {
           ]}
           mockup={<AdminDashboardMockup />}
         />
+
+        {/* 9. And more - dense grid of remaining capabilities */}
+        <AndMoreSection tiles={AND_MORE} />
 
         {/* 10. Stack */}
         <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
