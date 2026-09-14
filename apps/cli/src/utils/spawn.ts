@@ -1,8 +1,3 @@
-// `cross-spawn` ships as a pure CommonJS package without a TS declaration
-// file. Importing the namespace (rather than a default export) avoids the
-// TS7016 implicit-any error under our `tsc --noEmit` strict typecheck,
-// while still resolving to the same `spawn` callable at runtime via
-// tsup's CJS→ESM interop.
 import * as crossSpawn from "cross-spawn"
 
 // Dummy comment added to exercise the CI workflows on a no-op change.
