@@ -110,40 +110,32 @@ jobs:
       # 2.0.1 failure mode (workspace:* / catalog: in dependencies
       # that npm cannot resolve from the registry).
       #
-      # The `--allow-remote=all` flag works around npm 12's default
-      # `allow-remote=none`, which trips an `EALLOWREMOTE` error when
-      # the dry-run ideal-tree build cracks open a transitive tarball
-      # that declares `bundleDependencies` (e.g. `@tailwindcss/oxide`
-      # pulled in via `better-auth@1.7+`). The bug is tracked upstream
-      # in npm/cli#9800 and fixed by PR #9818 (still open at the time
-      # of writing) — once a patched npm 12 is available we can drop
-      # this flag. Safe to relax here because the tarball under test
-      # is produced locally by Step 1, not fetched from a third party.
+      # `--allow-remote=all` works around npm 12's default
+      # `allow-remote=none` (npm/cli#9800, PR #9818 still open at
+      # writing time). The tarball under test is produced locally by
+      # Step 1, so relaxing the guard is safe.
+      #
+      # The tarball is referenced as `file:./$TARBALL` (relative to
+      # the scratch dir we just pushd'd into) rather than
+      # `$GITHUB_WORKSPACE/$TARBALL`. npm 11.19.0 mishandles the
+      # `file:` protocol when the path is absolute and constructs a
+      # bogus relative `file:../../home/runner/work/...` URL that
+      # resolves outside the scratch dir — the install then fails
+      # with a truncated `npm error` and no actionable detail.
+      # Using a relative path sidesteps that resolution path entirely.
       - name: Verify npm install (dry-run)
         run: |
           set -eu
-          TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
+          TARBALL_REL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
+          TARBALL_ABS="$GITHUB_WORKSPACE/$TARBALL_REL"
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
           npm init -y > /dev/null
-          # npm 11.19+ deliberately writes the diagnostic to
-          # ~/.npm/_logs/<timestamp>-debug-0.log and only emits the
-          # path on stderr. Capture that file directly so the failure
-          # mode is visible in workflow logs.
-          LOGS_DIR="$HOME/.npm/_logs"
-          if ! npm install --dry-run --allow-remote=all "$GITHUB_WORKSPACE/$TARBALL"; then
-            echo "::error::npm install --dry-run failed; tail of npm debug log:"
-            # npm writes the log atomically; pick the most recent one
-            # created during this run. The path is also on stderr so
-            # we can grep for it, but listing newest-first is simpler.
-            LATEST=$(ls -1t "$LOGS_DIR"/*-debug-0.log 2>/dev/null | head -1)
-            if [ -n "$LATEST" ]; then
-              tail -100 "$LATEST"
-            else
-              echo "(no debug log found in $LOGS_DIR)"
-            fi
-            exit 1
-          fi
+          # Copy the tarball into the scratch dir so we can pass it
+          # as a relative path; this avoids the file: URL resolution
+          # bug described above.
+          cp "$TARBALL_ABS" ./deessejs-cli.tgz
+          npm install --dry-run --allow-remote=all ./deessejs-cli.tgz
           popd > /dev/null
           rm -rf "$SCRATCH"
 
@@ -151,18 +143,18 @@ jobs:
       # actually does. Fails if the install cannot complete or the
       # binary cannot run.
       #
-      # `--allow-remote=all` is applied here too for symmetry with
-      # Step 3. Real installs are not currently affected by npm/cli#9800,
-      # but keeping the flag consistent avoids future drift if the
-      # exemption path changes upstream.
+      # Same `--allow-remote=all` + relative tarball path rationale
+      # as Step 3 above.
       - name: Real install + npx smoke test
         run: |
           set -eu
-          TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
+          TARBALL_REL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
+          TARBALL_ABS="$GITHUB_WORKSPACE/$TARBALL_REL"
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
           npm init -y > /dev/null
-          npm install --allow-remote=all "$GITHUB_WORKSPACE/$TARBALL"
+          cp "$TARBALL_ABS" ./deessejs-cli.tgz
+          npm install --allow-remote=all ./deessejs-cli.tgz
           npx @deessejs/cli --help
           popd > /dev/null
           rm -rf "$SCRATCH"
