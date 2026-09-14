@@ -126,7 +126,8 @@ jobs:
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
           npm init -y > /dev/null
-          npm install --dry-run --allow-remote=all "$GITHUB_WORKSPACE/$TARBALL"
+          npm install --dry-run --allow-remote=all --loglevel=verbose "$GITHUB_WORKSPACE/$TARBALL" \
+            || { echo "::error::npm install --dry-run failed"; exit 1; }
           popd > /dev/null
           rm -rf "$SCRATCH"
 
