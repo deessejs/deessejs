@@ -1,0 +1,192 @@
+---
+title: 'deessejs add feature'
+description: 'Adds deessejs add <feature> as a fourth public CLI command. Reads deesse.json (ADR-031) to resolve paths, aliases, and database, fetches the matching deesse-template.json (ADR-032), and applies it as an overlay on an existing project instead of a full clone. Breaking change to the CLI public surface (ADR-010 §1).'
+---
+
+# ADR-033: deessejs add <feature>
+
+## Status
+
+Draft (2026-09). Awaiting review.
+
+## Context
+
+The DeesseJS template registry exists to scaffold projects. shadcn's CLI ships two headline commands: `shadcn init` (clone a starter) and `shadcn add` (layer a single component, block, or feature onto an existing project). The DeesseJS CLI today ships only `init` (`apps/cli/src/commands/init.ts`), `list`, and `info` (per ADR-010 §1). A user who wants to add a `crud` feature or an `auth` block to an existing project has no command — they have to merge two cloned trees by hand, or copy-paste from a documentation page.
+
+The open questions #1 of both [ADR-031](./ADR-031-deesse-json.mdx) and [ADR-032](./ADR-032-deesse-template.json.mdx) flagged this gap. The motivation for `add` got stronger once those two ADRs landed:
+
+- [ADR-031](./ADR-031-deesse-json.mdx) gives the CLI a project-side config (`deesse.json#paths`, `aliases`, `database`) that an overlay command can read to know where to write. Without `deesse.json`, the overlay command has to guess the project's layout — same guess-fail pattern that motivates `deesse.json` in the first place.
+- [ADR-032](./ADR-032-deesse-template.json.mdx) gives the CLI an item descriptor (`deesse-template.json#type = "template:package" | "template:cli" | ...`) that distinguishes a full project clone (`template:app`, today's `init`) from an overlay (`template:package` and the other five types). Without the `type` discriminator, an item is either a full clone or it has no install semantics at all.
+
+Together the two ADRs create the conditions for `add` to exist; this ADR decides whether to ship it.
+
+### Why now, not later
+
+Three reasons this lands in V2 alongside the two companion ADRs, not in V3:
+
+1. **The strongest user value comes from layering.** A user who runs `deessejs init saas-starter` and then `deessejs add auth` on the resulting project is the canonical shadcn workflow. Shipping `deesse.json` and `deesse-template.json` without `add` leaves the registry read-only — users can browse (`list`, `info`) and start (`init`), but they cannot extend. The `add` command is what makes the registry useful as a living set of overlays.
+2. **The data is already there.** [ADR-031](./ADR-031-deesse-json.mdx) and [ADR-032](./ADR-032-deesse-template.json.mdx) ship in the same V2. The CLI gains the `loadDeesseJson` step and the `files[]` transform layer regardless of whether `add` exists. The marginal cost of `add` is small: a new command file in `commands/`, an alias for `init` in the dispatch table, and a new exit-code path on a non-empty target.
+3. **The shadcn precedent is unambiguous.** shadcn's `add` is the headline command in every tutorial and demo. A registry CLI without `add` is read as "less capable" by anyone coming from the shadcn ecosystem.
+
+### Why this is breaking
+
+[ADR-010 §1](./ADR-010-cli-public-surface.mdx) pins the CLI's public command surface as a closed list of three (`init`, `list`, `info`) plus the `auth` group. Adding `add` is **breaking** under that rule:
+
+- A reviewer who has memorised the three commands now sees four.
+- A script that does `case "$cmd" in init|list|info) ... ;; esac` must add a fourth branch.
+- A documentation generator that lists CLI commands must regenerate.
+
+The closed-list rule in ADR-010 §2 (closed `CliErrorCode`) does not apply here — no new error code ships with `add`. The `--offline` global flag, the `--json` per-command flag, the `engines.node` constraint, the cache location, the wire contract — all stay. Only the command list grows.
+
+### What this command is not
+
+Three patterns the team considered and explicitly rejected before drafting this ADR. They're called out here so a future reviewer doesn't re-propose them.
+
+1. **`add` as an alias for `init`.** Non-breaking, but blurs the meaning. Today's `init saas-starter` clones an entire project; tomorrow's `add auth` would do something completely different (overlay files into an existing project). Same command name, two opposite semantics. Rejected: aliases for opposites break the CLI's mental model.
+2. **`add` as a subcommand of `init`.** Reads as `deessejs init add auth`, which is awkward. Rejected because shadcn's precedent is the flat `add`, not the nested one.
+3. **`add` exposed only behind a feature flag.** Rejected because a feature flag hides a public command from the docs, which is worse than breaking the docs once.
+
+## Decision
+
+### What this rule decides
+
+Four concrete decisions. They ship together because shipping any one without the others leaves `add` half-working.
+
+#### 1. `deessejs add <feature>` is the fourth public command
+
+The CLI gains a fourth public command, registered alongside `list`, `info`, `init` in `apps/cli/src/commands/index.ts`. The command signature:
+
+```
+deessejs add <feature> [options]
+```
+
+Where `<feature>` is a registry item address: a slug (`auth-addon`), a namespaced slug (`@deessejs/auth-addon`, `@community/auth-addon`), a full URL (`https://example.com/r/auth-addon.json`), or a local file path (`./auth-addon.json`). The same resolver as `init` applies, with the namespace map read from `deesse.json#registries` (per [ADR-031](./ADR-031-deesse-json.mdx)).
+
+Flags (initial set):
+
+| Flag | Purpose | Default |
+|---|---|---|
+| `--yes` | Skip prompts, apply defaults | `false` |
+| `--dry-run` | Show what would be written without writing | `false` |
+| `--force` | Overwrite existing files (the per-file list lives in `deesse-template.json#files[]`, not in the command flag) | `false` |
+| `--path <dir>` | Override the project root detection | cwd |
+| `--json` | JSON output for scripting | `false` |
+
+The flags follow the same per-command-flag invariant as `init` per ADR-010 §1. None of them changes the meaning of an existing flag on another command.
+
+#### 2. The command is an overlay, not a clone
+
+`add` and `init` diverge on the `template:type` discriminator from [ADR-032](./ADR-032-deesse-template.json.mdx):
+
+| Command | Allowed `template:type` values | Behaviour |
+|---|---|---|
+| `init <slug>` | `template:app` only | Clones the template repo, applies transforms, runs install. Refuses any other type with `parse_error`. |
+| `add <feature>` | `template:package`, `template:cli`, `template:mobile`, `template:desktop`, `template:agent`, `template:landing` | Fetches the item descriptor, applies the `files[]` overlay onto the current project (no clone), runs `hooks.postInit`. Refuses `template:app` with `parse_error`. |
+
+The refusal is enforced at parse time on `TemplateV2#type`. A user who tries `deessejs add saas-starter` (a `template:app`) gets a clear error: *"saas-starter is a template:app; use `deessejs init saas-starter` instead."* A user who tries `deessejs init auth-addon` (a `template:package`) gets the inverse: *"auth-addon is a template:package; use `deessejs add auth-addon` instead."*
+
+This split is load-bearing: it prevents `add` from accidentally cloning a full project into a sub-directory of an existing project (the most likely failure mode if the two commands were merged).
+
+#### 3. The command reads `deesse.json` for paths, aliases, database
+
+The command's sequence:
+
+1. **Detect project root.** The CLI walks up from the current directory until it finds a `deesse.json`. If none is found, the CLI refuses with `parse_error`: *"deesse.json not found; run `deessejs init` first."* This is the same closed-list error code as a malformed `deesse.json`; no new public code ships.
+2. **Load `deesse.json`.** Zod-validate the file through the `Project` schema in `@workspace/contracts` (per [ADR-031](./ADR-031-deesse-json.mdx)). Reject with `parse_error` on failure.
+3. **Fetch the item descriptor.** Resolve `<feature>` through `deesse.json#registries` (or use the literal URL / local path). Fetch `deesse-template.json` from the registry host (`registry.deessejs.dev`) or the user's literal URL. Zod-validate through `TemplateV2`.
+4. **Refuse on `template:app`.** Enforce the discriminator split from Decision #2. Refuse with `parse_error` if the type is wrong.
+5. **Resolve `templateDependencies`.** Same recursive logic as `init` (per [ADR-032 Decision #3](./ADR-032-deesse-template.json.mdx)). Each dependency is also a `template:package` (or other overlay type); the recursion terminates at items with no further dependencies.
+6. **Run `prompts[]`.** Same gating, same `--yes` behaviour as `init`. The answers may mutate the overlay's resolved paths (a `database` prompt may pick a Prisma adapter that writes a different `schema.prisma`); the command respects that.
+7. **Apply `files[]` transformations.** Walk the item's `files[]`, substitute `@components/`, `@lib/`, `@hooks/`, `@ui/`, `@apps/`, `@packages/` against `deesse.json#aliases` (per [ADR-031 Decision #2](./ADR-031-deesse-json.mdx)). Write each file at its resolved `target`. **Refuse to overwrite existing files** unless the user passes `--force`; the per-file allow-list is in `deesse-template.json#files[].overwrite`, not in the command flag.
+8. **Run `hooks.postInit`.** Same closed-list verb whitelist as `init`.
+9. **Update `deesse.json#templates["<feature>"]`.** Same resolved-state block as `init`.
+
+Every step except step 1 (which is read-only) is idempotent. Re-running `add <feature>` on an already-installed feature updates `deesse.json#templates["<feature>"]` and re-applies `files[]` (overwriting where the user passed `--force`, leaving alone otherwise).
+
+#### 4. The dry-run flag is a first-class concern
+
+`--dry-run` is not optional. The command lists the files it would write, the dependencies it would install, the hooks it would run, and the `deesse.json` mutations it would apply, then exits 0 without writing anything. The output goes to stdout in human-readable form by default and to stdout in JSON form with `--json`.
+
+Why this matters: the most common failure mode for an overlay command is "I ran it and it stomped on my code." The dry-run gives the user a way to inspect the diff before committing. The same flag is available on `init` for parity (it is not in V1 today; this ADR adds it to `init` as a side effect of the shared code path).
+
+### What this rule allows
+
+- A user runs `deessejs init saas-starter` in an empty directory. The CLI writes `deesse.json` (per [ADR-031](./ADR-031-deesse-json.mdx)) and clones the template (per [ADR-032](./ADR-032-deesse-template.json.mdx)).
+- The same user then runs `deessejs add auth` in the resulting project. The CLI reads `deesse.json` (paths, aliases, database), fetches the `template:package` item, and applies the auth files into `paths.routes` and `paths.components`. The user's project gains an auth flow without a full re-clone.
+- A user runs `deessejs add @community/stripe-billing` in a project that has `deesse.json#registries["@community"]` set to a community registry host. The CLI resolves the namespace through the user's own `registries{}` map and applies the community item.
+- A user runs `deessejs add auth --dry-run` and inspects the diff before committing. The output lists every file the command would write, every dependency it would install, every hook it would run, and the diff to `deesse.json`.
+- A user runs `deessejs add auth --yes` to skip prompts. The documented `default` answers apply; the `--yes` short-circuits `when` gates (per [ADR-032](./ADR-032-deesse-template.json.mdx)).
+- A user re-runs `deessejs add auth` after the registry publishes a new version of the auth item. The CLI compares `deesse.json#templates["auth"].version` against the fetched `version` and surfaces the drift (without auto-applying — the user passes `--force` to re-write files).
+
+### What this rule forbids
+
+- `add` against a `template:app` item. Refused at parse time. The user must use `init` instead.
+- `init` against a `template:package` (or any non-app) item. Refused at parse time. The user must use `add` instead. The inverse asymmetry from the previous point.
+- `add` against a project without `deesse.json`. Refused at parse time. The user must run `init` first (or hand-write a `deesse.json` matching [ADR-031](./ADR-031-deesse-json.mdx)).
+- `add` overwriting an existing file unless `--force` is passed AND the per-file `overwrite` flag is set in `deesse-template.json`. Both gates must clear. A user who wants unconditional overwrite hand-edits `deesse.json` to remove the existing file first.
+- A new public `CliErrorCode` for `add`-specific failures. The closed list per ADR-010 §2 stays closed. `add`'s failure modes map to `parse_error` (malformed item, missing `deesse.json`, wrong `type`), `install_failed` (overlay transform fail), or `network_error` (registry unreachable). No new codes.
+- A new public flag on `init` that overlaps with `add`'s flags. The flags are disjoint where they mean different things. `--force` on `init` means "overwrite the target directory"; `--force` on `add` means "overwrite individual files where the item allows". The two meanings are documented separately per ADR-010 §1's per-command flag rule.
+
+### Why not the alternatives
+
+Three patterns the team considered and rejected.
+
+1. **Add `add` as a non-public command behind `DEESSEJS_EXPERIMENTAL=1`.** Avoids the breaking change by hiding the command from the help output and the docs. Rejected because hiding a public command behind an env var is worse than breaking the docs once: contributors who discover `add` write integration tests against it; users who enable the env var depend on undocumented behaviour. The proper path for "not ready for users" is a major version bump with a deprecation warning on the old commands — but there are no old commands to deprecate, so the bump is silent. Cleaner to break the docs once.
+
+2. **Implement `add` as a subcommand of `init` (`deessejs init add <feature>`).** Rejected because shadcn's precedent is the flat `add`. A nested form breaks the muscle memory of every contributor who has used the shadcn CLI. The cost of breaking the flat form is one PR; the cost of keeping a non-standard nested form is permanent cognitive load.
+
+3. **Skip `add` for V2 and ship it in V3.** Rejected because [ADR-031](./ADR-031-deesse-json.mdx) and [ADR-032](./ADR-032-deesse-template.json.mdx) create the conditions for `add` to exist; shipping them without `add` is shipping a registry with no overlay semantics. The CLI gains `loadDeesseJson` and the transform layer regardless; the marginal cost of `add` is small enough that deferring it is not a real saving.
+
+### What this rule does not change
+
+- The CLI's wire contract stays unchanged. `add` consumes the same `TemplateV2` shape (per [ADR-032](./ADR-032-deesse-template.json.mdx)) and the same `Project` shape (per [ADR-031](./ADR-031-deesse-json.mdx)). No new wire shape ships.
+- The CLI's typed oRPC client at `apps/cli/src/api/client.ts` stays the only outbound transport per ADR-001. `add` reuses the client for `deesse-template.json` fetches that fall through to the oRPC source (the same source split as `init`, per [ADR-032 Decision #4](./ADR-032-deesse-template.json.mdx)).
+- The cache directory (`~/.deessejs/`) and the cache file shape stay as documented by ADR-010 §4. `add` shares the `~/.deessejs/template-items/<slug>.json` cache that `init` already populates.
+- The closed-list `CliErrorCode` per ADR-010 §2 stays closed. `add`'s failure modes map to existing codes (see "What this rule forbids" above).
+- The `engines.node >= 20.0.0` floor at `apps/cli/package.json` stays. The CLI continues to publish as `@deessejs/cli` per ADR-010 §6.
+- The `apps/cli/src/commands/init.ts` flags (`--pm`, `--dir`, `--ref`, `--no-install`, `--force`, `--json`) stay. `add` adds `--dry-run` (per Decision #4) and `--path` as new flags; the existing flags on `init` are not renamed.
+- The `--offline` global flag (per ADR-010 §1) applies to `add` the same way it applies to `init` and `list`. Offline mode skips the `deesse-template.json` fetch if the cache hit is fresh.
+- The registry host `registry.deessejs.dev` stays static-only (per [ADR-032 Decision #4](./ADR-032-deesse-template.json.mdx)). `add` is a read-only consumer of the host; no new endpoint ships.
+
+## What changes at the CLI surface
+
+This ADR is **the first breaking change to ADR-010 §1** since the ADR was accepted. The change is small (one new command) and localised (the command-list table), but it must be tracked.
+
+- **The `ADR-010 §1` "Commands" table gains a fourth row.** The row: `deessejs add <feature>` with purpose "Layer an item onto an existing project", exit code `0` / `1`, output "diff summary to stdout in dry-run; install summary to stdout otherwise". The three existing rows stay unchanged.
+- **The `ADR-010 §1` "What this rule forbids" bullet on "Adding a new command" is updated.** The bullet currently forbids adding a fourth command without a V-bump. This ADR is that V-bump. The next contributor who adds a fifth command still needs a new ADR; this ADR does not open a precedent.
+- **The `apps/cli/src/commands/` folder gains one file.** `apps/cli/src/commands/add.ts` follows the same one-file-per-command invariant as `list.ts`, `info.ts`, `init.ts`. The folder structure (per ADR-010's "Folder and file structure") is unchanged: one folder per concept, no `.ts` at the package root except `index.ts`.
+- **The CLI help output regenerates.** Every script that introspects `deessejs --help` sees the new command. This is the visible surface of the breaking change.
+
+The changeset that ships `add` to npm carries a `minor` bump (per the release discipline in ADR-021) and a changelog entry that names the new command. The release notes call out the breaking surface explicitly: "four public commands where there were three; existing scripts that pattern-match on the command list must add a fourth branch."
+
+## Consequences
+
+- **`apps/cli/src/commands/add.ts` is a new file.** One file per command per ADR-010. The file follows the Commander.js inline pattern (`addCommand(new Command("add").description(...).argument(...).option(...).action(...))`) like its three siblings. The action delegates to a shared helper at `apps/cli/src/commands/_apply-item.ts` (new file, internal, not a public command) that both `init` and `add` call. The shared helper encapsulates the steps from Decision #3 minus the clone step (which `init` runs and `add` skips).
+- **`apps/cli/src/transforms/` is the home of the four transform verbs.** Already mandated by [ADR-032 Consequences](./ADR-032-deesse-template.json.mdx). `add` consumes the same verbs as `init`; no new transform verbs ship.
+- **`deesse-template.json#files[].overwrite` is a new optional field.** Co-shipped with this ADR (the field exists in the [ADR-032](./ADR-032-deesse-template.json.mdx) Zod schema but is documented here for the first time). Each `files[]` entry may carry `"overwrite": true` to opt into the `--force` overwrite behaviour. Default is `false`. The field is the per-file allow-list that backs the second `--force` gate in Decision #3.
+- **`deesse-template.json#type` enforcement is a new code path in `apps/cli/src/commands/init.ts`.** The `init` command gains a check at parse time: if `TemplateV2#type` is not `template:app`, refuse with `parse_error`. The inverse check on `add` lives in `add.ts`. The two checks together enforce the [Decision #2](#2-the-command-is-an-overlay-not-a-clone) split.
+- **A new CLI integration test lives in `apps/cli/test/integration/add.test.ts`.** Asserts (a) the `template:app` refusal on `add`, (b) the `template:package` refusal on `init`, (c) the missing `deesse.json` refusal on `add`, (d) the `--dry-run` exit-zero-no-write behaviour, (e) the `--force` overwrite gated by `deesse-template.json#files[].overwrite`. The test pool follows the test strategy in ADR-009 (forks pool, 30s timeout).
+- **The CLI disk cache gains no new file.** `add` shares the `~/.deessejs/template-items/<slug>.json` cache that `init` populates (per [ADR-032 Consequences](./ADR-032-deesse-template.json.mdx)). The cache shape change is internal per ADR-010 §4.
+- **`apps/cli/CHANGELOG.md` gains a `minor` entry under the next release.** The entry names the new command, the `--dry-run` flag, the `deesse-template.json#files[].overwrite` field, and the `template:type` enforcement on `init`. The entry calls out the breaking surface explicitly.
+- **`apps/cli/README.md` documents `add` alongside `init`, `list`, `info`.** The README gains a fourth section matching the four-command surface. Each section follows the same shape (purpose, syntax, flags, examples).
+- **The CLI version probe at `apps/cli/src/version/check.ts` is unchanged.** `add` is a new command, not a new version requirement. The probe's "minimum supported version" stays where ADR-010 §3 pins it.
+
+## Cross-references
+
+- **[ADR-031: deesse.json](./ADR-031-deesse-json.mdx).** The project-side config. `add` reads `deesse.json#paths`, `aliases`, `database`, `tokens`, `registries` to know where to write, how to substitute imports, what database to target, what tokens to interpolate, and how to resolve namespaces. Without `deesse.json`, `add` cannot run.
+- **[ADR-032: deesse-template.json](./ADR-032-deesse-template.json.mdx).** The registry-side item descriptor. `add` fetches and parses `deesse-template.json`; the `type` discriminator separates overlay items from full-project items. `add` accepts the six overlay types and refuses `template:app`.
+- **[ADR-010: CLI public surface](./ADR-010-cli-public-surface.mdx).** The invariants this ADR breaks. §1 gains a fourth row in the Commands table; §"What this rule forbids" gains an explicit note that this ADR is the sanctioned exception. The other invariants (§2 error codes, §3 version probe, §4 cache, §5 wire, §6 published metadata) stay untouched.
+- **`docs/engineering/plans/saas-template-divergence.md`.** The divergence plan that scopes which divergences from `deessejs/saas-template` are "locked-local" vs upstream-trackable. This ADR is locked-local: it changes the CLI surface of `@deessejs/cli` only.
+- **`.claude/agent-memory/tech-lead/project/templates-content-not-cli.md`.** The load-bearing governance rule. This ADR reinforces it: a new `template:package` item never triggers a CLI release, only a registry publication.
+- **`apps/cli/CHANGELOG.md`.** The historical record. The next entry that ships `add` lands as a `minor` bump under the existing changelog discipline; the entry names the breaking surface explicitly.
+
+## Related
+
+- [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md). The contract discipline. `add` consumes the same wire shape as `init`; no parallel envelope.
+- [ADR-004: API package structure](./ADR-004-api-package-structure.md). Pins `packages/api`'s structure. `add` does not add server-side procedures; it consumes the existing `templates.list` / `templates.get` plus the static registry host.
+- [ADR-005: API is consumer-agnostic](./ADR-005-api-consumer-agnostic.md). The server-side counterpart. `add` is a CLI consumer; the server does not name it.
+- [ADR-009: test strategy](./ADR-009-test-strategy.md). The test patterns. The new integration tests for `add` follow the same pool / timeout discipline as the existing `init` / `list` / `info` tests.
+- [ADR-010: CLI public surface](./ADR-010-cli-public-surface.md). The invariants `add` lives under. This ADR is the first sanctioned exception to §1's closed-list rule.
+- [ADR-031: deesse.json](./ADR-031-deesse-json.mdx). The project-side config prerequisite.
+- [ADR-032: deesse-template.json](./ADR-032-deesse-template.json.mdx). The item-side descriptor prerequisite.
+- [shadcn `shadcn add` CLI docs](https://ui.shadcn.com/docs/cli#add). The reference model. `shadcn add` overlays a single item; the DeesseJS `add` does the same, gated by the `template:type` discriminator.
