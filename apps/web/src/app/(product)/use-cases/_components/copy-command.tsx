@@ -3,10 +3,11 @@
 import { useState } from "react"
 import { Check, Copy } from "lucide-react"
 
+import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
 /**
- * A pill that displays a shell command and copies it to the clipboard on click.
+ * Pill that displays a shell command and copies it to the clipboard on click.
  * Pure visual feedback ("Copied" + check icon) for 1.5s after a successful copy.
  *
  * Local to the use-cases tree — no cross-dependency on the marketing
@@ -46,12 +47,13 @@ export function CopyCommand({
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
       onClick={onCopy}
       aria-label={copied ? "Command copied to clipboard" : "Copy command to clipboard"}
       className={cn(
-        "group inline-flex items-center gap-3 rounded-none border border-border bg-background px-4 py-2.5 text-copy-13-mono text-foreground transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "h-auto gap-3 rounded-lg px-4 py-2.5 font-mono text-copy-13-mono",
         className,
       )}
     >
@@ -61,7 +63,7 @@ export function CopyCommand({
       <span className="whitespace-nowrap">{command}</span>
       <span
         aria-hidden
-        className="ml-2 inline-flex size-4 items-center justify-center text-muted-foreground transition-colors group-hover:text-foreground"
+        className="ml-2 inline-flex size-4 items-center justify-center text-muted-foreground transition-colors"
       >
         {copied ? (
           <Check className="size-3.5 text-emerald-600" strokeWidth={3} />
@@ -69,6 +71,6 @@ export function CopyCommand({
           <Copy className="size-3.5" />
         )}
       </span>
-    </button>
+    </Button>
   )
 }

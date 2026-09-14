@@ -1,198 +1,203 @@
 import * as React from "react"
 import Link from "next/link"
+import { Check } from "lucide-react"
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@workspace/ui/components/breadcrumb"
+import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
+import type { Capability } from "../_data"
+
 /**
- * Per-page hero primitives for use-case pages. Each use-case page
- * renders its own hero by composing one of these variants. The shape
- * is shared (badge + breadcrumb + headline + tagline + CTA), but the
- * layout, density, and visual treatment are picked per page.
+ * Per-page hero for use-case pages.
  *
- * Variants:
- *  - split: copy on the left, visual on the right (default SaaS use-case)
- *  - dark: full-width dark hero with code-centric copy
- *  - self-referential: hero is the page itself (landing-pages case)
- *  - center: copy-only centered hero (lightweight fallback)
+ * Structure (top to bottom):
+ *   - eyebrow label  ("Use case · {category}")  + optional status badge
+ *   - H1                                              (no tagline underneath)
+ *   - primary + secondary CTA                         (shadcn <Button>)
+ *   - optional capabilities grid                      (shared-border 2-col)
+ *
+ * The capabilities grid shows what's wired on day one AND what's shipping
+ * next, each tagged with a status badge. This is the page's value prop:
+ * the visitor sees the full scope, not a curated subset of the shipped
+ * parts.
  */
 
-type Variant = "split" | "dark" | "self-referential" | "center"
+type Variant = "default" | "dark"
+
+type Cta = { label: string; href: string; external?: boolean }
 
 export function UseCaseHero({
   category,
   title,
-  tagline,
-  variant = "center",
   status,
-  visual,
   primaryCta,
   secondaryCta,
+  capabilities,
+  variant = "default",
 }: {
   category: string
   title: string
-  tagline: string
-  variant?: Variant
   status?: "shipped" | "coming-soon" | "beta"
-  visual?: React.ReactNode
-  primaryCta: { label: string; href: string; external?: boolean }
-  secondaryCta?: { label: string; href: string; external?: boolean }
+  primaryCta: Cta
+  secondaryCta?: Cta
+  capabilities?: ReadonlyArray<Capability>
+  variant?: Variant
 }) {
+  const isDark = variant === "dark"
+
   return (
     <section
       className={cn(
         "border-b border-border",
-        variant === "dark" && "bg-zinc-950 text-zinc-100",
+        isDark && "bg-zinc-950 text-zinc-100",
       )}
     >
-      <div
-        className={cn(
-          "mx-auto flex max-w-6xl flex-col gap-8 px-6 py-16 sm:px-8 lg:py-24",
-          variant === "split" && "lg:grid lg:grid-cols-2 lg:items-center lg:gap-12",
-        )}
-      >
-        <Breadcrumb
-          className={cn(
-            "[&:not(:first-child)]:mt-0",
-            variant === "dark" && "[&_a]:text-zinc-400 [&_a:hover]:text-zinc-100",
-          )}
-        >
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/">Home</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/use-cases">Use cases</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{title}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
-        <div
-          className={cn(
-            "flex flex-col gap-6",
-            variant === "split" && "lg:order-1",
-          )}
-        >
-          <div className="flex items-center gap-3">
+      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-16 sm:px-8 lg:py-24">
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-wrap items-center gap-3">
             <p
               className={cn(
                 "text-label-13 uppercase tracking-wider",
-                variant === "dark"
-                  ? "text-zinc-400"
-                  : "text-muted-foreground",
+                isDark ? "text-zinc-400" : "text-muted-foreground",
               )}
             >
               Use case · {category}
             </p>
             {status === "coming-soon" ? (
-              <span
-                className={cn(
-                  "rounded-none border px-2 py-0.5 text-label-12",
-                  variant === "dark"
-                    ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
-                    : "border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-                )}
-              >
-                Coming soon
-              </span>
+              <Badge variant="warning">Coming soon</Badge>
+            ) : status === "beta" ? (
+              <Badge variant="outline">Beta</Badge>
+            ) : status === "shipped" ? (
+              <Badge variant="success">
+                <Check className="size-3" aria-hidden />
+                Shipped
+              </Badge>
             ) : null}
           </div>
 
           <h1
             className={cn(
-              "font-medium tracking-tight text-balance",
-              variant === "dark"
-                ? "text-heading-32 sm:text-heading-40 lg:text-heading-56 text-zinc-50"
-                : "text-heading-32 sm:text-heading-40 lg:text-heading-56 text-foreground",
-              "[&:not(:first-child)]:mt-0",
+              "max-w-4xl text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56",
+              isDark ? "text-zinc-50" : "text-foreground",
             )}
           >
             {title}
           </h1>
 
-          <p
-            className={cn(
-              "max-w-2xl text-balance [&:not(:first-child)]:mt-0",
-              variant === "dark"
-                ? "text-copy-18 text-zinc-300 leading-7"
-                : "text-copy-18 text-muted-foreground leading-7",
-            )}
-          >
-            {tagline}
-          </p>
-
-          {(primaryCta || secondaryCta) && (
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              {primaryCta ? (
-                <CtaLink
-                  {...primaryCta}
-                  variant={variant === "dark" ? "dark" : "light"}
-                />
-              ) : null}
-              {secondaryCta ? (
-                <CtaLink
-                  {...secondaryCta}
-                  variant={variant === "dark" ? "outline-dark" : "outline"}
-                />
-              ) : null}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <Button asChild size="lg">
+              {primaryCta.external ? (
+                <a
+                  href={primaryCta.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {primaryCta.label}
+                </a>
+              ) : (
+                <Link href={primaryCta.href}>{primaryCta.label}</Link>
+              )}
+            </Button>
+            {secondaryCta ? (
+              <Button asChild size="lg" variant="outline">
+                {secondaryCta.external ? (
+                  <a
+                    href={secondaryCta.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {secondaryCta.label}
+                  </a>
+                ) : (
+                  <Link href={secondaryCta.href}>{secondaryCta.label}</Link>
+                )}
+              </Button>
+            ) : null}
+          </div>
         </div>
 
-        {visual && variant === "split" ? (
-          <div className="lg:order-2">{visual}</div>
+        {capabilities && capabilities.length > 0 ? (
+          <div className="flex flex-col gap-4 pt-4">
+            <p
+              className={cn(
+                "text-label-13 uppercase tracking-wider",
+                isDark ? "text-zinc-400" : "text-muted-foreground",
+              )}
+            >
+              What&apos;s wired on day one — and what&apos;s shipping next.
+            </p>
+            <div className="grid grid-cols-1 overflow-hidden rounded-lg border border-border md:grid-cols-2">
+              {capabilities.map((c, idx) => (
+                <CapabilityCell
+                  key={c.id}
+                  capability={c}
+                  isLastInRow={idx % 2 === 1}
+                  isLastRow={idx >= capabilities.length - 2}
+                  isDark={isDark}
+                />
+              ))}
+            </div>
+          </div>
         ) : null}
       </div>
     </section>
   )
 }
 
-function CtaLink({
-  label,
-  href,
-  external,
-  variant,
+/**
+ * One cell of the capabilities grid. Cells share borders through a wrapping
+ * border + per-cell borders so the grid stays solid regardless of count.
+ */
+function CapabilityCell({
+  capability,
+  isLastInRow,
+  isLastRow,
+  isDark,
 }: {
-  label: string
-  href: string
-  external?: boolean
-  variant: "light" | "outline" | "dark" | "outline-dark"
+  capability: Capability
+  isLastInRow: boolean
+  isLastRow: boolean
+  isDark: boolean
 }) {
-  const isDark = variant === "dark"
-  const isOutline = variant === "outline" || variant === "outline-dark"
-  const className = cn(
-    "inline-flex items-center gap-2 px-5 py-2.5 text-copy-14 font-medium transition-colors",
-    !isOutline
-      ? isDark
-        ? "bg-zinc-100 text-zinc-950 hover:bg-zinc-200"
-        : "bg-foreground text-background hover:bg-foreground/90"
-      : isDark
-        ? "border border-zinc-700 text-zinc-100 hover:bg-zinc-900"
-        : "border border-border bg-background text-foreground hover:bg-accent/40",
-  )
-
-  if (external) {
-    return (
-      <Link href={href} target="_blank" rel="noopener noreferrer" className={className}>
-        {label}
-      </Link>
-    )
-  }
+  const c = capability
   return (
-    <Link href={href} className={className}>
-      {label}
-    </Link>
+    <div
+      className={cn(
+        "flex flex-col gap-2 p-6",
+        // Vertical divider between cells in the same row (skip last in row)
+        !isLastInRow && "md:border-r",
+        // Horizontal divider between rows
+        !isLastRow && "border-t md:border-t",
+        isDark ? "border-zinc-800" : "border-border",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <h3
+          className={cn(
+            "text-heading-20 font-medium tracking-tight",
+            isDark ? "text-zinc-50" : "text-foreground",
+          )}
+        >
+          {c.title}
+        </h3>
+        {c.status === "shipped" ? (
+          <Badge variant="success">
+            <Check className="size-3" aria-hidden />
+            Shipped
+          </Badge>
+        ) : (
+          <Badge variant="outline">{c.shippedAt ?? "Roadmap"}</Badge>
+        )}
+      </div>
+      <p
+        className={cn(
+          "text-copy-14 leading-6",
+          isDark ? "text-zinc-400" : "text-muted-foreground",
+        )}
+      >
+        {c.description}
+      </p>
+    </div>
   )
 }

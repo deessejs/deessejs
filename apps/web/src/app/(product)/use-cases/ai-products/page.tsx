@@ -5,6 +5,7 @@ import { ArrowRight, FileText, Mail, Database, Globe, MessageSquare, BarChart3, 
 import { UseCaseHero } from "../_components/use-case-page"
 import { UseCaseStack } from "../_components/use-case-stack"
 import { CopyCommand } from "../_components/copy-command"
+import { resolveCapabilities } from "../_data"
 
 export const metadata: Metadata = {
   title: "AI products | DeesseJS",
@@ -87,12 +88,6 @@ const TOOLS: ReadonlyArray<Tool> = [
   },
 ] as const
 
-const STEPS = [
-  "Define your tools in TypeScript. The schema is the contract your agent calls.",
-  "Wire the agent loop with the AI SDK. Tools, memory, and streaming come preconfigured.",
-  "Ship. Every tool call is typed, traced, and persisted against the same contracts.",
-] as const
-
 const RELATED = [
   {
     slug: "saas-apps",
@@ -115,82 +110,80 @@ const RELATED = [
 ] as const
 
 export default function AiProductsPage() {
+  const capabilities = resolveCapabilities("ai-products")
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      <div className="border border-border bg-background rounded-none">
-        {/* 1. Hero — dark, full-width code-centric */}
+      <div className="flex flex-col gap-12">
         <UseCaseHero
           category="AI"
           title="Ship an agent that reads your contracts, not your docs."
-          tagline="RAG, chat, and agents wired against the same contracts your app uses. Tools are typed functions. Every call is traced. The plumbing is not the product."
-          variant="dark"
           status="coming-soon"
+          variant="dark"
           primaryCta={{
             label: "View ai-chatbot",
             href: "/templates/ai-chatbot",
           }}
-          secondaryCta={{
-            label: "Talk to delivery",
-            href: "/contact",
-          }}
+          capabilities={capabilities}
         />
 
-        {/* 2. Tool registry — unique to this page */}
-        <div className="border-b border-border">
-          <div className="grid grid-cols-1 lg:grid-cols-6 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
-            <div className="lg:col-span-2 flex flex-col gap-3 justify-center p-6 lg:p-10 bg-violet-500/5">
-              <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-                Tool registry
-              </p>
-              <h2 className="text-heading-32 lg:text-heading-40 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
-                Eight typed tools out of the box.
-              </h2>
-              <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-                Every tool is a typed function. The agent sees the schema, the
-                runtime enforces it.
-              </p>
-            </div>
-            <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-2 divide-y divide-border md:divide-y-0 md:divide-x divide-border bg-violet-500/5 !p-0 border-0">
-              {TOOLS.map((tool) => (
-                <ToolCard key={tool.name} tool={tool} />
-              ))}
-            </div>
+        {/* Tool registry — unique to this page */}
+        <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100">
+          <div className="flex flex-col gap-3 border-b border-zinc-800 p-6 lg:p-10">
+            <p className="text-label-13 uppercase tracking-wider text-zinc-400">
+              Tool registry
+            </p>
+            <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-zinc-50 text-balance lg:text-heading-40">
+              Eight typed tools out of the box.
+            </h2>
+            <p className="max-w-2xl text-copy-16 leading-7 text-zinc-400">
+              Every tool is a typed function. The agent sees the schema, the
+              runtime enforces it.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 divide-y divide-zinc-800 md:grid-cols-2 md:divide-x md:divide-y-0">
+            {TOOLS.map((tool) => (
+              <ToolCard key={tool.name} tool={tool} />
+            ))}
           </div>
         </div>
 
-        {/* 3. Stack */}
-        <div className="grid grid-cols-1 lg:grid-cols-6 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border border-b border-border">
-          <div className="lg:col-span-2 flex flex-col gap-3 justify-center p-6 lg:p-10">
+        {/* Stack */}
+        <div className="overflow-hidden rounded-lg border border-border">
+          <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Stack
             </p>
-            <h2 className="text-heading-32 lg:text-heading-40 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
+            <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
               Built on the AI primitives that ship in production.
             </h2>
           </div>
-          <div className="lg:col-span-4 !p-0 border-0">
+          <div className="!p-0 border-0">
             <UseCaseStack items={[...STACK]} />
           </div>
         </div>
 
-        {/* 4. Process */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border border-b border-border">
-          <div className="p-6 lg:p-10">
+        {/* Process */}
+        <div className="overflow-hidden rounded-lg border border-border">
+          <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Process
             </p>
-            <h2 className="text-heading-32 lg:text-heading-40 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
+            <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
               Three lines.
             </h2>
           </div>
-          <div className="lg:col-span-2 p-6 lg:p-10">
+          <div className="p-6 lg:p-10">
             <ol className="flex flex-col gap-4">
-              {STEPS.map((step, idx) => (
+              {[
+                "Define your tools in TypeScript. The schema is the contract your agent calls.",
+                "Wire the agent loop with the AI SDK. Tools, memory, and streaming come preconfigured.",
+                "Ship. Every tool call is typed, traced, and persisted against the same contracts.",
+              ].map((step, idx) => (
                 <li key={step} className="flex gap-4">
-                  <span className="text-copy-13-mono text-violet-600 dark:text-violet-400 shrink-0 w-8">
+                  <span className="w-8 shrink-0 font-mono text-copy-13 text-violet-600 dark:text-violet-400">
                     {String(idx + 1).padStart(2, "0")}
                   </span>
-                  <p className="text-copy-16 text-foreground leading-7 [&:not(:first-child)]:mt-0">
+                  <p className="text-copy-16 leading-7 text-foreground">
                     {step}
                   </p>
                 </li>
@@ -199,97 +192,49 @@ export default function AiProductsPage() {
           </div>
         </div>
 
-        {/* 5. Proof */}
-        <div className="border-b border-border">
-          <div className="flex flex-col gap-3 p-6 lg:p-10 max-w-3xl">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-              From the pilot
-            </p>
-            <blockquote className="text-copy-20 lg:text-copy-24 text-foreground leading-snug font-medium text-balance [&:not(:first-child)]:mt-0">
-              &ldquo;Our agent went from 60% tool-call success rate to 94% by
-              switching to typed tools. Same model, same prompt. The schema was
-              the unlock.&rdquo;
-            </blockquote>
-            <footer className="flex items-center gap-3 pt-4 [&:not(:first-child)]:mt-0">
-              <span
-                aria-hidden
-                className="flex size-9 items-center justify-center rounded-full border border-border bg-muted/40 text-label-13 text-foreground"
-              >
-                AK
-              </span>
-              <span className="flex flex-col leading-tight">
-                <span className="text-label-13 text-foreground">
-                  Pilot team, AI tooling
-                </span>
-                <span className="text-label-12 text-muted-foreground">
-                  DeesseJS preview
-                </span>
-              </span>
-            </footer>
-          </div>
-        </div>
-
-        {/* 6. CTA */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
-          <div className="lg:col-span-2 flex flex-col gap-4 p-6 lg:p-10">
+        {/* CTA */}
+        <div className="overflow-hidden rounded-lg border border-border">
+          <div className="flex flex-col gap-4 p-6 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Get started
             </p>
-            <h2 className="text-heading-32 lg:text-heading-40 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
+            <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
               Start from the tool registry, not from scratch.
             </h2>
             <CopyCommand command="deessejs init ai-chatbot" className="mt-2" />
-            <p className="text-copy-13-mono text-muted-foreground [&:not(:first-child)]:mt-0">
+            <p className="font-mono text-copy-13 text-muted-foreground">
               or run{" "}
               <span className="text-foreground/90">deessejs init --help</span> for
               the full list.
             </p>
           </div>
-          <div className="flex flex-col gap-3 p-6 lg:p-10 bg-violet-500/5">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-              Or ship with us
-            </p>
-            <h3 className="text-heading-20 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
-              Your agent, our contracts.
-            </h3>
-            <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-              We build the agent surface with you, on the same template.
-            </p>
-            <Link
-              href="/contact"
-              className="inline-flex items-center gap-2 text-copy-14 text-violet-700 dark:text-violet-400 hover:underline underline-offset-4"
-            >
-              Talk to delivery
-              <ArrowRight className="size-3" aria-hidden />
-            </Link>
-          </div>
         </div>
 
-        {/* 7. Related */}
-        <div className="border-t border-border grid grid-cols-1 lg:grid-cols-6 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
-          <div className="lg:col-span-2 flex flex-col gap-3 justify-center p-6 lg:p-10">
+        {/* Related */}
+        <div className="overflow-hidden rounded-lg border border-border">
+          <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Explore
             </p>
-            <h2 className="text-heading-32 lg:text-heading-40 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
+            <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
               Related use cases.
             </h2>
           </div>
-          <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border !p-0 border-0">
+          <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
             {RELATED.map((item) => (
               <Link
                 key={item.slug}
                 href={`/use-cases/${item.slug}`}
-                className="group flex flex-col gap-2 p-6 lg:p-8 transition-colors hover:bg-accent/40"
+                className="group flex flex-col gap-2 p-6 transition-colors hover:bg-accent/40 lg:p-8"
               >
                 <p className="text-label-13 text-muted-foreground">Related</p>
-                <h3 className="text-heading-20 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
+                <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
                   {item.title}
                 </h3>
-                <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0 line-clamp-3">
+                <p className="line-clamp-3 text-copy-14 leading-6 text-muted-foreground">
                   {item.tagline}
                 </p>
-                <p className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1">
+                <p className="inline-flex items-center gap-1 pt-1 text-label-13 text-foreground">
                   Read more
                   <ArrowRight
                     className="size-3 transition-transform group-hover:translate-x-0.5"
@@ -308,26 +253,26 @@ export default function AiProductsPage() {
 function ToolCard({ tool }: { tool: Tool }) {
   const Icon = tool.icon
   return (
-    <div className="flex flex-col gap-3 p-5 lg:p-6 hover:bg-background transition-colors">
+    <div className="flex flex-col gap-3 border-t border-zinc-800 p-5 transition-colors hover:bg-zinc-900 first:border-t-0 lg:p-6">
       <div className="flex items-center gap-2">
         <span className="flex size-7 items-center justify-center rounded-md border border-violet-500/30 bg-violet-500/10">
-          <Icon className="size-3.5 text-violet-600 dark:text-violet-400" aria-hidden />
+          <Icon className="size-3.5 text-violet-400" aria-hidden />
         </span>
-        <code className="text-copy-13-mono font-medium text-foreground">
+        <code className="font-mono text-copy-13 font-medium text-zinc-50">
           {tool.name}
         </code>
       </div>
-      <p className="text-copy-13 text-muted-foreground leading-5 [&:not(:first-child)]:mt-0">
+      <p className="text-copy-13 leading-5 text-zinc-400">
         {tool.description}
       </p>
-      <dl className="flex flex-col gap-1 mt-auto pt-2 border-t border-violet-500/20">
+      <dl className="mt-auto flex flex-col gap-1 border-t border-violet-500/20 pt-2">
         <div className="flex gap-2 text-label-12">
-          <dt className="text-muted-foreground/70 shrink-0 w-12">in:</dt>
-          <dd className="font-mono text-foreground/80 truncate">{tool.inputs}</dd>
+          <dt className="w-12 shrink-0 text-zinc-500">in:</dt>
+          <dd className="truncate font-mono text-zinc-300">{tool.inputs}</dd>
         </div>
         <div className="flex gap-2 text-label-12">
-          <dt className="text-muted-foreground/70 shrink-0 w-12">out:</dt>
-          <dd className="font-mono text-foreground/80 truncate">{tool.outputs}</dd>
+          <dt className="w-12 shrink-0 text-zinc-500">out:</dt>
+          <dd className="truncate font-mono text-zinc-300">{tool.outputs}</dd>
         </div>
       </dl>
     </div>
