@@ -54,7 +54,15 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          # Pin to Node 20 to avoid npm 11's stricter peer-dep and
+          # file: URL handling breaking `npm install --dry-run`
+          # against our tarball (which transitively pulls in
+          # `better-auth@1.7+` whose chain declares
+          # `bundleDependencies`). GitHub deprecated Node 20 on the
+          # runners on 2025-09-19 and plans to remove it, so this
+          # pin is a temporary workaround — bump once the upstream
+          # npm issue is fixed (npm/cli#9800, PR #9818).
+          node-version: 20
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
