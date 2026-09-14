@@ -35,6 +35,7 @@
     "ADR-027-version-bump-orphan",
     "ADR-029-preview-url-wiring",
     "ADR-030-account-only-page",
-    "ADR-031-templates-json"
+    "ADR-031-deesse-json",
+    "ADR-032-deesse-template.json"
   ]
 }
