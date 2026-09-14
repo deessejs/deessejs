@@ -115,14 +115,10 @@ jobs:
       # writing time). The tarball under test is produced locally by
       # Step 1, so relaxing the guard is safe.
       #
-      # The tarball is referenced as `file:./$TARBALL` (relative to
-      # the scratch dir we just pushd'd into) rather than
-      # `$GITHUB_WORKSPACE/$TARBALL`. npm 11.19.0 mishandles the
-      # `file:` protocol when the path is absolute and constructs a
-      # bogus relative `file:../../home/runner/work/...` URL that
-      # resolves outside the scratch dir — the install then fails
-      # with a truncated `npm error` and no actionable detail.
-      # Using a relative path sidesteps that resolution path entirely.
+      # We `set +e` around the npm invocation so we can always
+      # inspect its real debug log on failure — npm 11.19.0 writes
+      # the diagnostic to ~/.npm/_logs/... and only emits the path
+      # on stderr.
       - name: Verify npm install (dry-run)
         run: |
           set -eu
@@ -131,11 +127,24 @@ jobs:
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
           npm init -y > /dev/null
-          # Copy the tarball into the scratch dir so we can pass it
-          # as a relative path; this avoids the file: URL resolution
-          # bug described above.
           cp "$TARBALL_ABS" ./deessejs-cli.tgz
+          echo "scratch contents:"
+          ls -la
+          set +e
           npm install --dry-run --allow-remote=all ./deessejs-cli.tgz
+          NPM_EXIT=$?
+          set -e
+          echo "npm exit code: $NPM_EXIT"
+          if [ "$NPM_EXIT" -ne 0 ]; then
+            echo "::error::npm install --dry-run failed; tail of npm debug log:"
+            LATEST=$(ls -1t "$HOME/.npm/_logs"/*-debug-0.log 2>/dev/null | head -1)
+            if [ -n "$LATEST" ]; then
+              tail -120 "$LATEST"
+            else
+              echo "(no debug log found)"
+            fi
+            exit 1
+          fi
           popd > /dev/null
           rm -rf "$SCRATCH"
 
