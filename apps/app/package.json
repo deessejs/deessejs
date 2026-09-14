@@ -16,6 +16,7 @@
     "@tanstack/react-query": "catalog:",
     "@workspace/api": "workspace:*",
     "@workspace/auth": "workspace:*",
+    "@workspace/contracts": "workspace:*",
     "@workspace/env": "workspace:*",
     "@workspace/ui": "workspace:*",
     "@workspace/utils": "workspace:*",

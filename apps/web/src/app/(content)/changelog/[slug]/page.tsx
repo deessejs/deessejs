@@ -13,6 +13,7 @@ import {
   getRelatedBlogPosts,
   getReleaseBySlug,
 } from "@/lib/blog/releases"
+import { ORG_ID } from "@/lib/seo/organization"
 
 type Params = { slug: string }
 
@@ -32,10 +33,17 @@ export async function generateMetadata(
     alternates: { canonical: release.url },
     openGraph: {
       type: "article",
+      siteName: "DeesseJS",
+      locale: "en_US",
       title: `${release.version} — ${release.title}`,
       description: release.description,
       publishedTime: release.date,
       url: release.url,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${release.version} — ${release.title}`,
+      description: release.description,
     },
   }
 }
@@ -52,6 +60,34 @@ export default async function ReleasePage(
 
   return (
     <article className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: `${release.version} — ${release.title}`,
+            description: release.description,
+            // `version` is semver (already enforced by the Zod schema),
+            // so we can surface it as a schema.org `version` field.
+            version: release.version,
+            datePublished: `${release.date}T00:00:00.000Z`,
+            inLanguage: "en",
+            keywords: release.categories,
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": release.url,
+            },
+            url: release.url,
+            publisher: { "@id": ORG_ID },
+            author: {
+              "@type": "Organization",
+              name: "DeesseJS",
+              "@id": ORG_ID,
+            },
+          }),
+        }}
+      />
       <Link
         href="/changelog"
         className="mb-8 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
