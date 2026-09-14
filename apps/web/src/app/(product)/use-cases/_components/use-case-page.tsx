@@ -11,6 +11,12 @@ import type { Capability } from "../_data"
 /**
  * Per-page hero for use-case pages.
  *
+ * Renders inside the page's shared-border wrapper (the same single card
+ * that holds every other section on the page). The wrapper owns the
+ * outer border; this component owns its content + an optional dark
+ * background. No <section>, no border-b — the parent wrapper handles
+ * separation between sections.
+ *
  * Structure (top to bottom):
  *   - eyebrow label  ("Use case · {category}")  + optional status badge
  *   - H1                                              (no tagline underneath)
@@ -47,12 +53,7 @@ export function UseCaseHero({
   const isDark = variant === "dark"
 
   return (
-    <section
-      className={cn(
-        "border-b border-border",
-        isDark && "bg-zinc-950 text-zinc-100",
-      )}
-    >
+    <div className={cn(isDark && "bg-zinc-950 text-zinc-100")}>
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-16 sm:px-8 lg:py-24">
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center gap-3">
@@ -127,7 +128,13 @@ export function UseCaseHero({
             >
               What&apos;s wired on day one — and what&apos;s shipping next.
             </p>
-            <div className="grid grid-cols-1 overflow-hidden rounded-lg border border-border md:grid-cols-2">
+            <div
+              className={cn(
+                "grid grid-cols-1 overflow-hidden rounded-lg md:grid-cols-2",
+                "border",
+                isDark ? "border-zinc-800" : "border-border",
+              )}
+            >
               {capabilities.map((c, idx) => (
                 <CapabilityCell
                   key={c.id}
@@ -141,7 +148,7 @@ export function UseCaseHero({
           </div>
         ) : null}
       </div>
-    </section>
+    </div>
   )
 }
 

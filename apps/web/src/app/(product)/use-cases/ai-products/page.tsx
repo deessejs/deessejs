@@ -113,7 +113,8 @@ export default function AiProductsPage() {
   const capabilities = resolveCapabilities("ai-products")
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      <div className="flex flex-col gap-12">
+      <div className="border border-border bg-background rounded-none">
+        {/* 1. Hero — dark, with capabilities grid */}
         <UseCaseHero
           category="AI"
           title="Ship an agent that reads your contracts, not your docs."
@@ -126,30 +127,32 @@ export default function AiProductsPage() {
           capabilities={capabilities}
         />
 
-        {/* Tool registry — unique to this page */}
-        <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-100">
-          <div className="flex flex-col gap-3 border-b border-zinc-800 p-6 lg:p-10">
-            <p className="text-label-13 uppercase tracking-wider text-zinc-400">
-              Tool registry
-            </p>
-            <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-zinc-50 text-balance lg:text-heading-40">
-              Eight typed tools out of the box.
-            </h2>
-            <p className="max-w-2xl text-copy-16 leading-7 text-zinc-400">
-              Every tool is a typed function. The agent sees the schema, the
-              runtime enforces it.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 divide-y divide-zinc-800 md:grid-cols-2 md:divide-x md:divide-y-0">
-            {TOOLS.map((tool) => (
-              <ToolCard key={tool.name} tool={tool} />
-            ))}
+        {/* 2. Tool registry — unique to this page */}
+        <div className="border-t border-zinc-800 bg-zinc-950 text-zinc-100">
+          <div className="grid grid-cols-1 lg:grid-cols-6 lg:divide-x lg:divide-zinc-800">
+            <div className="flex flex-col gap-3 p-6 lg:col-span-2 lg:p-10">
+              <p className="text-label-13 uppercase tracking-wider text-zinc-400">
+                Tool registry
+              </p>
+              <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-zinc-50 text-balance lg:text-heading-40">
+                Eight typed tools out of the box.
+              </h2>
+              <p className="max-w-2xl text-copy-16 leading-7 text-zinc-400">
+                Every tool is a typed function. The agent sees the schema, the
+                runtime enforces it.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 divide-y divide-zinc-800 lg:col-span-4 !p-0 border-0 md:grid-cols-2 md:divide-x md:divide-y-0">
+              {TOOLS.map((tool) => (
+                <ToolCard key={tool.name} tool={tool} />
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Stack */}
-        <div className="overflow-hidden rounded-lg border border-border">
-          <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
+        {/* 3. Stack */}
+        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
+          <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Stack
             </p>
@@ -157,14 +160,14 @@ export default function AiProductsPage() {
               Built on the AI primitives that ship in production.
             </h2>
           </div>
-          <div className="!p-0 border-0">
+          <div className="lg:col-span-4 !p-0 border-0">
             <UseCaseStack items={[...STACK]} />
           </div>
         </div>
 
-        {/* Process */}
-        <div className="overflow-hidden rounded-lg border border-border">
-          <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
+        {/* 4. Process */}
+        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
+          <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Process
             </p>
@@ -172,7 +175,7 @@ export default function AiProductsPage() {
               Three lines.
             </h2>
           </div>
-          <div className="p-6 lg:p-10">
+          <div className="p-6 lg:col-span-4 lg:p-10">
             <ol className="flex flex-col gap-4">
               {[
                 "Define your tools in TypeScript. The schema is the contract your agent calls.",
@@ -192,8 +195,8 @@ export default function AiProductsPage() {
           </div>
         </div>
 
-        {/* CTA */}
-        <div className="overflow-hidden rounded-lg border border-border">
+        {/* 5. CTA */}
+        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-2 lg:divide-x lg:divide-border">
           <div className="flex flex-col gap-4 p-6 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Get started
@@ -210,9 +213,9 @@ export default function AiProductsPage() {
           </div>
         </div>
 
-        {/* Related */}
-        <div className="overflow-hidden rounded-lg border border-border">
-          <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
+        {/* 6. Related */}
+        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
+          <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Explore
             </p>
@@ -220,7 +223,7 @@ export default function AiProductsPage() {
               Related use cases.
             </h2>
           </div>
-          <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+          <div className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
             {RELATED.map((item) => (
               <Link
                 key={item.slug}

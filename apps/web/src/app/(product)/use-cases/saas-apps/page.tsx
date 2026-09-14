@@ -62,7 +62,8 @@ export default function SaasAppsPage() {
   const capabilities = resolveCapabilities("saas-apps")
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      <div className="flex flex-col gap-12">
+      <div className="border border-border bg-background rounded-none">
+        {/* 1. Hero — includes the capabilities grid */}
         <UseCaseHero
           category="SaaS"
           title="Ship a SaaS that ships the surface customers pay for."
@@ -74,9 +75,9 @@ export default function SaasAppsPage() {
           capabilities={capabilities}
         />
 
-        {/* Stack */}
-        <div className="overflow-hidden rounded-lg border border-border">
-          <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
+        {/* 2. Stack — label column + shared-border grid */}
+        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
+          <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Stack
             </p>
@@ -84,14 +85,14 @@ export default function SaasAppsPage() {
               What&apos;s wired on day one.
             </h2>
           </div>
-          <div className="!p-0 border-0">
+          <div className="lg:col-span-4 !p-0 border-0">
             <UseCaseStack items={[...STACK]} />
           </div>
         </div>
 
-        {/* Process */}
-        <div className="overflow-hidden rounded-lg border border-border">
-          <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
+        {/* 3. Process — label column + 3-step grid */}
+        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
+          <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Process
             </p>
@@ -99,7 +100,7 @@ export default function SaasAppsPage() {
               What shipping looks like.
             </h2>
           </div>
-          <ol className="grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0 md:divide-y-0">
+          <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
             {STEPS.map((step, idx) => (
               <li
                 key={step.heading}
@@ -119,8 +120,8 @@ export default function SaasAppsPage() {
           </ol>
         </div>
 
-        {/* Customer proof */}
-        <div className="overflow-hidden rounded-lg border border-border">
+        {/* 4. Customer proof */}
+        <div className="border-t border-border">
           <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x md:divide-border">
             <div className="flex flex-col gap-3 border-b border-border p-6 md:border-b-0 md:p-10">
               <div className="flex items-center gap-2">
@@ -192,8 +193,8 @@ export default function SaasAppsPage() {
           </div>
         </div>
 
-        {/* CTA */}
-        <div className="overflow-hidden rounded-lg border border-border">
+        {/* 5. CTA */}
+        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-2 lg:divide-x lg:divide-border">
           <div className="flex flex-col gap-4 p-6 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Get started
@@ -210,9 +211,9 @@ export default function SaasAppsPage() {
           </div>
         </div>
 
-        {/* Related */}
-        <div className="overflow-hidden rounded-lg border border-border">
-          <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
+        {/* 6. Related */}
+        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
+          <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Explore
             </p>
@@ -220,7 +221,7 @@ export default function SaasAppsPage() {
               Related use cases.
             </h2>
           </div>
-          <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+          <div className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
             {RELATED.map((item) => (
               <Link
                 key={item.slug}

@@ -55,7 +55,7 @@ export default function MobileBackendPage() {
   const capabilities = resolveCapabilities("mobile-backend")
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      <div className="flex flex-col gap-12">
+      <div className="border border-border bg-background rounded-none">
         <UseCaseHero
           category="Mobile"
           title="The same backend, with a transport that fits the client."
@@ -66,8 +66,8 @@ export default function MobileBackendPage() {
           capabilities={capabilities}
         />
 
-        <div className="overflow-hidden rounded-lg border border-border">
-          <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
+        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
+          <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Stack
             </p>
@@ -75,13 +75,13 @@ export default function MobileBackendPage() {
               What&apos;s wired.
             </h2>
           </div>
-          <div className="!p-0 border-0">
+          <div className="lg:col-span-4 !p-0 border-0">
             <UseCaseStack items={[...STACK]} />
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-border">
-          <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
+        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
+          <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Process
             </p>
@@ -89,7 +89,7 @@ export default function MobileBackendPage() {
               What shipping looks like.
             </h2>
           </div>
-          <ol className="grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+          <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
             {STEPS.map((step, idx) => (
               <li
                 key={step.heading}
@@ -109,7 +109,7 @@ export default function MobileBackendPage() {
           </ol>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-border">
+        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-2 lg:divide-x lg:divide-border">
           <div className="flex flex-col gap-4 p-6 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Get started
@@ -121,8 +121,8 @@ export default function MobileBackendPage() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-border">
-          <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
+        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
+          <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
               Explore
             </p>
@@ -130,7 +130,7 @@ export default function MobileBackendPage() {
               Related use cases.
             </h2>
           </div>
-          <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+          <div className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
             {RELATED.map((item) => (
               <Link
                 key={item.slug}
