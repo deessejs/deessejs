@@ -126,20 +126,26 @@ jobs:
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
           npm init -y > /dev/null
-          # Run npm and capture every byte of stderr/stdout to a file
-          # so the failure mode is visible in the workflow logs.
-          # The default GitHub Actions runner redacts most npm stderr
-          # output for non-zero exits, so we have to redirect manually.
-          NPM_LOG="$GITHUB_WORKSPACE/.npm-dryrun.log"
-          if ! npm install --dry-run --allow-remote=all "$GITHUB_WORKSPACE/$TARBALL" \
-            > "$NPM_LOG" 2>&1; then
-            echo "::error::npm install --dry-run failed; full log:"
-            cat "$NPM_LOG"
+          # npm 11.19+ deliberately writes the diagnostic to
+          # ~/.npm/_logs/<timestamp>-debug-0.log and only emits the
+          # path on stderr. Capture that file directly so the failure
+          # mode is visible in workflow logs.
+          LOGS_DIR="$HOME/.npm/_logs"
+          if ! npm install --dry-run --allow-remote=all "$GITHUB_WORKSPACE/$TARBALL"; then
+            echo "::error::npm install --dry-run failed; tail of npm debug log:"
+            # npm writes the log atomically; pick the most recent one
+            # created during this run. The path is also on stderr so
+            # we can grep for it, but listing newest-first is simpler.
+            LATEST=$(ls -1t "$LOGS_DIR"/*-debug-0.log 2>/dev/null | head -1)
+            if [ -n "$LATEST" ]; then
+              tail -100 "$LATEST"
+            else
+              echo "(no debug log found in $LOGS_DIR)"
+            fi
             exit 1
           fi
           popd > /dev/null
           rm -rf "$SCRATCH"
-          rm -f "$NPM_LOG"
 
       # Step 4: real install + npx smoke test. This is what the user
       # actually does. Fails if the install cannot complete or the
