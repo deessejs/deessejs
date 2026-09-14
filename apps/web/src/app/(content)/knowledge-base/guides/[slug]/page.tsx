@@ -134,40 +134,41 @@ export default async function KnowledgeGuidePage({
   }
 
   return (
-    <article className="mx-auto flex min-w-0 max-w-4xl flex-col gap-10 overflow-x-clip px-4 py-16 sm:px-6 lg:py-24">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/knowledge-base">
-              Knowledge Base
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink href={`/knowledge-base/topics/${topic.slug}`}>
-              {topic.title}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{guide.title}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+    <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <article className="mx-auto flex min-w-0 max-w-4xl flex-col gap-10 overflow-x-clip">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/knowledge-base">
+                Knowledge Base
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href={`/knowledge-base/topics/${topic.slug}`}>
+                {topic.title}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{guide.title}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
-      <header className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {guide.products.map((product) => (
-            <GuideProductPill key={product}>{product}</GuideProductPill>
-          ))}
-        </div>
-        <h1 className="scroll-m-20 text-3xl font-bold tracking-tight first:mt-0 text-balance">
-          {guide.title}
-        </h1>
-        <p className="text-muted-foreground leading-7 text-pretty [&:not(:first-child)]:mt-0">
-          {guide.description}
-        </p>
-      </header>
+        <header className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {guide.products.map((product) => (
+              <GuideProductPill key={product}>{product}</GuideProductPill>
+            ))}
+          </div>
+          <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
+            {guide.title}
+          </h1>
+          <p className="mt-4 text-pretty text-lg text-muted-foreground">
+            {guide.description}
+          </p>
+        </header>
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_180px] lg:gap-12">
         <div className="min-w-0">
@@ -218,6 +219,7 @@ export default async function KnowledgeGuidePage({
           </KbCardGrid>
         </section>
       ) : null}
-    </article>
+      </article>
+    </section>
   )
 }
