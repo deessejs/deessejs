@@ -47,12 +47,12 @@ The CLI hardcodes `process.env.DEESSEJS_API_URL ?? "https://app.deessejs.com"` a
 
 ### Gap 5: no transform layer
 
-`apps/cli/src/commands/init.ts:58-69` runs `git clone` and `pnpm install` and stops. The CLI cannot:
+`apps/cli/src/commands/init.ts:58-69` runs `git clone` and the package-manager install and stops. The CLI cannot:
 
 - rename `.env.example` to `.env` and interpolate `{{DATABASE_URL}}` from a project-level token map (resolved by [ADR-031](./ADR-031-deesse-json.mdx)'s `deesse.json#tokens`),
 - remove files the user opted out of (e.g. a Storybook setup the user does not want),
 - merge `AGENTS.md` fragments contributed by each template,
-- run a `db:push` after `pnpm install`.
+- run a `db:push` after the install step.
 
 shadcn's `files[].target` placeholders (`@components/`, `@ui/`, `@lib/`, `@hooks/`, `~`) plus the `cssVars` / `envVars` / `css` fields cover the analogous surface for components; the DeesseJS registry has no parallel.
 
