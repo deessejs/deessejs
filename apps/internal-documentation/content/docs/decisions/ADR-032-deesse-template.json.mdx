@@ -140,7 +140,7 @@ The current `TemplateV1` is extended (not replaced) into `TemplateV2`. Every fie
 - `templateDependencies: string[]` — slugs of other templates required by this one. Composable templates (the `packages-template` + `auth-addon` pattern).
 - `type: "template:app" | "template:package" | "template:cli" | "template:mobile" | "template:desktop" | "template:agent" | "template:landing"` — discriminates whether the install clones an entire project (`template:app`) or overlays files onto an existing one (the other six types).
 - `docs: string` (optional) — path to a Markdown doc inside the template repo, surfaced by `deessejs info <slug>`.
-- `prompts: Prompt[]` (optional) — interactive questions at install time. Each prompt has `name`, `type` (`text`, `select`, `confirm`), `message`, `default`, optional `choices[]` (for `select`), optional `validate` (regex string), optional `when` (a simple DSL expression that gates the prompt against earlier answers — `"database != 'sqlite'"` skips the prompt when the database choice is SQLite).
+- `prompts: Prompt[]` (optional) — interactive questions at install time. Each prompt has `name`, `type` (`text`, `select`, `confirm`), `message`, `default`, optional `choices[]` (for `select`), optional `validate` (regex string), optional `when` (a simple DSL expression that gates the prompt against earlier answers — `"database != 'sqlite'"` skips the prompt when the database choice is SQLite), optional `consumes: Consume[]` (explicit routing of the prompt's answer to a project-side target — see "Prompt consumption" below). When `consumes[]` is absent, the CLI applies a name-based implicit convention (also documented below).
 - `hooks: { preInit?, postInit?, preInstall?, postInstall? }` (optional) — declarative lifecycle hooks. Each value is an ordered list of verb names from the runtime whitelist (`postinstall`). The hooks run at the named lifecycle stage; `postInit` fires after the clone + transforms, before the install step; `postInstall` fires after the package manager install. The block is parallel to `postinstall[]` and supersedes it for new templates: `hooks.postInit` is the canonical entry, `postinstall[]` is preserved as a back-compat alias.
 - `postinstall: string[]` (optional) — whitelisted shell verbs. Kept as a back-compat alias for `hooks.postInit`; new templates use `hooks{}` instead.
 - `files: FileSpec[]` (optional) — post-processing on the cloned tree. Each file has `path` (source in the template repo), `type` (`template:env`, `template:doc`, `template:config`, etc.), `target` (destination in the user's project, with `@components/`, `@lib/`, `@hooks/`, `@ui/`, `@apps/`, `@packages/` placeholders resolved against [ADR-031](./ADR-031-deesse-json.mdx)'s `deesse.json#aliases`), and `transform` (the verb: `rename`, `interpolate`, `remove`, `merge`).
@@ -151,6 +151,51 @@ The `@workspace/contracts` package gains a new export `TemplateV2` alongside `Te
 
 The `templates-content-not-cli` rule from `.claude/agent-memory/tech-lead/project/templates-content-not-cli.md` is preserved: a new template entry (one line added to `packages/api/src/templates.ts`) never triggers a CLI changeset, only `Template` schema-level changes can.
 
+#### 2b. Prompt consumption: where each answer lands
+
+A prompt asks a question; the answer has to land somewhere. Four targets exist, and the answer can land in any combination of them. The contract is split in two layers: an **implicit convention** that fires when the template author writes nothing (the simple case), and an **explicit `consumes[]` block** that overrides the convention when the author needs precision.
+
+The four targets, by target discriminator:
+
+| `target` discriminator | Lands in | Example use |
+|---|---|---|
+| `project:database` | `deesse.json#database` (per [ADR-031](./ADR-031-deesse-json.mdx)) | A `database` prompt picks `postgresql` / `mysql` / `sqlite` and writes the value into the project-side database choice. |
+| `tokens:<KEY>` | `deesse.json#tokens.<KEY>` | A `database_url` prompt writes `postgresql://localhost/mydb` into `tokens.DATABASE_URL`, which `files[] interpolate` reads at transform time. |
+| `file:<glob>` | A path relative to the project root, where files matching `<glob>` are removed | A `with_storybook: false` prompt removes `apps/web/.storybook/`, `apps/web/src/stories/`, and `.storybook/` at the project root. |
+| `template:<key>` | The in-memory `answers` map only (no project-side write) | A `package_manager` prompt picks `pnpm` and the answer is consumed only by `hooks.postInit` to choose the install command. |
+
+**Implicit convention (no `consumes[]` declared).** When the template author omits `consumes[]`, the CLI routes the answer based on the prompt's `name` field. The rules, in priority order:
+
+1. `name === "database"` → `project:database`.
+2. `name` matches `/^with_/` (a `with_*` boolean prompt) → `file:./<name-snake-cased-path>/` (see "with_* convention" below).
+3. `name` matches `/_url$/`, `/_token$/`, `/_key$/`, `/_secret$/` → `tokens:<UPPER_SNAKE>` (the prompt name uppercased and snake-cased).
+4. `name` matches `/_(path|dir|route)$/` → `project:paths.<x>` (the prompt name mapped to the matching `paths` key; e.g. `db_path` → `project:paths.db`).
+5. Otherwise → `template:<key>` (answer lives in memory only).
+
+The `with_*` convention is the trickiest. A prompt `name: "with_storybook"` of `type: "confirm"` with `default: true` is interpreted as "the template ships a `storybook/` subtree; remove it if the user answers false". The CLI computes the candidate paths by walking the cloned template tree and looking for directories whose name matches the suffix (`storybook/`), or for files tagged `transform: "remove"` whose `target` ends with `<name-without-with_>.removed`. The implicit rule is documented; a template that wants precision declares `consumes[]` explicitly.
+
+**Explicit `consumes[]` (overrides the convention).** When the author declares `consumes[]`, every entry is honoured in order and the implicit convention does not fire. The shape:
+
+```jsonc
+{
+  "name": "database_url",
+  "type": "text",
+  "message": "Database connection URL:",
+  "default": "",
+  "when": "database != 'sqlite'",
+  "consumes": [
+    { "target": "tokens:DATABASE_URL" },
+    { "target": "file:./prisma/schema.prisma", "format": "url    = env(\"DATABASE_URL\")" }
+  ]
+}
+```
+
+The `format` field is template-side syntax that lets the answer be reformatted before landing. In the example above, the prompt's raw answer `postgresql://localhost/mydb` is written verbatim into `tokens.DATABASE_URL`, AND the file `prisma/schema.prisma` is rewritten to replace its `url` line with `url = env("DATABASE_URL")`. The `format` DSL is intentionally minimal: the placeholder `{{value}}` is the only interpolation, and a fixed prefix/suffix wraps it.
+
+**Precedence and idempotency.** If a prompt declares `consumes[]`, the convention does not fire. If two prompts target the same key (`tokens.DATABASE_URL`), the second wins (last-write-wins; the CLI logs a warning at install time, not a hard error). A user who runs `deessejs init` with `--yes` skips prompts entirely; the `default` answers still fire the `consumes[]` rules (the convention applies to defaults the same way as to user answers). Idempotency: re-running `init` with a changed answer writes the new value and leaves the previous `deesse.json#tokens.<KEY>` only if the new value equals the default (a no-op skip).
+
+**Why both layers, not one.** The implicit convention covers 95% of templates with zero author effort. The explicit `consumes[]` covers the 5% — typically when a prompt's answer has to land in a file in a non-default format, or when the convention's name pattern misfires (e.g. a prompt named `database` that does not target `project:database`). Shipping one layer only would either force every template author to declare `consumes[]` (verbose) or break on the 5% (silent miss). Both layers, with explicit-override-implicit, is the trade-off that costs the fewest template-author words.
+
 #### 3. CLI install flow is enriched by `deesse.json`
 
 The CLI's `init <slug>` command gains the following sequence:
@@ -159,7 +204,7 @@ The CLI's `init <slug>` command gains the following sequence:
 2. Fetch `deesse-template.json` from the registry host (per Decision #4).
 3. Validate against the `TemplateV2` Zod schema. Reject with `parse_error` on failure.
 4. Resolve `templateDependencies` recursively (each dependency is fetched and validated the same way).
-5. Run `prompts[]` in declaration order, applying `when` gates against prior answers. Skip with `--yes`; the documented `default` applies.
+5. Run `prompts[]` in declaration order, applying `when` gates against prior answers. Skip with `--yes`; the documented `default` applies. **Each answer is routed via the consumption rules (Decision #2b above)**: declared `consumes[]` first, implicit convention otherwise. Routing happens before step 7 so that `tokens.<KEY>` is populated when the file transforms read it, and before step 8 so that file removals are applied with the correct paths.
 6. Run `hooks.preInit` (if present).
 7. Clone the template repo at `source.ref` (or fall back to `main` / `master`).
 8. Apply `files[]` transformations (rename, interpolate against `deesse.json#tokens`, remove, merge).
@@ -242,8 +287,10 @@ Three patterns the team considered and rejected.
 ## Consequences
 
 - **`packages/contracts` grows `TemplateV2`.** The new Zod schema lives in `packages/contracts/src/v1/template.ts` alongside `TemplateV1`. A barrel re-exports both. Server consumers that read `TemplateV1` continue to work; consumers that opt in read `TemplateV2`. The change is non-breaking for the wire because the server publishes both response shapes.
+- **`packages/contracts` grows the `Consume` and `ConsumeTarget` Zod schemas.** `Consume` is the per-prompt override (`target: string`, optional `format: string`); `ConsumeTarget` is the discriminated union of the four routing targets (`project:database`, `tokens:<KEY>`, `file:<glob>`, `template:<key>`). Both schemas live in `packages/contracts/src/v1/template.ts`. The CLI parses the array via `z.array(Consume).optional().default([])` so a missing `consumes[]` falls through to the implicit convention without raising an error.
 - **`packages/api/src/templates.ts` gains typed entries.** Each entry in the `TEMPLATES` array picks up the new `TemplateV2` fields (`version`, `source.ref`, `requires`, `dependencies`, etc.). The enrichment layer at `packages/api/src/core/templates/enrich.ts` extends to merge `deesse-template.json` data when the upstream returns one (a future `deesse-template.json` is co-located in `deessejs/<slug>`; the enrichment fetches it via the GitHub raw URL pattern, parallel to the existing `fetchRepo` + `fetchReadme` calls).
 - **`apps/cli` learns to apply `files[]` transformations.** The init flow gains a transform step that walks `deesse-template.json#files[]`, substitutes `@components/`, `@lib/`, `@hooks/`, `@ui/`, `@apps/`, `@packages/` against `deesse.json#aliases` (per [ADR-031](./ADR-031-deesse-json.mdx)), and applies the `transform` verb (`rename`, `interpolate`, `remove`, `merge`). The verbs live in `apps/cli/src/transforms/` (new folder) — one file per verb, following the one-folder-per-concept rule from ADR-002 and the command-file invariant from ADR-010.
+- **`apps/cli` learns to route prompt answers.** A new module `apps/cli/src/prompts/consume.ts` (one file per concept) implements the consumption rules from Decision #2b. The module exposes `routeAnswer(prompt, answer, projectRoot): void` and is called once per answer at step 5 of the install flow. The implicit-convention rules (the four name patterns and the priority order) live as a closed-list constant in the same file, alongside the `Consume` discriminated-union parser. The convention is unit-tested in `apps/cli/test/unit/prompt-consume.test.ts` with one fixture per convention rule plus one for the explicit-override path; no fixture for the edge case (last-write-wins collision on the same key) is required because the behaviour is documented as a logged warning, not a hard error.
 - **`packages/ui/src/deploy-button.tsx` and `packages/ui/src/demo-button.tsx` may consume `deesse-template.json#docs`.** Out of scope for this ADR; a follow-up can wire the gallery to surface docs. The `apps/web/src/app/(product)/templates/[template_slug]/page.tsx` page renders the existing enriched metadata; the docs field is an additive read.
 - **The `postinstall` whitelist lives in `apps/cli/src/commands/init.ts` as a closed-list constant.** Initial whitelist: `["pnpm install", "pnpm add", "pnpm remove", "pnpm db:push", "pnpm db:migrate", "pnpm format", "pnpm typecheck", "npm install", "yarn install", "bun install", "git init"]`. Adding a verb is an internal change (not a new public error code, not a new flag).
 - **A template author adds `deesse-template.json` to their repo's root, with the `$schema` URL pointing at `https://registry.deessejs.dev/schema/template.json`.** The schema is published from the registry host (a static file at `/schema/template.json`); the same pattern works for `deesse.json` at `/schema/project.json` (per [ADR-031](./ADR-031-deesse-json.mdx)). The schema URL is the contract.
