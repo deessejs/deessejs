@@ -14,7 +14,6 @@ import {
   DbTerminalMockup,
   MultiTenantSwitcherMockup,
 } from "../_components/mockups"
-import { resolveCapabilities } from "../_data"
 
 export const metadata: Metadata = {
   title: "SaaS apps | DeesseJS",
@@ -91,7 +90,6 @@ const AND_MORE: ReadonlyArray<MoreTile> = [
 ]
 
 export default function SaasAppsPage() {
-  const capabilities = resolveCapabilities("saas-apps")
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
       <div className="border border-border bg-background rounded-none">
@@ -104,7 +102,6 @@ export default function SaasAppsPage() {
             label: "View saas-starter",
             href: "/templates/saas-starter",
           }}
-          capabilities={capabilities}
         />
 
         {/* 2. Auth simulation */}

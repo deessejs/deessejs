@@ -5,7 +5,6 @@ import { ArrowRight, FileText, Mail, Database, Globe, MessageSquare, BarChart3, 
 import { UseCaseHero } from "../_components/use-case-page"
 import { UseCaseStack } from "../_components/use-case-stack"
 import { CopyCommand } from "../_components/copy-command"
-import { resolveCapabilities } from "../_data"
 
 export const metadata: Metadata = {
   title: "AI products | DeesseJS",
@@ -110,11 +109,10 @@ const RELATED = [
 ] as const
 
 export default function AiProductsPage() {
-  const capabilities = resolveCapabilities("ai-products")
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
       <div className="border border-border bg-background rounded-none">
-        {/* 1. Hero — dark, with capabilities grid */}
+        {/* 1. Hero — dark */}
         <UseCaseHero
           category="AI"
           title="Ship an agent that reads your contracts, not your docs."
@@ -124,7 +122,6 @@ export default function AiProductsPage() {
             label: "View ai-chatbot",
             href: "/templates/ai-chatbot",
           }}
-          capabilities={capabilities}
         />
 
         {/* 2. Tool registry — unique to this page */}

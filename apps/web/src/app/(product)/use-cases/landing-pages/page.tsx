@@ -4,7 +4,6 @@ import { ArrowRight } from "lucide-react"
 
 import { UseCaseHero } from "../_components/use-case-page"
 import { CopyCommand } from "../_components/copy-command"
-import { resolveCapabilities } from "../_data"
 
 export const metadata: Metadata = {
   title: "Landing pages | DeesseJS",
@@ -73,11 +72,10 @@ const RELATED = [
 ] as const
 
 export default function LandingPagesPage() {
-  const capabilities = resolveCapabilities("landing-pages")
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
       <div className="border border-border bg-background rounded-none">
-        {/* 1. Hero — self-referential, with capabilities grid */}
+        {/* 1. Hero — self-referential */}
         <UseCaseHero
           category="Marketing"
           title="A landing page that earns the click."
@@ -86,7 +84,6 @@ export default function LandingPagesPage() {
             label: "View landing-page",
             href: "/templates/landing-page",
           }}
-          capabilities={capabilities}
         />
 
         {/* 2. Self-referential callout */}

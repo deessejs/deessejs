@@ -5,7 +5,6 @@ import { ArrowRight } from "lucide-react"
 import { UseCaseHero } from "../_components/use-case-page"
 import { UseCaseStack } from "../_components/use-case-stack"
 import { CopyCommand } from "../_components/copy-command"
-import { resolveCapabilities } from "../_data"
 
 export const metadata: Metadata = {
   title: "Open source | DeesseJS",
@@ -57,7 +56,6 @@ const RELATED = [
 ] as const
 
 export default function OpenSourcePage() {
-  const capabilities = resolveCapabilities("open-source")
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
       <div className="border border-border bg-background rounded-none">
@@ -68,7 +66,6 @@ export default function OpenSourcePage() {
             label: "Browse templates",
             href: "/templates",
           }}
-          capabilities={capabilities}
         />
 
         <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
