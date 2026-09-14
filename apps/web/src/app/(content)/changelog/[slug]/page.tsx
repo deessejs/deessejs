@@ -121,11 +121,13 @@ export default async function ReleasePage(
           <h2 className="mb-6 text-2xl font-semibold tracking-tight">
             Related reading
           </h2>
-          <div className="grid gap-6 md:grid-cols-2">
+          <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 md:grid-cols-2 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:last-child]:md:border-b-0 [&>li:first-child]:border-t">
             {relatedPosts.map((post) => (
-              <PostCard key={post.slug} post={post} />
+              <li key={post.slug}>
+                <PostCard post={post} />
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
     </article>
