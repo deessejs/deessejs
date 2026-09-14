@@ -54,15 +54,7 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with:
-          # Pin to Node 20 to avoid npm 11's stricter peer-dep and
-          # file: URL handling breaking `npm install --dry-run`
-          # against our tarball (which transitively pulls in
-          # `better-auth@1.7+` whose chain declares
-          # `bundleDependencies`). GitHub deprecated Node 20 on the
-          # runners on 2025-09-19 and plans to remove it, so this
-          # pin is a temporary workaround — bump once the upstream
-          # npm issue is fixed (npm/cli#9800, PR #9818).
-          node-version: 20
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
@@ -117,66 +109,28 @@ jobs:
       # Step 3: dry-run install in a clean project. This catches the
       # 2.0.1 failure mode (workspace:* / catalog: in dependencies
       # that npm cannot resolve from the registry).
-      #
-      # We drop a scratch-local `.npmrc` containing `allow-remote=all`
-      # to work around npm/cli#9800 (PR #9818 still open at writing
-      # time): npm 11's default `allow-remote=none` rejects registry
-      # tarballs that declare `bundleDependencies`, which `better-auth`
-      # and its transitive `@tailwindcss/oxide-wasm32-wasi` chain do.
-      # The CLI never actually fetches those bundles (the install only
-      # uses the headless code path), so relaxing the guard is safe —
-      # and the tarball under test is produced locally by Step 1, not
-      # from a third party.
-      #
-      # Note: `--allow-remote=all` as a CLI flag is silently ignored
-      # in npm 11 with an "Unknown cli config" warning. The .npmrc
-      # path is the documented way to set this option.
       - name: Verify npm install (dry-run)
         run: |
           set -eu
-          TARBALL_REL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
-          TARBALL_ABS="$GITHUB_WORKSPACE/$TARBALL_REL"
+          TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
           npm init -y > /dev/null
-          echo "allow-remote=all" > .npmrc
-          cp "$TARBALL_ABS" ./deessejs-cli.tgz
-          set +e
-          npm install --dry-run ./deessejs-cli.tgz
-          NPM_EXIT=$?
-          set -e
-          if [ "$NPM_EXIT" -ne 0 ]; then
-            echo "::error::npm install --dry-run failed (exit $NPM_EXIT); tail of npm debug log:"
-            LATEST=$(ls -1t "$HOME/.npm/_logs"/*-debug-0.log 2>/dev/null | head -1)
-            if [ -n "$LATEST" ]; then
-              # Show enough of the log to capture the actual code/error
-              # lines, which appear at the very end after dozens of
-              # verbose fetch entries.
-              tail -400 "$LATEST"
-            else
-              echo "(no debug log found)"
-            fi
-            exit 1
-          fi
+          npm install --dry-run "$GITHUB_WORKSPACE/$TARBALL"
           popd > /dev/null
           rm -rf "$SCRATCH"
 
       # Step 4: real install + npx smoke test. This is what the user
       # actually does. Fails if the install cannot complete or the
       # binary cannot run.
-      #
-      # Same .npmrc rationale as Step 3.
       - name: Real install + npx smoke test
         run: |
           set -eu
-          TARBALL_REL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
-          TARBALL_ABS="$GITHUB_WORKSPACE/$TARBALL_REL"
+          TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
           npm init -y > /dev/null
-          echo "allow-remote=all" > .npmrc
-          cp "$TARBALL_ABS" ./deessejs-cli.tgz
-          npm install ./deessejs-cli.tgz
+          npm install "$GITHUB_WORKSPACE/$TARBALL"
           npx @deessejs/cli --help
           popd > /dev/null
           rm -rf "$SCRATCH"
