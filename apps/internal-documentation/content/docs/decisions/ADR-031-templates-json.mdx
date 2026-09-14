@@ -1,0 +1,243 @@
+---
+title: 'templates.json and template-item.json'
+description: 'A shadcn-style declarative registry for the DeesseJS template ecosystem. templates.json is the project-side config; template-item.json is the registry-side item descriptor. Together they replace the hand-curated registry array and the opaque git clone with a typed, dependency-aware, transform-capable surface.'
+---
+
+# ADR-031: templates.json and template-item.json
+
+## Status
+
+Draft (2026-09). Awaiting review.
+
+## Context
+
+The DeesseJS template registry is the project's identity surface. The user has framed it on the marketing site as a registry that spans "packages, CLI, SaaS multi-tenant, mobile, desktop, AI agent, landing page" (per the locked homepage copy) — not a single-template repo. Today the registry is a single hand-curated TypeScript array exported from `packages/api/src/templates.ts`:
+
+```ts
+export const TEMPLATES: RegistryEntry[] = [
+  {
+    slug: "saas-starter",
+    name: "SaaS Starter",
+    description: "Production-ready Next.js + Better Auth + Postgres boilerplate for B2B SaaS.",
+    owner: "deessejs",
+    repo: "saas-template",
+    license: "MIT",
+    category: "saas",
+    labels: ["nextjs", "saas", "auth", "postgres"],
+    layer: "open-community",
+  },
+]
+```
+
+The wire contract `TemplateV1` (`packages/contracts/src/v1/template.ts`) carries thirteen flat fields. The CLI (`apps/cli/src/commands/init.ts`) consumes the same endpoint and shells out to `git clone --depth 1 --branch <ref>` plus `pnpm/npm install`. There is no manifest reading, no token replacement, no post-processing — the CLI is a glorified clone wrapper. Templates as files live in external GitHub repos; the registry only carries metadata.
+
+Five structural gaps follow from this shape, each load-bearing for the multi-template, multi-stack roadmap the user has locked in:
+
+### Gap 1: no project-side config
+
+The CLI today reads no file from the user's project. shadcn's `components.json` carries the per-project wiring (`aliases`, `tailwind.css`, `baseColor`, `tsx`, `rsc`, the `registries{}` namespace map) so the same registry item installs correctly across projects that use `@/components`, `#components/*`, or a workspace package. The DeesseJS CLI has no equivalent. A `packages-template` (planned) targeting a standalone npm workspace cannot express where its files should land inside a consumer project that uses `@deessejs/contracts` paths.
+
+### Gap 2: no item-side metadata beyond a flat shape
+
+`TemplateV1` declares thirteen fields and nothing about dependencies, runtime requirements, post-install scripts, or transformations. The CLI therefore installs whatever package manager the user has on the machine without checking that the template requires `pnpm@9`, that it depends on `next@^15`, or that it ships an `.env.example` the user should rename to `.env`. The registry is content, not contract.
+
+### Gap 3: no template composition
+
+The roadmap mentions `packages-template`, `cli-template`, `mobile-template`, `desktop-template`, `ai-agent`, `landing-template` (six confirmed categories per `project-templates-roadmap`). None of them composes with another. A user who wants `saas-starter` + `ai-agent` runs two `init` calls into two directories and merges by hand. shadcn's `registryDependencies` (item names, namespaced `@acme/item`, GitHub `owner/repo#tag`, full URL, local path) solves this; the DeesseJS registry has no equivalent.
+
+### Gap 4: no namespaces, no third-party registries
+
+The CLI hardcodes `process.env.DEESSEJS_API_URL ?? "https://app.deessejs.com"` as the upstream. Every template ships from one org. The shadcn `components.json#registries{}` map (`"@v0": "https://v0.dev/chat/{name}"`) plus the GitHub-static-JSON convention (`registry.json` at a public repo root auto-discovered as a registry) lets the CLI install items from any author without a CLI release. The DeesseJS CLI has neither.
+
+### Gap 5: no transform layer
+
+`apps/cli/src/commands/init.ts:58-69` runs `git clone` and `pnpm install` and stops. The CLI cannot:
+
+- rename `.env.example` to `.env` and interpolate `{{DATABASE_URL}}` from a project-level token map,
+- remove files the user opted out of (e.g. a Storybook setup the user does not want),
+- merge `AGENTS.md` fragments contributed by each template,
+- run a `db:push` after `pnpm install`.
+
+shadcn's `files[].target` placeholders (`@components/`, `@ui/`, `@lib/`, `@hooks/`, `~`) plus the `cssVars` / `envVars` / `css` fields cover the analogous surface for components; the DeesseJS registry has no parallel.
+
+### Where these gaps come from
+
+`apps/cli` is the only published package in the monorepo; its public surface is locked by ADR-010 §1 (three commands: `init`, `list`, `info`, plus the `auth {login,status,logout}` group). Adding a fourth command, renaming one, or changing a flag's meaning is a breaking change for downstream tooling. The CLI cannot grow new install semantics without a major bump.
+
+The registry data is the other load-bearing piece. The memory file `.claude/agent-memory/tech-lead/project/templates-content-not-cli.md` pins the rule: adding a template entry is never a CLI change and never requires a CLI changeset; only `Template` schema-level changes can. ADR-001 names oRPC as the load-bearing core of the internal API and forbids parallel transports. ADR-005 names the API as consumer-agnostic. ADR-004 pins `packages/api`'s structure.
+
+The five gaps above all require coordinated changes across `packages/api` (registry data + enrichment), `packages/contracts` (wire shape), and `apps/cli` (install behaviour). The change set is too large for an "obvious fix" PR; it needs an ADR before any code lands.
+
+## Decision
+
+### What this rule decides
+
+Three concrete decisions. They ship together because shipping any one without the others leaves the registry shape half-declared and the CLI half-aware.
+
+#### 1. Two artefacts, not one
+
+shadcn has two files because they answer two questions: "where do I write into the user's project?" (`components.json`) and "what does this item ship?" (`registry-item.json`). The DeesseJS registry adopts the same split:
+
+- **`templates.json`** — placed at the **root of the user's project**. Declares per-project wiring: package manager, TypeScript, Git init, aliases (placeholders for `@components/`, `@lib/`, `@apps/`, `@packages/`, `@ui/`, `@hooks/`), a token map resolved at install time, a `registries{}` namespace map, and a `templates{}` block that records what is installed. The CLI reads this file at every command.
+- **`template-item.json`** — placed at the **root of each template repo** (`deessejs/<slug>`). Declares one item: type, version, source ref, runtime requirements, `dependencies`, `devDependencies`, `templateDependencies` (other templates), `files[]` (with `target` placeholders + `transform` verb), `prompts[]` (interactive questions), `postinstall[]` (whitelisted shell verbs). The CLI fetches and applies this file at install time.
+
+The two files have disjoint authors. `templates.json` is owned by the project that runs the CLI (created or mutated by `templates.json init`, hand-edited afterwards). `template-item.json` is owned by the template author (co-located in the template's repo, validated by that repo's CI).
+
+#### 2. The wire contract becomes `TemplateV2`
+
+The current `TemplateV1` is extended (not replaced) into `TemplateV2`. Every field in `TemplateV1` stays in `TemplateV2` with the same type. New fields are appended:
+
+- `version: string` (semver) — pins which version of the template shipped. Today's CLI does not know the version it installed.
+- `source: { repo, ref, cloneUrl }` — replaces the implicit `https://github.com/${owner}/${repo}` fallback at `apps/cli/src/commands/init.ts:59`. `ref` is the git tag/branch/SHA the CLI clones. `cloneUrl` carries over from `TemplateV1`.
+- `requires: { node?, packageManager? }` — runtime gate. The CLI refuses to install if the user's `node` is below the lower bound.
+- `dependencies: string[]` — npm packages with optional `@version`. Mirrors shadcn's `dependencies[]`.
+- `devDependencies: string[]` — dev-time packages.
+- `templateDependencies: string[]` — slugs of other templates required by this one. Composable templates (the `packages-template` + `auth-addon` pattern).
+- `type: "template:app" | "template:package" | "template:cli" | "template:mobile" | "template:desktop" | "template:agent" | "template:landing"` — discriminates whether the install clones an entire project (`template:app`) or overlays files onto an existing one (the other six types).
+- `docs: string` (optional) — path to a Markdown doc inside the template repo, surfaced by `deessejs info <slug>`.
+- `prompts: Prompt[]` (optional) — interactive questions at install time.
+- `postinstall: string[]` (optional) — whitelisted shell verbs.
+- `files: FileSpec[]` (optional) — post-processing on the cloned tree.
+
+The `TemplateV1` → `TemplateV2` migration is additive: `TemplateV2 = TemplateV1 & { new fields }`. No required fields are added. Existing CLIs that only know `TemplateV1` keep working because the upstream `packages/api` continues to publish the `TemplateV1`-shaped response for clients that haven't bumped.
+
+The `@workspace/contracts` package gains a new export `TemplateV2` alongside `TemplateV1`. Both Zod schemas live in `packages/contracts/src/v1/`. The server's enrichment layer (`packages/api/src/core/templates/enrich.ts`) merges live GitHub data onto `TemplateV2` entries the same way it merges onto `TemplateV1` today. The server's `templates.list` oRPC procedure returns `TemplatesListResponseV2` (a parallel response shape); the V1 response is preserved for backward compatibility.
+
+The `templates-content-not-cli` rule from `.claude/agent-memory/tech-lead/project/templates-content-not-cli.md` is preserved: a new template entry (one line added to `packages/api/src/templates.ts`) never triggers a CLI changeset, only `Template` schema-level changes can.
+
+#### 3. `templates.json` lives at the project root and is project-owned
+
+The CLI writes a `templates.json` at the user's project root the first time `deessejs init` runs against a project that doesn't have one. The shape:
+
+```jsonc
+{
+  "$schema": "https://deessejs.com/schema/templates.json",
+  "name": "my-saas",
+  "packageManager": "pnpm",
+  "typescript": true,
+  "git": { "init": true, "initialBranch": "main" },
+  "aliases": {
+    "apps": "apps/*",
+    "packages": "packages/*",
+    "components": "@/components",
+    "lib": "@/lib",
+    "hooks": "@/hooks",
+    "ui": "@workspace/ui/components"
+  },
+  "tokens": {
+    "NEXT_PUBLIC_APP_URL": "http://localhost:3000",
+    "DATABASE_URL": "postgresql://..."
+  },
+  "registries": {
+    "@deessejs": "https://deessejs.com/r/{name}.json"
+  },
+  "templates": {
+    "saas-starter": {
+      "version": "1.4.0",
+      "installedAt": "2026-09-14T...",
+      "source": "@deessejs/saas-starter"
+    }
+  }
+}
+```
+
+`templates.json#aliases` is what lets `template-item.json#files[].target` placeholders resolve. A `target: "@lib/db.ts"` in the item becomes `<aliases.lib>/db.ts` in the user's project. Unknown placeholders fall back to literal paths. `@utils/` is not supported (mirrors shadcn).
+
+`templates.json#tokens` is the map `template-item.json` interpolates into files marked `transform: "interpolate"`. The CLI writes the interpolated file into the user's tree, never back into the registry. Tokens that the user omits fall back to a sentinel (the literal string the template ships with).
+
+`templates.json#registries` is the namespace map. `@deessejs/saas-starter` resolves to `https://deessejs.com/r/saas-starter.json`. A user who wants to install from a community registry adds an entry like `"@community": "https://raw.githubusercontent.com/deessejs-community/{name}/main/registry-item.json"`. shadcn's URL template with `{name}` placeholder is the canonical pattern.
+
+`templates.json#templates` is the resolved-state block. The CLI writes an entry every time it installs an item. `deessejs update` (planned, ADR-010 §1 forbids adding it as a public command today — see the open question below) compares the user's recorded version against the latest and surfaces drift.
+
+### What this rule allows
+
+- A user runs `deessejs init saas-starter` in an empty directory. The CLI writes `templates.json`, fetches `template-item.json` from `https://deessejs.com/r/saas-starter.json`, resolves `templateDependencies`, applies `files[]` transformations, runs `postinstall[]`, and records the install in `templates.json#templates`.
+- A template author co-locates `template-item.json` in `deessejs/saas-template` at the repo root. The template repo's CI validates the JSON against a JSON Schema published at `https://deessejs.com/schema/template-item.json`. The validation step is opt-in for the author; the schema URL is the contract.
+- A registry of registries: an org maintains a static JSON catalog at `https://example.com/r/registry.json` (shadcn's auto-discovery shape). The CLI fetches it, lists items, and installs from it. No CLI release required for a new third-party registry to be usable.
+- A `template:package` item that overlays files into an existing monorepo's `packages/<name>/` directory. The CLI uses `template-item.json#files[].target` (with `@packages/` placeholder resolved via `templates.json#aliases`) to know where to write.
+- A `template:app` item that clones the entire repo (today's `init` behaviour) plus applies transforms on top of the clone. `template:app` keeps the existing `git clone` shape; the other six types are the new surface.
+- `deessejs info <slug>` reads `template-item.json#docs` and renders it. Today's `info` command only prints the GitHub-enriched metadata; the docs field gives it a richer surface.
+- A user pins the install at a specific version by adding `--ref v1.4.0` to `deessejs init`. The CLI uses `template-item.json#source.ref` instead of the upstream `main` / `master` fallback at `apps/cli/src/utils/git.ts`.
+- A user runs `deessejs init` with `--yes` to skip `template-item.json#prompts[]`. The CLI applies the documented defaults instead.
+
+### What this rule forbids
+
+- Hand-editing `templates.json#templates` to fake an install. The block is CLI-managed; a user who wants to pin a version edits `template-item.json#source.ref` in the registry, not their local state.
+- A template author publishing `template-item.json` outside the template repo (e.g. in a separate `deessejs/registry-data` repo). The co-location rule keeps the file's lifecycle tied to the template's lifecycle.
+- `templates.json` at any path other than the project root. The CLI rejects a non-root `templates.json` with the same closed-list error code as a missing one.
+- `template-item.json` with a `postinstall` verb outside the whitelist. The CLI rejects unrecognised verbs at parse time. The whitelist is part of this ADR (see Decision #4 below) and lives in `apps/cli/src/commands/init.ts` as a closed-list constant.
+- `template-item.json` `dependencies` that pin a non-npm registry (e.g. a private Git URL) without a `registries{}` entry in the user's `templates.json`. The CLI refuses to install a private dependency that the user has not declared.
+- Renaming or removing the `components.json`-equivalent fields (the `templates.json` schema is closed in V1; widening is non-breaking, narrowing is breaking).
+- Skipping `deessejs/templates-content-not-cli`. A new entry in `packages/api/src/templates.ts` still does not trigger a CLI changeset. The memory file's rule stays load-bearing.
+
+### Why not the alternatives
+
+Three patterns the team considered and rejected.
+
+1. **One file `registry.json` colocated in `packages/api/src/`.** Mirrors what shadcn does in their monorepo. Rejected because the user explicitly framed the registry as a global, multi-stack surface (per `project-templates-roadmap`); centralising the registry data in one repo forces a CLI release every time a new template ships. The co-located `template-item.json` per repo keeps the registry content-driven.
+
+2. **Build pipeline (`deessejs build`) generating `template-item.json` from TS source.** Mirrors `shadcn build` from sources like `registry/new-york/button.tsx`. Rejected for V2 because the build command would be a new public CLI command (breaking per ADR-010 §1) and the source files (`template-item.json` is data, not code) would be the schema itself. The V3 follow-up may revisit this once a real use case surfaces (e.g. multi-style templates where one repo ships several variants).
+
+3. **`manifest.json` (the historic design from `documents/internal/architecture/12-apps/cli/template-conventions.md`).** The historical proposal describes a richer manifest with tokens, removal lists, demos, etc. Rejected as the V2 shape because the historical doc is design history, not shipped code (per the divergence plan at `docs/engineering/plans/saas-template-divergence.md`); the `template-item.json` in this ADR supersedes it. The historical file's content is preserved in the git history of `documents/internal/architecture/12-apps/cli/template-conventions.md` for reference.
+
+### What this rule does not change
+
+- The CLI's three commands (`init`, `list`, `info`) and the `auth` group stay the public surface per ADR-010 §1. This ADR adds no new public command.
+- The CLI's typed oRPC client at `apps/cli/src/api/client.ts` stays the only outbound transport per ADR-001. `template-item.json` is fetched through the same client (`templates.list` returns it as part of the enrichment layer).
+- The cache directory (`~/.deessejs/`) and the cache file shape stay as documented by ADR-010 §4. `template-item.json` responses share the cache; the cache format is opaque (per ADR-010 §4).
+- The closed-list `CliErrorCode` per ADR-010 §2 stays closed. New install failures (post-install script fail, transform fail) map to `install_failed` (already on the internal list) or to `parse_error` for malformed `template-item.json`.
+- The `engines.node >= 20.0.0` floor at `apps/cli/package.json` stays. The CLI continues to publish as `@deessejs/cli` per ADR-010 §6.
+- The wire contract `@workspace/contracts` stays the canonical place for shared types. `TemplateV2` is added to `packages/contracts/src/v1/template.ts` next to `TemplateV1`. No contract moves outside the package.
+- The `apps/cli/src/commands/init.ts` flags (`--pm`, `--dir`, `--ref`, `--no-install`, `--force`, `--json`) stay as the per-command flags per ADR-010 §1. `--ref` becomes load-bearing (it now overrides `template-item.json#source.ref`); the other flags keep their current meaning.
+- The `--offline` global flag (per ADR-010 §1) keeps its "fall back to cache when the network is unreachable" semantics. Offline mode skips the `template-item.json` fetch if the cache hit is fresh; an item with a newer `source.ref` than the cached version refuses to install offline (logged at `cli_outdated`, not `install_failed`).
+
+## Consequences
+
+- **`packages/contracts` grows `TemplateV2`.** The new Zod schema lives in `packages/contracts/src/v1/template.ts` alongside `TemplateV1`. A barrel re-exports both. Server consumers that read `TemplateV1` continue to work; consumers that opt in read `TemplateV2`. The change is non-breaking for the wire because the server publishes both response shapes.
+- **`packages/api/src/templates.ts` gains typed entries.** Each entry in the `TEMPLATES` array picks up the new `TemplateV2` fields (`version`, `source.ref`, `requires`, `dependencies`, etc.). The enrichment layer at `packages/api/src/core/templates/enrich.ts` extends to merge `template-item.json` data when the upstream returns one (a future `template-item.json` is co-located in `deessejs/<slug>`; the enrichment fetches it via the GitHub raw URL pattern, parallel to the existing `fetchRepo` + `fetchReadme` calls).
+- **`apps/cli` learns to read `templates.json` and `template-item.json`.** The init flow gains a `loadTemplatesJson(projectRoot)` step that creates the file if missing and resolves placeholders from it. The `transform` verbs (`rename`, `interpolate`, `remove`, `merge`) live in `apps/cli/src/transforms/` (new folder) — one file per verb, following the one-folder-per-concept rule from ADR-002 and the command-file invariant from ADR-010.
+- **`packages/ui/src/deploy-button.tsx` and `packages/ui/src/demo-button.tsx` may consume `template-item.json#docs`.** Out of scope for this ADR; a follow-up can wire the gallery to surface docs. The `apps/web/src/app/(product)/templates/[template_slug]/page.tsx` page renders the existing enriched metadata; the docs field is an additive read.
+- **The `postinstall` whitelist lives in `apps/cli/src/commands/init.ts` as a closed-list constant.** Initial whitelist: `["pnpm install", "pnpm add", "pnpm remove", "pnpm db:push", "pnpm db:migrate", "pnpm format", "pnpm typecheck", "npm install", "yarn install", "bun install", "git init"]`. Adding a verb is an internal change (not a new public error code, not a new flag).
+- **A template author adds `template-item.json` to their repo's root, with the `$schema` URL pointing at `https://deessejs.com/schema/template-item.json`.** The schema is published from `deessejs.com` (a static file under `apps/web/public/schema/template-item.json`); the same pattern works for `templates.json`. The schema URL is the contract.
+- **A template repo's CI runs `ajv validate --spec https://deessejs.com/schema/template-item.json --strict < template-item.json`.** This is opt-in (the CLI does not require it), but recommended. The CLI's own internal validator at `apps/cli/src/commands/init.ts` uses the same schema via Zod's `parseAsync`, returning `parse_error` on failure.
+- **The `templates-content-not-cli` rule stays load-bearing.** A new entry in `packages/api/src/templates.ts` (the array that today has one entry, `saas-starter`) never triggers a CLI changeset. Only `Template` schema-level changes do.
+- **The cache directory gains a sibling file.** `~/.deessejs/template-items/<slug>.json` caches the per-item response (today the cache is `templates.json` only). The cache shape change is internal per ADR-010 §4 (the cache file format is not part of the public surface); stale entries are discarded via the existing ETag-driven revalidation.
+
+## Open questions
+
+Three design calls surfaced during review and remain open in this version of the ADR.
+
+### Question 1: ship `deessejs add @namespace/slug` as a V2 feature?
+
+shadcn's `add` is the headline command. DeesseJS's `init` is the headline today. Adding `add` requires either (a) bumping the CLI surface (breaking per ADR-010 §1) or (b) implementing `add` as an alias for `init <slug>` that reads `templates.json#registries` to resolve the namespace. Option (b) is non-breaking but blurs the meaning of `init` (today: clone a project; tomorrow: also overlay files). The team's preference: defer `add` to V3; keep `init` as the single install verb in V2.
+
+### Question 2: pin the `postinstall` whitelist at this size, or smaller?
+
+The proposed whitelist is eleven verbs. shadcn's analogue is implicit (any `pnpm`/`npm` script). The team needs to decide whether the whitelist's verbosity is a feature (clear contract) or a liability (template authors hit the wall when they need `pnpm prisma generate`). The default this ADR proposes is the eleven-verb list; a smaller V1 whitelist (five verbs) is acceptable if reviewers prefer.
+
+### Question 3: namespaces in V2 or V3?
+
+The `templates.json#registries` map is in this ADR. Whether the CLI ships the auto-discovery behaviour (a public repo with a `registry.json` at its root is automatically a registry) in V2 or V3 is open. V2 ships the explicit `registries{}` map; V3 may add the auto-discovery. The decision is independent of the rest of this ADR.
+
+## Cross-references
+
+- **`docs/engineering/plans/saas-template-divergence.md`.** The divergence plan that explains why the current registry lives in `packages/api/src/templates.ts` rather than in a separate `deessejs/registry-data` repo. ADR-031 does not change that placement; it adds the schema layer on top.
+- **`docs/engineering/plans/deessejs-main-app-repositioning.md`.** The plan that reframes the CLI keyword `saas-template` → `deessejs-main-app`. The `repo: "saas-template"` field in the registry stays as "technical data, not the project's identity" (per §284-286 of that plan). ADR-031 preserves that distinction.
+- **`docs/engineering/plans/robust-shared-backend.md`.** The plan that pins the CLI disk cache at `~/.deessejs/templates.json` with ETag-driven revalidation. ADR-031 adds a sibling file `~/.deessejs/template-items/<slug>.json`; the revalidation logic from this plan extends to it.
+- **`documents/internal/architecture/03-web-app/templates-library.md`.** The plan that names the four-surface system (Registry, Gallery, Deploy button, Demo button) and references the future `deessejs/templates-registry` repo. ADR-031 makes the "Registry" surface explicit via the `template-item.json` co-location rule; the future repo's role becomes a static catalog that lists `template-item.json` URLs (the shadcn `registry.json` shape), not a source of truth for the items themselves.
+- **`documents/internal/architecture/12-apps/cli/template-conventions.md`.** The historical proposal for a `manifest.json` per template. ADR-031 supersedes it; the historical file's content is preserved in git history for reference.
+- **`.claude/agent-memory/tech-lead/project/templates-content-not-cli.md`.** The load-bearing governance rule. ADR-031 reinforces it: a new entry in `packages/api/src/templates.ts` is content, never a CLI change.
+- **`.claude/agent-memory/tech-lead/project/template-strategy.md`.** The companion memory that frames the registry as a multi-stack, multi-target surface. ADR-031 is the typed contract for that strategy.
+- **`apps/cli/CHANGELOG.md`.** The historical record of CLI surface changes. ADR-031 is non-breaking at the CLI level (no new public command, no new flag, no new public error code); the next CLI entry that ships the implementation will land as a feature bump under the existing changelog discipline.
+
+## Related
+
+- [ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing.md). The contract discipline that ADR-031 extends to the registry. The `TemplateV2` shape is published through `@workspace/contracts`, the wire transport stays oRPC, no parallel envelope.
+- [ADR-004: API package structure](./ADR-004-api-package-structure.md). The single exception that pins `packages/api/src/templates.ts` as the static registry source. ADR-031 keeps that placement; the file's entries gain typed `TemplateV2` fields.
+- [ADR-005: API is consumer-agnostic](./ADR-005-api-consumer-agnostic.md). The server-side counterpart. ADR-005 says the server does not name the consumer; ADR-031 says the registry item is consumer-agnostic at the wire level (`TemplateV2` carries the shape; the CLI is one consumer, the web gallery is another).
+- [ADR-010: CLI public surface](./ADR-010-cli-public-surface.md). The invariants that fence the CLI's published surface. ADR-031 is non-breaking at the CLI level: no new public command, no new public flag, no new public error code. The closed-list `CliErrorCode` stays closed; `install_failed` and `parse_error` cover the new failure modes.
+- [ADR-001 §"What this rule forbids"](./ADR-001-orpc-is-load-bearing.md#what-this-rule-forbids). The list of forbidden workarounds (custom envelope, parallel REST, client-side workaround). ADR-031 does not introduce any of them; `template-item.json` is fetched through the typed oRPC client.
+- [shadcn `components.json` schema](https://ui.shadcn.com/docs/components-json). The reference model for `templates.json`. The shape differs (templates have tokens, no Tailwind, no aliases for Tailwind config), but the project-side config pattern is the same.
+- [shadcn `registry-item.json` schema](https://ui.shadcn.com/docs/registry/registry-item-json). The reference model for `template-item.json`. The item types differ (`template:app`, `template:package`, etc. instead of `registry:ui`, `registry:lib`, etc.); the field structure (`files[]`, `dependencies[]`, `registryDependencies[]` → `templateDependencies[]`, `cssVars` → not applicable) is parallel.
+- [shadcn registry getting started](https://ui.shadcn.com/docs/registry/getting-started). The reference for the URL format (`{host}/r/{name}.json`) and the static-JSON auto-discovery convention (`registry.json` at a public repo root).
+- [Better Auth pitfalls guide §5](../../../../docs/guides/better-auth/pitfalls). The local doc that pins the dynamic `baseURL` pattern; ADR-031 inherits the same "JSON over plain `fetch` is fine" stance for the GitHub raw-URL fetch in the enrichment layer.
