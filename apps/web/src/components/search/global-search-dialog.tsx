@@ -177,7 +177,7 @@ export function GlobalSearchDialog() {
                       </span>
                       <span className="text-sm font-medium">{result.item.title}</span>
                     </span>
-                    <span className="line-clamp-1 text-xs text-muted-foreground">
+                    <span className="line-clamp-2 text-xs text-muted-foreground">
                       {result.item.description}
                     </span>
                   </Button>
