@@ -13,6 +13,14 @@ const authors = defineCollection({
     name: z.string().min(1).max(120),
     avatar: z.string().optional(),
     bio: z.string().optional(),
+    // External identity links surfaced as schema.org `sameAs` on the
+    // Person JSON-LD emitted by /blog/[slug] and /blog/author/[handle].
+    // All optional; absent links are simply not emitted. The values
+    // are kept as free strings (no URL validation) to match the
+    // existing avatar/cover convention in this file.
+    twitter: z.string().optional(),
+    github: z.string().optional(),
+    website: z.string().optional(),
     content: z.string(),
   }),
 })

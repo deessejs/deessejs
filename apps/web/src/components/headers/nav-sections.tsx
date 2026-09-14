@@ -192,6 +192,11 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
             href: "/ecosystem",
             description: "The apps, SDKs, and contracts that ship together",
           },
+          {
+            label: "Stack",
+            href: "/stack",
+            description: "The hosting, database, auth, and billing providers we ship against",
+          },
         ],
       },
     ],

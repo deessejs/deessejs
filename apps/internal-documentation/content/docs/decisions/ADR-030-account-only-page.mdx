@@ -1,0 +1,123 @@
+---
+title: 'apps/app uses left rail nav'
+description: 'Draft (2026-09). Replace the SidebarProvider-based chrome in apps/app with a custom left rail under the header. The shadcn Sidebar component is gone. All /settings/* routes and /home are kept; the sidebar, the SettingsNav, and the pinned shortcut are deleted. The hub /settings becomes a redirect to /settings/profile.'
+---
+
+# ADR-030: apps/app uses left rail nav
+
+## Status
+
+Draft (2026-09). Awaiting review.
+
+## Context
+
+`apps/app/app/(protected)/` currently contains nine routes plus a `SidebarProvider`-based chrome (`apps/app/app/(protected)/layout.tsx`):
+
+- `home/page.tsx` — placeholder (`"Welcome back."`).
+- `settings/page.tsx` — hub listing five sections.
+- `settings/profile/page.tsx`, `settings/sessions/page.tsx`, `settings/connections/page.tsx`, `settings/account/page.tsx`, `settings/account/delete/page.tsx` — the five leaf pages (after the v2 review: `settings/security`, `settings/security/password`, and `settings/account/email` were collapsed into `settings/profile`).
+- The settings components in `apps/app/components/settings/` (`ProfileHeaderCard`, `EmailForm`, `PasswordForm`, `SessionsTable`, `ConnectedAccountsList`, `DeleteAccountDialog`, plus the `SettingsCard` / `SettingsPage` / `DangerZone` shells).
+- Six sidebar components in `apps/app/components/sidebars/` (`AppSidebar`, `SettingsNav`, `SidebarBackAction`, `NavUser`, `NavMain`, `NavProjects`) plus the pinned `SettingsShortcut` inline in `AppSidebar`.
+- Five items in `apps/app/components/sidebars/nav-user.tsx` dropdown (`Upgrade to Pro`, `Account`, `Billing`, `Notifications`, `Log out`) — three of which (`Upgrade to Pro`, `Billing`, `Notifications`) are placeholder items with no `onClick` / `href`.
+- The proxy at `apps/app/proxy.ts:5,25-26` gates `/home` and `/settings` behind email-verified session.
+
+The route tree is the right shape for V1 — every page above is a feature the user can already reach (Profile, Password, Sessions, Connected accounts, Change email, Delete account), and the team needs all of these pages back in a few weeks. The shell is the wrong shape: it leans on `SidebarProvider` from `@workspace/ui/components/sidebar` and inherits a collapsible icon mode, two separate nav components (`SettingsNav` for the settings subtree, the pinned `SettingsShortcut` for everywhere else), a `SidebarBackAction` that only renders on `/settings/*`, and a hub page at `/settings` that exists only to enumerate the children of its own sidebar entry. The shadcn `Sidebar` surface area is large (a controlled/uncontrolled API, a sidebar rail, an inset wrapper, a collapsible icon mode) for what V1 actually needs: a left column with five entries.
+
+The npm account page, GitHub settings, Linear settings, and Vercel Dashboard all expose settings navigation as a left rail — vertical, ~240 px wide, fixed, with the active entry visually highlighted. A custom left rail (not the shadcn `Sidebar` component) gives the same UX without inheriting the shadcn surface area. The new component is plain `<nav>` + `<Link>` rows; active matching is `usePathname()` longest prefix; icons come from `lucide-react`.
+
+## Decision
+
+The authenticated shell (`apps/app/app/(protected)/layout.tsx`) loses the shadcn `Sidebar`-based chrome. It gains a custom left rail under the header, listing the five primary sections: Home, Profile, Sessions, Connections, Account. `NavUser` migrates into the header; a `Contact us` button lives in the header to the left of `NavUser`. The five routes (`/home`, the hub `/settings`, and the four `/settings/*` leaves after the v2 review collapse) are all kept at their current paths; the only structural change is that the hub `/settings` becomes a server-side redirect to `/settings/profile`.
+
+### What this rule decides
+
+1. **The `(protected)` layout becomes header + left rail + main.** `apps/app/app/(protected)/layout.tsx` drops `SidebarProvider`, `AppSidebar`, `SidebarInset`, `SidebarRail`, and `SidebarTrigger`. The new layout has two zones in the header: the `APP_NAME` slot on the left (matching today's header at `apps/app/app/(protected)/layout.tsx:15-19`), and on the right a `Contact us` outline button followed by `NavUser`. Below the header, a left rail ~240 px wide renders the nav entries. The `<main>` content area expands to fill the remaining width. The new layout is implemented as plain flex (no `SidebarProvider` context, no `SidebarInset` wrapper). The shadcn `Sidebar` component is not used.
+
+2. **Five entries cover the surface.** The left rail exposes, in order: `Home` (`/home`), `Profile` (`/settings/profile`), `Sessions` (`/settings/sessions`), `Connections` (`/settings/connections`), `Account` (`/settings/account`). The active entry is the one whose path is the longest prefix match of the current `pathname`. Sub-pages (Delete) inherit the active state from their parent entry (a visit to `/settings/account/delete` highlights the Account entry; a separate "sub-active" indicator inside the entry content is not introduced in this ADR). In v1 of this ADR the rail carried six entries (including `Security`); the v2 review collapsed `/settings/security` and `/settings/security/password` into `/settings/profile` (the Password form is now a card on Profile), so the Security rail entry is gone.
+
+3. **Each entry target is a page hub.** Clicking an entry lands on a real page (`/settings/profile`, `/settings/account`) that renders cards for each feature (Profile header card with name + avatar + Email card + Password card on Profile; Email summary + Danger zone on Account). `/settings/account/page.tsx` renders two cards: an Email summary with a "Change" link to a sub-page (or, in v2, an inline form), and a Danger zone with a "Delete account" link to `/settings/account/delete`. The v2 review reduced Account to its essentials (the Email change form migrated to the Profile page, alongside the Password form). The summary cards become the entry point into each sub-page, so visiting an entry never lands on a near-empty page.
+
+4. **The hub `/settings` becomes a redirect.** `apps/app/app/(protected)/settings/page.tsx` is replaced by a server component that returns `redirect("/settings/profile")`. Any link or bookmark to `/settings` (none currently exist in the repo, verified by grep) lands on the Profile entry. The hub's `SECTIONS` array (`page.tsx:11-42`) is deleted with the file.
+
+5. **The six sidebar components are deleted.** `AppSidebar`, `SettingsNav`, `SidebarBackAction`, `NavMain`, `NavProjects`, and the inline `SettingsShortcut` in `AppSidebar` are removed. `NavUser` is kept and migrates from `SidebarFooter` into the page header. The dropdown collapses from five items to one (`Log out`); the `Upgrade to Pro`, `Account`, `Billing`, and `Notifications` items are dropped. The dropdown trigger renders the avatar only — no user name, no chevrons icon.
+
+6. **`Contact us` button lives in the header.** A `Button variant="outline"` reading "Contact us" sits in the header to the left of `NavUser`. The button has no `onClick` and no `href`; it is a placeholder for V1 (the team wires a real action later — likely a `mailto:` or an external helpdesk URL — but no ADR scopes that yet).
+
+7. **The settings components and the routes stay.** `ProfileHeaderCard`, `EmailForm`, `PasswordForm`, `SessionsTable`, `ConnectedAccountsList`, `DeleteAccountDialog`, `SettingsCard`, `SettingsPage`, `DangerZone` are kept at their current paths. The five leaf pages under `(protected)/settings/**` and `home/page.tsx` are kept verbatim. Their content is unchanged except where the v2 review collapsed a sub-page into its parent's card (Password form on Profile, Email form on Profile — the standalone `/settings/security`, `/settings/security/password`, and `/settings/account/email` routes are deleted).
+
+8. **The proxy is unchanged.** `apps/app/proxy.ts` keeps `PROTECTED_PREFIXES = ["/home", "/settings"]` and the matcher list at `:25-26`. No new path is gated, no existing path is ungated.
+
+9. **`apps/app/lib/app-config.ts` loses one constant.** The `settings: "/settings"` key is removed because the hub no longer renders. `home: "/home"` and any new `account` constant are out of scope for this ADR; the file already carries `home` and is left otherwise unchanged.
+
+10. **Consumers outside `apps/app` are unchanged.** `apps/web/src/components/headers/user-menu.tsx:128` resolves `dashboardHref` via `appUrl("/home", ...)`; `/home` is still the correct post-login landing, so the consumer is untouched. The `(unprotected)` auth flow callbacks (`device-form.tsx:115,138`, `login-form.tsx:28`, `oauth-buttons.tsx:15`) keep their `"/home"` redirects.
+
+11. **Meta.json wiring.** `apps/internal-documentation/content/docs/decisions/meta.json` already lists this ADR (`ADR-030-account-only-page`); no further wiring change.
+
+### What this rule allows
+
+- A V1 product where every authenticated page uses the same chrome: header + left rail + content. No mode-switching (`SettingsShortcut` on `/home`, `SettingsNav` on `/settings/*`, `SidebarBackAction` only on `/settings/*`, `HomeShortcut` always visible). One mental model.
+- A left rail that shows the surface at a glance. A user who wants Sessions sees the rail, clicks Sessions, lands on the sessions page. No hub step, no "was it under Settings or somewhere else."
+- Re-introduction of new sections in the next few weeks as **new entries on the rail**, not as new routes plus a new sidebar grouping. Each new feature adds one rail entry and one route; the rail stays a plain `<nav>` of `<Link>`s.
+- Re-use of the existing settings components and routes without touching their content. The change is purely a layout swap.
+- A `Contact us` entry point in the header — placeholder for V1, with a real wiring in a follow-up ADR.
+
+### What this rule forbids
+
+- The shadcn `Sidebar` component (`SidebarProvider`, `SidebarInset`, `SidebarRail`, `SidebarTrigger`, `SidebarMenu*`) in `apps/app`. The left rail is custom plain HTML (`<nav>` + `<Link>` + styled rows). If a future feature needs vertical nav inside a leaf page (for example, a Templates Library), it ships its own scoped nav within that page, not a top-level shadcn `Sidebar`.
+- Re-introducing a hub `/settings` page that lists sections. The hub is replaced by the left rail; it doesn't come back as a separate page.
+- Items in the avatar dropdown that don't go anywhere. Every `DropdownMenuItem` has an `href` / `onClick` or it isn't there. The `Upgrade to Pro` / `Account` / `Billing` / `Notifications` pattern is dead.
+- Adding new `(protected)/<x>/page.tsx` routes that don't appear in the rail. Every new protected route ships with a new rail entry. The two lists stay in lockstep.
+
+### Why not the alternatives
+
+1. **Single page at `/account`, no routes preserved.** The original draft of this ADR proposed collapsing everything onto a single page. Rejected after review: the team needs the eight `/settings/*` routes back in a few weeks, and re-creating them from git history under time pressure is more expensive than keeping them in place. Keeping the routes is reversible in either direction; collapsing them is one-way without a separate PR. The cost of the routes is six unused files; the cost of collapsing is a regression risk every time a new feature ships.
+
+2. **Single page at `/account`, with the eight routes kept as deep-links only.** All sections render stacked on `/account`, but each `/settings/*` URL still resolves to its page. Ambiguous in the UI: the user lands on `/settings/security/password` and sees... a fragment? a sub-page? The pattern invites inconsistency between the stacked view and the deep-link view. Rejected because the dual surface area is worse than the dual URL.
+
+3. **Collapsible icon sidebar (current pattern, just visually tightened).** Sidebar is already collapsible (`apps/app/components/sidebars/app-sidebar.tsx:87` — `collapsible="icon"`). Tightening the visual doesn't address the structural cost: two nav components, one hub page, one shortcut, one back action, all routing-specific. Rejected because the visual was never the problem; the routing-specific branching was.
+
+4. **Horizontal tabs row under the header (a previous draft of this ADR).** A row of tabs beneath the header. Rejected after a first review pass: the team prefers the left rail shape — it scales better visually when entries gain icons and labels grow longer, and it matches the npm / GitHub / Linear / Vercel reference shape. The tabs row is documented in the ADR's superseded draft (see git history); the rail wins.
+
+### What this rule does not change
+
+- **The `(unprotected)` auth flow.** `apps/app/app/(unprotected)/(auth)/{login,signup,forgot-password,reset-password,verify-email,device}/page.tsx` are untouched.
+- **The Hono + oRPC backend.** `apps/app/app/api/[[...route]]/route.ts`, the auth client, the device-flow hook, and the fetch interceptor are untouched.
+- **The Better Auth schema.** `packages/database/src/schema/auth.ts` is owned by the Better Auth CLI. This ADR doesn't add or remove columns.
+- **The CLI auth flow.** `apps/cli/src/lib/auth/flow/` and the device-code flow are unchanged. The CLI's post-approval landing is still `/home` (today, and after this ADR).
+- **The marketing site.** `apps/web` does not link to any `(protected)` route today other than via the user-menu's `dashboardHref`. That link still points at `/home` and is correct.
+- **The settings components' content.** `ProfileHeaderCard`, `EmailForm`, `PasswordForm`, `SessionsTable`, `ConnectedAccountsList`, `DeleteAccountDialog`, `SettingsCard`, `SettingsPage`, `DangerZone` keep their current implementation. The ADR only changes which layout renders around them.
+- **The proxy.** `apps/app/proxy.ts` is unchanged. Same protected prefixes, same matcher, same auth-page bounce.
+- **The `nav-main.tsx` and `nav-projects.tsx` sidebar components.** They are deleted because no consumer references them outside `AppSidebar` (verified by repo-wide grep), but the patterns they expose (`Collapsible` with `ChevronRightIcon`, project `DropdownMenu` with destructive action) are reusable for future tab-internal sub-navigation. If a future tab needs them, copy the pattern; do not bring the components back.
+
+## Consequences
+
+- **`apps/app` has one chrome across every authenticated page.** The `SidebarProvider` branching (`inSettings ? <SettingsNav /> : <SettingsShortcut />`) is gone. Every page sees the same header + left rail + main.
+- **~7 files are deleted.** `app-sidebar.tsx`, `settings-nav.tsx`, `sidebar-back-action.tsx`, `nav-main.tsx`, `nav-projects.tsx`, `(protected)/settings/page.tsx`, and one inline `SettingsShortcut` block. The other sidebar components are kept only if they have a consumer; `NavUser` migrates to the header.
+- **One file is rewritten, one new file.** `(protected)/layout.tsx` becomes header + left rail + main (a `Contact us` button is added between the header logo and `NavUser`). The left rail component is a new file at `apps/app/components/nav/settings-tabs.tsx` (or co-located under `(protected)/_components/` — design call during implementation); despite the filename carrying `tabs` for historical reasons, the file renders plain `<nav>` + `<Link>` rows and uses no shadcn `Tabs` primitive.
+- **The hub `/settings` is gone.** A visit to `/settings` server-redirects to `/settings/profile`. External links (none today, verified) land on the Profile entry.
+- **No route or form content changes.** All eight `/settings/*` leaves and `/home` are byte-identical after the ADR ships. Reviewers can verify by `git diff` on those files: zero changes expected.
+- **No data-layer change.** Same auth-client calls, same Better Auth schema, same Hono procedures. The change is a chrome swap.
+- **`Contact us` is a V1 placeholder.** The header button has no `onClick` and no `href`. A future ADR scopes the real wiring (likely `mailto:` or an external helpdesk URL).
+- **Reversibility cost is low.** The deleted files restore from git history if a future ADR reintroduces a shadcn `Sidebar` (or a different left rail primitive). The settings routes stay at their current URLs, so a rollback of the layout does not affect any deep-link.
+- **Mobile rendering is decided.** The left rail stays visible at all viewport widths; on narrow screens it collapses to a narrower column (icon-only labels hidden). The mobile collapse shape is documented in the implementation PR; the ADR scopes itself to the desktop shape.
+
+## Out of scope (deferred)
+
+- **2FA / passkeys.** The current Better Auth config (per `docs/guides/better-auth/setup.md`) doesn't enable the two-factor plugin. When it does, "Two-factor authentication" becomes a new section card on `/settings/profile` (the section grows inline). No ADR needed.
+- **API tokens / personal access tokens.** Same shape: new rail entry when the feature ships.
+- **Org / team membership.** Single-tenant by design (per README and AGENTS.md); out of scope.
+- **Billing.** Not in V1. When it ships, it's a new rail entry.
+- **A "Templates Library" or other product surface.** When it ships, the ADR that ships it picks its URL and its rail position; the shadcn `Sidebar` pattern is not reintroduced.
+- **`Contact us` real wiring.** A future ADR scopes the `mailto:` or external helpdesk URL.
+
+## Open questions
+
+None. Three design calls surfaced during review and have been resolved in this version of the ADR: the chrome is a custom left rail (not the shadcn `Sidebar`); `NavUser` renders avatar-only (no name, no chevrons) with a single `Log out` item, and a `Contact us` outline button sits to its left in the header; each entry target is a real page hub that already renders summary cards linking to its sub-pages.
+
+## Related
+
+- [ADR-028: GitHub OAuth on Better Auth](./ADR-028-github-oauth-better-auth). The Better Auth config that supplies the `linkSocial` / `unlinkAccount` calls the `ConnectedAccountsList` page surfaces. No code change here.
+- [ADR-029: Vercel preview URL wiring](./ADR-029-preview-url-wiring). The apps/app preview domain (`https://deessejs-app-git-<branch>-<scope>.vercel.app`) is unaffected. The chrome swap renders identically on every preview.
+- [root `AGENTS.md` §"Staging-first workflow"](../../../../../../AGENTS.md). The branch this ADR ships on (`chore/adr-030-account-only-page`) follows the `chore/{slug}` convention (no GitHub issue backing it).
+- [npm: Profile settings](https://docs.npmjs.com/) and [Linear: Settings](https://linear.app/settings) — production references for the left-rail nav pattern this ADR adopts.
+- [shadcn/ui Button](https://ui.shadcn.com/docs/components/button). The `Contact us` outline button uses this primitive; the variant `outline` is canonical for "secondary action in a header."
