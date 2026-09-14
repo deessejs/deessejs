@@ -141,7 +141,10 @@ jobs:
             echo "::error::npm install --dry-run failed (exit $NPM_EXIT); tail of npm debug log:"
             LATEST=$(ls -1t "$HOME/.npm/_logs"/*-debug-0.log 2>/dev/null | head -1)
             if [ -n "$LATEST" ]; then
-              tail -120 "$LATEST"
+              # Show enough of the log to capture the actual code/error
+              # lines, which appear at the very end after dozens of
+              # verbose fetch entries.
+              tail -400 "$LATEST"
             else
               echo "(no debug log found)"
             fi
