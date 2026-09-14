@@ -133,7 +133,20 @@ jobs:
           npm init -y > /dev/null
           echo "allow-remote=all" > .npmrc
           cp "$TARBALL_ABS" ./deessejs-cli.tgz
+          set +e
           npm install --dry-run ./deessejs-cli.tgz
+          NPM_EXIT=$?
+          set -e
+          if [ "$NPM_EXIT" -ne 0 ]; then
+            echo "::error::npm install --dry-run failed (exit $NPM_EXIT); tail of npm debug log:"
+            LATEST=$(ls -1t "$HOME/.npm/_logs"/*-debug-0.log 2>/dev/null | head -1)
+            if [ -n "$LATEST" ]; then
+              tail -120 "$LATEST"
+            else
+              echo "(no debug log found)"
+            fi
+            exit 1
+          fi
           popd > /dev/null
           rm -rf "$SCRATCH"
 
