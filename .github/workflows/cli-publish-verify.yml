@@ -126,10 +126,20 @@ jobs:
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
           npm init -y > /dev/null
-          npm install --dry-run --allow-remote=all --loglevel=verbose "$GITHUB_WORKSPACE/$TARBALL" \
-            || { echo "::error::npm install --dry-run failed"; exit 1; }
+          # Run npm and capture every byte of stderr/stdout to a file
+          # so the failure mode is visible in the workflow logs.
+          # The default GitHub Actions runner redacts most npm stderr
+          # output for non-zero exits, so we have to redirect manually.
+          NPM_LOG="$GITHUB_WORKSPACE/.npm-dryrun.log"
+          if ! npm install --dry-run --allow-remote=all "$GITHUB_WORKSPACE/$TARBALL" \
+            > "$NPM_LOG" 2>&1; then
+            echo "::error::npm install --dry-run failed; full log:"
+            cat "$NPM_LOG"
+            exit 1
+          fi
           popd > /dev/null
           rm -rf "$SCRATCH"
+          rm -f "$NPM_LOG"
 
       # Step 4: real install + npx smoke test. This is what the user
       # actually does. Fails if the install cannot complete or the
