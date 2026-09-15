@@ -7,7 +7,7 @@ description: 'Senior RFC for the deesse.json project-side configuration file. Wr
 
 ## Status
 
-**Draft (2026-09).** Approved as part of the registry documentation set on [PR #137](https://github.com/deessejs/deessejs/pull/137). Implementation lands in V2 alongside RFC-002. Open for review.
+**Draft (Revision Requested, 2026-09).** Approved as part of the registry documentation set on [PR #137](https://github.com/deessejs/deessejs/pull/137). Implementation lands in V2 alongside RFC-002. Open for review. The status was bumped from `Draft` to `Draft (Revision Requested)` after a senior review surfaced two critical blockers (secrets management, JSONC round-tripping) and several architectural edge cases (paths extensibility, state separation, monorepo scope, registry template sanitisation, sentinel token handling, offline schema). All addressed in the §Review amendments section.
 
 ## Summary
 
@@ -15,7 +15,7 @@ This RFC proposes **`deesse.json`**, a project-side configuration file written b
 
 `deesse.json` is the **consumer-side counterpart** to [`deesse-template.json`](./RFC-002-deesse-template.mdx). The two are paired: the CLI reads the project config to know where to write, and reads the template descriptor to know what to write. This RFC documents `deesse.json`; the template descriptor is documented in RFC-002.
 
-The file is **created by the CLI on first install** and **hand-edited by the user** from that point onward. It is checked into the project's source tree (typically alongside `package.json`) and is the only file the CLI writes into a project without the user's explicit `--force` for the second `add`.
+The file is **created by the CLI on first install** and **hand-edited by the user** from that point onward. It is checked into the project's source tree (typically alongside `package.json`) and is the only file the CLI writes into a project without the user's explicit `--force` for the second `add`. The file is **JSONC** (comments and trailing commas allowed); the CLI parses and writes it via `jsonc-parser` to preserve formatting across writes. Secrets are delegated to `.env.local` (gitignored); `deesse.json` itself is safe to commit (see §Review amendments §1).
 
 ## Goals and Non-Goals
 
@@ -32,7 +32,7 @@ The file is **created by the CLI on first install** and **hand-edited by the use
 1. **Being a runtime config** — `deesse.json` is a build-time / install-time file. Application runtime configs (env vars, feature flags) live in `.env.local` and similar, not here.
 2. **Tracking file history** — `deesse.json#templates["<feature>"]` records what was installed at which version. It does not record which files were created, which is out of scope for V2 (per the drift model in RFC-002 §Future Possibilities).
 3. **Auto-rewriting user-edited fields** — the CLI mutates `deesse.json` only on `init` (full write) and on `add`/`init` follow-ups (incremental update of the `templates{}` block). User-edited fields (`paths`, `aliases`, `tokens`, `registries`) are preserved verbatim.
-4. **Supporting arbitrary JSON-schema extensions** — the file's schema is closed-list (per [ADR-031](./decisions/ADR-031-deesse-json) §Reserved field names). Adding fields requires an ADR.
+4. **Supporting arbitrary JSON-schema extensions** — the **top-level** schema fields are closed-list (per [ADR-031](./decisions/ADR-031-deesse-json) §Reserved field names). The **nested values** (`paths.<x>`, `aliases.<x>`, `tokens.<x>`) are open: any string key is accepted, and the value type is constrained (string for paths/aliases, string for tokens). This split keeps the **engine surface closed** (no surprise top-level fields) while letting the **directory routing surface open** (templates introduce new `paths.<x>` keys as the ecosystem evolves).
 
 ## Motivation
 
@@ -116,9 +116,18 @@ The two blocks overlap in a single-package project (`paths.routes = "src/app"` m
 
 Tokens are the **runtime substitution map** for files that ship with `{{KEY}}` placeholders. When the CLI applies a `transform: "interpolate"` file from `deesse-template.json#files[]`, it substitutes `{{KEY}}` with `tokens.<KEY>`.
 
-The map is **user-editable** because the user is the source of truth for their environment-specific values (database URLs, API keys, deployment hosts). The CLI writes defaults at `init` (from the template's prompt answers that target `tokens:<KEY>` via the `consumes[]` convention documented in RFC-002), and the user hand-edits the values they do not want in version control (the convention is to add `deesse.json` to `.gitignore` for the secrets-bearing blocks, but that is the user's choice).
+The map supports two value shapes:
 
-A token value that is a placeholder (e.g. `{{DATABASE_URL}}`) is a sentinel: the CLI wrote a template substitution that the user has not yet replaced. The CLI warns at install time when a sentinel value is detected, but does not refuse the install.
+```jsonc
+"tokens": {
+  "NEXT_PUBLIC_APP_URL": "http://localhost:3000",   // literal value
+  "DATABASE_URL": "env:DATABASE_URL"                // resolved at install time from process.env or .env.local
+}
+```
+
+A **literal value** is interpolated directly into `files[]` transforms. An **`env:<VAR>` value** tells the CLI to resolve `process.env.<VAR>` at install time. If the variable is unset, the CLI reads `.env.local` (created via `dotenv`). If still unset, the install **fails fast** with `parse_error` listing the missing variables. This design makes `deesse.json` safe to commit: secrets live in `.env.local` (gitignored), not in the JSON.
+
+The map is user-editable because the user is the source of truth for their environment-specific values. The CLI writes defaults at `init` (from the template's prompt answers that target `tokens:<KEY>` via the `consumes[]` convention documented in RFC-002). A token value that is a literal `{{KEY}}` placeholder is a **sentinel**: the CLI wrote a template substitution that the user has not yet replaced. **The CLI fails fast** when a `files[]` transform would write a literal sentinel into an output file (lists the file path, the offending token, and the missing env var). A `--skip-token-check` flag exists for the rare case where the user wants to install with sentinels and fix them later; it is off by default.
 
 ### The `registries{}` namespace map
 
@@ -128,9 +137,11 @@ A namespace entry that points at a host the user has not previously seen trigger
 
 Namespaces are **not vetting**. The `@deessejs` and `@deessejs-community` namespaces carry vetting (curated review per RFC-002 §Community support); `@<host>/...` does not. The CLI does not enforce vetting at the protocol level; it surfaces the warning and lets the user decide.
 
-### The `templates{}` resolved-state block
+### The `templates{}` resolved-state block (now in `deesse.lock`)
 
-The block records what the user has installed. Each entry:
+The original draft placed this block in `deesse.json`. The senior review flagged that conflation creates merge conflicts in team environments. The block now lives in **`deesse.lock`** (gitignored, per-developer state), mirroring `package.json` vs `package-lock.json`. `deesse.json` is **declarative config only** (the `template`, `version`, `database`, `packageManager`, `typescript`, `git`, `paths`, `aliases`, `tokens`, `registries` blocks).
+
+The `deesse.lock` block records what the user has installed. Each entry:
 
 ```jsonc
 "templates": {
@@ -142,11 +153,19 @@ The block records what the user has installed. Each entry:
 }
 ```
 
-The CLI writes the entry at the **commit point** of the install (per RFC-002 §Detailed Design, ADR-033 §Install sequence step 12: the `deesse.json#templates["<feature>"]` update is the last step; if a preceding step fails, this block is not updated).
+The CLI writes the entry at the **commit point** of the install (per RFC-002 §Detailed Design, ADR-033 §Install sequence step 12: the `deesse.json#templates["<feature>"]` update is the last step; if a preceding step fails, this block is not updated). The write is atomic (`fs.writeFile(tmp); fs.rename(tmp, real)`) so a crash mid-install cannot corrupt the lock file.
 
 The `source` field records **where the item came from** (`@deessejs/saas-starter`, `@community/user/my-template`, etc.). This is the user's audit trail for "what did I install from where?" — useful when triaging a supply-chain incident (e.g. "did I install that compromised item last week?").
 
 The block is **CLI-managed**. A user who hand-edits an entry gets overwritten on the next install of that item. This is intentional: the canonical state lives in the registry, not in the user's hand-edits.
+
+**Re-install semantics**. When `deessejs add <slug>` runs against an item already present in `deesse.lock`:
+
+- **Default behaviour**: the CLI **refuses** with a new internal error code (TBD; `install_in_progress` is a placeholder). The user sees a message listing the locked entry (`version`, `installedAt`, `source`) and the available options:
+  - `--force` — silent overwrite (mirrors today's `add` semantics per RFC-002 §Decision #7).
+  - `--upgrade` — preserve user edits in `files[]` outputs and refresh the lock entry's `version` + `installedAt`. The new `version` is whatever the registry returns at fetch time (per RFC-002 §source.ref).
+- **Why refuse by default**: silent re-installs are surprising — the user thinks they're adding a feature, but the registry may have shipped a breaking change since the last install. Forcing an explicit `--upgrade` makes the user aware.
+- **Future work**: a `deessejs doctor` command may flag items whose locked `version` lags the registry's latest by N semver-minors; out of scope for V2.
 
 ## Alternatives Considered
 
@@ -180,7 +199,7 @@ The Zod schema for `deesse.json` (the `Project` schema in `@workspace/contracts/
 
 ### Secrets handling
 
-`tokens.DATABASE_URL` and similar may carry secrets in plaintext. The CLI does not encrypt the file; the user is expected to add `deesse.json` to `.gitignore` if the tokens are secret-bearing. A future ADR may introduce a `tokens.<KEY>.secret: true` field that the CLI encrypts at rest (using the OS keychain), but that's out of scope for V2.
+Secrets are **never stored in `deesse.json`**. The `tokens` block uses the `env:<VAR>` convention to delegate secret values to the environment (process.env or `.env.local`, the latter loaded via `dotenv`). The CLI fails fast if `env:<VAR>` cannot be resolved at install time. `deesse.json` itself is safe to commit; `.env.local` is the user's gitignored secret store. A future ADR may introduce encrypted-at-rest tokens (`tokens.<KEY>.secret: true` with OS keychain backing), but that's out of scope for V2.
 
 ### Backward compatibility
 
@@ -248,6 +267,87 @@ Rails's `config/initializers/` directory follows a similar idea (one config file
 
 - **[ADR-001: oRPC is load-bearing](./decisions/ADR-001-orpc-is-load-bearing)** — amended by [issue #139](https://github.com/deessejs/deessejs/issues/139) for plain-HTTPS `fetch` against the registry CDN. `deesse.json#registries` is the user-facing surface that declares which hosts are trusted.
 - **[ADR-010: CLI public surface](./decisions/ADR-010-cli-public-surface)** — the invariants that fence the CLI's published surface. `deesse.json` is consumer-side, not a CLI command.
+
+## Review amendments
+
+This section captures amendments applied after the senior review of the initial draft. Each amendment references the original concern and the resolution.
+
+### 1. Secrets are never stored in `deesse.json` (Blocker 1)
+
+The original draft said `deesse.json` is checked into git and the user can choose to gitignore it. The reviewer flagged the contradiction: gitignoring the file loses team-wide config.
+
+**Resolution**: `deesse.json` is **always checked in**. Secrets are delegated to `.env.local` (gitignored). The `tokens` block supports two value shapes:
+
+```jsonc
+"tokens": {
+  "NEXT_PUBLIC_APP_URL": "http://localhost:3000",
+  "DATABASE_URL": "env:DATABASE_URL"
+}
+```
+
+- A literal value (like `"http://localhost:3000"`) is interpolated directly into `files[]` transforms.
+- An `env:<VAR>` value tells the CLI to resolve `process.env.<VAR>` at install time. If the variable is unset, the CLI reads `.env.local` (created via `dotenv`). If still unset, the install **fails fast** with `parse_error` listing the missing variables.
+
+This change makes `deesse.json` safe to commit. The previous risks section about "encrypted secrets via OS keychain" is deferred to a future ADR; the env-var delegation is the V2 contract.
+
+### 2. The file is JSONC; CLI uses `jsonc-parser` for AST-preserving edits (Blocker 2)
+
+The original draft said the file round-trips through `JSON.parse + JSON.stringify`, but the format must allow comments and trailing commas without breaking the parser. Standard `JSON.stringify` would reformat the file, strip comments, and reorder keys.
+
+**Resolution**: `deesse.json` is **JSONC** (JSON with comments and trailing commas). The CLI uses [`jsonc-parser`](https://www.npmjs.com/package/jsonc-parser) (specifically `parseTree` for reading, `modify` + `applyEdits` for writing) to preserve comments, formatting, indentation, and key order across writes. Standard `JSON.parse` is not used. A new `deesse-cli/internal/format/jsonc.ts` module owns this concern. Tests verify that round-tripping `deesse.json` through `jsonc-parser` preserves comments, trailing commas, and field order byte-for-byte.
+
+### 3. `paths{}` is open (`Record<string, string>`), not closed-list
+
+The original draft said the schema is closed-list. The reviewer flagged that a closed-list `paths{}` would block the first template that introduces a new paradigm (`emails`, `workers`, `migrations`, etc.).
+
+**Resolution**: the **top-level schema fields are closed-list** (per ADR-031 §Reserved field names), but **`paths` and `aliases` are `Record<string, string>`** — any string key is accepted. The Zod schema validates that the value is a non-empty string; it does not constrain the key. The first template to ship a `paths.emails` value is not blocked by the schema. Editor tooling still gets autocomplete for the well-known paths (`routes`, `components`, etc.) via the JSON Schema's `properties` hint.
+
+### 4. State is split into `deesse.json` + `deesse.lock`
+
+The original draft conflated declarative config (`paths`, `aliases`) with imperative state (`templates{}`) in one file. The reviewer flagged that team environments would generate constant merge conflicts.
+
+**Resolution**: the design now splits into two files:
+
+- **`deesse.json`** — declarative config only. `template`, `version`, `database`, `packageManager`, `typescript`, `git`, `paths`, `aliases`, `tokens`, `registries`. Checked into git. **No `templates{}` block.**
+- **`deesse.lock`** — imperative state only. `templates.<slug>` entries with `version`, `installedAt`, `source`. Gitignored. Mirroring `package.json` vs `package-lock.json`.
+
+The CLI writes both atomically (`fs.writeFile(tmp); fs.rename(tmp, real)`) so a crash mid-install cannot corrupt either file. This eliminates the merge-conflict problem on `deesse.json` (the lock file is per-developer) and keeps the declarative config clean.
+
+ADR-031 is amended accordingly: the `templates` block is removed from the `Project` schema (in `@workspace/contracts/src/v1/project.ts`) and gains its own `Lock` schema.
+
+### 5. Monorepo: walk-up discovery
+
+The original draft deferred per-app config to V3. The reviewer flagged that a monorepo with `apps/web` and `apps/mobile` cannot service both from a single `deesse.json` at the root.
+
+**Resolution**: the CLI walks up from the current directory until it finds a `deesse.json`. If the user runs `deessejs add auth` from `apps/web/`, the CLI uses `apps/web/deesse.json` if it exists, falling back to the root `deesse.json` for the unset fields (paths, aliases). The `paths{}` in a nested `deesse.json` overrides the parent's `paths{}` on a per-key basis (deep merge, child wins). Goal #2 in this RFC is updated to: *"Supports monorepos via walk-up discovery: a nested `deesse.json` at `apps/<x>/deesse.json` overrides the parent's fields on a per-key basis. Multi-app workspace targeting is formalised; V3 may add a `--target=<app>` flag for cross-app installs."*
+
+### 6. Re-install semantics
+
+The original draft did not specify what happens when `deessejs add <slug>` runs against an item already in `deesse.lock`.
+
+**Resolution**: the CLI **refuses by default** with a new internal error code `install_in_progress` (or its successor; naming TBD in implementation). The user must pass either `--force` (silent overwrite, like today) or `--upgrade` (preserve user edits in `files[]` outputs and refresh `version` + `installedAt`). The `State block` section is amended to spell this out. The `--upgrade` flag is a future flag (no SemVer impact for V2 since it's gated on the new `--upgrade` flag existing).
+
+### 7. `registries{}` template `{name}` sanitisation
+
+The original draft did not specify how `{name}` is sanitised before interpolation into a registry URL template.
+
+**Resolution**: the CLI enforces a strict regex `^[a-z0-9][a-z0-9_-]*$` on `{name}` before interpolation. Any character outside this set (including `.`, `/`, `\`, `?`, `#`, `%`, control characters) causes `parse_error`. This blocks path traversal (`../../evil`), URL injection (`?param=...`), and percent-encoding tricks. The slug regex is the same as the one used for `deesse-template.json#name` (per RFC-002 §Field reference §name), so the invariants are consistent across the system.
+
+### 8. Sentinel token fail-fast
+
+The original draft said the CLI "warns at install time" when a sentinel token (`{{KEY}}`) is detected. The reviewer flagged that a literal `{{KEY}}` written to a TypeScript file would break the user's build at compile time.
+
+**Resolution**: the CLI **fails fast** when a `files[]` transform would write a literal `{{KEY}}` sentinel into an output file. The error message lists the file path, the offending token, and the missing environment variable (or `.env.local` entry). A new flag `--skip-token-check` exists for the rare case where the user wants to install with sentinels and fix them later (off by default; the default is fail-fast).
+
+### 9. Schema is bundled offline
+
+The original draft specified `$schema: "https://registry.deessejs.dev/schema/project.json"`. The reviewer flagged that an offline / air-gapped CI environment cannot fetch this URL.
+
+**Resolution**: the CLI bundles the Zod schema (`Project` + `Lock`) as part of `@workspace/contracts`. The `$schema` URL in the file is a hint for editors (which fetch it for autocompletion); the CLI itself does **not** fetch it. Validation is always local. The CDN URL is updated automatically when the schema evolves (via the publication CI per ADR-032 Consequences), but the CLI's bundled schema lags at most one release behind — acceptable for V2; a future ADR may add a `--schema-version-check` flag for users who need to enforce freshness.
+
+### 10. Status bumped to `Draft (Revision Requested)`
+
+The senior review surfaced two critical blockers (secrets, JSONC) and several edge cases. The status was `Draft`; this amendment cycle resolves the blockers. Once the implementation lands and the unit tests pass, the status flips to `Accepted`.
 
 ## Related
 
