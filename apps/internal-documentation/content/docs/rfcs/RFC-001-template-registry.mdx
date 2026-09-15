@@ -385,6 +385,60 @@ Templates are **write-once overlays** in V2 and V3. DeesseJS does **not** provid
 
 A future ADR may introduce `deessejs remove`, `deessejs upgrade`, or a `deessejs template manifest` field that tracks which files each item created (for drift detection). The V2/V3 contracts are intentionally minimal here: shipping an uninstall or upgrade primitive without a clear failure model for partial drift would create more problems than it solves.
 
+### Community support
+
+The V2 contract supports **third-party community templates and features** without changes to `deesse.json`, `deesse-template.json`, or the CLI command surface. The user opts in to a registry by adding an entry to `deesse.json#registries` (per [ADR-031](./decisions/ADR-031-deesse-json)); the CLI fetches items from any registry the user has declared.
+
+**Two-tier namespace model.** Items in the ecosystem live in one of two namespace tiers, distinguished by their `deesse.json#registries` host and the namespace prefix in their `name`:
+
+| Namespace prefix | Tier | Vetting | Discovery |
+|---|---|---|---|
+| `@deessejs/...` | Official | Reviewed and published by the DeesseJS core team. Lives on `registry.deessejs.dev`. | Default; no opt-in needed. |
+| `@deessejs-community/...` | Curated community | Mandatory review by a DeesseJS maintainer via a GitHub PR against `deessejs/community-registry` (a centralised registry repo that re-publishes curated items to `registry.deessejs.dev/community/`). | Default; no opt-in needed. |
+| `@<host>/...` | Open community | No vetting. Lives on the author's own registry (declared in the user's `deesse.json#registries`). | Opt-in per host; the user adds `"@<host>": "https://<host>/r/{name}.json"` to their registries map. |
+
+The `@deessejs-community/...` tier is **mandatory-reviewed**: an author cannot self-publish to this namespace. A PR against `deessejs/community-registry` is reviewed for code quality, security (no `postinstall` scripts in transitive dependencies, no obvious supply-chain risk), license compatibility, and adherence to the `deesse-template.json` schema. Only after a maintainer approves the PR is the item published to `registry.deessejs.dev/community/<slug>.json` and made installable.
+
+**Provenance verification (Sigstore + OIDC, opt-in).** Items in any tier may carry a `provenance` field in `deesse-template.json` that ties the published descriptor to a specific GitHub commit via Sigstore-signed attestation (inspired by [npm provenance](https://github.blog/security/supply-chain-security/introducing-npm-package-provenance/) and SLSA). Shape:
+
+```jsonc
+{
+  "provenance": {
+    "type": "sigstore",
+    "repository": "github.com/user/my-deesse-template",
+    "ref": "refs/tags/v1.4.0",
+    "commit_sha": "abc123...",
+    "attestation": {
+      "mediaType": "application/vnd.dev.sigstore.bundle+json",
+      "bundle": "<base64-encoded Sigstore bundle>"
+    }
+  }
+}
+```
+
+The CLI's verification is **opt-in** (per `--verify-provenance` flag, default off to keep the V2 install flow simple). When on, the CLI fetches the Sigstore bundle, verifies the signature against the Fulcio root, checks the inclusion promise against the rekor log, and asserts the `commit_sha` matches the `source.ref` in the descriptor. A failed verification emits a loud warning but does **not** block the install (per the npm pattern — provenance is informational, not gating). Future versions may make verification default-on for `@deessejs-community` items.
+
+**Distribution model.** Each author maintains their own GitHub repo (the V2 contract already requires `deesse-template.json` at the root). The author's CI publishes a tarball to their own host (or uses GitHub's `codeload` archive endpoint as a default). The user's `deesse.json#registries` entry points at the author's host URL. There is no centralised registry repo that authors must PR against (except for `@deessejs-community` items, which go through `deessejs/community-registry`).
+
+**Trust warnings (already shipped in ADR-032 §Hook runner safety rules).** The CLI surfaces a one-time trust warning at first install from an unfamiliar host:
+
+```
+Warning: this template installs untrusted dependencies.
+The package manager will run lifecycle scripts (preinstall, install, postinstall) for each one.
+Continue? [y/N]
+```
+
+`@deessejs/` items never show the warning. `@deessejs-community/` items never show it (the namespace is the vouch). `@<host>/` items always show it on first install from that host; the `--trust-host=<host>` flag suppresses subsequent warnings from the same host.
+
+**Future considerations** (out of scope for V2, may land in V3+):
+
+- **`deessejs community submit`** — a CLI command that scaffolds a PR against `deessejs/community-registry` from a local `deesse-template.json` (analogous to `npm publish` but submitting to a curated namespace).
+- **Reviewer rotation** — a documented process for assigning `@deessejs-community` PRs to maintainers, with a turnaround SLA.
+- **Sign-and-publish OIDC** — the author's CI uses Sigstore's OIDC signing against GitHub Actions to attest the `commit_sha` automatically; the provenance field is auto-populated by the CI, not hand-written.
+- **Per-tier search UX** — the gallery (`apps/web/src/app/(product)/templates/`) filters by namespace tier with distinct badges ("Official", "Community", "Verified").
+- **De-publication** — a tier-aware de-publication flow (an item removed from `@deessejs-community` becomes `@<host>/...` on the author's own registry; an item removed from `@deessejs/` is gone everywhere).
+- **Anti-impersonation** — a `deessejs template validate --strict` check that verifies the `source.repo` matches the GitHub org whose OIDC token signed the provenance (catches typosquats like `@deessejs-community/saas-startr`).
+
 ## Cross-references
 
 ### Atomic decisions (ADRs)
