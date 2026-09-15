@@ -7,7 +7,7 @@ description: 'Senior RFC for the deesse.json project-side configuration file and
 
 ## Status
 
-**Draft (2026-09).** Two senior review rounds resolved critical blockers (secrets handling, JSONC round-tripping, lockfile tracking, walk-up path resolution, lazy token validation, error taxonomy). All blockers resolved and inlined into the body of this RFC. The implementation lands in V2 alongside RFC-002.
+**Accepted (2026-09).** Three senior review rounds resolved critical blockers (secrets handling, JSONC round-tripping, lockfile tracking, walk-up path resolution, lazy token validation, error taxonomy, lockfile commit convention, monorepo lockfile placement, sync --check scope, timestamp determinism). All blockers resolved and inlined into the body of this RFC. The implementation lands in V2 alongside RFC-002.
 
 ## Summary
 
@@ -18,7 +18,7 @@ This RFC proposes **two paired files** that together define the consumer-side co
 
 The two files are the **consumer-side counterpart** to `deesse-template.json` (per RFC-002). The CLI reads `deesse.json` to know where to write and reads `deesse-template.json` to know what to write; it updates `deesse.lock` to record what was installed. This RFC documents both files; the template descriptor is documented in RFC-002.
 
-The lockfile is committed because the **entire purpose of a lockfile is deterministic state across a team and CI**. `package-lock.json`, `pnpm-lock.yaml`, `Cargo.lock`, and `Gemfile.lock` are all committed; `deesse.lock` follows the same convention. The file format is merge-friendly (keys sorted alphabetically, deterministic timestamps), so concurrent installs produce diffs that resolve without manual intervention in most cases.
+The lockfile is committed because the **entire purpose of a lockfile is deterministic state across a team and CI**. `package-lock.json`, `pnpm-lock.yaml`, `Cargo.lock`, and `Gemfile.lock` are all committed; `deesse.lock` follows the same convention. The file format is merge-friendly (keys sorted alphabetically, timestamps as date-only `YYYY-MM-DD` UTC), so concurrent installs produce diffs that resolve without manual intervention in most cases.
 
 ## Goals and Non-Goals
 
@@ -101,7 +101,7 @@ The two files are the **answer to the consumer's "where do you put things, what 
   "templates": {
     "saas-starter": {
       "version": "1.4.0",
-      "installedAt": "2026-09-14T12:00:00.000Z",
+      "installedAt": "2026-09-14",
       "source": "@deessejs/saas-starter"
     }
   }
@@ -130,7 +130,7 @@ A single block:
 "templates": {
   "<slug>": {
     "version": "<semver>",
-    "installedAt": "<ISO 8601 timestamp>",
+    "installedAt": "<YYYY-MM-DD date, UTC>",
     "source": "<namespace prefix or registry host>"
   }
 }
@@ -140,7 +140,7 @@ The CLI writes this block on every install (init and add). The write is atomic (
 
 **The lock file is committed to git**, not gitignored. This is the standard convention for tool lockfiles (`package-lock.json`, `pnpm-lock.yaml`, `Cargo.lock`, `Gemfile.lock` are all committed). The entire purpose of a lockfile is to provide deterministic state across the team and CI; gitignoring it defeats that purpose. Merge conflicts on the lockfile resolve cleanly because:
 
-- The format is **deterministic**: keys are sorted alphabetically, timestamps are ISO 8601 UTC, indentation is fixed.
+- The format is **deterministic**: keys are sorted alphabetically, timestamps are date-only `YYYY-MM-DD` UTC (precision at the day level, eliminating trivial merge conflicts from same-day installs), indentation is fixed.
 - Two concurrent installs of the same item resolve to the same `version` (semver) and `source` (namespace prefix), so a conflict on the same slug is rare.
 - For different slugs, Git's three-way merge handles the additions without manual intervention.
 - For the rare case where a manual conflict needs resolution, `deessejs sync` re-fetches each entry's version from the registry and rewrites the file deterministically.
@@ -329,6 +329,47 @@ Rails's `config/initializers/` directory follows a similar idea (one config file
 - **Encrypted secrets** — `tokens.<KEY>.secret: true` encrypts at rest via the OS keychain.
 - **`deesse.lock` checksums for tamper detection** — verify the install at fetch time matches the lockfile entry.
 - **`deessejs sync --check` in CI** — exit 1 if the lockfile is stale; blocks PRs that introduce drift.
+
+## Implementation notes
+
+Three operational nuances surfaced in the senior review of revision 3. They are not architectural blockers — they are details that the V2 implementation PR must capture. This section records them so they are not lost between this RFC and the implementation.
+
+### A. Lockfile placement in monorepos
+
+**Decision**: a **single root `deesse.lock` per repository workspace**. The lockfile lives at `<repo-root>/deesse.lock`, mirroring `package-lock.json` (which always lives at the root, regardless of how many `package.json` files are in sub-directories). Sub-app `deesse.json` files (per §Detailed Design walk-up discovery) are fine; sub-app `deesse.lock` files are **not** allowed.
+
+**Why a single root**: multiple distributed lockfiles across packages create synchronisation overhead (when does Developer A's `apps/web/deesse.lock` get merged with Developer B's `apps/api/deesse.lock`?). A single root lockfile gives the team one source of truth for "what's installed in this workspace". CI verification (`deessejs sync --check`, per §B below) reads one file, not N.
+
+**Exception**: a future ADR may introduce per-app `deesse.lock` if a real use case surfaces (e.g. an app that ships with its own immutable template set and must not be affected by root updates). Out of scope for V2.
+
+### B. `deessejs sync --check` scope
+
+**Decision**: `deessejs sync --check` validates **internal consistency and lockfile integrity**, **not** whether newer remote versions exist on the CDN.
+
+The check asserts:
+
+- The lockfile parses against the `Lock` Zod schema.
+- Each `templates.<slug>` entry's `version` and `source` are well-formed (semver, valid namespace).
+- Each `templates.<slug>` entry's resolved path (`source.repo` + `source.ref`) is reachable in the local `deesse.json#paths` (no broken references).
+- The lockfile is internally deterministic (sorted keys, no duplicates, valid date format).
+
+**What it does NOT check**:
+
+- Whether `version` matches the registry's latest `version` for that `slug`.
+- Whether `source.ref` matches the registry's current `ref`.
+- Whether a newer `slug` exists that the user might want.
+
+**Why this matters**: if `sync --check` queried the remote registry for latest versions, any upstream template update (even a non-breaking minor/patch) would immediately break CI on completely unrelated PRs across every repository consuming that template. CI must be **stable against upstream churn**. The freshness check belongs in `deessejs outdated` (a separate command, deferred to V3+) or `deessejs doctor` (V3+).
+
+### C. Deterministic timestamp generation in lockfiles
+
+**Decision**: `installedAt` is a **date-only UTC string in `YYYY-MM-DD` format**. The previous draft used full ISO 8601 timestamps (`2026-09-14T12:00:00.000Z`); the date-only form eliminates trivial merge conflicts from same-day installs.
+
+**Why date-only**: in team development, if Developer A and Developer B both install `feature-x@1.0.0` on separate branches within the same UTC day, their `installedAt` is identical (`2026-09-14`). The merge is trivial — no conflict on the timestamp field. Cross-day installs resolve to a clear winner (the later date).
+
+**`installedAt` is non-semantic metadata.** It is for human audit ("when did I install this?") and supply-chain incident triage ("what version was deployed last Thursday?"). It is **not** used by the CLI for any runtime decision. The CLI never re-installs because `installedAt` is newer or older; it re-installs because the user passes `--upgrade` (per §Detailed Design "Re-install semantics"). The `deessejs sync` command treats `installedAt` as non-semantic when resolving conflicts: it preserves the earlier timestamp (deterministic, idempotent).
+
+**Trade-off accepted**: we lose the precision of "installed at 14:23 UTC". The trade-off is intentional — merge-conflict-free commits are worth more than audit precision at the second level. If second-level precision becomes a real audit need, a future ADR may add a separate `installedAtTimestamp` field (full ISO 8601, separate from the date-only `installedAt`) that is gitignored or stored in a separate per-developer cache. Out of scope for V2.
 
 ## Cross-references
 
