@@ -1,23 +1,46 @@
+import Link from "next/link"
+import type { ReactNode } from "react"
 import { ExternalLink } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
 
-const COMPONENTS_REPO_URL =
-  "https://github.com/deessejs/deessejs/tree/main/packages/ui"
-
-type Props = {
-  title?: string
-  body?: string
+export type FooterCtaProps = {
+  title: string
+  body: ReactNode
+  /** Primary action (solid button). */
+  primaryLabel: string
+  primaryHref: string
+  primaryExternal?: boolean
+  /** Secondary action (outline button). Optional — omit for a single-CTA card. */
+  secondaryLabel?: string
+  secondaryHref?: string
+  secondaryExternal?: boolean
 }
 
 /**
- * Footer CTA reused by `/components` and every
- * `/components/[category]` dummy page. Carries over unchanged in V2.
+ * Reusable footer CTA card. Calque of `pricing/page.tsx:427-451` —
+ * rounded card with muted background, primary + optional secondary
+ * action buttons, side-by-side on desktop, stacked on mobile.
+ *
+ * Lives inside `<article>` directly (no extra wrapper needed) — the
+ * `border border-border bg-muted/30 rounded-lg` classes make the
+ * `<section>` itself the card. Both internal links (`<Link>`) and
+ * external links (`<a target="_blank">) are supported via the `*
+ * External` flags.
+ *
+ * V1 dummy for `/components` and `/blocks` registries. V2 keeps the
+ * shape; only `body` and `primaryLabel`/hrefs swap per route.
  */
 export function FooterCta({
-  title = "Read the source.",
+  title,
   body,
-}: Props) {
+  primaryLabel,
+  primaryHref,
+  primaryExternal = false,
+  secondaryLabel,
+  secondaryHref,
+  secondaryExternal = false,
+}: FooterCtaProps) {
   return (
     <section
       aria-labelledby="cta-heading"
@@ -31,28 +54,40 @@ export function FooterCta({
           {title}
         </h2>
         <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
-          {body ?? (
-            <>
-              Every primitive lives in{" "}
-              <code className="font-mono text-foreground/90">
-                packages/ui
-              </code>
-              . MIT, no paywall.
-            </>
-          )}
+          {body}
         </p>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button asChild>
-          <a
-            href={COMPONENTS_REPO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View on GitHub
-            <ExternalLink className="size-3.5" aria-hidden />
-          </a>
+          {primaryExternal ? (
+            <a
+              href={primaryHref}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {primaryLabel}
+              <ExternalLink className="size-3.5" aria-hidden />
+            </a>
+          ) : (
+            <Link href={primaryHref}>{primaryLabel}</Link>
+          )}
         </Button>
+        {secondaryLabel && secondaryHref ? (
+          <Button asChild variant="outline">
+            {secondaryExternal ? (
+              <a
+                href={secondaryHref}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {secondaryLabel}
+                <ExternalLink className="size-3.5" aria-hidden />
+              </a>
+            ) : (
+              <Link href={secondaryHref}>{secondaryLabel}</Link>
+            )}
+          </Button>
+        ) : null}
       </div>
     </section>
   )

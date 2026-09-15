@@ -1,8 +1,7 @@
 import Link from "next/link"
 
-import { Card } from "@workspace/ui/components/card"
-
 import type { CatalogueComponent } from "./components-list"
+import { ComponentCardPreview } from "./component-card-preview"
 import { getComponentIcon } from "./component-icon"
 
 type Props = {
@@ -11,12 +10,20 @@ type Props = {
 
 /**
  * Single card in the `/components` and `/components/[category]`
- * grids. V1 dummy: icon + name + description, no live preview.
+ * grids. V1 dummy: aspect-video preview slot at the top, then name
+ * + description. No live preview yet.
  *
- * The whole card is wrapped in a single `<Link>` to the leaf
- * route, matching the `TemplateCard` pattern at
- * `apps/web/src/components/templates/template-card.tsx:48-73`.
- * One anchor per card — no nested interactives.
+ * Plain `<div>` rather than the shadcn `<Card>` primitive — the
+ * primitive adds a `ring-1` and `bg-card` that double up against
+ * the shared-border grid's per-cell borders. A flat `<div>` lets
+ * the parent `<li>`'s `border-r` / `border-b` show through as the
+ * only visible boundary, exactly like `template-grid.tsx`.
+ *
+ * Calque of `apps/web/src/components/templates/template-card.tsx`:
+ * - `bg-background` merges with the grid surface
+ * - `hover:bg-accent/30` is the hover affordance
+ * - `text-label-16 font-semibold tracking-tight` for the title
+ *   (label scale, matches the rest of the catalogue pages)
  */
 export function CatalogueCard({ component }: Props) {
   const Icon = getComponentIcon(component.slug)
@@ -27,26 +34,25 @@ export function CatalogueCard({ component }: Props) {
       <Link
         href={href}
         aria-label={`Read the ${component.name} component`}
-        className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="group flex h-full flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        <Card className="flex h-full flex-col gap-3 p-5 transition-colors group-hover:bg-accent/30 group-focus-visible:bg-accent/30">
-          <header className="flex items-center gap-3">
-            <span
-              aria-hidden
-              className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-background"
-            >
-              <Icon className="size-5 text-muted-foreground" />
-            </span>
-            <span className="flex min-w-0 flex-col">
-              <span className="text-label-14 font-semibold tracking-tight text-foreground">
+        <div className="flex h-full flex-col bg-background transition-colors group-hover:bg-accent/30">
+          <ComponentCardPreview slug={component.slug} />
+          <div className="flex flex-1 flex-col gap-3 p-6">
+            <div className="flex items-start gap-3">
+              <Icon
+                aria-hidden
+                className="text-muted-foreground mt-0.5 size-4 shrink-0"
+              />
+              <h2 className="text-label-16 leading-snug font-semibold tracking-tight text-balance">
                 {component.name}
-              </span>
-            </span>
-          </header>
-          <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-            {component.description}
-          </p>
-        </Card>
+              </h2>
+            </div>
+            <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+              {component.description}
+            </p>
+          </div>
+        </div>
       </Link>
     </li>
   )

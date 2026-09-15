@@ -209,3 +209,41 @@ export function getAllComponentParams(): Array<{
     component: component.slug,
   }))
 }
+
+/**
+ * Recommend components related to the given slug. Used by the
+ * "Related components" rail on each leaf page.
+ *
+ * Heuristic: prefer siblings in the same category (excluding the
+ * current slug), then fill with the first entries of the
+ * catalogue if the category has fewer than `limit` candidates.
+ *
+ * Order within the same category follows the order declared in
+ * `CATALOGUE_COMPONENTS`, which itself follows the
+ * `CATEGORY_ORDER` for the canonical categories (Primitives,
+ * Forms, ...).
+ */
+export function getRelatedComponents(
+  slug: CatalogueComponent["slug"],
+  limit = 4,
+): ReadonlyArray<CatalogueComponent> {
+  const current = CATALOGUE_COMPONENTS.find((c) => c.slug === slug)
+  if (!current) return []
+
+  const sameCategory = CATALOGUE_COMPONENTS.filter(
+    (c) => c.category === current.category && c.slug !== slug,
+  )
+
+  if (sameCategory.length >= limit) {
+    return sameCategory.slice(0, limit)
+  }
+
+  // Fallback: top up with the first entries of the catalogue that
+  // belong to other categories. Stable, alphabetical-by-source
+  // — no surprise reshuffles across re-renders.
+  const fillers = CATALOGUE_COMPONENTS.filter(
+    (c) => c.slug !== slug && c.category !== current.category,
+  )
+
+  return [...sameCategory, ...fillers].slice(0, limit)
+}

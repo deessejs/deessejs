@@ -85,7 +85,7 @@ export function BlocksBrowser({ blocks, categories }: Props) {
   return (
     <section
       aria-label="Blocks catalogue"
-      className="grid grid-cols-1 gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12"
+      className="grid grid-cols-1 gap-8 lg:grid-cols-[14rem_1px_minmax(0,1fr)] lg:gap-0 lg:divide-x lg:divide-border"
     >
       <BlocksSidebar
         categories={categories}
@@ -94,6 +94,8 @@ export function BlocksBrowser({ blocks, categories }: Props) {
         onToggle={toggle}
         onReset={reset}
       />
+      {/* 1px divider column on desktop only — gap on mobile (single column). */}
+      <div aria-hidden className="hidden lg:block" />
       <div className="flex min-w-0 flex-1 flex-col gap-6">
         <SearchInput
           value={query}

@@ -62,6 +62,16 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
             description: "The full catalog, installable from the CLI",
           },
           {
+            label: "Components",
+            href: "/components",
+            description: "Primitives from @workspace/ui",
+          },
+          {
+            label: "Blocks",
+            href: "/blocks",
+            description: "Marketing sections ready to drop in",
+          },
+          {
             label: "CLI",
             href: "/cli",
             description: "npx deessejs init / list / info",
