@@ -115,6 +115,7 @@ const releases = defineCollection({
     description: z.string().min(1).max(280),
     version: z.string().regex(/^\d+\.\d+\.\d+$/, "semver"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    authors: z.array(z.string().min(1)).default([]),
     categories: z
       .array(
         z.enum([
@@ -132,6 +133,27 @@ const releases = defineCollection({
     content: z.string(),
   }),
   transform: async (release, context) => {
+    const handles = release.authors
+    if (handles.length === 0) {
+      throw new Error(
+        `Release "${release.title}" has no author. Add ` +
+          "`authors: [<handle>]` to its frontmatter.",
+      )
+    }
+
+    const resolvedAuthors = handles.map((handle) => {
+      const author = context.documents(authors).find(
+        (a) => a.handle === handle,
+      )
+      if (!author) {
+        throw new Error(
+          `Release "${release.title}" references unknown author "${handle}". ` +
+            `Add content/authors/${handle}.md or fix the frontmatter.`,
+        )
+      }
+      return author
+    })
+
     const slug = release._meta.filePath
       .replace(/^.*\//, "")
       .replace(/\.mdx$/, "")
@@ -150,6 +172,7 @@ const releases = defineCollection({
 
     return {
       ...release,
+      authors: resolvedAuthors,
       slug,
       url: `/changelog/${slug}`,
       mdxCode,

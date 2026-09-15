@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Boxes,
   Cloud,
-  Code2,
   Component,
   Globe,
   Layers,
@@ -12,7 +11,6 @@ import {
   MonitorSmartphone,
   Radio,
   Settings,
-  ShoppingBag,
   Sigma,
   Sparkles,
   TerminalSquare,
@@ -89,15 +87,17 @@ import {
 type Surface = {
   slug: string
   name: string
-  /** One-line description of what kind of project this surface targets. */
+  /** One-sentence description (14–18 words), readable as a sentence. */
   blurb: string
   href: string
   icon: React.ComponentType<{ className?: string }>
   status: "shipped" | "coming-soon"
+  /** Stack logos shown at the bottom of the card (slug resolves to /logos/{logo}.svg). */
+  techs: ReadonlyArray<{ name: string; logo: string }>
 }
 
 /**
- * The eight surfaces the registry covers. Surfaces are not templates:
+ * The six surfaces the registry covers. Surfaces are not templates:
  * each surface is a category that may contain one or more templates.
  * The list is deliberately wider than what is shipped today: it tells
  * every visitor that the registry probably has something for them,
@@ -107,66 +107,98 @@ const SURFACES: ReadonlyArray<Surface> = [
   {
     slug: "saas",
     name: "SaaS",
-    blurb: "Multi-tenant B2B apps with auth, billing, and orgs wired.",
+    blurb:
+      "Auth, billing, jobs, and a working dashboard wired against Postgres on day one.",
     href: "/templates?surface=saas",
     icon: Layers,
     status: "shipped",
+    techs: [
+      { name: "Next.js", logo: "vercel" },
+      { name: "Better Auth", logo: "betterauth" },
+      { name: "Drizzle", logo: "drizzle" },
+      { name: "Stripe", logo: "stripe" },
+      { name: "Postgres", logo: "postgresql" },
+      { name: "Cloudflare", logo: "cloudflare" },
+    ],
   },
   {
     slug: "ai-agents",
     name: "AI agents",
-    blurb: "Streaming chat endpoints, typed tools, and agent persistence.",
+    blurb:
+      "Streaming chat endpoint, typed tools, and persistence — wired against the same contracts your app uses.",
     href: "/templates?surface=ai-agents",
     icon: Sparkles,
     status: "coming-soon",
+    techs: [
+      { name: "Next.js", logo: "vercel" },
+      { name: "OpenAI", logo: "openai" },
+      { name: "Anthropic", logo: "anthropic" },
+      { name: "MCP", logo: "modelcontextprotocol" },
+      { name: "Postgres", logo: "postgresql" },
+    ],
   },
   {
     slug: "mobile",
     name: "Mobile",
-    blurb: "React Native + Expo with the same contracts as the web stack.",
+    blurb:
+      "React Native + Expo app with the same auth, billing, and contracts as your web stack.",
     href: "/templates?surface=mobile",
     icon: MonitorSmartphone,
     status: "coming-soon",
+    techs: [
+      { name: "React Native", logo: "react" },
+      { name: "Expo", logo: "expo" },
+      { name: "Better Auth", logo: "betterauth" },
+      { name: "Stripe", logo: "stripe" },
+      { name: "Supabase", logo: "supabase" },
+    ],
   },
   {
     slug: "desktop",
     name: "Desktop",
-    blurb: "Electron or Tauri shells wired against the shared backend.",
+    blurb:
+      "Electron or Tauri shell wired to the same backend, with typed IPC across the contracts.",
     href: "/templates?surface=desktop",
     icon: Boxes,
     status: "coming-soon",
+    techs: [
+      { name: "Electron", logo: "electron" },
+      { name: "Tauri", logo: "tauri" },
+      { name: "Better Auth", logo: "betterauth" },
+      { name: "Drizzle", logo: "drizzle" },
+      { name: "Cloudflare", logo: "cloudflare" },
+    ],
   },
   {
     slug: "clis",
     name: "CLIs",
-    blurb: "Tool scaffolding that extends the same registry the web uses.",
+    blurb:
+      "Tool scaffolding that extends the same registry the web uses, with oRPC over the wire.",
     href: "/templates?surface=clis",
     icon: TerminalSquare,
     status: "coming-soon",
+    techs: [
+      { name: "Node.js", logo: "nodedotjs" },
+      { name: "Hono", logo: "hono" },
+      { name: "Postgres", logo: "postgresql" },
+      { name: "Drizzle", logo: "drizzle" },
+    ],
   },
   {
     slug: "apis",
     name: "APIs",
-    blurb: "Standalone backends with oRPC, Hono, and typed contracts.",
+    blurb:
+      "Standalone backend with oRPC, Hono, and typed contracts — the same contracts your UI consumes.",
     href: "/templates?surface=apis",
     icon: Workflow,
     status: "coming-soon",
-  },
-  {
-    slug: "blogs",
-    name: "Blogs",
-    blurb: "MDX-driven content sites with i18n and structured data.",
-    href: "/templates?surface=blogs",
-    icon: Code2,
-    status: "coming-soon",
-  },
-  {
-    slug: "ecommerce",
-    name: "E-commerce",
-    blurb: "Storefronts with Stripe Checkout, inventory, and order webhooks.",
-    href: "/templates?surface=ecommerce",
-    icon: ShoppingBag,
-    status: "coming-soon",
+    techs: [
+      { name: "Hono", logo: "hono" },
+      { name: "Postgres", logo: "postgresql" },
+      { name: "Drizzle", logo: "drizzle" },
+      { name: "Neon", logo: "neon" },
+      { name: "Cloudflare", logo: "cloudflare" },
+    ],
   },
 ]
 
@@ -546,18 +578,18 @@ export default function HomePage() {
           <TechStackGrid techs={TECH_STACK} />
         </div>
 
-        {/* 2. Surfaces: 4-col grid enumerating the 8 surfaces the registry covers */}
-        <div className="grid grid-cols-2 md:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
-          <Cell className="col-span-2 md:col-span-4 !p-0 border-0">
+        {/* 2. Surfaces: 3-col grid enumerating the 6 surfaces the registry covers */}
+        <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
+          <Cell className="col-span-1 md:col-span-3 !p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
               <p className="text-label-13 text-muted-foreground">Surfaces</p>
               <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
                 Pick the surface. Get the convention.
               </h2>
               <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-                Eight surfaces, one registry. Each surface ships with the
-                same contracts, the same patterns, and the same guarantees,
-                whether you build it yourself or ship with us.
+                Six surfaces, one registry. Each surface ships with the same
+                contracts, the same patterns, and the same guarantees, whether
+                you build it yourself or ship with us.
               </p>
             </div>
           </Cell>
@@ -566,16 +598,16 @@ export default function HomePage() {
             return (
               <div
                 key={surface.slug}
-                className="group transition-colors hover:bg-accent/40 md:[&:nth-child(n+6)]:border-t md:border-t-border"
+                className="group transition-colors hover:bg-accent/40 md:[&:nth-child(n+5)]:border-t md:border-t-border"
               >
                 <Link
                   href={surface.href}
                   aria-label={`${surface.name}: ${surface.blurb}`}
-                  className="flex flex-col gap-3 p-6"
+                  className="flex flex-col gap-4 p-6"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <Icon
-                      className="text-foreground size-5 shrink-0"
+                      className="size-5 shrink-0"
                       aria-hidden
                     />
                     {surface.status === "shipped" ? (
@@ -605,20 +637,39 @@ export default function HomePage() {
                   <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
                     {surface.name}
                   </h3>
-                  <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+                  <p className="text-copy-14 text-muted-foreground leading-6 line-clamp-4 [&:not(:first-child)]:mt-0">
                     {surface.blurb}
                   </p>
+                  <ul className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+                    {surface.techs.map((tech) => (
+                      <li
+                        key={`${surface.slug}-${tech.logo}`}
+                        className="inline-flex items-center gap-1.5 text-label-12 text-muted-foreground"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`/logos/${tech.logo}.svg`}
+                          alt=""
+                          width={12}
+                          height={12}
+                          className="size-3 shrink-0 grayscale dark:invert"
+                          aria-hidden
+                        />
+                        {tech.name}
+                      </li>
+                    ))}
+                  </ul>
                 </Link>
               </div>
             )
           })}
-          <Cell className="col-span-2 md:col-span-4 !p-0 border-0">
+          <Cell className="col-span-1 md:col-span-3 !p-0 border-0">
             <div className="flex items-center justify-end gap-1 p-4 border-t border-border">
               <Link
                 href="/templates"
                 className="text-label-13 text-foreground inline-flex items-center gap-1 hover:underline underline-offset-4"
               >
-                Browse all 8 surfaces
+                Browse all 6 surfaces
                 <ArrowRight className="size-3" aria-hidden />
               </Link>
             </div>

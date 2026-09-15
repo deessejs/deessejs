@@ -143,119 +143,120 @@ export default async function KnowledgeGuidePage({
   }
 
   return (
-    <article className="mx-auto flex min-w-0 max-w-4xl flex-col gap-10 overflow-x-clip px-4 py-16 sm:px-6 lg:py-24">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "TechArticle",
-            headline: guide.title,
-            description: guide.description,
-            inLanguage: "en",
-            keywords: guide.products,
-            mainEntityOfPage: {
-              "@type": "WebPage",
-              "@id": guide.url,
-            },
-            url: guide.url,
-            publisher: { "@id": ORG_ID },
-            author: {
-              "@type": "Organization",
-              name: "DeesseJS",
-              "@id": ORG_ID,
-            },
-            // `about` ties the guide to its KB topic as the parent
-            // definedTerm. Crawlers use this to build a topic graph
-            // alongside the BreadcrumbList below.
-            about: {
-              "@type": "DefinedTerm",
-              name: topic.title,
-              url: `/knowledge-base/topics/${topic.slug}`,
-            },
-            // `dependencies` surfaces the PaaS/products the guide
-            // touches. This is the JSON-LD counterpart of the
-            // `GuideProductPill` badges in the header — the visual
-            // representation alone is invisible to crawlers.
-            ...(guide.products.length > 0
-              ? {
-                  dependencies: guide.products.map((product) => ({
-                    "@type": "Service",
-                    name: product,
-                  })),
-                }
-              : {}),
-          }),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              {
-                "@type": "ListItem",
-                position: 1,
-                name: "Home",
-                item: "/",
+    <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <article className="mx-auto flex min-w-0 max-w-4xl flex-col gap-10 overflow-x-clip">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "TechArticle",
+              headline: guide.title,
+              description: guide.description,
+              inLanguage: "en",
+              keywords: guide.products,
+              mainEntityOfPage: {
+                "@type": "WebPage",
+                "@id": guide.url,
               },
-              {
-                "@type": "ListItem",
-                position: 2,
-                name: "Knowledge Base",
-                item: "/knowledge-base",
+              url: guide.url,
+              publisher: { "@id": ORG_ID },
+              author: {
+                "@type": "Organization",
+                name: "DeesseJS",
+                "@id": ORG_ID,
               },
-              {
-                "@type": "ListItem",
-                position: 3,
+              // `about` ties the guide to its KB topic as the parent
+              // definedTerm. Crawlers use this to build a topic graph
+              // alongside the BreadcrumbList below.
+              about: {
+                "@type": "DefinedTerm",
                 name: topic.title,
-                item: `/knowledge-base/topics/${topic.slug}`,
+                url: `/knowledge-base/topics/${topic.slug}`,
               },
-              {
-                "@type": "ListItem",
-                position: 4,
-                name: guide.title,
-                item: guide.url,
-              },
-            ],
-          }),
-        }}
-      />
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/knowledge-base">
-              Knowledge Base
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink href={`/knowledge-base/topics/${topic.slug}`}>
-              {topic.title}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{guide.title}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+              // `dependencies` surfaces the PaaS/products the guide
+              // touches. This is the JSON-LD counterpart of the
+              // `GuideProductPill` badges in the header — the visual
+              // representation alone is invisible to crawlers.
+              ...(guide.products.length > 0
+                ? {
+                    dependencies: guide.products.map((product) => ({
+                      "@type": "Service",
+                      name: product,
+                    })),
+                  }
+                : {}),
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                {
+                  "@type": "ListItem",
+                  position: 1,
+                  name: "Home",
+                  item: "/",
+                },
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: "Knowledge Base",
+                  item: "/knowledge-base",
+                },
+                {
+                  "@type": "ListItem",
+                  position: 3,
+                  name: topic.title,
+                  item: `/knowledge-base/topics/${topic.slug}`,
+                },
+                {
+                  "@type": "ListItem",
+                  position: 4,
+                  name: guide.title,
+                  item: guide.url,
+                },
+              ],
+            }),
+          }}
+        />
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/knowledge-base">
+                Knowledge Base
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href={`/knowledge-base/topics/${topic.slug}`}>
+                {topic.title}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{guide.title}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
-      <header className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {guide.products.map((product) => (
-            <GuideProductPill key={product}>{product}</GuideProductPill>
-          ))}
-        </div>
-        <h1 className="scroll-m-20 text-3xl font-bold tracking-tight first:mt-0 text-balance">
-          {guide.title}
-        </h1>
-        <p className="text-muted-foreground leading-7 text-pretty [&:not(:first-child)]:mt-0">
-          {guide.description}
-        </p>
-      </header>
+        <header className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {guide.products.map((product) => (
+              <GuideProductPill key={product}>{product}</GuideProductPill>
+            ))}
+          </div>
+          <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
+            {guide.title}
+          </h1>
+          <p className="mt-4 text-pretty text-lg text-muted-foreground">
+            {guide.description}
+          </p>
+        </header>
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_180px] lg:gap-12">
         <div className="min-w-0">
@@ -306,6 +307,7 @@ export default async function KnowledgeGuidePage({
           </KbCardGrid>
         </section>
       ) : null}
-    </article>
+      </article>
+    </section>
   )
 }
