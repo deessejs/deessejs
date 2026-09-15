@@ -13,7 +13,7 @@ Accepted (2026-09). Approved on the branch `docs/adr-035-feature-not-subtree`, t
 
 During review of [ADR-033](./ADR-033-deessejs-add.mdx) (deessejs add), the user surfaced an example that exposed an apparent gap in the registry's conceptual model:
 
-> *"On doit pouvoir faire `deessejs add https://github.com/user/my-deesse-blog` et pouf on ajoute un blog."*
+> *"We should be able to run `deessejs add https://github.com/user/my-deesse-blog` and add a blog."*
 
 The example is concrete and worth analysing. A blog is not a shadcn-style component (`button.tsx`). It's a multi-file feature: routes (`/blog/[slug]`), components (`<PostCard>`), DB schema (`posts`), env vars, possibly seed data, possibly a separate layout. The question is whether "blog" is the same kind of thing as "auth" or "crud" (a feature overlay), or whether it is a third kind of thing that deserves a different install command and a different descriptor.
 
@@ -60,7 +60,7 @@ A blog is a feature. So is a dashboard. So is a landing page. So is auth, crud, 
 
 Three patterns were considered and rejected.
 
-1. **A new `deessejs embed <slug-or-url>` command for "sub-templates."** Rejected because it forces the user to learn a third verb (`init`, `add`, `embed`) when the conceptual distinction between "feature overlay" and "sub-template" is artificial at this level. A blog and auth are both "things you layer onto an existing project." The difference is volume of files, not kind of install. The user picked the rejection explicitly: *"C'est une fonctionnalité complète, qui peut avoir besoin d'ajouter des routes, des schemas, des pages, des composants, etc."* — i.e., a blog is a feature, just bigger than auth.
+1. **A new `deessejs embed <slug-or-url>` command for "sub-templates."** Rejected because it forces the user to learn a third verb (`init`, `add`, `embed`) when the conceptual distinction between "feature overlay" and "sub-template" is artificial at this level. A blog and auth are both "things you layer onto an existing project." The difference is volume of files, not kind of install. The user picked the rejection explicitly: *"It's a complete feature, which may need to add routes, schemas, pages, components, etc."* — i.e., a blog is a feature, just bigger than auth.
 2. **A new `template:type` value (`template:blog`, `template:subtree`, `template:app-feature`) that branches the install logic.** Rejected because the install logic does not need to branch. `template:package` and the six other non-`template:app` types already describe the install behaviour: read the file overlay, write at the resolved `target`, run the dependencies and hooks. A "blog" type would not change that behaviour. Adding a new type without a behaviour change is type pollution.
 3. **An additive `scope: "subtree"` field on `TemplateV2` now, in V2.** Rejected because no concrete use case requires it today. A blog in V2 can use `template:package` with `files[].target = "@lib/blog/server.ts"`, `target = "@routes/blog/[slug]/page.tsx"`, etc. The author picks paths that match the user's `deesse.json#paths` block. If a real need surfaces where a blog needs to claim a sub-tree (`apps/web/src/blog/`) opaque to other features, ADR-035 can be superseded by ADR-036 or later with the additive field. The door is open; the door is not built.
 
