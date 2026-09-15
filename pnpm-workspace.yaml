@@ -48,6 +48,10 @@ catalog:
   # Motion (apps/web — homepage contract cell animations)
   motion: ^13.1.1
 
+  # Forms (apps/web — /enterprise inquiry form, react-hook-form + Zod)
+  react-hook-form: ^7.62.0
+  "@hookform/resolvers": ^5.0.0
+
   # Shared tooling
   "@tailwindcss/postcss": ^4.3.2
   '@tanstack/react-form': ^1.33.0
