@@ -1,0 +1,60 @@
+---
+title: 'RFCs'
+description: 'Senior engineering RFCs for the DeesseJS ecosystem. Each RFC proposes a major change, gathers review, and (when accepted) points to the ADRs that record the atomic decisions.'
+---
+
+# RFCs
+
+## What is an RFC?
+
+An **RFC** (Request for Comments) is a proposal document. It captures the *why* behind a major change: the problem, the motivation, the goals and non-goals, the alternatives considered, the cross-cutting concerns (security, observability, cost), the open questions, and the rollout plan. An RFC is **proposal-shaped** — it exists to gather review and align stakeholders before implementation lands.
+
+The pattern is borrowed from [Rust](https://github.com/rust-lang/rfcs), [Google's design docs](https://developers.google.com/tech-writing/design_docs), and [Stripe's engineering process](https://stripe.com/blog/engineering/document-templates). Senior engineers treat the RFC as a **forcing function for clear thinking** — the act of writing the document surfaces design gaps that would otherwise surface during implementation.
+
+## What is an ADR?
+
+An **ADR** (Architecture Decision Record) is a decision document. It captures the *what* of a single decision that has already been made: the chosen approach, the rationale, the consequences, the cross-references. An ADR is **memory-shaped** — it exists to record the outcome so future engineers (including your future self) can reconstruct the reasoning.
+
+See [ADR-001](/decisions/ADR-001-orpc-is-load-bearing) for an example; the `decisions/` directory holds the full set.
+
+## RFC vs ADR — when to use which
+
+| Concern | RFC | ADR |
+|---|---|---|
+| **Phase** | *Before* implementation | *After* a decision is ratified |
+| **Status** | `Draft` → `Proposed` → `Accepted` / `Rejected` / `Superseded` | `Draft` → `Accepted` (immutable after) |
+| **Audience** | Reviewers, stakeholders, contributors | Future readers (six months from now) |
+| **Tone** | Exploratory, collaborative, asks questions | Declarative, factual, records outcomes |
+| **Granularity** | One per major change (a feature, a system, an architecture pivot) | One per atomic decision (a contract, a rule, an invariant) |
+| **Immutability** | Mutable until `Accepted` | Immutable after `Accepted` |
+
+**The canonical workflow**:
+1. **RFC** proposes the change, gathers review, iterates.
+2. **Review** lands. Stakeholders sign off.
+3. **RFC becomes `Accepted`**. The detailed design sections are decomposed into ADRs (one per atomic decision).
+4. **Implementation** lands against the ADRs.
+
+A small, localised change does not need an RFC — an ADR is enough. A change that affects the public surface, the cross-package contract, or the architecture warrants an RFC first.
+
+## How to read the RFCS directory
+
+The `rfcs/` directory contains:
+- One Markdown file per RFC, named `RFC-NNN-<slug>.mdx` (numerical prefix in the [Rust style](https://github.com/rust-lang/rfcs)).
+- Each RFC uses the [Google + Stripe + Rust hybrid template](./RFC-001-template-registry.mdx): 9 sections covering Title/Status, Summary, Goals/Non-Goals, Motivation, Detailed Design, Alternatives Considered, Risks/Cross-cutting Concerns, Open Questions, Rollout Plan, Prior Art, and Future Possibilities.
+- ADRs that implement the RFC live in `/decisions/` and are cross-referenced from the RFC's Detailed Design section.
+- The directory's `meta.json` lists the RFCs in order. The Fumadocs sidebar picks them up automatically.
+
+## Current RFCS
+
+- **[RFC-001: The DeesseJS Template Registry System](./RFC-001-template-registry.mdx)** — `Draft`. Proposes the `deesse.json` + `deesse-template.json` shape, the `deessejs add` overlay command, the static registry CDN at `registry.deessejs.dev`, and the author tooling. Decomposes into ADRs 031, 032, 033, 034, 035.
+
+## How to propose a new RFC
+
+1. Copy [`RFC-001-template-registry.mdx`](./RFC-001-template-registry.mdx) into a new file `RFC-NNN-<slug>.mdx`.
+2. Fill in the 9 sections. The Detailed Design section should reference (not duplicate) the ADRs once they exist.
+3. Open a PR with status `Draft`. The PR label is `rfc`.
+4. Iterate in the PR comments. Reviewers leave inline feedback on each section.
+5. When consensus is reached, change the status to `Proposed`. Wait for the second round of review.
+6. Once `Proposed` is approved, change the status to `Accepted`. The RFC becomes the master reference; subsequent ADRs decompose the design into atomic decisions.
+
+Rejected RFCs stay in the directory with status `Rejected` and a short rationale. Superseded RFCs are kept for historical reference but are marked `Superseded by RFC-NNN`.
