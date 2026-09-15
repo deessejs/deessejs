@@ -1,0 +1,18 @@
+---
+title: CLI plugin loader, registry cache eviction
+description: Plugin loader no longer crashes on duplicate manifests. The registry cache now evicts stale entries after one hour.
+version: 0.3.1
+date: 2026-09-25
+authors: [admin]
+categories: [fixed, deprecated]
+---
+
+# 0.3.1 — CLI plugin loader, registry cache eviction
+
+## Fixed
+
+- Plugin loader no longer crashes when two plugins declare the same subcommand; the last one wins and a warning is logged.
+
+## Deprecated
+
+- The `deessejs registry.pull --force` flag is deprecated. Use `deessejs registry.refresh` instead; the old flag will be removed in 0.5.0.

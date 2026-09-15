@@ -1,0 +1,23 @@
+---
+title: AI templates, faster CLI, MCP server preview
+description: First wave of AI templates ships alongside an MCP server the agents can read. CLI cold start is 3x faster and the registry now streams updates.
+version: 0.2.0
+date: 2026-09-03
+authors: [admin]
+categories: [added, changed]
+---
+
+# 0.2.0 — AI templates, faster CLI, MCP server preview
+
+A bigger release. The registry now covers AI agent surfaces end-to-end and the CLI is meaningfully snappier on cold start.
+
+## Added
+
+- `ai-chatbot` template: streaming chat endpoint, typed tools, persistence wired against the same contracts as the web stack.
+- MCP server preview at `mcp.deessejs.com` — exposes the registry as tools a coding agent can call without scraping.
+- `deessejs doctor` subcommand: scans a project and reports missing or outdated contracts.
+
+## Changed
+
+- Cold-start time for `deessejs init` is now ~3x faster (lazy template fetch, parallel install).
+- Registry responses stream by default instead of buffering the full payload.

@@ -45,40 +45,6 @@ export function SiteHeader({
     <header className="sticky top-0 z-40 border-b bg-background">
       <div className="mx-auto flex h-14 items-center justify-between px-4">
         <div className="flex items-center gap-4">
-          <Sheet>
-            <SheetTrigger asChild className="sm:hidden">
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Open navigation menu"
-              >
-                <Menu className="size-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="left"
-              className="flex w-72 flex-col gap-6 p-6"
-            >
-              <Link href="/" className="font-semibold text-lg">
-                {APP_NAME}
-              </Link>
-              <NavSections pathname={pathname} variant="mobile" />
-              <Button
-                variant="outline"
-                onClick={openSearch}
-                aria-label="Open search"
-                aria-keyshortcuts="Meta+K Control+K"
-                className="mt-4 w-full justify-start gap-2"
-              >
-                <Search className="size-4" />
-                <span>Search...</span>
-                <kbd className="ml-auto text-[10px] font-mono text-muted-foreground/60">
-                  ⌘K
-                </kbd>
-              </Button>
-              {mobileMenuSlot}
-            </SheetContent>
-          </Sheet>
           <Link
             href="/"
             className="font-semibold text-lg"
@@ -91,22 +57,48 @@ export function SiteHeader({
           </div>
         </div>
 
-        <div className="hidden items-center gap-2 sm:flex">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={openSearch}
-            aria-label="Open search"
+            aria-label="Search content"
             aria-keyshortcuts="Meta+K Control+K"
             className="flex items-center gap-2 px-3"
           >
             <Search className="size-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Search...</span>
+            <span className="text-muted-foreground">Search content</span>
             <kbd className="ml-2 hidden text-[10px] font-mono text-muted-foreground/60 md:inline">
               ⌘K
             </kbd>
           </Button>
-          {rightSlot}
+          <div className="hidden items-center gap-2 sm:flex">
+            {rightSlot}
+          </div>
+          <Sheet>
+            <SheetTrigger asChild className="sm:hidden">
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Open navigation menu"
+              >
+                <Menu className="size-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="flex flex-col gap-6 bg-background p-6"
+              style={{ width: "100vw", maxWidth: "100vw" }}
+            >
+              <Link href="/" className="font-semibold text-lg">
+                {APP_NAME}
+              </Link>
+              <div className="flex flex-col gap-2">
+                {mobileMenuSlot}
+              </div>
+              <NavSections pathname={pathname} variant="mobile" />
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </header>

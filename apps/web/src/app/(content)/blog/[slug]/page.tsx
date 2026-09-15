@@ -69,7 +69,7 @@ export default async function PostPage(
   const { prev, next } = getAdjacentPosts(slug)
 
   return (
-    <article className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+    <article className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -205,11 +205,13 @@ export default async function PostPage(
           <h2 className="mb-6 text-2xl font-semibold tracking-tight">
             Related reading
           </h2>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-2 lg:grid-cols-3 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:nth-child(3n)]:lg:border-r-0 [&>li:nth-last-child(-n+2)]:md:border-b-0 [&>li:nth-last-child(-n+3)]:lg:border-b-0 [&>li:first-child]:border-t">
             {related.map((r: Post) => (
-              <PostCard key={r.slug} post={r} />
+              <li key={r.slug}>
+                <PostCard post={r} />
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
     </article>
