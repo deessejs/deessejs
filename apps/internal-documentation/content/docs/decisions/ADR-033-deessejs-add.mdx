@@ -98,9 +98,26 @@ The command's sequence:
 1. **Detect project root.** The CLI walks up from the current directory until it finds a `deesse.json`. If none is found, the CLI refuses with `parse_error`: *"deesse.json not found; run `deessejs init` first."* This is the same closed-list error code as a malformed `deesse.json`; no new public code ships.
 2. **Load `deesse.json`.** Zod-validate the file through the `Project` schema in `@workspace/contracts` (per [ADR-031](./ADR-031-deesse-json.mdx)). Reject with `parse_error` on failure.
 3. **Fetch the item descriptor.** Resolve `<feature>` through `deesse.json#registries` (or use the literal URL / local path). Fetch `deesse-template.json` from the registry host (`registry.deessejs.dev`) or the user's literal URL. Zod-validate through `TemplateV2`.
-4. **Refuse on `template:app`.** Enforce the discriminator split from Decision #2. Refuse with `parse_error` if the type is wrong.
-5. **Resolve `templateDependencies`.** Same recursive logic as `init` (per [ADR-032 Decision #3](./ADR-032-deesse-template.json.mdx)). Each dependency is also a `template:package` (or other overlay type); the recursion terminates at items with no further dependencies.
-6. **Run `prompts[]`.** Same gating, same `--yes` behaviour as `init`. The answers may mutate the overlay's resolved paths (a `database` prompt may pick a Prisma adapter that writes a different `schema.prisma`); the command respects that.
+4. **Refuse on `template:app`.** Enforce the discriminator split from Decision #2. Refuse with `invalid_item_type` (internal error code).
+5. **Resolve `templateDependencies` (topological, with cycle detection).** Same recursive logic as `init` (per [ADR-032 Decision #3](./ADR-032-deesse-template.json.mdx)). Each dependency is also a `template:package` (or other overlay type); the recursion terminates at items with no further dependencies.
+
+   **Cycle detection**: the CLI runs a depth-first topological sort on the resolved dependency graph. If a cycle is detected (e.g. `auth` depends on `database-adapter` which depends on `auth`), the CLI refuses with `circular_dependency` (internal error code) and prints the cycle path: *"Circular dependency detected: auth → database-adapter → auth."*
+
+   **Depth limit**: the dependency tree has a maximum depth of **5**. A dependency at depth 6 or more is rejected with `dependency_depth_exceeded` (internal error code). This prevents denial-of-service via deeply nested dependency trees and bounds the install flow to a predictable size. A template author who needs deeper composition must refactor.
+
+   **No conflicting dependencies**: if template A requires `database: postgresql` and template B requires `database: sqlite`, the CLI **does not auto-resolve** the conflict. It surfaces both requirements to the user during the prompt aggregation (step 6) and asks them to pick one (or pass `--force` to override, with a loud warning).
+6. **Run `prompts[]` (eagerly aggregated).** All `prompts[]` across the resolved dependency graph are collected **upfront** before any file acquisition or disk write. The CLI walks the topological order (per step 5) and presents prompts in declaration order; answers may mutate the overlay's resolved paths (a `database` prompt may pick a Prisma adapter that writes a different `schema.prisma`); the command respects that.
+
+   **Lazy prompts across dependencies** (one prompt per item, interleaved with installs) are **explicitly forbidden**: interleaving breaks atomic rollback (the user cannot undo a partial install if a later prompt is rejected after earlier items' files are written). Eager aggregation is the only correct behaviour.
+
+   **`when` evaluation context** (per [ADR-032 §"The `when` DSL"](./ADR-032-deesse-template.json.mdx)): each `when` expression is evaluated against a context with two scopes:
+   ```ts
+   type WhenContext = {
+     answers: Record<string, unknown>;   // prior prompts[] in the same install
+     project: DeesseProjectConfig;       // the loaded deesse.json
+   };
+   ```
+   This allows `when: "project.database == 'postgresql'"` to skip the database adapter prompt for users who already configured `database` in `deesse.json`. Identifiers are scoped to `answers.<promptName>` and `project.<fieldName>`; bare identifiers in `when` are resolved against `answers` first, then `project`. Same gating, same `--yes` behaviour as `init` for prior prompts; `--yes` short-circuits the `when` gate and applies the documented `default`.
 7. **Apply `files[]` transformations.** Walk the item's `files[]`, substitute `@components/`, `@lib/`, `@hooks/`, `@ui/`, `@apps/`, `@packages/` against `deesse.json#aliases` (per [ADR-031 Decision #2](./ADR-031-deesse-json.mdx)). Write each file at its resolved `target`. **Refuse to overwrite existing files** unless the user passes `--force`; the per-file allow-list is in `deesse-template.json#files[].overwrite`, not in the command flag.
 8. **Run `hooks.postInit`.** Same closed-list verb whitelist as `init`.
 9. **Update `deesse.json#templates["<feature>"]`.** Same resolved-state block as `init`.
@@ -127,6 +144,12 @@ The acquisition mechanism is **tarball-first, with `git clone` as fallback**, in
 
 4. **Read the `files[]` entries** from the extracted tree (whether tarball or clone). The CLI walks `deesse-template.json#files[]` and reads each `path`. Each entry's `path` is relative to the template repo root (e.g. `apps/web/src/lib/auth.ts`); the CLI joins it with the extracted root. The content is read into memory; the temp tree is **never moved or copied into the project tree**.
 
+   **Zip Slip guard (anti-path-traversal)**: every entry extracted from the tarball is validated against path traversal before being written to disk. The extraction logic (in `apps/cli/src/transforms/extract.ts`) computes the absolute target path for each entry as `path.resolve(destDir + path.sep + entry.name)` and asserts that the result starts with `path.resolve(destDir) + path.sep`. Any entry whose resolved path escapes `destDir` (e.g. `../../../etc/passwd`) triggers `security_violation` (internal error code) and the install aborts.
+
+   **Symlink and hardlink guard**: hardlinks and symlinks are **rejected by default**. Only regular files and directories are extracted from the tarball. The extraction implementation reads the entry type byte from the tar header and aborts with `security_violation` on any non-regular entry. This closes the "symlink pointing outside the extraction root" attack vector (e.g. a symlink from `package.json` to `/etc/passwd`).
+
+   **CDN-hosted tarballs**: the official `@deessejs/*` tarballs are pre-built and published by the V2 publication CI in `packages/api` to `registry.deessejs.dev/t/<slug>-<version>.tar.gz`. The CLI does **not** rely on `codeload.github.com` for the official registry — that path is the fallback for third-party GitHub sources where the CDN tarball is not available.
+
 5. **Clean up the temp tree.** The CLI `rm -rf`s the temp directory after the file reads complete (in a `finally` block, even if a downstream step throws). The cleanup is non-negotiable: a stale temp tree is a leak and a potential security surface (a malicious template could write `.bashrc` files into the user's home if the temp dir was reused).
 
 6. **Cache the extracted tree, optionally.** For repeat `add <feature>` calls within the same release window, the CLI caches the extracted tree under `~/.deessejs/cache/overlays/<slug>-<hash>/` keyed by ref + a TTL (default 1h). The cache is invalidated on ETag mismatch against the registry CDN. The first `add` in a session pays the extraction cost; subsequent `add`s for the same ref hit the cache. `--offline` falls back to the cache when the network is unreachable.
@@ -147,7 +170,7 @@ The acquisition mechanism is **tarball-first, with `git clone` as fallback**, in
 
 The 9-step install sequence from Decision #3 is amended to include dependency installation and `hooks.postInstall`, plus a pre-flight dirty check and a staged-write rollback path. The corrected sequence is **13 steps**:
 
-0. **Pre-flight dirty check.** The CLI runs `git status --porcelain` from the project root. If the output is non-empty (uncommitted changes), the CLI refuses with `parse_error`: *"Working directory has uncommitted changes. Commit, stash, or pass `--allow-dirty` to continue."* The `--allow-dirty` flag bypasses the check. For non-Git projects (no `.git/` directory), the check is skipped silently. This avoids the failure mode where an `add` failure leaves the user's working tree in an inconsistent state with no record of what was modified.
+0. **Pre-flight dirty check.** The CLI runs `git status --porcelain` from the project root. If the output is non-empty (uncommitted changes), the CLI refuses with `parse_error`: *"Working directory has uncommitted changes. Commit, stash, or pass `--allow-dirty` to continue."* The `--allow-dirty` flag bypasses the check. For non-Git projects (no `.git/` directory, or `git` not installed), the check is skipped silently and the CLI prints a **one-time warning**: *"Not a Git repository: automatic rollback on install failure is unavailable. Review your changes manually."* The `--strict-git` flag (off by default) hard-crashes on non-Git projects. This avoids the failure mode where an `add` failure leaves the user's working tree in an inconsistent state with no record of what was modified.
 
    **Why this matters for rollback**: step 0 guarantees that every subsequent file write is either a new file or a tracked file at a known git baseline. When steps 9-11 fail, the rollback strategy is straightforward:
    - **Newly created files**: the CLI maintains a `Set<path>` of files it created in this install and `fs.unlink`s each on failure.
@@ -158,19 +181,61 @@ The 9-step install sequence from Decision #3 is amended to include dependency in
 1. **Detect project root.** The CLI walks up from the current directory until it finds a `deesse.json`. If none is found, the CLI refuses with `parse_error`: *"deesse.json not found; run `deessejs init` first."* This is the same closed-list error code as a malformed `deesse.json`; no new public code ships.
 2. **Load `deesse.json`.** Zod-validate the file through the `Project` schema in `@workspace/contracts` (per [ADR-031](./ADR-031-deesse-json.mdx)). Reject with `parse_error` on failure.
 3. **Fetch the item descriptor.** Resolve `<feature>` through `deesse.json#registries` (or use the literal URL / local path). Fetch `deesse-template.json` from the registry host (`registry.deessejs.dev`) or the user's literal URL. Zod-validate through `TemplateV2`.
-4. **Refuse on `template:app`.** Enforce the discriminator split from Decision #2. Refuse with `parse_error` if the type is wrong.
-5. **Resolve `templateDependencies`.** Same recursive logic as `init` (per [ADR-032 Decision #3](./ADR-032-deesse-template.json.mdx)). Each dependency is also a `template:package` (or other overlay type); the recursion terminates at items with no further dependencies.
-6. **Run `prompts[]`.** Same gating, same `--yes` behaviour as `init`. The answers may mutate the overlay's resolved paths (a `database` prompt may pick a Prisma adapter that writes a different `schema.prisma`); the command respects that.
+4. **Refuse on `template:app`.** Enforce the discriminator split from Decision #2. Refuse with `invalid_item_type` (internal error code).
+5. **Resolve `templateDependencies` (topological, with cycle detection).** Same recursive logic as `init` (per [ADR-032 Decision #3](./ADR-032-deesse-template.json.mdx)). Each dependency is also a `template:package` (or other overlay type); the recursion terminates at items with no further dependencies.
+
+   **Cycle detection**: the CLI runs a depth-first topological sort on the resolved dependency graph. If a cycle is detected (e.g. `auth` depends on `database-adapter` which depends on `auth`), the CLI refuses with `circular_dependency` (internal error code) and prints the cycle path: *"Circular dependency detected: auth → database-adapter → auth."*
+
+   **Depth limit**: the dependency tree has a maximum depth of **5**. A dependency at depth 6 or more is rejected with `dependency_depth_exceeded` (internal error code). This prevents denial-of-service via deeply nested dependency trees and bounds the install flow to a predictable size. A template author who needs deeper composition must refactor.
+
+   **No conflicting dependencies**: if template A requires `database: postgresql` and template B requires `database: sqlite`, the CLI **does not auto-resolve** the conflict. It surfaces both requirements to the user during the prompt aggregation (step 6) and asks them to pick one (or pass `--force` to override, with a loud warning).
+6. **Run `prompts[]` (eagerly aggregated).** All `prompts[]` across the resolved dependency graph are collected **upfront** before any file acquisition or disk write. The CLI walks the topological order (per step 5) and presents prompts in declaration order; answers may mutate the overlay's resolved paths (a `database` prompt may pick a Prisma adapter that writes a different `schema.prisma`); the command respects that.
+
+   **Lazy prompts across dependencies** (one prompt per item, interleaved with installs) are **explicitly forbidden**: interleaving breaks atomic rollback (the user cannot undo a partial install if a later prompt is rejected after earlier items' files are written). Eager aggregation is the only correct behaviour.
+
+   **`when` evaluation context** (per [ADR-032 §"The `when` DSL"](./ADR-032-deesse-template.json.mdx)): each `when` expression is evaluated against a context with two scopes:
+   ```ts
+   type WhenContext = {
+     answers: Record<string, unknown>;   // prior prompts[] in the same install
+     project: DeesseProjectConfig;       // the loaded deesse.json
+   };
+   ```
+   This allows `when: "project.database == 'postgresql'"` to skip the database adapter prompt for users who already configured `database` in `deesse.json`. Identifiers are scoped to `answers.<promptName>` and `project.<fieldName>`; bare identifiers in `when` are resolved against `answers` first, then `project`. Same gating, same `--yes` behaviour as `init` for prior prompts; `--yes` short-circuits the `when` gate and applies the documented `default`.
 7. **Acquire the source tree.** Run Decision #5: tarball-first (CDN or GitHub `codeload`), git clone as fallback, read `files[]` entries into memory, delete the temp tree in a `finally` block.
 8. **Apply `files[]` transformations.** Walk the item's `files[]`, substitute `@components/`, `@lib/`, `@hooks/`, `@ui/`, `@apps/`, `@packages/` against `deesse.json#aliases` (per [ADR-031 Decision #2](./ADR-031-deesse-json.mdx)). **Stage the writes in memory first**: the CLI builds a `Map<resolvedPath, content>` of the final file content for every `files[]` entry, then applies them atomically to disk at the end of step 8. If any single write fails (EACCES, ENOSPC, target is a directory, etc.), the CLI rolls back the staged writes that already succeeded, deletes the partial file, and returns `install_failed`. **`--force` is sovereign**: a `--force` flag on the user's command line overrides any per-file guard. The `overwrite: true` flag in `deesse-template.json#files[]` authorises **silent** overwrite (no `--force` needed) — see Decision #7 below.
-9. **Install npm dependencies.** Run `{pm} add <dependencies>` followed by `{pm} add -D <devDependencies>` (substituted with the detected package manager from `deesse.json#packageManager`). The whitelist from [ADR-032](./ADR-032-deesse-template.json.mdx) applies: `{pm} add` is in the whitelist, so the runner invokes it via `shell: false` with tokenised argv (per the safety rule documented in ADR-032 Consequences). **If this step fails (peer-dependency conflict, network drop, registry unreachable)**, the CLI rolls back the staged files (step 8) and returns `install_failed`. The user's `deesse.json#templates["<feature>"]` is NOT updated (step 12 is the last step, not yet reached).
+
+   **`merge` transform scope**: the `merge` transform verb is **strictly limited** to three target types:
+   - **JSON files** (`.json`): deep merge of objects, with arrays replaced wholesale (no element-level merge).
+   - **Env files** (`.env`, `.env.local`): key/value line replacement; existing keys are overwritten, new keys are appended.
+   - **Append-with-sentinel files** (e.g. `AGENTS.md`): lines appended after a sentinel marker (e.g. `# --- deessejs-managed ---`); the marker is added on first install and the section between markers is owned by the CLI on subsequent installs.
+
+   **AST-level code merging** (TypeScript, Python, Rust, etc.) is **explicitly forbidden** in V2/V3. Code modification goes through overlay file placement (`files[]` with `transform: "rename"` or `transform: "interpolate"`) or `hooks.postInstall`. Attempting to `merge` a `.ts`, `.py`, `.rs`, or other AST-sensitive file aborts the install with `parse_error` and a clear error message.
+9. **Install npm dependencies.** Run `{pm} add <dependencies>` followed by `{pm} add -D <devDependencies>` (substituted with the detected package manager from `deesse.json#packageManager`). The whitelist from [ADR-032](./ADR-032-deesse-template.json.mdx) applies: `{pm} add` is in the whitelist, so the runner invokes it via `shell: false` with tokenised argv (per the safety rule documented in ADR-032 Consequences). **If this step fails (peer-dependency conflict, network drop, registry unreachable)**, the CLI rolls back the staged files (step 8) and returns `install_failed`. The user's `deesse.lock#templates["<feature>"]` is NOT updated. If a literal `{{KEY}}` sentinel would be written into an output file (per [RFC-001 §"The `tokens{}` substitution map"](./RFC-001-deesse-json)), the CLI fails fast with `unresolved_token` (internal error code), listing the file path and the missing env var. (step 12 is the last step, not yet reached).
 10. **Run `hooks.postInit`.** Same closed-list verb whitelist as `init`. May include `{pm} install` for projects that do not yet have node_modules (rare for `add` — the user already has a project — but possible if the project is freshly cloned and not yet installed). **If this step fails**, same rollback semantics as step 9.
 11. **Run `hooks.postInstall`.** May include `{pm} generate` (Prisma), `{pm} db:push` (Prisma), `{pm} db:migrate` (Drizzle), etc. **If this step fails**, same rollback semantics as step 9.
-12. **Update `deesse.json#templates["<feature>"]`.** Record the installed `version` and `installedAt` timestamp. This is the **commit point**: only reached when every preceding step succeeded.
+12. **Update `deesse.lock#templates["<feature>"]`.** Record the installed `version`, `installedAt` (date-only `YYYY-MM-DD` UTC per [RFC-001 §"Implementation notes C"](./RFC-001-deesse-json)), and `source`. The CLI writes `deesse.lock` atomically (`fs.writeFile(tmp); fs.rename(tmp, real)`); `deesse.json` is **never** written to on `add` (per [RFC-001 §"Detailed Design"](./RFC-001-deesse-json)). This is the **commit point**: only reached when every preceding step succeeded.
 
 The corrected sequence is 13 steps (was 9 in the original ADR-033, then 12 after the dependency-and-`postInstall` amendment). The original 9-step list omitted steps 9 and 11 (dependency install and `postInstall` hook). Those steps are present in [ADR-032 Decision #3](./ADR-032-deesse-template.json.mdx) for the `init` flow and must be present in the `add` flow too — `add` is not exempt from dependency management. The pre-flight dirty check (step 0) and the staged-write rollback path (steps 8-11) are new in V3.
 
 **Rollback implementation note**: the rollback is best-effort. The CLI maintains a `Set<path>` of files it created in this install, and on any step failure, `fs.unlink`s each file in reverse order. If a file was overwritten (not created), the CLI does NOT restore the previous content — restoring requires the user to have committed before the install (which step 0 enforces). This is documented in the CLI's stderr output on failure: *"Rollback removed N files. Use `git status` and `git checkout` to restore any pre-existing files that were overwritten."*
+
+#### 6b. Error taxonomy (add command)
+
+| Condition | Error code | User fix |
+|---|---|---|
+| Malformed descriptor / placeholder / `when` grammar | `parse_error` | Edit the descriptor or file an issue |
+| Target path exists, no `--force`, no `overwrite: true` | `file_collision` (internal) | Pass `--force` |
+| Overlay transform fail / staged-write rollback | `install_failed` (internal) | Inspect stderr, retry |
+| Registry unreachable | `network_error` | Retry or check network |
+| Tarball / archive traversal attempt (Zip Slip, symlink escape) | `security_violation` (internal) | File an issue against the registry author; do not retry |
+| `env:<VAR>` cannot be resolved | `unresolved_token` (internal) | Set the env var or update `.env.local` |
+| `add <slug>` against an installed item without `--force`/`--upgrade` | `item_already_installed` (internal) | Pass `--force` or `--upgrade` |
+| `add` against `template:app` (or `init` against non-`template:app`) | `invalid_item_type` (internal) | Use the other command |
+| Cyclic dependencies in the resolved graph | `circular_dependency` (internal) | File an issue against the authors; do not retry |
+| Dependency tree deeper than 5 | `dependency_depth_exceeded` (internal) | Refactor the dependency chain |
+| Sentinel token left in a `files[]` output | `unresolved_token` (internal) | Set the env var |
+
+All internal codes do not amend ADR-010 §2's closed list on **public** codes.
 
 #### 7. `--force` is sovereign; `overwrite: true` authorises silent overwrite
 
