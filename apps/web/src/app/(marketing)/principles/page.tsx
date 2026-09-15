@@ -8,7 +8,7 @@ import { Separator } from "@workspace/ui/components/separator"
 export const metadata: Metadata = {
   title: "Principles",
   description:
-    "How the DeesseJS team works — operating tenets that guide day-to-day decisions on the project.",
+    "How the DeesseJS team works: operating tenets that guide day-to-day decisions on the project.",
 }
 
 /**
@@ -60,13 +60,13 @@ const PRINCIPLES: ReadonlyArray<Principle> = [
     number: "IV.",
     title: "Templates are test fixtures",
     body:
-      "Every DeesseJS template is built once, smoke-tested, versioned, and reused. If a template needs custom logic that doesn't generalize, it stays a private fork — the registry earns its name by curating what survives contact with production.",
+      "Every DeesseJS template is built once, smoke-tested, versioned, and reused. If a template needs custom logic that doesn't generalize, it stays a private fork. The registry earns its name by curating what survives contact with production.",
   },
   {
     number: "V.",
     title: "The CLI is the contract",
     body:
-      "Anything users do often lives in the CLI. The web surface explains; the terminal ships. When the two diverge, the terminal wins — that's where time accumulates.",
+      "Anything users do often lives in the CLI. The web surface explains; the terminal ships. When the two diverge, the terminal wins. That's where time accumulates.",
   },
   {
     number: "VI.",
@@ -152,7 +152,7 @@ export default function PrinciplesPage() {
               Manifesto
             </span>
             <span className="text-copy-13 text-muted-foreground">
-              Why we&apos;re here — the beliefs behind the work.
+              Why we&apos;re here: the beliefs behind the work.
             </span>
           </Link>
           <Link
