@@ -17,28 +17,27 @@ import { cn } from "@workspace/ui/lib/utils"
 import {
   COMPARISON_GROUPS,
   COMPARISON_LAYERS,
+  LICENSE_TYPES,
+  PRICING_FAQ,
   PRICING_FAQ_GROUPS,
-  PRICING_LAYERS,
   type ComparisonGroup as ComparisonGroupData,
   type FaqGroup,
-  type PricingLayer,
+  type LicenseType,
   type PricingPrice,
 } from "@/lib/pricing"
 
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Three pricing paths for the DeesseJS template catalog: Open Community (free), DeesseJS Pro ($299 one-shot, lifetime access to every Pro template), and Enterprise (custom engagements).",
+    "How DeesseJS licensing works: per-project one-shot licenses, optional subscription for ongoing updates, MIT for the open community, and custom engagements for enterprise teams.",
 }
 
 /**
  * Pricing at /pricing.
  *
- * Renders the three-layer catalog model defined in
+ * Renders the license-types model defined in
  * documents/internal/product/pricing.md. All copy lives in
  * @/lib/pricing so the strategy doc stays the single source of truth.
- * When the doc changes, only that file and this page template need
- * to follow.
  *
  * Layout — shared-border grid (Vercel-style). Every section lives
  * inside a single wrapper `<div>` that supplies the outer border; each
@@ -48,51 +47,48 @@ export const metadata: Metadata = {
  * previous grid (inherited from the wrapper outline).
  *
  * Sections, top to bottom:
- *   1. Three-layer cards — 3 cols with the "Recommended" lift on Pro
- *   2. Trust band — single-row mono statement under the cards
- *   3. Side-by-side comparison — 3 columns, grouped by category
- *   4. Who buys what — 2-col grid of 4 personas
- *   5. Lifetime access — full-width prose block
- *   6. Refund and license — full-width prose block
- *   7. FAQ — 3 grouped accordions stacked in a single column
- *   8. Footer CTA — 2-col grid (copy + actions)
+ *   1. License types — 3 cards (Open Community / Pro / Enterprise)
+ *      in a single shared-border grid
+ *   2. Subscription banner — horizontal card below the three cards.
+ *      Same Pro catalog, paid monthly instead of one-shot. The cadence
+ *      choice is the only difference vs the Pro card above.
+ *   3. Trust band — single-row mono statement
+ *   4. Side-by-side comparison — grouped by intent (what you ship,
+ *      updates & maintenance, rights & terms including post-cancellation)
+ *   5. Who buys what — 2-col grid of 4 personas
+ *   6. How Pro licensing works — full-width prose
+ *   7. What happens when you cancel — full-width prose
+ *   8. FAQ — 4 grouped accordions (licensing, post-cancellation, billing, roadmap)
+ *   9. Footer CTA — 2-col grid (copy + actions)
  *
- * Pro Education is documented in the Refund and license section and
- * in the FAQ, not as a card or a comparison column, because it shares
+ * Pro Education is documented in the How per-project licensing section
+ * and in the FAQ, not as a card or a comparison column, because it shares
  * its templates with Open Community under a different license.
- *
- * Pro is sold as a single $299 lifetime package that grants access to
- * the full Pro catalog, including future templates. There is no
- * per-template price and no renewal.
- *
- * Responsive: cards stack on <md, comparison table scrolls
- * horizontally on <sm, FAQ accordion is keyboard-accessible.
  */
-
 const PERSONAS = [
   {
     label: "Primary",
     title: "Freelance developer or small studio",
     body:
-      "Bills the client $20k – $80k. Buys Pro templates to remove the parts of the build that do not pay well: auth setup, billing plumbing, audit logging. Ships under the client brand and may charge the client for the saved time.",
+      "Bills the client $20k – $80k. Buys a per-project license to remove the parts of the build that do not pay well: auth setup, billing plumbing, audit logging. Ships under the client brand and may charge the client for the saved time.",
   },
   {
     label: "Secondary",
     title: "In-house team at a startup past the weekend stage",
     body:
-      "Buys Pro the same way it buys Vercel or Linear seats. Charges it against engineering time saved.",
+      "Buys per-project licenses the same way it buys Vercel or Linear seats. Charges them against engineering time saved. Subscribes for ongoing updates when the team is shipping actively.",
   },
   {
     label: "Tertiary",
     title: "Enterprise team in a regulated industry",
     body:
-      "Wants Pro not because it cannot build it, but because it does not want to.",
+      "Wants a per-project license not because it cannot build it, but because it does not want to. Adds an engagement contract for procurement, DPAs, and dedicated support.",
   },
   {
     label: "Floor",
     title: "Solo indie hacker shipping a weekend project",
     body:
-      "Uses Open Community free templates. The marketing pitch leans on it.",
+      "Uses Open Community free templates. The marketing pitch leans on it. No license to manage.",
   },
 ] as const
 
@@ -112,6 +108,18 @@ const PriceBlock = ({ price }: { price: PricingPrice }) => {
       </p>
     )
   }
+  if (price.kind === "subscription") {
+    const cadence =
+      price.cadence === "month" ? "/ month" : "/ year"
+    return (
+      <p className="text-heading-32 tracking-tight text-foreground">
+        ${price.amount}
+        <span className="text-copy-14 ml-2 font-normal text-muted-foreground">
+          {cadence}, cancel any time
+        </span>
+      </p>
+    )
+  }
   return (
     <p className="text-heading-32 tracking-tight text-foreground">
       ${price.amount}
@@ -122,44 +130,72 @@ const PriceBlock = ({ price }: { price: PricingPrice }) => {
   )
 }
 
-const LAYER_KICKER: Record<PricingLayer["id"], string> = {
-  "open-community": "Open",
-  pro: "Pro",
+const LICENSE_KICKER: Record<LicenseType["id"], string> = {
+  "open-community": "MIT",
+  "per-project": "Pro",
+  subscription: "Pro",
   enterprise: "Enterprise",
-  "pro-education": "Education",
 }
 
 const PricingPage = () => {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
+      {/* FAQ JSON-LD. Derived from PRICING_FAQ so the schema and the
+          visible Accordion never drift apart. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: PRICING_FAQ.map((item) => ({
+              "@type": "Question",
+              name: item.question,
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: item.answer,
+              },
+            })),
+          }),
+        }}
+      />
+
       {/* Shared-border wrapper — every section lives inside one card */}
       <div className="border border-border bg-background rounded-none">
-        {/* 1. Three-layer cards — 3 cols with the "Recommended" lift on Pro */}
+        {/* 1. License types — 3 cards on md+. Only the non-banner
+            license types render in the grid; the Subscription is
+            rendered as a horizontal banner immediately below. */}
         <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
-          {PRICING_LAYERS.map((layer) => (
-            <LayerCell key={layer.id} layer={layer} />
+          {LICENSE_TYPES.filter((l) => !l.banner).map((license) => (
+            <LicenseCell key={license.id} license={license} />
           ))}
         </div>
 
-        {/* 2. Trust band — single-row statement */}
+        {/* 2. Subscription banner — horizontal card spanning the
+            full wrapper width. Sits between the three cards and the
+            trust band so it reads as the natural next step after
+            picking a license type. */}
+        <SubscriptionBanner />
+
+        {/* 3. Trust band — single-row statement */}
         <Cell className="items-center text-center border-b border-border !py-4 bg-muted/20">
           <p className="text-copy-13-mono text-muted-foreground text-left sm:text-center sm:text-copy-14-mono">
-            14-day refund on Pro · MIT for Open Community · Source code shipped
-            with every Pro template · No subscription, no renewal
+            14-day refund on per-project · MIT for Open Community · Source
+            code shipped on day one · Cancel subscription any time,
+            keep what you have
           </p>
         </Cell>
 
-        {/* 3. Side-by-side comparison — full-width row containing the table */}
+        {/* 4. Side-by-side comparison — grouped by intent */}
         <div className="border-b border-border">
           <Cell className="!p-0 border-0">
-            {/* Header row inside the cell */}
             <div className="flex flex-col gap-2 p-6 border-b border-border">
               <p className="text-label-13 text-muted-foreground">
                 Side by side
               </p>
               <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-                The deep dive. Anyone comparing two layers should not have to
-                read three cards.
+                The deep dive. Anyone comparing two license types should
+                not have to read three cards.
               </h2>
             </div>
             <div className="overflow-x-auto">
@@ -189,7 +225,7 @@ const PricingPage = () => {
           </Cell>
         </div>
 
-        {/* 4. Who buys what — 2-col grid of 4 personas */}
+        {/* 5. Who buys what — 2-col grid of 4 personas */}
         <div className="border-b border-border">
           <Cell className="!p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
@@ -197,8 +233,8 @@ const PricingPage = () => {
                 Who buys what
               </p>
               <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-                The four buyers we built the catalog around. Find the one
-                closest to you.
+                The four buyers we built the licensing model around. Find
+                the one closest to you.
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 divide-y divide-border md:divide-y-0 md:divide-x divide-border">
@@ -224,86 +260,48 @@ const PricingPage = () => {
           </Cell>
         </div>
 
-        {/* 5. Lifetime access — full-width prose */}
+        {/* 6. How per-project licensing works — full-width prose */}
         <div className="border-b border-border">
           <Cell className="!p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
               <p className="text-label-13 text-muted-foreground">
-                What lifetime means here
+                How per-project licensing works
               </p>
               <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-                Pro is a single $299 payment. There is no renewal, no
-                subscription, and no per-template price. The terms are stated
-                once in the strategy doc and not renegotiated later.
+                Pro gives you the codebase. The cadence is yours.
               </h2>
             </div>
             <ul className="flex flex-col gap-4 p-6 text-copy-16 leading-7 text-foreground/90">
               <li>
                 <strong className="text-foreground">
-                  Every Pro template, including future ones.
+                  Same Pro catalog, two cadences.
                 </strong>{" "}
-                Today and tomorrow, same package, same payment. The list of
-                templates in the catalog is the list you get.
+                Pro gives you the full Pro catalog. Every template,
+                every update. Pay $299 once for lifetime access, or
+                $23/month for the same access with no upfront. Pick the
+                cadence that fits.
               </li>
               <li>
-                <strong className="text-foreground">No lock-in.</strong>{" "}
-                Source is yours from day one. If we shut down, the source ships
-                to your inbox. If you leave, take it with you.
-              </li>
-              <li>
-                <strong className="text-foreground">Amortized cost.</strong>{" "}
-                $299 spread over the median shelf life of a production template
-                (3 to 5 years) is $60 to $100/year. Compare to the cost of an
-                auth, billing, and audit template built in-house: typically 2
-                to 4 weeks of senior engineering time.
+                <strong className="text-foreground">
+                  Source code is yours on day one.
+                </strong>{" "}
+                Cloned into your repository, deployable on your
+                infrastructure. No telemetry, no phone-home, no kill
+                switch. If we shut down, the source ships to your inbox.
               </li>
               <li>
                 <strong className="text-foreground">
                   14-day refund window.
                 </strong>{" "}
-                No questions asked. Email and we process it.
-              </li>
-            </ul>
-          </Cell>
-        </div>
-
-        {/* 6. Refund and license — full-width prose */}
-        <div className="border-b border-border">
-          <Cell className="!p-0 border-0">
-            <div className="flex flex-col gap-2 p-6 border-b border-border">
-              <p className="text-label-13 text-muted-foreground">
-                Refund and license
-              </p>
-              <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-                The four rules, stated once.
-              </h2>
-            </div>
-            <ul className="flex flex-col gap-3 p-6 text-copy-16 leading-7 text-foreground/90">
-              <li>
-                <strong className="text-foreground">
-                  14-day refund window.
-                </strong>{" "}
-                No questions asked, on the Pro package.
+                No questions asked on the Pro one-shot. Email and we
+                process it.
               </li>
               <li>
-                <strong className="text-foreground">
-                  Source code is yours.
-                </strong>{" "}
-                Every Pro template ships with its source code. Deploy yourself,
-                or buy hosting from Nesalia Inc. separately.
-              </li>
-              <li>
-                <strong className="text-foreground">Freelancer re-sell.</strong>{" "}
-                You may re-sell the codebase to a client. The unmodified
-                template may not appear in another catalog.
-              </li>
-              <li>
-                <strong className="text-foreground">Pro Education.</strong> A
-                free license for verified students (.edu email or equivalent
-                proof) and OSS projects the buyer owns or contributes to. Same
-                templates as Open Community, same MIT terms, bound to the
-                verified buyer. The license may not be transferred to a non-OSS
-                third party.{" "}
+                <strong className="text-foreground">Pro Education.</strong>{" "}
+                Verified students (.edu email or equivalent proof) and
+                OSS maintainers get a free Pro license bound to the
+                project, not the individual. The license may not be
+                transferred to a non-OSS third party.{" "}
                 <Link
                   href="mailto:support@deessejs.com?subject=Pro%20Education%20access"
                   className="underline underline-offset-4 hover:text-foreground"
@@ -316,7 +314,52 @@ const PricingPage = () => {
           </Cell>
         </div>
 
-        {/* 7. FAQ — 3 grouped accordions */}
+        {/* 7. What happens when you cancel — full-width prose */}
+        <div className="border-b border-border">
+          <Cell className="!p-0 border-0">
+            <div className="flex flex-col gap-2 p-6 border-b border-border">
+              <p className="text-label-13 text-muted-foreground">
+                What happens when you cancel
+              </p>
+              <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+                Templates you&apos;ve deployed keep running. Updates stop.
+              </h2>
+            </div>
+            <ul className="flex flex-col gap-4 p-6 text-copy-16 leading-7 text-foreground/90">
+              <li>
+                <strong className="text-foreground">What you keep.</strong>{" "}
+                The source code you&apos;ve cloned into your repositories
+                stays there. Templates you&apos;ve deployed continue to run.
+                Your data, your users, your uptime. None of it
+                disappears.
+              </li>
+              <li>
+                <strong className="text-foreground">What you lose.</strong>{" "}
+                New templates released after cancellation are not added
+                to your access. Updates and security patches stop
+                landing in your mailbox.
+              </li>
+              <li>
+                <strong className="text-foreground">
+                  What you keep building.
+                </strong>{" "}
+                The codebase is yours. You keep shipping on top of it.
+                You patch it yourself if needed. No contract, no
+                penalty, no re-onboarding fee.
+              </li>
+              <li>
+                <strong className="text-foreground">
+                  What you can do later.
+                </strong>{" "}
+                Resubscribe any time and pick up where you left off —
+                same templates, same updates, same support tier. Or
+                stay cancelled and never hear from us again.
+              </li>
+            </ul>
+          </Cell>
+        </div>
+
+        {/* 8. FAQ — 4 grouped accordions */}
         <div className="border-b border-border">
           <Cell className="!p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
@@ -324,7 +367,7 @@ const PricingPage = () => {
                 Frequently asked
               </p>
               <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-                Grouped by topic — skip to what you need.
+                Grouped by topic. Skip to what you need.
               </h2>
             </div>
             <div className="flex flex-col gap-4">
@@ -335,7 +378,7 @@ const PricingPage = () => {
           </Cell>
         </div>
 
-        {/* 8. Footer CTA — 2-col grid (copy + actions) */}
+        {/* 9. Footer CTA — 2-col grid (copy + actions) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
           <Cell className="gap-2 lg:!p-10">
             <p className="text-label-13 text-muted-foreground">
@@ -372,6 +415,50 @@ export default PricingPage
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Horizontal banner for the optional Subscription license type.
+ * Renders full-width inside the Recipe A wrapper, between the three
+ * license-type cards and the trust band. Layout: 2-col on md+ with
+ * copy on the left and price + CTA on the right; stacked on <sm.
+ */
+function SubscriptionBanner() {
+  const subscription = LICENSE_TYPES.find((l) => l.banner)
+  if (!subscription) return null
+  if (subscription.price.kind !== "subscription") return null
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-[1fr_minmax(0,360px)] divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border transition-colors hover:bg-accent/30">
+      <Cell className="gap-3">
+        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          Optional add-on
+        </p>
+        <h3 className="text-heading-24 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
+          {subscription.name}
+        </h3>
+        <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+          {subscription.tagline} {subscription.positioning}
+        </p>
+        <ul className="flex flex-col gap-2 text-copy-14 text-muted-foreground">
+          {subscription.ships.map((line) => (
+            <li key={line} className="flex gap-2">
+              <span aria-hidden className="select-none">
+                •
+              </span>
+              <span>{line}</span>
+            </li>
+          ))}
+        </ul>
+      </Cell>
+      <Cell className="items-stretch justify-center gap-4">
+        <PriceBlock price={subscription.price} />
+        <Button asChild size="lg" className="w-full">
+          <a href={subscription.cta.href}>{subscription.cta.label}</a>
+        </Button>
+      </Cell>
+    </div>
+  )
+}
+
 /** Generic shared-border cell. The wrapper card supplies the outer
  *  borders; cells contribute only their own padding + optional flex
  *  layout. */
@@ -385,47 +472,47 @@ function Cell({
   return <div className={cn("flex flex-col p-6", className)}>{children}</div>
 }
 
-function LayerCell({ layer }: { layer: PricingLayer }) {
-  const isPro = layer.id === "pro"
+function LicenseCell({ license }: { license: LicenseType }) {
+  const isRecommended = license.recommended === true
   return (
     <div
       className={cn(
         "group transition-colors hover:bg-accent/40",
-        isPro && "bg-muted/20"
+        isRecommended && "bg-muted/20"
       )}
     >
       <Cell className="gap-5 h-full">
         <header className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-label-13 text-muted-foreground">
-              {LAYER_KICKER[layer.id]}
+              {LICENSE_KICKER[license.id]}
             </span>
-            {isPro ? (
+            {isRecommended ? (
               <Badge variant="outline" className="text-label-12">
                 Recommended
               </Badge>
             ) : null}
           </div>
           <h3 className="text-heading-24 tracking-tight text-foreground !m-0">
-            {layer.name}
+            {license.name}
           </h3>
           <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
-            {layer.tagline}
+            {license.tagline}
           </p>
         </header>
 
-        <PriceBlock price={layer.price} />
+        <PriceBlock price={license.price} />
 
         <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
-          {layer.forWho}
+          {license.forWho}
         </p>
 
         <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
-          {layer.positioning}
+          {license.positioning}
         </p>
 
         <ul className="flex flex-col gap-2 text-copy-14 text-muted-foreground">
-          {layer.ships.map((line) => (
+          {license.ships.map((line) => (
             <li key={line} className="flex gap-2">
               <span aria-hidden="true" className="select-none">
                 •
@@ -436,23 +523,23 @@ function LayerCell({ layer }: { layer: PricingLayer }) {
         </ul>
 
         <div className="mt-auto pt-2">
-          {layer.cta.external ? (
+          {license.cta.external ? (
             <Button
               asChild
               size="lg"
-              variant={isPro ? "default" : "outline"}
+              variant={isRecommended ? "default" : "outline"}
               className="w-full"
             >
-              <a href={layer.cta.href}>{layer.cta.label}</a>
+              <a href={license.cta.href}>{license.cta.label}</a>
             </Button>
           ) : (
             <Button
               asChild
               size="lg"
-              variant={isPro ? "default" : "outline"}
+              variant={isRecommended ? "default" : "outline"}
               className="w-full"
             >
-              <Link href={layer.cta.href}>{layer.cta.label}</Link>
+              <Link href={license.cta.href}>{license.cta.label}</Link>
             </Button>
           )}
         </div>

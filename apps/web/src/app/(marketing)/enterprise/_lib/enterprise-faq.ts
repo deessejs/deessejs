@@ -42,7 +42,7 @@ export const ENTERPRISE_FAQ: ReadonlyArray<EnterpriseFaqItem> = [
   {
     question: "Where is the data hosted, and which providers do you ship against?",
     answer:
-      "Pro templates default to Postgres on Neon or Supabase, with Cloudflare for object storage and edge runtime. We deploy against any provider you bring — Vercel, AWS, GCP, Fly, or self-hosted. Data residency is configurable per region.",
+      "Pro templates default to Postgres on Neon or Supabase, with Cloudflare for object storage and edge runtime. We deploy against any provider you bring (Vercel, AWS, GCP, Fly, or self-hosted). Data residency is configurable per region.",
   },
   {
     question: "Do you sign DPAs and respond to security questionnaires?",
