@@ -54,6 +54,7 @@ catalog:
   '@tanstack/react-query': ^5.101.4
   "@turbo/gen": ^2.10.4
   open: ^11.0.1
+  cross-spawn: ^7.0.6
 
   # Types
   "@types/node": ^24
