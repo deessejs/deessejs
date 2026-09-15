@@ -148,6 +148,13 @@ The acquisition mechanism is **tarball-first, with `git clone` as fallback**, in
 The 9-step install sequence from Decision #3 is amended to include dependency installation and `hooks.postInstall`, plus a pre-flight dirty check and a staged-write rollback path. The corrected sequence is **13 steps**:
 
 0. **Pre-flight dirty check.** The CLI runs `git status --porcelain` from the project root. If the output is non-empty (uncommitted changes), the CLI refuses with `parse_error`: *"Working directory has uncommitted changes. Commit, stash, or pass `--allow-dirty` to continue."* The `--allow-dirty` flag bypasses the check. For non-Git projects (no `.git/` directory), the check is skipped silently. This avoids the failure mode where an `add` failure leaves the user's working tree in an inconsistent state with no record of what was modified.
+
+   **Why this matters for rollback**: step 0 guarantees that every subsequent file write is either a new file or a tracked file at a known git baseline. When steps 9-11 fail, the rollback strategy is straightforward:
+   - **Newly created files**: the CLI maintains a `Set<path>` of files it created in this install and `fs.unlink`s each on failure.
+   - **Overwritten tracked files**: the user restores via `git checkout -- <files>` — the CLI prints the exact command in the rollback stderr message.
+   - **Overwritten untracked files** (rare; only happens when the user has an untracked file that a template tries to overwrite): the user's only recovery path is their backup. The CLI cannot help.
+
+   The `--allow-dirty` flag is therefore not a casual bypass — it opts the user out of the rollback safety net for steps 9-11. When `--allow-dirty` is set and an install fails, the CLI prints a louder warning: *"Cannot rollback: working directory was dirty at install time. Review your changes manually."*
 1. **Detect project root.** The CLI walks up from the current directory until it finds a `deesse.json`. If none is found, the CLI refuses with `parse_error`: *"deesse.json not found; run `deessejs init` first."* This is the same closed-list error code as a malformed `deesse.json`; no new public code ships.
 2. **Load `deesse.json`.** Zod-validate the file through the `Project` schema in `@workspace/contracts` (per [ADR-031](./ADR-031-deesse-json.mdx)). Reject with `parse_error` on failure.
 3. **Fetch the item descriptor.** Resolve `<feature>` through `deesse.json#registries` (or use the literal URL / local path). Fetch `deesse-template.json` from the registry host (`registry.deessejs.dev`) or the user's literal URL. Zod-validate through `TemplateV2`.

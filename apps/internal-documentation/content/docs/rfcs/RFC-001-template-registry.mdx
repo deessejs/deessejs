@@ -44,14 +44,14 @@ This RFC is the **master reference**. The atomic decisions live in five ADRs (03
 3. **Stay close to the shadcn mental model.** Users coming from the shadcn ecosystem should find the familiar `init`, `list`, `info`, `add` surface. Divergences must be justified.
 4. **Treat descriptors as content, not code.** `deesse-template.json` is JSON, not TypeScript. Adding a template must not require a CLI release (the `templates-content-not-cli` invariant).
 5. **Keep the wire contract additive.** Existing CLIs that only know the V1 contract keep working after V2 ships. `TemplateV2 = TemplateV1 & { new fields }`.
-6. **Sandbox the parser and the runner.** No `eval`, no `Function`, no `shell: true`. A malicious registry item must not be able to execute code on the consumer's machine.
+6. **Sandbox the parser and the hook runner.** No `eval`, no `Function`, no `shell: true`. The registry descriptor itself cannot inject arbitrary shell commands, and execution is strictly fenced to whitelisted package-manager invocations.
 7. **Make the static host the single source of registry truth.** `registry.deessejs.dev` is content-addressed, CDN-cached, and immutable between releases. The publication CI in `packages/api` is the operational implementation of the `templates-content-not-cli` rule.
 
 ### Non-Goals
 
 1. **Private registry items behind auth.** Out of scope for V2. Private items are a separate CDN (e.g. `private.registry.deessejs.dev`) and a separate ADR.
 2. **Auto-discovery of namespaces from a `registry.json` at a public repo root.** GitHub rate-limiting (60 req/h unauthenticated) makes this unsafe in V2. V3 may add it gated on `--discover` opt-in.
-3. **Inlining file contents in the registry JSON** (shadcn-style). Our overlays are larger (a blog is a route + a Prisma adapter + a server handler + a UI form), and inlining bloats the descriptor past CDN-friendly size. File contents live in the template repo's `files/` directory; the CLI clones to `os.tmpdir()` and reads from there.
+3. **Inlining file contents in the registry JSON** (shadcn-style). Our overlays are larger (a blog is a route + a Prisma adapter + a server handler + a UI form), and inlining bloats the descriptor past CDN-friendly size. File contents live in the template repo's `files/` directory; the CLI downloads a tarball to `os.tmpdir()` (falling back to shallow `git clone`) and extracts from there per [ADR-033 Decision #5](/decisions/ADR-033-deessejs-add).
 4. **A `deessejs build` command that compiles TSX sources into `deesse-template.json`** (shadcn-style). The descriptor is JSON, not derived. A future build command is out of scope until a real use case surfaces (multi-style templates, code generation).
 5. **A web UI for non-technical template authors** (`ui.deessejs.dev/create`-style). Out of scope for V2; V3+ if the team surfaces a need.
 6. **A new top-level command `deessejs embed` for sub-templates.** A blog is a feature, not a sub-template. See [ADR-035](/decisions/ADR-035-feature-not-subtree).
@@ -299,9 +299,9 @@ The rollout is staged across V2, V2.5, and V3. Each stage is gated on the previo
 
 **Steps**:
 
-1. **Land `deessejs template validate`** with the five validation layers and JSON output by default.
-2. **Land `deessejs template new`** with both interactive (`@clack/prompts`) and non-interactive (`--from <yaml>`) modes, including the catalogue-inference logic.
-3. **Land `deessejs template explain`** by parsing the JSDoc on the Zod schema.
+1. **Land `deessejs template validate`** with the five validation layers and JSON output by default. **Dynamic-import** the validate module on first invocation (per [ADR-034 §Consequences](/decisions/ADR-034-template-namespace)) — the consumer of `@deessejs/cli` (`deessejs init`, `deessejs add`, `deessejs list`, `deessejs info`) must not pay the cold-start cost of the Zod schema traversal, the closed-list validators, or the JSDoc parser. The dynamic-import lazy-loads each subcommand handler on its first call, then caches in-process for subsequent calls in the same run.
+2. **Land `deessejs template new`** with both interactive (`@clack/prompts`) and non-interactive (`--from <yaml>`) modes, including the catalogue-inference logic. Same dynamic-import safeguard: `@clack/prompts` (~150kb) and the YAML parser are author-only dependencies.
+3. **Land `deessejs template explain`** by parsing the JSDoc on the Zod schema. Same dynamic-import safeguard: the TypeScript or `@microsoft/tsdoc` parser is author-only.
 4. **Add JSDoc to every `TemplateV2` field** with the four-section contract (Type, Valid values, Example, Common mistake) and an ADR link.
 5. **Add a Zod-schema lint test** in `packages/contracts/test/zod-schema-doc.test.ts` that asserts every `.describe(...)` block is non-empty and contains the section keywords.
 6. **Update ADR-010 §1 Commands table** to add the `template` row; update the "What this rule forbids" bullet to allow this one addition (the fifth top-level command).
