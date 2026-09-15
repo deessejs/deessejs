@@ -29,6 +29,8 @@
     "next": "catalog:",
     "next-themes": "^0.4.6",
     "react": "catalog:",
+    "react-hook-form": "catalog:",
+    "@hookform/resolvers": "catalog:",
     "react-dom": "catalog:",
     "react-markdown": "catalog:",
     "rehype-pretty-code": "catalog:",
