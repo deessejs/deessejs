@@ -1,0 +1,260 @@
+---
+title: 'RFC-001: The DeesseJS Project Config (deesse.json)'
+description: 'Senior RFC for the deesse.json project-side configuration file. Written by the CLI to the root of every project the CLI scaffolds, hand-edited by the user, and read by every CLI command. Pairs with RFC-002 (deesse-template.json), which describes the item-side descriptor. Each RFC documents one file in isolation; the install flow that ties them together lives in the ADRs.'
+---
+
+# RFC-001: The DeesseJS Project Config (`deesse.json`)
+
+## Status
+
+**Draft (2026-09).** Approved as part of the registry documentation set on [PR #137](https://github.com/deessejs/deessejs/pull/137). Implementation lands in V2 alongside RFC-002. Open for review.
+
+## Summary
+
+This RFC proposes **`deesse.json`**, a project-side configuration file written by the CLI to the root of every project it scaffolds. The file carries the per-project wiring the CLI needs to install templates and features correctly: the package manager, the framework profile, the runtime database choice, the `paths{}` for concrete filesystem directories, the `aliases{}` for TS-import placeholders, the `tokens{}` for runtime substitution, the `registries{}` namespace map, and the `templates{}` resolved-state block.
+
+`deesse.json` is the **consumer-side counterpart** to [`deesse-template.json`](./RFC-002-deesse-template.mdx). The two are paired: the CLI reads the project config to know where to write, and reads the template descriptor to know what to write. This RFC documents `deesse.json`; the template descriptor is documented in RFC-002.
+
+The file is **created by the CLI on first install** and **hand-edited by the user** from that point onward. It is checked into the project's source tree (typically alongside `package.json`) and is the only file the CLI writes into a project without the user's explicit `--force` for the second `add`.
+
+## Goals and Non-Goals
+
+### Goals
+
+1. **Capture per-project wiring once, reuse everywhere.** A user runs `deessejs init saas-starter`, the CLI writes `deesse.json`. Every subsequent `deessejs add <feature>` reads the same file to know where to land files, which database adapter to use, which package manager to invoke.
+2. **Be portable across project layouts.** Monorepos, single-package apps, and standalone workspaces each have different conventions; `deesse.json` covers them all via the `paths{}` (filesystem-relative) and `aliases{}` (import-relative) blocks.
+3. **Be stable across upgrades.** Adding a new field is non-breaking; removing or renaming a field is breaking and requires a migration.
+4. **Make the registry namespace map explicit.** A user declares which registries they trust via `registries{}` — opt-in per host, no implicit trust.
+5. **Be read-and-writable by automation.** `deesse.json` is JSON, parse-validated by a Zod schema at runtime, and round-trips cleanly through `JSON.parse + JSON.stringify`.
+
+### Non-Goals
+
+1. **Being a runtime config** — `deesse.json` is a build-time / install-time file. Application runtime configs (env vars, feature flags) live in `.env.local` and similar, not here.
+2. **Tracking file history** — `deesse.json#templates["<feature>"]` records what was installed at which version. It does not record which files were created, which is out of scope for V2 (per the drift model in RFC-002 §Future Possibilities).
+3. **Auto-rewriting user-edited fields** — the CLI mutates `deesse.json` only on `init` (full write) and on `add`/`init` follow-ups (incremental update of the `templates{}` block). User-edited fields (`paths`, `aliases`, `tokens`, `registries`) are preserved verbatim.
+4. **Supporting arbitrary JSON-schema extensions** — the file's schema is closed-list (per [ADR-031](./decisions/ADR-031-deesse-json) §Reserved field names). Adding fields requires an ADR.
+
+## Motivation
+
+The DeesseJS CLI today writes **no file** to the user's project. shadcn's `components.json` is the model: written once at the project root, read by every CLI invocation, the canonical source of "where does this project put things". The DeesseJS CLI needs the same primitive, but for a feature-level install (not a component-level add). The shape differs because features touch more directories: routes, components, DB schema, env vars, hooks — each with its own placement rule.
+
+Without a project-side config, the CLI must **guess**. For a monorepo, the guess is wrong (the CLI does not know which app). For a custom layout, the guess is wrong (the CLI does not know the project's convention). For a multi-stack workspace (Next.js + Expo + Tauri), the guess is wrong three times. `deesse.json` replaces the guess with an explicit declaration.
+
+The file is the **answer to the consumer's "where do you put things" question**. The template descriptor (per RFC-002) is the answer to the **author's "what does my item ship" question**. Together, the two files define the contract between author and consumer.
+
+## Detailed Design
+
+This section documents the shape of `deesse.json`. It does not duplicate the [ADR-031](./decisions/ADR-031-deesse-json) reference (which is the authoritative source); it surfaces the contract at the level an RFC requires (why each block exists, what its invariants are, and how it interacts with the rest of the system).
+
+### Top-level shape
+
+The complete shape of `deesse.json`. Fields are listed in the order they should appear in committed files; the order has no semantic meaning.
+
+```jsonc
+{
+  "$schema": "https://registry.deessejs.dev/schema/project.json",
+  "template": "saas-starter",
+  "version": "1.4.0",
+  "database": "postgresql",
+  "packageManager": "pnpm",
+  "typescript": true,
+  "git": { "init": true, "initialBranch": "main" },
+  "paths": {
+    "routes": "src/app",
+    "components": "src/components",
+    "db": "src/server/db",
+    "lib": "src/lib",
+    "hooks": "src/hooks",
+    "styles": "src/styles"
+  },
+  "aliases": {
+    "apps": "apps/*",
+    "packages": "packages/*",
+    "components": "@/components",
+    "lib": "@/lib",
+    "hooks": "@/hooks",
+    "ui": "@workspace/ui/components"
+  },
+  "tokens": {
+    "NEXT_PUBLIC_APP_URL": "http://localhost:3000",
+    "DATABASE_URL": "postgresql://..."
+  },
+  "registries": {
+    "@deessejs": "https://registry.deessejs.dev/r/{name}.json",
+    "@community": "https://raw.githubusercontent.com/deessejs-community/{name}/main/deesse-template.json"
+  },
+  "templates": {
+    "saas-starter": {
+      "version": "1.4.0",
+      "installedAt": "2026-09-14T...",
+      "source": "@deessejs/saas-starter"
+    }
+  }
+}
+```
+
+### Block-by-block contract
+
+The file's blocks split into three categories by ownership and stability.
+
+**Project-identity blocks (CLI writes once, user rarely edits):** `$schema`, `template`, `version`, `database`, `packageManager`, `typescript`, `git`. The CLI sets these at `init` based on the template's defaults and the user's answers to `prompts[]`. The user may override them by hand (e.g. change `database` from `postgresql` to `mysql`), but the CLI does not rewrite them on subsequent installs unless the user re-runs `init --force`.
+
+**Wiring blocks (CLI writes defaults, user edits freely):** `paths`, `aliases`, `tokens`, `registries`. These define how the project is laid out and where templates land. The CLI sets sensible defaults at `init` (e.g. `paths.routes = "src/app"` for Next.js), and the user edits them to match their conventions. The CLI reads these on every `add`/`init` invocation; it never writes them on subsequent installs (a user who edited `paths.routes` to `apps/web/src/app` does not want the CLI to silently rewrite it back).
+
+**State block (CLI manages continuously):** `templates`. The CLI writes an entry every time it installs or updates an item, and removes an entry if the user runs a future `deessejs remove <feature>` (out of scope for V2/V3, but the block is ready for it). The user does not hand-edit `templates{}`; if they do, the next install overwrites their edit with the canonical record.
+
+### The `paths{}` vs `aliases{}` distinction
+
+This is the load-bearing distinction in the file. The two blocks answer different questions:
+
+- `paths{}` answers "where in the filesystem do I write a new file?" Each entry maps a logical role (`routes`, `components`, `db`, ...) to a filesystem-relative path. A monorepo writes `paths.routes = "apps/web/src/app"`.
+- `aliases{}` answers "what import string do I write into an existing file?" Each entry maps a logical role to a TS-import placeholder. A monorepo writes `aliases.components = "@/components"` (resolves to `apps/web/src/components` after tsconfig paths).
+
+The two blocks overlap in a single-package project (`paths.routes = "src/app"` matches `aliases.components = "@/components"`), but they diverge in a monorepo (`paths.routes = "apps/web/src/app"` vs `aliases.components = "@/components"`). Keeping them separate makes the install logic explicit: the CLI reads `paths.<x>` for the **write target** and `aliases.<x>` for the **import substitution** in `files[]` transforms.
+
+### The `tokens{}` substitution map
+
+Tokens are the **runtime substitution map** for files that ship with `{{KEY}}` placeholders. When the CLI applies a `transform: "interpolate"` file from `deesse-template.json#files[]`, it substitutes `{{KEY}}` with `tokens.<KEY>`.
+
+The map is **user-editable** because the user is the source of truth for their environment-specific values (database URLs, API keys, deployment hosts). The CLI writes defaults at `init` (from the template's prompt answers that target `tokens:<KEY>` via the `consumes[]` convention documented in RFC-002), and the user hand-edits the values they do not want in version control (the convention is to add `deesse.json` to `.gitignore` for the secrets-bearing blocks, but that is the user's choice).
+
+A token value that is a placeholder (e.g. `{{DATABASE_URL}}`) is a sentinel: the CLI wrote a template substitution that the user has not yet replaced. The CLI warns at install time when a sentinel value is detected, but does not refuse the install.
+
+### The `registries{}` namespace map
+
+Namespaces are the **opt-in trust boundary**. The CLI ships with one default entry (`@deessejs` → `registry.deessejs.dev`). The user adds other entries at will: `@community/<host>` for an open-community registry, `@<user>/<host>` for a private mirror, `@deessejs-community/...` if they trust the curated tier (per RFC-002 §Community support).
+
+A namespace entry that points at a host the user has not previously seen triggers a **one-time trust warning** at install time (per ADR-032 §Hook runner safety rules). The `--trust-host=<host>` flag suppresses subsequent warnings from the same host.
+
+Namespaces are **not vetting**. The `@deessejs` and `@deessejs-community` namespaces carry vetting (curated review per RFC-002 §Community support); `@<host>/...` does not. The CLI does not enforce vetting at the protocol level; it surfaces the warning and lets the user decide.
+
+### The `templates{}` resolved-state block
+
+The block records what the user has installed. Each entry:
+
+```jsonc
+"templates": {
+  "<slug>": {
+    "version": "<semver>",
+    "installedAt": "<ISO timestamp>",
+    "source": "<namespace prefix or registry host>"
+  }
+}
+```
+
+The CLI writes the entry at the **commit point** of the install (per RFC-002 §Detailed Design, ADR-033 §Install sequence step 12: the `deesse.json#templates["<feature>"]` update is the last step; if a preceding step fails, this block is not updated).
+
+The `source` field records **where the item came from** (`@deessejs/saas-starter`, `@community/user/my-template`, etc.). This is the user's audit trail for "what did I install from where?" — useful when triaging a supply-chain incident (e.g. "did I install that compromised item last week?").
+
+The block is **CLI-managed**. A user who hand-edits an entry gets overwritten on the next install of that item. This is intentional: the canonical state lives in the registry, not in the user's hand-edits.
+
+## Alternatives Considered
+
+Three patterns were considered and rejected during the development of this RFC and its underlying ADR.
+
+### Alternative 1: Put the wiring in `package.json`
+
+Why we rejected it: `package.json` is owned by the JS ecosystem (npm/pnpm/yarn/bun), not by DeesseJS. Conflating the two means DeesseJS writes to a file the user might manage via `npm pkg set` and the lockfile ordering gets unpredictable. A separate file is cleaner and more discoverable.
+
+### Alternative 2: Compute wiring on the fly from the cloned tree
+
+Why we rejected it: the CLI cannot infer what it cannot see. A project that uses `@workspace/ui/components` has no file the CLI can grep to learn that alias. Inference is brittle; an explicit declaration is durable. The "guess the layout" anti-pattern is the same one that made `components.json` necessary in the shadcn ecosystem.
+
+### Alternative 3: Multiple config files (one per app, one per package, one global)
+
+Why we rejected it: the surface area of "where is the config" multiplies. A single file at the project root is the shadcn-style, npm-style, and Rails-style convention. Monorepos that need per-app configs can extend the file with a per-app block later (out of scope for V2).
+
+## Risks and Cross-Cutting Concerns
+
+### Mutability discipline
+
+The CLI writes to `deesse.json` in two cases: (1) at `init` (full write, with the user accepting via prompts), (2) at `add` (incremental update of `templates{}` only). The CLI does **not** write to `paths`, `aliases`, `tokens`, or `registries` on subsequent installs — those are user-edited and the CLI preserves them verbatim. A user who deletes a key from `aliases` and runs `add` does not have the key silently restored by the CLI.
+
+### Conflict resolution
+
+If a user hand-edits `paths.routes` to `apps/web/src/app` and then runs `init <new-template>`, the new template's default `paths.routes` value (`src/app`) is not applied to `deesse.json`; the user's value (`apps/web/src/app`) is preserved. The CLI emits a warning when a template's default differs from the user's value but does not refuse the install.
+
+### Schema stability
+
+The Zod schema for `deesse.json` (the `Project` schema in `@workspace/contracts/src/v1/project.ts`) is closed-list (per ADR-031 §Reserved field names). Widening the schema is non-breaking; narrowing is breaking. The implementation CI in `packages/contracts` runs a Zod-validation test on every release to catch accidental schema narrowing.
+
+### Secrets handling
+
+`tokens.DATABASE_URL` and similar may carry secrets in plaintext. The CLI does not encrypt the file; the user is expected to add `deesse.json` to `.gitignore` if the tokens are secret-bearing. A future ADR may introduce a `tokens.<KEY>.secret: true` field that the CLI encrypts at rest (using the OS keychain), but that's out of scope for V2.
+
+### Backward compatibility
+
+V2 introduces `deesse.json`. Existing projects that have not yet run `deessejs init` against a V2-compatible template have no `deesse.json`; `deessejs add <feature>` against such a project refuses with `parse_error`: *"deesse.json not found; run `deessejs init` first."* This is the load-bearing behaviour that makes the file the **canonical** consumer-side source of truth.
+
+## Open Questions
+
+### Question 1: Per-app config in monorepos?
+
+A monorepo with `apps/web/` and `apps/api/` may want different `paths.routes` for each app. The current `paths{}` is flat; a future ADR may extend it to `paths: { "apps/web": { routes: "...", components: "..." }, "apps/api": { routes: "...", lib: "..." } }`. Out of scope for V2; deferred to V3+ if a real use case surfaces.
+
+### Question 2: How does the user migrate an existing project to `deesse.json`?
+
+A user who has been running `deessejs init` against the V1 hand-curated registry (no `deesse.json`) wants to upgrade. The migration is: run `deessejs init --migrate <existing-project-dir>` which infers sensible defaults from the existing layout and writes `deesse.json`. Out of scope for V2; deferred to V3+.
+
+### Question 3: Do we need a JSON schema published at `registry.deessejs.dev/schema/project.json`?
+
+Yes. The publication CI in `packages/contracts` emits `/schema/project.json` on every release, the same way it emits `/schema/template.json` for the descriptor. The editor's `$schema` field points at it. Already specified in ADR-032 Consequences; this RFC inherits the contract.
+
+## Rollout Plan
+
+### Stage 1 — V2
+
+`deesse.json` ships alongside `deesse-template.json` (RFC-002). The CLI gains `loadDeesseJson(projectRoot)` and the install flow reads the file at every command. The V2 publication CI in `packages/api` does not touch this file directly — it is a consumer-side artefact, not a registry artefact.
+
+### Stage 2 — V3
+
+A future ADR may add `deessejs doctor` (a command that reads `deesse.json` and validates it against the schema, suggesting fixes for common mistakes). Out of scope for V2.
+
+## Prior Art
+
+### shadcn `components.json`
+
+The closest analogue. shadcn's `components.json` carries `style`, `tailwind.config`, `tailwind.css`, `aliases`, `tsx`, `rsc`, `registries{}` — the same shape `deesse.json` follows, with the divergences documented above (no Tailwind config in DeesseJS, paths/aliases split, etc.).
+
+Source: [shadcn `components.json` schema](https://ui.shadcn.com/docs/components-json).
+
+### npm `package.json`
+
+The general convention of "a single config file at the project root that every tool reads" is the npm `package.json` model. DeesseJS follows the convention but with a separate file because `package.json` is owned by the JS ecosystem.
+
+### Rails initializers
+
+Rails's `config/initializers/` directory follows a similar idea (one config file per concern at a known location). DeesseJS is a single file rather than a directory because the consumer-side state is small enough to fit in one place.
+
+## Future Possibilities
+
+- **Per-app config in monorepos** — see Open Question #1.
+- **Migration command** — `deessejs init --migrate <existing-project-dir>` infers defaults from the existing layout. See Open Question #2.
+- **`deessejs doctor`** — validates `deesse.json` against the schema and suggests fixes for common mistakes.
+- **Encrypted secrets** — `tokens.<KEY>.secret: true` encrypts at rest via the OS keychain. See Risks §Secrets handling.
+- **Schema migration tool** — when the Zod schema adds a required field (breaking), `deessejs migrate --config` rewrites the user's `deesse.json` to match.
+
+## Cross-references
+
+### Atomic decisions (ADRs)
+
+- **[ADR-031: deesse.json](./decisions/ADR-031-deesse-json)** — the authoritative reference for the file. This RFC's Detailed Design section is a high-level summary; ADR-031 is the source of truth for the field-by-field contract.
+
+### Companion RFC
+
+- **[RFC-002: The DeesseJS Template Item Descriptor (deesse-template.json)](./RFC-002-deesse-template)** — the consumer-side companion. The two RFCs are read together for the complete install contract; neither alone is sufficient.
+
+### Companion ADRs (load-bearing rules)
+
+- **[ADR-001: oRPC is load-bearing](./decisions/ADR-001-orpc-is-load-bearing)** — amended by [issue #139](https://github.com/deessejs/deessejs/issues/139) for plain-HTTPS `fetch` against the registry CDN. `deesse.json#registries` is the user-facing surface that declares which hosts are trusted.
+- **[ADR-010: CLI public surface](./decisions/ADR-010-cli-public-surface)** — the invariants that fence the CLI's published surface. `deesse.json` is consumer-side, not a CLI command.
+
+## Related
+
+- [RFCs index](/rfcs) — the convention for RFCs in this directory.
+- [ADRs index](/decisions) — the atomic decisions that implement this RFC.
+- [Spotify Engineering: When Should I Write an ADR](https://engineering.atspotify.com/2020/04/when-should-i-write-an-architecture-decision-record)
+- [Google design docs guide](https://developers.google.com/tech-writing/design_docs)
+- [Stripe engineering document templates](https://stripe.com/blog/engineering/document-templates)
+- [Rust RFC process](https://github.com/rust-lang/rfcs)
+- [ADR vs RFC: When to Use Each](https://askmoai.com/blogs/adr-vs-rfc)

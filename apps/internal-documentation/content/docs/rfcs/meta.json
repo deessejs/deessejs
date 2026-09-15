@@ -2,6 +2,7 @@
   "title": "RFCs",
   "pages": [
     "index",
-    "RFC-001-template-registry"
+    "RFC-001-deesse-json",
+    "RFC-002-deesse-template"
   ]
 }
