@@ -116,7 +116,7 @@ const OUTCOMES: ReadonlyArray<OutcomeTemplate> = [
     name: "AI Chatbot",
     scenario: "Ship an agent with a typed tool registry",
     blurb:
-      "Streaming chat endpoint, typed tools, and persistence, all wired against the same contracts your app uses.",
+      "Streaming chat endpoint, typed tools, and persistence — wired against the same contracts your app uses.",
     stack: ["Next.js", "OpenAI", "Postgres", "MCP"],
     icon: Sparkles,
     status: "coming-soon",
@@ -139,7 +139,7 @@ const CONTRACTS: ReadonlyArray<Contract> = [
   {
     title: "Auth",
     description:
-      "Sessions, organizations, invitations, OAuth, typed against whichever provider you bring.",
+      "Sessions, organizations, invitations, OAuth — typed against whichever provider you bring.",
     icon: "auth",
     providers: [
       { name: "Better Auth", logo: "betterauth" },
@@ -202,7 +202,7 @@ const CONTRACTS: ReadonlyArray<Contract> = [
   {
     title: "Observability",
     description:
-      "Logs, traces, metrics: the three signals that catch production issues.",
+      "Logs, traces, metrics — the three signals that catch production issues.",
     icon: "observability",
     providers: [
       { name: "Sentry", logo: "sentry" },
@@ -301,7 +301,7 @@ const TESTIMONIALS: ReadonlyArray<Testimonial> = [
   },
   {
     quote:
-      "The agents we ship can actually read the registry now. They navigate the contracts like a developer would. That's the unlock.",
+      "The agents we ship can actually read the registry now. They navigate the contracts like a developer would — that's the unlock.",
     name: "Pilot team",
     role: "AI tooling, DeesseJS preview",
     initials: "PT",
@@ -370,7 +370,7 @@ export default function HomePage() {
             </h1>
             <p className="text-muted-foreground text-copy-18 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
               DeesseJS is a registry of SaaS templates with the contracts already
-              wired: auth, database, billing, jobs, storage. Your agent reads
+              wired — auth, database, billing, jobs, storage. Your agent reads
               them, builds on them, and cannot break them.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -437,7 +437,7 @@ export default function HomePage() {
               >
                 <Link
                   href={outcome.href}
-                  aria-label={`${outcome.name}: ${outcome.scenario}`}
+                  aria-label={`${outcome.name} — ${outcome.scenario}`}
                   className="flex flex-col gap-4 p-6 pr-14"
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -551,7 +551,7 @@ export default function HomePage() {
                   aria-hidden
                 />
                 <span>
-                  <span className="text-foreground">init</span>: scaffold a
+                  <span className="text-foreground">init</span> — scaffold a
                   project from a template, with every contract wired.
                 </span>
               </li>
@@ -561,7 +561,7 @@ export default function HomePage() {
                   aria-hidden
                 />
                 <span>
-                  <span className="text-foreground">list</span>: browse the
+                  <span className="text-foreground">list</span> — browse the
                   registry and check what is shipped vs coming.
                 </span>
               </li>
@@ -571,7 +571,7 @@ export default function HomePage() {
                   aria-hidden
                 />
                 <span>
-                  <span className="text-foreground">info</span>: verify the
+                  <span className="text-foreground">info</span> — verify the
                   contracts in your project are present and in sync.
                 </span>
               </li>
@@ -743,7 +743,7 @@ export default function HomePage() {
                 href={product.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`${product.name}: ${product.description}`}
+                aria-label={`${product.name} — ${product.description}`}
                 className="group flex flex-col gap-2 p-6 transition-colors hover:bg-accent/40"
               >
                 <div className="flex items-center gap-2">
@@ -804,7 +804,7 @@ export default function HomePage() {
               </h2>
               <p className="text-copy-14 text-muted-foreground leading-6 max-w-2xl [&:not(:first-child)]:mt-0">
                 The contracts are swappable. Pick the providers you already
-                trust: the registry wires them in.
+                trust — the registry wires them in.
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-border">
