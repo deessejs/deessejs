@@ -294,7 +294,7 @@ const PricingPage = () => {
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 md:divide-y-0">
-              {PERSONAS.map((persona) => (
+              {PERSONAS.map((persona, index) => (
                 <div
                   key={persona.label}
                   className={cn(
@@ -603,14 +603,15 @@ function AttributeTooltip({
 }) {
   return (
     <span className="group/attr relative inline-block">
-      <span
-        tabIndex={0}
-        role="button"
+      <Button
+        asChild
+        variant="ghost"
+        size="sm"
         aria-describedby={id}
-        className="cursor-help border-b border-dotted border-muted-foreground/60 transition-colors hover:border-foreground focus-visible:border-foreground focus-visible:outline-none"
+        className="h-auto cursor-help rounded-none border-b border-dotted border-muted-foreground/60 bg-transparent p-0 text-inherit transition-colors hover:bg-transparent hover:border-foreground focus-visible:bg-transparent focus-visible:border-foreground focus-visible:ring-0"
       >
-        {children}
-      </span>
+        <span>{children}</span>
+      </Button>
       <span
         id={id}
         role="tooltip"
