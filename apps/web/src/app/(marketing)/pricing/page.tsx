@@ -294,7 +294,7 @@ const PricingPage = () => {
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 md:divide-y-0">
-              {PERSONAS.map((persona, index, arr) => (
+              {PERSONAS.map((persona) => (
                 <div
                   key={persona.label}
                   className={cn(
