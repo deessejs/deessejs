@@ -1,7 +1,7 @@
 import Link from "next/link"
 import type { Metadata } from "next"
 
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Check, CircleAlert, Minus, X } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -25,12 +25,14 @@ import {
   PRICING_FAQ,
   PRICING_FAQ_GROUPS,
   type ComparisonGroup as ComparisonGroupData,
+  type ComparisonStatus,
   type FaqGroup,
   type LicenseType,
   type PricingPrice,
 } from "@/lib/pricing"
 
 import { MarketingPage } from "../_components/marketing-page"
+import { TechStackGrid } from "../_components/tech-stack-grid"
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -56,10 +58,8 @@ export const metadata: Metadata = {
  *   1. Hero — single-cell proposition: value angle + tier recap
  *   2. License types — 3 cards (Open Community / Pro / Enterprise)
  *      in a single shared-border grid
- *   3. Subscription banner — horizontal card below the three cards.
- *      Same Pro catalog, paid monthly instead of one-shot. The cadence
- *      choice is the only difference vs the Pro card above.
- *   4. Trust band — single-row mono statement
+ *   3. Trust band — single-row mono statement
+ *   4. Built with — TechStackGrid (Next.js, Better Auth, Drizzle, …)
  *   5. Side-by-side comparison — grouped by intent (what you ship,
  *      updates & maintenance, rights & terms including post-cancellation)
  *   6. Who buys what — 2-col grid of 4 personas
@@ -142,6 +142,23 @@ const LICENSE_KICKER: Record<LicenseType["id"], string> = {
   enterprise: "Enterprise",
 }
 
+/**
+ * Tech stack shown in the "Built with" strip. Same set as the home
+ * page — Next.js, Better Auth, Drizzle, Stripe, Postgres, Cloudflare,
+ * Resend, OpenAI — every provider and runtime wired into the Pro
+ * templates out of the box.
+ */
+const TECH_STACK: ReadonlyArray<{ name: string; logo: string }> = [
+  { name: "Next.js", logo: "vercel" },
+  { name: "Better Auth", logo: "betterauth" },
+  { name: "Drizzle", logo: "drizzle" },
+  { name: "Stripe", logo: "stripe" },
+  { name: "Postgres", logo: "postgresql" },
+  { name: "Cloudflare", logo: "cloudflare" },
+  { name: "Resend", logo: "resend" },
+  { name: "OpenAI", logo: "openai" },
+]
+
 const PricingPage = () => {
   return (
     <MarketingPage>
@@ -200,13 +217,7 @@ const PricingPage = () => {
           ))}
         </div>
 
-        {/* 3. Subscription banner — horizontal card spanning the
-            full wrapper width. Sits between the three cards and the
-            trust band so it reads as the natural next step after
-            picking a license type. */}
-        <SubscriptionBanner />
-
-        {/* 4. Trust band — single-row statement */}
+        {/* 3. Trust band — single-row statement */}
         <Cell className="items-center text-center border-b border-border !py-4 bg-muted/20">
           <p className="text-copy-13-mono text-muted-foreground text-left sm:text-center sm:text-copy-14-mono">
             14-day refund on per-project · MIT for Open Community · Source
@@ -214,6 +225,22 @@ const PricingPage = () => {
             keep what you have
           </p>
         </Cell>
+
+        {/* 4. Built with — copy left, TechStackGrid right.
+            Same providers as the home page, surfaced here so a
+            pricing-page visitor can see exactly what the Pro
+            templates ship wired in. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
+          <div className="col-span-1 lg:col-span-2 flex flex-col gap-2 justify-center p-6 md:p-8 lg:p-10">
+            <p className="text-label-13 text-muted-foreground">
+              Built with
+            </p>
+            <p className="text-heading-24 lg:text-heading-32 tracking-tighter text-balance [&:not(:first-child)]:mt-0">
+              The stack senior engineers ship on.
+            </p>
+          </div>
+          <TechStackGrid techs={TECH_STACK} />
+        </div>
 
         {/* 5. Side-by-side comparison — grouped by intent */}
         <div className="border-b border-border">
@@ -361,44 +388,6 @@ export default PricingPage
  * license-type cards and the trust band. Layout: 2-col on md+ with
  * copy on the left and price + CTA on the right; stacked on <sm.
  */
-function SubscriptionBanner() {
-  const subscription = LICENSE_TYPES.find((l) => l.banner)
-  if (!subscription) return null
-  if (subscription.price.kind !== "subscription") return null
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border transition-colors hover:bg-accent/30">
-      <Cell className="gap-3">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          Optional add-on
-        </p>
-        <h3 className="text-heading-24 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
-          {subscription.name}
-        </h3>
-        <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-          {subscription.tagline} {subscription.positioning}
-        </p>
-        <ul className="flex flex-col gap-2 text-copy-14 text-muted-foreground">
-          {subscription.ships.map((line) => (
-            <li key={line} className="flex gap-2">
-              <span aria-hidden className="select-none">
-                •
-              </span>
-              <span>{line}</span>
-            </li>
-          ))}
-        </ul>
-      </Cell>
-      <Cell className="items-stretch justify-center gap-4">
-        <PriceBlock price={subscription.price} />
-        <Button asChild size="lg" className="w-full">
-          <a href={subscription.cta.href}>{subscription.cta.label}</a>
-        </Button>
-      </Cell>
-    </div>
-  )
-}
-
 /** Generic shared-border cell. The wrapper card supplies the outer
  *  borders; cells contribute only their own padding + optional flex
  *  layout. */
@@ -539,17 +528,64 @@ function ComparisonGroup({ group }: { group: ComparisonGroupData }) {
               row.attribute
             )}
           </th>
-          {COMPARISON_LAYERS.map((layer) => (
-            <td
-              key={`${row.attribute}-${layer.id}`}
-              className="py-3 pr-4 align-top text-muted-foreground"
-            >
-              {row.values[layer.id]}
-            </td>
-          ))}
+          {COMPARISON_LAYERS.map((layer) => {
+            const status = row.status?.[layer.id] ?? "yes"
+            const isPerProject = layer.id === "per-project"
+            return (
+              <td
+                key={`${row.attribute}-${layer.id}`}
+                className={cn(
+                  "py-3 px-4 align-top text-muted-foreground",
+                  // Subtle highlight on the Per-project column to make
+                  // it the visual anchor when comparing.
+                  isPerProject && "bg-muted/30"
+                )}
+              >
+                <span className="flex items-start gap-2">
+                  <ComparisonStatusIcon status={status} />
+                  <span>{row.values[layer.id]}</span>
+                </span>
+              </td>
+            )
+          })}
         </tr>
       ))}
     </>
+  )
+}
+
+/** Status icon for a comparison cell. yes = green check, partial =
+ *  amber alert, no = rose x, na = muted dash. */
+function ComparisonStatusIcon({ status }: { status: ComparisonStatus }) {
+  if (status === "yes") {
+    return (
+      <Check
+        aria-hidden
+        className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+      />
+    )
+  }
+  if (status === "partial") {
+    return (
+      <CircleAlert
+        aria-hidden
+        className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+      />
+    )
+  }
+  if (status === "no") {
+    return (
+      <X
+        aria-hidden
+        className="mt-0.5 size-3.5 shrink-0 text-rose-600 dark:text-rose-400"
+      />
+    )
+  }
+  return (
+    <Minus
+      aria-hidden
+      className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/60"
+    />
   )
 }
 
