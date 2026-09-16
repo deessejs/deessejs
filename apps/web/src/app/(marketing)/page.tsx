@@ -22,6 +22,8 @@ import {
 import { getAllReleases } from "@/lib/blog/releases"
 import { allKbGuides } from "content-collections"
 
+import { MarketingPage } from "./_components/marketing-page"
+
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
@@ -478,10 +480,8 @@ export default function HomePage() {
   const releases = getAllReleases().slice(0, 3)
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      {/* Shared-border wrapper: every section lives inside one card, including the hero */}
-      <div className="border border-border bg-background rounded-none">
-        {/* 1. Hero: centered, no image, two CTAs (install / ship) */}
+    <MarketingPage>
+      {/* 1. Hero: centered, no image, two CTAs (install / ship) */}
         <div className="relative flex justify-center border-b border-border overflow-hidden">
           <FlickeringGrid
             className="absolute inset-0 z-0 opacity-60"
@@ -1175,8 +1175,7 @@ export default function HomePage() {
             </p>
           </div>
         </div>
-      </div>
-    </div>
+    </MarketingPage>
   )
 }
 

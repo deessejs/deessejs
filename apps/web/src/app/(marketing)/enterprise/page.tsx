@@ -9,6 +9,7 @@ import { EnterpriseForm } from "./enterprise-form"
 import { EnterpriseFaq } from "./_components/enterprise-faq"
 import { ProcessTimeline } from "./_components/process-timeline"
 import { TRUST_BADGES } from "./_components/trust-badges"
+import { MarketingPage } from "../_components/marketing-page"
 import { ENTERPRISE_FAQ } from "./_lib/enterprise-faq"
 import { PERSONA_ROUTES, type PersonaRoute } from "./_lib/persona-routes"
 import { PROOF_POINTS } from "./_lib/proof-points"
@@ -50,7 +51,7 @@ const PERSONA_ICONS = {
  */
 export default function EnterprisePage() {
   return (
-    <article className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
+    <MarketingPage>
       {/* ContactPage + FAQPage JSON-LD. The FAQPage mainEntity is
           derived from ENTERPRISE_FAQ so the schema and the visible
           Accordion never drift apart. */}
@@ -84,8 +85,7 @@ export default function EnterprisePage() {
           `divide-y divide-border md:divide-y-0 md:divide-x` so cells
           share borders. Mirrors the homepage contract (see
           `apps/web/src/app/(marketing)/page.tsx`). */}
-      <div className="border border-border bg-background rounded-none">
-        {/* 1. Hero — single column, centered, eyebrow + h1 + lead
+      {/* 1. Hero — single column, centered, eyebrow + h1 + lead
             + CTAs. No image, no split layout — the homepage pattern
             for the highest-emphasis section on the page. */}
         <div className="flex flex-col items-center gap-6 border-b border-border p-6 text-center lg:p-16">
@@ -198,7 +198,7 @@ export default function EnterprisePage() {
             column hosts the form and sticks on md+. */}
         <div
           id="inquiry"
-          className="grid grid-cols-1 md:grid-cols-[1fr_minmax(0,420px)] divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border"
+          className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,520px)] divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border"
         >
           <div className="flex flex-col gap-4 p-6 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -309,8 +309,7 @@ export default function EnterprisePage() {
             </Button>
           </div>
         </div>
-      </div>
-    </article>
+    </MarketingPage>
   )
 }
 

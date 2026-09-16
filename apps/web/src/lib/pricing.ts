@@ -150,6 +150,9 @@ export type ComparisonLayerId = "open-community" | "per-project" | "subscription
 
 export type ComparisonRow = {
   attribute: string
+  /** Short hover explanation for the attribute. Surfaces as a tooltip
+   *  next to the attribute name in the comparison table. */
+  tooltip?: string
   values: Record<ComparisonLayerId, string>
 }
 
@@ -179,6 +182,7 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
     rows: [
       {
         attribute: "Price",
+        tooltip: "What you pay upfront and over time. One-shot = single payment, lifetime access. Subscription = monthly cadence on top of a per-project license.",
         values: {
           "open-community": "Free",
           "per-project": "$299 one-shot, every project you ship",
@@ -187,6 +191,7 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "License",
+        tooltip: "The legal terms that come with the templates. MIT = permissive open-source. Per-project = lifetime commercial use of every project you ship under one license.",
         values: {
           "open-community": "MIT",
           "per-project": "Lifetime, every project you ship, no per-project cap",
@@ -195,6 +200,7 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Source code",
+        tooltip: "Whether the underlying source code ships with the license. Source code lives in your repo, deployable on your infra, with no telemetry or kill switch.",
         values: {
           "open-community": "Included",
           "per-project": "Included on day one",
@@ -203,6 +209,7 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Project scope",
+        tooltip: "How many projects one license covers. No per-project cap on Pro: every project you ship under the same license, internal or commercial.",
         values: {
           "open-community": "Unlimited",
           "per-project": "Unlimited. Every project you ship under one license.",
@@ -211,6 +218,7 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Submission flow",
+        tooltip: "How templates enter the catalog. Pull-request = community contribution, reviewed by a DeesseJS maintainer. Authored by the team = curated production-grade.",
         values: {
           "open-community": "Pull-request",
           "per-project": "Authored by the DeesseJS team",
@@ -219,6 +227,7 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Quality bar",
+        tooltip: "What 'done' means for templates in this tier. Open Community = ships end-to-end. Pro = production patterns a CISO expects, audited before release.",
         values: {
           "open-community": "Does it ship end-to-end?",
           "per-project": "Production patterns a CISO expects",
@@ -232,6 +241,7 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
     rows: [
       {
         attribute: "Updates",
+        tooltip: "How often templates are kept current with the ecosystem (Next.js, Better Auth, Drizzle, providers). Community = anyone can PR. Pro = ongoing maintenance by the team.",
         values: {
           "open-community": "Community-driven, always current",
           "per-project": "Available while a subscription is active",
@@ -240,6 +250,7 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "New templates",
+        tooltip: "Whether new templates released during your license term are added to your access. Per-project one-shot does NOT auto-add new templates — only an active subscription does.",
         values: {
           "open-community": "Open to anyone in the catalog",
           "per-project": "Available with an active subscription",
@@ -248,6 +259,7 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Security patches",
+        tooltip: "Who patches CVEs and security issues when they surface. Pro = patched by the DeesseJS team while your subscription is active.",
         values: {
           "open-community": "Community-driven",
           "per-project": "Patched while a subscription is active",
@@ -261,6 +273,7 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
     rows: [
       {
         attribute: "Refund window",
+        tooltip: "How long after purchase you can request a refund. Per-project one-shot = 14 days, no questions asked. Subscription = pro-rated self-serve in the billing portal.",
         values: {
           "open-community": "N/A",
           "per-project": "14 days, no questions asked",
@@ -269,6 +282,7 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Re-sell rights",
+        tooltip: "Whether you can resell templates to a client or in another catalog. You can re-sell to a client; you cannot list an unmodified Pro template in another registry.",
         values: {
           "open-community": "MIT allows re-use",
           "per-project": "Re-sell to a client OK; unmodified template may not appear in another catalog",
@@ -277,6 +291,7 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Post-cancellation",
+        tooltip: "What keeps working and what stops if you end your subscription or walk away from a one-shot.",
         values: {
           "open-community": "N/A",
           "per-project": "What you've already cloned stays usable forever",

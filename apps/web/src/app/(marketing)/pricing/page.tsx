@@ -5,6 +5,10 @@ import { ArrowRight } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+
+import { ProCardPricing } from "../_components/pro-card-pricing"
+import { PricingCadenceProvider } from "../_components/pricing-cadence-context"
+import { PricingHeroTabs } from "../_components/pricing-hero-tabs"
 import {
   Accordion,
   AccordionContent,
@@ -25,6 +29,8 @@ import {
   type LicenseType,
   type PricingPrice,
 } from "@/lib/pricing"
+
+import { MarketingPage } from "../_components/marketing-page"
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -47,23 +53,22 @@ export const metadata: Metadata = {
  * previous grid (inherited from the wrapper outline).
  *
  * Sections, top to bottom:
- *   1. License types — 3 cards (Open Community / Pro / Enterprise)
+ *   1. Hero — single-cell proposition: value angle + tier recap
+ *   2. License types — 3 cards (Open Community / Pro / Enterprise)
  *      in a single shared-border grid
- *   2. Subscription banner — horizontal card below the three cards.
+ *   3. Subscription banner — horizontal card below the three cards.
  *      Same Pro catalog, paid monthly instead of one-shot. The cadence
  *      choice is the only difference vs the Pro card above.
- *   3. Trust band — single-row mono statement
- *   4. Side-by-side comparison — grouped by intent (what you ship,
+ *   4. Trust band — single-row mono statement
+ *   5. Side-by-side comparison — grouped by intent (what you ship,
  *      updates & maintenance, rights & terms including post-cancellation)
- *   5. Who buys what — 2-col grid of 4 personas
- *   6. How Pro licensing works — full-width prose
- *   7. What happens when you cancel — full-width prose
- *   8. FAQ — 4 grouped accordions (licensing, post-cancellation, billing, roadmap)
- *   9. Footer CTA — 2-col grid (copy + actions)
+ *   6. Who buys what — 2-col grid of 4 personas
+ *   7. FAQ — 4 grouped accordions (licensing, post-cancellation, billing, roadmap)
+ *   8. Footer CTA — 2-col grid (copy + actions)
  *
- * Pro Education is documented in the How per-project licensing section
- * and in the FAQ, not as a card or a comparison column, because it shares
- * its templates with Open Community under a different license.
+ * Pro Education is documented in the FAQ, not as a card or a comparison
+ * column, because it shares its templates with Open Community under a
+ * different license.
  */
 const PERSONAS = [
   {
@@ -139,7 +144,8 @@ const LICENSE_KICKER: Record<LicenseType["id"], string> = {
 
 const PricingPage = () => {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
+    <MarketingPage>
+      <PricingCadenceProvider>
       {/* FAQ JSON-LD. Derived from PRICING_FAQ so the schema and the
           visible Accordion never drift apart. */}
       <script
@@ -160,24 +166,47 @@ const PricingPage = () => {
         }}
       />
 
-      {/* Shared-border wrapper — every section lives inside one card */}
-      <div className="border border-border bg-background rounded-none">
-        {/* 1. License types — 3 cards on md+. Only the non-banner
+      {/* Hero — proposition. One cell, centered, like Infisical's
+          hero: a single framed statement with the value angle and
+          the tier recap underneath. Anchors the page before the
+          tier cards land. */}
+      <div className="flex flex-col items-center gap-3 border-b border-border px-6 py-16 text-center sm:py-20 lg:py-24">
+        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          Pricing
+        </p>
+        <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
+          The catalog your agent can navigate.
+        </h1>
+        <p className="max-w-2xl text-copy-18 leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
+          One payment for the Pro catalog. Every template, every
+          update, every project you ship. MIT for the floor, Pro for
+          production, custom for enterprise.
+        </p>
+        <PricingHeroTabs />
+      </div>
+
+      {/* 2. License types — 3 cards on md+. Only the non-banner
             license types render in the grid; the Subscription is
-            rendered as a horizontal banner immediately below. */}
-        <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
-          {LICENSE_TYPES.filter((l) => !l.banner).map((license) => (
-            <LicenseCell key={license.id} license={license} />
+            rendered as a horizontal banner immediately below.
+            Borders are owned by the cells (border-r/border-t) so the
+            Pro card's ring doesn't double up on the shared divider. */}
+        <div className="grid grid-cols-1 md:grid-cols-3 border-b border-border md:divide-y-0">
+          {LICENSE_TYPES.filter((l) => !l.banner).map((license, index, arr) => (
+            <LicenseCell
+              key={license.id}
+              license={license}
+              isLast={index === arr.length - 1}
+            />
           ))}
         </div>
 
-        {/* 2. Subscription banner — horizontal card spanning the
+        {/* 3. Subscription banner — horizontal card spanning the
             full wrapper width. Sits between the three cards and the
             trust band so it reads as the natural next step after
             picking a license type. */}
         <SubscriptionBanner />
 
-        {/* 3. Trust band — single-row statement */}
+        {/* 4. Trust band — single-row statement */}
         <Cell className="items-center text-center border-b border-border !py-4 bg-muted/20">
           <p className="text-copy-13-mono text-muted-foreground text-left sm:text-center sm:text-copy-14-mono">
             14-day refund on per-project · MIT for Open Community · Source
@@ -186,7 +215,7 @@ const PricingPage = () => {
           </p>
         </Cell>
 
-        {/* 4. Side-by-side comparison — grouped by intent */}
+        {/* 5. Side-by-side comparison — grouped by intent */}
         <div className="border-b border-border">
           <Cell className="!p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
@@ -225,7 +254,7 @@ const PricingPage = () => {
           </Cell>
         </div>
 
-        {/* 5. Who buys what — 2-col grid of 4 personas */}
+        {/* 6. Who buys what — 2-col grid of 4 personas */}
         <div className="border-b border-border">
           <Cell className="!p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
@@ -237,11 +266,20 @@ const PricingPage = () => {
                 the one closest to you.
               </h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 divide-y divide-border md:divide-y-0 md:divide-x divide-border">
-              {PERSONAS.map((persona) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 md:divide-y-0">
+              {PERSONAS.map((persona, index, arr) => (
                 <div
                   key={persona.label}
-                  className="group transition-colors hover:bg-accent/40"
+                  className={cn(
+                    "group border-border transition-colors hover:bg-accent/40",
+                    // Vertical separator on every card except the first
+                    // in each row (md+ uses 2 cols, so col 2 = index 1
+                    // and index 3).
+                    "border-b last:border-b-0 md:border-b-0",
+                    // Every odd-indexed card sits in the right column
+                    // and gets a left border on md+.
+                    index % 2 === 1 && "md:border-l"
+                  )}
                 >
                   <Cell className="gap-3">
                     <span className="text-label-13 font-mono text-muted-foreground">
@@ -260,106 +298,8 @@ const PricingPage = () => {
           </Cell>
         </div>
 
-        {/* 6. How per-project licensing works — full-width prose */}
-        <div className="border-b border-border">
-          <Cell className="!p-0 border-0">
-            <div className="flex flex-col gap-2 p-6 border-b border-border">
-              <p className="text-label-13 text-muted-foreground">
-                How per-project licensing works
-              </p>
-              <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-                Pro gives you the codebase. The cadence is yours.
-              </h2>
-            </div>
-            <ul className="flex flex-col gap-4 p-6 text-copy-16 leading-7 text-foreground/90">
-              <li>
-                <strong className="text-foreground">
-                  Same Pro catalog, two cadences.
-                </strong>{" "}
-                Pro gives you the full Pro catalog. Every template,
-                every update. Pay $299 once for lifetime access, or
-                $23/month for the same access with no upfront. Pick the
-                cadence that fits.
-              </li>
-              <li>
-                <strong className="text-foreground">
-                  Source code is yours on day one.
-                </strong>{" "}
-                Cloned into your repository, deployable on your
-                infrastructure. No telemetry, no phone-home, no kill
-                switch. If we shut down, the source ships to your inbox.
-              </li>
-              <li>
-                <strong className="text-foreground">
-                  14-day refund window.
-                </strong>{" "}
-                No questions asked on the Pro one-shot. Email and we
-                process it.
-              </li>
-              <li>
-                <strong className="text-foreground">Pro Education.</strong>{" "}
-                Verified students (.edu email or equivalent proof) and
-                OSS maintainers get a free Pro license bound to the
-                project, not the individual. The license may not be
-                transferred to a non-OSS third party.{" "}
-                <Link
-                  href="mailto:support@deessejs.com?subject=Pro%20Education%20access"
-                  className="underline underline-offset-4 hover:text-foreground"
-                >
-                  Request access
-                </Link>
-                .
-              </li>
-            </ul>
-          </Cell>
-        </div>
 
-        {/* 7. What happens when you cancel — full-width prose */}
-        <div className="border-b border-border">
-          <Cell className="!p-0 border-0">
-            <div className="flex flex-col gap-2 p-6 border-b border-border">
-              <p className="text-label-13 text-muted-foreground">
-                What happens when you cancel
-              </p>
-              <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-                Templates you&apos;ve deployed keep running. Updates stop.
-              </h2>
-            </div>
-            <ul className="flex flex-col gap-4 p-6 text-copy-16 leading-7 text-foreground/90">
-              <li>
-                <strong className="text-foreground">What you keep.</strong>{" "}
-                The source code you&apos;ve cloned into your repositories
-                stays there. Templates you&apos;ve deployed continue to run.
-                Your data, your users, your uptime. None of it
-                disappears.
-              </li>
-              <li>
-                <strong className="text-foreground">What you lose.</strong>{" "}
-                New templates released after cancellation are not added
-                to your access. Updates and security patches stop
-                landing in your mailbox.
-              </li>
-              <li>
-                <strong className="text-foreground">
-                  What you keep building.
-                </strong>{" "}
-                The codebase is yours. You keep shipping on top of it.
-                You patch it yourself if needed. No contract, no
-                penalty, no re-onboarding fee.
-              </li>
-              <li>
-                <strong className="text-foreground">
-                  What you can do later.
-                </strong>{" "}
-                Resubscribe any time and pick up where you left off —
-                same templates, same updates, same support tier. Or
-                stay cancelled and never hear from us again.
-              </li>
-            </ul>
-          </Cell>
-        </div>
-
-        {/* 8. FAQ — 4 grouped accordions */}
+        {/* 7. FAQ — 4 grouped accordions */}
         <div className="border-b border-border">
           <Cell className="!p-0 border-0">
             <div className="flex flex-col gap-2 p-6 border-b border-border">
@@ -378,7 +318,7 @@ const PricingPage = () => {
           </Cell>
         </div>
 
-        {/* 9. Footer CTA — 2-col grid (copy + actions) */}
+        {/* 8. Footer CTA — 2-col grid (copy + actions) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
           <Cell className="gap-2 lg:!p-10">
             <p className="text-label-13 text-muted-foreground">
@@ -404,8 +344,8 @@ const PricingPage = () => {
             </Button>
           </Cell>
         </div>
-      </div>
-    </div>
+      </PricingCadenceProvider>
+    </MarketingPage>
   )
 }
 
@@ -427,7 +367,7 @@ function SubscriptionBanner() {
   if (subscription.price.kind !== "subscription") return null
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[1fr_minmax(0,360px)] divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border transition-colors hover:bg-accent/30">
+    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border transition-colors hover:bg-accent/30">
       <Cell className="gap-3">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           Optional add-on
@@ -472,13 +412,25 @@ function Cell({
   return <div className={cn("flex flex-col p-6", className)}>{children}</div>
 }
 
-function LicenseCell({ license }: { license: LicenseType }) {
+function LicenseCell({
+  license,
+  isLast = false,
+}: {
+  license: LicenseType
+  isLast?: boolean
+}) {
   const isRecommended = license.recommended === true
   return (
     <div
       className={cn(
-        "group transition-colors hover:bg-accent/40",
-        isRecommended && "bg-muted/20"
+        "group relative border-border transition-colors hover:bg-accent/40",
+        // Vertical separators on md+: every cell gets a right border
+        // except the last one. This replaces the grid's divide-x so
+        // Pro's ring doesn't double up on the divider.
+        "border-b last:border-b-0 md:border-b-0 md:border-r",
+        isLast && "md:border-r-0",
+        isRecommended &&
+          "bg-background md:-my-px md:border md:border-border md:shadow-[0_8px_24px_-12px_rgb(0_0_0_/0.15)]"
       )}
     >
       <Cell className="gap-5 h-full">
@@ -488,7 +440,11 @@ function LicenseCell({ license }: { license: LicenseType }) {
               {LICENSE_KICKER[license.id]}
             </span>
             {isRecommended ? (
-              <Badge variant="outline" className="text-label-12">
+              <Badge variant="success" className="text-label-12 gap-1.5">
+                <span
+                  aria-hidden
+                  className="size-1.5 rounded-full bg-emerald-500"
+                />
                 Recommended
               </Badge>
             ) : null}
@@ -501,48 +457,54 @@ function LicenseCell({ license }: { license: LicenseType }) {
           </p>
         </header>
 
-        <PriceBlock price={license.price} />
+        {isRecommended ? (
+          <ProCardPricing license={license} />
+        ) : (
+          <>
+            <PriceBlock price={license.price} />
 
-        <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
-          {license.forWho}
-        </p>
+            <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
+              {license.forWho}
+            </p>
 
-        <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
-          {license.positioning}
-        </p>
+            <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
+              {license.positioning}
+            </p>
 
-        <ul className="flex flex-col gap-2 text-copy-14 text-muted-foreground">
-          {license.ships.map((line) => (
-            <li key={line} className="flex gap-2">
-              <span aria-hidden="true" className="select-none">
-                •
-              </span>
-              <span>{line}</span>
-            </li>
-          ))}
-        </ul>
+            <ul className="flex flex-col gap-2 text-copy-14 text-muted-foreground">
+              {license.ships.map((line) => (
+                <li key={line} className="flex gap-2">
+                  <span aria-hidden="true" className="select-none">
+                    •
+                  </span>
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
 
-        <div className="mt-auto pt-2">
-          {license.cta.external ? (
-            <Button
-              asChild
-              size="lg"
-              variant={isRecommended ? "default" : "outline"}
-              className="w-full"
-            >
-              <a href={license.cta.href}>{license.cta.label}</a>
-            </Button>
-          ) : (
-            <Button
-              asChild
-              size="lg"
-              variant={isRecommended ? "default" : "outline"}
-              className="w-full"
-            >
-              <Link href={license.cta.href}>{license.cta.label}</Link>
-            </Button>
-          )}
-        </div>
+            <div className="mt-auto pt-2">
+              {license.cta.external ? (
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="w-full"
+                >
+                  <a href={license.cta.href}>{license.cta.label}</a>
+                </Button>
+              ) : (
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Link href={license.cta.href}>{license.cta.label}</Link>
+                </Button>
+              )}
+            </div>
+          </>
+        )}
       </Cell>
     </div>
   )
@@ -566,7 +528,16 @@ function ComparisonGroup({ group }: { group: ComparisonGroupData }) {
             scope="row"
             className="py-3 pr-4 pl-6 text-left align-top font-medium text-foreground"
           >
-            {row.attribute}
+            {row.tooltip ? (
+              <AttributeTooltip
+                content={row.tooltip}
+                id={`attr-${row.attribute.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+              >
+                {row.attribute}
+              </AttributeTooltip>
+            ) : (
+              row.attribute
+            )}
           </th>
           {COMPARISON_LAYERS.map((layer) => (
             <td
@@ -579,6 +550,39 @@ function ComparisonGroup({ group }: { group: ComparisonGroupData }) {
         </tr>
       ))}
     </>
+  )
+}
+
+/** CSS-only tooltip on a comparison row attribute. Renders an underline
+ *  dotted on the wrapped text and reveals the explanation on hover or
+ *  keyboard focus. No JS, no portal — works in pure SSR HTML. */
+function AttributeTooltip({
+  content,
+  id,
+  children,
+}: {
+  content: string
+  id: string
+  children: React.ReactNode
+}) {
+  return (
+    <span className="group/attr relative inline-block">
+      <span
+        tabIndex={0}
+        role="button"
+        aria-describedby={id}
+        className="cursor-help border-b border-dotted border-muted-foreground/60 transition-colors hover:border-foreground focus-visible:border-foreground focus-visible:outline-none"
+      >
+        {children}
+      </span>
+      <span
+        id={id}
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-max max-w-[280px] rounded-md bg-foreground px-3 py-1.5 text-xs leading-relaxed text-balance text-background opacity-0 shadow-lg transition-opacity group-hover/attr:opacity-100 group-focus-within/attr:opacity-100"
+      >
+        {content}
+      </span>
+    </span>
   )
 }
 
