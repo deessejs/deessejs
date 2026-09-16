@@ -24,6 +24,8 @@ import {
 } from "@/lib/seo/stack"
 import { buildStackItemListJsonLd } from "@/lib/seo/stack-jsonld"
 
+import { MarketingPage } from "../_components/marketing-page"
+
 export const metadata: Metadata = {
   title: "Stack",
   description:
@@ -79,7 +81,7 @@ export default function StackPage() {
   })).filter((group) => group.providers.length > 0)
 
   return (
-    <article className="mx-auto flex max-w-4xl flex-col gap-12 px-4 py-16 sm:px-6 lg:py-24">
+    <MarketingPage>
       <script
         type="application/ld+json"
         // ItemList JSON-LD. The publisher link is the global
@@ -167,7 +169,7 @@ export default function StackPage() {
           </Link>
         </div>
       </nav>
-    </article>
+    </MarketingPage>
   )
 }
 

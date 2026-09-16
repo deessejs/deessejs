@@ -3,6 +3,8 @@ import Link from "next/link"
 import { Check } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 
+import { MarketingPage } from "../_components/marketing-page"
+
 export const metadata: Metadata = {
   title: "Students",
   description:
@@ -17,7 +19,7 @@ export const metadata: Metadata = {
  */
 export default function StudentsPage() {
   return (
-    <article className="mx-auto flex max-w-3xl flex-col gap-12 px-4 py-16 sm:px-6 lg:py-24">
+    <MarketingPage>
       <header className="flex flex-col gap-4">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           Students
@@ -122,6 +124,6 @@ export default function StudentsPage() {
           </a>
         </Button>
       </div>
-    </article>
+    </MarketingPage>
   )
 }
