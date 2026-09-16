@@ -13,11 +13,12 @@ export function getRelatedPosts(currentSlug: string, limit = 3): Post[] {
   const current = allPosts.find((p) => p.slug === currentSlug)
   if (!current) return []
 
+  const currentTagSet = new Set(current.tags)
   return allPosts
     .filter((p) => p.slug !== currentSlug)
     .map((p) => ({
       post: p,
-      score: p.tags.filter((t) => current.tags.includes(t)).length,
+      score: p.tags.filter((t) => currentTagSet.has(t)).length,
     }))
     .filter((r) => r.score > 0)
     .sort(
