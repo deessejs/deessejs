@@ -24,6 +24,63 @@ interface Session {
 	isCurrent: boolean
 }
 
+/**
+ * Format an expiry date in the user's locale and timezone. Renders
+ * an empty string on the server and during the first client render
+ * to avoid a hydration mismatch (server and client may sit in
+ * different locales/timezones, so `toLocaleDateString` would emit
+ * different text for the same input).
+ */
+function useFormattedExpiry(expiresAt: Date): string {
+	const [formatted, setFormatted] = useState("")
+	useEffect(() => {
+		setFormatted(new Date(expiresAt).toLocaleDateString())
+	}, [expiresAt])
+	return formatted
+}
+
+function SessionRow({
+	session,
+	onRevoke,
+	revoking,
+}: {
+	session: Session
+	onRevoke: (token: string) => void
+	revoking: string | null
+}) {
+	const formattedExpiry = useFormattedExpiry(session.expiresAt)
+	return (
+		<div
+			key={session.id}
+			className="flex items-center justify-between rounded-lg border p-3"
+		>
+			<div className="flex flex-col gap-0.5">
+				<div className="flex items-center gap-2">
+					<p className="text-sm font-medium">{session.userAgent}</p>
+					{session.isCurrent && (
+						<span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
+							Current
+						</span>
+					)}
+				</div>
+				<p className="text-xs text-muted-foreground">
+					{session.ipAddress} · Expires {formattedExpiry}
+				</p>
+			</div>
+			{!session.isCurrent && (
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => onRevoke(session.token)}
+					disabled={revoking === session.token}
+				>
+					{revoking === session.token ? "Signing out…" : "Sign out"}
+				</Button>
+			)}
+		</div>
+	)
+}
+
 export function SessionsTable() {
 	const [sessions, setSessions] = useState<Session[]>([])
 	const [loading, setLoading] = useState(true)
@@ -149,34 +206,12 @@ export function SessionsTable() {
 					<p className="text-sm text-muted-foreground">No other active sessions.</p>
 				)}
 				{sessions.map((session) => (
-					<div
+					<SessionRow
 						key={session.id}
-						className="flex items-center justify-between rounded-lg border p-3"
-					>
-						<div className="flex flex-col gap-0.5">
-							<div className="flex items-center gap-2">
-								<p className="text-sm font-medium">{session.userAgent}</p>
-								{session.isCurrent && (
-									<span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
-										Current
-									</span>
-								)}
-							</div>
-							<p className="text-xs text-muted-foreground">
-								{session.ipAddress} · Expires {new Date(session.expiresAt).toLocaleDateString()}
-							</p>
-						</div>
-						{!session.isCurrent && (
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => handleRevoke(session.token)}
-								disabled={revoking === session.token}
-							>
-								{revoking === session.token ? "Signing out…" : "Sign out"}
-							</Button>
-						)}
-					</div>
+						session={session}
+						onRevoke={handleRevoke}
+						revoking={revoking}
+					/>
 				))}
 			</div>
 		</div>
