@@ -125,8 +125,9 @@ export default async function KnowledgeGuidePage({
 
   // Products ↔ topic tags alignment (ADR-014). A guide whose
   // `products` value is not on its topic's `tags` is a build error.
+  const topicTagSet = new Set(topic.tags)
   const offendingProduct = guide.products.find(
-    (product) => !topic.tags.includes(product),
+    (product) => !topicTagSet.has(product),
   )
   if (offendingProduct) {
     throw new Error(
