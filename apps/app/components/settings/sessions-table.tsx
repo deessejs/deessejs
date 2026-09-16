@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
@@ -31,12 +31,22 @@ interface Session {
  * different locales/timezones, so `toLocaleDateString` would emit
  * different text for the same input).
  */
+function formatExpiry(expiresAt: Date): string {
+	return new Date(expiresAt).toLocaleDateString()
+}
+
+const EMPTY_EXPIRY: string = ""
+
+/**
+ * Subscribe to a client-only snapshot of the formatted expiry. The
+ * server snapshot returns `""`, so the SSR markup matches the first
+ * client render and React doesn't warn about a hydration mismatch.
+ * After hydration the snapshot returns the locale-formatted string.
+ */
 function useFormattedExpiry(expiresAt: Date): string {
-	const [formatted, setFormatted] = useState("")
-	useEffect(() => {
-		setFormatted(new Date(expiresAt).toLocaleDateString())
-	}, [expiresAt])
-	return formatted
+	const getServer = useCallback(() => EMPTY_EXPIRY, [])
+	const getClient = useCallback(() => formatExpiry(expiresAt), [expiresAt])
+	return useSyncExternalStore(() => () => {}, getClient, getServer)
 }
 
 function SessionRow({
