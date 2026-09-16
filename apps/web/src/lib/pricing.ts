@@ -148,12 +148,17 @@ export const LICENSE_TYPES: ReadonlyArray<LicenseType> = [
  */
 export type ComparisonLayerId = "open-community" | "per-project" | "subscription"
 
+export type ComparisonStatus = "yes" | "partial" | "no" | "na"
+
 export type ComparisonRow = {
   attribute: string
   /** Short hover explanation for the attribute. Surfaces as a tooltip
    *  next to the attribute name in the comparison table. */
   tooltip?: string
   values: Record<ComparisonLayerId, string>
+  /** Optional visual status per tier. Drives the icon next to each
+   *  cell. Falls back to a plain text cell when omitted. */
+  status?: Record<ComparisonLayerId, ComparisonStatus>
 }
 
 export const COMPARISON_LAYERS: ReadonlyArray<{
@@ -188,6 +193,11 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
           "per-project": "$299 one-shot, every project you ship",
           subscription: "$23 / month, on top of a per-project license",
         },
+        status: {
+          "open-community": "yes",
+          "per-project": "partial",
+          subscription: "yes",
+        },
       },
       {
         attribute: "License",
@@ -217,6 +227,52 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
         },
       },
       {
+        attribute: "Templates included",
+        tooltip: "How many templates your license unlocks at any given time. Open Community ships with a curated starter set; Pro unlocks the full catalog at the time of purchase, plus every release during an active subscription.",
+        values: {
+          "open-community": "1 starter template",
+          "per-project": "30+ templates at purchase",
+          subscription: "Rolling: every new template while subscribed",
+        },
+      },
+      {
+        attribute: "MCP server",
+        tooltip: "Every Pro template ships with an MCP manifest that exposes its tools to coding agents. Open Community templates are catalog-only.",
+        values: {
+          "open-community": "Not included",
+          "per-project": "Included",
+          subscription: "Included, kept current",
+        },
+        status: {
+          "open-community": "no",
+          "per-project": "yes",
+          subscription: "yes",
+        },
+      },
+      {
+        attribute: "AGENTS.md in templates",
+        tooltip: "Every Pro template ships with an AGENTS.md at the repo root describing how an AI agent should navigate the codebase. Open Community templates rely on the maintainer's contribution.",
+        values: {
+          "open-community": "Maintainer-dependent",
+          "per-project": "Every template",
+          subscription: "Every template, updated with each release",
+        },
+        status: {
+          "open-community": "partial",
+          "per-project": "yes",
+          subscription: "yes",
+        },
+      },
+      {
+        attribute: "Documentation depth",
+        tooltip: "How deep the template-level documentation goes. Pro templates include a per-template KB article in addition to the README.",
+        values: {
+          "open-community": "README only",
+          "per-project": "README + KB article",
+          subscription: "README + KB article, kept current",
+        },
+      },
+      {
         attribute: "Submission flow",
         tooltip: "How templates enter the catalog. Pull-request = community contribution, reviewed by a DeesseJS maintainer. Authored by the team = curated production-grade.",
         values: {
@@ -233,6 +289,11 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
           "per-project": "Production patterns a CISO expects",
           subscription: "Same as per-project, kept current",
         },
+        status: {
+          "open-community": "partial",
+          "per-project": "yes",
+          subscription: "yes",
+        },
       },
     ],
   },
@@ -247,6 +308,11 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
           "per-project": "Available while a subscription is active",
           subscription: "Every update ships during the subscription",
         },
+        status: {
+          "open-community": "yes",
+          "per-project": "partial",
+          subscription: "yes",
+        },
       },
       {
         attribute: "New templates",
@@ -256,6 +322,11 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
           "per-project": "Available with an active subscription",
           subscription: "Every new Pro template released during the term",
         },
+        status: {
+          "open-community": "yes",
+          "per-project": "partial",
+          subscription: "yes",
+        },
       },
       {
         attribute: "Security patches",
@@ -264,6 +335,103 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
           "open-community": "Community-driven",
           "per-project": "Patched while a subscription is active",
           subscription: "Patched during the subscription, by the DeesseJS team",
+        },
+        status: {
+          "open-community": "yes",
+          "per-project": "partial",
+          subscription: "yes",
+        },
+      },
+      {
+        attribute: "Roadmap visibility",
+        tooltip: "Whether you can see what the DeesseJS team is building next. Public roadmap = what's shipping in the catalog. Private roadmap = unreleased work-in-progress.",
+        values: {
+          "open-community": "Public, read-only",
+          "per-project": "Public + private backlog",
+          subscription: "Public + private backlog, comments enabled",
+        },
+      },
+    ],
+  },
+  {
+    heading: "Infrastructure & deployment",
+    rows: [
+      {
+        attribute: "Deployment targets",
+        tooltip: "Where you can host the templates you ship. All templates are platform-agnostic and run anywhere Node runs.",
+        values: {
+          "open-community": "Vercel, Netlify, self-host",
+          "per-project": "Vercel, Netlify, AWS, GCP, self-host",
+          subscription: "Vercel, Netlify, AWS, GCP, self-host",
+        },
+      },
+      {
+        attribute: "Custom domain",
+        tooltip: "Whether you can serve your deployed template under your own domain. Configuration is environment-driven, no vendor lock-in.",
+        values: {
+          "open-community": "Supported",
+          "per-project": "Supported",
+          subscription: "Supported",
+        },
+      },
+      {
+        attribute: "CI/CD templates",
+        tooltip: "Pre-built CI/CD workflows shipped with each template. Open Community has community-contributed ones; Pro ships curated GitHub Actions files.",
+        values: {
+          "open-community": "Community-contributed",
+          "per-project": "Curated GitHub Actions",
+          subscription: "Curated GitHub Actions, kept current",
+        },
+      },
+      {
+        attribute: "Observability hooks",
+        tooltip: "OpenTelemetry hooks baked into every Pro template. Open Community templates ship without a default observability stack.",
+        values: {
+          "open-community": "Bring your own",
+          "per-project": "OTel-ready, vendor-agnostic",
+          subscription: "OTel-ready, vendor-agnostic",
+        },
+      },
+    ],
+  },
+  {
+    heading: "Support & community",
+    rows: [
+      {
+        attribute: "Community access",
+        tooltip: "Where you can ask questions and follow releases. GitHub Discussions is the primary channel for all tiers.",
+        values: {
+          "open-community": "GitHub Discussions",
+          "per-project": "GitHub Discussions",
+          subscription: "GitHub Discussions",
+        },
+      },
+      {
+        attribute: "Email support",
+        tooltip: "Direct email channel for support questions. SLAs below are business hours (Monday-Friday, CET).",
+        values: {
+          "open-community": "Not included",
+          "per-project": "Best effort, 48h first reply",
+          subscription: "Priority queue, 24h first reply",
+        },
+        status: {
+          "open-community": "no",
+          "per-project": "partial",
+          subscription: "yes",
+        },
+      },
+      {
+        attribute: "Onboarding session",
+        tooltip: "Optional 1-hour call with the DeesseJS team to scope your first project. Available for Per-project and Subscription only.",
+        values: {
+          "open-community": "Not included",
+          "per-project": "1-hour call, on request",
+          subscription: "1-hour call, on request",
+        },
+        status: {
+          "open-community": "no",
+          "per-project": "yes",
+          subscription: "yes",
         },
       },
     ],
@@ -278,6 +446,11 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
           "open-community": "N/A",
           "per-project": "14 days, no questions asked",
           subscription: "Pro-rated, self-serve in the billing portal",
+        },
+        status: {
+          "open-community": "na",
+          "per-project": "yes",
+          subscription: "yes",
         },
       },
       {
@@ -296,6 +469,11 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
           "open-community": "N/A",
           "per-project": "What you've already cloned stays usable forever",
           subscription: "Templates you've deployed keep running; updates stop",
+        },
+        status: {
+          "open-community": "na",
+          "per-project": "yes",
+          subscription: "partial",
         },
       },
     ],
