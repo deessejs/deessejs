@@ -126,12 +126,11 @@ const TemplatesIndexPage = async ({
   const activeTypes = dedupe(rawTypes, KNOWN_TYPES)
   const activeFrameworks = dedupe(rawFrameworks, KNOWN_FRAMEWORKS)
 
+  const activeTypeSet = new Set<FilterValue<typeof KNOWN_TYPES>>(activeTypes)
   const visibleTemplates = templates.filter((template) => {
     const matchesType =
       activeTypes.length === 0 ||
-      activeTypes.includes(
-        template.category as FilterValue<typeof KNOWN_TYPES>,
-      )
+      activeTypeSet.has(template.category as FilterValue<typeof KNOWN_TYPES>)
     const matchesFramework =
       activeFrameworks.length === 0 ||
       activeFrameworks.some((framework) => template.labels.includes(framework))

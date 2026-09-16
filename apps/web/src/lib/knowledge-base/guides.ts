@@ -28,12 +28,13 @@ export function getRelatedGuides(
   const current = allKbGuides.find((g) => g.slug === slug)
   if (!current) return []
 
+  const currentProductSet = new Set(current.products)
   const scored = allKbGuides
     .filter((g) => g.slug !== slug)
     .map((g) => {
       const score =
         (g.topic === current.topic ? 1 : 0) +
-        g.products.filter((p) => current.products.includes(p)).length
+        g.products.filter((p) => currentProductSet.has(p)).length
       return { guide: g, score }
     })
 
