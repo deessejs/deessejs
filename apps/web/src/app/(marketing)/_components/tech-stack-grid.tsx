@@ -127,7 +127,7 @@ export function TechStackGrid({
   return (
     <div
       className={cn(
-        "col-span-1 lg:col-span-4 grid grid-cols-2 md:grid-cols-4 lg:border-l border-border",
+        "grid grid-cols-4 md:grid-cols-8 divide-x divide-border border-border",
         className,
       )}
     >
@@ -136,7 +136,7 @@ export function TechStackGrid({
         return (
           <div
             key={slotIdx}
-            className="group relative flex h-24 items-center justify-center gap-2 px-4 py-6 text-copy-13 text-muted-foreground transition-colors hover:bg-accent/40 lg:border-l lg:border-t border-border first:border-l-0 first:border-t-0 overflow-hidden"
+            className="group relative flex h-20 items-center justify-center gap-2 px-4 py-6 text-copy-13 text-muted-foreground transition-colors hover:bg-accent/40 overflow-hidden"
           >
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
