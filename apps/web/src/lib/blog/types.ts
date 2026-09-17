@@ -4,14 +4,27 @@ export type Author = (typeof allAuthors)[number]
 export type Post = (typeof allPosts)[number]
 export type Release = (typeof allReleases)[number]
 
-export function getAllTags(): string[] {
-  const tagSet = new Set<string>()
+/** Closed set of blog labels enforced by the content-collections schema
+ *  on posts.tags. Adding a new label here requires updating the
+ *  `tags` Zod enum in apps/web/content-collections.ts as well. */
+export const BLOG_TAGS = [
+  "engineering",
+  "community",
+  "news",
+  "customers",
+  "security",
+] as const
+
+export type BlogTag = (typeof BLOG_TAGS)[number]
+
+export function getAllTags(): BlogTag[] {
+  const tagSet = new Set<BlogTag>()
   for (const post of allPosts) {
     for (const tag of post.tags) {
       tagSet.add(tag)
     }
   }
-  return Array.from(tagSet).sort()
+  return BLOG_TAGS.filter((t) => tagSet.has(t))
 }
 
 export const RELEASE_CATEGORIES = [

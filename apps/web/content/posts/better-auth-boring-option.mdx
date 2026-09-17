@@ -1,0 +1,72 @@
+---
+title: "Better Auth vs Roll-your-own: the boring option won"
+description: We considered Clerk, Lucia, and writing our own. We picked Better Auth because it's the only one an agent can debug at 2am.
+date: 2026-06-09
+tags: [engineering]
+author: alex
+---
+
+# Better Auth vs Roll-your-own: the boring option won
+
+The auth contract is the one that, if you get it wrong, costs you a quarter. We considered four options for the default implementation. We picked Better Auth. Here's the reasoning.
+
+## The four options
+
+**Clerk.** The polished option. Excellent DX. Handles every edge case you haven't thought of. Pricing scales with MAU, which means at our scale it costs more than running the auth ourselves.
+
+**Lucia.** The opinionated option. Smaller surface area than Clerk. Forces you to own the auth flow end to end. Best for projects that want full control.
+
+**Better Auth.** The boring option. Newer than the others. Implements the standard set of features (sessions, organizations, OAuth, 2FA) without the polish of Clerk or the minimalism of Lucia.
+
+**Roll-your-own.** The trap. Write the session table, the password hashing, the email verification, the OAuth flow, the 2FA challenge, the recovery codes, the rate limiting, the audit log. Maintain it forever.
+
+## What we actually want
+
+We want auth that:
+
+- Works on day one.
+- Doesn't cost more than the rest of our stack combined at scale.
+- Is debuggable by an agent at 2am.
+- Has a typed interface at the boundary, so swapping implementations is a config change.
+
+Clerk wins on day one and on polish. It loses on cost at scale and on debuggability — the agent doesn't see what Clerk is doing, because Clerk is a black box.
+
+Lucia wins on ownership and on smallness. It loses on day-one polish — you have to wire more things yourself — and on the agent-debug story, which requires the agent to read more code.
+
+Better Auth wins on debuggability and on being boring. The source is TypeScript. The session table is a normal Postgres table. The OAuth flow is normal HTTP. An agent reading the auth code sees the auth code, not a vendor SDK.
+
+Roll-your-own wins on no one. We considered it. We have done it. We will not do it again.
+
+## The cost calculation
+
+For our scale (mid-five-figure MAU), Clerk is roughly $24k/year. Better Auth on the same scale, running on Upstash Redis for session storage, is roughly $200/month for the Redis and $0 for the auth itself. The difference pays for a senior engineer for two months.
+
+If we were at the scale where Clerk's pricing leveled out — say, 100k MAU and a team that didn't want to own auth — Clerk would be the right answer. We're not at that scale, and the auth contract means we can swap if we ever are.
+
+## The debuggability argument
+
+This is the part that matters most, and the one that's hardest to make on a slide.
+
+When auth breaks at 2am, the question is: how many layers of indirection between the failure and the line of code I need to fix?
+
+With Clerk, the answer is: many. The failure is in a third-party service. The agent doesn't have access to that service's source. The agent can reason about the failure, but it can't read the code that failed.
+
+With Better Auth, the answer is: zero. The session lookup is a SQL query. The password verification is a function call. The OAuth callback is a route handler. The agent reads the file, sees the bug, fixes it.
+
+We have shipped products where auth broke at 2am. We have shipped products where the agent (or the engineer) had to debug Clerk. We have not shipped a product where the engineer had to debug Better Auth at 2am. The difference is the difference between a vendor and a library.
+
+## Where Better Auth is weak
+
+Better Auth is younger than Clerk and Lucia. The plugin ecosystem is smaller. Some integrations (SAML, magic links, advanced MFA) are less polished.
+
+If you need SAML today, Clerk is the right answer. If you need a magic link flow that works in a specific way, Lucia or Better Auth with custom code is the right answer.
+
+We don't need those today. When we do, we'll write the integration or swap. The contract makes the swap a config change.
+
+## The boring conclusion
+
+Better Auth is the boring option. It's a library, not a service. It does what the auth contract requires. It doesn't do magic. The agent can read it.
+
+We picked it for the same reason we picked Postgres over a managed database, and Drizzle over Prisma, and Stripe over building our own billing. We pick the option that an agent can debug at 2am, because the agent is the engineer, and the engineer is on call.
+
+The boring options compound. The exciting options compound too, but in the wrong direction.
