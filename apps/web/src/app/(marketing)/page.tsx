@@ -1,36 +1,25 @@
 import Link from "next/link"
 import {
-  AlertTriangle,
   ArrowRight,
-  Boxes,
+  ChevronRight,
   Cloud,
-  Code2,
-  Component,
   Globe,
   Layers,
-  ListTree,
-  MonitorSmartphone,
   Radio,
-  Settings,
-  ShoppingBag,
-  Sigma,
-  Sparkles,
   TerminalSquare,
-  Workflow,
 } from "lucide-react"
 
-import { getAllReleases } from "@/lib/blog/releases"
 import { allKbGuides } from "content-collections"
 
 import { MarketingPage } from "./_components/marketing-page"
 
-import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { ContractsGrid, type Contract } from "./_components/contracts-grid"
-import { CopyCommand } from "./_components/copy-command"
+import { EcosystemTabs } from "./_components/ecosystem-tabs"
 import { FlickeringGrid } from "./_components/flickering-grid"
+import { SurfacesTabs } from "./_components/surfaces-tabs"
 import { TechStackGrid } from "./_components/tech-stack-grid"
 import { TerminalMockup } from "./_components/terminal-mockup"
 
@@ -75,10 +64,10 @@ import {
  *  14. FAQ: 2/4 split, accordion of common questions
  *  15. Final CTA: 2-col shared-border grid carrying both columns (install / ship)
  *
- * KB guides and changelog releases come from `content-collections`.
- * Stack-matrix logos come from `public/logos/*.svg` (CC0 via simple-icons).
- * Everything else is hard-coded here. When the surface grows, the
- * constants move into a dedicated data module.
+ * KB guides come from `content-collections`. Stack-matrix logos come from
+ * `public/logos/*.svg` (CC0 via simple-icons). Everything else is hard-coded
+ * here. When the surface grows, the constants move into a dedicated data
+ * module.
  *
  * Positioning rationale: see
  * `apps/internal-documentation/content/docs/(root)/home-positioning-strategy.mdx`.
@@ -87,90 +76,6 @@ import {
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
-
-type Surface = {
-  slug: string
-  name: string
-  /** One-line description of what kind of project this surface targets. */
-  blurb: string
-  href: string
-  icon: React.ComponentType<{ className?: string }>
-  status: "shipped" | "coming-soon"
-}
-
-/**
- * The eight surfaces the registry covers. Surfaces are not templates:
- * each surface is a category that may contain one or more templates.
- * The list is deliberately wider than what is shipped today: it tells
- * every visitor that the registry probably has something for them,
- * and lets them verify in one click.
- */
-const SURFACES: ReadonlyArray<Surface> = [
-  {
-    slug: "saas",
-    name: "SaaS",
-    blurb: "Multi-tenant B2B apps with auth, billing, and orgs wired.",
-    href: "/templates?surface=saas",
-    icon: Layers,
-    status: "shipped",
-  },
-  {
-    slug: "ai-agents",
-    name: "AI agents",
-    blurb: "Streaming chat endpoints, typed tools, and agent persistence.",
-    href: "/templates?surface=ai-agents",
-    icon: Sparkles,
-    status: "coming-soon",
-  },
-  {
-    slug: "mobile",
-    name: "Mobile",
-    blurb: "React Native + Expo with the same contracts as the web stack.",
-    href: "/templates?surface=mobile",
-    icon: MonitorSmartphone,
-    status: "coming-soon",
-  },
-  {
-    slug: "desktop",
-    name: "Desktop",
-    blurb: "Electron or Tauri shells wired against the shared backend.",
-    href: "/templates?surface=desktop",
-    icon: Boxes,
-    status: "coming-soon",
-  },
-  {
-    slug: "clis",
-    name: "CLIs",
-    blurb: "Tool scaffolding that extends the same registry the web uses.",
-    href: "/templates?surface=clis",
-    icon: TerminalSquare,
-    status: "coming-soon",
-  },
-  {
-    slug: "apis",
-    name: "APIs",
-    blurb: "Standalone backends with oRPC, Hono, and typed contracts.",
-    href: "/templates?surface=apis",
-    icon: Workflow,
-    status: "coming-soon",
-  },
-  {
-    slug: "blogs",
-    name: "Blogs",
-    blurb: "MDX-driven content sites with i18n and structured data.",
-    href: "/templates?surface=blogs",
-    icon: Code2,
-    status: "coming-soon",
-  },
-  {
-    slug: "ecommerce",
-    name: "E-commerce",
-    blurb: "Storefronts with Stripe Checkout, inventory, and order webhooks.",
-    href: "/templates?surface=ecommerce",
-    icon: ShoppingBag,
-    status: "coming-soon",
-  },
-]
 
 /** The six contracts wired into every template. */
 const CONTRACTS: ReadonlyArray<Contract> = [
@@ -352,57 +257,6 @@ const SKIP_ITEMS: ReadonlyArray<SkipItem> = [
 
 const SKIP_TOTAL_HOURS = "124+"
 
-/** Ecosystem products shown as a 4-col grid next to the tagline. */
-const ECOSYSTEM: ReadonlyArray<{
-  name: string
-  href: string
-  description: string
-  icon: React.ComponentType<{ className?: string }>
-}> = [
-  {
-    name: "Errors",
-    href: "https://errors.deessejs.com",
-    description:
-      "Structured error tracking with full TypeScript context. Stack traces, breadcrumbs, and source maps wired into the same contracts your templates use.",
-    icon: AlertTriangle,
-  },
-  {
-    name: "DRPC",
-    href: "https://drpc.deessejs.com",
-    description:
-      "Durable RPC for agent workflows. Long-running calls that survive restarts, with retries and replay built in.",
-    icon: Radio,
-  },
-  {
-    name: "Collections",
-    href: "https://collections.deessejs.com",
-    description:
-      "Type-safe data access with end-to-end inference. The schema is the source of truth, from the database to the client component.",
-    icon: ListTree,
-  },
-  {
-    name: "FP",
-    href: "https://fp.deessejs.com",
-    description:
-      "Functional primitives for TypeScript. Pipes, options, results, and tasks, designed to keep the contracts readable under load.",
-    icon: Sigma,
-  },
-  {
-    name: "UI",
-    href: "https://ui.deessejs.com",
-    description:
-      "Component library on top of shadcn. The same primitives every DeesseJS template ships with, extracted as a public package.",
-    icon: Component,
-  },
-  {
-    name: "Admin",
-    href: "https://admin.deessejs.com",
-    description:
-      "Operator console for production teams. One dashboard for deployments, incidents, customers, and billing across every template.",
-    icon: Settings,
-  },
-]
-
 type Testimonial = {
   quote: string
   name: string
@@ -476,13 +330,14 @@ const STATS = [
 // ---------------------------------------------------------------------------
 
 export default function HomePage() {
-  const featuredGuides = allKbGuides.slice(0, 3)
-  const releases = getAllReleases().slice(0, 3)
+  const featuredGuides = allKbGuides.slice(0, 4)
 
   return (
     <MarketingPage>
-      {/* 1. Hero: centered, no image, two CTAs (install / ship) */}
-        <div className="relative flex justify-center border-b border-border overflow-hidden">
+      {/* 1. Hero: stacked like Infisical — H1 full-width on top, subtitle
+          + CTAs in a row below, then a 2:1 media placeholder. Keeps the
+          FlickeringGrid as background texture. */}
+        <div className="relative border-b border-border overflow-hidden">
           <FlickeringGrid
             className="absolute inset-0 z-0 opacity-60"
             squareSize={3}
@@ -491,138 +346,106 @@ export default function HomePage() {
             maxOpacity={0.18}
             color="rgb(120, 120, 120)"
           />
-          <Cell className="relative z-10 items-center gap-6 lg:gap-8 text-center max-w-5xl min-h-[560px] lg:min-h-[640px] !p-8 lg:!p-16">
-            <Link
-              href="/blog/getting-started"
-              className="inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-background px-4 py-1.5 shadow-sm transition-colors hover:bg-accent/40"
-            >
-              <Layers
-                className="text-foreground size-4 shrink-0"
-                aria-hidden
-              />
-              <span className="truncate text-sm font-normal text-foreground">
-                Introducing intelligent code generation
-              </span>
-              <ArrowRight
-                className="size-3 shrink-0 text-muted-foreground"
-                aria-hidden
-              />
-            </Link>
-            <h1 className="max-w-5xl text-heading-40 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
-              The registry for production-grade templates your agent can ship from.
-            </h1>
-            <p className="text-muted-foreground text-copy-18 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
-              Senior patterns. Modern stack. The shortest path from{" "}
-              <span className="font-mono text-foreground/90">
-                npx deessejs init
-              </span>{" "}
-              to a deployed app.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <Button asChild size="lg">
-                <Link href="/templates">
-                  Browse templates
-                  <ArrowRight className="size-3.5" aria-hidden />
-                </Link>
-              </Button>
-              <Button variant="outline" size="lg" asChild className="bg-background hover:bg-accent/40">
-                <Link href="/contact">Contact us</Link>
-              </Button>
+
+          <div className="relative max-w-7xl mx-auto z-10 flex flex-col gap-6 lg:gap-8 px-8 py-12 lg:px-12 lg:py-16">
+            {/* Top: H1 with the badge pill above it, left-aligned, full width */}
+            <div className="flex flex-col items-start gap-5 lg:gap-6">
+              <Link
+                href="/blog/getting-started"
+                className="inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-background px-4 py-1.5 shadow-sm transition-colors hover:bg-accent/40"
+              >
+                <Layers
+                  className="text-foreground size-4 shrink-0"
+                  aria-hidden
+                />
+                <span className="truncate text-sm font-normal text-foreground">
+                  Introducing intelligent code generation
+                </span>
+                <ArrowRight
+                  className="size-3 shrink-0 text-muted-foreground"
+                  aria-hidden
+                />
+              </Link>
+              <h1 className="max-w-5xl text-heading-40 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
+                The registry that shortens your time to production.
+              </h1>
             </div>
-            <CopyCommand command="npx @deessejs/cli@latest help" className="mt-2" />
-          </Cell>
+
+            {/* Row: subtitle (left, ~4/7), spacer, CTAs (right, ~2/7) */}
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,_4fr)_minmax(0,_1fr)_minmax(0,_2fr)] items-end gap-6">
+              <p className="text-muted-foreground text-copy-16 sm:text-copy-18 leading-7 max-w-2xl text-balance [&:not(:first-child)]:mt-0">
+                Stop spending the first ten weeks rebuilding the same six
+                services. Start where the actual product begins.
+              </p>
+              <div aria-hidden />
+              <div className="flex flex-wrap items-center justify-start md:justify-end gap-3">
+                <Button asChild size="lg">
+                  <Link href="/templates">Browse templates</Link>
+                </Button>
+                <Button variant="outline" size="lg" asChild className="bg-background hover:bg-accent/40">
+                  <Link href="/contact">
+                    <ChevronRight className="size-3.5" aria-hidden />
+                    Talk to an expert
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
+            {/* Media placeholder: 2:1 panel, full width, lighter background
+                to mock the future central illustration without committing
+                to a final design. */}
+            <div
+              aria-hidden
+              className="relative w-full aspect-[2/1] border border-border bg-muted/40 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[12px_12px] opacity-60" />
+            </div>
+          </div>
         </div>
 
-        {/* 1b. Built with: copy left, logo wall right (4-col grid) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
-          <div className="col-span-1 lg:col-span-2 flex flex-col gap-2 justify-center p-6 md:p-8 lg:p-10">
-            <p className="text-label-13 text-muted-foreground">
-              Built with
-            </p>
-            <p className="text-heading-24 lg:text-heading-32 tracking-tighter text-balance [&:not(:first-child)]:mt-0">
-              The stack senior engineers ship on.
+        {/* 1b. Built with: row 1 = label + title, row 2 = tech stack grid */}
+        <div className="grid grid-cols-1 divide-y divide-border border-b border-border">
+          <div className="px-8 py-6">
+            <p className="text-heading-24 tracking-tighter text-balance [&:not(:first-child)]:mt-0">
+              Built with the stack senior engineers ship on.
             </p>
           </div>
           <TechStackGrid techs={TECH_STACK} />
         </div>
 
-        {/* 2. Surfaces: 4-col grid enumerating the 8 surfaces the registry covers */}
-        <div className="grid grid-cols-2 md:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
-          <Cell className="col-span-2 md:col-span-4 !p-0 border-0">
-            <div className="flex flex-col gap-2 p-6 border-b border-border">
-              <p className="text-label-13 text-muted-foreground">Surfaces</p>
-              <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-                Pick the surface. Get the convention.
-              </h2>
-              <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-                Eight surfaces, one registry. Each surface ships with the
-                same contracts, the same patterns, and the same guarantees,
-                whether you build it yourself or ship with us.
-              </p>
-            </div>
-          </Cell>
-          {SURFACES.map((surface) => {
-            const Icon = surface.icon
-            return (
-              <div
-                key={surface.slug}
-                className="group transition-colors hover:bg-accent/40 md:[&:nth-child(n+6)]:border-t md:border-t-border"
-              >
-                <Link
-                  href={surface.href}
-                  aria-label={`${surface.name}: ${surface.blurb}`}
-                  className="flex flex-col gap-3 p-6"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <Icon
-                      className="text-foreground size-5 shrink-0"
-                      aria-hidden
-                    />
-                    {surface.status === "shipped" ? (
-                      <Badge
-                        variant="success"
-                        className="text-label-12 gap-1.5"
-                      >
-                        <span
-                          className="size-1.5 rounded-full bg-emerald-500"
-                          aria-hidden
-                        />
-                        Shipped
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="warning"
-                        className="text-label-12 gap-1.5"
-                      >
-                        <span
-                          className="size-1.5 rounded-full bg-amber-500"
-                          aria-hidden
-                        />
-                        Coming soon
-                      </Badge>
-                    )}
-                  </div>
-                  <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
-                    {surface.name}
-                  </h3>
-                  <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-                    {surface.blurb}
-                  </p>
-                </Link>
+        {/* 2. Surfaces: 3-col grid on md (6 surfaces), 4-col grid on 2xl
+            (8 surfaces, with Blogs and E-commerce appearing only on
+            wider viewports). */}
+        <div className="grid grid-cols-1 border-b border-border">
+          <div className="flex flex-col gap-4 p-6 md:p-8 lg:p-10 border-b border-border">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center">
+                <div
+                  aria-hidden
+                  className="mr-4 shrink-0 w-[1.7px] h-[13.5px] bg-foreground"
+                />
+                <span className="font-mono uppercase text-[0.8125rem] leading-[1.2] text-foreground opacity-64 font-medium tracking-[-0.01em]">
+                  Pick the surface, skip the boilerplate
+                </span>
               </div>
-            )
-          })}
-          <Cell className="col-span-2 md:col-span-4 !p-0 border-0">
-            <div className="flex items-center justify-end gap-1 p-4 border-t border-border">
               <Link
                 href="/templates"
-                className="text-label-13 text-foreground inline-flex items-center gap-1 hover:underline underline-offset-4"
+                className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4 shrink-0"
               >
-                Browse all 8 surfaces
-                <ArrowRight className="size-3" aria-hidden />
+                <ChevronRight className="size-3" aria-hidden />
+                Explore all surfaces
               </Link>
             </div>
-          </Cell>
+            <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
+              Pick the surface. Get the convention.
+            </h2>
+            <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
+              Six surfaces, one registry. Each surface ships with the
+              same contracts, the same patterns, and the same guarantees,
+              whether you build it yourself or ship with us.
+            </p>
+          </div>
+          <SurfacesTabs />
         </div>
 
         {/* 4. Who it's for: 4-cell persona grid */}
@@ -781,178 +604,74 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 8. Authority: 3 cols, shared borders */}
-        <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
-          {/* Manifesto quote */}
-          <div className="flex flex-col gap-4 p-6 lg:p-8">
-            <p className="text-label-13 text-muted-foreground">
-              Why we build this
-            </p>
-            <blockquote className="text-heading-20 lg:text-heading-24 tracking-tight text-balance">
-              &ldquo;If a template can&apos;t be navigated by a coding agent, it
-              isn&apos;t done.&rdquo;
-            </blockquote>
-            <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-              DeesseJS is the main app of a small team building the templates,
-              contracts, and tooling we wished existed when we shipped our last
-              product.
-            </p>
-            <Button variant="outline" asChild className="self-start">
-              <Link href="/manifesto">Read the manifesto</Link>
-            </Button>
+        {/* 8. Latest guides: single-row grid of 3 article cards, each
+            with a placeholder mockup thumbnail on top and a footer
+            link to the full KB index. */}
+        <div className="grid grid-cols-1 border-b border-border">
+          <div className="flex items-center justify-between gap-4 p-6 md:p-8 lg:p-10 border-b border-border">
+            <div className="flex items-center">
+              <div
+                aria-hidden
+                className="mr-4 shrink-0 w-[1.7px] h-[13.5px] bg-foreground"
+              />
+              <span className="font-mono uppercase text-[0.8125rem] leading-[1.2] text-foreground opacity-64 font-medium tracking-[-0.01em]">
+                Latest guides
+              </span>
+            </div>
+            <Link
+              href="/knowledge-base"
+              className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4 shrink-0"
+            >
+              <ChevronRight className="size-3" aria-hidden />
+              All guides
+            </Link>
           </div>
-
-          {/* Knowledge Base */}
-          <div className="flex flex-col gap-4 p-6 lg:p-8">
-            <header className="flex items-end justify-between gap-4">
-              <p className="text-label-13 text-muted-foreground">
-                Learn by doing
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border">
+            {featuredGuides.map((guide) => (
               <Link
-                href="/knowledge-base"
-                className="text-label-14 text-foreground underline-offset-4 hover:underline inline-flex items-center gap-1 shrink-0"
+                key={guide.slug}
+                href={guide.url}
+                className="group flex flex-col transition-colors hover:bg-accent/40"
               >
-                All guides
-                <ArrowRight className="size-3" aria-hidden />
-              </Link>
-            </header>
-            <div className="flex flex-col divide-y divide-border border-y border-border">
-              {featuredGuides.map((guide) => (
-                <Link
-                  key={guide.slug}
-                  href={guide.url}
-                  className="group flex flex-col gap-1 py-3 transition-colors hover:bg-accent/40"
+                {/* Placeholder thumbnail (mockup for now) */}
+                <div
+                  aria-hidden
+                  className="relative aspect-[16/9] border-b border-border bg-muted/40 overflow-hidden"
                 >
-                  <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[12px_12px] opacity-60" />
+                </div>
+                <div className="flex flex-col gap-2 p-6 lg:p-8 flex-1">
+                  <span className="font-mono uppercase text-[0.8125rem] leading-[1.2] text-foreground opacity-64 font-medium tracking-[-0.01em]">
+                    Guide
+                  </span>
+                  <h3 className="text-heading-20 lg:text-heading-24 tracking-tight text-foreground !m-0 text-balance">
                     {guide.title}
                   </h3>
-                  <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+                  <p className="text-copy-14 text-muted-foreground leading-6 !m-0 text-balance">
                     {guide.description}
                   </p>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Changelog */}
-          <div className="flex flex-col gap-4 p-6 lg:p-8">
-            <header className="flex items-end justify-between gap-4">
-              <p className="text-label-13 text-muted-foreground">
-                Recent changes
-              </p>
-              <Link
-                href="/changelog"
-                className="text-label-14 text-foreground underline-offset-4 hover:underline inline-flex items-center gap-1 shrink-0"
-              >
-                All releases
-                <ArrowRight className="size-3" aria-hidden />
-              </Link>
-            </header>
-            <div className="flex flex-col divide-y divide-border border-y border-border">
-              {releases.map((release) => (
-                <Link
-                  key={release.slug}
-                  href={release.url}
-                  className="group flex items-baseline justify-between gap-4 py-3 transition-colors hover:bg-accent/40"
-                >
-                  <span className="text-copy-13-mono text-muted-foreground">
-                    v{release.version}
-                  </span>
-                  <span className="text-heading-20 tracking-tight text-foreground flex-1 !m-0">
-                    {release.title}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 9. Repeating CTA: 3 cols, both columns (install / ship / manifesto) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
-          <Cell className="md:col-span-1 gap-3 justify-center">
-            <p className="text-label-13 text-muted-foreground">
-              Ready to ship?
-            </p>
-            <p className="text-heading-24 lg:text-heading-32 tracking-tight text-foreground text-balance [&:not(:first-child)]:mt-0">
-              Start with a template. Keep the contracts.
-            </p>
-            <Button asChild size="lg" className="self-start mt-2">
-              <Link href="/knowledge-base/guides/install-deessejs-cli">
-                Install the CLI
-                <ArrowRight className="size-3.5" aria-hidden />
-              </Link>
-            </Button>
-          </Cell>
-          <Cell className="gap-2">
-            <p className="text-label-13 text-muted-foreground">
-              Want us to ship it?
-            </p>
-            <p className="text-copy-14 text-foreground leading-6 [&:not(:first-child)]:mt-0">
-              Same templates, same contracts. We run the build with you, you
-              ship to your customers.
-            </p>
-            <Link
-              href="/delivery"
-              className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 hover:underline underline-offset-4"
-            >
-              Talk to delivery
-              <ArrowRight className="size-3" aria-hidden />
-            </Link>
-          </Cell>
-          <Cell className="gap-2">
-            <p className="text-label-13 text-muted-foreground">Manifesto</p>
-            <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-              Why we ship templates an agent can read, instead of scaffolds
-              only a developer can navigate.
-            </p>
-            <Link
-              href="/manifesto"
-              className="text-label-13 text-foreground inline-flex items-center gap-1 pt-1 hover:underline underline-offset-4"
-            >
-              Read the manifesto
-              <ArrowRight className="size-3" aria-hidden />
-            </Link>
-          </Cell>
-        </div>
-
-        {/* 10. Ecosystem: tagline + 6 products in a 4-col shared-border grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-border border-b border-border">
-          <Cell className="col-span-2 lg:col-span-1 lg:row-span-2 gap-3 justify-center">
-            <p className="text-label-13 text-muted-foreground">Ecosystem</p>
-            <p className="text-heading-24 lg:text-heading-32 tracking-tight text-foreground text-balance [&:not(:first-child)]:mt-0">
-              Six tools. One stack.
-            </p>
-            <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-              Built on the same contracts you ship on. Errors, RPC,
-              collections, FP, UI, and the operator console. All DeesseJS.
-            </p>
-          </Cell>
-          {ECOSYSTEM.map((product) => {
-            const Icon = product.icon
-            return (
-              <Link
-                key={product.name}
-                href={product.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`${product.name}: ${product.description}`}
-                className="group flex flex-col gap-2 p-6 h-full transition-colors hover:bg-accent/40"
-              >
-                <div className="flex items-center gap-2">
-                  <Icon
-                    className="text-foreground size-4 shrink-0"
-                    aria-hidden
-                  />
-                  <span className="text-heading-20 tracking-tight text-foreground">
-                    {product.name}
-                  </span>
                 </div>
-                <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-                  {product.description}
-                </p>
               </Link>
-            )
-          })}
+            ))}
+          </div>
+        </div>
+
+        {/* 10. Ecosystem: tabbed layout with placeholder mockup on the
+            left and 4 product cards stacked on the right. Mirrors the
+            SurfacesTabs pattern, mirrored horizontally. */}
+        <div className="grid grid-cols-1 border-b border-border">
+          <div className="flex items-center justify-between gap-4 p-6 md:p-8 lg:p-10 border-b border-border">
+            <div className="flex items-center">
+              <div
+                aria-hidden
+                className="mr-4 shrink-0 w-[1.7px] h-[13.5px] bg-foreground"
+              />
+              <span className="font-mono uppercase text-[0.8125rem] leading-[1.2] text-foreground opacity-64 font-medium tracking-[-0.01em]">
+                One ecosystem, four tools
+              </span>
+            </div>
+          </div>
+          <EcosystemTabs />
         </div>
 
         {/* 11. Testimonials: 2 cards side-by-side */}
