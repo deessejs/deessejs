@@ -34,13 +34,15 @@ export function BlogPostGrid({
   return (
     <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-2 lg:grid-cols-3 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:nth-child(3n)]:lg:border-r-0 [&>li:nth-last-child(-n+2)]:md:border-b-0 [&>li:nth-last-child(-n+3)]:lg:border-b-0 [&>li:first-child]:border-t">
       {featured ? (
-        <li key={featured.slug} className="border border-border sm:col-span-2 lg:col-span-3">
-          <Link
-            href={featured.url}
-            className="group flex h-full flex-col transition-colors hover:bg-accent/30"
-          >
+        <li key={featured.slug} className="sm:col-span-2 lg:col-span-3">
+          <article className="group flex h-full flex-col transition-colors hover:bg-accent/30">
             {featured.cover ? (
-              <div className="relative aspect-video w-full overflow-hidden bg-muted">
+              <Link
+                href={featured.url}
+                className="relative block aspect-video w-full overflow-hidden bg-muted"
+                tabIndex={-1}
+                aria-hidden="true"
+              >
                 <Image
                   src={featured.cover}
                   alt=""
@@ -49,7 +51,7 @@ export function BlogPostGrid({
                   priority
                   sizes="(max-width: 768px) 100vw, 1200px"
                 />
-              </div>
+              </Link>
             ) : null}
             <div className="flex flex-col gap-3 p-8">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -71,7 +73,12 @@ export function BlogPostGrid({
                 )}
               </div>
               <h2 className="text-3xl font-bold tracking-tight">
-                {featured.title}
+                <Link
+                  href={featured.url}
+                  className="transition-colors hover:text-foreground"
+                >
+                  {featured.title}
+                </Link>
               </h2>
               <p className="text-muted-foreground">{featured.description}</p>
               {featuredAuthor ? (
@@ -80,14 +87,18 @@ export function BlogPostGrid({
                 </span>
               ) : null}
             </div>
-          </Link>
+          </article>
         </li>
       ) : null}
-      {posts.map((post) => (
-        <li key={post.slug}>
-          <PostCard post={post} />
-        </li>
-      ))}
+      {posts
+        // The featured post is already rendered in its own <li> above,
+        // so skip it here to avoid duplicate cards.
+        .filter((post) => post.slug !== featured?.slug)
+        .map((post) => (
+          <li key={post.slug}>
+            <PostCard post={post} />
+          </li>
+        ))}
     </ul>
   )
 }

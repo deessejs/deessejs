@@ -1,5 +1,5 @@
 import { allPosts } from "content-collections"
-import type { Post } from "./types"
+import type { BlogTag, Post } from "./types"
 
 export function getAllPosts(): Post[] {
   return [...allPosts].sort((a, b) => b.date.localeCompare(a.date))
@@ -30,7 +30,7 @@ export function getRelatedPosts(currentSlug: string, limit = 3): Post[] {
     .map((r) => r.post)
 }
 
-export function getPostsByTag(tag: string): Post[] {
+export function getPostsByTag(tag: BlogTag): Post[] {
   return getAllPosts().filter((p) => p.tags.includes(tag))
 }
 

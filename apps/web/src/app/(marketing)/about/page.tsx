@@ -59,9 +59,11 @@ const CHANNELS: ReadonlyArray<{
   },
 ] as const
 
+import { MarketingPage } from "../_components/marketing-page"
+
 export default function AboutPage() {
   return (
-    <article className="mx-auto flex max-w-4xl flex-col gap-12 px-4 py-16 sm:px-6 lg:py-24">
+    <MarketingPage>
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -219,6 +221,6 @@ export default function AboutPage() {
           </Link>
         </div>
       </nav>
-    </article>
+    </MarketingPage>
   )
 }

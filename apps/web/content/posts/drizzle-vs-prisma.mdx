@@ -1,0 +1,84 @@
+---
+title: Why we picked Drizzle over Prisma for the database contract
+description: Three reasons: smaller bundle, no codegen step in the hot path, and a schema that's actually readable by an agent.
+date: 2026-06-02
+tags: [engineering]
+author: alex
+---
+
+# Why we picked Drizzle over Prisma for the database contract
+
+The database contract is the one every template ships with. The choice between Drizzle and Prisma is the choice between two reasonable options. We picked Drizzle. Here's why, and where we're wrong.
+
+## Reason 1: no codegen step in the hot path
+
+Prisma generates a client at build time. The generated client is what your code imports. If you change your schema, you re-run `prisma generate`, the client updates, and your editor picks up the new types.
+
+This works. It also adds a moving part. Every CI run regenerates the client. Every Docker build regenerates the client. Every test run regenerates the client. When the generation fails — and it fails in non-obvious ways when you have multiple Prisma schemas or when the engine binary doesn't match the runtime — you debug Prisma before you debug your code.
+
+Drizzle has no codegen step. The schema is TypeScript. The queries are TypeScript. The types are inferred at the call site. There is no generated file to forget to commit, no engine binary to mismatch, no regeneration step to fail.
+
+## Reason 2: the schema is readable by an agent
+
+This is the reason that matters most, and the one that's hardest to quantify.
+
+A Prisma schema looks like this:
+
+```prisma
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  members   Member[]
+}
+```
+
+A Drizzle schema looks like this:
+
+```ts
+export const organizations = pgTable("organizations", {
+  id: text("id").primaryKey().$defaultFn(() => createId()),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+```
+
+The Drizzle version is TypeScript. An agent reading it knows what `text()`, `timestamp()`, and `$defaultFn()` do without leaving the file. The Prisma version is a DSL — the agent needs to know the Prisma grammar to read it.
+
+For an LLM, both are parseable. For a human new to the codebase, both are learnable. But the Drizzle version is the version where reading the schema and writing the queries is the same mental activity. The Prisma version requires context-switching.
+
+## Reason 3: the bundle is smaller
+
+A Prisma client weighs several megabytes because of the bundled query engine. Drizzle's client is kilobytes. For a serverless deploy, this matters at the cold-start margin. For an edge deploy, it matters more.
+
+We don't deploy to the edge by default, but we want the option. Drizzle keeps the option open.
+
+## Where we're wrong
+
+Drizzle is younger than Prisma. The migration tooling is rougher. The introspection (turning an existing database into a schema) is less polished. The third-party integrations — admin UIs, ER diagram generators, observability tools — are mostly Prisma-first, Drizzle-second.
+
+If you're coming from a Prisma codebase, the migration to Drizzle is a week of work, not a weekend. The query API is similar enough that it's not a rewrite, but it's not a drop-in either.
+
+We think it's worth the trade-off, because the constraints we care about (no codegen, agent-readable, small bundle) compound over time. But the trade-off is real.
+
+## When to pick Prisma
+
+If you have an existing Prisma codebase, keep it. The migration to Drizzle is not free.
+
+If you need a Prisma-specific feature — say, the Prisma Data Platform, or a specific Prisma accelerator — pick Prisma. The ecosystem is larger.
+
+If your team has Prisma muscle memory and Drizzle would be the second ORM you've adopted in two years, pick Prisma. Consistency is worth more than the marginal benefits we get from Drizzle.
+
+## When to pick Drizzle
+
+If you're starting a new project and you don't have a strong reason to pick Prisma, pick Drizzle.
+
+If your project is serverless or edge-deployed, pick Drizzle.
+
+If your codebase is read by AI agents, pick Drizzle.
+
+If you're tired of debugging codegen, pick Drizzle.
+
+That's it. The choice is real, but it's not load-bearing. Pick one, stick with it, and spend your time on the parts of the product that actually differentiate you.

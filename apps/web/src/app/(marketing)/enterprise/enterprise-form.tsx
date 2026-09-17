@@ -149,9 +149,9 @@ export function EnterpriseForm() {
         <FieldError errors={[errors.message]} />
       </Field>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <p
-          className="text-copy-13 text-muted-foreground"
+          className="max-w-sm text-copy-13 leading-5 text-muted-foreground"
           role="status"
           aria-live="polite"
         >
@@ -159,7 +159,7 @@ export function EnterpriseForm() {
             ? `Opening your mail client addressed to ${RECIPIENT}. We reply within two business days.`
             : `Submitting opens your mail client addressed to ${RECIPIENT}. We reply within two business days.`}
         </p>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} className="shrink-0 sm:self-auto self-start">
           {isSubmitting ? "Opening mail client…" : "Email us about Enterprise"}
         </Button>
       </div>
