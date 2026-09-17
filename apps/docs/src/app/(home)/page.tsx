@@ -1,4 +1,11 @@
+import type { Metadata } from "next"
 import Link from "next/link"
+
+export const metadata: Metadata = {
+  title: "DeesseJS Docs",
+  description:
+    "Reference documentation for the DeesseJS platform — guides, ADRs, and the API surface.",
+}
 
 export default function HomePage() {
   return (
