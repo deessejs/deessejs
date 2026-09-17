@@ -1,178 +1,168 @@
 "use client"
 
-import { useState, type ChangeEvent, type FormEvent } from "react"
+import { useState, type FormEvent } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 
 import { Button } from "@workspace/ui/components/button"
-import { Card } from "@workspace/ui/components/card"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
 import { Textarea } from "@workspace/ui/components/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select"
-
-type FormState = {
-  name: string
-  email: string
-  company: string
-  size: string
-  message: string
-}
-
-const COMPANY_SIZES = [
-  "1-10",
-  "11-50",
-  "51-200",
-  "201-1000",
-  "1000+",
-] as const
 
 const RECIPIENT = "support@deessejs.com"
 
 /**
- * Enterprise inquiry form. Opens the visitor's mail client with a
- * pre-filled subject and body (mailto + mailto body). No backend, no
- * token, no spam vector to defend. When a real route is wired (e.g.
- * /api/enterprise), the submit handler below can swap the mailto for
- * a fetch call without touching the field layout.
+ * Enterprise inquiry schema. The four fields map to the smallest
+ * capture the sales team needs to route the inquiry: who is asking,
+ * where they work, and what they want to build. Company size and
+ * project budget are intentionally deferred to the follow-up email
+ * — progressive disclosure per B2B research (saasui.design, 2026).
  *
- * Fields are kept minimal on purpose: name, email, company, size,
- * message. Anything more qualitative belongs in a follow-up email,
- * not in a form a visitor is reluctant to fill out.
+ * `message` requires a minimum of twenty characters so the team has
+ * enough context to triage; longer bodies are fine and welcomed.
+ */
+const enterpriseInquirySchema = z.object({
+  name: z.string().min(1, "Your name is required."),
+  email: z.string().email("Use a valid work email."),
+  company: z.string().min(1, "Company is required."),
+  message: z
+    .string()
+    .min(20, "A sentence or two helps us route your inquiry faster."),
+})
+
+type EnterpriseInquiryInput = z.infer<typeof enterpriseInquirySchema>
+
+/**
+ * Enterprise inquiry form.
+ *
+ * Submits via `mailto:` to avoid standing up a backend route before
+ * the sales team has agreed on a workflow. When a real endpoint
+ * exists (e.g. `/api/enterprise`), swap the submit handler for a
+ * `fetch()` call without touching the field layout.
+ *
+ * Validation runs client-side via Zod + react-hook-form. Errors
+ * surface under each field via the shadcn `FieldError` primitive,
+ * which auto-wires `role="alert"` and `aria-describedby` for screen
+ * readers. The submit button stays disabled while the form is
+ * submitting and the helper line announces the mailto handoff once
+ * validation passes.
  */
 export function EnterpriseForm() {
-  const [form, setForm] = useState<FormState>({
-    name: "",
-    email: "",
-    company: "",
-    size: "",
-    message: "",
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<EnterpriseInquiryInput>({
+    resolver: zodResolver(enterpriseInquirySchema),
+    defaultValues: { name: "", email: "", company: "", message: "" },
   })
 
-  const update =
-    (key: keyof FormState) =>
-    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      setForm((prev) => ({ ...prev, [key]: event.target.value }))
-    }
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null)
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const subject = `Enterprise inquiry from ${form.company || form.name || "DeesseJS visitor"}`
+  const onSubmit = (data: EnterpriseInquiryInput) => {
+    const subject = `Enterprise inquiry from ${data.company || data.name || "DeesseJS visitor"}`
     const body = [
-      `Name: ${form.name}`,
-      `Email: ${form.email}`,
-      `Company: ${form.company}`,
-      `Company size: ${form.size}`,
+      `Name: ${data.name}`,
+      `Email: ${data.email}`,
+      `Company: ${data.company}`,
       "",
       "Message:",
-      form.message,
+      data.message,
       "",
       "—",
       "Sent from the DeesseJS /enterprise page.",
     ].join("\n")
-    const href = `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    window.location.href = href
+
+    setSubmittedEmail(data.email)
+
+    // Trigger the mail client last so the React state update is
+    // committed before the navigation. window.location.href is the
+    // standard pattern — a temporary anchor click also works but
+    // requires appending the element to the DOM.
+    window.location.href =
+      `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  }
+
+  const onSubmitEvent = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void handleSubmit(onSubmit)(event)
   }
 
   return (
-    <Card className="flex flex-col gap-6 p-6 sm:p-8">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="enterprise-name" className="text-label-13 font-medium text-foreground">
-              Name
-            </label>
-            <Input
-              id="enterprise-name"
-              name="name"
-              autoComplete="name"
-              required
-              value={form.name}
-              onChange={update("name")}
-            />
-          </div>
+    <form
+      onSubmit={onSubmitEvent}
+      noValidate
+      className="flex flex-col gap-5"
+      aria-label="Enterprise inquiry"
+    >
+      <Field>
+        <FieldLabel htmlFor="enterprise-name">Name</FieldLabel>
+        <Input
+          id="enterprise-name"
+          autoComplete="name"
+          aria-invalid={!!errors.name}
+          {...register("name")}
+        />
+        <FieldError errors={[errors.name]} />
+      </Field>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="enterprise-email" className="text-label-13 font-medium text-foreground">
-              Email
-            </label>
-            <Input
-              id="enterprise-email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={form.email}
-              onChange={update("email")}
-            />
-          </div>
-        </div>
+      <Field>
+        <FieldLabel htmlFor="enterprise-email">Work email</FieldLabel>
+        <Input
+          id="enterprise-email"
+          type="email"
+          autoComplete="email"
+          aria-invalid={!!errors.email}
+          {...register("email")}
+        />
+        <FieldError errors={[errors.email]} />
+      </Field>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="enterprise-company" className="text-label-13 font-medium text-foreground">
-              Company
-            </label>
-            <Input
-              id="enterprise-company"
-              name="company"
-              autoComplete="organization"
-              required
-              value={form.company}
-              onChange={update("company")}
-            />
-          </div>
+      <Field>
+        <FieldLabel htmlFor="enterprise-company">Company</FieldLabel>
+        <Input
+          id="enterprise-company"
+          autoComplete="organization"
+          aria-invalid={!!errors.company}
+          {...register("company")}
+        />
+        <FieldError errors={[errors.company]} />
+      </Field>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="enterprise-size" className="text-label-13 font-medium text-foreground">
-              Company size
-            </label>
-            <Select
-              value={form.size}
-              onValueChange={(value) =>
-                setForm((prev) => ({ ...prev, size: value }))
-              }
-              name="size"
-            >
-              <SelectTrigger id="enterprise-size">
-                <SelectValue placeholder="Select a size" />
-              </SelectTrigger>
-              <SelectContent>
-                {COMPANY_SIZES.map((size) => (
-                  <SelectItem key={size} value={size}>
-                    {size}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+      <Field>
+        <FieldLabel htmlFor="enterprise-message">What are you building?</FieldLabel>
+        <Textarea
+          id="enterprise-message"
+          rows={5}
+          aria-invalid={!!errors.message}
+          {...register("message")}
+        />
+        <FieldDescription>
+          One or two sentences is enough. We follow up to scope the engagement.
+        </FieldDescription>
+        <FieldError errors={[errors.message]} />
+      </Field>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="enterprise-message" className="text-label-13 font-medium text-foreground">
-            What are you building?
-          </label>
-          <Textarea
-            id="enterprise-message"
-            name="message"
-            rows={5}
-            required
-            value={form.message}
-            onChange={update("message")}
-          />
-        </div>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-copy-13 text-muted-foreground">
-            Submitting opens your mail client addressed to {RECIPIENT}.
-            We reply within two business days.
-          </p>
-          <Button type="submit">Email us about Enterprise</Button>
-        </div>
-      </form>
-    </Card>
+      <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <p
+          className="max-w-sm text-copy-13 leading-5 text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          {submittedEmail
+            ? `Opening your mail client addressed to ${RECIPIENT}. We reply within two business days.`
+            : `Submitting opens your mail client addressed to ${RECIPIENT}. We reply within two business days.`}
+        </p>
+        <Button type="submit" disabled={isSubmitting} className="shrink-0 sm:self-auto self-start">
+          {isSubmitting ? "Opening mail client…" : "Email us about Enterprise"}
+        </Button>
+      </div>
+    </form>
   )
 }

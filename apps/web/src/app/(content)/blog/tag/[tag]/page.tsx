@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
-import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
-import { PostCard } from "@/components/blog/post-card"
-import { getAllTags } from "@/lib/blog/types"
+import { notFound } from "next/navigation"
+import { Badge } from "@workspace/ui/components/badge"
+import { BlogSearch } from "@/components/blog/blog-search"
 import { getPostsByTag } from "@/lib/blog/posts"
+import { BLOG_TAGS, type BlogTag, getAllTags } from "@/lib/blog/types"
 
 type Params = { tag: string }
 
@@ -18,7 +18,7 @@ export async function generateMetadata(
   const { tag } = await params
   const decoded = decodeURIComponent(tag)
   return {
-    title: `Posts tagged "${decoded}"`,
+    title: `Posts tagged "${decoded}" — Blog`,
     description: `Articles tagged ${decoded}.`,
   }
 }
@@ -28,41 +28,78 @@ export default async function TagPage(
 ) {
   const { tag } = await params
   const decoded = decodeURIComponent(tag)
-  const posts = getPostsByTag(decoded)
-
-  if (posts.length === 0) notFound()
+  // Refuse unknown tags: they're not part of our closed set, so a
+  // 404 is more honest than rendering an empty index. Casting the
+  // string to `BlogTag` would skip this check and lie to callers.
+  if (!BLOG_TAGS.includes(decoded as BlogTag)) {
+    notFound()
+  }
+  const blogTag = decoded as BlogTag
+  const posts = getPostsByTag(blogTag)
+  const tags = getAllTags()
+  const featured = posts[0]
 
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-      <Link
-        href="/blog"
-        className="mb-8 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-3.5" />
-        Back to blog
-      </Link>
-
-      <header className="mb-12 max-w-3xl">
-        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          Tag
-        </p>
-        <h1 className="mt-2 text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
-          {decoded}
+      <header className="mb-8">
+        <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
+          Blog
         </h1>
-        <p className="mt-4 text-pretty text-lg text-muted-foreground">
-          {posts.length} {posts.length === 1 ? "post" : "posts"} tagged with{" "}
-          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm text-foreground/80">
-            {decoded}
-          </code>
+        <p className="mt-2 text-pretty text-lg text-muted-foreground">
+          Articles and updates. Subscribe via{" "}
+          <a
+            href="/blog/feed.xml"
+            className="underline underline-offset-4 hover:text-foreground"
+          >
+            RSS
+          </a>
           .
         </p>
       </header>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {posts.map((post) => (
-          <PostCard key={post.slug} post={post} />
-        ))}
-      </div>
+      <BlogSearch
+        posts={posts}
+        featured={featured}
+        topics={
+          <nav
+            aria-label="Filter by tag"
+            className="flex flex-wrap items-center gap-2"
+          >
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Topics
+            </span>
+            {tags.map((t) => {
+              const isActive = t === decoded
+              return (
+                <Link
+                  key={t}
+                  href={`/blog/tag/${encodeURIComponent(t)}`}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <Badge
+                    variant={isActive ? "default" : "outline"}
+                    className={
+                      isActive
+                        ? "cursor-pointer"
+                        : "cursor-pointer transition-colors hover:bg-foreground hover:text-background"
+                    }
+                  >
+                    {t}
+                  </Badge>
+                </Link>
+              )
+            })}
+            <Link href="/changelog">
+              <Badge
+                variant="outline"
+                className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
+              >
+                Changelog
+              </Badge>
+            </Link>
+          </nav>
+        }
+      />
     </section>
   )
 }

@@ -13,6 +13,7 @@ import {
   getRelatedBlogPosts,
   getReleaseBySlug,
 } from "@/lib/blog/releases"
+import { ORG_ID } from "@/lib/seo/organization"
 
 type Params = { slug: string }
 
@@ -32,10 +33,17 @@ export async function generateMetadata(
     alternates: { canonical: release.url },
     openGraph: {
       type: "article",
+      siteName: "DeesseJS",
+      locale: "en_US",
       title: `${release.version} — ${release.title}`,
       description: release.description,
       publishedTime: release.date,
       url: release.url,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${release.version} — ${release.title}`,
+      description: release.description,
     },
   }
 }
@@ -52,6 +60,34 @@ export default async function ReleasePage(
 
   return (
     <article className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: `${release.version} — ${release.title}`,
+            description: release.description,
+            // `version` is semver (already enforced by the Zod schema),
+            // so we can surface it as a schema.org `version` field.
+            version: release.version,
+            datePublished: `${release.date}T00:00:00.000Z`,
+            inLanguage: "en",
+            keywords: release.categories,
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": release.url,
+            },
+            url: release.url,
+            publisher: { "@id": ORG_ID },
+            author: {
+              "@type": "Organization",
+              name: "DeesseJS",
+              "@id": ORG_ID,
+            },
+          }),
+        }}
+      />
       <Link
         href="/changelog"
         className="mb-8 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -121,11 +157,13 @@ export default async function ReleasePage(
           <h2 className="mb-6 text-2xl font-semibold tracking-tight">
             Related reading
           </h2>
-          <div className="grid gap-6 md:grid-cols-2">
+          <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 md:grid-cols-2 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:last-child]:md:border-b-0 [&>li:first-child]:border-t">
             {relatedPosts.map((post) => (
-              <PostCard key={post.slug} post={post} />
+              <li key={post.slug}>
+                <PostCard post={post} />
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
     </article>

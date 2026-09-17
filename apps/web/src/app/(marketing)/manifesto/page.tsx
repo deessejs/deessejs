@@ -5,6 +5,8 @@ import { H1, H2 } from "@workspace/ui/components/typography"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 
+import { MarketingPage } from "../_components/marketing-page"
+
 export const metadata: Metadata = {
   title: "Manifesto",
   description:
@@ -44,12 +46,12 @@ const BELIEFS: ReadonlyArray<Belief> = [
   {
     number: "01",
     title: "Agents are the developers now",
-    body: "The next platform shift is autonomous agents shipping production code. Templates should be shaped for the agents that ship them — clear boundaries, machine-readable metadata, hooks over conventions. If a template can't be navigated by a coding agent, it isn't done.",
+    body: "The next platform shift is autonomous agents shipping production code. Templates should be shaped for the agents that ship them: clear boundaries, machine-readable metadata, hooks over conventions. If a template can't be navigated by a coding agent, it isn't done.",
   },
   {
     number: "02",
     title: "Opinionated defaults, modular everything",
-    body: "We pick the stack — Next.js, Better Auth, Drizzle, shadcn/ui, Tailwind v4 — and we ship it wired. Every primitive is removable without breaking the rest. The opinions give speed; the modularity gives longevity.",
+    body: "We pick the stack: Next.js, Better Auth, Drizzle, shadcn/ui, Tailwind v4, and we ship it wired. Every primitive is removable without breaking the rest. The opinions give speed; the modularity gives longevity.",
   },
   {
     number: "03",
@@ -59,7 +61,7 @@ const BELIEFS: ReadonlyArray<Belief> = [
   {
     number: "04",
     title: "The CLI is the product surface",
-    body: "A discoverable, composable CLI — `deessejs init`, `deessejs list`, `deessejs update` — is how developers adopt a system. We invest in the terminal because that's where the time adds up. The web surface is where humans browse; the CLI is where they ship.",
+    body: "A discoverable, composable CLI (`deessejs init`, `deessejs list`, `deessejs update`) is how developers adopt a system. We invest in the terminal because that's where the time adds up. The web surface is where humans browse; the CLI is where they ship.",
   },
   {
     number: "05",
@@ -69,13 +71,13 @@ const BELIEFS: ReadonlyArray<Belief> = [
   {
     number: "06",
     title: "Ship the smallest useful thing",
-    body: "We don't wait for the full vision to release the first slice. Templates, the registry, the SDK — they land as they become useful, and they evolve in the open. The roadmap is a public draft. The community is part of how we build, not who we build for.",
+    body: "We don't wait for the full vision to release the first slice. Templates, the registry, the SDK: they land as they become useful, and they evolve in the open. The roadmap is a public draft. The community is part of how we build, not who we build for.",
   },
 ] as const
 
 export default function ManifestoPage() {
   return (
-    <article className="mx-auto flex max-w-3xl flex-col gap-16 px-4 py-16 sm:px-6 lg:py-24">
+    <MarketingPage>
       {/* Hero */}
       <header className="flex flex-col gap-6">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -117,7 +119,7 @@ export default function ManifestoPage() {
           These six beliefs are the rules we hold each other to
           when the easy call is to ship something less careful.
           They are not a manifesto in the sense of a manifesto
-          being authoritative — they are the document we rewrite
+          being authoritative. They are the document we rewrite
           whenever we need to remember why we&apos;re here.
         </p>
       </section>
@@ -201,6 +203,6 @@ export default function ManifestoPage() {
           </Button>
         </div>
       </nav>
-    </article>
+    </MarketingPage>
   )
 }

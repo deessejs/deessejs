@@ -76,6 +76,7 @@ const footerSections: ReadonlyArray<{
       { label: "Customers", href: "/customers" },
       { label: "Templates", href: "/templates" },
       { label: "Ecosystem", href: "/ecosystem" },
+      { label: "Stack", href: "/stack" },
     ],
   },
 ]

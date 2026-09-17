@@ -1,0 +1,88 @@
+---
+title: Why every template ships with the same observability stack
+description: Logs, traces, and metrics from Better Stack and Sentry. Predictability beats choice when you're shipping at 2am.
+date: 2026-06-23
+tags: [engineering]
+author: admin
+---
+
+# Why every template ships with the same observability stack
+
+Every DeesseJS template ships with Better Stack for logs and Sentry for errors. The choice is not because we evaluated every option. The choice is because we ship at 2am, and at 2am you don't want to be evaluating options.
+
+## The case for predictability
+
+When something breaks in production, the operator needs to answer three questions:
+
+1. What is broken?
+2. When did it break?
+3. What changed?
+
+To answer these questions, the operator needs logs, traces, and metrics. They need them correlated. They need them in a place they know how to search.
+
+If every product uses the same observability stack, the operator who is on call at 2am already knows how to search the logs. They already know how to read the traces. They already know the difference between a Sentry error and a Better Stack log.
+
+If every product uses a different observability stack, the operator has to learn the stack before they can debug. At 2am, that learning costs you.
+
+## What the stack is
+
+The stack is:
+
+- **Better Stack** for logs and metrics. Hosted. Cheap. Good query language.
+- **Sentry** for errors and tracing. Hosted. Free tier is generous. Sourcemaps work out of the box.
+
+That's it. Two vendors. Both have free tiers. Both scale to mid-six-figure MAU without breaking the bank.
+
+The stack is wired by default. You don't have to integrate either of them. They Just Work, and they Just Work the same way on every template.
+
+## What the stack is not
+
+It's not the only choice. It's not even the best choice for every product. It's the choice that has the lowest cost in operator confusion.
+
+If you have an existing Datadog account, swap Better Stack for Datadog. The contract is the same: structured logs, trace IDs, metrics with the labels your operators query. The contract is portable. The vendor is not.
+
+If you have an existing Sentry account, keep Sentry. If you want to swap to Highlight or Bugsnag or Rollbar, swap. The contract doesn't care.
+
+What the contract enforces is that you have one log destination, one error destination, and that the two are correlated. How you satisfy that is your call.
+
+## How the correlation works
+
+Every request gets a trace ID. The trace ID is passed:
+
+- Into every log line emitted during the request.
+- Into every job scheduled during the request.
+- Into every database query (via Drizzle middleware).
+- Into every external API call (via fetch wrapper).
+
+When the trace ID lands in Sentry, the operator can search Better Stack for the same trace ID and find the surrounding logs. When the trace ID lands in Better Stack, the operator can search Sentry for the same ID and find the error.
+
+The correlation is automatic. You don't have to remember to pass it. The contract enforces it.
+
+## Why we picked these two
+
+**Better Stack** because the query language is the closest thing to a SQL for logs. Operators who know SQL can write queries without learning a new language. The free tier is generous. The pricing at scale is honest.
+
+**Sentry** because the source map support is the best. When a stack trace comes back as `vendor.js:1:1`, you can't debug it. When it comes back as `auth.ts:42:7`, you can. Sentry does the source map upload automatically on Vercel deploys. No configuration.
+
+These are not the most exciting choices. They are the boring choices. The boring choices compound.
+
+## What about the metrics?
+
+Metrics are the third pillar. We use them less than we should, and more than we admit.
+
+The honest answer is: metrics are hard to get right without an operator who knows what to query. The contract ships with the four metrics every product needs:
+
+- Request count, by route and status code.
+- Request duration, by route.
+- Error count, by route.
+- Job duration, by job name.
+
+If you want more, you add them. The contract doesn't enforce a metric naming convention; we considered it and decided it was more friction than it was worth.
+
+## The boring conclusion
+
+Predictability beats choice. When something breaks at 2am, you want to be searching logs you already know how to search, in a tool you already know how to use.
+
+The stack is Better Stack + Sentry. Both are boring. Both work. Both are wired by default. Swap if you need to; the contract makes the swap a config change.
+
+The point of the contract is that you don't have to make this decision. You start with the default, you ship your product, and you change the default later if you need to. By then, you'll know what you're changing to and why.

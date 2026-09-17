@@ -1,4 +1,4 @@
-import { spawn as nodeSpawn } from "node:child_process"
+import * as crossSpawn from "cross-spawn"
 
 // Dummy comment added to exercise the CI workflows on a no-op change.
 // No runtime behavior change; tests and bundle are unaffected.
@@ -22,7 +22,9 @@ export const spawn = (
 ): Promise<number> => {
   const { cwd, env, stdio = "inherit", reject = false } = options
   return new Promise((resolve, rejectFn) => {
-    const child = nodeSpawn(command, args, {
+    // `cross-spawn` resolves Windows `.cmd`/`.bat` shims automatically
+    // (PATHEXT), unlike `node:child_process#spawn` with `shell: false`.
+    const child = crossSpawn.spawn(command, args, {
       cwd,
       env: env ?? process.env,
       stdio,

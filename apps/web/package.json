@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:e2e:local": "playwright test --config e2e.config.ts",
-    "content-collections": "content-collections build"
+    "content-collections": "content-collections build",
+    "favicons": "node scripts/generate-favicons.mjs"
   },
   "dependencies": {
     "@orpc/client": "catalog:",
@@ -30,6 +31,8 @@
     "next": "catalog:",
     "next-themes": "^0.4.6",
     "react": "catalog:",
+    "react-hook-form": "catalog:",
+    "@hookform/resolvers": "catalog:",
     "react-dom": "catalog:",
     "react-markdown": "catalog:",
     "rehype-pretty-code": "catalog:",

@@ -4,14 +4,27 @@ export type Author = (typeof allAuthors)[number]
 export type Post = (typeof allPosts)[number]
 export type Release = (typeof allReleases)[number]
 
-export function getAllTags(): string[] {
-  const tagSet = new Set<string>()
+/** Closed set of blog labels enforced by the content-collections schema
+ *  on posts.tags. Adding a new label here requires updating the
+ *  `tags` Zod enum in apps/web/content-collections.ts as well. */
+export const BLOG_TAGS = [
+  "engineering",
+  "community",
+  "news",
+  "customers",
+  "security",
+] as const
+
+export type BlogTag = (typeof BLOG_TAGS)[number]
+
+export function getAllTags(): BlogTag[] {
+  const tagSet = new Set<BlogTag>()
   for (const post of allPosts) {
     for (const tag of post.tags) {
       tagSet.add(tag)
     }
   }
-  return Array.from(tagSet).sort()
+  return BLOG_TAGS.filter((t) => tagSet.has(t))
 }
 
 export const RELEASE_CATEGORIES = [
@@ -46,6 +59,24 @@ export function sortReleasesDesc(releases: Release[]): Release[] {
   })
 }
 
+/** Sort by calendar date desc; semver desc as a tiebreak. Distinct
+ *  from `sortReleasesDesc` (which drives prev/next ordering) so that
+ *  the index timeline can stay in chronological order without
+ *  breaking the detail page's prev/next nav. */
+export function sortReleasesByDateDesc(releases: Release[]): Release[] {
+  return [...releases].sort((a, b) => {
+    const dateDiff = b.date.localeCompare(a.date)
+    if (dateDiff !== 0) return dateDiff
+    const va = a.version.split(".").map(Number)
+    const vb = b.version.split(".").map(Number)
+    for (let i = 0; i < 3; i++) {
+      const diff = (vb[i] ?? 0) - (va[i] ?? 0)
+      if (diff !== 0) return diff
+    }
+    return 0
+  })
+}
+
 export interface ReleaseGroup {
   label: string
   releases: Release[]
@@ -63,6 +94,28 @@ export function groupReleasesByMinor(releases: Release[]): ReleaseGroup[] {
   }
   return Array.from(map.entries()).map(([label, releases]) => ({
     label,
+    releases,
+  }))
+}
+
+export interface ReleaseDateGroup {
+  /** Calendar date in `YYYY-MM-DD`. */
+  date: string
+  releases: Release[]
+}
+
+/** Group releases by calendar date, sorted desc by date then by
+ *  semver desc within each bucket. */
+export function groupReleasesByDate(releases: Release[]): ReleaseDateGroup[] {
+  const sorted = sortReleasesByDateDesc(releases)
+  const map = new Map<string, Release[]>()
+  for (const r of sorted) {
+    const list = map.get(r.date) ?? []
+    list.push(r)
+    map.set(r.date, list)
+  }
+  return Array.from(map.entries()).map(([date, releases]) => ({
+    date,
     releases,
   }))
 }

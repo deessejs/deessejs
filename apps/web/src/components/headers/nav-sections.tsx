@@ -10,6 +10,12 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@workspace/ui/components/navigation-menu"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@workspace/ui/components/accordion"
 import { cn } from "@workspace/ui/lib/utils"
 
 type NavItem = {
@@ -186,6 +192,11 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
             href: "/ecosystem",
             description: "The apps, SDKs, and contracts that ship together",
           },
+          {
+            label: "Stack",
+            href: "/stack",
+            description: "The hosting, database, auth, and billing providers we ship against",
+          },
         ],
       },
     ],
@@ -244,38 +255,57 @@ export function NavSections({
     )
   }
 
+  const productsSection = NAV_SECTIONS.find((section) => section.label === "Products")
+  const resourcesSection = NAV_SECTIONS.find((section) => section.label === "Resources")
+  const generalLinks = NAV_SECTIONS.filter(
+    (section) =>
+      section.label !== "Products" &&
+      section.label !== "Resources" &&
+      Boolean(section.href),
+  )
+
   return (
-    <nav aria-label="Primary mobile" className="flex flex-col gap-5">
-      {NAV_SECTIONS.map((section) => (
-        <div key={section.label} className="flex flex-col gap-2">
-          {section.href ? (
-            <Link
-              href={section.href}
-              className={cn(
-                "text-sm font-medium",
-                isNavActive(pathname, section.href)
-                  ? "text-foreground"
-                  : "text-muted-foreground",
-              )}
-            >
-              {section.label}
-            </Link>
-          ) : (
-            <span className="text-sm font-medium text-muted-foreground">
-              {section.label}
-            </span>
-          )}
-          {section.categories ? (
-            <div className="flex flex-col gap-4 pl-2">
-              {section.categories.map((category) => (
-                <div
-                  key={category.label}
-                  className="flex flex-col gap-1.5"
-                >
-                  <span className="text-label-13 font-semibold uppercase tracking-wider text-muted-foreground">
-                    {category.label}
-                  </span>
-                  <ul className="flex flex-col gap-1.5 pl-2">
+    <nav aria-label="Primary mobile" className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        <h3 className="text-label-13 font-semibold uppercase tracking-wider text-muted-foreground">
+          General
+        </h3>
+        <ul className="flex flex-col gap-3">
+          {generalLinks.map((section) => (
+            <li key={section.label}>
+              <Link
+                href={section.href ?? "#"}
+                className={cn(
+                  "text-sm font-medium",
+                  isNavActive(pathname, section.href ?? "")
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {section.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {productsSection?.categories ? (
+        <div className="flex flex-col gap-3">
+          <h3 className="text-label-13 font-semibold uppercase tracking-wider text-muted-foreground">
+            Products
+          </h3>
+          <Accordion type="multiple" className="w-full">
+            {productsSection.categories.map((category) => (
+              <AccordionItem
+                key={category.label}
+                value={`products-${category.label}`}
+                className="border-border"
+              >
+                <AccordionTrigger className="text-sm font-medium hover:no-underline py-2">
+                  {category.label}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ul className="flex flex-col gap-2 pb-1">
                     {category.items.map((item) => (
                       <li key={item.label}>
                         <Link
@@ -288,12 +318,48 @@ export function NavSections({
                       </li>
                     ))}
                   </ul>
-                </div>
-              ))}
-            </div>
-          ) : null}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
-      ))}
+      ) : null}
+
+      {resourcesSection?.categories ? (
+        <div className="flex flex-col gap-3">
+          <h3 className="text-label-13 font-semibold uppercase tracking-wider text-muted-foreground">
+            Resources
+          </h3>
+          <Accordion type="multiple" className="w-full">
+            {resourcesSection.categories.map((category) => (
+              <AccordionItem
+                key={category.label}
+                value={`resources-${category.label}`}
+                className="border-border"
+              >
+                <AccordionTrigger className="text-sm font-medium hover:no-underline py-2">
+                  {category.label}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ul className="flex flex-col gap-2 pb-1">
+                    {category.items.map((item) => (
+                      <li key={item.label}>
+                        <Link
+                          href={item.href}
+                          className="text-sm text-foreground transition-colors hover:text-foreground/70"
+                          {...externalProps(item.external)}
+                        >
+                          {item.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      ) : null}
     </nav>
   )
 }

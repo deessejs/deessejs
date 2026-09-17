@@ -1,0 +1,111 @@
+---
+title: How an AI agent reads a DeesseJS template
+description: An agent doesn't grep for files. It reads the contracts, the manifest, and the AGENTS.md. Here's what that looks like in practice.
+date: 2026-05-19
+tags: [engineering]
+author: alex
+---
+
+# How an AI agent reads a DeesseJS template
+
+The claim that an AI agent can navigate a DeesseJS template is a strong one. It's worth walking through what it actually means, because the answer is more interesting than "we trained a model on our docs."
+
+## The agent doesn't see your folder structure
+
+When you open a template in Cursor, you see `src/`, `app/`, `lib/`, `components/`, and a hundred other folders that you navigated to over months. An agent doesn't have that muscle memory. It has a context window, and within that context window it has whatever fits.
+
+So the first question is: what fits? What does an agent see when it lands on a fresh template?
+
+It sees the files you tell it to read. The `AGENTS.md` at the root is the first thing. Inside that file, we list:
+
+- The contracts this template implements.
+- The provider chosen for each contract.
+- The entry points (API routes, server actions, jobs).
+- The tests, and what they cover.
+- The "do not modify" list — files an agent should not change without human approval.
+
+That file is two hundred lines. It fits in the context window. An agent that reads it knows the shape of the template.
+
+## The contracts are the API surface
+
+Once an agent knows the shape, it doesn't need to read every file. It reads the contracts, which are the typed interfaces at the boundary.
+
+The auth contract exports a `getSession()` function. The agent knows that calling `getSession()` returns the current session, or null. It doesn't need to read the implementation to know what it does. The contract is the API.
+
+This is the part that surprised us. We didn't design the contracts for agents — we designed them for humans who would be ramping on the codebase. But the constraints are the same:
+
+- A small, stable surface area.
+- Typed interfaces at every boundary.
+- Tests that document behavior.
+
+An agent doesn't need to read the source code if the contracts are well-named.
+
+## The manifest tells the agent what exists
+
+Every template has a `deessejs.json` manifest at the root. It says:
+
+```json
+{
+  "name": "saas-starter",
+  "contracts": ["auth", "database", "billing", "jobs", "storage", "observability"],
+  "providers": {
+    "auth": "better-auth",
+    "database": "drizzle-postgres",
+    "billing": "stripe"
+  },
+  "entry_points": {
+    "api": "src/app/api",
+    "jobs": "src/jobs",
+    "ui": "src/app/(dashboard)"
+  }
+}
+```
+
+An agent reading this manifest knows exactly which contracts are wired, which providers are in use, and where to look for the entry points. It can plan a change without grep.
+
+## The MCP server exposes the tools
+
+The registry ships with an MCP server that exposes the registry itself as a set of tools:
+
+- `list_templates()` — return the templates in the registry, with their manifests.
+- `template_info(slug)` — return the full manifest for one template.
+- `search_docs(query)` — search the docs.
+- `get_contract(name)` — return the typed interface for one contract.
+
+An agent connected to the MCP server can answer questions about the registry without the user copy-pasting anything into the prompt. The tools are the API the agent uses.
+
+## What this looks like in practice
+
+A user asks their agent: "Add a forgot-password flow to my SaaS."
+
+The agent:
+
+1. Calls `template_info()` to confirm it's a DeesseJS template.
+2. Reads the auth contract to confirm there's a password-reset affordance.
+3. Plans a change: a new route, a new email template, a new job for cleanup.
+4. Implements the change against the contract, not the implementation.
+5. Writes tests that match the contract's behavior, not the implementation's.
+
+The user sees a diff. The agent sees a contract.
+
+## What this is not
+
+It's not magic. An agent connected to the MCP server is still an LLM. It still hallucinates. It still misses edge cases. The contracts narrow the surface area enough that hallucination is less harmful — an agent that gets the contract wrong fails at the type-checker, not at runtime.
+
+It's also not a replacement for reading the code. There are parts of the template that aren't contracts — the UI, the styling, the copy. An agent working on those parts still needs to read the files.
+
+## What we got wrong the first time
+
+Our first version of AGENTS.md was 800 lines. An agent reading it would either run out of context window or skip the second half. We cut it to 200 lines by:
+
+- Removing every file path that the agent could find with `list_files`.
+- Removing every explanation that was already in the type signature.
+- Removing every "best practice" that wasn't enforced by a lint rule.
+
+The result is a file that fits, that the agent actually reads, and that doesn't lie about what's enforced versus what's suggested.
+
+## The boring conclusion
+
+We didn't build a special agent system. We built templates that are readable by humans and by agents, using the same constraints: small surface area, typed boundaries, explicit manifests, documented entry points.
+
+If your codebase is readable by a senior engineer on their first day, it is readable by an agent. The reverse is also true. The two audiences impose the same constraints, and the constraints are not optional.

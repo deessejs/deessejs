@@ -13,6 +13,14 @@ const authors = defineCollection({
     name: z.string().min(1).max(120),
     avatar: z.string().optional(),
     bio: z.string().optional(),
+    // External identity links surfaced as schema.org `sameAs` on the
+    // Person JSON-LD emitted by /blog/[slug] and /blog/author/[handle].
+    // All optional; absent links are simply not emitted. The values
+    // are kept as free strings (no URL validation) to match the
+    // existing avatar/cover convention in this file.
+    twitter: z.string().optional(),
+    github: z.string().optional(),
+    website: z.string().optional(),
     content: z.string(),
   }),
 })
@@ -26,7 +34,11 @@ const posts = defineCollection({
     description: z.string().min(1).max(280),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     updated: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    tags: z.array(z.string()).default([]),
+    tags: z
+      .array(
+        z.enum(["engineering", "community", "news", "customers", "security"]),
+      )
+      .default([]),
     author: z.string().min(1).optional(),
     authors: z.array(z.string().min(1)).default([]),
     draft: z.boolean().default(false),
@@ -107,6 +119,7 @@ const releases = defineCollection({
     description: z.string().min(1).max(280),
     version: z.string().regex(/^\d+\.\d+\.\d+$/, "semver"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    authors: z.array(z.string().min(1)).default([]),
     categories: z
       .array(
         z.enum([
@@ -124,6 +137,27 @@ const releases = defineCollection({
     content: z.string(),
   }),
   transform: async (release, context) => {
+    const handles = release.authors
+    if (handles.length === 0) {
+      throw new Error(
+        `Release "${release.title}" has no author. Add ` +
+          "`authors: [<handle>]` to its frontmatter.",
+      )
+    }
+
+    const resolvedAuthors = handles.map((handle) => {
+      const author = context.documents(authors).find(
+        (a) => a.handle === handle,
+      )
+      if (!author) {
+        throw new Error(
+          `Release "${release.title}" references unknown author "${handle}". ` +
+            `Add content/authors/${handle}.md or fix the frontmatter.`,
+        )
+      }
+      return author
+    })
+
     const slug = release._meta.filePath
       .replace(/^.*\//, "")
       .replace(/\.mdx$/, "")
@@ -142,6 +176,7 @@ const releases = defineCollection({
 
     return {
       ...release,
+      authors: resolvedAuthors,
       slug,
       url: `/changelog/${slug}`,
       mdxCode,

@@ -6,10 +6,12 @@ import { Card } from "@workspace/ui/components/card"
 import { Badge } from "@workspace/ui/components/badge"
 import { Separator } from "@workspace/ui/components/separator"
 
+import { MarketingPage } from "../_components/marketing-page"
+
 export const metadata: Metadata = {
   title: "Vision",
   description:
-    "Where DeesseJS is heading — the next year of templates, contracts, and agent-aware tooling.",
+    "Where DeesseJS is heading: the next year of templates, contracts, and agent-aware tooling.",
 }
 
 /**
@@ -55,12 +57,12 @@ const HORIZONS: ReadonlyArray<Horizon> = [
       {
         title: "End-to-end stack defaults",
         description:
-          "Next.js, Better Auth, Drizzle, shadcn/ui, Tailwind v4 — wired and ready to run on day one.",
+          "Next.js, Better Auth, Drizzle, shadcn/ui, Tailwind v4. Wired and ready to run on day one.",
       },
       {
         title: "Public CLI with offline cache",
         description:
-          "deessejs init / list / info — works offline, ships with retry and a local ETag-keyed cache.",
+          "deessejs init / list / info. Works offline, ships with retry and a local ETag-keyed cache.",
       },
       {
         title: "ISR-backed marketing surfaces",
@@ -78,7 +80,7 @@ const HORIZONS: ReadonlyArray<Horizon> = [
       {
         title: "Agent-aware template metadata",
         description:
-          "Each template carries machine-readable capabilities, compatible agents, and install hints — so a coding agent can pick and run one without human nudging.",
+          "Each template carries machine-readable capabilities, compatible agents, and install hints, so a coding agent can pick and run one without human nudging.",
       },
       {
         title: "Categories + frameworks filter",
@@ -111,12 +113,12 @@ const HORIZONS: ReadonlyArray<Horizon> = [
       {
         title: "A registry as a marketplace",
         description:
-          "Authors ship templates through the same registry we use ourselves — opinionated defaults, versioned, contract-tested. Discovery, install, and update all in one tool.",
+          "Authors ship templates through the same registry we use ourselves. Opinionated defaults, versioned, contract-tested. Discovery, install, and update all in one tool.",
       },
       {
         title: "Composable primitives, not stacks",
         description:
-          "Stop shipping monoliths. Users pull packages — auth, db, payments, observability — individually, with templates that demonstrate how they fit together.",
+          "Stop shipping monoliths. Users pull packages (auth, db, payments, observability) individually, with templates that demonstrate how they fit together.",
       },
       {
         title: "Agent observability as a first-class concern",
@@ -129,7 +131,7 @@ const HORIZONS: ReadonlyArray<Horizon> = [
 
 export default function VisionPage() {
   return (
-    <article className="mx-auto flex max-w-4xl flex-col gap-16 px-4 py-16 sm:px-6 lg:gap-24 lg:py-24">
+    <MarketingPage>
       {/* Hero */}
       <header className="flex flex-col gap-6">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -137,7 +139,7 @@ export default function VisionPage() {
         </p>
         <H1>Vision.</H1>
         <p className="text-muted-foreground text-copy-20 leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-          Three horizons for the DeesseJS main app — what&apos;s
+          Three horizons for the DeesseJS main app: what&apos;s
           shipping today, what we&apos;re building toward next,
           and where we want to land eventually. Revised as the
           roadmap moves.
@@ -198,7 +200,7 @@ export default function VisionPage() {
               Manifesto
             </span>
             <span className="text-copy-13 text-muted-foreground">
-              Why we&apos;re here — the beliefs behind the work.
+              Why we&apos;re here: the beliefs behind the work.
             </span>
           </Link>
           <Link
@@ -236,6 +238,6 @@ export default function VisionPage() {
           </Link>
         </div>
       </nav>
-    </article>
+    </MarketingPage>
   )
 }

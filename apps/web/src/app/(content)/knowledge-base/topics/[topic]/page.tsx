@@ -15,6 +15,7 @@ import { Prose } from "@/components/blog/prose"
 import { GuideCard } from "@/components/knowledge-base/guide-card"
 import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
 import { TopicTagPill } from "@/components/knowledge-base/badges"
+import { ORG_ID } from "@/lib/seo/organization"
 
 type Params = { topic: string }
 
@@ -38,7 +39,60 @@ export default async function KnowledgeTopicPage({
     .sort((a, b) => a.order - b.order)
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-10 px-4 py-16 sm:px-6 lg:py-24">
+    <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "TechArticle",
+            headline: topicDoc.title,
+            description: topicDoc.description,
+            inLanguage: "en",
+            keywords: topicDoc.tags,
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": `/knowledge-base/topics/${topicDoc.slug}`,
+            },
+            url: `/knowledge-base/topics/${topicDoc.slug}`,
+            publisher: { "@id": ORG_ID },
+            author: {
+              "@type": "Organization",
+              name: "DeesseJS",
+              "@id": ORG_ID,
+            },
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: "/",
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Knowledge Base",
+                item: "/knowledge-base",
+              },
+              {
+                "@type": "ListItem",
+                position: 3,
+                name: topicDoc.title,
+                item: `/knowledge-base/topics/${topicDoc.slug}`,
+              },
+            ],
+          }),
+        }}
+      />
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -54,10 +108,10 @@ export default async function KnowledgeTopicPage({
       </Breadcrumb>
 
       <header className="flex flex-col gap-3">
-        <h1 className="scroll-m-20 text-3xl font-bold tracking-tight first:mt-0 text-balance">
+        <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
           {topicDoc.title}
         </h1>
-        <p className="text-muted-foreground leading-7 text-pretty [&:not(:first-child)]:mt-0">
+        <p className="mt-4 text-pretty text-lg text-muted-foreground">
           {topicDoc.description}
         </p>
         {topicDoc.tags.length > 0 ? (
@@ -97,6 +151,6 @@ export default async function KnowledgeTopicPage({
           </KbCardGrid>
         )}
       </section>
-    </div>
+    </section>
   )
 }

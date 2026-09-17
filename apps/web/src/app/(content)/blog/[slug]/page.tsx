@@ -18,6 +18,8 @@ import {
 } from "@/lib/blog/posts"
 import { allPosts } from "content-collections"
 import type { Post } from "@/lib/blog/types"
+import { ORG_ID } from "@/lib/seo/organization"
+import { buildPersonJsonLd } from "@/lib/seo/person-jsonld"
 
 type Params = { slug: string }
 
@@ -38,6 +40,8 @@ export async function generateMetadata(
     alternates: { canonical: post.url },
     openGraph: {
       type: "article",
+      siteName: "DeesseJS",
+      locale: "en_US",
       title: post.title,
       description: post.description,
       publishedTime: post.date,
@@ -45,6 +49,11 @@ export async function generateMetadata(
       authors: post.author ? [post.author.name] : [],
       tags: post.tags,
       url: post.url,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.description,
     },
   }
 }
@@ -60,7 +69,7 @@ export default async function PostPage(
   const { prev, next } = getAdjacentPosts(slug)
 
   return (
-    <article className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+    <article className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -69,14 +78,36 @@ export default async function PostPage(
             "@type": "Article",
             headline: post.title,
             description: post.description,
-            datePublished: post.date,
-            dateModified: post.updated ?? post.date,
-            author: {
-              "@type": "Person",
-              name: post.author?.name,
+            // schema.org expects ISO 8601 timestamps. Our frontmatter
+            // stores `date` as `YYYY-MM-DD`, so anchor it at start of
+            // day UTC. `updated` falls back to `datePublished` only
+            // when the editorial record has no `updated` field; never
+            // pretend an article was modified when it was not.
+            datePublished: `${post.date}T00:00:00.000Z`,
+            dateModified: post.updated
+              ? `${post.updated}T00:00:00.000Z`
+              : `${post.date}T00:00:00.000Z`,
+            inLanguage: "en",
+            keywords: post.tags,
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": `${WEB_URL}${post.url}`,
             },
             url: `${WEB_URL}${post.url}`,
-            ...(post.cover ? { image: post.cover } : {}),
+            ...(post.cover
+              ? {
+                  image: {
+                    "@type": "ImageObject",
+                    url: post.cover,
+                  },
+                }
+              : {}),
+            // Person node uses the same factory as /blog/author/[handle],
+            // so the article-side and author-page-side Person share one
+            // @id anchor in the crawler graph. See
+            // `apps/web/src/lib/seo/person-jsonld.ts`.
+            author: post.author ? buildPersonJsonLd(post.author) : undefined,
+            publisher: { "@id": ORG_ID },
           }),
         }}
       />
@@ -174,11 +205,13 @@ export default async function PostPage(
           <h2 className="mb-6 text-2xl font-semibold tracking-tight">
             Related reading
           </h2>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-2 lg:grid-cols-3 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:nth-child(3n)]:lg:border-r-0 [&>li:nth-last-child(-n+2)]:md:border-b-0 [&>li:nth-last-child(-n+3)]:lg:border-b-0 [&>li:first-child]:border-t">
             {related.map((r: Post) => (
-              <PostCard key={r.slug} post={r} />
+              <li key={r.slug}>
+                <PostCard post={r} />
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
     </article>
