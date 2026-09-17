@@ -34,7 +34,11 @@ const posts = defineCollection({
     description: z.string().min(1).max(280),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     updated: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    tags: z.array(z.string()).default([]),
+    tags: z
+      .array(
+        z.enum(["engineering", "community", "news", "customers", "security"]),
+      )
+      .default([]),
     author: z.string().min(1).optional(),
     authors: z.array(z.string().min(1)).default([]),
     draft: z.boolean().default(false),

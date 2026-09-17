@@ -1,0 +1,116 @@
+---
+title: "Open Community license vs MIT: why we picked both"
+description: MIT for the code you read, Open Community for the templates you ship. The line we draw and why it matters.
+date: 2026-08-25
+tags: [news]
+author: admin
+---
+
+# Open Community license vs MIT: why we picked both
+
+We license the code you read under MIT and the templates you ship under Open Community. This post is the explanation of why, and where we draw the line.
+
+## The two licenses
+
+**MIT** is the license we use for the code in the registry. The contracts, the CLI, the MCP server, the documentation, the website. The code you read on GitHub, the code you import into your project.
+
+MIT says: do what you want with this code, just keep the copyright notice. You can use it commercially, modify it, distribute it, sell it. You don't owe us anything beyond attribution.
+
+**Open Community** is the license we use for the templates. The full SaaS template, the mobile template, the CLIs template, the APIs template. The code you ship to your customers as your product.
+
+Open Community says: you can use the template, modify it, ship it as your product. You can sell your product. You can keep the modifications private. You cannot redistribute the template as a template — that is, you cannot take our SaaS template, rebrand it, and sell it as yours.
+
+The line: MIT is for code you read. Open Community is for code you ship.
+
+## Why two licenses
+
+The reason we have two licenses is that the code you read and the code you ship have different concerns.
+
+Code you read is consumed by humans and by agents. The more it spreads, the more value it creates. MIT maximizes spread.
+
+Code you ship is consumed by your customers. It becomes your product. If we license it under MIT, someone could take our SaaS template, rebrand it, and sell it as their product, undercutting us and every other customer who adopted it.
+
+Open Community prevents that. You can ship your product built on our template. You cannot ship our template as your product.
+
+## What the licenses allow
+
+**Under MIT, you can:**
+
+- Use the code in any project, commercial or otherwise.
+- Modify the code without restriction.
+- Distribute the code, modified or unmodified.
+- Sell products that include the code.
+- Sublicense the code (within the terms of MIT).
+
+**Under MIT, you must:**
+
+- Include the copyright notice in any copy or substantial portion of the code.
+
+**Under Open Community, you can:**
+
+- Use the template to build a product.
+- Modify the template to fit your product.
+- Ship your product commercially.
+- Keep your modifications private.
+
+**Under Open Community, you cannot:**
+
+- Redistribute the template itself as a template.
+- Sell a product whose primary value is the template itself (e.g., a re-skinned SaaS).
+- Use the DeesseJS name or trademark to promote your product.
+
+## Why not just MIT
+
+We considered licensing the templates under MIT and enforcing the boundary through trademarks and contracts. The arguments:
+
+- More permissive licenses attract more contributors.
+- Trademark enforcement is how the open source community has historically protected project names.
+
+The arguments against:
+
+- Trademark enforcement is reactive, not proactive. By the time we sue, the damage is done.
+- A re-skinned template sold under a different name is still a re-skinned template. The customer gets a worse version of our product, and they blame us.
+- The community is small enough that we can ask every contributor to accept the Open Community terms.
+
+We picked Open Community because it's the license that aligns with the use case: a template is not a library, and a template's value is in its opinionated shape, which is exactly what you don't want someone else to copy verbatim.
+
+## Why not just Open Community
+
+We considered licensing the contracts and CLI under Open Community. The arguments:
+
+- Consistency. One license for everything.
+
+The arguments against:
+
+- The contracts are libraries. You can use them without using the templates. A license that says "you can't redistribute this as a library" would block legitimate uses.
+- The CLI is a tool. Restricting its redistribution would block the community from building wrappers around it.
+
+We picked MIT for the code you read because the use case is different. Libraries and tools should be maximally permissive. Templates and products should be opinionated.
+
+## What about contributions
+
+If you contribute to a contract, the CLI, or the docs, your contribution is MIT. You keep the copyright, but you license the contribution under MIT, which matches the file you're contributing to.
+
+If you contribute to a template, your contribution is Open Community. Same deal.
+
+The license headers in each file spell out which license applies.
+
+## The line, drawn
+
+The line is: can this code be used as a standalone product?
+
+- A contract cannot. It's a library. MIT.
+- The CLI cannot. It's a tool. MIT.
+- A template can. It's a product. Open Community.
+- The docs cannot. They're documentation. MIT.
+- The website cannot. It's a website. MIT.
+
+The line is in the LICENSE file in each directory. If you're unsure which license applies to a file, look at the LICENSE file in the same directory.
+
+## The boring conclusion
+
+Two licenses because two use cases. MIT for the code you read. Open Community for the code you ship.
+
+The line is small. The line is clear. The line is enforced by the license, not by trademarks or contracts.
+
+We are not trying to trick anyone. We are trying to make sure that the templates we maintain are the templates our customers adopt. If you have a question about whether your use case is covered, ask us. We are friendly, and we will tell you.

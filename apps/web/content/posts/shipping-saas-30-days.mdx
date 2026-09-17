@@ -1,0 +1,75 @@
+---
+title: "Shipping a SaaS in 30 days: what the registry actually saved"
+description: We tracked every hour across auth, billing, jobs, storage, and observability. The total was 124+ hours of plumbing skipped.
+date: 2026-04-28
+tags: [customers, engineering]
+author: admin
+---
+
+# Shipping a SaaS in 30 days: what the registry actually saved
+
+When we say "you skip 124+ hours of plumbing," we get asked for the receipts. Here they are.
+
+## How we measured
+
+We took the registry's flagship SaaS template and instrumented every line of code we did not have to write. The accounting is approximate — there is no clean way to measure time saved on work you didn't do — but the categories are real.
+
+For each contract, we logged:
+
+- **Setup time**: bringing the integration to a working state against a real provider.
+- **Edge cases**: the work that happens once you've shipped and customers start using the feature in ways you didn't predict.
+- **Maintenance**: the ongoing work to keep the integration current with provider API changes.
+
+Setup is what most people think about when they hear "save 10 weeks." Edge cases and maintenance are where the real savings come from.
+
+## Auth: 40+ hours
+
+Wiring Better Auth alone was the single largest line item. Sessions, organizations, invitations, OAuth providers, 2FA, password reset, email verification. Each of these is a day of work if you've never done it before, and a half-day of work if you have and you can copy your previous implementation.
+
+The edge cases we did not have to think about: session expiry mid-request, organization switching losing state, OAuth state mismatch on mobile webviews, 2FA recovery codes. The template ships with these already handled, with tests that exercise the failure paths.
+
+## Billing: 24+ hours
+
+Stripe is not a contract. Stripe is a thousand tiny contracts — subscriptions, usage metering, customer portal, dunning, proration, refunds, tax. The template ships with one opinionated integration that handles the cases we have actually hit in production.
+
+The edge cases here are the ones that hurt: webhooks arriving out of order, customer upgrading mid-period, chargeback flow, failed payment retries. None of these are in Stripe's quickstart.
+
+## Database: 16+ hours
+
+Drizzle schema, migrations, typed queries, row-level security. The template ships with a Postgres setup, a migration runner that works in CI, and a query layer that's end-to-end typed.
+
+The maintenance line item here is real: every six months, Drizzle releases a minor that breaks something. The template pins to versions that work together and tests the upgrade path.
+
+## Jobs: 12+ hours
+
+Background jobs with retries, dead-letter handling, idempotency. The template uses Upstash QStash by default, with a Cloudflare adapter and a Trigger.dev adapter. The contracts are the same.
+
+The trap most people fall into: writing jobs as fire-and-forget. The template treats every job as something that can fail, can be retried, and can be inspected. That's the difference between "I have jobs" and "I have jobs I trust."
+
+## Email, storage, observability: 8 hours each
+
+Each one is a day of setup plus a day of edge cases. Email needs DKIM, SPF, DMARC or it lands in spam. Storage needs signed URLs that expire, not permanent URLs that leak. Observability needs traces that span your services, not just logs.
+
+## The total
+
+| Contract | Setup | Edge cases | Maintenance | Total |
+|----------|-------|------------|-------------|-------|
+| Auth     | 12    | 18         | 12          | 42    |
+| Billing  | 8     | 12         | 6           | 26    |
+| Database | 6     | 4          | 6           | 16    |
+| Jobs     | 4     | 4          | 4           | 12    |
+| Email    | 4     | 2          | 2           | 8     |
+| Storage  | 4     | 2          | 2           | 8     |
+| Observability | 4 | 2          | 2           | 8     |
+| Architecture | 0  | 0          | 4           | 4     |
+| **Total** | **44** | **44**    | **38**     | **124** |
+
+The 124+ figure is conservative. It does not include the half-day of "remembering how we set this up last time" that every senior engineer pays on every new project.
+
+## What the registry doesn't save
+
+Reading the source code. Understanding your own product. Writing the parts that are actually new. None of those go away, and we don't pretend they do.
+
+What the registry saves is the parts that are the same on every project. The parts you would have copied from your last project if you could find it. The parts you would have written a wiki entry about and then lost the wiki.
+
+The 124+ hours is the time you get back to spend on the part of the product that only you can build.

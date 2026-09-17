@@ -22,6 +22,7 @@ import { FlickeringGrid } from "./_components/flickering-grid"
 import { SurfacesTabs } from "./_components/surfaces-tabs"
 import { TechStackGrid } from "./_components/tech-stack-grid"
 import { TerminalMockup } from "./_components/terminal-mockup"
+import { TestimonialsMarquee } from "./_components/testimonials-marquee"
 
 import {
   Accordion,
@@ -58,7 +59,7 @@ import {
  *   8. Authority: 3-col shared-border grid (manifesto + KB + changelog)
  *   9. Repeating CTA: 3-col with both columns (install / ship / manifesto)
  *  10. Ecosystem: tagline + 6 products in a 4-col shared-border grid
- *  11. Testimonials: 2 cards side-by-side
+ *  11. Testimonials: 12 placeholder cards in an infinite horizontal marquee
  *  12. Integrations: logo wall (frameworks + providers + agents)
  *  13. Stats: 4 cells, two are tier-1 third-party metrics (npm + GH)
  *  14. FAQ: 2/4 split, accordion of common questions
@@ -256,30 +257,6 @@ const SKIP_ITEMS: ReadonlyArray<SkipItem> = [
 ]
 
 const SKIP_TOTAL_HOURS = "124+"
-
-type Testimonial = {
-  quote: string
-  name: string
-  role: string
-  initials: string
-}
-
-const TESTIMONIALS: ReadonlyArray<Testimonial> = [
-  {
-    quote:
-      "We swapped three weeks of plumbing for a single `deessejs init`. The MCP layer is the part we wish we'd had a year ago.",
-    name: "First customer",
-    role: "Founder, stealth B2B SaaS",
-    initials: "FC",
-  },
-  {
-    quote:
-      "The agents we ship can actually read the registry now. They navigate the contracts like a developer would. That is the unlock.",
-    name: "Pilot team",
-    role: "AI tooling, DeesseJS preview",
-    initials: "PT",
-  },
-]
 
 /** Logo wall: frameworks, providers, AI agents. */
 const INTEGRATIONS: ReadonlyArray<{
@@ -674,29 +651,21 @@ export default function HomePage() {
           <EcosystemTabs />
         </div>
 
-        {/* 11. Testimonials: 2 cards side-by-side */}
-        <div className="grid grid-cols-1 md:grid-cols-2 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
-          {TESTIMONIALS.map((t) => (
-            <Cell key={t.name} className="gap-4">
-              <blockquote className="text-copy-16 lg:text-copy-18 text-foreground leading-7 text-balance [&:not(:first-child)]:mt-0">
-                &ldquo;{t.quote}&rdquo;
-              </blockquote>
-              <footer className="flex items-center gap-3 pt-2">
-                <span
-                  aria-hidden
-                  className="flex size-9 items-center justify-center rounded-full border border-border bg-muted/40 text-label-13 text-foreground"
-                >
-                  {t.initials}
-                </span>
-                <span className="flex flex-col leading-tight">
-                  <span className="text-label-13 text-foreground">{t.name}</span>
-                  <span className="text-label-12 text-muted-foreground">
-                    {t.role}
-                  </span>
-                </span>
-              </footer>
-            </Cell>
-          ))}
+        {/* 11. Testimonials: infinite horizontal marquee of 12 placeholder
+            cards, paused on hover. Edge fades on left + right. */}
+        <div className="grid grid-cols-1 border-b border-border">
+          <div className="flex items-center justify-between gap-4 p-6 md:p-8 lg:p-10 border-b border-border">
+            <div className="flex items-center">
+              <div
+                aria-hidden
+                className="mr-4 shrink-0 w-[1.7px] h-[13.5px] bg-foreground"
+              />
+              <span className="font-mono uppercase text-[0.8125rem] leading-[1.2] text-foreground opacity-64 font-medium tracking-[-0.01em]">
+                What customers say
+              </span>
+            </div>
+          </div>
+          <TestimonialsMarquee />
         </div>
 
         {/* 12. Integrations: logo wall grouped by category */}

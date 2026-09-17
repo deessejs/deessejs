@@ -1,0 +1,146 @@
+---
+title: "From npx init to deployed: the first ten minutes of a new project"
+description: A walkthrough of scaffolding a SaaS template, wiring a provider, and shipping the first commit to production.
+date: 2026-05-26
+tags: [community]
+author: admin
+---
+
+# From npx init to deployed: the first ten minutes of a new project
+
+This is a walkthrough. The point is not to sell you on the registry — it's to show you, step by step, what the first ten minutes of a new project actually look like, so you can decide for yourself whether the shape fits.
+
+## Minute 0: the prompt
+
+You have a product idea. It's a B2B SaaS for logistics companies. You need auth, billing, jobs, storage, observability. You need a Next.js app. You do not need to write any of that today.
+
+You open a terminal and run:
+
+```bash
+npx @deessejs/cli@latest init my-saas --template=saas-starter
+```
+
+The CLI prompts you for three things:
+
+- Project name (`my-saas`).
+- Package manager (`pnpm`, default).
+- Whether to install dependencies (`yes`, default).
+
+You press enter three times.
+
+## Minute 1: the scaffold
+
+The CLI does the following:
+
+1. Clones the template repository.
+2. Substitutes the placeholder values (`my-saas`, your package manager preference).
+3. Installs dependencies.
+4. Copies `.env.example` to `.env.local`.
+5. Prints next steps.
+
+The cloned repository is a real Next.js 16 project. It has a working dev server. It has tests. It has a CI workflow. It does not yet have a database or a Stripe account, but it has stubbed clients for both.
+
+## Minute 2: the database
+
+You need a Postgres database. The template expects one. The README has the exact `docker run` command:
+
+```bash
+docker run -d \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=my_saas \
+  -p 5432:5432 \
+  postgres:16-alpine
+```
+
+You run it. You paste the connection string into `.env.local`. You run `pnpm db:push`.
+
+Your database has the schema. The template ships with three tables for organizations, users, and sessions. None of them are yours yet, but they're there, and your first migration is ready.
+
+## Minute 3: the first commit
+
+```bash
+git init
+git add .
+git commit -m "chore: scaffold from deessejs/saas-starter"
+```
+
+You push to GitHub. You connect the repo to Vercel. You don't deploy yet — you don't have a database in production — but the path is open.
+
+## Minute 4: the first user flow
+
+The template ships with one user flow working end to end: sign up, create an organization, invite a teammate. The pages are real. The forms are real. The auth contract is wired.
+
+You open `localhost:3000`, you sign up with your email, you land on the dashboard. The dashboard is empty. That's correct — it's your dashboard, and you haven't added anything yet.
+
+You click "Invite teammate." The page renders. The form submits. The invitation email is logged to the console (because you haven't wired Resend yet). Your teammate doesn't get the email, but you can see the contract working.
+
+## Minute 5: the first wire
+
+You open `src/lib/auth.ts`. The template exports `signUp`, `signIn`, `signOut`, and `getSession`. You don't need to read the implementation. You import what you need:
+
+```ts
+import { signUp, signIn } from "@/lib/auth"
+
+export async function POST(req: Request) {
+  const { email, password } = await req.json()
+  await signUp({ email, password })
+  return Response.json({ ok: true })
+}
+```
+
+This works because the auth contract is what an agent reads, and what a human reads, and what the type-checker enforces. You don't need to learn a new SDK; you need to learn one function.
+
+## Minute 6: the first Stripe wire
+
+You open `.env.local` and paste your Stripe test keys. You run `pnpm billing:sync`. The CLI creates the products and prices in your Stripe account, and writes the IDs back into your environment.
+
+You didn't write a single line of billing code. You have a working subscription flow.
+
+## Minute 7: the first job
+
+You have a use case for a background job: when a user signs up, send a welcome email after a 24-hour delay if they haven't completed onboarding. You open `src/jobs/welcome-followup.ts`. You write:
+
+```ts
+import { defineJob } from "@/lib/jobs"
+
+export const welcomeFollowup = defineJob({
+  name: "welcome-followup",
+  schema: z.object({ userId: z.string() }),
+  async run({ userId }) {
+    const user = await getUser(userId)
+    if (user.onboardedAt) return { skipped: true }
+    await sendEmail({ to: user.email, template: "welcome-followup" })
+  },
+})
+```
+
+You import this job in your sign-up handler:
+
+```ts
+await welcomeFollowup.enqueue({ userId: user.id }, { delay: "24h" })
+```
+
+The job is scheduled. The contract is wired. You didn't write a queue client, didn't write a retry policy, didn't write a dead-letter handler.
+
+## Minute 8: the first deploy
+
+You push. Vercel builds. The build runs `pnpm db:push` against your production database (you've now set one up on Neon). The build passes.
+
+You open `my-saas.vercel.app`. You sign up. You land on the dashboard.
+
+You haven't written a line of auth code, billing code, job code, or deployment code. You have a production app with all six contracts wired.
+
+## Minute 9: the first custom feature
+
+You add a feature. It's specific to your product: a logistics company's shipment tracking. You write a new table, a new API route, a new page. The contracts don't get in your way. You use `getSession()` to identify the user. You use the jobs contract to send a notification when a shipment status changes. You use the storage contract to upload a photo of the shipment.
+
+The parts that are specific to your product are where you spend your time. The parts that are the same on every product were already there.
+
+## Minute 10: the assessment
+
+You have a production app with auth, billing, jobs, storage, and observability wired. You have a real schema. You have a working user flow. You have a custom feature.
+
+You spent ten minutes. Not "ten minutes to a hello world" — ten minutes to a deployable, billable, observable product with the parts that are the same on every SaaS already done.
+
+The next ten hours are yours.
