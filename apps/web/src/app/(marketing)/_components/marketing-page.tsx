@@ -28,13 +28,13 @@ export function MarketingPage({ children }: { children: React.ReactNode }) {
             left edge, sitting on the border itself. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-0 z-0 w-10 -translate-x-full border-y border-l border-border bg-[repeating-linear-gradient(315deg,var(--border)_0,var(--border)_1px,transparent_0,transparent_50%)] bg-size-[10px_10px] 2xl:block"
+          className="pointer-events-none absolute inset-y-0 left-0 z-0 hidden w-10 -translate-x-full border-y border-l border-border bg-[repeating-linear-gradient(315deg,var(--border)_0,var(--border)_1px,transparent_0,transparent_50%)] bg-size-[10px_10px] xl:block"
         />
         {/* Right diagonal stripe column — flush against the inner card's
             right edge. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-0 z-0 w-10 translate-x-full border-y border-r border-border bg-[repeating-linear-gradient(315deg,var(--border)_0,var(--border)_1px,transparent_0,transparent_50%)] bg-size-[10px_10px] 2xl:block"
+          className="pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-10 translate-x-full border-y border-r border-border bg-[repeating-linear-gradient(315deg,var(--border)_0,var(--border)_1px,transparent_0,transparent_50%)] bg-size-[10px_10px] xl:block"
         />
       </div>
     </div>
