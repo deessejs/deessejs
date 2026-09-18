@@ -80,13 +80,20 @@ MINIMAX_API_KEY=sk-...
 GITHUB_APP_ID=123456
 GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
 GITHUB_WEBHOOK_SECRET=the-string-you-set-on-the-app
+GITHUB_TOKEN=ghp_...
 ```
 
 Notes:
 - `GITHUB_APP_PRIVATE_KEY` is a multi-line PEM. Preserve the newlines
   (`\n` works in `.env` files) or use a single-line base64-encoded form.
-- All four values are required for the bot to start. Missing values
-  fail loud at boot — the agent does not run in a degraded mode.
+- `GITHUB_TOKEN` is a fine-grained PAT consumed by the GitHub tools
+  extension (`@github-tools/eve-extension`) for read and write calls.
+  Required scopes: Contents (Read), Issues (Read & write), Pull requests
+  (Read & write), Metadata (Read-only). The extension falls back to this
+  env var when its `token` option is not set.
+- All five values are required for the bot to start with tools enabled.
+  Missing values fail loud at boot — the agent does not run in a
+  degraded mode.
 
 ### 4. Deploy to Vercel
 
