@@ -92,7 +92,7 @@ export function SiteHeader({
                 stroke="currentColor"
               />
             </svg>
-            {APP_NAME}
+            <span className="hidden sm:inline">{APP_NAME}</span>
           </Link>
           <div className="hidden sm:flex">
             <NavSections pathname={pathname} variant="desktop" />
@@ -106,7 +106,7 @@ export function SiteHeader({
             onClick={openSearch}
             aria-label="Search content"
             aria-keyshortcuts="Meta+K Control+K"
-            className="flex items-center gap-2 px-3"
+            className="hidden items-center gap-2 px-3 sm:flex"
           >
             <Search className="size-4 text-muted-foreground" />
             <span className="text-muted-foreground">Search content</span>
