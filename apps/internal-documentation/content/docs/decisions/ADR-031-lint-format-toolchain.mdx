@@ -164,13 +164,32 @@ build.
 
 ### Phase 3 — Oxlint JS plugins bridge for the custom rules
 
-Evaluate, in order, three options for the four
+Oxlint has **no native implementation** of
+`no-restricted-syntax`. The maintainer closed the tracking
+request with "Unable to support this rule" and directed
+users to the JS plugins bridge. Today the bridge ships
+`oxlint-plugin-eslint`, a direct re-export of ESLint's
+`no-restricted-syntax` with no perf optimisations. Use that
+package as the starting point.
+
+Evaluate, in order, four options for the four
 `no-restricted-syntax` selectors:
 
-1. Recode them as a JS plugin on the Oxlint JS plugins
-   alpha (2026-03), which passes 100% of ESLint's core
-   tests and 99.6-100% of common plugins (React Hooks,
-   Stylistic, Testing Library, SonarJS, e18e).
+0. Add `oxlint-plugin-eslint` to `.oxlintrc.json` and copy
+   the four selectors verbatim under the `eslint-js/*`
+   namespace. This is the friction-free path and is
+   explicitly the use case `oxlint-plugin-eslint` exists
+   for ("convenience for users migrating to Oxlint").
+   Trade-off: each lint of these selectors runs at ESLint
+   speed through the JS bridge, so the Phase 1-2 speedup
+   does not apply to files matched by these selectors.
+1. Recode them as a custom JS plugin on the Oxlint JS
+   plugins alpha (2026-03), which passes 100% of ESLint's
+   core tests and 99.6-100% of common plugins (React Hooks,
+   Stylistic, Testing Library, SonarJS, e18e). The Oxlint
+   maintainer pointed users at custom JS plugins for this
+   reason ("This could be implemented as a custom plugin").
+   Recoding unlocks native-rule perf on the four selectors.
 2. Keep ESLint as a narrow second pass scoped to files that
    mention `safeRedirect`, `authClient.useSession`, or
    `searchParams.get`.
@@ -178,15 +197,20 @@ Evaluate, in order, three options for the four
    `URLSearchParams` only and make the AST selector
    unreachable. Same for `authClient.getSession()`.
 
-Recommend Option 1 for `react/forbid-elements` (small
-plugin, three elements + four messages, no platform-specific
-behaviour) and Option 3 for the open-redirect selectors
-(long-term correct, removes the AST coupling). Hold
-Option 2 as the bridge if Option 1 surfaces blockers.
+Recommend Option 0 for the four `no-restricted-syntax`
+selectors on day one of Phase 3 (zero code, just a config
+entry). Recode via Option 1 only when measured CI time
+regresses on the affected files, which is unlikely at four
+selectors. Use Option 3 for the open-redirect selectors as
+a long-term correctness improvement (removes the AST
+coupling entirely). Option 2 stays as the bridge if Option 0
+surfaces a blocker on `oxlint-plugin-eslint`.
 
-`react/forbid-elements` ships as a JS plugin in its own
-phase PR once Phase 2 has been green for at least one
-release on `staging`.
+`react/forbid-elements` ships as a custom JS plugin (Option
+1) in Phase 3, not as `oxlint-plugin-eslint` (it is a
+project-internal rule, not an ESLint built-in). It lands in
+its own follow-up PR once Phase 2 has been green for at least
+one release on `staging`.
 
 ### Phase 4 — Oxfmt replaces Prettier
 
@@ -389,17 +413,27 @@ scripts. No Drizzle migration. No env var. No new
 
 ### Phase 3 (Oxlint JS plugins bridge)
 
-1. New package or in-repo folder under
+1. `pnpm-workspace.yaml` — add `oxlint-plugin-eslint` to
+   the catalog.
+2. Root `.oxlintrc.json` — register
+   `oxlint-plugin-eslint` under `jsPlugins` and copy the
+   four `no-restricted-syntax` selectors verbatim under
+   the `eslint-js/*` namespace.
+3. New package or in-repo folder under
    `apps/internal-documentation/.oxlint-plugins/forbid-elements/`
    (or any workspace the team prefers) carrying the
-   `react/forbid-elements` plugin.
-2. `.oxlintrc.json` — add `jsPlugins: ["./..."]`.
-3. `packages/eslint-config/base.js` — drop the
-   `react/forbid-elements` rule from `react-internal.js`.
-4. Optional: `packages/utils/src/safe-redirect.ts` typed
-   refactor to make the open-redirect AST selector a no-op.
-5. Optional: `apps/app/lib/auth-client.ts` typed wrapper
-   to make the `authClient.useSession()` selector a no-op.
+   `react/forbid-elements` custom plugin.
+4. `.oxlintrc.json` — add the `forbid-elements` plugin to
+   `jsPlugins`.
+5. `packages/eslint-config/base.js` — drop the
+   `no-restricted-syntax` selectors (now covered by
+   `eslint-js/no-restricted-syntax`) and remove the
+   `react/forbid-elements` rule from `react-internal.js`
+   (now covered by the new Oxlint plugin).
+6. Optional: `packages/utils/src/safe-redirect.ts` typed
+   refactor to make the open-redirect AST selector a
+   no-op. Same for `authClient.useSession()` in
+   `apps/app/lib/auth-client.ts`.
 
 ### Phase 4 (Oxfmt replaces Prettier)
 
@@ -523,8 +557,11 @@ in this PR — the ADR is the deliverable.
 - `.prettierrc`. The single source of truth that
   `.oxfmtrc.json` mirrors in Phase 4.
 - `docs/engineering/processes/complexity-rollout.md`. The
-  SonarJS Phase 1-4 rollout that this ADR does not touch
-  until Phase 5.
+  SonarJS rollout that this ADR does not touch until
+  Phase 5. The doc is the source of truth for the exact
+  global and per-package thresholds across the four
+  phases. This ADR references the rollout but does not
+  redefine its numbers.
 - [oxc project — Oxlint v1 GA (2025-06)](https://oxc.rs/blog/2025-06-10-oxlint-v1.html).
   The v1 GA announcement and the 813+ built-in rules.
 - [oxc project — Oxlint JS plugins alpha (2026-03)](https://oxc.rs/blog/2026-03-11-oxlint-js-plugins-alpha.html).
@@ -542,3 +579,12 @@ in this PR — the ADR is the deliverable.
   Independent reproduction of the oxc benchmarks on Vue
   Core (~100x) and React Router (~68x), on HP EliteBook
   hardware with eight threads.
+- [oxc-project/oxc#7342 — support for eslint `no-restricted-syntax`](https://github.com/oxc-project/oxc/issues/7342).
+  Closed 2026-04. Establishes that Oxlint does not
+  implement `no-restricted-syntax` natively, that the
+  maintainers recommend the JS plugins bridge, and that
+  `oxlint-plugin-eslint` exists as a direct re-export of
+  ESLint's rule for migration use cases. This is the
+  source that drives Phase 3 Option 0.
+- [oxlint-plugin-eslint on npm](https://registry.npmjs.org/oxlint-plugin-eslint).
+  The convenience package referenced in Phase 3.
