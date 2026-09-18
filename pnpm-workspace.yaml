@@ -39,6 +39,11 @@ catalog:
   "@react-email/render": ^2.0.6
   '@shikijs/rehype': ^4.3.1
 
+  # Agent runtime (apps/agent — Vercel eve + MiniMax provider)
+  ai: ^7.0.106
+  eve: ^0.60.0
+  'vercel-minimax-ai-provider': ^0.0.2
+
   # Markdown rendering (apps/web — untrusted GitHub READMEs on /templates/[slug])
   react-markdown: ^10.1.0
   rehype-pretty-code: ^0.14.5
