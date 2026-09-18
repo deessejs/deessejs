@@ -140,8 +140,9 @@ const SHARED_VALUES: ReadonlyArray<{ title: string; body: string }> = [
 export default function EcosystemPage() {
   return (
     <MarketingPage>
-      {/* Hero */}
-      <header className="flex flex-col gap-6">
+      <div className="mx-auto max-w-4xl py-16">
+        {/* Hero */}
+        <header className="flex flex-col gap-6">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           The ecosystem
         </p>
@@ -303,6 +304,7 @@ export default function EcosystemPage() {
           </Button>
         </div>
       </nav>
+      </div>
     </MarketingPage>
   )
 }
