@@ -11,6 +11,7 @@ const authors = defineCollection({
   schema: z.object({
     handle: z.string().min(1).max(60),
     name: z.string().min(1).max(120),
+    role: z.string().min(1).max(120).optional(),
     avatar: z.string().optional(),
     bio: z.string().optional(),
     // External identity links surfaced as schema.org `sameAs` on the
