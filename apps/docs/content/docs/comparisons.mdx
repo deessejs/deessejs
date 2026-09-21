@@ -1,9 +1,61 @@
 ---
 title: Comparisons
-description: How DeesseJS compares to other tools.
-icon: lucide-scale
+description: How DeesseJS differs from the alternatives.
+icon: Scale
 ---
 
-## Comparisons
+Most DeesseJS users arrive from one of three starting points: `create-t3-app`, the original `SaaS Template`, or a hand-rolled scaffold. This page calls out where DeesseJS converges and where it diverges.
 
-Content coming soon.
+## DeesseJS vs create-t3-app
+
+`create-t3-app` is a single CLI that scaffolds **one** thing: a Next.js app with the t3 stack (Prisma/NextAuth/TRPC). DeesseJS is closer to a curated marketplace than a single scaffolder.
+
+| | `create-t3-app` | DeesseJS |
+| --- | --- | --- |
+| Scope | One app, one stack | Multiple surfaces (web, mobile, edge, AI), one contract family |
+| Stack | t3 conventions (Drizzle + tRPC + NextAuth) | Drizzle + oRPC + Better Auth (similar shape, modernized choices) |
+| Output | A repo on disk | A repo on disk, plus a CLI you can re-run |
+| Auth | NextAuth only | Better Auth + device-flow CLI login |
+| Updates | Re-run the CLI, accept new defaults | `deessejs list` to see new templates, fork the new repo |
+| Lock-in | Zero (no runtime service) | Zero (templates fork cleanly) |
+
+If you only need one Next.js app with the t3 stack, `create-t3-app` is the right tool. If you want consistent contracts across multiple apps and surfaces — web + mobile + agent, all signing in against the same Better Auth instance — that's what DeesseJS optimises for.
+
+## DeesseJS vs the original SaaS Template
+
+DeesseJS forked from `deessejs/saas-template` in July 2026. The fork relationship is load-bearing: the divergence map (`docs/engineering/plans/saas-template-divergence.md` in the source repo) is the canonical record.
+
+What changed in the fork:
+
+- **Identity** — copy, README wording, and the brand surface. The SaaS Template name is gone in DeesseJS-flavoured repos.
+- **Contracts package layout** — auth, database, email are published as workspace packages, versioned independently.
+- **API surface** — Hono + oRPC mount at `/api/v1/`, with versioned Zod contracts in `@workspace/contracts/v1`. The original used ad-hoc route handlers.
+- **Device-flow auth** — added (ADR-020) so the CLI can authenticate against the web app without copying cookies.
+- **CLI** — `@deessejs/cli` is published to npm. The original had no CLI; everything was a fork-and-edit workflow.
+
+What stayed the same:
+
+- Next.js App Router
+- Drizzle + Postgres
+- Tailwind + shadcn/ui (now under `@workspace/ui`)
+- Better Auth (the original used NextAuth; the fork migrated to Better Auth for the device-flow plugin)
+
+## DeesseJS vs hand-rolled scaffolds
+
+If you copy a previous project and tweak it, you have a hand-rolled scaffold. The trade-offs:
+
+- **No audit trail.** When the original moves on, your fork diverges silently. DeesseJS templates are versioned and re-listable.
+- **No shared contracts.** Your auth works one way; your partner's fork works another. DeesseJS contracts are imported from `@workspace/auth`, `@workspace/database`, `@workspace/email` — one version per monorepo, one version per npm release.
+- **No CLI surface.** A copy-pasted scaffold has no `deessejs list`, no `deessejs info`, no `deessejs auth login`. You either build those yourself or you don't have them.
+
+The break-even is small: if you only ever need one starter, hand-rolling is fine. The moment you want a second surface or a CLI, the shared infrastructure starts paying for itself.
+
+## DeesseJS vs Vercel's `create-next-app`
+
+`create-next-app` scaffolds a Next.js app with Vercel's defaults but no opinion on auth, database, or any cross-cutting concern. DeesseJS templates always include the contract stack. If you want a blank Next.js canvas, use `create-next-app`. If you want a working app with auth, database, and email already wired, use a DeesseJS template.
+
+## Summary
+
+DeesseJS is a **registry of opinionated starters + a CLI**, optimised for teams that ship across multiple surfaces and want consistent contracts everywhere. The trade-off versus single-purpose scaffolders is the same trade-off as monorepo versus polyrepo: more shared infrastructure, more opinion, more leverage — at the cost of buying into a specific contract family.
+
+If you want to evaluate it hands-on, [Quick Start](/docs) is the fastest path. If you want to see the CLI surface in depth before installing, [CLI: Commands Reference](/docs/cli-commands) covers every flag and exit code.

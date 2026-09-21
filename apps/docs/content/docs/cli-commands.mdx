@@ -3,6 +3,214 @@ title: Commands Reference
 description: The DeesseJS CLI command reference.
 ---
 
-## CLI: Commands
+This page documents every command in the public CLI surface. The full surface is intentionally small — four top-level commands plus a three-command `auth` group. Adding to either is a breaking change and goes through the release train.
 
-Content coming soon.
+Every command supports `--json` for scripting. When passed, the CLI suppresses interactive prompts, spinners, and colour, and writes a single JSON object to stdout. Errors become `{ ok: false, code, message, hint }`. The exit code is independent of `--json` — it follows the rules below.
+
+---
+
+## `deessejs list`
+
+Fetch the template registry and render it as a table.
+
+```bash
+deessejs list
+```
+
+### Flags
+
+| Flag | Effect |
+| --- | --- |
+| `--category <name>` | Filter to a single category. Unknown categories yield an empty list (not an error). |
+| `--json` | Emit `{ templates: TemplateV1[] }` instead of a table. |
+
+### Output
+
+A coloured table with one row per template: slug, owner/repo, short description, category. The footer prints the count and a hint about `--category` and `--json`.
+
+### Exit codes
+
+- `0` — success
+- `1` — `network_error` (registry unreachable after retries), `parse_error` (registry response did not match the v1 contract), `internal`
+
+### Examples
+
+```bash
+deessejs list
+deessejs list --category web
+deessejs list --json | jq '.templates[].slug'
+```
+
+---
+
+## `deessejs info <slug>`
+
+Show metadata for a single template and print the install line.
+
+```bash
+deessejs info next-app-starter
+```
+
+### Arguments
+
+| Argument | Description |
+| --- | --- |
+| `<slug>` | Template identifier. Must match a `slug` in the registry. |
+
+### Flags
+
+| Flag | Effect |
+| --- | --- |
+| `--json` | Emit `{ template: TemplateV1 }` instead of the formatted view. |
+
+### Output
+
+A formatted block with the template's fields (slug, owner, repo, optional image, optional cloneUrl, optional readme, updatedAt, stars) followed by:
+
+```
+Install: deessejs init next-app-starter
+```
+
+### Exit codes
+
+- `0` — success
+- `1` — `not_found` (slug does not exist in the registry — the error hints at the closest matches), `network_error`, `parse_error`, `internal`
+
+---
+
+## `deessejs init <slug>`
+
+Clone a template repository, detect the package manager, and install dependencies.
+
+```bash
+deessejs init next-app-starter
+```
+
+### Arguments
+
+| Argument | Description |
+| --- | --- |
+| `<slug>` | Template identifier. Must match a `slug` in the registry. |
+
+### Flags
+
+| Flag | Effect |
+| --- | --- |
+| `--pm <name>` | Override detected package manager. One of `pnpm`, `npm`, `yarn`, `bun`. |
+| `--dir <path>` | Target directory. Resolved relative to the current working directory. Default: `./<slug>`. |
+| `--ref <branch>` | Git ref to clone. Default: tries `main`, falls back to `master`. |
+| `--no-install` | Skip the install step. Useful for CI or pre-baked Docker images. |
+| `--force` | Overwrite the target directory if it exists. Default: abort. |
+| `--json` | Emit `{ ok, slug, dir, ref, installed }` on success or `{ ok: false, code, message, hint }` on failure. |
+
+### Package manager detection
+
+If `--pm` is not passed, the CLI looks at the cloned repo in this order:
+
+1. The `packageManager` field in `package.json` (Corepack convention — `pnpm@9.0.0`, `bun@1.1.0`, etc.). The leading tool name is extracted; the version is ignored.
+2. Lockfile presence — `pnpm-lock.yaml` → pnpm, `bun.lockb` → bun, `yarn.lock` → yarn, `package-lock.json` → npm.
+
+If neither matches, the CLI aborts with `internal` and asks you to pass `--pm` explicitly.
+
+### Behaviour
+
+1. Fetch the registry, resolve the slug, and look up the template record.
+2. Compute the target directory (`./<slug>` unless `--dir` was passed).
+3. If the directory exists and `--force` was not passed, abort with `target_exists` (an internal code, not surfaced as a public error).
+4. Compute the repo URL — `template.cloneUrl` if set, otherwise `https://github.com/<owner>/<repo>`.
+5. `git clone` the repo at the requested ref. Spinner shown unless `--json`.
+6. Detect the package manager and run the install command (`pnpm install`, `npm install`, `yarn install`, `bun install`). Skipped if `--no-install`.
+
+### Exit codes
+
+- `0` — success (cloned + installed, or cloned only if `--no-install`)
+- `1` — public codes: `not_found`, `network_error`, `parse_error`
+- `1` — internal codes (still exit 1, but with a different `code` field if you pass `--json`): `git_not_installed`, `target_exists`, `install_failed`, `internal`
+
+### Examples
+
+```bash
+# Default: scaffold into ./next-app-starter
+deessejs init next-app-starter
+
+# Custom directory
+deessejs init next-app-starter --dir ./apps/web
+
+# Force pnpm even if the template ships yarn.lock
+deessejs init next-app-starter --pm pnpm
+
+# Clone a feature branch without installing
+deessejs init next-app-starter --ref feat/new-thing --no-install
+
+# CI usage
+deessejs init next-app-starter --json --no-install | tee clone-result.json
+```
+
+---
+
+## `deessejs auth`
+
+Subcommand group for the device-flow sign-in. See [CLI: Authentication](/docs/cli-auth) for the full walkthrough including troubleshooting.
+
+### `deessejs auth login`
+
+Browser-based device-flow sign-in. Writes `~/.deessejs/auth.json` on success.
+
+```bash
+deessejs auth login
+```
+
+| Flag | Effect |
+| --- | --- |
+| `--json` | Emit `{ ok: true, user }` on success, `{ ok: false, code, message, hint }` on failure. |
+
+Exit codes: `0` on success, `1` on any failure (`network_error`, `cli_device_denied`, `cli_device_expired`, `internal`).
+
+### `deessejs auth status`
+
+Read-only diagnostic. Validates the cached bearer against the server and prints one of three terminal states (no session / valid / stale). Always exits `0`.
+
+```bash
+deessejs auth status
+```
+
+| Flag | Effect |
+| --- | --- |
+| `--json` | Emit `{ ok, user?, fetchedAt? }`, `{ ok: false, reason: "no_session" }`, or `{ ok: false, reason: "session_invalid", stored }`. |
+
+### `deessejs auth logout`
+
+Invalidate the server-side session and delete the local token file. Always deletes the local file, even if the server-side sign-out fails.
+
+```bash
+deessejs auth logout
+```
+
+| Flag | Effect |
+| --- | --- |
+| `--json` | Emit `{ ok: true }` on success, `{ ok: true, reason: "no_session" }` if there was nothing to revoke. |
+
+Exit codes: `0` always. A non-2xx from the server's sign-out endpoint is logged but does not change the exit code — local cleanup is the user-facing outcome.
+
+---
+
+## Error codes reference
+
+The CLI's error surface is a closed list (per ADR-010 §2). Adding a public code is a breaking change. Pattern-match on these in your scripts:
+
+| Code | Meaning | Remediation |
+| --- | --- | --- |
+| `not_found` | A slug, template, or other identifier does not exist | Check spelling, or run `deessejs list` to see available identifiers |
+| `network_error` | Network request failed after retries | Check connectivity, then retry; the CLI already retried 3× with jitter |
+| `parse_error` | Server response did not match the v1 contract | Likely a server-side regression — open an issue |
+| `cli_outdated` | CLI version is below the server's minimum supported version | `npm install -g @deessejs@latest` |
+| `cli_device_denied` | You denied the device-flow request in the browser | Re-run `deessejs auth login` and click Approve |
+| `cli_device_expired` | The 30-minute device-code window elapsed | Re-run `deessejs auth login` |
+
+Internal codes (`git_not_installed`, `target_exists`, `install_failed`, `internal`) may also appear under `code` when you pass `--json`, but are not part of the public surface and may change without notice.
+
+Every error response on `--json` carries a `hint` field with a human-readable remediation hint. Print it before exiting.
+
+## Global flags
+
+There is no global `--api-url` flag. The CLI's API base URL is fixed at `https://app.deessejs.com/api/v1` and is not currently overridable from the command line. Custom base URLs belong to integration tests; end users run against the production host.

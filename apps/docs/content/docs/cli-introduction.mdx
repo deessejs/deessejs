@@ -3,6 +3,43 @@ title: Introduction
 description: The DeesseJS CLI.
 ---
 
-## CLI: Introduction
+The `@deessejs/cli` package (`deessejs` on npm) is the tool you use to discover, scaffold, and authenticate against DeesseJS templates. It is the only piece of DeesseJS you install — everything else is forked from the templates it scaffolds.
 
-Content coming soon.
+## What the CLI does
+
+- **Browse the registry** — `deessejs list` shows every template, optionally filtered by category
+- **Inspect a template** — `deessejs info <slug>` prints metadata + the install line
+- **Scaffold a template** — `deessejs init <slug>` clones the repo, detects the package manager, installs dependencies
+- **Sign in** — `deessejs auth login` opens the browser for a device-flow approval; the resulting token is cached at `~/.deessejs/auth.json`
+
+That is the full public surface. Adding new top-level commands or flags is a breaking change and goes through a release-train review.
+
+## Install
+
+```bash
+# Use once, no install
+npx deessejs@latest init <slug>
+
+# Or install globally
+npm install -g @deessejs
+deessejs init <slug>
+```
+
+The CLI is published with provenance from the GitHub Actions release workflow. There is no `@canary` or pre-release channel — every release to npm is stable.
+
+## Requirements
+
+- **Node.js ≥ 20.0.0** — declared in `engines`. `npx` and global installs both enforce it.
+- **Git** — required by `init`. The CLI shells out to `git clone`.
+- **A package manager** — `pnpm`, `npm`, `yarn`, or `bun`. `init` picks one based on the cloned repo; override with `--pm <name>`.
+
+## What the CLI does not do
+
+- It does not host templates. They live in GitHub repos; the CLI just clones them.
+- It does not manage your environment variables. Templates ship their own `.env.example`; you copy and fill it in.
+- It does not deploy. After `init`, you build and deploy with whatever your surface uses (Vercel, EAS, Cloudflare, etc.).
+
+## Where to go next
+
+- [CLI: Authentication](/docs/cli-auth) — sign in once for features that hit the API
+- [CLI: Commands Reference](/docs/cli-commands) — every flag, every exit code

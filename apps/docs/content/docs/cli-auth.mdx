@@ -3,6 +3,120 @@ title: Authentication
 description: Sign in with the CLI.
 ---
 
-## CLI: Authentication
+Authentication is optional. `deessejs init <slug>` works without an account — the CLI clones a public GitHub repo and exits. You only need `auth login` if a command hits the DeesseJS API on your behalf (publishing templates, fetching private registry data, leaving reviews — anything not yet public).
 
-Content coming soon.
+The CLI signs in via **OAuth 2.0 device authorization grant**. There is no password prompt, no copy-paste of API tokens, no headless browser.
+
+## `deessejs auth login`
+
+```bash
+deessejs auth login
+```
+
+What happens:
+
+1. The CLI requests a device code from `POST /api/v1/auth/device/code` on the DeesseJS server. The response carries a short user code and a long device code, plus a verification URL.
+2. The CLI spawns your default browser to the verification URL — `https://app.deessejs.com/device?user_code=...`.
+3. The CLI polls `POST /api/v1/auth/device/token` until you approve (or deny) in the browser.
+4. On approval, the CLI exchanges the device code for an access token, validates it server-side, and writes `~/.deessejs/auth.json` with mode `0600`.
+5. The CLI echoes the identity you signed in with. The access token itself is never printed.
+
+If you are not signed in to `app.deessejs.com` when you land on `/device`, you are redirected through the normal login flow and bounced back to `/device?redirect=...` once authed.
+
+### Flags
+
+| Flag | Effect |
+| --- | --- |
+| `--json` | Machine-readable output (`{ ok: true, user }` on success, `{ ok: false, code, message, hint }` on failure). |
+
+### Exit codes
+
+- `0` — successful login
+- `1` — generic failure, network error, or server error (`network_error`)
+- `1` — device code expired (`cli_device_expired`)
+- `1` — you denied the request in the browser (`cli_device_denied`)
+
+## `deessejs auth status`
+
+```bash
+deessejs auth status
+```
+
+Reads the cached session and validates it against `GET /api/v1/auth/get-session` with a `Bearer` header. Three terminal states:
+
+| State | Output | Exit code |
+| --- | --- | --- |
+| No `~/.deessejs/auth.json` | Yellow notice: "no active session. Run `deesse auth login` to authorise this machine." | `0` |
+| Token still valid | Green ✓ + identity + `fetchedAt` timestamp | `0` |
+| Token revoked or expired server-side | Yellow notice + the stale identity for context | `0` |
+
+Exit code is always `0` — `auth status` is a read-only diagnostic and never modifies state.
+
+The token is never echoed, only its `fetchedAt` timestamp and the resolved user identity (email, name, id).
+
+### Flags
+
+| Flag | Effect |
+| --- | --- |
+| `--json` | Emits `{ ok: true, user, fetchedAt }`, `{ ok: false, reason: "no_session" }`, or `{ ok: false, reason: "session_invalid", stored: { user, fetchedAt } }`. |
+
+## `deessejs auth logout`
+
+```bash
+deessejs auth logout
+```
+
+Two-step teardown:
+
+1. `POST /api/v1/auth/sign-out` with the stored bearer token, to invalidate the session server-side.
+2. Delete `~/.deessejs/auth.json` regardless of the sign-out outcome — a stale file is worse than a missing one (every subsequent command would silently use a dead token).
+
+If `~/.deessejs/auth.json` does not exist, `auth logout` exits `0` silently — there is no session to revoke.
+
+### Flags
+
+| Flag | Effect |
+| --- | --- |
+| `--json` | `{ ok: true }` on success, `{ ok: true, reason: "no_session" }` if there was nothing to revoke. |
+
+## Where the token lives
+
+`~/.deessejs/auth.json` — mode `0600` on Linux and macOS, the closest equivalent on Windows. The file is short-lived: each call to a server-hitting command validates the token via `auth status` semantics, and any 401 invalidates the cache.
+
+The file shape:
+
+```json
+{
+  "access_token": "...",
+  "user": { "id": "...", "email": "...", "name": "..." },
+  "fetchedAt": "2026-09-21T10:00:00.000Z"
+}
+```
+
+The token format is opaque — treat the entire file as a secret.
+
+## Troubleshooting
+
+### "The stored token no longer matches an active session on the server."
+
+Run `deessejs auth login` again. The CLI cached a token that the server no longer recognises (you signed out elsewhere, the session was revoked, or the access token expired). `auth status` will keep echoing the stale identity until you re-login.
+
+### `cli_device_denied`
+
+You clicked **Deny** on the `/device` page, or the page expired before you approved. Re-run `deessejs auth login`.
+
+### `cli_device_expired`
+
+The 30-minute device-code window elapsed before you approved. The CLI aborts the poll and exits. Re-run `deessejs auth login` — each invocation requests a fresh code.
+
+### Permission errors writing `~/.deessejs/auth.json`
+
+The CLI tries `fs.open(path, O_WRONLY | O_CREAT, 0o600)` on POSIX. If the file already exists with looser permissions, the CLI does not chmod it down — fix it manually (`chmod 600 ~/.deessejs/auth.json`) or delete the file and re-login.
+
+### "logged in as unknown user"
+
+The CLI never falls back to a synthetic identity when the server rejects the bearer token (per ADR-022, "Bug A"). If you see this, it means `auth.json` was hand-edited or copied from another machine. Delete the file and re-login.
+
+### Network errors during polling
+
+Transient network failures inside the device-flow poll window trigger exponential-backoff retries. If the network is down for the full 30-minute window, the poll exits with `cli_device_expired`. Re-run `auth login` once the network is back.
