@@ -42,7 +42,10 @@ export const TemplateReadme = async ({ readme }: TemplateReadmeProps) => {
   const rendered = await MarkdownAsync({
     ...safeReadmeOptions,
     children: readme,
-    components: mdxComponents,
+    // react-markdown's Components type expects optional `href`
+    // on `a`; our shared `Link` types `href` as required. The
+    // runtime is happy with either — cast to bridge the gap.
+    components: mdxComponents as never,
   })
   return (
     <section

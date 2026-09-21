@@ -1,3 +1,4 @@
+import * as React from "react"
 import { notFound } from "next/navigation"
 import { allKbTopics, allKbGuides } from "content-collections"
 
@@ -142,7 +143,15 @@ export default async function KnowledgeTopicPage({
           <KbCardGrid>
             {topicGuides.map((guide) => (
               <li key={guide.slug}>
-                <GuideCard guide={guide} />
+                <GuideCard
+                  guide={
+                    {
+                      ...guide,
+                      date: guide.date,
+                      readingTime: guide.readingTime ?? 0,
+                    } as React.ComponentProps<typeof GuideCard>["guide"]
+                  }
+                />
               </li>
             ))}
           </KbCardGrid>
