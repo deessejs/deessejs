@@ -63,6 +63,9 @@ catalogs:
     '@turbo/gen':
       specifier: ^2.10.4
       version: 2.10.4
+    '@types/hast':
+      specifier: ^3.0.4
+      version: 3.0.4
     '@types/node':
       specifier: ^24
       version: 24.13.2
@@ -77,7 +80,7 @@ catalogs:
       version: 4.1.10
     ai:
       specifier: ^7.0.106
-      version: 7.0.106
+      version: 7.0.107
     better-auth:
       specifier: ^1.6.23
       version: 1.6.23
@@ -101,7 +104,7 @@ catalogs:
       version: 9.39.4
     eve:
       specifier: ^0.60.0
-      version: 0.60.0
+      version: 0.60.1
     fuse.js:
       specifier: ^7.4.2
       version: 7.4.2
@@ -150,6 +153,9 @@ catalogs:
     resend:
       specifier: ^6.17.1
       version: 6.17.1
+    shiki:
+      specifier: ^4.3.1
+      version: 4.3.1
     sonner:
       specifier: ^2.0.7
       version: 2.0.7
@@ -159,6 +165,9 @@ catalogs:
     typescript:
       specifier: ^6.0.3
       version: 6.0.3
+    unist-util-visit:
+      specifier: ^5.1.0
+      version: 5.1.0
     vercel-minimax-ai-provider:
       specifier: ^0.0.2
       version: 0.0.2
@@ -220,10 +229,10 @@ importers:
     dependencies:
       ai:
         specifier: 'catalog:'
-        version: 7.0.106(zod@4.4.3)
+        version: 7.0.107(zod@4.4.3)
       eve:
         specifier: 'catalog:'
-        version: 0.60.0(ai@7.0.106(zod@4.4.3))
+        version: 0.60.1(ai@7.0.107(zod@4.4.3))
       vercel-minimax-ai-provider:
         specifier: 'catalog:'
         version: 0.0.2(zod@4.4.3)
@@ -595,6 +604,9 @@ importers:
       remark-gfm:
         specifier: 'catalog:'
         version: 4.0.1
+      shiki:
+        specifier: 'catalog:'
+        version: 4.3.1
       zustand:
         specifier: 'catalog:'
         version: 5.0.14(@types/react@19.2.17)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
@@ -620,6 +632,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: 'catalog:'
         version: 4.3.2
+      '@types/hast':
+        specifier: 'catalog:'
+        version: 3.0.4
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
@@ -650,6 +665,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
+      unist-util-visit:
+        specifier: 'catalog:'
+        version: 5.1.0
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@24.13.2)(@vitest/coverage-v8@4.1.10)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.25.12)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
@@ -1101,8 +1119,8 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/gateway@4.0.86':
-    resolution: {integrity: sha512-sPqb9+Uparn18A7zf6GDXXIx/+tsdA7V43NyL+HaHMBl7wrFaO9fBEf4/FoiKn1D/zv0Cc3PgpJX9JsuG7MKeg==}
+  '@ai-sdk/gateway@4.0.87':
+    resolution: {integrity: sha512-6wJmX/D5OO7tvDJbtFdXdBuRt8AkCnW+FLK+W35UHe/tHgolAa4hclXtJcMSYnlTDy/t5DNRgdesVaoMXtwzow==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -1119,8 +1137,8 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/provider-utils@5.0.44':
-    resolution: {integrity: sha512-TZGr0Al1mMnRh7Wd+3qTnSdWvBDIst2Abl8mglkob8rbXF1TG5xoeVLV19rD/AtB+NL/LUPITdbQ0EFGHRBcSw==}
+  '@ai-sdk/provider-utils@5.0.45':
+    resolution: {integrity: sha512-gLuaCups8OCIRz3eO6WWz5op7VLYNNtFzyH0sWUr0FE9v7cTxR0qxDpQdrKnGcql+9WWttobjnZsJVsuEbsPQQ==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -4580,8 +4598,8 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  ai@7.0.106:
-    resolution: {integrity: sha512-0W9AlZfyhOlPyE9ZXCFisg0uxxrmQMGdoVUz0ewRg5J+xAhVBomSspktqYeGWABFbQrYyWRVibnvSf24pTeE2w==}
+  ai@7.0.107:
+    resolution: {integrity: sha512-PVYQ3W9kR8oYiGQxbg4aFIlhQzKskZm8UV+4E0zB2uKOzFr8ju3bXQncOOZtLsOgJY8vdpgyu3cXtomsfcdQYg==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -5506,8 +5524,8 @@ packages:
     resolution: {integrity: sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==}
     engines: {node: '>= 0.6'}
 
-  eve@0.60.0:
-    resolution: {integrity: sha512-WMalgqsS/qAX3Iov9WnAkM6yoRvhGGu5e+m6DVKgsdhsBLyugSodvYNCRb9fN28s9iPMnhsScSi2JcRsKSpdag==}
+  eve@0.60.1:
+    resolution: {integrity: sha512-hiKqy326LtGjL9vG23FlIm+8X2GPH+ZPzdH1CFvYMWvybV95coRc4tYWUKiVtLYijOoocdq2HCu54U0S+LPC+Q==}
     engines: {node: '>=24'}
     hasBin: true
     peerDependencies:
@@ -6014,8 +6032,8 @@ packages:
     resolution: {integrity: sha512-YwUvVpSF7m1yOblFPrU3Hbo8XhPheBoiyfGuII6z19LnOr6JpDnyyp7LFNrfV56wS8tpvtBFGRISHN02pDdLOA==}
     engines: {node: '>=16.9.0'}
 
-  hookable@6.1.1:
-    resolution: {integrity: sha512-U9LYDy1CwhMCnprUfeAZWZGByVbhd54hwepegYTK7Pi5NvqEj63ifz5z+xukznehT7i6NIZRu89Ay1AZmRsLEQ==}
+  hookable@6.1.2:
+    resolution: {integrity: sha512-+abwxtiEA52GCVIsQqut3S/uKTbUwYIp4Pe/vv+6py5XiXBCqMZHg6pA6Y5qhgLSEys0/cYuPbO0z1QFj5ZCmg==}
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
@@ -8571,10 +8589,10 @@ snapshots:
       '@ai-sdk/provider-utils': 4.0.3(zod@4.4.3)
       zod: 4.4.3
 
-  '@ai-sdk/gateway@4.0.86(zod@4.4.3)':
+  '@ai-sdk/gateway@4.0.87(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.17
-      '@ai-sdk/provider-utils': 5.0.44(zod@4.4.3)
+      '@ai-sdk/provider-utils': 5.0.45(zod@4.4.3)
       '@vercel/oidc': 3.2.0
       zod: 4.4.3
 
@@ -8592,7 +8610,7 @@ snapshots:
       eventsource-parser: 3.1.0
       zod: 4.4.3
 
-  '@ai-sdk/provider-utils@5.0.44(zod@4.4.3)':
+  '@ai-sdk/provider-utils@5.0.45(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.17
       '@standard-schema/spec': 1.1.0
@@ -11630,11 +11648,11 @@ snapshots:
 
   acorn@8.17.0: {}
 
-  ai@7.0.106(zod@4.4.3):
+  ai@7.0.107(zod@4.4.3):
     dependencies:
-      '@ai-sdk/gateway': 4.0.86(zod@4.4.3)
+      '@ai-sdk/gateway': 4.0.87(zod@4.4.3)
       '@ai-sdk/provider': 4.0.17
-      '@ai-sdk/provider-utils': 5.0.44(zod@4.4.3)
+      '@ai-sdk/provider-utils': 5.0.45(zod@4.4.3)
       zod: 4.4.3
 
   ajv-formats@2.1.1(ajv@8.20.0):
@@ -12679,9 +12697,9 @@ snapshots:
 
   etag@1.8.1: {}
 
-  eve@0.60.0(ai@7.0.106(zod@4.4.3)):
+  eve@0.60.1(ai@7.0.107(zod@4.4.3)):
     dependencies:
-      ai: 7.0.106(zod@4.4.3)
+      ai: 7.0.107(zod@4.4.3)
       nitro: 3.0.260903-beta
       undici: 8.9.0
 
@@ -13285,7 +13303,7 @@ snapshots:
 
   hono@4.12.28: {}
 
-  hookable@6.1.1: {}
+  hookable@6.1.2: {}
 
   html-escaper@2.0.2: {}
 
@@ -14372,7 +14390,7 @@ snapshots:
       db0: 0.4.1
       env-runner: 0.2.3
       h3: 2.0.1-rc.32(crossws@0.4.12(srvx@1.0.5))(ocache@0.3.0)
-      hookable: 6.1.1
+      hookable: 6.1.2
       nf3: 0.3.24
       ocache: 0.3.0
       rolldown: 1.2.9

@@ -1,6 +1,64 @@
 import { defineCollection, defineConfig } from "@content-collections/core"
 import { compileMDX } from "@content-collections/mdx"
 import rehypeShiki from "@shikijs/rehype"
+import type { Root, Element } from "hast"
+import { visit } from "unist-util-visit"
+
+/**
+ * Custom rehype plugin (inlined to avoid esbuild import-resolution
+ * issues at content-collections build time). Captures the raw source
+ * text of every fenced code block and stores it in `data-code` and
+ * `data-language` attributes on the `<pre>` element so the runtime
+ * `MdxPre` adapter can re-run shiki via the `CodeBlock` component.
+ *
+ * Runs before `rehype-pretty-code` / `@shikijs/rehype` in the
+ * pipeline configured below. Those downstream plugins transform
+ * `<pre><code>` into the syntax-highlighted HTML that the MDX
+ * runtime ships to the browser. The `data-code` and `data-language`
+ * attributes survive the downstream transforms and reach the runtime
+ * as JSX props passed to `mdxComponents.pre({ code, language })`.
+ */
+function rehypeStoreRawCode() {
+  return (tree: Root) => {
+    visit(tree, "element", (node: Element) => {
+      if (node.tagName !== "pre") return
+
+      const codeNode = node.children.find(
+        (child): child is Element =>
+          child.type === "element" && child.tagName === "code",
+      )
+      if (!codeNode) return
+
+      const raw = collectText(codeNode).replace(/\n$/, "")
+
+      const classNames = Array.isArray(codeNode.properties?.className)
+        ? ((codeNode.properties.className as string[]) ?? [])
+        : []
+      const langClass = classNames.find(
+        (c: string) => typeof c === "string" && c.startsWith("language-"),
+      )
+      const language = langClass ? langClass.replace("language-", "") : undefined
+
+      node.properties = {
+        ...node.properties,
+        "data-code": raw,
+        ...(language ? { "data-language": language } : {}),
+      }
+    })
+  }
+}
+
+function collectText(node: Element): string {
+  let out = ""
+  for (const child of node.children) {
+    if (child.type === "text") {
+      out += child.value
+    } else if (child.type === "element") {
+      out += collectText(child)
+    }
+  }
+  return out
+}
 import { z } from "zod"
 import readingTime from "reading-time"
 
@@ -11,6 +69,7 @@ const authors = defineCollection({
   schema: z.object({
     handle: z.string().min(1).max(60),
     name: z.string().min(1).max(120),
+    role: z.string().min(1).max(120).optional(),
     avatar: z.string().optional(),
     bio: z.string().optional(),
     // External identity links surfaced as schema.org `sameAs` on the
@@ -86,6 +145,7 @@ const posts = defineCollection({
 
     const mdxCode = await compileMDX(context, post, {
       rehypePlugins: [
+        [rehypeStoreRawCode],
         [
           rehypeShiki,
           {
@@ -164,6 +224,7 @@ const releases = defineCollection({
 
     const mdxCode = await compileMDX(context, release, {
       rehypePlugins: [
+        [rehypeStoreRawCode],
         [
           rehypeShiki,
           {
@@ -202,6 +263,7 @@ const kbTopics = defineCollection({
 
     const mdxCode = await compileMDX(context, topic, {
       rehypePlugins: [
+        [rehypeStoreRawCode],
         [
           rehypeShiki,
           {
@@ -230,6 +292,11 @@ const kbGuides = defineCollection({
     description: z.string().min(1).max(280),
     topic: z.string().min(1),
     products: z.array(z.string()).default([]),
+    author: z.string().min(1).optional(),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
     order: z.number().int().nonnegative().default(0),
     draft: z.boolean().default(false),
     content: z.string(),
@@ -243,8 +310,21 @@ const kbGuides = defineCollection({
       .replace(/^.*\//, "")
       .replace(/\.mdx$/, "")
 
+    const author = guide.author
+      ? context.documents(authors).find((a) => a.handle === guide.author)
+      : undefined
+    if (guide.author && !author) {
+      throw new Error(
+        `Guide "${guide.title}" references unknown author "${guide.author}". ` +
+          `Add content/authors/${guide.author}.md or fix the frontmatter.`,
+      )
+    }
+
+    const stats = readingTime(guide.content)
+
     const mdxCode = await compileMDX(context, guide, {
       rehypePlugins: [
+        [rehypeStoreRawCode],
         [
           rehypeShiki,
           {
@@ -257,6 +337,8 @@ const kbGuides = defineCollection({
 
     return {
       ...guide,
+      author,
+      readingTime: Math.max(1, Math.round(stats.minutes)),
       slug,
       url: `/knowledge-base/guides/${slug}`,
       mdxCode,

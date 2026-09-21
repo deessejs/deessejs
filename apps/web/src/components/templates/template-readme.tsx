@@ -1,6 +1,6 @@
 import { MarkdownAsync } from "react-markdown"
 
-import { Prose } from "@/components/blog/prose"
+import { mdxComponents } from "@/components/blog/mdx-components"
 import { safeReadmeOptions } from "@/lib/templates/safe-readme"
 
 export type TemplateReadmeProps = {
@@ -17,8 +17,10 @@ export type TemplateReadmeProps = {
  *     large, GitHub rate-limited) so the section disappears cleanly rather than
  *     rendering an empty card. The "View source" CTA in the hero remains the
  *     canonical way to read the upstream file in that case.
- *   - Reuses the marketing-site `Prose` typography styles so headings, code
- *     blocks, tables, and lists match the rest of the templates surface.
+ *   - Reuses the `mdxComponents` map from `apps/web/src/components/blog/mdx-components`
+ *     so headings, code blocks, tables, and lists render through the shared
+ *     @workspace/ui/typography primitives — same surface as the blog/changelog/KB
+ *     MDX content.
  *
  * **Async.** Uses `MarkdownAsync` (not the sync `Markdown`) because the
  * rehype pipeline contains `rehype-pretty-code`, which returns an async
@@ -37,7 +39,14 @@ export type TemplateReadmeProps = {
  */
 export const TemplateReadme = async ({ readme }: TemplateReadmeProps) => {
   if (!readme) return null
-  const rendered = await MarkdownAsync({ ...safeReadmeOptions, children: readme })
+  const rendered = await MarkdownAsync({
+    ...safeReadmeOptions,
+    children: readme,
+    // react-markdown's Components type expects optional `href`
+    // on `a`; our shared `Link` types `href` as required. The
+    // runtime is happy with either — cast to bridge the gap.
+    components: mdxComponents as never,
+  })
   return (
     <section
       aria-label="README"
@@ -45,9 +54,12 @@ export const TemplateReadme = async ({ readme }: TemplateReadmeProps) => {
       className="flex flex-col gap-3"
     >
       <h2 className="text-label-14 text-muted-foreground">Overview</h2>
-      <Prose id="template-readme">
+      <article
+        id="template-readme"
+        className="text-base leading-7 text-pretty [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-border/40 [&_pre]:bg-muted/30 [&_pre]:overflow-x-auto [&_pre]:my-6 [&_pre]:p-4 [&_pre]:text-copy-14 [&_pre]:font-mono [&_pre_code]:block [&_pre_code]:bg-transparent [&_pre_code]:px-0 [&_pre_code]:py-0 [&_[data-highlighted-line]]:bg-foreground/5 [&_[data-highlighted-line]]:relative [&_[data-highlighted-chars]]:bg-foreground/10 [&_[data-highlighted-chars]]:rounded"
+      >
         {rendered}
-      </Prose>
+      </article>
     </section>
   )
 }

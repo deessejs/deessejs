@@ -17,7 +17,6 @@ import { H2 } from "@workspace/ui/components/typography"
 import { Separator } from "@workspace/ui/components/separator"
 
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
-import { Prose } from "@/components/blog/prose"
 import { TableOfContents } from "@/components/blog/table-of-contents"
 import { GuideCard } from "@/components/knowledge-base/guide-card"
 import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
@@ -261,9 +260,7 @@ export default async function KnowledgeGuidePage({
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_180px] lg:gap-12">
         <div className="min-w-0">
-          <Prose id="guide-prose" className="mt-2">
-            <MdxRenderer code={guide.mdxCode} />
-          </Prose>
+          <MdxRenderer id="guide-prose" className="mt-2" code={guide.mdxCode} />
         </div>
         <aside className="hidden lg:block">
           <TableOfContents targetId="guide-prose" />

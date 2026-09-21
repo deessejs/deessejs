@@ -8,9 +8,8 @@ import { WEB_URL } from "@/lib/urls"
 import { AuthorBio } from "@/components/blog/author-bio"
 import { PostCard } from "@/components/blog/post-card"
 import { PostMeta } from "@/components/blog/post-meta"
-import { Prose } from "@/components/blog/prose"
-import { TableOfContents } from "@/components/blog/table-of-contents"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
+import { TableOfContents } from "@/components/blog/table-of-contents"
 import {
   getAdjacentPosts,
   getPostBySlug,
@@ -149,9 +148,7 @@ export default async function PostPage(
 
       <div className="lg:grid lg:grid-cols-[1fr_180px] lg:gap-12">
         <div className="min-w-0">
-          <Prose id="article-prose" className="mt-10">
-            <MdxRenderer code={post.mdxCode} />
-          </Prose>
+          <MdxRenderer id="article-prose" className="mt-10" code={post.mdxCode} />
         </div>
         <aside className="hidden lg:block">
           <TableOfContents targetId="article-prose" />

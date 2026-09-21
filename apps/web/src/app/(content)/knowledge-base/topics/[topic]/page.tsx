@@ -1,3 +1,4 @@
+import * as React from "react"
 import { notFound } from "next/navigation"
 import { allKbTopics, allKbGuides } from "content-collections"
 
@@ -11,7 +12,6 @@ import {
 } from "@workspace/ui/components/breadcrumb"
 import { H2 } from "@workspace/ui/components/typography"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
-import { Prose } from "@/components/blog/prose"
 import { GuideCard } from "@/components/knowledge-base/guide-card"
 import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
 import { TopicTagPill } from "@/components/knowledge-base/badges"
@@ -123,9 +123,7 @@ export default async function KnowledgeTopicPage({
         ) : null}
       </header>
 
-      <Prose className="mt-2">
-        <MdxRenderer code={topicDoc.mdxCode} />
-      </Prose>
+      <MdxRenderer className="mt-2" code={topicDoc.mdxCode} />
 
       <section className="flex flex-col gap-4">
         <div className="flex items-baseline justify-between gap-3">
@@ -145,7 +143,15 @@ export default async function KnowledgeTopicPage({
           <KbCardGrid>
             {topicGuides.map((guide) => (
               <li key={guide.slug}>
-                <GuideCard guide={guide} />
+                <GuideCard
+                  guide={
+                    {
+                      ...guide,
+                      date: guide.date,
+                      readingTime: guide.readingTime ?? 0,
+                    } as React.ComponentProps<typeof GuideCard>["guide"]
+                  }
+                />
               </li>
             ))}
           </KbCardGrid>
