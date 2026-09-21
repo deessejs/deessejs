@@ -1,3 +1,9 @@
 # Local Vale scratch files
 B-RULES.txt
 B-VIOLATIONS.txt
+
+# Vale-synced package styles (downloaded by `vale sync` into $StylesPath;
+# the CI workflow syncs these on the fly from the cache, not from git).
+.github/styles/Microsoft/
+.github/styles/write-good/
+.github/styles/proselint/
