@@ -1,14 +1,6 @@
 import Link from "next/link"
 import type { Metadata } from "next"
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@workspace/ui/components/breadcrumb"
 import { H1, H2 } from "@workspace/ui/components/typography"
 import { Separator } from "@workspace/ui/components/separator"
 

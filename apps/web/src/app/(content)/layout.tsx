@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowRight, Globe } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 
 import { Button } from "@workspace/ui/components/button"
