@@ -1,4 +1,13 @@
 {
   "pagesIndex": "index",
-  "pages": ["what-is-deessejs", "comparisons"]
+  "pages": [
+    "---Introduction---",
+    "index",
+    "what-is-deessejs",
+    "comparisons",
+    "---CLI---",
+    "cli-introduction",
+    "cli-auth",
+    "cli-commands"
+  ]
 }
