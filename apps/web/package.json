@@ -54,6 +54,7 @@
     "@vitest/coverage-v8": "catalog:",
     "@workspace/eslint-config": "workspace:*",
     "@playwright/test": "catalog:",
+    "unist-util-visit": "catalog:",
     "@workspace/typescript-config": "workspace:*",
     "@workspace/vitest-config": "workspace:*",
     "eslint": "^9",
