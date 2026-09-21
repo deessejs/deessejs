@@ -38,6 +38,7 @@
     "rehype-pretty-code": "catalog:",
     "rehype-sanitize": "catalog:",
     "remark-gfm": "catalog:",
+    "shiki": "catalog:",
     "zustand": "catalog:"
   },
   "devDependencies": {
