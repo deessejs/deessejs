@@ -1,6 +1,63 @@
 import { defineCollection, defineConfig } from "@content-collections/core"
 import { compileMDX } from "@content-collections/mdx"
 import rehypeShiki from "@shikijs/rehype"
+import { visit } from "unist-util-visit"
+
+/**
+ * Custom rehype plugin (inlined to avoid esbuild import-resolution
+ * issues at content-collections build time). Captures the raw source
+ * text of every fenced code block and stores it in `data-code` and
+ * `data-language` attributes on the `<pre>` element so the runtime
+ * `MdxPre` adapter can re-run shiki via the `CodeBlock` component.
+ *
+ * Runs before `rehype-pretty-code` / `@shikijs/rehype` in the
+ * pipeline configured below. Those downstream plugins transform
+ * `<pre><code>` into the syntax-highlighted HTML that the MDX
+ * runtime ships to the browser. The `data-code` and `data-language`
+ * attributes survive the downstream transforms and reach the runtime
+ * as JSX props passed to `mdxComponents.pre({ code, language })`.
+ */
+function rehypeStoreRawCode() {
+  return (tree: any) => {
+    visit(tree, "element", (node: any) => {
+      if (node.tagName !== "pre") return
+
+      const codeNode = node.children.find(
+        (child: any) =>
+          child.type === "element" && child.tagName === "code",
+      )
+      if (!codeNode) return
+
+      const raw = collectText(codeNode).replace(/\n$/, "")
+
+      const classNames = Array.isArray(codeNode.properties?.className)
+        ? (codeNode.properties.className ?? [])
+        : []
+      const langClass = classNames.find(
+        (c: string) => typeof c === "string" && c.startsWith("language-"),
+      )
+      const language = langClass ? langClass.replace("language-", "") : undefined
+
+      node.properties = {
+        ...node.properties,
+        "data-code": raw,
+        ...(language ? { "data-language": language } : {}),
+      }
+    })
+  }
+}
+
+function collectText(node: any): string {
+  let out = ""
+  for (const child of node.children) {
+    if (child.type === "text") {
+      out += child.value
+    } else if (child.type === "element") {
+      out += collectText(child)
+    }
+  }
+  return out
+}
 import { z } from "zod"
 import readingTime from "reading-time"
 
@@ -87,6 +144,7 @@ const posts = defineCollection({
 
     const mdxCode = await compileMDX(context, post, {
       rehypePlugins: [
+        [rehypeStoreRawCode],
         [
           rehypeShiki,
           {
@@ -165,6 +223,7 @@ const releases = defineCollection({
 
     const mdxCode = await compileMDX(context, release, {
       rehypePlugins: [
+        [rehypeStoreRawCode],
         [
           rehypeShiki,
           {
@@ -203,6 +262,7 @@ const kbTopics = defineCollection({
 
     const mdxCode = await compileMDX(context, topic, {
       rehypePlugins: [
+        [rehypeStoreRawCode],
         [
           rehypeShiki,
           {
@@ -263,6 +323,7 @@ const kbGuides = defineCollection({
 
     const mdxCode = await compileMDX(context, guide, {
       rehypePlugins: [
+        [rehypeStoreRawCode],
         [
           rehypeShiki,
           {
