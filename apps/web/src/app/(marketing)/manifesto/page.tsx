@@ -78,7 +78,8 @@ const BELIEFS: ReadonlyArray<Belief> = [
 export default function ManifestoPage() {
   return (
     <MarketingPage>
-      {/* Hero */}
+      <div className="mx-auto max-w-5xl py-16">
+        {/* Hero */}
       <header className="flex flex-col gap-6">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           The DeesseJS Manifesto
@@ -203,6 +204,7 @@ export default function ManifestoPage() {
           </Button>
         </div>
       </nav>
+      </div>
     </MarketingPage>
   )
 }

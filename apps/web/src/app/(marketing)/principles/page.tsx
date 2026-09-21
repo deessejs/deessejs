@@ -99,7 +99,8 @@ const PRINCIPLES: ReadonlyArray<Principle> = [
 export default function PrinciplesPage() {
   return (
     <MarketingPage>
-      {/* Hero */}
+      <div className="mx-auto max-w-5xl py-16">
+        {/* Hero */}
       <header className="flex flex-col gap-6">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           How we work
@@ -192,6 +193,7 @@ export default function PrinciplesPage() {
           </Link>
         </div>
       </nav>
+      </div>
     </MarketingPage>
   )
 }

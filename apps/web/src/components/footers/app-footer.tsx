@@ -17,7 +17,6 @@ const footerSections: ReadonlyArray<{
       { label: "FP", href: "https://fp.deessejs.com" },
       { label: "UI", href: "https://ui.deessejs.com" },
       { label: "Admin", href: "https://admin.deessejs.com" },
-      { label: "Cloud", href: "https://cloud.deessejs.com" },
     ],
   },
   {

@@ -19,7 +19,8 @@ export const metadata: Metadata = {
 export default function HelpPage() {
   return (
     <MarketingPage>
-      <header className="flex flex-col gap-4">
+      <div className="mx-auto max-w-5xl py-16">
+        <header className="flex flex-col gap-4">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           Help
         </p>
@@ -138,6 +139,7 @@ export default function HelpPage() {
           </li>
         </ul>
       </Section>
+      </div>
     </MarketingPage>
   )
 }
