@@ -22,8 +22,8 @@ export function BlogSearch({
   featured,
   topics,
 }: {
-  posts: Post[]
-  featured?: Post[] | undefined
+  posts: ReadonlyArray<Post>
+  featured?: ReadonlyArray<Post> | undefined
   topics?: ReactNode
 }) {
   const [query, setQuery] = useState("")

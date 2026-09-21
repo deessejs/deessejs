@@ -19,8 +19,8 @@ export function BlogPostGrid({
   posts,
   featured,
 }: {
-  posts: Post[]
-  featured?: Post[] | undefined
+  posts: ReadonlyArray<Post>
+  featured?: ReadonlyArray<Post> | undefined
 }) {
   if (posts.length === 0 && (!featured || featured.length === 0)) {
     return null

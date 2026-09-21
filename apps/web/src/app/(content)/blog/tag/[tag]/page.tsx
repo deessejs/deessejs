@@ -37,7 +37,7 @@ export default async function TagPage(
   const blogTag = decoded as BlogTag
   const posts = getPostsByTag(blogTag)
   const tags = getAllTags()
-  const featured = posts[0]
+  const featured = posts[0] ? [posts[0]] : []
 
   return (
     <section>

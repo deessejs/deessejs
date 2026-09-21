@@ -86,7 +86,7 @@ export function Link({
   children,
   href,
 }: {
-  children: React.ReactNode
+  children?: React.ReactNode
   href: string
 }) {
   return (
