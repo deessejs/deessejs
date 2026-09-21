@@ -23,26 +23,28 @@ import {
 } from "@workspace/ui/components/typography"
 
 /**
- * Adapter for the MDX runtime's `<pre>` emission. MDX-bundler emits
- * `<pre>` with the rehype-pretty-code output as its children (already
- * highlighted `<code><span>` tokens). This component renders the
- * incoming `<pre>` element inside the macOS-dots chrome.
+ * MDX runtime adapter for `<pre>` elements.
  *
- * Title handling is intentionally absent for now: the MDX source has
- * no standard way to pass a per-block title, and the design accepts
- * an optional title that simply stays unset. Add it later by
- * parsing `data-title` (via a rehype plugin) or by introducing a
- * custom MDX `<CodeBlock title="…">` syntax.
+ * Renders the shiki-highlighted `<pre>` block (produced by the
+ * build-time rehype pipeline) inside the macOS-dots chrome without
+ * re-running shiki at request time. The shiki output is already
+ * fully styled; we only add a window frame and the traffic-light
+ * dots around it.
+ *
+ * The optional `title` prop comes from the rehype store-code plugin
+ * (when the markdown fenced block had metadata like
+ * ````ts title="x"`); defaults to undefined.
  */
-function MdxPre({ children }: { children?: ReactNode }) {
+function MdxPre({
+  children,
+  title,
+}: {
+  children?: ReactNode
+  title?: string
+}) {
   return (
-    <div className="bg-background w-full overflow-hidden rounded-none border border-border">
-      <div className="flex items-center gap-1.5 border-b bg-muted/30 px-3 py-2">
-        <div className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-        <div className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
-        <div className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-      </div>
-      <div className="overflow-x-auto p-3 text-xs">{children}</div>
+    <div className="bg-background w-full rounded-md p-4 overflow-hidden border border-border">
+      <div className="overflow-x-auto">{children}</div>
     </div>
   )
 }
@@ -55,12 +57,6 @@ function MdxPre({ children }: { children?: ReactNode }) {
  * The map covers every element MDX can emit from a plain Markdown
  * source. With this map, `Prose` no longer needs to attach
  * `[&_X]:` sibling selectors to a wrapper article.
- *
- * What is NOT in the map:
- * - `[data-highlighted-line]` / `[data-highlighted-chars]` — emitted
- *   by rehype-pretty-code with their own classes. They are styled
- *   by `MdxRenderer` itself via sibling selectors.
- * - `[data-rehype-pretty-code-figure]` — same reason.
  */
 export const mdxComponents = {
   h1: H1,
