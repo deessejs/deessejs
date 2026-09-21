@@ -12,6 +12,7 @@ import { Separator } from "@workspace/ui/components/separator"
 import { cn } from "@workspace/ui/lib/utils"
 
 import type { TemplateV1 as Template } from "@workspace/contracts/v1"
+import { SUBMIT_TEMPLATE_URL } from "@/lib/templates/urls"
 import { TemplateLabels } from "./template-labels"
 import { CopyButton } from "./copy-button"
 import { TemplateReadme } from "./template-readme"
@@ -156,7 +157,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
             </p>
             <Button asChild>
               <a
-                href="https://github.com/deessejs/deessejs/issues/new?template=add-template.yml&labels=template"
+                href={SUBMIT_TEMPLATE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
               >
