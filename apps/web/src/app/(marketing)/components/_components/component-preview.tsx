@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react"
+
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -16,17 +18,17 @@ type Props = {
 }
 
 /**
- * V1 live preview of a single component. Renders the actual
- * shadcn primitive in a centred card surface so the visitor
- * sees what the component looks like.
+ * Live preview of a single component. Renders the actual
+ * `@workspace/ui` primitive so the visitor sees what the
+ * component looks like and can interact with it.
  *
- * Only the most-visited primitives get a real preview in V1 —
- * button, input, textarea, checkbox, select, switch, badge,
- * avatar, separator, skeleton. The rest fall through to a
- * "Preview coming in V2" placeholder. V1.1 (or V2) covers the
- * remaining components (Card, Dialog, Sheet, Popover, Tooltip,
- * DropdownMenu, Command, NavigationMenu, Sidebar, Breadcrumb,
- * Accordion, Collapsible, Tabs, Sonner).
+ * The Button preview is the only one that's `"use client"`-driven
+ * via the inner `ButtonPreviewDemo` subcomponent — it changes
+ * label on click to prove the primitive is live. The rest are
+ * server-rendered previews.
+ *
+ * Slugs without a real preview fall through to a "Preview coming
+ * in V2" placeholder.
  */
 export function ComponentPreview({ slug }: Props) {
   const preview = renderPreview(slug)
@@ -49,10 +51,29 @@ export function ComponentPreview({ slug }: Props) {
   )
 }
 
+function ButtonPreviewDemo() {
+  const [clicked, setClicked] = useState(0)
+  // Reset to 0 after 1.5s of inactivity so the label cycles back.
+  useEffect(() => {
+    if (clicked === 0) return
+    const id = window.setTimeout(() => setClicked(0), 1500)
+    return () => window.clearTimeout(id)
+  }, [clicked])
+
+  const label =
+    clicked === 0 ? "Click me" : `Clicked ${clicked} time${clicked === 1 ? "" : "s"}`
+
+  return (
+    <Button onClick={() => setClicked((n) => n + 1)}>
+      {label}
+    </Button>
+  )
+}
+
 function renderPreview(slug: CatalogueComponent["slug"]) {
   switch (slug) {
     case "button":
-      return <Button>Click me</Button>
+      return <ButtonPreviewDemo />
     case "badge":
       return (
         <div className="flex flex-wrap items-center gap-2">
