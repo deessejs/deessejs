@@ -34,7 +34,7 @@ Three concrete failure modes the existing layer-cake doesn't catch:
 1. **The issue #81 cache-poisoning regression.** PR #85
    introduced `templates:live` (`revalidate: 0`) and a runtime
    re-throw at the three call-sites. The fix passes at
-   the unit level (`apps/web/test/unit/orpc.test.ts`) and
+   the unit level (`apps/web/tests/unit/orpc.test.ts`) and
    the API-side unit level (`packages/api/tests/integration/rpc/templates.test.ts`).
    Nothing exercises it as a user: a real browser hitting
    the marketing site, where `/templates` renders a populated
@@ -62,7 +62,7 @@ Three patterns the existing test surface already provides, and
   that this ADR reuses rather than re-implements:
 
 - **Vitest unit seam (ADR-009).** The translation contract
-  `buildFetchIsrInit` lives at `apps/web/test/unit/orpc.test.ts`
+  `buildFetchIsrInit` lives at `apps/web/tests/unit/orpc.test.ts`
   (8 tests). It pins the translation contract that the
   browser-level test depends on. Alone, this isn't enough
   because the failure modes above need a real browser to be
@@ -228,7 +228,7 @@ Local development runs against `pnpm dev` instead, using a
   `apps/web/tests/e2e/`. Three reasons:
 
   - **Consistency with the existing Vitest unit tests at
-    `apps/web/test/unit/orpc.test.ts` (PR #85).** Co-locating
+    `apps/web/tests/unit/orpc.test.ts` (PR #85).** Co-locating
     `test/` (Vitest) and `tests/e2e/` (Playwright) under
     the same `apps/web/` root means a future contributor
     finds all tests by descending one directory. The
@@ -973,7 +973,7 @@ Three implementation details pinned here so a future
 
 ### What this rule doesn't change
 
-- **`apps/web/test/unit/orpc.test.ts` (8 tests, PR #85
+- **`apps/web/tests/unit/orpc.test.ts` (8 tests, PR #85
   addition).** Stays. The unit tests pin the translation
   contract; the e2e tests pin the user-visible behavior.
   Removing the unit tests would weaken the regression net
@@ -1118,7 +1118,7 @@ All three sit on the list so the next iteration of this ADR {/* vale fix: write-
   convention); the final placement preserves both
   conventions by using the plural `tests/` for the app
   and the singular `test/` for the existing Vitest
-  unit suite at `apps/web/test/unit/orpc.test.ts`
+  unit suite at `apps/web/tests/unit/orpc.test.ts`
   (PR #85).
 - **2026-08-20**: chose Vercel preview URL over `next
   start` for the same reason ADR-016 rejects the latter:
