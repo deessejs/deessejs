@@ -60,13 +60,27 @@ describe("POST /api/v1/rpc/templates/list", () => {
       // (https://orpc.dev/docs/advanced/rpc-protocol).
       const templates = body.json.templates as Array<Record<string, unknown>>
       expect(Array.isArray(templates)).toBe(true)
-      expect(templates.length).toBe(1)
+      // Pin the full registry by slug. Asserting on `length` would
+      // force this test to be touched every time a template is
+      // added; pinning slugs keeps the test resilient to a
+      // growing catalog and still fails loudly if any entry is
+      // missing or duplicated.
+      expect(templates.map((t) => t.slug).sort()).toEqual([
+        "blog-starter",
+        "docs-starter",
+        "electron-starter",
+        "eve-starter",
+        "landing-starter",
+        "package-starter",
+        "saas-starter",
+        "saas-starter-multi-tenant",
+      ])
 
-      const template = templates[0]
+      const bySlug = new Map(templates.map((t) => [t.slug, t]))
+      const template = bySlug.get("saas-starter")!
       // Pin the editorial fields from `packages/api/src/templates.ts`.
       // These are the values `enrich()` does not overwrite (or
       // overwrites with the same value).
-      expect(template.slug).toBe("saas-starter")
       expect(template.owner).toBe("deessejs")
       expect(template.repo).toBe("saas-template")
       expect(template.category).toBe("saas")
