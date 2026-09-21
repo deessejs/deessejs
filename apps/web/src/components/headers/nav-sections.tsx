@@ -122,12 +122,6 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
             description: "Operator console",
             external: true,
           },
-          {
-            label: "Cloud",
-            href: "https://cloud.deessejs.com",
-            description: "Hosted runtime, coming soon",
-            external: true,
-          },
         ],
       },
     ],

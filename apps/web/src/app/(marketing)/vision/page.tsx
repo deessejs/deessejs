@@ -132,7 +132,8 @@ const HORIZONS: ReadonlyArray<Horizon> = [
 export default function VisionPage() {
   return (
     <MarketingPage>
-      {/* Hero */}
+      <div className="mx-auto max-w-5xl py-16">
+        {/* Hero */}
       <header className="flex flex-col gap-6">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           Where we&apos;re going
@@ -238,6 +239,7 @@ export default function VisionPage() {
           </Link>
         </div>
       </nav>
+      </div>
     </MarketingPage>
   )
 }

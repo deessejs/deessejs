@@ -64,20 +64,9 @@ import { MarketingPage } from "../_components/marketing-page"
 export default function AboutPage() {
   return (
     <MarketingPage>
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/">Home</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>About</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
       {/* Hero */}
-      <header className="flex flex-col gap-4">
+      <div className="max-w-5xl mx-auto py-16">
+      <header className="flex flex-col gap-4 ">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           About
         </p>
@@ -221,6 +210,7 @@ export default function AboutPage() {
           </Link>
         </div>
       </nav>
+      </div>
     </MarketingPage>
   )
 }
