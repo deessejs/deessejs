@@ -38,6 +38,7 @@
     "rehype-pretty-code": "catalog:",
     "rehype-sanitize": "catalog:",
     "remark-gfm": "catalog:",
+    "shiki": "catalog:",
     "zustand": "catalog:"
   },
   "devDependencies": {
@@ -53,6 +54,8 @@
     "@vitest/coverage-v8": "catalog:",
     "@workspace/eslint-config": "workspace:*",
     "@playwright/test": "catalog:",
+    "unist-util-visit": "catalog:",
+    "@types/hast": "catalog:",
     "@workspace/typescript-config": "workspace:*",
     "@workspace/vitest-config": "workspace:*",
     "eslint": "^9",

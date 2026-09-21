@@ -37,10 +37,10 @@ export default async function TagPage(
   const blogTag = decoded as BlogTag
   const posts = getPostsByTag(blogTag)
   const tags = getAllTags()
-  const featured = posts[0]
+  const featured = posts[0] ? [posts[0]] : []
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+    <section>
       <header className="mb-8">
         <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
           Blog
@@ -68,6 +68,14 @@ export default async function TagPage(
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Topics
             </span>
+            <Link href="/blog">
+              <Badge
+                variant="outline"
+                className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
+              >
+                All topics
+              </Badge>
+            </Link>
             {tags.map((t) => {
               const isActive = t === decoded
               return (

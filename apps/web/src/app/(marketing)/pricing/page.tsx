@@ -199,6 +199,13 @@ const PricingPage = () => {
           update, every project you ship. MIT for the floor, Pro for
           production, custom for enterprise.
         </p>
+      </div>
+
+      {/* Cadence toggle — 16px tall strip flush against the license
+          cards below. The tabs (lifetime vs subscription) live here
+          rather than in the hero so they read as the lever that
+          drives the cards beneath. */}
+      <div className="flex h-12 items-center justify-center border-b border-border">
         <PricingHeroTabs />
       </div>
 
@@ -217,26 +224,14 @@ const PricingPage = () => {
           ))}
         </div>
 
-        {/* 3. Trust band — single-row statement */}
-        <Cell className="items-center text-center border-b border-border !py-4 bg-muted/20">
-          <p className="text-copy-13-mono text-muted-foreground text-left sm:text-center sm:text-copy-14-mono">
-            14-day refund on per-project · MIT for Open Community · Source
-            code shipped on day one · Cancel subscription any time,
-            keep what you have
-          </p>
-        </Cell>
-
-        {/* 4. Built with — copy left, TechStackGrid right.
-            Same providers as the home page, surfaced here so a
-            pricing-page visitor can see exactly what the Pro
-            templates ship wired in. */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
-          <div className="col-span-1 lg:col-span-2 flex flex-col gap-2 justify-center p-6 md:p-8 lg:p-10">
-            <p className="text-label-13 text-muted-foreground">
-              Built with
-            </p>
-            <p className="text-heading-24 lg:text-heading-32 tracking-tighter text-balance [&:not(:first-child)]:mt-0">
-              The stack senior engineers ship on.
+        {/* 4. Built with — same vertical pattern as the homepage:
+            title row on top, TechStackGrid row below. The pricing
+            page surfaces the same providers so a visitor can see
+            exactly what the Pro templates ship wired in. */}
+        <div className="grid grid-cols-1 divide-y divide-border border-b border-border">
+          <div className="px-8 py-6">
+            <p className="text-heading-24 tracking-tighter text-balance [&:not(:first-child)]:mt-0">
+              Built with the stack senior engineers ship on.
             </p>
           </div>
           <TechStackGrid techs={TECH_STACK} />

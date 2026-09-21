@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Clock } from "lucide-react"
 
 import {
   Card,
@@ -7,6 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
+
+import { AuthorAvatarLink } from "@/components/blog/author-avatar"
 
 import { GuideProductPill } from "./badges"
 
@@ -27,6 +30,11 @@ import { GuideProductPill } from "./badges"
  * nested in a Link — only the outer Link exists, and the
  * title is rendered as plain text inside the CardTitle.
  *
+ * Layout mirrors the blog PostCard: date in the header
+ * above the title, footer pinned at the bottom with author
+ * + reading time. Optional fields fall back cleanly when
+ * absent on older guides.
+ *
  * `text-balance` on the title and `text-pretty` on the
  * description eliminate single-word orphans on the 2nd
  * line of a 2-line title and on the last visible line
@@ -40,6 +48,14 @@ export function GuideCard({
     description: string
     products: string[]
     url: string
+    date?: string
+    readingTime?: number
+    author?: {
+      name: string
+      role?: string
+      avatar?: string
+      handle: string
+    }
   }
 }) {
   return (
@@ -48,12 +64,17 @@ export function GuideCard({
       aria-label={`Read the ${guide.title} guide`}
       className="group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <Card className="flex w-full flex-1 rounded-none border-0 bg-background transition-colors group-hover:bg-accent/30 group-focus-within:bg-accent/30">
+      <Card className="flex w-full flex-1 flex-col rounded-none border-0 bg-background ring-0 transition-colors group-hover:bg-accent/30 group-focus-within:bg-accent/30">
         <CardHeader className="gap-3">
-          <CardTitle className="text-label-16 font-semibold tracking-tight text-balance underline-offset-4 group-hover:underline">
+          {guide.date ? (
+            <div className="relative z-10 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <time dateTime={guide.date}>{guide.date}</time>
+            </div>
+          ) : null}
+          <CardTitle className="mt-1 text-balance text-xl tracking-tight">
             {guide.title}
           </CardTitle>
-          <CardDescription className="text-copy-14 text-muted-foreground leading-7 line-clamp-3 text-pretty">
+          <CardDescription className="mt-2 line-clamp-3 text-sm text-muted-foreground">
             {guide.description}
           </CardDescription>
         </CardHeader>
@@ -64,6 +85,39 @@ export function GuideCard({
             ))}
           </CardContent>
         ) : null}
+        <div className="mt-auto px-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="relative z-10 flex flex-wrap items-center gap-x-3 gap-y-1">
+              {guide.author ? (
+                <span className="inline-flex items-center gap-2">
+                  <AuthorAvatarLink
+                    author={{
+                      name: guide.author.name,
+                      handle: guide.author.handle,
+                    }}
+                    size={20}
+                  />
+                  <span className="text-xs text-foreground">
+                    {guide.author.name}
+                  </span>
+                  {guide.author.role ? (
+                    <span className="hidden text-xs text-muted-foreground sm:inline">
+                      {guide.author.role}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
+            </div>
+            {guide.readingTime ? (
+              <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="size-3" />
+                  {guide.readingTime} min read
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </div>
       </Card>
     </Link>
   )
