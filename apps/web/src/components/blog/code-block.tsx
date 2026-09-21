@@ -32,10 +32,7 @@ const sizeClasses = {
 export async function CodeBlock({
   code,
   language = "typescript",
-  title,
   size = "sm",
-  // tabs prop is accepted for API parity but currently ignored.
-  tabs: _tabs = true,
 }: CodeBlockProps) {
   const html = await codeToHtml(code, {
     lang: language,

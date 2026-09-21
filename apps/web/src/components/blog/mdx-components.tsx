@@ -37,10 +37,8 @@ import {
  */
 function MdxPre({
   children,
-  title,
 }: {
   children?: ReactNode
-  title?: string
 }) {
   return (
     <div className="bg-background w-full rounded-md p-4 overflow-hidden border border-border">

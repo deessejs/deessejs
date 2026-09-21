@@ -1,6 +1,7 @@
 import { defineCollection, defineConfig } from "@content-collections/core"
 import { compileMDX } from "@content-collections/mdx"
 import rehypeShiki from "@shikijs/rehype"
+import type { Root, Element } from "hast"
 import { visit } from "unist-util-visit"
 
 /**
@@ -18,12 +19,12 @@ import { visit } from "unist-util-visit"
  * as JSX props passed to `mdxComponents.pre({ code, language })`.
  */
 function rehypeStoreRawCode() {
-  return (tree: any) => {
-    visit(tree, "element", (node: any) => {
+  return (tree: Root) => {
+    visit(tree, "element", (node: Element) => {
       if (node.tagName !== "pre") return
 
       const codeNode = node.children.find(
-        (child: any) =>
+        (child): child is Element =>
           child.type === "element" && child.tagName === "code",
       )
       if (!codeNode) return
@@ -31,7 +32,7 @@ function rehypeStoreRawCode() {
       const raw = collectText(codeNode).replace(/\n$/, "")
 
       const classNames = Array.isArray(codeNode.properties?.className)
-        ? (codeNode.properties.className ?? [])
+        ? ((codeNode.properties.className as string[]) ?? [])
         : []
       const langClass = classNames.find(
         (c: string) => typeof c === "string" && c.startsWith("language-"),
@@ -47,7 +48,7 @@ function rehypeStoreRawCode() {
   }
 }
 
-function collectText(node: any): string {
+function collectText(node: Element): string {
   let out = ""
   for (const child of node.children) {
     if (child.type === "text") {
