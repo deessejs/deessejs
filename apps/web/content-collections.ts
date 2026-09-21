@@ -231,6 +231,11 @@ const kbGuides = defineCollection({
     description: z.string().min(1).max(280),
     topic: z.string().min(1),
     products: z.array(z.string()).default([]),
+    author: z.string().min(1).optional(),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
     order: z.number().int().nonnegative().default(0),
     draft: z.boolean().default(false),
     content: z.string(),
@@ -243,6 +248,18 @@ const kbGuides = defineCollection({
     const slug = guide._meta.filePath
       .replace(/^.*\//, "")
       .replace(/\.mdx$/, "")
+
+    const author = guide.author
+      ? context.documents(authors).find((a) => a.handle === guide.author)
+      : undefined
+    if (guide.author && !author) {
+      throw new Error(
+        `Guide "${guide.title}" references unknown author "${guide.author}". ` +
+          `Add content/authors/${guide.author}.md or fix the frontmatter.`,
+      )
+    }
+
+    const stats = readingTime(guide.content)
 
     const mdxCode = await compileMDX(context, guide, {
       rehypePlugins: [
@@ -258,6 +275,8 @@ const kbGuides = defineCollection({
 
     return {
       ...guide,
+      author,
+      readingTime: Math.max(1, Math.round(stats.minutes)),
       slug,
       url: `/knowledge-base/guides/${slug}`,
       mdxCode,
