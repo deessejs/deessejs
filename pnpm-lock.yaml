@@ -63,6 +63,9 @@ catalogs:
     '@turbo/gen':
       specifier: ^2.10.4
       version: 2.10.4
+    '@types/hast':
+      specifier: ^3.0.4
+      version: 3.0.4
     '@types/node':
       specifier: ^24
       version: 24.13.2
@@ -629,6 +632,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: 'catalog:'
         version: 4.3.2
+      '@types/hast':
+        specifier: 'catalog:'
+        version: 3.0.4
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2

@@ -55,6 +55,7 @@
     "@workspace/eslint-config": "workspace:*",
     "@playwright/test": "catalog:",
     "unist-util-visit": "catalog:",
+    "@types/hast": "catalog:",
     "@workspace/typescript-config": "workspace:*",
     "@workspace/vitest-config": "workspace:*",
     "eslint": "^9",
