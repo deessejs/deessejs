@@ -1,0 +1,84 @@
+---
+title: "The AGENTS.md file: what we put in it, what we left out"
+description: Our templates include a 200-line AGENTS.md at the monorepo root. Here's the structure, the rationale, and the bits we deleted.
+date: 2026-07-07
+tags: [engineering]
+author: admin
+---
+
+# The AGENTS.md file: what we put in it, what we left out
+
+Every DeesseJS template ships with an `AGENTS.md` at the monorepo root. The file is two hundred lines. It is not a wiki, a style guide, or a getting-started tutorial. It is a contract between the template and any agent — human or AI — that lands on it.
+
+## The shape of the file
+
+The file has five sections, in this order:
+
+1. **What this is.** One paragraph. The template name, the contracts it implements, the providers it uses.
+2. **Entry points.** The directories an agent should look at first. The API routes, the server actions, the jobs.
+3. **Contracts.** The typed interfaces. Where to find them, how to use them, what they assume.
+4. **Tests.** How to run them. What they cover. What they don't.
+5. **Do not modify.** Files an agent should not change without human approval. Migrations, generated clients, vendor SDKs.
+
+That's it. Two hundred lines. Fits in any context window.
+
+## What we cut
+
+The first version of the file was eight hundred lines. We cut it by removing anything an agent could discover on its own.
+
+**File paths.** An agent can list files. We don't need to tell it that `src/lib/auth.ts` exists; we just need to tell it what `src/lib/auth.ts` does. The directory tree is one `ls` away.
+
+**Explanations of the contracts.** The contracts are TypeScript interfaces. They have docstrings. An agent reading the contract reads the docstrings. We don't need to re-explain them in AGENTS.md.
+
+**Best practices.** "Always validate input." "Always handle errors." These are not specific to the template. They're general programming advice. An agent either knows them or doesn't; the AGENTS.md is not the place to teach them.
+
+**Setup instructions.** The README has the setup instructions. AGENTS.md is not a getting-started guide. If an agent needs to set up the project, it reads the README.
+
+**Style preferences.** "We prefer early returns." "We use named exports." These belong in a lint config, not a doc. An agent that violates them gets a lint error, not a confused response.
+
+## What we kept
+
+The five sections above are the ones that survived. They are the ones that:
+
+- An agent cannot discover on its own.
+- An agent needs to know before writing code.
+- An agent would benefit from being told.
+
+The "what this is" section tells an agent whether it's on the right template at all. If the user asks for a SaaS template and lands on a CLIs template, AGENTS.md catches the mismatch before the agent writes any code.
+
+The "entry points" section tells an agent where to start. Without it, the agent would grep for a starting point. With it, the agent reads `src/app/api` first, then `src/lib`, then `src/components`.
+
+The "contracts" section is the typed boundary. An agent reading the contracts knows what the template provides and what it doesn't. If the user asks for a feature that requires a contract the template doesn't ship, the agent catches it before writing a partial implementation.
+
+The "tests" section tells an agent how to verify its work. The agent writes a change, runs the tests, and knows whether the change is correct. Without this section, the agent has to discover the test runner, the test directory, and the conventions for writing a test.
+
+The "do not modify" section is the safety net. Migrations are checked into version control but should not be hand-edited. Generated clients are regenerated on every build. Vendor SDKs are not the template's to change. An agent that knows not to touch these files doesn't waste cycles trying.
+
+## What an agent reads first
+
+When an agent lands on a fresh template, the order of operations is:
+
+1. Read AGENTS.md.
+2. Read the contracts.
+3. Read the entry points relevant to the task.
+4. Read the tests for the relevant entry points.
+
+This order matches the order of the sections in AGENTS.md. The agent doesn't need to be told to read in this order; the file is structured so this is the natural reading order.
+
+## What about humans?
+
+The same file works for humans. A senior engineer ramping on the codebase reads AGENTS.md first, then the contracts, then the entry points. The file is not "for agents" — it's for anyone who lands on the codebase and needs to know what they're looking at.
+
+The constraint that made AGENTS.md good for agents — small, structured, no duplication — is the same constraint that made it good for humans. The two audiences want the same thing.
+
+## The boring conclusion
+
+AGENTS.md is not a magic file. It's a contract, like every other contract in the template. It says what the template provides, what the template doesn't provide, and where to start.
+
+If your project doesn't have one, write one. If it does, audit it. The questions to ask:
+
+- Is it under 300 lines? If not, you're including things the agent can discover.
+- Does it have a "do not modify" section? If not, the agent will modify things it shouldn't.
+- Does it say how to run the tests? If not, the agent can't verify its work.
+
+Two hundred lines. Five sections. One file at the root. That's the whole pattern.

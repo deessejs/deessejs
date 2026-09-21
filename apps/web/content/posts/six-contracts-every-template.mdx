@@ -1,0 +1,91 @@
+---
+title: The six contracts every template ships with
+description: Auth, database, billing, jobs, storage, observability. Here's what each one gives you and why we picked this surface area.
+date: 2026-05-05
+tags: [engineering]
+author: admin
+---
+
+# The six contracts every template ships with
+
+Every DeesseJS template ships with the same six contracts wired. This is not because we couldn't think of more — it's because every product we've shipped needs exactly these six, and adding more would be cargo-culting.
+
+## Auth
+
+The auth contract handles identity and access. Every template has it. The shape:
+
+- Email and password sign-in, with optional OAuth providers.
+- Sessions that survive across requests and across tabs.
+- Organizations, because almost every B2B product needs them.
+- Invitations, so you can add teammates without making them sign up first.
+- Two-factor authentication, because it's 2026.
+
+The implementation can be Better Auth (our default), Clerk, Auth0, or Lucia. The shape stays the same. An agent reading the contract knows where the session is, where the organization boundaries are, and where the 2FA challenge lives.
+
+## Database
+
+The database contract is the typed boundary between your code and the rows. We use Drizzle, with Postgres as the default provider. The shape:
+
+- A schema definition that lives in `packages/database/src/schema/`.
+- A migration runner that works in CI.
+- A typed query layer that fails at build time if you misspell a column.
+
+The shape is portable. Swapping Postgres for Neon, Supabase, or a Vercel Postgres instance is a one-line config change. Swapping Drizzle for Prisma is more invasive, and we don't recommend it.
+
+## Billing
+
+The billing contract is the most opinionated of the six. Stripe is the default, and the contract encodes our opinions about subscriptions, usage metering, and customer portal.
+
+- Subscriptions with monthly and annual cadence.
+- Usage metering for metered products, with aggregation rules that are explicit.
+- A customer portal where the customer manages their own subscription.
+- Webhook handlers that are idempotent, ordered, and observable.
+
+The shape is not portable to Lemon Squeezy or Paddle yet. We're working on adapters. If you need to swap, you can, but you should plan for a week of work.
+
+## Jobs
+
+The jobs contract is the async boundary. Every template that does any work outside the request path needs it. The shape:
+
+- A queue interface with retries, dead-letter handling, and idempotency keys.
+- Adapters for Upstash QStash, Cloudflare Queues, and Trigger.dev.
+- A worker interface that's the same regardless of the queue.
+
+The contract enforces a discipline: every job is typed, every job has a dead-letter destination, every job can be inspected in a dashboard.
+
+## Storage
+
+The storage contract is the object boundary. The shape:
+
+- A signed-URL interface for time-limited access to files.
+- Adapters for Supabase Storage and Cloudflare R2.
+- An upload interface that streams, doesn't buffer.
+
+The contract enforces: no permanent URLs, no public buckets, no surprises. Files are objects with an owner, a TTL, and an audit trail.
+
+## Observability
+
+The observability contract is the operational boundary. The shape:
+
+- Structured logs with trace IDs.
+- Traces that span your request and your jobs.
+- Metrics with the labels your operators actually query.
+
+The default adapters are Better Stack for logs and Sentry for errors. The contract enforces that traces are correlated to logs and metrics, so when something breaks at 2am, you can find the offending request.
+
+## Why these six and not seven
+
+We could have added caching (Redis, KV), feature flags, email beyond the basics, or search. We didn't, because:
+
+- **Caching** is application-specific. The right shape depends on what you're caching.
+- **Feature flags** are a vendor decision, not a contract.
+- **Email** beyond transactional is a product decision.
+- **Search** is its own surface area (Algolia, Meilisearch, Typesense) that deserves its own template.
+
+The six are the ones that are the same on every product. Adding more would dilute the contract — and the whole point of a contract is that it's small enough to know by heart.
+
+## What changes
+
+The implementations change. The shape doesn't. If a new provider becomes the obvious choice (which happens roughly once a year), we ship an adapter. If a new pattern becomes standard (event sourcing, CQRS, sagas), we add it as a new template, not a new contract.
+
+The six are the floor. Everything above them is your product.

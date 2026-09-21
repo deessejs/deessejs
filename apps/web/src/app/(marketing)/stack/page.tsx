@@ -24,6 +24,8 @@ import {
 } from "@/lib/seo/stack"
 import { buildStackItemListJsonLd } from "@/lib/seo/stack-jsonld"
 
+import { MarketingPage } from "../_components/marketing-page"
+
 export const metadata: Metadata = {
   title: "Stack",
   description:
@@ -59,9 +61,10 @@ export const metadata: Metadata = {
  *     Organization (via `apps/web/src/lib/seo/organization.ts`).
  *
  * Layout:
- *   ┌─ Hero (title + lead) ───────────────────────────┐
- *   ├─ Grouped provider grid (one section per category) ─┤
- *   └─ Read-next nav to /about, /manifesto, /ecosystem ─┘
+ *   ┌─ Breadcrumb ────────────────────────────────────────────┐
+ *   ├─ Hero (eyebrow + H1 + lead) ─────────────────────────────┤
+ *   ├─ Grouped provider grid (one section per category) ────────┤
+ *   └─ Read-next nav to /about, /manifesto, /ecosystem ─────────┘
  *
  * The provider data lives in `apps/web/src/lib/seo/stack.ts` so
  * the same source feeds the JSON-LD factory and the visual
@@ -79,7 +82,7 @@ export default function StackPage() {
   })).filter((group) => group.providers.length > 0)
 
   return (
-    <article className="mx-auto flex max-w-4xl flex-col gap-12 px-4 py-16 sm:px-6 lg:py-24">
+    <MarketingPage>
       <script
         type="application/ld+json"
         // ItemList JSON-LD. The publisher link is the global
@@ -102,72 +105,74 @@ export default function StackPage() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <header className="flex flex-col gap-4">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          Stack
-        </p>
-        <H1>The providers that ship with every DeesseJS app.</H1>
-        <p className="text-muted-foreground text-copy-20 leading-7 max-w-3xl [&:not(:first-child)]:mt-0">
-          Hosting, database, auth, queue, billing, observability,
-          email, and ORM. Every template wires these in. None of
-          them are locked in: each contract ships with a typed
-          layer, so the same app runs against a different provider
-          if you bring your own.
-        </p>
-      </header>
+      <div className="mx-auto max-w-4xl py-16">
+        <header className="flex flex-col gap-4">
+          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            Stack
+          </p>
+          <H1>The providers that ship with every DeesseJS app.</H1>
+          <p className="text-muted-foreground text-copy-20 leading-7 max-w-3xl [&:not(:first-child)]:mt-0">
+            Hosting, database, auth, queue, billing, observability,
+            email, and ORM. Every template wires these in. None of
+            them are locked in: each contract ships with a typed
+            layer, so the same app runs against a different provider
+            if you bring your own.
+          </p>
+        </header>
 
-      <Separator />
+        <Separator />
 
-      {grouped.map(({ category, providers }) => (
-        <StackCategorySection
-          key={category}
-          category={category}
-          providers={providers}
-        />
-      ))}
+        {grouped.map(({ category, providers }) => (
+          <StackCategorySection
+            key={category}
+            category={category}
+            providers={providers}
+          />
+        ))}
 
-      <Separator />
+        <Separator />
 
-      <nav aria-label="Related pages" className="flex flex-col gap-6">
-        <H2>Read next</H2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Link
-            href="/about"
-            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
-          >
-            <span className="text-label-14 font-semibold text-foreground">
-              About
-            </span>
-            <span className="text-copy-13 text-muted-foreground">
-              What DeesseJS is, who edits it, and how to reach us.
-            </span>
-          </Link>
-          <Link
-            href="/manifesto"
-            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
-          >
-            <span className="text-label-14 font-semibold text-foreground">
-              Manifesto
-            </span>
-            <span className="text-copy-13 text-muted-foreground">
-              The beliefs that shape how DeesseJS builds software.
-            </span>
-          </Link>
-          <Link
-            href="/ecosystem"
-            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
-          >
-            <span className="text-label-14 font-semibold text-foreground">
-              Ecosystem
-            </span>
-            <span className="text-copy-13 text-muted-foreground">
-              The apps, SDKs, and shared contracts that ship
-              together.
-            </span>
-          </Link>
-        </div>
-      </nav>
-    </article>
+        <nav aria-label="Related pages" className="flex flex-col gap-6">
+          <H2>Read next</H2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Link
+              href="/about"
+              className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
+            >
+              <span className="text-label-14 font-semibold text-foreground">
+                About
+              </span>
+              <span className="text-copy-13 text-muted-foreground">
+                What DeesseJS is, who edits it, and how to reach us.
+              </span>
+            </Link>
+            <Link
+              href="/manifesto"
+              className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
+            >
+              <span className="text-label-14 font-semibold text-foreground">
+                Manifesto
+              </span>
+              <span className="text-copy-13 text-muted-foreground">
+                The beliefs that shape how DeesseJS builds software.
+              </span>
+            </Link>
+            <Link
+              href="/ecosystem"
+              className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
+            >
+              <span className="text-label-14 font-semibold text-foreground">
+                Ecosystem
+              </span>
+              <span className="text-copy-13 text-muted-foreground">
+                The apps, SDKs, and shared contracts that ship
+                together.
+              </span>
+            </Link>
+          </div>
+        </nav>
+      </div>
+    </MarketingPage>
   )
 }
 

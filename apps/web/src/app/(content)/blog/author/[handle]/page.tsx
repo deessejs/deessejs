@@ -63,7 +63,7 @@ export default async function AuthorPage({
     .toUpperCase()
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+    <section>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -77,8 +77,8 @@ export default async function AuthorPage({
         ← Back to blog
       </Link>
 
-      <header className="mb-12 flex items-start gap-5">
-        <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-lg font-semibold text-foreground">
+      <header className="mb-12 flex items-start gap-5 border-b border-border pb-8">
+        <div className="flex size-16 shrink-0 items-center justify-center bg-foreground/10 text-lg font-semibold text-foreground">
           {initials || author.name[0]}
         </div>
         <div className="min-w-0 flex-1">
@@ -102,11 +102,13 @@ export default async function AuthorPage({
       {posts.length === 0 ? (
         <p className="text-muted-foreground">No articles yet.</p>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-2 lg:grid-cols-3 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:nth-child(3n)]:lg:border-r-0 [&>li:nth-last-child(-n+2)]:md:border-b-0 [&>li:nth-last-child(-n+3)]:lg:border-b-0 [&>li:first-child]:border-t">
           {posts.map((post) => (
-            <PostCard key={post.slug} post={post} />
+            <li key={post.slug}>
+              <PostCard post={post} />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </section>
   )

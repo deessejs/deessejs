@@ -1,3 +1,4 @@
+import * as React from "react"
 import { notFound } from "next/navigation"
 import { allKbTopics, allKbGuides } from "content-collections"
 
@@ -11,7 +12,6 @@ import {
 } from "@workspace/ui/components/breadcrumb"
 import { H2 } from "@workspace/ui/components/typography"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
-import { Prose } from "@/components/blog/prose"
 import { GuideCard } from "@/components/knowledge-base/guide-card"
 import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
 import { TopicTagPill } from "@/components/knowledge-base/badges"
@@ -39,7 +39,7 @@ export default async function KnowledgeTopicPage({
     .sort((a, b) => a.order - b.order)
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-10 px-4 py-16 sm:px-6 lg:py-24">
+    <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -108,10 +108,10 @@ export default async function KnowledgeTopicPage({
       </Breadcrumb>
 
       <header className="flex flex-col gap-3">
-        <h1 className="scroll-m-20 text-3xl font-bold tracking-tight first:mt-0 text-balance">
+        <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
           {topicDoc.title}
         </h1>
-        <p className="text-muted-foreground leading-7 text-pretty [&:not(:first-child)]:mt-0">
+        <p className="mt-4 text-pretty text-lg text-muted-foreground">
           {topicDoc.description}
         </p>
         {topicDoc.tags.length > 0 ? (
@@ -123,9 +123,7 @@ export default async function KnowledgeTopicPage({
         ) : null}
       </header>
 
-      <Prose className="mt-2">
-        <MdxRenderer code={topicDoc.mdxCode} />
-      </Prose>
+      <MdxRenderer className="mt-2" code={topicDoc.mdxCode} />
 
       <section className="flex flex-col gap-4">
         <div className="flex items-baseline justify-between gap-3">
@@ -145,12 +143,20 @@ export default async function KnowledgeTopicPage({
           <KbCardGrid>
             {topicGuides.map((guide) => (
               <li key={guide.slug}>
-                <GuideCard guide={guide} />
+                <GuideCard
+                  guide={
+                    {
+                      ...guide,
+                      date: guide.date,
+                      readingTime: guide.readingTime ?? 0,
+                    } as React.ComponentProps<typeof GuideCard>["guide"]
+                  }
+                />
               </li>
             ))}
           </KbCardGrid>
         )}
       </section>
-    </div>
+    </section>
   )
 }

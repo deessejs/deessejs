@@ -1,0 +1,108 @@
+---
+title: "From CLI to MCP: extending the registry without forking it"
+description: Plugins, hooks, and the surface area we expose to MCP servers. Why we picked this over a marketplace.
+date: 2026-07-14
+tags: [engineering]
+author: alex
+---
+
+# From CLI to MCP: extending the registry without forking it
+
+The registry ships with a CLI and an MCP server. The two are not separate products — they're two interfaces to the same set of extension points. This is the design we landed on after trying (and abandoning) a plugin marketplace.
+
+## The two interfaces
+
+**The CLI** is for humans. You run `npx @deessejs/cli@latest init my-app --template=saas-starter` and you get a project. You run `npx @deessejs/cli@latest add auth` and you get the auth contract added to an existing project. You run `npx @deessejs/cli@latest info` and you see what your project ships with.
+
+**The MCP server** is for agents. The server exposes the same registry as a set of MCP tools. An agent connected to the server can call `list_templates()`, `template_info(slug)`, `search_docs(query)`, and `get_contract(name)`. The agent uses the tools to navigate the registry the way a human uses the CLI.
+
+The two interfaces share a data model. The CLI is a CLI wrapper around the same backend that the MCP server exposes. If you run `deessejs list` from a terminal and an agent calls `list_templates()` from a prompt, they get the same answer.
+
+## What we expose
+
+The CLI exposes:
+
+- `init` — scaffold a new project from a template.
+- `add <contract>` — add a contract to an existing project.
+- `remove <contract>` — remove a contract from an existing project.
+- `info` — print the manifest of the current project.
+- `list` — list the templates in the registry.
+
+The MCP server exposes the same operations as tools:
+
+- `list_templates()` → the same data as `deessejs list`.
+- `template_info(slug)` → the same data as `deessejs info --template=<slug>`.
+- `add_contract(name)` → the same data as `deessejs add <name>`.
+- `remove_contract(name)` → the same data as `deessejs remove <name>`.
+- `search_docs(query)` → search across the docs.
+
+The mapping is one-to-one. If you can do it from the CLI, you can do it from the MCP server, and vice versa.
+
+## Why not a marketplace
+
+We considered letting third parties publish templates to the registry. A marketplace.
+
+The arguments for a marketplace:
+
+- More templates, faster.
+- The community contributes templates for niche surfaces (event sourcing, multi-region, edge AI).
+- The registry grows without us having to maintain every template.
+
+The arguments against:
+
+- The contracts are not stable enough to allow third-party templates yet.
+- We don't want to maintain a review process for templates we don't run.
+- A marketplace is a community-management problem, not a software problem.
+
+We picked the boring option: every template in the registry is a template we maintain, because every template in the registry is a template we run our own products on. We will revisit when the contracts are stable enough that third parties can write templates against them without ambiguity.
+
+## What we expose for extension
+
+The registry exposes three extension points:
+
+**Provider adapters.** A contract is the shape. A provider is the implementation. To add a new provider (say, Auth0 for auth, or Meilisearch for search), you implement the contract's interface against the new provider's SDK. The CLI scaffolds the adapter. The MCP server registers it.
+
+**Hooks.** Every contract emits hooks at well-defined points: `beforeAuth`, `afterAuth`, `beforeBillingEvent`, `afterJobRun`, etc. A hook is a function that runs in the same process. You write the hook, register it in `deessejs.config.ts`, and it runs.
+
+**Plugins.** A plugin is a collection of contracts, providers, and hooks, packaged together. The CLI scaffolds the plugin. The MCP server lists the registered plugins. The boundary between a "template" and a "plugin" is fuzzy; a plugin is just a template that runs in an existing project instead of bootstrapping a new one.
+
+## How the CLI and the MCP server stay in sync
+
+Both interfaces read from the same backend. The backend is a single TypeScript module that exports the registry operations. The CLI wraps the module. The MCP server wraps the same module.
+
+When we add a new operation, we add it to the backend first, then to the CLI, then to the MCP server. The MCP server is the last to learn about a new feature, because adding a new tool to the server is a breaking change for agents that have already seen the old tool list.
+
+The order matters: backend, CLI, MCP. The MCP server is the trailing edge.
+
+## What this looks like in practice
+
+A user is using Cursor. They have the DeesseJS MCP server connected. They ask their agent: "Add a search feature to my SaaS."
+
+The agent:
+
+1. Calls `template_info()` to confirm the project is a DeesseJS template.
+2. Calls `search_docs("search contract")` to find the search contract.
+3. Realizes the template doesn't ship with a search contract.
+4. Calls `add_contract("search")` to add the search contract and a default provider (Meilisearch).
+5. Plans the implementation: a new API route, a new UI page, a new search index.
+6. Implements against the contract, not the vendor.
+
+The user sees a diff. The agent sees a registry.
+
+## What we got wrong the first time
+
+Our first version of the MCP server had 40 tools. Agents that connected to it would either ignore most of the tools or get confused by the surface area. We cut it to 12 by:
+
+- Removing tools that were redundant with CLI commands.
+- Removing tools that required parameters we couldn't validate at the MCP layer.
+- Removing tools that an agent could implement itself with a smaller surface.
+
+The remaining 12 are the ones that survive the "would I use this more than once a week" test.
+
+## The boring conclusion
+
+Two interfaces, one backend. CLI for humans, MCP for agents. Same data model, same operations, same contracts.
+
+The boring option is to share the backend. The exciting option is to build two separate APIs that drift over time. We picked the boring option because the alternative costs us a year of keeping them in sync, and the agents that depend on the MCP server pay that cost immediately when the tool list changes under them.
+
+Boring compounds. We've said it before. We'll say it again.

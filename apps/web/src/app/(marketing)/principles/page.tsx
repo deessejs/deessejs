@@ -5,10 +5,12 @@ import { H1, H2 } from "@workspace/ui/components/typography"
 import { Card } from "@workspace/ui/components/card"
 import { Separator } from "@workspace/ui/components/separator"
 
+import { MarketingPage } from "../_components/marketing-page"
+
 export const metadata: Metadata = {
   title: "Principles",
   description:
-    "How the DeesseJS team works — operating tenets that guide day-to-day decisions on the project.",
+    "How the DeesseJS team works: operating tenets that guide day-to-day decisions on the project.",
 }
 
 /**
@@ -60,13 +62,13 @@ const PRINCIPLES: ReadonlyArray<Principle> = [
     number: "IV.",
     title: "Templates are test fixtures",
     body:
-      "Every DeesseJS template is built once, smoke-tested, versioned, and reused. If a template needs custom logic that doesn't generalize, it stays a private fork — the registry earns its name by curating what survives contact with production.",
+      "Every DeesseJS template is built once, smoke-tested, versioned, and reused. If a template needs custom logic that doesn't generalize, it stays a private fork. The registry earns its name by curating what survives contact with production.",
   },
   {
     number: "V.",
     title: "The CLI is the contract",
     body:
-      "Anything users do often lives in the CLI. The web surface explains; the terminal ships. When the two diverge, the terminal wins — that's where time accumulates.",
+      "Anything users do often lives in the CLI. The web surface explains; the terminal ships. When the two diverge, the terminal wins. That's where time accumulates.",
   },
   {
     number: "VI.",
@@ -96,8 +98,9 @@ const PRINCIPLES: ReadonlyArray<Principle> = [
 
 export default function PrinciplesPage() {
   return (
-    <article className="mx-auto flex max-w-6xl flex-col gap-16 px-4 py-16 sm:px-6 lg:gap-20 lg:py-24">
-      {/* Hero */}
+    <MarketingPage>
+      <div className="mx-auto max-w-5xl py-16">
+        {/* Hero */}
       <header className="flex flex-col gap-6">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           How we work
@@ -152,7 +155,7 @@ export default function PrinciplesPage() {
               Manifesto
             </span>
             <span className="text-copy-13 text-muted-foreground">
-              Why we&apos;re here — the beliefs behind the work.
+              Why we&apos;re here: the beliefs behind the work.
             </span>
           </Link>
           <Link
@@ -190,6 +193,7 @@ export default function PrinciplesPage() {
           </Link>
         </div>
       </nav>
-    </article>
+      </div>
+    </MarketingPage>
   )
 }

@@ -1,0 +1,22 @@
+---
+title: Auth fixes, billing webhook hardening
+description: Tightened the Better Auth session handling and made Stripe webhooks idempotent under retry. Several smaller DX wins for the CLI.
+version: 0.1.1
+date: 2026-08-12
+authors: [admin]
+categories: [fixed, changed]
+---
+
+# 0.1.1 — Auth fixes, billing webhook hardening
+
+Patch release focused on stability and a few quality-of-life wins.
+
+## Fixed
+
+- Session refresh race condition that occasionally dropped users after a hot reload.
+- Stripe webhook idempotency check now uses the event id, not the signature, so retries no longer double-charge.
+
+## Changed
+
+- `deessejs init` now prints the resolved template registry URL alongside the resolved install path.
+- The `info` subcommand emits a non-zero exit code when contracts are out of sync.

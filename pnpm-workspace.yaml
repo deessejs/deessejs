@@ -39,14 +39,26 @@ catalog:
   "@react-email/render": ^2.0.6
   '@shikijs/rehype': ^4.3.1
 
+  # Agent runtime (apps/agent — Vercel eve + MiniMax provider)
+  ai: ^7.0.106
+  eve: ^0.60.0
+  'vercel-minimax-ai-provider': ^0.0.2
+
   # Markdown rendering (apps/web — untrusted GitHub READMEs on /templates/[slug])
   react-markdown: ^10.1.0
   rehype-pretty-code: ^0.14.5
+  unist-util-visit: ^5.1.0
+  "@types/hast": ^3.0.4
+  shiki: ^4.3.1
   remark-gfm: ^4.0.1
   rehype-sanitize: ^6.0.0
 
   # Motion (apps/web — homepage contract cell animations)
   motion: ^13.1.1
+
+  # Forms (apps/web — /enterprise inquiry form, react-hook-form + Zod)
+  react-hook-form: ^7.62.0
+  "@hookform/resolvers": ^5.0.0
 
   # Shared tooling
   "@tailwindcss/postcss": ^4.3.2
@@ -54,6 +66,7 @@ catalog:
   '@tanstack/react-query': ^5.101.4
   "@turbo/gen": ^2.10.4
   open: ^11.0.1
+  cross-spawn: ^7.0.6
 
   # Types
   "@types/node": ^24

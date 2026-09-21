@@ -1,0 +1,114 @@
+---
+title: Background jobs that don't wake you up at night
+description: Retries, dead-letter, idempotency. The three patterns every job needs and the mistakes we made so you don't have to.
+date: 2026-07-21
+tags: [engineering]
+author: admin
+---
+
+# Background jobs that don't wake you up at night
+
+Every product we've shipped has a background job. Every background job we've shipped has broken at 2am. The breaking isn't the bug — the bug is expected. The breaking is the pattern: a job that retries silently, a job that processes the same event twice, a job that fails without telling anyone.
+
+This post is the three patterns every job needs, and the mistakes we made so you don't have to make them.
+
+## The three patterns
+
+Every job you ship needs three properties:
+
+1. **Idempotent.** Running the same job twice with the same input has the same effect as running it once.
+2. **Retried with backoff.** A job that fails is retried, with an exponential backoff, up to a maximum number of attempts.
+3. **Dead-lettered.** A job that fails after all retries is moved to a dead-letter queue, where it can be inspected, retried manually, or discarded.
+
+If your job has these three properties, it won't wake you up at night. If it's missing any one, it will.
+
+## Pattern 1: idempotency
+
+The job contract in the template exports `defineJob({ ..., schema, run })`. The `schema` is a Zod schema that validates the job's input. The `run` is the function that does the work.
+
+The contract enforces idempotency through a check on the schema: every job input must include an `idempotencyKey` field. The key is a string the caller provides. The contract uses the key to deduplicate job runs:
+
+```ts
+if (await hasRun({ jobName, idempotencyKey })) {
+  return { skipped: true }
+}
+```
+
+The caller chooses the key. A common pattern is to use a derived value — for example, `userId + "-welcome-email"` for a job that sends a welcome email to a user once. The key is stable across retries, so the second run skips.
+
+The mistake we made the first time: deriving the key from a timestamp. The key looked unique, but it wasn't — two retries within the same millisecond produced the same key, and the second retry skipped the work. The fix was to derive the key from the business operation, not the moment of the call.
+
+## Pattern 2: retries with backoff
+
+The contract configures retries per job:
+
+```ts
+export const sendInvoice = defineJob({
+  name: "send-invoice",
+  schema: z.object({ invoiceId: z.string() }),
+  retry: {
+    attempts: 5,
+    backoff: "exponential",
+    baseDelay: "1s",
+    maxDelay: "5m",
+  },
+  async run({ invoiceId }) {
+    await sendInvoiceEmail(invoiceId)
+  },
+})
+```
+
+Five attempts. Exponential backoff starting at one second, capped at five minutes. The actual sequence is 1s, 2s, 4s, 8s, 16s. After the fifth failure, the job is dead-lettered.
+
+The mistake we made the first time: configuring retries globally instead of per job. Some jobs shouldn't retry at all — for example, a job that sends a verification email to a user who has already verified their email should not retry. Other jobs should retry more aggressively — for example, a job that pulls from a flaky third-party API. The fix was to make retry config a property of the job, not of the queue.
+
+## Pattern 3: dead-letter
+
+A dead-letter queue is a separate destination for jobs that have exhausted their retries. The contract moves failed jobs there automatically. You can inspect them via the MCP server or the CLI:
+
+```bash
+deessejs jobs:list-dlq
+```
+
+A dead-lettered job has its input preserved, the error that caused it to fail, and the timestamp of the last attempt. You can:
+
+- **Retry it.** `deessejs jobs:retry <jobId>` re-enqueues the job with the same input.
+- **Inspect it.** `deessejs jobs:inspect <jobId>` shows the full input and the last error.
+- **Discard it.** `deessejs jobs:discard <jobId>` removes the job from the DLQ.
+
+The mistake we made the first time: not having a DLQ. Jobs that failed after all retries were just dropped, with an alert that pointed at nothing. The fix was to make the DLQ the default destination, not the fallback.
+
+## The job contract
+
+The three patterns are encoded in the job contract. Every template that ships with the contract gets:
+
+- An idempotency check that requires an `idempotencyKey` in the schema.
+- A retry config with exponential backoff by default.
+- A dead-letter destination that catches jobs after all retries.
+
+You write a job. You import the contract. You write a `run` function. You don't write the queue, the retry, or the DLQ. You don't write the deduplication, the backoff calculation, or the failure tracking.
+
+## What about observability?
+
+The contract emits a log line and a metric for every job run:
+
+- The log line includes the job name, the idempotency key, the attempt number, and the duration.
+- The metric is a counter of runs by job name and outcome (`success`, `failed`, `dead-lettered`).
+
+The metric is what you alert on. If the `dead-lettered` counter spikes, you have a problem. If the `failed` counter spikes, you have a problem that the retries might solve. If the `success` counter is flat, you have a deployment issue.
+
+The contract doesn't choose your alerting thresholds. It gives you the data to set them.
+
+## What this is not
+
+The contract is not a job orchestrator. It's not a workflow engine. It doesn't have DAG semantics. It doesn't have conditional steps. If you need those, you have outgrown the contract and should reach for Temporal, Inngest, or a similar tool.
+
+The contract is for the 90% of background jobs that are: "do this thing once, in the background, and tell me if it failed." For those jobs, the contract is enough.
+
+## The boring conclusion
+
+Three patterns: idempotent, retried, dead-lettered. Every job needs them. The contract gives them to you.
+
+The first version of our job code didn't have these patterns. It was the 2am wake-up calls that taught us. We wrote the contract so you don't have to learn the same way.
+
+Idempotency. Retries. Dead-letter. Three things. Get them right, and you stop being woken up at 2am.

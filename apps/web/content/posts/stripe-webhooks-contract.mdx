@@ -1,0 +1,88 @@
+---
+title: "Stripe webhooks are not a contract: how we made them one"
+description: Subscriptions, usage metering, and dunning each have a dozen edge cases. We encoded them as a single typed interface.
+date: 2026-06-16
+tags: [engineering]
+author: alex
+---
+
+# Stripe webhooks are not a contract: how we made them one
+
+Stripe is the best payment processor on the market. The webhook system is also a thousand tiny contracts that you have to implement correctly. The billing contract is our opinionated wrapper around that.
+
+## The shape of the problem
+
+Stripe sends webhooks for events. There are dozens of event types. Each event has a payload that varies depending on the resource and the event. A `customer.subscription.updated` event has different fields from a `invoice.payment_failed` event, and the fields are nested in ways that the Stripe docs spell out in three pages of tables.
+
+If you implement Stripe webhooks naively — `if (event.type === '...') handle(event)` — you end up with a switch statement that knows about every event type, every payload shape, and every edge case. The switch statement grows with Stripe's API. The tests grow with it. The bugs grow with it.
+
+We wanted a single interface that an agent could read.
+
+## What the billing contract looks like
+
+The contract is a TypeScript module that exports one function per Stripe event we care about:
+
+```ts
+export interface BillingContract {
+  onSubscriptionCreated(event: SubscriptionCreatedEvent): Promise<void>
+  onSubscriptionUpdated(event: SubscriptionUpdatedEvent): Promise<void>
+  onSubscriptionDeleted(event: SubscriptionDeletedEvent): Promise<void>
+  onInvoicePaid(event: InvoicePaidEvent): Promise<void>
+  onInvoicePaymentFailed(event: InvoicePaymentFailedEvent): Promise<void>
+  onCustomerUpdated(event: CustomerUpdatedEvent): Promise<void>
+}
+```
+
+The implementation is a single object that satisfies this interface. The Stripe webhook handler in the template is one line: `await billing.handle(rawEvent)`.
+
+The dispatch from Stripe's raw event to the typed handler is inside `billing.handle`. It's tested. It's the only place in the codebase that knows about Stripe's event types.
+
+## Why this matters
+
+When Stripe adds a new event type, we don't touch every consumer. We touch `billing.handle`, add the dispatch, and update the contract interface. Every consumer that doesn't care about the new event continues to work.
+
+When we want to swap Stripe for Lemon Squeezy, we write a new implementation of the billing contract. The consumers don't change. The contract is the API.
+
+When an agent reads the codebase, it reads the contract. It sees the seven methods. It sees the seven event types. It can write a new implementation or a new consumer without knowing about Stripe's full event taxonomy.
+
+## The edge cases we encoded
+
+The naive implementation forgets these. The contract encodes them.
+
+**Out-of-order webhooks.** Stripe doesn't guarantee delivery order. Our handler stores a sequence number per resource and refuses to apply events that are older than the current state. The contract doesn't expose this — it's an implementation detail — but the test suite covers it.
+
+**Duplicate webhooks.** Stripe retries on 5xx. Our handler is idempotent: applying the same event twice is a no-op. The contract doesn't expose this either.
+
+**Customer changes plan mid-period.** The subscription update event has proration details. Our handler computes the proration, stores it, and exposes it via the customer portal. The contract exposes `getSubscription()`, which returns the proration. The consumer doesn't compute proration; it reads it.
+
+**Failed payment retry schedule.** Stripe retries on day 3, day 5, day 7. Our handler tracks the retry count and stops the subscription on day 14. The contract exposes `getSubscriptionStatus()`, which returns one of `active`, `past_due`, `canceled`. The consumer doesn't know about the schedule.
+
+**Refund on a metered invoice.** This is the gnarliest case. Our handler computes the refund, updates the metered usage, and writes a credit note. The contract exposes `getUsage(subscriptionId)`, which returns the current usage after refunds. The consumer doesn't see the gnarliness.
+
+## What the contract doesn't do
+
+The contract doesn't make decisions for you. It doesn't choose pricing. It doesn't choose the subscription cadence. It doesn't decide when to send a dunning email. Those are your product decisions.
+
+What the contract does is encode the parts of Stripe that are the same on every product. The shape of the webhook handler. The shape of the subscription query. The shape of the invoice query. The shape of the refund flow.
+
+You write the parts that are yours. We wrote the parts that are ours.
+
+## What we got wrong the first time
+
+Our first version of the contract had 24 methods. We cut it to 7 by:
+
+- Removing methods that consumers weren't actually calling.
+- Removing methods that were easy to derive from other methods.
+- Removing methods that we couldn't test without a paid Stripe account in a specific state.
+
+The remaining 7 are the ones that survived contact with a real product. Every one is called by at least one consumer in the template, and every one has at least one test that exercises the failure path.
+
+## The boring conclusion
+
+Stripe is not a contract. Stripe is a vendor. The contract is what we built on top of it.
+
+The contract is small enough to know by heart. It is the interface between your code and the part of Stripe that you actually use. Everything else — every other event type, every other payload shape, every other edge case — is the implementation's problem, not yours.
+
+Build a contract. Encode the edge cases in the implementation. Expose a small, typed interface. Let your consumers read the contract, not the implementation.
+
+This is the same pattern as the auth contract, the jobs contract, the storage contract. Six contracts, each one small enough to know by heart, each one a layer between your code and the vendor SDK that does the actual work.

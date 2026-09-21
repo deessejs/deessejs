@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import { Button } from "@workspace/ui/components/button"
 
+import { MarketingPage } from "../_components/marketing-page"
+
 export const metadata: Metadata = {
   title: "Customers",
   description:
@@ -16,20 +18,21 @@ export const metadata: Metadata = {
  */
 export default function CustomersPage() {
   return (
-    <article className="mx-auto flex max-w-3xl flex-col gap-12 px-4 py-16 sm:px-6 lg:py-24">
-      <header className="flex flex-col gap-4">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          Customers
-        </p>
-        <h1 className="text-heading-56 tracking-tight">
-          Teams building on DeesseJS.
-        </h1>
-        <p className="text-muted-foreground text-copy-20 leading-7 [&:not(:first-child)]:mt-0">
-          Customer stories will land here as we publish them. A story covers
-          what the team was building, the templates they used, what they
-          replaced, and the outcome.
-        </p>
-      </header>
+    <MarketingPage>
+      <div className="mx-auto max-w-4xl py-16">
+        <header className="flex flex-col gap-4">
+          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            Customers
+          </p>
+          <h1 className="text-heading-56 tracking-tight">
+            Teams building on DeesseJS.
+          </h1>
+          <p className="text-muted-foreground text-copy-20 leading-7 [&:not(:first-child)]:mt-0">
+            Customer stories will land here as we publish them. A story covers
+            what the team was building, the templates they used, what they
+            replaced, and the outcome.
+          </p>
+        </header>
 
       <section className="flex flex-col gap-4">
         <h2 className="text-heading-24 tracking-tight">What this page is, and is not</h2>
@@ -72,6 +75,7 @@ export default function CustomersPage() {
           </Button>
         </div>
       </section>
-    </article>
+      </div>
+    </MarketingPage>
   )
 }

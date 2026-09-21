@@ -1,14 +1,6 @@
 import Link from "next/link"
 import type { Metadata } from "next"
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@workspace/ui/components/breadcrumb"
 import { H1, H2 } from "@workspace/ui/components/typography"
 import { Separator } from "@workspace/ui/components/separator"
 
@@ -59,23 +51,14 @@ const CHANNELS: ReadonlyArray<{
   },
 ] as const
 
+import { MarketingPage } from "../_components/marketing-page"
+
 export default function AboutPage() {
   return (
-    <article className="mx-auto flex max-w-4xl flex-col gap-12 px-4 py-16 sm:px-6 lg:py-24">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/">Home</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>About</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
+    <MarketingPage>
       {/* Hero */}
-      <header className="flex flex-col gap-4">
+      <div className="max-w-5xl mx-auto py-16">
+      <header className="flex flex-col gap-4 ">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           About
         </p>
@@ -104,7 +87,7 @@ export default function AboutPage() {
         </p>
         <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
           When a new template is published, when a contract
-          version bumps, when the CLI gains a flag — DeesseJS is
+          version bumps, when the CLI gains a flag. DeesseJS is
           where it shows up first. The marketing site, the docs
           surface, and the registry all read from the same source
           of truth, so a release on one side reaches every surface
@@ -124,8 +107,8 @@ export default function AboutPage() {
         </p>
         <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
           That split is intentional. The source-code ecosystem is
-          shared — anyone can fork, ship, and contribute back. The
-          product surface is owned — a single team gets to
+          shared. Anyone can fork, ship, and contribute back. The
+          product surface is owned: a single team gets to
           curate the registry, set the defaults, and steward what
           ships under the DeesseJS name.
         </p>
@@ -181,7 +164,7 @@ export default function AboutPage() {
               Manifesto
             </span>
             <span className="text-copy-13 text-muted-foreground">
-              Why we&apos;re here — the beliefs behind the work.
+              Why we&apos;re here: the beliefs behind the work.
             </span>
           </Link>
           <Link
@@ -219,6 +202,7 @@ export default function AboutPage() {
           </Link>
         </div>
       </nav>
-    </article>
+      </div>
+    </MarketingPage>
   )
 }
