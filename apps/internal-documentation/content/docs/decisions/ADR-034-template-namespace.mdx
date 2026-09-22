@@ -1,13 +1,13 @@
 ---
 title: 'deessejs template namespace'
-description: 'Adds the deessejs template subcommand namespace to the user-facing CLI for author-side tooling. Three subcommands: validate (shape + semantic validation of deesse-template.json files), new (scaffold a new template from defaults inferred from the registry), explain (render a field description from JSDoc on the Zod schema). Lands in V2.5, gated on V2 CDN + TemplateV2 schema stabilising. Does not amend ADR-010 §1: the namespace pattern is already sanctioned by deessejs auth <subcommand>.'
+description: 'Adds the deessejs template subcommand namespace to the user-facing CLI for author-side tooling. Three subcommands: validate (shape + semantic validation of deesse-template.json files), new (scaffold a new template from defaults inferred from the registry), explain (render a field description from JSDoc on the Zod schema). Lands after the registry CDN ships and TemplateV2 schema stabilises. Does not amend ADR-010 §1: the namespace pattern is already sanctioned by deessejs auth ` <subcommand>`.'
 ---
 
 # ADR-034: deessejs template namespace
 
 ## Status
 
-Accepted (2026-09). Approved on the branch `docs/adr-034-template-namespace`, tracked by [PR #140](https://github.com/deessejs/deessejs/pull/140) (to be opened). Implementation lands in V2.5, gated on V2 shipping the registry CDN at `registry.deessejs.dev` and the `TemplateV2` Zod schema stabilising in `@workspace/contracts`.
+Accepted (2026-09). Approved on the branch `docs/adr-034-template-namespace`, tracked by [PR #140](https://github.com/deessejs/deessejs/pull/140) (to be opened). Implementation lands after the registry CDN at `registry.deessejs.dev` ships and the `TemplateV2` Zod schema stabilises in `@workspace/contracts`.
 
 ## Context
 
@@ -17,7 +17,7 @@ The other side of the system — how the DeesseJS internal team authors and main
 
 ### What the authoring experience lacks today
 
-The team today maintains the registry by editing `packages/api/src/templates.ts` (one row per template, hand-curated) for the V1 registry, and would move to `deesse-template.json` files co-located in template repos per [ADR-032](./ADR-032-deesse-template.json.mdx). Either way, the authoring loop has three pain points that compound at the "hundreds" scale:
+The team today maintains the registry by editing `packages/api/src/templates.ts` (one row per template, hand-curated) for the `TemplateV1` registry, and would move to `deesse-template.json` files co-located in template repos per [ADR-032](./ADR-032-deesse-template.json.mdx). Either way, the authoring loop has three pain points that compound at the "hundreds" scale:
 
 1. **Onboarding.** A new author writing the 51st `deesse-template.json` reads [ADR-032](./ADR-032-deesse-template.json.mdx) and types the descriptor from scratch. The shape is well-defined but tedious to type correctly for the first time; the author does not know which defaults are idiomatic for their template type (does a `template:package` typically have a `database` prompt? a `postInstall` hook? a `with_storybook` toggle?).
 2. **Validation latency.** A malformed descriptor — wrong placeholder (`@utils/` is not in the closed list), forward `when` reference to an undeclared prompt, `templateDependencies` pointing at a non-existent slug, `tokens.<KEY>` referenced by `consumes[]` but not declared anywhere — is caught only when the consumer CLI fetches the descriptor at install time. The feedback loop is minutes (push, CI, fetch, parse_error), not seconds.
@@ -204,7 +204,7 @@ The `@describe(...)` block is the JSDoc the explain tool parses. The contract is
 ### What this rule allows
 
 - A new author runs `deessejs template new auth-addon` in a registry repo, answers 11 questions, and gets a scaffolded `templates/auth-addon/` directory with a valid `deesse-template.json`. The defaults are inferred from the catalogue's median item of the same type.
-- The same author runs `deessejs template validate --strict` before pushing. Semantic errors (forward `when` references, broken `templateDependencies`, missing files on disk) are caught in <1s with line:column pointers.
+- The same author runs `deessejs template validate --strict` before pushing. Semantic errors (forward `when` references, broken `templateDependencies`, missing files on disk) are caught in `<1s` with line:column pointers.
 - A release captain runs `deessejs template validate --strict --catalog=./other-registry/registry.json` to smoke-test that the staging registry's `templateDependencies` resolve against the production catalogue.
 - A new author who is unsure what `consumes[].target` means runs `deessejs template explain consumes[].target` and gets the JSDoc-rendered explanation with examples, common mistakes, and a link to ADR-032 §Decision 2.
 - A CI pipeline runs `deessejs template validate --json > result.json` on every PR; the CI fails with exit code 1 if any shape error or exit code 2 if any `--strict` semantic error. The pipeline does not need to parse JSON to branch.
@@ -244,35 +244,35 @@ Three patterns the team considered and rejected.
 - **`apps/cli/src/commands/template/explain.ts` parses the JSDoc.** The tool imports the Zod schema, walks the requested field path, and reads the `.describe(...)` block. The JSDoc parser is `typescript` or `@microsoft/tsdoc`; the output renderer is plain text with `--json` for structured output. No separate YAML config to maintain.
 - **`packages/contracts/src/v1/template.ts` gains a `.describe(...)` block on every `TemplateV2` Zod field.** This is the JSDoc that `explain` parses. The contract on Zod schema authors is "every closed-list field carries a four-section describe block (type, valid values, example, common mistake) plus an ADR link." A new test in `packages/contracts/test/zod-schema-doc.test.ts` enforces the contract: the test iterates over the Zod schema and asserts that every `.describe(...)` block is non-empty and contains the four section keywords. The test fails the build if a Zod field is added without a describe block.
 - **`apps/cli/test/integration/template/` gains three integration tests.** One per subcommand: `validate.test.ts` (asserts the five layers and exit codes), `new.test.ts` (asserts both modes, the directory layout, the `registry.json` write), `explain.test.ts` (asserts the JSDoc round-trip — every field with a describe block has a corresponding explain output). The tests run against a fixture `registry.json` checked into the test directory.
-- **`apps/cli/CHANGELOG.md` gains a `minor` entry under V2.5.** The entry names the three subcommands, the JSON output default, and the `--strict` flag. The entry does not call out a breaking surface: the existing four commands behave identically, the `template` namespace is additive.
+- **`apps/cli/CHANGELOG.md` gains a `minor` entry.** The entry names the three subcommands, the JSON output default, and the `--strict` flag. The entry does not call out a breaking surface: the existing four commands behave identically, the `template` namespace is additive.
 - **`apps/cli/README.md` documents the `template` namespace** alongside `init`, `list`, `info`, `add`, `auth`. Each subcommand gets a short subsection (purpose, syntax, flags, one example). The README's command index goes from five to six rows.
 - **The `ADR-010 §1` Commands table gains one row.** The row: `deessejs template <subcommand>` with purpose "Author tooling: validate / new / explain". This is the sanctioned exception to the closed-list rule. ADR-010 §1's "What this rule forbids" bullet on "Adding a new top-level command" is amended to read "Adding a *second* top-level command beyond the five listed." (The `template` group is the fifth; further additions still require a new ADR.)
-- **The ADR-034 implementation PR opens against the V2.5 milestone branch**, not against `staging`. The implementation lands after V2 ships and the registry CDN is operational. The V2.5 spec is locked by this ADR; deviations from the spec are themselves ADRs.
+- **The ADR-034 implementation PR lands in a follow-up change set**, not against `staging` in the same change set. The implementation lands after the registry CDN is operational. The spec is locked by this ADR; deviations from the spec are themselves ADRs.
 
 ## Open questions
 
-Three design calls remain open and may be revisited in V3.
+Three design calls remain open and may be revisited in a follow-up ADR.
 
 ### Question 1: how does `new` infer the catalogue's "most common" patterns?
 
-The scaffolder's defaults are inferred from the registry. The simplest inference is "mode" (most-frequent value of each field across items of the same type). A smarter inference could cluster items by similarity and propose the nearest cluster's values. The default for V2.5 is "mode"; smarter inference is V3+ if the team finds mode too crude.
+The scaffolder's defaults are inferred from the registry. The simplest inference is "mode" (most-frequent value of each field across items of the same type). A smarter inference could cluster items by similarity and propose the nearest cluster's values. The default is "mode"; smarter inference is tracked separately if the team finds mode too crude.
 
 ### Question 2: does `validate` walk the registry by default, or only when `--catalog` is passed?
 
-V2.5 ships with explicit `--catalog` only. The CLI does not auto-discover a `registry.json` at the workspace root because the layout is not yet standardised (single registry repo vs split-by-stack is undecided in V2.5). V3 may add auto-discovery gated on a convention marker (e.g. `registry.json` at the repo root with a known `name` field).
+This ADR ships with explicit `--catalog` only. The CLI does not auto-discover a `registry.json` at the workspace root because the layout is not yet standardised (single registry repo vs split-by-stack is undecided). A follow-up ADR may add auto-discovery gated on a convention marker (e.g. `registry.json` at the repo root with a known `name` field).
 
 ### Question 3: does `explain` cover fields from `deesse.json` (ADR-031) too?
 
-V2.5 covers `TemplateV2` fields only (the item-side descriptor). The `Project` Zod schema (per [ADR-031](./ADR-031-deesse-json.mdx)) is also annotated with JSDoc in `@workspace/contracts/src/v1/project.ts`, but `deessejs template explain` does not consume it — the project config is user-side, not author-side. V3 may add a parallel `deessejs project explain` namespace if the user community surfaces a need.
+This ADR covers `TemplateV2` fields only (the item-side descriptor). The `Project` Zod schema (per [ADR-031](./ADR-031-deesse-json.mdx)) is also annotated with JSDoc in `@workspace/contracts/src/v1/project.ts`, but `deessejs template explain` does not consume it — the project config is user-side, not author-side. A follow-up ADR may add a parallel `deessejs project explain` namespace if the user community surfaces a need.
 
 ## Cross-references
 
 - **[ADR-010: CLI public surface](./ADR-010-cli-public-surface.mdx).** The closed-list invariant for top-level commands. This ADR sanctions adding the `template` top-level entry; ADR-010 §1's Commands table gains one row, and §1's "What this rule forbids" bullet is amended to allow this one addition. The closed list stays closed at five entries.
 - **[ADR-031: deesse.json](./ADR-031-deesse-json.mdx).** The user-side project config. Out of scope for this ADR; the author tooling does not touch `deesse.json`.
 - **[ADR-032: deesse-template.json](./ADR-032-deesse-template.json.mdx).** The item-side descriptor. This ADR's load-bearing contract. The Zod schema in `@workspace/contracts` is the source of truth that `validate`, `new`, and `explain` all consume.
-- **[ADR-033: deessejs add <feature>](./ADR-033-deessejs-add.mdx).** The user-side overlay command. Distinct from `template new` (which authors items); `add` consumes them.
+- **[ADR-033: deessejs add ` <feature> `](./ADR-033-deessejs-add.mdx).** The user-side overlay command. Distinct from `template new` (which authors items); `add` consumes them.
 - **`.claude/agent-memory/tech-lead/project/templates-content-not-cli.md`.** The load-bearing governance rule. Adding a row to a registry repo is content; it does not trigger a CLI release.
-- **`apps/cli/CHANGELOG.md`.** The historical record. The next entry that ships the `template` namespace lands as a `minor` bump under V2.5.
+- **`apps/cli/CHANGELOG.md`.** The historical record. The next entry that ships the `template` namespace lands as a `minor` bump.
 
 ## Related
 

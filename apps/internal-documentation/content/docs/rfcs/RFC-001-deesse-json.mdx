@@ -7,7 +7,7 @@ description: 'Senior RFC for the deesse.json project-side configuration file and
 
 ## Status
 
-**Accepted (2026-09).** Three senior review rounds resolved critical blockers (secrets handling, JSONC round-tripping, lockfile tracking, walk-up path resolution, lazy token validation, error taxonomy, lockfile commit convention, monorepo lockfile placement, sync --check scope, timestamp determinism). All blockers resolved and inlined into the body of this RFC. The implementation lands in V2 alongside RFC-002.
+**Accepted (2026-09).** Three senior review rounds resolved critical blockers (secrets handling, JSONC round-tripping, lockfile tracking, walk-up path resolution, lazy token validation, error taxonomy, lockfile commit convention, monorepo lockfile placement, sync --check scope, timestamp determinism). All blockers resolved and inlined into the body of this RFC. The implementation lands in the same change set as RFC-002.
 
 ## Summary
 
@@ -35,7 +35,7 @@ The lockfile is committed because the **entire purpose of a lockfile is determin
 ### Non-Goals
 
 1. **Being a runtime config** — `deesse.json` is a build-time / install-time file. Application runtime configs (env vars, feature flags) live in `.env.local` and similar, not here.
-2. **Tracking file history** — `deesse.lock#templates["<feature>"]` records what was installed at which version. It does not record which files were created, which is out of scope for V2 (per the drift model in RFC-002 §Future Possibilities).
+2. **Tracking file history** — `deesse.lock#templates["feature"]` records what was installed at which version. It does not record which files were created, which is out of scope for this RFC (per the drift model in RFC-002 §Future Possibilities).
 3. **Auto-rewriting user-edited fields** — the CLI writes `deesse.json` once at `init`. Subsequent installs preserve user edits verbatim. The CLI writes `deesse.lock` on every install (this is the only file the CLI mutates continuously).
 4. **Supporting arbitrary top-level field additions** — the **top-level** schema fields are closed-list (per ADR-031 §Reserved field names). The **nested values** of `paths`, `aliases`, and `tokens` are open (`Record<string, string>`): any string key is accepted. Adding top-level fields requires an ADR.
 
@@ -45,7 +45,7 @@ The DeesseJS CLI today writes **no file** to the user's project. shadcn's `compo
 
 Without a project-side config, the CLI must **guess**. For a monorepo, the guess is wrong (the CLI does not know which app). For a custom layout, the guess is wrong (the CLI does not know the project's convention). For a multi-stack workspace (Next.js + Expo + Tauri), the guess is wrong three times. `deesse.json` replaces the guess with an explicit declaration.
 
-`deesse.lock` (the companion file) is **not** a session cache. Session caches (like the V1 `~/.deessejs/templates.json` cache documented in ADR-010 §4) are gitignored; their job is to avoid redundant network fetches within a session. Lockfiles are different: their job is to record what was installed in a way that is **deterministic across the team and CI**. `deesse.lock` is the latter. The earlier draft of this RFC confused the two patterns and proposed a gitignored `deesse.lock`; that was an antipattern corrected in this revision.
+`deesse.lock` (the companion file) is **not** a session cache. Session caches (like the `TemplateV1` `~/.deessejs/templates.json` cache documented in ADR-010 §4) are gitignored; their job is to avoid redundant network fetches within a session. Lockfiles are different: their job is to record what was installed in a way that is **deterministic across the team and CI**. `deesse.lock` is the latter. The earlier draft of this RFC confused the two patterns and proposed a gitignored `deesse.lock`; that was an antipattern corrected in this revision.
 
 The two files are the **answer to the consumer's "where do you put things, what did you install" questions**. The template descriptor (per RFC-002) is the answer to the **author's "what does my item ship" question**. Together, the three files define the contract between author and consumer.
 
@@ -268,7 +268,7 @@ The Zod schemas for both files (`Project` and `Lock` in `@workspace/contracts/sr
 
 ### Secrets handling
 
-Secrets are **never stored in `deesse.json`**. The `tokens` block uses the `env:<VAR>` convention. `deesse.json` itself is safe to commit; `.env.local` is the user's gitignored secret store. A future ADR may introduce encrypted-at-rest tokens (`tokens.<KEY>.secret: true` with OS keychain backing), but that's out of scope for V2.
+Secrets are **never stored in `deesse.json`**. The `tokens` block uses the `env:<VAR>` convention. `deesse.json` itself is safe to commit; `.env.local` is the user's gitignored secret store. A future ADR may introduce encrypted-at-rest tokens (`tokens.<KEY>.secret: true` with OS keychain backing), but that's out of scope for this RFC.
 
 ### Offline schema
 
@@ -276,31 +276,31 @@ The CLI bundles the Zod schemas as part of `@workspace/contracts`. No network fe
 
 ### Backward compatibility
 
-V2 introduces `deesse.json` and `deesse.lock`. Existing projects that have not yet run `deessejs init` against a V2-compatible template have neither file; `deessejs add <feature>` against such a project refuses with `parse_error`: *"deesse.json not found; run `deessejs init` first."* This is the load-bearing behaviour that makes the files the canonical consumer-side source of truth.
+This RFC introduces `deesse.json` and `deesse.lock`. Existing projects that have not yet run `deessejs init` against a `TemplateV2`-compatible template have neither file; `deessejs add feature` against such a project refuses with `parse_error`: *"deesse.json not found; run `deessejs init` first."* This is the load-bearing behaviour that makes the files the canonical consumer-side source of truth.
 
 ## Open Questions
 
 ### Question 1: Per-app config in monorepos?
 
-A monorepo with `apps/web/` and `apps/api/` may want different `paths.routes` for each app. The current walk-up discovery handles this for top-level keys (each app's `deesse.json` overrides on a per-key basis). A future ADR may formalise per-app config with `--target=<app>` for cross-app installs. Out of scope for V2; deferred to V3+ if a real use case surfaces.
+A monorepo with `apps/web/` and `apps/api/` may want different `paths.routes` for each app. The current walk-up discovery handles this for top-level keys (each app's `deesse.json` overrides on a per-key basis). A future ADR may formalise per-app config with `--target=<app>` for cross-app installs. Out of scope for this RFC; deferred to a follow-up ADR if a real use case surfaces.
 
 ### Question 2: Lockfile migration?
 
-When the Lock schema gains a new optional field (e.g. `templates.<slug>.checksum` for tamper detection), the migration is `deessejs lock migrate` which reads the old lock file, applies the transformation, and writes the new shape. Out of scope for V2; deferred to V3+ when the schema first evolves.
+When the Lock schema gains a new optional field (e.g. `templates.<slug>.checksum` for tamper detection), the migration is `deessejs lock migrate` which reads the old lock file, applies the transformation, and writes the new shape. Out of scope for this RFC; deferred to a follow-up ADR when the schema first evolves.
 
 ### Question 3: Schema migration?
 
-Same pattern as Question #2 but for `deesse.json`. `deessejs config migrate` rewrites the user's `deesse.json` to match the latest Zod schema. Out of scope for V2.
+Same pattern as Question #2 but for `deesse.json`. `deessejs config migrate` rewrites the user's `deesse.json` to match the latest Zod schema. Out of scope for this RFC.
 
 ## Rollout Plan
 
-### Stage 1 — V2
+### Stage 1 — File shape and infrastructure
 
-Both files ship in V2 alongside `deesse-template.json` (RFC-002). The CLI gains `loadDeesseJson(projectRoot)`, `loadDeesseLock(projectRoot)`, and the install flow reads both at every command. Atomic writes use the temp-file + rename pattern. The `deessejs sync` command lands as part of the V2 lock infrastructure.
+Both files ship in the same change set as `deesse-template.json` (RFC-002). The CLI gains `loadDeesseJson(projectRoot)`, `loadDeesseLock(projectRoot)`, and the install flow reads both at every command. Atomic writes use the temp-file + rename pattern. The `deessejs sync` command lands as part of this lock infrastructure.
 
-### Stage 2 — V3
+### Stage 2 — Follow-up additions
 
-A future ADR may add `deessejs doctor` (a command that reads `deesse.json` and `deesse.lock`, validates both against the schema, suggests fixes for common mistakes, and checks the registry for newer versions). Out of scope for V2.
+A future ADR may add `deessejs doctor` (a command that reads `deesse.json` and `deesse.lock`, validates both against the schema, suggests fixes for common mistakes, and checks the registry for newer versions). Out of scope for this RFC.
 
 ## Prior Art
 
@@ -332,7 +332,7 @@ Rails's `config/initializers/` directory follows a similar idea (one config file
 
 ## Implementation notes
 
-Three operational nuances surfaced in the senior review of revision 3. They are not architectural blockers — they are details that the V2 implementation PR must capture. This section records them so they are not lost between this RFC and the implementation.
+Three operational nuances surfaced in the senior review of revision 3. They are not architectural blockers — they are details that the implementation PR must capture. This section records them so they are not lost between this RFC and the implementation.
 
 ### A. Lockfile placement in monorepos
 
@@ -340,7 +340,7 @@ Three operational nuances surfaced in the senior review of revision 3. They are 
 
 **Why a single root**: multiple distributed lockfiles across packages create synchronisation overhead (when does Developer A's `apps/web/deesse.lock` get merged with Developer B's `apps/api/deesse.lock`?). A single root lockfile gives the team one source of truth for "what's installed in this workspace". CI verification (`deessejs sync --check`, per §B below) reads one file, not N.
 
-**Exception**: a future ADR may introduce per-app `deesse.lock` if a real use case surfaces (e.g. an app that ships with its own immutable template set and must not be affected by root updates). Out of scope for V2.
+**Exception**: a future ADR may introduce per-app `deesse.lock` if a real use case surfaces (e.g. an app that ships with its own immutable template set and must not be affected by root updates). Out of scope for this RFC.
 
 ### B. `deessejs sync --check` scope
 
@@ -359,7 +359,7 @@ The check asserts:
 - Whether `source.ref` matches the registry's current `ref`.
 - Whether a newer `slug` exists that the user might want.
 
-**Why this matters**: if `sync --check` queried the remote registry for latest versions, any upstream template update (even a non-breaking minor/patch) would immediately break CI on completely unrelated PRs across every repository consuming that template. CI must be **stable against upstream churn**. The freshness check belongs in `deessejs outdated` (a separate command, deferred to V3+) or `deessejs doctor` (V3+).
+**Why this matters**: if `sync --check` queried the remote registry for latest versions, any upstream template update (even a non-breaking minor/patch) would immediately break CI on completely unrelated PRs across every repository consuming that template. CI must be **stable against upstream churn**. The freshness check belongs in `deessejs outdated` (a separate command, tracked separately) or `deessejs doctor` (tracked separately).
 
 ### C. Deterministic timestamp generation in lockfiles
 
@@ -369,7 +369,7 @@ The check asserts:
 
 **`installedAt` is non-semantic metadata.** It is for human audit ("when did I install this?") and supply-chain incident triage ("what version was deployed last Thursday?"). It is **not** used by the CLI for any runtime decision. The CLI never re-installs because `installedAt` is newer or older; it re-installs because the user passes `--upgrade` (per §Detailed Design "Re-install semantics"). The `deessejs sync` command treats `installedAt` as non-semantic when resolving conflicts: it preserves the earlier timestamp (deterministic, idempotent).
 
-**Trade-off accepted**: we lose the precision of "installed at 14:23 UTC". The trade-off is intentional — merge-conflict-free commits are worth more than audit precision at the second level. If second-level precision becomes a real audit need, a future ADR may add a separate `installedAtTimestamp` field (full ISO 8601, separate from the date-only `installedAt`) that is gitignored or stored in a separate per-developer cache. Out of scope for V2.
+**Trade-off accepted**: we lose the precision of "installed at 14:23 UTC". The trade-off is intentional — merge-conflict-free commits are worth more than audit precision at the second level. If second-level precision becomes a real audit need, a future ADR may add a separate `installedAtTimestamp` field (full ISO 8601, separate from the date-only `installedAt`) that is gitignored or stored in a separate per-developer cache. Out of scope for this RFC.
 
 ## Cross-references
 

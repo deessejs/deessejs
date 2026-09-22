@@ -1,6 +1,6 @@
 ---
 title: 'Features and sub-templates are the same thing'
-description: 'Closes the "blog as sub-template" question raised during review of ADR-033. A blog, a dashboard, a landing page, and a feature like auth or crud are all the same kind of installable item: a feature overlay that the deessejs add command handles via the deesse-template.json descriptor. There is no separate sub-template concept, no separate CLI verb, and no separate descriptor. Future scope:subtree field is additive and open in V3+ if a real use case surfaces.'
+description: 'Closes the "blog as sub-template" question raised during review of ADR-033. A blog, a dashboard, a landing page, and a feature like auth or crud are all the same kind of installable item: a feature overlay that the deessejs add command handles via the deesse-template.json descriptor. There is no separate sub-template concept, no separate CLI verb, and no separate descriptor. Future scope:subtree field is additive and open in a follow-up ADR if a real use case surfaces.'
 ---
 
 # ADR-035: Features and sub-templates are the same thing
@@ -37,7 +37,7 @@ A blog is a feature. So is a dashboard. So is a landing page. So is auth, crud, 
 
 **The descriptor does not introduce a new file format.** `deesse-template.json` is the single descriptor for any non-`template:app` item. A blog has one. Auth has one. The shape is the same; only the contents differ (a blog item has more `files[]`, more `prompts[]`, possibly different `consumes[]` targets, possibly a `with_themes: boolean` toggle for light/dark variants). The closed-list `template:type` enum is not extended.
 
-**A future `scope: "subtree"` field is allowed but not required for V2 / V3.** If a future use case surfaces where a "blog" needs to claim a sub-tree of the project (`apps/web/src/blog/` becomes opaque to other features), an additive `scope` field can be added to `TemplateV2` without breaking the wire shape (closed-list, additive, optional). This ADR does not commit to that field; it commits to **not** splitting the descriptor or the CLI surface today.
+**A future `scope: "subtree"` field is allowed but not required by this ADR.** If a future use case surfaces where a "blog" needs to claim a sub-tree of the project (`apps/web/src/blog/` becomes opaque to other features), an additive `scope` field can be added to `TemplateV2` without breaking the wire shape (closed-list, additive, optional). This ADR does not commit to that field; it commits to **not** splitting the descriptor or the CLI surface today.
 
 ### What this rule allows
 
@@ -62,7 +62,7 @@ Three patterns were considered and rejected.
 
 1. **A new `deessejs embed <slug-or-url>` command for "sub-templates."** Rejected because it forces the user to learn a third verb (`init`, `add`, `embed`) when the conceptual distinction between "feature overlay" and "sub-template" is artificial at this level. A blog and auth are both "things you layer onto an existing project." The difference is volume of files, not kind of install. The user picked the rejection explicitly: *"It's a complete feature, which may need to add routes, schemas, pages, components, etc."* — i.e., a blog is a feature, just bigger than auth.
 2. **A new `template:type` value (`template:blog`, `template:subtree`, `template:app-feature`) that branches the install logic.** Rejected because the install logic does not need to branch. `template:package` and the six other non-`template:app` types already describe the install behaviour: read the file overlay, write at the resolved `target`, run the dependencies and hooks. A "blog" type would not change that behaviour. Adding a new type without a behaviour change is type pollution.
-3. **An additive `scope: "subtree"` field on `TemplateV2` now, in V2.** Rejected because no concrete use case requires it today. A blog in V2 can use `template:package` with `files[].target = "@lib/blog/server.ts"`, `target = "@routes/blog/[slug]/page.tsx"`, etc. The author picks paths that match the user's `deesse.json#paths` block. If a real need surfaces where a blog needs to claim a sub-tree (`apps/web/src/blog/`) opaque to other features, ADR-035 can be superseded by ADR-036 or later with the additive field. The door is open; the door is not built.
+3. **An additive `scope: "subtree"` field on `TemplateV2` now.** Rejected because no concrete use case requires it today. A blog can use `template:package` with `files[].target = "@lib/blog/server.ts"`, `target = "@routes/blog/[slug]/page.tsx"`, etc. The author picks paths that match the user's `deesse.json#paths` block. If a real need surfaces where a blog needs to claim a sub-tree (`apps/web/src/blog/`) opaque to other features, ADR-035 can be superseded by ADR-036 or later with the additive field. The door is open; the door is not built.
 
 ### What this rule does not change
 
@@ -76,13 +76,13 @@ Three patterns were considered and rejected.
 
 - **No code changes.** This ADR closes a question; it does not amend any existing implementation. The PR #137 trio (ADR-031, ADR-032, ADR-033, ADR-034) ships as-is. The user can write a `deesse-template.json` for a blog today and `deessejs add <slug>` will work.
 - **A documentation note is added to [ADR-033](./ADR-033-deessejs-add.mdx).** The note (one paragraph, in the "What this rule allows" section) clarifies that a blog, dashboard, or landing page installed as a feature overlay is the same installable as auth or crud — `template:package` type, same CLI flow, same descriptor shape. The note is informational; it does not amend the ADR's decisions.
-- **Future scope:subtree field is allowed.** If a real use case surfaces where a feature needs to claim a sub-tree opaque to other features, an additive `scope?: "overlay" | "subtree"` field on `TemplateV2` is permitted by this ADR. The default is `overlay` (today's behaviour). A V3+ ADR would document the semantics.
+- **Future scope:subtree field is allowed.** If a real use case surfaces where a feature needs to claim a sub-tree opaque to other features, an additive `scope?: "overlay" | "subtree"` field on `TemplateV2` is permitted by this ADR. The default is `overlay` (today's behaviour). A follow-up ADR would document the semantics.
 - **The shadcn-vs-sub-template distinction is documented in the knowledge base.** A short note at `apps/internal-documentation/content/docs/knowledge-base/features-vs-subtrees.mdx` (to be written) explains the conceptual choice with two examples (auth = small feature, blog = large feature) so future authors do not re-litigate the question.
 
 ## Cross-references
 
 - **[ADR-032: deesse-template.json](./ADR-032-deesse-template.json.mdx).** The descriptor. ADR-035 confirms it is the single descriptor for any non-`template:app` installable, including "large features" like blogs.
-- **[ADR-033: deessejs add <feature>](./ADR-033-deessejs-add.mdx).** The CLI command. ADR-035 confirms `add` handles the blog case via the existing `template:package` flow.
+- **[ADR-033: deessejs add ` <feature> `](./ADR-033-deessejs-add.mdx).** The CLI command. ADR-035 confirms `add` handles the blog case via the existing `template:package` flow.
 - **[ADR-031: deesse.json](./ADR-031-deesse-json.mdx).** The project config. The blog's `files[]` resolve against `deesse.json#paths`, same as any other feature.
 
 ## Related

@@ -3,11 +3,11 @@ title: 'deessejs add feature'
 description: 'Adds deessejs add <feature> as a fourth public CLI command. Reads deesse.json (ADR-031) to resolve paths, aliases, and database, fetches the matching deesse-template.json (ADR-032), and applies it as an overlay on an existing project instead of a full clone. Breaking change to the CLI public surface (ADR-010 §1).'
 ---
 
-# ADR-033: deessejs add <feature>
+# ADR-033: deessejs add `feature`
 
 ## Status
 
-**Specification accepted in V2; implementation deferred to V3.** Approved as part of the trio ([ADR-031](./ADR-031-deesse-json.mdx) + [ADR-032](./ADR-032-deesse-template.json.mdx) + ADR-033), tracked by [PR #137](https://github.com/deessejs/deessejs/pull/137). The V2 / V3 split is documented in [ADR-032 Open Question #1](./ADR-032-deesse-template.json.mdx): V2 ships the file-shape change (`deesse.json` + `deesse-template.json` + the registry CDN at `registry.deessejs.dev`); V3 ships `deessejs add <feature>` as the implementation. This ADR documents the *contract* for `add` (commands, flags, install sequence, dry-run, error mapping) so the implementation can land later without re-litigating the shape.
+**The contract is accepted; the implementation lands in a follow-up change set.** Approved as part of the trio ([ADR-031](./ADR-031-deesse-json.mdx) + [ADR-032](./ADR-032-deesse-template.json.mdx) + ADR-033), tracked by [PR #137](https://github.com/deessejs/deessejs/pull/137). The spec-vs-implementation split is documented in [ADR-032 Open Question #1](./ADR-032-deesse-template.json.mdx): the file-shape change (`deesse.json` + `deesse-template.json` + the registry CDN at `registry.deessejs.dev`) ships first; `deessejs add feature` ships as a follow-up. This ADR documents the *contract* for `add` (commands, flags, install sequence, dry-run, error mapping) so the implementation can land later without re-litigating the shape.
 
 ## Context
 
@@ -20,17 +20,17 @@ The open questions #1 of both [ADR-031](./ADR-031-deesse-json.mdx) and [ADR-032]
 
 Together the two ADRs create the conditions for `add` to exist; this ADR decides whether to ship it.
 
-### Why the spec ships now, the implementation ships in V3
+### Why the spec ships now, the implementation ships in a follow-up
 
-Three reasons the **specification** lands in V2 (this ADR) but the **implementation** lands in V3:
+Three reasons the **specification** lands in this ADR but the **implementation** lands in a follow-up change set:
 
-1. **The shape is non-trivial; it deserves review on its own.** `add`'s contract — command surface, dry-run, type-discriminator enforcement, force semantics, dependency installation, hook ordering — touches enough edge cases that a reviewer benefits from reading the spec without the implementation PR. Landing the spec in V2 alongside [ADR-031](./ADR-031-deesse-json.mdx) and [ADR-032](./ADR-032-deesse-template.json.mdx) means the three ADRs that together define the registry ship together. The implementation PR for `add` lands later, after the V2 ships and the registry CDN is operational.
+1. **The shape is non-trivial; it deserves review on its own.** `add`'s contract — command surface, dry-run, type-discriminator enforcement, force semantics, dependency installation, hook ordering — touches enough edge cases that a reviewer benefits from reading the spec without the implementation PR. Landing the spec alongside [ADR-031](./ADR-031-deesse-json.mdx) and [ADR-032](./ADR-032-deesse-template.json.mdx) means the three ADRs that together define the registry ship together. The implementation PR for `add` lands later, after the registry CDN is operational.
 
-2. **Bundling a new public command with two AD-shape changes is a bigger blast radius.** [ADR-031](./ADR-031-deesse-json.mdx) and [ADR-032](./ADR-032-deesse-template.json.mdx) are non-breaking at the CLI surface (no new public command, no new flag, no new error code). `add` is the first public command added under ADR-010 §1. Spreading the two changes across releases — shape change in V2, new command in V3 — keeps each release's blast radius small and lets V2 land and stabilise before V3 adds user-visible surface.
+2. **Bundling a new public command with two AD-shape changes is a bigger blast radius.** [ADR-031](./ADR-031-deesse-json.mdx) and [ADR-032](./ADR-032-deesse-template.json.mdx) are non-breaking at the CLI surface (no new public command, no new flag, no new error code). `add` is the first public command added under ADR-010 §1. Spreading the two changes — shape change now, new command in a follow-up — keeps each release's blast radius small and lets the shape change land and stabilise before `add` adds user-visible surface.
 
-3. **Implementation is gated on the registry CDN.** The V3 implementation needs `registry.deessejs.dev` to be live and `deesse-template.json` to be co-located in template repos. The CDN ships in V2 (per [ADR-032 Decision #4](./ADR-032-deesse-template.json.mdx)) and the co-location discipline takes one release cycle to propagate across `deessejs/*` template repos. V3 is the earliest point at which `add` can ship against a populated registry.
+3. **Implementation is gated on the registry CDN.** The implementation needs `registry.deessejs.dev` to be live and `deesse-template.json` to be co-located in template repos. The CDN ships in the same change set as the file shape (per [ADR-032 Decision #4](./ADR-032-deesse-template.json.mdx)) and the co-location discipline takes time to propagate across `deessejs/*` template repos. The follow-up is the earliest point at which `add` can ship against a populated registry.
 
-The implementation PR for `add` opens against the V3 milestone branch, not against `staging`. The spec documented in this ADR is the contract that PR must implement; deviations from the spec are themselves ADRs.
+The implementation PR for `add` lands in a follow-up change set, not in this one. The spec documented in this ADR is the contract that PR must implement; deviations from the spec are themselves ADRs.
 
 ### Why this is breaking
 
@@ -128,7 +128,7 @@ Every step except step 1 (which is read-only) is idempotent. Re-running `add <fe
 
 `--dry-run` is not optional. The command lists the files it would write, the dependencies it would install, the hooks it would run, and the `deesse.json` mutations it would apply, then exits 0 without writing anything. The output goes to stdout in human-readable form by default and to stdout in JSON form with `--json`.
 
-Why this matters: the most common failure mode for an overlay command is "I ran it and it stomped on my code." The dry-run gives the user a way to inspect the diff before committing. The same flag is available on `init` for parity (it is not in V1 today; this ADR adds it to `init` as a side effect of the shared code path).
+Why this matters: the most common failure mode for an overlay command is "I ran it and it stomped on my code." The dry-run gives the user a way to inspect the diff before committing. The same flag is available on `init` for parity (it is not in the current CLI today; this ADR adds it to `init` as a side effect of the shared code path).
 
 #### 5. File acquisition: how `add` reaches the overlay sources
 
@@ -148,7 +148,7 @@ The acquisition mechanism is **tarball-first, with `git clone` as fallback**, in
 
    **Symlink and hardlink guard**: hardlinks and symlinks are **rejected by default**. Only regular files and directories are extracted from the tarball. The extraction implementation reads the entry type byte from the tar header and aborts with `security_violation` on any non-regular entry. This closes the "symlink pointing outside the extraction root" attack vector (e.g. a symlink from `package.json` to `/etc/passwd`).
 
-   **CDN-hosted tarballs**: the official `@deessejs/*` tarballs are pre-built and published by the V2 publication CI in `packages/api` to `registry.deessejs.dev/t/<slug>-<version>.tar.gz`. The CLI does **not** rely on `codeload.github.com` for the official registry — that path is the fallback for third-party GitHub sources where the CDN tarball is not available.
+   **CDN-hosted tarballs**: the official `@deessejs/*` tarballs are pre-built and published by the publication CI in `packages/api` to `registry.deessejs.dev/t/<slug>-<version>.tar.gz`. The CLI does **not** rely on `codeload.github.com` for the official registry — that path is the fallback for third-party GitHub sources where the CDN tarball is not available.
 
 5. **Clean up the temp tree.** The CLI `rm -rf`s the temp directory after the file reads complete (in a `finally` block, even if a downstream step throws). The cleanup is non-negotiable: a stale temp tree is a leak and a potential security surface (a malicious template could write `.bashrc` files into the user's home if the temp dir was reused).
 
@@ -162,7 +162,7 @@ The acquisition mechanism is **tarball-first, with `git clone` as fallback**, in
 
 **Why tarball-first, not inlining.** shadcn inlines file contents in the registry JSON (`files[].content`) because their registry items are small (a single component, a few hundred lines). The DeesseJS overlay model is heavier: a `template:package` may include a route, a Prisma adapter, a server-side handler, and a UI form — easily a thousand lines across multiple files. Inlining that into a registry JSON bloats the descriptor past what a CDN can comfortably serve and what an editor can read. The tarball-based approach keeps the descriptor small (paths + metadata) and lets the CLI stream the file contents from a separate URL.
 
-**Why tarball with `git clone` fallback.** Some sources don't expose a CDN tarball (private mirrors, custom Git hosts, on-prem Gitea instances). The fallback is the same plumbing as today — no regression. For the official `@deessejs` registry, the V2 publication CI builds pre-computed tarballs alongside the registry items, so the tarball path is the common case.
+**Why tarball with `git clone` fallback.** Some sources don't expose a CDN tarball (private mirrors, custom Git hosts, on-prem Gitea instances). The fallback is the same plumbing as today — no regression. For the official `@deessejs` registry, the publication CI builds pre-computed tarballs alongside the registry items, so the tarball path is the common case.
 
 **Why `tar-stream` (pure-JS) instead of shelling out to `tar`.** The tar binary is not always present on Windows in a portable form (git-for-windows ships a `tar.exe`, but many CI images don't). `tar-stream` (npm, ~10kb, zero deps) handles gzip + plain tar in pure JS. It is slower than a native tar at extraction, but the portability win is worth it for a CLI that ships cross-platform.
 
@@ -209,13 +209,13 @@ The 9-step install sequence from Decision #3 is amended to include dependency in
    - **Env files** (`.env`, `.env.local`): key/value line replacement; existing keys are overwritten, new keys are appended.
    - **Append-with-sentinel files** (e.g. `AGENTS.md`): lines appended after a sentinel marker (e.g. `# --- deessejs-managed ---`); the marker is added on first install and the section between markers is owned by the CLI on subsequent installs.
 
-   **AST-level code merging** (TypeScript, Python, Rust, etc.) is **explicitly forbidden** in V2/V3. Code modification goes through overlay file placement (`files[]` with `transform: "rename"` or `transform: "interpolate"`) or `hooks.postInstall`. Attempting to `merge` a `.ts`, `.py`, `.rs`, or other AST-sensitive file aborts the install with `parse_error` and a clear error message.
+   **AST-level code merging** (TypeScript, Python, Rust, etc.) is **explicitly forbidden** in this contract. Code modification goes through overlay file placement (`files[]` with `transform: "rename"` or `transform: "interpolate"`) or `hooks.postInstall`. Attempting to `merge` a `.ts`, `.py`, `.rs`, or other AST-sensitive file aborts the install with `parse_error` and a clear error message.
 9. **Install npm dependencies.** Run `{pm} add <dependencies>` followed by `{pm} add -D <devDependencies>` (substituted with the detected package manager from `deesse.json#packageManager`). The whitelist from [ADR-032](./ADR-032-deesse-template.json.mdx) applies: `{pm} add` is in the whitelist, so the runner invokes it via `shell: false` with tokenised argv (per the safety rule documented in ADR-032 Consequences). **If this step fails (peer-dependency conflict, network drop, registry unreachable)**, the CLI rolls back the staged files (step 8) and returns `install_failed`. The user's `deesse.lock#templates["<feature>"]` is NOT updated. If a literal `{{KEY}}` sentinel would be written into an output file (per [RFC-001 §"The `tokens{}` substitution map"](./RFC-001-deesse-json)), the CLI fails fast with `unresolved_token` (internal error code), listing the file path and the missing env var. (step 12 is the last step, not yet reached).
 10. **Run `hooks.postInit`.** Same closed-list verb whitelist as `init`. May include `{pm} install` for projects that do not yet have node_modules (rare for `add` — the user already has a project — but possible if the project is freshly cloned and not yet installed). **If this step fails**, same rollback semantics as step 9.
 11. **Run `hooks.postInstall`.** May include `{pm} generate` (Prisma), `{pm} db:push` (Prisma), `{pm} db:migrate` (Drizzle), etc. **If this step fails**, same rollback semantics as step 9.
 12. **Update `deesse.lock#templates["<feature>"]`.** Record the installed `version`, `installedAt` (date-only `YYYY-MM-DD` UTC per [RFC-001 §"Implementation notes C"](./RFC-001-deesse-json)), and `source`. The CLI writes `deesse.lock` atomically (`fs.writeFile(tmp); fs.rename(tmp, real)`); `deesse.json` is **never** written to on `add` (per [RFC-001 §"Detailed Design"](./RFC-001-deesse-json)). This is the **commit point**: only reached when every preceding step succeeded.
 
-The corrected sequence is 13 steps (was 9 in the original ADR-033, then 12 after the dependency-and-`postInstall` amendment). The original 9-step list omitted steps 9 and 11 (dependency install and `postInstall` hook). Those steps are present in [ADR-032 Decision #3](./ADR-032-deesse-template.json.mdx) for the `init` flow and must be present in the `add` flow too — `add` is not exempt from dependency management. The pre-flight dirty check (step 0) and the staged-write rollback path (steps 8-11) are new in V3.
+The corrected sequence is 13 steps (was 9 in the original ADR-033, then 12 after the dependency-and-`postInstall` amendment). The original 9-step list omitted steps 9 and 11 (dependency install and `postInstall` hook). Those steps are present in [ADR-032 Decision #3](./ADR-032-deesse-template.json.mdx) for the `init` flow and must be present in the `add` flow too — `add` is not exempt from dependency management. The pre-flight dirty check (step 0) and the staged-write rollback path (steps 8-11) are new in this ADR.
 
 **Rollback implementation note**: the rollback is best-effort. The CLI maintains a `Set<path>` of files it created in this install, and on any step failure, `fs.unlink`s each file in reverse order. If a file was overwritten (not created), the CLI does NOT restore the previous content — restoring requires the user to have committed before the install (which step 0 enforces). This is documented in the CLI's stderr output on failure: *"Rollback removed N files. Use `git status` and `git checkout` to restore any pre-existing files that were overwritten."*
 
@@ -282,7 +282,7 @@ Three patterns the team considered and rejected.
 
 2. **Implement `add` as a subcommand of `init` (`deessejs init add <feature>`).** Rejected because shadcn's precedent is the flat `add`. A nested form breaks the muscle memory of every contributor who has used the shadcn CLI. The cost of breaking the flat form is one PR; the cost of keeping a non-standard nested form is permanent cognitive load.
 
-3. **Skip `add` for V2 and ship it in V3.** Rejected because [ADR-031](./ADR-031-deesse-json.mdx) and [ADR-032](./ADR-032-deesse-template.json.mdx) create the conditions for `add` to exist; shipping them without `add` is shipping a registry with no overlay semantics. The CLI gains `loadDeesseJson` and the transform layer regardless; the marginal cost of `add` is small enough that deferring it is not a real saving.
+3. **Skip `add` entirely.** Rejected because [ADR-031](./ADR-031-deesse-json.mdx) and [ADR-032](./ADR-032-deesse-template.json.mdx) create the conditions for `add` to exist; shipping them without `add` is shipping a registry with no overlay semantics. The CLI gains `loadDeesseJson` and the transform layer regardless; the marginal cost of `add` is small enough that deferring it is not a real saving.
 
 ### What this rule does not change
 

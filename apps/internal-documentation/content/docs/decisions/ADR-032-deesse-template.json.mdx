@@ -145,7 +145,7 @@ The unique identifier of the item within the registry. Used as the slug in `dees
 
 ### `title`
 
-**Type**: string. **Required** in V2 (treated as required by the registry web gallery; technically optional in `TemplateV2` but the gallery will not render the item without one).
+**Type**: string. **Required** by this ADR (treated as required by the registry web gallery; technically optional in `TemplateV2` but the gallery will not render the item without one).
 
 A short human-readable display name. Used in the gallery (`/templates`), the CLI's `list` output, and any consumer-facing UI.
 
@@ -198,8 +198,8 @@ The discriminator that tells the CLI what kind of item this is. Drives the `init
 - `"template:landing"` — a landing page as a full app clone. Used by `deessejs init <slug>`.
 
 **Discriminator enforcement**:
-- `deessejs init <slug>` refuses any non-`template:app` type with `parse_error`: *"<slug> is a template:package; use `deessejs add <slug>` instead."*
-- `deessejs add <slug>` refuses `template:app` with `parse_error`: *"<slug> is a template:app; use `deessejs init <slug>` instead."*
+- `deessejs init <slug>` refuses any non-`template:app` type with `parse_error`: *"` <slug> ` is a template:package; use `deessejs add <slug>` instead."*
+- `deessejs add <slug>` refuses `template:app` with `parse_error`: *"` <slug> ` is a template:app; use `deessejs init <slug>` instead."*
 
 **See also**: [ADR-035](./ADR-035-feature-not-subtree.mdx) for why there is no `template:blog` or `template:subtree` discriminator — a blog is just a `template:package` with more files.
 
@@ -594,7 +594,7 @@ A verb that does not match the whitelist after `{pm}` substitution fails at item
 
 ### `postinstall`
 
-**Type**: array of strings. **Optional. **Deprecated** as of V2 — kept as a back-compat alias for `hooks.postInit`.
+**Type**: array of strings. **Optional. **Deprecated** as of this ADR — kept as a back-compat alias for `hooks.postInit`.
 
 If present, the CLI treats it as if it were `hooks.postInit`. New templates use `hooks.postInit` directly. The CLI emits a warning at install time when `postinstall` is present (so authors know to migrate).
 
@@ -648,7 +648,7 @@ interface FileSpec {
 - `"rename"` — copies the file at `path` to `target` without modification. Used for `.env.example` → `.env`, `tsconfig.json.template` → `tsconfig.json`.
 - `"interpolate"` — reads `path` as a template (with `{{KEY}}` placeholders) and writes the rendered content to `target`. The placeholders are substituted from `deesse.json#tokens` (set via `consumes: { target: "tokens:<KEY>" }` or hand-edited by the user).
 - `"remove"` — does not copy a file; instead, removes files in the cloned tree at the resolved `target` path. Used for `with_*` toggles (Storybook, MDX support, etc.).
-- `"merge"` — appends the file's content to the existing file at `target`. Used for `AGENTS.md` fragments contributed by multiple templates. Reserved for V3 — not implemented in V2.
+- `"merge"` — appends the file's content to the existing file at `target`. Used for `AGENTS.md` fragments contributed by multiple templates. Reserved; not implemented in this ADR.
 
 **`overwrite` semantics** (per [ADR-033 Decision #7](./ADR-033-deessejs-add.mdx)):
 - `true` (absent on `init`, default on `add`): silent overwrite, no `--force` needed.
@@ -945,7 +945,7 @@ See the original ADR for the three rejected alternatives (`registry.json` in `pa
 ## Cross-references
 
 - **[ADR-031: deesse.json](./ADR-031-deesse-json.mdx).** The project-side config. `deesse-template.json` resolves placeholders and consumes answers into `deesse.json`. Read together for the complete install contract.
-- **[ADR-033: deessejs add <feature>](./ADR-033-deessejs-add.mdx).** The `add` command that consumes this descriptor. Documents the install sequence, file acquisition, `--force` semantics.
+- **[ADR-033: deessejs add ` <feature> `](./ADR-033-deessejs-add.mdx).** The `add` command that consumes this descriptor. Documents the install sequence, file acquisition, `--force` semantics.
 - **[ADR-034: deessejs template namespace](./ADR-034-template-namespace.mdx).** The `deessejs template validate`, `new`, `explain` author tooling. Sits on top of the same Zod schema.
 - **[ADR-035: features and sub-templates are the same thing](./ADR-035-feature-not-subtree.mdx).** Confirms a blog is a `template:package` feature, not a separate type.
 - **`docs/engineering/plans/saas-template-divergence.md`.** The divergence plan that explains why the current registry lives in `packages/api/src/templates.ts` rather than in a separate `deessejs/registry-data` repo. ADR-032 does not change that placement; it adds the schema layer on top.
