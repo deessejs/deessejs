@@ -166,6 +166,23 @@ The acquisition mechanism is **tarball-first, with `git clone` as fallback**, in
 
 **Why `tar-stream` (pure-JS) instead of shelling out to `tar`.** The tar binary is not always present on Windows in a portable form (git-for-windows ships a `tar.exe`, but many CI images don't). `tar-stream` (npm, ~10kb, zero deps) handles gzip + plain tar in pure JS. It is slower than a native tar at extraction, but the portability win is worth it for a CLI that ships cross-platform.
 
+#### 5b. CI never touches the CDN
+
+**Invariant.** When the CLI detects a CI environment, it **must not** make outbound HTTP requests to `registry.deessejs.dev` or to upstream `git clone` URLs. CI runs must be **stable against upstream churn** — a Friday-evening patch to a template upstream must not break unrelated PRs across the DeesseJS consumer base.
+
+**Detection.** The CLI detects CI by reading `process.env.CI` (the de-facto standard env var, set to a truthy string by GitHub Actions, GitLab CI, CircleCI, Buildkite, Travis, Jenkins, and Drone — the full list is in `apps/cli/src/ci/env-detection.ts`). A **secondary signal** is the presence of `/.deesse-ci` (a marker file the user can drop at the repo root to opt a non-CI machine into the same behaviour, useful for local "what would CI see?" dry runs). Either signal flips the CLI into CI mode for the duration of the process.
+
+**Behaviour in CI mode.**
+
+- **`deessejs init` and `deessejs add` refuse to start** with `ci_offline_violation` (internal error code) if the operation would require fetching from the CDN or a git host and the local cache (`~/.deessejs/`) does not have the required artefact. The error message names the missing artefact and the `deessejs cache populate <ref>` command to fill the cache from a developer machine before pushing. This is the same pattern as `pnpm install --frozen-lockfile` (which refuses to resolve against the network).
+- **`deessejs add --diff` is fully offline.** It only reads `deesse.lock` and the local files; it does not fetch the registry. (The previous behaviour of fetching the registry to compare is **not** available in CI — there is no flag to override; CI mode is mandatory.)
+- **`deessejs sync --check` is offline.** The check runs purely against `deesse.lock` and the local files; it does not ping the registry for "are there newer versions?". The freshness check belongs to `deessejs outdated` (a separate command, out of scope for this contract — see ADR-033 Future considerations).
+- **No opt-out.** There is no `--allow-remote-in-ci` flag in the public CLI surface. A developer who needs to bypass CI mode for local debugging runs the command **without** the CI env var set (i.e. locally, not on CI). The CI detection is one-way: a CI env var cannot be unset at runtime via a CLI flag.
+
+**Why no opt-out.** The opt-out is the failure mode this rule is designed to prevent. If a contributor can flip `--allow-remote-in-ci=true` in a CI script, a future PR that does so will land. The CI mode is therefore non-negotiable at the CLI level; the only way to "skip" it is to not be in a CI environment.
+
+**Implementation.** The detection happens in `apps/cli/src/ci/guard.ts` and is invoked at the entry point of every command that would otherwise fetch. Unit-tested at `apps/cli/test/unit/ci-guard.test.ts` with mocked `process.env.CI` values.
+
 #### 6. Install sequence (corrected)
 
 The 9-step install sequence from Decision #3 is amended to include dependency installation and `hooks.postInstall`, plus a pre-flight dirty check and a staged-write rollback path. The corrected sequence is **13 steps**:
@@ -255,6 +272,34 @@ The two-gate policy from the original Decision #3 is amended. The corrected poli
 | `false` or absent | present | User-sovereign overwrite; warn on stderr but proceed. |
 
 The `--force` warning is a one-line message (`"Overwriting <path> due to --force"`) printed to stderr per file. The warning is informational, not an error — the user explicitly opted in.
+
+#### 8. Re-install semantics: a 4-by-3 matrix
+
+Re-running `add <feature>` against an already-installed item is the **hard case** in this contract. The CLI cannot naively overwrite because the user may have edited the files between installs. This section pins the exact behaviour for every combination of file state and user flag. The matrix is **exhaustive**: every file the install touches falls into exactly one row.
+
+**File states** (rows): how the CLI classifies the file on disk **after the install's transforms**, against the **previously-installed version** recorded in `deesse.lock`:
+
+1. **Identical** — the file's content matches the previously-installed version byte-for-byte (after the same transforms the install would apply).
+2. **Drift** — the file's content differs from the previously-installed version. The user has hand-edited it.
+3. **New** — the file is in the new item version and not in the previously-installed version (the upstream added a file).
+4. **Removed** — the file is in the previously-installed version but not in the new item version (the upstream deleted it).
+
+**User flags** (columns): the combination of flags passed to `deessejs add`. `--diff` and `--upgrade` are mutually exclusive (passing both is `parse_error`). `--preserve-local` only takes effect with `--upgrade`.
+
+| File state | `--diff` (no writes) | `--upgrade` (writes) | `--upgrade --preserve-local` (writes) |
+|---|---|---|---|
+| **Identical** | Skip silently. Exit 0. No output for this file. | Skip silently. No diff for this file. | Skip silently. No diff for this file. |
+| **Drift** | Print the unified diff (local vs registry). Exit 0. No file written. | Overwrite the file. Print `"Overwriting <path> due to drift + --upgrade"` to stderr. The user's edits are **lost** unless they used VCS or copied the file aside. | Write the registry version to `<path>.deesse-new` (adjacent to the original). Keep the original untouched. Print `"Drift on <path>; new version at <path>.deesse-new. Use `git diff` to merge."` to stderr. |
+| **New** (upstream added a file) | Print `"Would create <path>"`. Exit 0. | Create the file. | Create the file. (Same as `--upgrade`; nothing to preserve.) |
+| **Removed** (upstream deleted a file) | Print `"Would delete <path>"`. Exit 0. | Delete the file. (Equivalent to `--force` for this specific case; no prompt because the user explicitly passed `--upgrade`.) | Refuse with `drift_protected`: the file existed at install time and the user might have hand-edited it since. Print `"Refusing to delete <path> under --preserve-local. Use `rm` or re-run without --preserve-local."` to stderr. Exit 1. |
+
+**Why this matrix is exhaustive.** The 4 rows cover every per-file state the CLI can observe. The 3 columns cover every flag combination the user can pass (the 4th combination, no flag at all, falls under §7 — the default is "refuse on conflict with `file`" which is the current ADR-033 Decision #7). Adding a 5th column (e.g. `--interactive` with a per-file prompt) is **explicitly out of scope** for this contract; a future ADR may add it.
+
+**Why the same-day timestamp conflict is not a problem here.** Re-install is per-feature: the CLI compares the local file to the version recorded in `deesse.lock#templates["<feature>"].checksum` (the per-file hash captured at install time), not to the lockfile's `installedAt` date. The matrix is therefore **deterministic** regardless of how many developers installed the feature on the same day.
+
+**Why `--diff` does not write the lockfile.** A read-only operation must not produce side effects. The CLI exits 0 with no `deesse.lock` update; the user is expected to run `deessejs add <feature> --upgrade` (or `--upgrade --preserve-local`) after inspecting the diff.
+
+**Unit-test coverage** (mandatory): the implementation must be unit-tested for all 12 cells of the matrix. The unit tests live at `apps/cli/test/unit/reinstall-matrix.test.ts` and are part of the CI gate.
 
 ### What this rule allows
 

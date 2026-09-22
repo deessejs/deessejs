@@ -1,6 +1,6 @@
 ---
 title: 'deesse.json project config'
-description: 'A shadcn-style project config file at the root of every project the CLI scaffolds. Declares per-project wiring (package manager, paths, aliases, tokens, registries, installed state) so the same template installs correctly across monorepos, single-package projects, and multi-stack consumers. The companion to ADR-032 (deesse-template.json), which describes the registry-side item descriptor.'
+description: 'A shadcn-style project config file at the root of every project the CLI scaffolds. Declares per-project wiring (package manager, paths, aliases, tokens, registries, installed state) so the same template installs correctly across monorepos, single-package projects, and multi-stack consumers. Walk-up discovery is bounded at 5 levels and constrained to the current git worktree (per RFC-001 §Monorepo walk-up discovery bounds). The companion to ADR-032 (deesse-template.json), which describes the registry-side item descriptor.'
 ---
 
 # ADR-031: deesse.json project config
@@ -162,6 +162,7 @@ Three patterns the team considered and rejected.
 - **`deesse-template.json#files[].target` placeholders resolve at install time.** The CLI walks the file list, substitutes `@components/`, `@lib/`, `@hooks/`, `@ui/`, `@apps/`, `@packages/` against `deesse.json#aliases`, and writes the file at the resolved path. Unknown placeholders fall back to literal paths.
 - **A future `deessejs add feature` command reads `deesse.json` and writes into the right directories.** This ADR scopes itself to the file shape and the resolution logic, not to the `add` command itself (the command is tracked separately per the open question in [ADR-032](./ADR-032-deesse-template.json)). The file is the prerequisite; the command follows.
 - **The schema URL `https://registry.deessejs.dev/schema/project.json` is the contract.** The JSON Schema is generated from the Zod source (`Project` schema in `@workspace/contracts`) by a CI job in `packages/contracts` that runs on every release. The CLI parses a malformed `deesse.json` through the Zod schema and returns `parse_error` on failure.
+- **The CI-mode invariant applies to `deesse.json` reads.** When `process.env.CI` is set (or `/.deesse-ci` is present), the CLI never re-fetches the JSON Schema from `registry.deessejs.dev/schema/project.json`; it uses the schema version bundled in the CLI binary. The bundled schema is refreshed on each `@deessejs/cli` release. This keeps CI installs reproducible without depending on the live schema URL. See [ADR-033 §5b "CI never touches the CDN"](./ADR-033-deessejs-add.mdx) for the full invariant and the `ci_offline_violation` error code.
 
 ## Cross-references
 

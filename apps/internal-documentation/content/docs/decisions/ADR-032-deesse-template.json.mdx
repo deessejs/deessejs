@@ -230,6 +230,23 @@ The version of the template itself, independent of the underlying source repo's 
 - Non-semver strings (`"version": "v1.4"`, `"version": "latest"`) — fail the validator.
 - Failing to bump on breaking changes — consumers re-running `add` get a different shape than they had.
 
+### Same-day install tie-break rule
+
+**The problem.** RFC-001 pins `installedAt` at date-only granularity (`YYYY-MM-DD` UTC) to keep `deesse.lock` merge-friendly. The trade-off: when two developers install the same template on the same day, the lockfile cannot tell **which install was first**, which means it cannot detect **which version was originally chosen** in case of conflict during a 3-way merge.
+
+**The rule.** When a `deesse.lock` entry for a template records `installedAt = "2026-09-22"` and a developer's branch updates that entry with **the same date** but **a different `version`** or **a different `source.ref`**, the merge resolution rule is **deterministic and lexicographic**:
+
+1. **Compare `source.ref` strings first** (longest git ref wins: a SHA wins over a tag, a tag wins over a branch). If the refs differ in length but neither is a SHA, compare **byte-by-byte** using `localeCompare` with the `en` collation and `{ numeric: true }` so that `v1.10.0` sorts after `v1.9.0`.
+2. **If `source.ref` is identical**, compare `version` strings using the same byte-by-byte `localeCompare` with numeric collation — semver-aware sort.
+3. **If both `source.ref` and `version` are identical**, the lockfile is unchanged (the conflict is a no-op; the field values are the same).
+4. **Tie-break on `installerHost`.** When two devs install on the same day with identical refs and versions, the lockfile also records `installerHost: <hostname>` (the developer's machine name from `os.hostname()`). The merge picks the lexicographically-smaller `installerHost`. This is the last-resort tiebreaker and is expected to be vanishingly rare in practice (it requires two devs to install the same version on the same day, which only happens on shared-CI checkout patterns).
+
+**Why this matters.** Without a deterministic tie-break rule, a same-day same-version install would either (a) silently drop one side's record (data loss) or (b) trigger a Git merge conflict that requires manual resolution. Both outcomes defeat the "merge-friendly lockfile" goal of RFC-001. The rule above guarantees that `git merge` of two branches with the same `installedAt` is conflict-free **iff** the versions agree, and is also conflict-free (with a deterministic winner) **iff** the versions differ.
+
+**Why `installerHost` and not `installerId` (UUID/GPG key).** RFC-001 explicitly avoids requiring a GPG key or developer identity in the lockfile — the lockfile is committed to git and would otherwise leak PII. `os.hostname()` is non-identifying and is already used by every modern dev tool (npm, pnpm, cargo) for the same purpose. A dev who wants more granularity can override `installerHost` via the `DEESSE_INSTALLER_HOST` env var (mirroring `GIT_AUTHOR_NAME`-style overrides).
+
+**Implementation.** The merge logic lives at `apps/cli/src/lockfile/merge.ts`. It is exercised by `apps/cli/test/unit/lockfile-merge.test.ts` with 12 fixtures covering same-day same-version, same-day different-version, and cross-day same-version cases. The fixture suite is part of the CI gate.
+
 ### `author`
 
 **Type**: string. **Optional**.
