@@ -95,18 +95,12 @@ function renderPreview(slug: CatalogueComponent["slug"]) {
           </label>
         </div>
       )
-    case "card":
-      return (
-        <Card className="w-72">
-          <CardHeader>
-            <CardTitle>Card title</CardTitle>
-          </CardHeader>
-        </Card>
-      )
     default:
-      // Fallback for the overlays, navigation, structure and
-      // sonner categories — show the slug as a label so the
-      // card isn't empty.
+      // Fallback for any slug not matched above. The "card" slug
+      // was removed from the 1-category-per-component taxonomy, so
+      // no specific case exists for it — this branch also handles
+      // any future unhandled slugs and shows the slug as a label
+      // so the card isn't empty.
       return (
         <span className="text-label-14 text-muted-foreground font-mono">
           {slug}
