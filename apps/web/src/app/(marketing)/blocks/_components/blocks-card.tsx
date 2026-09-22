@@ -1,6 +1,5 @@
 import Link from "next/link"
-
-import type { LucideIcon } from "lucide-react"
+import { useMemo } from "react"
 
 import type { CatalogueBlock } from "./blocks-list"
 import { BlockCardPreview } from "./block-card-preview"
@@ -20,9 +19,12 @@ type Props = {
  * Same recipe as `CatalogueCard`.
  */
 export function BlocksCard({ block }: Props) {
-  // `Icon` is a component instance — must be hoisted to satisfy
-  // the react-hooks/static-components rule.
-  const Icon: LucideIcon = getBlockIcon(block.slug)
+  // `Icon` is a component instance — wrap the lookup in `useMemo`
+  // to give the JSX a stable reference and satisfy the
+  // react-hooks/static-components rule. The lookup is cheap (a
+  // single object property access); the useMemo is purely there
+  // to memoize the component reference, not the value.
+  const Icon = useMemo(() => getBlockIcon(block.slug), [block.slug])
   const href = `/blocks/${block.category}/${block.slug}`
 
   return (

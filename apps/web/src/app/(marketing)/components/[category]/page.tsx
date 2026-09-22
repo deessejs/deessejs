@@ -2,11 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { CategoryPage } from "@/app/(marketing)/components/_components/category-page"
-import {
-  CATEGORY_ORDER,
-  COMPONENT_CATEGORIES,
-  getCategory,
-} from "@/app/(marketing)/components/_components/categories"
+import { CATEGORY_ORDER, getCategory } from "@/app/(marketing)/components/_components/categories"
 
 /**
  * /components/[category]

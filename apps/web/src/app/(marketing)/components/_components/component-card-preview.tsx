@@ -18,11 +18,11 @@ type Props = {
  * component (Button, Card, Dialog, etc.) by looking up a preview
  * registry.
  */
-export function ComponentCardPreview(_props: Props) {
+export function ComponentCardPreview({ slug }: Props) {
   return (
     <div className="flex aspect-video w-full shrink-0 items-center justify-center bg-muted/40">
       <Button variant="default" tabIndex={-1} aria-hidden>
-        Button
+        Button  {slug}
       </Button>
     </div>
   )
