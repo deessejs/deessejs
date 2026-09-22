@@ -1,21 +1,17 @@
 /**
  * Component catalogue for /components/[category]/[component].
  *
- * Mirrors the 24 primitives that ship in `@workspace/ui`. Each
- * component declares its `category` so the dynamic route can
- * validate that `(category, component)` is a coherent pair and
- * return 404 otherwise. V1 uses 1-category-per-component naming
- * (button, badge, avatar...) — the new taxonomy describes
- * usage context rather than functional tier.
+ * V2 ships 15 components across 3 categories (button, input,
+ * badge). Each component declares its `category` so the dynamic
+ * route can validate that `(category, component)` is a coherent
+ * pair and return 404 otherwise.
  *
- * `tier` is the price tier advertised in the catalogue: "free"
- * primitives ship in every open-source shadcn registry; "pro"
- * systems compose multiple primitives into non-trivial UX
- * (Dialog, Sheet, Command, NavigationMenu, Sidebar) and gate
- * the build-time value of the templates that include them.
+ * V2 ships every component as `free` tier — no premium gate.
+ * The tier field is kept on the type for forward-compatibility
+ * with V3 billing.
  *
- * V1 dummy. V2 reads from `packages/ui/src/components/*.tsx`
- * (auto-generation) instead of this hand-maintained list.
+ * V2 hand-maintained. V3 reads from `packages/ui/src/components/*.tsx`
+ * (auto-generation) instead of this list.
  */
 
 import type { CategoryId } from "./categories"
@@ -31,9 +27,11 @@ export type CatalogueComponent = {
   name: string
   /** Short one-line description. */
   description: string
-  /** Category the component belongs to. Same as `slug` in the new taxonomy. */
-  category: CategoryId
-  /** Price tier — "free" primitives or "pro" systems. */
+  /** Category the component belongs to. Multiple components per
+   *  category — the 5 components in `button` are all `category:
+   *  "button"`. */
+  category: ComponentCategoryId
+  /** Price tier. V2 ships every component as `free`. */
   tier: ComponentTier
 }
 
@@ -42,173 +40,123 @@ export const TIER_ORDER = ["all", "free", "pro"] as const
 export type TierFilter = (typeof TIER_ORDER)[number]
 
 export const CATALOGUE_COMPONENTS: ReadonlyArray<CatalogueComponent> = [
-  // One category per component — see /components/_components/categories.ts.
+  // ── button (5) ───────────────────────────────────────────────
   {
     slug: "button",
     name: "Button",
-    description: "Trigger actions and navigation.",
+    description:
+      "The base interactive primitive. Variants, sizes, and states.",
     category: "button",
     tier: "free",
   },
   {
-    slug: "badge",
-    name: "Badge",
-    description: "Status pill for inline labels.",
-    category: "badge",
+    slug: "button-group",
+    name: "ButtonGroup",
+    description:
+      "Group related buttons with shared borders and consistent spacing.",
+    category: "button",
     tier: "free",
   },
   {
-    slug: "separator",
-    name: "Separator",
-    description: "Visual divider between sections.",
-    category: "separator",
+    slug: "split-button",
+    name: "SplitButton",
+    description:
+      "Primary action with a chevron trigger for a secondary dropdown.",
+    category: "button",
     tier: "free",
   },
   {
-    slug: "skeleton",
-    name: "Skeleton",
-    description: "Loading placeholder block.",
-    category: "skeleton",
+    slug: "icon-button",
+    name: "IconButton",
+    description:
+      "Square icon-only button. Use for toolbar actions and dense nav.",
+    category: "button",
     tier: "free",
   },
   {
-    slug: "avatar",
-    name: "Avatar",
-    description: "User avatar with fallback initials.",
-    category: "avatar",
+    slug: "loading-button",
+    name: "LoadingButton",
+    description:
+      "Button with an inline spinner and a disabled state while the action is in flight.",
+    category: "button",
     tier: "free",
   },
+
+  // ── input (5) ────────────────────────────────────────────────
   {
     slug: "input",
     name: "Input",
-    description: "Single-line text input.",
+    description:
+      "Single-line text input. Controlled, accessible, keyboard-friendly.",
+    category: "input",
+    tier: "free",
+  },
+  {
+    slug: "input-search",
+    name: "SearchInput",
+    description:
+      "Search bar with debounce and a one-click clear button.",
+    category: "input",
+    tier: "free",
+  },
+  {
+    slug: "input-otp",
+    name: "OtpInput",
+    description:
+      "One-time-code input with auto-advance and paste support.",
+    category: "input",
+    tier: "free",
+  },
+  {
+    slug: "input-tags",
+    name: "TagsInput",
+    description:
+      "Tag input with chips. Add with Enter, remove with Backspace.",
     category: "input",
     tier: "free",
   },
   {
     slug: "textarea",
     name: "Textarea",
-    description: "Multi-line text input.",
-    category: "textarea",
+    description: "Multi-line text input. Auto-grows with content.",
+    category: "input",
+    tier: "free",
+  },
+
+  // ── badge (5) ────────────────────────────────────────────────
+  {
+    slug: "badge",
+    name: "Badge",
+    description: "Status pill for inline labels. Variants and colors.",
+    category: "badge",
     tier: "free",
   },
   {
-    slug: "checkbox",
-    name: "Checkbox",
-    description: "Boolean checkbox.",
-    category: "checkbox",
+    slug: "badge-dot",
+    name: "DotBadge",
+    description: "Badge with a leading status dot. Online, offline, sync states.",
+    category: "badge",
     tier: "free",
   },
   {
-    slug: "select",
-    name: "Select",
-    description: "Single-value native dropdown.",
-    category: "select",
+    slug: "badge-removable",
+    name: "RemovableBadge",
+    description: "Badge with a close button. Use for tag inputs and filters.",
+    category: "badge",
     tier: "free",
   },
   {
-    slug: "switch",
-    name: "Switch",
-    description: "Persistent on/off toggle.",
-    category: "switch",
+    slug: "badge-icon",
+    name: "IconBadge",
+    description: "Badge with a leading icon. Counters, status, notifications.",
+    category: "badge",
     tier: "free",
   },
   {
-    slug: "input-group",
-    name: "InputGroup",
-    description: "Input with addons or trailing buttons.",
-    category: "input-group",
-    tier: "free",
-  },
-  {
-    slug: "dialog",
-    name: "Dialog",
-    description: "Centered modal with focus trap.",
-    category: "dialog",
-    tier: "pro",
-  },
-  {
-    slug: "sheet",
-    name: "Sheet",
-    description: "Side-panel modal.",
-    category: "sheet",
-    tier: "pro",
-  },
-  {
-    slug: "popover",
-    name: "Popover",
-    description: "Anchored non-modal popup.",
-    category: "popover",
-    tier: "free",
-  },
-  {
-    slug: "tooltip",
-    name: "Tooltip",
-    description: "Hover hint with delay.",
-    category: "tooltip",
-    tier: "free",
-  },
-  {
-    slug: "dropdown-menu",
-    name: "DropdownMenu",
-    description: "Action menu anchored to a trigger.",
-    category: "dropdown-menu",
-    tier: "free",
-  },
-  {
-    slug: "command",
-    name: "Command",
-    description: "Command palette / search.",
-    category: "command",
-    tier: "pro",
-  },
-  {
-    slug: "navigation-menu",
-    name: "NavigationMenu",
-    description: "Site-wide navigation with dropdowns.",
-    category: "navigation-menu",
-    tier: "pro",
-  },
-  {
-    slug: "sidebar",
-    name: "Sidebar",
-    description: "Collapsible app shell sidebar.",
-    category: "sidebar",
-    tier: "pro",
-  },
-  {
-    slug: "breadcrumb",
-    name: "Breadcrumb",
-    description: "Nav trail of links.",
-    category: "breadcrumb",
-    tier: "free",
-  },
-  {
-    slug: "accordion",
-    name: "Accordion",
-    description: "Vertically stacked collapsible sections.",
-    category: "accordion",
-    tier: "free",
-  },
-  {
-    slug: "collapsible",
-    name: "Collapsible",
-    description: "Single show/hide disclosure.",
-    category: "collapsible",
-    tier: "free",
-  },
-  {
-    slug: "tabs",
-    name: "Tabs",
-    description: "Tabbed content panels.",
-    category: "tabs",
-    tier: "free",
-  },
-  {
-    slug: "sonner",
-    name: "Sonner",
-    description: "Toast notifications.",
-    category: "sonner",
+    slug: "badge-numeric",
+    name: "NumericBadge",
+    description: "Counter badge. Caps at 99 (renders as 99+).",
+    category: "badge",
     tier: "free",
   },
 ]
@@ -230,44 +178,12 @@ export function getAllComponentParams(): Array<{
   category: string
   component: string
 }> {
-  return CATALOGUE_COMPONENTS.map((component) => ({
-    category: component.category,
-    component: component.slug,
-  }))
-}
-
-/**
- * Recommend components related to the given slug. Used by the
- * "Related components" rail on each leaf page.
- *
- * Heuristic: with the new 1-category-per-component taxonomy,
- * every category has exactly one component, so same-category
- * siblings (excluding the current slug) is always empty. Fall
- * through to the first `limit` entries of `CATALOGUE_COMPONENTS`,
- * skipping the current slug. Stable, ordered — no surprise
- * reshuffles across re-renders.
- */
-export function getRelatedComponents(
-  slug: CatalogueComponent["slug"],
-  limit = 4,
-): ReadonlyArray<CatalogueComponent> {
-  const current = CATALOGUE_COMPONENTS.find((c) => c.slug === slug)
-  if (!current) return []
-
-  const sameCategory = CATALOGUE_COMPONENTS.filter(
-    (c) => c.category === current.category && c.slug !== slug,
-  )
-
-  if (sameCategory.length >= limit) {
-    return sameCategory.slice(0, limit)
+  // Group by category, then enumerate every (category, slug)
+  // pair — every category now has multiple components, so the
+  // return list is the full flat product.
+  const out: Array<{ category: string; component: string }> = []
+  for (const component of CATALOGUE_COMPONENTS) {
+    out.push({ category: component.category, component: component.slug })
   }
-
-  // Fallback: top up with the first entries of the catalogue that
-  // belong to other categories. Stable, alphabetical-by-source
-  // — no surprise reshuffles across re-renders.
-  const fillers = CATALOGUE_COMPONENTS.filter(
-    (c) => c.slug !== slug && c.category !== current.category,
-  )
-
-  return [...sameCategory, ...fillers].slice(0, limit)
+  return out
 }

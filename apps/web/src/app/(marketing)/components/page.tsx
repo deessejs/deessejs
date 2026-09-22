@@ -1,43 +1,48 @@
 import type { Metadata } from "next"
 
-import { CatalogueBrowser } from "@/app/(marketing)/components/_components/catalogue-browser"
-import {
-  COMPONENT_CATEGORIES,
-} from "@/app/(marketing)/components/_components/categories"
+import { ComponentBrowser } from "@/app/(marketing)/components/_components/component-browser"
+import { COMPONENT_CATEGORIES } from "@/app/(marketing)/components/_components/categories"
 import {
   CATALOGUE_COMPONENTS,
+  type CatalogueComponent,
 } from "@/app/(marketing)/components/_components/components-list"
 
 export const metadata: Metadata = {
   title: "Components",
   description:
-    "The production-ready primitives every DeesseJS template ships with. Browse the design system that powers the registry.",
+    "Production-ready primitives every DeesseJS template ships with. Browse by category, copy any card for the detail page.",
 }
 
 /**
  * Components catalogue index at `/components`.
  *
- * Two-column layout: nav sidebar on the left, category grid on
- * the right. The sidebar links to each category page; the grid
- * shows one card per category (one component per category in the
- * V1 1-category-per-component taxonomy).
+ * Renders a hero + a sidebar + a grid of 3 category cards
+ * (Buttons, Inputs, Badges). Each card links to the
+ * per-category page where the 5 components live.
  *
- * The `MarketingPage` wrapper (border, bg, diagonal stripes) and
- * the final 2-col CTA are provided by `(marketing)/components/layout.tsx`.
+ * The wrapper (border, bg, diagonal stripes) and the final 2-col
+ * CTA come from `(marketing)/components/layout.tsx`.
  *
- *   ┌─ Hero ──────────────────────────┐
- *   └─ Browser (sidebar + grid) ──────┘
- *
- * Calque of the hero pattern in `(content)/blog/page.tsx:26-55`:
- * eyebrow + responsive H1 + lead, all centred.
+ *   ┌─ Hero ─────────────────────────┐
+ *   └─ Browser (sidebar + grid) ─────┘
  */
 export default function ComponentsPage() {
-  // Build the category → component map (each category has exactly
-  // one component in the V1 taxonomy, but we map by category.id
-  // so the structure is forward-compatible with grouped taxonomy).
-  const categoryToComponent = Object.fromEntries(
-    CATALOGUE_COMPONENTS.map((component) => [component.category, component]),
-  ) as Record<(typeof COMPONENT_CATEGORIES)[number]["id"], (typeof CATALOGUE_COMPONENTS)[number]>
+  // First component of each category drives the index card preview.
+  const componentByCategory = Object.fromEntries(
+    COMPONENT_CATEGORIES.map((category) => [
+      category.id,
+      CATALOGUE_COMPONENTS.find((c) => c.category === category.id),
+    ]),
+  ) as Record<(typeof COMPONENT_CATEGORIES)[number]["id"], CatalogueComponent>
+
+  // Number of components per category — drives the sidebar count
+  // badge.
+  const counts = Object.fromEntries(
+    COMPONENT_CATEGORIES.map((category) => [
+      category.id,
+      CATALOGUE_COMPONENTS.filter((c) => c.category === category.id).length,
+    ]),
+  )
 
   return (
     <>
@@ -51,16 +56,17 @@ export default function ComponentsPage() {
             The design system, browsable.
           </h1>
           <p className="max-w-2xl text-copy-18 text-pretty leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
-            The primitives every DeesseJS template ships with.
-            Browse a category, click any card for the detail page.
+            Buttons, inputs, badges — the primitives every DeesseJS
+            template ships with. Click any card for the detail page.
           </p>
         </div>
       </header>
 
       {/* Two-column browser: sidebar + category grid. */}
-      <CatalogueBrowser
+      <ComponentBrowser
         categories={COMPONENT_CATEGORIES}
-        categoryToComponent={categoryToComponent}
+        componentByCategory={componentByCategory}
+        counts={counts}
       />
     </>
   )

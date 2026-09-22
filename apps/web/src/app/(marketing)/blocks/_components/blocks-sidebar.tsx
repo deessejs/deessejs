@@ -12,7 +12,7 @@ type Props = {
 }
 
 /**
- * Mirror of `CatalogueSidebar` in the blocks registry.
+ * Mirror of `ComponentListSidebar` in the components registry.
  * Pure navigation sidebar — `<Link>` per category.
  */
 export function BlocksSidebar({ categories, pinned, counts }: Props) {

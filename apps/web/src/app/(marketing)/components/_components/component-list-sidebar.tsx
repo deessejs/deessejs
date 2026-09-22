@@ -19,7 +19,7 @@ type Props = {
  * Sticky on desktop (`lg:sticky lg:top-20 lg:self-start`) so the
  * list stays visible while the grid on the right scrolls past.
  */
-export function CatalogueSidebar({ categories, pinned, counts }: Props) {
+export function ComponentListSidebar({ categories, pinned, counts }: Props) {
   return (
     <aside className="flex w-full flex-col gap-3 p-6 lg:sticky lg:top-20 lg:self-start">
       <h2 className="text-label-13 uppercase tracking-wider text-muted-foreground">

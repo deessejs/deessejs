@@ -14,7 +14,7 @@ type Props = {
  * active category, each containing an `<h3>` with the count and a
  * 3-column grid of `<BlocksCard>`.
  *
- * Same shape as `CatalogueGrid` in the components registry.
+ * Same shape as `ComponentGrid` in the components registry.
  * Renders nothing when `groups` is empty — empty state lives one
  * level up in `<BlocksBrowser>`.
  */

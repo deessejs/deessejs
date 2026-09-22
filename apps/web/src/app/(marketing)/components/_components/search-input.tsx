@@ -18,7 +18,7 @@ type Props = {
 /**
  * Text-search input shared by the components index and category
  * pages. Dumb component: state lives in the parent
- * (`CatalogueBrowser` or `CategorySearchableList`), this just
+ * (`ComponentBrowser` or `BlocksCategoryBrowser`), this just
  * renders the field and forwards value changes.
  *
  * Clear button (`X`) appears when the field is non-empty.

@@ -1,88 +1,72 @@
 /**
- * Lucide icon map for the 24 components in the catalogue.
+ * Lucide icon map for the 15 components in the catalogue.
  *
- * V1 hand-maintained mirror. V2 auto-generates from
- * `packages/ui/src/components/*.tsx` (icon inferred from the
- * component slug or a co-located JSDoc tag).
+ * Hand-maintained mirror of `components-list.ts`. V3 will
+ * auto-generate from a JSDoc `@icon` tag in the source.
  *
- * The trailing `keyof typeof COMPONENT_ICONS extends
- * CatalogueComponent["slug"]` check turns a missing slug into a
- * compile error rather than a silent `<Wrench />` fallback at
- * runtime.
+ * The trailing exhaustiveness check turns a missing slug into a
+ * compile error rather than a silent fallback at runtime.
  */
 
 import {
   Square,
-  Tag,
-  Minus,
-  Loader2,
-  UserCircle,
-  TextCursorInput,
-  AlignLeft,
-  Check,
-  ChevronDown as SelectIcon,
-  ToggleLeft,
   Group,
-  MessageSquare,
-  PanelRight,
-  Popcorn,
-  MessageCircle,
-  Menu,
-  Terminal,
-  Navigation,
-  PanelLeft,
-  ChevronRight,
-  ChevronsUpDown as AccordionIcon,
-  ChevronsUpDown as CollapsibleIcon,
-  NotebookTabs as TabsIcon,
-  Bell,
+  ChevronDown,
+  Square as SquareIcon,
+  Loader2,
+  TextCursorInput,
+  Search,
+  Hash,
+  Tag as TagIcon,
+  AlignLeft,
+  Tag,
+  CircleDot,
+  X,
+  Sparkles,
+  Circle,
   Wrench,
   type LucideIcon,
 } from "lucide-react"
 
 import type { CatalogueComponent } from "./components-list"
 
-export const COMPONENT_ICONS = {
+const COMPONENT_ICONS = {
+  // button
   button: Square,
-  badge: Tag,
-  separator: Minus,
-  skeleton: Loader2,
-  avatar: UserCircle,
+  "button-group": Group,
+  "split-button": ChevronDown,
+  "icon-button": SquareIcon,
+  "loading-button": Loader2,
+  // input
   input: TextCursorInput,
+  "input-search": Search,
+  "input-otp": Hash,
+  "input-tags": TagIcon,
   textarea: AlignLeft,
-  checkbox: Check,
-  select: SelectIcon,
-  switch: ToggleLeft,
-  "input-group": Group,
-  dialog: MessageSquare,
-  sheet: PanelRight,
-  popover: Popcorn,
-  tooltip: MessageCircle,
-  "dropdown-menu": Menu,
-  command: Terminal,
-  "navigation-menu": Navigation,
-  sidebar: PanelLeft,
-  breadcrumb: ChevronRight,
-  accordion: AccordionIcon,
-  collapsible: CollapsibleIcon,
-  tabs: TabsIcon,
-  sonner: Bell,
+  // badge
+  badge: Tag,
+  "badge-dot": CircleDot,
+  "badge-removable": X,
+  "badge-icon": Sparkles,
+  "badge-numeric": Circle,
 } as const satisfies Record<CatalogueComponent["slug"], LucideIcon>
 
 // Compile-time exhaustiveness: any new CatalogueComponent slug
-// without an icon entry becomes a TS error here. Cast through
-// `boolean` to sidestep a TS 6.x quirk where the chained
-// `extends` over a union of 24 string-literal keys resolves to
-// `never` even when both sides match. The runtime
-// `as Record<...>` access in `getComponentIcon` is the source of
-// truth.
-const _exhaustive = (null as unknown) as boolean
+// without an icon entry becomes a TS error here.
+type _Exhaustive = keyof typeof COMPONENT_ICONS extends CatalogueComponent["slug"]
+  ? CatalogueComponent["slug"] extends keyof typeof COMPONENT_ICONS
+    ? true
+    : never
+  : never
+const _exhaustive: _Exhaustive = true
 void _exhaustive
 
 export function getComponentIcon(slug: CatalogueComponent["slug"]): LucideIcon {
-  // See block-icon.ts for the rationale — cast through `unknown`
-  // keeps the function's `LucideIcon` return type and pairs the
-  // `?? Wrench` fallback with a non-null assertion.
+  // `as const satisfies Record<...>` gives the icon map an exact
+  // type with no index signature, so `COMPONENT_ICONS[slug]`
+  // widens the return to `LucideIcon | undefined`. Cast through
+  // `unknown` first to keep the `LucideIcon` return type and
+  // pair the `?? Wrench` fallback with a non-null assertion.
   const map = COMPONENT_ICONS as unknown as Record<string, LucideIcon>
   return map[slug] ?? Wrench
 }

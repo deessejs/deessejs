@@ -16,8 +16,8 @@ type Props = {
  * description. No live preview yet.
  *
  * Plain `<div>` rather than the shadcn `<Card>` primitive — see
- * the comment in `catalogue-card.tsx` for the rationale.
- * Same recipe as `CatalogueCard`.
+ * the comment in `component-card.tsx` for the rationale.
+ * Same recipe as `ComponentCard`.
  */
 // Module-level icon map. Looked up by slug and rendered via
 // `createElement` to satisfy the react-hooks/static-components

@@ -4,7 +4,7 @@ import { Wrench } from "lucide-react"
 
 import type { CatalogueComponent } from "./components-list"
 import { ComponentCardPreview } from "./component-card-preview"
-import { COMPONENT_ICONS } from "./component-icon"
+import { getComponentIcon } from "./component-icon"
 
 type Props = {
   component: CatalogueComponent
@@ -22,16 +22,15 @@ type Props = {
  * only visible boundary, exactly like `template-grid.tsx`.
  */
 // Module-level component map. Looked up by slug and rendered
-// via `createElement` to satisfy the react-hooks/static-components
-// rule (a `const Icon = ...` inside the render body would
-// trigger it). Cast widens the `as const satisfies Record<...>`
-// exact type to a plain indexable map.
-const ICON_BY_SLUG = COMPONENT_ICONS as unknown as Record<
-  string,
-  React.ComponentType<{ "aria-hidden"?: boolean; className?: string }>
->
+// Module-level icon helper. Cast widens the `as const satisfies
+// Record<...>` exact type to a plain indexable map at the
+// access site — `getComponentIcon` is a typed lookup over the
+// same map but returns `LucideIcon | undefined`.
+function getIcon(slug: string) {
+  return getComponentIcon(slug as never)
+}
 
-export function CatalogueCard({ component }: Props) {
+export function ComponentCard({ component }: Props) {
   const href = `/components/${component.category}/${component.slug}`
 
   return (
@@ -45,7 +44,7 @@ export function CatalogueCard({ component }: Props) {
           <ComponentCardPreview slug={component.slug} />
           <div className="flex flex-1 flex-col gap-3 p-6">
             <div className="flex items-start gap-3">
-              {createElement(ICON_BY_SLUG[component.slug] ?? Wrench, {
+              {createElement(getIcon(component.slug) ?? Wrench, {
                 "aria-hidden": true,
                 className: "text-muted-foreground mt-0.5 size-4 shrink-0",
               })}

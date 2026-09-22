@@ -5,13 +5,11 @@ import { useDeferredValue, useMemo, useState } from "react"
 import { BlocksCategoryNavSidebar } from "./blocks-category-nav-sidebar"
 import { BlocksGrid } from "./blocks-grid"
 import { SearchInput } from "@/app/(marketing)/components/_components/search-input"
-import { TierSelect } from "@/app/(marketing)/components/_components/tier-select"
 import type {
   BlockCategoryId,
   BlockCategory,
 } from "./block-categories"
 import type { CatalogueBlock } from "./blocks-list"
-import type { TierFilter } from "@/app/(marketing)/components/_components/components-list"
 
 type Props = {
   blocks: ReadonlyArray<CatalogueBlock>
@@ -21,8 +19,9 @@ type Props = {
 
 /**
  * Client orchestrator for `/blocks/[category]`. Mirror of
- * `CategoryBrowser` — search + tier filter in the right column,
- * pure nav sidebar on the left.
+ * `ComponentBrowser` — search in the right column, pure nav
+ * sidebar on the left. Tier filter removed (no `TierSelect`
+ * component to drive it — V2 ships every block as `free`).
  */
 export function BlocksCategoryBrowser({
   blocks,
@@ -32,7 +31,6 @@ export function BlocksCategoryBrowser({
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query)
   const normalizedQuery = deferredQuery.trim().toLowerCase()
-  const [tier, setTier] = useState<TierFilter>("all")
 
   const counts = useMemo(() => {
     const out = {} as Record<BlockCategoryId, number>
@@ -52,16 +50,13 @@ export function BlocksCategoryBrowser({
     if (!pinnedCategoryData) return []
     return blocks.filter((block) => {
       if (block.category !== pinnedCategory) return false
-      // Search
       if (normalizedQuery.length > 0) {
         const haystack = `${block.name} ${block.description}`.toLowerCase()
         if (!haystack.includes(normalizedQuery)) return false
       }
-      // Tier
-      if (tier !== "all" && block.tier !== tier) return false
       return true
     })
-  }, [blocks, pinnedCategory, pinnedCategoryData, normalizedQuery, tier])
+  }, [blocks, pinnedCategory, pinnedCategoryData, normalizedQuery])
 
   return (
     <section
@@ -74,7 +69,7 @@ export function BlocksCategoryBrowser({
         counts={counts}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Search + tier filter — sit inside the right column, above the grid */}
+        {/* Search — sits inside the right column, above the grid */}
         <div className="flex flex-col items-stretch gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
           <SearchInput
             value={query}
@@ -83,7 +78,6 @@ export function BlocksCategoryBrowser({
             aria-label={`Search blocks in ${pinnedCategoryData?.name ?? "this category"}`}
             className="flex-1 sm:max-w-sm"
           />
-          <TierSelect value={tier} onChange={setTier} />
         </div>
         {pinnedCategoryData && filtered.length > 0 ? (
           <BlocksGrid
@@ -104,7 +98,7 @@ export function BlocksCategoryBrowser({
               No blocks match.
             </p>
             <p className="text-copy-14 text-muted-foreground max-w-sm">
-              Try a different search term or tier.
+              Try a different search term.
             </p>
           </div>
         )}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { CategoryPage } from "@/app/(marketing)/components/_components/category-page"
+import { ComponentPage } from "@/app/(marketing)/components/_components/component-page"
 import { CATEGORY_ORDER, getCategory } from "@/app/(marketing)/components/_components/categories"
 
 /**
@@ -11,8 +11,7 @@ import { CATEGORY_ORDER, getCategory } from "@/app/(marketing)/components/_compo
  * params are pre-rendered at build time from `CATEGORY_ORDER`.
  *
  * Unknown slugs hit `notFound()` so a typo'd URL returns 404
- * instead of a placeholder page (the category only exists if it
- * is in the single source of truth).
+ * instead of a placeholder page.
  */
 
 type Params = { category: string }
@@ -46,5 +45,5 @@ export default async function CategoryRoute({
   const { category } = await params
   const match = getCategory(category)
   if (!match) notFound()
-  return <CategoryPage category={match} />
+  return <ComponentPage category={match} />
 }
