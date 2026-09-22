@@ -1,0 +1,452 @@
+---
+title: 'RFC-005: The DeesseJS Block Descriptor (deessejs-block.json)'
+description: 'Senior RFC for the deessejs-block.json item descriptor. The finer-grained overlay format inspired by shadcn registry-item.json: every installed unit (deessejs add blog, deessejs add hono, deessejs add auth) carries its own deessejs-block.json with a closed-list block:type discriminator and mandatory per-file files[].type tagging. Supersedes template:package / template:cli / template:mobile / template:desktop / template:agent / template:landing from RFC-002 (template:app stays for starters). Pairs with RFC-002 (templates), RFC-003 (add), RFC-004 (author tooling).'
+---
+
+# RFC-005: The DeesseJS Block Descriptor (`deessejs-block.json`)
+
+## Title, Author, Reviewers, Status
+
+**Title**: The DeesseJS Block Descriptor
+
+**Author**: DeesseJS team
+
+**Reviewers**: TBD (assigned on PR)
+
+**Status**: `Draft`. Open for review in the PR and the broader staging workflow. Two senior review rounds expected: one on the field shape (closed-list vs open), one on the per-file type tagging (mandatory vs optional).
+
+**Scope of this RFC**: a new descriptor format (`deessejs-block.json`) that replaces the six overlay-type discriminators of `deesse-template.json` (per RFC-002). The RFC proposes the format, the discriminators, the per-file type tagging, the routing semantics, and the deprecation path for the old `template:*` overlay types. The atomic decisions (which discriminators are valid, how per-file types route, how the Zod schema is split) are deferred to a follow-up ADR after this RFC is accepted.
+
+## Summary
+
+This RFC proposes a **second descriptor format** alongside `deesse-template.json`. The split is:
+
+- **`deesse-template.json`** (per [RFC-002](./RFC-002-deesse-template)) — the descriptor for a **starter template**: a full project clone (the only remaining `type: template:app` value). Co-located at the root of a `deessejs/<slug>` repo. Consumed by `deessejs init <slug>`.
+- **`deessejs-block.json`** (this RFC) — the descriptor for a **block**: a unit of functionality the user layers onto an existing project with `deessejs add <slug>`. Examples: `deessejs add blog` (a blog block: routes + a Prisma model + a server handler + a UI form), `deessejs add hono` (a Hono block: a server scaffold + a middleware stack + a deploy config), `deessejs add auth` (an auth block: a Better Auth setup + a session handler + a middleware). Co-located at the root of a `deessejs/<slug>` repo (same per-repo convention as templates). Consumed by `deessejs add <slug>`.
+
+**Why two formats instead of one.** shadcn solves the granularity question by using a single `registry-item.json` with a `type` field that takes 12 values (`registry:block`, `registry:component`, `registry:hook`, `registry:lib`, `registry:ui`, `registry:page`, `registry:file`, `registry:font`, `registry:theme`, etc.). The DeesseJS PR currently uses one format (`deesse-template.json`) with a `template:type` field that takes 7 values. The 7-value model conflates **what the item is** (a starter vs a block) with **what kind of block it is** (a feature vs a CLI scaffold vs a mobile scaffold).
+
+This RFC proposes **splitting the conflation**:
+
+1. The **starter vs block** distinction lives at the file-format level (two files, not one). A starter is `deesse-template.json`; a block is `deessejs-block.json`. The CLI distinguishes the two by the file name at the repo root — no `type` field needed for that split.
+2. The **kind-of-block** distinction lives inside `deessejs-block.json#type`, with a closed-list of 8 values: `block:page`, `block:component`, `block:hook`, `block:lib`, `block:ui`, `block:file`, `block:font`, `block:theme`. The 8 values mirror shadcn's per-file `type` taxonomy (per [ui.shadcn.com/docs/registry/registry-item-json](https://ui.shadcn.com/docs/registry/registry-item-json)) but applied at the **item level** instead of the **per-file level**.
+3. The **per-file type** lives at `files[].type`, with the same 8 closed-list values plus one extra (`block:source` for non-routable source files like config). **Per-file `type` is mandatory** — the CLI uses it to route the file to the right directory in the consumer project.
+
+The split buys three concrete things over the 7-value conflated model:
+
+- **Routing is explicit.** A `block:page` file with `target: "@routes/blog/[slug]/page.tsx"` is unambiguously a Next.js page; the CLI can lint, hot-reload, and typecheck it as such. A `block:lib` file with `target: "@lib/blog/server.ts"` is unambiguously a library module. The router does not have to guess from the target path.
+- **The block-level `type` and the per-file `type` are orthogonal.** A `deessejs add blog` block has `type: "block:feature"` (item-level: this block is a "feature", the closest analogue to shadcn's `registry:block`) and contains files with mixed per-file types: a `block:page` for the blog index page, a `block:lib` for the server-side blog API, a `block:component` for the blog post card, a `block:hook` for the use-blog hook. The 8 per-file types compose into features, the same way components compose into a page.
+- **The old `template:package` / `template:cli` / etc. discriminators are no longer load-bearing.** They become legacy metadata that the CLI maps to the new `block:*` discriminators. A migration path is included in this RFC (§"Deprecation path").
+
+The CLI surface does not change. `deessejs add <slug>` still works the same way (per [RFC-003](./RFC-003-deessejs-add)). The change is internal: the CLI now reads `deessejs-block.json` for overlay items instead of `deesse-template.json` with a `type: template:package` discriminator. The lockfile, the CDN, the wire contract evolution (`BlockV1` → `BlockV2`), the author tooling (`deessejs template <validate | new | explain>`) — all extend naturally to the new format with parallel changes documented inline.
+
+## Goals and Non-Goals
+
+### Goals
+
+1. **Split the conflated `template:type` discriminator into two concerns: starter-vs-block (file-format) and kind-of-block (closed-list field).** A starter is `deesse-template.json`; a block is `deessejs-block.json`. The kind of block is a closed-list field on `deessejs-block.json#type`.
+2. **Define a closed-list of 8 block kinds** that mirror shadcn's per-file taxonomy but at the item level: `block:page`, `block:component`, `block:hook`, `block:lib`, `block:ui`, `block:file`, `block:font`, `block:theme`. The discriminators are exhaustive for the foreseeable future; adding a new value is an ADR.
+3. **Mandate per-file `files[].type` tagging.** Every file in a block declares its own `type` from the same closed-list. The CLI uses the per-file type to route the file to the right directory in the consumer project (`@routes/`, `@components/`, `@lib/`, `@hooks/`, `@ui/`, etc.). Missing or unknown per-file types fail at parse time with `parse_error`.
+4. **Make routing composable.** A block is a unit of functionality; it can contain files of mixed per-file types. The CLI routes each file independently. A `deessejs add blog` block contains a `block:page` (the blog index), a `block:lib` (the server-side blog API), a `block:component` (the blog post card), and a `block:hook` (the use-blog hook). Each is routed to its canonical directory.
+5. **Be wire-additive to `deesse-template.json`.** The new format does not break the existing format. `deesse-template.json` stays as-is for starters; `deessejs-block.json` is a parallel format for blocks. The CDN serves both (`/r/<slug>.json` returns one or the other based on the file the repo ships).
+6. **Provide a clean deprecation path for the legacy `template:*` overlay discriminators.** The CLI accepts both formats during a transition window (per §"Deprecation path"). Old descriptors keep working; new descriptors use the new format. After the window, the old discriminators are removed.
+
+### Non-Goals
+
+1. **A new top-level CLI command.** The block descriptor does not introduce a new CLI surface. `deessejs add <slug>` still works the same way; the CLI internally reads `deessejs-block.json` for overlay items instead of `deesse-template.json` with `type: template:package`. The closed-list of top-level commands (per [ADR-010 §1](/decisions/ADR-010-cli-public-surface)) stays at four entries.
+2. **A new CLI surface for block authoring.** The author tooling (`deessejs template <validate | new | explain>`, per [RFC-004](./RFC-004-template-author-tooling)) extends to support `deessejs-block.json` with parallel validation rules (closed-list `type` field, mandatory per-file `files[].type`). The subcommand names stay the same; only the validation logic adds a new case.
+3. **A new wire shape (`BlockV2`).** This RFC does not propose a new wire shape. The wire shape stays `TemplateV2` for both formats — `deessejs-block.json` is parsed through a Zod schema that is structurally similar to `TemplateV2` but with a different `type` discriminator value set. The two formats are two Zod schemas in `@workspace/contracts/src/v1/`: `Template` (per RFC-002) and `Block` (per this RFC). Both schemas ship in the same wire envelope; the server discriminates at fetch time based on the URL path (`/r/<slug>.json` returns one or the other).
+4. **A new CDN path or host.** The block descriptor ships at the same `registry.deessejs.dev/r/<slug>.json` URL as templates. The CLI's `loadItemDescriptor(<slug>)` first tries `deessejs-block.json` (block) then falls back to `deesse-template.json` (starter). The single CDN serves both.
+5. **Per-block install semantics beyond what RFC-003 already specifies.** The 13-step install sequence, the 4×3 re-install matrix, the CI offline invariant, and the type-discriminator enforcement all apply to blocks the same way they apply to templates. No new install logic is needed.
+6. **A new namespace tier for blocks.** The `@deessejs/`, `@deessejs-community/`, `@<host>/` namespace tiers (per RFC-002 §"Community support") apply to blocks identically. No block-specific tier is introduced.
+7. **Replacing `deesse-template.json` entirely.** The starter format (`template:app`) stays. This RFC only supersedes the six overlay-type discriminators.
+
+## Motivation
+
+The 7-value `template:type` conflation in the current PR is a **real** load-bearing problem, not a theoretical one. The team has three concrete use cases that the conflated model handles poorly:
+
+### Use case 1: `deessejs add blog`
+
+A blog is a feature that touches multiple per-file categories: a Next.js page for the blog index, a server-side API for blog posts, a database migration, a UI component for the blog card. Today, the descriptor has `type: "template:package"` and the CLI routes each file by parsing its `target` path against `deesse.json#paths`. The routing is implicit and fragile: a typo in the target path silently installs the file at the wrong place.
+
+With the per-file `files[].type` tagging proposed in this RFC, the routing is explicit: the block declares `type: "block:feature"` at the item level, and each file declares its own `type` (`block:page`, `block:lib`, `block:component`, `block:hook`). The CLI validates the type at parse time; a typo or missing type fails fast.
+
+### Use case 2: `deessejs add hono`
+
+A Hono block is a server-side scaffold. The descriptor needs to declare:
+- A Hono app file (`block:lib`)
+- A middleware stack (`block:lib`)
+- A deploy config (`block:file`)
+- A README link to the Hono docs (`block:file`)
+
+The current model forces the author to encode all of this in `template:type = "template:cli"`, which conflates "this is a CLI scaffold" (which it isn't — it's a server scaffold) with "this is an overlay". The new model says: this is a `block:feature` (it's a feature) and the files are tagged individually.
+
+### Use case 3: Multi-block composition
+
+Today, `deessejs add` installs one item at a time. The roadmap mentions composing `auth + crud + billing + analytics + emails` into a single project. With the conflated model, each item is a `template:package` and the composition is implicit in the `templateDependencies` field. With the new model, each item is a `deessejs-block.json` with a clear `block:type`, and composition is a first-class concern (a future RFC will add multi-block composition; this RFC only sets the foundation).
+
+### What shadcn does right
+
+shadcn's `registry-item.json` solves the same problem with a single format and a 12-value `type` field plus per-file `type` tagging. The 12 values are exhaustive for the UI component domain (shadcn's domain). The DeesseJS domain is broader (full-stack features, not just UI components), so the 8 block kinds proposed here are wider in scope but tighter in domain semantics.
+
+The divergence from shadcn is **where the type lives**: shadcn's item-level `type` is the kind of component (block, hook, lib), and the per-file `type` is the same taxonomy applied to each file. The DeesseJS model inverts this: the item-level `type` is "this is a block (always)" plus the kind of feature (page, hook, lib, etc.), and the per-file `type` is the routing discriminator. The inversion is because DeesseJS overlays are heavier (a feature with N files, not a single component) and the routing decision is per-file.
+
+## Detailed Design
+
+The Detailed Design section **does not duplicate RFC-002**. It points at RFC-002 for the wire contract evolution, the registry host, the security guarantees, the alternatives considered, and the open questions. This section focuses on the **delta**: the new format, the discriminators, the per-file tagging, the routing, and the deprecation path.
+
+### File-format distinction: starter vs block
+
+The CLI distinguishes starters and blocks by the **file name** at the root of the template repo:
+
+```
+deessejs/saas-template/                  # a starter
+├── deesse-template.json                # <-- the only required descriptor
+
+deessejs/blog-block/                    # a block
+├── deessejs-block.json                 # <-- the only required descriptor
+├── files/
+│   ├── blog-index-page.tsx
+│   ├── blog-server-api.ts
+│   └── ...
+```
+
+A repo ships **one** descriptor, not both. The CLI's `loadItemDescriptor(<slug>)` probes `deessejs-block.json` first; if absent, it falls back to `deesse-template.json`. The wire shape returned by the CDN is whichever file the repo ships.
+
+**Why a file-name split instead of a discriminator.** A discriminator field (`template:type` or `block:type`) conflates two orthogonal axes: the file format (data shape, Zod schema) and the kind of item. The file-name split cleanly separates the two: a starter and a block have **different schemas** (`Template` vs `Block` in `@workspace/contracts`), so the wire shape is naturally different. A discriminator would force both formats to share a single schema with conditional fields, which is the failure mode RFC-002 §"Why not the alternatives" #2 warns against (the `deessejs build` pipeline generating descriptors from TSX sources).
+
+### Closed-list block kinds
+
+`deessejs-block.json#type` is a **closed list** of 8 values:
+
+| `type` value | What it is | CLI behaviour |
+|---|---|---|
+| `block:feature` | A multi-file feature overlay (the most common kind) | `deessejs add` accepts; the CLI routes each file independently by per-file `type` |
+| `block:page` | A page or file-based route (one or more route files) | `deessejs add` accepts; the CLI routes to `@routes/` by default |
+| `block:component` | A single-file UI component or small group of components | `deessejs add` accepts; the CLI routes to `@components/` |
+| `block:hook` | A React hook or hook group | `deessejs add` accepts; the CLI routes to `@hooks/` |
+| `block:lib` | A library module or utility (server-side or shared) | `deessejs add` accepts; the CLI routes to `@lib/` |
+| `block:ui` | A UI primitive (button, input, dialog) — the closest analogue to shadcn's `registry:ui` | `deessejs add` accepts; the CLI routes to `@components/ui/` or `@ui/` |
+| `block:file` | A miscellaneous file (config, README fragment, env example) | `deessejs add` accepts; the CLI writes at the literal `target` path (no routing) |
+| `block:font` / `block:theme` | A font or theme bundle | `deessejs add` accepts; the CLI routes to `@assets/fonts/` or to `globals.css` for themes |
+
+The discriminators are exhaustive for the foreseeable overlay surface. Adding a new value is an ADR (closed-list invariant).
+
+### Per-file `files[].type` (mandatory)
+
+Every file in `files[]` declares its own `type` from the same closed-list (plus one extra `block:source` for non-routable source files). Missing or unknown per-file `type` fails at parse time with `parse_error`.
+
+Example block (`deessejs add blog`):
+
+```jsonc
+{
+  "$schema": "https://registry.deessejs.dev/schema/block.json",
+  "name": "blog",
+  "type": "block:feature",
+  "version": "1.0.0",
+  "description": "A full blog feature: index page, server API, post card, use-blog hook.",
+  "source": {
+    "repo": "deessejs/blog-block",
+    "ref": "v1.0.0"
+  },
+  "files": [
+    {
+      "path": "files/blog-index-page.tsx",
+      "type": "block:page",
+      "target": "@routes/blog/page.tsx"
+    },
+    {
+      "path": "files/blog-server-api.ts",
+      "type": "block:lib",
+      "target": "@lib/blog/server.ts"
+    },
+    {
+      "path": "files/blog-post-card.tsx",
+      "type": "block:component",
+      "target": "@components/blog/post-card.tsx"
+    },
+    {
+      "path": "files/use-blog.ts",
+      "type": "block:hook",
+      "target": "@hooks/use-blog.ts"
+    },
+    {
+      "path": "files/blog.config.ts",
+      "type": "block:file",
+      "target": "@lib/blog/config.ts"
+    }
+  ]
+}
+```
+
+The CLI's routing rule: **per-file `type` overrides the item-level `type` for routing purposes**. A `block:feature` item can contain files of any per-file type; each file is routed by its own type. A `block:page` item can contain only `block:page` files (the item-level type constrains the per-file types); the CLI rejects mixed-type items at parse time.
+
+### Routing semantics
+
+The CLI resolves each file's `target` against two layers:
+
+1. **Per-file type routing (the canonical layer).** Each per-file `type` has a canonical default target root:
+   - `block:page` → `@routes/`
+   - `block:component` → `@components/`
+   - `block:hook` → `@hooks/`
+   - `block:lib` → `@lib/`
+   - `block:ui` → `@ui/`
+   - `block:file` → literal `target` (no routing, the author declares the path)
+   - `block:font` → `@assets/fonts/`
+   - `block:theme` → `globals.css` (or the CSS file declared in `deesse.json#paths.styles`)
+
+2. **Explicit `target` (the override layer).** An explicit `target` on a file overrides the canonical root. The CLI validates that the explicit target is consistent with the per-file type: a `block:page` file with `target: "@lib/foo/page.tsx"` is allowed (the author can route a page into a lib if they have a reason), but a warning is emitted at parse time.
+
+The two-layer routing gives the author **less to write** (the canonical root is automatic) and **more control** (the explicit target is the escape hatch). The CLI does not have to guess — every routing decision is in the descriptor.
+
+### Closed-list top-level shape
+
+`deessejs-block.json` carries the same closed-list top-level fields as `deesse-template.json` (per [RFC-002 §"Closed-list top-level shape"](./RFC-002-deesse-template)), with one renaming and three additions:
+
+| Field | Same as `deesse-template.json`? | Notes |
+|---|---|---|
+| `$schema` | Yes (different URL: `/schema/block.json`) | The JSON Schema for blocks |
+| `name` | Yes | Item slug |
+| `title` | Yes | Human-readable |
+| `description` | Yes | Long form |
+| `type` | Yes (different closed-list: 8 `block:*` values instead of 7 `template:*` values) | Block kind |
+| `version` | Yes | Semver |
+| `author` | Yes | |
+| `license` | Yes | |
+| `category` | Yes | |
+| `labels` | Yes | |
+| `source` | Yes | |
+| `requires` | Yes | Runtime requirements (node, package manager) |
+| `dependencies` | Yes | npm packages |
+| `devDependencies` | Yes | npm packages (dev only) |
+| `blockDependencies` | **Renamed** from `templateDependencies` | Other blocks this block depends on |
+| `docs` | Yes | User-facing docs URL or path |
+| `prompts` | Yes | Same DSL (per [RFC-002 §"The `when` DSL"](./RFC-002-deesse-template)) |
+| `hooks` | Yes | Same runner safety |
+| `files` | Yes (with mandatory `type` per file) | **This is the load-bearing delta** |
+| `consumes` | Yes | Same routing rules |
+| `cssVars` | Reserved, not used | Future shadcn-style theme integration |
+| `meta` | Reserved, not used | Future extension point |
+
+**Why rename `templateDependencies` → `blockDependencies`.** The field's semantics don't change (it lists other items this item depends on), but the name change reflects the new vocabulary. A block depends on other blocks; a starter depends on other starters. The deprecation path for the old name is included in §"Deprecation path".
+
+### Wire contract evolution
+
+`BlockV1` is the initial wire shape for blocks. `BlockV2 = BlockV1 & { new fields }` follows the same additive evolution pattern as `TemplateV2` (per [RFC-002 §"Wire contract evolution"](./RFC-002-deesse-template)). Both Zod schemas ship in `@workspace/contracts/src/v1/`: `Template` (per RFC-002) and `Block` (per this RFC).
+
+The server's `templates.list` oRPC procedure returns **both** shapes: each item is tagged with its format (`"format": "template" | "block"`) so the CLI can dispatch on the format. The CLI does not need to probe the file name on disk; the format tag in the wire envelope is the source of truth.
+
+The publication CI in `packages/api` generates both `/r/<slug>.json` files from the same `TEMPLATES` array. For a starter, the CI publishes `/r/<slug>.json` containing the `TemplateV2` shape. For a block, the CI publishes `/r/<slug>.json` containing the `BlockV1` shape. The wire envelope includes a top-level `format` field:
+
+```jsonc
+// For a starter
+{
+  "format": "template",
+  "template": { /* TemplateV2 fields */ }
+}
+
+// For a block
+{
+  "format": "block",
+  "block": { /* BlockV1 fields */ }
+}
+```
+
+The discriminator is at the wire level, not at the file level. The CDN serves the same URL shape (`/r/<slug>.json`) for both; the CLI discriminates on the `format` field at fetch time.
+
+### Relationship to `deesse-template.json`
+
+The two formats are **complementary**, not redundant:
+
+| Concern | `deesse-template.json` | `deessejs-block.json` |
+|---|---|---|
+| Used for | A full starter template (`deessejs init <slug>`) | An overlay block (`deessejs add <slug>`) |
+| Closed-list `type` discriminator values | 7 (`template:app`, `template:package`, `template:cli`, `template:mobile`, `template:desktop`, `template:agent`, `template:landing`) | 8 (`block:feature`, `block:page`, `block:component`, `block:hook`, `block:lib`, `block:ui`, `block:file`, `block:font`, `block:theme`) |
+| Per-file `files[].type` | Optional (defaults to filesystem-relative routing) | **Mandatory** |
+| Wire shape | `TemplateV2` | `BlockV1` |
+| Zod schema location | `@workspace/contracts/src/v1/template.ts` | `@workspace/contracts/src/v1/block.ts` |
+| Wire envelope `format` field | `template` | `block` |
+
+The CLI internally has two loading paths:
+
+```ts
+// Pseudo-code, not implementation
+async function loadItemDescriptor(slug: string): Promise<ItemDescriptor> {
+  const envelope = await fetch(`https://registry.deessejs.dev/r/${slug}.json`);
+  if (envelope.format === 'block') {
+    return BlockV1Schema.parse(envelope.block);
+  } else if (envelope.format === 'template') {
+    return TemplateV2Schema.parse(envelope.template);
+  } else {
+    throw new CliError('parse_error', `Unknown format: ${envelope.format}`);
+  }
+}
+```
+
+The two schemas share most fields; the divergence is in the closed-list `type` values and the mandatory per-file `type`. A shared base schema (`ItemDescriptorBase`) in `@workspace/contracts/src/v1/_shared.ts` captures the common fields; the two concrete schemas extend it.
+
+### Deprecation path for `template:package` and friends
+
+The six overlay-type discriminators (`template:package`, `template:cli`, `template:mobile`, `template:desktop`, `template:agent`, `template:landing`) are deprecated by this RFC. The deprecation is **non-breaking** at the wire level: old descriptors keep working, new descriptors use the new format. The migration has three phases:
+
+**Phase 1 — Acceptance window (during this RFC's review).** The CLI accepts both formats. Old descriptors using `template:package` / `template:cli` / etc. parse through `TemplateV2` and install through the same `deessejs add` path. New descriptors use `deessejs-block.json`. Both are installable.
+
+**Phase 2 — Mapping table (in a follow-up ADR).** A new ADR proposes the canonical mapping from legacy `template:*` discriminators to new `block:*` discriminators:
+
+| Legacy | New | Rationale |
+|---|---|---|
+| `template:package` | `block:feature` | The most common overlay type; renamed for clarity |
+| `template:cli` | `block:feature` (with `category: "cli"`) | A CLI scaffold is a feature, not a separate kind |
+| `template:mobile` | `block:feature` (with `category: "mobile"`) | Same |
+| `template:desktop` | `block:feature` (with `category: "desktop"`) | Same |
+| `template:agent` | `block:feature` (with `category: "agent"`) | Same |
+| `template:landing` | `block:page` | A landing page is a page or a group of pages |
+
+The mapping is applied at install time: the CLI converts the legacy discriminator to the new one internally and uses the new routing rules.
+
+**Phase 3 — Removal (in a follow-up major release).** The legacy discriminators are removed from the `TemplateV2` Zod schema. Old descriptors fail at parse time. The CLI emits a clear migration error pointing at the new format.
+
+The Phase 3 removal is **breaking** and requires a major version bump of `@deessejs/cli`. The migration window is one minor release cycle (the CLI accepts both formats for one minor version, then removes the legacy support).
+
+## Alternatives Considered
+
+Five patterns were considered and rejected during the development of this RFC.
+
+### Alternative 1: Keep the 7-value `template:type` conflation
+
+What it is: Status quo from RFC-002. `deesse-template.json` carries a 7-value `template:type` field that conflates starter-vs-block (only one value, `template:app`, is a starter) with kind-of-block (the other six values).
+
+Why we rejected it: The conflation forces the CLI to encode two orthogonal concerns in one field. A `template:cli` block is "this is a CLI scaffold" — but the CLI doesn't have separate install logic for CLI scaffolds vs feature overlays; the kind-of-block distinction is metadata-only. A blog block (`deessejs add blog`) and a CLI block (`deessejs add my-tool`) install through the same code path; the only difference is the kind label.
+
+Splitting the two concerns into two files (template vs block) lets each format evolve independently. The starter format stays simple (one type value, one CLI command). The block format can grow per-file type tagging without touching the starter format.
+
+### Alternative 2: Per-file type tagging on `deesse-template.json` (one format, two concerns)
+
+What it is: Keep `deesse-template.json` as the only format. Add mandatory per-file `files[].type` tagging to it. Use a single Zod schema for both starters and blocks; the `template:type` field discriminates at the item level.
+
+Why we rejected it: A single schema with conditional fields is the failure mode RFC-002 §"Why not the alternatives" #2 warns against. The two formats have meaningfully different validation rules (a starter's `files[]` does not need per-file type tagging; a block's `files[]` does). A single schema would either (a) make per-file type optional for both formats (losing the routing guarantee) or (b) require it for both (forcing starters to declare per-file types they don't need).
+
+### Alternative 3: Match shadcn's 12-value `type` field exactly
+
+What it is: Adopt shadcn's `registry-item.json` verbatim with the 12 `type` values (`registry:base`, `registry:block`, `registry:component`, etc.). Drop the file-format split.
+
+Why we rejected it: shadcn's taxonomy is built around the UI component domain. The DeesseJS domain is broader (full-stack features, not just UI components). Mirroring the 12 values would import shadcn-specific concepts (`registry:base` for entire design systems, `registry:style` for registry styles) that don't apply to DeesseJS, and would lose the file-format distinction between starters and overlays. The 8 `block:*` values proposed here are the shadcn taxonomy filtered and renamed for the DeesseJS domain.
+
+### Alternative 4: A new top-level CLI command `deessejs block`
+
+What it is: Add a fourth public CLI command `deessejs block` for installing blocks. Keep `deessejs add` for legacy overlay items.
+
+Why we rejected it: Adding a fifth top-level command violates the closed-list invariant of [ADR-010 §1](/decisions/ADR-010-cli-public-surface) (which is already at four entries after `add`). The CLI surface does not need to grow; the install semantics are the same (overlays are overlays, regardless of whether the descriptor is `template:package` or `block:feature`). The new format changes the descriptor's internal shape, not the CLI's user-facing surface.
+
+### Alternative 5: A new wire envelope shape (`ItemV2`) instead of two parallel shapes
+
+What it is: One wire shape that carries both formats via a discriminator field at the wire level. The Zod schema is a single schema with a `format: "template" | "block"` field.
+
+Why we rejected it for this RFC: This is the path the wire envelope takes (per §"Wire contract evolution"), but the **Zod schema is two schemas**. A single Zod schema with conditional fields would mirror the failure mode of Alternative 2. Two parallel Zod schemas (`Template` and `Block`) share a base but diverge on the per-file type requirement.
+
+## Risks and Cross-Cutting Concerns
+
+### Splitting a shipped schema is breaking at the Zod-schema level
+
+The two Zod schemas (`Template` and `Block`) are not interchangeable. A migration tool that converts a `TemplateV2` descriptor (with `type: template:package`) to a `BlockV1` descriptor (with `type: block:feature`) is required for any user who wants to upgrade. The migration tool lives at `apps/cli/src/migrate/template-to-block.ts` and is documented in the follow-up ADR (Phase 2 of the deprecation path).
+
+**Risk.** A user who hand-edits a `deesse-template.json` for an overlay item between this RFC's acceptance and the migration tool's availability will have a descriptor that works under `TemplateV2` but may not be migratable to `BlockV1` if the hand-edits diverged from the upstream. **Mitigation.** The CLI's `deessejs template validate` subcommand (per [RFC-004](./RFC-004-template-author-tooling)) gains a `--check-block-migratable` flag that asserts the descriptor is migratable. The check runs in CI on the template author's repo.
+
+### Per-file type routing is a new attack surface
+
+Mandatory per-file `files[].type` tagging means a malicious descriptor can route a `block:lib` file to `@routes/` (a directory the CLI routes pages to). The CLI does not block this today; the routing rule is "explicit `target` overrides the canonical root" (per §"Routing semantics").
+
+**Risk.** A registry item could ship a `block:lib` file that is actually a server-side handler for a route, routed to `@routes/` via explicit `target`. The user installs the file thinking it's a library module; the file ends up in the routes directory and is auto-executed as a route handler. **Mitigation.** The CLI emits a warning at install time when an explicit `target` is inconsistent with the per-file type (per §"Routing semantics"). The warning is informational, not blocking (per the npm pattern). A future ADR may make the warning blocking for `@<host>/` (third-party) items.
+
+### Closed-list per-file type values are forward-looking
+
+The 8 closed-list per-file type values are exhaustive for the foreseeable overlay surface. Adding a new value (e.g. `block:edge-function` for Vercel edge runtime files) is an ADR.
+
+**Risk.** A new framework (e.g. SolidStart, Astro server endpoints) requires a new per-file type that doesn't fit the current 8. **Mitigation.** The closed-list can be extended additively without breaking existing descriptors (old CLIs ignore new values). The extension is an ADR with one-paragraph rationale.
+
+## Open Questions
+
+Three design calls surface during the development of this RFC and remain open.
+
+### Q1: Is the per-file type really mandatory, or should it be optional with a default?
+
+**Current proposal: mandatory.** Every file declares its type; missing or unknown fails at parse time.
+
+**Alternative: optional with default `block:file`.** Files without a declared type are treated as `block:file` (literal `target`, no routing).
+
+**Resolution deferred to a follow-up ADR after this RFC is reviewed.** The trade-off: mandatory gives stronger routing guarantees (the author must think about where each file goes); optional gives lower author friction (the author can omit the type for trivial files). The Phase 1 acceptance window will surface which the team prefers.
+
+### Q2: Should `consumes[]` apply to per-file or item-level?
+
+**Current proposal: item-level** (per [RFC-002 §"The `consumes[]` consumption rules"](./RFC-002-deesse-template)). Prompts at the item level consume values into `deesse.json#paths`, `deesse.json#aliases`, `deesse.json#tokens`, etc.
+
+**Alternative: per-file.** Each file declares which `tokens:<KEY>` it consumes; the CLI aggregates across files before prompting.
+
+**Resolution deferred.** The item-level approach is simpler (one prompt set per block) and matches the per-install semantics in [RFC-003 §"Install sequence"](./RFC-003-deessejs-add). The per-file approach is more granular but multiplies the prompt count for multi-file blocks. Recommend item-level for V1; per-file is a future ADR if the team surfaces a need.
+
+### Q3: Should the `cssVars` and `meta` reserved fields be removed from `deessejs-block.json`?
+
+**Current proposal: reserved, not used.** Both fields appear in the closed-list top-level shape but are not validated; they're placeholders for future shadcn-style theme integration and extension points.
+
+**Alternative: remove them entirely.** A cleaner closed-list with only the fields the format actually uses.
+
+**Resolution deferred.** Keeping them as reserved fields is cheap (the Zod schema declares them as `z.unknown().optional()`) and future-proofs the format for shadcn-style themes. Removing them is a breaking change to add them back. Recommend keeping for V1.
+
+## Prior Art
+
+### shadcn registry-item.json
+
+The closest analogue to this design. shadcn's `registry-item.json` is the inspiration for `deessejs-block.json`. The divergences:
+
+- shadcn uses a single format with a 12-value `type` field; DeesseJS uses two formats (`template` for starters, `block` for overlays) with separate closed-list `type` values.
+- shadcn's item-level `type` is the kind of component (block, hook, lib); DeesseJS's item-level `type` is the kind of feature (feature, page, hook, lib, ui, file, font, theme). The two are aligned on the per-file level.
+- shadcn's per-file `type` is optional (default `registry:component`); DeesseJS's per-file `type` is mandatory. The mandatory choice is a routing guarantee (per §"Routing semantics").
+
+Sources: [shadcn `registry-item.json` schema](https://ui.shadcn.com/docs/registry/registry-item-json), [shadcn `components.json` schema](https://ui.shadcn.com/docs/components-json).
+
+### Nuxt modules
+
+Nuxt's `@nuxtjs/auth`, `@nuxtjs/tailwindcss`, etc. are npm packages that ship a `defineNuxtModule` function plus a directory of files (components, composables, pages). The npm package is the distribution; the directory layout is the integration. The DeesseJS block descriptor is the parallel: a `deessejs-block.json` at the repo root plus a `files/` directory. The npm package wrapper is optional (the CDN tarball is the primary distribution).
+
+Sources: [Nuxt modules documentation](https://nuxt.com/docs/4.x/guide/concepts/modules), [Nuxt modules list](https://nuxt.com/modules).
+
+### Rails engines
+
+Rails engines are mountable mini-applications: each engine has its own `config/routes.rb`, `app/controllers/`, `app/models/`, etc. The host app mounts the engine and the engine's routes become available. The DeesseJS block descriptor is the parallel: a `block:feature` item with files routed to multiple directories. The composition model (one engine can depend on another) maps to `blockDependencies`.
+
+Sources: [Rails engines guide](https://guides.rubyonrails.org/engines.html), [Rails engine mounting](https://api.rubyonrails.org/classes/Rails/Engine.html).
+
+## Future Possibilities
+
+- **Multi-block composition.** `deessejs add auth crud billing` installs three blocks in one call. Each block's `prompts[]` is collected eagerly (per [RFC-002 §"Dependency Resolution Guarantees"](./RFC-002-deesse-template)), the dependency graph is resolved, and the install sequence applies all blocks atomically. Conflict detection on prompt answers applies across blocks (e.g. two blocks asking about `database` get surfaced together).
+- **Block-level `--target=<app>` for monorepos.** Per-block install into a specific monorepo app (`deessejs add blog --target=apps/web`). Per [RFC-001 §"Monorepo walk-up discovery bounds"](./RFC-001-deesse-json), the walk-up discovery finds the nearest `deesse.json`; `--target=<app>` overrides this with an explicit path.
+- **Block variants.** A `block:feature` item can ship multiple variants (`react-query` vs `swr` for data fetching, `prisma` vs `drizzle` for the database). Variants are picked at install time via `prompts[]`. The wire shape adds a `variants` field (closed-list of variant names, each with a `files[]` overlay).
+- **Block provenance attestation.** Per-block Sigstore-signed provenance (per RFC-002 §"Provenance verification"). Each block's `deessejs-block.json` carries a `provenance` field tying the published descriptor to a specific GitHub commit.
+- **Block-level `--diff` flag.** Per-block read-only inspection (per [RFC-003 §"Implementation notes D"](./RFC-003-deessejs-add)). `deessejs add <slug> --diff` shows the per-file diff without writing.
+
+## Cross-references
+
+### Companion documents
+
+- **[RFC-002: The DeesseJS Template Item Descriptor](./RFC-002-deesse-template)** — the descriptor for starters. This RFC proposes a parallel format for blocks. The wire contract evolution, the registry CDN, the security guarantees, the alternatives considered, and the community support tier model all carry over from RFC-002.
+- **[RFC-003: The DeesseJS Overlay Command](./RFC-003-deessejs-add)** — the consumer-side RFC for `deessejs add`. The install sequence, the 4×3 re-install matrix, the CI offline invariant, and the type-discriminator enforcement all apply to blocks the same way they apply to templates.
+- **[RFC-004: The DeesseJS Author Tooling](./RFC-004-template-author-tooling)** — the author-side RFC for `deessejs template <validate | new | explain>`. The tooling extends to support `deessejs-block.json` with parallel validation rules (closed-list `type` field, mandatory per-file `files[].type`).
+
+### Companion ADRs (load-bearing rules)
+
+- **[ADR-010: CLI public surface](/decisions/ADR-010-cli-public-surface)** — the invariants that fence the CLI's published surface. The block descriptor does not introduce a new top-level command; the closed-list stays at four entries (`init`, `list`, `info`, `add`).
+
+### Plans and memory
+
+- **`.claude/agent-memory/tech-lead/project/templates-content-not-cli.md`** — the load-bearing governance rule. Adding a block entry (one line added to `packages/api/src/templates.ts`) is a content change, never a CLI change. The block descriptor follows the same rule.
+
+## Related
+
+- [RFCs index](/rfcs) — the convention for RFCs in this directory.
+- [ADRs index](/decisions) — the atomic decisions that implement this RFC.
+- [shadcn `registry-item.json`](https://ui.shadcn.com/docs/registry/registry-item-json) — the reference model for per-file type tagging.
+- [Nuxt modules documentation](https://nuxt.com/docs/4.x/guide/concepts/modules) — the reference model for directory-scoped overlays.
+- [Rails engines guide](https://guides.rubyonrails.org/engines.html) — the reference model for composable mini-applications.
+- [Spotify Engineering: When Should I Write an ADR](https://engineering.atspotify.com/2020/04/when-should-i-write-an-architecture-decision-record) — naming and structure.
+- [Rust RFC process](https://github.com/rust-lang/rfcs) — the numerical RFC prefix and the Prior Art section.
+- [IETF RFC Style Guide](https://www.rfc-editor.org/styleguide/) — the formal RFC conventions.
