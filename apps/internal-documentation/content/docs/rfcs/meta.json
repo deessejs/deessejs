@@ -3,6 +3,8 @@
   "pages": [
     "index",
     "RFC-001-deesse-json",
-    "RFC-002-deesse-template"
+    "RFC-002-deesse-template",
+    "RFC-003-deessejs-add",
+    "RFC-004-template-author-tooling"
   ]
 }
