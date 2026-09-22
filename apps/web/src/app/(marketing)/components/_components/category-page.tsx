@@ -1,5 +1,3 @@
-import { H1 } from "@workspace/ui/components/typography"
-
 import type { ComponentCategory } from "./categories"
 import { CategoryBrowser } from "./category-browser"
 import { CATALOGUE_COMPONENTS } from "./components-list"
@@ -25,9 +23,9 @@ export function CategoryPage({ category }: Props) {
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
             {category.name}
           </p>
-          <H1 className="text-heading-40 font-medium tracking-tight text-balance">
+          <h1 className="text-heading-40 font-medium tracking-tight text-balance">
             {category.name}.
-          </H1>
+          </h1>
           <p className="max-w-2xl text-copy-18 text-pretty leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
             {category.description}
           </p>
