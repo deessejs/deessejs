@@ -244,5 +244,9 @@ const SNIPPETS = {
 } as const satisfies Record<CatalogueBlock["slug"], string>
 
 export function getBlockSnippet(slug: CatalogueBlock["slug"]): string {
-  return SNIPPETS[slug]
+  // SNIPPETS is typed `as const satisfies Record<...>` which makes
+  // TypeScript treat the resulting type as an exact map with no
+  // index signature. The cast to `Record<string, string>` widens
+  // it so a `slug: BlockSlug` access is sound at runtime.
+  return (SNIPPETS as Record<string, string>)[slug]
 }
