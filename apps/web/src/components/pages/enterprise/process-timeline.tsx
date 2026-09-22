@@ -1,6 +1,9 @@
 import { cn } from "@workspace/ui/lib/utils"
 
-import { PROCESS_STEPS, type ProcessStep } from "../_lib/process-steps"
+import {
+  PROCESS_STEPS,
+  type ProcessStep,
+} from "@/lib/enterprise/process-steps"
 
 /**
  * Three-step horizontal timeline for the /enterprise page.
@@ -13,23 +16,32 @@ import { PROCESS_STEPS, type ProcessStep } from "../_lib/process-steps"
  *
  * No icons, no decorative lines. The mono step number does the
  * visual work, matching the changelog timeline aesthetic.
+ *
+ * Outer `border-b border-border` matches the divider on every other
+ * section of the page.
  */
 export function ProcessTimeline() {
   return (
-    <div className="flex flex-col gap-6 p-6 lg:p-10">
-      <header className="flex flex-col gap-2">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          How it works
-        </p>
-        <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
-          Three steps from inquiry to handover.
-        </h2>
-      </header>
-      <ol className="grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-0 md:divide-x md:divide-border">
-        {PROCESS_STEPS.map((step, index) => (
-          <ProcessStepCell key={step.step} step={step} isLast={index === PROCESS_STEPS.length - 1} />
-        ))}
-      </ol>
+    <div className="border-b border-border">
+      <div className="flex flex-col gap-6 p-6 lg:p-10">
+        <header className="flex flex-col gap-2">
+          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            How it works
+          </p>
+          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
+            Three steps from inquiry to handover.
+          </h2>
+        </header>
+        <ol className="grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-0 md:divide-x md:divide-border">
+          {PROCESS_STEPS.map((step, index) => (
+            <ProcessStepCell
+              key={step.step}
+              step={step}
+              isLast={index === PROCESS_STEPS.length - 1}
+            />
+          ))}
+        </ol>
+      </div>
     </div>
   )
 }

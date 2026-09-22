@@ -39,21 +39,17 @@ const enterpriseInquirySchema = z.object({
 type EnterpriseInquiryInput = z.infer<typeof enterpriseInquirySchema>
 
 /**
- * Enterprise inquiry form.
+ * Enterprise inquiry form (Client Component). Submits via `mailto:`
+ * to avoid standing up a backend route before the sales team has
+ * agreed on a workflow. When a real endpoint exists (e.g.
+ * `/api/enterprise`), swap the submit handler for a `fetch()` call
+ * without touching the field layout.
  *
- * Submits via `mailto:` to avoid standing up a backend route before
- * the sales team has agreed on a workflow. When a real endpoint
- * exists (e.g. `/api/enterprise`), swap the submit handler for a
- * `fetch()` call without touching the field layout.
- *
- * Validation runs client-side via Zod + react-hook-form. Errors
- * surface under each field via the shadcn `FieldError` primitive,
- * which auto-wires `role="alert"` and `aria-describedby` for screen
- * readers. The submit button stays disabled while the form is
- * submitting and the helper line announces the mailto handoff once
- * validation passes.
+ * The same component is intentionally duplicated on
+ * `components/pages/pricing/enterprise-inquiry-form.tsx` (see the
+ * file comment there for the rationale).
  */
-export function EnterpriseForm() {
+export function InquiryForm() {
   const {
     register,
     handleSubmit,
@@ -81,10 +77,6 @@ export function EnterpriseForm() {
 
     setSubmittedEmail(data.email)
 
-    // Trigger the mail client last so the React state update is
-    // committed before the navigation. window.location.href is the
-    // standard pattern — a temporary anchor click also works but
-    // requires appending the element to the DOM.
     window.location.href =
       `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
   }
