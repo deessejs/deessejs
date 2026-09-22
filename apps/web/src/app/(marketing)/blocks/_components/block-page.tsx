@@ -2,12 +2,10 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
 import type { CatalogueBlock } from "./blocks-list"
-import type { BlockCategory } from "./block-categories"
 import { BlockPreviewTabs } from "./block-preview-tabs"
 
 type Props = {
   block: CatalogueBlock
-  category: BlockCategory
 }
 
 /**
@@ -21,7 +19,7 @@ type Props = {
  * the visitor sees the CLI command as a top-level affordance
  * without switching tabs.
  */
-export function BlockPage({ block, category }: Props) {
+export function BlockPage({ block }: Props) {
   return (
     <>
       {/* Back to blocks */}

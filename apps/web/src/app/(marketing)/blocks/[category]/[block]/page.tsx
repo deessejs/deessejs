@@ -6,7 +6,6 @@ import {
   getAllBlockParams,
   getBlock,
 } from "@/app/(marketing)/blocks/_components/blocks-list"
-import { getBlockCategory } from "@/app/(marketing)/blocks/_components/block-categories"
 
 /**
  * /blocks/[category]/[block]
@@ -51,7 +50,5 @@ export default async function BlockRoute({
   // Either the slug is unknown, or the (category, block) pair
   // does not match the catalogue. Both → 404.
   if (!match || match.category !== category) notFound()
-  const categoryMatch = getBlockCategory(category)
-  if (!categoryMatch) notFound()
-  return <BlockPage block={match} category={categoryMatch} />
+  return <BlockPage block={match} />
 }
