@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { createElement } from "react"
+import { Wrench } from "lucide-react"
 
 import type { CatalogueBlock } from "./blocks-list"
 import { BlockCardPreview } from "./block-card-preview"
@@ -42,7 +43,7 @@ export function BlocksCard({ block }: Props) {
           <BlockCardPreview block={block} />
           <div className="flex flex-1 flex-col gap-3 p-6">
             <div className="flex items-start gap-3">
-              {createElement(ICON_BY_SLUG[block.slug], {
+              {createElement(ICON_BY_SLUG[block.slug] ?? Wrench, {
                 "aria-hidden": true,
                 className: "text-muted-foreground mt-0.5 size-4 shrink-0",
               })}

@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { createElement } from "react"
+import { Wrench } from "lucide-react"
 
 import type { CatalogueComponent } from "./components-list"
 import { ComponentCardPreview } from "./component-card-preview"
@@ -44,7 +45,7 @@ export function CatalogueCard({ component }: Props) {
           <ComponentCardPreview slug={component.slug} />
           <div className="flex flex-1 flex-col gap-3 p-6">
             <div className="flex items-start gap-3">
-              {createElement(ICON_BY_SLUG[component.slug], {
+              {createElement(ICON_BY_SLUG[component.slug] ?? Wrench, {
                 "aria-hidden": true,
                 className: "text-muted-foreground mt-0.5 size-4 shrink-0",
               })}
