@@ -11,7 +11,7 @@ Accepted (2026-09). Approved as part of the trio ([ADR-031](./ADR-031-deesse-jso
 
 ## Context
 
-The DeesseJS template registry is the project's identity surface. The user has framed it on the marketing site as a registry that spans "packages, CLI, SaaS multi-tenant, mobile, desktop, AI agent, landing page" (per the locked homepage copy) — not a single-template repo. Today the registry is a single hand-curated TypeScript array exported from `packages/api/src/templates.ts`:
+The DeesseJS template registry is the project's identity surface. The user has framed it on the marketing site as a registry that spans "packages, CLI, SaaS multi-tenant, mobile, desktop, AI agent, landing page" (per the locked homepage copy), not a single-template repo. Today the registry is a single hand-curated TypeScript array exported from `packages/api/src/templates.ts`:
 
 ```ts
 export const TEMPLATES: RegistryEntry[] = [
@@ -29,7 +29,7 @@ export const TEMPLATES: RegistryEntry[] = [
 ]
 ```
 
-The wire contract `TemplateV1` (`packages/contracts/src/v1/template.ts`) carries thirteen flat fields. The CLI (`apps/cli/src/commands/init.ts`) consumes the same endpoint and shells out to `git clone --depth 1 --branch <ref>` plus `pnpm/npm install`. There is no project-side config, no manifest reading, no token replacement, no post-processing — the CLI is a glorified clone wrapper. Templates as files live in external GitHub repos; the registry only carries metadata.
+The wire contract `TemplateV1` (`packages/contracts/src/v1/template.ts`) carries thirteen flat fields. The CLI (`apps/cli/src/commands/init.ts`) consumes the same endpoint and shells out to `git clone --depth 1 --branch <ref>` plus `pnpm/npm install`. There is no project-side config, no manifest reading, no token replacement, no post-processing, the CLI is a glorified clone wrapper. Templates as files live in external GitHub repos; the registry only carries metadata.
 
 One structural gap is the focus of this ADR (the other four are covered by [ADR-032](./ADR-032-deesse-template.json.mdx)):
 
@@ -47,7 +47,7 @@ The same problem bites the registry item's file placement. A `deesse-template.js
 
 ADR-001 names oRPC as the load-bearing core of the internal API and forbids parallel transports. ADR-005 names the API as consumer-agnostic. ADR-004 pins `packages/api`'s structure.
 
-The fix is not a CLI command. It is a **file at the project root** — the same pattern shadcn uses for `components.json`. The CLI reads the file; the file is created on first `init`; the user edits it by hand from then on. No new public command, no new flag, no new public error code.
+The fix is not a CLI command. It is a **file at the project root**, the same pattern shadcn uses for `components.json`. The CLI reads the file; the file is created on first `init`; the user edits it by hand from then on. No new public command, no new flag, no new public error code.
 
 ## Decision
 
@@ -94,7 +94,7 @@ The CLI writes a `deesse.json` at the user's project root the first time `deesse
 }
 ```
 
-> **Note (RFC-001 amendment)**: the original ADR-031 draft placed the `templates{}` block inside `deesse.json`. The senior review of [RFC-001](./rfcs/RFC-001-deesse-json) flagged that conflation creates merge conflicts in team environments (multiple engineers running `deessejs add` on different branches). The block now lives in **`deesse.lock`** (**committed to git**, mirroring `package.json` vs `package-lock.json` — the standard convention for tool lockfiles; an earlier draft proposed a gitignored `deesse.lock` which was an antipattern corrected in the RFC-001 round 2 revision). ADR-031 is amended: the `Project` schema in `@workspace/contracts/src/v1/project.ts` drops the `templates` field; a new `Lock` schema holds the same shape under `templates`. The CLI writes both files atomically.
+> **Note (RFC-001 amendment)**: the original ADR-031 draft placed the `templates{}` block inside `deesse.json`. The senior review of [RFC-001](./rfcs/RFC-001-deesse-json) flagged that conflation creates merge conflicts in team environments (multiple engineers running `deessejs add` on different branches). The block now lives in **`deesse.lock`** (**committed to git**, mirroring `package.json` vs `package-lock.json`, the standard convention for tool lockfiles; an earlier draft proposed a gitignored `deesse.lock` which was an antipattern corrected in the RFC-001 round 2 revision). ADR-031 is amended: the `Project` schema in `@workspace/contracts/src/v1/project.ts` drops the `templates` field; a new `Lock` schema holds the same shape under `templates`. The CLI writes both files atomically.
 
 The file is owned by the project, not by the registry. The CLI creates it on first install. The user may edit any field by hand from then on. The CLI does **not** mutate `deesse.json` on subsequent installs (the resolved state lives in `deesse.lock`, committed to git per the standard lockfile convention, mirrored on every developer and CI).
 
@@ -116,7 +116,7 @@ Unknown placeholders fall back to literal paths. `@utils/` is not supported (mir
 The remaining four blocks round out the file:
 
 - `database` (string): the runtime database choice (`"postgresql"`, `"mysql"`, `"sqlite"`, or `""` for templates that do not depend on a database). The CLI reads it at install time to skip prompts the user has already answered, and to choose the right adapter for any future `deessejs add crud` command (the SQL dialect, the Prisma datasource block shape, etc.). The value is what the template's default prompt resolved to (per [ADR-032](./ADR-032-deesse-template.json)'s `prompts[]`); a user may flip it after the fact by editing `deesse.json` and re-running `deessejs init --force` (or a future `deessejs doctor`).
-- `templates{}` — moved to **`deesse.lock`** (committed to git), per the senior review of [RFC-001](./rfcs/RFC-001-deesse-json). The original ADR-031 draft placed this block in `deesse.json`; the review flagged that conflation creates merge conflicts in team environments. The block now lives in a separate file. A new `Lock` schema in `@workspace/contracts/src/v1/lock.ts` holds the same shape. The CLI writes both files atomically (`fs.writeFile(tmp); fs.rename(tmp, real)`) so a crash mid-install cannot corrupt either file.
+- `templates{}`, moved to **`deesse.lock`** (committed to git), per the senior review of [RFC-001](./rfcs/RFC-001-deesse-json). The original ADR-031 draft placed this block in `deesse.json`; the review flagged that conflation creates merge conflicts in team environments. The block now lives in a separate file. A new `Lock` schema in `@workspace/contracts/src/v1/lock.ts` holds the same shape. The CLI writes both files atomically (`fs.writeFile(tmp); fs.rename(tmp, real)`) so a crash mid-install cannot corrupt either file.
 - `tokens{}` (object): the map [ADR-032](./ADR-032-deesse-template.json)'s `deesse-template.json` interpolates into files marked `transform: "interpolate"`. The CLI writes the interpolated file into the user's tree, never back into the registry. Tokens that the user omits fall back to a sentinel (the literal string the template ships with).
 - `registries{}` (object): the namespace map. `@deessejs/saas-starter` resolves to `https://registry.deessejs.dev/r/saas-starter.json`. A user who wants to install from a community registry adds an entry like `"@community": "https://raw.githubusercontent.com/deessejs-community/{name}/main/deesse-template.json"`. shadcn's URL template with `{name}` placeholder is the canonical pattern. The `@deessejs` namespace is the default; the entry is written by the CLI on first install and the user may override the host for staging or local development.
 

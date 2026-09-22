@@ -7,7 +7,7 @@ description: 'Closes the "blog as sub-template" question raised during review of
 
 ## Status
 
-Accepted (2026-09). Approved on the branch `docs/adr-035-feature-not-subtree`, to be merged into [PR #137](https://github.com/deessejs/deessejs/pull/137). The decision is a **scope clarification** for [ADR-033](./ADR-033-deessejs-add.mdx), not a behaviour change — `add` already handles the case the user asked about.
+Accepted (2026-09). Approved on the branch `docs/adr-035-feature-not-subtree`, to be merged into [PR #137](https://github.com/deessejs/deessejs/pull/137). The decision is a **scope clarification** for [ADR-033](./ADR-033-deessejs-add.mdx), not a behaviour change, `add` already handles the case the user asked about.
 
 ## Context
 
@@ -21,7 +21,7 @@ The example is concrete and worth analysing. A blog is not a shadcn-style compon
 
 [ADR-032](./ADR-032-deesse-template.json.mdx) defines seven `template:type` discriminators: `template:app`, `template:package`, `template:cli`, `template:mobile`, `template:desktop`, `template:agent`, `template:landing`. None of these is "blog" or "dashboard" or "landing page as a feature." A blog could fit `template:package` (overlay files onto an existing project), or `template:landing` (a full app clone), but neither is a perfect fit.
 
-[ADR-033](./ADR-033-deessejs-add.mdx) restricts `add` to the six non-`template:app` types. A blog-as-overlay fits `template:package`; a blog-as-full-clone fits `template:landing`. Both are technically addressable by today's CLI surface — `add <blog-slug>` for the overlay case, `init <blog-slug>` for the full-clone case.
+[ADR-033](./ADR-033-deessejs-add.mdx) restricts `add` to the six non-`template:app` types. A blog-as-overlay fits `template:package`; a blog-as-full-clone fits `template:landing`. Both are technically addressable by today's CLI surface, `add <blog-slug>` for the overlay case, `init <blog-slug>` for the full-clone case.
 
 ### The question this ADR closes
 
@@ -33,7 +33,7 @@ Is "blog" a different kind of installable than "auth" or "crud"? Should the CLI 
 
 A blog is a feature. So is a dashboard. So is a landing page. So is auth, crud, billing, comments, search, analytics, notifications. They are all the same kind of installable: a feature overlay that `deessejs add` handles via `deesse-template.json` with the existing `template:package` (or any of the other non-`template:app`) type discriminator.
 
-**The CLI does not introduce a `deessejs embed`, `deessejs install-feature`, `deessejs blog`, or any other verb for this case.** The user-facing surface stays at `init`, `list`, `info`, `add`, `auth`, `template` (per [ADR-010 §1](./ADR-010-cli-public-surface.mdx) as amended by [ADR-033](./ADR-033-deessejs-add.mdx) and [ADR-034](./ADR-034-template-namespace.mdx)). A blog is `deessejs add blog` or `deessejs add https://github.com/user/my-deesse-blog` — same command as auth.
+**The CLI does not introduce a `deessejs embed`, `deessejs install-feature`, `deessejs blog`, or any other verb for this case.** The user-facing surface stays at `init`, `list`, `info`, `add`, `auth`, `template` (per [ADR-010 §1](./ADR-010-cli-public-surface.mdx) as amended by [ADR-033](./ADR-033-deessejs-add.mdx) and [ADR-034](./ADR-034-template-namespace.mdx)). A blog is `deessejs add blog` or `deessejs add https://github.com/user/my-deesse-blog`, same command as auth.
 
 **The descriptor does not introduce a new file format.** `deesse-template.json` is the single descriptor for any non-`template:app` item. A blog has one. Auth has one. The shape is the same; only the contents differ (a blog item has more `files[]`, more `prompts[]`, possibly different `consumes[]` targets, possibly a `with_themes: boolean` toggle for light/dark variants). The closed-list `template:type` enum is not extended.
 
@@ -45,7 +45,7 @@ A blog is a feature. So is a dashboard. So is a landing page. So is auth, crud, 
 - A user types `deessejs add https://github.com/user/my-deesse-blog` and gets the same thing. The URL fetches the descriptor (per [ADR-032 Decision #4](./ADR-032-deesse-template.json.mdx), plain `fetch` against the URL or the registry CDN), validates it through `TemplateV2`, and overlays the files into the project. The CLI does not care whether the URL is github.com or any other host.
 - A blog item has more `files[]` entries than auth. The closed-list placeholders (`@components/`, `@lib/`, `@routes/`, etc., per [ADR-031 Decision #2](./ADR-031-deesse-json.mdx)) resolve against the user's `deesse.json#paths` block. The user picks where the blog's routes, components, and DB migrations land.
 - A blog item may use `templateDependencies` to compose on top of `crud` (for the post list endpoint) and `auth` (for the author model). The composition is what [ADR-032](./ADR-032-deesse-template.json.mdx) Decision #2's `templateDependencies` already supports.
-- A blog item may use `prompts[]` (per [ADR-032 Decision #2b](./ADR-032-deesse-template.json.mdx)) to ask the user which theme they want, which post types they want to support, whether they want Markdown or MDX, whether they want RSS feeds. These are not different from auth's prompts — they're feature prompts.
+- A blog item may use `prompts[]` (per [ADR-032 Decision #2b](./ADR-032-deesse-template.json.mdx)) to ask the user which theme they want, which post types they want to support, whether they want Markdown or MDX, whether they want RSS feeds. These are not different from auth's prompts, they're feature prompts.
 - The user can write a blog item without any DeesseJS-specific knowledge. The descriptor is JSON; the conventions for "where do routes go" are the same as for auth.
 
 ### What this rule forbids
@@ -60,7 +60,7 @@ A blog is a feature. So is a dashboard. So is a landing page. So is auth, crud, 
 
 Three patterns were considered and rejected.
 
-1. **A new `deessejs embed <slug-or-url>` command for "sub-templates."** Rejected because it forces the user to learn a third verb (`init`, `add`, `embed`) when the conceptual distinction between "feature overlay" and "sub-template" is artificial at this level. A blog and auth are both "things you layer onto an existing project." The difference is volume of files, not kind of install. The user picked the rejection explicitly: *"It's a complete feature, which may need to add routes, schemas, pages, components, etc."* — i.e., a blog is a feature, just bigger than auth.
+1. **A new `deessejs embed <slug-or-url>` command for "sub-templates."** Rejected because it forces the user to learn a third verb (`init`, `add`, `embed`) when the conceptual distinction between "feature overlay" and "sub-template" is artificial at this level. A blog and auth are both "things you layer onto an existing project." The difference is volume of files, not kind of install. The user picked the rejection explicitly: *"It's a complete feature, which may need to add routes, schemas, pages, components, etc."*, i.e., a blog is a feature, just bigger than auth.
 2. **A new `template:type` value (`template:blog`, `template:subtree`, `template:app-feature`) that branches the install logic.** Rejected because the install logic does not need to branch. `template:package` and the six other non-`template:app` types already describe the install behaviour: read the file overlay, write at the resolved `target`, run the dependencies and hooks. A "blog" type would not change that behaviour. Adding a new type without a behaviour change is type pollution.
 3. **An additive `scope: "subtree"` field on `TemplateV2` now.** Rejected because no concrete use case requires it today. A blog can use `template:package` with `files[].target = "@lib/blog/server.ts"`, `target = "@routes/blog/[slug]/page.tsx"`, etc. The author picks paths that match the user's `deesse.json#paths` block. If a real need surfaces where a blog needs to claim a sub-tree (`apps/web/src/blog/`) opaque to other features, ADR-035 can be superseded by ADR-036 or later with the additive field. The door is open; the door is not built.
 
@@ -75,7 +75,7 @@ Three patterns were considered and rejected.
 ## Consequences
 
 - **No code changes.** This ADR closes a question; it does not amend any existing implementation. The PR #137 trio (ADR-031, ADR-032, ADR-033, ADR-034) ships as-is. The user can write a `deesse-template.json` for a blog today and `deessejs add <slug>` will work.
-- **A documentation note is added to [ADR-033](./ADR-033-deessejs-add.mdx).** The note (one paragraph, in the "What this rule allows" section) clarifies that a blog, dashboard, or landing page installed as a feature overlay is the same installable as auth or crud — `template:package` type, same CLI flow, same descriptor shape. The note is informational; it does not amend the ADR's decisions.
+- **A documentation note is added to [ADR-033](./ADR-033-deessejs-add.mdx).** The note (one paragraph, in the "What this rule allows" section) clarifies that a blog, dashboard, or landing page installed as a feature overlay is the same installable as auth or crud, `template:package` type, same CLI flow, same descriptor shape. The note is informational; it does not amend the ADR's decisions.
 - **Future scope:subtree field is allowed.** If a real use case surfaces where a feature needs to claim a sub-tree opaque to other features, an additive `scope?: "overlay" | "subtree"` field on `TemplateV2` is permitted by this ADR. The default is `overlay` (today's behaviour). A follow-up ADR would document the semantics.
 - **The shadcn-vs-sub-template distinction is documented in the knowledge base.** A short note at `apps/internal-documentation/content/docs/knowledge-base/features-vs-subtrees.mdx` (to be written) explains the conceptual choice with two examples (auth = small feature, blog = large feature) so future authors do not re-litigate the question.
 

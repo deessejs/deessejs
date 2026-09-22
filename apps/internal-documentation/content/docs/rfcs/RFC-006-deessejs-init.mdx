@@ -15,25 +15,25 @@ description: 'Senior RFC for the deessejs init starter command. The first CLI co
 
 **Status**: `Draft`. Open for review in the PR and the broader staging workflow. Two senior review rounds expected: one on the install sequence (prompts before vs after clone), one on the re-init semantics (re-running init on a populated directory).
 
-**Scope of this RFC**: the `deessejs init` command — its surface area, its install sequence, its first-write semantics for `deesse.json` and `deesse.lock`, its relationship to `deessejs add` (RFC-003), its relationship to `deessejs list` and `deessejs info` (read-only registry queries), and the atomic decisions deferred to a follow-up ADR. The companion load-bearing spec lives at the existing `[ADR-010 §1](/decisions/ADR-010-cli-public-surface)` (CLI public surface) and `[ADR-031](/decisions/ADR-031-deesse-json)` (the `deesse.json` file init writes).
+**Scope of this RFC**: the `deessejs init` command, its surface area, its install sequence, its first-write semantics for `deesse.json` and `deesse.lock`, its relationship to `deessejs add` (RFC-003), its relationship to `deessejs list` and `deessejs info` (read-only registry queries), and the atomic decisions deferred to a follow-up ADR. The companion load-bearing spec lives at the existing `[ADR-010 §1](/decisions/ADR-010-cli-public-surface)` (CLI public surface) and `[ADR-031](/decisions/ADR-031-deesse-json)` (the `deesse.json` file init writes).
 
 ## Summary
 
-This RFC proposes **the first command a user runs** when they adopt the DeesseJS CLI: `deessejs init <slug>`. The command is **a Rails-style scaffold for full apps**, distinct from `deessejs add` (a Rails-style overlay for features, per [RFC-003](./RFC-003-deessejs-add)). It takes a single argument — a registry item slug — and produces a fully working project in the user's chosen directory.
+This RFC proposes **the first command a user runs** when they adopt the DeesseJS CLI: `deessejs init <slug>`. The command is **a Rails-style scaffold for full apps**, distinct from `deessejs add` (a Rails-style overlay for features, per [RFC-003](./RFC-003-deessejs-add)). It takes a single argument, a registry item slug, and produces a fully working project in the user's chosen directory.
 
 The contract is straightforward in shape but load-bearing in execution:
 
-1. **Resolve the registry item address.** `<slug>` is a registry item address — a bare slug (`saas-starter`), a namespaced slug (`@deessejs/saas-starter`, `@community/auth-addon`), a full URL (`https://example.com/r/saas-starter.json`), or a local file path (`./saas-starter.json`). The same resolver as `add` (per [RFC-003 §"Surface area"](./RFC-003-deessejs-add)), with the namespace map read from `deesse.json#registries` if it exists, or from the default `@deessejs` registry if it does not (this is the only command where `deesse.json` is optional — see §"First-write semantics").
+1. **Resolve the registry item address.** `<slug>` is a registry item address, a bare slug (`saas-starter`), a namespaced slug (`@deessejs/saas-starter`, `@community/auth-addon`), a full URL (`https://example.com/r/saas-starter.json`), or a local file path (`./saas-starter.json`). The same resolver as `add` (per [RFC-003 §"Surface area"](./RFC-003-deessejs-add)), with the namespace map read from `deesse.json#registries` if it exists, or from the default `@deessejs` registry if it does not (this is the only command where `deesse.json` is optional, see §"First-write semantics").
 2. **Enforce the `template:app` discriminator.** Refuse any non-`template:app` type with `parse_error`. This is the **only** consumer of `template:app`; the discriminator exists for this command. `template:package` and the other overlay types belong to `deessejs add` (or, in the future, to `deessejs-block` per [RFC-005](./RFC-005-deessejs-block)).
 3. **Run prompts eagerly.** Aggregate `prompts[]` across the resolved dependency graph **before any disk write**. Same rule as `add` (per [RFC-003 §"Install sequence"](./RFC-003-deessejs-add) and [RFC-002 §"Upfront prompt aggregation"](./RFC-002-deesse-template)). The user answers each prompt once; the answers drive `tokens{}`, `database`, and `paths{}` defaults.
 4. **Acquire the source tree.** Tarball-first from `registry.deessejs.dev/t/<slug>-<version>.tar.gz` (per [RFC-002 §"CDN tarball hosting"](./RFC-002-deesse-template)), with `git clone --depth 1 --branch <ref>` as fallback. The CLI does **not** depend on `codeload.github.com` for the official registry.
-5. **Apply `files[]` transformations** (rename, interpolate, remove, merge — per [RFC-002 §"Transform verb scope"](./RFC-002-deesse-template)). Staged in memory, atomic write, rollback on failure. Path containment (anti-Zip Slip) and symlink rejection enforced at every entry (per [RFC-002 §"Archive Extraction Guarantees"](./RFC-002-deesse-template)).
+5. **Apply `files[]` transformations** (rename, interpolate, remove, merge, per [RFC-002 §"Transform verb scope"](./RFC-002-deesse-template)). Staged in memory, atomic write, rollback on failure. Path containment (anti-Zip Slip) and symlink rejection enforced at every entry (per [RFC-002 §"Archive Extraction Guarantees"](./RFC-002-deesse-template)).
 6. **Write `deesse.json` and `deesse.lock`.** The first-write semantics is the **load-bearing difference** between `init` and `add`: `init` writes `deesse.json` from scratch (with the block defaults from [ADR-031 §"Decision 1"](/decisions/ADR-031-deesse-json)); `add` never writes `deesse.json` (it only updates `deesse.lock#templates["<feature>"]`). The `deesse.lock` file is written on every install (init or add) with the same atomic-write pattern.
 7. **Install npm dependencies.** Run `{pm} install` (or `{pm} add <dependencies>` for the rare case where the user does not yet have `node_modules`).
 8. **Run `hooks.postInit` and `hooks.postInstall`.** Whitelisted, `shell: false`, tokenised argv (per [RFC-002 §"Hook runner safety"](./RFC-002-deesse-template)).
 9. **Hand off.** Print a one-line summary to stdout (project path, item installed, version, file count, hook count); emit JSON output if `--json` is passed.
 
-The command is **non-interactive by default** (per [ADR-010 §1](/decisions/ADR-010-cli-public-surface) — adding prompts is breaking). Prompts use the descriptor's documented `default`; `--yes` short-circuits to defaults for any prompt that has one.
+The command is **non-interactive by default** (per [ADR-010 §1](/decisions/ADR-010-cli-public-surface), adding prompts is breaking). Prompts use the descriptor's documented `default`; `--yes` short-circuits to defaults for any prompt that has one.
 
 ## Goals and Non-Goals
 
@@ -60,7 +60,7 @@ The command is **non-interactive by default** (per [ADR-010 §1](/decisions/ADR-
 
 The DeesseJS registry's identity surface (per the locked homepage copy and the `project-templates-roadmap` memory) is a multi-stack, multi-target surface spanning "packages, CLI, SaaS multi-tenant, mobile, desktop, AI agent, landing page". A user landing on the marketing site is converted by **the first 60 seconds**: the time from "I want to try this" to "I have a working project on my machine". That window is the load-bearing conversion moment for the product.
 
-Today, the team has no `init` command. The closest analogue is `git clone https://github.com/deessejs/saas-template && cd saas-template && pnpm install` — a four-step process that requires the user to know the right repo URL, the right package manager, and the right install command. **Three of those four steps are wrong on a typical first attempt**: the user clones the wrong repo, picks the wrong package manager, or runs the wrong install command. The first-run experience is the dominant source of pre-conversion churn.
+Today, the team has no `init` command. The closest analogue is `git clone https://github.com/deessejs/saas-template && cd saas-template && pnpm install`, a four-step process that requires the user to know the right repo URL, the right package manager, and the right install command. **Three of those four steps are wrong on a typical first attempt**: the user clones the wrong repo, picks the wrong package manager, or runs the wrong install command. The first-run experience is the dominant source of pre-conversion churn.
 
 `deessejs init` collapses the four steps into one:
 
@@ -70,7 +70,7 @@ pnpm dlx @deessejs/cli init saas-starter
 
 The command resolves the registry item address, clones the template, applies the user's prompt answers to the right files, installs the dependencies with the right package manager, and hands the user a working project. The first-run experience is one command and one minute.
 
-The second motivation is **the first-write moment for `deesse.json`**. Every consumer-side workflow in the registry (every `add`, every `sync`, every future `outdated`) reads `deesse.json` (per [RFC-001](./RFC-001-deesse-json)). The file has to exist somewhere in the user's project tree. The first-write moment — the moment when `deesse.json` lands at the project root — happens at `init`. There is no other command that creates the file. **This makes `init` the load-bearing first-write command for the entire consumer-side surface.**
+The second motivation is **the first-write moment for `deesse.json`**. Every consumer-side workflow in the registry (every `add`, every `sync`, every future `outdated`) reads `deesse.json` (per [RFC-001](./RFC-001-deesse-json)). The file has to exist somewhere in the user's project tree. The first-write moment, the moment when `deesse.json` lands at the project root, happens at `init`. There is no other command that creates the file. **This makes `init` the load-bearing first-write command for the entire consumer-side surface.**
 
 The third motivation is **the `template:app` discriminator's reason to exist**. The seven-value `template:type` discriminator (per [RFC-002 §"The `template:type` discriminator"](./RFC-002-deesse-template)) has one value that means "starter" (`template:app`) and six that mean "overlay" (per the deprecation path in [RFC-005 §"Deprecation path"](./RFC-005-deessejs-block)). The starter value exists for `init`. Without `init`, the starter value would be dead weight; with it, the partition between `init` (starters) and `add` (overlays) is load-bearing.
 
@@ -116,7 +116,7 @@ deessejs init <slug> [options]
                        Default: false
 ```
 
-The flags are documented exhaustively in this RFC's §"Implementation notes" below. The flag surface is **additive on top of ADR-010 §1** — it adds no new top-level command, only new flags on an existing command.
+The flags are documented exhaustively in this RFC's §"Implementation notes" below. The flag surface is **additive on top of ADR-010 §1**, it adds no new top-level command, only new flags on an existing command.
 
 ### Type-discriminator enforcement
 
@@ -132,15 +132,15 @@ The two error messages are symmetric. A user who runs the wrong command for the 
 The first-write moment is the load-bearing difference between `init` and `add`. The contract:
 
 1. **First run against an empty directory.** The CLI writes `deesse.json` from scratch using the block defaults documented in [ADR-031 §"Decision 1"](/decisions/ADR-031-deesse-json). The user may hand-edit any field from that point on.
-2. **First run against a directory with no `deesse.json` but with other content.** The CLI behaves as in case 1 — writes `deesse.json` at the project root. The other content (other files, other directories) is left alone.
+2. **First run against a directory with no `deesse.json` but with other content.** The CLI behaves as in case 1, writes `deesse.json` at the project root. The other content (other files, other directories) is left alone.
 3. **Subsequent runs against a directory with a `deesse.json`.** The CLI **reads** the existing `deesse.json` and does **not** mutate it. The CLI only writes `deesse.lock#templates["<slug>"]`. This is the consumer-side discipline documented in [RFC-001 §"Detailed Design"](./RFC-001-deesse-json): the CLI writes `deesse.json` once at `init` and never mutates it again.
-4. **Subsequent runs with `--force`.** The CLI overwrites `deesse.json` with the block defaults, **after warning the user**: *"This will overwrite your hand-edited deesse.json. Continue? [y/N]"* — unless `--force --yes` is passed, in which case the warning is suppressed.
+4. **Subsequent runs with `--force`.** The CLI overwrites `deesse.json` with the block defaults, **after warning the user**: *"This will overwrite your hand-edited deesse.json. Continue? [y/N]"*, unless `--force --yes` is passed, in which case the warning is suppressed.
 
 The same-day tie-break rule (per [ADR-032 §"Same-day install tie-break rule"](/decisions/ADR-032-deesse-template.json)) applies to the lockfile update. The tie-break is irrelevant for `init` (the lockfile is empty on first run); it matters on subsequent runs.
 
 ### Install sequence (9 steps)
 
-Documented here with the full step list, error codes, and rollback semantics. The high-level shape mirrors [RFC-003 §"Install sequence (13 steps)"](./RFC-003-deessejs-add) but is shorter (`init` does less than `add` because it does not handle file collisions — the target directory starts empty or the user has explicitly opted into `--force` re-install).
+Documented here with the full step list, error codes, and rollback semantics. The high-level shape mirrors [RFC-003 §"Install sequence (13 steps)"](./RFC-003-deessejs-add) but is shorter (`init` does less than `add` because it does not handle file collisions, the target directory starts empty or the user has explicitly opted into `--force` re-install).
 
 | Step | Action | Failure mode |
 |---|---|---|
@@ -264,7 +264,7 @@ Why we rejected it: Lazy prompting breaks transactional rollback. If a user reje
 
 What it is: The user provides a YAML file with all prompt answers pre-filled. The CLI loads the YAML, aggregates prompts, and skips any prompt whose answer is in the YAML.
 
-Why we rejected it for this RFC: The author tooling has `deessejs template new --from <yaml>` (per [RFC-004 §"Subcommand: `new`"](./RFC-004-template-author-tooling)) for the author-side use case. The user-side use case (a user who wants to script `init` in CI) can use `--yes` to skip prompts with defaults and `--ref <ref>` to pin a version. A `--from` flag is a future RFC if a real use case surfaces (the load-bearing concern is that the YAML must be in lockstep with the descriptor's prompts — drift between YAML and descriptor is a maintenance burden).
+Why we rejected it for this RFC: The author tooling has `deessejs template new --from <yaml>` (per [RFC-004 §"Subcommand: `new`"](./RFC-004-template-author-tooling)) for the author-side use case. The user-side use case (a user who wants to script `init` in CI) can use `--yes` to skip prompts with defaults and `--ref <ref>` to pin a version. A `--from` flag is a future RFC if a real use case surfaces (the load-bearing concern is that the YAML must be in lockstep with the descriptor's prompts, drift between YAML and descriptor is a maintenance burden).
 
 ### Alternative 5: Re-use the GitHub raw URL pattern (shadcn-style)
 
@@ -302,7 +302,7 @@ Three design calls surface during the development of this RFC and remain open.
 
 ## Implementation notes
 
-These are the operational details that surfaced during the senior review. They are **not architectural blockers** — they are details that the implementation must capture.
+These are the operational details that surfaced during the senior review. They are **not architectural blockers**, they are details that the implementation must capture.
 
 ### A. Atomic write pattern (step 7)
 
@@ -331,7 +331,7 @@ The check is **strict by default**: any other file or directory triggers `target
 
 ### D. `--yes` short-circuits prompts with defaults
 
-The `--yes` flag short-circuits any prompt that has a documented `default`. A prompt with no `default` and no `--yes` override is **interactive**: the CLI presents it to the user via `@clack/prompts` or the equivalent. The non-interactive default (`--yes` true by default) means the user only sees prompts when the descriptor has no defaults — rare, but possible.
+The `--yes` flag short-circuits any prompt that has a documented `default`. A prompt with no `default` and no `--yes` override is **interactive**: the CLI presents it to the user via `@clack/prompts` or the equivalent. The non-interactive default (`--yes` true by default) means the user only sees prompts when the descriptor has no defaults, rare, but possible.
 
 ### E. `--ref <ref>` resolution
 
@@ -349,32 +349,32 @@ Unit tests live at `apps/cli/test/unit/init/` (one file per install sequence ste
 
 ### Companion documents
 
-- **[RFC-001: The DeesseJS Project Config](./RFC-001-deesse-json)** — the consumer-side RFC for `deesse.json` + `deesse.lock`. `init` is the first-write command for both files.
-- **[RFC-002: The DeesseJS Template Item Descriptor](./RFC-002-deesse-template)** — the descriptor format `init` consumes. The discriminator enforcement, the wire contract evolution, the registry CDN, and the security guarantees all apply identically.
-- **[RFC-003: The DeesseJS Overlay Command](./RFC-003-deessejs-add)** — the consumer-side RFC for `deessejs add`. The two commands partition the registry surface: `init` for starters, `add` for overlays.
-- **[RFC-004: The DeesseJS Author Tooling](./RFC-004-template-author-tooling)** — the author-side RFC for `deessejs template <validate | new | explain>`. The author tooling produces the descriptors `init` consumes.
-- **[RFC-005: The DeesseJS Block Descriptor](./RFC-005-deessejs-block)** — the parallel descriptor format for overlays. `init` continues to consume `deesse-template.json`; the block descriptor is for `add`.
+- **[RFC-001: The DeesseJS Project Config](./RFC-001-deesse-json)**, the consumer-side RFC for `deesse.json` + `deesse.lock`. `init` is the first-write command for both files.
+- **[RFC-002: The DeesseJS Template Item Descriptor](./RFC-002-deesse-template)**, the descriptor format `init` consumes. The discriminator enforcement, the wire contract evolution, the registry CDN, and the security guarantees all apply identically.
+- **[RFC-003: The DeesseJS Overlay Command](./RFC-003-deessejs-add)**, the consumer-side RFC for `deessejs add`. The two commands partition the registry surface: `init` for starters, `add` for overlays.
+- **[RFC-004: The DeesseJS Author Tooling](./RFC-004-template-author-tooling)**, the author-side RFC for `deessejs template <validate | new | explain>`. The author tooling produces the descriptors `init` consumes.
+- **[RFC-005: The DeesseJS Block Descriptor](./RFC-005-deessejs-block)**, the parallel descriptor format for overlays. `init` continues to consume `deesse-template.json`; the block descriptor is for `add`.
 
 ### Companion ADRs (load-bearing rules)
 
-- **[ADR-010: CLI public surface](/decisions/ADR-010-cli-public-surface)** — the invariants that fence the CLI's published surface. `init` is the first command a user runs; the flags documented above are additive on top of ADR-010 §1.
-- **[ADR-031: deesse.json](/decisions/ADR-031-deesse-json)** — the project-side config. `init` is the first-write command for the block defaults documented in ADR-031 §"Decision 1".
-- **[ADR-032: deesse-template.json](/decisions/ADR-032-deesse-template.json)** — the descriptor format. `init` enforces the `template:app` discriminator and consumes the same wire shape as `add`.
-- **[ADR-033: deessejs add `feature`](/decisions/ADR-033-deessejs-add)** — the contract for `add`. The 4×3 re-install matrix, the CI offline invariant, and the type-discriminator enforcement are shared between `init` and `add`.
+- **[ADR-010: CLI public surface](/decisions/ADR-010-cli-public-surface)**, the invariants that fence the CLI's published surface. `init` is the first command a user runs; the flags documented above are additive on top of ADR-010 §1.
+- **[ADR-031: deesse.json](/decisions/ADR-031-deesse-json)**, the project-side config. `init` is the first-write command for the block defaults documented in ADR-031 §"Decision 1".
+- **[ADR-032: deesse-template.json](/decisions/ADR-032-deesse-template.json)**, the descriptor format. `init` enforces the `template:app` discriminator and consumes the same wire shape as `add`.
+- **[ADR-033: deessejs add `feature`](/decisions/ADR-033-deessejs-add)**, the contract for `add`. The 4×3 re-install matrix, the CI offline invariant, and the type-discriminator enforcement are shared between `init` and `add`.
 
 ### Plans and memory
 
-- **`docs/engineering/plans/saas-template-divergence.md`** — the divergence plan explaining why the current registry lives in `packages/api/src/templates.ts` rather than in a separate `deessejs/registry-data` repo.
-- **`.claude/agent-memory/tech-lead/project/templates-content-not-cli.md`** — the load-bearing governance rule. Adding a starter entry (one line added to `packages/api/src/templates.ts`) is a content change, never a CLI change.
-- **`.claude/agent-memory/tech-lead/project/template-strategy.md`** — the companion memory that frames the registry as a multi-stack, multi-target surface.
-- **`apps/cli/CHANGELOG.md`** — the historical record of CLI surface changes.
+- **`docs/engineering/plans/saas-template-divergence.md`**, the divergence plan explaining why the current registry lives in `packages/api/src/templates.ts` rather than in a separate `deessejs/registry-data` repo.
+- **`.claude/agent-memory/tech-lead/project/templates-content-not-cli.md`**, the load-bearing governance rule. Adding a starter entry (one line added to `packages/api/src/templates.ts`) is a content change, never a CLI change.
+- **`.claude/agent-memory/tech-lead/project/template-strategy.md`**, the companion memory that frames the registry as a multi-stack, multi-target surface.
+- **`apps/cli/CHANGELOG.md`**, the historical record of CLI surface changes.
 
 ## Related
 
-- [RFCs index](/rfcs) — the convention for RFCs in this directory.
-- [ADRs index](/decisions) — the atomic decisions that implement this RFC.
-- [shadcn CLI](https://ui.shadcn.com/docs/cli) — the reference model for non-interactive CLI scaffolding.
-- [Rails generators guide](https://guides.rubyonrails.org/generators.html) — the reference model for Rails-style app scaffolds.
-- [Spotify Engineering: When Should I Write an ADR](https://engineering.atspotify.com/2020/04/when-should-i-write-an-architecture-decision-record) — naming and structure.
-- [Rust RFC process](https://github.com/rust-lang/rfcs) — the numerical RFC prefix and the Prior Art section.
-- [IETF RFC Style Guide](https://www.rfc-editor.org/styleguide/) — the formal RFC conventions.
+- [RFCs index](/rfcs), the convention for RFCs in this directory.
+- [ADRs index](/decisions), the atomic decisions that implement this RFC.
+- [shadcn CLI](https://ui.shadcn.com/docs/cli), the reference model for non-interactive CLI scaffolding.
+- [Rails generators guide](https://guides.rubyonrails.org/generators.html), the reference model for Rails-style app scaffolds.
+- [Spotify Engineering: When Should I Write an ADR](https://engineering.atspotify.com/2020/04/when-should-i-write-an-architecture-decision-record), naming and structure.
+- [Rust RFC process](https://github.com/rust-lang/rfcs), the numerical RFC prefix and the Prior Art section.
+- [IETF RFC Style Guide](https://www.rfc-editor.org/styleguide/), the formal RFC conventions.

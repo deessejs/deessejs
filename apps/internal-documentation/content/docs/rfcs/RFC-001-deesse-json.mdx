@@ -13,8 +13,8 @@ description: 'Senior RFC for the deesse.json project-side configuration file and
 
 This RFC proposes **two paired files** that together define the consumer-side configuration of a project that uses the DeesseJS CLI:
 
-- **`deesse.json`** — declarative configuration. Written by the CLI on first install (`deessejs init <slug>`); hand-edited by the user from that point onward. Committed to git. The file is **JSONC** (JSON with comments and trailing commas), parsed and written via `jsonc-parser` for AST-preserving edits. Contains the package manager, framework profile, runtime database choice, `paths{}` for filesystem directories, `aliases{}` for TS-import placeholders, `tokens{}` (with `env:<VAR>` delegation to keep secrets out of git), and `registries{}` namespace map.
-- **`deesse.lock`** — imperative state. Written by the CLI on every install (`deessejs add`, `deessejs init`). Committed to git (mirrors `package.json` vs `package-lock.json`). Contains the `templates<slug>` resolved-state block: each entry records `version`, `installedAt`, and `source` (namespace prefix or registry host).
+- **`deesse.json`**, declarative configuration. Written by the CLI on first install (`deessejs init <slug>`); hand-edited by the user from that point onward. Committed to git. The file is **JSONC** (JSON with comments and trailing commas), parsed and written via `jsonc-parser` for AST-preserving edits. Contains the package manager, framework profile, runtime database choice, `paths{}` for filesystem directories, `aliases{}` for TS-import placeholders, `tokens{}` (with `env:<VAR>` delegation to keep secrets out of git), and `registries{}` namespace map.
+- **`deesse.lock`**, imperative state. Written by the CLI on every install (`deessejs add`, `deessejs init`). Committed to git (mirrors `package.json` vs `package-lock.json`). Contains the `templates<slug>` resolved-state block: each entry records `version`, `installedAt`, and `source` (namespace prefix or registry host).
 
 The two files are the **consumer-side counterpart** to `deesse-template.json` (per RFC-002). The CLI reads `deesse.json` to know where to write and reads `deesse-template.json` to know what to write; it updates `deesse.lock` to record what was installed. This RFC documents both files; the template descriptor is documented in RFC-002.
 
@@ -27,21 +27,21 @@ The lockfile is committed because the **entire purpose of a lockfile is determin
 1. **Capture per-project wiring once, reuse everywhere.** A user runs `deessejs init saas-starter`, the CLI writes `deesse.json` and `deesse.lock`. Every subsequent `deessejs add <feature>` reads both files to know where to land files, which database adapter to use, which package manager to invoke, and which versions are already installed.
 2. **Be portable across project layouts.** Monorepos, single-package apps, and standalone workspaces each have different conventions. `deesse.json` covers them all via the `paths{}` (filesystem-relative, declared per-directory), `aliases{}` (import-relative), and walk-up discovery (a nested `deesse.json` at `apps/<x>/deesse.json` overrides the parent's fields on a per-key deep-merge basis).
 3. **Be stable across upgrades.** Adding a new field is non-breaking; removing or renaming a field is breaking and requires a migration.
-4. **Make the registry namespace map explicit.** A user declares which registries they trust via `registries{}` — opt-in per host, no implicit trust.
-5. **Be read-and-writable by automation.** Both files use JSONC, parse-validated by Zod schemas at runtime, and round-trip cleanly through `jsonc-parser`'s `modify` + `applyEdits` (no `JSON.stringify`, no `JSON.parse` — standard JSON round-tripping strips comments and reorders keys).
+4. **Make the registry namespace map explicit.** A user declares which registries they trust via `registries{}`, opt-in per host, no implicit trust.
+5. **Be read-and-writable by automation.** Both files use JSONC, parse-validated by Zod schemas at runtime, and round-trip cleanly through `jsonc-parser`'s `modify` + `applyEdits` (no `JSON.stringify`, no `JSON.parse`, standard JSON round-tripping strips comments and reorders keys).
 6. **Keep secrets out of git.** `tokens.<KEY>` supports the `env:<VAR>` shape, delegating secret values to `process.env` or `.env.local` (loaded via `dotenv`). `deesse.json` itself is safe to commit; secrets live in `.env.local` (gitignored).
 7. **Provide deterministic lockfile state across the team.** `deesse.lock` is committed and merge-friendly. Conflicts resolve cleanly via `deessejs sync`.
 
 ### Non-Goals
 
-1. **Being a runtime config** — `deesse.json` is a build-time / install-time file. Application runtime configs (env vars, feature flags) live in `.env.local` and similar, not here.
-2. **Tracking file history** — `deesse.lock#templates["feature"]` records what was installed at which version. It does not record which files were created, which is out of scope for this RFC (per the drift model in RFC-002 §Future Possibilities).
-3. **Auto-rewriting user-edited fields** — the CLI writes `deesse.json` once at `init`. Subsequent installs preserve user edits verbatim. The CLI writes `deesse.lock` on every install (this is the only file the CLI mutates continuously).
-4. **Supporting arbitrary top-level field additions** — the **top-level** schema fields are closed-list (per ADR-031 §Reserved field names). The **nested values** of `paths`, `aliases`, and `tokens` are open (`Record<string, string>`): any string key is accepted. Adding top-level fields requires an ADR.
+1. **Being a runtime config**, `deesse.json` is a build-time / install-time file. Application runtime configs (env vars, feature flags) live in `.env.local` and similar, not here.
+2. **Tracking file history**, `deesse.lock#templates["feature"]` records what was installed at which version. It does not record which files were created, which is out of scope for this RFC (per the drift model in RFC-002 §Future Possibilities).
+3. **Auto-rewriting user-edited fields**, the CLI writes `deesse.json` once at `init`. Subsequent installs preserve user edits verbatim. The CLI writes `deesse.lock` on every install (this is the only file the CLI mutates continuously).
+4. **Supporting arbitrary top-level field additions**, the **top-level** schema fields are closed-list (per ADR-031 §Reserved field names). The **nested values** of `paths`, `aliases`, and `tokens` are open (`Record<string, string>`): any string key is accepted. Adding top-level fields requires an ADR.
 
 ## Motivation
 
-The DeesseJS CLI today writes **no file** to the user's project. shadcn's `components.json` is the model: written once at the project root, read by every CLI invocation, the canonical source of "where does this project put things". The DeesseJS CLI needs the same primitive, but for a feature-level install (not a component-level add). The shape differs because features touch more directories: routes, components, DB schema, env vars, hooks — each with its own placement rule.
+The DeesseJS CLI today writes **no file** to the user's project. shadcn's `components.json` is the model: written once at the project root, read by every CLI invocation, the canonical source of "where does this project put things". The DeesseJS CLI needs the same primitive, but for a feature-level install (not a component-level add). The shape differs because features touch more directories: routes, components, DB schema, env vars, hooks, each with its own placement rule.
 
 Without a project-side config, the CLI must **guess**. For a monorepo, the guess is wrong (the CLI does not know which app). For a custom layout, the guess is wrong (the CLI does not know the project's convention). For a multi-stack workspace (Next.js + Expo + Tauri), the guess is wrong three times. `deesse.json` replaces the guess with an explicit declaration.
 
@@ -110,7 +110,7 @@ The two files are the **answer to the consumer's "where do you put things, what 
 
 The `lockfileVersion` field allows future migrations to evolve the schema without breaking existing lock files.
 
-### Block-by-block contract — `deesse.json`
+### Block-by-block contract, `deesse.json`
 
 The blocks split into three categories by ownership and stability.
 
@@ -120,11 +120,11 @@ The blocks split into three categories by ownership and stability.
 
 **The CLI writes `deesse.json` once at `init` and never on subsequent installs.** The CLI's mutability contract is: full write on `init`; read-only on `add`. This is the explicit guarantee that user edits to wiring blocks are preserved verbatim.
 
-### Block-by-block contract — `deesse.lock`
+### Block-by-block contract, `deesse.lock`
 
 A single block:
 
-**`templates{}`** — the resolved-state block. Each entry:
+**`templates{}`**, the resolved-state block. Each entry:
 
 ```jsonc
 "templates": {
@@ -205,7 +205,7 @@ The CLI walks up from `cwd` until it finds a `deesse.json`. If the user runs `de
 
 **Walk-up bounds.** The CLI walks up at most **5 directory levels** from `cwd` looking for a `deesse.json`. If no file is found within 5 levels, the CLI treats the absence as a missing config and returns `parse_error` (per §Error taxonomy). The 5-level cap prevents the CLI from picking up a `deesse.json` from an unrelated repository when the user runs the command from a deeply-nested directory (e.g. `node_modules/.cache/.../deesse.json` accidentally shipped by an upstream tool). The cap is enforced by `fs.realpath`-based containment: the CLI walks up but rejects any candidate file whose realpath is **outside** the git worktree root (detected via `git rev-parse --show-toplevel` when `.git/` is reachable, or `package.json` boundary otherwise).
 
-**Multi-file conflict rule.** When more than one `deesse.json` is found in the walk-up chain, the merge order is **closest-to-cwd wins per key**. Concretely: starting from `cwd`, the CLI walks up, accumulating a per-key map. The first time a key is encountered, it is recorded; later encounters at higher (farther-from-cwd) levels are **ignored** unless they add a key the leaf did not define. This is the opposite of "the leaf wins" phrasing — it is "the leaf defines, the parents supplement, the root is the fallback". The rule is identical for `paths{}`, `aliases{}`, and `tokens{}` blocks; the project-identity and `templates`/`database`/`packageManager`/`registries` blocks use "the closest file wins, no merge" per the paragraph above.
+**Multi-file conflict rule.** When more than one `deesse.json` is found in the walk-up chain, the merge order is **closest-to-cwd wins per key**. Concretely: starting from `cwd`, the CLI walks up, accumulating a per-key map. The first time a key is encountered, it is recorded; later encounters at higher (farther-from-cwd) levels are **ignored** unless they add a key the leaf did not define. This is the opposite of "the leaf wins" phrasing, it is "the leaf defines, the parents supplement, the root is the fallback". The rule is identical for `paths{}`, `aliases{}`, and `tokens{}` blocks; the project-identity and `templates`/`database`/`packageManager`/`registries` blocks use "the closest file wins, no merge" per the paragraph above.
 
 **Determinism invariant.** Given a `cwd` and a tree of `deesse.json` files, the merged config the CLI reads must be **byte-identical** regardless of the platform (Windows vs POSIX separators) and the order in which `fs.readdir` returns directory entries. The implementation uses `path.posix` for in-memory representation and `fs.realpath` (which is canonical on each platform) for filesystem lookups. Unit-tested at `apps/cli/test/unit/walk-up-discovery.test.ts`.
 
@@ -214,9 +214,9 @@ The CLI walks up from `cwd` until it finds a `deesse.json`. If the user runs `de
 When `deessejs add <slug>` runs against an item already present in `deesse.lock`:
 
 - **Default behaviour**: the CLI refuses with a new internal error code `item_already_installed`. The user sees a message listing the locked entry (`version`, `installedAt`, `source`) and the available options:
-  - `--force` — silent overwrite (mirrors today's `add` semantics per RFC-002 §Decision #7).
-  - `--upgrade` — preserve user edits in `files[]` outputs and refresh the lock entry's `version` + `installedAt`. The new `version` is whatever the registry returns at fetch time (per RFC-002 §source.ref).
-- **Why refuse by default**: silent re-installs are surprising — the user thinks they're adding a feature, but the registry may have shipped a breaking change since the last install. Forcing an explicit `--upgrade` makes the user aware.
+  - `--force`, silent overwrite (mirrors today's `add` semantics per RFC-002 §Decision #7).
+  - `--upgrade`, preserve user edits in `files[]` outputs and refresh the lock entry's `version` + `installedAt`. The new `version` is whatever the registry returns at fetch time (per RFC-002 §source.ref).
+- **Why refuse by default**: silent re-installs are surprising, the user thinks they're adding a feature, but the registry may have shipped a breaking change since the last install. Forcing an explicit `--upgrade` makes the user aware.
 - **`item_already_installed` semantics**: this is **not** a file lock. Two `deessejs add` running concurrently against the same `deesse.lock` are allowed to race; whichever writes last wins (the lock is rewritten atomically). The error is about a logical conflict (the user said `add` but the item is already there), not a physical lock.
 
 ### Error taxonomy
@@ -244,7 +244,7 @@ Why we rejected it: `package.json` is owned by the JS ecosystem (npm/pnpm/yarn/b
 
 Why we rejected it (corrected in this revision): a gitignored lockfile defeats its purpose. `package-lock.json`, `pnpm-lock.yaml`, `Cargo.lock`, and `Gemfile.lock` are all committed because the entire point of a lockfile is deterministic state across the team. A gitignored `deesse.lock` would mean:
 
-- Developer A installs `auth` (writes to A's local lockfile) and commits code. Developer B pulls (gets no lockfile, sees no record of the install) and runs `deessejs add auth` — the CLI has no record that B already had the item, so the re-install protection (per "Re-install semantics" above) does not fire.
+- Developer A installs `auth` (writes to A's local lockfile) and commits code. Developer B pulls (gets no lockfile, sees no record of the install) and runs `deessejs add auth`, the CLI has no record that B already had the item, so the re-install protection (per "Re-install semantics" above) does not fire.
 - The CI environment has no record of what versions were installed, breaking the audit trail feature.
 - Supply-chain incident response loses a key piece of evidence ("which version of the compromised item did each developer install?").
 
@@ -300,11 +300,11 @@ Same pattern as Question #2 but for `deesse.json`. `deessejs config migrate` rew
 
 ## Rollout Plan
 
-### Stage 1 — File shape and infrastructure
+### Stage 1, File shape and infrastructure
 
 Both files ship in the same change set as `deesse-template.json` (RFC-002). The CLI gains `loadDeesseJson(projectRoot)`, `loadDeesseLock(projectRoot)`, and the install flow reads both at every command. Atomic writes use the temp-file + rename pattern. The `deessejs sync` command lands as part of this lock infrastructure.
 
-### Stage 2 — Follow-up additions
+### Stage 2, Follow-up additions
 
 A future ADR may add `deessejs doctor` (a command that reads `deesse.json` and `deesse.lock`, validates both against the schema, suggests fixes for common mistakes, and checks the registry for newer versions). Out of scope for this RFC.
 
@@ -312,7 +312,7 @@ A future ADR may add `deessejs doctor` (a command that reads `deesse.json` and `
 
 ### shadcn `components.json`
 
-The closest analogue. shadcn's `components.json` carries `style`, `tailwind.config`, `tailwind.css`, `aliases`, `tsx`, `rsc`, `registries{}` — the same shape `deesse.json` follows, with the divergences documented above (no Tailwind config in DeesseJS, paths/aliases split, JSONC + lock split).
+The closest analogue. shadcn's `components.json` carries `style`, `tailwind.config`, `tailwind.css`, `aliases`, `tsx`, `rsc`, `registries{}`, the same shape `deesse.json` follows, with the divergences documented above (no Tailwind config in DeesseJS, paths/aliases split, JSONC + lock split).
 
 Source: [shadcn `components.json` schema](https://ui.shadcn.com/docs/components-json).
 
@@ -328,17 +328,17 @@ Rails's `config/initializers/` directory follows a similar idea (one config file
 
 ## Future Possibilities
 
-- **Per-app config in monorepos** — see Open Question #1.
-- **Lockfile migration command** — see Open Question #2.
-- **`deessejs config migrate`** — see Open Question #3.
-- **`deessejs doctor`** — validates both files and surfaces registry drift.
-- **Encrypted secrets** — `tokens.<KEY>.secret: true` encrypts at rest via the OS keychain.
-- **`deesse.lock` checksums for tamper detection** — verify the install at fetch time matches the lockfile entry.
-- **`deessejs sync --check` in CI** — exit 1 if the lockfile is stale; blocks PRs that introduce drift.
+- **Per-app config in monorepos**, see Open Question #1.
+- **Lockfile migration command**, see Open Question #2.
+- **`deessejs config migrate`**, see Open Question #3.
+- **`deessejs doctor`**, validates both files and surfaces registry drift.
+- **Encrypted secrets**, `tokens.<KEY>.secret: true` encrypts at rest via the OS keychain.
+- **`deesse.lock` checksums for tamper detection**, verify the install at fetch time matches the lockfile entry.
+- **`deessejs sync --check` in CI**, exit 1 if the lockfile is stale; blocks PRs that introduce drift.
 
 ## Implementation notes
 
-Three operational nuances surfaced in the senior review of revision 3. They are not architectural blockers — they are details that the implementation PR must capture. This section records them so they are not lost between this RFC and the implementation.
+Three operational nuances surfaced in the senior review of revision 3. They are not architectural blockers, they are details that the implementation PR must capture. This section records them so they are not lost between this RFC and the implementation.
 
 ### A. Lockfile placement in monorepos
 
@@ -371,35 +371,35 @@ The check asserts:
 
 **Decision**: `installedAt` is a **date-only UTC string in `YYYY-MM-DD` format**. The previous draft used full ISO 8601 timestamps (`2026-09-14T12:00:00.000Z`); the date-only form eliminates trivial merge conflicts from same-day installs.
 
-**Why date-only**: in team development, if Developer A and Developer B both install `feature-x@1.0.0` on separate branches within the same UTC day, their `installedAt` is identical (`2026-09-14`). The merge is trivial — no conflict on the timestamp field. Cross-day installs resolve to a clear winner (the later date).
+**Why date-only**: in team development, if Developer A and Developer B both install `feature-x@1.0.0` on separate branches within the same UTC day, their `installedAt` is identical (`2026-09-14`). The merge is trivial, no conflict on the timestamp field. Cross-day installs resolve to a clear winner (the later date).
 
 **`installedAt` is non-semantic metadata.** It is for human audit ("when did I install this?") and supply-chain incident triage ("what version was deployed last Thursday?"). It is **not** used by the CLI for any runtime decision. The CLI never re-installs because `installedAt` is newer or older; it re-installs because the user passes `--upgrade` (per §Detailed Design "Re-install semantics"). The `deessejs sync` command treats `installedAt` as non-semantic when resolving conflicts: it preserves the earlier timestamp (deterministic, idempotent).
 
-**Trade-off accepted**: we lose the precision of "installed at 14:23 UTC". The trade-off is intentional — merge-conflict-free commits are worth more than audit precision at the second level. If second-level precision becomes a real audit need, a future ADR may add a separate `installedAtTimestamp` field (full ISO 8601, separate from the date-only `installedAt`) that is gitignored or stored in a separate per-developer cache. Out of scope for this RFC.
+**Trade-off accepted**: we lose the precision of "installed at 14:23 UTC". The trade-off is intentional, merge-conflict-free commits are worth more than audit precision at the second level. If second-level precision becomes a real audit need, a future ADR may add a separate `installedAtTimestamp` field (full ISO 8601, separate from the date-only `installedAt`) that is gitignored or stored in a separate per-developer cache. Out of scope for this RFC.
 
 ## Cross-references
 
 ### Atomic decisions (ADRs)
 
-- **[ADR-031: deesse.json](./decisions/ADR-031-deesse-json)** — the authoritative reference for the project config file. ADR-031 is amended by this RFC: the `templates{}` block moves from `Project` to a new `Lock` schema; the wiring blocks remain in `Project`; the `paths` and `aliases` are open (`Record<string, string>`); the JSONC contract is explicit; the `env:<VAR>` token delegation is explicit.
+- **[ADR-031: deesse.json](./decisions/ADR-031-deesse-json)**, the authoritative reference for the project config file. ADR-031 is amended by this RFC: the `templates{}` block moves from `Project` to a new `Lock` schema; the wiring blocks remain in `Project`; the `paths` and `aliases` are open (`Record<string, string>`); the JSONC contract is explicit; the `env:<VAR>` token delegation is explicit.
 
 ### Companion RFC
 
-- **[RFC-002: The DeesseJS Template Item Descriptor (deesse-template.json)](./RFC-002-deesse-template)** — the consumer-side companion. The two RFCs are read together for the complete install contract.
+- **[RFC-002: The DeesseJS Template Item Descriptor (deesse-template.json)](./RFC-002-deesse-template)**, the consumer-side companion. The two RFCs are read together for the complete install contract.
 
 ### Companion ADRs (load-bearing rules)
 
-- **[ADR-001: oRPC is load-bearing](./decisions/ADR-001-orpc-is-load-bearing)** — amended by [issue #139](https://github.com/deessejs/deessejs/issues/139) for plain-HTTPS `fetch` against the registry CDN. `deesse.json#registries` is the user-facing surface that declares which hosts are trusted.
-- **[ADR-010: CLI public surface](./decisions/ADR-010-cli-public-surface)** — the invariants that fence the CLI's published surface. `deesse.json` and `deesse.lock` are consumer-side, not CLI commands.
+- **[ADR-001: oRPC is load-bearing](./decisions/ADR-001-orpc-is-load-bearing)**, amended by [issue #139](https://github.com/deessejs/deessejs/issues/139) for plain-HTTPS `fetch` against the registry CDN. `deesse.json#registries` is the user-facing surface that declares which hosts are trusted.
+- **[ADR-010: CLI public surface](./decisions/ADR-010-cli-public-surface)**, the invariants that fence the CLI's published surface. `deesse.json` and `deesse.lock` are consumer-side, not CLI commands.
 
 ## Related
 
-- [RFCs index](/rfcs) — the convention for RFCs in this directory.
-- [ADRs index](/decisions) — the atomic decisions that implement this RFC.
+- [RFCs index](/rfcs), the convention for RFCs in this directory.
+- [ADRs index](/decisions), the atomic decisions that implement this RFC.
 - [Spotify Engineering: When Should I Write an ADR](https://engineering.atspotify.com/2020/04/when-should-i-write-an-architecture-decision-record)
 - [Google design docs guide](https://developers.google.com/tech-writing/design_docs)
 - [Stripe engineering document templates](https://stripe.com/blog/engineering/document-templates)
 - [Rust RFC process](https://github.com/rust-lang/rfcs)
 - [ADR vs RFC: When to Use Each](https://askmoai.com/blogs/adr-vs-rfc)
-- [pnpm Working with Git](https://pnpm.io/git) — the canonical pattern for committed lockfiles in 2025.
-- [Toptal: should you commit your lockfile?](https://www.toptal.com) — community consensus on committing lockfiles.
+- [pnpm Working with Git](https://pnpm.io/git), the canonical pattern for committed lockfiles in 2025.
+- [Toptal: should you commit your lockfile?](https://www.toptal.com), community consensus on committing lockfiles.

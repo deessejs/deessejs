@@ -23,7 +23,7 @@ The three subcommands remove the bottleneck by automating the three error-prone 
 | `deessejs template new` | Scaffolding a new `deesse-template.json` from defaults inferred from the registry (mode computation across same-type items) | A scaffolded `templates/<slug>/` directory with a valid descriptor |
 | `deessejs template explain <field-path>` | Rendering field documentation from the JSDoc on the Zod schema (`TemplateV2`) | A field description with examples, common mistakes, and an ADR cross-reference |
 
-The subcommands live under a `template` namespace (not as top-level commands) because the load-bearing governance rule is **ADR-010 §1's closed-list invariant** — only `init`, `list`, `info`, and `add` may appear at the top level. The `auth subcommand` exception (sanctioned in ADR-010) is the precedent for a subcommand group; `template` is the second such exception, sanctioned by ADR-034.
+The subcommands live under a `template` namespace (not as top-level commands) because the load-bearing governance rule is **ADR-010 §1's closed-list invariant**, only `init`, `list`, `info`, and `add` may appear at the top level. The `auth subcommand` exception (sanctioned in ADR-010) is the precedent for a subcommand group; `template` is the second such exception, sanctioned by ADR-034.
 
 The JSDoc-on-Zod-schema contract is the load-bearing single-source-of-truth: every closed-list field on `TemplateV2` carries a `.describe(...)` block that includes four sections (type, valid values, example, common mistake) and an ADR link. The lint rule in the `contracts` package enforces this on the Zod schema; `deessejs template explain` consumes it. A change to the contract automatically propagates to the field documentation without any manual sync.
 
@@ -32,7 +32,7 @@ The JSDoc-on-Zod-schema contract is the load-bearing single-source-of-truth: eve
 ### Goals
 
 1. **Ship three subcommands that remove the three authoring bottlenecks.** Schema validation, scaffolding, and documentation are the three steps that scale linearly with item count and are the most error-prone. Each gets a dedicated subcommand.
-2. **Validate fast.** `deessejs template validate` returns in under 1 second for any descriptor, including semantic checks (forward `when` references, broken `templateDependencies`, missing files on disk). CI gates depend on this — a slow validator blocks PRs.
+2. **Validate fast.** `deessejs template validate` returns in under 1 second for any descriptor, including semantic checks (forward `when` references, broken `templateDependencies`, missing files on disk). CI gates depend on this, a slow validator blocks PRs.
 3. **Scaffold from real data, not from a hardcoded template.** `deessejs template new auth-addon` infers defaults from the **median item of the same type** in the registry (mode computation across `category`, `license`, `labels`, etc.). A smarter clustering is a future ADR; the default is intentionally simple and explainable.
 4. **Document fields from the schema, not from a hand-maintained reference.** The Zod schema's JSDoc is the source of truth. `deessejs template explain consumes[].target` parses the `.describe(...)` block on the `consumes[].target` Zod field and renders it. There is no `templates-reference.md` to keep in sync.
 5. **Be namespace-consistent with `auth`.** The `auth subcommand` group (per ADR-010 §1) is the precedent for a subcommand namespace; `template` follows the same shape. Users learn one mental model ("top-level commands are public surface; subcommands are sub-namespaces").
@@ -48,7 +48,7 @@ The JSDoc-on-Zod-schema contract is the load-bearing single-source-of-truth: eve
 
 ## Motivation
 
-The DeesseJS template registry is the project's **identity surface**. The locked homepage copy frames it as a registry spanning "packages, CLI, SaaS multi-tenant, mobile, desktop, AI agent, landing page" — not a single-template repo. The team's ambition is hundreds of items, each addressable as `deessejs add @<namespace>/<slug>` from any consumer project.
+The DeesseJS template registry is the project's **identity surface**. The locked homepage copy frames it as a registry spanning "packages, CLI, SaaS multi-tenant, mobile, desktop, AI agent, landing page", not a single-template repo. The team's ambition is hundreds of items, each addressable as `deessejs add @<namespace>/<slug>` from any consumer project.
 
 Today, producing an item requires hand-authoring `deesse-template.json`. The author must:
 
@@ -56,7 +56,7 @@ Today, producing an item requires hand-authoring `deesse-template.json`. The aut
 2. Pick sensible defaults for `category`, `labels`, `requires`, `templateDependencies`, etc. (defaults that align with how the rest of the registry looks).
 3. Write the `prompts[]` block with a `when` DSL that doesn't forward-reference.
 5. Write the `files[]` block with correct `target` placeholders that resolve against the user's `deesse.json#aliases`.
-6. Maintain a `templates-reference.md` (if the docs are hand-written) — which is the load-bearing failure mode the schema-based approach avoids.
+6. Maintain a `templates-reference.md` (if the docs are hand-written), which is the load-bearing failure mode the schema-based approach avoids.
 
 Each of these steps scales linearly with item count and is the dominant source of registry drift. A new author joining the team has to read RFC-002 + ADR-032 to onboard; with the tooling, they get an interactive scaffolder and an inline documentation command.
 
@@ -102,7 +102,7 @@ deessejs template validate [path]                [--strict] [--json]
    - Every `prompts[].consumes[].target` must point at a defined `paths` / `aliases` / `tokens` key.
 4. **Semantic errors** fail with exit 2 and a list of `{ code, path, message }` entries.
 
-**Why two exit codes (1 and 2).** CI scripts can branch on exit code: `if [ $? -eq 1 ]; then ... shape error; elif [ $? -eq 2 ]; then ... semantic error; fi`. Without the split, a script cannot distinguish "the JSON is malformed" from "the JSON is well-formed but the references are wrong" — two very different failure modes.
+**Why two exit codes (1 and 2).** CI scripts can branch on exit code: `if [ $? -eq 1 ]; then ... shape error; elif [ $? -eq 2 ]; then ... semantic error; fi`. Without the split, a script cannot distinguish "the JSON is malformed" from "the JSON is well-formed but the references are wrong", two very different failure modes.
 
 **Performance budget**. Validation must return in under 1 second for any single descriptor. The implementation lives at `apps/cli/src/template/validate.ts`; the file-system walk for `--strict` is bounded by the descriptor's `files[].path` list (not recursive). Unit-tested at `apps/cli/test/unit/template-validate.test.ts` with a benchmark fixture that asserts `<1s` on a 100-file descriptor.
 
@@ -121,7 +121,7 @@ deessejs template new <slug>            [--from <yaml>] [--type <template:type>]
 
 **Behaviour**:
 
-1. Read the registry catalogue from `--registry` (or the `@deessejs` registry by default). The catalogue is the list of items the registry publishes — a few hundred entries as the registry grows.
+1. Read the registry catalogue from `--registry` (or the `@deessejs` registry by default). The catalogue is the list of items the registry publishes, a few hundred entries as the registry grows.
 2. Compute the **mode** (most-frequent value) for each field across the items of the same `--type`. The mode is the simplest defensible default: it's explainable, reproducible, and doesn't require any ML machinery.
 3. Merge the mode defaults with the `--from <yaml>` partial (the partial wins on conflict).
 4. Run the interactive scaffolder: 11 questions (per ADR-034 §"What this rule allows") covering `category`, `labels`, `requires`, `dependencies`, `devDependencies`, `templateDependencies`, `prompts[]`, `files[]`, `hooks`, `postinstall`, and a final `name` confirmation.
@@ -167,14 +167,14 @@ The lint rule that enforces this contract lives at `packages/contracts/lint/jsdo
 | Subcommand | Default output | JSON output flag |
 |---|---|---|
 | `validate` | Human-readable text on stderr; exit code on success | `--json` emits the `errors[]` array to stdout |
-| `new` | Interactive scaffolder (always interactive; no JSON) | (no flag — the scaffolder is inherently interactive) |
+| `new` | Interactive scaffolder (always interactive; no JSON) | (no flag, the scaffolder is inherently interactive) |
 | `explain` | Human-readable text on stdout | `--json` emits the `{ path, type, validValues, example, commonMistake, adrReference }` object to stdout |
 
 The `--json` flag on `new` is **not in this contract** because the scaffolder is interactive by design (it asks 11 questions). A future ADR may add a non-interactive `--batch` mode that reads the answers from a YAML file (per the `--from <yaml>` partial).
 
 ## Implementation notes
 
-These are the operational details that surfaced during the senior review. They are **not architectural blockers** — they are details that the implementation must capture.
+These are the operational details that surfaced during the senior review. They are **not architectural blockers**, they are details that the implementation must capture.
 
 ### A. Registry catalogue access
 
@@ -215,17 +215,17 @@ Currently the partial must be a file. A future ADR may add `--from -` to read fr
 
 ## Cross-references
 
-- **[ADR-032: deesse-template.json](./ADR-032-deesse-template.json)** — the item-side descriptor that `deessejs template validate | new | explain` operates on. The author tooling is the production line; the descriptor is the product.
-- **[ADR-034: deessejs template namespace](./ADR-034-template-namespace)** — the **load-bearing spec** for this RFC. The three subcommands, the JSDoc contract, and the lint enforcement live there.
-- **[ADR-035: features and sub-templates are the same thing](./ADR-035-feature-not-subtree)** — confirms that a blog is a `template:package` feature, so the scaffolder's `template:package` mode covers blogs.
-- **[RFC-002: The DeesseJS Template Item Descriptor](./RFC-002-deesse-template)** — the producer-side RFC that motivates this tooling. RFC-002 §"Author tooling" sketches the subcommands; this RFC extracts that section into a focused senior narrative.
-- **[RFC-003: The DeesseJS Overlay Command](./RFC-003-deessejs-add)** — the consumer-side RFC for `deessejs add`. The two RFCs together cover the producer-consumer loop: `template new | validate` produces items, `add` consumes them.
+- **[ADR-032: deesse-template.json](./ADR-032-deesse-template.json)**, the item-side descriptor that `deessejs template validate | new | explain` operates on. The author tooling is the production line; the descriptor is the product.
+- **[ADR-034: deessejs template namespace](./ADR-034-template-namespace)**, the **load-bearing spec** for this RFC. The three subcommands, the JSDoc contract, and the lint enforcement live there.
+- **[ADR-035: features and sub-templates are the same thing](./ADR-035-feature-not-subtree)**, confirms that a blog is a `template:package` feature, so the scaffolder's `template:package` mode covers blogs.
+- **[RFC-002: The DeesseJS Template Item Descriptor](./RFC-002-deesse-template)**, the producer-side RFC that motivates this tooling. RFC-002 §"Author tooling" sketches the subcommands; this RFC extracts that section into a focused senior narrative.
+- **[RFC-003: The DeesseJS Overlay Command](./RFC-003-deessejs-add)**, the consumer-side RFC for `deessejs add`. The two RFCs together cover the producer-consumer loop: `template new | validate` produces items, `add` consumes them.
 
 ## Related
 
-- **[ADR-010: CLI public surface](./ADR-010-cli-public-surface)** — the closed-list invariant. The `template` namespace is the second sanctioned subcommand group (after `auth`). Adding new subcommands to `template` does **not** require a new ADR; only adding new top-level commands does.
-- **[ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing)** — the wire-transport discipline. `deessejs template validate` parses `deesse-template.json` directly through the Zod schema (no oRPC round-trip); the static CDN is used for the registry catalogue (plain `fetch`). oRPC remains for the dynamic registry queries (`templates.list`, `auth.*`).
-- **[ADR-002: file organization](./ADR-002-file-organization)** — the one-folder-per-concept rule. The `template` namespace lives at `apps/cli/src/commands/template/`; the three subcommands are `validate.ts`, `new.ts`, `explain.ts`; the scaffolder state machine is at `apps/cli/src/template/scaffolder/`; the JSDoc-on-Zod-schema renderer is at `apps/cli/src/template/explain/`.
-- **[ADR-009: test strategy](./ADR-009-test-strategy)** — the unit + e2e + integration test discipline. The tooling is unit-tested at `apps/cli/test/unit/template/`; e2e-tested at `apps/cli/test/e2e/template/`; integration-tested at `apps/cli/test/integration/template/` against a local mock catalogue.
-- **`packages/contracts/lint/jsdoc-required.ts`** — the lint rule that enforces the JSDoc contract on every closed-list Zod field. The rule is the load-bearing implementation of the JSDoc-as-single-source-of-truth invariant.
-- **`apps/web/src/app/(product)/templates/`** — the gallery. The author tooling produces the items the gallery displays; the gallery's filter UI is the consumer-side mirror of the registry catalogue.
+- **[ADR-010: CLI public surface](./ADR-010-cli-public-surface)**, the closed-list invariant. The `template` namespace is the second sanctioned subcommand group (after `auth`). Adding new subcommands to `template` does **not** require a new ADR; only adding new top-level commands does.
+- **[ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing)**, the wire-transport discipline. `deessejs template validate` parses `deesse-template.json` directly through the Zod schema (no oRPC round-trip); the static CDN is used for the registry catalogue (plain `fetch`). oRPC remains for the dynamic registry queries (`templates.list`, `auth.*`).
+- **[ADR-002: file organization](./ADR-002-file-organization)**, the one-folder-per-concept rule. The `template` namespace lives at `apps/cli/src/commands/template/`; the three subcommands are `validate.ts`, `new.ts`, `explain.ts`; the scaffolder state machine is at `apps/cli/src/template/scaffolder/`; the JSDoc-on-Zod-schema renderer is at `apps/cli/src/template/explain/`.
+- **[ADR-009: test strategy](./ADR-009-test-strategy)**, the unit + e2e + integration test discipline. The tooling is unit-tested at `apps/cli/test/unit/template/`; e2e-tested at `apps/cli/test/e2e/template/`; integration-tested at `apps/cli/test/integration/template/` against a local mock catalogue.
+- **`packages/contracts/lint/jsdoc-required.ts`**, the lint rule that enforces the JSDoc contract on every closed-list Zod field. The rule is the load-bearing implementation of the JSDoc-as-single-source-of-truth invariant.
+- **`apps/web/src/app/(product)/templates/`**, the gallery. The author tooling produces the items the gallery displays; the gallery's filter UI is the consumer-side mirror of the registry catalogue.

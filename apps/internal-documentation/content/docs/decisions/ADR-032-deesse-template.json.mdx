@@ -51,7 +51,7 @@ Accepted (2026-09). Approved after two review rounds; tracked by [PR #137](https
 
 ## Context
 
-The DeesseJS template registry is the project's identity surface. The user has framed it on the marketing site as a registry that spans "packages, CLI, SaaS multi-tenant, mobile, desktop, AI agent, landing page" (per the locked homepage copy) — not a single-template repo. Today the registry is a single hand-curated TypeScript array exported from `packages/api/src/templates.ts`. The CLI (`apps/cli/src/commands/init.ts`) consumes the same endpoint and shells out to `git clone --depth 1 --branch <ref>` plus `pnpm/npm install`. There is no manifest reading, no token replacement, no post-processing — the CLI is a glorified clone wrapper. Templates as files live in external GitHub repos; the registry only carries metadata.
+The DeesseJS template registry is the project's identity surface. The user has framed it on the marketing site as a registry that spans "packages, CLI, SaaS multi-tenant, mobile, desktop, AI agent, landing page" (per the locked homepage copy), not a single-template repo. Today the registry is a single hand-curated TypeScript array exported from `packages/api/src/templates.ts`. The CLI (`apps/cli/src/commands/init.ts`) consumes the same endpoint and shells out to `git clone --depth 1 --branch <ref>` plus `pnpm/npm install`. There is no manifest reading, no token replacement, no post-processing, the CLI is a glorified clone wrapper. Templates as files live in external GitHub repos; the registry only carries metadata.
 
 This ADR introduces `deesse-template.json`, the per-item descriptor that lives at the root of each template repo (`deessejs/<slug>`). The descriptor is the single source of truth for what an item is, what it ships, what it depends on, and what it asks the user. It is consumed by the CLI at install time (parse-validated through Zod) and by the author tooling (`deessejs template validate`, `deessejs template explain`) at write time.
 
@@ -119,8 +119,8 @@ The URL of the JSON Schema that describes `deesse-template.json`. Always `https:
 **Example**: `"$schema": "https://registry.deessejs.dev/schema/template.json"`
 
 **Anti-patterns**:
-- Pointing `$schema` at a different URL (e.g. a fork) — third-party registries ship their own schema URL; the official `deessejs.dev` URL is for the official registry.
-- Omitting `$schema` — editors lose hints, and the CLI does not surface validation errors as nicely.
+- Pointing `$schema` at a different URL (e.g. a fork), third-party registries ship their own schema URL; the official `deessejs.dev` URL is for the official registry.
+- Omitting `$schema`, editors lose hints, and the CLI does not surface validation errors as nicely.
 
 ### `name`
 
@@ -139,9 +139,9 @@ The unique identifier of the item within the registry. Used as the slug in `dees
 - `"name": "ai-agent"` (a desktop or agent template)
 
 **Anti-patterns**:
-- Uppercase (`Auth`) — fails the regex.
-- Spaces or special characters (`saas starter`, `auth@v2`) — fail the regex.
-- Including the type prefix (`template-saas-starter`) — the type is conveyed by `type`, not the name.
+- Uppercase (`Auth`), fails the regex.
+- Spaces or special characters (`saas starter`, `auth@v2`), fail the regex.
+- Including the type prefix (`template-saas-starter`), the type is conveyed by `type`, not the name.
 
 ### `title`
 
@@ -160,8 +160,8 @@ A short human-readable display name. Used in the gallery (`/templates`), the CLI
 - `"title": "AI Agent (Streaming + Tool Registry)"`
 
 **Anti-patterns**:
-- All lowercase (`"title": "saas starter"`) — the gallery will render it as-is, but it looks inconsistent next to other items.
-- Markdown (`"title": "**SaaS** Starter"`) — titles are plain text; the gallery does not parse them.
+- All lowercase (`"title": "saas starter"`), the gallery will render it as-is, but it looks inconsistent next to other items.
+- Markdown (`"title": "**SaaS** Starter"`), titles are plain text; the gallery does not parse them.
 
 ### `description`
 
@@ -171,16 +171,16 @@ A one-to-three-sentence description. Used in the gallery (`/templates/<slug>`), 
 
 **Constraints**:
 - Up to 280 characters (a tweet's worth).
-- Plain text (no Markdown — the gallery renders it as a paragraph).
-- Should answer "what does this template give me?" not "what does it do?" — focus on the user outcome.
+- Plain text (no Markdown, the gallery renders it as a paragraph).
+- Should answer "what does this template give me?" not "what does it do?", focus on the user outcome.
 
 **Examples**:
 - `"description": "Production-ready Next.js + Better Auth + Postgres boilerplate for B2B SaaS. Includes auth, billing-ready schema, and a deploy-ready Vercel config."`
 - `"description": "Adds a Better-Auth adapter for Postgres, including the Prisma schema migration and the auth route handlers."`
 
 **Anti-patterns**:
-- Marketing-speak (`"The most amazing, industry-leading boilerplate you've ever seen"`) — the gallery filters for technical accuracy.
-- Implementation details without user benefit (`"Uses Next.js 15, Turbopack, and the new React Compiler"`) — the user does not care about the implementation until they read the docs.
+- Marketing-speak (`"The most amazing, industry-leading boilerplate you've ever seen"`), the gallery filters for technical accuracy.
+- Implementation details without user benefit (`"Uses Next.js 15, Turbopack, and the new React Compiler"`), the user does not care about the implementation until they read the docs.
 
 ### `type`
 
@@ -189,23 +189,23 @@ A one-to-three-sentence description. Used in the gallery (`/templates/<slug>`), 
 The discriminator that tells the CLI what kind of item this is. Drives the `init` vs `add` split (per [ADR-033 Decision #2](./ADR-033-deessejs-add.mdx)) and the install behaviour.
 
 **Allowed values**:
-- `"template:app"` — a full project clone. Used by `deessejs init <slug>`.
-- `"template:package"` — a feature overlay. Used by `deessejs add <slug>`. The most common type.
-- `"template:cli"` — a CLI tool scaffolding. Used by `deessejs init <slug>` for CLI projects.
-- `"template:mobile"` — a mobile app scaffolding. Used by `deessejs init <slug>`.
-- `"template:desktop"` — a desktop app scaffolding. Used by `deessejs init <slug>`.
-- `"template:agent"` — an AI agent scaffolding. Used by `deessejs init <slug>`.
-- `"template:landing"` — a landing page as a full app clone. Used by `deessejs init <slug>`.
+- `"template:app"`, a full project clone. Used by `deessejs init <slug>`.
+- `"template:package"`, a feature overlay. Used by `deessejs add <slug>`. The most common type.
+- `"template:cli"`, a CLI tool scaffolding. Used by `deessejs init <slug>` for CLI projects.
+- `"template:mobile"`, a mobile app scaffolding. Used by `deessejs init <slug>`.
+- `"template:desktop"`, a desktop app scaffolding. Used by `deessejs init <slug>`.
+- `"template:agent"`, an AI agent scaffolding. Used by `deessejs init <slug>`.
+- `"template:landing"`, a landing page as a full app clone. Used by `deessejs init <slug>`.
 
 **Discriminator enforcement**:
 - `deessejs init <slug>` refuses any non-`template:app` type with `parse_error`: *"` <slug> ` is a template:package; use `deessejs add <slug>` instead."*
 - `deessejs add <slug>` refuses `template:app` with `parse_error`: *"` <slug> ` is a template:app; use `deessejs init <slug>` instead."*
 
-**See also**: [ADR-035](./ADR-035-feature-not-subtree.mdx) for why there is no `template:blog` or `template:subtree` discriminator — a blog is just a `template:package` with more files.
+**See also**: [ADR-035](./ADR-035-feature-not-subtree.mdx) for why there is no `template:blog` or `template:subtree` discriminator, a blog is just a `template:package` with more files.
 
 **Anti-patterns**:
 - Picking `template:app` for a feature overlay (the CLI refuses; you must use `add`).
-- Inventing a new type value (`template:blog`, `template:library`) — fails the Zod enum. New types require an ADR.
+- Inventing a new type value (`template:blog`, `template:library`), fails the Zod enum. New types require an ADR.
 
 ### `version`
 
@@ -227,8 +227,8 @@ The version of the template itself, independent of the underlying source repo's 
 - `"version": "0.4.2"`
 
 **Anti-patterns**:
-- Non-semver strings (`"version": "v1.4"`, `"version": "latest"`) — fail the validator.
-- Failing to bump on breaking changes — consumers re-running `add` get a different shape than they had.
+- Non-semver strings (`"version": "v1.4"`, `"version": "latest"`), fail the validator.
+- Failing to bump on breaking changes, consumers re-running `add` get a different shape than they had.
 
 ### Same-day install tie-break rule
 
@@ -237,13 +237,13 @@ The version of the template itself, independent of the underlying source repo's 
 **The rule.** When a `deesse.lock` entry for a template records `installedAt = "2026-09-22"` and a developer's branch updates that entry with **the same date** but **a different `version`** or **a different `source.ref`**, the merge resolution rule is **deterministic and lexicographic**:
 
 1. **Compare `source.ref` strings first** (longest git ref wins: a SHA wins over a tag, a tag wins over a branch). If the refs differ in length but neither is a SHA, compare **byte-by-byte** using `localeCompare` with the `en` collation and `{ numeric: true }` so that `v1.10.0` sorts after `v1.9.0`.
-2. **If `source.ref` is identical**, compare `version` strings using the same byte-by-byte `localeCompare` with numeric collation — semver-aware sort.
+2. **If `source.ref` is identical**, compare `version` strings using the same byte-by-byte `localeCompare` with numeric collation, semver-aware sort.
 3. **If both `source.ref` and `version` are identical**, the lockfile is unchanged (the conflict is a no-op; the field values are the same).
 4. **Tie-break on `installerHost`.** When two devs install on the same day with identical refs and versions, the lockfile also records `installerHost: <hostname>` (the developer's machine name from `os.hostname()`). The merge picks the lexicographically-smaller `installerHost`. This is the last-resort tiebreaker and is expected to be vanishingly rare in practice (it requires two devs to install the same version on the same day, which only happens on shared-CI checkout patterns).
 
 **Why this matters.** Without a deterministic tie-break rule, a same-day same-version install would either (a) silently drop one side's record (data loss) or (b) trigger a Git merge conflict that requires manual resolution. Both outcomes defeat the "merge-friendly lockfile" goal of RFC-001. The rule above guarantees that `git merge` of two branches with the same `installedAt` is conflict-free **iff** the versions agree, and is also conflict-free (with a deterministic winner) **iff** the versions differ.
 
-**Why `installerHost` and not `installerId` (UUID/GPG key).** RFC-001 explicitly avoids requiring a GPG key or developer identity in the lockfile — the lockfile is committed to git and would otherwise leak PII. `os.hostname()` is non-identifying and is already used by every modern dev tool (npm, pnpm, cargo) for the same purpose. A dev who wants more granularity can override `installerHost` via the `DEESSE_INSTALLER_HOST` env var (mirroring `GIT_AUTHOR_NAME`-style overrides).
+**Why `installerHost` and not `installerId` (UUID/GPG key).** RFC-001 explicitly avoids requiring a GPG key or developer identity in the lockfile, the lockfile is committed to git and would otherwise leak PII. `os.hostname()` is non-identifying and is already used by every modern dev tool (npm, pnpm, cargo) for the same purpose. A dev who wants more granularity can override `installerHost` via the `DEESSE_INSTALLER_HOST` env var (mirroring `GIT_AUTHOR_NAME`-style overrides).
 
 **Implementation.** The merge logic lives at `apps/cli/src/lockfile/merge.ts`. It is exercised by `apps/cli/test/unit/lockfile-merge.test.ts` with 12 fixtures covering same-day same-version, same-day different-version, and cross-day same-version cases. The fixture suite is part of the CI gate.
 
@@ -258,8 +258,8 @@ The author of the item. Format: `"Name <email>"` (RFC 5322 with display name). U
 - `"author": "Jane Doe <jane@example.com>"`
 
 **Anti-patterns**:
-- Just an email (`"author": "hello@deessejs.com"`) — works but the gallery truncates it awkwardly.
-- A team name without a contact (`"author": "DeesseJS"`) — the registry adds a default contact for known teams, but third-party items should always include an email.
+- Just an email (`"author": "hello@deessejs.com"`), works but the gallery truncates it awkwardly.
+- A team name without a contact (`"author": "DeesseJS"`), the registry adds a default contact for known teams, but third-party items should always include an email.
 
 ### `license`
 
@@ -275,8 +275,8 @@ The license under which the template is distributed. Used by the registry's lice
 - If absent, the registry assumes `"MIT"` with a warning; the gallery shows "License unspecified."
 
 **Anti-patterns**:
-- `"MIT License"` (free-form text) — fails the validator; use the SPDX identifier.
-- `"GPL-3.0"` — not in the allowed list (the registry rejects copyleft licenses for third-party items; internal items can use any license).
+- `"MIT License"` (free-form text), fails the validator; use the SPDX identifier.
+- `"GPL-3.0"`, not in the allowed list (the registry rejects copyleft licenses for third-party items; internal items can use any license).
 
 ### `category`
 
@@ -285,24 +285,24 @@ The license under which the template is distributed. Used by the registry's lice
 The high-level category of the item. The registry uses this for the gallery's filter sidebar. Categories are free-form today (any non-empty string); a future ADR may pin a closed list.
 
 **Suggested values** (not enforced):
-- `"saas"` — multi-tenant B2B SaaS templates.
-- `"ai"` — AI-powered app templates (chatbots, agents, RAG).
-- `"landing"` — landing page templates.
-- `"api"` — API-only templates (REST, tRPC, oRPC).
-- `"internal"` — internal tooling templates (admin panels, dashboards).
-- `"mobile"` — mobile app templates.
-- `"desktop"` — desktop app templates.
-- `"docs"` — documentation site templates.
-- `"cli"` — CLI tool templates.
-- `"other"` — anything that does not fit the above.
+- `"saas"`, multi-tenant B2B SaaS templates.
+- `"ai"`, AI-powered app templates (chatbots, agents, RAG).
+- `"landing"`, landing page templates.
+- `"api"`, API-only templates (REST, tRPC, oRPC).
+- `"internal"`, internal tooling templates (admin panels, dashboards).
+- `"mobile"`, mobile app templates.
+- `"desktop"`, desktop app templates.
+- `"docs"`, documentation site templates.
+- `"cli"`, CLI tool templates.
+- `"other"`, anything that does not fit the above.
 
 **Examples**:
 - `"category": "saas"`
 - `"category": "ai"`
 
 **Anti-patterns**:
-- Mixed categories (`"category": "saas-ai"`) — pick the primary one and use `labels[]` for the secondary.
-- All-caps (`"category": "SAAS"`) — the gallery displays the category in its case; consistency matters.
+- Mixed categories (`"category": "saas-ai"`), pick the primary one and use `labels[]` for the secondary.
+- All-caps (`"category": "SAAS"`), the gallery displays the category in its case; consistency matters.
 
 ### `labels`
 
@@ -320,8 +320,8 @@ Free-form tags for filtering. Used by the gallery's search and label sidebar. Ea
 - Labels are not enforced; the registry's `category` taxonomy is orthogonal.
 
 **Anti-patterns**:
-- Multi-word labels (`"machine-learning"`) — hyphen-separate: `"machine-learning"` is fine, `"machine learning"` is not.
-- Version-specific labels (`"v2"`, `"nextjs-15"`) — labels are for cross-cutting topics; pin the version in `version`.
+- Multi-word labels (`"machine-learning"`), hyphen-separate: `"machine-learning"` is fine, `"machine learning"` is not.
+- Version-specific labels (`"v2"`, `"nextjs-15"`), labels are for cross-cutting topics; pin the version in `version`.
 
 ### `source`
 
@@ -340,8 +340,8 @@ The source repository that backs the template. The CLI clones from this repo at 
 - Mirror: `"source": { "repo": "deessejs/saas-template", "ref": "main", "cloneUrl": "https://git.deessejs.dev/mirror/saas-template.git" }`
 
 **Anti-patterns**:
-- Omitting `ref` — falls back to `main`, which may break consumers on a future breaking commit.
-- Using a branch (`ref: "main"`) for a stable install — pin to a tag or SHA.
+- Omitting `ref`, falls back to `main`, which may break consumers on a future breaking commit.
+- Using a branch (`ref: "main"`) for a stable install, pin to a tag or SHA.
 - `cloneUrl` to a non-GitHub host without documenting the mirror in `docs`.
 
 ### `requires`
@@ -365,8 +365,8 @@ Runtime gates the CLI enforces before installing.
 - If absent, the CLI uses defaults: `node: ">=18.0.0"` (matching the CLI's own engine floor) and no PM pin.
 
 **Anti-patterns**:
-- `"requires": { "node": ">=21.0.0" }` for a template that runs on Node 20 — the gate fails for the majority of consumers.
-- `"requires": { "node": "^20" }` — semver `^` is for libraries; for runtime gates use `>=`.
+- `"requires": { "node": ">=21.0.0" }` for a template that runs on Node 20, the gate fails for the majority of consumers.
+- `"requires": { "node": "^20" }`, semver `^` is for libraries; for runtime gates use `>=`.
 
 ### `dependencies`
 
@@ -381,16 +381,16 @@ npm packages the CLI installs at install time. Each entry is `<name>@<version>` 
 **Behaviour**:
 - At install time, the CLI runs `{pm} install <name>@<version>` (or `{pm} add <name>@<version>` for `add`) for each entry.
 - The CLI respects the user's `--pm` override or `deesse.json#packageManager` to choose the package manager binary.
-- The CLI does NOT install `dependencies` for `init` if the cloned repo already has a `package.json` with these dependencies declared — the user's `pnpm install` (run by `init`) handles them. The CLI installs `dependencies` only when they are **not** already declared in the cloned repo's `package.json`.
+- The CLI does NOT install `dependencies` for `init` if the cloned repo already has a `package.json` with these dependencies declared, the user's `pnpm install` (run by `init`) handles them. The CLI installs `dependencies` only when they are **not** already declared in the cloned repo's `package.json`.
 
 **Constraints**:
 - Each entry must match `^(@?[a-z0-9][a-z0-9._/-]*)@[^@]+$` (a name + `@` + version).
 - No `git+https://` URLs, no `file:` paths, no `*` wildcards. Private registries go in `deesse.json#registries`, not in `dependencies`.
 
 **Anti-patterns**:
-- Unpinned versions (`"dependencies": ["next"]`) — the CLI rejects these; pin a version range.
-- Major-version-only (`"dependencies": ["react@18"]`) — works but ambiguous; prefer `^18` or `>=18 <19`.
-- Pinned to a version that is not on the npm registry — the install fails for every consumer.
+- Unpinned versions (`"dependencies": ["next"]`), the CLI rejects these; pin a version range.
+- Major-version-only (`"dependencies": ["react@18"]`), works but ambiguous; prefer `^18` or `>=18 <19`.
+- Pinned to a version that is not on the npm registry, the install fails for every consumer.
 
 ### `devDependencies`
 
@@ -408,7 +408,7 @@ Same shape and constraints as `dependencies`, but installed with `{pm} add -D` (
 Slugs of other templates required by this one. Composable templates (the `packages-template` + `auth-addon` pattern, the `blog` + `crud` + `auth` pattern).
 
 **Examples**:
-- `"templateDependencies": ["crud", "auth"]` — this item overlays on top of `crud` and `auth`; the CLI installs those first if not already present.
+- `"templateDependencies": ["crud", "auth"]`, this item overlays on top of `crud` and `auth`; the CLI installs those first if not already present.
 
 **Behaviour**:
 - The CLI resolves each slug through `deesse.json#registries` (per [ADR-031](./ADR-031-deesse-json.mdx)).
@@ -421,8 +421,8 @@ Slugs of other templates required by this one. Composable templates (the `packag
 - A `template:type: "template:app"` item cannot have `templateDependencies` (an app is the root of the install graph; depending on another app makes no sense). The CLI rejects this with `parse_error`.
 
 **Anti-patterns**:
-- Circular dependencies — caught at parse time, but slow to debug. Trace the graph before publishing.
-- Coupling two items that should be one — if you find yourself always installing `auth` and `crud` together, merge them into one item.
+- Circular dependencies, caught at parse time, but slow to debug. Trace the graph before publishing.
+- Coupling two items that should be one, if you find yourself always installing `auth` and `crud` together, merge them into one item.
 
 ### `docs`
 
@@ -444,7 +444,7 @@ Path to a Markdown document inside the template repo. The CLI renders this when 
 
 **Anti-patterns**:
 - A path that does not exist (the CLI shows a "docs not found" warning).
-- A very long README — link to an external URL instead.
+- A very long README, link to an external URL instead.
 
 ### `prompts`
 
@@ -535,10 +535,10 @@ interface Consume {
 ```
 
 **Target discriminators**:
-- `project:database` — writes the answer into `deesse.json#database` (per [ADR-031](./ADR-031-deesse-json.mdx)).
-- `tokens:<KEY>` — writes the answer into `deesse.json#tokens.<KEY>`. `<KEY>` must be uppercase snake-case.
-- `file:<glob>` — records the answer in memory; the application step (step 8 of the install sequence per [ADR-033 Decision #6](./ADR-033-deessejs-add.mdx)) walks the cloned tree and removes paths matching `<glob>` when the answer is `false`.
-- `template:<key>` — keeps the answer in memory for `hooks{}` to consume; no project-side write.
+- `project:database`, writes the answer into `deesse.json#database` (per [ADR-031](./ADR-031-deesse-json.mdx)).
+- `tokens:<KEY>`, writes the answer into `deesse.json#tokens.<KEY>`. `<KEY>` must be uppercase snake-case.
+- `file:<glob>`, records the answer in memory; the application step (step 8 of the install sequence per [ADR-033 Decision #6](./ADR-033-deessejs-add.mdx)) walks the cloned tree and removes paths matching `<glob>` when the answer is `false`.
+- `template:<key>`, keeps the answer in memory for `hooks{}` to consume; no project-side write.
 
 **Explicit `consumes[]` example**:
 
@@ -576,10 +576,10 @@ interface Consume {
 Declarative lifecycle hooks. Each section is an array of verb names from the whitelist (with `{pm}` substitution for package-manager verbs). The hooks run at the named lifecycle stage.
 
 **Sections**:
-- `preInit` — runs after prompts, before cloning the template. Rare; used for pre-flight checks (e.g. `git config --get user.email`).
-- `postInit` — runs after the clone + `files[]` transforms, before the package manager install. This is where `{pm} install` typically goes (for the rare `add` case where the user does not yet have `node_modules`).
-- `preInstall` — runs after the package manager install, before `postInstall`. Rare.
-- `postInstall` — runs after the package manager install. This is where `{pm} db:push`, `{pm} db:migrate`, `{pm} generate` typically go.
+- `preInit`, runs after prompts, before cloning the template. Rare; used for pre-flight checks (e.g. `git config --get user.email`).
+- `postInit`, runs after the clone + `files[]` transforms, before the package manager install. This is where `{pm} install` typically goes (for the rare `add` case where the user does not yet have `node_modules`).
+- `preInstall`, runs after the package manager install, before `postInstall`. Rare.
+- `postInstall`, runs after the package manager install. This is where `{pm} db:push`, `{pm} db:migrate`, `{pm} generate` typically go.
 
 **Schema**:
 
@@ -611,12 +611,12 @@ A verb that does not match the whitelist after `{pm}` substitution fails at item
 
 ### `postinstall`
 
-**Type**: array of strings. **Optional. **Deprecated** as of this ADR — kept as a back-compat alias for `hooks.postInit`.
+**Type**: array of strings. **Optional. **Deprecated** as of this ADR, kept as a back-compat alias for `hooks.postInit`.
 
 If present, the CLI treats it as if it were `hooks.postInit`. New templates use `hooks.postInit` directly. The CLI emits a warning at install time when `postinstall` is present (so authors know to migrate).
 
 **Examples**:
-- `"postinstall": ["{pm} install"]` — equivalent to `"hooks": { "postInit": ["{pm} install"] }` with a deprecation warning.
+- `"postinstall": ["{pm} install"]`, equivalent to `"hooks": { "postInit": ["{pm} install"] }` with a deprecation warning.
 
 ### `files`
 
@@ -662,10 +662,10 @@ interface FileSpec {
 ```
 
 **Transform verbs**:
-- `"rename"` — copies the file at `path` to `target` without modification. Used for `.env.example` → `.env`, `tsconfig.json.template` → `tsconfig.json`.
-- `"interpolate"` — reads `path` as a template (with `{{KEY}}` placeholders) and writes the rendered content to `target`. The placeholders are substituted from `deesse.json#tokens` (set via `consumes: { target: "tokens:<KEY>" }` or hand-edited by the user).
-- `"remove"` — does not copy a file; instead, removes files in the cloned tree at the resolved `target` path. Used for `with_*` toggles (Storybook, MDX support, etc.).
-- `"merge"` — appends the file's content to the existing file at `target`. Used for `AGENTS.md` fragments contributed by multiple templates. Reserved; not implemented in this ADR.
+- `"rename"`, copies the file at `path` to `target` without modification. Used for `.env.example` → `.env`, `tsconfig.json.template` → `tsconfig.json`.
+- `"interpolate"`, reads `path` as a template (with `{{KEY}}` placeholders) and writes the rendered content to `target`. The placeholders are substituted from `deesse.json#tokens` (set via `consumes: { target: "tokens:<KEY>" }` or hand-edited by the user).
+- `"remove"`, does not copy a file; instead, removes files in the cloned tree at the resolved `target` path. Used for `with_*` toggles (Storybook, MDX support, etc.).
+- `"merge"`, appends the file's content to the existing file at `target`. Used for `AGENTS.md` fragments contributed by multiple templates. Reserved; not implemented in this ADR.
 
 **`overwrite` semantics** (per [ADR-033 Decision #7](./ADR-033-deessejs-add.mdx)):
 - `true` (absent on `init`, default on `add`): silent overwrite, no `--force` needed.
@@ -699,7 +699,7 @@ The `files[].target` field accepts placeholders that resolve against `deesse.jso
 | `~/<path>` | `<projectRoot>/<path>` (literal `~` at the start, no nesting) |
 
 **Rules**:
-- A placeholder must appear **at the start** of the `target` string, with no embedded characters (e.g. `components/@ui/button.tsx` is rejected — only `components/@ui/...` patterns are literal).
+- A placeholder must appear **at the start** of the `target` string, with no embedded characters (e.g. `components/@ui/button.tsx` is rejected, only `components/@ui/...` patterns are literal).
 - The placeholder name must be one of the closed list. `@utils/` is **not** supported (use `@lib/`).
 - A `target` without a placeholder is treated as a literal path relative to the project root.
 - If the resolved path points outside `projectRoot`, the CLI refuses with `parse_error` (no path traversal).
@@ -711,21 +711,21 @@ The `files[].target` field accepts placeholders that resolve against `deesse.jso
 - `"target": "~/.deessejs/notes.md"` → `<projectRoot>/.deessejs/notes.md` (the `~/` prefix is preserved literally, not expanded to the user's home directory).
 
 **Anti-patterns**:
-- `@utils/db.ts` — fails. Use `@lib/db.ts`.
-- `components/@ui/button.tsx` — fails. Only top-level placeholders are valid.
-- `../../etc/passwd` — fails the path-traversal check.
+- `@utils/db.ts`, fails. Use `@lib/db.ts`.
+- `components/@ui/button.tsx`, fails. Only top-level placeholders are valid.
+- `../../etc/passwd`, fails the path-traversal check.
 
 ## Reserved field names (top-level)
 
-The Zod schema for `TemplateV2` is **closed**: any top-level field not listed in this ADR fails at parse time with `parse_error`. This is intentional — it prevents typos and schema drift in third-party registries.
+The Zod schema for `TemplateV2` is **closed**: any top-level field not listed in this ADR fails at parse time with `parse_error`. This is intentional, it prevents typos and schema drift in third-party registries.
 
 **Closed list**: `$schema`, `name`, `title`, `description`, `type`, `version`, `author`, `license`, `category`, `labels`, `source`, `requires`, `dependencies`, `devDependencies`, `templateDependencies`, `docs`, `prompts`, `hooks`, `postinstall`, `files`.
 
 **Reserved for future use**: `cssVars`, `meta` (accepted by the parser but ignored by the CLI; see above).
 
 **Anti-patterns**:
-- Adding a new top-level field without an ADR (e.g. `"authorUrl"`, `"screenshot"`) — fails immediately. Open an ADR to widen the schema.
-- Using `cssVars` or `meta` today — they are accepted but ignored. Use `files[]` for any file the item ships.
+- Adding a new top-level field without an ADR (e.g. `"authorUrl"`, `"screenshot"`), fails immediately. Open an ADR to widen the schema.
+- Using `cssVars` or `meta` today, they are accepted but ignored. Use `files[]` for any file the item ships.
 
 ## `template:type` discriminator
 
@@ -746,8 +746,8 @@ The seven allowed values, their install behaviour, and when to use each.
 - `add <slug>` refuses `template:app` (and `template:cli`, etc.) with `parse_error`.
 
 **Anti-patterns**:
-- Picking `template:app` for a feature overlay — the CLI refuses; use `add` instead.
-- Picking `template:package` for a full clone — the CLI clones anyway but the type is misleading.
+- Picking `template:app` for a feature overlay, the CLI refuses; use `add` instead.
+- Picking `template:package` for a full clone, the CLI clones anyway but the type is misleading.
 
 ## The `when` DSL
 
@@ -790,16 +790,16 @@ value      ::= string-literal | number-literal | boolean-literal | array-literal
 **`when` against an unknown identifier**: if the `when` references `database` and the user runs `--yes` (skipping prompts), the `database` answer has the documented `default` value. If the prompt is gated by another `when` and never fires, the answer is `undefined`. The interpreter treats `undefined` as failing any `==` comparison (unless compared to `null`); `in` against an `undefined` left side is a runtime error caught by the interpreter and re-raised as `parse_error`. Use a `default` on the prompt, not a `when` that tests for it.
 
 **Anti-patterns**:
-- `eval(...)`, `Function(...)`, or any function call — fails the parser.
-- Method calls (`answer.includes('foo')`) — not in the grammar.
-- Arithmetic (`answer > 5`) — not in the grammar.
-- Identifiers that are JS reserved words (`true`, `false`, `null`, `undefined`) — fail the parser.
+- `eval(...)`, `Function(...)`, or any function call, fails the parser.
+- Method calls (`answer.includes('foo')`), not in the grammar.
+- Arithmetic (`answer > 5`), not in the grammar.
+- Identifiers that are JS reserved words (`true`, `false`, `null`, `undefined`), fail the parser.
 
 ## The `consumes[]` consumption rules
 
 Two layers: an explicit `consumes[]` block that overrides the implicit convention.
 
-**Layer 1 — explicit `consumes[]`**. Each entry has a `target` discriminator:
+**Layer 1, explicit `consumes[]`**. Each entry has a `target` discriminator:
 
 | `target` discriminator | Lands in |
 |---|---|
@@ -808,7 +808,7 @@ Two layers: an explicit `consumes[]` block that overrides the implicit conventio
 | `file:<glob>` | paths matching `<glob>` in the cloned tree (for `with_*` toggles) |
 | `template:<key>` | the in-memory `answers` map only (no project-side write) |
 
-**Layer 2 — implicit convention** (when `consumes[]` is absent), in priority order:
+**Layer 2, implicit convention** (when `consumes[]` is absent), in priority order:
 
 1. `name === "database"` → `project:database`.
 2. `name` matches `/^with_/` (a `with_*` boolean prompt) → `file:./<name-snake-cased-path>/`.
@@ -828,7 +828,7 @@ Two layers: an explicit `consumes[]` block that overrides the implicit conventio
 
 ## The `{pm}` placeholder
 
-The `{pm}` placeholder appears in `dependencies[]` (no — those are version-pinned npm packages), `devDependencies[]` (no), `hooks{}` (yes), and `postinstall[]` (yes, back-compat alias).
+The `{pm}` placeholder appears in `dependencies[]` (no, those are version-pinned npm packages), `devDependencies[]` (no), `hooks{}` (yes), and `postinstall[]` (yes, back-compat alias).
 
 **Behaviour**: the CLI substitutes `{pm}` with the package manager to invoke, in this priority order:
 1. The `--pm <name>` CLI flag (per-command).
@@ -850,12 +850,12 @@ With `deesse.json#packageManager = "bun"`, the CLI spawns `bun install`, `bun db
 **Validation**:
 - A verb containing `{pm}` must match the whitelist after substitution.
 - A verb not matching the whitelist fails at item-fetch time with `parse_error`.
-- A hardcoded `pnpm install` or `npm install` fails — `{pm}` is the only allowed shape for PM-dependent verbs.
+- A hardcoded `pnpm install` or `npm install` fails, `{pm}` is the only allowed shape for PM-dependent verbs.
 
 **Anti-patterns**:
-- `"hooks": { "postInstall": ["pnpm install"] }` — fails the whitelist; use `"{pm} install"`.
-- `"hooks": { "postInstall": ["{pm} prisma generate"] }` — fails the whitelist; the `{pm} generate` verb is the canonical shape, and Prisma is invoked as `prisma generate` (the CLI ships a `prisma` alias if needed) or as a separate hook like `npx prisma generate` (which is not in the whitelist either).
-- `"hooks": { "postInstall": ["npm run lint"] }` — fails the whitelist; npm scripts are not in the whitelist. Run `lint` via `{pm} lint` if you must, but the whitelist does not include it today.
+- `"hooks": { "postInstall": ["pnpm install"] }`, fails the whitelist; use `"{pm} install"`.
+- `"hooks": { "postInstall": ["{pm} prisma generate"] }`, fails the whitelist; the `{pm} generate` verb is the canonical shape, and Prisma is invoked as `prisma generate` (the CLI ships a `prisma` alias if needed) or as a separate hook like `npx prisma generate` (which is not in the whitelist either).
+- `"hooks": { "postInstall": ["npm run lint"] }`, fails the whitelist; npm scripts are not in the whitelist. Run `lint` via `{pm} lint` if you must, but the whitelist does not include it today.
 
 ## Hook runner safety rules
 
@@ -950,7 +950,7 @@ See the original ADR for the three rejected alternatives (`registry.json` in `pa
 
 - **`packages/contracts` grows `TemplateV2`.** The Zod schema lives in `packages/contracts/src/v1/template.ts` alongside `TemplateV1`. A barrel re-exports both. The server publishes both response shapes.
 - **`packages/api/src/templates.ts` gains typed entries** with the `TemplateV2` fields.
-- **`apps/cli` learns to apply `files[]` transformations.** The transforms live at `apps/cli/src/transforms/` (new folder) — one file per verb (`rename`, `interpolate`, `remove`, `merge`), following the one-folder-per-concept rule from [ADR-002](./ADR-002-file-organization.md).
+- **`apps/cli` learns to apply `files[]` transformations.** The transforms live at `apps/cli/src/transforms/` (new folder), one file per verb (`rename`, `interpolate`, `remove`, `merge`), following the one-folder-per-concept rule from [ADR-002](./ADR-002-file-organization.md).
 - **`apps/cli` learns to route prompt answers.** The consumer logic lives at `apps/cli/src/prompts/consume.ts` (new file).
 - **`apps/cli` learns to parse and evaluate `when` expressions.** The interpreter lives at `apps/cli/src/prompts/when.ts` (new file). The `shell: false` hook runner lives at `apps/cli/src/hooks/runner.ts`.
 - **`packages/contracts` gains a CI job that publishes JSON Schemas** to `registry.deessejs.dev/schema/{project,template}.json`.
