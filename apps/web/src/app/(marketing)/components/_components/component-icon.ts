@@ -80,5 +80,9 @@ const _exhaustive = (null as unknown) as boolean
 void _exhaustive
 
 export function getComponentIcon(slug: CatalogueComponent["slug"]): LucideIcon {
-  return COMPONENT_ICONS[slug] ?? Wrench
+  // See block-icon.ts for the rationale — cast through `unknown`
+  // keeps the function's `LucideIcon` return type and pairs the
+  // `?? Wrench` fallback with a non-null assertion.
+  const map = COMPONENT_ICONS as unknown as Record<string, LucideIcon>
+  return map[slug] ?? Wrench
 }

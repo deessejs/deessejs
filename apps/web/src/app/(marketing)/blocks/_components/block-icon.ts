@@ -69,5 +69,12 @@ const _exhaustive = (null as unknown) as boolean
 void _exhaustive
 
 export function getBlockIcon(slug: CatalogueBlock["slug"]): LucideIcon {
-  return BLOCK_ICONS[slug] ?? Wrench
+  // `as const satisfies Record<...>` gives the map an exact type
+  // with no index signature, so `BLOCK_ICONS[slug]` widens the
+  // return to `LucideIcon | undefined`. Cast through `unknown` to
+  // keep the function's `LucideIcon` return type and pair the
+  // `?? Wrench` fallback with a non-null assertion. Sound at
+  // runtime because the slug is constrained to the known keys.
+  const map = BLOCK_ICONS as unknown as Record<string, LucideIcon>
+  return map[slug] ?? Wrench
 }
