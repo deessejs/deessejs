@@ -42,7 +42,7 @@ import {
 
 import type { CatalogueComponent } from "./components-list"
 
-const COMPONENT_ICONS = {
+export const COMPONENT_ICONS = {
   button: Square,
   badge: Tag,
   separator: Minus,

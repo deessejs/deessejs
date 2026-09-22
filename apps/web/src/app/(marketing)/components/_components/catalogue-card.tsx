@@ -1,9 +1,9 @@
 import Link from "next/link"
-import { useMemo } from "react"
+import { createElement } from "react"
 
 import type { CatalogueComponent } from "./components-list"
 import { ComponentCardPreview } from "./component-card-preview"
-import { getComponentIcon } from "./component-icon"
+import { COMPONENT_ICONS } from "./component-icon"
 
 type Props = {
   component: CatalogueComponent
@@ -20,13 +20,17 @@ type Props = {
  * the parent `<li>`'s `border-r` / `border-b` show through as the
  * only visible boundary, exactly like `template-grid.tsx`.
  */
+// Module-level component map. Looked up by slug and rendered
+// via `createElement` to satisfy the react-hooks/static-components
+// rule (a `const Icon = ...` inside the render body would
+// trigger it). Cast widens the `as const satisfies Record<...>`
+// exact type to a plain indexable map.
+const ICON_BY_SLUG = COMPONENT_ICONS as unknown as Record<
+  string,
+  React.ComponentType<{ "aria-hidden"?: boolean; className?: string }>
+>
+
 export function CatalogueCard({ component }: Props) {
-  // `Icon` is a component instance — wrap the lookup in `useMemo`
-  // to give the JSX a stable reference and satisfy the
-  // react-hooks/static-components rule. The lookup is cheap (a
-  // single object property access); the useMemo is purely there
-  // to memoize the component reference, not the value.
-  const Icon = useMemo(() => getComponentIcon(component.slug), [component.slug])
   const href = `/components/${component.category}/${component.slug}`
 
   return (
@@ -40,10 +44,10 @@ export function CatalogueCard({ component }: Props) {
           <ComponentCardPreview slug={component.slug} />
           <div className="flex flex-1 flex-col gap-3 p-6">
             <div className="flex items-start gap-3">
-              <Icon
-                aria-hidden
-                className="text-muted-foreground mt-0.5 size-4 shrink-0"
-              />
+              {createElement(ICON_BY_SLUG[component.slug], {
+                "aria-hidden": true,
+                className: "text-muted-foreground mt-0.5 size-4 shrink-0",
+              })}
               <h2 className="text-label-16 leading-snug font-semibold tracking-tight text-balance">
                 {component.name}
               </h2>

@@ -36,7 +36,7 @@ import {
 
 import type { CatalogueBlock } from "./blocks-list"
 
-const BLOCK_ICONS = {
+export const BLOCK_ICONS = {
   "hero-centered": Sparkles,
   "hero-split-image": Columns2,
   "hero-with-mockup": MonitorPlay,
