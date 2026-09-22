@@ -1,11 +1,8 @@
 import type { Metadata } from "next"
 
-import { H1 } from "@workspace/ui/components/typography"
-
 import { BlocksBrowser } from "./_components/blocks-browser"
 import { BLOCK_CATEGORIES } from "./_components/block-categories"
 import { BLOCK_CATALOGUE } from "./_components/blocks-list"
-import { FooterCta } from "@/app/(marketing)/components/_components/footer-cta"
 
 export const metadata: Metadata = {
   title: "Blocks",
@@ -16,58 +13,52 @@ export const metadata: Metadata = {
 /**
  * Blocks catalogue index at `/blocks`.
  *
- * Layout: hero in its own card, then a gap, then the catalogue
- * grid in another card, then the footer CTA. Each card uses
- * `border border-border bg-background rounded-none` (calque of
- * `apps/web/src/app/(marketing)/page.tsx:515`) so the visual
- * rhythm matches the rest of the marketing site.
+ * Two-column layout: nav sidebar on the left, category grid on
+ * the right. Each grid card is one category (Hero, CTA, Feature,
+ * Pricing, Testimonial, Stats, FAQ, Footer) with a layout-shaped
+ * preview.
  *
- * The browser component is a client component (`"use client"`)
- * that owns the checkbox state. Everything else here is RSC.
- *
- * V1 dummy: cards in the grid point to the leaf
- * `/blocks/[category]/[block]` placeholder pages. V2
- * auto-generates live previews from a JSDoc-tagged source.
+ * Wrapper + final CTA from `(marketing)/blocks/layout.tsx`.
+ * Mirror of `components/page.tsx` with block-specific copy.
  */
 export default function BlocksPage() {
+  // Map each category to a representative block. The grid shows
+  // one card per category; the representative block drives the
+  // preview's layout discriminator. We pick the first block in
+  // the category for stability.
+  const categoryToBlock = Object.fromEntries(
+    BLOCK_CATEGORIES.map((category) => {
+      const firstBlock = BLOCK_CATALOGUE.find(
+        (block) => block.category === category.id,
+      )
+      return [category.id, firstBlock]
+    }).filter(([, block]) => Boolean(block)),
+  ) as Record<(typeof BLOCK_CATEGORIES)[number]["id"], (typeof BLOCK_CATALOGUE)[number]>
+
   return (
-    <article className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-16 sm:px-6 lg:py-24">
-      {/* Hero card */}
-      <header className="flex flex-col gap-6 border border-border bg-background rounded-none p-6 md:p-8 lg:p-10">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          Blocks
-        </p>
-        <H1 className="text-heading-32 tracking-tight">Blocks.</H1>
-        <p className="text-muted-foreground text-copy-20 leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-          The marketing sections every DeesseJS template ships
-          with. Browse by category, click any card for the detail
-          page.
-        </p>
+    <>
+      {/* Hero */}
+      <header className="relative overflow-hidden border-b border-border">
+        <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
+          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            Blocks
+          </p>
+          <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
+            Marketing sections, ready to drop in.
+          </h1>
+          <p className="max-w-2xl text-copy-18 text-pretty leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
+            The marketing sections every DeesseJS template ships
+            with. Browse a category, click any card for the detail
+            page.
+          </p>
+        </div>
       </header>
 
-      {/* Catalogue card: sidebar + grid */}
-      <div className="border border-border bg-background rounded-none">
-        <BlocksBrowser
-          blocks={BLOCK_CATALOGUE}
-          categories={BLOCK_CATEGORIES}
-        />
-      </div>
-
-      <FooterCta
-        title="Read the source."
-        body={
-          <>
-            Every block lives in{" "}
-            <code className="font-mono text-foreground/90">apps/web</code>
-            . MIT, no paywall.
-          </>
-        }
-        primaryLabel="View on GitHub"
-        primaryHref="https://github.com/deessejs/deessejs"
-        primaryExternal
-        secondaryLabel="Browse templates"
-        secondaryHref="/templates"
+      {/* Two-column browser: sidebar + category grid. */}
+      <BlocksBrowser
+        categories={BLOCK_CATEGORIES}
+        categoryToBlock={categoryToBlock}
       />
-    </article>
+    </>
   )
 }

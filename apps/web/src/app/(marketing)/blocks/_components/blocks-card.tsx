@@ -29,7 +29,7 @@ export function BlocksCard({ block }: Props) {
         className="group flex h-full flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <div className="flex h-full flex-col bg-background transition-colors group-hover:bg-accent/30">
-          <BlockCardPreview slug={block.slug} />
+          <BlockCardPreview block={block} />
           <div className="flex flex-1 flex-col gap-3 p-6">
             <div className="flex items-start gap-3">
               <Icon

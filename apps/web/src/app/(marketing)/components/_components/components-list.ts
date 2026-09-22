@@ -1,189 +1,215 @@
 /**
  * Component catalogue for /components/[category]/[component].
  *
- * Mirrors the 25 primitives that ship in `@workspace/ui`. Each
+ * Mirrors the 24 primitives that ship in `@workspace/ui`. Each
  * component declares its `category` so the dynamic route can
  * validate that `(category, component)` is a coherent pair and
- * return 404 otherwise.
+ * return 404 otherwise. V1 uses 1-category-per-component naming
+ * (button, badge, avatar...) — the new taxonomy describes
+ * usage context rather than functional tier.
+ *
+ * `tier` is the price tier advertised in the catalogue: "free"
+ * primitives ship in every open-source shadcn registry; "pro"
+ * systems compose multiple primitives into non-trivial UX
+ * (Dialog, Sheet, Command, NavigationMenu, Sidebar) and gate
+ * the build-time value of the templates that include them.
  *
  * V1 dummy. V2 reads from `packages/ui/src/components/*.tsx`
  * (auto-generation) instead of this hand-maintained list.
  */
 
-export type ComponentCategoryId =
-  | "primitives"
-  | "forms"
-  | "overlays"
-  | "navigation"
-  | "structure"
-  | "feedback"
+import type { CategoryId } from "./categories"
+
+export type ComponentTier = "free" | "pro"
+
+export type ComponentCategoryId = CategoryId
 
 export type CatalogueComponent = {
-  /** URL slug. */
-  slug: string
+  /** URL slug. Must match the `slug` of its category in `categories.ts`. */
+  slug: CategoryId
   /** Display name. */
   name: string
   /** Short one-line description. */
   description: string
-  /** Category the component belongs to. */
-  category: ComponentCategoryId
+  /** Category the component belongs to. Same as `slug` in the new taxonomy. */
+  category: CategoryId
+  /** Price tier — "free" primitives or "pro" systems. */
+  tier: ComponentTier
 }
 
+/** Tier order used by the catalog filter. "all" is the no-op default. */
+export const TIER_ORDER = ["all", "free", "pro"] as const
+export type TierFilter = (typeof TIER_ORDER)[number]
+
 export const CATALOGUE_COMPONENTS: ReadonlyArray<CatalogueComponent> = [
-  // Primitives
+  // One category per component — see /components/_components/categories.ts.
   {
     slug: "button",
     name: "Button",
     description: "Trigger actions and navigation.",
-    category: "primitives",
+    category: "button",
+    tier: "free",
   },
   {
     slug: "badge",
     name: "Badge",
     description: "Status pill for inline labels.",
-    category: "primitives",
+    category: "badge",
+    tier: "free",
   },
   {
     slug: "separator",
     name: "Separator",
     description: "Visual divider between sections.",
-    category: "primitives",
+    category: "separator",
+    tier: "free",
   },
   {
     slug: "skeleton",
     name: "Skeleton",
     description: "Loading placeholder block.",
-    category: "primitives",
+    category: "skeleton",
+    tier: "free",
   },
   {
     slug: "avatar",
     name: "Avatar",
     description: "User avatar with fallback initials.",
-    category: "primitives",
+    category: "avatar",
+    tier: "free",
   },
-
-  // Forms
   {
     slug: "input",
     name: "Input",
     description: "Single-line text input.",
-    category: "forms",
+    category: "input",
+    tier: "free",
   },
   {
     slug: "textarea",
     name: "Textarea",
     description: "Multi-line text input.",
-    category: "forms",
+    category: "textarea",
+    tier: "free",
   },
   {
     slug: "checkbox",
     name: "Checkbox",
     description: "Boolean checkbox.",
-    category: "forms",
+    category: "checkbox",
+    tier: "free",
   },
   {
     slug: "select",
     name: "Select",
     description: "Single-value native dropdown.",
-    category: "forms",
+    category: "select",
+    tier: "free",
   },
   {
     slug: "switch",
     name: "Switch",
     description: "Persistent on/off toggle.",
-    category: "forms",
+    category: "switch",
+    tier: "free",
   },
   {
     slug: "input-group",
     name: "InputGroup",
     description: "Input with addons or trailing buttons.",
-    category: "forms",
+    category: "input-group",
+    tier: "free",
   },
-
-  // Overlays
   {
     slug: "dialog",
     name: "Dialog",
     description: "Centered modal with focus trap.",
-    category: "overlays",
+    category: "dialog",
+    tier: "pro",
   },
   {
     slug: "sheet",
     name: "Sheet",
     description: "Side-panel modal.",
-    category: "overlays",
+    category: "sheet",
+    tier: "pro",
   },
   {
     slug: "popover",
     name: "Popover",
     description: "Anchored non-modal popup.",
-    category: "overlays",
+    category: "popover",
+    tier: "free",
   },
   {
     slug: "tooltip",
     name: "Tooltip",
     description: "Hover hint with delay.",
-    category: "overlays",
+    category: "tooltip",
+    tier: "free",
   },
   {
     slug: "dropdown-menu",
     name: "DropdownMenu",
     description: "Action menu anchored to a trigger.",
-    category: "overlays",
+    category: "dropdown-menu",
+    tier: "free",
   },
   {
     slug: "command",
     name: "Command",
     description: "Command palette / search.",
-    category: "overlays",
+    category: "command",
+    tier: "pro",
   },
-
-  // Navigation
   {
     slug: "navigation-menu",
     name: "NavigationMenu",
     description: "Site-wide navigation with dropdowns.",
-    category: "navigation",
+    category: "navigation-menu",
+    tier: "pro",
   },
   {
     slug: "sidebar",
     name: "Sidebar",
     description: "Collapsible app shell sidebar.",
-    category: "navigation",
+    category: "sidebar",
+    tier: "pro",
   },
   {
     slug: "breadcrumb",
     name: "Breadcrumb",
     description: "Nav trail of links.",
-    category: "navigation",
+    category: "breadcrumb",
+    tier: "free",
   },
-
-  // Structure
   {
     slug: "accordion",
     name: "Accordion",
     description: "Vertically stacked collapsible sections.",
-    category: "structure",
+    category: "accordion",
+    tier: "free",
   },
   {
     slug: "collapsible",
     name: "Collapsible",
     description: "Single show/hide disclosure.",
-    category: "structure",
+    category: "collapsible",
+    tier: "free",
   },
   {
     slug: "tabs",
     name: "Tabs",
     description: "Tabbed content panels.",
-    category: "structure",
+    category: "tabs",
+    tier: "free",
   },
-
-  // Feedback
   {
     slug: "sonner",
     name: "Sonner",
     description: "Toast notifications.",
-    category: "feedback",
+    category: "sonner",
+    tier: "free",
   },
 ]
 
@@ -214,14 +240,12 @@ export function getAllComponentParams(): Array<{
  * Recommend components related to the given slug. Used by the
  * "Related components" rail on each leaf page.
  *
- * Heuristic: prefer siblings in the same category (excluding the
- * current slug), then fill with the first entries of the
- * catalogue if the category has fewer than `limit` candidates.
- *
- * Order within the same category follows the order declared in
- * `CATALOGUE_COMPONENTS`, which itself follows the
- * `CATEGORY_ORDER` for the canonical categories (Primitives,
- * Forms, ...).
+ * Heuristic: with the new 1-category-per-component taxonomy,
+ * every category has exactly one component, so same-category
+ * siblings (excluding the current slug) is always empty. Fall
+ * through to the first `limit` entries of `CATALOGUE_COMPONENTS`,
+ * skipping the current slug. Stable, ordered — no surprise
+ * reshuffles across re-renders.
  */
 export function getRelatedComponents(
   slug: CatalogueComponent["slug"],

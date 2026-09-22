@@ -5,8 +5,9 @@ import { useDeferredValue, useMemo, useState } from "react"
 import { CatalogueGrid } from "./catalogue-grid"
 import { CategoryNavSidebar } from "./category-nav-sidebar"
 import { SearchInput } from "./search-input"
+import { TierSelect } from "./tier-select"
 import type { CategoryId, ComponentCategory } from "./categories"
-import type { CatalogueComponent } from "./components-list"
+import type { CatalogueComponent, TierFilter } from "./components-list"
 
 type Props = {
   components: ReadonlyArray<CatalogueComponent>
@@ -17,12 +18,10 @@ type Props = {
 /**
  * Client orchestrator for `/components/[category]`. Renders the
  * nav sidebar on the left and the grid of components in the
- * pinned category on the right. Search filters within the
- * category only — there is no checkbox filter at this level
- * (every component shown belongs to the pinned category).
+ * pinned category on the right. Search + tier filter sit inside
+ * the right column above the grid.
  *
- * Layout classes match the index: 14rem sidebar + 1px column +
- * `divide-x divide-border`. Calque of `apps/web/src/app/(product)/templates/page.tsx:152`.
+ * Layout: 18rem sidebar + 1px column + `divide-x divide-border`.
  */
 export function CategoryBrowser({
   components,
@@ -32,6 +31,7 @@ export function CategoryBrowser({
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query)
   const normalizedQuery = deferredQuery.trim().toLowerCase()
+  const [tier, setTier] = useState<TierFilter>("all")
 
   const counts = useMemo(() => {
     const out = {} as Record<CategoryId, number>
@@ -51,32 +51,39 @@ export function CategoryBrowser({
     if (!pinnedCategoryData) return []
     return components.filter((component) => {
       if (component.category !== pinnedCategory) return false
-      if (normalizedQuery.length === 0) return true
-      const haystack = `${component.name} ${component.description}`.toLowerCase()
-      return haystack.includes(normalizedQuery)
+      // Search
+      if (normalizedQuery.length > 0) {
+        const haystack = `${component.name} ${component.description}`.toLowerCase()
+        if (!haystack.includes(normalizedQuery)) return false
+      }
+      // Tier
+      if (tier !== "all" && component.tier !== tier) return false
+      return true
     })
-  }, [components, pinnedCategory, pinnedCategoryData, normalizedQuery])
+  }, [components, pinnedCategory, pinnedCategoryData, normalizedQuery, tier])
 
   return (
     <section
       aria-label={`${pinnedCategoryData?.name ?? "Category"} components`}
-      className="grid grid-cols-1 gap-8 lg:grid-cols-[14rem_1px_minmax(0,1fr)] lg:gap-0 lg:divide-x lg:divide-border"
+      className="grid grid-cols-1 gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-0 lg:divide-x lg:divide-border"
     >
       <CategoryNavSidebar
         categories={categories}
         pinned={pinnedCategory}
         counts={counts}
       />
-      {/* 1px divider column on desktop only — gap on mobile. */}
-      <div aria-hidden className="hidden lg:block" />
-      <div className="flex min-w-0 flex-1 flex-col gap-6">
-        <SearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder={`Search ${pinnedCategoryData?.name.toLowerCase() ?? "components"}…`}
-          aria-label={`Search components in ${pinnedCategoryData?.name ?? "this category"}`}
-          className="max-w-sm"
-        />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Search + tier filter — sit inside the right column, above the grid */}
+        <div className="flex flex-col items-stretch gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder={`Search ${pinnedCategoryData?.name.toLowerCase() ?? "components"}…`}
+            aria-label={`Search components in ${pinnedCategoryData?.name ?? "this category"}`}
+            className="flex-1 sm:max-w-sm"
+          />
+          <TierSelect value={tier} onChange={setTier} />
+        </div>
         {pinnedCategoryData && filtered.length > 0 ? (
           <CatalogueGrid
             groups={[
@@ -90,13 +97,13 @@ export function CategoryBrowser({
           <div
             role="status"
             aria-live="polite"
-            className="flex min-h-64 flex-col items-center justify-center gap-4 rounded-none border border-dashed border-border bg-muted/20 p-12 text-center"
+            className="flex min-h-64 flex-col items-center justify-center gap-4 border border-dashed border-border bg-muted/20 p-12 text-center"
           >
             <p className="text-heading-24 tracking-tight text-foreground">
               No components match.
             </p>
             <p className="text-copy-14 text-muted-foreground max-w-sm">
-              Try a different search term.
+              Try a different search term or tier.
             </p>
           </div>
         )}

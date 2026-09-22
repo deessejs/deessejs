@@ -29,7 +29,7 @@ export function CatalogueGrid({ groups }: Props) {
           aria-labelledby={`category-heading-${category.id}`}
           className="flex flex-col gap-4"
         >
-          <header className="flex items-baseline justify-between gap-4">
+          <header className="flex items-baseline justify-between">
             <h3
               id={`category-heading-${category.id}`}
               className="text-heading-24 tracking-tight text-foreground !m-0"

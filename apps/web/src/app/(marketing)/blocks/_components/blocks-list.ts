@@ -28,6 +28,9 @@ export type CatalogueBlock = {
   category: BlockCategoryId
   /** V1 dummy visual discriminator (rendered in the leaf placeholder). */
   layout: BlockLayout
+  /** Price tier. V1 ships all blocks as "free" — full pricing strategy
+   *  comes when the blocks registry moves out of dummy. */
+  tier: "free" | "pro"
 }
 
 export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
@@ -38,6 +41,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Centered headline, lead, and a single CTA. The default landing surface.",
     category: "hero",
     layout: "centered",
+  tier: "free",
   },
   {
     slug: "hero-split-image",
@@ -45,6 +49,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Two-column hero: copy on the left, image or screenshot on the right.",
     category: "hero",
     layout: "split",
+  tier: "free",
   },
   {
     slug: "hero-with-mockup",
@@ -52,6 +57,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Headline above an embedded product mockup. The surface that anchors product demos.",
     category: "hero",
     layout: "stacked",
+  tier: "free",
   },
   {
     slug: "hero-with-cta-banner",
@@ -59,6 +65,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Centered hero with an inline announcement chip above the headline.",
     category: "hero",
     layout: "centered",
+  tier: "free",
   },
 
   // CTA
@@ -68,6 +75,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Slim banner strip between sections. Single sentence plus one button.",
     category: "cta",
     layout: "centered",
+  tier: "free",
   },
   {
     slug: "cta-final",
@@ -75,6 +83,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Full-bleed closer at the bottom of the page. Last chance to convert.",
     category: "cta",
     layout: "centered",
+  tier: "free",
   },
   {
     slug: "cta-repeating",
@@ -82,6 +91,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Three-column variant with install / ship / manifesto as parallel affordances.",
     category: "cta",
     layout: "split",
+  tier: "free",
   },
 
   // Feature
@@ -91,6 +101,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Asymmetric bento grid for an uneven catalog of features.",
     category: "feature",
     layout: "bento",
+  tier: "free",
   },
   {
     slug: "feature-list",
@@ -98,6 +109,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Vertical list of features with icons. Long-form density.",
     category: "feature",
     layout: "stacked",
+  tier: "free",
   },
   {
     slug: "feature-comparison",
@@ -105,6 +117,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Side-by-side comparison of two or three options. For buyers who triage.",
     category: "feature",
     layout: "split",
+  tier: "free",
   },
 
   // Pricing
@@ -114,6 +127,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Three-card pricing tiers with one primary CTA per card.",
     category: "pricing",
     layout: "stacked",
+  tier: "free",
   },
   {
     slug: "pricing-comparison-table",
@@ -121,6 +135,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Attribute-by-attribute comparison across the three layers.",
     category: "pricing",
     layout: "stacked",
+  tier: "free",
   },
   {
     slug: "pricing-faq",
@@ -128,6 +143,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Pricing cards stacked above the pricing FAQ. The complete buy decision on one page.",
     category: "pricing",
     layout: "stacked",
+  tier: "free",
   },
 
   // Testimonial
@@ -137,6 +153,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Two quotes side by side, each with avatar, name, role, company.",
     category: "testimonial",
     layout: "split",
+  tier: "free",
   },
   {
     slug: "testimonial-wall",
@@ -144,6 +161,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "A wall of customer quotes. For social proof at scale.",
     category: "testimonial",
     layout: "bento",
+  tier: "free",
   },
 
   // Stats
@@ -153,6 +171,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Four large numbers in a row. Mix of internal KPIs and tier-1 third-party metrics.",
     category: "stats",
     layout: "split",
+  tier: "free",
   },
   {
     slug: "stats-tier",
@@ -160,6 +179,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Stats grouped by tier (free / pro / enterprise) with per-tier counts.",
     category: "stats",
     layout: "stacked",
+  tier: "free",
   },
 
   // FAQ
@@ -169,6 +189,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Vertical accordion of questions. The default FAQ surface.",
     category: "faq",
     layout: "stacked",
+  tier: "free",
   },
   {
     slug: "faq-split",
@@ -176,6 +197,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Heading and lead on the left, accordion on the right. For FAQs that need more than a sentence.",
     category: "faq",
     layout: "split",
+  tier: "free",
   },
 
   // Footer
@@ -185,6 +207,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Multi-column footer with link groups, legal, status badge, social.",
     category: "footer",
     layout: "stacked",
+  tier: "free",
   },
   {
     slug: "footer-minimal",
@@ -192,6 +215,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Single-row footer with brand, legal links, and a CTA. For single-page sites.",
     category: "footer",
     layout: "centered",
+  tier: "free",
   },
 ]
 

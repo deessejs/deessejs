@@ -1,133 +1,94 @@
 "use client"
 
-import { useCallback, useDeferredValue, useMemo, useState } from "react"
+import { useDeferredValue, useMemo, useState } from "react"
 
-import { Button } from "@workspace/ui/components/button"
-
-import { CatalogueGrid } from "./catalogue-grid"
+import { CategoryGrid } from "./category-grid"
 import { CatalogueSidebar } from "./catalogue-sidebar"
 import { SearchInput } from "./search-input"
-import {
-  CATEGORY_ORDER,
-  type CategoryId,
-  type ComponentCategory,
-} from "./categories"
+import type { CategoryId, ComponentCategory } from "./categories"
 import type { CatalogueComponent } from "./components-list"
 
 type Props = {
-  components: ReadonlyArray<CatalogueComponent>
   categories: ReadonlyArray<ComponentCategory>
+  /**
+   * Map of `category.id` → its single component. Each category
+   * has exactly one component in the V1 1-category-per-component
+   * taxonomy. The grid shows one card per category.
+   */
+  categoryToComponent: Record<CategoryId, CatalogueComponent>
 }
 
 /**
- * Client orchestrator for the `/components` index. Holds the
- * `Set<CategoryId>` of active categories, groups the catalogue by
- * category, and renders `<CatalogueSidebar>` + `<CatalogueGrid>` in
- * the canonical two-column layout.
+ * Client orchestrator for the `/components` index.
  *
- * Layout classes match `apps/web/src/app/(product)/templates/page.tsx:152`:
- * `grid grid-cols-1 gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12`.
+ * Two-column layout:
+ *   - Left: nav sidebar with one `<Link>` per category, plus a
+ *     count badge per row. Pure navigation, no checkboxes.
+ *   - Right: search above, then a grid of category cards. Each
+ *     card links to its category page where the preview/code
+ *     surface lives.
  *
- * Default state = all categories active. Empty state (no category
- * selected) shows a centred card with a "Show all categories"
- * reset button.
+ * Layout: 18rem sidebar + 1px column + `divide-x divide-border`.
+ * The tier filter lives on the drilldown (`/components/[category]`),
+ * not on the index — the index doesn't know how many of each tier
+ * each category contains.
  */
-export function CatalogueBrowser({ components, categories }: Props) {
-  const [active, setActive] = useState<Set<CategoryId>>(
-    () => new Set(CATEGORY_ORDER),
-  )
+export function CatalogueBrowser({ categories, categoryToComponent }: Props) {
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query)
   const normalizedQuery = deferredQuery.trim().toLowerCase()
 
   const counts = useMemo(() => {
     const out = {} as Record<CategoryId, number>
-    for (const id of CATEGORY_ORDER) out[id] = 0
-    for (const component of components) {
-      out[component.category] = (out[component.category] ?? 0) + 1
+    for (const id in categoryToComponent) {
+      out[id as CategoryId] = 1
     }
     return out
-  }, [components])
+  }, [categoryToComponent])
 
-  const grouped = useMemo(() => {
-    const map = new Map<CategoryId, CatalogueComponent[]>()
-    for (const id of CATEGORY_ORDER) map.set(id, [])
-    for (const component of components) {
-      if (!active.has(component.category)) continue
-      if (normalizedQuery.length > 0) {
-        const haystack = `${component.name} ${component.description}`.toLowerCase()
-        if (!haystack.includes(normalizedQuery)) continue
-      }
-      map.get(component.category)!.push(component)
-    }
-    return CATEGORY_ORDER.flatMap<CategoryId, {
-      category: ComponentCategory
-      items: CatalogueComponent[]
-    }>((id) => {
-      const items = map.get(id) ?? []
-      if (items.length === 0) return []
-      const category = categories.find((c) => c.id === id)
-      if (!category) return []
-      return [{ category, items }]
+  const filtered = useMemo(() => {
+    if (normalizedQuery.length === 0) return categories
+    return categories.filter((category) => {
+      const haystack = `${category.name} ${category.description}`.toLowerCase()
+      return haystack.includes(normalizedQuery)
     })
-  }, [components, categories, active, normalizedQuery])
-
-  const toggle = useCallback((id: CategoryId) => {
-    setActive((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
-
-  const reset = useCallback(() => {
-    setActive(new Set(CATEGORY_ORDER))
-  }, [])
+  }, [categories, normalizedQuery])
 
   return (
     <section
       aria-label="Components catalogue"
-      className="grid grid-cols-1 gap-8 lg:grid-cols-[14rem_1px_minmax(0,1fr)] lg:gap-0 lg:divide-x lg:divide-border"
+      className="grid grid-cols-1 gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-0 lg:divide-x lg:divide-border"
     >
-      <CatalogueSidebar
-        categories={categories}
-        active={active}
-        counts={counts}
-        onToggle={toggle}
-        onReset={reset}
-      />
-      {/* 1px divider column on desktop only — gap on mobile (single column). */}
-      <div aria-hidden className="hidden lg:block" />
-      <div className="flex min-w-0 flex-1 flex-col gap-6">
-        <SearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder="Search components…"
-          aria-label="Search components by name or description"
-          className="max-w-sm"
-        />
-        {grouped.length === 0 ? (
+      <CatalogueSidebar categories={categories} counts={counts} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Search — sits inside the right column, above the grid */}
+        <div className="border-b border-border p-4">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Search categories…"
+            aria-label="Search categories by name or description"
+          />
+        </div>
+        {filtered.length === 0 ? (
           <div
             role="status"
             aria-live="polite"
             data-testid="components-empty"
-            className="flex min-h-64 flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border bg-muted/20 p-12 text-center"
+            className="flex min-h-64 flex-col items-center justify-center gap-4 border border-dashed border-border bg-muted/20 p-12 text-center"
           >
             <p className="text-heading-24 tracking-tight text-foreground">
-              No components match.
+              No categories match.
             </p>
             <p className="text-copy-14 text-muted-foreground max-w-sm">
-              {active.size < categories.length
-                ? "Pick at least one category in the sidebar, or clear the search."
-                : "Try a different search term."}
+              Try a different search term.
             </p>
-            <Button type="button" variant="outline" size="sm" onClick={reset}>
-              Show all categories
-            </Button>
           </div>
         ) : (
-          <CatalogueGrid groups={grouped} />
+          <CategoryGrid
+            categories={filtered}
+            categoryToComponent={categoryToComponent}
+          />
         )}
       </div>
     </section>

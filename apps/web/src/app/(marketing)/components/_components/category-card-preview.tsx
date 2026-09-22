@@ -1,4 +1,5 @@
 import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Textarea } from "@workspace/ui/components/textarea"
@@ -8,7 +9,6 @@ import { Avatar } from "@workspace/ui/components/avatar"
 import { Checkbox } from "@workspace/ui/components/checkbox"
 import { Switch } from "@workspace/ui/components/switch"
 
-import { ButtonPreviewDemo } from "./button-preview-demo"
 import type { CatalogueComponent } from "./components-list"
 
 type Props = {
@@ -16,35 +16,22 @@ type Props = {
 }
 
 /**
- * Live preview of a single component. Renders the actual
- * `@workspace/ui` primitive so the visitor sees what the
- * component looks like and can interact with it.
+ * Mini preview of a single component, rendered inside the
+ * 16:9 slot at the top of each category card on `/components`.
  *
- * The Button preview is the only one that's interactive — it
- * lives in `button-preview-demo.tsx` as its own client component
- * (this file stays a server component). The rest are
- * server-rendered static previews.
+ * Same shape as `ComponentCardPreview` (single Button mock
+ * for V1 dummy), but here it renders a tiny preview that
+ * visually hints at what the component looks like. Each slug
+ * branches to the matching shadcn primitive in a compact
+ * arrangement sized to fit a 16:9 card surface.
  *
- * Slugs without a real preview fall through to a "Preview coming
- * in V2" placeholder.
+ * Slugs without a tailored preview fall through to a
+ * `<Button>slug</Button>` placeholder.
  */
-export function ComponentPreview({ slug }: Props) {
-  const preview = renderPreview(slug)
-  if (!preview) {
-    return (
-      <div className="flex min-h-48 flex-col items-center justify-center gap-2 p-8 text-center">
-        <p className="text-copy-14 text-muted-foreground">
-          Preview coming in V2.
-        </p>
-        <p className="text-label-13 text-muted-foreground font-mono">
-          {slug}
-        </p>
-      </div>
-    )
-  }
+export function CategoryCardPreview({ slug }: Props) {
   return (
-    <div className="flex min-h-48 items-center justify-center p-8">
-      {preview}
+    <div className="flex aspect-video w-full shrink-0 items-center justify-center bg-muted/40 p-6">
+      {renderPreview(slug)}
     </div>
   )
 }
@@ -52,7 +39,7 @@ export function ComponentPreview({ slug }: Props) {
 function renderPreview(slug: CatalogueComponent["slug"]) {
   switch (slug) {
     case "button":
-      return <ButtonPreviewDemo />
+      return <Button>Button</Button>
     case "badge":
       return (
         <div className="flex flex-wrap items-center gap-2">
@@ -93,24 +80,22 @@ function renderPreview(slug: CatalogueComponent["slug"]) {
     case "checkbox":
       return (
         <div className="flex items-center gap-2">
-          <Checkbox id="preview-terms" />
-          <label htmlFor="preview-terms" className="text-copy-14">
-            Accept terms
+          <Checkbox id={`cat-preview-${slug}`} />
+          <label htmlFor={`cat-preview-${slug}`} className="text-copy-14">
+            Option
           </label>
         </div>
       )
     case "switch":
       return (
         <div className="flex items-center gap-2">
-          <Switch id="preview-switch" />
-          <label htmlFor="preview-switch" className="text-copy-14">
-            Enable notifications
+          <Switch id={`cat-preview-${slug}`} />
+          <label htmlFor={`cat-preview-${slug}`} className="text-copy-14">
+            On
           </label>
         </div>
       )
     case "card":
-      // Card preview is already used as a wrapper for the preview slot,
-      // so we render a minimal inner card to avoid nesting.
       return (
         <Card className="w-72">
           <CardHeader>
@@ -119,6 +104,13 @@ function renderPreview(slug: CatalogueComponent["slug"]) {
         </Card>
       )
     default:
-      return null
+      // Fallback for the overlays, navigation, structure and
+      // sonner categories — show the slug as a label so the
+      // card isn't empty.
+      return (
+        <span className="text-label-14 text-muted-foreground font-mono">
+          {slug}
+        </span>
+      )
   }
 }

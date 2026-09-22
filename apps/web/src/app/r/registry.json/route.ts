@@ -8,5 +8,5 @@ import { CATALOGUE } from "@/registry/catalogue"
  * Shape: https://ui.shadcn.com/docs/registry/registry-json
  */
 export async function GET() {
-  return NextResponse.json(CATALUE)
+  return NextResponse.json(CATALOGUE)
 }

@@ -1,130 +1,97 @@
 "use client"
 
-import { useCallback, useDeferredValue, useMemo, useState } from "react"
+import { useDeferredValue, useMemo, useState } from "react"
 
-import { Button } from "@workspace/ui/components/button"
-
-import { BlocksGrid } from "./blocks-grid"
+import { BlocksCategoryGrid } from "./blocks-category-grid"
 import { BlocksSidebar } from "./blocks-sidebar"
 import { SearchInput } from "@/app/(marketing)/components/_components/search-input"
-import {
-  BLOCK_CATEGORY_ORDER,
-  type BlockCategoryId,
-  type BlockCategory,
+import type {
+  BlockCategoryId,
+  BlockCategory,
 } from "./block-categories"
 import type { CatalogueBlock } from "./blocks-list"
 
 type Props = {
-  blocks: ReadonlyArray<CatalogueBlock>
   categories: ReadonlyArray<BlockCategory>
+  /**
+   * Map of `category.id` → a representative block. The grid
+   * shows one card per category. Each category has multiple
+   * blocks in V1 (not the new 1-category-per-component
+   * taxonomy — block categories are functional groupings of
+   * sections of a page).
+   */
+  categoryToBlock: Record<BlockCategoryId, CatalogueBlock>
 }
 
 /**
- * Client orchestrator for the `/blocks` index. Holds the
- * `Set<BlockCategoryId>` of active categories, groups the
- * catalogue by category, and renders `<BlocksSidebar>` +
- * `<BlocksGrid>` in the canonical two-column layout.
+ * Client orchestrator for the `/blocks` index.
  *
- * Same shape as `CatalogueBrowser` in the components registry.
- * Default state = all categories active. Empty state shows a
- * centred card with a reset button when no category is selected.
+ * Two-column layout:
+ *   - Left: nav sidebar with one `<Link>` per category, plus a
+ *     count badge per row. Pure navigation, no checkboxes.
+ *   - Right: search above, then a grid of category cards.
+ *     Clicking any card navigates to that category's page.
+ *
+ * Layout: 18rem sidebar + 1px column + `divide-x divide-border`.
+ * The tier filter lives on the drilldown (`/blocks/[category]`),
+ * not on the index.
  */
-export function BlocksBrowser({ blocks, categories }: Props) {
-  const [active, setActive] = useState<Set<BlockCategoryId>>(
-    () => new Set(BLOCK_CATEGORY_ORDER),
-  )
+export function BlocksBrowser({ categories, categoryToBlock }: Props) {
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query)
   const normalizedQuery = deferredQuery.trim().toLowerCase()
 
   const counts = useMemo(() => {
     const out = {} as Record<BlockCategoryId, number>
-    for (const id of BLOCK_CATEGORY_ORDER) out[id] = 0
-    for (const block of blocks) {
-      out[block.category] = (out[block.category] ?? 0) + 1
+    for (const id in categoryToBlock) {
+      out[id as BlockCategoryId] = 1
     }
     return out
-  }, [blocks])
+  }, [categoryToBlock])
 
-  const grouped = useMemo(() => {
-    const map = new Map<BlockCategoryId, CatalogueBlock[]>()
-    for (const id of BLOCK_CATEGORY_ORDER) map.set(id, [])
-    for (const block of blocks) {
-      if (!active.has(block.category)) continue
-      if (normalizedQuery.length > 0) {
-        const haystack = `${block.name} ${block.description}`.toLowerCase()
-        if (!haystack.includes(normalizedQuery)) continue
-      }
-      map.get(block.category)!.push(block)
-    }
-    return BLOCK_CATEGORY_ORDER.flatMap<BlockCategoryId, {
-      category: BlockCategory
-      items: CatalogueBlock[]
-    }>((id) => {
-      const items = map.get(id) ?? []
-      if (items.length === 0) return []
-      const category = categories.find((c) => c.id === id)
-      if (!category) return []
-      return [{ category, items }]
+  const filtered = useMemo(() => {
+    if (normalizedQuery.length === 0) return categories
+    return categories.filter((category) => {
+      const haystack = `${category.name} ${category.description}`.toLowerCase()
+      return haystack.includes(normalizedQuery)
     })
-  }, [blocks, categories, active, normalizedQuery])
-
-  const toggle = useCallback((id: BlockCategoryId) => {
-    setActive((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
-
-  const reset = useCallback(() => {
-    setActive(new Set(BLOCK_CATEGORY_ORDER))
-  }, [])
+  }, [categories, normalizedQuery])
 
   return (
     <section
       aria-label="Blocks catalogue"
-      className="grid grid-cols-1 gap-8 lg:grid-cols-[14rem_1px_minmax(0,1fr)] lg:gap-0 lg:divide-x lg:divide-border"
+      className="grid grid-cols-1 gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-0 lg:divide-x lg:divide-border"
     >
-      <BlocksSidebar
-        categories={categories}
-        active={active}
-        counts={counts}
-        onToggle={toggle}
-        onReset={reset}
-      />
-      {/* 1px divider column on desktop only — gap on mobile (single column). */}
-      <div aria-hidden className="hidden lg:block" />
-      <div className="flex min-w-0 flex-1 flex-col gap-6">
-        <SearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder="Search blocks…"
-          aria-label="Search blocks by name or description"
-          className="max-w-sm"
-        />
-        {grouped.length === 0 ? (
+      <BlocksSidebar categories={categories} counts={counts} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Search — sits inside the right column, above the grid */}
+        <div className="border-b border-border p-4">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Search categories…"
+            aria-label="Search block categories by name or description"
+          />
+        </div>
+        {filtered.length === 0 ? (
           <div
             role="status"
             aria-live="polite"
             data-testid="blocks-empty"
-            className="flex min-h-64 flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border bg-muted/20 p-12 text-center"
+            className="flex min-h-64 flex-col items-center justify-center gap-4 border border-dashed border-border bg-muted/20 p-12 text-center"
           >
             <p className="text-heading-24 tracking-tight text-foreground">
-              No blocks match.
+              No categories match.
             </p>
             <p className="text-copy-14 text-muted-foreground max-w-sm">
-              {active.size < categories.length
-                ? "Pick at least one category in the sidebar, or clear the search."
-                : "Try a different search term."}
+              Try a different search term.
             </p>
-            <Button type="button" variant="outline" size="sm" onClick={reset}>
-              Show all categories
-            </Button>
           </div>
         ) : (
-          <BlocksGrid groups={grouped} />
+          <BlocksCategoryGrid
+            categories={filtered}
+            categoryToBlock={categoryToBlock}
+          />
         )}
       </div>
     </section>

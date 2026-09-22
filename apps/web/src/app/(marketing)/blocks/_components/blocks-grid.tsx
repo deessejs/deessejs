@@ -30,17 +30,7 @@ export function BlocksGrid({ groups }: Props) {
           aria-labelledby={`block-category-heading-${category.id}`}
           className="flex flex-col gap-4"
         >
-          <header className="flex items-baseline justify-between gap-4">
-            <h3
-              id={`block-category-heading-${category.id}`}
-              className="text-heading-24 tracking-tight text-foreground !m-0"
-            >
-              {category.name}
-            </h3>
-            <span className="text-label-13 text-muted-foreground">
-              {items.length} block{items.length === 1 ? "" : "s"}
-            </span>
-          </header>
+          
           <ul className="grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-2 lg:grid-cols-3 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:nth-child(3n)]:lg:border-r-0 [&>li:nth-last-child(-n+2)]:md:border-b-0 [&>li:nth-last-child(-n+3)]:lg:border-b-0">
             {items.map((block) => (
               <BlocksCard key={block.slug} block={block} />

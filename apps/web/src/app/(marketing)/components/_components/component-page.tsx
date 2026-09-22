@@ -1,9 +1,7 @@
 import Link from "next/link"
-import { ExternalLink } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 
 import { H1 } from "@workspace/ui/components/typography"
-import { Separator } from "@workspace/ui/components/separator"
-import { Button } from "@workspace/ui/components/button"
 
 import type { CatalogueComponent } from "./components-list"
 import type { ComponentCategory } from "./categories"
@@ -16,52 +14,61 @@ type Props = {
   category: ComponentCategory
 }
 
-const COMPONENTS_REPO_URL =
-  "https://github.com/deessejs/deessejs/tree/main/packages/ui/components"
-
 /**
  * Shared body for every `/components/[category]/[component]` page.
  *
- * Layout: hero, tabbed Preview/Code surface, Related components
- * rail (4 cards, same-category siblings with fallback), footer
- * CTA. V2 will add an Anatomy tab and swap inline code for
- * Shiki highlighting.
+ * Wrapper + final CTA from `(marketing)/components/layout.tsx`.
+ * This file renders the "← Back to" link, the centred hero, the
+ * tabbed Preview/Code surface, and the Related components rail.
+ *
+ * Calque of `/blog/[slug]/page.tsx:114-120` for the "Back to"
+ * affordance. The pattern uses an unstyled eyebrow on the leaf
+ * (no tag/category label above the H1) — matching /blog and
+ * /changelog which only show eyebrows on the index.
  */
 export function ComponentPage({ component, category }: Props) {
   const related = getRelatedComponents(component.slug, 4)
 
   return (
-    <article className="mx-auto flex max-w-6xl flex-col gap-16 px-4 py-16 sm:px-6 lg:py-24">
-      {/* Hero */}
-      <header className="flex flex-col gap-6">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          {category.name}
-        </p>
-        <H1>{component.name}.</H1>
-        <p className="text-muted-foreground text-copy-20 leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-          {component.description}
-        </p>
-      </header>
+    <>
+      {/* Back to components */}
+      <div className="px-6 pt-12 lg:px-10">
+        <Link
+          href="/components"
+          className="inline-flex items-center gap-1 text-copy-14 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-3" aria-hidden />
+          Back to components
+        </Link>
+      </div>
 
-      <Separator />
+      {/* Hero */}
+      <header className="px-6 pb-12 pt-6 lg:px-10">
+        <div className="flex flex-col gap-3">
+          <h1 className="text-4xl font-bold tracking-tighter text-balance sm:text-5xl">
+            {component.name}.
+          </h1>
+          <p className="max-w-2xl text-pretty text-lg text-muted-foreground [&:not(:first-child)]:mt-0">
+            {component.description}
+          </p>
+        </div>
+      </header>
 
       {/* Tabbed Preview / Code */}
       <section
         aria-label={`${component.name} preview`}
-        className="flex flex-col gap-4"
+        className="px-6 pb-12 lg:px-10"
       >
         <ComponentPreviewTabs component={component} />
       </section>
-
-      <Separator />
 
       {/* Related components — 4-card recommendation rail */}
       {related.length > 0 ? (
         <section
           aria-label="Related components"
-          className="flex flex-col gap-4"
+          className="border-t border-border px-6 py-12 lg:px-10"
         >
-          <header className="flex items-baseline justify-between gap-4">
+          <header className="mb-6 flex items-baseline justify-between gap-4">
             <h2 className="text-heading-24 tracking-tight text-foreground !m-0">
               Related components
             </h2>
@@ -82,45 +89,6 @@ export function ComponentPage({ component, category }: Props) {
           </ul>
         </section>
       ) : null}
-
-      <Separator />
-
-      {/* Footer CTA — "back to the category" + "view on GitHub" */}
-      <section
-        aria-labelledby="cta-heading"
-        className="flex flex-col items-start gap-6 rounded-lg border border-border bg-muted/30 p-8 md:flex-row md:items-center md:justify-between"
-      >
-        <div className="flex flex-col gap-2">
-          <h2
-            id="cta-heading"
-            className="text-heading-24 tracking-tight text-foreground !m-0"
-          >
-            Browse the {category.name.toLowerCase()} catalogue.
-          </h2>
-          <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
-            All {category.name.toLowerCase()} primitives live in{" "}
-            <code className="font-mono text-foreground/90">packages/ui</code>
-            . MIT, no paywall.
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button asChild variant="outline">
-            <Link href={`/components/${category.slug}`}>
-              Back to {category.name}
-            </Link>
-          </Button>
-          <Button asChild>
-            <a
-              href={COMPONENTS_REPO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              View on GitHub
-              <ExternalLink className="size-3.5" aria-hidden />
-            </a>
-          </Button>
-        </div>
-      </section>
-    </article>
+    </>
   )
 }
