@@ -5,7 +5,6 @@ import { H1, H2 } from "@workspace/ui/components/typography"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 
-import { MarketingPage } from "../_components/marketing-page"
 
 export const metadata: Metadata = {
   title: "Manifesto",
@@ -77,7 +76,6 @@ const BELIEFS: ReadonlyArray<Belief> = [
 
 export default function ManifestoPage() {
   return (
-    <MarketingPage>
       <div className="mx-auto max-w-5xl py-16">
         {/* Hero */}
       <header className="flex flex-col gap-6">
@@ -205,6 +203,5 @@ export default function ManifestoPage() {
         </div>
       </nav>
       </div>
-    </MarketingPage>
   )
 }

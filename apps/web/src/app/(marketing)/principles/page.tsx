@@ -5,7 +5,6 @@ import { H1, H2 } from "@workspace/ui/components/typography"
 import { Card } from "@workspace/ui/components/card"
 import { Separator } from "@workspace/ui/components/separator"
 
-import { MarketingPage } from "../_components/marketing-page"
 
 export const metadata: Metadata = {
   title: "Principles",
@@ -98,7 +97,6 @@ const PRINCIPLES: ReadonlyArray<Principle> = [
 
 export default function PrinciplesPage() {
   return (
-    <MarketingPage>
       <div className="mx-auto max-w-5xl py-16">
         {/* Hero */}
       <header className="flex flex-col gap-6">
@@ -194,6 +192,5 @@ export default function PrinciplesPage() {
         </div>
       </nav>
       </div>
-    </MarketingPage>
   )
 }

@@ -4,18 +4,12 @@ import Link from "next/link"
 
 import { Button } from "@workspace/ui/components/button"
 
-import { MarketingPage } from "../(marketing)/_components/marketing-page"
-
 /**
- * Page-level wrapper for every page in the `(content)` route group.
+ * Layout for the entire `(content)` route group.
  *
- * Reuses the same outer container, shared-border card, and
- * diagonal-stripe framing as the `(marketing)` group via
- * `MarketingPage`, so the visual signature of the site is
- * consistent across surfaces. Pages render their content directly
- * as children — no additional `<article>` or `<div>` wrapper is
- * needed at this level (pages may still wrap their inner content
- * in their own `<section>` or `<article>` for semantic purposes).
+ * The shared-border card, container padding, and diagonal-stripe
+ * framing are supplied by `<GlobalLayout>` in `apps/web/src/app/layout.tsx`,
+ * so this layout only adds the surface-specific extras.
  *
  * Closes every content page with a shared final CTA, identical in
  * shape to the homepage's "Use the templates. Or ship with us."
@@ -28,7 +22,7 @@ export default function ContentLayout({
   children: React.ReactNode
 }) {
   return (
-    <MarketingPage>
+    <>
       {children}
 
       {/* Final CTA — same 2-col shared-border grid as the homepage
@@ -62,6 +56,6 @@ export default function ContentLayout({
           </Button>
         </div>
       </div>
-    </MarketingPage>
+    </>
   )
 }

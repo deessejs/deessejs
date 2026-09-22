@@ -9,7 +9,6 @@ import { EnterpriseForm } from "./enterprise-form"
 import { EnterpriseFaq } from "./_components/enterprise-faq"
 import { ProcessTimeline } from "./_components/process-timeline"
 import { TRUST_BADGES } from "./_components/trust-badges"
-import { MarketingPage } from "../_components/marketing-page"
 import { ENTERPRISE_FAQ } from "./_lib/enterprise-faq"
 import { PERSONA_ROUTES, type PersonaRoute } from "./_lib/persona-routes"
 import { PROOF_POINTS } from "./_lib/proof-points"
@@ -51,7 +50,7 @@ const PERSONA_ICONS = {
  */
 export default function EnterprisePage() {
   return (
-    <MarketingPage>
+    <>
       {/* ContactPage + FAQPage JSON-LD. The FAQPage mainEntity is
           derived from ENTERPRISE_FAQ so the schema and the visible
           Accordion never drift apart. */}
@@ -309,7 +308,7 @@ export default function EnterprisePage() {
             </Button>
           </div>
         </div>
-    </MarketingPage>
+    </>
   )
 }
 

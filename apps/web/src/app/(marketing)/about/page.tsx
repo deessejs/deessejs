@@ -51,11 +51,10 @@ const CHANNELS: ReadonlyArray<{
   },
 ] as const
 
-import { MarketingPage } from "../_components/marketing-page"
 
 export default function AboutPage() {
   return (
-    <MarketingPage>
+    <>
       {/* Hero */}
       <div className="max-w-5xl mx-auto py-16">
       <header className="flex flex-col gap-4 ">
@@ -203,6 +202,6 @@ export default function AboutPage() {
         </div>
       </nav>
       </div>
-    </MarketingPage>
+    </>
   )
 }

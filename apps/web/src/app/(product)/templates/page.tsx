@@ -12,7 +12,6 @@ import {
 } from "@workspace/api/templates-labels"
 import { Button } from "@workspace/ui/components/button"
 
-import { MarketingPage } from "@/app/(marketing)/_components/marketing-page"
 import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
 import { liveCache, orpc } from "@/lib/orpc"
 import { SUBMIT_TEMPLATE_URL } from "@/lib/templates/urls"
@@ -43,8 +42,8 @@ export const metadata: Metadata = {
  *
  * Visual structure matches the marketing site (`/`, `/pricing`,
  * `/blog`, `/changelog`, `/knowledge-base`):
- *   - `MarketingPage` wrapper supplies the bordered card and the
- *     diagonal-stripe columns on xl.
+ *   - `<GlobalLayout>` (root layout) supplies the bordered card and
+ *     the diagonal-stripe columns on xl.
  *   - The hero mirrors the centered FlickeringGrid header pattern
  *     shared with `/blog` and `/changelog`: eyebrow uppercase, H1
  *     scale `text-heading-40 → 56`, `text-balance` subtitle.
@@ -89,7 +88,13 @@ const TemplatesIndexPage = async ({
   let templates: TemplateV1[] = []
   try {
     const result = await orpc.templates.list(undefined, liveCache)
-    templates = result.templates
+    // Defensive: `result.templates` may be undefined if the upstream
+    // returns a malformed payload (the oRPC route handler already
+    // defaults to `[]` in templates.ts, but the wire contract does
+    // not enforce non-undefined). Coalesce here so the page never
+    // blows up on `templates.length`. Matches the same defensive
+    // pattern used in TemplateLabels (digest `551940582`).
+    templates = result.templates ?? []
   } catch (error) {
     // Build-time fallback: when the build worker has no network
     // access to the API, swallow the error so the page can still be
@@ -103,12 +108,12 @@ const TemplatesIndexPage = async ({
   }
 
   // When the catalog is empty, render the empty state inside the
-  // shared-border grid so the page still carries the MarketingPage
+  // shared-border grid so the page still carries the GlobalLayout
   // framing — matches the layout other content pages ship with even
   // when they have no records (e.g. empty Knowledge Base).
   if (templates.length === 0) {
     return (
-      <MarketingPage>
+      <>
         <header className="relative overflow-hidden border-b border-border">
           <FlickeringGrid
             className="absolute inset-0 z-0 opacity-60"
@@ -147,7 +152,7 @@ const TemplatesIndexPage = async ({
             .
           </p>
         </section>
-      </MarketingPage>
+      </>
     )
   }
 
@@ -176,7 +181,7 @@ const TemplatesIndexPage = async ({
   })
 
   return (
-    <MarketingPage>
+    <>
       {/* Hero — centered FlickeringGrid header matching /blog and
           /changelog. Eyebrow + scale H1 + balanced subtitle. */}
       <header className="relative overflow-hidden border-b border-border">
@@ -229,6 +234,7 @@ const TemplatesIndexPage = async ({
                   href={SUBMIT_TEMPLATE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Submit your template to the registry"
                   className="flex flex-col items-start gap-3 rounded-lg border border-border bg-muted/30 p-4 transition-colors hover:bg-accent/30 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex flex-col gap-1">
@@ -281,7 +287,7 @@ const TemplatesIndexPage = async ({
           </Button>
         </div>
       </div>
-    </MarketingPage>
+    </>
   )
 }
 

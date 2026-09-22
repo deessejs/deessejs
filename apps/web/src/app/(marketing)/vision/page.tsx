@@ -6,7 +6,6 @@ import { Card } from "@workspace/ui/components/card"
 import { Badge } from "@workspace/ui/components/badge"
 import { Separator } from "@workspace/ui/components/separator"
 
-import { MarketingPage } from "../_components/marketing-page"
 
 export const metadata: Metadata = {
   title: "Vision",
@@ -131,7 +130,6 @@ const HORIZONS: ReadonlyArray<Horizon> = [
 
 export default function VisionPage() {
   return (
-    <MarketingPage>
       <div className="mx-auto max-w-5xl py-16">
         {/* Hero */}
       <header className="flex flex-col gap-6">
@@ -240,6 +238,5 @@ export default function VisionPage() {
         </div>
       </nav>
       </div>
-    </MarketingPage>
   )
 }
