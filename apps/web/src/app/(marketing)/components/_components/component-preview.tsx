@@ -2,7 +2,6 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Input } from "@workspace/ui/components/input"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Textarea } from "@workspace/ui/components/textarea"
-import { Card, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { Separator } from "@workspace/ui/components/separator"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { Checkbox } from "@workspace/ui/components/checkbox"
@@ -108,17 +107,13 @@ function renderPreview(slug: CatalogueComponent["slug"]) {
           </label>
         </div>
       )
-    case "card":
-      // Card preview is already used as a wrapper for the preview slot,
-      // so we render a minimal inner card to avoid nesting.
-      return (
-        <Card className="w-72">
-          <CardHeader>
-            <CardTitle>Card title</CardTitle>
-          </CardHeader>
-        </Card>
-      )
     default:
+      // Fallback for any slug not matched above. The "card" slug
+      // was removed from the 1-category-per-component taxonomy, so
+      // no specific case exists for it — this branch also handles
+      // any future unhandled slugs. Returning null avoids showing
+      // a duplicate preview; the parent renders the empty-state
+      // placeholder.
       return null
   }
 }
