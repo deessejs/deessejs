@@ -266,8 +266,9 @@ export function Example() {
 } as const satisfies Record<CatalogueComponent["slug"], string>
 
 export function getComponentSnippet(slug: CatalogueComponent["slug"]): string {
-  // See block-code-snippets.ts for the rationale on this cast —
-  // `as const satisfies Record<...>` makes the type exact with no
-  // index signature, so a direct access requires widening.
-  return (SNIPPETS as Record<string, string>)[slug]
+  // See block-code-snippets.ts for the rationale — cast through
+  // `unknown` so we keep the `string` return type without
+  // `| undefined` widening from a `Record<string, string>` cast.
+  const map = SNIPPETS as unknown as Record<string, string>
+  return map[slug]!
 }
