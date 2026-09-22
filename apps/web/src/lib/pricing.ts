@@ -87,7 +87,7 @@ export const LICENSE_TYPES: ReadonlyArray<LicenseType> = [
     name: "Professional",
     tagline: "One-time payment · Lifetime access",
     forWho:
-      "For independent developers, freelancers, and engineers who ship to production — including teams pairing with Cursor, Claude Code, and other AI agents.",
+      "For independent developers, freelancers, and engineers who ship to production, including teams pairing with Cursor, Claude Code, and other AI agents.",
     price: { kind: "fixed", amount: 299, currency: "USD" },
     positioning:
       "The complete full-stack architecture engine. Skip weeks of boilerplate glue code and deploy production-ready systems with multi-tenant auth, billing, and automated dashboards.",
@@ -96,7 +96,6 @@ export const LICENSE_TYPES: ReadonlyArray<LicenseType> = [
       "100% full-stack source code ownership: run on your own infrastructure",
       "Unlimited personal and commercial projects (1 developer seat)",
       "Advanced modules: Better-Auth, Stripe/Polar webhooks, RBAC & admin suites",
-      "Agent-ready: every template ships with an MCP manifest and AGENTS.md for Cursor, Claude Code, and Windsurf",
       "Access to private registry updates and ongoing security patches",
       "14-day money-back guarantee, no questions asked",
     ],
@@ -116,7 +115,7 @@ export const LICENSE_TYPES: ReadonlyArray<LicenseType> = [
     positioning:
       "Turn your team into a software factory. Build and ship custom, high-margin client applications in days instead of months, backed by full legal resale rights and synchronized design assets.",
     ships: [
-      "5 developer seats managed under a single organization API key",
+      "5 developer seats under a single organization",
       "Extended Commercial License: build and re-sell to clients with zero attribution",
       "Eliminate recurring client platform fees (no mandatory runtime lock-in)",
       "Priority technical support: guaranteed 24h first response on business days",
@@ -245,54 +244,17 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
         tooltip: "How many templates your license unlocks at any given time. Open Community ships with a curated starter set; Pro and Agency unlock the full catalog at the time of purchase.",
         values: {
           "open-community": "1 starter template",
-          "professional": "30+ templates at purchase",
-          agency: "30+ templates at purchase",
-        },
-      },
-      {
-        attribute: "MCP server",
-        tooltip: "Every Pro template ships with an MCP manifest that exposes its tools to coding agents. Open Community templates are catalog-only.",
-        values: {
-          "open-community": "Not included",
-          "professional": "Included",
-          agency: "Included, with shared organization auth",
-        },
-        status: {
-          "open-community": "no",
-          "professional": "yes",
-          agency: "yes",
-        },
-      },
-      {
-        attribute: "AGENTS.md in templates",
-        tooltip: "Every Pro template ships with an AGENTS.md at the repo root describing how an AI agent should navigate the codebase. Open Community templates rely on the maintainer's contribution.",
-        values: {
-          "open-community": "Maintainer-dependent",
-          "professional": "Every template",
-          agency: "Every template, plus shared conventions for multi-seat teams",
-        },
-        status: {
-          "open-community": "partial",
-          "professional": "yes",
-          agency: "yes",
+          professional: "Full catalog at purchase",
+          agency: "Full catalog at purchase",
         },
       },
       {
         attribute: "Documentation depth",
-        tooltip: "How deep the template-level documentation goes. Pro templates include a per-template KB article in addition to the README.",
+        tooltip: "How deep the template-level documentation goes. All tiers ship with the same public KB articles; there is no gated documentation by tier.",
         values: {
-          "open-community": "README only",
-          "professional": "README + KB article",
-          agency: "README + KB article + design specs (Figma source)",
-        },
-      },
-      {
-        attribute: "Submission flow",
-        tooltip: "How templates enter the catalog. Pull-request = community contribution, reviewed by a DeesseJS maintainer. Authored by the team = curated production-grade.",
-        values: {
-          "open-community": "Pull-request",
-          "professional": "Authored by the DeesseJS team",
-          agency: "Authored by the DeesseJS team",
+          "open-community": "Complete",
+          professional: "Complete",
+          agency: "Complete",
         },
       },
       {
@@ -341,15 +303,6 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
           agency: "Patched by the DeesseJS team, prioritized over Professional",
         },
       },
-      {
-        attribute: "Roadmap visibility",
-        tooltip: "Whether you can see what the DeesseJS team is building next. Public roadmap = what's shipping in the catalog. Private roadmap = unreleased work-in-progress.",
-        values: {
-          "open-community": "Public, read-only",
-          "professional": "Public + private backlog",
-          agency: "Public + private backlog, comments enabled",
-        },
-      },
     ],
   },
   {
@@ -365,30 +318,12 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
         },
       },
       {
-        attribute: "Custom domain",
-        tooltip: "Whether you can serve your deployed template under your own domain. Configuration is environment-driven, no vendor lock-in.",
-        values: {
-          "open-community": "Supported",
-          "professional": "Supported",
-          agency: "Supported, with white-label client deployments",
-        },
-      },
-      {
         attribute: "CI/CD templates",
         tooltip: "Pre-built CI/CD workflows shipped with each template. Open Community has community-contributed ones; Pro and Agency ship curated GitHub Actions files.",
         values: {
           "open-community": "Community-contributed",
           "professional": "Curated GitHub Actions",
           agency: "Curated GitHub Actions, plus shared org-level workflows",
-        },
-      },
-      {
-        attribute: "Observability hooks",
-        tooltip: "OpenTelemetry hooks baked into every Pro template. Open Community templates ship without a default observability stack.",
-        values: {
-          "open-community": "Bring your own",
-          "professional": "OTel-ready, vendor-agnostic",
-          agency: "OTel-ready, vendor-agnostic, shared org dashboard templates",
         },
       },
     ],
@@ -509,7 +444,7 @@ export const PRICING_FAQ_GROUPS: ReadonlyArray<FaqGroup> = [
       {
         question: "How does the Professional license work?",
         answer:
-          "One Professional license unlocks the codebase across every project you ship. There is no project cap, no per-seat count on a single dev. Add a Subscription on top to keep the codebase current as the DeesseJS team ships new templates and security patches.",
+          "One Professional license unlocks the codebase across every project you ship, with lifetime access. There is no project cap, no per-seat count on a single dev. Updates and security patches for the templates included at purchase are included for life. The Subscription is optional, on top of a Professional license, and adds every new template released after your purchase.",
       },
       {
         question: "Can I re-sell a Professional template to a client?",
@@ -534,7 +469,7 @@ export const PRICING_FAQ_GROUPS: ReadonlyArray<FaqGroup> = [
       {
         question: "Can I switch between Professional and Agency later?",
         answer:
-          "Yes. The Professional and Agency one-shots are priced so the upgrade from Professional to Agency is the difference between the two prices — contact support and we'll pro-rate the time remaining on your existing license against the Agency price. Moving down (Agency → Professional) does not refund the difference; the agency seats and Commercial Extended License stay with you until the end of your paid term.",
+          "Yes. The Professional and Agency one-shots are priced so the upgrade from Professional to Agency is the difference between the two prices. Contact support and we will pro-rate the time remaining on your existing license against the Agency price. Moving down (Agency → Professional) does not refund the difference; the agency seats and Commercial Extended License stay with you until the end of your paid term.",
       },
     ],
   },
@@ -605,11 +540,6 @@ export const PRICING_FAQ_GROUPS: ReadonlyArray<FaqGroup> = [
         question: "Why license types and not tiers?",
         answer:
           "A Professional license and a Subscription are not tiers of the same product, they're two parts of the same offer. Conflating them would force a buyer to choose between owning the code and staying current; the model lets them have both, or either.",
-      },
-      {
-        question: "Which stacks does Professional cover?",
-        answer:
-          "Next.js, Astro, Tailwind, shadcn/ui, Drizzle, Postgres, Stripe, TanStack Table, OpenAI, React Hook Form. The list lives in packages/api/src/templates.ts. When a new template lands there, it lands in the Pro catalog the same day.",
       },
       {
         question: "What if the project shuts down?",

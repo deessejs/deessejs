@@ -30,8 +30,7 @@ export function Comparison() {
         <div className="flex flex-col gap-2 p-6 border-b border-border">
           <p className="text-label-13 text-muted-foreground">Side by side</p>
           <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-            The deep dive. Anyone comparing two license types should
-            not have to read three cards.
+            Side by side.
           </h2>
         </div>
         <div className="overflow-x-auto">

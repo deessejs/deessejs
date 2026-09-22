@@ -16,7 +16,7 @@ export function Hero() {
       </h1>
       <p className="max-w-2xl text-copy-18 leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
         One payment for the catalog. Every template, every update,
-        every project you ship — solo or as a team. MIT for the
+        every project you ship, solo or as a team. MIT for the
         foundation, Professional for production, Team for agencies.
       </p>
     </div>

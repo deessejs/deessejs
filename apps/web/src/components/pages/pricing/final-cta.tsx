@@ -19,10 +19,17 @@ function Cell({
 
 /**
  * Final CTA — 2-col shared-border block with copy on the left and
- * install / browse actions on the right. No trailing border (the
- * `GlobalLayout` outline closes the page).
+ * install / signup / browse actions on the right. No trailing border
+ * (the `GlobalLayout` outline closes the page).
+ *
+ * `signupHref` is resolved server-side by the page route and passed
+ * in pre-formatted. This mirrors the convention used by the site
+ * header: the apps/app origin is a server-resolved absolute URL
+ * (`https://app.deessejs.com/signup` in prod, Vercel preview URL
+ * under previews, `http://localhost:3001/signup` in dev) so the
+ * link never needs client-side URL composition.
  */
-export function FinalCta() {
+export function FinalCta({ signupHref }: { signupHref: string }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
       <Cell className="gap-2 lg:!p-10">
@@ -37,8 +44,8 @@ export function FinalCta() {
       </Cell>
       <Cell className="items-stretch justify-center gap-4 lg:!p-10">
         <Button asChild size="lg">
-          <Link href="/knowledge-base/guides/install-deessejs-cli">
-            Install the CLI
+          <Link href={signupHref}>
+            Start now
             <ArrowRight className="size-3.5" aria-hidden />
           </Link>
         </Button>

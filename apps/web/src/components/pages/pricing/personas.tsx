@@ -60,16 +60,21 @@ export function Personas() {
             the one closest to you.
           </h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 md:divide-y-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 divide-y divide-border md:divide-y-0 md:divide-x">
           {PERSONAS.map((persona, index) => (
             <div
               key={persona.label}
               className={cn(
                 "group border-border transition-colors hover:bg-accent/40",
-                // Vertical separator on every card except the first
-                // in each row (md+ uses 2 cols, so col 2 = index 1
-                // and index 3).
-                "border-b last:border-b-0 md:border-b-0",
+                // Mobile: every card except the last gets a bottom border
+                // (the grid's divide-y handles the visual).
+                // Desktop: cards in the first row (Primary, Secondary)
+                // get a bottom border to separate rows 1 and 2; cards
+                // in the second row (Tertiary, Floor) drop it. The
+                // vertical separator between columns is set by the
+                // grid's md:divide-x.
+                "border-b last:border-b-0",
+                index < 2 && "md:border-b",
                 index % 2 === 1 && "md:border-l",
               )}
             >
