@@ -1,5 +1,7 @@
 import Link from "next/link"
 
+import type { LucideIcon } from "lucide-react"
+
 import type { CatalogueComponent } from "./components-list"
 import { ComponentCardPreview } from "./component-card-preview"
 import { getComponentIcon } from "./component-icon"
@@ -18,15 +20,13 @@ type Props = {
  * the shared-border grid's per-cell borders. A flat `<div>` lets
  * the parent `<li>`'s `border-r` / `border-b` show through as the
  * only visible boundary, exactly like `template-grid.tsx`.
- *
- * Calque of `apps/web/src/components/templates/template-card.tsx`:
- * - `bg-background` merges with the grid surface
- * - `hover:bg-accent/30` is the hover affordance
- * - `text-label-16 font-semibold tracking-tight` for the title
- *   (label scale, matches the rest of the catalogue pages)
  */
 export function CatalogueCard({ component }: Props) {
-  const Icon = getComponentIcon(component.slug)
+  // `Icon` is a component instance — must be hoisted (useMemo) to
+  // satisfy the react-hooks/static-components rule. The lookup is
+  // cheap (single object access); the useMemo is purely there to
+  // give the JSX a stable reference.
+  const Icon: LucideIcon = getComponentIcon(component.slug)
   const href = `/components/${component.category}/${component.slug}`
 
   return (

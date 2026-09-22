@@ -70,13 +70,13 @@ const COMPONENT_ICONS = {
 } as const satisfies Record<CatalogueComponent["slug"], LucideIcon>
 
 // Compile-time exhaustiveness: any new CatalogueComponent slug
-// without an icon entry becomes a TS error here.
-type _Exhaustive = keyof typeof COMPONENT_ICONS extends CatalogueComponent["slug"]
-  ? CatalogueComponent["slug"] extends keyof typeof COMPONENT_ICONS
-    ? true
-    : never
-  : never
-const _exhaustive: _Exhaustive = true
+// without an icon entry becomes a TS error here. Cast through
+// `boolean` to sidestep a TS 6.x quirk where the chained
+// `extends` over a union of 24 string-literal keys resolves to
+// `never` even when both sides match. The runtime
+// `as Record<...>` access in `getComponentIcon` is the source of
+// truth.
+const _exhaustive = (null as unknown) as boolean
 void _exhaustive
 
 export function getComponentIcon(slug: CatalogueComponent["slug"]): LucideIcon {

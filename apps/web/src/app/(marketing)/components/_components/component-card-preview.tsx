@@ -1,7 +1,6 @@
 import { Button } from "@workspace/ui/components/button"
 
 type Props = {
-  // Reserved for V2: each slug renders its actual component.
   // V1 dummy: every card shows the same Button to telegraph
   // "design system surface" without committing to per-component
   // previews that would drift from the leaf.

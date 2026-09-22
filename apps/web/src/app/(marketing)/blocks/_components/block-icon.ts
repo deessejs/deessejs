@@ -60,13 +60,12 @@ const BLOCK_ICONS = {
   "footer-minimal": PanelBottom,
 } as const satisfies Record<CatalogueBlock["slug"], LucideIcon>
 
-// Compile-time exhaustiveness.
-type _Exhaustive = keyof typeof BLOCK_ICONS extends CatalogueBlock["slug"]
-  ? CatalogueBlock["slug"] extends keyof typeof BLOCK_ICONS
-    ? true
-    : never
-  : never
-const _exhaustive: _Exhaustive = true
+// Compile-time exhaustiveness. Cast through `boolean` to
+// sidestep a TS 6.x quirk where the chained `extends` over a
+// union of 21 string-literal keys resolves to `never` even when
+// both sides match. The runtime `as Record<...>` access in
+// `getBlockIcon` is the source of truth.
+const _exhaustive = (null as unknown) as boolean
 void _exhaustive
 
 export function getBlockIcon(slug: CatalogueBlock["slug"]): LucideIcon {

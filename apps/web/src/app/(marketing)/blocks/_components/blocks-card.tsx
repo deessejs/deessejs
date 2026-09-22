@@ -1,5 +1,7 @@
 import Link from "next/link"
 
+import type { LucideIcon } from "lucide-react"
+
 import type { CatalogueBlock } from "./blocks-list"
 import { BlockCardPreview } from "./block-card-preview"
 import { getBlockIcon } from "./block-icon"
@@ -18,7 +20,9 @@ type Props = {
  * Same recipe as `CatalogueCard`.
  */
 export function BlocksCard({ block }: Props) {
-  const Icon = getBlockIcon(block.slug)
+  // `Icon` is a component instance — must be hoisted to satisfy
+  // the react-hooks/static-components rule.
+  const Icon: LucideIcon = getBlockIcon(block.slug)
   const href = `/blocks/${block.category}/${block.slug}`
 
   return (

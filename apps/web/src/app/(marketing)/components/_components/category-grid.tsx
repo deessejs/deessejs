@@ -1,7 +1,5 @@
 import Link from "next/link"
 
-import { Badge } from "@workspace/ui/components/badge"
-
 import { CategoryCardPreview } from "./category-card-preview"
 import { getComponentIcon } from "./component-icon"
 import type { ComponentCategory } from "./categories"

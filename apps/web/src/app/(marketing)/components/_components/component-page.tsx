@@ -1,8 +1,6 @@
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
-import { H1 } from "@workspace/ui/components/typography"
-
 import type { CatalogueComponent } from "./components-list"
 import type { ComponentCategory } from "./categories"
 import { CatalogueCard } from "./catalogue-card"
