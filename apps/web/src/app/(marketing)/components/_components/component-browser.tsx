@@ -38,7 +38,7 @@ export function ComponentBrowser({
   return (
     <section
       aria-label="Components catalogue"
-      className="grid grid-cols-1 gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-0 lg:divide-x lg:divide-border"
+      className="grid grid-cols-1 gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-0 lg:divide-x lg:divide-border border-b"
     >
       <ComponentListSidebar categories={categories} counts={counts} />
       <div className="flex min-w-0 flex-1 flex-col">
