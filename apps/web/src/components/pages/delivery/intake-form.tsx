@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 
@@ -13,6 +13,13 @@ import {
   FieldLabel,
 } from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
 
 /**
  * /delivery intake form.
@@ -48,6 +55,7 @@ type IntakeInput = z.infer<typeof intakeSchema>
 export function IntakeForm() {
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<IntakeInput>({
@@ -62,7 +70,7 @@ export function IntakeForm() {
 
   const [submitted, setSubmitted] = useState(false)
 
-  const onSubmit = (_data: IntakeInput) => {
+  const onSubmit = () => {
     // V2: POST to /api/delivery, then open the Cal.com booking URL
     // returned by the server in a new tab. For now we just flag the
     // form as submitted so the helper line announces the wiring.
@@ -127,18 +135,23 @@ export function IntakeForm() {
         <FieldLabel htmlFor="delivery-base">
           Which template or architecture is the base of the project?
         </FieldLabel>
-        <select
-          id="delivery-base"
-          aria-invalid={!!errors.base}
-          {...register("base")}
-          className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <option value="">Select an architecture…</option>
-          <option value="saas-multi-tenant">SaaS multi-tenant</option>
-          <option value="e-commerce">E-commerce</option>
-          <option value="internal-portal">Internal portal</option>
-          <option value="top-of-funnel">Top-of-funnel site</option>
-        </select>
+        <Controller
+          control={control}
+          name="base"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger id="delivery-base" aria-invalid={!!errors.base}>
+                <SelectValue placeholder="Select an architecture…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="saas-multi-tenant">SaaS multi-tenant</SelectItem>
+                <SelectItem value="e-commerce">E-commerce</SelectItem>
+                <SelectItem value="internal-portal">Internal portal</SelectItem>
+                <SelectItem value="top-of-funnel">Top-of-funnel site</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        />
         <FieldError errors={[errors.base]} />
       </Field>
 
@@ -159,17 +172,25 @@ export function IntakeForm() {
         <FieldLabel htmlFor="delivery-deadline">
           Production deadline
         </FieldLabel>
-        <select
-          id="delivery-deadline"
-          aria-invalid={!!errors.deadline}
-          {...register("deadline")}
-          className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <option value="">Pick a horizon…</option>
-          <option value="under-2-weeks">Under 2 weeks</option>
-          <option value="1-month">1 month</option>
-          <option value="flexible">Flexible</option>
-        </select>
+        <Controller
+          control={control}
+          name="deadline"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger
+                id="delivery-deadline"
+                aria-invalid={!!errors.deadline}
+              >
+                <SelectValue placeholder="Pick a horizon…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="under-2-weeks">Under 2 weeks</SelectItem>
+                <SelectItem value="1-month">1 month</SelectItem>
+                <SelectItem value="flexible">Flexible</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        />
         <FieldError errors={[errors.deadline]} />
       </Field>
 

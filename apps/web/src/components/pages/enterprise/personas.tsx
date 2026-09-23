@@ -1,8 +1,6 @@
 import Link from "next/link"
 import { ShieldCheck, Wrench } from "lucide-react"
 
-import { cn } from "@workspace/ui/lib/utils"
-
 import {
   PERSONA_ROUTES,
   type PersonaRoute,
