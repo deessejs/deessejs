@@ -120,26 +120,29 @@ const RELATED = [
 ] as const
 
 const AND_MORE: ReadonlyArray<MoreTile> = [
-  { id: "auth",       title: "Auth",          description: "Better Auth + sessions",                status: "shipped",                    icon: Zap },
-  { id: "database",   title: "Database",      description: "Postgres + pgvector",                   status: "shipped",                    icon: Database },
-  { id: "email",      title: "Email",         description: "Resend + React Email",                  status: "shipped",                    icon: Mail },
-  { id: "public-api", title: "Public API",    description: "Versioned, documented",                 status: "roadmap", shippedAt: "Q1 2027", icon: Globe },
-  { id: "background", title: "Background",    description: "Queues + retries",                      status: "roadmap", shippedAt: "Q2 2027", icon: GitBranch },
+  { id: "auth",       title: "Auth",          description: "Better Auth + sessions",                 icon: Zap },
+  { id: "database",   title: "Database",      description: "Postgres + pgvector",                    icon: Database },
+  { id: "email",      title: "Email",         description: "Resend + React Email",                   icon: Mail },
+  { id: "public-api", title: "Public API",    description: "Versioned, documented",                  icon: Globe },
+  { id: "background", title: "Background",    description: "Queues + retries",                       icon: GitBranch },
 ]
 
 export default function AiProductsPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      <div className="border border-border bg-background rounded-none">
+    <div className="border border-border bg-background rounded-none">
         {/* 1. Hero — dark */}
         <UseCaseHero
           category="AI"
           title="Ship an agent that reads your contracts, not your docs."
-          status="coming-soon"
+          body="Tool calls typed against the same registry the UI uses. Every step is in the run trace."
           variant="dark"
           primaryCta={{
             label: "View ai-chatbot",
             href: "/templates/ai-chatbot",
+          }}
+          secondaryCta={{
+            label: "Browse templates",
+            href: "/templates",
           }}
         />
 
@@ -322,7 +325,6 @@ export default function AiProductsPage() {
           </div>
         </div>
       </div>
-    </div>
   )
 }
 

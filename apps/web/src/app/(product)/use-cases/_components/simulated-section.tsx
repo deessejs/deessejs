@@ -16,10 +16,6 @@ import { cn } from "@workspace/ui/lib/utils"
  * Lives inside the page's shared-border wrapper. The wrapper owns
  * the outer border; this component owns its content. The parent
  * grid supplies the `border-t` between sections.
- *
- * Status vocabulary matches the hero capabilities grid:
- *   - "shipped" - no badge
- *   - "roadmap" - small Q{quarter} {year} badge
  */
 export function SimulatedSection({
   eyebrow,
@@ -28,8 +24,6 @@ export function SimulatedSection({
   bullets,
   mockup,
   reverse = false,
-  status = "shipped",
-  roadmapLabel,
 }: {
   eyebrow: string
   title: string
@@ -37,8 +31,6 @@ export function SimulatedSection({
   bullets: ReadonlyArray<string>
   mockup: React.ReactNode
   reverse?: boolean
-  status?: "shipped" | "roadmap"
-  roadmapLabel?: string
 }) {
   return (
     <div className="grid grid-cols-1 border-t border-border lg:grid-cols-2 lg:divide-x lg:divide-border">
@@ -50,16 +42,9 @@ export function SimulatedSection({
           reverse ? "lg:order-2" : "lg:order-1",
         )}
       >
-        <div className="flex items-center gap-3">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            {eyebrow}
-          </p>
-          {status === "roadmap" ? (
-            <span className="rounded-sm border border-border px-1.5 py-0.5 font-mono text-label-12 text-muted-foreground">
-              {roadmapLabel ?? "Roadmap"}
-            </span>
-          ) : null}
-        </div>
+        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          {eyebrow}
+        </p>
         <h2 className="max-w-xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
           {title}
         </h2>
@@ -98,23 +83,20 @@ export function SimulatedSection({
 }
 
 /**
- * One tile in the "And more" grid. Each tile carries the same status
- * vocabulary as the hero capabilities grid (shipped / roadmap).
+ * One tile in the "And more" grid. No status vocabulary — every
+ * capability is presented as live, no shipped/roadmap distinction.
  */
 export type MoreTile = {
   id: string
   title: string
   description: string
-  status: "shipped" | "roadmap"
-  /** Required when status === "roadmap". Quarter + year, e.g. "Q4 2026". */
-  shippedAt?: string
   icon: React.ComponentType<{ className?: string }>
 }
 
 /**
  * The "And more" grid: dense 3-col showcase of capabilities that
- * don't get their own simulation. Each tile carries the same status
- * vocabulary as the hero capabilities grid.
+ * don't get their own simulation. Capabilities are presented
+ * timelessly — no shipped/roadmap badges.
  */
 export function AndMoreSection({ tiles }: { tiles: ReadonlyArray<MoreTile> }) {
   return (
@@ -124,7 +106,7 @@ export function AndMoreSection({ tiles }: { tiles: ReadonlyArray<MoreTile> }) {
           And more
         </p>
         <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-          Six more capabilities, wired or on the way.
+          Six more capabilities.
         </h2>
       </div>
       <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y-0 lg:grid-cols-3 lg:!divide-x-0">
@@ -135,20 +117,9 @@ export function AndMoreSection({ tiles }: { tiles: ReadonlyArray<MoreTile> }) {
               key={tile.id}
               className="flex flex-col gap-3 p-6 lg:p-8"
             >
-              <div className="flex items-start justify-between gap-3">
-                <span className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40">
-                  <Icon className="size-4 text-foreground" aria-hidden />
-                </span>
-                {tile.status === "shipped" ? (
-                  <span className="rounded-sm border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 font-mono text-label-12 text-emerald-700 dark:text-emerald-300">
-                    shipped
-                  </span>
-                ) : (
-                  <span className="rounded-sm border border-border px-1.5 py-0.5 font-mono text-label-12 text-muted-foreground">
-                    {tile.shippedAt ?? "roadmap"}
-                  </span>
-                )}
-              </div>
+              <span className="flex size-7 w-fit items-center justify-center rounded-md border border-border bg-muted/40 p-1.5">
+                <Icon className="size-4 text-foreground" aria-hidden />
+              </span>
               <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
                 {tile.title}
               </h3>

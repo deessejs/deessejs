@@ -57,12 +57,16 @@ const RELATED = [
 
 export default function InternalToolsPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      <div className="border border-border bg-background rounded-none">
+    <div className="border border-border bg-background rounded-none">
         <UseCaseHero
           category="Internal"
           title="Operator consoles behind SSO, on the same contracts."
+          body="Admin panels, dashboards, ops tooling. Same Better Auth, same RBAC, same audit trail as the customer-facing app."
           primaryCta={{
+            label: "View templates",
+            href: "/templates",
+          }}
+          secondaryCta={{
             label: "Browse templates",
             href: "/templates",
           }}
@@ -158,6 +162,5 @@ export default function InternalToolsPage() {
           </div>
         </div>
       </div>
-    </div>
   )
 }

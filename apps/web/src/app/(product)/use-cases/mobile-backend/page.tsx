@@ -52,12 +52,16 @@ const RELATED = [
 
 export default function MobileBackendPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      <div className="border border-border bg-background rounded-none">
+    <div className="border border-border bg-background rounded-none">
         <UseCaseHero
           category="Mobile"
           title="The same backend, with a transport that fits the client."
+          body="JSON or gRPC over the same contracts the web app uses. No separate mobile auth flow to maintain."
           primaryCta={{
+            label: "View templates",
+            href: "/templates",
+          }}
+          secondaryCta={{
             label: "Browse templates",
             href: "/templates",
           }}
@@ -153,6 +157,5 @@ export default function MobileBackendPage() {
           </div>
         </div>
       </div>
-    </div>
   )
 }

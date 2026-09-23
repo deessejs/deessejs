@@ -57,12 +57,16 @@ const RELATED = [
 
 export default function OpenSourcePage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      <div className="border border-border bg-background rounded-none">
+    <div className="border border-border bg-background rounded-none">
         <UseCaseHero
           category="Open source"
           title="Maintainer-friendly starters, versioned through the registry."
+          body="MIT-licensed starters for OSS maintainers. Pin a version, ship your app, never touch the registry again unless you want to."
           primaryCta={{
+            label: "View templates",
+            href: "/templates",
+          }}
+          secondaryCta={{
             label: "Browse templates",
             href: "/templates",
           }}
@@ -158,6 +162,5 @@ export default function OpenSourcePage() {
           </div>
         </div>
       </div>
-    </div>
   )
 }
