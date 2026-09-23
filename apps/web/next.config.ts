@@ -1,8 +1,14 @@
 import type { NextConfig } from "next"
 import { withContentCollections } from "@content-collections/next"
+import createNextIntlPlugin from "next-intl/plugin"
+
+const withNextIntl = createNextIntlPlugin("./src/app/[locale]/i18n/request.ts")
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@workspace/ui"],
+  transpilePackages: [
+    "@workspace/ui",
+    "@workspace/i18n",
+  ],
   pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
   serverExternalPackages: ["shiki"],
   images: {
@@ -49,4 +55,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withContentCollections(nextConfig)
+export default withNextIntl(withContentCollections(nextConfig))

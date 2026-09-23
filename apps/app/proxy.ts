@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
+import type { Bcp47 } from "@workspace/i18n"
 
+const SUPPORTED_LOCALES = ["en", "fr"] as const satisfies readonly Bcp47[]
+
+// Protected routes (auth required). The matcher covers both forms
+// because of `localePrefix: 'as-needed'` — the default locale (`en`)
+// renders at the URL root (`/home`), while non-default locales
+// render under a prefix (`/fr/home`). The proxy must gate both.
 const PROTECTED_PREFIXES = ["/home", "/settings"]
 const AUTH_PREFIXES = [
   "/login",
@@ -15,18 +22,68 @@ const AUTH_PREFIXES = [
   // page-level Server Component. See ADR-022 §"Bug B".
 ]
 
+// Build the matcher list as a cartesian product: every protected/auth
+// path × (unprefixed + `/fr/` prefixed).
+function dualForm(path: string, withPrefix?: boolean): string[] {
+  if (withPrefix === false) return [path]
+  return SUPPORTED_LOCALES.flatMap((locale) =>
+    [path, `${path}/:path*`].flatMap((p) => {
+      if (p.includes("/:path*")) {
+        return [`/${locale}${p}`]
+      }
+      return [`/${locale}${p}`, `${locale}${p}/:path*`]
+    }),
+  )
+}
+
+const PROTECTED_MATCHER = PROTECTED_PREFIXES.flatMap((p) => [
+  ...dualForm(p, true),
+  p,
+  `${p}/:path*`,
+])
+
+const AUTH_MATCHER = AUTH_PREFIXES.flatMap((p) => {
+  const out: string[] = []
+  for (const locale of SUPPORTED_LOCALES) {
+    out.push(`/${locale}${p}`, `/${locale}${p}/:path*`)
+  }
+  out.push(p, `${p}/:path*`)
+  return out
+})
+
+const DEVICE_MATCHER = ["/device", "/device/:path*"].flatMap((p) => [
+  p,
+  ...SUPPORTED_LOCALES.map((locale) => `/${locale}${p}` as string),
+])
+
 export const config = {
-  // Single matcher covering both directions of the auth gate.
   matcher: [
-    "/home/:path*",
-    "/settings/:path*",
-    "/login",
-    "/signup",
-    "/forgot-password",
-    "/reset-password",
-    "/verify-email",
-    "/device",
+    ...PROTECTED_MATCHER,
+    ...AUTH_MATCHER,
+    ...DEVICE_MATCHER,
   ],
+}
+
+/**
+ * Strip the locale prefix from `pathname` for proxy logic. The
+ * default locale renders unprefixed (`/home`); non-default locales
+ * render prefixed (`/fr/home`). The proxy reads the strip to decide
+ * whether the request is `protected` or `auth`; redirects preserve
+ * the original locale so a French user stays on the French login.
+ *
+ * Shape (`localePrefix: 'as-needed'`):
+ *   `/home`           → `/home`
+ *   `/fr/home`        → `/home`
+ *   `/home/x`         → `/home/x`
+ *   `/fr/home/x`      → `/home/x`
+ *   `/fr`             → `/`
+ *   `/`               → `/`
+ */
+function stripLocalePrefix(pathname: string): string {
+  const match = pathname.match(/^\/(en|fr|de)(?:\/(.*))?$/)
+  if (!match) return pathname
+  const [, , rest] = match
+  return rest !== undefined ? `/${rest}` : "/"
 }
 
 // The proxy uses a pure HTTP fetch to /api/auth/get-session
@@ -48,36 +105,21 @@ interface GetSessionResponse {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
-  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))
+  const stripped = stripLocalePrefix(pathname)
+  const isProtected = PROTECTED_PREFIXES.some(
+    (p) => stripped.startsWith(p),
+  )
   const isAuthPage = AUTH_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
+    (p) => stripped === p || stripped.startsWith(`${p}/`),
   )
 
-  // Only call getSession when the route actually needs the gate decision.
-  // Avoids a roundtrip on every static asset or unrelated request.
   if (!isProtected && !isAuthPage) {
     return NextResponse.next()
   }
 
-  // The proxy self-fetches `/api/v1/auth/get-session` instead of
-  // importing `better-auth` directly. The fetch must hit the
-  // *same* origin the request is being processed under — never a
-  // hardcoded `API_BASE_URL` env var. On Vercel previews the
-  // origin is the per-branch hostname
-  // (`deessejs-app-git-<branch>.vercel.app`); on prod it's
-  // `app.deessejs.com`; in dev it's `localhost:3001`. Reading the
-  // origin off the incoming `request.nextUrl` makes the proxy
-  // adapt automatically without per-environment env wiring, and
-  // it keeps the self-fetch in the same Function (no DNS hop,
-  // no port resolution).
-  //
-  // ADR-021 §"Decision" #4 originally composed the URL from
-  // `serverEnv.API_BASE_URL`. That works for the cross-app case
-  // (`apps/web` calling into `apps/app`) but breaks for the
-  // self-fetch here, because `API_BASE_URL` is not set on every
-  // preview deploy and falls back to `http://localhost:3001` —
-  // which is not listening on Vercel. See the dev-comment on
-  // `serverEnv.API_BASE_URL` for the same caveat.
+  // The proxy self-fetches `/api/v1/auth/get-session`. The fetch
+  // hits the *same* origin the request is processed under — see
+  // ADR-021 §"Decision #4".
   const getSessionUrl = new URL(
     `${API_AUTH_PATH}/get-session`,
     request.nextUrl.origin,
@@ -89,19 +131,39 @@ export async function proxy(request: NextRequest) {
     ? ((await response.json()) as GetSessionResponse | null)
     : null)
 
+  // Preserve the user's locale across the redirect. A user who
+  // lands on `/fr/home` unauthenticated lands on `/fr/login`, not
+  // `/login`. The redirect URL is built from `request.url`
+  // (preserves the original locale) and only the path portion is
+  // rewritten per the gate logic.
   if (isProtected && !session?.session) {
-    const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("redirect", pathname)
+    const loginUrl = new URL(request.url)
+    loginUrl.pathname = `${prefixOf(pathname)}/login`
+    loginUrl.searchParams.set("redirect", stripped)
     return NextResponse.redirect(loginUrl)
   }
 
-  if (isProtected && session?.session?.user && !session.session.user.emailVerified) {
-    return NextResponse.redirect(new URL("/verify-email", request.url))
+  if (
+    isProtected &&
+    session?.session?.user &&
+    !session.session.user.emailVerified
+  ) {
+    const verifyUrl = new URL(request.url)
+    verifyUrl.pathname = `${prefixOf(pathname)}/verify-email`
+    return NextResponse.redirect(verifyUrl)
   }
 
   if (isAuthPage && session?.session) {
-    return NextResponse.redirect(new URL("/home", request.url))
+    const homeUrl = new URL(request.url)
+    homeUrl.pathname = `${prefixOf(pathname)}/home`
+    return NextResponse.redirect(homeUrl)
   }
 
   return NextResponse.next()
+}
+
+/** Return the locale prefix segment from a pathname (e.g. `/fr/home` → `/fr`). Empty string for unprefixed paths. */
+function prefixOf(pathname: string): string {
+  const match = pathname.match(/^\/(en|fr|de)(?:\/|$)/)
+  return match ? `/${match[1]}` : ""
 }

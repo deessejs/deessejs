@@ -1,7 +1,16 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
+import createNextIntlPlugin from "next-intl/plugin"
+
+const withNextIntl = createNextIntlPlugin("./app/[locale]/i18n/request.ts")
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@workspace/ui", "@workspace/api", "@workspace/auth", "@workspace/utils"],
+  transpilePackages: [
+    "@workspace/ui",
+    "@workspace/api",
+    "@workspace/auth",
+    "@workspace/utils",
+    "@workspace/i18n",
+  ],
   images: {
     remotePatterns: [
       {
@@ -22,6 +31,6 @@ const nextConfig: NextConfig = {
     // is safe.
     dangerouslyAllowLocalIP: true,
   },
-};
+}
 
-export default nextConfig;
+export default withNextIntl(nextConfig)

@@ -1,3 +1,43 @@
 # Local Vale scratch files
 B-RULES.txt
 B-VIOLATIONS.txt
+
+# Node
+node_modules/
+**/node_modules/
+
+# Next.js
+.next/
+out/
+**/.next/
+**/out/
+
+# Build outputs
+dist/
+**/dist/
+
+# Turbo
+.turbo/
+**/.turbo/
+
+# TypeScript
+*.tsbuildinfo
+
+# Vercel
+.vercel/
+
+# Env (local)
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*

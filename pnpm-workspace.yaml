@@ -5,7 +5,9 @@ packages:
 # pnpm 11: explicit allowlist for build scripts
 allowBuilds:
   '@mongodb-js/zstd': true
+  '@parcel/watcher': true
   '@prisma/client': true
+  '@swc/core': true
   better-sqlite3: true
   esbuild: true
   node-liblzma: true
@@ -28,54 +30,38 @@ catalog:
   '@content-collections/next': ^0.2.11
   '@deessejs/errors': ^1.1.1
   '@deessejs/fp': ^1.0.0
-  "@vercel/related-projects": ^1.1.1
+  "@hookform/resolvers": ^5.0.0
 
   # Next.js
   '@orpc/client': ^1.14.7
+  "next-intl": ^4.13.4
   "@orpc/server": ^1.14.7
-  "@t3-oss/env-core": ^0.13.0
   "@playwright/test": ^1.51.1
   "@react-email/components": ^1.0.12
   "@react-email/render": ^2.0.6
   '@shikijs/rehype': ^4.3.1
-
-  # Agent runtime (apps/agent — Vercel eve + MiniMax provider)
-  ai: ^7.0.106
-  eve: ^0.60.0
-  'vercel-minimax-ai-provider': ^0.0.2
-
-  # Markdown rendering (apps/web — untrusted GitHub READMEs on /templates/[slug])
-  react-markdown: ^10.1.0
-  rehype-pretty-code: ^0.14.5
-  unist-util-visit: ^5.1.0
-  "@types/hast": ^3.0.4
-  shiki: ^4.3.1
-  remark-gfm: ^4.0.1
-  rehype-sanitize: ^6.0.0
-
-  # Motion (apps/web — homepage contract cell animations)
-  motion: ^13.1.1
-
-  # Forms (apps/web — /enterprise inquiry form, react-hook-form + Zod)
-  react-hook-form: ^7.62.0
-  "@hookform/resolvers": ^5.0.0
+  "@t3-oss/env-core": ^0.13.0
 
   # Shared tooling
   "@tailwindcss/postcss": ^4.3.2
   '@tanstack/react-form': ^1.33.0
   '@tanstack/react-query': ^5.101.4
   "@turbo/gen": ^2.10.4
-  open: ^11.0.1
-  cross-spawn: ^7.0.6
+  "@types/hast": ^3.0.4
 
   # Types
   "@types/node": ^24
   "@types/pg": ^8.20.0
   "@types/react": ^19.2.17
   "@types/react-dom": ^19.2.3
+  "@vercel/related-projects": ^1.1.1
   "@vitest/coverage-v8": ^4.1.10
+
+  # Agent runtime (apps/agent — Vercel eve + MiniMax provider)
+  ai: ^7.0.106
   better-auth: ^1.6.23
   cmdk: ^1.1.1
+  cross-spawn: ^7.0.6
 
   # Database
   dotenv: ^17.4.2
@@ -83,6 +69,7 @@ catalog:
   drizzle-orm: ^0.45.2
   eslint: ^9.39.4
   "eslint-config-next": ^16.2.10
+  eve: ^0.60.0
   fuse.js: ^7.4.2
 
   # API
@@ -91,27 +78,43 @@ catalog:
 
   # Icons
   lucide-react: ^1.23.0
+
+  # Motion (apps/web — homepage contract cell animations)
+  motion: ^13.1.1
   "next": ^16.2.10
+  open: ^11.0.1
   pg: ^8.22.0
+
+  # CI tooling
+  pkg-pr-new: ^0.0.88
   portless: ^0.15.1
   postgres: ^3.4.9
   react: 19.2.7
   react-dom: 19.2.7
+
+  # Forms (apps/web — /enterprise inquiry form, react-hook-form + Zod)
+  react-hook-form: ^7.62.0
+
+  # Markdown rendering (apps/web — untrusted GitHub READMEs on /templates/[slug])
+  react-markdown: ^10.1.0
   reading-time: ^1.5.0
+  rehype-pretty-code: ^0.14.5
+  rehype-sanitize: ^6.0.0
+  remark-gfm: ^4.0.1
   resend: ^6.17.1
+  shiki: ^4.3.1
   sonner: ^2.0.7
 
   # UI
   tailwind-merge: ^3.6.0
   typescript: ^6.0.3
+  unist-util-visit: ^5.1.0
+  'vercel-minimax-ai-provider': ^0.0.2
 
   # Testing
   vitest: ^4.1.10
   zod: ^4.4.3
   zustand: ^5.0.14
-
-  # CI tooling
-  pkg-pr-new: ^0.0.88
 
 # Strict mode: all dependencies MUST come from a catalog
 catalogMode: strict
