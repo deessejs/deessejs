@@ -1,0 +1,192 @@
+---
+title: 'contract evolution procedure'
+description: 'How the deesse-template.json, deessejs-block.json, and deesse.json schemas evolve over time. Codifies the semver bumps by change class, the fixture-mandatory rule, the immutability of the $schema URL, the version-directory discipline, and the conumable-without-bump stability checks. A companion to ADR-032 and ADR-031.'
+---
+
+# ADR-036: contract evolution procedure
+
+## Status
+
+Accepted (2026-09). Approved on the branch `docs/adr-031-templates-json`, tracked by [PR #137](https://github.com/deessejs/deessejs/pull/137). Locks in the rules that govern how `deesse-template.json`, `deessejs-block.json`, and `deesse.json` evolve from one version to the next.
+
+## Context
+
+The three contracts documented across [ADR-031](./ADR-031-deesse-json.mdx), [ADR-032](./ADR-032-deesse-template.json.mdx), and [RFC-005](./RFC-005-deessejs-block.mdx) are **public-facing load-bearing artifacts**. Every template author, every CLI consumer, every third-party registry host parses them. Without an explicit procedure, future engineers will merge PRs that silently mutate the contract in ways the 5 ADRs of PR-137 did not anticipate. The procedure below makes the rules executable, not aspirational.
+
+This ADR does not introduce a new contract. It introduces the **rules by which the existing contracts change**. Code lives in `packages/contracts/src/`; this ADR is the binding policy above the code.
+
+## Decision
+
+### 1. Versioning model
+
+Each contract has a **major version**. The first published shape is V1; breaking changes bump to V2, V3, etc.
+
+The version appears in three places:
+- The Zod schema export name (`TemplateV1`, `BlockV1`, `ProjectV1`)
+- The directory in `packages/contracts/src/` (`v1/`, `v2/`, ...)
+- The `$schema` URL (`https://registry.deessejs.com/schema/{template,block,project}/v{n}.json`)
+
+The three must move together. A bump in one is a bump in all.
+
+### 2. Semver bump rules
+
+Apply the following table when proposing a change to any contract. The bottom three rows require a **major bump**; the top three allow a **minor bump**:
+
+| Change | Bump | Rationale |
+|---|---|---|
+| Add an optional field | minor | Older clients ignore unknown fields; Zod `.passthrough()` or `.strict()` per contract. |
+| Add a new value to a documented `oneOf` set that was already present | minor | The set was already open by design (e.g. optional `tags: string[]`). |
+| Loosen a constraint (e.g. accept `[A, B]` where the schema required `[A]`) | minor | Existing clients still accept the wider shape. |
+| Add a required field | **major** | Older clients throw `parse_error`. |
+| Add a value to a closed enum (e.g. a new `block.type`) | **major** | Older clients that map enum values to fixed routes reject the unknown. |
+| Tighten a constraint (e.g. require `[A]` where the schema accepted `[A, B]`) | **major** | Older clients send the wider shape and break. |
+| Rename a field | **major** | Older clients that read the old name see `undefined`. |
+| Delete a field, even an optional one | **major** | Authors who relied on it for documentation or tooling break. |
+| Restructure the discriminator (e.g. `{ type: 'template:app' }` to `{ template: { type: 'app' } }`) | **major** | A breaking `parse_error` for every older client. |
+
+A **patch bump** never applies to a contract. Fixing a JSON Schema URL typo, correcting a description, or repairing a JSDoc comment without changing the wire shape is **not a version bump** — it is a content edit on the same version and rolls out without ceremony.
+
+### 3. The `$schema` URL is **immutable per version**
+
+Once `https://registry.deessejs.com/schema/template/v1.json` is published and consumed by an editor or a CLI, that URL **never serves a different shape**. A breaking change publishes a new URL — `v2.json` — and the original `v1.json` keeps serving the original shape forever, frozen.
+
+This rule exists so an author's editor, configured once at template-bootstrap time, continues to validate correctly even after the CLI ships V2. The editor does not need to refresh; the contract they pinned is still there.
+
+Concrete consequences:
+- The CI job in `packages/contracts/scripts/publish-schemas.ts` writes each version to its own immutable path under `dist/schemas/{contract}/v{n}.json`.
+- The CDN serves each path with `Cache-Control: public, max-age=31536000, immutable`.
+- A version directory (`packages/contracts/src/v1/`) is **never modified after the version ships**. Adding a field to V1 means starting V2.
+
+### 4. The version-directory discipline
+
+Source code for each version lives in its own directory:
+
+```
+packages/contracts/src/
+  shared/
+    license.ts          # enums reused across versions
+    runtime.ts
+    block-type.ts
+    template-type.ts
+    file-type.ts
+    refs.ts
+  v1/
+    template.ts         # frozen since publish; never modified
+    block.ts            # frozen
+  v2/
+    template.ts
+```
+
+A version directory is **frozen on publish**. The accepted rule is:
+
+> If a PR modifies a file inside `v1/`, the PR must either (a) be a CI-only fix that does not change the Zod output, or (b) create `v2/` and migrate the schemas. The first option requires a codeowner approval comment justifying the immutability violation.
+
+This is the same rule the RFC process implicitly follows for "Accepted" RFCs (RFCs become immutable after acceptance). The contract code follows the same pattern. The directory is the *physical embodiment of the published agreement*.
+
+### 5. The shared/ directory carries forward
+
+Enums and shared types reused across versions live in `shared/`. When V3 adds a value to one of these enums, the change goes in `shared/` — *not* duplicated into `v2/` and `v3/`.
+
+Why this matters: keeping the enum in one place means a `BlockV1` and a `BlockV2` that share, say, the `License` enum, agree on the allowed licenses. If `License` were duplicated per version, the two could drift; an author would be validated against one set by a V1 CLI and against a different set by a V2 CLI. Centralising in `shared/` prevents the bug class.
+
+A version-specific enum (e.g. a V2-only discriminator) lives inside the version directory. A version-independent enum lives in `shared/`.
+
+### 6. Frozen-file marker
+
+Every frozen file under `v{n}/` opens with a comment:
+
+```ts
+/**
+ * TemplateV1 — frozen since 2026-09-23. Do not modify.
+ *
+ * Per ADR-036 §4, this file is the canonical source of truth for the
+ * TemplateV1 contract. Any change here is a content edit on V1, not a
+ * V1.1. To add a field, start a new version directory.
+ */
+```
+
+This block is added once, by the PR that promotes the version from `Draft` to `Accepted`. CI in `packages/contracts` checks that every file under `v{n}/` (for `n > 1`) carries the marker; if not, the build fails.
+
+### 7. Fixture-mandatory rule
+
+No contract version ships without at least:
+- 5 valid fixtures: realistic templates that the schema accepts.
+- 5 invalid fixtures per closed invariant: one negative test for every mandatory field, every closed-enum value, every discriminator rule, and every `refine()` predicate.
+
+A PR that bumps a contract version without the matching fixtures will fail CI. The rule is explicit because negative fixtures are the *only* way a closed invariant is exercised. A `LICENSE` enum is theoretical until a fixture with `"UNLICENSED"` triggers `ZodError`.
+
+Fixtures live in `packages/contracts/src/__tests__/v{n}/`. The CI runs `vitest run` and exports a per-invariant success table in the job log.
+
+### 8. The compatibility checker
+
+When a new version (`v(N+1)`) ships, the CI also runs a `compat-against-v(N)` step. It loads the V(N) fixtures into the V(N+1) parser and expects exactly two outcomes:
+
+- The fixture parses cleanly. The field was either optional or absent in V(N) and the V(N+1) schema treats absence as valid. **Compatibility preserved.**
+- The fixture throws `ZodError`. The field was mandatory in V(N). The CI **must fail**, the bump **must be major**, and the version-number must reflect the break. **Compatibility preserved as a major bump.**
+
+The check is structural, not statistical. It is a contract test against the published history, not a heuristic. The CI emits:
+
+```
+compat-against-v1: 5/5 valid-v1 fixtures parse under v2 OR fail-by-design with mandatory-field error.
+```
+
+A "silent accept" (V2 silently accepts V1's mandatory fields as undefined) is a *bug*, not a feature, and fails the build.
+
+### 9. Wire-format rules that hold across all versions
+
+These are invariants, not version-specific decisions:
+
+- Every contract is JSON. No YAML, no TOML, no XML. JSON is the lowest-common-denominator formatter across CLI, editor LSP, and web renderers.
+- Every contract carries a top-level `$schema` field that points to its version URL (`https://registry.deessejs.com/schema/{contract}/v{n}.json`). A parse that finds the wrong version URL surfaces a `schema_version_mismatch` error, not a generic `parse_error`.
+- Every contract uses `application/json`; the CLI does **not** negotiate `application/x-ndjson` or other streaming formats.
+- Every contract's enums are exported as Zod enums (`z.enum([...])`), not as `z.string()` with a runtime check. The Zod enum is the authoritative validator; an editor asking "what values exist for `block.type`" reads the enum at the source.
+
+### 10. Deprecation policy
+
+When a version is superseded (V2 ships, V1 is deprecated), V1 is **not deleted**. It sits frozen in the codebase and in the published CDN. Authors on V1 keep working indefinitely. The CLI may print a deprecation warning on parse, but the parse must succeed.
+
+The deprecation lifecycle:
+1. V(N+1) ships. V(N) is **current**, not **deprecated**.
+2. Three months after V(N+1) ships, the CLI prints a soft warning when parsing V(N): `notice: V(N) is supported until YYYY-MM-DD. Migrate via 'deessejs template migrate' or edit the file to include '$schema' pointing at /schema/.../v(N+1).json`.
+3. Six months after V(N+1), V(N) is **no longer shipped** in the default CLI install. Authors on V(N) get a `version_unsupported` error and a migration link.
+4. Two years after V(N+1), V(N) is removed from the codebase and the CDN path returns `410 Gone`. Authors on V(N) cannot recover without editing their descriptor.
+
+The deprecation duration is a *consumer-protection* contract. We do not deprecate overnight because a V1 author with a 5-year-old template repo is not on the bleeding edge and we are not hostile to their stack.
+
+### 11. Tooling obligations
+
+The `packages/contracts` workspace carries three jobs:
+
+- `vitest run` — exercises the fixtures against the current schemas.
+- `pnpm run typecheck` — validates the Zod-inferred TypeScript types compile cleanly.
+- `pnpm run build && node scripts/publish-schemas.ts` — emits the JSON Schemas to `dist/schemas/{contract}/v{n}.json`, version-pinned.
+
+The author tooling (`deessejs template validate`) consumes the schemas from `dist/`, not from `src/`. The CLI does **not** import from `@workspace/contracts/src`; it imports from `@workspace/contracts` (the built artifact). This separation is part of the immutability rule.
+
+### 12. The "what doesn't change" rule
+
+The procedure does **not** govern:
+- Documentation edits on an in-flight RFC. RFC edits happen during `Draft` and `Proposed`; only `Accepted` RFCs freeze.
+- The JSON Schema URL once published. See §3.
+- Bug fixes to the CLI's parser that do not change the wire shape. A parser bug that accepts a malformed V1 input should be fixed without bumping V1; the fix is in code, not in contract.
+- Marketing copy, README examples, or web-page text that describes a contract. The contract is the Zod schema. Marketing is downstream.
+
+## Rollout
+
+This ADR ships with:
+- The `shared/` directory, populated with the six enums reused across versions (`LICENSE`, `RUNTIME`, `BLOCK_TYPE`, `TEMPLATE_TYPE`, `FILE_TYPE`, `REF_PATTERN`).
+- The `v2/template.ts` schema for `TemplateV2`.
+- The `v1/block.ts` schema for `BlockV1` (a new contract, not a supersede of `TemplateV1`).
+- The fixtures in `packages/contracts/src/__tests__/v1/block.test.ts` and `packages/contracts/src/__tests__/v2/template.test.ts`.
+- A CI job in `packages/contracts` that runs `vitest run`, `tsc --noEmit`, and emits per-version JSON Schemas.
+
+The pre-existing `packages/contracts/src/v1/template.ts` (which describes the `GET /api/v1/templates` response, not a `deesse-template.json` descriptor) is **out of scope** for this ADR. The homonym is acknowledged in code comments but not resolved here. Renaming the existing schema to `TemplatesListItemV1` is tracked as a follow-up and must not block this ADR.
+
+## Cross-references
+
+- [ADR-031](./ADR-031-deesse-json.mdx) — `deesse.json` (the consumer-side contract).
+- [ADR-032](./ADR-032-deesse-template.json.mdx) — `deesse-template.json` (the registry-side contract).
+- [RFC-002](./RFC-002-deesse-template.mdx) — senior narrative for the descriptor format.
+- [RFC-005](./RFC-005-deessejs-block.mdx) — the `deessejs-block.json` descriptor and its 8-value `block.type` enum.
+- [RFC-007](./RFC-007-template-ingestion.mdx) — the ingestion pipeline; consumes these schemas to validate imports.
+- [ADR-007](./ADR-007-no-em-dash-in-internal-doc.mdx) — the format rule applied to this document.
