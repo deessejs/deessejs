@@ -34,6 +34,11 @@ const env = createEnv({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_DOCS_URL: process.env.NEXT_PUBLIC_DOCS_URL,
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+    // i18n configuration (ADR-031). Listed here so the build fails if
+    // a contributor adds the schema field but forgets the runtime
+    // access — the same compile-time guarantee the URL fields get.
+    NEXT_PUBLIC_LOCALES: process.env.NEXT_PUBLIC_LOCALES,
+    NEXT_PUBLIC_DEFAULT_LOCALE: process.env.NEXT_PUBLIC_DEFAULT_LOCALE,
   },
   emptyStringAsUndefined: true,
 })
@@ -50,6 +55,11 @@ export const clientEnv: Readonly<ClientEnv> = Object.freeze({
   NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_DOCS_URL: env.NEXT_PUBLIC_DOCS_URL,
   NEXT_PUBLIC_API_BASE_URL: env.NEXT_PUBLIC_API_BASE_URL,
+  // i18n (ADR-031). The typed accessor lives in @workspace/i18n
+  // (`locales()`, `defaultLocale()`); here we just expose the raw
+  // env-derived strings for completeness.
+  NEXT_PUBLIC_LOCALES: env.NEXT_PUBLIC_LOCALES,
+  NEXT_PUBLIC_DEFAULT_LOCALE: env.NEXT_PUBLIC_DEFAULT_LOCALE,
 } as ClientEnv) as Readonly<ClientEnv>
 
 /**

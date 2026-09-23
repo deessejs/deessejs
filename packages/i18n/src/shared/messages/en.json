@@ -1,0 +1,49 @@
+{
+  "Common": {
+    "Cancel": "Cancel",
+    "Save": "Save",
+    "Loading": "Loading",
+    "Continue": "Continue",
+    "Back": "Back",
+    "Submit": "Submit",
+    "Discard": "Discard",
+    "Confirm": "Confirm",
+    "Close": "Close",
+    "Open": "Open",
+    "Yes": "Yes",
+    "No": "No"
+  },
+  "Error": {
+    "network": "Network error. Please check your connection and try again.",
+    "unauthorized": "You need to sign in to continue.",
+    "forbidden": "You do not have access to this resource.",
+    "notFound": "The resource you are looking for does not exist.",
+    "serverError": "Something went wrong on our side. Please try again later.",
+    "unknown": "An unexpected error occurred.",
+    "tryAgain": "Try again",
+    "contact": "Contact support"
+  },
+  "Form": {
+    "required": "This field is required.",
+    "invalid": "Please enter a valid value.",
+    "optional": "(optional)",
+    "minLength": "Must be at least {min} characters.",
+    "maxLength": "Must be at most {max} characters.",
+    "passwordStrength": {
+      "Weak": "Weak",
+      "Fair": "Fair",
+      "Good": "Good",
+      "Strong": "Strong"
+    },
+    "email": "Please enter a valid email address.",
+    "placeholder": "Type here…"
+  },
+  "Confirm": {
+    "delete": "This action is permanent. The data will be deleted and cannot be recovered.",
+    "signOut": "You will be signed out of your account.",
+    "revoke": "This session will be revoked on the device.",
+    "unlink": "You will no longer be able to sign in with this account.",
+    "cancel": "Cancel",
+    "unsavedChanges": "You have unsaved changes. Are you sure you want to leave?"
+  }
+}
