@@ -1,0 +1,91 @@
+{
+  "$schema": "https://registry.deessejs.com/schema/template/v2.json",
+  "name": "saas-starter",
+  "title": "SaaS Starter",
+  "description": "Production-ready Next.js + Better Auth + Postgres boilerplate for B2B SaaS. Includes auth, billing-ready schema, and a deploy-ready Vercel config.",
+  "type": "template:app",
+  "version": "1.0.0",
+  "author": "DeesseJS <hello@deessejs.com>",
+  "license": "MIT",
+  "category": "saas",
+  "labels": ["nextjs", "saas", "auth", "postgres", "billing-ready"],
+  "source": {
+    "repo": "deessejs/saas-template",
+    "ref": "v1.4.0"
+  },
+  "requires": {
+    "runtime": "nextjs",
+    "node": ">=20.0.0",
+    "packageManager": "pnpm@9",
+    "djs": "^0.5.0"
+  },
+  "dependencies": ["next@^15", "better-auth@^1", "zod@^3.23"],
+  "devDependencies": ["typescript@^5", "@types/node@^20"],
+  "docs": "./docs/saas-starter.md",
+  "prompts": [
+    {
+      "name": "project_name",
+      "type": "text",
+      "message": "What is your project name?",
+      "default": "my-app",
+      "validate": "^[a-z0-9-_]+$"
+    },
+    {
+      "name": "database",
+      "type": "select",
+      "message": "Which database would you like to use?",
+      "default": "postgresql",
+      "choices": [
+        { "label": "PostgreSQL", "value": "postgresql" },
+        { "label": "MySQL", "value": "mysql" },
+        { "label": "SQLite", "value": "sqlite" }
+      ]
+    },
+    {
+      "name": "database_url",
+      "type": "text",
+      "message": "Database connection URL (optional):",
+      "default": "",
+      "when": "database != 'sqlite'"
+    },
+    {
+      "name": "with_storybook",
+      "type": "confirm",
+      "message": "Include Storybook setup?",
+      "default": true
+    }
+  ],
+  "hooks": {
+    "postInit": ["{pm} install"],
+    "postInstall": ["{pm} db:push", "{pm} generate"]
+  },
+  "files": [
+    {
+      "path": "apps/web/.env.example",
+      "type": "template:env",
+      "target": "apps/web/.env",
+      "transform": "rename"
+    },
+    {
+      "path": "apps/web/src/lib/db.ts.template",
+      "type": "template:source",
+      "target": "@lib/db.ts",
+      "transform": "interpolate"
+    },
+    {
+      "path": "apps/web/biome.json",
+      "type": "template:config",
+      "target": "apps/web/biome.json"
+    },
+    {
+      "path": "apps/web/src/app/globals.css",
+      "type": "template:style",
+      "target": "@styles/globals.css"
+    },
+    {
+      "path": "apps/web/tests/db.test.ts",
+      "type": "template:test",
+      "target": "@tests/db.test.ts"
+    }
+  ]
+}

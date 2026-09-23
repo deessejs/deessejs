@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
 import { BlockV1 } from "../../src/v1/block.js"
 
@@ -40,6 +43,23 @@ const BASE_VALID: Record<string, unknown> = {
 }
 
 describe("BlockV1 — valid fixtures", () => {
+  it("parses the canonical example fixture (block-example.json)", () => {
+    /**
+     * Round-trip the canonical example that ships alongside the schema.
+     * A regression here means the example no longer matches the contract.
+     */
+    const here = fileURLToPath(import.meta.url)
+    const examplePath = resolve(here, "../../../src/v1/block-example.json")
+    const raw = JSON.parse(readFileSync(examplePath, "utf8"))
+    const result = BlockV1.parse(raw)
+    expect(result.type).toBe("block:feature")
+    expect(result.name).toBe("blog")
+    expect(result.requires?.runtime).toBe("nextjs")
+    expect(result.files).toHaveLength(6)
+    expect(result.blockDependencies).toEqual(["auth", "crud"])
+    expect(result.prompts).toHaveLength(2)
+  })
+
   it("parses the minimum required fields", () => {
     const minimal = {
       $schema: "https://registry.deessejs.com/schema/block/v1.json",

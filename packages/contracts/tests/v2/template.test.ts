@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
 import { TemplateV2 } from "../../src/v2/template.js"
 
@@ -28,6 +31,26 @@ const BASE_VALID: Record<string, unknown> = {
 }
 
 describe("TemplateV2 — valid fixtures", () => {
+  it("parses the canonical example fixture (template-example.json)", () => {
+    /**
+     * Round-trip the canonical example that ships alongside the schema.
+     * The example file is the source of truth that authors copy from;
+     * a regression here means the example no longer matches the contract.
+     */
+    const here = fileURLToPath(import.meta.url)
+    const examplePath = resolve(here, "../../../src/v2/template-example.json")
+    const raw = JSON.parse(readFileSync(examplePath, "utf8"))
+    const result = TemplateV2.parse(raw)
+    expect(result.type).toBe("template:app")
+    expect(result.name).toBe("saas-starter")
+    expect(result.requires?.runtime).toBe("nextjs")
+    expect(result.files).toHaveLength(5)
+    expect(result.prompts).toHaveLength(4)
+    expect(result.prompts?.every((p) => /^[a-z_][a-z0-9_]*$/.test(p.name))).toBe(
+      true,
+    )
+  })
+
   it("parses the minimum required fields", () => {
     const minimal = {
       $schema: "https://registry.deessejs.com/schema/template/v2.json",
