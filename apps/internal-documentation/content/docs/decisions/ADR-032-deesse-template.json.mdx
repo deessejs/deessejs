@@ -9,6 +9,14 @@ description: 'The reference for deesse-template.json, the item descriptor co-loc
 
 Accepted (2026-09). Approved after two review rounds; tracked by [PR #137](https://github.com/deessejs/deessejs/pull/137). Follow-up tracked by [issue #139](https://github.com/deessejs/deessejs/issues/139) (ADR-001 scope amendment). This ADR is the **authoritative reference** for `deesse-template.json`; ADR-031 covers the project-side `deesse.json`, ADR-033 covers the `add` command, ADR-034 covers the author tooling, ADR-035 confirms the feature/sub-tree scope.
 
+### Amendments applied during this PR
+
+Three amendments land in the same PR that ratifies this ADR. They are introduced by ADR-036 (contract evolution procedure) and ratified by the same review round as the rest of the registry docs.
+
+- **§`requires` — `runtime` is now mandatory when the object is present.** The object itself remains optional, but if a template declares `requires`, it must include a `runtime` field. The CLI refuses a `requires` object without `runtime` at parse time. Closed-invariant rule from ADR-036 §"Semver bump rules".
+- **§`files` — per-file `type` is now mandatory and enumerated.** A `files[]` entry without `type` fails at parse time. The closed enum is 7 values: `template:env`, `template:doc`, `template:config`, `template:source`, `template:style`, `template:test`, `template:asset`. RFC-005 §Decision 3 proposed an alternative namespace (`block:*`); the question is settled in this ADR in favour of the `template:*` namespace.
+- **§`$schema` — the URL is now version-pinned.** Was `https://registry.deessejs.com/schema/template.json`, now `https://registry.deessejs.com/schema/template/v2.json` (and `v{n}.json` for future versions). The immutability policy lives in ADR-036 §3.
+
 ## Table of contents
 
 - [Context](#context)
@@ -114,9 +122,15 @@ The complete top-level shape of `deesse-template.json`. Fields are listed in the
 
 **Type**: string. **Required**.
 
-The URL of the JSON Schema that describes `deesse-template.json`. Always `https://registry.deessejs.com/schema/template.json`. The schema is generated from the Zod source in `@workspace/contracts/src/v1/template.ts` and republished on every release of `@workspace/contracts`. Editors use this URL for inline hints and validation.
+The URL of the JSON Schema that describes `deesse-template.json`. The URL is **version-pinned**: each descriptor version points to the URL of its own era.
 
-**Example**: `"$schema": "https://registry.deessejs.com/schema/template.json"`
+Current version (V2): `https://registry.deessejs.com/schema/template/v2.json`.
+
+**Example**: `"$schema": "https://registry.deessejs.com/schema/template/v2.json"`
+
+**Why version-pinned.** An editor (Cursor, VS Code with the JSON Schema store, or any LSP consumer) configured once at template-bootstrap time keeps validating the original shape even after the CLI ships V3. The pinned URL is the source of truth for what the file is; the editor does not need to refresh. See [ADR-036](./ADR-036-contract-evolution.mdx) §"The `$schema` URL is immutable per version" for the immutability policy and the CDN cache semantics.
+
+The schema is generated from the Zod source in `@workspace/contracts/src/v{n}/template.ts` and republished on every release of `@workspace/contracts`. The publication job writes each version to `dist/schemas/template/v{n}.json`, then the CDN serves each URL with `Cache-Control: public, max-age=31536000, immutable`.
 
 **Anti-patterns**:
 - Pointing `$schema` at a different URL (e.g. a fork), third-party registries ship their own schema URL; the official `deessejs.com` URL is for the official registry.
@@ -346,13 +360,15 @@ The source repository that backs the template. The CLI clones from this repo at 
 
 ### `requires`
 
-**Type**: object. **Optional**.
+**Type**: object. **Optional** as a whole, but **`runtime` is required when the object is present**.
 
 Runtime gates the CLI enforces before installing.
 
 **Fields**:
+- `runtime` (string, **required when `requires` is present**): the canonical runtime identifier (`nextjs`, `hono`, `nuxt`, `sveltekit`, `tanstack-start`, `astro`, `remix`, `node`). Lowercase kebab-case. The CLI uses this to look up peer-dependency hints, lint rules, and "compatible runtime" matrix. A missing `runtime` inside a non-empty `requires` object fails at parse time with `parse_error`.
 - `node` (string, optional): semver range for the Node.js version. The CLI refuses with `parse_error` if the user's `node -v` is below the lower bound.
 - `packageManager` (string, optional): pinned version of the package manager. Format is `<name>@<version>` (e.g. `"pnpm@9"`, `"bun@1.1"`). The CLI uses this when `deesse.json#packageManager` is not set.
+- `djs` (string, optional): semver range for the DeesseJS CLI version this template is compatible with (e.g. `"^0.5.0"`). The CLI refuses to install a template requiring a CLI version that is not satisfied by the installed `@deessejs/cli`.
 
 **Examples**:
 - `"requires": { "node": ">=20.0.0" }`
@@ -629,12 +645,25 @@ The overlay files the item ships. Each entry describes one source file in the te
 ```ts
 interface FileSpec {
   path: string;       // source path, relative to the template repo root
-  type: string;       // "template:env" | "template:doc" | "template:config" | "template:source" | ...
+  type: FileType;     // closed enum, see below
   target?: string;    // destination path, with @* placeholders (see below)
   transform?: "rename" | "interpolate" | "remove" | "merge";
   overwrite?: boolean; // default: false. See [ADR-033 Decision #7](./ADR-033-deessejs-add.mdx).
 }
+
+type FileType =
+  | "template:env"     // .env.example, .env.local — environment configuration
+  | "template:doc"     // README fragments, MDX — documentation
+  | "template:config"  // tsconfig.json, eslint.config.js, biome.json — tool config
+  | "template:source"  // .ts, .tsx, .js, .jsx — source code (the default kind)
+  | "template:style"   // .css, .scss, globals.css fragments — styles
+  | "template:test"    // .test.ts, .spec.ts — test files
+  | "template:asset";  // images, fonts, binaries (rare, mostly for the asset sub-folder)
 ```
+
+**Per-file `type` is mandatory in `deesse-template.json`** (per [ADR-036](./ADR-036-contract-evolution.mdx) §"Decisions"). A file with a missing `type`, or a `type` outside the 7-value closed list above, fails at parse time with `parse_error`. The CLI uses `type` to route the file to the right directory in the consumer project and to choose the merge strategy for files of the same logical kind.
+
+The 7 values are exhaustive for the foreseeable starter template surface. Adding a new value is a major bump per ADR-036 §"Semver bump rules" — never edit this list in place, the next major version carries a new closed list.
 
 **Examples**:
 

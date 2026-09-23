@@ -1,6 +1,7 @@
 export { LICENSE, type License } from "./license.js"
 export { TEMPLATE_TYPE, type TemplateType } from "./template-type.js"
 export { BLOCK_TYPE, type BlockType, FILE_TYPE, type FileType } from "./block-type.js"
+export { FILE_TYPE_TEMPLATE, type FileTypeTemplate } from "./file-type-template.js"
 export { RUNTIME, type Runtime } from "./runtime.js"
 export {
   SEMVER,
