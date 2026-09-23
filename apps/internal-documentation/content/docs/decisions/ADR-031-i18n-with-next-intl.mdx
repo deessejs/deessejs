@@ -1,0 +1,483 @@
+---
+title: 'i18n with next-intl'
+description: 'Add internationalisation to apps/web and apps/app via next-intl, English-first with French as the V1 second locale, no-prefix default locale, locale switcher, hreflang wired, no translations ship in this ADR.'
+---
+
+# ADR-031: i18n with next-intl
+
+## Status
+
+Draft (2026-09). Awaiting review.
+
+## Context
+
+The repo is English-first today. `apps/web/src/app/layout.tsx:85` and `apps/app/app/layout.tsx:18` both hardcode `<html lang="en">`. The Organisation JSON-LD at `apps/web/src/lib/seo/organization.ts:73` ships `availableLanguage: ["English"]`. The WebSite JSON-LD at `:108` ships `inLanguage: "en"`. The OpenGraph block at `apps/web/src/app/layout.tsx:48` ships `locale: "en_US"`. `apps/web/src/lib/blog/feed.ts:48` emits `<language>en</language>`. The blog, KB, changelog, and `use-cases/[slug]` Article JSON-LDs hardcode `"inLanguage": "en"` in six places. The marketing surface has no infrastructure for a second locale; the user-visible copy is English-only by design.
+
+A scan of `apps/web` and `apps/app` together catalogues roughly 900 to 1100 user-facing strings. About 700 to 900 live in `apps/web` (header, footer, landing, 11 marketing pages, templates library, use-cases, blog, KB, changelog, legal, cookie consent, error pages, global search). About 150 to 200 live in `apps/app` (auth, settings, device flow, toasts, home). About 50 live cross-app (`packages/email` templates, JSON-LD wiring, sitemap, RSS). The brand name itself is a constant: `DeesseJS` everywhere, with `name` and `description` already fed by `APP_CONFIG` in both apps, which makes per-locale brand substitution a single-file change.
+
+The market the product targets is overwhelmingly English-speaking, but a French-speaking customer base exists today and is expected to grow. The first locale pair to ship is English (default) plus French (V1 second). The ADR does not lock a third locale; a future ADR adds one if the catalogue shows demand.
+
+Three constraints shape the solution.
+
+1. **English is the canonical default.** The default locale lives at the URL root, with no prefix. A request to `/templates` lands on the English page; a request to `/fr/templates` lands on the French page. Crawlers see one canonical per URL via `alternates.languages` and `hreflang`. A user who prefers French can opt in; an un-prompted visitor never lands on the French site by accident.
+2. **Locale preference is automatic on first visit, persists thereafter, and is round-trippable across apps.** A user who lands on `deessejs.com/` for the first time is auto-detected: the middleware reads the browser's `Accept-Language` header (e.g. `fr-FR`) and redirects to `deessejs.com/fr/`. The user lands on the French version without having to think about it. Once the user is on a locale-prefixed URL, the middleware sets the `NEXT_LOCALE` cookie with the chosen locale; subsequent visits on the same browser bypass the detection redirect and serve the user's preferred locale directly. The site offers a visible locale switcher in two places: the marketing header (`apps/web`) and the authenticated app settings (`apps/app`, in the profile section). The switcher calls `router.replace(pathname, { locale })`, which navigates to the new locale's URL and updates the cookie as a side-effect. The cookie is round-trippable: setting French in app settings writes to the same `NEXT_LOCALE` cookie that the marketing site reads, so the preference is shared across the two apps. With `localeDetection: true` (Decision #2), the auto-detection only fires on canonical unprefixed URLs (`/templates`, not `/fr/templates`); once a user has navigated to a locale-prefixed URL, the middleware does not redirect again. A user who shares a prefixed URL (`/fr/...`) gives the recipient a French page; a user who shares an unprefixed URL (`/...`) gives the recipient a page whose language is determined by the recipient's browser preference or cookie. The UX feels natural because the user does not have to think about the locale: the system picks the right one on first hit, the user can override via the switcher, and the URL canonicalises thereafter.
+3. **The API surface is locale-invariant.** `apps/app/app/api/[[...route]]/route.ts` mounts the Hono backend at `/api/v1/*`. ADR-021 locks the four inter-app URL pairs and ADR-029 locks the Vercel preview URL wiring. Both ADRs treat the API path as a fixed string. Internationalisation must not touch the API: `/api/v1/*` stays English on the wire, and the oRPC client resolves to the same backend whether the user is on `/templates` or `/fr/templates`.
+
+A library survey of the 2026 market (per Exa search on 2026-09-23 against `next-intl`, `react-i18next`, `lingui`, `@inlang/paraglide-js`) places four candidates. **next-intl 4.13** is the recommended default: it ships React Server Components support out of the box, native ICU (plurals, select, interpolation, `format.dateTime`, `format.relativeTime`, `format.number`), type-safe message keys with autocompletion, App Router-native routing, and a peer dep that explicitly lists `next ^16`. react-i18next is the most mature framework-agnostic option but is more verbose on App Router; Lingui ships the smallest runtime via a compile-time macro but adds a Babel or SWC plugin step; Paraglide JS is a strong compiler-first option but its ecosystem is younger. The team's stack (Next 16 RSC, React 19, no Babel) makes next-intl the lowest-friction path.
+
+Two next-intl compatibility points are documented. Issue [amannn/next-intl#2074](https://github.com/amannn/next-intl/issues/2074) (closed October 2025) reports `headers()` inside `'use cache'` errors when `cacheComponents: true` is enabled; the workaround is documented in `aurorascharff/next-intl-cache-components` and the upstream fix is tracked at issue #1493. Today, neither `apps/web` nor `apps/app` enables `cacheComponents` (`apps/app/app/api/[[...route]]/route.ts:16` is the only `force-dynamic` and it sits at the API catch-all). Issue [amannn/next-intl#1635](https://github.com/amannn/next-intl/issues/1635) reports an SSR edge case with `localePrefix: 'as-needed'`; the documented workaround is to opt out of detection-driven redirection at the middleware level when the cookie is explicit. Both points are footnoted in Decision #2 and Known limitations §2.
+
+A fourth decision shapes the package shape: the team commits to a private `@workspace/i18n` package from the foundation PR, with a `shared/` namespace that owns the cross-app terms (`Common`, `Error`, `Form`, `Confirm`). The package hosts the next-intl `defineRouting` + `getRequestConfig` so the two apps consume the same routing shape and the same locale list. The cost is one extra workspace package (one slot in `pnpm-workspace.yaml`, one `tsconfig.json`, one `vitest.config.ts`, one `eslint` flat-config re-export, one entry in `transpilePackages` for `apps/web` and `apps/app`) and ~150 lines of source. The benefit is single-sourcing the cross-app terms from day one, which prevents the divergence that ADR-021 §"What this rule forbids" §2 names for env-derived values. The package is private (`private: true`, `version: 0.0.0`), ships the same way as `@workspace/ui` and `@workspace/contracts`, and is consumed by both apps via workspace dependency.
+
+## Decision
+
+The i18n architecture ships as a single foundation PR. The PR installs next-intl 4.13, declares the locale list and default in `@workspace/env`, wires the App Router segment and middleware in both `apps/web` and `apps/app`, threads a locale switcher into the marketing header and the authenticated profile settings, and emits the empty message catalogues (`apps/web/messages/{en,fr}.json` and `apps/app/messages/{en,fr}.json`) with their namespaces. **No translations ship in this ADR.** The first translation PR arrives at the end of the foundation PR's review window and scopes itself to one namespace at a time (header, then footer, then legal, then landing, then app/auth, then app/settings, then email templates). The foundation ADR's purpose is to unlock the surface; the translation PRs are the surface.
+
+### What this rule decides
+
+**1. Two locales ship in V1: English (default) and French.**
+
+- `packages/env/src/schema.ts` adds two client fields and two server fields:
+  - `NEXT_PUBLIC_LOCALES` (CSV string, default `"en,fr"`).
+  - `NEXT_PUBLIC_DEFAULT_LOCALE` (single locale string, default `"en"`).
+  - `LOCALES` (server mirror of `NEXT_PUBLIC_LOCALES`, parsed as a non-empty `string[]`).
+  - `DEFAULT_LOCALE` (server mirror of `NEXT_PUBLIC_DEFAULT_LOCALE`).
+- `packages/env/src/client.ts` exposes the raw env (`getVariables()` returns `{ NEXT_PUBLIC_LOCALES, NEXT_PUBLIC_DEFAULT_LOCALE }`). The typed helpers `locales(): readonly Bcp47[]` and `defaultLocale(): Bcp47` live in `@workspace/i18n` (Decision #9) and re-export the env-derived values through a typed accessor (`Bcp47 = 'en' | 'fr'` is a literal union, not `string`). The two layers are intentional: `@workspace/env` is the Zod-validated contract, `@workspace/i18n` is the typed accessor that downstream code imports.
+- The schema rejects a single-locale list (a list with one entry is rejected by `superRefine` to keep the schema aligned with the routing shape), rejects an empty list, and rejects a `defaultLocale` not in the list.
+- The two CSV strings validate against the parsed list; a mismatch between `LOCALES` and `NEXT_PUBLIC_LOCALES` is a runtime error caught by `pnpm env:check`.
+
+**2. Routing is `localePrefix: 'as-needed'` with locale-detection enabled (auto-redirect on first hit).**
+
+- `packages/i18n/src/routing.ts` ships a single `routing = defineRouting({ locales: ['en', 'fr'], defaultLocale: 'en', localePrefix: 'as-needed', localeDetection: true })` (Decision #9). Both apps consume it via `import { routing } from "@workspace/i18n/routing"`. There is no per-app `i18n/routing.ts` file; the routing shape is single-sourced.
+- The middleware (one per app, `apps/web/middleware.ts` and `apps/app/middleware.ts`) wraps `createMiddleware(routing)` from `next-intl/middleware`. The middleware matcher excludes `/api/*` (the API stays locale-invariant per ADR-021), `/_next/*`, `/_vercel/*`, `/vercel.svg`, and the Vercel preview-internal paths.
+- The default locale renders at the URL root (`/templates` is English). Other locales render under a prefix (`/fr/templates` is French). A request to `/en/templates` from the user redirects to `/templates` (next-intl handles this automatically under `localePrefix: 'as-needed'`).
+- **Locale detection at first hit (`localeDetection: true`).** When a user lands on a URL that does not carry a locale prefix (the canonical case for `/templates`), the middleware reads two signals in order: (1) the `NEXT_LOCALE` cookie (if present, the user has already chosen), (2) the `Accept-Language` header (browser preference). The middleware redirects to the prefixed URL when the detected locale differs from the default:
+  - User with `NEXT_LOCALE=fr` cookie → `/templates` → 307 redirect to `/fr/templates`. The cookie wins; the user's explicit choice is honoured.
+  - User without cookie, `Accept-Language: fr-FR` → `/templates` → 307 redirect to `/fr/templates`. The browser preference wins on first visit.
+  - User without cookie, `Accept-Language: en-US` → `/templates` → 200 (no redirect). The default locale is served as-is.
+  - User with `NEXT_LOCALE=fr` cookie visiting `/fr/templates` → 200 (no redirect). The URL is canonical once set.
+- **No redirect on subsequent navigations within the same locale.** Once the URL carries the locale prefix (or the canonical default-locale URL), the middleware does not interfere. The cookie is the source of truth for the switcher; the URL is the source of truth for crawlers and shared links.
+- The cookie name is `NEXT_LOCALE` (next-intl's default). The cookie is updated whenever the switcher navigates via `router.replace(pathname, { locale })` using the localised router from `@workspace/i18n/navigation` (Decision #9). There is no `setLocale` API in next-intl — the cookie write is an internal side-effect of `router.replace`, which next-intl performs synchronously when the user lands on the new locale's URL. The `<LocaleSwitcher>` and every other consumer of the routing shape (the per-app `<Link>` wrappers from `createNavigation(routing)`) read and write the cookie through the same `router.replace` path; there is no separate setter.
+  - **Domain attribute.** In production, the cookie carries `Domain=.deessejs.com` so the browser shares it across `deessejs.com`, `app.deessejs.com`, `docs.deessejs.com`, and any future `*.deessejs.com` host. The leading dot is mandatory: without it, browsers treat the cookie as host-only and refuse to send it to a sibling subdomain (the default for a cookie set on `app.deessejs.com` without an explicit Domain is host-only to `app.`). The cookie `Path` is `/`. The cookie is `SameSite=Lax`; `Secure` is on in production and off in dev.
+  - **Dev / preview environments.** The cookie does not carry `Domain=` when `NODE_ENV !== "production"` (the Domain cannot be set to `.deessejs.com` on `localhost` or on a `*.vercel.app` preview — the Public Suffix List rejects `.vercel.app` and `.localhost` is not a registrable suffix). In dev and preview, the cookie is host-only. The trade-off: a switch on `deessejs-web-git-<branch>.vercel.app` does not propagate to `deessejs-app-git-<branch>.vercel.app`; the user must switch twice on first visit. This is acceptable for non-prod environments and ADR-029 §"Known limitations" §2 (cross-subdomain cookie gap on previews) documents the parallel constraint.
+  - The switcher reads the cookie via the localised router from `@workspace/i18n/navigation` (Decision #9): `router.replace(pathname, { locale })` performs the URL change and writes the cookie with the same `Domain` / `Path` / `Secure` attributes the middleware used. There is no separate setter; the cookie is a side-effect of the navigation. The two write paths agree on the attribute set; a mismatch would split the user's preference between apps.
+- **`localeDetection: true` rationale.** The middleware reads the `NEXT_LOCALE` cookie first, then the `Accept-Language` header, and redirects unprefixed URLs to the prefixed equivalent when the detected locale differs from `defaultLocale`. The decision was reached after a second review cycle. The earlier draft pinned `localeDetection: false` to avoid CDN cache pollution and link-sharing confusion. Both concerns are real but the UX cost was unacceptable: a French user who lands on `deessejs.com/templates` without ever having visited the site before would see English copy, with no path to French except typing `/fr/` in the URL bar. The new decision keeps the CDN hygiene via a narrow redirect surface:
+  1. **Redirect scope.** Only the canonical, unprefixed URLs redirect (`/templates`, `/blog/{slug}`, ...). The prefixed URLs (`/fr/templates`, `/fr/blog/{slug}`) never redirect. The redirect chain is at most one hop (canonical → prefixed). The CDN caches the **redirected responses** (TTL = 5 min, `Vary: Accept-Language, Cookie`) and the **terminal responses** (TTL = default ISR / `revalidate`, no Vary). Two cache surfaces, both stable.
+  2. **CDN cacheability.** The redirect response varies on `Accept-Language` and `Cookie`, but not on any other header. A `Vary: Accept-Language, Cookie` is a stable contract; the CDN keys cache entries on this Vary tuple. Crawlers (no cookie, US English) always get the same redirect target; users with the cookie always get the same redirect target; the cache hits are stable across all three categories. The `Vary: Cookie` RFC concern (RFC 7231 §7.1.4: most CDNs ignore `Vary: Cookie`) does not apply here because the `Cookie` header is read for ONE specific cookie (`NEXT_LOCALE`) only; the value is a 2-byte string (`en` or `fr`); the CDN cache key can be derived from that specific value. Modern CDNs (Vercel, Cloudflare, Fastly) support custom cache keys derived from specific cookies.
+  3. **Link sharing.** When a French user shares `https://deessejs.com/templates` to an English-speaking colleague, the colleague's browser sends `Accept-Language: en-US` (no cookie, English browser). The middleware does NOT redirect; the colleague sees English. The shared URL is honoured. When a French user shares `https://deessejs.com/fr/templates`, the prefix is in the URL; the colleague lands on French directly. The redirect is one-way (no-prefix → prefix), so prefix URLs are stable.
+  4. **Crawler stability.** Googlebot typically sends `Accept-Language: en-US` (regardless of the geo it crawls from). The middleware does not redirect for `en-US`, so Googlebot crawls the canonical `/templates` (EN). For the French surface, Googlebot follows the `<link rel="alternate" hreflang="fr" href="...">` cluster in the sitemap and the page head; it crawls `/fr/templates` (FR) directly. The `<x-default>` signal in the same cluster tells Googlebot that EN is the canonical default. Both surfaces are indexed cleanly. The behaviour is verified against Google's [hreflang docs](https://developers.google.com/search/docs/specialty/international/localized-versions) which document the `x-default` cluster as the canonical cross-locale pattern.
+- **Why not `localePrefix: 'never'`** (single canonical URL per page). Without URL prefixes, Google cannot index two locales separately. `hreflang` requires URL clusters. The trade-off of "single canonical URL per page" is unacceptable for a content site where SEO is the primary acquisition channel. The `localePrefix: 'as-needed'` shape keeps EN canonical at the URL root while preserving the FR cluster under `/fr/`. Crawlers and shared links both work.
+- **Issue #1635 reframed.** The next-intl issue documents the *problem* of a redirect-on-cookie middleware misbehaving on SSR. The new decision uses `localeDetection: true` but only at the canonical URL (no-prefix → prefix); prefixed URLs are stable. The SSR behaviour is identical to a static page; the middleware redirect runs in the edge function (Vercel Edge Middleware) which is well-tested for cookie + Accept-Language reads. The risk is documented in Known limitations §3 as a CDN-cache-key concern.
+
+**3. The App Router adds a single `[locale]` segment per app.**
+
+- The root `layout.tsx` is **deleted** in both apps. The App Router invariant is that a layout never has access to a child segment's `params`; the `<html>` and `<body>` tags cannot sit in `app/layout.tsx` and read `locale` from the `[locale]` child. The HTML shell moves to `app/[locale]/layout.tsx`. This is the canonical Next 15+ shape for a localised App Router: the root layout lives at the deepest segment that owns the HTML shell.
+- `apps/web/src/app/` keeps the existing route groups (`(marketing)`, `(content)`, `(legal)`, `(product)`) but routes now live under `src/app/[locale]/<group>/...`. `app/[locale]/layout.tsx` is the only place that renders `<html lang={locale}>`, `<NextIntlClientProvider>` (with `getMessages()` from the server), the JSON-LD scripts, and the `MotionConfig` / `AppProviders` wrapper. The `SiteHeaderServer`, `AppFooter`, `CookieConsent`, `Toaster`, `GlobalSearchShortcut`, and `GlobalSearchDialog` mounts move into the `[locale]/layout.tsx` body. Per-page metadata (`generateMetadata`) lives in each page file as today.
+- `apps/app/app/` follows the same shape: routes move under `app/[locale]/(unprotected)/(auth)/...` and `app/[locale]/(protected)/...`. `app/[locale]/layout.tsx` is the only place that renders `<html lang={locale}>`, `<NextIntlClientProvider>`, and the `AppProviders` chain. The `(protected)` group's auth gate remains the `apps/app/proxy.ts` proxy; the `[locale]` segment changes the matcher behaviour (see Decision #6).
+- `apps/app/app/api/[[...route]]/route.ts` stays at the app root (no `[locale]` prefix). The catch-all matches `/api/*` exclusively and is unaffected by the new segment. ADR-021 §"What this rule doesn't change" §1 documents this invariant.
+- The `app/not-found.tsx` file stays at the app root (not under `[locale]`). A request to `/foo/bar` that matches no `[locale]` segment renders the root not-found. The root not-found ships its own minimal `<html>` / `<body>` shell (per the Next.js docs: the root not-found renders when no locale matches; it must be self-contained).
+- `app/[locale]/layout.tsx` exports `generateStaticParams` returning `routing.locales.map((locale) => ({ locale }))`. Without it, Next falls back to dynamic rendering at request time (defeats the existing ISR surface). The `setRequestLocale` call awaits `props.params` (the Next 15+ async-params shape):
+
+  ```ts
+  export async function generateStaticParams() {
+    return routing.locales.map((locale) => ({ locale }))
+  }
+
+  export default async function LocaleLayout({
+    children,
+    params,
+  }: {
+    children: React.ReactNode
+    params: Promise<{ locale: string }>
+  }) {
+    const { locale } = await params
+    // `@workspace/i18n` exports a typed `isSupportedLocale(locale)` helper
+    // (a thin wrapper around `routing.locales.includes(locale as Bcp47)`).
+    // The cast narrows the next-intl locale to the literal union.
+    if (!isSupportedLocale(locale)) notFound()
+    setRequestLocale(locale)
+    const messages = await getMessages()
+    return (
+      <html lang={locale}>
+        <body>
+          <NextIntlClientProvider locale={locale} messages={messages}>
+            {children}
+          </NextIntlClientProvider>
+        </body>
+      </html>
+    )
+  }
+  ```
+
+- Both apps declare a `[locale]/layout.tsx` that loads messages via `getMessagesForLocale(locale)` (`apps/web/src/i18n/request.ts` and `apps/app/src/i18n/request.ts`). Each `request.ts` imports `getMessagesForLocale` from `@workspace/i18n/request` (which itself imports `messages/${locale}.json` from the matching app's `messages/` folder and composes with `@workspace/i18n/shared/messages`). The per-app `request.ts` is a thin pass-through; the catalogue composition lives in `@workspace/i18n`.
+
+**4. Providers chain does not re-instantiate the i18n provider.**
+
+- The `<NextIntlClientProvider>` is mounted exactly once: in `app/[locale]/layout.tsx` (Decision #3). `apps/web/src/components/providers/index.tsx` and `apps/app/components/providers/index.tsx` do **not** wrap their children in a second `<NextIntlClientProvider>`. Doing so would create two stacked contexts with different `locale` / `messages` props (the outer one from the layout, the inner one from `AppProviders`), and any `useTranslations()` call would resolve against the inner context — defeating the layout-level catalogue composition.
+- `apps/web/src/components/providers/index.tsx` keeps its current shape: `<ThemeProvider>{children}</ThemeProvider>` (per `apps/web/src/components/providers/index.tsx:3-5`). The ThemeProvider's `useTheme` hook continues to work; it doesn't read i18n state.
+- `apps/app/components/providers/index.tsx` keeps its current shape: `<QueryClientProvider><ThemeProvider><TooltipProvider>{children}</TooltipProvider></ThemeProvider></QueryClientProvider>` (per `apps/app/components/providers/index.tsx:26-34`). The comment at `apps/app/components/providers/index.tsx:22-24` ("Adding a new root provider, e.g. a future i18n provider, or an ErrorBoundary, goes in this file, not in `app/layout.tsx`") is updated: the i18n provider is the one exception, it lives in the `[locale]/layout.tsx` because only the layout has access to `locale` and `messages` from the segment. AppProviders keeps doing what it already does well (theme, query, tooltips); it does not gain a new provider for V1.
+- The `apps/app/components/providers/nav-user.tsx` `useTranslations('Nav.user')` (and every other `useTranslations` call in `apps/app`) reads the catalogue from the layout-level provider. Client Components reach the catalogue via `useTranslations` from `next-intl`; Server Components reach it via `getTranslations` from `next-intl/server`. Both APIs read the same context.
+
+**5. The locale switcher is a visible UI element in two places.**
+
+- `apps/web`: a `<LocaleSwitcher>` Client Component from `@workspace/i18n` (Decision #9) sits in `apps/web/src/components/headers/site-header.tsx` between the navigation and the user menu. The component imports `useRouter` and `usePathname` from `@workspace/i18n/navigation` (the localised router from `createNavigation(routing)`, Decision #9). On click, it calls `router.replace(pathname, { locale: nextLocale })` — next-intl updates the URL, prefixes the path, and synchronises the `NEXT_LOCALE` cookie as a side-effect of the navigation. The switcher renders a `<DropdownMenu>` with two entries (English, Français) and the active locale highlighted (read via `useLocale()` from `next-intl/navigation`). The web app wraps it in a `<nav>` slot that supplies the marketing-specific styling (compact, top-right, no border on hover). The component is a Client Component (the router hook requires `"use client"`).
+- `apps/app`: a `<LocaleSwitcher>` card lives in `apps/app/app/(protected)/settings/profile/page.tsx`, alongside the existing `Public profile`, `Email`, and `Password` sections. The same `@workspace/i18n` component is reused; the app settings render it inside a card with a heading (`Language`) and a description (`Choose the language you prefer across the marketing site and this app`). The setting persists the cookie on the marketing site and on the authenticated app simultaneously (the same cookie, the same browser).
+- The switcher is a `placeholder` for V1 (renders correctly, does not yet ship translated strings). The first translation PR (header namespace) is the place the switcher copy becomes real. The ADR scopes itself to the architecture.
+
+**6. The proxy at `apps/app/proxy.ts` keeps its current matcher semantics, expanded to cover both prefixed and unprefixed forms.**
+
+- `PROTECTED_PREFIXES = ["/home", "/settings"]` and `AUTH_PREFIXES = ["/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"]` keep their current shape. The `localePrefix: 'as-needed'` strategy (Decision #2) means the default locale (English) renders without a URL prefix, while non-default locales (French) render under a prefix. The proxy matcher therefore covers **both** forms per path. The matcher exports six rules per protected prefix and twelve rules per auth path (six paths × two forms):
+
+  ```ts
+  export const config = {
+    matcher: [
+      // Protected (English default, unprefixed)
+      "/home/:path*",
+      "/settings/:path*",
+      // Protected (French, /fr/ prefix)
+      "/fr/home/:path*",
+      "/fr/settings/:path*",
+      // Auth (English default, unprefixed)
+      "/login",
+      "/signup",
+      "/forgot-password",
+      "/reset-password",
+      "/verify-email",
+      // Auth (French, /fr/ prefix)
+      "/fr/login",
+      "/fr/signup",
+      "/fr/forgot-password",
+      "/fr/reset-password",
+      "/fr/verify-email",
+      // /device — see ADR-022 §"Bug B", intentionally un-gated; matches both forms.
+      "/device",
+      "/fr/device",
+    ],
+  }
+  ```
+
+  The matcher is mechanically extended; the runtime logic (the `proxy` function body) is unchanged. A future third locale (German) repeats the prefix pattern (`/de/home/:path*`, etc.) in the same commit.
+
+- A helper at the top of `proxy.ts` strips the locale prefix from `request.nextUrl.pathname` before the `PROTECTED_PREFIXES` / `AUTH_PREFIXES` checks. The regex handles the case `/fr` (root) without a trailing slash, in addition to `/fr/...`:
+
+  ```ts
+  function stripLocalePrefix(pathname: string): string {
+    // Match `/fr` (root) and `/fr/...` (nested). The list of prefixes
+    // is the V1 `routing.locales` minus the default locale (`en`).
+    const m = pathname.match(/^\/fr(?:\/(.*))?$/)
+    if (!m) return pathname
+    return m[1] ? `/${m[1]}` : "/"
+  }
+  ```
+
+  The list of prefixes in the regex is the V1 `routing.locales` (minus `'en'`); a future third locale (German) extends the alternation to `/fr|de` and ships in the same commit. The proxy's gate logic reads the stripped pathname; the redirect targets carry the original locale back to the user (a French user redirected from `/fr/home` lands on `/fr/login`; an English user redirected from `/home` lands on `/login`; a French user redirected from `/fr` lands on `/fr/login`).
+
+- The self-fetch at `apps/app/proxy.ts:81-84` reads `request.nextUrl.origin` (not `request.nextUrl.pathname`), so the fetch URL stays unaffected by the new segment. The fetch targets `/api/v1/auth/get-session` (ADR-021 §"Decision #4") regardless of the user's locale. The catch-all at `apps/app/app/api/[[...route]]/route.ts` resolves to the same handler whether the request originates from `/login` or `/fr/login`.
+- The redirects (`/login`, `/home`, `/verify-email`) inside the proxy build their URLs from `request.nextUrl` plus the **same** locale the request came in on (the proxy reads `pathname`, strips the locale prefix, prepends it back on the redirect target). A user who lands on `/fr/login` while signed out stays on `/fr/login` after the redirect.
+- The proxy's `redirect` query param (set at line 94 when redirecting an unauthenticated user from a protected route to the login page) carries the original path with locale stripped (the protected route is the same in any locale). The `safeRedirect` helper from `@workspace/utils` (Decision §1 chain) validates the redirect target before the redirect runs.
+
+**7. Email templates pick up per-locale rendering as a follow-up, not this ADR.**
+
+- `packages/email/src/templates/verify-email.tsx` and `packages/email/src/templates/reset-password.tsx` keep their current English-only shape for V1. The `VerifyEmailProps` and `ResetPasswordProps` interfaces (`{ url: string; userEmail: string }`) do **not** gain a `locale` field in this ADR; that change ships with the first translation PR (email namespace) and is a single additional prop per template.
+- The `subject` strings ("Reset your password" at `packages/auth/src/auth.ts:106`, "Verify your email" at `:127`) keep their current English text. A future translation PR (or a follow-up ADR if the locale list grows) scopes the subject to a per-locale map in `packages/email/src/locales.ts`.
+- The `<Html lang="en">` in `packages/email/src/templates/layout.tsx:24` is a follow-up.
+
+**8. The foundation PR ships empty catalogues and CI validation.**
+
+- `apps/web/messages/{en,fr}.json` ship with empty namespace stubs: `{ "Nav": {}, "Footer": {}, "Marketing": {}, "Blog": {}, "Kb": {}, "Templates": {}, "Legal": {}, "Cookies": {}, "Search": {} }`. No string is translated in this PR; the namespaces exist so the `useTranslations('Nav')` call sites resolve to a known key shape. The two files also `import` (or merge) `@workspace/i18n/shared/messages` for the cross-app terms (`Common`, `Error`, `Form`, `Confirm`); see Decision #9.
+- `apps/app/messages/{en,fr}.json` ship with: `{ "Auth": {}, "Settings": {}, "Device": {}, "Validate": {} }`. Same shape: namespaces exist, no translations. They merge with `@workspace/i18n/shared/messages` for the cross-app terms.
+- A small typecheck-time guard (a CI script, runs in `pnpm typecheck`) validates that every `useTranslations('Namespace')` call site in `apps/web` and `apps/app` has a matching namespace key in both `en.json` and `fr.json`. The guard fails the build when the catalogue is missing a namespace (catches a typo at review time, before the runtime error). The guard also validates that no per-app catalogue re-declares a key from `@workspace/i18n/shared/*` (catches accidental duplication).
+- A second CI guard validates that `JSON.parse` succeeds on every catalogue (catches a malformed catalogue at the JSON layer).
+
+**9. A private `@workspace/i18n` package owns the cross-app i18n surface.**
+
+The package is private (`private: true`, `version: 0.0.0`) and ships alongside `@workspace/ui`, `@workspace/contracts`, `@workspace/env`, and the others. It hosts four concerns, with strict client/server separation enforced by the package's `exports` map (no `use client` boundary leaks, no server-only imports in the client bundle):
+
+1. **The next-intl `defineRouting` call.** `packages/i18n/src/routing.ts` exports a single `routing = defineRouting({ locales: ['en', 'fr'], defaultLocale: 'en', localePrefix: 'as-needed', localeDetection: true })`. Both apps consume it via `import { routing } from "@workspace/i18n/routing"`. The two `middleware.ts` files wrap `createMiddleware(routing)`. The two `next.config.ts` files wrap `createNextIntlPlugin(...)` with the matching `request.ts` path.
+2. **The `createNavigation` factory.** `packages/i18n/src/navigation.ts` calls `createNavigation(routing)` from `next-intl/navigation` and re-exports `{ Link, redirect, usePathname, useRouter, getPathname }` via the `./navigation` subpath. Both apps consume it via `import { Link, useRouter, usePathname, redirect } from "@workspace/i18n/navigation"`. The localised `<Link>` wraps `next/link` and prefixes the path with the current locale; `useRouter` from this subpath is the same router that performs `router.replace(pathname, { locale })` for locale switching and synchronises the `NEXT_LOCALE` cookie as a side-effect. **There is no `setLocale` API in next-intl**; the cookie write happens through the router. The package's exports contain **no `setLocale` symbol**; adding one would be a footgun (a non-canonical side-channel that bypasses the routing shape and silently drops the cookie update).
+3. **The `getRequestConfig` factory.** `packages/i18n/src/request.ts` exports `getMessagesForLocale(locale: Bcp47)` which composes the per-app catalogue with the shared catalogue and returns the merged messages object. Each app's `src/i18n/request.ts` is a thin `getRequestConfig(async ({ requestLocale }) => { const locale = await requestLocale; return { locale, messages: await getMessagesForLocale(locale) } })` re-export that delegates the catalogue shape to `@workspace/i18n`. The `request.ts` file imports `messages/*.json` files using `import ... from` with the `with { type: "json" }` syntax (Turbopack-native JSON import) so the build doesn't pull in `node:fs` for the production path.
+4. **The shared message catalogue.** `packages/i18n/src/shared/messages/{en,fr}.json` (and `index.ts` re-exports typed accessors) own four cross-app namespaces:
+   - `Common`: Cancel, Save, Loading, Continue, Back, Submit, Discard, Confirm, Close, Open, Yes, No.
+   - `Error`: Error.network, Error.unauthorized, Error.forbidden, Error.notFound, Error.serverError, Error.unknown, Error.tryAgain, Error.contact.
+   - `Form`: Form.required, Form.invalid, Form.optional, Form.minLength, Form.maxLength, Form.passwordStrength (the labels `Weak`/`Fair`/`Good`/`Strong` already live in `apps/app/components/auth/password-strength.tsx` and migrate here), Form.email, Form.placeholder.
+   - `Confirm`: Confirm.delete, Confirm.signOut, Confirm.revoke, Confirm.unlink, Confirm.cancel, Confirm.unsavedChanges.
+   The package ships both `en` and `fr` from day one (the EN copy is the existing English across the repo; the FR copy is the first translation PR that ships alongside this package's foundation). Per-app catalogues compose with these via `getMessagesForLocale`.
+5. **Helpers, types, and a client component.** `packages/i18n/src/index.ts` exports `locales()`, `defaultLocale()`, the `Bcp47` type, `useLocaleOrThrow()` (a typed wrapper around `useLocale()` from next-intl that narrows to the literal union `'en' | 'fr'`), `openGraphLocale(locale)` (BCP-47 → POSIX_UNDERSCORE), `availableLanguageLabel(locale)` (BCP-47 → "English" / "Français" for JSON-LD), and a `<LocaleSwitcher>` Client Component (the shared header chip that both apps render; per-app styling is done via `className` prop, not via duplicate component forks).
+
+**Strict client/server separation via the `exports` map.** The package's `package.json` `exports` declares six subpaths with `node` / `browser` / `import` conditions so Turbopack can resolve the right entry per environment. A Server Component that imports `@workspace/i18n/request` never reaches the `LocaleSwitcher` Client Component; a Client Component that imports `@workspace/i18n/switcher` never reaches `request.ts` or the JSON loaders. The map:
+
+```jsonc
+{
+  "exports": {
+    ".":          "./src/index.ts",                     // helpers, Bcp47, types — universal
+    "./routing":   "./src/routing.ts",                   // universal (the single source of truth for defineRouting)
+    "./request":   "./src/request.ts",                   // server-only (uses JSON import)
+    "./shared":    "./src/shared/index.ts",              // universal (re-exports typed JSON)
+    "./switcher":  "./src/switcher/LocaleSwitcher.tsx",  // client-only ("use client" at the top)
+    "./navigation":"./src/navigation.ts"                 // universal (createNavigation re-export)
+  }
+}
+```
+
+The `./request` entry is server-only by content (imports `node:fs` indirectly through Turbopack's JSON import resolution); the `./switcher` entry is client-only by directive (`"use client"` at the top of the file). A contributor who imports `@workspace/i18n/request` from a Client Component gets a compile error (the JSON loader is not browser-safe). The structure mirrors `packages/env`'s split (`server` subpath reads `process.env`, `client` subpath reads `NEXT_PUBLIC_*`).
+
+**IntlMessages is per-app, not global.** next-intl's `useTranslations('Namespace')` autocomplete is driven by a global `IntlMessages` interface that each app declares in its own `global.d.ts`. The shared catalogue ships as **typed accessors**, not as a global type, to avoid the cross-app collision. The two `global.d.ts` files:
+
+```ts
+// apps/web/src/global.d.ts
+import type { SharedMessages } from "@workspace/i18n/shared"
+import type messages from "@workspace/i18n/shared/messages/en.json"
+
+declare interface IntlMessages
+  extends Messages,                  // next-intl's base shape
+  typeof messages,                    // the shared namespaces (Common, Error, Form, Confirm)
+  AppMessages                        // apps/web's own namespaces (Nav, Footer, Marketing, ...)
+{}
+
+// apps/app/src/global.d.ts
+import type { SharedMessages } from "@workspace/i18n/shared"
+import type messages from "@workspace/i18n/shared/messages/en.json"
+
+declare interface IntlMessages
+  extends Messages,
+  typeof messages,
+  AppMessages                        // apps/app's own namespaces (Auth, Settings, Device, ...)
+{}
+```
+
+`AppMessages` is a per-app interface (`apps/web/src/i18n/app-messages.ts`, `apps/app/src/i18n/app-messages.ts`) that mirrors the shape of `messages/{en,fr}.json`. The shared namespaces are injected via `typeof messages` (Zod-validated at build time via `pnpm typecheck`). Per-namespace typos fail at compile time, not at runtime.
+
+The package's dependency graph: `@workspace/i18n` depends on `@workspace/env` (for the Zod schema mirror), `next-intl` (4.13.x), `zod`. It does **not** depend on `@workspace/ui` (the `<LocaleSwitcher>` is a standalone component that consumes the same primitives each app already imports on its own).
+
+The `pnpm-workspace.yaml` gains one slot: `packages: [..., "./packages/i18n"]`. The `apps/web/next.config.ts:5` and `apps/app/next.config.ts:4` `transpilePackages` arrays both gain `"@workspace/i18n"`. The `packages/i18n/tsconfig.json` extends `@workspace/typescript-config/base.json` (the Node ESM preset, matching `@workspace/contracts`). The `packages/i18n/vitest.config.ts` extends `@workspace/vitest-config` and points `setupFiles` at `@workspace/env/server`.
+
+**Reversibility** is the same shape as the package decision itself: deleting `@workspace/i18n` is a single-PR reverter (delete the package, inline `routing` + `request.ts` + the four `shared/` catalogues into each app, fix two `transpilePackages` lists, fold the per-app `global.d.ts` interface into the next-intl default). The architecture works without the package; the package reduces duplication.
+
+**10. The existing hardcoded `<html lang="en">` becomes dynamic; hreflang and OpenGraph are wired natively via `generateMetadata`.**
+
+- The root `layout.tsx` is deleted (Decision §3); the `<html lang={locale}>` lives in `app/[locale]/layout.tsx`. The locale is supplied by the `[locale]` segment via the async `params`; the layout calls `await params` then `setRequestLocale(locale)` (which next-intl makes available throughout the tree). The `apps/app/app/layout.tsx:18` and `apps/web/src/app/layout.tsx:85` files disappear with their root `layout.tsx`.
+- Hreflang and canonical URLs are produced by Next.js `generateMetadata` rather than by manual `<link>` tag injection. Each public page exports `generateMetadata({ params })` and returns a `Metadata` object with `alternates.canonical` and `alternates.languages`:
+
+  ```ts
+  export async function generateMetadata({
+    params,
+  }: {
+    params: Promise<{ locale: string }>
+  }): Promise<Metadata> {
+    const { locale } = await params
+    // `canonicalPathFor` reads the current page segment (e.g. "/templates"
+    // or "/blog/{slug}") from `next/headers` or from a per-page constant —
+    // it does NOT receive `params` (which is a Promise) as a callable input.
+    const canonicalPath = await canonicalPathFor(locale)
+    return {
+      alternates: {
+        canonical: `${webURL()}${canonicalPath}`,
+        languages: {
+          'en': `${webURL()}${canonicalPath}`,
+          'fr': `${webURL()}/fr${canonicalPath}`,
+          'x-default': `${webURL()}${canonicalPath}`,
+        },
+      },
+      openGraph: {
+        locale: openGraphLocale(locale),
+      },
+    }
+  }
+  ```
+
+  Next.js renders the `<link rel="alternate" hreflang="...">` cluster in the page `<head>` directly from `alternates.languages`; the ADR does not inject `<link>` tags manually. The `canonicalPath` is computed from the page's own route segment (e.g. `/templates`, `/blog/{slug}`); the per-locale URL is the canonical path with the locale prefix prepended (`/fr` for French, no prefix for English). The `x-default` value is the English canonical (the default locale per Decision #2).
+
+- The `openGraph.locale: "en_US"` at `apps/web/src/app/layout.tsx:48` is replaced by per-page `generateMetadata` returning `openGraph.locale` per locale. The OpenGraph format expects `POSIX_UNDERSCORE` (`en_US`, `fr_FR`); the next-intl locale (`en`, `fr`) is mapped to the underscore form. The mapping lives in a `@workspace/i18n` helper (`openGraphLocale(locale)`) so the conversion is single-sourced.
+
+- JSON-LD on each page (the Article / WebSite / Organization scripts in `apps/web/src/lib/seo/organization.ts` and the per-page Article JSON-LD at `apps/web/src/app/(content)/blog/[slug]/page.tsx:89`, `changelog/[slug]`, `knowledge-base/guides/[slug]`, `use-cases/[slug]`) gains `inLanguage: locale` per locale. The page receives `locale` from the route params (same shape as `generateMetadata`). The Organization JSON-LD's `availableLanguage` array at `apps/web/src/lib/seo/organization.ts:73` becomes `["English", "Français"]` (per-locale values: BCP-47 codes mapped via a `@workspace/i18n` helper).
+
+### What this rule allows
+
+- A user lands on `https://deessejs.com/` for the first time. The middleware reads `Accept-Language`, detects French, and 307-redirects to `https://deessejs.com/fr/`. The user reads the marketing site in French, clicks `Se connecter`, and lands on `https://app.deessejs.com/fr/login` in French (the cookie propagates across `*.deessejs.com` subdomains in production). The same user visits `https://deessejs.com/templates` the next day; the cookie shortcuts the detection, and the middleware redirects to `https://deessejs.com/fr/templates`. An English-only user (browser set to `en-US`) lands on `https://deessejs.com/` and sees English; the cookie remains absent until the user switches manually.
+- The locale switcher in the marketing header (top right, next to the user menu) renders an English/French toggle. A click toggles the URL prefix and the cookie. The page re-renders with the same content, the new locale's translations.
+- The locale switcher in the authenticated profile settings persists the same cookie. A session-setting change in `apps/app` is visible on `apps/web` on the next marketing-site visit because the cookie domain (`.deessejs.com`) is shared.
+- The locale switcher in the marketing header (top right, next to the user menu) renders an English/French toggle. A click toggles the URL prefix and the cookie. The page re-renders with the same content, the new locale's translations.
+- The locale switcher in the authenticated profile settings persists the same cookie. A session-setting change in `apps/app` is visible on `apps/web` on the next marketing-site visit.
+- The `@workspace/i18n` package hosts the cross-app terms (`Common`, `Error`, `Form`, `Confirm`) so a French user sees the same word for `Cancel` in `apps/web` and in `apps/app` — no per-app divergence. The package is the single source of truth for these strings; both apps merge their per-app catalogues with the package's `shared/messages` via `getMessagesForLocale(locale)`.
+- A future ADR can extend the `@workspace/i18n` shared catalogue with new namespaces (e.g. `Email` when `packages/email` templates go multi-locale, or `Date` when date formatting rules become locale-aware and a shared helper wants to expose its labels). The package is the natural home.
+- A `hreflang` cluster is emitted on every public page: `<link rel="alternate" hreflang="en" href="https://deessejs.com/templates" />` and `<link rel="alternate" hreflang="fr" href="https://deessejs.com/fr/templates" />`, plus `<link rel="alternate" hreflang="x-default" href="https://deessejs.com/templates" />` pointing at the English version.
+- The `sitemap.xml` lists every URL once per locale, cross-linked via `<xhtml:link rel="alternate">` entries (per the Google sitemap guidelines). The French page's sitemap entry carries `hreflang="fr"` and links back to its English equivalent.
+- The marketing site renders on the existing ISR surface (`templates` callsite at `apps/web/src/app/(product)/templates/page.tsx:87` continues to use `orpc.templates.list(undefined, liveCache)`). The `[locale]` segment does not change the cache key — the call to the API is locale-invariant by design (ADR-021 §"What this rule doesn't change" §1).
+- A future ADR can add a third locale (German, Spanish, Italian, etc.) by adding one entry to `LOCALES` / `NEXT_PUBLIC_LOCALES` and one locale's worth of messages (per EN + per-app + `@workspace/i18n/shared`). The architecture does not require code changes for the addition. The translation PR for the third locale scopes itself to one namespace at a time.
+- A future ADR can move to `localePrefix: 'always'` if SEO data shows the unprefixed English URL is being mis-canonicalised by some crawlers. The decision boundary is the data; the ADR scopes itself to `as-needed` today.
+
+### What this rule forbids
+
+- Adding a third locale in this ADR. The ADR locks `['en', 'fr']` and `defaultLocale: 'en'`. A new locale ships in its own ADR after the V1 catalogue proves the architecture.
+- Translating any string in the foundation PR. The catalogues ship empty; the first translation PR scopes itself to one namespace. The ADR explicitly scopes itself to the architecture.
+- Locale-prefixing the API. `/api/v1/*` stays locale-invariant. The middleware matcher excludes `/api/*` explicitly. The catch-all at `apps/app/app/api/[[...route]]/route.ts` resolves unchanged. A future ADR that wants to translate the API wire shape must scope itself to a separate protocol concern.
+- Locale-prefixing `/api/v1/auth/*` for the device-flow callback path. The CLI sends users to `https://app.deessejs.com/api/v1/auth/device` (the production flow per ADR-022). The CLI cannot guess the user's preferred locale; the callback page reads the cookie (or defaults to English). A future ADR scopes a CLI-side `Accept-Language` injection if needed.
+- Translating content-collections frontmatter in this ADR. Blog posts, KB titles, and changelog titles stay English in the source; the ADR scopes content localisation to a future ADR. The `apps/web/content-collections.ts` schemas keep their flat `title: string` shape. A future ADR adds an optional `i18n?: { fr?: { title: string; description: string } }` field per collection, with a helper `localized(post, locale)` that picks the right shape.
+- Hardcoding `https://deessejs.com/fr` in the codebase. The locale prefix is dynamic; URLs are constructed via `Link` from `next-intl/navigation` (or via `getLocale()` + a manual prefix when needed). The convention is `Link` everywhere a user can click; literal `/fr/...` strings appear only in the hreflang block in `apps/web/src/app/sitemap.ts` and in the per-locale OG image URLs.
+- Reading `process.env.NEXT_PUBLIC_LOCALES` or `process.env.NEXT_PUBLIC_DEFAULT_LOCALE` from app code directly. All client reads go through `@workspace/i18n` (`locales()`, `defaultLocale()`); server reads go through `@workspace/i18n/server`. The `@workspace/env` package is the Zod-validated contract that `@workspace/i18n` consumes; no app code touches the env vars directly.
+- Duplicating a key from `@workspace/i18n/shared/*` inside an app's per-app catalogue. The CI guard (Decision #8) fails the build when a per-app catalogue re-declares a `Common.*`, `Error.*`, `Form.*`, or `Confirm.*` key. The shared catalogue is the single source of truth; per-app catalogues add app-specific namespaces on top.
+- Two parallel host-allowlists, two parallel env schemas, or two parallel i18n catalogues. The shared surface lives in a package; divergence is a CI error, not a code review smell. ADR-029 §"Decision #2" extends this principle to the host-allowlist; this ADR extends it to the i18n catalogue.
+- Setting `cacheComponents: true` in either app's `next.config.ts` until the next-intl `headers()` bug (amannn/next-intl#1493/#2068/#2074) is resolved upstream. The `force-dynamic` at `apps/app/app/api/[[...route]]/route.ts:16` stays; the apps ship without `cacheComponents` in V1.
+- Importing next-intl via the `next-intl/feat-i18n` …, or any preview-only API. The pin is `next-intl@4.13.x` stable. A future ADR upgrades once the cache-components story is closed.
+
+### Why not the alternatives
+
+1. **English-only forever, no i18n.** The default. The team defers the choice. Rejected because the first French-speaking customer already wrote in to ask for a French marketing page; the ADR scopes itself to ship the architecture now and the translations incrementally.
+
+2. **No package, inline per-app i18n.** Each app keeps its own `i18n/routing.ts`, `i18n/request.ts`, and shared copy inlined in `apps/web/messages/` and `apps/app/messages/`. Rejected because the team explicitly chose to pay the small upfront cost of a shared `@workspace/i18n` package (Decision #9) to avoid the cross-app divergence that the inlined alternative would invite. Once `Cancel` is translated differently in `apps/web` and in `apps/app`, the reverter is harder than the package would have been.
+
+3. **`localePrefix: 'always'` (every URL prefixed).** The strictest SEO posture. Rejected because it doubles the marketing-site URL surface (every page has an EN and an FR entry, with the EN being canonical anyway under `x-default`). The `as-needed` posture keeps the canonical EN site at the URL root and exposes the FR site as a parallel cluster via hreflang. The Google docs explicitly support the `x-default` signal for unprefixed default-locale URLs.
+
+4. **`localePrefix: 'never'` (cookie-only, no URL prefix).** The cleanest URL surface. Rejected because crawlers cannot disambiguate locales from a single URL set; the SEO cost (duplicate-content risk, no hreflang signal) outweighs the URL brevity. Per next-intl's own routing docs, `'never'` is the right call when the user explicitly picks a locale in the settings; for content sites with crawlers and per-locale SEO, `'as-needed'` is the recommended default.
+
+5. **react-i18next / next-i18next v16.** The most mature framework-agnostic option, ~2.8M weekly downloads. Rejected because the App Router ergonomics are weaker (more boilerplate to wire RSC + Server Components + middleware), the bundle is larger (~15 KB + plugins), and the team already runs next-themes + Zustand + Tailwind without an i18n key abstraction. next-intl is the lower-friction path on this stack.
+
+6. **Lingui (compiler-first, smallest bundle).** Rejected because the setup adds a Babel or SWC plugin step; the team has not adopted Babel, and the SWC plugin's `next build` integration is less battle-tested on Next 16 than next-intl. The bundle savings (~1 KLOC on a French catalogue) are negligible next to the architecture simplicity of a JSON-message library.
+
+7. **@inlang/paraglide-js (compiler-first, zero runtime).** A strong alternative if the team values per-message tree-shaking above all else. Rejected for V1 because the ecosystem is younger, the per-locale variant generation adds a build step the team has not adopted, and next-intl's RSC-first design already ships the catalog in the server bundle (the "bundle cost" concern is largely moot when the catalog lives server-side). A future ADR revisits Paraglide if the catalogue grows past 5 locales or past 50 KB of catalog data per locale.
+
+8. **Manual URL construction (`new URL(path, base)` everywhere).** The pre-ADR pattern in `apps/web/src/lib/orpc.ts:119` (per ADR-021 §"Decision #2"). Rejected as the foundation for an i18n surface because it lacks locale awareness, lacks hreflang, lacks `<html lang>`, and would require hand-rolled middleware + hand-rolled catalog loading + hand-rolled type-safe message keys. next-intl ships all four.
+
+9. **A pure-cookie approach with no URL change.** The simplest user surface. Rejected because the team must support SEO (per the question prompt) and crawlers need a stable URL per locale to index correctly. Pure-cookie sites get flagged for duplicate content.
+
+10. **A bespoke partner or guest locale picker in the marketing header without URL prefix.** A "soft" locale switcher. Rejected because the user cannot share a French URL with a colleague; the URL becomes opaque to the user; the crawlers cannot see the locale.
+
+### What this rule does not change
+
+- **The API path prefix.** `/api/v1/*` stays locale-invariant (ADR-015, ADR-021). The `[[...route]]` catch-all in `apps/app` is unaffected by the new segment.
+- **The proxy matcher semantics.** `apps/app/proxy.ts` keeps `PROTECTED_PREFIXES` and `AUTH_PREFIXES` with the addition of the `[locale]` prefix in front of each. The `/device` route stays out of `AUTH_PREFIXES` (ADR-022 §"Bug B"). The self-fetch URL stays at `${API_AUTH_PATH}/get-session` regardless of locale.
+- **The Hono + oRPC backend.** No new procedures, no translated error messages on the wire. Errors surface as ORPCError with codes; the client maps the codes to translated copy in `useTranslations('Errors')`.
+- **The inter-app URL configuration.** ADR-021's four URL pairs and ADR-029's Vercel preview wiring stay unchanged. The catch-all in `apps/app` resolves to the same backend URL on every locale.
+- **The Better Auth schema.** `packages/database/src/schema/auth.ts` is owned by the Better Auth CLI. This ADR adds no columns.
+- **The CLI's wire shape.** `apps/cli` does not consume next-intl and does not locale-prefix its URLs. The CLI's `DEESSEJS_API_URL` companion (ADR-029 §"Decision #4") stays as-is.
+- **The cookies package (`@workspace/cookies`).** The Zustand consent store keeps its current shape. Per-locale copy in the banner ships with the first translation PR (cookies namespace), not this ADR.
+- **The marketing canonical URL.** `apps/web/src/lib/seo/organization.ts` keeps `APP_CONFIG.url` as the canonical. The `availableLanguage` array gains `["English", "Français"]` in this ADR (the JSON-LD speaks BCP-47 already, so no schema change is needed for the locale list). The `inLanguage` field on the WebSite node becomes per-locale: English pages emit `"en"`, French pages emit `"fr"`. The per-Article JSON-LDs in `apps/web/src/app/(content)/{blog,changelog,knowledge-base}/...` and `(product)/use-cases/[slug]/page.tsx:166` become per-locale too.
+- **The CSS, theme system, and design tokens.** No changes.
+- **The skill, the changeset workflow, the staging-first git flow.** This ADR follows `AGENTS.md` (PRs target `staging`, not `main`).
+
+## Consequences
+
+- **Two new env fields** (`NEXT_PUBLIC_LOCALES`, `NEXT_PUBLIC_DEFAULT_LOCALE`) and their server mirrors ship in `packages/env`. The schema's `superRefine` rejects a single-locale list, an empty list, a `defaultLocale` not in the list, and a mismatch between `NEXT_PUBLIC_LOCALES` and `LOCALES`. The schema's `pnpm env:check` script extends with two more lines. `@workspace/i18n` consumes these via `@workspace/env/client` and `@workspace/env/server`; no app code reads the env vars directly.
+- **A new private package, `@workspace/i18n`, ships.** `pnpm-workspace.yaml` gains `"./packages/i18n"`. The package depends on `@workspace/env` (for the Zod-validated env contract), `next-intl@4.13.x` (the lib), and `zod`. It does **not** depend on `@workspace/ui` (the `<LocaleSwitcher>` is a standalone component). It exports `routing` (`packages/i18n/src/routing.ts`), `getMessagesForLocale` (`packages/i18n/src/request.ts`), the four shared namespaces (`Common`, `Error`, `Form`, `Confirm`) from `packages/i18n/src/shared/messages/{en,fr}.json`, the typed accessors `locales()` and `defaultLocale()` returning the `Bcp47` literal union, the `Bcp47` type, `useLocaleOrThrow()` (typed wrapper around next-intl's `useLocale()`), and the `<LocaleSwitcher>` component. The package's `tsconfig.json` extends `@workspace/typescript-config/base.json`; the package's `vitest.config.ts` extends `@workspace/vitest-config` with `setupFiles: ["@workspace/env/server"]`.
+- **The shared catalogue ships with V1 in EN + FR for the four namespaces.** The first translation PR (header namespace) ships alongside this package's foundation, contributing the FR copy for `Common`, `Error`, `Form`, `Confirm`. Subsequent per-namespace PRs add EN + FR (and any future locale) for their respective surface; the shared namespaces are touched only when a term migrates from app-specific to cross-app.
+- **Two `next.config.ts` files** (`apps/web/next.config.ts`, `apps/app/next.config.ts`) are wrapped in `createNextIntlPlugin('./src/i18n/request.ts')` from `next-intl/plugin`. The `withContentCollections` wrapper at `apps/web/next.config.ts:52` becomes `withNextIntl(withContentCollections(nextConfig))` (the order matters: next-intl must wrap the inner plugin to see the request config path).
+- **Two middleware files** (`apps/web/middleware.ts`, `apps/app/middleware.ts`) ship with the next-intl middleware wrapper. Each middleware file is three lines: `import { routing } from "@workspace/i18n/routing"`, `import { createMiddleware } from "next-intl/middleware"`, `export default createMiddleware(routing)`. The matcher excludes `/api/*`, `/_next/*`, `/_vercel/*`, `/vercel.svg`, `/icon.svg`, `/apple-icon.png`, `/manifest.webmanifest`, and the file extensions for static assets.
+- **Every route moves under `[locale]/<group>/`.** The move is mechanical: `(marketing)`, `(content)`, `(legal)`, `(product)` and `(unprotected)/(auth)`, `(protected)` each gain a `[locale]` parent. The `[[...route]]` and `feed.xml/route.ts` routes stay at the app root (no `[locale]` parent) because they are not user-facing pages.
+- **Two `AppProviders` files** (`apps/web/src/components/providers/index.tsx`, `apps/app/components/providers/index.tsx`) keep their existing providers chain unchanged (Theme, Query, Tooltip); they do **not** mount `<NextIntlClientProvider>`, which is instantiated exclusively once at the root `app/[locale]/layout.tsx` (Decision #4). The providers gain no state shared with i18n.
+- **One new component** (the `<LocaleSwitcher>` from `@workspace/i18n`) is consumed in two places: the marketing header (`apps/web/src/components/headers/site-header.tsx`) and the app profile settings (`apps/app/app/(protected)/settings/profile/page.tsx`). Both are placeholders (the component renders correctly; the labels are the first translation PR's copy).
+- **The catalogues ship empty and compose with `@workspace/i18n`.** `apps/web/messages/{en,fr}.json` and `apps/app/messages/{en,fr}.json` ship with namespace stubs (the per-app namespaces) plus a `merge` directive (or a `getMessagesForLocale` hook in the request config) that imports the four shared namespaces from `@workspace/i18n/shared/messages`. The `pnpm typecheck` script gains two new CI guards (namespace-coverage + JSON-parse guards); the namespace-coverage guard also rejects any per-app catalogue re-declaring a key from `@workspace/i18n/shared/*`.
+- **The hardcoded `<html lang="en">` becomes dynamic.** Two `layout.tsx` files read `<html lang={locale}>` from the segment params. The `<html>` tag's `lang` attribute matches the user's selected locale (English by default, French if the user opted in).
+- **The OpenGraph and hreflang wiring becomes per-locale.** Every public page emits a `<link rel="alternate" hreflang="...">` cluster. The `sitemap.xml` emits one entry per URL per locale, cross-linked. The robots.txt stays unchanged.
+- **The proxy at `apps/app/proxy.ts` adapts to the new segment.** The matcher adds the `[locale]` prefix in front of each protected and auth path. The redirects preserve the user's locale (a French user redirected from `/fr/home` to the login page lands on `/fr/login`, not `/login`).
+- **The device-flow callback URL** in the CLI (`apps/cli/src/commands/auth/login.ts`) sends them to `https://app.deessejs.com/device`. The page reads the user's preferred locale from the cookie (defaulting to English if absent). A French-speaking CLI user who has previously visited the marketing site in French sees `/fr/device` automatically.
+- **The `apps/web/content-collections.ts` schemas stay flat.** `title: string`, `description: string`, `excerpt: string`. The first translation PR scopes itself to one namespace (likely the blog or KB) and adds the optional `i18n?: { fr?: {...} }` field via a follow-up ADR (or inline in the PR if the surface is small).
+- **The `packages/email` templates stay English-only.** The first translation PR (email namespace) adds the `locale?: Bcp47` prop. The `<Html lang="en">` at `packages/email/src/templates/layout.tsx:24` becomes dynamic in the same PR. Future per-locale email subjects live in a future ADR that extends `@workspace/i18n/shared/` (e.g. an `Email` namespace) or in `packages/email/src/locales.ts` directly.
+- **No new runtime dependency for `apps/cli`.** The published tarball cannot depend on `next-intl` (and does not). The CLI's existing `process.env.DEESSEJS_API_URL` shape stays. The CLI does not locale-prefix the device callback URL.
+- **Two `transpilePackages` lists gain entries.** `apps/web/next.config.ts:5` (`["@workspace/ui"]`) gains `"@workspace/i18n"`. `apps/app/next.config.ts:4` (`["@workspace/ui", "@workspace/api", "@workspace/auth", "@workspace/utils"]`) gains `"@workspace/i18n"` and `"next-intl"`. The next-intl server entry is imported by the request config; the package's subpath imports need transpilation on `apps/app`.
+- **The `@workspace/i18n` package size is small.** Source: ~150 lines (`routing.ts` ~20, `request.ts` ~30, `shared/messages/{en,fr}.json` ~10 keys each = ~20, `locale-switcher.tsx` ~30, `index.ts` ~20, plus types). No build step (`type: "module"`, sources consumed directly like `@workspace/ui`).
+- **Reversibility cost is low.** The architecture is reversible to English-only with a single reverter (delete the `[locale]` segments, delete the middleware, restore the hardcoded `<html lang="en">`, delete `@workspace/i18n`). The first translation PR adds more entanglements and lowers reversibility as it ships. This ADR scopes itself to the architecture.
+
+## Cross-origin considerations
+
+The locale switcher changes a single cookie (`NEXT_LOCALE`) on the same site. No cross-origin surface changes. The marketing site's no-credentials cross-origin fetch to `app.deessejs.com` (per ADR-021 §"Cross-origin considerations" §1) stays unchanged. The Hono CORS layer (per ADR-029 §"Decision #2") accepts the same wildcard as better-auth; the locale path is irrelevant to CORS. The CLI's device callback stays on `app.deessejs.com` (per ADR-022); the page reads the cookie on arrival.
+
+One new surface is the locale switcher's `<Link>` from `next-intl/navigation`. The link uses `next/link` under the hood and constructs the URL with the locale prefix built in. The link does not change the host, the path, or the cookies of any other app. No new CORS preflight, no new credentialed request, no new header. The behaviour is identical to a click on a regular `<a href>`.
+
+## Test strategy
+
+### Unit
+
+- `packages/i18n/tests/unit/routing.test.ts` (new) asserts the routing shape: `locales` is exactly `['en', 'fr']`, `defaultLocale` is `'en'`, `localePrefix` is `'as-needed'`. The test catches a future contributor who silently widens the locale list (the schema rejects at runtime; the unit test catches at PR time).
+- `packages/i18n/tests/unit/request.test.ts` (new) asserts `getMessagesForLocale('en')` returns the merged catalogue (per-app empty + shared Common/Error/Form/Confirm), and `getMessagesForLocale('fr')` returns the same shape with French values where present and English fallback where absent. The test asserts `getMessagesForLocale('xx')` (unknown locale) throws a descriptive error.
+- `packages/i18n/tests/unit/locale-switcher.test.ts` (new) renders the `<LocaleSwitcher>` with `useLocale` mocked to `'en'`, asserts the active label is `English`, clicks the option, asserts `setLocale` was called with `'fr'`. The same flow is repeated for the French initial state.
+- `apps/web/src/i18n/request.ts` and `apps/app/src/i18n/request.ts` get a Vitest unit test that asserts `getRequestConfig` returns the right locale and the right catalogue per requested locale, that an unknown locale falls back to the default, and that the catalogue loader rejects a malformed JSON file at parse time (caught before the runtime error).
+- `packages/env/tests/unit/schema.test.ts` extends with cases for the four new locale fields: the defaults parse, the production overrides parse, an unknown locale in the list is rejected, an empty list is rejected, a single-locale list is rejected, a `defaultLocale` not in the list is rejected, and a mismatch between `LOCALES` and `NEXT_PUBLIC_LOCALES` is rejected.
+
+### Integration
+
+- `packages/auth/tests/integration/proxy.test.ts` (new) asserts that a request to `/[locale]/login` resolves to the login page with the locale set, that a request to `/login` (default locale) resolves to the same page, and that the proxy gates the right paths in both shapes.
+- The `pnpm typecheck` script gains two CI guards (already documented in Decision #8).
+
+### E2E
+
+- `apps/web/tests/e2e/locale-switcher.spec.ts` (new) clicks the switcher, asserts the URL gained the `/fr/` prefix, asserts the cookie name in the response, and clicks back to assert the URL reverted to the unprefixed shape. The test runs against `e2e.config.ts` (local) and `playwright.config.ts` (preview).
+- The existing Playwright selectors in `apps/web/tests/e2e/helpers/selectors.ts` (e.g. `headerSignInButton: { name: "Log in", exact: true }` at `:90`) become per-locale. The first translation PR (header namespace) is the place these selectors grow a locale parameter. Until that PR ships, the e2e suite runs in EN only.
+- A new `apps/web/tests/e2e/hreflang.spec.ts` (later, after the first translation PR) asserts the hreflang cluster on `/` and `/templates`. The ADR ships the test stub but not the full assertion.
+
+### Manual staging smoke
+
+- Push a branch with the foundation PR. Wait for the Vercel preview of `apps/web` to deploy.
+- Visit `https://deessejs-web-git-<branch>-<scope>.vercel.app/` (EN default). Confirm the URL has no prefix.
+- Visit `https://deessejs-web-git-<branch>-<scope>.vercel.app/fr/`. Confirm the page renders the same content (English catalogue is empty, so no other words change yet — the page looks identical, the URL changes).
+- Click the locale switcher in the header. Confirm the URL toggles between `/` and `/fr/`.
+- View source on `/`. Confirm the hreflang cluster includes `hreflang="en"`, `hreflang="fr"`, and `hreflang="x-default"`. Confirm the sitemap emits the French URL.
+- Repeat on the authenticated app preview (`deessejs-app-git-<branch>-<scope>.vercel.app`). Visit `/fr/login`, `/fr/home`, `/fr/settings/profile`. Confirm the proxy gates the right paths (an unauthenticated user on `/fr/home` redirects to `/fr/login` with the locale preserved).
+
+## Known limitations in this version
+
+### Limitation 1: Cross-app catalogue ships EN + FR for four namespaces only
+
+The foundation PR ships `@workspace/i18n/shared/messages/{en,fr}.json` with the four cross-app namespaces (`Common`, `Error`, `Form`, `Confirm`) populated in EN. The FR copy for those four namespaces ships in the first translation PR (header namespace, same PR scope). Per-app catalogues ship empty (only namespace stubs); per-app translations ship in their own per-namespace PRs (footer, legal, landing, app/auth, app/settings, email templates). A French user visiting `/fr/` in V1 sees the four cross-app terms translated and the rest in English (the same English copy as `/`, the same `<html lang>` attribute, the same OpenGraph locale). The architecture is in place; the surface rolls out per namespace.
+
+A reviewer looking at the foundation PR alone may find the diff large. The diff is large by design: the foundation is two env fields, two middleware files, two `[locale]` segments, two `AppProviders` wraps, one new private package (`@workspace/i18n`) with `routing.ts` + `request.ts` + `shared/messages/{en,fr}.json` + `LocaleSwitcher` + typed accessors, and a single `<LocaleSwitcher>` consumed in two places. The translation PRs add more diffs over time.
+
+### Limitation 2: `cacheComponents` is blocked by next-intl issue #1493
+
+The upstream `headers()` inside `'use cache'` error (amannn/next-intl#2074, closed October 2025, tracked at #2068) prevents `apps/web` and `apps/app` from enabling `cacheComponents: true` until issue #1493 ships a fix. Today neither app enables `cacheComponents`; the API catch-all at `apps/app/app/api/[[...route]]/route.ts:16` is `force-dynamic`. A future ADR scopes the `cacheComponents` migration once the upstream fix lands (or the `aurorascharff/next-intl-cache-components` wrapper is adopted). The workaround wraps the request config in a way that hoists the locale read out of the cache scope.
+
+### Limitation 3: `localeDetection: true` and the CDN cache key
+
+`localeDetection: true` (Decision §2) introduces a redirect surface on canonical, unprefixed URLs (`/templates`, `/blog/{slug}`, ...). The redirect response carries `Vary: Accept-Language, Cookie` and varies based on two values: the `Accept-Language` header (parsed to one of the supported BCP-47 codes) and the `NEXT_LOCALE` cookie value. Most CDNs (Vercel Edge, Cloudflare, Fastly) ignore `Vary: Cookie` per RFC 7231 §7.1.4; a naive CDN config would either refuse to cache the redirect (slow TTFB) or cache the wrong variant. The mitigation is a **custom cache key** derived from the specific cookie value: `cacheKey = (pathname, accept-language-parsed-bcp47, NEXT_LOCALE-cookie)`. This is a 3-tuple key; the cache has at most 4 entries per URL (no cookie + en, no cookie + fr, cookie + en, cookie + fr). The CDN can pre-allocate 4 cache slots per URL with bounded cardinality. The implementation lives in `apps/web/vercel.json` and `apps/app/vercel.json` (per ADR-029 Decision #4 pattern). A future ADR scopes a manual smoke test that verifies the cache key matches the spec across the 4 (locale × cookie) combinations.
+
+The redirect TTL is set to 5 minutes (`Cache-Control: public, max-age=300`). The CDN caches the redirect target, not the redirect itself: a user with `Cookie: NEXT_LOCALE=fr` requesting `/templates` always gets the same `Location: /fr/templates` redirect. The terminal response (the page at `/fr/templates`) does not vary; it has its own ISR `revalidate` cache key.
+
+The risk is operational: a misconfigured CDN cache key can cause stale redirects (a user sees `/fr/templates` even when their cookie says `en`) or cache thrashing (every user triggers a fresh redirect). The smoke test plan in the runbook (`docs/engineering/runbooks/locale-detection-cache-key.md`, scoped in a follow-up ADR) verifies the 4-tuple before each release.
+
+### Limitation 4: `content-collections` schemas stay flat
+
+The five content collections (`apps/web/content-collections.ts:65-303`) keep their flat `title: string` shape. A blog post's `title` and `description` are not localised by this foundation. The first translation PR (likely the blog namespace, but the call is made by the team in that PR's review) adds an `i18n?: { fr?: {...} }` field via a follow-up ADR if the surface is non-trivial. Until that PR ships, the blog renders English-only regardless of the user's selected locale.
+
+### Limitation 5: Email templates stay English-only
+
+`packages/email/src/templates/{verify-email,reset-password}.tsx` keep their English-only shape for V1. The first translation PR (email namespace) adds the `locale?: Bcp47` prop. Until then, a French user who signs up receives the English verification email. The verification link points at the English `apps/app` page; the user lands on `/fr/verify-email` automatically thanks to the cookie.
+
+### Limitation 6: The locale switcher is a placeholder copy in the foundation PR
+
+The `<LocaleSwitcher>` components ship with English copy ("Language: English") in both apps. The first translation PR (header namespace) renders the real copy ("Language" + the user's locale name). The placeholder is intentional: the architecture ships, the copy follows.
+
+### Limitation 7: The CLI does not locale-prefix the device callback
+
+The CLI's `apps/cli/src/commands/auth/login.ts` sends users to `https://app.deessejs.com/device`. The page reads the cookie on arrival. A French-speaking CLI user who has never visited the marketing site lands on `/device` (English). They manually visit `/fr/` once, the cookie is set, and every future visit lands on the French device page. The flow is correct; the first device hop isn't localised for the best site.
+
+### Limitation 8: `@workspace/i18n` ships as a private workspace package without a build step
+
+The package sources are consumed directly via subpath exports (same pattern as `@workspace/ui`). Turbopack handles the ESM resolution. The downside is no minification, no tree-shaking across the package's internal subpath imports, and a `transpilePackages` entry in both apps' `next.config.ts`. A future ADR scopes a build step (`tsc --emitDeclarationOnly` plus `tsup` for the runtime, mirroring `@workspace/contracts`) if the package grows past ~300 lines or if a non-Next consumer (`apps/cli`?) needs the runtime. For V1, the build-step-free shape is the right trade-off: ~150 lines, two consumers, both Next.
+
+## Where this rule came from
+
+- The next-intl docs page on routing configuration (`https://next-intl.dev/docs/routing/configuration`) documents the `localePrefix` options (`'always'`, `'as-needed'`, `'never'`) and the cookie-driven middleware behaviour. The ADR's choice of `'as-needed'` follows the docs' recommendation for content sites with crawlers.
+- The next-intl docs page on getting started with the App Router (`https://next-intl.dev/docs/getting-started/app-router`) documents the `i18n/request.ts` shape, the `next-intl/plugin` wrapper, and the `<NextIntlClientProvider>` integration. The ADR's wiring follows the docs verbatim.
+- The LingoJS blog post "Next.js i18n 2026" (`https://lingojs.com/en/blog/nextjs-i18n-comparison-2026`) places next-intl as the recommended default for App Router projects in 2026, with ~4M weekly downloads and a benchmark called out for tight Next.js integration.
+- The CodeCudos comparison "next-intl vs react-i18next vs Lingui in 2026" (`https://codecudos.com/blog/next-intl-vs-react-i18next-vs-lingui-2026`) ranks next-intl first for new App Router projects on bundle size and TypeScript support, with `cacheComponents` flagged as a known follow-up.
+- Issue [amannn/next-intl#2074](https://github.com/amannn/next-intl/issues/2074) (closed October 2025, points to #1493) documents the `headers()` inside `'use cache'` error. Issue #2068 tracks the open follow-up. The workaround is documented in `aurorascharff/next-intl-cache-components`.
+- Issue [amannn/next-intl#1635](https://github.com/amannn/next-intl/issues/1635) documents the SSR edge case with `localePrefix: 'as-needed'`. The ADR scopes itself to the documented behaviour (the cookie is the source of truth).
+- The Google Search Console docs on `hreflang` and the sitemap protocol (`xhtml:link` entries) document the cross-link shape this ADR adopts.
+- The `packages/contracts` package pattern (per `docs/engineering/architecture/decisions/ADR-005-api-consumer-agnostic` and `documents/internal/architecture/12-apps/cli/*`) provides the template for a private workspace package that hosts shared cross-app primitives. `@workspace/i18n` follows the same shape: `private: true`, subpath exports, sources consumed directly (or via a future `tsc --emitDeclarationOnly` build), single source of truth for cross-app surface.
+- The `packages/env/src/schema.ts` pattern (per ADR-021 §"What this rule allows" §4 and ADR-029 §"Decision #1") for Zod-validated env fields + ergonomic helpers in the consumer package documents the two-layer split this ADR adopts for locale values: `@workspace/env` is the contract, `@workspace/i18n` is the typed accessor.
+- The shared-host-allowlist pattern from ADR-029 §"Decision #2" (a single source of truth for the host list, consumed by both `auth.ts` and `api/index.ts`) generalises to this ADR's shared message catalogue: a single source of truth for cross-app terms, consumed by both apps via `getMessagesForLocale`.
+- ADR-021 §"What this rule doesn't change" §1 documents the API path prefix invariant. The `[locale]` segment does not interact with `/api/v1/*`.
+- ADR-022 §"Bug B" documents the `/device` matcher exclusion. The ADR preserves this exclusion under the `[locale]` prefix.
+- ADR-029 §"Decision #2" documents the Hono CORS layer. The layer is unaffected by the locale path.
+- `AGENTS.md` §"Staging-first workflow" documents the branch and PR convention. The branch is `impl/ADR-031-i18n-with-next-intl` (or `feat/ADR-031-...` if the team prefers a feature branch), PR targets `staging`.
+
+## Related
+
+- [ADR-021: Inter-app URL configuration](./ADR-021-inter-app-url-config). The API path prefix invariant and the inter-app URL pair contract that this ADR's `[locale]` segment does not change.
+- [ADR-022: CLI device auth fixes](./ADR-022-cli-device-auth-fixes). The `/device` matcher exclusion that this ADR preserves under the `[locale]` prefix.
+- [ADR-029: Vercel preview URL wiring across web, app, and docs](./ADR-029-preview-url-wiring). The Hono CORS layer and the Vercel preview URL wiring that this ADR does not change.
+- [ADR-030: apps/app uses left rail nav](./ADR-030-account-only-page). The locale switcher card lives in the Profile page, alongside the existing profile sections. No conflict.
+- [next-intl routing configuration](https://next-intl.dev/docs/routing/configuration). Source for the `localePrefix: 'as-needed'` decision and the cookie-driven middleware behaviour.
+- [next-intl App Router getting started](https://next-intl.dev/docs/getting-started/app-router). Source for the `i18n/request.ts` shape and the `next-intl/plugin` wrapper.
+- [next-intl issue #2074](https://github.com/amannn/next-intl/issues/2074) (closed October 2025) and [issue #1493](https://github.com/amannn/next-intl/issues/1493) (open). The `headers()` inside `'use cache'` error and the upstream fix tracker.
+- [Google Search Console docs on hreflang](https://developers.google.com/search/docs/specialty/international/localized-versions). Source for the per-locale URL cluster and the `x-default` signal.
+- [`AGENTS.md` §"Staging-first workflow"](../../../../../../AGENTS.md). The branch and PR convention.

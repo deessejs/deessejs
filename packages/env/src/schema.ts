@@ -133,6 +133,56 @@ export const serverInputShape = {
   API_BASE_URL: canonicalUrl.default("http://localhost:3001"),
 
   PARENT_DOMAIN: z.string().min(1).optional(),
+
+  // i18n configuration (ADR-031). The client/server split mirrors the
+  // NEXT_PUBLIC_* convention: the server variant is the source of truth
+  // for SSR/Node consumers, the client variant is what Turbopack inlines
+  // into the browser bundle. Both formats use CSV (NEXT_PUBLIC_LOCALES)
+  // or "de,fr" CSV on the server side; the helper in @workspace/i18n
+  // parses them and exposes a typed `Bcp47` literal union. The
+  // `superRefine` below enforces that the list is non-empty, contains
+  // more than one locale (single-locale catalogues are rejected to keep
+  // the schema aligned with the routing shape — `localePrefix: 'as-needed'`
+  // requires a default and at least one non-default), and that the
+  // defaultLocale is part of the list.
+  LOCALES: z
+    .string()
+    .min(1)
+    .default("en,fr")
+    .refine(
+      (s) => {
+        const list = s
+          .split(",")
+          .map((p) => p.trim())
+          .filter(Boolean)
+        return list.length >= 2
+      },
+      {
+        message:
+          "LOCALES must contain at least 2 locales (default + at least one non-default). A single-locale setup is not supported; see ADR-031 §1.",
+      },
+    )
+    .refine(
+      (s) => {
+        const list = s
+          .split(",")
+          .map((p) => p.trim())
+          .filter(Boolean)
+        return list.length === new Set(list).size
+      },
+      {
+        message:
+          "LOCALES contains duplicates. Each locale must appear at most once.",
+      },
+    ),
+  DEFAULT_LOCALE: z
+    .string()
+    .min(1)
+    .default("en")
+    .refine((s) => /^[a-z]{2}(-[A-Z]{2})?$/.test(s), {
+      message:
+        "DEFAULT_LOCALE must be a BCP-47 language tag (e.g. 'en', 'fr', 'en-US').",
+    }),
 }
 
 export const serverSchema = z.object(serverInputShape).superRefine(
@@ -182,6 +232,22 @@ export const serverSchema = z.object(serverInputShape).superRefine(
         path: ["PARENT_DOMAIN"],
       })
     }
+
+    // i18n (ADR-031): DEFAULT_LOCALE must be present in LOCALES. The
+    // CSV is parsed here because the parsed arrays are only visible
+    // together after Zod has finished its per-field validation. The
+    // single-locale / duplicate / format invariants live on the field
+    // refinements; this invariant catches the cross-field mismatch.
+    const locales = data.LOCALES.split(",")
+      .map((p) => p.trim())
+      .filter(Boolean)
+    if (!locales.includes(data.DEFAULT_LOCALE)) {
+      ctx.addIssue({
+        code: "custom",
+        message: `DEFAULT_LOCALE (${data.DEFAULT_LOCALE}) must be present in LOCALES (${data.LOCALES}).`,
+        path: ["DEFAULT_LOCALE"],
+      })
+    }
   }
 )
 
@@ -209,6 +275,22 @@ export const clientSchema = z.object({
   NEXT_PUBLIC_APP_URL: canonicalUrl.default("http://localhost:3001"),
   NEXT_PUBLIC_DOCS_URL: canonicalUrl.default("http://localhost:3002"),
   NEXT_PUBLIC_API_BASE_URL: canonicalUrl.default("http://localhost:3001"),
+
+  // i18n configuration (ADR-031). CSV parsed by @workspace/i18n
+  // helpers (the typed accessor lives in the consumer, not here).
+  // The cross-validation with NEXT_PUBLIC_DEFAULT_LOCALE happens on the
+  // server mirror (see serverSchema.superRefine); the client mirror
+  // carries the same default values and is checked by
+  // @workspace/i18n at first read.
+  NEXT_PUBLIC_LOCALES: z.string().min(1).default("en,fr"),
+  NEXT_PUBLIC_DEFAULT_LOCALE: z
+    .string()
+    .min(1)
+    .default("en")
+    .refine((s) => /^[a-z]{2}(-[A-Z]{2})?$/.test(s), {
+      message:
+        "NEXT_PUBLIC_DEFAULT_LOCALE must be a BCP-47 language tag (e.g. 'en', 'fr').",
+    }),
 })
 
 export type ServerEnv = z.infer<typeof serverSchema>
