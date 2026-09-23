@@ -22,7 +22,7 @@ type Args = {
  * `registry:block` items will get a sibling helper in V2.
  */
 export function registryItem(args: Args) {
-  const absolute = join(process.cwd(), "src", args.sourcePath)
+  const absolute = join(process.cwd(), "..", "..", args.sourcePath)
   const content = readFileSync(absolute, "utf8")
   return {
     $schema: "https://ui.shadcn.com/schema/registry-item.json",
