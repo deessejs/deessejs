@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { Button } from "@workspace/ui/components/button"
 
-import { MarketingPage } from "../_components/marketing-page"
 
 export const metadata: Metadata = {
   title: "Customers",
@@ -18,7 +17,6 @@ export const metadata: Metadata = {
  */
 export default function CustomersPage() {
   return (
-    <MarketingPage>
       <div className="mx-auto max-w-4xl py-16">
         <header className="flex flex-col gap-4">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -76,6 +74,5 @@ export default function CustomersPage() {
         </div>
       </section>
       </div>
-    </MarketingPage>
   )
 }

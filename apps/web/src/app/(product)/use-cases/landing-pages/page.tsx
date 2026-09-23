@@ -73,16 +73,19 @@ const RELATED = [
 
 export default function LandingPagesPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      <div className="border border-border bg-background rounded-none">
+    <div className="border border-border bg-background rounded-none">
         {/* 1. Hero — self-referential */}
         <UseCaseHero
           category="Marketing"
           title="A landing page that earns the click."
-          status="coming-soon"
+          body="Marketing pages that match the production code: same primitives, same tokens, no drift between Figma and prod."
           primaryCta={{
             label: "View landing-page",
             href: "/templates/landing-page",
+          }}
+          secondaryCta={{
+            label: "Browse templates",
+            href: "/templates",
           }}
         />
 
@@ -184,7 +187,6 @@ export default function LandingPagesPage() {
           </div>
         </div>
       </div>
-    </div>
   )
 }
 

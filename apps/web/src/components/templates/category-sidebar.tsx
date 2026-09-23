@@ -1,6 +1,12 @@
 import Link from "next/link"
 
 import type { TemplateV1 as Template } from "@workspace/contracts/v1"
+import {
+  CATEGORY_LABELS,
+  FRAMEWORK_LABELS,
+  type CategorySlug,
+  type FrameworkSlug,
+} from "@workspace/api/templates-labels"
 import { Input } from "@workspace/ui/components/input"
 import { cn } from "@workspace/ui/lib/utils"
 
@@ -9,34 +15,23 @@ import { cn } from "@workspace/ui/lib/utils"
  * groups: Type (?type=) and Framework (?framework=). Mirrors the
  * Vercel `/templates` shape where each group is an
  * independent filter and the URL preserves both.
- */
-
-const CATEGORIES: ReadonlyArray<{ slug: string; label: string }> = [
-  { slug: "saas", label: "SaaS starters" },
-  { slug: "ai", label: "AI" },
-  { slug: "landing", label: "Landing pages" },
-] as const
-
-/**
- * Frameworks exposed as filter chips. Drawn from the curated
- * labels in `packages/api/src/templates.ts` (technical labels
- * only — thematic ones like "auth" / "marketing" are excluded).
  *
- * A framework is hidden from the sidebar when zero templates
- * in the registry carry it, computed at render time.
+ * Category and framework slug→label maps are imported from
+ * `@workspace/api/templates-labels` (the canonical source). This
+ * module owns the filter-UI shape; the data lives next to the
+ * registry entries in `packages/api/src/templates.ts` so adding a
+ * new template slug flows into the sidebar without manual sync.
  */
-const FRAMEWORKS: ReadonlyArray<{ slug: string; label: string }> = [
-  { slug: "nextjs", label: "Next.js" },
-  { slug: "astro", label: "Astro" },
-  { slug: "tailwind", label: "Tailwind CSS" },
-  { slug: "shadcn", label: "shadcn/ui" },
-  { slug: "drizzle", label: "Drizzle" },
-  { slug: "postgres", label: "Postgres" },
-  { slug: "stripe", label: "Stripe" },
-  { slug: "tanstack-table", label: "TanStack Table" },
-  { slug: "openai", label: "OpenAI" },
-  { slug: "react-hook-form", label: "React Hook Form" },
-] as const
+
+const CATEGORIES = Object.entries(CATEGORY_LABELS).map(([slug, label]) => ({
+  slug: slug as CategorySlug,
+  label,
+})) as ReadonlyArray<{ slug: CategorySlug; label: string }>
+
+const FRAMEWORKS = Object.entries(FRAMEWORK_LABELS).map(([slug, label]) => ({
+  slug: slug as FrameworkSlug,
+  label,
+})) as ReadonlyArray<{ slug: FrameworkSlug; label: string }>
 
 export type CategorySidebarProps = {
   templates: Template[]

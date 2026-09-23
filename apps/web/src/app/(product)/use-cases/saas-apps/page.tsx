@@ -77,26 +77,29 @@ const RELATED = [
  * + status badge. Same shape as the home ecosystem grid but denser.
  */
 const AND_MORE: ReadonlyArray<MoreTile> = [
-  { id: "multi-tenant",  title: "Multi-tenant",    description: "Workspaces + orgs",                 status: "roadmap", shippedAt: "Q4 2026", icon: Boxes },
-  { id: "admin",         title: "Admin dashboard", description: "Operator console",                 status: "roadmap", shippedAt: "Q1 2027", icon: GitBranch },
-  { id: "background",    title: "Background jobs", description: "Queues + retries",                 status: "roadmap", shippedAt: "Q2 2027", icon: LineChart },
-  { id: "storage",       title: "Object storage",  description: "S3-compatible",                    status: "shipped",                     icon: Database },
-  { id: "email",         title: "Email",           description: "Resend + React Email",             status: "shipped",                     icon: Mail },
-  { id: "observability", title: "Observability",   description: "Logs + traces + metrics",          status: "roadmap", shippedAt: "Q1 2027", icon: LineChart },
+  { id: "multi-tenant",  title: "Multi-tenant",    description: "Workspaces + orgs",                                   icon: Boxes },
+  { id: "admin",         title: "Admin dashboard", description: "Operator console",                                   icon: GitBranch },
+  { id: "background",    title: "Background jobs", description: "Queues + retries",                                   icon: LineChart },
+  { id: "storage",       title: "Object storage",  description: "S3-compatible",                                      icon: Database },
+  { id: "email",         title: "Email",           description: "Resend + React Email",                               icon: Mail },
+  { id: "observability", title: "Observability",   description: "Logs + traces + metrics",                            icon: LineChart },
 ]
 
 export default function SaasAppsPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      <div className="border border-border bg-background rounded-none">
+    <div className="border border-border bg-background rounded-none">
         {/* 1. Hero */}
         <UseCaseHero
           category="SaaS"
           title="Ship a SaaS that ships the surface customers pay for."
-          status="shipped"
+          body="Multi-tenant auth, billing, admin. The engine handles the plumbing; you ship the surface customers pay for."
           primaryCta={{
             label: "View saas-starter",
             href: "/templates/saas-starter",
+          }}
+          secondaryCta={{
+            label: "Browse templates",
+            href: "/templates",
           }}
         />
 
@@ -171,8 +174,6 @@ export default function SaasAppsPage() {
         <SimulatedSection
           eyebrow="Multi-tenant"
           title="Workspaces + orgs, one contract."
-          status="roadmap"
-          roadmapLabel="Q4 2026"
           body="Switch between workspaces without losing context. Plan tier and member count travel with the org, not the user. The isolation that takes a quarter ships with the registry."
           bullets={[
             "Plan tier per workspace, not per user",
@@ -187,8 +188,6 @@ export default function SaasAppsPage() {
         <SimulatedSection
           eyebrow="Admin"
           title="Operator console, on the same contracts."
-          status="roadmap"
-          roadmapLabel="Q1 2027"
           body="MRR, active users, churn at a glance. The user table below is filtered by role and shows last-seen. Same Better Auth sessions as the customer surface."
           bullets={[
             "KPIs roll up from the billing contract",
@@ -300,7 +299,6 @@ export default function SaasAppsPage() {
           </div>
         </div>
       </div>
-    </div>
   )
 }
 

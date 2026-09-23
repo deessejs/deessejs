@@ -52,12 +52,16 @@ const RELATED = [
 
 export default function ApiBackendsPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      <div className="border border-border bg-background rounded-none">
+    <div className="border border-border bg-background rounded-none">
         <UseCaseHero
           category="API"
           title="Service-only backends, type-safe end to end."
+          body="The same contracts as a full-stack app, with no UI surface. Hono + oRPC + Drizzle, no auth wiring to invent."
           primaryCta={{
+            label: "View templates",
+            href: "/templates",
+          }}
+          secondaryCta={{
             label: "Browse templates",
             href: "/templates",
           }}
@@ -153,6 +157,5 @@ export default function ApiBackendsPage() {
           </div>
         </div>
       </div>
-    </div>
   )
 }

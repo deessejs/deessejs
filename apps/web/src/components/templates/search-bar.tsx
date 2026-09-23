@@ -55,8 +55,9 @@ export const SearchableTemplateGrid = ({
   }, [templates, normalized])
 
   return (
-    <div className={cn("flex flex-col gap-6", className)}>
-      <div className="relative">
+    <div className={cn("flex flex-col", className)}>
+    <div className="p-4 border-b border-border">
+      <div className="relative ">
         <Search
           aria-hidden
           className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2"
@@ -83,6 +84,7 @@ export const SearchableTemplateGrid = ({
             <X className="size-4" />
           </Button>
         ) : null}
+      </div>
       </div>
 
       {filtered.length === 0 ? (

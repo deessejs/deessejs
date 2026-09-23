@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 
-import { MarketingPage } from "../_components/marketing-page"
 
 export const metadata: Metadata = {
   title: "Help",
@@ -18,7 +17,6 @@ export const metadata: Metadata = {
  */
 export default function HelpPage() {
   return (
-    <MarketingPage>
       <div className="mx-auto max-w-5xl py-16">
         <header className="flex flex-col gap-4">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -140,7 +138,6 @@ export default function HelpPage() {
         </ul>
       </Section>
       </div>
-    </MarketingPage>
   )
 }
 
