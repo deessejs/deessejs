@@ -10,7 +10,7 @@ import type { CatalogueBlock } from "./blocks-list"
 import { BlockPreview } from "./block-preview"
 import { getBlockSnippet } from "./block-code-snippets"
 import { CodeBlock } from "./code-block"
-import { GitHubIcon } from "@/app/(marketing)/components/_components/github-icon"
+import { GitHubIcon } from "@/components/catalog/shared/github-icon"
 
 type Props = {
   block: CatalogueBlock

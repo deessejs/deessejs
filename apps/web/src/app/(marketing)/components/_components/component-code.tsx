@@ -1,4 +1,4 @@
-import { CopyButton } from "./copy-button"
+import { CopyButton } from "@/components/catalog/shared/copy-button"
 
 type Props = {
   snippet: string

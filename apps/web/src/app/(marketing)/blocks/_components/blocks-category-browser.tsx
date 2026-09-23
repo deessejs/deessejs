@@ -4,7 +4,7 @@ import { useDeferredValue, useMemo, useState } from "react"
 
 import { BlocksCategoryNavSidebar } from "./blocks-category-nav-sidebar"
 import { BlocksGrid } from "./blocks-grid"
-import { SearchInput } from "@/app/(marketing)/components/_components/search-input"
+import { SearchInput } from "@/components/catalog/shared/search-input"
 import type {
   BlockCategoryId,
   BlockCategory,

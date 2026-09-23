@@ -4,7 +4,7 @@ import { useDeferredValue, useMemo, useState } from "react"
 
 import { ComponentCategoryNavSidebar } from "./component-category-nav-sidebar"
 import { ComponentListGrid } from "./component-list-grid"
-import { SearchInput } from "@/app/(marketing)/components/_components/search-input"
+import { SearchInput } from "@/components/catalog/shared/search-input"
 import type { ComponentCategory } from "./categories"
 import type { CatalogueComponent } from "./components-list"
 

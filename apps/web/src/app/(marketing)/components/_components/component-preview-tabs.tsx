@@ -11,7 +11,7 @@ import type { CatalogueComponent } from "./components-list"
 import { ComponentCode } from "./component-code"
 import { ComponentPreview } from "./component-preview"
 import { getComponentSnippet } from "./component-code-snippets"
-import { GitHubIcon } from "@/app/(marketing)/components/_components/github-icon"
+import { GitHubIcon } from "@/components/catalog/shared/github-icon"
 
 type Props = {
   component: CatalogueComponent
