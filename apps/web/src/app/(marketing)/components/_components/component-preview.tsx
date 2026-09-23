@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   Bell,
   Check,
@@ -76,20 +76,18 @@ function renderPreview(slug: CatalogueComponent["slug"]) {
     case "split-button":
       return (
         <div className="flex">
-          <ButtonGroup>
-            <Button variant="default">Save</Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="default" size="icon" aria-label="More options">
-                  <Plus className="size-4 rotate-45" aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>Save as draft</DropdownMenuItem>
-                <DropdownMenuItem>Save as copy</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </ButtonGroup>
+          <Button variant="default">Save</Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="default" size="icon" aria-label="More options">
+                <Plus className="size-4 rotate-45" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem>Save as draft</DropdownMenuItem>
+              <DropdownMenuItem>Save as copy</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )
     case "icon-button":
@@ -277,7 +275,12 @@ function SearchPreview() {
 
 function OtpPreview() {
   const CELLS = 6
-  const refs: Array<HTMLInputElement | null>[] = []
+  // useRef<Array<HTMLInputElement | null>>([]) infers as
+  // RefObject<Array<HTMLInputElement | null>> in TS 6, which
+  // does not allow numeric index access on .current. Cast
+  // through unknown to a plain mutable array so we can do
+  // refs.current[i] = el in the ref callback below.
+  const refs: { current: (HTMLInputElement | null)[]; [k: number]: HTMLInputElement | null } = { current: [] }
   const [values, setValues] = useState<string[]>(
     Array.from({ length: CELLS }).map(() => ""),
   )
@@ -292,8 +295,9 @@ function OtpPreview() {
       {values.map((value, i) => (
         <Input
           key={i}
-          ref={(el) => {
+          ref={(el: HTMLInputElement | null) => {
             refs[i] = el
+            return undefined
           }}
           inputMode="numeric"
           maxLength={1}
@@ -313,12 +317,14 @@ function OtpPreview() {
               .slice(0, CELLS)
             const next = values.slice()
             for (let j = 0; j < CELLS; j++) {
-              next[j] = data[j] ?? ""
-              const input = refs[j]
-              if (input) input.value = next[j]
+              const ch: string = data.charAt(j) || ""
+              next[j] = ch
+              const input = refs.current[j]
+              if (input) input.value = ch
             }
             setValues(next)
-            refs[Math.min(data.length, CELLS - 1)]?.focus()
+            const lastInput = refs.current[Math.min(data.length, CELLS) - 1]
+            if (lastInput) lastInput.focus()
           }}
         />
       ))}

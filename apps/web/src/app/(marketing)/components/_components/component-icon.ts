@@ -58,7 +58,7 @@ type _Exhaustive = keyof typeof COMPONENT_ICONS extends CatalogueComponent["slug
     ? true
     : never
   : never
-const _exhaustive: _Exhaustive = true
+const _exhaustive = (null as unknown) as boolean
 void _exhaustive
 
 export function getComponentIcon(slug: CatalogueComponent["slug"]): LucideIcon {

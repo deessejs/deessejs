@@ -21,15 +21,16 @@ export type ComponentTier = "free" | "pro"
 export type ComponentCategoryId = CategoryId
 
 export type CatalogueComponent = {
-  /** URL slug. Must match the `slug` of its category in `categories.ts`. */
-  slug: CategoryId
+  /** URL slug. V2 has 5 components per category — slugs like
+   *  `button-group`, `input-search`, `badge-dot` are not
+   *  category ids. */
+  slug: string
   /** Display name. */
   name: string
   /** Short one-line description. */
   description: string
-  /** Category the component belongs to. Multiple components per
-   *  category — the 5 components in `button` are all `category:
-   *  "button"`. */
+  /** Category the component belongs to. One of the three
+   *  category ids (`button`, `input`, `badge`). */
   category: ComponentCategoryId
   /** Price tier. V2 ships every component as `free`. */
   tier: ComponentTier

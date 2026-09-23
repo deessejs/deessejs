@@ -36,13 +36,15 @@ export default function ComponentsPage() {
   ) as Record<(typeof COMPONENT_CATEGORIES)[number]["id"], CatalogueComponent>
 
   // Number of components per category — drives the sidebar count
-  // badge.
+  // badge. Cast widens the inferred `{ [k: string]: number }` to
+  // the exact `Record<CategoryId, number>` ComponentBrowser
+  // expects.
   const counts = Object.fromEntries(
     COMPONENT_CATEGORIES.map((category) => [
       category.id,
       CATALOGUE_COMPONENTS.filter((c) => c.category === category.id).length,
     ]),
-  )
+  ) as Record<(typeof COMPONENT_CATEGORIES)[number]["id"], number>
 
   return (
     <>

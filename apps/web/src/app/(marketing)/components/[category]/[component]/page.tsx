@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { ComponentPage } from "@/app/(marketing)/components/_components/component-page"
+import { ComponentLeafHero } from "@/app/(marketing)/components/_components/component-page"
+import { ComponentPreviewTabs } from "@/app/(marketing)/components/_components/component-preview-tabs"
 import {
   getAllComponentParams,
   getComponent,
@@ -18,6 +19,10 @@ import { getCategory } from "@/app/(marketing)/components/_components/categories
  * The category is validated against the component: a typo'd
  * `/components/forms/buttom` (wrong category for the slug) also
  * returns 404 rather than rendering the wrong page.
+ *
+ * The leaf body is `ComponentLeafHero` + `ComponentPreviewTabs`
+ * (the same tabbed Preview / Code / install-command surface
+ * used by the blocks registry).
  */
 
 type Params = { category: string; component: string }
@@ -53,5 +58,15 @@ export default async function ComponentRoute({
   if (!match || match.category !== category) notFound()
   const categoryMatch = getCategory(category)
   if (!categoryMatch) notFound()
-  return <ComponentPage component={match} category={categoryMatch} />
+  return (
+    <>
+      <ComponentLeafHero category={categoryMatch} component={match} />
+      <section
+        aria-label={`${match.name} preview`}
+        className="px-6 py-12 lg:px-10"
+      >
+        <ComponentPreviewTabs component={match} />
+      </section>
+    </>
+  )
 }
