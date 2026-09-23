@@ -56,7 +56,7 @@ The CLI surface does not change. `deessejs add <slug>` still works the same way 
 1. **A new top-level CLI command.** The block descriptor does not introduce a new CLI surface. `deessejs add <slug>` still works the same way; the CLI internally reads `deessejs-block.json` for overlay items instead of `deesse-template.json` with `type: template:package`. The closed-list of top-level commands (per [ADR-010 §1](/decisions/ADR-010-cli-public-surface)) stays at four entries.
 2. **A new CLI surface for block authoring.** The author tooling (`deessejs template <validate | new | explain>`, per [RFC-004](./RFC-004-template-author-tooling)) extends to support `deessejs-block.json` with parallel validation rules (closed-list `type` field, mandatory per-file `files[].type`). The subcommand names stay the same; only the validation logic adds a new case.
 3. **A new wire shape (`BlockV2`).** This RFC does not propose a new wire shape. The wire shape stays `TemplateV2` for both formats, `deessejs-block.json` is parsed through a Zod schema that is structurally similar to `TemplateV2` but with a different `type` discriminator value set. The two formats are two Zod schemas in `@workspace/contracts/src/v1/`: `Template` (per RFC-002) and `Block` (per this RFC). Both schemas ship in the same wire envelope; the server discriminates at fetch time based on the URL path (`/r/<slug>.json` returns one or the other).
-4. **A new CDN path or host.** The block descriptor ships at the same `registry.deessejs.dev/r/<slug>.json` URL as templates. The CLI's `loadItemDescriptor(<slug>)` first tries `deessejs-block.json` (block) then falls back to `deesse-template.json` (starter). The single CDN serves both.
+4. **A new CDN path or host.** The block descriptor ships at the same `registry.deessejs.com/r/<slug>.json` URL as templates. The CLI's `loadItemDescriptor(<slug>)` first tries `deessejs-block.json` (block) then falls back to `deesse-template.json` (starter). The single CDN serves both.
 5. **Per-block install semantics beyond what RFC-003 already specifies.** The 13-step install sequence, the 4×3 re-install matrix, the CI offline invariant, and the type-discriminator enforcement all apply to blocks the same way they apply to templates. No new install logic is needed.
 6. **A new namespace tier for blocks.** The `@deessejs/`, `@deessejs-community/`, `@<host>/` namespace tiers (per RFC-002 §"Community support") apply to blocks identically. No block-specific tier is introduced.
 7. **Replacing `deesse-template.json` entirely.** The starter format (`template:app`) stays. This RFC only supersedes the six overlay-type discriminators.
@@ -140,7 +140,7 @@ Example block (`deessejs add blog`):
 
 ```jsonc
 {
-  "$schema": "https://registry.deessejs.dev/schema/block.json",
+  "$schema": "https://registry.deessejs.com/schema/block.json",
   "name": "blog",
   "type": "block:feature",
   "version": "1.0.0",
@@ -272,7 +272,7 @@ The CLI internally has two loading paths:
 ```ts
 // Pseudo-code, not implementation
 async function loadItemDescriptor(slug: string): Promise<ItemDescriptor> {
-  const envelope = await fetch(`https://registry.deessejs.dev/r/${slug}.json`);
+  const envelope = await fetch(`https://registry.deessejs.com/r/${slug}.json`);
   if (envelope.format === 'block') {
     return BlockV1Schema.parse(envelope.block);
   } else if (envelope.format === 'template') {

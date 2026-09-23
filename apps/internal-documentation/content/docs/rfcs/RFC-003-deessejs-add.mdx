@@ -124,7 +124,7 @@ Documented at ADR-033 §5b. The CLI detects CI via `process.env.CI` (GitHub Acti
 
 ### File acquisition
 
-Documented at ADR-033 §5. Tarball-first from `registry.deessejs.dev/t/<slug>-<version>.tar.gz` (pre-built by the publication CI), with `git clone --depth 1 --branch <ref>` as fallback for non-CDN sources. `tar-stream` (pure-JS) handles extraction; symlinks and hardlinks are rejected by reading the tar header type byte (per RFC-002 §"Archive Extraction Guarantees"). Path-containment (`path.resolve(destDir + path.sep + entry.name)`) prevents Zip Slip.
+Documented at ADR-033 §5. Tarball-first from `registry.deessejs.com/t/<slug>-<version>.tar.gz` (pre-built by the publication CI), with `git clone --depth 1 --branch <ref>` as fallback for non-CDN sources. `tar-stream` (pure-JS) handles extraction; symlinks and hardlinks are rejected by reading the tar header type byte (per RFC-002 §"Archive Extraction Guarantees"). Path-containment (`path.resolve(destDir + path.sep + entry.name)`) prevents Zip Slip.
 
 ### Hooks runner
 

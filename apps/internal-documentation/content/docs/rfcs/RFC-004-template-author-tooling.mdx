@@ -178,7 +178,7 @@ These are the operational details that surfaced during the senior review. They a
 
 ### A. Registry catalogue access
 
-`deessejs template new` reads the registry catalogue. The catalogue is fetched from the same CDN as the item descriptors (`registry.deessejs.dev/catalogue.json`) and cached locally at `~/.deessejs/catalogue.json`. The cache is refreshed on ETag mismatch. CI mode (per ADR-033 §5b) refuses the fetch; the scaffolder in CI mode requires a pre-populated cache.
+`deessejs template new` reads the registry catalogue. The catalogue is fetched from the same CDN as the item descriptors (`registry.deessejs.com/catalogue.json`) and cached locally at `~/.deessejs/catalogue.json`. The cache is refreshed on ETag mismatch. CI mode (per ADR-033 §5b) refuses the fetch; the scaffolder in CI mode requires a pre-populated cache.
 
 ### B. JSDoc lint enforcement
 

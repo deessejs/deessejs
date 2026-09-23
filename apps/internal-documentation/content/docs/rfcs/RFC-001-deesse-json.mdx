@@ -58,7 +58,7 @@ The two files are the **answer to the consumer's "where do you put things, what 
 ```jsonc
 // deesse.json
 {
-  "$schema": "https://registry.deessejs.dev/schema/project.json",
+  "$schema": "https://registry.deessejs.com/schema/project.json",
   "template": "saas-starter",
   "version": "1.4.0",
   "database": "postgresql",
@@ -86,7 +86,7 @@ The two files are the **answer to the consumer's "where do you put things, what 
     "DATABASE_URL": "env:DATABASE_URL"
   },
   "registries": {
-    "@deessejs": "https://registry.deessejs.dev/r/{name}.json"
+    "@deessejs": "https://registry.deessejs.com/r/{name}.json"
   }
 }
 ```
@@ -96,7 +96,7 @@ The two files are the **answer to the consumer's "where do you put things, what 
 ```jsonc
 // deesse.lock
 {
-  "$schema": "https://registry.deessejs.dev/schema/lock.json",
+  "$schema": "https://registry.deessejs.com/schema/lock.json",
   "lockfileVersion": 1,
   "templates": {
     "saas-starter": {
@@ -183,7 +183,7 @@ A token value that is a literal `{{KEY}}` placeholder is a **sentinel**: the CLI
 
 ### The `registries{}` namespace map
 
-Namespaces are the **opt-in trust boundary**. The CLI ships with one default entry (`@deessejs` → `registry.deessejs.dev`). The user adds other entries at will: `@<host>/...` for an open-community registry, `@deessejs-community/...` for the curated tier (per RFC-002 §Community support).
+Namespaces are the **opt-in trust boundary**. The CLI ships with one default entry (`@deessejs` → `registry.deessejs.com`). The user adds other entries at will: `@<host>/...` for an open-community registry, `@deessejs-community/...` for the curated tier (per RFC-002 §Community support).
 
 **Template `{name}` sanitisation.** The CLI enforces a strict regex `^[a-z0-9][a-z0-9_-]*$` on `{name}` before interpolation into a URL template. Any character outside this set (including `.`, `/`, `\`, `?`, `#`, `%`, control characters) causes `parse_error`. This blocks path traversal (`../../evil`), URL injection (`?param=...`), and percent-encoding tricks. The slug regex is the same as the one used for `deesse-template.json#name` (per RFC-002 §Field reference §name), so the invariants are consistent across the system.
 

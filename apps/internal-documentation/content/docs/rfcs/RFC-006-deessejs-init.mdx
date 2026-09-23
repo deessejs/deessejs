@@ -26,7 +26,7 @@ The contract is straightforward in shape but load-bearing in execution:
 1. **Resolve the registry item address.** `<slug>` is a registry item address, a bare slug (`saas-starter`), a namespaced slug (`@deessejs/saas-starter`, `@community/auth-addon`), a full URL (`https://example.com/r/saas-starter.json`), or a local file path (`./saas-starter.json`). The same resolver as `add` (per [RFC-003 §"Surface area"](./RFC-003-deessejs-add)), with the namespace map read from `deesse.json#registries` if it exists, or from the default `@deessejs` registry if it does not (this is the only command where `deesse.json` is optional, see §"First-write semantics").
 2. **Enforce the `template:app` discriminator.** Refuse any non-`template:app` type with `parse_error`. This is the **only** consumer of `template:app`; the discriminator exists for this command. `template:package` and the other overlay types belong to `deessejs add` (or, in the future, to `deessejs-block` per [RFC-005](./RFC-005-deessejs-block)).
 3. **Run prompts eagerly.** Aggregate `prompts[]` across the resolved dependency graph **before any disk write**. Same rule as `add` (per [RFC-003 §"Install sequence"](./RFC-003-deessejs-add) and [RFC-002 §"Upfront prompt aggregation"](./RFC-002-deesse-template)). The user answers each prompt once; the answers drive `tokens{}`, `database`, and `paths{}` defaults.
-4. **Acquire the source tree.** Tarball-first from `registry.deessejs.dev/t/<slug>-<version>.tar.gz` (per [RFC-002 §"CDN tarball hosting"](./RFC-002-deesse-template)), with `git clone --depth 1 --branch <ref>` as fallback. The CLI does **not** depend on `codeload.github.com` for the official registry.
+4. **Acquire the source tree.** Tarball-first from `registry.deessejs.com/t/<slug>-<version>.tar.gz` (per [RFC-002 §"CDN tarball hosting"](./RFC-002-deesse-template)), with `git clone --depth 1 --branch <ref>` as fallback. The CLI does **not** depend on `codeload.github.com` for the official registry.
 5. **Apply `files[]` transformations** (rename, interpolate, remove, merge, per [RFC-002 §"Transform verb scope"](./RFC-002-deesse-template)). Staged in memory, atomic write, rollback on failure. Path containment (anti-Zip Slip) and symlink rejection enforced at every entry (per [RFC-002 §"Archive Extraction Guarantees"](./RFC-002-deesse-template)).
 6. **Write `deesse.json` and `deesse.lock`.** The first-write semantics is the **load-bearing difference** between `init` and `add`: `init` writes `deesse.json` from scratch (with the block defaults from [ADR-031 §"Decision 1"](/decisions/ADR-031-deesse-json)); `add` never writes `deesse.json` (it only updates `deesse.lock#templates["<feature>"]`). The `deesse.lock` file is written on every install (init or add) with the same atomic-write pattern.
 7. **Install npm dependencies.** Run `{pm} install` (or `{pm} add <dependencies>` for the rare case where the user does not yet have `node_modules`).
@@ -184,7 +184,7 @@ The `--force` flag is the user's signal that they want the re-install to proceed
 
 ### File acquisition
 
-Documented at [RFC-002 §"CDN Tarball Hosting"](./RFC-002-deesse-template). Tarball-first from `registry.deessejs.dev/t/<slug>-<version>.tar.gz` (pre-built by the publication CI), with `git clone --depth 1 --branch <ref>` as fallback for non-CDN sources. `tar-stream` (pure-JS) handles extraction; symlinks and hardlinks are rejected by reading the tar header type byte (per [RFC-002 §"Archive Extraction Guarantees"](./RFC-002-deesse-template)). Path-containment (`path.resolve(destDir + path.sep + entry.name)`) prevents Zip Slip.
+Documented at [RFC-002 §"CDN Tarball Hosting"](./RFC-002-deesse-template). Tarball-first from `registry.deessejs.com/t/<slug>-<version>.tar.gz` (pre-built by the publication CI), with `git clone --depth 1 --branch <ref>` as fallback for non-CDN sources. `tar-stream` (pure-JS) handles extraction; symlinks and hardlinks are rejected by reading the tar header type byte (per [RFC-002 §"Archive Extraction Guarantees"](./RFC-002-deesse-template)). Path-containment (`path.resolve(destDir + path.sep + entry.name)`) prevents Zip Slip.
 
 For starters specifically, the tarball is **the entire project tree** (the user gets a full app clone, not an overlay). The acquisition is heavier than `add`'s (which fetches an overlay). The publication CI in `packages/api` builds and uploads the starter tarball at publish time (per [RFC-002 §"CDN Tarball Hosting"](./RFC-002-deesse-template)).
 
@@ -268,9 +268,9 @@ Why we rejected it for this RFC: The author tooling has `deessejs template new -
 
 ### Alternative 5: Re-use the GitHub raw URL pattern (shadcn-style)
 
-What it is: `deessejs init` fetches `deesse-template.json` from `raw.githubusercontent.com/deessejs/<slug>/<ref>/deesse-template.json` directly, not from the static CDN at `registry.deessejs.dev`.
+What it is: `deessejs init` fetches `deesse-template.json` from `raw.githubusercontent.com/deessejs/<slug>/<ref>/deesse-template.json` directly, not from the static CDN at `registry.deessejs.com`.
 
-Why we rejected it: GitHub's unauthenticated rate limit (60 requests/hour per IP) breaks CI environments running multiple workflows in parallel. The static CDN serves the descriptor with the same ETag-driven revalidation as the tarball, with no rate limit (Vercel's free tier is sufficient at the launch scale). The CDN is the load-bearing distribution channel (per [RFC-002 §"Registry host: `registry.deessejs.dev`"](./RFC-002-deesse-template)).
+Why we rejected it: GitHub's unauthenticated rate limit (60 requests/hour per IP) breaks CI environments running multiple workflows in parallel. The static CDN serves the descriptor with the same ETag-driven revalidation as the tarball, with no rate limit (Vercel's free tier is sufficient at the launch scale). The CDN is the load-bearing distribution channel (per [RFC-002 §"Registry host: `registry.deessejs.com`"](./RFC-002-deesse-template)).
 
 ## Open Questions
 

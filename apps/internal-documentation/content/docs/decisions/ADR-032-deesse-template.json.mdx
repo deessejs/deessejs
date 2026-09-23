@@ -63,7 +63,7 @@ The complete top-level shape of `deesse-template.json`. Fields are listed in the
 
 ```jsonc
 {
-  "$schema": "https://registry.deessejs.dev/schema/template.json",
+  "$schema": "https://registry.deessejs.com/schema/template.json",
   "name": "saas-starter",
   "title": "SaaS Starter",
   "description": "Production-ready Next.js + Better Auth + Postgres boilerplate for B2B SaaS.",
@@ -114,19 +114,19 @@ The complete top-level shape of `deesse-template.json`. Fields are listed in the
 
 **Type**: string. **Required**.
 
-The URL of the JSON Schema that describes `deesse-template.json`. Always `https://registry.deessejs.dev/schema/template.json`. The schema is generated from the Zod source in `@workspace/contracts/src/v1/template.ts` and republished on every release of `@workspace/contracts`. Editors use this URL for inline hints and validation.
+The URL of the JSON Schema that describes `deesse-template.json`. Always `https://registry.deessejs.com/schema/template.json`. The schema is generated from the Zod source in `@workspace/contracts/src/v1/template.ts` and republished on every release of `@workspace/contracts`. Editors use this URL for inline hints and validation.
 
-**Example**: `"$schema": "https://registry.deessejs.dev/schema/template.json"`
+**Example**: `"$schema": "https://registry.deessejs.com/schema/template.json"`
 
 **Anti-patterns**:
-- Pointing `$schema` at a different URL (e.g. a fork), third-party registries ship their own schema URL; the official `deessejs.dev` URL is for the official registry.
+- Pointing `$schema` at a different URL (e.g. a fork), third-party registries ship their own schema URL; the official `deessejs.com` URL is for the official registry.
 - Omitting `$schema`, editors lose hints, and the CLI does not surface validation errors as nicely.
 
 ### `name`
 
 **Type**: string. **Required**.
 
-The unique identifier of the item within the registry. Used as the slug in `deessejs add <name>`, `deessejs init <name>`, and the registry CDN path (`registry.deessejs.dev/r/<name>.json`).
+The unique identifier of the item within the registry. Used as the slug in `deessejs add <name>`, `deessejs init <name>`, and the registry CDN path (`registry.deessejs.com/r/<name>.json`).
 
 **Constraints**:
 - Must match `^[a-z0-9][a-z0-9-]*[a-z0-9]$` (lowercase, digits, hyphens; cannot start or end with a hyphen).
@@ -337,7 +337,7 @@ The source repository that backs the template. The CLI clones from this repo at 
 **Examples**:
 - Minimal (GitHub official): `"source": { "repo": "deessejs/saas-template", "ref": "v1.4.0" }`
 - With clone override: `"source": { "repo": "deessejs/saas-template", "ref": "v1.4.0", "cloneUrl": "https://github.com/deessejs/saas-template.git" }`
-- Mirror: `"source": { "repo": "deessejs/saas-template", "ref": "main", "cloneUrl": "https://git.deessejs.dev/mirror/saas-template.git" }`
+- Mirror: `"source": { "repo": "deessejs/saas-template", "ref": "main", "cloneUrl": "https://git.deessejs.com/mirror/saas-template.git" }`
 
 **Anti-patterns**:
 - Omitting `ref`, falls back to `main`, which may break consumers on a future breaking commit.
@@ -921,11 +921,11 @@ The CLI's `init <slug>` and `add <feature>` commands gain a sequence that reads 
 
 #### 4. The registry host is static-only
 
-`registry.deessejs.dev` is a **static file host**. There is no API runtime, no Hono server, no oRPC endpoint behind it. The host serves JSON Schemas and registry items over plain HTTPS `GET`. The CLI uses plain `fetch` against the host (with the [ADR-001](./ADR-001-orpc-is-load-bearing.md) scope-clarification amendment tracked by [issue #139](https://github.com/deessejs/deessejs/issues/139)), and uses the typed oRPC client for `templates.list`, `templates.info`, `auth.*`, and version probe. The split is documented in [ADR-033 Decision #4](./ADR-033-deessejs-add.mdx) (Transport split table).
+`registry.deessejs.com` is a **static file host**. There is no API runtime, no Hono server, no oRPC endpoint behind it. The host serves JSON Schemas and registry items over plain HTTPS `GET`. The CLI uses plain `fetch` against the host (with the [ADR-001](./ADR-001-orpc-is-load-bearing.md) scope-clarification amendment tracked by [issue #139](https://github.com/deessejs/deessejs/issues/139)), and uses the typed oRPC client for `templates.list`, `templates.info`, `auth.*`, and version probe. The split is documented in [ADR-033 Decision #4](./ADR-033-deessejs-add.mdx) (Transport split table).
 
 ### What this rule allows
 
-- A template author co-locates `deesse-template.json` in `deessejs/saas-template` at the repo root. The template repo's CI validates the JSON against the schema published at `https://registry.deessejs.dev/schema/template.json`. The validation step is opt-in for the author; the schema URL is the contract.
+- A template author co-locates `deesse-template.json` in `deessejs/saas-template` at the repo root. The template repo's CI validates the JSON against the schema published at `https://registry.deessejs.com/schema/template.json`. The validation step is opt-in for the author; the schema URL is the contract.
 - A registry of registries: an org maintains a static JSON catalog at `https://example.com/r/registry.json` (shadcn's auto-discovery shape). The CLI fetches it, lists items, and installs from it. No CLI release required for a new third-party registry to be usable.
 - A `template:package` item that overlays files into an existing monorepo's `packages/<name>/` directory. The CLI uses `deesse-template.json#files[].target` (with `@packages/` placeholder resolved via `deesse.json#aliases`) to know where to write.
 - A `template:app` item that clones the entire repo (today's `init` behaviour) plus applies transforms on top of the clone. `template:app` keeps the existing `git clone` shape; the other six types are the new surface.
@@ -953,9 +953,9 @@ See the original ADR for the three rejected alternatives (`registry.json` in `pa
 - **`apps/cli` learns to apply `files[]` transformations.** The transforms live at `apps/cli/src/transforms/` (new folder), one file per verb (`rename`, `interpolate`, `remove`, `merge`), following the one-folder-per-concept rule from [ADR-002](./ADR-002-file-organization.md).
 - **`apps/cli` learns to route prompt answers.** The consumer logic lives at `apps/cli/src/prompts/consume.ts` (new file).
 - **`apps/cli` learns to parse and evaluate `when` expressions.** The interpreter lives at `apps/cli/src/prompts/when.ts` (new file). The `shell: false` hook runner lives at `apps/cli/src/hooks/runner.ts`.
-- **`packages/contracts` gains a CI job that publishes JSON Schemas** to `registry.deessejs.dev/schema/{project,template}.json`.
-- **`packages/api` gains a CI job that publishes registry items** to `registry.deessejs.dev/r/<slug>.json`.
-- **`registry.deessejs.dev` is provisioned as a static-only Vercel project.** Runbook at `documents/internal/runbooks/registry-deessejs-dev.md`.
+- **`packages/contracts` gains a CI job that publishes JSON Schemas** to `registry.deessejs.com/schema/{project,template}.json`.
+- **`packages/api` gains a CI job that publishes registry items** to `registry.deessejs.com/r/<slug>.json`.
+- **`registry.deessejs.com` is provisioned as a static-only Vercel project.** Runbook at `documents/internal/runbooks/registry-deessejs-com.md`.
 - **The postinstall whitelist lives in `apps/cli/src/hooks/whitelist.ts`** with the `{pm}` placeholder. Initial whitelist: `["{pm} install", "{pm} add", "{pm} remove", "{pm} db:push", "{pm} db:migrate", "{pm} db:generate", "{pm} generate", "{pm} format", "{pm} typecheck", "git init"]`.
 - **The `when` interpreter lives in `apps/cli/src/prompts/when.ts`**, exported as `parseWhen(input: string): WhenNode` and `evalWhen(node: WhenNode, answers: Record<string, unknown>): boolean`.
 

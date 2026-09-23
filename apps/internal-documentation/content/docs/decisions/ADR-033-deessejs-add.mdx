@@ -7,7 +7,7 @@ description: 'Adds deessejs add <feature> as a fourth public CLI command. Reads 
 
 ## Status
 
-**The contract is accepted; the implementation lands in a follow-up change set.** Approved as part of the trio ([ADR-031](./ADR-031-deesse-json.mdx) + [ADR-032](./ADR-032-deesse-template.json.mdx) + ADR-033), tracked by [PR #137](https://github.com/deessejs/deessejs/pull/137). The spec-vs-implementation split is documented in [ADR-032 Open Question #1](./ADR-032-deesse-template.json.mdx): the file-shape change (`deesse.json` + `deesse-template.json` + the registry CDN at `registry.deessejs.dev`) ships first; `deessejs add feature` ships as a follow-up. This ADR documents the *contract* for `add` (commands, flags, install sequence, dry-run, error mapping) so the implementation can land later without re-litigating the shape.
+**The contract is accepted; the implementation lands in a follow-up change set.** Approved as part of the trio ([ADR-031](./ADR-031-deesse-json.mdx) + [ADR-032](./ADR-032-deesse-template.json.mdx) + ADR-033), tracked by [PR #137](https://github.com/deessejs/deessejs/pull/137). The spec-vs-implementation split is documented in [ADR-032 Open Question #1](./ADR-032-deesse-template.json.mdx): the file-shape change (`deesse.json` + `deesse-template.json` + the registry CDN at `registry.deessejs.com`) ships first; `deessejs add feature` ships as a follow-up. This ADR documents the *contract* for `add` (commands, flags, install sequence, dry-run, error mapping) so the implementation can land later without re-litigating the shape.
 
 ## Context
 
@@ -28,7 +28,7 @@ Three reasons the **specification** lands in this ADR but the **implementation**
 
 2. **Bundling a new public command with two AD-shape changes is a bigger blast radius.** [ADR-031](./ADR-031-deesse-json.mdx) and [ADR-032](./ADR-032-deesse-template.json.mdx) are non-breaking at the CLI surface (no new public command, no new flag, no new error code). `add` is the first public command added under ADR-010 §1. Spreading the two changes, shape change now, new command in a follow-up, keeps each release's blast radius small and lets the shape change land and stabilise before `add` adds user-visible surface.
 
-3. **Implementation is gated on the registry CDN.** The implementation needs `registry.deessejs.dev` to be live and `deesse-template.json` to be co-located in template repos. The CDN ships in the same change set as the file shape (per [ADR-032 Decision #4](./ADR-032-deesse-template.json.mdx)) and the co-location discipline takes time to propagate across `deessejs/*` template repos. The follow-up is the earliest point at which `add` can ship against a populated registry.
+3. **Implementation is gated on the registry CDN.** The implementation needs `registry.deessejs.com` to be live and `deesse-template.json` to be co-located in template repos. The CDN ships in the same change set as the file shape (per [ADR-032 Decision #4](./ADR-032-deesse-template.json.mdx)) and the co-location discipline takes time to propagate across `deessejs/*` template repos. The follow-up is the earliest point at which `add` can ship against a populated registry.
 
 The implementation PR for `add` lands in a follow-up change set, not in this one. The spec documented in this ADR is the contract that PR must implement; deviations from the spec are themselves ADRs.
 
@@ -97,7 +97,7 @@ The command's sequence:
 
 1. **Detect project root.** The CLI walks up from the current directory until it finds a `deesse.json`. If none is found, the CLI refuses with `parse_error`: *"deesse.json not found; run `deessejs init` first."* This is the same closed-list error code as a malformed `deesse.json`; no new public code ships.
 2. **Load `deesse.json`.** Zod-validate the file through the `Project` schema in `@workspace/contracts` (per [ADR-031](./ADR-031-deesse-json.mdx)). Reject with `parse_error` on failure.
-3. **Fetch the item descriptor.** Resolve `<feature>` through `deesse.json#registries` (or use the literal URL / local path). Fetch `deesse-template.json` from the registry host (`registry.deessejs.dev`) or the user's literal URL. Zod-validate through `TemplateV2`.
+3. **Fetch the item descriptor.** Resolve `<feature>` through `deesse.json#registries` (or use the literal URL / local path). Fetch `deesse-template.json` from the registry host (`registry.deessejs.com`) or the user's literal URL. Zod-validate through `TemplateV2`.
 4. **Refuse on `template:app`.** Enforce the discriminator split from Decision #2. Refuse with `invalid_item_type` (internal error code).
 5. **Resolve `templateDependencies` (topological, with cycle detection).** Same recursive logic as `init` (per [ADR-032 Decision #3](./ADR-032-deesse-template.json.mdx)). Each dependency is also a `template:package` (or other overlay type); the recursion terminates at items with no further dependencies.
 
@@ -138,7 +138,7 @@ The acquisition mechanism is **tarball-first, with `git clone` as fallback**, in
 
 1. **Resolve the source ref.** From `deesse-template.json#source = { repo, ref, cloneUrl }` (per [ADR-032](./ADR-032-deesse-template.json.mdx)). The `repo` field is `owner/name`, the `ref` is a git tag/branch/SHA, and `cloneUrl` is the optional override.
 
-2. **Try the CDN tarball first** (when `cloneUrl` is `github.com/<owner>/<repo>` and `registry.deessejs.dev` exposes a pre-built tarball). The CLI does `fetch('https://registry.deessejs.dev/t/<slug>-<version>.tar.gz')` (or `<owner>/<repo>/<ref>.tar.gz` from GitHub's `codeload` endpoint if the CDN tarball is not available). Tarball extraction is streamed via `tar-stream` (pure-JS, no `tar` binary dependency, portable on Windows).
+2. **Try the CDN tarball first** (when `cloneUrl` is `github.com/<owner>/<repo>` and `registry.deessejs.com` exposes a pre-built tarball). The CLI does `fetch('https://registry.deessejs.com/t/<slug>-<version>.tar.gz')` (or `<owner>/<repo>/<ref>.tar.gz` from GitHub's `codeload` endpoint if the CDN tarball is not available). Tarball extraction is streamed via `tar-stream` (pure-JS, no `tar` binary dependency, portable on Windows).
 
 3. **Fall back to shallow `git clone`** if the tarball fetch fails (404, network error, non-GitHub source). The CLI runs `git clone --depth 1 --branch <ref> <cloneUrl> <tmpdir>/deesse-add-<slug>-<hash>` where `<hash>` is `sha1(slug + ref)` truncated to 8 chars. The clone reuses `apps/cli/src/utils/git.ts` (already used by `init`); no new git plumbing ships. The depth-1 flag limits the clone to the ref's tip; the --branch flag pins the ref.
 
@@ -148,7 +148,7 @@ The acquisition mechanism is **tarball-first, with `git clone` as fallback**, in
 
    **Symlink and hardlink guard**: hardlinks and symlinks are **rejected by default**. Only regular files and directories are extracted from the tarball. The extraction implementation reads the entry type byte from the tar header and aborts with `security_violation` on any non-regular entry. This closes the "symlink pointing outside the extraction root" attack vector (e.g. a symlink from `package.json` to `/etc/passwd`).
 
-   **CDN-hosted tarballs**: the official `@deessejs/*` tarballs are pre-built and published by the publication CI in `packages/api` to `registry.deessejs.dev/t/<slug>-<version>.tar.gz`. The CLI does **not** rely on `codeload.github.com` for the official registry, that path is the fallback for third-party GitHub sources where the CDN tarball is not available.
+   **CDN-hosted tarballs**: the official `@deessejs/*` tarballs are pre-built and published by the publication CI in `packages/api` to `registry.deessejs.com/t/<slug>-<version>.tar.gz`. The CLI does **not** rely on `codeload.github.com` for the official registry, that path is the fallback for third-party GitHub sources where the CDN tarball is not available.
 
 5. **Clean up the temp tree.** The CLI `rm -rf`s the temp directory after the file reads complete (in a `finally` block, even if a downstream step throws). The cleanup is non-negotiable: a stale temp tree is a leak and a potential security surface (a malicious template could write `.bashrc` files into the user's home if the temp dir was reused).
 
@@ -168,7 +168,7 @@ The acquisition mechanism is **tarball-first, with `git clone` as fallback**, in
 
 #### 5b. CI never touches the CDN
 
-**Invariant.** When the CLI detects a CI environment, it **must not** make outbound HTTP requests to `registry.deessejs.dev` or to upstream `git clone` URLs. CI runs must be **stable against upstream churn**, a Friday-evening patch to a template upstream must not break unrelated PRs across the DeesseJS consumer base.
+**Invariant.** When the CLI detects a CI environment, it **must not** make outbound HTTP requests to `registry.deessejs.com` or to upstream `git clone` URLs. CI runs must be **stable against upstream churn**, a Friday-evening patch to a template upstream must not break unrelated PRs across the DeesseJS consumer base.
 
 **Detection.** The CLI detects CI by reading `process.env.CI` (the de-facto standard env var, set to a truthy string by GitHub Actions, GitLab CI, CircleCI, Buildkite, Travis, Jenkins, and Drone, the full list is in `apps/cli/src/ci/env-detection.ts`). A **secondary signal** is the presence of `/.deesse-ci` (a marker file the user can drop at the repo root to opt a non-CI machine into the same behaviour, useful for local "what would CI see?" dry runs). Either signal flips the CLI into CI mode for the duration of the process.
 
@@ -197,7 +197,7 @@ The 9-step install sequence from Decision #3 is amended to include dependency in
    The `--allow-dirty` flag is therefore not a casual bypass, it opts the user out of the rollback safety net for steps 9-11. When `--allow-dirty` is set and an install fails, the CLI prints a louder warning: *"Cannot rollback: working directory was dirty at install time. Review your changes manually."*
 1. **Detect project root.** The CLI walks up from the current directory until it finds a `deesse.json`. If none is found, the CLI refuses with `parse_error`: *"deesse.json not found; run `deessejs init` first."* This is the same closed-list error code as a malformed `deesse.json`; no new public code ships.
 2. **Load `deesse.json`.** Zod-validate the file through the `Project` schema in `@workspace/contracts` (per [ADR-031](./ADR-031-deesse-json.mdx)). Reject with `parse_error` on failure.
-3. **Fetch the item descriptor.** Resolve `<feature>` through `deesse.json#registries` (or use the literal URL / local path). Fetch `deesse-template.json` from the registry host (`registry.deessejs.dev`) or the user's literal URL. Zod-validate through `TemplateV2`.
+3. **Fetch the item descriptor.** Resolve `<feature>` through `deesse.json#registries` (or use the literal URL / local path). Fetch `deesse-template.json` from the registry host (`registry.deessejs.com`) or the user's literal URL. Zod-validate through `TemplateV2`.
 4. **Refuse on `template:app`.** Enforce the discriminator split from Decision #2. Refuse with `invalid_item_type` (internal error code).
 5. **Resolve `templateDependencies` (topological, with cycle detection).** Same recursive logic as `init` (per [ADR-032 Decision #3](./ADR-032-deesse-template.json.mdx)). Each dependency is also a `template:package` (or other overlay type); the recursion terminates at items with no further dependencies.
 
@@ -338,7 +338,7 @@ Three patterns the team considered and rejected.
 - The `engines.node >= 20.0.0` floor at `apps/cli/package.json` stays. The CLI continues to publish as `@deessejs/cli` per ADR-010 §6.
 - The `apps/cli/src/commands/init.ts` flags (`--pm`, `--dir`, `--ref`, `--no-install`, `--force`, `--json`) stay. `add` adds `--dry-run` (per Decision #4) and `--path` as new flags; the existing flags on `init` are not renamed.
 - The `--offline` global flag (per ADR-010 §1) applies to `add` the same way it applies to `init` and `list`. Offline mode skips the `deesse-template.json` fetch if the cache hit is fresh.
-- The registry host `registry.deessejs.dev` stays static-only (per [ADR-032 Decision #4](./ADR-032-deesse-template.json.mdx)). `add` is a read-only consumer of the host; no new endpoint ships.
+- The registry host `registry.deessejs.com` stays static-only (per [ADR-032 Decision #4](./ADR-032-deesse-template.json.mdx)). `add` is a read-only consumer of the host; no new endpoint ships.
 
 ## What changes at the CLI surface
 

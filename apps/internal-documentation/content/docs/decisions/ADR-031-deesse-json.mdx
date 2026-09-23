@@ -61,7 +61,7 @@ The CLI writes a `deesse.json` at the user's project root the first time `deesse
 
 ```jsonc
 {
-  "$schema": "https://registry.deessejs.dev/schema/project.json",
+  "$schema": "https://registry.deessejs.com/schema/project.json",
   "template": "saas-starter",
   "version": "1.4.0",
   "database": "postgresql",
@@ -89,7 +89,7 @@ The CLI writes a `deesse.json` at the user's project root the first time `deesse
     "DATABASE_URL": "postgresql://..."
   },
   "registries": {
-    "@deessejs": "https://registry.deessejs.dev/r/{name}.json"
+    "@deessejs": "https://registry.deessejs.com/r/{name}.json"
   }
 }
 ```
@@ -118,7 +118,7 @@ The remaining four blocks round out the file:
 - `database` (string): the runtime database choice (`"postgresql"`, `"mysql"`, `"sqlite"`, or `""` for templates that do not depend on a database). The CLI reads it at install time to skip prompts the user has already answered, and to choose the right adapter for any future `deessejs add crud` command (the SQL dialect, the Prisma datasource block shape, etc.). The value is what the template's default prompt resolved to (per [ADR-032](./ADR-032-deesse-template.json)'s `prompts[]`); a user may flip it after the fact by editing `deesse.json` and re-running `deessejs init --force` (or a future `deessejs doctor`).
 - `templates{}`, moved to **`deesse.lock`** (committed to git), per the senior review of [RFC-001](./rfcs/RFC-001-deesse-json). The original ADR-031 draft placed this block in `deesse.json`; the review flagged that conflation creates merge conflicts in team environments. The block now lives in a separate file. A new `Lock` schema in `@workspace/contracts/src/v1/lock.ts` holds the same shape. The CLI writes both files atomically (`fs.writeFile(tmp); fs.rename(tmp, real)`) so a crash mid-install cannot corrupt either file.
 - `tokens{}` (object): the map [ADR-032](./ADR-032-deesse-template.json)'s `deesse-template.json` interpolates into files marked `transform: "interpolate"`. The CLI writes the interpolated file into the user's tree, never back into the registry. Tokens that the user omits fall back to a sentinel (the literal string the template ships with).
-- `registries{}` (object): the namespace map. `@deessejs/saas-starter` resolves to `https://registry.deessejs.dev/r/saas-starter.json`. A user who wants to install from a community registry adds an entry like `"@community": "https://raw.githubusercontent.com/deessejs-community/{name}/main/deesse-template.json"`. shadcn's URL template with `{name}` placeholder is the canonical pattern. The `@deessejs` namespace is the default; the entry is written by the CLI on first install and the user may override the host for staging or local development.
+- `registries{}` (object): the namespace map. `@deessejs/saas-starter` resolves to `https://registry.deessejs.com/r/saas-starter.json`. A user who wants to install from a community registry adds an entry like `"@community": "https://raw.githubusercontent.com/deessejs-community/{name}/main/deesse-template.json"`. shadcn's URL template with `{name}` placeholder is the canonical pattern. The `@deessejs` namespace is the default; the entry is written by the CLI on first install and the user may override the host for staging or local development.
 
 ### What this rule allows
 
@@ -153,7 +153,7 @@ Three patterns the team considered and rejected.
 - The closed-list `CliErrorCode` per ADR-010 §2 stays closed. A missing or malformed `deesse.json` at the project root maps to `parse_error` (already on the public list).
 - The `engines.node >= 20.0.0` floor at `apps/cli/package.json` stays. The CLI continues to publish as `@deessejs/cli` per ADR-010 §6.
 - The `apps/cli/src/commands/init.ts` flags (`--pm`, `--dir`, `--ref`, `--no-install`, `--force`, `--json`) stay as the per-command flags per ADR-010 §1. None of them is repurposed; `deesse.json` is the canonical place for project state, the flags stay for one-shot overrides.
-- The schema URL pattern at `https://registry.deessejs.dev/schema/project.json` is static-only per [ADR-032](./ADR-032-deesse-template.json)'s Decision #4.
+- The schema URL pattern at `https://registry.deessejs.com/schema/project.json` is static-only per [ADR-032](./ADR-032-deesse-template.json)'s Decision #4.
 
 ## Consequences
 
@@ -161,8 +161,8 @@ Three patterns the team considered and rejected.
 - **A user who runs `deessejs init saas-starter` against an existing project without `deesse.json` gets the file created at the root.** A user who runs the same command against an existing project **with** `deesse.json` (e.g. re-running on a populated project) does not get the file overwritten; the CLI reads the existing one and only mutates the `templates{}` block.
 - **`deesse-template.json#files[].target` placeholders resolve at install time.** The CLI walks the file list, substitutes `@components/`, `@lib/`, `@hooks/`, `@ui/`, `@apps/`, `@packages/` against `deesse.json#aliases`, and writes the file at the resolved path. Unknown placeholders fall back to literal paths.
 - **A future `deessejs add feature` command reads `deesse.json` and writes into the right directories.** This ADR scopes itself to the file shape and the resolution logic, not to the `add` command itself (the command is tracked separately per the open question in [ADR-032](./ADR-032-deesse-template.json)). The file is the prerequisite; the command follows.
-- **The schema URL `https://registry.deessejs.dev/schema/project.json` is the contract.** The JSON Schema is generated from the Zod source (`Project` schema in `@workspace/contracts`) by a CI job in `packages/contracts` that runs on every release. The CLI parses a malformed `deesse.json` through the Zod schema and returns `parse_error` on failure.
-- **The CI-mode invariant applies to `deesse.json` reads.** When `process.env.CI` is set (or `/.deesse-ci` is present), the CLI never re-fetches the JSON Schema from `registry.deessejs.dev/schema/project.json`; it uses the schema version bundled in the CLI binary. The bundled schema is refreshed on each `@deessejs/cli` release. This keeps CI installs reproducible without depending on the live schema URL. See [ADR-033 §5b "CI never touches the CDN"](./ADR-033-deessejs-add.mdx) for the full invariant and the `ci_offline_violation` error code.
+- **The schema URL `https://registry.deessejs.com/schema/project.json` is the contract.** The JSON Schema is generated from the Zod source (`Project` schema in `@workspace/contracts`) by a CI job in `packages/contracts` that runs on every release. The CLI parses a malformed `deesse.json` through the Zod schema and returns `parse_error` on failure.
+- **The CI-mode invariant applies to `deesse.json` reads.** When `process.env.CI` is set (or `/.deesse-ci` is present), the CLI never re-fetches the JSON Schema from `registry.deessejs.com/schema/project.json`; it uses the schema version bundled in the CLI binary. The bundled schema is refreshed on each `@deessejs/cli` release. This keeps CI installs reproducible without depending on the live schema URL. See [ADR-033 §5b "CI never touches the CDN"](./ADR-033-deessejs-add.mdx) for the full invariant and the `ci_offline_violation` error code.
 
 ## Cross-references
 
