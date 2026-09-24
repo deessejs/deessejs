@@ -11,11 +11,11 @@
  * Flags (per ADR-031 Decision #2):
  *   - `localePrefix: 'as-needed'` — default locale renders at the URL
  *     root (no prefix), other locales render under a prefix.
- *   - `localeDetection: false` — the middleware does NOT redirect
- *     unprefixed URLs based on the `NEXT_LOCALE` cookie or the
- *     `Accept-Language` header. The URL is the source of truth; the
- *     cookie is round-trippable but never mutates the URL on its own.
- *     Reasons: CDN cacheability, link sharing, crawler stability.
+ *   - `localeDetection: true` — on the canonical unprefixed URL
+ *     (`/templates`), the middleware reads `NEXT_LOCALE` first, then
+ *     `Accept-Language`, and 307-redirects to the prefixed URL when
+ *     the detected locale differs from `defaultLocale`. Prefixed
+ *     URLs (`/fr/templates`) are stable — no subsequent redirect.
  *     See ADR-031 Decision #2 for the full rationale.
  *
  * The routing shape is constructed lazily so the `_locales.ts` module
