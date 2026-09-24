@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import type { ComponentProps, ReactNode } from "react"
 
 import {
   H1,
@@ -21,51 +21,29 @@ import {
   TD,
 } from "@workspace/ui/components/typography"
 
-import { CodeBlock } from "./code-block"
-
 /**
  * MDX runtime adapter for `<pre>` elements.
  *
- * Receives the props that the build-time `rehypeStoreRawCode` plugin
- * (apps/web/content-collections.ts) attaches to every `<pre>`:
- *   - `code`        : the raw source of the fenced block
- *   - `language`    : the language tag, when one was inferred from the
- *                      info-string (````ts`, ````bash`, …)
- *   - `title`       : optional — when the fenced block had
- *                      metadata like ````ts title="x"`
+ * Shiki runs at build time inside the content-collections pipeline
+ * (`@shikijs/rehype` with theme="github-dark"). The resulting HTML
+ * already carries the .shiki class, the theme variable, and the
+ * per-token inline `color` styles — we just need to wrap it so the
+ * visitor sees a border, padding, and a horizontal scroll on
+ * overflow. Spreading `{...props}` is what makes this work: the
+ * rehype-emitted className, style, and children all pass through.
  *
- * Delegates the actual highlighting to <CodeBlock> so the runtime
- * stays the single source of truth for shiki output. <CodeBlock> is
- * an async server component, which is fine here: MDX runtime runs in
- * a server component (every page that uses <MdxRenderer> is a server
- * component), and React 19 + Next.js 16 stream the async boundary
- * correctly.
- *
- * If the props are missing (e.g. the rehype plugin was bypassed for
- * a test, or someone hand-wrote <pre> in MDX), we fall back to a
- * plain <pre><code> so the page still renders.
+ * Adding a fresh <code> here would nest inside the shiki-emitted
+ * <code><span>…</span></code> tree, which is why the previous
+ * <pre><code>{children}</code></pre> shape broke colors (the inner
+ * code ate the inline style of the shiki tokens).
  */
-function MdxPre(props: {
-  children?: ReactNode
-  code?: string
-  language?: string
-  title?: string
-}) {
-  if (typeof props.code === "string") {
-    // exactOptionalPropertyTypes: true on CodeBlock — omit the key
-    // when undefined instead of writing `language: undefined`.
-    const blockProps: React.ComponentProps<typeof CodeBlock> = {
-      code: props.code,
-      size: "sm",
-    }
-    if (props.language !== undefined) blockProps.language = props.language
-    if (props.title !== undefined) blockProps.title = props.title
-    return <CodeBlock {...blockProps} />
-  }
+function MdxPre(props: ComponentProps<"pre">) {
   return (
-    <pre className="bg-background w-full overflow-x-auto rounded-md border border-border p-4 font-mono text-sm">
-      <code className="font-mono">{props.children}</code>
-    </pre>
+    <div className="w-full overflow-hidden rounded-md border border-border">
+      <div className="overflow-x-auto p-4 text-sm">
+        <pre {...props} />
+      </div>
+    </div>
   )
 }
 

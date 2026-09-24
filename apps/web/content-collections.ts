@@ -1,63 +1,6 @@
 import { defineCollection, defineConfig } from "@content-collections/core"
 import { compileMDX } from "@content-collections/mdx"
-import type { Root, Element } from "hast"
-import { visit } from "unist-util-visit"
-
-/**
- * Custom rehype plugin (inlined to avoid esbuild import-resolution
- * issues at content-collections build time). Captures the raw source
- * text of every fenced code block and stores it in `data-code` and
- * `data-language` attributes on the `<pre>` element so the MDX
- * runtime's `MdxPre` adapter can hand the source to `<CodeBlock>`,
- * which is the single source of truth for shiki output at request
- * time.
- *
- * The build-time shiki transformer is intentionally NOT in the
- * pipeline anymore: dual-theme output via the rehype plugin is hard
- * to combine with a runtime shiki re-render without doubling the
- * work, and the runtime-only path keeps the contract in one place.
- */
-function rehypeStoreRawCode() {
-  return (tree: Root) => {
-    visit(tree, "element", (node: Element) => {
-      if (node.tagName !== "pre") return
-
-      const codeNode = node.children.find(
-        (child): child is Element =>
-          child.type === "element" && child.tagName === "code",
-      )
-      if (!codeNode) return
-
-      const raw = collectText(codeNode).replace(/\n$/, "")
-
-      const classNames = Array.isArray(codeNode.properties?.className)
-        ? ((codeNode.properties.className as string[]) ?? [])
-        : []
-      const langClass = classNames.find(
-        (c: string) => typeof c === "string" && c.startsWith("language-"),
-      )
-      const language = langClass ? langClass.replace("language-", "") : undefined
-
-      node.properties = {
-        ...node.properties,
-        "data-code": raw,
-        ...(language ? { "data-language": language } : {}),
-      }
-    })
-  }
-}
-
-function collectText(node: Element): string {
-  let out = ""
-  for (const child of node.children) {
-    if (child.type === "text") {
-      out += child.value
-    } else if (child.type === "element") {
-      out += collectText(child)
-    }
-  }
-  return out
-}
+import rehypeShiki from "@shikijs/rehype"
 import { z } from "zod"
 import readingTime from "reading-time"
 
@@ -144,16 +87,14 @@ const posts = defineCollection({
 
     const mdxCode = await compileMDX(context, post, {
       rehypePlugins: [
-        // `rehypeStoreRawCode` is the build-time plugin that captures
-        // the raw source of every fenced code block and stores it on
-        // the `<pre>` element as `data-code` / `data-language`. The
-        // MDX runtime reads those attrs and hands them to <CodeBlock>,
-        // which is the single source of truth for shiki output. The
-        // build-time shiki transformer is intentionally NOT in this
-        // pipeline: dual-theme output is hard to combine with a
-        // runtime shiki re-render without doubling the work, and the
-        // runtime-only path keeps the contract in one place.
-        [rehypeStoreRawCode],
+        // Build-time Shiki: @shikijs/rehype replaces every fenced
+        // code block in the MDX with the shiki-highlighted HTML
+        // (theme="github-dark", class="shiki shiki-themes …", inline
+        // `color` on token spans). The MDX runtime then renders that
+        // HTML through MdxPre, which only adds the surrounding
+        // border/overflow chrome — no runtime shiki, no client
+        // bundling, no async boundary.
+        [rehypeShiki, { theme: "github-dark" }],
       ],
     })
 
@@ -225,7 +166,7 @@ const releases = defineCollection({
 
     const mdxCode = await compileMDX(context, release, {
       rehypePlugins: [
-        [rehypeStoreRawCode],
+        [rehypeShiki, { theme: "github-dark" }],
       ],
     })
 
@@ -257,7 +198,7 @@ const kbTopics = defineCollection({
 
     const mdxCode = await compileMDX(context, topic, {
       rehypePlugins: [
-        [rehypeStoreRawCode],
+        [rehypeShiki, { theme: "github-dark" }],
       ],
     })
 
@@ -311,7 +252,7 @@ const kbGuides = defineCollection({
 
     const mdxCode = await compileMDX(context, guide, {
       rehypePlugins: [
-        [rehypeStoreRawCode],
+        [rehypeShiki, { theme: "github-dark" }],
       ],
     })
 
