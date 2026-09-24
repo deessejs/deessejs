@@ -244,7 +244,7 @@ export default function KnowledgeBasePage() {
           </div>
         </div>
 
-        <div className="py-10 sm:py-2">
+        <div>
           <div className="flex flex-col">
             <SectionHeading eyebrow="Topics" title="Topics" />
             <KbCardGrid>
