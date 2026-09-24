@@ -50,7 +50,7 @@ export function ComparisonGroup({
           </th>
           {COMPARISON_LAYERS.map((layer) => {
             const status = row.status?.[layer.id] ?? "yes"
-            const isPerProject = layer.id === "professional"
+            const isPerProject = layer.id === "per-project"
             return (
               <td
                 key={`${row.attribute}-${layer.id}`}

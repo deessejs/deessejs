@@ -1,7 +1,5 @@
 "use client"
 
-import { useMemo } from "react"
-
 import { ComponentGrid } from "./component-grid"
 import { ComponentListSidebar } from "./component-list-sidebar"
 import type { CategoryId, ComponentCategory } from "./categories"

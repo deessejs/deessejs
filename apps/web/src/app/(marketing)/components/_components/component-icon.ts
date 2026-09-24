@@ -53,12 +53,12 @@ const COMPONENT_ICONS = {
 
 // Compile-time exhaustiveness: any new CatalogueComponent slug
 // without an icon entry becomes a TS error here.
-type _Exhaustive = keyof typeof COMPONENT_ICONS extends CatalogueComponent["slug"]
+type ExhaustiveCheck = keyof typeof COMPONENT_ICONS extends CatalogueComponent["slug"]
   ? CatalogueComponent["slug"] extends keyof typeof COMPONENT_ICONS
     ? true
     : never
   : never
-const _exhaustive = (null as unknown) as boolean
+const _exhaustive: ExhaustiveCheck = (null as unknown) as ExhaustiveCheck
 void _exhaustive
 
 export function getComponentIcon(slug: CatalogueComponent["slug"]): LucideIcon {

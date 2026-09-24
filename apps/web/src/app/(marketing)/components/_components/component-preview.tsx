@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Bell,
   Check,
   CircleAlert,
-  Hash,
   Plus,
   Search,
   X,

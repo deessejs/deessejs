@@ -16,7 +16,7 @@
  */
 
 import type { CatalogItem, CatalogueList, CatalogTier } from "./types"
-import type { CategoryId } from "./categories"
+import type { CategoryId } from "./categories-components"
 
 // Re-export shared types so consumers (route files, sidebar,
 // grid) can keep importing from this file.

@@ -73,9 +73,9 @@ export function LicenseCell({
             {license.name}
           </h3>
           <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
-            {license.id === "professional" ||
-            license.id === "agency" ? (
-              <TierTagline tier={license.id === "professional" ? "professional" : "agency"} />
+            {license.id === "per-project" ||
+            license.id === "enterprise" ? (
+              <TierTagline tier={license.id === "per-project" ? "professional" : "agency"} />
             ) : (
               license.tagline
             )}
@@ -83,7 +83,7 @@ export function LicenseCell({
         </header>
 
         {isRecommended ||
-        (license.id === "agency") ? (
+        (license.id === "enterprise") ? (
           <TierCardPricing license={license} />
         ) : (
           <>

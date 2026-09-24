@@ -9,14 +9,15 @@ import type { LicenseType, LicenseTypeId } from "@/lib/pricing"
 import { usePricingCadence } from "./pricing-cadence-context"
 
 /**
- * Subscription price per tier, used when the cadence is flipped to
- * `subscription`. Tiers without a subscription (open-community,
- * enterprise) keep their one-shot / custom pricing regardless of the
- * cadence state and bypass this component.
+ * Monthly price when the cadence is flipped to `subscription`.
+ *
+ * Only `subscription` has a monthly figure in the licensing model;
+ * other tiers (`open-community`, `per-project`, `enterprise`) keep
+ * their one-shot or custom pricing regardless of cadence and bypass
+ * the monthly branch below.
  */
 const SUBSCRIPTION_PRICE: Partial<Record<LicenseTypeId, number>> = {
   subscription: 23,
-  agency: 79,
 }
 
 /**
