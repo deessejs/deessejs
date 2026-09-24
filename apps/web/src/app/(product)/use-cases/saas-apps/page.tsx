@@ -13,15 +13,7 @@ import {
   type MoreTile,
   SimulatedSection,
 } from "../_components/simulated-section"
-import {
-  AdminDashboardMockup,
-  ApiEndpointMockup,
-  AuthFlowMockup,
-  BillingWidgetMockup,
-  CmsEditorMockup,
-  DbTerminalMockup,
-  MultiTenantSwitcherMockup,
-} from "../_components/mockups"
+import { TestMockup } from "../_components/mockups/test-mockup"
 
 export const metadata: Metadata = {
   title: "SaaS apps | DeesseJS",
@@ -119,7 +111,7 @@ export default function SaasAppsPage() {
             "OAuth providers behind the same Better Auth contract",
             "Sessions scoped to orgs, not just users",
           ]}
-          mockup={<AuthFlowMockup />}
+          mockup={<TestMockup reverse={false} />}
         />
 
         {/* 3. Database simulation */}
@@ -132,7 +124,7 @@ export default function SaasAppsPage() {
             "pg-mem for unit tests, no Postgres required",
             "Migration history generated, never hand-edited",
           ]}
-          mockup={<DbTerminalMockup />}
+          mockup={<TestMockup reverse={true} />}
           reverse
         />
 
@@ -146,7 +138,7 @@ export default function SaasAppsPage() {
             "OpenAPI generated from the router",
             "Auth and rate limits applied per procedure",
           ]}
-          mockup={<ApiEndpointMockup />}
+          mockup={<TestMockup reverse={false} />}
         />
 
         {/* 5. Billing simulation */}
@@ -159,7 +151,7 @@ export default function SaasAppsPage() {
             "Usage metering shape matches your contract",
             "Webhook handler typed, ready to extend",
           ]}
-          mockup={<BillingWidgetMockup />}
+          mockup={<TestMockup reverse={true} />}
           reverse
         />
 
@@ -173,7 +165,7 @@ export default function SaasAppsPage() {
             "Preview pane matches production render",
             "Taxonomy wired into search and the KB",
           ]}
-          mockup={<CmsEditorMockup />}
+          mockup={<TestMockup reverse={false} />}
         />
 
         {/* 7. Multi-tenant switcher (roadmap Q4) */}
@@ -186,7 +178,7 @@ export default function SaasAppsPage() {
             "Member roles scoped to the org",
             "Audit log records every cross-org call",
           ]}
-          mockup={<MultiTenantSwitcherMockup />}
+          mockup={<TestMockup reverse={true} />}
           reverse
         />
 
@@ -200,7 +192,7 @@ export default function SaasAppsPage() {
             "User table filters by role and last-seen",
             "Bulk actions hit the same RPC as the API",
           ]}
-          mockup={<AdminDashboardMockup />}
+          mockup={<TestMockup reverse={false} />}
         />
 
         {/* 9. And more - dense grid of remaining capabilities */}
