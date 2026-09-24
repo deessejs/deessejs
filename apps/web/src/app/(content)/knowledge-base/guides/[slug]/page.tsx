@@ -146,7 +146,7 @@ export default async function KnowledgeGuidePage({
             Similar guides
           </h2>
           {related.length > 0 ? (
-            <KbCardGrid>
+            <KbCardGrid className="md:grid-cols-2 lg:grid-cols-2">
               {related.map((relatedGuide) => (
                 <li key={relatedGuide.slug}>
                   <GuideCard guide={relatedGuide} />
