@@ -11,6 +11,7 @@ import {
 } from "@workspace/ui/components/breadcrumb"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
 import { TopicGuideList } from "@/components/knowledge-base/topic-guide-list"
+import { TopicEmptyState } from "@/components/knowledge-base/topic-empty-state"
 import { TopicTagPill } from "@/components/knowledge-base/badges"
 import { ORG_ID } from "@/lib/seo/organization"
 
@@ -91,9 +92,7 @@ export default async function KnowledgeTopicPage({
           ) : null}
         </div>
         {topicGuides.length === 0 ? (
-          <p className="text-copy-14 text-muted-foreground leading-7">
-            No guides in this topic yet.
-          </p>
+          <TopicEmptyState topicTitle={topicDoc.title} />
         ) : (
           <div className="-mx-4 sm:-mx-6 lg:mx-0">
             <TopicGuideList guides={topicGuides} />
