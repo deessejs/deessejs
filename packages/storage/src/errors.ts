@@ -1,26 +1,40 @@
 /**
  * Storage error taxonomy.
  *
- * All errors thrown by this package extend {@link StorageError}. The
- * subclass names are the public contract — callers branch on
- * `instanceof`, not on string matching. Adding a new subclass is a
- * semver-minor (additive); changing the inheritance is a semver-major.
+ * Errors thrown by this package extend {@link StorageError}. Every
+ * subclass carries a stable `code` field so log scrapers and docs
+ * can reference errors by symbol, not by message string.
  *
- * Pattern: borrowed from npm's `npm ERR_*` semantics. Each subclass
- * carries a stable `code` field so external log scrapers and
- * documentation can reference errors by symbol, not by message.
+ * Adding a new subclass is semver-minor (additive). Changing the
+ * inheritance of an existing subclass is semver-major.
+ *
+ * This is the **low-level** taxonomy. It maps HTTP and transport
+ * failures at the bytes layer. Higher-level concerns (cache miss,
+ * offline mode, malformed descriptor) live in `@workspace/registry-client`,
+ * not here. Storage errors know nothing about templates, blocks,
+ * descriptors, or JSON.
+ *
+ * Mappings to HTTP status:
+ *   StorageNotFoundError       <- 404 / NoSuchKey / NotFound
+ *   StorageAuthError           <- 401 / 403 / AccessDenied / InvalidAccessKeyId
+ *   StorageNetworkError        <- 5xx / network failure / timeout / TLS
+ *
+ * The CLI / consumer maps these to UX: 404 = missing template, 403 =
+ * missing credentials, 5xx = retry. They never see this class
+ * hierarchy treated as anything other than "I cannot get this
+ * object".
  */
 
 export class StorageError extends Error {
   /** Stable identifier for log aggregation. Lowercase, dot-separated. */
   readonly code: string
-  /** The slug and ref that triggered the failure, if known. */
-  readonly context: { slug?: string; ref?: string }
+  /** Object key (if known) that triggered the failure. */
+  readonly context: { key?: string }
 
   constructor(
     code: string,
     message: string,
-    context: { slug?: string; ref?: string } = {},
+    context: { key?: string } = {},
     options?: { cause?: unknown },
   ) {
     super(message)
@@ -34,17 +48,18 @@ export class StorageError extends Error {
 }
 
 /**
- * The requested slug does not exist in the registry, or the ref is not
- * pinned to any published version. Maps to HTTP 404.
+ * The object does not exist at the given key. Maps to HTTP 404 in S3
+ * terminology, or the equivalent of `NoSuchKey` for native providers.
  *
- * Note: this does NOT distinguish "never published" from "removed by
- * the registry maintainer". Callers that need that distinction should
- * call `provider.publish` audit logs; consumers see only "not_found".
+ * Provoking this on a request that "should" succeed is a bug in the
+ * caller's key generation. We do not distinguish "never existed"
+ * from "deleted between calls"; the caller can read an audit log if
+ * that distinction matters.
  */
 export class StorageNotFoundError extends StorageError {
   constructor(
     message: string,
-    context: { slug?: string; ref?: string } = {},
+    context: { key?: string } = {},
     options?: { cause?: unknown },
   ) {
     super("storage.not_found", message, context, options)
@@ -52,13 +67,19 @@ export class StorageNotFoundError extends StorageError {
 }
 
 /**
- * Authentication failed for an authenticated provider (V2+). Maps to
- * HTTP 401/403. The V1 git-tags provider does not throw this error.
+ * The provider rejected the credentials, the credentials are missing,
+ * or the storage backend refused the request on auth grounds. Maps to
+ * HTTP 401 / 403 / S3 `AccessDenied` / `InvalidAccessKeyId`.
+ *
+ * For SigV4 this typically means: clock skew outside the ±5 min
+ * tolerance, a malformed canonical request, or a wrong access key.
+ * The error message should distinguish these to the extent the
+ * provider reports them.
  */
 export class StorageAuthError extends StorageError {
   constructor(
     message: string,
-    context: { slug?: string; ref?: string } = {},
+    context: { key?: string } = {},
     options?: { cause?: unknown },
   ) {
     super("storage.auth", message, context, options)
@@ -66,70 +87,19 @@ export class StorageAuthError extends StorageError {
 }
 
 /**
- * The local cache was asked for an item that has never been fetched.
- * Distinct from `StorageNotFoundError` (which means the *registry*
- * has no such item): this means the local cache is empty for a
- * provider-known item.
+ * The fetch failed for a transient reason: DNS, TLS, timeout, 5xx,
+ * connection reset. Callers may retry with backoff. Maps to network
+ * errors and HTTP 5xx.
  *
- * Triggers the offline-mode violation in CI: a CI run that needs a
- * descriptor must pre-populate the cache via `provider.acquire`
- * outside of CI.
- */
-export class StorageCacheMissError extends StorageError {
-  constructor(
-    message: string,
-    context: { slug?: string; ref?: string } = {},
-    options?: { cause?: unknown },
-  ) {
-    super("storage.cache_miss", message, context, options)
-  }
-}
-
-/**
- * The fetch failed for a transient reason (DNS, TLS, timeout, 5xx).
- * Callers may retry with backoff. Maps to network-level errors and
- * HTTP 5xx.
+ * Distinct from {@link StorageAuthError} so the consumer can decide
+ * "retry" vs "show config error" without parsing messages.
  */
 export class StorageNetworkError extends StorageError {
   constructor(
     message: string,
-    context: { slug?: string; ref?: string } = {},
+    context: { key?: string } = {},
     options?: { cause?: unknown },
   ) {
     super("storage.network", message, context, options)
-  }
-}
-
-/**
- * The provider attempted an outbound HTTP request while in offline
- * mode (CI environment or explicit override). Per ADR-033 §171, this
- * is a hard refusal — not a soft warning. Resolved by either pre-
- * populating the cache or running outside CI.
- */
-export class StorageOfflineViolationError extends StorageError {
-  constructor(
-    message: string,
-    context: { slug?: string; ref?: string } = {},
-    options?: { cause?: unknown },
-  ) {
-    super("storage.offline_violation", message, context, options)
-  }
-}
-
-/**
- * The descriptor was fetched but its Zod schema validation failed.
- * The wire shape is rejected. This is a content error, not a network
- * error — retrying won't help.
- *
- * The `cause` carries the original ZodError so callers can format
- * per-issue diagnostics.
- */
-export class StorageInvalidDescriptorError extends StorageError {
-  constructor(
-    message: string,
-    context: { slug?: string; ref?: string } = {},
-    options?: { cause?: unknown },
-  ) {
-    super("storage.invalid_descriptor", message, context, options)
   }
 }

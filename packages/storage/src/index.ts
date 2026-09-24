@@ -1,55 +1,32 @@
 /**
  * Public barrel.
  *
- * Re-exports the surface that other packages can depend on. Provider
- * implementations are NOT re-exported here — consumers import them
- * explicitly (`@workspace/storage/providers/git-tags`) for tree
- * shaking.
+ * Re-exports the symbols consumers need:
+ *
+ *   - {@link ObjectStore}, {@link ObjectKey}, {@link ObjectMeta},
+ *     {@link ObjectBody}: the storage abstraction interface and
+ *     value types.
+ *   - The four storage error classes.
+ *
+ * Provider implementations are NOT re-exported here. Consumers
+ * import them explicitly (`@workspace/storage/providers/local-fs`,
+ * `@workspace/storage/providers/r2`) at the call site. This keeps
+ * tree-shaking declarative.
+ *
+ * Nothing about templates, descriptors, JSON, Zod, or namespaces
+ * belongs here. This barrel is the bytes layer.
  */
 
 export type {
-  ParsedDescriptor,
-  DescriptorProvider,
-  BranchableDescriptorProvider,
-  BranchHandle,
-  AuthenticatedDescriptorProvider,
-} from "./provider.js"
+  ObjectStore,
+  ObjectKey,
+  ObjectMeta,
+  ObjectBody,
+} from "./object-store.js"
 
 export {
   StorageError,
   StorageNotFoundError,
   StorageAuthError,
-  StorageCacheMissError,
   StorageNetworkError,
-  StorageOfflineViolationError,
-  StorageInvalidDescriptorError,
 } from "./errors.js"
-
-export { WireEnvelope, type WireEnvelope as WireEnvelopeType } from "./envelope.js"
-
-export {
-  DEFAULT_BASE,
-  LATEST,
-  parseRef,
-  refToString,
-  catalogueUrl,
-  itemUrl,
-  latestUrl,
-  type Ref,
-} from "./resolve.js"
-
-export { detectOffline, type OfflineContext } from "./offline.js"
-
-export {
-  read as readCache,
-  write as writeCache,
-  purge as purgeCache,
-  purgeProvider as purgeProviderCache,
-  readCatalogue,
-  writeCatalogue,
-  descriptorCachePath,
-  httpCacheKey,
-  type CachedDescriptor,
-  type CachedCatalogue,
-  type ProviderId,
-} from "./cache.js"
