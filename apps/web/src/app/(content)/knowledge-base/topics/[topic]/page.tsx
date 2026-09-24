@@ -1,4 +1,3 @@
-import * as React from "react"
 import { notFound } from "next/navigation"
 import { allKbTopics, allKbGuides } from "content-collections"
 
@@ -11,8 +10,7 @@ import {
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
-import { GuideCard } from "@/components/knowledge-base/guide-card"
-import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
+import { TopicGuideList } from "@/components/knowledge-base/topic-guide-list"
 import { TopicTagPill } from "@/components/knowledge-base/badges"
 import { ORG_ID } from "@/lib/seo/organization"
 
@@ -97,21 +95,7 @@ export default async function KnowledgeTopicPage({
             No guides in this topic yet.
           </p>
         ) : (
-          <KbCardGrid>
-            {topicGuides.map((guide) => (
-              <li key={guide.slug}>
-                <GuideCard
-                  guide={
-                    {
-                      ...guide,
-                      date: guide.date,
-                      readingTime: guide.readingTime ?? 0,
-                    } as React.ComponentProps<typeof GuideCard>["guide"]
-                  }
-                />
-              </li>
-            ))}
-          </KbCardGrid>
+          <TopicGuideList guides={topicGuides} />
         )}
       </section>
 
