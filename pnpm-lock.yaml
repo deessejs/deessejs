@@ -117,6 +117,9 @@ catalogs:
     next:
       specifier: ^16.2.10
       version: 16.2.10
+    next-intl:
+      specifier: ^4.13.4
+      version: 4.14.6
     pg:
       specifier: ^8.22.0
       version: 8.22.0
@@ -282,6 +285,9 @@ importers:
       '@workspace/env':
         specifier: workspace:*
         version: link:../../packages/env
+      '@workspace/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -300,6 +306,9 @@ importers:
       next:
         specifier: 'catalog:'
         version: 16.2.10(@playwright/test@1.62.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      next-intl:
+        specifier: 'catalog:'
+        version: 4.14.6(next@16.2.10(@playwright/test@1.62.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -562,6 +571,9 @@ importers:
       '@workspace/env':
         specifier: workspace:*
         version: link:../../packages/env
+      '@workspace/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -580,6 +592,9 @@ importers:
       next:
         specifier: 'catalog:'
         version: 16.2.10(@playwright/test@1.62.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      next-intl:
+        specifier: 'catalog:'
+        version: 4.14.6(next@16.2.10(@playwright/test@1.62.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
