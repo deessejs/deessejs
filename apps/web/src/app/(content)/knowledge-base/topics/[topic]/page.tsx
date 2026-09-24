@@ -36,7 +36,7 @@ export default async function KnowledgeTopicPage({
     .sort((a, b) => a.order - b.order)
 
   return (
-    <section className="mx-auto max-w-4xl py-16">
+    <section className="mx-auto max-w-4xl py-12 sm:py-16 lg:py-24">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -55,7 +55,7 @@ export default async function KnowledgeTopicPage({
         <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
           {topicDoc.title}
         </h1>
-        <p className="mt-4 text-pretty text-lg text-muted-foreground">
+        <p className="text-pretty text-base text-muted-foreground sm:text-lg">
           {topicDoc.description}
         </p>
         {topicDoc.tags.length > 0 ? (
