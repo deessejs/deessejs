@@ -87,7 +87,7 @@ export default async function KnowledgeGuidePage({
     )
   }
 
-  const related = getRelatedGuides(slug, 3)
+  const related = getRelatedGuides(slug, 2)
 
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
