@@ -46,6 +46,7 @@ const footerSections: ReadonlyArray<{
       { label: "Principles", href: "/principles" },
       { label: "Vision", href: "/vision" },
       { label: "Enterprise", href: "/enterprise" },
+      { label: "Delivery", href: "/delivery" },
       { label: "Help", href: "/help" },
     ],
   },
