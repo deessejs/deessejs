@@ -8,7 +8,6 @@ import {
   P,
   Blockquote,
   List,
-  InlineCode,
   Link,
   Strong,
   Em,
@@ -41,9 +40,9 @@ function MdxPre({
   children?: ReactNode
 }) {
   return (
-    <div className="bg-background w-full rounded-md p-4 overflow-hidden border border-border">
-      <div className="overflow-x-auto">{children}</div>
-    </div>
+    <pre className="bg-background w-full overflow-x-auto rounded-md border border-border p-4 font-mono text-sm">
+      <code className="font-mono">{children}</code>
+    </pre>
   )
 }
 
@@ -65,7 +64,6 @@ export const mdxComponents = {
   blockquote: Blockquote,
   ul: List,
   ol: List,
-  code: InlineCode,
   pre: MdxPre,
   a: Link,
   strong: Strong,

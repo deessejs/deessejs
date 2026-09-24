@@ -172,6 +172,20 @@ html.dark .shiki span {
     background-color: var(--shiki-dark-bg) !important;
 }
 
+/*
+ * Inline-code chip. Applied to <code> only when it's NOT inside a
+ * <pre> — Shiki emits <pre><code> for code blocks and we must let
+ * the tokens speak for themselves (Shiki's inline color style would
+ * otherwise be overridden by the chip background). Selectors stay
+ * repo-wide so prose anywhere — blog, KB, changelog, marketing —
+ * gets the chip consistently.
+ */
+@layer base {
+    code:not(pre code) {
+        @apply relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold;
+    }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
