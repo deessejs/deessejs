@@ -95,7 +95,9 @@ export default async function KnowledgeTopicPage({
             No guides in this topic yet.
           </p>
         ) : (
-          <TopicGuideList guides={topicGuides} />
+          <div className="-mx-4 sm:-mx-6 lg:-mx-8">
+            <TopicGuideList guides={topicGuides} />
+          </div>
         )}
       </section>
 
