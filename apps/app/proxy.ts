@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { API_AUTH_PATH } from "@workspace/api/base-path"
+import createMiddleware from "next-intl/middleware"
+
+import { routing } from "@workspace/i18n/routing"
 import type { Bcp47 } from "@workspace/i18n"
+import { API_AUTH_PATH } from "@workspace/api/base-path"
 
 const SUPPORTED_LOCALES = ["en", "fr"] as const satisfies readonly Bcp47[]
 
@@ -56,8 +59,16 @@ const DEVICE_MATCHER = ["/device", "/device/:path*"].flatMap((p) => [
   ...SUPPORTED_LOCALES.map((locale) => `/${locale}${p}` as string),
 ])
 
+// Match everything under the proxy so the next-intl middleware runs
+// first (auto-detection) and the auth gate runs after. The next-intl
+// middleware itself skips `/api/*`, `_next/*`, etc., via its own matcher;
+// the auth gate only acts on `PROTECTED_PREFIXES` / `AUTH_PREFIXES`.
+// We therefore union all routes the proxy must observe:
+//   - next-intl matcher:  /((?!api|_next|_vercel|favicon\\.ico|.*\\..*).*)
+//   - auth gate:          the dual-form protected/auth/device paths
 export const config = {
   matcher: [
+    "/((?!api|_next|_vercel|favicon\\.ico|.*\\..*).*)",
     ...PROTECTED_MATCHER,
     ...AUTH_MATCHER,
     ...DEVICE_MATCHER,
@@ -86,24 +97,37 @@ function stripLocalePrefix(pathname: string): string {
   return rest !== undefined ? `/${rest}` : "/"
 }
 
-// The proxy uses a pure HTTP fetch to /api/auth/get-session
-// instead of importing better-auth directly. better-auth transitively
-// imports postgres via the @better-auth/drizzle adapter, which
-// Turbopack cannot bundle for any runtime (fs/net/os imports fail
-// at build time). The fetch path uses only Web APIs that work in
-// every runtime Next.js supports. The auth route handler at
-// /api/auth/get-session runs on the Node runtime in the api package,
-// where postgres works natively.
-//
-// Next.js 16 always runs proxy files on the Node.js runtime —
-// setting `export const runtime = "nodejs"` here is rejected at build
-// time ("Route segment config is not allowed in Proxy file").
+/** Return the locale prefix segment from a pathname (e.g. `/fr/home` → `/fr`). Empty string for unprefixed paths. */
+function prefixOf(pathname: string): string {
+  const match = pathname.match(/^\/(en|fr|de)(?:\/|$)/)
+  return match ? `/${match[1]}` : ""
+}
+
+// Build the next-intl middleware once at module top-level. The
+// middleware returns either a `NextResponse` (locale detection
+// redirect or rewrite) or `undefined` (let the request pass through
+// to the next handler — the auth gate below).
+const intlMiddleware = createMiddleware(routing)
 
 interface GetSessionResponse {
   session?: { user?: { emailVerified?: boolean } }
 }
 
 export async function proxy(request: NextRequest) {
+  // 1. Locale detection: next-intl may redirect on first hit
+  // (cookie + Accept-Language detection). If it returns a
+  // NextResponse, the auth gate is irrelevant — the user is being
+  // bounced to the prefixed URL before any auth check.
+  const intlResponse = intlMiddleware(request)
+  if (intlResponse && intlResponse.status >= 300 && intlResponse.status < 400) {
+    return intlResponse
+  }
+  // If next-intl returns a rewrite (the `/_next/` internal rewrite
+  // for `[[...locale]]` segments), we continue through the auth
+  // gate with the rewritten URL.
+  // See https://next-intl.dev/docs/routing/middleware for the
+  // contract.
+
   const pathname = request.nextUrl.pathname
   const stripped = stripLocalePrefix(pathname)
   const isProtected = PROTECTED_PREFIXES.some(
@@ -114,12 +138,22 @@ export async function proxy(request: NextRequest) {
   )
 
   if (!isProtected && !isAuthPage) {
-    return NextResponse.next()
+    return intlResponse ?? NextResponse.next()
   }
 
-  // The proxy self-fetches `/api/v1/auth/get-session`. The fetch
-  // hits the *same* origin the request is processed under — see
-  // ADR-021 §"Decision #4".
+  // The proxy self-fetches `/api/v1/auth/get-session` instead of
+  // importing `better-auth` directly. better-auth transitively
+  // imports postgres via the @better-auth/drizzle adapter, which
+  // Turbopack cannot bundle for any runtime (fs/net/os imports fail
+  // at build time). The fetch path uses only Web APIs that work in
+  // every runtime Next.js supports. The auth route handler at
+  // /api/auth/get-session runs on the Node runtime in the api package,
+  // where postgres works natively.
+  //
+  // Next.js 16 always runs proxy files on the Node.js runtime —
+  // setting `export const runtime = "nodejs"` here is rejected at build
+  // time ("Route segment config is not allowed in Proxy file").
+
   const getSessionUrl = new URL(
     `${API_AUTH_PATH}/get-session`,
     request.nextUrl.origin,
@@ -159,11 +193,5 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(homeUrl)
   }
 
-  return NextResponse.next()
-}
-
-/** Return the locale prefix segment from a pathname (e.g. `/fr/home` → `/fr`). Empty string for unprefixed paths. */
-function prefixOf(pathname: string): string {
-  const match = pathname.match(/^\/(en|fr|de)(?:\/|$)/)
-  return match ? `/${match[1]}` : ""
+  return intlResponse ?? NextResponse.next()
 }

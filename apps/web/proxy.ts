@@ -3,7 +3,8 @@ import createMiddleware from "next-intl/middleware"
 import { routing } from "@workspace/i18n/routing"
 
 /**
- * Marketing-site middleware — per ADR-031 Decision #2.
+ * Marketing-site proxy — per Next 16, `middleware.ts` is renamed
+ * to `proxy.ts`. There can only be one such file per app.
  *
  * `createMiddleware(routing)` with `localePrefix: 'as-needed'` and
  * `localeDetection: true` provides:
