@@ -64,7 +64,7 @@ export function FinalCta({
   return (
     <div
       className={cn(
-        "grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x",
+        "grid grid-cols-1 lg:grid-cols-2 divide-y border-t divide-border lg:divide-y-0 lg:divide-x",
         noBorderB ? "border-b-0" : "border-b border-border",
       )}
     >
