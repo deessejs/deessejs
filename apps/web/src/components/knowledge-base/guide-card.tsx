@@ -96,6 +96,7 @@ export function GuideCard({
                       handle: guide.author.handle,
                     }}
                     size={20}
+                    asLink={false}
                   />
                   <span className="text-xs text-foreground">
                     {guide.author.name}

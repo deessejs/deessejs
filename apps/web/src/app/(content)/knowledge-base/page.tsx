@@ -161,7 +161,11 @@ function GuideCardCompact({
               <div className="relative z-10 flex flex-wrap items-center gap-x-3 gap-y-1">
                 {guide.author ? (
                   <span className="inline-flex items-center gap-2">
-                    <AuthorAvatarLink author={guide.author} size={20} />
+                    <AuthorAvatarLink
+                      author={guide.author}
+                      size={20}
+                      asLink={false}
+                    />
                     <span className="text-xs text-foreground">
                       {guide.author.name}
                     </span>
