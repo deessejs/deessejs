@@ -17,7 +17,7 @@ import { TRUST_BADGES } from "@/lib/enterprise/trust-badges"
  * lets `gap-px` carry the separator between cells, and per-cell
  * `bg-background` covers the inside. This handles the last-row
  * short-cell case correctly (no dropped right border) and avoids
- * the `[&>li:nth-child(...)]:md:border-r-0` arithmetic that the
+ * the Pattern A (per-position border-r) arithmetic that the
  * previous divide-* implementation required.
  *
  * Outer `border-b border-border` matches the divider on every
