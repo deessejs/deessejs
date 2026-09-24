@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../src/orpc/index.ts"],"names":[],"mappings":"AAGA,OAAO,EAAE,IAAI,EAAE,MAAM,WAAW,CAAA;AAChC,YAAY,EAAE,WAAW,EAAE,MAAM,mBAAmB,CAAA;AACpD,OAAO,EAAE,SAAS,EAAE,MAAM,sBAAsB,CAAA;AAChD,OAAO,EAAE,SAAS,EAAE,KAAK,SAAS,EAAE,MAAM,wBAAwB,CAAA"}

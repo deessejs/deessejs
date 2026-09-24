@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
+import { FlickeringGrid } from "@/app/[locale]/(marketing)/_components/flickering-grid"
 import { ReleaseTimeline } from "@/components/blog/release-group"
 import { getAllReleases } from "@/lib/blog/releases"
 import { sortReleasesByDateDesc } from "@/lib/blog/types"

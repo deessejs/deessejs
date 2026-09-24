@@ -1,0 +1,27 @@
+/**
+ * Templates registry data for the DeesseJS CLI.
+ *
+ * Each entry declares a slug, the GitHub `owner/repo` to fetch live data
+ * from, a static `layer` (open-community | pro | enterprise), and an
+ * editorial `category`. The live fields (name, description, license,
+ * labels, stars, updatedAt, readme) are populated at request time by
+ * `core/templates/enrich.ts`.
+ *
+ * V1 ships with a single entry: `saas-starter`. Each additional template
+ * requires its own GitHub repo to live at the path declared by `owner/repo`.
+ * Adding a row here without a matching repo on GitHub makes the templates
+ * endpoint return 503 (fail loud).
+ */
+import type { TemplateV1 } from "@workspace/contracts/v1";
+export type Template = TemplateV1;
+export type TemplateLayer = "open-community" | "pro" | "enterprise";
+export type RegistryEntry = TemplateV1 & {
+    /**
+     * Static editorial layer for the template. Layer is not fetched from
+     * GitHub — it is a marketing/business decision, not a property of the
+     * repo. The fetcher preserves this field on the wire shape.
+     */
+    layer: TemplateLayer;
+};
+export declare const TEMPLATES: RegistryEntry[];
+//# sourceMappingURL=templates.d.ts.map

@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card"
 
-import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
+import { FlickeringGrid } from "@/app/[locale]/(marketing)/_components/flickering-grid"
 import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
 import { GuideList } from "@/components/knowledge-base/guide-list"
 import { TopicTagPill, GuideProductPill } from "@/components/knowledge-base/badges"

@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     "@workspace/auth",
     "@workspace/utils",
     "@workspace/i18n",
+    "@workspace/cookies",
   ],
   images: {
     remotePatterns: [

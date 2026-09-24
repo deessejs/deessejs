@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { Badge } from "@workspace/ui/components/badge"
 import { BlogSearch } from "@/components/blog/blog-search"
-import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
+import { FlickeringGrid } from "@/app/[locale]/(marketing)/_components/flickering-grid"
 import { getAllPosts } from "@/lib/blog/posts"
 import { getAllTags } from "@/lib/blog/types"
 

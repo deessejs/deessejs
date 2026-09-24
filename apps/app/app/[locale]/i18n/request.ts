@@ -9,8 +9,8 @@ import { sharedMessages } from "@workspace/i18n/shared"
 import { getRequestConfig } from "next-intl/server"
 import { defaultLocale, isSupportedLocale } from "@workspace/i18n"
 
-import appMessages from "../../messages/en.json"
-import appMessagesFr from "../../messages/fr.json"
+import appMessages from "../../../../messages/en.json"
+import appMessagesFr from "../../../../messages/fr.json"
 
 const APP_MESSAGES = {
   en: appMessages,

@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     "@workspace/ui",
     "@workspace/i18n",
+    "@workspace/cookies",
   ],
   pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
   serverExternalPackages: ["shiki"],

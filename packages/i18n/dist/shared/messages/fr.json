@@ -1,0 +1,49 @@
+{
+    "Common": {
+        "Cancel": "Annuler",
+        "Save": "Enregistrer",
+        "Loading": "Chargement",
+        "Continue": "Continuer",
+        "Back": "Retour",
+        "Submit": "Envoyer",
+        "Discard": "Abandonner",
+        "Confirm": "Confirmer",
+        "Close": "Fermer",
+        "Open": "Ouvrir",
+        "Yes": "Oui",
+        "No": "Non"
+    },
+    "Error": {
+        "network": "Erreur réseau. Vérifiez votre connexion puis réessayez.",
+        "unauthorized": "Vous devez vous connecter pour continuer.",
+        "forbidden": "Vous n'avez pas accès à cette ressource.",
+        "notFound": "La ressource demandée n'existe pas.",
+        "serverError": "Une erreur est survenue de notre côté. Réessayez plus tard.",
+        "unknown": "Une erreur inattendue est survenue.",
+        "tryAgain": "Réessayer",
+        "contact": "Contacter le support"
+    },
+    "Form": {
+        "required": "Ce champ est obligatoire.",
+        "invalid": "Veuillez saisir une valeur valide.",
+        "optional": "(facultatif)",
+        "minLength": "Doit comporter au moins {min} caractères.",
+        "maxLength": "Doit comporter au plus {max} caractères.",
+        "passwordStrength": {
+            "Weak": "Faible",
+            "Fair": "Moyen",
+            "Good": "Bon",
+            "Strong": "Excellent"
+        },
+        "email": "Veuillez saisir une adresse e-mail valide.",
+        "placeholder": "Saisissez ici…"
+    },
+    "Confirm": {
+        "delete": "Cette action est définitive. Les données seront supprimées et ne pourront pas être restaurées.",
+        "signOut": "Vous serez déconnecté de votre compte.",
+        "revoke": "Cette session sera révoquée sur l'appareil.",
+        "unlink": "Vous ne pourrez plus vous connecter avec ce compte.",
+        "cancel": "Annuler",
+        "unsavedChanges": "Vous avez des modifications non enregistrées. Voulez-vous vraiment quitter ?"
+    }
+}
