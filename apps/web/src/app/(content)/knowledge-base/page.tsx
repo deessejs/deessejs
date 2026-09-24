@@ -5,16 +5,14 @@ import { allKbGuides, allKbTopics } from "content-collections"
 
 import { Card } from "@workspace/ui/components/card"
 import {
-  CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@workspace/ui/components/card"
 
 import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
 import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
 import { GuideList } from "@/components/knowledge-base/guide-list"
-import { TopicTagPill, GuideProductPill } from "@/components/knowledge-base/badges"
+import { GuideProductPill } from "@/components/knowledge-base/badges"
 import { AuthorAvatarLink } from "@/components/blog/author-avatar"
 
 export const metadata: Metadata = {
@@ -87,29 +85,25 @@ function TopicCard({
       <Link
         href={`/knowledge-base/topics/${topic.slug}`}
         aria-label={`Browse the ${topic.title} topic`}
-        className="group flex h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="group flex h-full flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <Card className="flex w-full flex-1 flex-col rounded-none border-0 bg-background ring-0 transition-colors group-hover:bg-accent/30 group-focus-within:bg-accent/30">
           <CardHeader className="gap-3">
-            <CardTitle className="text-label-16 font-semibold tracking-tight text-balance underline-offset-4 group-hover:underline">
+            <h3 className="text-balance text-xl font-medium tracking-tight text-foreground">
               {topic.title}
-            </CardTitle>
-            <CardDescription className="text-copy-14 text-muted-foreground leading-7 text-pretty">
+            </h3>
+            <CardDescription className="text-sm text-muted-foreground text-pretty">
               {topic.description}
             </CardDescription>
           </CardHeader>
-          {topic.tags.length > 0 ? (
-            <CardContent className="flex flex-wrap gap-1.5">
-              {topic.tags.slice(0, 3).map((tag) => (
-                <TopicTagPill key={tag}>{tag}</TopicTagPill>
-              ))}
-            </CardContent>
-          ) : null}
-          <div className="mt-auto flex items-center justify-between px-6 pb-6 text-xs text-muted-foreground">
+          <div className="mt-auto flex items-center justify-between px-6 text-xs text-muted-foreground">
             <span>
               {guidesCount} {guidesCount === 1 ? "guide" : "guides"}
             </span>
-            <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-1 text-foreground" />
+            <ArrowRight
+              aria-hidden="true"
+              className="size-3.5 transition-transform duration-200 group-hover:translate-x-1"
+            />
           </div>
         </Card>
       </Link>
@@ -149,9 +143,9 @@ function GuideCardCompact({
                 </div>
               ) : null}
             </div>
-            <CardTitle className="mt-1 text-balance text-xl tracking-tight">
+            <h3 className="mt-1 text-balance text-xl font-medium tracking-tight text-foreground">
               {guide.title}
-            </CardTitle>
+            </h3>
             <CardDescription className="mt-2 line-clamp-3 text-sm text-muted-foreground">
               {guide.description}
             </CardDescription>
@@ -180,7 +174,7 @@ function GuideCardCompact({
               {guide.readingTime ? (
                 <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1">
-                    <Clock className="size-3" />
+                    <Clock aria-hidden="true" className="size-3" />
                     {guide.readingTime} min read
                   </span>
                 </div>
