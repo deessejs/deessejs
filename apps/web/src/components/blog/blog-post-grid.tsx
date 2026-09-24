@@ -60,7 +60,7 @@ export function PostCardGrid({
           className={`-mr-px -mb-px grid list-none p-0 ${GRID_COLS_CLASS[gridCols]}`}
         >
           {filteredPosts.map((post) => (
-            <li className="border-b border-r border-border">
+            <li key={post.slug} className="border-b border-r border-border">
               <PostCard post={post} />
             </li>
           ))}
