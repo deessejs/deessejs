@@ -39,7 +39,7 @@ export function TrustAndCompliance() {
           {TRUST_BADGES.map((badge) => (
             <div
               key={badge.label}
-              className="flex flex-col gap-1 p-5 transition-colors hover:bg-accent/40 lg:p-6"
+              className="flex flex-col gap-1 bg-background p-5 transition-colors hover:bg-accent/40 lg:p-6"
             >
               <span className="text-heading-16 font-semibold tracking-tight text-foreground">
                 {badge.label}
