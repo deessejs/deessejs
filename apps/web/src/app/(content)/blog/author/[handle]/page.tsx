@@ -4,6 +4,7 @@ import Link from "next/link"
 import { allAuthors, allPosts } from "content-collections"
 import { PostCard } from "@/components/blog/post-card"
 import { buildPersonJsonLd } from "@/lib/seo/person-jsonld"
+import { jsonLdScript } from "@/lib/json-ld"
 
 type Params = { handle: string }
 
@@ -67,7 +68,7 @@ export default async function AuthorPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(buildPersonJsonLd(author)),
+          __html: jsonLdScript(buildPersonJsonLd(author)),
         }}
       />
       <Link

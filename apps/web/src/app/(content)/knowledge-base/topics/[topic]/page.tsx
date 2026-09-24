@@ -16,6 +16,7 @@ import { GuideCard } from "@/components/knowledge-base/guide-card"
 import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
 import { TopicTagPill } from "@/components/knowledge-base/badges"
 import { ORG_ID } from "@/lib/seo/organization"
+import { jsonLdScript } from "@/lib/json-ld"
 
 type Params = { topic: string }
 
@@ -43,7 +44,7 @@ export default async function KnowledgeTopicPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: jsonLdScript({
             "@context": "https://schema.org",
             "@type": "TechArticle",
             headline: topicDoc.title,
@@ -67,7 +68,7 @@ export default async function KnowledgeTopicPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: jsonLdScript({
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [

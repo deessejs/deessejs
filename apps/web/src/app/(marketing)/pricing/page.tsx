@@ -33,6 +33,7 @@ import {
 
 import { MarketingPage } from "../_components/marketing-page"
 import { TechStackGrid } from "../_components/tech-stack-grid"
+import { jsonLdScript } from "@/lib/json-ld"
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -168,7 +169,7 @@ const PricingPage = () => {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: jsonLdScript({
             "@context": "https://schema.org",
             "@type": "FAQPage",
             mainEntity: PRICING_FAQ.map((item) => ({

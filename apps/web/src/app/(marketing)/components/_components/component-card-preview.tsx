@@ -145,25 +145,29 @@ function renderPreview(slug: string) {
         <div className="flex flex-wrap items-center gap-1">
           <Badge variant="secondary" tabIndex={-1}>
             urgent
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               aria-label="Remove urgent"
               className="ml-1"
               tabIndex={-1}
             >
               ×
-            </button>
+            </Button>
           </Badge>
           <Badge variant="success" tabIndex={-1}>
             shipped
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               aria-label="Remove shipped"
               className="ml-1"
               tabIndex={-1}
             >
               ×
-            </button>
+            </Button>
           </Badge>
         </div>
       )

@@ -13,6 +13,7 @@ import { MarketingPage } from "../_components/marketing-page"
 import { ENTERPRISE_FAQ } from "./_lib/enterprise-faq"
 import { PERSONA_ROUTES, type PersonaRoute } from "./_lib/persona-routes"
 import { PROOF_POINTS } from "./_lib/proof-points"
+import { jsonLdScript } from "@/lib/json-ld"
 
 export const metadata: Metadata = {
   title: "Enterprise",
@@ -58,7 +59,7 @@ export default function EnterprisePage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: jsonLdScript({
             "@context": "https://schema.org",
             "@type": "ContactPage",
             name: "DeesseJS Enterprise",

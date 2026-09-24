@@ -173,24 +173,28 @@ function renderPreview(slug: CatalogueComponent["slug"]) {
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary">
             urgent
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               aria-label="Remove urgent"
               className="ml-1"
             >
               <X className="size-3" aria-hidden />
-            </button>
+            </Button>
           </Badge>
           <Badge variant="success">
             <Check className="size-3" aria-hidden />
             shipped
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               aria-label="Remove shipped"
               className="ml-1"
             >
               <X className="size-3" aria-hidden />
-            </button>
+            </Button>
           </Badge>
         </div>
       )
@@ -254,14 +258,16 @@ function SearchPreview() {
           className="pl-8 pr-8"
         />
         {query ? (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-sm"
             onClick={() => setQuery("")}
             aria-label="Clear search"
             className="text-muted-foreground hover:text-foreground absolute right-2 top-2"
           >
             <X className="size-4" aria-hidden />
-          </button>
+          </Button>
         ) : null}
       </div>
       <p className="text-copy-13 text-muted-foreground">
@@ -346,14 +352,16 @@ function TagsPreview() {
       {tags.map((tag) => (
         <Badge key={tag} variant="secondary">
           {tag}
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-xs"
             aria-label={`Remove ${tag}`}
             onClick={() => setTags(tags.filter((t) => t !== tag))}
             className="ml-1"
           >
             <X className="size-3" aria-hidden />
-          </button>
+          </Button>
         </Badge>
       ))}
       <Input
