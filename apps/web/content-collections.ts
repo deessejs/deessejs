@@ -94,7 +94,7 @@ const posts = defineCollection({
         // HTML through MdxPre, which only adds the surrounding
         // border/overflow chrome — no runtime shiki, no client
         // bundling, no async boundary.
-        [rehypeShiki, { theme: "github-dark" }],
+        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
       ],
     })
 
@@ -166,7 +166,7 @@ const releases = defineCollection({
 
     const mdxCode = await compileMDX(context, release, {
       rehypePlugins: [
-        [rehypeShiki, { theme: "github-dark" }],
+        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
       ],
     })
 
@@ -198,7 +198,7 @@ const kbTopics = defineCollection({
 
     const mdxCode = await compileMDX(context, topic, {
       rehypePlugins: [
-        [rehypeShiki, { theme: "github-dark" }],
+        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
       ],
     })
 
@@ -252,7 +252,7 @@ const kbGuides = defineCollection({
 
     const mdxCode = await compileMDX(context, guide, {
       rehypePlugins: [
-        [rehypeShiki, { theme: "github-dark" }],
+        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
       ],
     })
 
