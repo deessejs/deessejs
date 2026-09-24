@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
-import Link from "next/link"
 import { allKbGuides, allKbTopics } from "content-collections"
 
 import {
@@ -11,9 +10,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
-import { Button } from "@workspace/ui/components/button"
-import { Card } from "@workspace/ui/components/card"
-import { Separator } from "@workspace/ui/components/separator"
 
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
 import { TableOfContents } from "@/components/blog/table-of-contents"
@@ -24,50 +20,6 @@ import { getRelatedGuides } from "@/lib/knowledge-base/guides"
 import { ORG_ID } from "@/lib/seo/organization"
 
 type Params = { slug: string }
-
-/**
- * Per-topic CTA copy. Inline for v1 — promoting `cta` to a
- * topic frontmatter field is a future ADR if editorial wants
- * per-topic copy. The fallback below covers any topic that
- * isn't listed.
- */
-const TOPIC_CTAS: Record<
-  string,
-  { heading: string; body: string }
-> = {
-  "getting-started": {
-    heading: "Ship your first project",
-    body: "Bootstrap a working preview in under ten minutes. The CLI scaffolds, the templates fill the gaps, and the docs walk you through the rest.",
-  },
-  agents: {
-    heading: "Compose your first agent",
-    body: "Wire a model, a tool registry, and a streaming endpoint. The agent stack ships ready; you bring the prompt.",
-  },
-  deployment: {
-    heading: "Promote to production",
-    body: "Connect the repo, configure environments, run the production-readiness checklist, and ship.",
-  },
-  databases: {
-    heading: "Wire your first migration",
-    body: "Drizzle generates the SQL; CI applies it; the rollback runbook is on standby.",
-  },
-  ui: {
-    heading: "Reskin for your brand",
-    body: "Pick a starting palette, override the semantic tokens, and the rest of the app inherits the change.",
-  },
-  cli: {
-    heading: "Install the CLI",
-    body: "One install, one login, one list command. The registry is the entry point to every template.",
-  },
-  queue: {
-    heading: "Move async work off the request path",
-    body: "Enqueue, run the worker, retry on failure. The queue substrate is already wired.",
-  },
-  observability: {
-    heading: "Capture the three signals",
-    body: "Logs, traces, and metrics. The baseline setup is a one-file install.",
-  },
-}
 
 export function generateStaticParams(): Array<Params> {
   return allKbGuides.map((guide) => ({ slug: guide.slug }))
@@ -136,10 +88,6 @@ export default async function KnowledgeGuidePage({
   }
 
   const related = getRelatedGuides(slug, 3)
-  const cta = TOPIC_CTAS[topic.slug] ?? {
-    heading: `Explore the ${topic.title} guides`,
-    body: `Browse every guide in the ${topic.title} topic.`,
-  }
 
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
@@ -186,40 +134,6 @@ export default async function KnowledgeGuidePage({
             <TableOfContents targetId="guide-prose" />
           </aside>
         </div>
-
-        <Separator className="my-12" />
-
-        <section
-          aria-labelledby="next-steps-heading"
-          className="flex flex-col gap-4"
-        >
-          <Card className="flex flex-col gap-4 p-6 sm:p-8">
-            <div className="flex flex-col gap-2">
-              <span className="font-mono text-label-13 uppercase tracking-widest text-muted-foreground">
-                Next steps in {topic.title}
-              </span>
-              <h2
-                id="next-steps-heading"
-                className="text-balance text-2xl font-semibold tracking-tight"
-              >
-                {cta.heading}
-              </h2>
-              <p className="text-copy-16 text-muted-foreground leading-7">
-                {cta.body}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button asChild>
-                <Link href={`/knowledge-base/topics/${topic.slug}`}>
-                  Browse all {topic.title} guides
-                </Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/templates">Start with a template</Link>
-              </Button>
-            </div>
-          </Card>
-        </section>
 
         <section
           aria-labelledby="similar-guides-heading"
