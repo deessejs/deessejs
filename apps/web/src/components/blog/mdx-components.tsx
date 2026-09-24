@@ -21,27 +21,50 @@ import {
   TD,
 } from "@workspace/ui/components/typography"
 
+import { CodeBlock } from "./code-block"
+
 /**
  * MDX runtime adapter for `<pre>` elements.
  *
- * Renders the shiki-highlighted `<pre>` block (produced by the
- * build-time rehype pipeline) inside the macOS-dots chrome without
- * re-running shiki at request time. The shiki output is already
- * fully styled; we only add a window frame and the traffic-light
- * dots around it.
+ * Receives the props that the build-time `rehypeStoreRawCode` plugin
+ * (apps/web/content-collections.ts) attaches to every `<pre>`:
+ *   - `code`        : the raw source of the fenced block
+ *   - `language`    : the language tag, when one was inferred from the
+ *                      info-string (````ts`, ````bash`, …)
+ *   - `title`       : optional — when the fenced block had
+ *                      metadata like ````ts title="x"`
  *
- * The optional `title` prop comes from the rehype store-code plugin
- * (when the markdown fenced block had metadata like
- * ````ts title="x"`); defaults to undefined.
+ * Delegates the actual highlighting to <CodeBlock> so the runtime
+ * stays the single source of truth for shiki output. <CodeBlock> is
+ * an async server component, which is fine here: MDX runtime runs in
+ * a server component (every page that uses <MdxRenderer> is a server
+ * component), and React 19 + Next.js 16 stream the async boundary
+ * correctly.
+ *
+ * If the props are missing (e.g. the rehype plugin was bypassed for
+ * a test, or someone hand-wrote <pre> in MDX), we fall back to a
+ * plain <pre><code> so the page still renders.
  */
-function MdxPre({
-  children,
-}: {
+function MdxPre(props: {
   children?: ReactNode
+  code?: string
+  language?: string
+  title?: string
 }) {
+  if (typeof props.code === "string") {
+    // exactOptionalPropertyTypes: true on CodeBlock — omit the key
+    // when undefined instead of writing `language: undefined`.
+    const blockProps: React.ComponentProps<typeof CodeBlock> = {
+      code: props.code,
+      size: "sm",
+    }
+    if (props.language !== undefined) blockProps.language = props.language
+    if (props.title !== undefined) blockProps.title = props.title
+    return <CodeBlock {...blockProps} />
+  }
   return (
     <pre className="bg-background w-full overflow-x-auto rounded-md border border-border p-4 font-mono text-sm">
-      <code className="font-mono">{children}</code>
+      <code className="font-mono">{props.children}</code>
     </pre>
   )
 }

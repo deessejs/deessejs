@@ -1,6 +1,5 @@
 import { defineCollection, defineConfig } from "@content-collections/core"
 import { compileMDX } from "@content-collections/mdx"
-import rehypeShiki from "@shikijs/rehype"
 import type { Root, Element } from "hast"
 import { visit } from "unist-util-visit"
 
@@ -8,15 +7,15 @@ import { visit } from "unist-util-visit"
  * Custom rehype plugin (inlined to avoid esbuild import-resolution
  * issues at content-collections build time). Captures the raw source
  * text of every fenced code block and stores it in `data-code` and
- * `data-language` attributes on the `<pre>` element so the runtime
- * `MdxPre` adapter can re-run shiki via the `CodeBlock` component.
+ * `data-language` attributes on the `<pre>` element so the MDX
+ * runtime's `MdxPre` adapter can hand the source to `<CodeBlock>`,
+ * which is the single source of truth for shiki output at request
+ * time.
  *
- * Runs before `rehype-pretty-code` / `@shikijs/rehype` in the
- * pipeline configured below. Those downstream plugins transform
- * `<pre><code>` into the syntax-highlighted HTML that the MDX
- * runtime ships to the browser. The `data-code` and `data-language`
- * attributes survive the downstream transforms and reach the runtime
- * as JSX props passed to `mdxComponents.pre({ code, language })`.
+ * The build-time shiki transformer is intentionally NOT in the
+ * pipeline anymore: dual-theme output via the rehype plugin is hard
+ * to combine with a runtime shiki re-render without doubling the
+ * work, and the runtime-only path keeps the contract in one place.
  */
 function rehypeStoreRawCode() {
   return (tree: Root) => {
@@ -145,14 +144,16 @@ const posts = defineCollection({
 
     const mdxCode = await compileMDX(context, post, {
       rehypePlugins: [
+        // `rehypeStoreRawCode` is the build-time plugin that captures
+        // the raw source of every fenced code block and stores it on
+        // the `<pre>` element as `data-code` / `data-language`. The
+        // MDX runtime reads those attrs and hands them to <CodeBlock>,
+        // which is the single source of truth for shiki output. The
+        // build-time shiki transformer is intentionally NOT in this
+        // pipeline: dual-theme output is hard to combine with a
+        // runtime shiki re-render without doubling the work, and the
+        // runtime-only path keeps the contract in one place.
         [rehypeStoreRawCode],
-        [
-          rehypeShiki,
-          {
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          },
-        ],
       ],
     })
 
@@ -225,13 +226,6 @@ const releases = defineCollection({
     const mdxCode = await compileMDX(context, release, {
       rehypePlugins: [
         [rehypeStoreRawCode],
-        [
-          rehypeShiki,
-          {
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          },
-        ],
       ],
     })
 
@@ -264,13 +258,6 @@ const kbTopics = defineCollection({
     const mdxCode = await compileMDX(context, topic, {
       rehypePlugins: [
         [rehypeStoreRawCode],
-        [
-          rehypeShiki,
-          {
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          },
-        ],
       ],
     })
 
@@ -325,13 +312,6 @@ const kbGuides = defineCollection({
     const mdxCode = await compileMDX(context, guide, {
       rehypePlugins: [
         [rehypeStoreRawCode],
-        [
-          rehypeShiki,
-          {
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          },
-        ],
       ],
     })
 
