@@ -3,6 +3,7 @@
   "compilerOptions": {
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
+    "resolveJsonModule": true,
     "paths": {
       "@/*": ["./src/*"],
       "@workspace/ui/*": ["../../packages/ui/src/*"],
@@ -22,6 +23,7 @@
     "**/*.ts",
     "**/*.tsx",
     "**/*.mts",
+    "**/*.json",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

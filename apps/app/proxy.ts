@@ -3,10 +3,61 @@ import type { NextRequest } from "next/server"
 import createMiddleware from "next-intl/middleware"
 
 import { routing } from "@workspace/i18n/routing"
-import type { Bcp47 } from "@workspace/i18n"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
-const SUPPORTED_LOCALES = ["en", "fr"] as const satisfies readonly Bcp47[]
+const SUPPORTED_LOCALES = ["en", "fr"] as const
+
+// Static matcher — Next 16 requires `config.matcher` to be a static
+// string / array literal *inline* (it does static analysis at compile
+// time and does not follow `const` references for `matcher`). The
+// list below is the explicit union of:
+//   - next-intl: every path under [locale]/* and the canonical root
+//     paths (locale detection + auth gate + /device).
+//   - auth gate: the dual-form protected/auth/device paths × locales.
+export const config = {
+  matcher: [
+    // next-intl middleware (locale detection): every non-asset, non-API path
+    "/((?!api|_next|_vercel|favicon\\.ico|.*\\..*).*)",
+    // Protected, unprefixed (default locale)
+    "/home",
+    "/home/:path*",
+    "/settings",
+    "/settings/:path*",
+    // Protected, /fr/ prefixed
+    "/fr/home",
+    "/fr/home/:path*",
+    "/fr/settings",
+    "/fr/settings/:path*",
+    // Auth pages, unprefixed
+    "/login",
+    "/login/:path*",
+    "/signup",
+    "/signup/:path*",
+    "/forgot-password",
+    "/forgot-password/:path*",
+    "/reset-password",
+    "/reset-password/:path*",
+    "/verify-email",
+    "/verify-email/:path*",
+    // Auth pages, /fr/ prefixed
+    "/fr/login",
+    "/fr/login/:path*",
+    "/fr/signup",
+    "/fr/signup/:path*",
+    "/fr/forgot-password",
+    "/fr/forgot-password/:path*",
+    "/fr/reset-password",
+    "/fr/reset-password/:path*",
+    "/fr/verify-email",
+    "/fr/verify-email/:path*",
+    // /device — unprefixed (CLI auth callback lands here unauthenticated,
+    // the page-level Server Component handles the routing per ADR-022 §"Bug B")
+    "/device",
+    "/device/:path*",
+    "/fr/device",
+    "/fr/device/:path*",
+  ],
+}
 
 // Protected routes (auth required). The matcher covers both forms
 // because of `localePrefix: 'as-needed'` — the default locale (`en`)
@@ -19,61 +70,7 @@ const AUTH_PREFIXES = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
-  // /device is intentionally NOT here: an authenticated user
-  // landing on /device from the CLI's auth login must see the
-  // approve / deny view, not /home. Routing is owned by the
-  // page-level Server Component. See ADR-022 §"Bug B".
 ]
-
-// Build the matcher list as a cartesian product: every protected/auth
-// path × (unprefixed + `/fr/` prefixed).
-function dualForm(path: string, withPrefix?: boolean): string[] {
-  if (withPrefix === false) return [path]
-  return SUPPORTED_LOCALES.flatMap((locale) =>
-    [path, `${path}/:path*`].flatMap((p) => {
-      if (p.includes("/:path*")) {
-        return [`/${locale}${p}`]
-      }
-      return [`/${locale}${p}`, `${locale}${p}/:path*`]
-    }),
-  )
-}
-
-const PROTECTED_MATCHER = PROTECTED_PREFIXES.flatMap((p) => [
-  ...dualForm(p, true),
-  p,
-  `${p}/:path*`,
-])
-
-const AUTH_MATCHER = AUTH_PREFIXES.flatMap((p) => {
-  const out: string[] = []
-  for (const locale of SUPPORTED_LOCALES) {
-    out.push(`/${locale}${p}`, `/${locale}${p}/:path*`)
-  }
-  out.push(p, `${p}/:path*`)
-  return out
-})
-
-const DEVICE_MATCHER = ["/device", "/device/:path*"].flatMap((p) => [
-  p,
-  ...SUPPORTED_LOCALES.map((locale) => `/${locale}${p}` as string),
-])
-
-// Match everything under the proxy so the next-intl middleware runs
-// first (auto-detection) and the auth gate runs after. The next-intl
-// middleware itself skips `/api/*`, `_next/*`, etc., via its own matcher;
-// the auth gate only acts on `PROTECTED_PREFIXES` / `AUTH_PREFIXES`.
-// We therefore union all routes the proxy must observe:
-//   - next-intl matcher:  /((?!api|_next|_vercel|favicon\\.ico|.*\\..*).*)
-//   - auth gate:          the dual-form protected/auth/device paths
-export const config = {
-  matcher: [
-    "/((?!api|_next|_vercel|favicon\\.ico|.*\\..*).*)",
-    ...PROTECTED_MATCHER,
-    ...AUTH_MATCHER,
-    ...DEVICE_MATCHER,
-  ],
-}
 
 /**
  * Strip the locale prefix from `pathname` for proxy logic. The

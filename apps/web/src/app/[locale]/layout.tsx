@@ -28,17 +28,14 @@
 import "@workspace/ui/globals.css"
 import { MotionConfig } from "motion/react"
 
-import { headers } from "next/headers"
 import { NextIntlClientProvider } from "next-intl"
 import { getMessages, setRequestLocale } from "next-intl/server"
 
 import {
-  availableLanguageLabel,
   defaultLocale,
   isSupportedLocale,
   routing,
 } from "@workspace/i18n"
-import type { Bcp47 } from "@workspace/i18n"
 
 import { Geist, Geist_Mono } from "next/font/google"
 import { notFound } from "next/navigation"
@@ -104,24 +101,12 @@ export default async function LocaleLayout({
   setRequestLocale(locale)
   const messages = await getMessages()
 
-  // `availableLanguageLabel` maps the BCP-47 code to the JSON-LD
-  // display string ("English" / "Français"). The schema.org
-  // `availableLanguage` field expects the language name in English.
-  const availableLanguage = [
-    availableLanguageLabel("en" as Bcp47),
-    availableLanguageLabel("fr" as Bcp47),
-  ]
-  const orgJsonLd = JSON.stringify(
-    buildOrganizationJsonLd(availableLanguage),
-  )
-  const webSiteJsonLd = JSON.stringify(
-    buildWebSiteJsonLd(locale as Bcp47, locale),
-  )
-
-  const headerStore = headers()
-  // Suppress hydration warnings from third-party browser extensions
-  // (LastPass, Bitwarden, Grammarly).
-  void headerStore
+  // `buildOrganizationJsonLd` reads `APP_CONFIG` directly and
+  // emits the static Organization JSON-LD for the brand. The
+  // `availableLanguage` array is populated from `@workspace/i18n`'s
+  // `availableLanguageLabel` (BCP-47 → "English" / "Français").
+  const orgJsonLd = JSON.stringify(buildOrganizationJsonLd())
+  const webSiteJsonLd = JSON.stringify(buildWebSiteJsonLd())
 
   return (
     <html
@@ -147,7 +132,7 @@ export default async function LocaleLayout({
           <NextIntlClientProvider
             locale={locale}
             messages={messages}
-            timeZone={defaultLocale() === locale ? "UTC" : undefined}
+            {...(defaultLocale() === locale ? { timeZone: "UTC" } : {})}
           >
             <AppProviders>
               <div className="flex min-h-screen flex-col">

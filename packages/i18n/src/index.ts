@@ -20,21 +20,27 @@ export {
   openGraphLocale,
   availableLanguageLabel,
   LOCALE_LABELS,
-} from "./_locales.js"
+} from "./_locales"
 
-export { routing } from "./routing.js"
-export type { Routing } from "./routing.js"
+export { routing } from "./routing"
+export type { Routing } from "./routing"
 export {
   Link,
   redirect,
   usePathname,
   useRouter,
   getPathname,
-} from "./navigation.js"
-export { LocaleSwitcher } from "./locale-switcher.js"
-export type { LocaleSwitcherProps } from "./locale-switcher.js"
+} from "./navigation"
 export {
   sharedMessages,
   type SharedMessages,
   type SharedLocale,
-} from "./shared/index.js"
+} from "./shared/index"
+
+// `LocaleSwitcher` is NOT re-exported from the root. It's a Client
+// Component that uses `next-intl`'s `useLocale()` and our local
+// `usePathname` / `useRouter`. Importing it through the root barrel
+// would pull `_locales` (and `@workspace/env/server` transitively)
+// into the client bundle, where `node:fs` would explode. Consume
+// the switcher from its dedicated subpath instead:
+//   import { LocaleSwitcher } from "@workspace/i18n/switcher"

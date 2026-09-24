@@ -1,7 +1,18 @@
 import type { NextConfig } from "next"
 import createNextIntlPlugin from "next-intl/plugin"
 
-const withNextIntl = createNextIntlPlugin("./app/[locale]/i18n/request.ts")
+// `createNextIntlPlugin` wires the i18n request config (ADR-031
+// Decision #10) into the build. Without it, `getMessages()` throws
+// "Couldn't find next-intl config file" at prerender time.
+// The plugin's declared wrapper return type is `Promise<Partial<NextConfig>>`
+// (a stale doc artefact — the actual runtime return is the synchronous
+// `nextConfig` we pass in). We type the wrapper explicitly as a
+// sync `(NextConfig) => NextConfig` so TypeScript doesn't propagate
+// the Promise type into the export.
+type NextConfigWrapper = (nextConfig: NextConfig) => NextConfig
+const withNextIntl = createNextIntlPlugin(
+  "./app/[locale]/i18n/request.ts",
+) as unknown as NextConfigWrapper
 
 const nextConfig: NextConfig = {
   transpilePackages: [

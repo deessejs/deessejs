@@ -4,36 +4,13 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    },
-    "./routing": {
-      "types": "./dist/routing.d.ts",
-      "import": "./dist/routing.js",
-      "default": "./dist/routing.js"
-    },
-    "./navigation": {
-      "types": "./dist/navigation.d.ts",
-      "import": "./dist/navigation.js",
-      "default": "./dist/navigation.js"
-    },
-    "./shared": {
-      "types": "./dist/shared/index.d.ts",
-      "import": "./dist/shared/index.js",
-      "default": "./dist/shared/index.js"
-    },
-    "./switcher": {
-      "types": "./dist/locale-switcher.d.ts",
-      "import": "./dist/locale-switcher.js",
-      "default": "./dist/locale-switcher.js"
-    }
+    ".": "./src/index.ts",
+    "./routing": "./src/routing.ts",
+    "./navigation": "./src/navigation.ts",
+    "./shared": "./src/shared/index.ts",
+    "./switcher": "./src/locale-switcher.tsx"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
     "lint": "eslint --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

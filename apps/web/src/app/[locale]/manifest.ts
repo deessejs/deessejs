@@ -7,9 +7,9 @@ export default function manifest(): MetadataRoute.Manifest {
     description: APP_CONFIG.description,
     start_url: "/",
     display: "standalone",
-    icons: {
-      icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-      apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
-    },
+    icons: [
+      { src: "/icon.svg", type: "image/svg+xml", sizes: "any" },
+      { src: "/apple-icon.png", type: "image/png", sizes: "180x180" },
+    ],
   }
 }

@@ -26,7 +26,7 @@
  */
 import { defineRouting } from "next-intl/routing"
 
-import { defaultLocale, locales } from "./_locales.js"
+import { defaultLocale, locales } from "./_locales"
 
 interface RoutingShape {
   locales: readonly ["en", "fr"]

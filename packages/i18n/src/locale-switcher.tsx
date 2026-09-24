@@ -31,8 +31,8 @@ import { useLocale } from "next-intl"
 import {
   LOCALE_LABELS,
   type Bcp47,
-} from "./_locales.js"
-import { usePathname, useRouter } from "./navigation.js"
+} from "./_locales"
+import { usePathname, useRouter } from "./navigation"
 
 export interface LocaleSwitcherProps {
   /** Optional className applied to the root element. */

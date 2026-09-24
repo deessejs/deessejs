@@ -2,7 +2,18 @@ import type { NextConfig } from "next"
 import { withContentCollections } from "@content-collections/next"
 import createNextIntlPlugin from "next-intl/plugin"
 
-const withNextIntl = createNextIntlPlugin("./src/app/[locale]/i18n/request.ts")
+// `createNextIntlPlugin` wires the i18n request config (ADR-031
+// Decision #10) into the build. Without it, `getMessages()` throws
+// "Couldn't find next-intl config file" at prerender time.
+// The plugin's declared wrapper return type is `Promise<Partial<NextConfig>>`
+// (a stale doc artefact — the actual runtime return is the synchronous
+// `nextConfig` we pass in). We type the wrapper explicitly as a
+// sync `(NextConfig) => NextConfig` so TypeScript doesn't propagate
+// the Promise type into the export.
+type NextConfigWrapper = (nextConfig: NextConfig) => NextConfig
+const withNextIntl = createNextIntlPlugin(
+  "./src/app/[locale]/i18n/request.ts",
+) as unknown as NextConfigWrapper
 
 const nextConfig: NextConfig = {
   transpilePackages: [
@@ -56,4 +67,17 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withNextIntl(withContentCollections(nextConfig))
+// The runtime return is synchronous `NextConfig`; the plugin's
+// declared return type is `Promise<Partial<NextConfig>>` (stale doc).
+// Composing with `withContentCollections` works synchronously.
+//
+// `withContentCollections(nextConfig)` is declared `async` (the
+// upstream wrapper awaits its own typegen pass), but in a production
+// build the typegen has already been run by the `content-collections`
+// build script. The runtime value is fully sync. We cast to the sync
+// wrapper type to compose it with `withNextIntl` (which is genuinely
+// sync).
+const withContentCollectionsSync = withContentCollections as unknown as NextConfigWrapper
+
+const _config = withNextIntl(withContentCollectionsSync(nextConfig))
+export default _config
