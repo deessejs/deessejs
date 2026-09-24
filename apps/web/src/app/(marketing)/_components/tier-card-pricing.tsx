@@ -15,7 +15,7 @@ import { usePricingCadence } from "./pricing-cadence-context"
  * cadence state and bypass this component.
  */
 const SUBSCRIPTION_PRICE: Partial<Record<LicenseTypeId, number>> = {
-  professional: 23,
+  subscription: 23,
   agency: 79,
 }
 
