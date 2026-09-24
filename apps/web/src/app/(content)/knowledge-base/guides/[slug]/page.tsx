@@ -13,7 +13,6 @@ import {
 } from "@workspace/ui/components/breadcrumb"
 import { Button } from "@workspace/ui/components/button"
 import { Card } from "@workspace/ui/components/card"
-import { H2 } from "@workspace/ui/components/typography"
 import { Separator } from "@workspace/ui/components/separator"
 
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
@@ -145,85 +144,6 @@ export default async function KnowledgeGuidePage({
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
       <article className="mx-auto flex min-w-0 max-w-4xl flex-col gap-10 overflow-x-clip">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "TechArticle",
-              headline: guide.title,
-              description: guide.description,
-              inLanguage: "en",
-              keywords: guide.products,
-              mainEntityOfPage: {
-                "@type": "WebPage",
-                "@id": guide.url,
-              },
-              url: guide.url,
-              publisher: { "@id": ORG_ID },
-              author: {
-                "@type": "Organization",
-                name: "DeesseJS",
-                "@id": ORG_ID,
-              },
-              // `about` ties the guide to its KB topic as the parent
-              // definedTerm. Crawlers use this to build a topic graph
-              // alongside the BreadcrumbList below.
-              about: {
-                "@type": "DefinedTerm",
-                name: topic.title,
-                url: `/knowledge-base/topics/${topic.slug}`,
-              },
-              // `dependencies` surfaces the PaaS/products the guide
-              // touches. This is the JSON-LD counterpart of the
-              // `GuideProductPill` badges in the header — the visual
-              // representation alone is invisible to crawlers.
-              ...(guide.products.length > 0
-                ? {
-                    dependencies: guide.products.map((product) => ({
-                      "@type": "Service",
-                      name: product,
-                    })),
-                  }
-                : {}),
-            }),
-          }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "BreadcrumbList",
-              itemListElement: [
-                {
-                  "@type": "ListItem",
-                  position: 1,
-                  name: "Home",
-                  item: "/",
-                },
-                {
-                  "@type": "ListItem",
-                  position: 2,
-                  name: "Knowledge Base",
-                  item: "/knowledge-base",
-                },
-                {
-                  "@type": "ListItem",
-                  position: 3,
-                  name: topic.title,
-                  item: `/knowledge-base/topics/${topic.slug}`,
-                },
-                {
-                  "@type": "ListItem",
-                  position: 4,
-                  name: guide.title,
-                  item: guide.url,
-                },
-              ],
-            }),
-          }}
-        />
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -258,54 +178,154 @@ export default async function KnowledgeGuidePage({
           </p>
         </header>
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_180px] lg:gap-12">
-        <div className="min-w-0">
-          <MdxRenderer id="guide-prose" className="mt-2" code={guide.mdxCode} />
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_180px] lg:gap-12">
+          <div className="min-w-0">
+            <MdxRenderer id="guide-prose" className="mt-2" code={guide.mdxCode} />
+          </div>
+          <aside aria-label="Table of contents" className="hidden lg:block">
+            <TableOfContents targetId="guide-prose" />
+          </aside>
         </div>
-        <aside className="hidden lg:block">
-          <TableOfContents targetId="guide-prose" />
-        </aside>
-      </div>
 
-      <Separator className="my-12" />
+        <Separator className="my-12" />
 
-      <Card className="flex flex-col gap-4 p-6 sm:p-8">
-        <div className="flex flex-col gap-2">
-          <span className="font-mono text-label-13 uppercase tracking-widest text-muted-foreground">
-            Next steps in {topic.title}
-          </span>
-          <h2 className="text-balance text-2xl font-semibold tracking-tight">
-            {cta.heading}
-          </h2>
-          <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-            {cta.body}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Button asChild>
-            <Link href={`/knowledge-base/topics/${topic.slug}`}>
-              Browse all {topic.title} guides
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/templates">Start with a template</Link>
-          </Button>
-        </div>
-      </Card>
-
-      {related.length > 0 ? (
-        <section className="flex flex-col gap-4">
-          <H2>Similar guides</H2>
-          <KbCardGrid>
-            {related.map((relatedGuide) => (
-              <li key={relatedGuide.slug}>
-                <GuideCard guide={relatedGuide} />
-              </li>
-            ))}
-          </KbCardGrid>
+        <section
+          aria-labelledby="next-steps-heading"
+          className="flex flex-col gap-4"
+        >
+          <Card className="flex flex-col gap-4 p-6 sm:p-8">
+            <div className="flex flex-col gap-2">
+              <span className="font-mono text-label-13 uppercase tracking-widest text-muted-foreground">
+                Next steps in {topic.title}
+              </span>
+              <h2
+                id="next-steps-heading"
+                className="text-balance text-2xl font-semibold tracking-tight"
+              >
+                {cta.heading}
+              </h2>
+              <p className="text-copy-16 text-muted-foreground leading-7">
+                {cta.body}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button asChild>
+                <Link href={`/knowledge-base/topics/${topic.slug}`}>
+                  Browse all {topic.title} guides
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/templates">Start with a template</Link>
+              </Button>
+            </div>
+          </Card>
         </section>
-      ) : null}
+
+        <section
+          aria-labelledby="similar-guides-heading"
+          className="flex flex-col gap-4"
+        >
+          <h2
+            id="similar-guides-heading"
+            className="text-balance text-3xl font-semibold tracking-tight first:mt-0"
+          >
+            Similar guides
+          </h2>
+          {related.length > 0 ? (
+            <KbCardGrid>
+              {related.map((relatedGuide) => (
+                <li key={relatedGuide.slug}>
+                  <GuideCard guide={relatedGuide} />
+                </li>
+              ))}
+            </KbCardGrid>
+          ) : (
+            <p className="text-copy-14 text-muted-foreground leading-7">
+              No similar guides in the {topic.title} topic yet.
+            </p>
+          )}
+        </section>
       </article>
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "TechArticle",
+            headline: guide.title,
+            description: guide.description,
+            inLanguage: "en",
+            keywords: guide.products,
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": guide.url,
+            },
+            url: guide.url,
+            publisher: { "@id": ORG_ID },
+            author: {
+              "@type": "Organization",
+              name: "DeesseJS",
+              "@id": ORG_ID,
+            },
+            // `about` ties the guide to its KB topic as the parent
+            // definedTerm. Crawlers use this to build a topic graph
+            // alongside the BreadcrumbList below.
+            about: {
+              "@type": "DefinedTerm",
+              name: topic.title,
+              url: `/knowledge-base/topics/${topic.slug}`,
+            },
+            // `dependencies` surfaces the PaaS/products the guide
+            // touches. This is the JSON-LD counterpart of the
+            // `GuideProductPill` badges in the header — the visual
+            // representation alone is invisible to crawlers.
+            ...(guide.products.length > 0
+              ? {
+                  dependencies: guide.products.map((product) => ({
+                    "@type": "Service",
+                    name: product,
+                  })),
+                }
+              : {}),
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: "/",
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Knowledge Base",
+                item: "/knowledge-base",
+              },
+              {
+                "@type": "ListItem",
+                position: 3,
+                name: topic.title,
+                item: `/knowledge-base/topics/${topic.slug}`,
+              },
+              {
+                "@type": "ListItem",
+                position: 4,
+                name: guide.title,
+                item: guide.url,
+              },
+            ],
+          }),
+        }}
+      />
     </section>
   )
 }
