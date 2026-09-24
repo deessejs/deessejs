@@ -169,13 +169,11 @@
 html .shiki,
 html .shiki span {
     color: var(--shiki-light);
-    background-color: var(--shiki-light-bg);
 }
 
 html.dark .shiki,
 html.dark .shiki span {
     color: var(--shiki-dark) !important;
-    background-color: var(--shiki-dark-bg) !important;
 }
 
 /*
