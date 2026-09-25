@@ -1,19 +1,19 @@
 /**
- * `deesse init <slug>` — initialise un nouveau projet à partir d'un
- * template via le SDK `@workspace/registry-client`.
+ * `deesse init <slug>` — initializes a new project from a template
+ * via the `@workspace/registry-client` SDK.
  *
- * V1 (ce commit) : download only.
- *   - Récupère le descriptor + URLs via `client.getTemplate()`
- *   - Télécharge les fichiers en parallèle
- *   - Écrit sur disque dans `--dir`
- *   - Aucun prompt, aucun transform, aucun hook
+ * V1 (this commit): download only.
+ *   - Fetch the descriptor + URLs via `client.getTemplate()`
+ *   - Download files in parallel
+ *   - Write to disk under `--dir`
+ *   - No prompts, no transforms, no hooks
  *
- * Évolution prévue (commits suivants) :
- *   - Pré-flight avec `client.info()` + confirmation
- *   - Prompt runner pour `descriptor.prompts[]`
- *   - Transform engine pour `descriptor.files[].transform`
- *   - Hook runner pour `descriptor.hooks`
- *   - Install deps via le package manager détecté
+ * Planned evolution (follow-up commits):
+ *   - Pre-flight with `client.info()` + confirmation
+ *   - Prompt runner for `descriptor.prompts[]`
+ *   - Transform engine for `descriptor.files[].transform`
+ *   - Hook runner for `descriptor.hooks`
+ *   - Install deps via the detected package manager
  */
 
 import { mkdir, writeFile } from "node:fs/promises"
