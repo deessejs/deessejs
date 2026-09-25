@@ -17,6 +17,10 @@ import {
 } from "../_components/mockups"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 import { resolveCapabilities } from "../_data"
+import { SaasStarterScreenshot } from "../_components/mockups/templates/saas-starter"
+import { OpsConsoleScreenshot } from "../_components/mockups/templates/ops-console"
+import { BillingPortalScreenshot } from "../_components/mockups/templates/billing-portal"
+import { TeamOnboardingScreenshot } from "../_components/mockups/templates/team-onboarding"
 
 export const metadata: Metadata = {
   title: "SaaS apps | DeesseJS",
@@ -96,6 +100,13 @@ const MOCKUPS = {
   "background-jobs": <QueueLogMockup />,
   notifications:   <NotificationsInboxMockup />,
   observability:   <OtelWaterfallMockup />,
+} as const
+
+const TEMPLATE_SCREENSHOTS = {
+  "saas-starter":    SaasStarterScreenshot,
+  "ops-console":     OpsConsoleScreenshot,
+  "billing-portal":  BillingPortalScreenshot,
+  "team-onboarding": TeamOnboardingScreenshot,
 } as const
 
 const ICONS = {
@@ -206,42 +217,66 @@ export default function SaasAppsPage() {
       </div>
 
       {/* 5. Built on this */}
-      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
+      {/*    Two-row layout: header full-width on top, then 4 cards
+           on a single lg:grid-cols-4 row. Each card has a real
+           mini-mockup at the top (not a placeholder) so the buyer
+           sees the actual product surface rather than text only. */}
+      <section className="flex flex-col border-t border-border">
+        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
             Built on this
           </p>
-          <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
+          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             Four templates, each on its own surface.
           </h2>
-          <p className="max-w-2xl text-copy-14 leading-6 text-muted-foreground">
+          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
             Production-ready starter templates, each deployed at its own
             URL. Used as the reference set for what the registry can ship.
           </p>
         </div>
-        <div className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-2 md:divide-x md:divide-y-0">
-          {BUILT_TEMPLATES.map((tpl) => (
-            <div
-              key={tpl.slug}
-              className="flex flex-col gap-2 p-6 lg:p-8"
-            >
-              <p className="font-mono text-label-12 text-muted-foreground">
-                template
-              </p>
-              <h3 className="font-mono text-copy-16 font-medium text-foreground">
-                {tpl.title}
-              </h3>
-              <p className="text-copy-14 leading-6 text-muted-foreground">
-                {tpl.body}
-              </p>
-              <p className="inline-flex items-center gap-1 pt-1 text-label-13 text-muted-foreground">
-                <ArrowRight className="size-3" aria-hidden />
-                coming soon
-              </p>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y divide-border sm:divide-y-0 sm:divide-x sm:divide-border">
+          {BUILT_TEMPLATES.map((tpl) => {
+            const Screenshot = TEMPLATE_SCREENSHOTS[tpl.slug]
+            return (
+              <article
+                key={tpl.slug}
+                className="flex flex-col"
+              >
+                <div className="relative aspect-[16/10] overflow-hidden border-b border-border bg-muted/20">
+                  {Screenshot ? (
+                    <Screenshot />
+                  ) : (
+                    <div
+                      aria-hidden
+                      className="flex h-full items-center justify-center font-mono text-label-12 text-muted-foreground"
+                    >
+                      preview unavailable
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-1 flex-col gap-2 p-6">
+                  <p className="font-mono text-label-12 text-muted-foreground">
+                    template
+                  </p>
+                  <h3 className="font-mono text-copy-16 font-medium text-foreground">
+                    {tpl.title}
+                  </h3>
+                  <p className="text-copy-14 leading-6 text-muted-foreground">
+                    {tpl.body}
+                  </p>
+                  <p className="mt-auto inline-flex items-center gap-1 pt-3 text-label-13 text-foreground">
+                    Visit
+                    <ArrowRight className="size-3" aria-hidden />
+                    <span className="text-muted-foreground">
+                      {tpl.slug}.deessejs.app — coming soon
+                    </span>
+                  </p>
+                </div>
+              </article>
+            )
+          })}
         </div>
-      </div>
+      </section>
 
       {/* 6. Related */}
       <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
