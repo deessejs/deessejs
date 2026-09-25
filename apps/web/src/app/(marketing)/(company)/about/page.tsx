@@ -77,7 +77,9 @@ export default function AboutPage() {
 
       {/* 1. The main app */}
       <section className="flex flex-col gap-3">
-        <H2>The main app</H2>
+        <h2 className="text-heading-24 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
+          The main app
+        </h2>
         <p className="text-copy-16 text-foreground leading-7 [&:not(:first-child)]:mt-0">
           The deessejs org runs more than one product. There are the
           templates you can scaffold today, the contracts they all
@@ -98,7 +100,9 @@ export default function AboutPage() {
 
       {/* 2. Edited by Nesalia Inc. */}
       <section className="flex flex-col gap-3">
-        <H2>Edited by Nesalia Inc.</H2>
+        <h2 className="text-heading-24 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
+          Edited by Nesalia Inc.
+        </h2>
         <p className="text-copy-16 text-foreground leading-7 [&:not(:first-child)]:mt-0">
           DeesseJS is published by Nesalia Inc., a small company
           that funds the work and owns the brand. The
@@ -117,7 +121,9 @@ export default function AboutPage() {
 
       {/* 3. Get in touch */}
       <section className="flex flex-col gap-3">
-        <H2>Get in touch</H2>
+        <h2 className="text-heading-24 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
+          Get in touch
+        </h2>
         <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
           Three channels, by purpose. Pick the one that matches
           what you&apos;re bringing.
