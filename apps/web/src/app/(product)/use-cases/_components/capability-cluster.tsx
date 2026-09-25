@@ -13,13 +13,6 @@ import {
   Workflow,
 } from "lucide-react"
 
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@workspace/ui/components/tabs"
-
 import { cn } from "@workspace/ui/lib/utils"
 
 /**
@@ -27,15 +20,20 @@ import { cn } from "@workspace/ui/lib/utils"
  *
  * The capabilities ship in 4 thematic clusters (Auth & identity,
  * Billing & growth, Operator console, Background work), not as
- * 8 flat cards. Each cluster owns 3-4 capability rows with a short
+ * 8 flat cards. Each cluster owns 3 capability rows with a short
  * paragraph that says what the buyer actually gets — not just a
  * feature label.
  *
- * Layout mirrors <SurfacesTabs>: every cluster card visible at once
- * on the left, the selected cluster drives the right-column panel.
- * Below the cluster list, a single "Open the registry →" CTA
- * pushes the visitor to action instead of leaving them staring
- * at the same list.
+ * Layout: alternating 2-col sections, one per cluster.
+ *   - Cluster 1 (index 0): cluster copy LEFT  + mockup RIGHT
+ *   - Cluster 2 (index 1): mockup LEFT  + cluster copy RIGHT
+ *   - Cluster 3 (index 2): cluster copy LEFT  + mockup RIGHT
+ *   - Cluster 4 (index 3): mockup LEFT  + cluster copy RIGHT
+ *
+ * The alternation gives the page rhythm without forcing every
+ * section into the same exact shape. Below the cluster list, a
+ * single CTA pushes the visitor to action instead of leaving
+ * them staring at the page.
  *
  * Icon lookup is by **string** so the page can stay server-rendered
  * while the registry resolves to a lucide component on the client.
@@ -88,143 +86,115 @@ export function CapabilityClustersSection({
   /**
    * Map keyed by cluster.id → ReactNode (the cluster's mockup).
    * Clusters without a mockup fall back to a quiet "preview" panel
-   * so the right column never reads as blank.
+   * so the column never reads as blank.
    */
   mockups: Record<string, React.ReactNode | undefined>
   ctaHref?: string
   ctaLabel?: string
   className?: string
 }) {
-  const first = clusters[0]
-  if (!first) return null
-  const firstSlug = first.id
-
   return (
-    <Tabs
-      defaultValue={firstSlug}
-      orientation="vertical"
-      className={cn(
-        "grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border",
-        className,
-      )}
-    >
-      <div className="flex flex-col">
-        <TabsList
-          aria-label="Capability clusters"
-          className="flex flex-col divide-y divide-border border-0 bg-transparent p-0 h-auto w-full"
-        >
-          {clusters.map((cluster) => {
-            const Icon = ICON_REGISTRY[cluster.iconName]
-            return (
-              <TabsTrigger
-                key={cluster.id}
-                value={cluster.id}
-                className="group flex flex-col items-start gap-3 rounded-none bg-transparent p-6 lg:p-8 text-left h-auto w-full shadow-none border-0
-                  text-foreground/80 hover:text-foreground hover:bg-accent/40
-                  data-[state=active]:bg-accent/40 data-[state=active]:text-foreground
-                  [&:after]:hidden"
-              >
-                <div className="flex items-center gap-2">
-                  {Icon ? (
-                    <Icon
-                      className="text-foreground size-4 shrink-0"
-                      aria-hidden
-                    />
-                  ) : null}
-                  <h3 className="text-heading-24 tracking-tight !m-0">
-                    {cluster.title}
-                  </h3>
-                </div>
-                <p className="text-copy-16 text-muted-foreground leading-6 !m-0 max-w-2xl text-balance">
-                  {cluster.lead}
-                </p>
-              </TabsTrigger>
-            )
-          })}
-        </TabsList>
-
-        <div className="flex items-center gap-2 border-t border-border p-6 lg:px-8 lg:py-6">
-          <a
-            href={ctaHref}
-            className="inline-flex items-center gap-1 text-label-13 text-foreground underline-offset-4 hover:underline"
+    <div className={cn("flex flex-col divide-y divide-border", className)}>
+      {clusters.map((cluster, idx) => {
+        const Icon = ICON_REGISTRY[cluster.iconName]
+        // Even indices (0, 2) get copy on the left; odd (1, 3) flip.
+        const reverse = idx % 2 === 1
+        return (
+          <section
+            key={cluster.id}
+            className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x lg:divide-border"
           >
-            {ctaLabel}
-            <ArrowRight className="size-3" aria-hidden />
-          </a>
-        </div>
-      </div>
-
-      <div className="flex flex-col">
-        {clusters.map((cluster) => {
-          const mockup = mockups[cluster.id]
-          return (
-            <TabsContent
-              key={cluster.id}
-              value={cluster.id}
-              className="relative flex-1 outline-none mt-0 overflow-hidden"
-              forceMount
-              hidden={undefined}
+            <div
+              className={cn(
+                "flex flex-col gap-6 p-6 lg:p-10",
+                reverse ? "lg:order-2 lg:border-l" : "lg:order-1",
+              )}
             >
-              <ClusterPanel
-                cluster={cluster}
-                mockup={mockup}
-              />
-            </TabsContent>
-          )
-        })}
+              <div className="flex items-center gap-2">
+                {Icon ? (
+                  <Icon
+                    className="text-foreground size-4 shrink-0"
+                    aria-hidden
+                  />
+                ) : null}
+                <h3 className="text-heading-24 tracking-tight text-foreground">
+                  {cluster.title}
+                </h3>
+              </div>
+              <p className="max-w-xl text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+                {cluster.lead}
+              </p>
+              <div className="flex flex-col divide-y divide-border border-y border-border">
+                {cluster.rows.map((row) => (
+                  <div
+                    key={row.id}
+                    className="flex flex-col gap-2 py-5"
+                  >
+                    <h4 className="text-heading-20 tracking-tight text-foreground">
+                      {row.title}
+                    </h4>
+                    <p className="max-w-xl text-copy-16 text-foreground leading-7">
+                      {row.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div
+              className={cn(
+                "flex items-stretch p-6 lg:p-10",
+                reverse ? "lg:order-1" : "lg:order-2",
+              )}
+            >
+              <MockupFrame clusterId={cluster.id}>
+                {mockups[cluster.id] ?? (
+                  <div className="flex h-full items-center justify-center font-mono text-label-12 text-muted-foreground">
+                    preview unavailable
+                  </div>
+                )}
+              </MockupFrame>
+            </div>
+          </section>
+        )
+      })}
+
+      <div className="flex items-center justify-center gap-2 p-6 lg:p-10">
+        <a
+          href={ctaHref}
+          className="inline-flex items-center gap-1 text-label-13 text-foreground underline-offset-4 hover:underline"
+        >
+          {ctaLabel}
+          <ArrowRight className="size-3" aria-hidden />
+        </a>
       </div>
-    </Tabs>
+    </div>
   )
 }
 
 /**
- * Right-column content. Renders the capability rows on top and the
- * mockup in a macOS-style chrome at the bottom.
+ * macOS-style mockup frame. Wraps each cluster's mockup in
+ * chrome (traffic-light dots + monospace title) so every cluster
+ * shares the same visual signature.
  */
-function ClusterPanel({
-  cluster,
-  mockup,
+function MockupFrame({
+  clusterId,
+  children,
 }: {
-  cluster: CapabilityCluster
-  mockup: React.ReactNode | undefined
+  clusterId: string
+  children: React.ReactNode
 }) {
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex flex-col divide-y divide-border border-b border-border">
-        {cluster.rows.map((row) => (
-          <div
-            key={row.id}
-            className="flex flex-col gap-2 p-6 lg:p-8"
-          >
-            <h4 className="text-heading-20 tracking-tight text-foreground">
-              {row.title}
-            </h4>
-            <p className="max-w-2xl text-copy-16 text-foreground leading-7">
-              {row.body}
-            </p>
-          </div>
-        ))}
+    <div className="flex w-full flex-col overflow-hidden rounded-md border border-border bg-background">
+      <div className="flex items-center justify-start gap-2 border-b border-border bg-muted/40 px-4 py-3">
+        <span aria-hidden className="block size-3 rounded-full bg-[#ff5f57]" />
+        <span aria-hidden className="block size-3 rounded-full bg-[#febc2e]" />
+        <span aria-hidden className="block size-3 rounded-full bg-[#28c840]" />
+        <span className="ml-3 truncate font-mono text-label-12 text-muted-foreground">
+          {clusterId}
+        </span>
       </div>
-
-      <div className="flex flex-1 items-stretch p-6 lg:p-8">
-        <div className="flex w-full flex-col overflow-hidden rounded-md border border-border bg-background">
-          <div className="flex items-center justify-start gap-2 border-b border-border bg-muted/40 px-4 py-3">
-            <span aria-hidden className="block size-3 rounded-full bg-[#ff5f57]" />
-            <span aria-hidden className="block size-3 rounded-full bg-[#febc2e]" />
-            <span aria-hidden className="block size-3 rounded-full bg-[#28c840]" />
-            <span className="ml-3 truncate font-mono text-label-12 text-muted-foreground">
-              {cluster.id}
-            </span>
-          </div>
-          <div className="flex-1 overflow-auto">
-            {mockup ?? (
-              <div className="flex h-full items-center justify-center font-mono text-label-12 text-muted-foreground">
-                preview unavailable
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <div className="flex-1 overflow-auto">{children}</div>
     </div>
   )
 }
