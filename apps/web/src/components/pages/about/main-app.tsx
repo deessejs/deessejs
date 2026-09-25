@@ -6,15 +6,13 @@
  * sub-domain products together. No data, no list — straight
  * prose with foreground + muted-foreground pairing.
  *
- * Rhythm: `space-y-4` (16px) between the heading and each
- * paragraph, matching the prose rhythm established on blog / KB
- * via `MdxRenderer` (which uses `space-y-6`). The 24px the blog
- * index uses would visually over-pace the shorter copy here;
- * 16px is the right beat for paragraphs of this length.
- *
- * `space-y-*` only applies to non-first children, so the
- * `[&:not(:first-child)]:mt-0` override that previously lived
- * on each heading / paragraph is now redundant and removed.
+ * Rhythm: `space-y-4` (16px) between heading and each
+ * paragraph. The body paragraphs carry `max-w-3xl`
+ * (~48rem / 768px, ~75ch at 16px) so the reading line stays
+ * inside the senior prose width — without it, body
+ * paragraphs ride at the page-level `max-w-5xl` (1024px)
+ * which gives ~85-95ch per line, well over the 60-75ch
+ * readability threshold.
  */
 export function MainApp() {
   return (
@@ -22,7 +20,7 @@ export function MainApp() {
       <h2 className="text-heading-24 tracking-tight text-foreground">
         The main app
       </h2>
-      <p className="text-copy-16 text-foreground leading-7">
+      <p className="max-w-3xl text-copy-16 text-foreground leading-7 [&:not(:first-child)]:mt-0">
         The deessejs org runs more than one product. There are the
         templates you can scaffold today, the contracts they all
         share, the SDKs and CLI you install them through, and a
@@ -30,7 +28,7 @@ export function MainApp() {
         defaults. DeesseJS is the surface that ties them together
         and tells the world what the org is for.
       </p>
-      <p className="text-copy-16 text-muted-foreground leading-7">
+      <p className="max-w-3xl text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
         When a new template is published, when a contract
         version bumps, when the CLI gains a flag. DeesseJS is
         where it shows up first. The marketing site, the docs
