@@ -3,14 +3,16 @@ import { FinalCta as FinalCtaShell } from "../_shared/final-cta"
 /**
  * /enterprise Final CTA.
  *
- * Single CTA pointing to /delivery. The /delivery page sells
- * engineering services to CTOs. Linking to self-service products
- * at the bottom (Install CLI / Browse registry) would undermine
- * the engagement promise.
+ * Two actions so visitors who don't need a custom engagement can
+ * still move forward:
+ * - Primary "Talk to delivery" routes to /delivery (the engagement
+ *   funnel — matches the page's promise).
+ * - Outline "See templates" routes to /templates (the self-serve
+ *   fallback — the visitor may not need a senior engineer at all,
+ *   and we'd rather they browse the registry than bounce).
  *
- * `/delivery` lives at `apps/web/src/app/(marketing)/delivery/` —
- * same Next.js app as /enterprise, no cross-app URL composition
- * needed.
+ * `/delivery` and `/templates` both live in the same Next.js app
+ * (apps/web), so no cross-app URL composition is needed.
  */
 export function FinalCta() {
   return (
@@ -24,6 +26,11 @@ export function FinalCta() {
           label: "Talk to delivery",
           href: "/delivery",
           withArrow: true,
+        },
+        {
+          label: "See templates",
+          href: "/templates",
+          variant: "outline",
         },
       ]}
     />

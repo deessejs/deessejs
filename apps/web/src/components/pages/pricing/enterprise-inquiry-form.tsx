@@ -22,7 +22,7 @@ const RECIPIENT = "support@deessejs.com"
  * EnterpriseReady section.
  *
  * IMPORTANT: this component intentionally duplicates
- * `apps/web/src/app/(marketing)/enterprise/enterprise-form.tsx`
+ * `apps/web/src/app/(company)/enterprise/enterprise-form.tsx`
  * rather than importing it. The two live in different layout
  * contexts (a wide inquiry column on /enterprise vs. a stacked
  * 2-col on /pricing) and the cost of a shared component is

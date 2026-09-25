@@ -31,7 +31,8 @@ export function MdxRenderer({
     <article
       id={id}
       className={
-        "text-base leading-7 text-pretty" + (className ? ` ${className}` : "")
+        "text-base leading-7 text-pretty space-y-6 [&>ul]:!mt-0 [&>ol]:!mt-0 [&>ul>li]:!mt-0 [&>ol>li]:!mt-0 [&_ul]:space-y-2 [&_ol]:space-y-2" +
+        (className ? ` ${className}` : "")
       }
     >
       <MDXContent code={code} components={mdxComponents} />

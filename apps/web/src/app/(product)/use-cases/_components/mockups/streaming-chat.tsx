@@ -12,7 +12,9 @@
  */
 
 import { useEffect, useState } from "react"
-import { motion } from "motion/react"
+import * as m from "motion/react-m"
+
+import { MockupMotionBoundary } from "./motion-boundary"
 
 const PROMPT = "What's our MRR this month, and how does it compare to last month?"
 
@@ -45,63 +47,65 @@ export function StreamingChatMockup() {
   }, [])
 
   return (
-    <div className="flex flex-col gap-3 p-4">
-      <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-muted-foreground">
-        <span>Thread</span>
-        <span className="font-mono text-label-12 text-violet-600 dark:text-violet-400">
-          streaming
-        </span>
+    <MockupMotionBoundary>
+      <div className="flex flex-col gap-3 p-4">
+        <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-muted-foreground">
+          <span>Thread</span>
+          <span className="font-mono text-label-12 text-violet-600 dark:text-violet-400">
+            streaming
+          </span>
+        </div>
+
+        {/* User prompt */}
+        <m.div
+          initial={{ opacity: 0, y: 4 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.3 }}
+          className="flex flex-col gap-1.5 rounded-sm border border-border bg-muted/40 p-3"
+        >
+          <span className="text-label-12 uppercase tracking-wider text-muted-foreground">
+            you
+          </span>
+          <p className="text-copy-13 text-foreground">{PROMPT}</p>
+        </m.div>
+
+        {/* Agent response */}
+        <m.div
+          initial={{ opacity: 0, y: 4 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4, duration: 0.3 }}
+          className="flex flex-col gap-1.5 rounded-sm border border-violet-500/30 bg-violet-500/5 p-3"
+        >
+          <span className="text-label-12 uppercase tracking-wider text-violet-600 dark:text-violet-400">
+            agent
+          </span>
+          <p className="text-copy-13 leading-6 text-foreground">
+            {shown}
+            <span
+              aria-hidden
+              className="ml-px inline-block h-3 w-px animate-pulse bg-violet-500 align-middle"
+            />
+          </p>
+        </m.div>
+
+        {/* Footnote: stream complete */}
+        <m.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: shown.length === RESPONSE.length ? 1 : 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2, duration: 0.3 }}
+          className="flex items-center justify-between font-mono text-label-12 text-muted-foreground"
+        >
+          <span>
+            {shown.length} / {RESPONSE.length} chars
+          </span>
+          <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+            done - 12 tools available
+          </span>
+        </m.div>
       </div>
-
-      {/* User prompt */}
-      <motion.div
-        initial={{ opacity: 0, y: 4 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.3 }}
-        className="flex flex-col gap-1.5 rounded-sm border border-border bg-muted/40 p-3"
-      >
-        <span className="text-label-12 uppercase tracking-wider text-muted-foreground">
-          you
-        </span>
-        <p className="text-copy-13 text-foreground">{PROMPT}</p>
-      </motion.div>
-
-      {/* Agent response */}
-      <motion.div
-        initial={{ opacity: 0, y: 4 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ delay: 0.4, duration: 0.3 }}
-        className="flex flex-col gap-1.5 rounded-sm border border-violet-500/30 bg-violet-500/5 p-3"
-      >
-        <span className="text-label-12 uppercase tracking-wider text-violet-600 dark:text-violet-400">
-          agent
-        </span>
-        <p className="text-copy-13 leading-6 text-foreground">
-          {shown}
-          <span
-            aria-hidden
-            className="ml-px inline-block h-3 w-px animate-pulse bg-violet-500 align-middle"
-          />
-        </p>
-      </motion.div>
-
-      {/* Footnote: stream complete */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: shown.length === RESPONSE.length ? 1 : 0 }}
-        viewport={{ once: true }}
-        transition={{ delay: 0.2, duration: 0.3 }}
-        className="flex items-center justify-between font-mono text-label-12 text-muted-foreground"
-      >
-        <span>
-          {shown.length} / {RESPONSE.length} chars
-        </span>
-        <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-          done - 12 tools available
-        </span>
-      </motion.div>
-    </div>
+    </MockupMotionBoundary>
   )
 }
