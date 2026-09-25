@@ -1,0 +1,52 @@
+---
+title: Why we built DeesseJS as a registry, not a boilerplate
+description: Boilerplate gives you files. A registry gives you a contract, an upgrade path, and an agent that can read it.
+date: 2026-04-12
+tags: [engineering]
+author: admin
+---
+
+# Why we built DeesseJS as a registry, not a boilerplate
+
+When we shipped our last SaaS, the third week was the same as the first: rebuild auth, wire billing, recreate the observability layer we shipped the previous time. The fourth week was the same as the second. Each product was its own island, and the islands didn't talk to each other.
+
+A boilerplate gives you a starting point. We wanted something else.
+
+## The shape of the problem
+
+A boilerplate is a snapshot of someone else's opinion at one point in time. You clone it, you diverge, and you're on your own. Six months later, when the upstream adds a feature you need, merging it back is a multi-day project. The boilerplate has already won, in the sense that you can never go home.
+
+A registry inverts the relationship. Every template is a node in a graph that knows about every other template. They share six contracts — auth, database, billing, jobs, storage, observability — and the contracts are what define what a "DeesseJS template" is. The specific files you ship are an implementation detail.
+
+## What "contract" means here
+
+When we say "auth contract," we don't mean an abstract interface. We mean: every template that ships with the auth contract must implement session management, organization support, invitations, OAuth, and 2FA in the same shape. The implementation can be Better Auth, Clerk, or Auth0. The shape cannot change.
+
+The shape is what an agent reads. It is what allows an AI agent to land on a DeesseJS template and find the same affordances regardless of the underlying library. The shape is the contract.
+
+## Why an agent matters
+
+This is the part that surprised us. We didn't set out to build for agents. We set out to build for ourselves, and for the next senior engineer who joined the team and had to ramp on a template written by someone who left.
+
+But the constraints that make a template readable to an agent are the same constraints that make a template readable to a new hire:
+
+- Predictable directory structure.
+- Typed interfaces at the boundary.
+- A manifest file that says what this template ships with and what it doesn't.
+- A changelog that maps template version to contract version.
+
+If an agent can read it, a human can read it. If a human can read it, you can hand it off without a six-week ramp.
+
+## What this is not
+
+A registry is not a marketplace. We don't curate the long tail. We don't allow third-party submissions. The set of templates we ship is the set of templates we maintain, and we maintain them because they are the ones we run our own products on.
+
+A registry is also not a code generator. There's no AI that scaffolds a template from a prompt. You run `npx @deessejs/cli@latest init my-app --template=saas-starter`, and you get a real project, not a sketch of one.
+
+## The boring answer
+
+Most of the reason we built it this way is that we got tired. Tired of re-explaining our opinions about auth to every new project. Tired of writing the same Stripe webhook handler. Tired of forgetting how we set up observability the last three times.
+
+A registry means we explain our opinions once. They get encoded as a contract. Every new template starts with those opinions already in place, and you spend your time on the part of the product that is actually new.
+
+That's it. That's the whole pitch.

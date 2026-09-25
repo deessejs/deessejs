@@ -7,7 +7,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import type { Post } from "@/lib/blog/types"
 
-import { BlogPostGrid } from "./blog-post-grid"
+import { PostCardGrid } from "./blog-post-grid"
 
 /**
  * Client root that owns the search query and renders the input next
@@ -22,8 +22,8 @@ export function BlogSearch({
   featured,
   topics,
 }: {
-  posts: Post[]
-  featured?: Post | undefined
+  posts: ReadonlyArray<Post>
+  featured?: ReadonlyArray<Post> | undefined
   topics?: ReactNode
 }) {
   const [query, setQuery] = useState("")
@@ -46,7 +46,7 @@ export function BlogSearch({
   return (
     <div className="flex flex-col" data-blog-search-query={query}>
       {topics ? (
-        <div className="flex flex-col gap-3 border-x border-t border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <div className="flex flex-col gap-4 border-x border-t border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6">
           <div className="flex flex-1 flex-wrap items-center gap-2">{topics}</div>
           <div className="relative w-full shrink-0 sm:w-72">
             <Search
@@ -98,7 +98,7 @@ export function BlogSearch({
           </p>
         </div>
       ) : (
-        <BlogPostGrid
+        <PostCardGrid
           posts={filtered}
           featured={isSearching ? undefined : featured}
         />

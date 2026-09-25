@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Check } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 
+
 export const metadata: Metadata = {
   title: "Open Source Program",
   description:
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
  */
 export default function OssPage() {
   return (
-    <article className="mx-auto flex max-w-3xl flex-col gap-12 px-4 py-16 sm:px-6 lg:py-24">
+    <>
       <header className="flex flex-col gap-4">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           Open source
@@ -128,6 +129,6 @@ export default function OssPage() {
           </a>
         </Button>
       </div>
-    </article>
+    </>
   )
 }

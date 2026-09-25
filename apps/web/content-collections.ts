@@ -1,8 +1,77 @@
 import { defineCollection, defineConfig } from "@content-collections/core"
 import { compileMDX } from "@content-collections/mdx"
 import rehypeShiki from "@shikijs/rehype"
+import type { Element, Root } from "hast"
+import { visit } from "unist-util-visit"
 import { z } from "zod"
 import readingTime from "reading-time"
+
+/**
+ * Build-time rehype plugin that assigns stable `id` attributes to
+ * every <h2> and <h3> emitted by the MDX. Without this, the table
+ * of contents on the guide / blog / changelog detail pages links
+ * to anchors that do not exist in the SSR HTML — clicking a TOC
+ * item does nothing on the first paint because the ids are added
+ * by a client-side useEffect that runs only after hydration.
+ *
+ * Slug rules match the popular `github-slugger` behavior (which we
+ * do not have as a dependency): lowercase, dashes for whitespace,
+ * drop non-word characters, dedupe by suffixing -1, -2, … when two
+ * headings share the same text (e.g. consecutive "What's next").
+ *
+ * Must run BEFORE @shikijs/rehype so the heading ids are stable when
+ * code blocks are highlighted. Runs as a custom plugin below the
+ * @shikijs/rehype slot in every rehypePlugins array; cheap (only
+ * walks headings, of which there are at most ~20 per doc).
+ */
+function rehypeHeadingIds() {
+  return (tree: Root) => {
+    const counts = new Map<string, number>()
+    visit(tree, "element", (node: Element) => {
+      if (node.tagName !== "h2" && node.tagName !== "h3") return
+
+      const existing = node.properties?.id
+      if (typeof existing === "string" && existing.length > 0) {
+        // Editor-supplied id (rare in our MDX) wins.
+        counts.set(existing, (counts.get(existing) ?? 0) + 1)
+        return
+      }
+
+      const text = collectText(node)
+      const base = slugify(text)
+      const seen = counts.get(base) ?? 0
+      counts.set(base, seen + 1)
+      const id = seen === 0 ? base : `${base}-${seen}`
+
+      node.properties = {
+        ...(node.properties ?? {}),
+        id,
+      }
+    })
+  }
+}
+
+function collectText(node: Element): string {
+  let out = ""
+  for (const child of node.children) {
+    if (child.type === "text") {
+      out += child.value
+    } else if (child.type === "element") {
+      out += collectText(child)
+    }
+  }
+  return out
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 80)
+}
 
 const authors = defineCollection({
   name: "authors",
@@ -11,6 +80,7 @@ const authors = defineCollection({
   schema: z.object({
     handle: z.string().min(1).max(60),
     name: z.string().min(1).max(120),
+    role: z.string().min(1).max(120).optional(),
     avatar: z.string().optional(),
     bio: z.string().optional(),
     // External identity links surfaced as schema.org `sameAs` on the
@@ -34,7 +104,11 @@ const posts = defineCollection({
     description: z.string().min(1).max(280),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     updated: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    tags: z.array(z.string()).default([]),
+    tags: z
+      .array(
+        z.enum(["engineering", "community", "news", "customers", "security"]),
+      )
+      .default([]),
     author: z.string().min(1).optional(),
     authors: z.array(z.string().min(1)).default([]),
     draft: z.boolean().default(false),
@@ -82,13 +156,15 @@ const posts = defineCollection({
 
     const mdxCode = await compileMDX(context, post, {
       rehypePlugins: [
-        [
-          rehypeShiki,
-          {
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          },
-        ],
+        // Build-time Shiki: @shikijs/rehype replaces every fenced
+        // code block in the MDX with the shiki-highlighted HTML
+        // (theme="github-dark", class="shiki shiki-themes …", inline
+        // `color` on token spans). The MDX runtime then renders that
+        // HTML through MdxPre, which only adds the surrounding
+        // border/overflow chrome — no runtime shiki, no client
+        // bundling, no async boundary.
+        [rehypeHeadingIds],
+        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
       ],
     })
 
@@ -160,13 +236,8 @@ const releases = defineCollection({
 
     const mdxCode = await compileMDX(context, release, {
       rehypePlugins: [
-        [
-          rehypeShiki,
-          {
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          },
-        ],
+        [rehypeHeadingIds],
+        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
       ],
     })
 
@@ -198,13 +269,8 @@ const kbTopics = defineCollection({
 
     const mdxCode = await compileMDX(context, topic, {
       rehypePlugins: [
-        [
-          rehypeShiki,
-          {
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          },
-        ],
+        [rehypeHeadingIds],
+        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
       ],
     })
 
@@ -226,6 +292,11 @@ const kbGuides = defineCollection({
     description: z.string().min(1).max(280),
     topic: z.string().min(1),
     products: z.array(z.string()).default([]),
+    author: z.string().min(1).optional(),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
     order: z.number().int().nonnegative().default(0),
     draft: z.boolean().default(false),
     content: z.string(),
@@ -239,20 +310,29 @@ const kbGuides = defineCollection({
       .replace(/^.*\//, "")
       .replace(/\.mdx$/, "")
 
+    const author = guide.author
+      ? context.documents(authors).find((a) => a.handle === guide.author)
+      : undefined
+    if (guide.author && !author) {
+      throw new Error(
+        `Guide "${guide.title}" references unknown author "${guide.author}". ` +
+          `Add content/authors/${guide.author}.md or fix the frontmatter.`,
+      )
+    }
+
+    const stats = readingTime(guide.content)
+
     const mdxCode = await compileMDX(context, guide, {
       rehypePlugins: [
-        [
-          rehypeShiki,
-          {
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          },
-        ],
+        [rehypeHeadingIds],
+        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
       ],
     })
 
     return {
       ...guide,
+      author,
+      readingTime: Math.max(1, Math.round(stats.minutes)),
       slug,
       url: `/knowledge-base/guides/${slug}`,
       mdxCode,

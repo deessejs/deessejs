@@ -154,7 +154,7 @@ export function ReleaseTimeline({ releases }: { releases: Release[] }) {
 
   return (
     <div className="border border-border bg-background rounded-none py-6">
-      <ul className="m-0 grid list-none grid-cols-4 gap-x-6 gap-y-0 p-0 lg:grid-cols-12 [&>li:last-of-type]:before:h-0">
+      <ul className="m-0 grid list-none grid-cols-4 gap-x-6 gap-y-0 py-6 lg:grid-cols-12 [&>li:last-of-type]:before:h-0">
         {releases.map((release, i) => (
           <ReleaseTimelineRow
             key={release.slug}

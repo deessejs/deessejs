@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { allAuthors, allPosts } from "content-collections"
-import { PostCard } from "@/components/blog/post-card"
+import { PostCardGrid } from "@/components/blog/blog-post-grid"
 import { buildPersonJsonLd } from "@/lib/seo/person-jsonld"
 
 type Params = { handle: string }
@@ -63,7 +63,7 @@ export default async function AuthorPage({
     .toUpperCase()
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+    <section>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -102,13 +102,7 @@ export default async function AuthorPage({
       {posts.length === 0 ? (
         <p className="text-muted-foreground">No articles yet.</p>
       ) : (
-        <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-2 lg:grid-cols-3 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:nth-child(3n)]:lg:border-r-0 [&>li:nth-last-child(-n+2)]:md:border-b-0 [&>li:nth-last-child(-n+3)]:lg:border-b-0 [&>li:first-child]:border-t">
-          {posts.map((post) => (
-            <li key={post.slug}>
-              <PostCard post={post} />
-            </li>
-          ))}
-        </ul>
+        <PostCardGrid posts={posts} gridCols="1-2-3" />
       )}
     </section>
   )

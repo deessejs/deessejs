@@ -1,9 +1,10 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { notFound } from "next/navigation"
 import { Badge } from "@workspace/ui/components/badge"
 import { BlogSearch } from "@/components/blog/blog-search"
 import { getPostsByTag } from "@/lib/blog/posts"
-import { getAllTags } from "@/lib/blog/types"
+import { BLOG_TAGS, type BlogTag, getAllTags } from "@/lib/blog/types"
 
 type Params = { tag: string }
 
@@ -27,12 +28,19 @@ export default async function TagPage(
 ) {
   const { tag } = await params
   const decoded = decodeURIComponent(tag)
-  const posts = getPostsByTag(decoded)
+  // Refuse unknown tags: they're not part of our closed set, so a
+  // 404 is more honest than rendering an empty index. Casting the
+  // string to `BlogTag` would skip this check and lie to callers.
+  if (!BLOG_TAGS.includes(decoded as BlogTag)) {
+    notFound()
+  }
+  const blogTag = decoded as BlogTag
+  const posts = getPostsByTag(blogTag)
   const tags = getAllTags()
-  const featured = posts[0]
+  const featured = posts[0] ? [posts[0]] : []
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+    <section>
       <header className="mb-8">
         <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
           Blog
@@ -60,6 +68,14 @@ export default async function TagPage(
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Topics
             </span>
+            <Link href="/blog">
+              <Badge
+                variant="outline"
+                className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
+              >
+                All topics
+              </Badge>
+            </Link>
             {tags.map((t) => {
               const isActive = t === decoded
               return (

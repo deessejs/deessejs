@@ -1,93 +1,71 @@
-import Image from "next/image"
-import Link from "next/link"
 import type { Post } from "@/lib/blog/types"
 
-import { AuthorAvatarLink } from "./author-avatar"
+import { FeaturedRow } from "./featured-row"
 import { PostCard } from "./post-card"
 
 /**
- * Recipe B post grid for /blog index and the blog-search component.
+ * Shared `PostCard` grid for every blog surface: `/blog`, `/blog/tag/[tag]`,
+ * `/blog/author/[handle]`, and the "Related reading" block on `/blog/[slug]`.
  *
  * Layout:
- * - Optional featured post as a full-width `<li>` (only when `featured`
- *   is provided and the list is unfiltered).
- * - All other posts as standard `<PostCard>` cells in a 1/2/3-column
- *   grid with shared borders.
+ * - Optional featured row at the top, rendered by `FeaturedRow`
+ *   (1 column mobile, 2 columns `lg+`). No per-cell `border-b` — the
+ *   first row of the main grid supplies the visual divider.
+ * - Main grid renders the remaining posts. Responsive column count is
+ *   controlled by `gridCols`.
  *
- * The grid relies on Tailwind nth-child selectors to drop the trailing
- * borders on the rightmost and bottom cells so the grid sits inside a
- * single shared-border wrapper.
+ * Border strategy (Pattern B — see `.claude/skills/tailwind-borders`):
+ * - Outer wrapper `overflow-hidden rounded-xl border border-border
+ *   bg-background` is the single source of the visible frame.
+ * - Inner `<ul>` shifts by `-mr-px -mb-px` so the last row's bottom and
+ *   the last column's right borders are clipped by the wrapper instead
+ *   of doubling against it.
+ * - Each cell carries `border-b border-r border-border`. No `nth-child`
+ *   needed — the negative-margin trick gives us the shared-border
+ *   surface for any column count.
  */
-export function BlogPostGrid({
+const GRID_COLS_CLASS: Record<"1-2-3" | "1-2-3-4", string> = {
+  "1-2-3": "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+  "1-2-3-4": "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4",
+}
+
+export function PostCardGrid({
   posts,
   featured,
+  gridCols = "1-2-3-4",
 }: {
-  posts: Post[]
-  featured?: Post | undefined
+  posts: ReadonlyArray<Post>
+  featured?: ReadonlyArray<Post> | undefined
+  gridCols?: "1-2-3" | "1-2-3-4"
 }) {
-  if (posts.length === 0 && !featured) {
+  if (posts.length === 0 && (!featured || featured.length === 0)) {
     return null
   }
 
-  const featuredAuthor = featured?.authors?.[0] ?? featured?.author
+  const featuredSlugs = new Set(featured?.map((p) => p.slug) ?? [])
+  const filteredPosts = posts.filter((post) => !featuredSlugs.has(post.slug))
+
+  const mainAriaLabel =
+    featured && featured.length > 0 ? "All blog posts" : "Posts"
 
   return (
-    <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-2 lg:grid-cols-3 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:nth-child(3n)]:lg:border-r-0 [&>li:nth-last-child(-n+2)]:md:border-b-0 [&>li:nth-last-child(-n+3)]:lg:border-b-0 [&>li:first-child]:border-t">
-      {featured ? (
-        <li key={featured.slug} className="border border-border sm:col-span-2 lg:col-span-3">
-          <Link
-            href={featured.url}
-            className="group flex h-full flex-col transition-colors hover:bg-accent/30"
-          >
-            {featured.cover ? (
-              <div className="relative aspect-video w-full overflow-hidden bg-muted">
-                <Image
-                  src={featured.cover}
-                  alt=""
-                  fill
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  priority
-                  sizes="(max-width: 768px) 100vw, 1200px"
-                />
-              </div>
-            ) : null}
-            <div className="flex flex-col gap-3 p-8">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                <time dateTime={featured.date}>{featured.date}</time>
-                <span aria-hidden>·</span>
-                <span>{featured.readingTime} min read</span>
-                {featured.tags.length > 0 && (
-                  <>
-                    <span aria-hidden>·</span>
-                    {featured.tags.slice(0, 2).map((tag) => (
-                      <span
-                        key={tag}
-                        className="border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </>
-                )}
-              </div>
-              <h2 className="text-3xl font-bold tracking-tight">
-                {featured.title}
-              </h2>
-              <p className="text-muted-foreground">{featured.description}</p>
-              {featuredAuthor ? (
-                <span className="mt-1">
-                  <AuthorAvatarLink author={featuredAuthor} size={32} />
-                </span>
-              ) : null}
-            </div>
-          </Link>
-        </li>
+    <div className="overflow-hidden rounded-xl border border-border bg-background">
+      {featured && featured.length > 0 ? (
+        <FeaturedRow featured={featured} />
       ) : null}
-      {posts.map((post) => (
-        <li key={post.slug}>
-          <PostCard post={post} />
-        </li>
-      ))}
-    </ul>
+
+      {filteredPosts.length > 0 ? (
+        <ul
+          aria-label={mainAriaLabel}
+          className={`-mr-px -mb-px grid list-none p-0 ${GRID_COLS_CLASS[gridCols]}`}
+        >
+          {filteredPosts.map((post) => (
+            <li key={post.slug} className="border-b border-r border-border">
+              <PostCard post={post} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   )
 }

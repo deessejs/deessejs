@@ -6,10 +6,11 @@ import { Card } from "@workspace/ui/components/card"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 
+
 export const metadata: Metadata = {
   title: "Ecosystem",
   description:
-    "The DeesseJS ecosystem — the apps, SDKs, and shared contracts that ship together.",
+    "The DeesseJS ecosystem: the apps, SDKs, and shared contracts that ship together.",
 }
 
 /**
@@ -49,7 +50,7 @@ const SUB_DOMAINS: ReadonlyArray<SubDomain> = [
     name: "Errors",
     initials: "ERR",
     blurb:
-      "Structured error tracking — the missing signal in any agent-driven stack.",
+      "Structured error tracking: the missing signal in any agent-driven stack.",
     status: "Shipping",
   },
   {
@@ -76,7 +77,7 @@ const SUB_DOMAINS: ReadonlyArray<SubDomain> = [
     name: "FP",
     initials: "FP",
     blurb:
-      "Functional primitives the SDK leans on — small, sharp, no runtime cost.",
+      "Functional primitives the SDK leans on. Small, sharp, no runtime cost.",
     status: "Shipping",
   },
   {
@@ -85,7 +86,7 @@ const SUB_DOMAINS: ReadonlyArray<SubDomain> = [
     name: "UI",
     initials: "UI",
     blurb:
-      "Component library on top of shadcn — the DeesseJS look across every surface.",
+      "Component library on top of shadcn. The DeesseJS look across every surface.",
     status: "Shipping",
   },
   {
@@ -94,7 +95,7 @@ const SUB_DOMAINS: ReadonlyArray<SubDomain> = [
     name: "Admin",
     initials: "ADM",
     blurb:
-      "Operator console for the apps you ship — auth, billing, audit, all reachable.",
+      "Operator console for the apps you ship. Auth, billing, audit, all reachable.",
     status: "In beta",
   },
   {
@@ -103,7 +104,7 @@ const SUB_DOMAINS: ReadonlyArray<SubDomain> = [
     name: "Cloud",
     initials: "CL",
     blurb:
-      "Hosted runtime for the templates — preview, deploy, observe, scale.",
+      "Hosted runtime for the templates. Preview, deploy, observe, scale.",
     status: "Coming soon",
   },
   {
@@ -112,7 +113,7 @@ const SUB_DOMAINS: ReadonlyArray<SubDomain> = [
     name: "type-testing",
     initials: "TT",
     blurb:
-      "Assertion-style type tests for the SDKs and shared contracts — positive, negative, and deep inference in one suite.",
+      "Assertion-style type tests for the SDKs and shared contracts. Positive, negative, and deep inference in one suite.",
     status: "Shipping",
   },
 ] as const
@@ -121,12 +122,12 @@ const SHARED_VALUES: ReadonlyArray<{ title: string; body: string }> = [
   {
     title: "One contract, every surface",
     body:
-      "Errors, Collections, and FP all speak the same Zod shape. A change in the contract propagates to every consumer on publish — same as the templates.",
+      "Errors, Collections, and FP all speak the same Zod shape. A change in the contract propagates to every consumer on publish, same as the templates.",
   },
   {
     title: "Open source by default",
     body:
-      "Every sub-domain ships MIT when it's stable enough. The brand, the marketplace, and the curated registry stay ours — the source-code ecosystem is shared.",
+      "Every sub-domain ships MIT when it's stable enough. The brand, the marketplace, and the curated registry stay ours. The source-code ecosystem is shared.",
   },
   {
     title: "Smallest useful version first",
@@ -137,15 +138,15 @@ const SHARED_VALUES: ReadonlyArray<{ title: string; body: string }> = [
 
 export default function EcosystemPage() {
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-20 px-4 py-16 sm:px-6 lg:gap-24 lg:py-24">
-      {/* Hero */}
-      <header className="flex flex-col gap-6">
+      <div className="mx-auto max-w-4xl py-16">
+        {/* Hero */}
+        <header className="flex flex-col gap-6">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           The ecosystem
         </p>
         <H1>The DeesseJS ecosystem.</H1>
         <p className="text-muted-foreground text-copy-20 leading-7 max-w-3xl [&:not(:first-child)]:mt-0">
-          DeesseJS is more than a templates registry — it&apos;s a
+          DeesseJS is more than a templates registry. It&apos;s a
           stack of small apps, SDKs, and shared contracts that ship
           together. Each sub-domain earns its place by solving one
           problem end to end, and they all talk to each other
@@ -158,7 +159,7 @@ export default function EcosystemPage() {
         <header className="flex flex-col gap-2">
           <H2>Sub-domains</H2>
           <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0 max-w-2xl">
-            Click any to open in a new tab — each product lives at
+            Click any to open in a new tab. Each product lives at
             its own URL, alongside this site.
           </p>
         </header>
@@ -251,7 +252,7 @@ export default function EcosystemPage() {
               Manifesto
             </span>
             <span className="text-copy-13 text-muted-foreground">
-              Why we&apos;re here — the beliefs behind the work.
+              Why we&apos;re here: the beliefs behind the work.
             </span>
           </Link>
           <Link
@@ -288,7 +289,7 @@ export default function EcosystemPage() {
       >
         <H2>Start here</H2>
         <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0 max-w-xl">
-          The fastest way into the ecosystem is a template — it
+          The fastest way into the ecosystem is a template. It
           pulls the same contract and the same defaults as the
           apps above.
         </p>
@@ -301,6 +302,6 @@ export default function EcosystemPage() {
           </Button>
         </div>
       </nav>
-    </div>
+      </div>
   )
 }

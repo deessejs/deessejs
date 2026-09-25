@@ -1,0 +1,86 @@
+---
+title: What we learned migrating our own SaaS to DeesseJS
+description: Dogfooding report: the 3 things that broke, the 5 things that took longer than expected, and the 12 things that just worked.
+date: 2026-08-11
+tags: [customers, community]
+author: alex
+---
+
+# What we learned migrating our own SaaS to DeesseJS
+
+Six months ago, we migrated one of our own SaaS products from a hand-rolled Next.js codebase to a DeesseJS template. We are the customer, and we are the maintainer. This is the post-mortem.
+
+## The setup
+
+The product is a small B2B SaaS for managing logistics operations. It has roughly five thousand monthly active users, two engineers working on it full-time, and a Postgres database with about 40 tables. It handles auth, billing (Stripe), a small amount of background jobs, file uploads for shipment photos, and standard observability.
+
+Before the migration, the codebase was about eighteen thousand lines of code, six thousand of which were the auth and billing integrations we'd written by hand. After the migration, it's about eight thousand lines, none of which are auth or billing.
+
+The migration took six weeks of one engineer's time.
+
+## What broke
+
+**Three things broke during the migration.**
+
+**The session table migration.** The new template uses a different session table schema than our old code. We had to write a migration that copied sessions from the old table to the new one, then drop the old table. The migration worked locally but failed in production because of a foreign key constraint we'd forgotten. The fix took two hours and a hotfix.
+
+**The webhook idempotency keys.** Our old code used Stripe's event ID as the idempotency key. The new template uses a derived key. When we replayed old events to seed the new database, every event was processed twice — once by the old code's replay, once by the new code's normal processing. The fix was to deduplicate by Stripe event ID in the new code.
+
+**The storage URL format.** Our old code used signed URLs that expired in 24 hours. The new template uses signed URLs that expire in 1 hour. Customers with bookmarked URLs got 403s. The fix was a one-line config change, but the customer-facing impact was real.
+
+## What took longer than expected
+
+**Five things took longer than expected.**
+
+**The auth provider swap.** We had been using a custom auth implementation that depended on a specific edge case the new template doesn't expose. Migrating to the template's auth meant rewriting our middleware to use the template's `getSession()` everywhere. The rewrite was mechanical but spread across 40 files.
+
+**The billing webhook reconciliation.** The new template's billing contract has a different opinion about how to handle subscription state changes than our old code. We had to reconcile our database state with Stripe's state, which meant writing a script that queried Stripe for every subscription and compared it to our local database. The script ran for two days and produced a 200-line diff.
+
+**The CI pipeline.** Our old CI ran on a self-hosted GitHub Actions runner. The template assumes Vercel. We had to migrate the pipeline, which meant moving from Docker-based tests to Vercel's preview deployment system. The migration was two days, but the debugging was a week.
+
+**The database migration order.** Our database had 40 tables. The template's schema migration added 12 tables and modified 8. The order mattered: we had to run the template's migrations before our data migrations, but our data migrations referenced some of the new tables. The fix was a single SQL script that ran the migrations in the right order.
+
+**The docs.** We had two thousand words of internal docs explaining our old setup. The new setup has different trade-offs, so we had to rewrite the docs. This was the largest line item — a week of writing.
+
+## What worked
+
+**Twelve things just worked.**
+
+- The auth flow (sign up, sign in, sign out, password reset) — worked end to end on day one.
+- The Stripe integration (subscriptions, customer portal, webhooks) — worked end to end on day one.
+- The job system (enqueue, retries, dead-letter) — worked end to end on day one.
+- The storage system (signed URLs, upload streaming) — worked end to end on day one.
+- The observability (logs, traces, metrics) — worked end to end on day one.
+- The email system (transactional, DKIM) — worked end to end on day one.
+- The session management (cookies, expiry, refresh) — worked end to end on day one.
+- The organization management (create, invite, switch) — worked end to end on day one.
+- The two-factor authentication (TOTP, recovery codes) — worked end to end on day one.
+- The rate limiting (per-route, per-user) — worked end to end on day one.
+- The CSP headers (default policy, per-route overrides) — worked end to end on day one.
+- The feature flags (per-user, per-organization) — worked end to end on day one.
+
+The list is longer than we expected. The reason it's longer is that the contracts encode more than we thought. The auth contract, for example, is not just "sessions" — it's sessions, organizations, invitations, 2FA, and password reset. The template ships with all five.
+
+## The honest takeaways
+
+**The contract is the right level of abstraction.** We started the migration thinking we'd need to argue with the template about how we wanted our auth to work. We ended up realizing the template's opinion was better than ours.
+
+**The migration is harder than the greenfield.** A new project on the template takes ten minutes. A migration takes six weeks. The difference is the existing data, the existing customers, and the existing assumptions baked into the old code.
+
+**The migration is worth it.** We removed six thousand lines of code. We deleted the auth and billing implementations we used to maintain. We get free upgrades when the template ships new versions.
+
+**The migration is not free.** The three things that broke cost us a week. The five things that took longer cost us a month. Plan accordingly.
+
+## What we'd do differently
+
+We'd run the dogfood earlier. The first three weeks of the migration were spent arguing with the template about how we wanted things to work. We should have started by dogfooding the template on a small project — like the editorial workflow template we wrote about — and gotten the muscle memory before tackling the real product.
+
+We'd written a migration script earlier. The "reconcile Stripe state" script took a week to write. We should have written it in week one, before we started migrating, so we could dry-run it on production without the rest of the migration in the way.
+
+## The boring conclusion
+
+We migrated our own product to our own template. Three things broke. Five things took longer than expected. Twelve things just worked.
+
+The migration was worth it. The migration was not free. The migration was harder than greenfield, easier than rewriting from scratch, and faster than maintaining the old code for another year.
+
+We are the customer. We are the maintainer. The customer-monitor relationship works because we ship what we use.

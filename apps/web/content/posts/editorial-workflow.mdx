@@ -1,0 +1,121 @@
+---
+title: "How we ship a template: the editorial workflow behind the registry"
+description: From RFC to GA. The 5-stage review process every template goes through before it lands in the registry.
+date: 2026-08-04
+tags: [community]
+author: admin
+---
+
+# How we ship a template: the editorial workflow behind the registry
+
+Every template in the registry goes through the same five-stage review before it's marked GA. The process is slow on purpose. Templates are forever — once we ship one, we maintain it indefinitely, and the cost of shipping a bad template is paid by every customer who adopts it.
+
+## Stage 1: RFC
+
+Every new template starts as an RFC. The RFC is a one-page document that covers:
+
+- The surface area (SaaS, mobile, CLIs, etc.).
+- The contracts it would implement.
+- The providers it would default to.
+- The edge cases it would handle.
+- The rough size of the work, in weeks.
+
+The RFC is reviewed by two people: one engineer who has shipped a similar template before, and one operator who has run a similar template in production. The review happens in a comment thread, not a meeting.
+
+The RFC is approved when both reviewers agree that:
+
+- The surface area is something the registry should cover.
+- The contracts are stable enough that the template can implement them.
+- The work fits in a quarter.
+
+If any of those three is false, the RFC is rejected or sent back for revision. We have rejected roughly half of the RFCs we've received.
+
+## Stage 2: scaffold
+
+Once the RFC is approved, the work moves to scaffolding. The scaffolding engineer writes the template's basic structure:
+
+- The directory tree.
+- The `deessejs.json` manifest.
+- The AGENTS.md file.
+- The README.
+
+The scaffolding is reviewed by the same two people who reviewed the RFC. The review focuses on: does the structure match what the RFC promised? Is the AGENTS.md small enough to fit in a context window? Does the manifest accurately describe the contracts?
+
+The scaffolding is approved when both reviewers agree that the structure is what the RFC described. We have never rejected a scaffold that was approved at the RFC stage, because the RFC's structure review catches issues before the work starts.
+
+## Stage 3: contracts
+
+Once the scaffolding is approved, the engineer implements each contract. The contracts are reviewed contract by contract, not as a single PR.
+
+For each contract:
+
+- The implementation is reviewed by the engineer who maintains that contract in the registry.
+- The reviewer checks: does the implementation match the contract's interface? Are the edge cases handled? Are the tests covering the failure paths?
+- The reviewer runs the template locally and exercises the contract end to end.
+
+Each contract is approved independently. A template can ship with three of four contracts implemented if the fourth is blocking on something external.
+
+## Stage 4: dogfood
+
+Once all the contracts are approved, the engineer dogfoods the template. They build a small product on top of it — usually a CLI for an internal tool, or a dashboard for an internal service.
+
+The dogfood catches the things that reviews miss:
+
+- The setup steps that don't quite work on a fresh machine.
+- The commands that fail silently.
+- The defaults that are wrong for a real product.
+
+The dogfood is a minimum of two weeks. Longer if the template has more surface area.
+
+The engineer writes a dogfood report: what worked, what didn't, what they changed. The report is reviewed by the same two people who reviewed the RFC. The review focuses on: is the template now ready for a customer to adopt?
+
+## Stage 5: GA
+
+Once the dogfood report is approved, the template is marked GA. The marking happens in the registry's manifest, with a version number and a date.
+
+The GA announcement includes:
+
+- The release notes.
+- The migration guide for anyone using the previous version of the template.
+- The list of breaking changes (if any).
+- The link to the docs.
+
+After GA, the template enters maintenance mode. New contracts can be added in minor versions. Breaking changes require a major version and a migration guide.
+
+## What we don't do
+
+We don't ship templates without dogfood. Every template in the registry has been used internally for at least two weeks.
+
+We don't ship templates without an AGENTS.md. If the AGENTS.md isn't there, the template doesn't ship.
+
+We don't ship templates without tests for the failure paths. A test that exercises the happy path is not enough.
+
+We don't ship templates that require manual setup steps. If the README says "run this command, then edit this file, then do this other thing," the template isn't ready.
+
+## What we got wrong the first time
+
+Our first template went through a one-stage review: "is it done?" It was not done. It shipped with manual setup steps. We spent a quarter cleaning it up.
+
+The five-stage process is the response. It is slow on purpose. It catches the things that the first template missed.
+
+## How long does this take
+
+Roughly:
+
+- RFC: 1-2 weeks.
+- Scaffold: 1-2 weeks.
+- Contracts: 4-8 weeks (varies by surface area).
+- Dogfood: 2-4 weeks.
+- GA: 1 week (announcement, migration guide).
+
+Total: 2-4 months from RFC to GA, depending on the template's complexity.
+
+A template that takes less time is suspicious. A template that takes more time is normal.
+
+## The boring conclusion
+
+The registry is small on purpose. We have shipped five templates in two years. We are not trying to ship a hundred.
+
+Each template is a multi-month investment. Each template is maintained forever. Each template is reviewed five times before it ships.
+
+The process is slow. The process is right. The cost of shipping a bad template is paid by every customer who adopts it, and we don't want to pay that cost.
