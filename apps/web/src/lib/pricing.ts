@@ -8,13 +8,13 @@
  * The page is organized around license TYPES (how your license works),
  * not around product tiers (what you buy):
  *
- *   1. Open Community — MIT, free, community-driven. No license to manage.
- *   2. Per-project license — $299 one-shot, lifetime, every project you ship.
- *      Source code shipped on day one.
- *   3. Enterprise — custom engagement, multi-template bundles, dedicated
- *      support, procurement-friendly invoicing.
+ *   1. Community — MIT, free, community-driven. No license to manage.
+ *   2. Professional — $299 one-shot, lifetime, every project you ship.
+ *      Source code shipped on day one. Pair with Subscription for updates.
+ *   3. Agency & Team — $799 one-shot, 5 seats, Commercial Extended License.
+ *      For dev agencies, design studios, and engineering teams.
  *   4. Subscription — $23/month, ongoing access to updates and new
- *      templates. Optional, on top of the per-project license. Cancel any
+ *      templates. Optional, on top of a Professional license. Cancel any
  *      time — what you've already cloned stays usable.
  *
  * Adding a new license type or changing prices means:
@@ -25,7 +25,8 @@
 
 export type LicenseTypeId =
   | "open-community"
-  | "per-project"
+  | "professional"
+  | "agency"
   | "enterprise"
   | "subscription"
 
@@ -40,8 +41,8 @@ export type PricingPrice =
  * optional Subscription rendered as a horizontal banner below the
  * three cards.
  *
- * Per-project and Subscription are two parts of the same Pro offer:
- * the per-project license unlocks the codebase once, the subscription
+ * Professional and Subscription are two parts of the same Pro offer:
+ * the Professional license unlocks the codebase once, the Subscription
  * unlocks updates and new releases over time. They are presented as
  * one card each (because their pricing cadence is different) but they
  * are not mutually exclusive — most teams buy both.
@@ -65,31 +66,38 @@ export type LicenseType = {
 export const LICENSE_TYPES: ReadonlyArray<LicenseType> = [
   {
     id: "open-community",
-    name: "Open Community",
-    tagline: "Free, MIT. The floor of the catalog.",
-    forWho: "For solo devs and weekend projects.",
+    name: "Community",
+    tagline: "Free forever · MIT License",
+    forWho:
+      "For solo builders, weekend hacks, and open-source projects.",
     price: { kind: "free" },
     positioning:
-      "Templates contributed by the community, with no production guarantees. Quality bar: does it compile, does it run, does it cover a real use case?",
+      "The open-source foundation of DeesseJS. Clean, modular building blocks and essential starters to scaffold your ideas in seconds with zero friction.",
     ships: [
-      "Landing pages, dashboards, B2B starters, internal tools",
-      "Free and MIT-licensed. No app count, no seat count, no deploy cap",
-      "Pull-requests accepted from anyone, reviewed by a DeesseJS maintainer",
+      "1 curated starter template, plus every community-contributed template in the catalog",
+      "Permissive MIT License: build personal or commercial apps",
+      "Zero vendor lock-in: clean TypeScript ejected straight into your repo",
+      "Instant setup via our CLI",
+      "Actively maintained and reviewed by the DeesseJS core team",
     ],
     cta: { label: "Browse templates", href: "/templates" },
   },
   {
-    id: "per-project",
-    name: "Pro",
-    tagline: "$299 one-shot. Lifetime. Every project you ship.",
-    forWho: "For freelance devs and in-house teams saving engineering time.",
+    id: "professional",
+    name: "Professional",
+    tagline: "One-time payment · Lifetime access",
+    forWho:
+      "For independent developers, freelancers, and engineers who ship to production, including teams pairing with Cursor, Claude Code, and other AI agents.",
     price: { kind: "fixed", amount: 299, currency: "USD" },
     positioning:
-      "Production-grade templates for teams that ship for a living. Source code is yours on day one, deployable on your infra. One license covers every project you ship. No per-project cap, no per-seat count.",
+      "The complete full-stack architecture engine. Skip weeks of boilerplate glue code and deploy production-ready systems with multi-tenant auth, billing, and automated dashboards.",
     ships: [
-      "Source code for every Pro template at the time of purchase",
-      "Use across every project you ship. No per-project cap, no per-seat count.",
-      "14-day refund window, no questions asked",
+      "Lifetime access to all current and upcoming Pro templates & CLI blocks",
+      "100% full-stack source code ownership: run on your own infrastructure",
+      "Unlimited personal and commercial projects (1 developer seat)",
+      "Advanced modules: Better-Auth, Stripe/Polar webhooks, RBAC & admin suites",
+      "Access to private registry updates and ongoing security patches",
+      "14-day money-back guarantee, no questions asked",
     ],
     cta: {
       label: "Join now",
@@ -98,21 +106,23 @@ export const LICENSE_TYPES: ReadonlyArray<LicenseType> = [
     recommended: true,
   },
   {
-    id: "enterprise",
-    name: "Enterprise",
-    tagline: "Custom engagements for regulated and large teams.",
-    forWho: "For enterprise teams in regulated industries.",
-    price: { kind: "custom" },
+    id: "agency",
+    name: "Agency & Team",
+    tagline: "One-time payment · 5 seats included",
+    forWho:
+      "For dev agencies, design studios, and engineering teams delivering client work.",
+    price: { kind: "fixed", amount: 799, currency: "USD" },
     positioning:
-      "Tailored Pro engagements: multi-template bundles, custom scaffolding, dedicated support, and procurement-friendly invoicing. Per the engagement contract.",
+      "Turn your team into a software factory. Build and ship custom, high-margin client applications in days instead of months, backed by full legal resale rights and synchronized design assets.",
     ships: [
-      "Multi-template bundles across your stack",
-      "Custom scaffolding on top of a Pro template",
-      "Dedicated support and procurement-friendly invoicing",
+      "5 developer seats under a single organization",
+      "Extended Commercial License: build and re-sell to clients with zero attribution",
+      "Eliminate recurring client platform fees (no mandatory runtime lock-in)",
+      "Priority technical support: guaranteed 24h first response on business days",
     ],
     cta: {
-      label: "Contact us",
-      href: "/enterprise",
+      label: "Join as Agency",
+      href: "/join/agency",
     },
   },
   {
@@ -143,10 +153,13 @@ export const LICENSE_TYPES: ReadonlyArray<LicenseType> = [
 
 /**
  * The three license types that appear as columns in the comparison
- * table. Subscription is rendered as a horizontal banner below the
- * cards and also appears in the comparison table as a third column.
+ * table. Agency sits between Professional and the implicit subscription
+ * banner — the subscription does not appear as a comparison column.
  */
-export type ComparisonLayerId = "open-community" | "per-project" | "subscription"
+export type ComparisonLayerId =
+  | "open-community"
+  | "professional"
+  | "agency"
 
 export type ComparisonStatus = "yes" | "partial" | "no" | "na"
 
@@ -165,15 +178,15 @@ export const COMPARISON_LAYERS: ReadonlyArray<{
   id: ComparisonLayerId
   name: string
 }> = [
-  { id: "open-community", name: "Open Community" },
-  { id: "per-project", name: "Per-project" },
-  { id: "subscription", name: "Subscription" },
+  { id: "open-community", name: "Community" },
+  { id: "professional", name: "Professional" },
+  { id: "agency", name: "Agency" },
 ]
 
 /**
  * Comparison rows grouped by intent. Buyers can scan by intent instead
  * of reading a flat list. The "Post-cancellation" row in Rights &
- * terms reflects the per-project + subscription split: what you keep
+ * terms reflects the Professional + Subscription split: what you keep
  * vs. what stops when you cancel.
  */
 export type ComparisonGroup = {
@@ -187,25 +200,25 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
     rows: [
       {
         attribute: "Price",
-        tooltip: "What you pay upfront and over time. One-shot = single payment, lifetime access. Subscription = monthly cadence on top of a per-project license.",
+        tooltip: "What you pay upfront. One-shot = single payment, lifetime access.",
         values: {
           "open-community": "Free",
-          "per-project": "$299 one-shot, every project you ship",
-          subscription: "$23 / month, on top of a per-project license",
+          "professional": "$299 one-shot, every project you ship",
+          agency: "$799 one-shot, 5 seats, re-sell to your clients",
         },
         status: {
           "open-community": "yes",
-          "per-project": "partial",
-          subscription: "yes",
+          "professional": "partial",
+          agency: "partial",
         },
       },
       {
         attribute: "License",
-        tooltip: "The legal terms that come with the templates. MIT = permissive open-source. Per-project = lifetime commercial use of every project you ship under one license.",
+        tooltip: "The legal terms that come with the templates. MIT = permissive open-source. Professional = lifetime commercial use of every project you ship under one license. Agency = Commercial Extended License: re-sell to your clients without citing DeesseJS.",
         values: {
           "open-community": "MIT",
-          "per-project": "Lifetime, every project you ship, no per-project cap",
-          subscription: "Same per-project license, with ongoing updates entitlement",
+          "professional": "Lifetime, every project you ship, no cap",
+          agency: "Commercial Extended License: re-sell to clients, no attribution required",
         },
       },
       {
@@ -213,72 +226,35 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
         tooltip: "Whether the underlying source code ships with the license. Source code lives in your repo, deployable on your infra, with no telemetry or kill switch.",
         values: {
           "open-community": "Included",
-          "per-project": "Included on day one",
-          subscription: "Already included with the per-project license",
+          "professional": "Included on day one",
+          agency: "Included on day one, plus the Figma source file",
         },
       },
       {
         attribute: "Project scope",
-        tooltip: "How many projects one license covers. No per-project cap on Pro: every project you ship under the same license, internal or commercial.",
+        tooltip: "How many projects one license covers. No cap on Professional: every project you ship under the same license, internal or commercial.",
         values: {
           "open-community": "Unlimited",
-          "per-project": "Unlimited. Every project you ship under one license.",
-          subscription: "Same as the per-project license it extends",
+          "professional": "Unlimited. Every project you ship under one license.",
+          agency: "Unlimited, across up to 5 developers in your team",
         },
       },
       {
         attribute: "Templates included",
-        tooltip: "How many templates your license unlocks at any given time. Open Community ships with a curated starter set; Pro unlocks the full catalog at the time of purchase, plus every release during an active subscription.",
+        tooltip: "How many templates your license unlocks at any given time. Open Community ships with a curated starter set; Pro and Agency unlock the full catalog at the time of purchase.",
         values: {
           "open-community": "1 starter template",
-          "per-project": "30+ templates at purchase",
-          subscription: "Rolling: every new template while subscribed",
-        },
-      },
-      {
-        attribute: "MCP server",
-        tooltip: "Every Pro template ships with an MCP manifest that exposes its tools to coding agents. Open Community templates are catalog-only.",
-        values: {
-          "open-community": "Not included",
-          "per-project": "Included",
-          subscription: "Included, kept current",
-        },
-        status: {
-          "open-community": "no",
-          "per-project": "yes",
-          subscription: "yes",
-        },
-      },
-      {
-        attribute: "AGENTS.md in templates",
-        tooltip: "Every Pro template ships with an AGENTS.md at the repo root describing how an AI agent should navigate the codebase. Open Community templates rely on the maintainer's contribution.",
-        values: {
-          "open-community": "Maintainer-dependent",
-          "per-project": "Every template",
-          subscription: "Every template, updated with each release",
-        },
-        status: {
-          "open-community": "partial",
-          "per-project": "yes",
-          subscription: "yes",
+          professional: "Full catalog at purchase",
+          agency: "Full catalog at purchase",
         },
       },
       {
         attribute: "Documentation depth",
-        tooltip: "How deep the template-level documentation goes. Pro templates include a per-template KB article in addition to the README.",
+        tooltip: "How deep the template-level documentation goes. All tiers ship with the same public KB articles; there is no gated documentation by tier.",
         values: {
-          "open-community": "README only",
-          "per-project": "README + KB article",
-          subscription: "README + KB article, kept current",
-        },
-      },
-      {
-        attribute: "Submission flow",
-        tooltip: "How templates enter the catalog. Pull-request = community contribution, reviewed by a DeesseJS maintainer. Authored by the team = curated production-grade.",
-        values: {
-          "open-community": "Pull-request",
-          "per-project": "Authored by the DeesseJS team",
-          subscription: "Authored by the DeesseJS team",
+          "open-community": "Complete",
+          professional: "Complete",
+          agency: "Complete",
         },
       },
       {
@@ -286,13 +262,13 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
         tooltip: "What 'done' means for templates in this tier. Open Community = ships end-to-end. Pro = production patterns a CISO expects, audited before release.",
         values: {
           "open-community": "Does it ship end-to-end?",
-          "per-project": "Production patterns a CISO expects",
-          subscription: "Same as per-project, kept current",
+          "professional": "Production patterns a CISO expects",
+          agency: "Same as Pro, audited before every release",
         },
         status: {
           "open-community": "partial",
-          "per-project": "yes",
-          subscription: "yes",
+          "professional": "yes",
+          agency: "yes",
         },
       },
     ],
@@ -302,53 +278,29 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
     rows: [
       {
         attribute: "Updates",
-        tooltip: "How often templates are kept current with the ecosystem (Next.js, Better Auth, Drizzle, providers). Community = anyone can PR. Pro = ongoing maintenance by the team.",
+        tooltip: "How often templates are kept current with the ecosystem (Next.js, Better Auth, Drizzle, providers). Community = anyone can PR. Pro and Agency = ongoing maintenance by the team.",
         values: {
           "open-community": "Community-driven, always current",
-          "per-project": "Available while a subscription is active",
-          subscription: "Every update ships during the subscription",
-        },
-        status: {
-          "open-community": "yes",
-          "per-project": "partial",
-          subscription: "yes",
+          "professional": "Ongoing, by the DeesseJS team",
+          agency: "Ongoing, by the DeesseJS team, prioritized for client work",
         },
       },
       {
         attribute: "New templates",
-        tooltip: "Whether new templates released during your license term are added to your access. Per-project one-shot does NOT auto-add new templates — only an active subscription does.",
+        tooltip: "Whether new templates released during your license term are added to your access.",
         values: {
           "open-community": "Open to anyone in the catalog",
-          "per-project": "Available with an active subscription",
-          subscription: "Every new Pro template released during the term",
-        },
-        status: {
-          "open-community": "yes",
-          "per-project": "partial",
-          subscription: "yes",
+          "professional": "Every new Pro template, included at no extra cost",
+          agency: "Every new Pro template, included at no extra cost",
         },
       },
       {
         attribute: "Security patches",
-        tooltip: "Who patches CVEs and security issues when they surface. Pro = patched by the DeesseJS team while your subscription is active.",
+        tooltip: "Who patches CVEs and security issues when they surface. Pro and Agency = patched by the DeesseJS team as part of the license.",
         values: {
           "open-community": "Community-driven",
-          "per-project": "Patched while a subscription is active",
-          subscription: "Patched during the subscription, by the DeesseJS team",
-        },
-        status: {
-          "open-community": "yes",
-          "per-project": "partial",
-          subscription: "yes",
-        },
-      },
-      {
-        attribute: "Roadmap visibility",
-        tooltip: "Whether you can see what the DeesseJS team is building next. Public roadmap = what's shipping in the catalog. Private roadmap = unreleased work-in-progress.",
-        values: {
-          "open-community": "Public, read-only",
-          "per-project": "Public + private backlog",
-          subscription: "Public + private backlog, comments enabled",
+          "professional": "Patched by the DeesseJS team",
+          agency: "Patched by the DeesseJS team, prioritized over Professional",
         },
       },
     ],
@@ -361,35 +313,17 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
         tooltip: "Where you can host the templates you ship. All templates are platform-agnostic and run anywhere Node runs.",
         values: {
           "open-community": "Vercel, Netlify, self-host",
-          "per-project": "Vercel, Netlify, AWS, GCP, self-host",
-          subscription: "Vercel, Netlify, AWS, GCP, self-host",
-        },
-      },
-      {
-        attribute: "Custom domain",
-        tooltip: "Whether you can serve your deployed template under your own domain. Configuration is environment-driven, no vendor lock-in.",
-        values: {
-          "open-community": "Supported",
-          "per-project": "Supported",
-          subscription: "Supported",
+          "professional": "Vercel, Netlify, AWS, GCP, self-host",
+          agency: "Vercel, Netlify, AWS, GCP, self-host",
         },
       },
       {
         attribute: "CI/CD templates",
-        tooltip: "Pre-built CI/CD workflows shipped with each template. Open Community has community-contributed ones; Pro ships curated GitHub Actions files.",
+        tooltip: "Pre-built CI/CD workflows shipped with each template. Open Community has community-contributed ones; Pro and Agency ship curated GitHub Actions files.",
         values: {
           "open-community": "Community-contributed",
-          "per-project": "Curated GitHub Actions",
-          subscription: "Curated GitHub Actions, kept current",
-        },
-      },
-      {
-        attribute: "Observability hooks",
-        tooltip: "OpenTelemetry hooks baked into every Pro template. Open Community templates ship without a default observability stack.",
-        values: {
-          "open-community": "Bring your own",
-          "per-project": "OTel-ready, vendor-agnostic",
-          subscription: "OTel-ready, vendor-agnostic",
+          "professional": "Curated GitHub Actions",
+          agency: "Curated GitHub Actions, plus shared org-level workflows",
         },
       },
     ],
@@ -402,8 +336,8 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
         tooltip: "Where you can ask questions and follow releases. GitHub Discussions is the primary channel for all tiers.",
         values: {
           "open-community": "GitHub Discussions",
-          "per-project": "GitHub Discussions",
-          subscription: "GitHub Discussions",
+          "professional": "GitHub Discussions",
+          agency: "GitHub Discussions + private Agency channel",
         },
       },
       {
@@ -411,27 +345,27 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
         tooltip: "Direct email channel for support questions. SLAs below are business hours (Monday-Friday, CET).",
         values: {
           "open-community": "Not included",
-          "per-project": "Best effort, 48h first reply",
-          subscription: "Priority queue, 24h first reply",
+          "professional": "Best effort, 48h first reply",
+          agency: "Priority queue, 24h first reply",
         },
         status: {
           "open-community": "no",
-          "per-project": "partial",
-          subscription: "yes",
+          "professional": "partial",
+          agency: "yes",
         },
       },
       {
         attribute: "Onboarding session",
-        tooltip: "Optional 1-hour call with the DeesseJS team to scope your first project. Available for Per-project and Subscription only.",
+        tooltip: "Optional call with the DeesseJS team to scope your first project. Available for Professional and Agency.",
         values: {
           "open-community": "Not included",
-          "per-project": "1-hour call, on request",
-          subscription: "1-hour call, on request",
+          "professional": "1-hour call, on request",
+          agency: "2-hour onboarding + 1-hour review, on request",
         },
         status: {
           "open-community": "no",
-          "per-project": "yes",
-          subscription: "yes",
+          "professional": "yes",
+          agency: "yes",
         },
       },
     ],
@@ -441,39 +375,39 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
     rows: [
       {
         attribute: "Refund window",
-        tooltip: "How long after purchase you can request a refund. Per-project one-shot = 14 days, no questions asked. Subscription = pro-rated self-serve in the billing portal.",
+        tooltip: "How long after purchase you can request a refund.",
         values: {
           "open-community": "N/A",
-          "per-project": "14 days, no questions asked",
-          subscription: "Pro-rated, self-serve in the billing portal",
+          "professional": "14 days, no questions asked",
+          agency: "14 days, no questions asked",
         },
         status: {
           "open-community": "na",
-          "per-project": "yes",
-          subscription: "yes",
+          "professional": "yes",
+          agency: "yes",
         },
       },
       {
         attribute: "Re-sell rights",
-        tooltip: "Whether you can resell templates to a client or in another catalog. You can re-sell to a client; you cannot list an unmodified Pro template in another registry.",
+        tooltip: "Whether you can resell templates to a client or in another catalog. The Commercial Extended License on Agency explicitly covers re-sale to clients without attribution; Pro covers re-sale to one client at a time.",
         values: {
           "open-community": "MIT allows re-use",
-          "per-project": "Re-sell to a client OK; unmodified template may not appear in another catalog",
-          subscription: "Same as per-project, while the subscription is active",
+          "professional": "Re-sell to a client OK; unmodified template may not appear in another catalog",
+          agency: "Commercial Extended License: re-sell to your clients without citing DeesseJS",
         },
       },
       {
         attribute: "Post-cancellation",
-        tooltip: "What keeps working and what stops if you end your subscription or walk away from a one-shot.",
+        tooltip: "What keeps working if you walk away from a one-shot. Both Pro and Agency grant lifetime access to the codebase you already have.",
         values: {
           "open-community": "N/A",
-          "per-project": "What you've already cloned stays usable forever",
-          subscription: "Templates you've deployed keep running; updates stop",
+          "professional": "What you've already cloned stays usable forever",
+          agency: "What you've already cloned stays usable forever, including the Figma source",
         },
         status: {
           "open-community": "na",
-          "per-project": "yes",
-          subscription: "partial",
+          "professional": "yes",
+          agency: "yes",
         },
       },
     ],
@@ -508,14 +442,14 @@ export const PRICING_FAQ_GROUPS: ReadonlyArray<FaqGroup> = [
     heading: "Licensing & re-sell",
     items: [
       {
-        question: "How does per-project licensing work?",
+        question: "How does the Professional license work?",
         answer:
-          "One per-project license unlocks the codebase across every project you ship. There is no per-project cap, no per-seat count. Add a subscription on top to keep the codebase current as the DeesseJS team ships new templates and security patches.",
+          "One Professional license unlocks the codebase across every project you ship, with lifetime access. There is no project cap, no per-seat count on a single dev. Updates and security patches for the templates included at purchase are included for life. The Subscription is optional, on top of a Professional license, and adds every new template released after your purchase.",
       },
       {
-        question: "Can I re-sell a Pro template to a client?",
+        question: "Can I re-sell a Professional template to a client?",
         answer:
-          "Yes, if you are a freelancer building a client project. You may charge the client for the saved time. The unmodified template may not appear in another catalog.",
+          "Yes, if you are a freelancer building a client project. You may charge the client for the saved time. The unmodified template may not appear in another catalog. For unlimited client work under a single license, see Agency & Team.",
       },
       {
         question: "How does Pro Education verification work?",
@@ -525,7 +459,17 @@ export const PRICING_FAQ_GROUPS: ReadonlyArray<FaqGroup> = [
       {
         question: "Can I switch a template between license types?",
         answer:
-          "Open Community and Pro Education share the same templates under different license terms. Moving from one to the other is just a verification step. The per-project license and the subscription are two parts of the same Pro offer, not an upgrade path between them.",
+          "Open Community and Pro Education share the same templates under different license terms. Moving from one to the other is just a verification step. The Professional license and the Subscription are two parts of the same Pro offer, not an upgrade path between them.",
+      },
+      {
+        question: "What is the Agency license for?",
+        answer:
+          "Agency is the same Pro catalog, packaged for agencies and in-house teams of 5-10 developers. It adds three things: Team Access (5 developer seats under one organization key, so the whole team shares the same CLI auth), the Commercial Extended License (you can re-sell to your clients without citing DeesseJS), and the Figma source file (kept in sync with the TypeScript components, so designers start from the same primitives).",
+      },
+      {
+        question: "Can I switch between Professional and Agency later?",
+        answer:
+          "Yes. The Professional and Agency one-shots are priced so the upgrade from Professional to Agency is the difference between the two prices. Contact support and we will pro-rate the time remaining on your existing license against the Agency price. Moving down (Agency → Professional) does not refund the difference; the agency seats and Commercial Extended License stay with you until the end of your paid term.",
       },
     ],
   },
@@ -558,19 +502,19 @@ export const PRICING_FAQ_GROUPS: ReadonlyArray<FaqGroup> = [
     heading: "Billing & refund",
     items: [
       {
-        question: "What is the difference between Pro and the Subscription?",
+        question: "What is the difference between Professional and the Subscription?",
         answer:
-          "None on what you get. Both unlock the full Pro catalog, source code access, and every new template. The only difference is the payment cadence: Pro is $299 paid once, the Subscription is $23 paid every month. Pick the cadence that fits your cash flow.",
+          "None on what you get. Both unlock the full Pro catalog, source code access, and every new template. The only difference is the payment cadence: Professional is $299 paid once, the Subscription is $23 paid every month. Pick the cadence that fits your cash flow.",
       },
       {
         question: "Can I switch from one to the other?",
         answer:
-          "Yes. You can switch from Pro to the Subscription (your Pro payment is pro-rated against future subscription months), or from the Subscription to Pro (your subscription months are pro-rated against the $299). Switch any time in the billing portal.",
+          "Yes. You can switch from Professional to the Subscription (your Professional payment is pro-rated against future subscription months), or from the Subscription to Professional (your subscription months are pro-rated against the $299). Switch any time in the billing portal.",
       },
       {
-        question: "Why $299 for Pro?",
+        question: "Why $299 for Professional?",
         answer:
-          "It's the bottom of the templates-catalog band. The upgrade from Open Community is meant to be cheap enough that you don't have to justify it internally, under two hours of senior dev time.",
+          "It's the bottom of the templates-catalog band. The upgrade from Community is meant to be cheap enough that you don't have to justify it internally, under two hours of senior dev time.",
       },
       {
         question: "Why $23 / month for the Subscription?",
@@ -580,12 +524,12 @@ export const PRICING_FAQ_GROUPS: ReadonlyArray<FaqGroup> = [
       {
         question: "Do you have a refund policy?",
         answer:
-          "14 days, no questions asked on the Pro payment. The Subscription is pro-rated and self-serve in the billing portal.",
+          "14 days, no questions asked on the Professional payment. The Subscription is pro-rated and self-serve in the billing portal.",
       },
       {
-        question: "Can I try a Pro template before buying?",
+        question: "Can I try a Professional template before buying?",
         answer:
-          "Yes. Open Community templates share the same architecture as Pro templates. Cloning an Open Community template gives you a working preview of how Pro templates are structured.",
+          "Yes. Community templates share the same architecture as Professional templates. Cloning a Community template gives you a working preview of how Professional templates are structured.",
       },
     ],
   },
@@ -595,12 +539,7 @@ export const PRICING_FAQ_GROUPS: ReadonlyArray<FaqGroup> = [
       {
         question: "Why license types and not tiers?",
         answer:
-          "A per-project license and a subscription are not tiers of the same product, they're two parts of the same offer. Conflating them would force a buyer to choose between owning the code and staying current; the model lets them have both, or either.",
-      },
-      {
-        question: "Which stacks does Pro cover?",
-        answer:
-          "Next.js, Astro, Tailwind, shadcn/ui, Drizzle, Postgres, Stripe, TanStack Table, OpenAI, React Hook Form. The list lives in packages/api/src/templates.ts. When a new template lands there, it lands in the Pro catalog the same day.",
+          "A Professional license and a Subscription are not tiers of the same product, they're two parts of the same offer. Conflating them would force a buyer to choose between owning the code and staying current; the model lets them have both, or either.",
       },
       {
         question: "What if the project shuts down?",

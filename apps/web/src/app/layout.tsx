@@ -8,6 +8,7 @@ import { AppFooter } from "@/components/footers/app-footer"
 import { SiteHeaderServer } from "@/components/headers/site-header-server"
 import { GlobalSearchDialog } from "@/components/search/global-search-dialog"
 import { GlobalSearchShortcut } from "@/components/search/global-search-shortcut"
+import { GlobalLayout } from "@/components/layouts/global-layout"
 import { CookieConsent } from "@workspace/cookies"
 import { Toaster } from "@workspace/ui/components/sonner"
 import { cn } from "@workspace/ui/lib/utils"
@@ -99,7 +100,9 @@ export default function RootLayout({
           <AppProviders>
             <div className="flex min-h-screen flex-col">
               <SiteHeaderServer />
-              <main className="flex-1">{children}</main>
+              <main className="flex-1">
+                <GlobalLayout>{children}</GlobalLayout>
+              </main>
               <AppFooter />
               <CookieConsent />
               <Toaster />
