@@ -22,42 +22,49 @@ export const metadata: Metadata = {
  * The route file is just a table of contents — sections live in
  * `components/pages/principles/<section>.tsx` and the principles
  * data lives in `lib/principles/tenets.ts`.
+ *
+ * <Principles.FinalCta /> is rendered as a sibling of the max-w-5xl
+ * wrapper so the shell's border-t/border-b trace the full page-edge.
  */
 export default function PrinciplesPage() {
   return (
-    <div className="mx-auto max-w-5xl px-4 md:px-6 py-16">
-      <Principles.Hero />
+    <>
+      <div className="mx-auto max-w-5xl px-4 md:px-6 py-16">
+        <Principles.Hero />
 
-      <Separator />
+        <Separator />
 
-      <Principles.NineTenets />
+        <Principles.NineTenets />
 
-      <Separator />
+        <Separator />
 
-      <RelatedLinks
-        links={[
-          {
-            label: "Manifesto",
-            href: "/manifesto",
-            body: "Why we're here: the beliefs behind the work.",
-          },
-          {
-            label: "Vision",
-            href: "/vision",
-            body: "Where this is going next.",
-          },
-          {
-            label: "About",
-            href: "/about",
-            body: "Who we are, and how we got here.",
-          },
-          {
-            label: "Ecosystem",
-            href: "/ecosystem",
-            body: "The sub-domains and shared values.",
-          },
-        ]}
-      />
-    </div>
+        <RelatedLinks
+          links={[
+            {
+              label: "Manifesto",
+              href: "/manifesto",
+              body: "Why we're here: the beliefs behind the work.",
+            },
+            {
+              label: "Vision",
+              href: "/vision",
+              body: "Where this is going next.",
+            },
+            {
+              label: "About",
+              href: "/about",
+              body: "Who we are, and how we got here.",
+            },
+            {
+              label: "Ecosystem",
+              href: "/ecosystem",
+              body: "The sub-domains and shared values.",
+            },
+          ]}
+        />
+      </div>
+
+      <Principles.FinalCta />
+    </>
   )
 }
