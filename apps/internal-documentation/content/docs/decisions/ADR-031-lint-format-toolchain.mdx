@@ -1,0 +1,590 @@
+---
+title: 'Lint and format toolchain'
+description: 'Adopt Oxlint + Oxfmt as the primary lint and format toolchain, with ESLint retained only for rules that have no Oxlint native or JS-plugin equivalent.'
+---
+
+# ADR-031: Lint and format toolchain (Oxlint + Oxfmt)
+
+## Status
+
+Proposed (2026-09). Under review on `chore/adr-lint-format-toolchain`.
+No code ships in this PR. The ADR is the deliverable; the
+implementation follows on its own branch once the decision is
+ratified.
+
+## Context
+
+The DeesseJS monorepo lints and formats with ESLint v9 and
+Prettier v3.9.4 today.
+
+- ESLint v9 is configured through flat configs in 13
+  workspaces, all extending `@workspace/eslint-config`:
+  `base.js` for packages, `react-internal.js` for React
+  shims, and `next.js` for apps. The shared package pins
+  `typescript-eslint` v8, `@eslint/js`, `eslint-plugin-react`,
+  `eslint-plugin-react-hooks`, `eslint-plugin-sonarjs`,
+  `@next/eslint-plugin-next`, and `globals` (see
+  `packages/eslint-config/package.json`).
+- Prettier v3.9.4 is invoked from seven workspace
+  `package.json` scripts with `prettier-plugin-tailwindcss`
+  v0.8 in the root and in `apps/cli/`. A single
+  `.prettierrc` at the repo root pins `semi: false`,
+  `singleQuote: false`, `tabWidth: 2`, `trailingComma: "es5"`,
+  `printWidth: 80`, `endOfLine: "lf"`. `.prettierignore`
+  excludes `dist/`, `node_modules/`, `.next/`, `.turbo/`,
+  `coverage/`, `pnpm-lock.yaml`, and `.pnpm-store/`.
+- The shared `@workspace/eslint-config/base.js` ships
+  four load-bearing custom rules that have no drop-in
+  oxlint equivalent today:
+  - `sonarjs/cognitive-complexity` at `warn@30` with a
+    documented Phase 1-4 rollout toward `error@20`.
+  - Four `no-restricted-syntax` AST selectors that defend
+    the codebase against open-redirect (CVE-2025-27143),
+    bare `void` on promise-returning calls, and
+    `authClient.useSession()` invoked inside async callbacks.
+  - `react/forbid-elements` (in `react-internal.js`) blocks
+    raw `<input>`, `<button>`, `<select>`, `<textarea>`
+    in `apps/*` in favour of the shadcn wrappers in
+    `@workspace/ui`.
+- The lint CI job at `.github/workflows/ci.yml:14-30`
+  runs `pnpm turbo lint --force` on Node 24, ubuntu-latest,
+  with `--max-warnings=0` propagated from the root script
+  `lint` (`package.json:9`). Prettier has no CI gate today.
+- The volume in scope is 428 `.ts`/`.tsx` files and 455
+  `.ts`/`.tsx`/`.js`/`.mjs` files across `apps/*` and
+  `packages/*`, excluding `node_modules/`, `.next/`,
+  `dist/`, and `.turbo/`.
+
+The pain that triggers this decision is twofold.
+
+First, speed. ESLint is single-threaded by default and runs
+through V8. On the order-of-magnitude reference workloads
+that the oxc project publishes (`bench-linter` against
+`vuejs/core`, `microsoft/vscode`, `elastic/kibana`,
+`react-router`), the Rust-written Oxlint runs 50-118x faster
+than ESLint v9 on non-type-aware rules, and the
+`oxlint-tsgolint` type-aware ruleset runs 20-40x faster than
+`typescript-eslint` because it uses `tsgo` (the Go-based
+TypeScript compiler) instead of `tsc`. Oxfmt, the Rust
+formatter in the same family, runs 30x faster than Prettier
+on an initial run and 3x faster than Biome.
+
+Second, configuration complexity. ESLint's flat config is
+the right model but the surface grows every time a new
+plugin lands, and the cognitive-complexity Phase 1-4 rollout
+is tracked in a separate doc. The oxlint-native `correctness`,
+`suspicious`, `perf`, and `style` categories are opinionated,
+default-on, and add zero configuration surface.
+
+The alternatives weighed.
+
+- **Biome** is the strongest all-in-one ESLint + Prettier
+  replacement. Single binary, lint + format, very fast.
+  Trade-off: Biome's rule coverage is narrower than
+  Oxlint's native ruleset, and the JS plugin bridge
+  ecosystem is younger than oxlint's. The team has already
+  invested in the oxc family through `@next/eslint-plugin-next`
+  and the Next.js v16 Rust toolchain that ships with the
+  framework, so the cost of context-switching to a different
+  Rust family outweighs the marginal gains on lint+format.
+- **ESLint flat config + `eslint-plugin-oxlint`** is the
+  coexistence pattern the oxc team recommends in
+  `oxlint` JS plugins alpha (2026-03). It is reversible,
+  zero-cost to add, and lets us ship the speedup today
+  without rewriting the four custom rules. This is the
+  path Phase 2 follows. The decision here is to commit to
+  this path, not to land it in one PR.
+
+The constraint set.
+
+- The repo uses the staging-first workflow. All work lands
+  on `staging` first, `main` is a human promotion (per
+  `AGENTS.md`). This ADR targets `staging` and proposes a
+  phase-gated rollout so each phase can ship and be
+  reverted independently.
+- ESLint is held at v9 in the catalog (`pnpm-workspace.yaml`).
+  Catalogs are strict-mode, every dep must resolve through
+  the catalog. Adding Oxlint + Oxfmt means new catalog
+  entries.
+- Turborepo caches `turbo lint` outputs. Switching
+  runners invalidates the cache; `--force` is already
+  used in CI and that absorbs the cost.
+- The custom `no-restricted-syntax` selectors and
+  `react/forbid-elements` rule are the load-bearing
+  carry-over; without an equivalent in Oxlint (native or
+  JS plugins), the migration cannot be a clean swap.
+
+## Decision
+
+Adopt **Oxlint** as the primary linter and **Oxfmt** as the
+primary formatter. ESLint is retained only for the rules that
+have no Oxlint equivalent: SonarJS cognitive complexity and
+the custom AST shims described under `What this rule allows`.
+
+The rollout is phase-gated. Each phase ships on its own PR
+and is independently revertable.
+
+### Phase 1 — Oxlint native in parallel (informational)
+
+Add `oxlint@latest` to the catalog. Add a `.oxlintrc.json`
+at the repo root that enables the `correctness`,
+`suspicious`, `perf`, and `style` categories. Add a
+`lint:oxlint` task in `turbo.json`. Run it after
+`turbo lint` in the CI `lint` job (`.github/workflows/ci.yml`)
+as **info-only**, never blocking. Compare warnings to the
+ESLint baseline, document the gaps. ESLint remains the
+gate.
+
+This phase ships with `--force` on `turbo lint` so the
+Turborepo cache invalidation is absorbed; no other tooling
+changes.
+
+### Phase 2 — Oxlint becomes the primary linter
+
+Add `eslint-plugin-oxlint` to the catalog. Wire it through
+the root `eslint.config.js` via
+`buildFromOxlintConfigFile('.oxlintrc.json')`. This auto-disables
+the ESLint rules that Oxlint already covers, leaving ESLint
+on the hook only for:
+
+- The four `no-restricted-syntax` selectors in
+  `packages/eslint-config/base.js`.
+- `react/forbid-elements` in `react-internal.js`.
+- `sonarjs/cognitive-complexity` and the SonarJS rule
+  set in `base.js`.
+- The `@next/eslint-plugin-next` rules that Oxlint does not
+  yet cover (the recommended + core-web-vitals sets are the
+  starting point; Oxlint covers a large subset, the residual
+  is verified per-rule).
+
+Drop `--max-warnings=0` from the root `lint` script for the
+ESLint runner; reintroduce it once ESLint's effective rule
+set is small enough that re-enabling does not regress the
+build.
+
+### Phase 3 — Oxlint JS plugins bridge for the custom rules
+
+Oxlint has **no native implementation** of
+`no-restricted-syntax`. The maintainer closed the tracking
+request with "Unable to support this rule" and directed
+users to the JS plugins bridge. Today the bridge ships
+`oxlint-plugin-eslint`, a direct re-export of ESLint's
+`no-restricted-syntax` with no perf optimisations. Use that
+package as the starting point.
+
+Evaluate, in order, four options for the four
+`no-restricted-syntax` selectors:
+
+0. Add `oxlint-plugin-eslint` to `.oxlintrc.json` and copy
+   the four selectors verbatim under the `eslint-js/*`
+   namespace. This is the friction-free path and is
+   explicitly the use case `oxlint-plugin-eslint` exists
+   for ("convenience for users migrating to Oxlint").
+   Trade-off: each lint of these selectors runs at ESLint
+   speed through the JS bridge, so the Phase 1-2 speedup
+   does not apply to files matched by these selectors.
+1. Recode them as a custom JS plugin on the Oxlint JS
+   plugins alpha (2026-03), which passes 100% of ESLint's
+   core tests and 99.6-100% of common plugins (React Hooks,
+   Stylistic, Testing Library, SonarJS, e18e). The Oxlint
+   maintainer pointed users at custom JS plugins for this
+   reason ("This could be implemented as a custom plugin").
+   Recoding unlocks native-rule perf on the four selectors.
+2. Keep ESLint as a narrow second pass scoped to files that
+   mention `safeRedirect`, `authClient.useSession`, or
+   `searchParams.get`.
+3. Refactor `safeRedirect()` to a typed wrapper that takes
+   `URLSearchParams` only and make the AST selector
+   unreachable. Same for `authClient.getSession()`.
+
+Recommend Option 0 for the four `no-restricted-syntax`
+selectors on day one of Phase 3 (zero code, just a config
+entry). Recode via Option 1 only when measured CI time
+regresses on the affected files, which is unlikely at four
+selectors. Use Option 3 for the open-redirect selectors as
+a long-term correctness improvement (removes the AST
+coupling entirely). Option 2 stays as the bridge if Option 0
+surfaces a blocker on `oxlint-plugin-eslint`.
+
+`react/forbid-elements` ships as a custom JS plugin (Option
+1) in Phase 3, not as `oxlint-plugin-eslint` (it is a
+project-internal rule, not an ESLint built-in). It lands in
+its own follow-up PR once Phase 2 has been green for at least
+one release on `staging`.
+
+### Phase 4 — Oxfmt replaces Prettier
+
+Add `oxfmt@latest` to the catalog. Generate
+`.oxfmtrc.json` from `.prettierrc` via
+`npx oxfmt --migrate prettier`. Pin
+`printWidth: 80`, `semi: false`, `singleQuote: false`,
+`tabWidth: 2`, `trailingComma: "es5"`, `endOfLine: "lf"`.
+Replace the seven `prettier --write` scripts with
+`oxfmt` and the seven `prettier --check` invocations with
+`oxfmt --check` (workspace-level glob patterns stay
+unchanged). Drop `prettier` and `prettier-plugin-tailwindcss`
+from the catalog and from the apps that depended on it
+(root, `apps/cli/`).
+
+Add `oxfmt --check` as a blocking CI step in the `lint` job
+(`.github/workflows/ci.yml`).
+
+The Tailwind class-sort requirement that
+`prettier-plugin-tailwindcss` served today is met natively
+by Oxfmt (February 2026 beta announcement). No drop-in
+plugin required.
+
+If the reformat on first run is non-empty, ship the
+reformat as its own commit, add its SHA to
+`.git-blame-ignore-revs`, and rebase the migration PR on top.
+
+### Phase 5 — Decommission ESLint
+
+When Phase 3 is green and the four `no-restricted-syntax`
+selectors are covered either by JS plugins or by the typed
+refactor, remove `eslint`, `typescript-eslint`,
+`eslint-plugin-react`, `eslint-plugin-react-hooks`,
+`eslint-plugin-sonarjs`, `@next/eslint-plugin-next`,
+`@eslint/js`, `globals`, and `@workspace/eslint-config` from
+the catalog and the workspace `package.json` files.
+
+Keep `turbo lint` as the gate; the runner is `oxlint`.
+
+## Consequences
+
+- `pnpm turbo lint --force` runtime drops by an order of
+  magnitude on Linux CI. The Vue Core benchmark used by the
+  oxc team puts this at ~99x for type-aware rules and
+  ~67-118x for non-type-aware rules on M-series hardware.
+  The DeesseJS monorepo is smaller than Vue Core but its
+  custom-rules + type-aware profile maps to the same
+  ratio band, conservatively a 10x speedup.
+- The `turbo lint` cache key inverts from `eslint` to
+  `oxlint`; CI runners that share the Turborepo remote
+  cache see one cold-cache rebuild per workspace. `--force`
+  absorbs this on day one.
+- `--max-warnings=0` cannot be re-enabled until Phase 2 has
+  audited the Oxlint default rule set against the codebase.
+  Oxlint ships with ~107 rules enabled by default (per the
+  oxc docs); for the next few weeks the `lint` job accepts
+  warnings, ESLint fails on errors, and Oxfmt fails on
+  format drift. The strict gate returns in Phase 5.
+- Pre-commit hooks are not introduced. The repo has no
+  Husky or lint-staged setup today (verified against
+  `.husky/` and `.lintstagedrc*` globs). The CI gate is
+  the single source of lint truth.
+- The four custom `no-restricted-syntax` selectors survive
+  every phase and ship to Oxlint through the JS plugins
+  bridge or the typed refactor. Removing them in Phase 5 is
+  conditional on Phase 3 passing, not a default outcome.
+- SonarJS cognitive complexity stays on ESLint through
+  Phase 4. The Phase 1-4 rollout documented in
+  `docs/engineering/processes/complexity-rollout.md` is
+  unaffected. Phase 5 may replace it with a custom
+  complexity collector (the existing `complexity-collect.ts`
+  already emits the metric; wiring it to the lint gate is a
+  separate ADR if and when it lands).
+- Tailwind class ordering is enforced by Oxfmt's native
+  implementation; no `prettier-plugin-tailwindcss` in the
+  dep graph. The class order in `apps/web/` may shift on
+  the first reformat; the diff is mechanical and lands in
+  the reformat commit (Phase 4).
+- The `complexity-report.yml` GitHub Actions workflow that
+  publishes the weekly cognitive-complexity artifact keeps
+  running on `eslint`-based metrics through Phase 4. Phase 5
+  is the moment to revisit.
+
+## What this rule allows
+
+- Adding `oxlint` and `oxfmt` to the
+  `pnpm-workspace.yaml` catalog at the latest 1.x line.
+- Creating `.oxlintrc.json` at the repo root, scoped to the
+  `correctness`, `suspicious`, `perf`, and `style`
+  categories in Phase 1; widening scope in later phases as
+  the warning baseline audit permits.
+- Adding `lint:oxlint` and `format:oxfmt` tasks to
+  `turbo.json`, with the same `dependsOn: ["^lint"]`
+  topology the existing `lint` and `format` tasks use.
+- Adding `eslint-plugin-oxlint` to the catalog and wiring
+  it through the root `eslint.config.js` in Phase 2.
+- Adding an Oxlint JS plugin under
+  `apps/internal-documentation/.oxlint-plugins/` (or any
+  workspace the team prefers) that re-implements the four
+  `no-restricted-syntax` selectors and `react/forbid-elements`
+  for Phase 3.
+- Replacing each `prettier --write "**/*.{ts,tsx,md,mdx,json}"`
+  script in `apps/web`, `apps/docs`, `apps/cli`,
+  `packages/ui`, and `packages/cookies` with `oxfmt`, and
+  the implicit `prettier --check` invocation in CI with
+  `oxfmt --check`.
+- Adding the Oxfmt migration output to
+  `.git-blame-ignore-revs` so the reformat commit is hidden
+  from `git blame`.
+- Running Oxfmt and Prettier side by side during the Phase 4
+  migration window for diff verification, and removing
+  Prettier after one green release on `staging`.
+
+## What this rule forbids
+
+- Touching the four `no-restricted-syntax` AST selectors
+  in `packages/eslint-config/base.js` without a phase-gated
+  PR that ships their Oxlint equivalent in the same change.
+- Disabling `react/forbid-elements` in
+  `react-internal.js` without a corresponding Oxlint JS
+  plugin or a documented exception.
+- Removing `sonarjs/cognitive-complexity` before the
+  Phase 1-4 rollout in
+  `docs/engineering/processes/complexity-rollout.md` reaches
+  its terminal threshold (`error@20`).
+- Adding Prettier back as a runtime dep after Phase 5
+  completes. If a project needs Prettier for a third-party
+  reason, that is a separate ADR.
+- Running the migration in a single mega-PR. Each phase is
+  its own PR against `staging`, with its own revert path.
+- Targeting `main` for any of the phase PRs. The
+  staging-first workflow rules apply to every layer of the
+  rollout.
+- Pinning to a pre-release of `oxlint` or `oxfmt`. The
+  Oxlint v1 GA line (2025-06) and the Oxfmt beta (2026-02)
+  are the floor; pre-1.0 builds are out of scope.
+
+## What this rule does not change
+
+- The `pnpm-workspace.yaml` `catalogMode: strict` rule.
+  Adding Oxlint and Oxfmt goes through the catalog, same
+  as ESLint today.
+- The `@workspace/typescript-config` `tsconfig` files. The
+  TypeScript compiler is authoritative for type errors;
+  Oxlint does not run `tsc`, and ESLint's type-aware rules
+  are not the replacement.
+- The `react-doctor` workflow. It runs as an independent
+  third-party audit; the Oxlint + ESLint + Oxfmt triad does
+  not replace it.
+- The `.github/workflows/ci.yml` job structure. The four
+  jobs (`lint`, `typecheck`, `build`, `test-unit`,
+  `test-integration`) keep their names. Oxlint slots into
+  `lint`; Oxfmt slots into `lint` (Phase 4).
+- The Drizzle migration tests in
+  `packages/database/drizzle/*.sql`. SQL is not linted or
+  formatted by any tool in this ADR.
+- The custom Prettier rule that Prettier ships with the
+  repo today. `.prettierrc` is migrated to `.oxfmtrc.json`
+  field by field; the resulting config is the same
+  shape, not a re-derivation.
+- The commit-message convention. Changesets still own
+  release notes; this ADR ships no changeset (docs only).
+- The `--max-warnings=0` policy in spirit. The flag returns
+  in Phase 5; Phase 1-4 run with the gate relaxed because
+  Oxlint's default ruleset has not been audited yet.
+
+## Implementation surface
+
+The phase PRs that follow this ADR touch the dep graph, the
+config files, the CI workflow, and a small set of workspace
+scripts. No Drizzle migration. No env var. No new
+`@workspace/*` package.
+
+### Phase 1 (Oxlint native in parallel)
+
+1. `pnpm-workspace.yaml` — add `oxlint` and `oxfmt` (later
+   phase) to the catalog.
+2. Root `.oxlintrc.json` — enable `correctness`,
+   `suspicious`, `perf`, `style`.
+3. `turbo.json` — add `lint:oxlint` task with
+   `dependsOn: ["^lint:oxlint"]` and no `outputs`.
+4. `.github/workflows/ci.yml` — extend the `lint` job to
+   run `pnpm turbo lint:oxlint` after
+   `pnpm turbo lint --force`. Do not gate the job on it.
+
+### Phase 2 (Oxlint primary)
+
+1. `pnpm-workspace.yaml` — add `eslint-plugin-oxlint` to
+   the catalog.
+2. `eslint.config.js` (root) — wrap the existing config with
+   `oxlint.buildFromOxlintConfigFile('.oxlintrc.json')`.
+3. `packages/eslint-config/base.js` — drop `--max-warnings=0`
+   from the script chain (the root `lint` script in
+   `package.json` keeps `--max-warnings=0` at this phase;
+   the ESLint runner's effective rule set is small enough
+   that the strict flag stays accurate).
+4. `.github/workflows/ci.yml` — promote
+   `pnpm turbo lint:oxlint` to a required step (warn, then
+   error in Phase 5).
+
+### Phase 3 (Oxlint JS plugins bridge)
+
+1. `pnpm-workspace.yaml` — add `oxlint-plugin-eslint` to
+   the catalog.
+2. Root `.oxlintrc.json` — register
+   `oxlint-plugin-eslint` under `jsPlugins` and copy the
+   four `no-restricted-syntax` selectors verbatim under
+   the `eslint-js/*` namespace.
+3. New package or in-repo folder under
+   `apps/internal-documentation/.oxlint-plugins/forbid-elements/`
+   (or any workspace the team prefers) carrying the
+   `react/forbid-elements` custom plugin.
+4. `.oxlintrc.json` — add the `forbid-elements` plugin to
+   `jsPlugins`.
+5. `packages/eslint-config/base.js` — drop the
+   `no-restricted-syntax` selectors (now covered by
+   `eslint-js/no-restricted-syntax`) and remove the
+   `react/forbid-elements` rule from `react-internal.js`
+   (now covered by the new Oxlint plugin).
+6. Optional: `packages/utils/src/safe-redirect.ts` typed
+   refactor to make the open-redirect AST selector a
+   no-op. Same for `authClient.useSession()` in
+   `apps/app/lib/auth-client.ts`.
+
+### Phase 4 (Oxfmt replaces Prettier)
+
+1. `pnpm-workspace.yaml` — bump Oxfmt catalog entry to the
+   version pinned in `.oxfmtrc.json`.
+2. Root `.oxfmtrc.json` — generated from `.prettierrc` via
+   `npx oxfmt --migrate prettier`, then pinned
+   `printWidth: 80`, `semi: false`, `singleQuote: false`,
+   `tabWidth: 2`, `trailingComma: "es5"`, `endOfLine: "lf"`.
+3. `package.json` (root) and `apps/cli/package.json` —
+   drop `prettier` and `prettier-plugin-tailwindcss` from
+   `devDependencies`.
+4. `apps/web/package.json`, `apps/docs/package.json`,
+   `apps/cli/package.json`, `packages/ui/package.json`,
+   `packages/cookies/package.json` — replace
+   `prettier --write "**/*.{ts,tsx[,md,mdx,json]}"`
+   scripts with `oxfmt`.
+5. `.git-blame-ignore-revs` — add the reformat commit SHA.
+6. `.github/workflows/ci.yml` — add
+   `pnpm oxfmt --check` (or `pnpm turbo format --force`)
+   as a required step in the `lint` job.
+
+### Phase 5 (decommission ESLint)
+
+1. `pnpm-workspace.yaml` — drop `eslint`,
+   `typescript-eslint`, `eslint-plugin-react`,
+   `eslint-plugin-react-hooks`, `eslint-plugin-sonarjs`,
+   `@next/eslint-plugin-next`, `@eslint/js`, `globals`,
+   `eslint-plugin-oxlint` from the catalog.
+2. `package.json` (root) and every workspace
+   `package.json` that lists an ESLint package — drop the
+   dep.
+3. `packages/eslint-config/` — archive the package, remove
+   from `apps/*` `eslint.config.mjs` imports.
+4. `eslint.config.js` (root) — delete.
+5. `turbo.json` — drop the `lint` task runner's ESLint
+   reference (the `lint` task continues to run `oxlint`
+   via `lint:oxlint`).
+6. `scripts/env-check.ts` and the Drizzle migration check
+   scripts — unchanged.
+7. `docs/engineering/processes/complexity-rollout.md` —
+   flip the rollout terminal threshold; if the cognitive
+   complexity metric is still needed, wire it through
+   `complexity-collect.ts` in a follow-up ADR.
+
+### Files explicitly NOT touched
+
+- `apps/app/proxy.ts` and any middleware/proxy file. The
+  Oxlint + ESLint pair does not gate Next.js proxy
+  behaviour.
+- `packages/database/drizzle/*.sql`. Not in scope for any
+  phase.
+- `apps/app/components/auth/oauth-buttons.tsx`. Unrelated.
+- The changesets workflow at `.changeset/`. No changeset
+  ships from this ADR.
+- `packages/auth/src/auth.ts`. The four `no-restricted-syntax`
+  selectors reference this file's patterns; the file is
+  not edited by this ADR.
+- `.github/workflows/react-doctor.yml`. Independent audit
+  tool, untouched.
+- `.vale.ini` and the prose workflow. Vale is the prose
+  linter; Oxfmt is the code formatter; they do not overlap.
+
+### Verification after each phase
+
+- **Phase 1**: `pnpm turbo lint --force` and
+  `pnpm turbo lint:oxlint` both finish on the same PR
+  without raising a warning that contradicts an ESLint
+  error. CI green.
+- **Phase 2**: ESLint produces strictly fewer warnings
+  than the Phase 1 baseline (the auto-disabler can only
+  subtract). CI green.
+- **Phase 3**: every code path that the four
+  `no-restricted-syntax` selectors previously caught
+  (verified by inspecting the comments in
+  `apps/app/components/auth/oauth-buttons.tsx` and
+  `packages/auth/src/auth.ts`) is still caught either by
+  the JS plugin or by the typed refactor. CI green.
+- **Phase 4**: `git diff` between `prettier --check` and
+  `oxfmt --check` is empty on the same commit SHA, after
+  the reformat commit lands. CI green.
+- **Phase 5**: `pnpm turbo lint --force` runs Oxlint only.
+  No `eslint` binary in `node_modules/.bin`. CI green.
+
+## Where this rule came from
+
+The seed was a comparative research session on 2026 linter
+and formatter landscape, comparing Oxlint, ESLint, Prettier,
+and Biome on benchmarks, plugin coverage, and Prettier
+compatibility (sources in `Related` below). The session
+confirmed three things: Oxlint and Oxfmt are 30-100x faster
+than their JS counterparts on the open-source reference
+workloads, Oxlint's JS plugins bridge (2026-03) has
+matured enough to host the four custom `no-restricted-syntax`
+selectors, and Oxfmt's beta (2026-02) passes 100% of
+Prettier's conformance tests for JS and TS.
+
+A follow-up repo audit catalogued 13 ESLint configs across
+the workspaces, 7 Prettier script invocations, 4 custom
+`no-restricted-syntax` selectors, 1 `react/forbid-elements`
+custom rule, 1 `sonarjs/cognitive-complexity` rollout, and
+428 `.ts`/`.tsx` files in scope. The audit is the source of
+truth for the phase surface above.
+
+The git context for this ADR is the staging branch
+`chore/adr-lint-format-toolchain`, opened from `staging`
+per the staging-first workflow (`AGENTS.md`). No code ships
+in this PR — the ADR is the deliverable.
+
+## Related
+
+- [`AGENTS.md`](../../../AGENTS.md). Staging-first workflow
+  rules that govern every phase PR.
+- `packages/eslint-config/base.js`. The four
+  `no-restricted-syntax` selectors and the
+  `sonarjs/cognitive-complexity` rollout that Phase 2-5
+  carry over.
+- `packages/eslint-config/react-internal.js`. The
+  `react/forbid-elements` rule that Phase 3 reimplements
+  as a JS plugin.
+- `.prettierrc`. The single source of truth that
+  `.oxfmtrc.json` mirrors in Phase 4.
+- `docs/engineering/processes/complexity-rollout.md`. The
+  SonarJS rollout that this ADR does not touch until
+  Phase 5. The doc is the source of truth for the exact
+  global and per-package thresholds across the four
+  phases. This ADR references the rollout but does not
+  redefine its numbers.
+- [oxc project — Oxlint v1 GA (2025-06)](https://oxc.rs/blog/2025-06-10-oxlint-v1.html).
+  The v1 GA announcement and the 813+ built-in rules.
+- [oxc project — Oxlint JS plugins alpha (2026-03)](https://oxc.rs/blog/2026-03-11-oxlint-js-plugins-alpha.html).
+  The JS plugin bridge that Phase 3 relies on; the 100%
+  ESLint core test pass-rate is the load-bearing claim.
+- [oxc project — Oxfmt beta (2026-02)](https://oxc.rs/blog/2026-02-24-oxfmt-beta.html).
+  The 100% Prettier conformance claim on JS and TS, and
+  the native Tailwind class sort.
+- [oxc project — Migrate from Prettier](https://oxc.rs/docs/guide/usage/formatter/migrate-from-prettier).
+  The `--migrate prettier` CLI used in Phase 4.
+- [oxc project — Benchmarks](https://oxc.rs/docs/guide/benchmarks.html).
+  The 50-118x speedup vs ESLint v9 and the 30x vs Prettier
+  numbers cited under `Consequences`.
+- [LogRocket — Speed kills: retire ESLint, migrate to Oxlint](https://blog.logrocket.com/retire-eslint-migrate-oxlint/).
+  Independent reproduction of the oxc benchmarks on Vue
+  Core (~100x) and React Router (~68x), on HP EliteBook
+  hardware with eight threads.
+- [oxc-project/oxc#7342 — support for eslint `no-restricted-syntax`](https://github.com/oxc-project/oxc/issues/7342).
+  Closed 2026-04. Establishes that Oxlint does not
+  implement `no-restricted-syntax` natively, that the
+  maintainers recommend the JS plugins bridge, and that
+  `oxlint-plugin-eslint` exists as a direct re-export of
+  ESLint's rule for migration use cases. This is the
+  source that drives Phase 3 Option 0.
+- [oxlint-plugin-eslint on npm](https://registry.npmjs.org/oxlint-plugin-eslint).
+  The convenience package referenced in Phase 3.
