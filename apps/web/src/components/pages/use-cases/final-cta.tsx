@@ -1,7 +1,9 @@
 import { FinalCta as FinalCtaShell } from "../_shared/final-cta"
 
 /**
- * /use-cases/[slug] Final CTA.
+ * Use cases Final CTA — shared by all 7 static routes under
+ * /use-cases/{saas-apps,ai-products,api-backends,internal-tools,
+ * mobile-backend,open-source,landing-pages}/page.tsx.
  *
  * Same copy as /pricing ("Ready to ship?" + "Start with a template.
  * Keep the contracts.") because both pages target the same next-step
