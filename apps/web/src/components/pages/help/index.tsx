@@ -23,6 +23,7 @@
  */
 import { Community } from "./community"
 import { Email } from "./email"
+import { FinalCta } from "./final-cta"
 import { Hero } from "./hero"
 import { ResponseTimes } from "./response-times"
 import { SelfServe } from "./self-serve"
@@ -33,8 +34,9 @@ export const Help = {
   Community,
   Email,
   ResponseTimes,
+  FinalCta,
 } as const
 
 // Named re-exports for consumers that want a single component
 // without going through the namespace (e.g. tests, storybook).
-export { Community, Email, Hero, ResponseTimes, SelfServe }
+export { Community, Email, FinalCta, Hero, ResponseTimes, SelfServe }
