@@ -1,42 +1,48 @@
+import { Card } from "@workspace/ui/components/card"
+
 import { BELIEFS } from "@/lib/manifesto/beliefs"
 
 /**
  * /manifesto — Beliefs section.
  *
- * Six <article> rows, each with the numeric mono label + h2
- * title + body paragraph.
+ * Six belief Cards stacked vertically (`space-y-4`). The Card
+ * surface replaces the previous plain `<article>` rows so the
+ * section reads as six visibly-distinct blocks instead of a
+ * wall of similar prose (the previous version was the most
+ * "monotonous" of the five pages — commit 13 section 13).
  *
- * Rhythm:
- * - Outer `space-y-12` (48px) between beliefs (deliberate: each
- *   belief is a block narrative, not a card, and the vertical
- *   air gives each one its own reading beat).
- * - Inner `space-y-4` (16px) between the <header> (number +
- *   title) and the body paragraph. The previous `gap-3` was
- *   12px which read as too tight against the 4-5 line body
- *   paragraphs.
+ * Each Card carries:
+ * - The mono numeric prefix in a top-level visual slot
+ *   (text-label-16 font-mono).
+ * - The belief title at text-heading-24 (the prior H2 size,
+ *   matches the inner header convention across the
+ *   app).
+ * - The body paragraph at text-copy-16 text-foreground
+ *   (commit 6 rebalance — was muted).
  *
- * `space-y-*` only applies to non-first children, so the
- * `[&:not(:first-child)]:mt-0` override on h2 and p is
- * redundant and has been removed.
+ * `space-y-4` between beliefs inside the section is the
+ * default intra-card rhythm; the outer `space-y-12` between
+ * sections (in `page.tsx`) gives the 48px block-narrative beat
+ * that this section is known for.
  */
 export function Beliefs() {
   return (
-    <section className="space-y-12">
+    <div className="space-y-4">
       {BELIEFS.map((belief) => (
-        <article key={belief.number} className="space-y-4">
-          <header className="flex items-baseline gap-4">
+        <Card key={belief.number} className="space-y-3 p-6">
+          <div className="flex items-baseline gap-4">
             <span className="text-label-16 font-mono text-muted-foreground">
               {belief.number}
             </span>
-            <h2 className="text-heading-24 tracking-tight text-foreground">
+            <h2 className="text-heading-24 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
               {belief.title}
             </h2>
-          </header>
-          <p className="text-copy-16 text-foreground leading-7">
+          </div>
+          <p className="text-copy-16 text-foreground leading-7 [&:not(:first-child)]:mt-0 max-w-3xl">
             {belief.body}
           </p>
-        </article>
+        </Card>
       ))}
-    </section>
+    </div>
   )
 }
