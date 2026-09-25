@@ -6,7 +6,6 @@ import { clientEnv } from "@workspace/env/client"
 
 import { UseCaseHero } from "../_components/use-case-page"
 import { UseCaseStack } from "../_components/use-case-stack"
-import { CopyCommand } from "../_components/copy-command"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 export const metadata: Metadata = {
@@ -121,18 +120,7 @@ export default function InternalToolsPage() {
           </ol>
         </div>
 
-        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-2 lg:divide-x lg:divide-border">
-          <div className="flex flex-col gap-4 p-6 lg:p-10">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-              Get started
-            </p>
-            <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-              Build the operator console with us.
-            </h2>
-            <CopyCommand command="deessejs init --help" className="mt-2" />
-          </div>
-        </div>
-
+        
         <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
           <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">

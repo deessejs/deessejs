@@ -6,7 +6,6 @@ import { clientEnv } from "@workspace/env/client"
 
 import { UseCaseHero } from "../_components/use-case-page"
 import { UseCaseStack } from "../_components/use-case-stack"
-import { CopyCommand } from "../_components/copy-command"
 import {
   AgentLoopMockup,
   ApiEndpointMockup,
@@ -281,25 +280,7 @@ export default function AiProductsPage() {
           </div>
         </div>
 
-        {/* 10. CTA */}
-        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-2 lg:divide-x lg:divide-border">
-          <div className="flex flex-col gap-4 p-6 lg:p-10">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-              Get started
-            </p>
-            <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-              Start from the tool registry, not from scratch.
-            </h2>
-            <CopyCommand command="deessejs init ai-chatbot" className="mt-2" />
-            <p className="font-mono text-copy-13 text-muted-foreground">
-              or run{" "}
-              <span className="text-foreground/90">deessejs init --help</span> for
-              the full list.
-            </p>
-          </div>
-        </div>
-
-        {/* 11. Related */}
+        {/* 10. Related */}
         <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
           <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
             <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
