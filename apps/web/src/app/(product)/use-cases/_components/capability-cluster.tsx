@@ -138,11 +138,11 @@ export function CapabilityClustersSection({
 
             <div
               className={cn(
-                "flex items-stretch p-6 lg:p-10",
+                "flex items-stretch overflow-hidden",
                 reverse ? "lg:order-1" : "lg:order-2",
               )}
             >
-              <MockupFrame clusterId={cluster.id}>
+              <MockupFrame clusterId={cluster.id} className="m-4 lg:m-6">
                 {mockups[cluster.id] ?? (
                   <div className="flex h-full items-center justify-center font-mono text-label-12 text-muted-foreground">
                     preview unavailable
@@ -165,12 +165,19 @@ export function CapabilityClustersSection({
 function MockupFrame({
   clusterId,
   children,
+  className,
 }: {
   clusterId: string
   children: React.ReactNode
+  className?: string
 }) {
   return (
-    <div className="flex w-full flex-col overflow-hidden rounded-md border border-border bg-background">
+    <div
+      className={cn(
+        "flex w-full flex-col overflow-hidden rounded-md border border-border bg-background",
+        className,
+      )}
+    >
       <div className="flex items-center justify-start gap-2 border-b border-border bg-muted/40 px-4 py-3">
         <span aria-hidden className="block size-3 rounded-full bg-[#ff5f57]" />
         <span aria-hidden className="block size-3 rounded-full bg-[#febc2e]" />
