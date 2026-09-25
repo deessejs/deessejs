@@ -1,23 +1,7 @@
-import { cn } from "@workspace/ui/lib/utils"
-
 import { COMPARISON_GROUPS, COMPARISON_LAYERS } from "@/lib/pricing"
 
+import { Cell } from "./_shared/cell"
 import { ComparisonGroup } from "./comparison-group"
-
-/**
- * Generic shared-border cell. The wrapper card supplies the outer
- * borders; cells contribute only their own padding + optional flex
- * layout. Kept local because pricing-only.
- */
-function Cell({
-  className,
-  children,
-}: {
-  className?: string
-  children: React.ReactNode
-}) {
-  return <div className={cn("flex flex-col p-6", className)}>{children}</div>
-}
 
 /**
  * Side-by-side comparison — table grouped by intent (what you ship,

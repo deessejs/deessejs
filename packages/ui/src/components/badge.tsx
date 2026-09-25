@@ -23,8 +23,6 @@ const badgeVariants = cva(
           "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 dark:text-emerald-300 [a]:hover:bg-emerald-500/20",
         warning:
           "bg-amber-500/10 text-amber-700 border-amber-500/20 dark:text-amber-300 [a]:hover:bg-amber-500/20",
-        pro:
-          "bg-violet-500/10 text-violet-700 border-violet-500/20 dark:text-violet-300 [a]:hover:bg-violet-500/20",
       },
     },
     defaultVariants: {

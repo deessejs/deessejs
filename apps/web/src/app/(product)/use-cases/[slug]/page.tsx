@@ -15,7 +15,6 @@ import { Card } from "@workspace/ui/components/card"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 import { ORG_ID } from "@/lib/seo/organization"
-import { jsonLdScript } from "@/lib/json-ld"
 
 type Params = { slug: string }
 
@@ -159,7 +158,7 @@ export default async function UseCasePage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLdScript({
+          __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Article",
             headline: meta.title,
@@ -183,7 +182,7 @@ export default async function UseCasePage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLdScript({
+          __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [

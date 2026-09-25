@@ -10,7 +10,9 @@
  * contracts as the customer app".
  */
 
-import { motion } from "motion/react"
+import * as m from "motion/react-m"
+
+import { MockupMotionBoundary } from "./motion-boundary"
 
 type Role = "owner" | "admin" | "member"
 
@@ -42,65 +44,67 @@ const USERS: ReadonlyArray<UserRow> = [
 
 export function AdminDashboardMockup() {
   return (
-    <div className="flex flex-col gap-0 divide-y divide-border">
-      {/* KPIs */}
-      <div className="grid grid-cols-3 divide-x divide-border">
-        {KPIS.map((kpi, i) => (
-          <motion.div
-            key={kpi.label}
-            initial={{ opacity: 0, y: 4 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 + i * 0.1, duration: 0.3 }}
-            className="flex flex-col gap-1 p-4"
-          >
-            <span className="text-label-12 uppercase tracking-wider text-muted-foreground">
-              {kpi.label}
-            </span>
-            <span className="text-heading-20 font-medium tracking-tight text-foreground">
-              {kpi.value}
-            </span>
-            <span className="font-mono text-label-12 text-emerald-600 dark:text-emerald-400">
-              {kpi.delta}
-            </span>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Users table */}
-      <div className="flex flex-col">
-        <div className="flex items-center justify-between px-4 py-2 text-label-12 uppercase tracking-wider text-muted-foreground">
-          <span>Users</span>
-          <span className="font-mono">{USERS.length} rows</span>
-        </div>
-        <ul className="divide-y divide-border">
-          {USERS.map((user, i) => (
-            <motion.li
-              key={user.email}
-              initial={{ opacity: 0, x: -8 }}
-              whileInView={{ opacity: 1, x: 0 }}
+    <MockupMotionBoundary>
+      <div className="flex flex-col gap-0 divide-y divide-border">
+        {/* KPIs */}
+        <div className="grid grid-cols-3 divide-x divide-border">
+          {KPIS.map((kpi, i) => (
+            <m.div
+              key={kpi.label}
+              initial={{ opacity: 0, y: 4 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: 0.4 + i * 0.08, duration: 0.3 }}
-              className="flex items-center gap-3 px-4 py-2 text-copy-13"
+              transition={{ delay: 0.1 + i * 0.1, duration: 0.3 }}
+              className="flex flex-col gap-1 p-4"
             >
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted/40 font-mono text-label-12 text-foreground">
-                {user.email.slice(0, 1).toUpperCase()}
+              <span className="text-label-12 uppercase tracking-wider text-muted-foreground">
+                {kpi.label}
               </span>
-              <span className="flex-1 truncate font-mono text-copy-13 text-foreground">
-                {user.email}
+              <span className="text-heading-20 font-medium tracking-tight text-foreground">
+                {kpi.value}
               </span>
-              <span
-                className={`rounded-sm border px-1.5 py-0.5 font-mono text-label-12 ${ROLE_STYLES[user.role]}`}
-              >
-                {user.role}
+              <span className="font-mono text-label-12 text-emerald-600 dark:text-emerald-400">
+                {kpi.delta}
               </span>
-              <span className="w-16 shrink-0 text-right font-mono text-label-12 text-muted-foreground">
-                {user.lastSeen}
-              </span>
-            </motion.li>
+            </m.div>
           ))}
-        </ul>
+        </div>
+
+        {/* Users table */}
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between px-4 py-2 text-label-12 uppercase tracking-wider text-muted-foreground">
+            <span>Users</span>
+            <span className="font-mono">{USERS.length} rows</span>
+          </div>
+          <ul className="divide-y divide-border">
+            {USERS.map((user, i) => (
+              <m.li
+                key={user.email}
+                initial={{ opacity: 0, x: -8 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.4 + i * 0.08, duration: 0.3 }}
+                className="flex items-center gap-3 px-4 py-2 text-copy-13"
+              >
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted/40 font-mono text-label-12 text-foreground">
+                  {user.email.slice(0, 1).toUpperCase()}
+                </span>
+                <span className="flex-1 truncate font-mono text-copy-13 text-foreground">
+                  {user.email}
+                </span>
+                <span
+                  className={`rounded-sm border px-1.5 py-0.5 font-mono text-label-12 ${ROLE_STYLES[user.role]}`}
+                >
+                  {user.role}
+                </span>
+                <span className="w-16 shrink-0 text-right font-mono text-label-12 text-muted-foreground">
+                  {user.lastSeen}
+                </span>
+              </m.li>
+            ))}
+          </ul>
+        </div>
       </div>
-    </div>
+    </MockupMotionBoundary>
   )
 }

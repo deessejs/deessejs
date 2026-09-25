@@ -8,23 +8,9 @@ import { TierCardPricing } from "@/app/(marketing)/_components/tier-card-pricing
 import { TierTagline } from "@/app/(marketing)/_components/tier-tagline"
 import type { LicenseType } from "@/lib/pricing"
 
+import { Cell } from "./_shared/cell"
 import { LICENSE_KICKER } from "./license-kicker"
 import { PriceBlock } from "./price-block"
-
-/**
- * Generic shared-border cell. The wrapper card supplies the outer
- * borders; cells contribute only their own padding + optional flex
- * layout. Kept local because pricing-only.
- */
-function Cell({
-  className,
-  children,
-}: {
-  className?: string
-  children: React.ReactNode
-}) {
-  return <div className={cn("flex flex-col p-6", className)}>{children}</div>
-}
 
 /**
  * License card — kicker + name + tagline + price + bullets + CTA.
@@ -73,9 +59,9 @@ export function LicenseCell({
             {license.name}
           </h3>
           <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
-            {license.id === "per-project" ||
-            license.id === "enterprise" ? (
-              <TierTagline tier={license.id === "per-project" ? "professional" : "agency"} />
+            {license.id === "professional" ||
+            license.id === "agency" ? (
+              <TierTagline tier={license.id === "professional" ? "professional" : "agency"} />
             ) : (
               license.tagline
             )}
@@ -83,7 +69,7 @@ export function LicenseCell({
         </header>
 
         {isRecommended ||
-        (license.id === "enterprise") ? (
+        (license.id === "agency") ? (
           <TierCardPricing license={license} />
         ) : (
           <>

@@ -1,4 +1,3 @@
-import * as React from "react"
 import { notFound } from "next/navigation"
 import { allKbTopics, allKbGuides } from "content-collections"
 
@@ -10,13 +9,11 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
-import { H2 } from "@workspace/ui/components/typography"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
-import { GuideCard } from "@/components/knowledge-base/guide-card"
-import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
+import { TopicGuideList } from "@/components/knowledge-base/topic-guide-list"
+import { TopicEmptyState } from "@/components/knowledge-base/topic-empty-state"
 import { TopicTagPill } from "@/components/knowledge-base/badges"
 import { ORG_ID } from "@/lib/seo/organization"
-import { jsonLdScript } from "@/lib/json-ld"
 
 type Params = { topic: string }
 
@@ -40,11 +37,73 @@ export default async function KnowledgeTopicPage({
     .sort((a, b) => a.order - b.order)
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+    <section className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 sm:py-16 lg:py-24">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/knowledge-base">
+              Knowledge Base
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{topicDoc.title}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <header className="mt-6 flex flex-col gap-3">
+        <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
+          {topicDoc.title}
+        </h1>
+        <p className="text-pretty text-base text-muted-foreground sm:text-lg">
+          {topicDoc.description}
+        </p>
+        {topicDoc.tags.length > 0 ? (
+          <ul className="flex flex-wrap gap-1.5">
+            {topicDoc.tags.map((tag) => (
+              <li key={tag}>
+                <TopicTagPill>{tag}</TopicTagPill>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </header>
+
+      <MdxRenderer className="mt-8" code={topicDoc.mdxCode} />
+
+      <section
+        id="guides-in-this-topic"
+        aria-labelledby="guides-in-this-topic-heading"
+        className="mt-12 flex scroll-mt-20 flex-col gap-4"
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <h2
+            id="guides-in-this-topic-heading"
+            className="text-3xl font-semibold tracking-tight"
+          >
+            Guides in this topic
+          </h2>
+          {topicGuides.length > 0 ? (
+            <span className="text-copy-14 text-muted-foreground">
+              {topicGuides.length}{" "}
+              {topicGuides.length === 1 ? "guide" : "guides"}
+            </span>
+          ) : null}
+        </div>
+        {topicGuides.length === 0 ? (
+          <TopicEmptyState topicTitle={topicDoc.title} />
+        ) : (
+          <div className="-mx-4 sm:-mx-6 lg:mx-0">
+            <TopicGuideList guides={topicGuides} />
+          </div>
+        )}
+      </section>
+
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLdScript({
+          __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "TechArticle",
             headline: topicDoc.title,
@@ -68,7 +127,7 @@ export default async function KnowledgeTopicPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLdScript({
+          __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [
@@ -94,70 +153,6 @@ export default async function KnowledgeTopicPage({
           }),
         }}
       />
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/knowledge-base">
-              Knowledge Base
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{topicDoc.title}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
-      <header className="flex flex-col gap-3">
-        <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
-          {topicDoc.title}
-        </h1>
-        <p className="mt-4 text-pretty text-lg text-muted-foreground">
-          {topicDoc.description}
-        </p>
-        {topicDoc.tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {topicDoc.tags.map((tag) => (
-              <TopicTagPill key={tag}>{tag}</TopicTagPill>
-            ))}
-          </div>
-        ) : null}
-      </header>
-
-      <MdxRenderer className="mt-2" code={topicDoc.mdxCode} />
-
-      <section className="flex flex-col gap-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <H2>Guides in this topic</H2>
-          {topicGuides.length > 0 ? (
-            <span className="text-copy-14 text-muted-foreground">
-              {topicGuides.length}{" "}
-              {topicGuides.length === 1 ? "guide" : "guides"}
-            </span>
-          ) : null}
-        </div>
-        {topicGuides.length === 0 ? (
-          <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-            No guides in this topic yet.
-          </p>
-        ) : (
-          <KbCardGrid>
-            {topicGuides.map((guide) => (
-              <li key={guide.slug}>
-                <GuideCard
-                  guide={
-                    {
-                      ...guide,
-                      date: guide.date,
-                      readingTime: guide.readingTime ?? 0,
-                    } as React.ComponentProps<typeof GuideCard>["guide"]
-                  }
-                />
-              </li>
-            ))}
-          </KbCardGrid>
-        )}
-      </section>
     </section>
   )
 }
