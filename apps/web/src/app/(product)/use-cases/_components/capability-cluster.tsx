@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import {
-  ArrowRight,
   Bell,
   CreditCard,
   Database,
@@ -78,8 +77,6 @@ export type CapabilityCluster = {
 export function CapabilityClustersSection({
   clusters,
   mockups,
-  ctaHref = "/templates",
-  ctaLabel = "Open the registry",
   className,
 }: {
   clusters: ReadonlyArray<CapabilityCluster>
@@ -89,8 +86,6 @@ export function CapabilityClustersSection({
    * so the column never reads as blank.
    */
   mockups: Record<string, React.ReactNode | undefined>
-  ctaHref?: string
-  ctaLabel?: string
   className?: string
 }) {
   return (
@@ -158,16 +153,6 @@ export function CapabilityClustersSection({
           </section>
         )
       })}
-
-      <div className="flex items-center justify-center gap-2 p-6 lg:p-10">
-        <a
-          href={ctaHref}
-          className="inline-flex items-center gap-1 text-label-13 text-foreground underline-offset-4 hover:underline"
-        >
-          {ctaLabel}
-          <ArrowRight className="size-3" aria-hidden />
-        </a>
-      </div>
     </div>
   )
 }
