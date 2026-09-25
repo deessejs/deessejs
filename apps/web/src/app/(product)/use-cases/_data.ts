@@ -9,7 +9,7 @@
  * page surfaces only the capabilities that apply to that scenario. Each
  * capability may carry a `mockupSlug` — a key into the mockup registry
  * shipped by the use-cases tree (`_components/mockups/`). When set, the
- * `<CapabilitiesTabs>` component renders that mockup as the "peek"
+ * capability-tabs component renders that mockup as the "peek"
  * illustration when the capability card is selected.
  *
  * Capabilities are intentionally timeless in their display — pages
