@@ -1,40 +1,63 @@
 import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
-import { fetchTemplates } from "../api/index.js"
+
+import { createClient } from "@workspace/registry-client"
+
 import { internal } from "../errors/index.js"
 import { printError, printJson, printTemplatesTable } from "../output/index.js"
 
+/**
+ * `deesse list` — list available templates from the registry.
+ *
+ * Migrated to use `@workspace/registry-client`. The previous
+ * implementation called `fetchTemplates()` against the oRPC API,
+ * which returned an enriched V1 shape (with owner/repo/image).
+ * The SDK returns `CatalogEntry[]` (slug, title, layer,
+ * latestVersion), which is what the catalog screen needs.
+ */
 export const listCommand = new Command("list")
   .description("List available templates")
-  .option("--category <name>", "filter to a single category")
+  .option("--layer <name>", "filter to a single layer (open-community | pro | enterprise)")
   .option("--json", "JSON output for scripting")
   .action(
-    async (opts: { category?: string; json?: boolean }) => {
+    async (opts: {
+      layer?: "open-community" | "pro" | "enterprise"
+      json?: boolean
+    }) => {
       const spinner = opts.json ? null : ora("Fetching templates...").start()
 
       try {
-        const all = await fetchTemplates()
-        const filtered = opts.category
-          ? all.filter((t) => t.category === opts.category)
-          : all
-
+        const client = createClient({
+          apiUrl: process.env.DEESSEJS_API_URL ?? "https://app.deessejs.com",
+        })
+        const result = await client.listTemplates()
         spinner?.stop()
+
+        if (result._tag === "Err") {
+          throw internal(
+            `Failed to list templates: ${result.error._tag}`,
+          )
+        }
+
+        const filtered = opts.layer
+          ? result.value.filter((t) => t.layer === opts.layer)
+          : result.value
 
         if (opts.json) {
           printJson({ templates: filtered })
         } else {
-          if (opts.category) {
-            console.log(pc.dim(`Category: ${opts.category}`))
+          if (opts.layer) {
+            console.log(pc.dim(`Layer: ${opts.layer}`))
           }
           printTemplatesTable(filtered)
           console.log()
           console.log(
             pc.dim(
               `${filtered.length} template${filtered.length === 1 ? "" : "s"}.` +
-                (opts.category
+                (opts.layer
                   ? ""
-                  : " Use --category <name> to filter, --json for scripting."),
+                  : " Use --layer <name> to filter, --json for scripting."),
             ),
           )
         }
