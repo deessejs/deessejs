@@ -17,6 +17,7 @@
  * no other consumer).
  */
 import { Beliefs } from "./beliefs"
+import { FinalCta } from "./final-cta"
 import { Hero } from "./hero"
 import { Intro } from "./intro"
 
@@ -24,8 +25,9 @@ export const Manifesto = {
   Hero,
   Intro,
   Beliefs,
+  FinalCta,
 } as const
 
 // Named re-exports for consumers that want a single component
 // without going through the namespace (e.g. tests, storybook).
-export { Beliefs, Hero, Intro }
+export { Beliefs, FinalCta, Hero, Intro }
