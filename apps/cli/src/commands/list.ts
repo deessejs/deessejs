@@ -2,8 +2,7 @@ import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
 
-import { createClient } from "@workspace/registry-client"
-
+import { getRegistryClient } from "../registry/client.js"
 import { internal } from "../errors/index.js"
 import { printError, printJson, printTemplatesTable } from "../output/index.js"
 
@@ -28,9 +27,7 @@ export const listCommand = new Command("list")
       const spinner = opts.json ? null : ora("Fetching templates...").start()
 
       try {
-        const client = createClient({
-          apiUrl: process.env.DEESSEJS_API_URL ?? "https://app.deessejs.com",
-        })
+        const client = getRegistryClient()
         const result = await client.listTemplates()
         spinner?.stop()
 

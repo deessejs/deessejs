@@ -23,11 +23,11 @@ import ora from "ora"
 import pc from "picocolors"
 
 import {
-  createClient,
   type FetchedTemplate,
   type RegistryFailure,
 } from "@workspace/registry-client"
 
+import { getRegistryClient } from "../registry/client.js"
 import {
   installFailed,
   internal,
@@ -147,14 +147,11 @@ export const initCommand = new Command("init")
       },
     ) => {
       try {
-        const apiUrl =
-          process.env.DEESSEJS_API_URL ?? "https://app.deessejs.com"
-        const client = createClient({ apiUrl })
-
         // 1. Fetch template
         const fetchSpinner = ora(
           `Fetching ${pc.cyan(slug)} from registry...`,
         ).start()
+        const client = getRegistryClient()
         const tmplResult = await client.getTemplate(slug, {
           ...(opts.ref ? { ref: opts.ref } : {}),
         })
