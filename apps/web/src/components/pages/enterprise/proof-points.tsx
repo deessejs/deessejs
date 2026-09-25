@@ -24,7 +24,7 @@ export function ProofPoints() {
         {PROOF_POINTS.map((point) => (
           <div
             key={point.title}
-            className="flex gap-3 p-6 transition-colors hover:bg-accent/40 lg:p-10"
+            className="flex gap-3 bg-background p-6 transition-colors hover:bg-accent/40 lg:p-10"
           >
             <Check
               className="mt-1 size-4 shrink-0 text-emerald-500"
