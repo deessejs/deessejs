@@ -11,6 +11,15 @@ export type Belief = {
   number: string
   title: string
   body: string
+  /**
+   * Render the body inside a `<Blockquote>` pull-quote
+   * instead of a plain `<p>`. Use sparingly — at most one
+   * pull-quote per page so the rhetorical device stays
+   * weighted. The pull-quote is restyled at the consumer
+   * with a heavier primary left-border (see
+   * `manifesto/beliefs.tsx`).
+   */
+  pullQuote?: boolean
 }
 
 export const BELIEFS: ReadonlyArray<Belief> = [
@@ -28,6 +37,7 @@ export const BELIEFS: ReadonlyArray<Belief> = [
     number: "03",
     title: "Speed is the feature",
     body: "A good template lands in minutes, debugged in seconds, understood in a single read. We treat every file that survived PR review as a place where someone will live for the next three years. Documentation in the file beats documentation in a wiki.",
+    pullQuote: true,
   },
   {
     number: "04",

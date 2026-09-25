@@ -10,6 +10,13 @@
 export type HorizonItem = {
   title: string
   description: string
+  /**
+   * Render the description inside a `<blockquote>` pull-quote
+   * with a 4px primary left-border instead of a plain <p>.
+   * Use sparingly — at most one per horizon, so the
+   * rhetorical device stays weighted.
+   */
+  pullQuote?: boolean
 }
 
 export type Horizon = {
@@ -86,6 +93,7 @@ export const HORIZONS: ReadonlyArray<Horizon> = [
         title: "Templates that ship themselves",
         description:
           "An agent reviews the diff, runs the smoke tests, opens the PR, and waits on a human reviewer for sign-off. We write the reviewers.",
+        pullQuote: true,
       },
       {
         title: "A registry as a marketplace",
