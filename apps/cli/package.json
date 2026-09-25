@@ -56,6 +56,7 @@
     "@workspace/api": "workspace:*",
     "@workspace/contracts": "workspace:*",
     "@workspace/eslint-config": "workspace:*",
+    "@workspace/registry-client": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9",
     "prettier": "^3.9.4",

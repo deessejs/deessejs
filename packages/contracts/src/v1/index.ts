@@ -3,3 +3,4 @@ export {
   TemplatesListResponseV1,
   type TemplatesListResponseV1 as TemplatesListResponseV1Type,
 } from "./templates-response.js"
+export { BlockV1, type BlockV1 as BlockV1Type } from "./block.js"

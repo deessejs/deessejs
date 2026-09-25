@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/contracts",
+  "name": "@workspace/storage",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -9,15 +9,20 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./v1": {
-      "types": "./dist/v1/index.d.ts",
-      "import": "./dist/v1/index.js",
-      "default": "./dist/v1/index.js"
+    "./object-store": {
+      "types": "./dist/object-store.d.ts",
+      "import": "./dist/object-store.js",
+      "default": "./dist/object-store.js"
     },
-    "./v2": {
-      "types": "./dist/v2/index.d.ts",
-      "import": "./dist/v2/index.js",
-      "default": "./dist/v2/index.js"
+    "./providers/local-fs": {
+      "types": "./dist/providers/local-fs.d.ts",
+      "import": "./dist/providers/local-fs.js",
+      "default": "./dist/providers/local-fs.js"
+    },
+    "./providers/r2": {
+      "types": "./dist/providers/r2.d.ts",
+      "import": "./dist/providers/r2.js",
+      "default": "./dist/providers/r2.js"
     }
   },
   "types": "./dist/index.d.ts",
@@ -29,14 +34,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
+    "@workspace/vitest-config": "workspace:*",
     "eslint": "catalog:",
-    "vitest": "catalog:",
-    "@workspace/vitest-config": "workspace:*"
+    "vitest": "catalog:"
   }
 }

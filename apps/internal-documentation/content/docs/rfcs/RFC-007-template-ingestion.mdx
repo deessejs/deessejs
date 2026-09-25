@@ -1,0 +1,341 @@
+---
+title: 'RFC-007: Template Ingestion (deessejs template import)'
+description: 'Senior RFC for ingesting pre-existing templates (Supabase auth, NextAuth, Prisma adapter, bespoke enterprise scaffolds) into the DeesseJS registry. A new deessejs template import command that detects the source format, parses it, normalises it to a deesse-template.json or deessejs-block.json descriptor, and writes the descriptor alongside the source. Targets both commercial prospects (ingest a prospects existing scaffold and resell it through DeesseJS) and OSS community contributors (submit a hand-authored template to the @deessejs-community namespace). The source repo is never modified; only a new descriptor file is added. Pairs with RFC-002 (deesse-template.json), RFC-005 (deessejs-block.json), RFC-004 (author tooling).'
+---
+
+# RFC-007: Template Ingestion (`deessejs template import`)
+
+## Title, Author, Reviewers, Status
+
+**Title**: The DeesseJS Template Ingestion Pipeline
+
+**Author**: DeesseJS team
+
+**Reviewers**: TBD (assigned on PR)
+
+**Status**: `Draft`. Open for review in the PR and the broader staging workflow. Three senior review rounds expected: one on the conversion pipeline (format detection + normalisation), one on the trust/licensing story (commercial vs OSS, attribution, license compatibility), one on the safety guarantees (the source repo must never be modified).
+
+**Scope of this RFC**: a new author-side subcommand (`deessejs template import`) that takes a third-party template (a shadcn `registry-item.json`, a Nuxt module, a generic repo scaffold, or a bespoke enterprise scaffold) and produces a DeesseJS-compatible descriptor (`deesse-template.json` or `deessejs-block.json`) alongside the source. The RFC proposes the command surface, the conversion pipeline, the supported source formats, the dual-public story (commercial prospects + OSS community), and the safety guarantees that the source repo is never modified. The atomic decisions (which source formats ship in V1, how the commercial attribution works, the licensing audit pipeline) are deferred to a follow-up ADR after this RFC is accepted.
+
+## Summary
+
+This RFC proposes **a new author-side subcommand**, `deessejs template import <source>`, that ingests a pre-existing template (built outside DeesseJS) into the DeesseJS registry as a descriptor (`deesse-template.json` or `deessejs-block.json`). The command targets two public use cases that are load-bearing for the business:
+
+1. **Commercial prospects.** A company has a scaffold they built internally (Supabase auth setup, NextAuth wiring, Prisma adapter, a Stripe integration, a Hono server, a bespoke enterprise framework). The DeesseJS team can ingest the scaffold and re-sell it through the DeesseJS registry as a first-party item. The commercial argument: *"Your existing template keeps working; we add it to our registry, our customers get a one-line install of it, you get distribution and maintenance through our infra."* Without ingestion, every prospect integration starts from scratch and the sales cycle is **measured in weeks of custom work**.
+
+2. **OSS community contributors.** A developer has built a `deesse-template.json` (or the precursor, a hand-authored scaffold they want to publish) and wants to submit it to the `@deessejs-community` namespace (per [RFC-002 §"Community support"](./RFC-002-deesse-template)). The submission pipeline is **the same `import` command** with a `--submit` flag: validate, lint, audit license compatibility, open a PR against `deessejs/community-registry`.
+
+The command takes one input (a source URL, a local repo path, a shadcn `registry-item.json`, or a Nuxt module npm package) and produces one output (a `deesse-template.json` or `deessejs-block.json` file alongside the source). **The source repo is never modified.** Only a new descriptor file is added; the user reviews it, commits it (or its parent repo) on their own terms, and the descriptor can be published to the registry via the existing publication CI.
+
+### Why this matters
+
+Without the ingestion command, the registry grows at the rate of **how fast the internal team can write `deesse-template.json` files by hand**. The team has framed the planned scale as "hundreds of items" (per [ADR-034](./decisions/ADR-034-template-namespace)) spanning "packages, CLI, SaaS multi-tenant, mobile, desktop, AI agent, landing page" (per the locked homepage copy). Hand-writing hundreds of descriptors is a multi-quarter effort. With the ingestion command, every third-party template that exists today becomes a candidate: shadcn `registry-item.json` (200+ items in the shadcn ecosystem at any time), Nuxt modules (1,500+ on npm), Rails generators (hundreds on GitHub), internal company scaffolds (zero public visibility today).
+
+The **commercial angle** is the load-bearing one. A senior engineer pitching DeesseJS to a CTO of a SaaS company with their own internal scaffold can say: *"You don't have to throw your scaffold away. Run `deessejs template import ./your-scaffold` and your existing work becomes a first-class DeesseJS item. Your team keeps maintaining it; our customers get a one-line install."* This converts the conversation from *"switch to our tool"* (which triggers resistance) to *"augment your tool"* (which triggers curiosity). The conversion rate difference is the difference between a stalled pipeline and a closed deal.
+
+### What shadcn does today (and why we extend it)
+
+shadcn's CLI has no first-party ingestion command. A shadcn user who wants to publish a `registry-item.json` writes it by hand against the [shadcn schema](https://ui.shadcn.com/docs/registry/registry-item-json), validates it with `npx shadcn build`, and submits a PR to the registry repo. The process is **manual** for descriptors the author wrote themselves, and **impossible** for third-party descriptors in formats shadcn doesn't speak (Nuxt, Rails, bespoke scaffolds).
+
+shadcn's `registry-item.json` is structurally similar to `deessejs-block.json` (per [RFC-005](./RFC-005-deessejs-block)), 12 `type` values vs 8 in DeesseJS, per-file `type` tagging on both, similar `files[]` shape. The shadcn-to-DeesseJS conversion is **mostly mechanical**: rename `registry:block` → `block:feature`, map `registry:component` → `block:component`, drop the `cssVars` (reserved, not used in DeesseJS V1), preserve `dependencies` and `devDependencies` verbatim. The remaining formats (Nuxt modules, Rails generators, bespoke scaffolds) require a **manual mapping step** that the RFC proposes to scaffold via a guided interactive flow (`deessejs template import --interactive`).
+
+## Goals and Non-Goals
+
+### Goals
+
+1. **Ingest a pre-existing template (any format) into the DeesseJS registry as a `deesse-template.json` or `deessejs-block.json`.** The output descriptor is **always** a valid Zod-validated `TemplateV2` (per [RFC-002](./RFC-002-deesse-template)) or `BlockV1` (per [RFC-005](./RFC-005-deessejs-block)). The source repo is never modified.
+2. **Support the shadcn `registry-item.json` format as a V1 source.** shadcn's 12-value `type` field maps to DeesseJS's 8-value `block:type` field. The conversion is documented in the RFC and unit-tested against the shadcn schema. Per-file `type` is preserved (shadcn already mandates it).
+3. **Support a generic "raw repo scaffold" as a V1 source.** A user with a hand-built scaffold (no formal descriptor) points `import` at the repo root; the command detects the framework (Next.js, Nuxt, Hono, etc.) from the file layout, generates a `deesse-template.json` with the appropriate defaults, and **prompts the user** for any field that cannot be inferred (the prompt set is gated by `--yes` for non-interactive mode, per [ADR-010 §1](/decisions/ADR-010-cli-public-surface)).
+4. **Be non-destructive.** The source repo is never modified. The descriptor is written to a sibling file in the source repo (e.g. `./deesse.json` next to `./package.json`); the user decides when and whether to commit it.
+5. **Be safe by default in CI.** Same invariant as `init` and `add`: when `process.env.CI` is set (or `/.deesse-ci` is present), the CLI refuses to fetch the source without a populated local cache, and refuses to write the descriptor to any path outside the user's project tree. No opt-out flag (per the rationale at [RFC-003 §"CI offline invariant"](./RFC-003-deessejs-add)).
+6. **Support a commercial attribution path.** A commercial prospect who ingests their scaffold can include `--vendor <name>` to add a `vendor` field to the descriptor; the registry's gallery surfaces the vendor. The license is preserved verbatim from the source (the command refuses to ingest a source whose license is missing or incompatible with redistribution).
+7. **Support a community submission path.** A OSS contributor can pass `--submit` to validate, lint, license-audit, and open a PR against `deessejs/community-registry`. The PR is opened by the CLI on behalf of the user (authenticated via the existing `auth.*` oRPC procedures, per [RFC-001 §"registries{} namespace map"](./RFC-001-deesse-json)).
+
+### Non-Goals
+
+1. **Modifying the source repo.** The CLI writes a sibling descriptor file; it does not refactor the source, rename files, or rewrite the source's existing conventions. A future ADR may add a `--refactor` flag that proposes a PR against the source repo (e.g. to add a `deesse-template.json` upstream), but the V1 contract is non-destructive.
+2. **Auto-publishing to the registry without user review.** The descriptor is written to a local path; the user reviews it; the user runs `deessejs template submit` (or passes `--submit` to `import`) when they want to publish. A future ADR may add a `--auto-publish` flag with a clear consent flow; V1 requires explicit `--submit`.
+3. **Inverting the conversion (DeesseJS → shadcn).** Out of scope. The asymmetric pipeline (external → DeesseJS) is the load-bearing one for the business; the reverse is a nice-to-have that the team has not identified a use case for.
+4. **Live-converting a running production project.** The command reads a static descriptor or a static repo layout; it does not introspect a deployed application. A future ADR may add a `--from-deployed` flag that inspects a running app's `package.json`, `deesse.json` (if present), and CDN-published metadata; V1 requires a local source.
+5. **Auto-detecting the user's intent from an unstructured prompt.** The command takes a structured input (URL, file path, npm package name); it does not parse natural-language instructions like *"ingest supabase auth"*. A future ADR may add a fuzzy-matching layer; V1 requires explicit input.
+
+## Motivation
+
+The load-bearing motivation is **commercial**: every enterprise prospect has at least one internal scaffold they have already invested in. Throwing that scaffold away to adopt DeesseJS is a hard sell. Augmenting it (keeping the scaffold, gaining distribution through DeesseJS) is an easy sell.
+
+The second motivation is **community leverage**: the DeesseJS team cannot hand-write hundreds of `deesse-template.json` files in a quarter, but the open-source ecosystem (shadcn, Nuxt, Rails) has already written the equivalent descriptors. Ingesting those descriptors and republishing them through the DeesseJS registry multiplies the internal team's output by an order of magnitude without a corresponding headcount cost.
+
+The third motivation is **time-to-value for the conversion moment** (the same load-bearing conversion window as [RFC-006 §"Motivation"](./RFC-006-deessejs-init)). A user who tries DeesseJS for the first time and discovers that their existing scaffold (the one they spent two years building) installs with one command (`deessejs template import ./my-scaffold && deessejs add my-feature`) becomes an advocate. A user who has to throw away their scaffold to try DeesseJS does not.
+
+The fourth motivation is **legal safety**. Today, when the DeesseJS team manually copies a third-party scaffold into the registry, there is no automated license check. A malicious or sloppy copy can introduce GPL code into a proprietary codebase, or include a third-party license that requires attribution that the registry omits. The ingestion command ships with a **license audit step** that fails fast on incompatible or missing licenses, with the rule codified in a load-bearing ADR.
+
+## Detailed Design
+
+### Surface area
+
+```
+deessejs template import <source> [options]
+
+  <source>             Source to ingest. Formats:
+                       - GitHub URL (https://github.com/owner/repo)
+                       - Local path (./my-scaffold, /abs/path/to/repo)
+                       - npm package name (@nuxtjs/auth-next, supabase-auth-helpers)
+                       - shadcn registry-item URL (https://ui.shadcn.com/r/<name>.json)
+                       - Local descriptor file (./registry-item.json)
+
+  --format <fmt>       Hint the source format. Values: shadcn | nuxt | rails | raw | auto
+                       Default: auto-detect from the source
+
+  --output <type>      Output descriptor type. Values: template | block | auto
+                       Default: auto (template if source is a starter, block if overlay)
+
+  --vendor <name>      Add a vendor field to the descriptor (commercial attribution)
+
+  --submit             After writing the descriptor, validate + lint + license-audit + open
+                       a PR against deessejs/community-registry. Requires `deessejs auth`.
+
+  --yes                Skip all prompts; use documented defaults for any field that cannot
+                       be inferred. Default: prompt the user interactively.
+
+  --json               Emit machine-readable JSON to stdout (descriptor + conversion report)
+
+  --dry-run            Print the conversion plan (detected format, mapping, prompt set)
+                       without writing anything.
+```
+
+The flags are additive on top of [ADR-010 §1](/decisions/ADR-010-cli-public-surface) and [ADR-034](./decisions/ADR-034-template-namespace). The `import` subcommand joins the existing `deessejs template <validate | new | explain>` namespace.
+
+### Conversion pipeline (5 stages)
+
+The command runs five sequential stages; each stage is unit-tested in isolation.
+
+**Stage 1, Detect.** Read the source. Based on the format hint (`--format`) or auto-detection rules, classify the source:
+
+- **shadcn** : the source is a `registry-item.json` or a GitHub repo with one.
+- **nuxt** : the source is an npm package whose name starts with `@nuxtjs/` and whose `package.json` declares a Nuxt module via `defineNuxtModule`.
+- **rails** : the source is a GitHub repo with a `lib/generators/<name>/<name>_generator.rb` file (or a directory tree that matches).
+- **raw** : the source is a generic repo scaffold; no formal descriptor is detected. The command falls back to a heuristic classifier (file-layout fingerprinting).
+- **unknown** : the command refuses with `unsupported_source_format` and exits.
+
+**Stage 2, Parse.** Convert the source into an internal intermediate representation (a `TemplateV2` Zod schema with all fields populated). For shadcn, this is a mechanical rename pass. For Nuxt, this is reading the module's `setup()` and `options` schema. For Rails, this is reading the generator's `def create_<thing>` methods. For raw, this is running the heuristic classifier.
+
+**Stage 3, Map.** Translate the intermediate representation into a DeesseJS-compatible form. The map rules:
+
+| Source field | DeesseJS field |
+|---|---|
+| shadcn `registry:block` | `deessejs-block.json#type = "block:feature"` |
+| shadcn `registry:component` | `deessejs-block.json#type = "block:component"` |
+| shadcn `registry:hook` | `deessejs-block.json#type = "block:hook"` |
+| shadcn `registry:lib` | `deessejs-block.json#type = "block:lib"` |
+| shadcn `registry:ui` | `deessejs-block.json#type = "block:ui"` |
+| shadcn `registry:page` | `deessejs-block.json#type = "block:page"` |
+| shadcn `registry:file` | `deessejs-block.json#type = "block:file"` |
+| shadcn `registry:font` | `deessejs-block.json#type = "block:font"` |
+| shadcn `registry:theme` | `deessejs-block.json#type = "block:theme"` |
+| shadcn `registry:base` | **No mapping**, the source is the whole registry, not a single item. The command refuses with `unsupported_shadcn_type` and lists shadcn's own `deessejs template explain` output as the next step. |
+| shadcn `registry:style` | **No mapping**, DeesseJS does not have a `style` discriminator yet. Reserved for a future ADR. |
+| shadcn `registry:item` | **No mapping**, fall through to a per-file-type aggregation (the shadcn `registry:item` is a universal bucket; the DeesseJS descriptor must be a specific kind). The command refuses with `ambiguous_source_type` and asks the user to specify the desired `block:type` via `--output`. |
+| shadcn `dependencies[]` | `dependencies[]` (verbatim) |
+| shadcn `devDependencies[]` | `devDependencies[]` (verbatim) |
+| shadcn `registryDependencies[]` | `blockDependencies[]` (rename only) |
+| shadcn `files[].path` | `files[].path` (verbatim) |
+| shadcn `files[].type` | `files[].type` (verbatim, already matches) |
+| shadcn `files[].target` | `files[].target` (verbatim, already matches shadcn's `~` and `@/` conventions) |
+| shadcn `cssVars{}` | **Dropped**, DeesseJS does not have a `cssVars` field in V1; the field is reserved for a future ADR (per [RFC-005 §"Closed-list top-level shape"](./RFC-005-deessejs-block)). The command emits a warning: *"shadcn cssVars are not imported; will need to be set in deesse.json#tokens manually."* |
+| shadcn `author` | `author` (verbatim) |
+| Nuxt `defineNuxtModule.options` schema | `prompts[]` (one prompt per option with a default) |
+| Nuxt `addComponent` calls | `files[]` with `block:component` per-file type |
+| Nuxt `addImports` calls | `files[]` with `block:lib` per-file type |
+| Rails generator `def create_<thing>` | `files[]` with `block:file` per-file type, one prompt per option |
+| Raw (no descriptor) | Heuristic classification: a `package.json` with `next` dependency → starter; a `pages/` or `app/` directory at root → block; a `lib/` only → block with `block:lib`. The user can override the heuristic via `--output`. |
+
+The map is implemented as a TypeScript module at `apps/cli/src/import/mappers/<format>.ts`; each mapper exports a `map(source: Source) => TemplateV2` function. New mappers are added by adding a file; the registration is dynamic (`fs.readdirSync` on the mappers directory).
+
+**Stage 4, License audit.** Parse the source's license (shadcn's `license` field, Nuxt's `package.json#license`, Rails' repo LICENSE file, raw's package.json). Refuse to ingest if:
+
+- The license is missing.
+- The license is GPL (any version) without explicit commercial attribution in a separate `COMMERCIAL_LICENSE` file.
+- The license is AGPL.
+- The license is a custom proprietary license that requires negotiation.
+
+For MIT / BSD / Apache-2.0 / ISC licenses, the command accepts and surfaces the license verbatim in the descriptor's `license` field. The audit module is at `apps/cli/src/import/license-audit.ts`; the rules are documented in a separate ADR (out of scope for this RFC, tracked separately).
+
+**Stage 5, Write.** Write the descriptor alongside the source. For a GitHub URL, the command writes to a local clone (`./deesse-template.json` or `./deessejs-block.json` at the repo root). For a local path, the command writes in place. For an npm package, the command writes to the package's local install directory.
+
+The write is atomic (`fs.writeFile(tmp); fs.rename(tmp, real)`); the source repo's other files are not touched. The CLI prints a one-line summary: *"Wrote ./deessejs-block.json for @nuxtjs/auth-next. Run `deessejs template validate` to verify, or `deessejs template submit` to publish."*
+
+### Per-source conversion: worked examples
+
+#### Example 1: shadcn `registry-item.json`
+
+```bash
+$ deessejs template import https://ui.shadcn.com/r/hello-world.json --vendor "Acme Corp"
+```
+
+- **Detect** : fetches the URL; the response is a `registry-item.json`. Source format = `shadcn`.
+- **Parse** : renames `registry:block` → `block:feature`, preserves `dependencies[]`, `devDependencies[]`, `files[]`, `prompts[]`.
+- **Map** : drops `cssVars{}`, surfaces a warning.
+- **License audit** : reads `license: "MIT"` (typical for shadcn items). Passes.
+- **Write** : writes `./deessejs-block.json` with `{ "name": "hello-world", "type": "block:feature", "license": "MIT", "vendor": "Acme Corp", ... }`.
+
+The user can then `cd` into the local repo and run `deessejs add hello-world` to install it into a project.
+
+#### Example 2: Nuxt module
+
+```bash
+$ deessejs template import @nuxtjs/auth-next
+```
+
+- **Detect** : fetches the npm package metadata; name starts with `@nuxtjs/` and `package.json` declares a Nuxt module. Source format = `nuxt`.
+- **Parse** : reads the module's `setup()` function, extracts the `options` schema (one option per Zod field in the module). Each option becomes a `prompt[]` entry in the descriptor. Reads the `addComponent` and `addImports` calls; each becomes a `files[]` entry.
+- **Map** : wraps the extracted options in a `deessejs-block.json` with `type: "block:feature"`, `blockDependencies: []`, and `files[]` containing the components and imports.
+- **License audit** : reads the npm `license` field (typically `MIT` for `@nuxtjs/*`). Passes.
+- **Write** : writes `./deessejs-block.json` into the package's install directory (`node_modules/@nuxtjs/auth-next/`). The user reviews and submits upstream.
+
+#### Example 3: Raw repo scaffold (a Next.js + Prisma + Better Auth setup)
+
+```bash
+$ deessejs template import ./my-company-scaffold --interactive
+```
+
+- **Detect** : source is a local path. The command reads the file layout: `package.json` with `next`, `prisma`, `better-auth`; `prisma/schema.prisma`; `app/api/auth/[...]/route.ts`; `app/api/auth/login/page.tsx`. No formal descriptor. Source format = `raw`.
+- **Heuristic classifier** : presence of `app/` + `next` dependency → starter. Output type = `template`.
+- **Parse** : runs the heuristic to identify files; flags the `prisma/schema.prisma` as `tokens:database`, the `app/api/auth/[...]/route.ts` as a route, the `app/api/auth/login/page.tsx` as a route, the rest as `files[]` defaults.
+- **Prompt the user** : "The descriptor needs a `name`, `description`, `category`, `prompts[]` (one per environment variable like `DATABASE_URL`). Provide them interactively or pass `--yes` to use defaults."
+- **Map** : builds a `deesse-template.json` with `template:type = "template:app"`, `dependencies: ["next@^15", "prisma@^5", "better-auth@^1"]`, `prompts[]` for the env vars.
+- **License audit** : reads `./LICENSE` (the user's company-internal license). If it's a custom proprietary license, the command **refuses** with `proprietary_license_detected` and asks the user to either negotiate a redistribution license with the DeesseJS team or fork the scaffold into a separate `@<vendor>/<name>` namespace on their own registry host.
+- **Write** : writes `./deesse-template.json` next to `./package.json`. The user reviews and commits.
+
+### Safety guarantees
+
+1. **The source repo is never modified.** Only a sibling descriptor file is added. The CLI does not refactor, rename, or rewrite any source file. Verified by a unit test that diffs the source before and after `import`.
+2. **License is preserved verbatim and audited for compatibility.** The descriptor's `license` field mirrors the source's. Incompatible licenses fail the command at stage 4 before the descriptor is written.
+3. **The descriptor is always valid.** Stage 3's output is parsed through the Zod schema (`TemplateV2` or `BlockV1`) before write. Invalid descriptors fail at stage 3 with the specific Zod error.
+4. **No network write to the source.** For GitHub URLs, the command clones locally; it does not push or open a PR upstream. For npm packages, the command writes to the local install directory; it does not publish to npm.
+5. **CI mode applies.** When `process.env.CI` is set, the command refuses to fetch the source without a populated local cache (per the rationale at [RFC-003 §"CI offline invariant"](./RFC-003-deessejs-add)).
+6. **The `submit` flag is opt-in.** Stage 5 ends with a local write. The `--submit` flag triggers the PR-opening flow, which requires `deessejs auth` and a configured `deesse.json#registries` entry for `deessejs-community`. Without `--submit`, the descriptor is local-only.
+
+### Submission pipeline (`--submit`)
+
+The `--submit` flag triggers a five-step pipeline after the descriptor is written:
+
+1. **Validate** : run `deessejs template validate --strict` (per [RFC-004 §"Subcommand: `validate`"](./RFC-004-template-author-tooling)). Exit on any shape or semantic error.
+2. **Lint** : run the Zod-schema JSDoc lint (`packages/contracts/lint/jsdoc-required.ts`). Exit if any closed-list field lacks the four-section contract.
+3. **License audit (deep)** : beyond the stage-4 audit, fetch the source's full LICENSE file (or its SPDX expression from npm) and verify it is on the DeesseJS allowlist. The allowlist is maintained at `apps/cli/src/import/license-allowlist.ts` and documented in a separate ADR.
+4. **Open PR** : fork `deessejs/community-registry`, commit the descriptor, push, open a PR via the GitHub API (authenticated via `deessejs auth`).
+5. **Notify** : print the PR URL to stdout. The CLI does not auto-merge; a maintainer reviews and merges.
+
+The pipeline is **the same for commercial prospects and OSS contributors**. The `--vendor` flag differentiates (commercial attribution in the descriptor; the PR body mentions the vendor). Both flows produce a PR against `deessejs/community-registry`.
+
+### Closed-list source formats (V1)
+
+The V1 command ships with three mappers:
+
+| Format | Mature | Coverage |
+|---|---|---|
+| **shadcn `registry-item.json`** | High | The shadcn ecosystem (200+ items at any time, ~90% of which map to DeesseJS with the 8-type taxonomy). |
+| **Raw repo scaffold** | Medium | Any Next.js / Nuxt / Hono / SvelteKit / Remix / Astro / SolidStart scaffold without a formal descriptor. Heuristic classifier; user reviews the output. |
+| **Generic npm package** | Low | Reads `package.json#main` and the `README.md`; emits a minimal `deessejs-block.json` with one `block:lib` file entry pointing at the package. The user reviews and adds `prompts[]` and `files[]` manually. |
+
+The V1 command **does not** ship with Nuxt-specific or Rails-specific mappers; these are future ADRs. The raw mapper covers most non-shadcn cases via the heuristic classifier. New mappers are added by adding a file to `apps/cli/src/import/mappers/`; the registration is dynamic.
+
+## Alternatives Considered
+
+Five patterns were considered and rejected during the development of this RFC.
+
+### Alternative 1: Manual submission only (no command)
+
+What it is: Authors write `deesse-template.json` by hand and submit via a PR. The DeesseJS team reviews and merges. No `import` command.
+
+Why we rejected it: The internal team can hand-write a dozen descriptors per quarter; the community cannot hand-write a hundred. The commercial argument ("we'll ingest your existing scaffold") requires automation. Without the `import` command, the registry grows at the rate of internal-team output, not at the rate of ecosystem leverage.
+
+### Alternative 2: One-shot web UI (`deessejs.com/templates/new`)
+
+What it is: A hosted web UI that lets a user upload a third-party repo, fills in a form, and produces a `deesse-template.json` to download.
+
+Why we rejected it for this RFC: A web UI requires a server, a database, and a per-user auth flow. The CLI command is local-first, runs in CI, and has no infrastructure cost. The web UI is a future ADR (per [RFC-002 §"Future Possibilities"](./RFC-002-deesse-template)); the CLI command is the V1 path.
+
+### Alternative 3: Generic script with no format-specific mappers
+
+What it is: A single heuristic script that ingests any repo by guessing the structure. No per-format mappers; the script writes a generic descriptor and asks the user to fill in the gaps.
+
+Why we rejected it: The heuristic is brittle. shadcn's descriptor is well-defined; Nuxt modules have a specific structure; raw repos have dozens of layouts. A single heuristic fails on every edge case. Per-format mappers are the load-bearing design; a generic fallback is the raw mapper.
+
+### Alternative 4: Refactor the source during ingestion
+
+What it is: The command not only writes a descriptor but also refactors the source to use DeesseJS conventions (e.g. renames `package.json#scripts` to use DeesseJS hooks, restructures `app/` directories).
+
+Why we rejected it: The source repo is the user's. Modifying it without their explicit consent is a violation of trust. The non-destructive contract (source untouched, sibling descriptor written) is the load-bearing guarantee.
+
+### Alternative 5: Ingest from a running production app
+
+What it is: The command connects to a deployed application (via a CLI flag `--from-deployed`), introspects the running `package.json` and `node_modules`, and produces a descriptor.
+
+Why we rejected it for this RFC: Production introspection requires runtime access to the deployed app, which is a different threat model (secrets, environment variables, deployment tokens). The V1 command is local-first; production introspection is a future ADR.
+
+## Open Questions
+
+Four design calls surface during the development of this RFC and remain open.
+
+### Q1: Should the license audit support a `permissive-strict` flag?
+
+**Current proposal: single mode.** GPL/AGPL always fail; MIT/BSD/Apache-2.0/ISC always pass; proprietary licenses always require negotiation.
+
+**Alternative: `--license-mode permissive|strict`.** In `permissive` mode, GPL is accepted if the user's `deesse.json#commercial` field is set. In `strict` mode, only OSI-approved permissive licenses are accepted.
+
+**Resolution deferred to a follow-up ADR.** The single-mode behaviour is simpler; the dual-mode adds user control. Recommend single-mode for V1; dual-mode if the team surfaces a need for OSS-only registries.
+
+### Q2: Should the `--vendor` field be required for commercial submissions?
+
+**Current proposal: optional.** A commercial prospect can omit `--vendor` if they want to publish under `@deessejs-community` (with the DeesseJS team as the registry-of-record vendor).
+
+**Alternative: required.** Every commercial submission must include `--vendor`. OSS submissions can omit.
+
+**Resolution deferred.** The optional behaviour is more flexible; the required behaviour enforces attribution hygiene. Recommend optional for V1; required if the team surfaces attribution quality issues.
+
+### Q3: Should the command refactor the source's `package.json#scripts` to use DeesseJS hooks?
+
+**Current proposal: no.** The command writes a descriptor; it does not touch the source's `package.json`.
+
+**Alternative: yes, with `--refactor-package-json` flag.** The command adds a `deessejs:install` script that calls `deessejs template install` post-install. Useful for authors who want their scaffold to be self-installing on `pnpm install`.
+
+**Resolution deferred.** Refactoring `package.json` crosses the non-destructive boundary. Recommend no for V1; a future ADR may add it.
+
+### Q4: Should the command support ingestion from a `git subtree`?
+
+**Current proposal: no.** A `git subtree` is a directory inside a host repo; ingestion works from the path.
+
+**Alternative: yes, with `--from-subtree` flag.** The command detects the `git subtree` metadata and updates the upstream's pull request flow.
+
+**Resolution deferred.** `git subtree` is a niche use case. Recommend no for V1.
+
+## Cross-references
+
+### Companion documents
+
+- **[RFC-002: The DeesseJS Template Item Descriptor](./RFC-002-deesse-template)**, the descriptor format the command writes (`deesse-template.json`).
+- **[RFC-003: The DeesseJS Overlay Command](./RFC-003-deessejs-add)**, the consumer-side RFC for `deessejs add`. The ingested descriptor is consumed by `add`.
+- **[RFC-004: The DeesseJS Author Tooling](./RFC-004-template-author-tooling)**, the author-side RFC for `deessejs template <validate | new | explain>`. The `import` subcommand joins this namespace.
+- **[RFC-005: The DeesseJS Block Descriptor](./RFC-005-deessejs-block)**, the parallel descriptor format the command writes (`deessejs-block.json`). For shadcn items, the output is a block; for raw starters, the output is a template.
+
+### Companion ADRs (load-bearing rules)
+
+- **[ADR-010: CLI public surface](/decisions/ADR-010-cli-public-surface)**, the invariants that fence the CLI's published surface. The `import` subcommand joins the existing `template` namespace; no new top-level command.
+- **[ADR-031: deesse.json](/decisions/ADR-031-deesse-json)**, the consumer-side config the descriptor's `consumes[]` resolves against.
+- **[ADR-032: deesse-template.json](/decisions/ADR-032-deesse-template.json)**, the wire contract for `TemplateV2` and the closed-list `type` discriminator values.
+- **[ADR-034: deessejs template namespace](/decisions/ADR-034-template-namespace)**, the author tooling that the `import` subcommand extends.
+
+### Plans and memory
+
+- **`.claude/agent-memory/tech-lead/project/templates-content-not-cli.md`**, the load-bearing governance rule. Adding a template entry (one line added to `packages/api/src/templates.ts`) is a content change, never a CLI change. The `import` command's output is a descriptor file in the source repo; the descriptor is published to the registry via the existing publication CI.
+
+## Related
+
+- [RFCs index](/rfcs), the convention for RFCs in this directory.
+- [ADRs index](/decisions), the atomic decisions that implement this RFC.
+- [shadcn `registry-item.json`](https://ui.shadcn.com/docs/registry/registry-item-json), the format that the V1 mapper ingests.
+- [Nuxt modules documentation](https://nuxt.com/docs/4.x/guide/concepts/modules), the format that a future mapper would ingest.
+- [shadcn CLI `npx shadcn add`](https://ui.shadcn.com/docs/cli), the consumer-side equivalent of the resulting descriptor.
+- [Spotify Engineering: When Should I Write an ADR](https://engineering.atspotify.com/2020/04/when-should-i-write-an-architecture-decision-record), naming and structure.
+- [Rust RFC process](https://github.com/rust-lang/rfcs), the numerical RFC prefix and the Prior Art section.
+- [IETF RFC Style Guide](https://www.rfc-editor.org/styleguide/), the formal RFC conventions.
