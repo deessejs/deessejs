@@ -138,11 +138,14 @@ export function CapabilityClustersSection({
 
             <div
               className={cn(
-                "flex items-stretch overflow-hidden",
+                "relative flex items-stretch overflow-hidden",
                 reverse ? "lg:order-1" : "lg:order-2",
               )}
             >
-              <MockupFrame clusterId={cluster.id} className="m-4 lg:m-6">
+              <MockupFrame
+                clusterId={cluster.id}
+                className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%]"
+              >
                 {mockups[cluster.id] ?? (
                   <div className="flex h-full items-center justify-center font-mono text-label-12 text-muted-foreground">
                     preview unavailable
