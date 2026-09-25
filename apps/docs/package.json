@@ -13,9 +13,9 @@
   "dependencies": {
     "@workspace/ui": "workspace:*",
     "cnfast": "^0.0.8",
-    "fumadocs-core": "16.10.7",
-    "fumadocs-mdx": "15.0.13",
-    "fumadocs-ui": "16.10.7",
+    "fumadocs-core": "^16.14.5",
+    "fumadocs-mdx": "^15.4.3",
+    "fumadocs-ui": "^16.14.5",
     "lucide-react": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
