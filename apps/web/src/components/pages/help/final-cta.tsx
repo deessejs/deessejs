@@ -18,7 +18,7 @@ export function FinalCta() {
       noBorderB
       eyebrow="Help"
       title="Still stuck?"
-      body="The team replies to inbound in under two business days. Open a thread or send a note — whichever feels lighter."
+      body="The team replies to inbound in under two business days. Open a thread or send a note, whichever feels lighter."
       actions={[
         {
           label: "Email the team",
