@@ -417,6 +417,28 @@ describe("R2ObjectStore — list", () => {
     expect(firstInput.Prefix).toBe("dir/")
   })
 
+  it("normalises a prefix without a trailing slash to a key-prefix filter", async () => {
+    // Contract: list("dir") MUST return keys under dir/, NOT keys
+    // like dir-anything-else/... The SDK would happily return
+    // dir2/x if we passed Prefix="dir" verbatim. We normalise to
+    // "dir/" before handing to the SDK.
+    const { client, state } = makeFakeClient(() => ({
+      Contents: [
+        listObject({ key: "dir/a.json" }),
+        listObject({ key: "dir/sub/b.json" }),
+      ],
+      $metadata: { httpStatusCode: 200 },
+    }))
+    const store = new R2ObjectStore(baseOpts(client))
+
+    const out: ObjectMeta[] = []
+    for await (const m of store.list("dir")) out.push(m)
+
+    expect(out.map((m) => m.key)).toEqual(["dir/a.json", "dir/sub/b.json"])
+    const firstInput = state.calls[0]!.input as { Prefix?: string }
+    expect(firstInput.Prefix).toBe("dir/")
+  })
+
   it("passes no Prefix when the caller omits the argument", async () => {
     const { client, state } = makeFakeClient(() => ({
       Contents: [listObject({ key: "a.json" })],

@@ -210,9 +210,12 @@ export class LocalFsObjectStore implements ObjectStore {
   /**
    * Recursively walk `dir`. Yields any file whose key (relative to
    * the configured root, with `/` as separator) starts with
-   * `prefixFilter`. We always descend into subdirectories whose path
-   * is `prefixFilter` or a strict prefix of it (so the walker can
-   * reach keys like `dir/b/x.txt` when the filter is `dir/b/`).
+   * `prefixFilter`.
+   *
+   * We always descend into every subdirectory — descent is cheap
+   * and the filter is applied at emission time. This handles
+   * arbitrary nesting (dir/sub/sub2/file.json) without bespoke
+   * prefix-path bookkeeping.
    */
   private async *walk(
     dir: string,
@@ -230,16 +233,7 @@ export class LocalFsObjectStore implements ObjectStore {
       const key = relativePrefix === "" ? ent.name : `${relativePrefix}/${ent.name}`
       const full = path.join(dir, ent.name)
       if (ent.isDirectory()) {
-        // Descend if the directory is on the prefix path (either
-        // matches prefixFilter exactly, or is a strict prefix of it
-        // — i.e. a parent segment of the requested filter).
-        const onPrefixPath =
-          prefixFilter === "" ||
-          key === prefixFilter.slice(0, -1) || // trailing "/" trimmed
-          prefixFilter.startsWith(`${key}/`)
-        if (onPrefixPath) {
-          yield* this.walk(full, key, prefixFilter)
-        }
+        yield* this.walk(full, key, prefixFilter)
       } else if (ent.isFile() && key.startsWith(prefixFilter)) {
         const stat = await fs.stat(full)
         yield {

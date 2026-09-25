@@ -182,8 +182,19 @@ export class R2ObjectStore implements ObjectStore {
     // the hood. Each yielded page contains Contents[] (the items
     // we want) and CommonPrefixes (delimited groupings; we ignore
     // them — flat-key matching is what our contract promises).
+    //
+    // Contract: a prefix without a trailing slash ("foo") is
+    // equivalent to "foo/" — list under that key-prefix. We must
+    // normalise BEFORE handing the prefix to S3, otherwise "foo"
+    // would also match "foobar/..." which violates the contract.
+    const normalisedPrefix =
+      prefix === undefined
+        ? undefined
+        : prefix.endsWith("/")
+          ? prefix
+          : `${prefix}/`
     const input: { Bucket: string; Prefix?: string } = { Bucket: this.bucket }
-    if (prefix) input.Prefix = prefix
+    if (normalisedPrefix !== undefined) input.Prefix = normalisedPrefix
     try {
       const paginator = paginateListObjectsV2(
         { client: this.client },

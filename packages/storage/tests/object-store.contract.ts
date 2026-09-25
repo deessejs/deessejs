@@ -112,6 +112,37 @@ export function runObjectStoreContractTests(
       expect(keys).toEqual(["dir/b/b1.txt", "dir/b/b2.txt"])
     })
 
+    it("list('dir/sub') returns deeply-nested keys (3+ levels)", async () => {
+      // The walker must descend into every subdirectory; the
+      // filter is applied at emission time. Tests arbitrary depth.
+      await fresh()
+      await store.put("dir/sub/file.json", new TextEncoder().encode("d"))
+      await store.put("dir/sub/deeper/file2.json", new TextEncoder().encode("e"))
+      await store.put("dir/other.json", new TextEncoder().encode("o"))
+      const keys: string[] = []
+      for await (const m of store.list("dir/sub")) keys.push(m.key)
+      keys.sort()
+      expect(keys).toEqual([
+        "dir/sub/deeper/file2.json",
+        "dir/sub/file.json",
+      ])
+    })
+
+    it("list('dir') WITHOUT a trailing slash is normalised to dir/", async () => {
+      // Contract: list("dir") and list("dir/") are equivalent.
+      // Without this, R2 would also match "dir2/..." keys because
+      // S3 prefix matching is a strict string prefix, not a
+      // path-component prefix.
+      await fresh()
+      await store.put("dir/a.txt", new TextEncoder().encode("a"))
+      await store.put("dir/sub/b.txt", new TextEncoder().encode("b"))
+      await store.put("dir2/c.txt", new TextEncoder().encode("c")) // must NOT appear
+      const keys: string[] = []
+      for await (const m of store.list("dir")) keys.push(m.key)
+      keys.sort()
+      expect(keys).toEqual(["dir/a.txt", "dir/sub/b.txt"])
+    })
+
     it("list() under a non-existent prefix yields nothing", async () => {
       await fresh()
       const keys: string[] = []
