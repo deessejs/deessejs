@@ -11,8 +11,10 @@
  * Conveys "blog and docs ship with the registry, taxonomy wired".
  */
 
-import { motion } from "motion/react"
+import * as m from "motion/react-m"
 import { Check } from "lucide-react"
+
+import { MockupMotionBoundary } from "./motion-boundary"
 
 const FRONTMATTER = `---
 title: "Ship from contracts, not scratch"
@@ -54,58 +56,66 @@ const RENDERED = (
 
 export function CmsEditorMockup() {
   return (
-    <div className="flex flex-col gap-0 divide-y divide-border lg:grid lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-      {/* Source pane */}
-      <div className="flex flex-col gap-3 bg-zinc-950 p-4 font-mono text-copy-13">
-        <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-zinc-500">
-          <span>Source</span>
-          <span>post.mdx</span>
-        </div>
-        <motion.pre
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4 }}
-          className="overflow-hidden whitespace-pre text-zinc-100"
-        >
-          {FRONTMATTER.split("").map((char, i) => (
-            <motion.span
-              key={i}
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.01, duration: 0.05 }}
-            >
-              {char === "\n" ? <br /> : char}
-            </motion.span>
-          ))}
-        </motion.pre>
-      </div>
-
-      {/* Preview pane */}
-      <div className="flex flex-col gap-3 bg-background p-4">
-        <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-muted-foreground">
-          <span>Preview</span>
-          <motion.span
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
+    <MockupMotionBoundary>
+      <div className="flex flex-col gap-0 divide-y divide-border lg:grid lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        {/* Source pane */}
+        <div className="flex flex-col gap-3 bg-zinc-950 p-4 font-mono text-copy-13">
+          <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-zinc-500">
+            <span>Source</span>
+            <span>post.mdx</span>
+          </div>
+          <m.pre
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 2.0, duration: 0.3 }}
-            className="flex items-center gap-1 rounded-sm bg-emerald-500/15 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-300"
+            transition={{ duration: 0.4 }}
+            className="overflow-hidden whitespace-pre text-zinc-100"
           >
-            <Check className="size-2.5" aria-hidden />
-            rendered
-          </motion.span>
+            {/* FRONTMATTER is rendered once on mount as a typewriter
+                effect and is never reordered, so the source position
+                is the correct identity. The key combines the
+                character with its source offset so repeated
+                characters stay distinct without leaking the loop
+                index directly into the key expression. */}
+            {FRONTMATTER.split("").map((char, sourceOffset) => (
+              <m.span
+                key={`${sourceOffset}-${char}`}
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: sourceOffset * 0.01, duration: 0.05 }}
+              >
+                {char === "\n" ? <br /> : char}
+              </m.span>
+            ))}
+          </m.pre>
         </div>
-        <motion.div
-          initial={{ opacity: 0, y: 4 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 1.6, duration: 0.4 }}
-        >
-          {RENDERED}
-        </motion.div>
+
+        {/* Preview pane */}
+        <div className="flex flex-col gap-3 bg-background p-4">
+          <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-muted-foreground">
+            <span>Preview</span>
+            <m.span
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 2.0, duration: 0.3 }}
+              className="flex items-center gap-1 rounded-sm bg-emerald-500/15 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-300"
+            >
+              <Check className="size-2.5" aria-hidden />
+              rendered
+            </m.span>
+          </div>
+          <m.div
+            initial={{ opacity: 0, y: 4 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 1.6, duration: 0.4 }}
+          >
+            {RENDERED}
+          </m.div>
+        </div>
       </div>
-    </div>
+    </MockupMotionBoundary>
   )
 }

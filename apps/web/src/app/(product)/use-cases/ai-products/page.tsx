@@ -237,49 +237,35 @@ export default function AiProductsPage() {
         <AndMoreSection tiles={AND_MORE} />
 
         {/* 8. Stack */}
-        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-          <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-              Stack
-            </p>
-            <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-              Built on the AI primitives that ship in production.
-            </h2>
-          </div>
-          <div className="lg:col-span-4 !p-0 border-0">
-            <UseCaseStack items={[...STACK]} />
-          </div>
-        </div>
+        <TwoThirdsHeaderSection
+          eyebrow="Stack"
+          title="Built on the AI primitives that ship in production."
+        >
+          <UseCaseStack items={[...STACK]} />
+        </TwoThirdsHeaderSection>
 
         {/* 9. Process */}
-        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-          <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-              Process
-            </p>
-            <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-              Three lines.
-            </h2>
-          </div>
-          <div className="p-6 lg:col-span-4 lg:p-10">
-            <ol className="flex flex-col gap-4">
-              {[
-                "Define your tools in TypeScript. The schema is the contract your agent calls.",
-                "Wire the agent loop with the AI SDK. Tools, memory, and streaming come preconfigured.",
-                "Ship. Every tool call is typed, traced, and persisted against the same contracts.",
-              ].map((step, idx) => (
-                <li key={step} className="flex gap-4">
-                  <span className="w-8 shrink-0 font-mono text-copy-13 text-violet-600 dark:text-violet-400">
-                    {String(idx + 1).padStart(2, "0")}
-                  </span>
-                  <p className="text-copy-16 leading-7 text-foreground">
-                    {step}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
+        <TwoThirdsHeaderSection
+          eyebrow="Process"
+          title="Three lines."
+        >
+          <ol className="flex flex-col gap-4 p-6 lg:col-span-4 lg:p-10">
+            {[
+              "Define your tools in TypeScript. The schema is the contract your agent calls.",
+              "Wire the agent loop with the AI SDK. Tools, memory, and streaming come preconfigured.",
+              "Ship. Every tool call is typed, traced, and persisted against the same contracts.",
+            ].map((step, idx) => (
+              <li key={step} className="flex gap-4">
+                <span className="w-8 shrink-0 font-mono text-copy-13 text-violet-600 dark:text-violet-400">
+                  {String(idx + 1).padStart(2, "0")}
+                </span>
+                <p className="text-copy-16 leading-7 text-foreground">
+                  {step}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </TwoThirdsHeaderSection>
 
         {/* 10. CTA */}
         <div className="grid grid-cols-1 border-t border-border lg:grid-cols-2 lg:divide-x lg:divide-border">
@@ -300,15 +286,10 @@ export default function AiProductsPage() {
         </div>
 
         {/* 11. Related */}
-        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-          <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-              Explore
-            </p>
-            <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-              Related use cases.
-            </h2>
-          </div>
+        <TwoThirdsHeaderSection
+          eyebrow="Explore"
+          title="Related use cases."
+        >
           <div className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
             {RELATED.map((item) => (
               <Link
@@ -333,11 +314,40 @@ export default function AiProductsPage() {
               </Link>
             ))}
           </div>
-        </div>
+        </TwoThirdsHeaderSection>
 
         {/* 12. Final CTA — closing shared-border block (noBorderB) */}
         <FinalCta signupHref={signupHref} />
       </div>
+  )
+}
+
+/**
+ * Shared-border section with a 2-col header (eyebrow + H2) on the
+ * left and a 4-col body on the right. Reused by the Stack, Process,
+ * and Related blocks on this page so the layout doesn't repeat.
+ */
+function TwoThirdsHeaderSection({
+  eyebrow,
+  title,
+  children,
+}: {
+  eyebrow: string
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
+      <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
+        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          {eyebrow}
+        </p>
+        <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
+          {title}
+        </h2>
+      </div>
+      {children}
+    </div>
   )
 }
 
