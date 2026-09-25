@@ -4,10 +4,17 @@
  * Two-paragraph framing: who we are (small team building the
  * templates we wished existed) and what this document is
  * (rewritten whenever we need to remember why we're here).
+ *
+ * Rhythm: `space-y-4` (16px) between paragraph blocks. The two
+ * paragraphs are different weights (text-copy-18 then
+ * text-copy-16) so the gap reads as a paragraph break rather
+ * than a stanza break. `space-y-*` only applies to non-first
+ * children, so the `[&:not(:first-child)]:mt-0` override that
+ * previously lived on each <p> has been removed.
  */
 export function Intro() {
   return (
-    <section className="flex flex-col gap-4">
+    <section className="space-y-4">
       <p className="text-copy-18 text-foreground leading-7">
         DeesseJS is the main app of a small team building the
         templates, contracts, and tooling we wished existed when
