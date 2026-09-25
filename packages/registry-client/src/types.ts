@@ -167,19 +167,57 @@ export const err = <E>(error: E): Result<never, E> => ({
 /**
  * The fundamental interface every registry client must satisfy.
  *
- * The SDK exposes two operations:
+/**
+ * Lightweight metadata for a single template.
  *
- *   - `getTemplate` resolves a slug to a validated descriptor
- *     plus URLs for each file.
+ * Returned by `client.info(slug)` for cases where the consumer
+ * needs to display or filter on template metadata WITHOUT
+ * downloading the full descriptor and file URLs. Cheaper than
+ * `getTemplate` on both ends: the server doesn't have to fetch
+ * `deesse-template.json`, and the consumer doesn't have to validate
+ * the full Zod schema.
+ */
+export type TemplateInfo = {
+  /** Canonical template identifier. */
+  readonly slug: string
+  /** Human-readable title. */
+  readonly title: string
+  /** Optional short description. */
+  readonly description?: string
+  /** Editorial layer. */
+  readonly layer: "open-community" | "pro" | "enterprise"
+  /** Latest published version (semver). */
+  readonly latestVersion: string
+  /** All published versions, sorted descending. */
+  readonly versions: readonly string[]
+  /** Optional category for gallery filtering. */
+  readonly category?: string
+  /** Optional curated labels. */
+  readonly labels?: readonly string[]
+  /** ISO-8601 timestamp of last publish, if known. */
+  readonly updatedAt?: string
+}
+
+/**
+ * The SDK exposes three operations:
+ *
+ *   - `getTemplate` resolves a slug to a validated descriptor plus
+ *     URLs for each file. Use it when you intend to install or
+ *     scaffold the template.
+ *   - `info` resolves a slug to lightweight metadata only. Use it
+ *     for display, search, or pre-flight checks before downloading.
  *   - `listTemplates` returns the editorial list of available
  *     templates (cheap call, no descriptor fetch).
  *
- * Both return `Promise<Result<...>>` — the SDK never throws.
+ * All three return `Promise<Result<...>>` — the SDK never throws.
  */
 export type RegistryClient = {
   readonly getTemplate: (
     slug: string,
     options?: FetchOptions,
   ) => Promise<Result<FetchedTemplate, RegistryFailure>>
+  readonly info: (
+    slug: string,
+  ) => Promise<Result<TemplateInfo, RegistryFailure>>
   readonly listTemplates: () => Promise<Result<readonly CatalogEntry[], RegistryFailure>>
 }

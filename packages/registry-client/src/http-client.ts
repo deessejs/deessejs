@@ -23,6 +23,7 @@ import type {
   ObjectKey,
   RegistryFailure,
   Result,
+  TemplateInfo,
 } from "./types.js"
 import { ok as okResult, err as errResult } from "./types.js"
 
@@ -259,4 +260,156 @@ export const listTemplatesFromApi = async (
     })
   }
   return parseCatalogResponse(response)
+}
+
+/**
+ * Parse a `Response` whose body is a TemplateInfo payload.
+ *
+ * Same shape of validation as the descriptor parser, but laxer —
+ * TemplateInfo has fewer required fields and no Zod schema. We just
+ * shape-check the JSON object.
+ */
+const parseInfoResponse = async (
+  response: Response,
+  slug: string,
+): Promise<Result<TemplateInfo, RegistryFailure>> => {
+  if (response.status === 404) {
+    return errResult<RegistryFailure>({ _tag: "RegistryNotFound", slug })
+  }
+  if (response.status === 401 || response.status === 403) {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryAuthRequired",
+      slug,
+    })
+  }
+  if (response.status >= 500) {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryFetchFailed",
+      slug,
+      cause: `HTTP ${response.status}`,
+    })
+  }
+  if (!response.ok) {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryFetchFailed",
+      slug,
+      cause: `HTTP ${response.status}`,
+    })
+  }
+
+  const json: unknown = await response.json().catch((cause: unknown) => {
+    throw toRegistryError(
+      {
+        _tag: "RegistryInvalidDescriptor",
+        slug,
+        cause,
+      },
+      `Registry returned non-JSON body for info(${slug})`,
+    )
+  })
+
+  if (typeof json !== "object" || json === null) {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryInvalidDescriptor",
+      slug,
+      cause: "expected an object",
+    })
+  }
+
+  const candidate = json as {
+    slug?: unknown
+    title?: unknown
+    description?: unknown
+    layer?: unknown
+    latestVersion?: unknown
+    versions?: unknown
+    category?: unknown
+    labels?: unknown
+    updatedAt?: unknown
+  }
+
+  if (
+    typeof candidate.slug !== "string" ||
+    typeof candidate.title !== "string" ||
+    typeof candidate.latestVersion !== "string" ||
+    !Array.isArray(candidate.versions)
+  ) {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryInvalidDescriptor",
+      slug,
+      cause: "missing required fields (slug, title, latestVersion, versions)",
+    })
+  }
+
+  // Validate the versions array contents.
+  const versions: string[] = []
+  for (const v of candidate.versions as unknown[]) {
+    if (typeof v !== "string") {
+      return errResult<RegistryFailure>({
+        _tag: "RegistryInvalidDescriptor",
+        slug,
+        cause: "versions[] must contain only strings",
+      })
+    }
+    versions.push(v)
+  }
+
+  const layer =
+    candidate.layer === "open-community" ||
+    candidate.layer === "pro" ||
+    candidate.layer === "enterprise"
+      ? candidate.layer
+      : "open-community"
+
+  const info: TemplateInfo = {
+    slug: candidate.slug,
+    title: candidate.title,
+    ...(typeof candidate.description === "string"
+      ? { description: candidate.description }
+      : {}),
+    layer,
+    latestVersion: candidate.latestVersion,
+    versions,
+    ...(typeof candidate.category === "string"
+      ? { category: candidate.category }
+      : {}),
+    ...(Array.isArray(candidate.labels)
+      ? { labels: candidate.labels as string[] }
+      : {}),
+    ...(typeof candidate.updatedAt === "string"
+      ? { updatedAt: candidate.updatedAt }
+      : {}),
+  }
+  return okResult<TemplateInfo>(info)
+}
+
+/**
+ * Internal: fetch the TemplateInfo for `slug` from the registry API.
+ *
+ * GET /api/v1/registry/templates/:slug/info
+ */
+export const getInfoFromApi = async (
+  apiUrl: string,
+  slug: string,
+  fetchImpl: typeof fetch,
+): Promise<Result<TemplateInfo, RegistryFailure>> => {
+  // Encode slug for URL path. We assume slugs are namespace/name
+  // (e.g. "@deessejs/nextjs-saas"). encodeURIComponent preserves
+  // "/", "@", and alphanumerics.
+  const encodedSlug = encodeURIComponent(slug)
+  const path = `/api/v1/registry/templates/${encodedSlug}/info`
+  let response: Response
+  try {
+    response = await fetchImpl(resolveUrl(apiUrl, path), {
+      method: "GET",
+      headers: { "content-type": "application/json" },
+    })
+  } catch (cause) {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryNetworkError",
+      slug,
+      cause,
+    })
+  }
+  return parseInfoResponse(response, slug)
 }

@@ -106,6 +106,41 @@ const mockResponder = (req: CapturedRequest): Response => {
     return jsonResponse(200, { catalog: VALID_CATALOG })
   }
 
+  // /templates/:slug/info endpoint — info()
+  const infoMatch = /\/api\/v1\/registry\/templates\/([^/]+)\/info$/.exec(
+    req.url,
+  )
+  if (infoMatch) {
+    const slug = decodeURIComponent(infoMatch[1] ?? "")
+    switch (slug) {
+      case "valid-slug":
+        return jsonResponse(200, {
+          slug: "valid-slug",
+          title: "Valid Slug",
+          description: "A test template.",
+          layer: "open-community",
+          latestVersion: "1.0.0",
+          versions: ["1.0.0", "0.9.0", "0.8.0"],
+          category: "saas",
+          labels: ["nextjs", "test"],
+          updatedAt: "2026-09-25T00:00:00Z",
+        })
+      case "unknown-slug":
+        return jsonResponse(404, { error: "not found" })
+      case "malformed-slug":
+        return jsonResponse(200, { title: "missing fields" })
+      case "network-error-slug":
+        throw new TypeError("fetch failed: ECONNRESET")
+      default:
+        return jsonResponse(200, {
+          slug,
+          title: "Default",
+          latestVersion: "1.0.0",
+          versions: ["1.0.0"],
+        })
+    }
+  }
+
   // /fetch-descriptor endpoint — branch on the slug in the body
   const slug =
     typeof req.body === "object" && req.body !== null && "slug" in req.body
@@ -238,6 +273,62 @@ describe("RegistryClient — mock fetch", () => {
     expect(result._tag).toBe("Err")
     if (result._tag === "Err") {
       expect(result.error._tag).toBe("RegistryFetchFailed")
+    }
+  })
+
+  it("info returns Ok with template metadata for a valid slug", async () => {
+    const { fetchImpl } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.info("valid-slug")
+    expect(result._tag).toBe("Ok")
+    if (result._tag === "Ok") {
+      expect(result.value.slug).toBe("valid-slug")
+      expect(result.value.title).toBe("Valid Slug")
+      expect(result.value.versions).toEqual(["1.0.0", "0.9.0", "0.8.0"])
+      expect(result.value.category).toBe("saas")
+      expect(result.value.layer).toBe("open-community")
+    }
+  })
+
+  it("info returns RegistryNotFound on 404", async () => {
+    const { fetchImpl } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.info("unknown-slug")
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryNotFound")
+    }
+  })
+
+  it("info returns RegistryInvalidDescriptor on missing fields", async () => {
+    const { fetchImpl } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.info("malformed-slug")
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryInvalidDescriptor")
+    }
+  })
+
+  it("info returns RegistryNetworkError on transport failure", async () => {
+    const { fetchImpl } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.info("network-error-slug")
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryNetworkError")
     }
   })
 

@@ -87,6 +87,26 @@ export const runRegistryContractTests = (
       }
     })
 
+    it("info returns Ok with metadata for a valid slug", async () => {
+      await fresh()
+      const result = await client.info("valid-slug")
+      expect(result._tag).toBe("Ok")
+      if (result._tag === "Ok") {
+        expect(result.value.slug).toBe("valid-slug")
+        expect(Array.isArray(result.value.versions)).toBe(true)
+        expect(result.value.versions.length).toBeGreaterThan(0)
+      }
+    })
+
+    it("info returns Err RegistryNotFound for an unknown slug", async () => {
+      await fresh()
+      const result = await client.info("unknown-slug")
+      expect(result._tag).toBe("Err")
+      if (result._tag === "Err") {
+        expect(result.error._tag).toBe("RegistryNotFound")
+      }
+    })
+
     it("listTemplates returns Ok with an array of entries", async () => {
       await fresh()
       const result = await client.listTemplates()

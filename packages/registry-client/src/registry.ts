@@ -12,6 +12,7 @@
  */
 
 import {
+  getInfoFromApi,
   getTemplateFromApi,
   listTemplatesFromApi,
 } from "./http-client.js"
@@ -22,6 +23,7 @@ import type {
   RegistryClientOptions,
   RegistryFailure,
   Result,
+  TemplateInfo,
 } from "./types.js"
 
 /**
@@ -75,6 +77,10 @@ export const createClient = (
         fetchOptions?.ref,
         fetchImpl,
       )
+    },
+
+    async info(slug: string): Promise<Result<TemplateInfo, RegistryFailure>> {
+      return getInfoFromApi(apiUrl, slug, fetchImpl)
     },
 
     async listTemplates() {
