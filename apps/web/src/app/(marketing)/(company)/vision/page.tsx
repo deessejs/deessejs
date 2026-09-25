@@ -23,42 +23,49 @@ export const metadata: Metadata = {
  * The route file is just a table of contents — sections live in
  * `components/pages/vision/<section>.tsx` and the horizons data
  * lives in `lib/vision/horizons.ts`.
+ *
+ * <Vision.FinalCta /> is rendered as a sibling of the max-w-5xl
+ * wrapper so the shell's border-t/border-b trace the full page-edge.
  */
 export default function VisionPage() {
   return (
-    <div className="mx-auto max-w-5xl px-4 md:px-6 py-16">
-      <Vision.Hero />
+    <>
+      <div className="mx-auto max-w-5xl px-4 md:px-6 py-16">
+        <Vision.Hero />
 
-      <Separator />
+        <Separator />
 
-      <Vision.Horizons />
+        <Vision.Horizons />
 
-      <Separator />
+        <Separator />
 
-      <RelatedLinks
-        links={[
-          {
-            label: "Manifesto",
-            href: "/manifesto",
-            body: "Why we're here: the beliefs behind the work.",
-          },
-          {
-            label: "Principles",
-            href: "/principles",
-            body: "How we work, day to day.",
-          },
-          {
-            label: "About",
-            href: "/about",
-            body: "Who we are, and how we got here.",
-          },
-          {
-            label: "Ecosystem",
-            href: "/ecosystem",
-            body: "The sub-domains and shared values.",
-          },
-        ]}
-      />
-    </div>
+        <RelatedLinks
+          links={[
+            {
+              label: "Manifesto",
+              href: "/manifesto",
+              body: "Why we're here: the beliefs behind the work.",
+            },
+            {
+              label: "Principles",
+              href: "/principles",
+              body: "How we work, day to day.",
+            },
+            {
+              label: "About",
+              href: "/about",
+              body: "Who we are, and how we got here.",
+            },
+            {
+              label: "Ecosystem",
+              href: "/ecosystem",
+              body: "The sub-domains and shared values.",
+            },
+          ]}
+        />
+      </div>
+
+      <Vision.FinalCta />
+    </>
   )
 }

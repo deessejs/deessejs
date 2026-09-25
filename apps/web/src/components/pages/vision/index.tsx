@@ -13,14 +13,16 @@
  * The closing "Read next" block lives outside this namespace and is
  * rendered directly by `page.tsx` via the shared `_shared/RelatedLinks`.
  */
+import { FinalCta } from "./final-cta"
 import { Hero } from "./hero"
 import { Horizons } from "./horizons"
 
 export const Vision = {
   Hero,
   Horizons,
+  FinalCta,
 } as const
 
 // Named re-exports for consumers that want a single component
 // without going through the namespace (e.g. tests, storybook).
-export { Hero, Horizons }
+export { FinalCta, Hero, Horizons }
