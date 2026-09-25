@@ -2,7 +2,15 @@
 
 import * as React from "react"
 import {
+  Activity,
   ArrowRight,
+  Bell,
+  CreditCard,
+  LayoutDashboard,
+  Mail,
+  Table2,
+  Users,
+  Workflow,
   type LucideIcon,
 } from "lucide-react"
 
@@ -42,14 +50,31 @@ import type { Capability } from "../_data"
  * `<TabsContent>`. Capabilities whose mockupSlug has no entry
  * fall back to a text-only "spec snippet" placeholder so the
  * left list never lies about what the user will get.
+ *
+ * Icon lookup: the `iconMap` prop carries icon **names** (strings)
+ * rather than component references. React Server Components cannot
+ * serialize functions across the server→client boundary, so we
+ * resolve the name to a lucide component locally on the client.
  */
 
-type Icon = LucideIcon | null
+/** Icon registry. Add new entries here as the use-case pages grow. */
+const ICON_REGISTRY: Record<string, LucideIcon> = {
+  Activity,
+  Bell,
+  CreditCard,
+  LayoutDashboard,
+  Mail,
+  Table2,
+  Users,
+  Workflow,
+}
 
 export type CapabilityMockups = Record<
   string,
   React.ReactNode | undefined
 >
+
+export type CapabilityIconMap = Record<string, string | undefined>
 
 export function CapabilitiesTabs({
   capabilities,
@@ -61,8 +86,8 @@ export function CapabilitiesTabs({
   capabilities: ReadonlyArray<Capability>
   /** Map keyed by capability.mockupSlug → rendered mockup. */
   mockups: CapabilityMockups
-  /** Optional icon map keyed by capability.id → Lucide icon component. */
-  iconMap?: Record<string, Icon>
+  /** Optional icon map keyed by capability.id → lucide icon name. */
+  iconMap?: CapabilityIconMap
   className?: string
 }) {
   const first = capabilities[0]
@@ -83,7 +108,8 @@ export function CapabilitiesTabs({
         className="flex flex-col divide-y divide-border border-0 bg-transparent p-0 h-auto w-full lg:w-auto lg:min-w-[320px] lg:max-w-md"
       >
         {capabilities.map((cap) => {
-          const Icon = iconMap?.[cap.id] ?? null
+          const iconName = iconMap?.[cap.id]
+          const Icon = iconName ? ICON_REGISTRY[iconName] : undefined
           const value = cap.mockupSlug ?? cap.id
           return (
             <TabsTrigger

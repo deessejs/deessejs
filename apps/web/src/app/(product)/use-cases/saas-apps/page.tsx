@@ -1,16 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import {
-  Activity,
-  ArrowRight,
-  Bell,
-  CreditCard,
-  LayoutDashboard,
-  Mail,
-  Table2,
-  Users,
-  Workflow,
-} from "lucide-react"
+import { ArrowRight } from "lucide-react"
 
 import { UseCaseHero } from "../_components/use-case-page"
 import { UseCaseStack } from "../_components/use-case-stack"
@@ -109,14 +99,14 @@ const MOCKUPS = {
 } as const
 
 const ICONS = {
-  onboarding:        Mail,
-  "multi-tenant":    Users,
-  "product-crud":    Table2,
-  billing:           CreditCard,
-  admin:             LayoutDashboard,
-  "background-jobs": Workflow,
-  notifications:     Bell,
-  observability:     Activity,
+  onboarding:        "Mail",
+  "multi-tenant":    "Users",
+  "product-crud":    "Table2",
+  billing:           "CreditCard",
+  admin:             "LayoutDashboard",
+  "background-jobs": "Workflow",
+  notifications:     "Bell",
+  observability:     "Activity",
 } as const
 
 /**
