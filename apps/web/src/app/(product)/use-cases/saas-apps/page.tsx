@@ -12,8 +12,6 @@ import {
   Workflow,
 } from "lucide-react"
 
-import { clientEnv } from "@workspace/env/client"
-
 import { UseCaseHero } from "../_components/use-case-page"
 import { UseCaseStack } from "../_components/use-case-stack"
 import { CapabilitiesTabs } from "../_components/capabilities-tabs"
@@ -129,7 +127,6 @@ const ICONS = {
  * marketing surface.
  */
 export default function SaasAppsPage() {
-  const signupHref = new URL("/signup", clientEnv.NEXT_PUBLIC_APP_URL).toString()
   const capabilities = resolveCapabilities("saas-apps")
 
   return (
@@ -293,7 +290,7 @@ export default function SaasAppsPage() {
       </div>
 
       {/* 7. Final CTA */}
-      <FinalCta signupHref={signupHref} />
+      <FinalCta />
     </div>
   )
 }

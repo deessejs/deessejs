@@ -2,8 +2,6 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowRight, BarChart3, Database, FileText, GitBranch, Globe, Mail, MessageSquare, ShieldCheck, Zap } from "lucide-react"
 
-import { clientEnv } from "@workspace/env/client"
-
 import { UseCaseHero } from "../_components/use-case-page"
 import { UseCaseStack } from "../_components/use-case-stack"
 import {
@@ -130,12 +128,6 @@ const AND_MORE: ReadonlyArray<MoreTile> = [
 ]
 
 export default function AiProductsPage() {
-  // Resolve the apps/app signup URL server-side so the Final CTA link
-  // is a fully-formed absolute URL by the time it reaches the browser.
-  // Same convention as /pricing (apps/web/src/app/(marketing)/pricing/
-  // page.tsx): env defaults to http://localhost:3001/signup in dev,
-  // https://app.deessejs.com/signup in prod.
-  const signupHref = new URL("/signup", clientEnv.NEXT_PUBLIC_APP_URL).toString()
 
   return (
     <div className="border border-border bg-background rounded-none">
@@ -317,7 +309,7 @@ export default function AiProductsPage() {
         </div>
 
         {/* 12. Final CTA — closing shared-border block (noBorderB) */}
-        <FinalCta signupHref={signupHref} />
+        <FinalCta />
       </div>
   )
 }
