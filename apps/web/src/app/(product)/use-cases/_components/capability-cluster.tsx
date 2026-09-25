@@ -142,9 +142,27 @@ export function CapabilityClustersSection({
                 reverse ? "lg:order-1" : "lg:order-2",
               )}
             >
+              {/* Dotted grid background, same recipe the homepage
+                  uses behind every illustration: the dot grid
+                  fills the column, the mockup translates over it
+                  in the column's far corner. The dots are the
+                  page's "there's more here" texture; the mockup
+                  is the corner you can see. */}
+              <div
+                aria-hidden
+                className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[12px_12px] opacity-60"
+              />
               <MockupFrame
                 clusterId={cluster.id}
-                className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%]"
+                className={cn(
+                  // Anchored in the column's far edge so the peek
+                  // pattern matches the side of the page the mockup
+                  // sits on (right column → bottom-right peek,
+                  // left column → bottom-left peek).
+                  reverse
+                    ? "absolute left-0 bottom-0 h-[110%] w-[110%] -translate-x-[25%] translate-y-[25%]"
+                    : "absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%]",
+                )}
               >
                 {mockups[cluster.id] ?? (
                   <div className="flex h-full items-center justify-center font-mono text-label-12 text-muted-foreground">
