@@ -1,7 +1,5 @@
 import type { Metadata } from "next"
 
-import { Separator } from "@workspace/ui/components/separator"
-
 import { RelatedLinks } from "@/components/pages/_shared/related-links"
 import { Vision } from "@/components/pages/vision"
 
@@ -20,24 +18,21 @@ export const metadata: Metadata = {
  *   - Next (in flight, expect this quarter)
  *   - Beyond (aspirational, no dates)
  *
- * The route file is just a table of contents — sections live in
- * `components/pages/vision/<section>.tsx` and the horizons data
- * lives in `lib/vision/horizons.ts`.
- *
- * <Vision.FinalCta /> is rendered as a sibling of the max-w-5xl
- * wrapper so the shell's border-t/border-b trace the full page-edge.
+ * The `<Separator />` between sections was replaced by
+ * `border-b border-border` on each section's wrapper div — same
+ * rhythm as every other marketing page.
  */
 export default function VisionPage() {
   return (
     <>
       <div className="mx-auto max-w-5xl px-4 md:px-6 py-16">
-        <Vision.Hero />
+        <div className="border-b border-border pb-16 md:pb-20 lg:pb-24">
+          <Vision.Hero />
+        </div>
 
-        <Separator />
-
-        <Vision.Horizons />
-
-        <Separator />
+        <div className="border-b border-border py-16 md:py-20 lg:py-24">
+          <Vision.Horizons />
+        </div>
 
         <RelatedLinks
           links={[

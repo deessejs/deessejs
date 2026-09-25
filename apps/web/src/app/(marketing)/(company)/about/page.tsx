@@ -1,7 +1,5 @@
 import type { Metadata } from "next"
 
-import { Separator } from "@workspace/ui/components/separator"
-
 import { RelatedLinks } from "@/components/pages/_shared/related-links"
 import { About } from "@/components/pages/about"
 
@@ -23,23 +21,34 @@ export const metadata: Metadata = {
  * Each section lives in `components/pages/about/<section>.tsx`;
  * data (channels) lives in `lib/about/channels.ts`. The route file
  * is just a table of contents.
+ *
+ * The `<Separator />` between sections was replaced by
+ * `border-b border-border` on each section's wrapper div. This
+ * matches the rhythm of every other marketing page (enterprise,
+ * delivery, pricing, homepage all use border-b border-border). The
+ * separator line was floating just below the hero H1 with no top
+ * edge above it, which made the line "marry itself to the
+ * headline" — the user complaint that drove this refactor.
+ *
+ * Note: commit 2 (next commit) will move the closing border onto
+ * the hero wrapper itself; until then, the wrappers carry it.
  */
 export default function AboutPage() {
   return (
     <>
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-16">
-        <About.Hero />
+        <div className="border-b border-border pb-16 md:pb-20 lg:pb-24">
+          <About.Hero />
+        </div>
 
-        <Separator />
+        <div className="border-b border-border py-16 md:py-20 lg:py-24">
+          <About.MainApp />
+          <About.Editor />
+        </div>
 
-        <About.MainApp />
-        <About.Editor />
-
-        <Separator />
-
-        <About.Contact />
-
-        <Separator />
+        <div className="border-b border-border py-16 md:py-20 lg:py-24">
+          <About.Contact />
+        </div>
 
         <RelatedLinks
           links={[

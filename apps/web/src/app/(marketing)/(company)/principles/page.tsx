@@ -1,7 +1,5 @@
 import type { Metadata } from "next"
 
-import { Separator } from "@workspace/ui/components/separator"
-
 import { RelatedLinks } from "@/components/pages/_shared/related-links"
 import { Principles } from "@/components/pages/principles"
 
@@ -19,24 +17,21 @@ export const metadata: Metadata = {
  * visitor who reads both should leave with both the *why* and the
  * *how*.
  *
- * The route file is just a table of contents — sections live in
- * `components/pages/principles/<section>.tsx` and the principles
- * data lives in `lib/principles/tenets.ts`.
- *
- * <Principles.FinalCta /> is rendered as a sibling of the max-w-5xl
- * wrapper so the shell's border-t/border-b trace the full page-edge.
+ * The `<Separator />` between sections was replaced by
+ * `border-b border-border` on each section's wrapper div — same
+ * rhythm as every other marketing page.
  */
 export default function PrinciplesPage() {
   return (
     <>
       <div className="mx-auto max-w-5xl px-4 md:px-6 py-16">
-        <Principles.Hero />
+        <div className="border-b border-border pb-16 md:pb-20 lg:pb-24">
+          <Principles.Hero />
+        </div>
 
-        <Separator />
-
-        <Principles.NineTenets />
-
-        <Separator />
+        <div className="border-b border-border py-16 md:py-20 lg:py-24">
+          <Principles.NineTenets />
+        </div>
 
         <RelatedLinks
           links={[

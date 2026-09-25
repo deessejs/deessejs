@@ -2,7 +2,6 @@ import Link from "next/link"
 import type { Metadata } from "next"
 
 import { Button } from "@workspace/ui/components/button"
-import { Separator } from "@workspace/ui/components/separator"
 
 import { RelatedLinks } from "@/components/pages/_shared/related-links"
 import { Manifesto } from "@/components/pages/manifesto"
@@ -22,29 +21,33 @@ export const metadata: Metadata = {
  *
  * The route file is just a table of contents — sections live in
  * `components/pages/manifesto/<section>.tsx` and the beliefs data
- * lives in `lib/manifesto/beliefs.ts`. The closing "Browse
- * templates" button row is page-specific and stays inline here
- * because /templates is its only consumer.
+ * lives in `lib/manifesto/beliefs.ts`. The "Browse templates"
+ * button row is page-specific.
  *
- * The <Manifesto.FinalCta /> is rendered as a sibling of the
- * max-w-5xl wrapper so the shared shell's border-t/border-b
- * trace the full page-edge.
+ * The `<Separator />` between sections was replaced by
+ * `border-b border-border` on each section's wrapper div — same
+ * rhythm as every other marketing page.
  */
 export default function ManifestoPage() {
   return (
     <>
       <div className="mx-auto max-w-5xl px-4 md:px-6 py-16">
-        <Manifesto.Hero />
+        <div className="border-b border-border pb-16 md:pb-20 lg:pb-24">
+          <Manifesto.Hero />
+        </div>
 
-        <Separator />
+        <div className="border-b border-border py-16 md:py-20 lg:py-24">
+          <Manifesto.Intro />
+        </div>
 
-        <Manifesto.Intro />
-
-        <Separator />
-
-        <Manifesto.Beliefs />
-
-        <Separator />
+        <div className="border-b border-border py-16 md:py-20 lg:py-24">
+          <Manifesto.Beliefs />
+          <div className="mt-12 flex justify-center">
+            <Button variant="outline" asChild size="lg">
+              <Link href="/templates">Browse templates</Link>
+            </Button>
+          </div>
+        </div>
 
         <RelatedLinks
           links={[
@@ -70,11 +73,6 @@ export default function ManifestoPage() {
             },
           ]}
         />
-        <div className="flex justify-center pt-2">
-          <Button variant="outline" asChild size="lg">
-            <Link href="/templates">Browse templates</Link>
-          </Button>
-        </div>
       </div>
 
       <Manifesto.FinalCta />
