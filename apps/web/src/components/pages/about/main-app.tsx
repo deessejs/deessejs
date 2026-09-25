@@ -17,7 +17,7 @@
  */
 export function MainApp() {
   return (
-    <section className="grid grid-cols-1 gap-8 border-b border-border py-16 px-4 md:px-6 md:py-20 lg:py-24 lg:grid-cols-[12rem_minmax(0,1fr)]">
+    <section className="grid grid-cols-1 gap-8 border-b border-border py-16 md:py-20 lg:py-24 lg:grid-cols-[12rem_minmax(0,1fr)]">
       <h2 className="text-heading-24 tracking-tight text-foreground lg:pt-1">
         The main app
       </h2>
