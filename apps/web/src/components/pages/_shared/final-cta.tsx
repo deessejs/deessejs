@@ -76,7 +76,7 @@ export function FinalCta({
           {title}
         </h2>
         {body ? (
-          <p className="text-copy-16 text-muted-foreground leading-7 max-w-xl [&:not(:first-child)]:mt-0">
+          <p className="text-copy-16 text-muted-foreground leading-7 max-w-md [&:not(:first-child)]:mt-0">
             {body}
           </p>
         ) : null}
