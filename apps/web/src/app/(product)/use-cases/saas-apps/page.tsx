@@ -3,7 +3,7 @@ import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
 import { UseCaseHero } from "../_components/use-case-page"
-import { UseCaseStack } from "../_components/use-case-stack"
+import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
 import { CapabilitiesTabs } from "../_components/capabilities-tabs"
 import {
   AdminDashboardMockup,
@@ -24,13 +24,19 @@ export const metadata: Metadata = {
     "Multi-tenant B2B SaaS with auth, billing, and a working dashboard on day one.",
 }
 
+/**
+ * Stack specific to the SaaS surface. Six brands, same set the
+ * hero CTA already names implicitly. Re-rendered through
+ * <TechStackGrid> (the same component the homepage + pricing
+ * page use) so every brand display on the site stays in lockstep.
+ */
 const STACK = [
-  "Next.js",
-  "Better Auth",
-  "Drizzle",
-  "Postgres",
-  "Stripe",
-  "Resend",
+  { name: "Next.js",     logo: "vercel" },
+  { name: "Better Auth", logo: "betterauth" },
+  { name: "Drizzle",     logo: "drizzle" },
+  { name: "Postgres",    logo: "postgresql" },
+  { name: "Stripe",      logo: "stripe" },
+  { name: "Resend",      logo: "resend" },
 ] as const
 
 const STEPS = [
@@ -161,19 +167,22 @@ export default function SaasAppsPage() {
       </section>
 
       {/* 3. Stack */}
-      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
+      {/*    Same TechStackGrid used on the homepage and /pricing.
+           Header row on top, brand wall underneath. The brand
+           tiles rotate on a swap animation, so the surface
+           reads as a living tech stack rather than a static
+           logo dump. */}
+      <section className="flex flex-col border-t border-border">
+        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
             Stack
           </p>
-          <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
+          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             What runs on day one.
           </h2>
         </div>
-        <div className="lg:col-span-4 !p-0 border-0">
-          <UseCaseStack items={[...STACK]} />
-        </div>
-      </div>
+        <TechStackGrid techs={STACK} />
+      </section>
 
       {/* 4. Process */}
       <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
