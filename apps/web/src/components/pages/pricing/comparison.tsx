@@ -1,5 +1,3 @@
-import { cn } from "@workspace/ui/lib/utils"
-
 import { COMPARISON_GROUPS, COMPARISON_LAYERS } from "@/lib/pricing"
 
 import { Cell } from "./_shared/cell"

@@ -1,7 +1,7 @@
 import { defineCollection, defineConfig } from "@content-collections/core"
 import { compileMDX } from "@content-collections/mdx"
 import rehypeShiki from "@shikijs/rehype"
-import type { Element, Root, Text } from "hast"
+import type { Element, Root } from "hast"
 import { visit } from "unist-util-visit"
 import { z } from "zod"
 import readingTime from "reading-time"

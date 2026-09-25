@@ -6,7 +6,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@workspace/ui/components/card"
 
 import { AuthorAvatarLink } from "@/components/blog/author-avatar"

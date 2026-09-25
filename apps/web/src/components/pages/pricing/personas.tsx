@@ -1,5 +1,3 @@
-import { cn } from "@workspace/ui/lib/utils"
-
 import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
 
 import { Cell } from "./_shared/cell"

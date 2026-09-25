@@ -16,7 +16,6 @@ import {
   getRelatedPosts,
 } from "@/lib/blog/posts"
 import { allPosts } from "content-collections"
-import type { Post } from "@/lib/blog/types"
 import { ORG_ID } from "@/lib/seo/organization"
 import { buildPersonJsonLd } from "@/lib/seo/person-jsonld"
 
