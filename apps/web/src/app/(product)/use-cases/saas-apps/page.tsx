@@ -17,10 +17,6 @@ import {
 } from "../_components/mockups"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 import { resolveCapabilities } from "../_data"
-import { SaasStarterScreenshot } from "../_components/mockups/templates/saas-starter"
-import { OpsConsoleScreenshot } from "../_components/mockups/templates/ops-console"
-import { BillingPortalScreenshot } from "../_components/mockups/templates/billing-portal"
-import { TeamOnboardingScreenshot } from "../_components/mockups/templates/team-onboarding"
 
 export const metadata: Metadata = {
   title: "SaaS apps | DeesseJS",
@@ -100,13 +96,6 @@ const MOCKUPS = {
   "background-jobs": <QueueLogMockup />,
   notifications:   <NotificationsInboxMockup />,
   observability:   <OtelWaterfallMockup />,
-} as const
-
-const TEMPLATE_SCREENSHOTS = {
-  "saas-starter":    SaasStarterScreenshot,
-  "ops-console":     OpsConsoleScreenshot,
-  "billing-portal":  BillingPortalScreenshot,
-  "team-onboarding": TeamOnboardingScreenshot,
 } as const
 
 const ICONS = {
@@ -218,9 +207,14 @@ export default function SaasAppsPage() {
 
       {/* 5. Built on this */}
       {/*    Two-row layout: header full-width on top, then 4 cards
-           on a single lg:grid-cols-4 row. Each card has a real
-           mini-mockup at the top (not a placeholder) so the buyer
-           sees the actual product surface rather than text only. */}
+           on a single lg:grid-cols-4 row. Each card is fully
+           clickable (entire <Link> wrapper) but currently uses
+           href="#" since the template URLs are not yet deployed.
+           Replace "#" with the live URL when the corresponding
+           site ships. Each card carries a grey placeholder
+           block at the top (no illustration, no label, no CTA
+           below) so the section reads as 4 product surfaces
+           waiting to render. */}
       <section className="flex flex-col border-t border-border">
         <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -235,46 +229,27 @@ export default function SaasAppsPage() {
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y divide-border sm:divide-y-0 sm:divide-x sm:divide-border">
-          {BUILT_TEMPLATES.map((tpl) => {
-            const Screenshot = TEMPLATE_SCREENSHOTS[tpl.slug]
-            return (
-              <article
-                key={tpl.slug}
-                className="flex flex-col"
-              >
-                <div className="relative aspect-[16/10] overflow-hidden border-b border-border bg-muted/20">
-                  {Screenshot ? (
-                    <Screenshot />
-                  ) : (
-                    <div
-                      aria-hidden
-                      className="flex h-full items-center justify-center font-mono text-label-12 text-muted-foreground"
-                    >
-                      preview unavailable
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-1 flex-col gap-2 p-6">
-                  <p className="font-mono text-label-12 text-muted-foreground">
-                    template
-                  </p>
-                  <h3 className="font-mono text-copy-16 font-medium text-foreground">
-                    {tpl.title}
-                  </h3>
-                  <p className="text-copy-14 leading-6 text-muted-foreground">
-                    {tpl.body}
-                  </p>
-                  <p className="mt-auto inline-flex items-center gap-1 pt-3 text-label-13 text-foreground">
-                    Visit
-                    <ArrowRight className="size-3" aria-hidden />
-                    <span className="text-muted-foreground">
-                      {tpl.slug}.deessejs.app — coming soon
-                    </span>
-                  </p>
-                </div>
-              </article>
-            )
-          })}
+          {BUILT_TEMPLATES.map((tpl) => (
+            <Link
+              key={tpl.slug}
+              href="#"
+              aria-label={`Visit ${tpl.slug}`}
+              className="group flex flex-col transition-colors hover:bg-accent/40"
+            >
+              <div
+                aria-hidden
+                className="aspect-[16/10] w-full border-b border-border bg-muted/40 transition-colors group-hover:bg-muted/60"
+              />
+              <div className="flex flex-1 flex-col gap-2 p-6">
+                <h3 className="font-mono text-copy-16 font-medium text-foreground">
+                  {tpl.title}
+                </h3>
+                <p className="text-copy-14 leading-6 text-muted-foreground">
+                  {tpl.body}
+                </p>
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
 
