@@ -4,19 +4,14 @@ import { ArrowRight } from "lucide-react"
 
 import { UseCaseHero } from "../_components/use-case-page"
 import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
-import { CapabilitiesTabs } from "../_components/capabilities-tabs"
+import { CapabilityClustersSection } from "../_components/capability-cluster"
 import {
   AdminDashboardMockup,
   BillingWidgetMockup,
-  MultiTenantSwitcherMockup,
-  NotificationsInboxMockup,
   OnboardingMockup,
-  OtelWaterfallMockup,
-  ProductTableMockup,
   QueueLogMockup,
 } from "../_components/mockups"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
-import { resolveCapabilities } from "../_data"
 
 export const metadata: Metadata = {
   title: "SaaS apps | DeesseJS",
@@ -89,30 +84,134 @@ const BUILT_TEMPLATES = [
 ] as const
 
 /**
- * Mockup map keyed by capability.mockupSlug. Every SaaS
- * capability gets a real mockup so the right column never
- * shows a placeholder.
+ * Four thematic clusters of capabilities a buyer reads when they
+ * ask "is this everything I need to ship a B2B SaaS?". Each
+ * cluster owns 3 capability rows with 2-3 sentence copy that says
+ * what the buyer actually gets — concrete shape, not feature
+ * label. Plain prose, no marketing fluff.
  */
-const MOCKUPS = {
-  onboarding:      <OnboardingMockup />,
-  "multi-tenant":  <MultiTenantSwitcherMockup />,
-  "product-crud":  <ProductTableMockup />,
-  billing:         <BillingWidgetMockup />,
-  admin:           <AdminDashboardMockup />,
-  "background-jobs": <QueueLogMockup />,
-  notifications:   <NotificationsInboxMockup />,
-  observability:   <OtelWaterfallMockup />,
-} as const
+const CAPABILITY_CLUSTERS = [
+  {
+    id: "auth-identity",
+    iconName: "Lock",
+    title: "Auth & identity",
+    lead:
+      "Who signs up, who pays, who is who. The four walls your customer data lives inside.",
+    rows: [
+      {
+        id: "workspace-creation",
+        title: "Workspace creation",
+        body:
+          "The signup form captures the workspace name, not just the user. Email verification uses the same provider the rest of your app already talks to, so a stray typo never opens a tenant in your org. Welcome mail sends before the dashboard renders, with the right slug pre-filled.",
+      },
+      {
+        id: "multi-tenant",
+        title: "Multi-tenant by default",
+        body:
+          "Every session is scoped to a workspace. Switching workspaces doesn't sign the user out — it filters what they see. Org-level roles travel with the workspace, not the user, so a freelancer leaving the team doesn't take the customer list with them.",
+      },
+      {
+        id: "magic-oauth",
+        title: "Magic links + OAuth",
+        body:
+          "Better Auth under the hood, with magic links, email+password, and six OAuth providers pre-wired. The proxy verifies email at signup so your Enterprise tier isn't selling to fake at gmail.",
+      },
+    ],
+  },
+  {
+    id: "billing-growth",
+    iconName: "CreditCard",
+    title: "Billing & growth",
+    lead:
+      "How the money comes in, how the customer stays. The plumbing that pays for the rest.",
+    rows: [
+      {
+        id: "subscriptions",
+        title: "Subscriptions that scale",
+        body:
+          "Stripe subscriptions with plans, proration, and dunning wired against the same contract your database reads. Customer portal is generated, not built — your users see invoices and change plans without a support ticket.",
+      },
+      {
+        id: "usage-metering",
+        title: "Usage metering",
+        body:
+          "Charge per API call, per seat, per GB — whatever your product actually sells. The metering shape matches the contract your app code reads, so you never reconcile two sources of truth at month end.",
+      },
+      {
+        id: "notifications",
+        title: "Customer notifications",
+        body:
+          "Receipts, renewal warnings, and dunning sequences run on the same mail and queue layer as the rest of your app. No second vendor, no second dashboard to monitor.",
+      },
+    ],
+  },
+  {
+    id: "operator-console",
+    iconName: "Layers",
+    title: "Operator console",
+    lead:
+      "What you see of your users — the surface that keeps the team out of the database.",
+    rows: [
+      {
+        id: "admin",
+        title: "Admin dashboard",
+        body:
+          "MRR, active users, churn at a glance. The user table is filtered by role and shows last-seen. Bulk actions hit the same RPC the customer API uses, so the operator console and the customer surface never drift.",
+      },
+      {
+        id: "audit-log",
+        title: "Audit trail",
+        body:
+          "Every cross-org call is recorded with the actor, the action, and the resource. Buyers in regulated verticals audit this in the first call; you don't have to explain what 'comprehensive logging' looks like.",
+      },
+      {
+        id: "product-surface",
+        title: "Domain data + search",
+        body:
+          "The CRUD layer on top of your Drizzle schema, with search and CSV export. Operators do not poke the database to find a customer; they use the same surface your support team uses.",
+      },
+    ],
+  },
+  {
+    id: "background-work",
+    iconName: "Workflow",
+    title: "Background work",
+    lead:
+      "The work your users never see — but that holds the product together when it scales.",
+    rows: [
+      {
+        id: "jobs",
+        title: "Background jobs",
+        body:
+          "Queues and retries wired against the same contract the rest of the app uses. Failed jobs are visible in the same dashboard; retries are typed, not free-form shell scripts.",
+      },
+      {
+        id: "observability",
+        title: "Observability",
+        body:
+          "OpenTelemetry waterfall shows every job, every RPC call, every email send, on the same dashboard as your HTTP routes. Errors are tagged with the tool name and the call site, so a 500 in production has a runtime.",
+      },
+      {
+        id: "scheduled",
+        title: "Scheduled tasks",
+        body:
+          "Cron-style tasks live in the same registry as the rest of your code. They read the same schema, log to the same trace, fail with the same retry policy.",
+      },
+    ],
+  },
+] as const
 
-const ICONS = {
-  onboarding:        "Mail",
-  "multi-tenant":    "Users",
-  "product-crud":    "Table2",
-  billing:           "CreditCard",
-  admin:             "LayoutDashboard",
-  "background-jobs": "Workflow",
-  notifications:     "Bell",
-  observability:     "Activity",
+/**
+ * Mockup map keyed by cluster.id. One real mockup per cluster —
+ * the right column swaps when the visitor selects a cluster card.
+ * Unselected clusters get a quiet placeholder so the column
+ * never reads as blank.
+ */
+const CLUSTER_MOCKUPS = {
+  "auth-identity":     <OnboardingMockup />,
+  "billing-growth":    <BillingWidgetMockup />,
+  "operator-console":  <AdminDashboardMockup />,
+  "background-work":   <QueueLogMockup />,
 } as const
 
 /**
@@ -123,15 +222,13 @@ const ICONS = {
  * marketing surface.
  */
 export default function SaasAppsPage() {
-  const capabilities = resolveCapabilities("saas-apps")
-
   return (
     <div className="flex flex-col">
       {/* 1. Hero — capabilities (not a single template) */}
       <UseCaseHero
         category="SaaS"
         title="Production-grade B2B SaaS, out of the box."
-        body="Multi-tenant auth, billing, an operator console, and the jobs and observability behind it. The eight sub-systems a SaaS needs are wired into the registry before your first commit."
+        body="Multi-tenant auth, billing, an operator console, and the jobs and observability behind it. The four sub-systems a SaaS needs are wired into the registry before your first commit."
         primaryCta={{
           label: "Use it yourself",
           href: "/templates",
@@ -142,27 +239,28 @@ export default function SaasAppsPage() {
         }}
       />
 
-      {/* 2. What's in the box — capabilities tabs.
-           Mirrors the mental model of the homepage
-           <SurfacesTabs>: every card visible at once,
-           selected card drives the right-column mockup. */}
+      {/* 2. What's in the box — four clusters of capabilities.
+           Each cluster owns 3 capability rows with 2-3 sentence
+           selling copy. The selected cluster drives the right
+           column's mockup. Below the cluster list, a single
+           CTA pushes the visitor to action. */}
       <section className="border-b border-border">
         <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
             What&apos;s in the box
           </p>
           <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            Eight sub-systems a SaaS needs.
+            The four sub-systems every SaaS needs.
           </h2>
           <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Pick a card, see the preview. Each capability ships with the
-            contracts, the tests, and the migration story already wired.
+            Twelve capabilities grouped by the buyer-side question
+            they answer. Pick a cluster, read what you actually get,
+            and ship it.
           </p>
         </div>
-        <CapabilitiesTabs
-          capabilities={capabilities}
-          mockups={MOCKUPS}
-          iconMap={ICONS}
+        <CapabilityClustersSection
+          clusters={CAPABILITY_CLUSTERS}
+          mockups={CLUSTER_MOCKUPS}
         />
       </section>
 
