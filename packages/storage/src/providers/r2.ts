@@ -58,9 +58,14 @@ export interface R2Options {
   /** R2 bucket name. */
   bucket: string
   /**
-   * Pre-read credentials. We do not touch process.env directly so
-   * the factory stays portable across runtimes (Vercel/Node,
-   * future Workers).
+   * Pre-read credentials. We do not touch process.env directly so the
+   * factory stays explicit about its inputs (testable + deployable
+   * to any environment where the caller controls config injection).
+   *
+   * Note: this factory is Node-only — `Readable.fromWeb` /
+   * `Readable.toWeb` are used for stream conversion and are not
+   * available in Cloudflare Workers without `nodejs_compat`. On
+   * Workers, use the R2 binding directly instead.
    */
   credentials: {
     accessKeyId: string
