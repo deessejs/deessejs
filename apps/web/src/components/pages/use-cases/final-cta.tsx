@@ -5,33 +5,37 @@ import { FinalCta as FinalCtaShell } from "../_shared/final-cta"
  * /use-cases/{saas-apps,ai-products,api-backends,internal-tools,
  * mobile-backend,open-source,landing-pages}/page.tsx.
  *
- * Same copy as /pricing ("Ready to ship?" + "Start with a template.
- * Keep the contracts.") because both pages target the same next-step
- * decision: install the CLI, pick a starter, ship. The two CTAs
- * (Start now → apps/app signup, Browse the registry → /templates)
- * are also identical.
+ * Two-door entry. The use-case pages serve two buyers who arrive
+ * with different intents:
+ *   - DIY: "give me the code, I'll ship it." → /templates
+ *   - Service: "build it with us." → /delivery
  *
- * `signupHref` is resolved server-side by each page route and passed
- * in pre-formatted. Same convention as the site header: the
- * apps/app origin is a server-resolved absolute URL so the link
- * never needs client-side URL composition.
+ * The shell renders both as equally-typed actions, no preference
+ * signalled. The eyebrow "Two doors" makes the framing explicit
+ * so the visitor reads the section as a choice, not as a hard
+ * sell toward one funnel.
+ *
+ * `signupHref` is no longer used here (kept only in the prop
+ * signature for the call sites that still pass it, so the page
+ * signature stays identical across the 7 routes).
  */
-export function FinalCta({ signupHref }: { signupHref: string }) {
+export function FinalCta() {
   return (
     <FinalCtaShell
       noBorderB
-      eyebrow="Ready to ship?"
-      title="Start with a template. Keep the contracts."
-      body="Install the CLI, pick a starter, and your agent gets every contract it needs to navigate the rest of the project."
+      eyebrow="Two doors"
+      title="Use it yourself, or have us ship it for you."
+      body="Self-serve gives you the registry and the templates. Engagement gives you the team that built it. Pick the door that fits the timeline."
       actions={[
         {
-          label: "Start now",
-          href: signupHref,
+          label: "Browse templates",
+          href: "/templates",
+          variant: "default",
           withArrow: true,
         },
         {
-          label: "Browse the registry",
-          href: "/templates",
+          label: "Talk to delivery",
+          href: "/delivery",
           variant: "outline",
         },
       ]}
