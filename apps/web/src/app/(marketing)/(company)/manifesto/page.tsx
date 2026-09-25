@@ -1,9 +1,10 @@
 import Link from "next/link"
 import type { Metadata } from "next"
 
-import { H1, H2 } from "@workspace/ui/components/typography"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
+
+import { RelatedLinks } from "@/components/pages/_shared/related-links"
 
 
 export const metadata: Metadata = {
@@ -76,13 +77,15 @@ const BELIEFS: ReadonlyArray<Belief> = [
 
 export default function ManifestoPage() {
   return (
-      <div className="mx-auto max-w-5xl py-16">
+      <div className="mx-auto max-w-5xl px-4 md:px-6 py-16">
         {/* Hero */}
       <header className="flex flex-col gap-6">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           The DeesseJS Manifesto
         </p>
-        <H1>Software that builds software.</H1>
+        <h1 className="text-heading-40 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
+          Software that builds software.
+        </h1>
         <p className="text-muted-foreground text-copy-20 leading-7 [&:not(:first-child)]:mt-0">
           Six beliefs that shape how we design templates, ship
           defaults, and think about the agentic era.
@@ -131,7 +134,7 @@ export default function ManifestoPage() {
               <span className="text-label-16 font-mono text-muted-foreground">
                 {belief.number}
               </span>
-              <h2 className="text-heading-24 tracking-tight text-foreground !m-0">
+              <h2 className="text-heading-24 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
                 {belief.title}
               </h2>
             </header>
@@ -145,63 +148,35 @@ export default function ManifestoPage() {
       <Separator />
 
       {/* Cross-link CTA */}
-      <nav
-        aria-label="Related pages"
-        className="flex flex-col gap-6"
-      >
-        <H2>Read next</H2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Link
-            href="/about"
-            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
-          >
-            <span className="text-label-14 font-semibold text-foreground">
-              About
-            </span>
-            <span className="text-copy-13 text-muted-foreground">
-              Who we are, and how we got here.
-            </span>
-          </Link>
-          <Link
-            href="/principles"
-            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
-          >
-            <span className="text-label-14 font-semibold text-foreground">
-              Principles
-            </span>
-            <span className="text-copy-13 text-muted-foreground">
-              How we work, day to day.
-            </span>
-          </Link>
-          <Link
-            href="/vision"
-            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
-          >
-            <span className="text-label-14 font-semibold text-foreground">
-              Vision
-            </span>
-            <span className="text-copy-13 text-muted-foreground">
-              Where we&apos;re taking this next.
-            </span>
-          </Link>
-          <Link
-            href="/ecosystem"
-            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
-          >
-            <span className="text-label-14 font-semibold text-foreground">
-              Ecosystem
-            </span>
-            <span className="text-copy-13 text-muted-foreground">
-              The sub-domains and shared values.
-            </span>
-          </Link>
-        </div>
-        <div className="flex justify-center pt-2">
-          <Button variant="outline" asChild>
-            <Link href="/templates">Browse templates</Link>
-          </Button>
-        </div>
-      </nav>
+      <RelatedLinks
+        links={[
+          {
+            label: "About",
+            href: "/about",
+            body: "Who we are, and how we got here.",
+          },
+          {
+            label: "Principles",
+            href: "/principles",
+            body: "How we work, day to day.",
+          },
+          {
+            label: "Vision",
+            href: "/vision",
+            body: "Where we're taking this next.",
+          },
+          {
+            label: "Ecosystem",
+            href: "/ecosystem",
+            body: "The sub-domains and shared values.",
+          },
+        ]}
+      />
+      <div className="flex justify-center pt-2">
+        <Button variant="outline" asChild size="lg">
+          <Link href="/templates">Browse templates</Link>
+        </Button>
+      </div>
       </div>
   )
 }
