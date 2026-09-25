@@ -1,4 +1,11 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'DeesseJS Internal Documentation',
+  description:
+    'Internal documentation for the DeesseJS platform — onboarding, runbooks, and team processes.',
+};
 
 export default function HomePage() {
   return (
