@@ -12,44 +12,35 @@ export const metadata: Metadata = {
 /**
  * About page at /about.
  *
- * Three-section narrative, matching the shape of /manifesto,
- * /principles, /vision, /ecosystem:
- *   1. The main app — what DeesseJS is for the org
- *   2. Edited by Nesalia Inc. — the open model
- *   3. Get in touch — channels
+ * Routes each section directly at the root — no `max-w-5xl
+ * mx-auto` wrapper, no shared `<Separator />` between blocks.
+ * Each section component owns its own border-b and padding,
+ * matching the rhythm of the marketing app's enterprise /
+ * delivery / pricing pages (`apps/web/src/app/(marketing)/pricing/
+ * page.tsx:13-34`, `delivery/page.tsx:13-25`,
+ * `enterprise/page.tsx:13-26`).
  *
- * Each section lives in `components/pages/about/<section>.tsx`;
- * data (channels) lives in `lib/about/channels.ts`. The route file
- * is just a table of contents.
+ * The 3 sections are:
+ *   - Hero (eyebrow + h1 + lead)
+ *   - MainApp + Editor (full-width border-b blocks; 2-col grid
+ *     on lg+ inside each)
+ *   - Contact (1×3 channel card grid; 2-col title/content on lg+)
  *
- * The `<Separator />` between sections was replaced by
- * `border-b border-border` on each section's wrapper div. This
- * matches the rhythm of every other marketing page (enterprise,
- * delivery, pricing, homepage all use border-b border-border). The
- * separator line was floating just below the hero H1 with no top
- * edge above it, which made the line "marry itself to the
- * headline" — the user complaint that drove this refactor.
- *
- * Note: commit 2 (next commit) will move the closing border onto
- * the hero wrapper itself; until then, the wrappers carry it.
+ * The "Read next" <RelatedLinks> and "Browse templates" CTA
+ * block sit at the bottom, full-width — same architecture as
+ * the rest of the Company pages.
  */
 export default function AboutPage() {
   return (
     <>
-      <div className="max-w-5xl mx-auto px-4 md:px-6 py-16">
-        <div className="border-b border-border pb-16 md:pb-20 lg:pb-24">
-          <About.Hero />
-        </div>
+      <About.Hero />
 
-        <div className="border-b border-border py-16 md:py-20 lg:py-24">
-          <About.MainApp />
-          <About.Editor />
-        </div>
+      <About.MainApp />
+      <About.Editor />
 
-        <div className="border-b border-border py-16 md:py-20 lg:py-24">
-          <About.Contact />
-        </div>
+      <About.Contact />
 
+      <div className="border-t border-border px-4 md:px-6 py-16 md:py-20 lg:py-24">
         <RelatedLinks
           links={[
             {
