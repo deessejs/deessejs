@@ -11,7 +11,7 @@
  * verbs. Anything more sophisticated (multipart upload, server-side
  * copy, tagging) lives on the future impls, not on this interface.
  *
- * Errors: see {@link ./errors.ts}. The four classes (`StorageError`,
+ * Errors: see `./errors.ts`. The four classes (`StorageError`,
  * `StorageNotFoundError`, `StorageAuthError`, `StorageNetworkError`)
  * are the only error contract; implementations MUST throw these
  * exactly. Higher-level errors (cache miss, offline) belong to the
@@ -43,7 +43,7 @@ export type ObjectKey = string
  * `ETag` with quotes, R2 `httpEtag`) is exposed via the
  * rawHeaders map for callers that need it.
  */
-export interface ObjectMeta {
+export type ObjectMeta = {
   /** Object key this metadata is for. */
   readonly key: ObjectKey
   /** Total object size in bytes. Undefined if the provider doesn't know. */
@@ -84,43 +84,161 @@ export interface ObjectMeta {
 export type ObjectBody = ReadableStream<Uint8Array>
 
 /**
+ * Discriminated union of every failure this package can produce.
+ *
+ * Plain data — no classes, no `instanceof`. Branch on
+ * `failure._tag`. Every variant carries a stable `_tag` string and
+ * the minimum context needed to act on it.
+ *
+ *   - `StorageInvalidKey` — caller-supplied key failed validation
+ *     (empty, absolute, `..` segment). `key` is set.
+ *   - `StorageInvalidRoot` / `StorageInvalidOptions` — factory
+ *     options rejected.
+ *   - `StorageNotFound` — `get`/`head`/`delete` against an absent
+ *     key (404 NoSuchKey). `key` always set.
+ *   - `StorageMissingBucket` — `put`/`list` against a bucket the
+ *     SDK reports as missing (404 NoSuchBucket). `key` may be
+ *     undefined on `list`.
+ *   - `StorageAuth` — credentials rejected or signature mismatch
+ *     (401/403). `cause` carries the SDK error.
+ *   - `StorageNetwork` — 5xx, transport failure, throttling.
+ *     `cause` carries the underlying error.
+ *   - `StorageUnexpected` — anything that doesn't fit the above
+ *     buckets (e.g. SDK bug, missing body). `cause` carries the
+ *     underlying error.
+ *
+ * Helpers in this file wrap plain values in `Error` for `throw`,
+ * preserving the union via `error.cause`. Consumers catch with
+ * `instanceof Error` and switch on `(err.cause as StorageFailure)._tag`.
+ */
+export type StorageFailure =
+  | { readonly _tag: "StorageInvalidKey"; readonly key: ObjectKey }
+  | {
+      readonly _tag: "StorageInvalidRoot"
+      readonly message: string
+    }
+  | {
+      readonly _tag: "StorageInvalidOptions"
+      readonly message: string
+    }
+  | { readonly _tag: "StorageNotFound"; readonly key: ObjectKey }
+  | {
+      readonly _tag: "StorageMissingBucket"
+      readonly key?: ObjectKey
+      readonly cause: unknown
+    }
+  | {
+      readonly _tag: "StorageAuth"
+      readonly key: ObjectKey
+      readonly cause: unknown
+    }
+  | {
+      readonly _tag: "StorageNetwork"
+      readonly key: ObjectKey
+      readonly cause: unknown
+    }
+  | {
+      readonly _tag: "StorageUnexpected"
+      readonly key: ObjectKey
+      readonly cause: unknown
+    }
+
+/**
+ * Wrap a {@link StorageFailure} in a runtime `Error`. The failure is
+ * preserved on `error.cause` so consumers can pattern-match on it.
+ *
+ * The wrapping is necessary because TypeScript and the JS runtime
+ * both want a real `Error` at the top of the chain (stack traces,
+ * `instanceof Error` checks, logging pipelines). The shape of the
+ * failure is what consumers should switch on.
+ */
+export const toStorageError = (
+  failure: StorageFailure,
+  message: string,
+): Error => {
+  const err = new Error(message)
+  err.name = failure._tag
+  ;(err as Error & { cause: StorageFailure }).cause = failure
+  return err
+}
+
+/**
+ * Type guard: returns the {@link StorageFailure} if the given
+ * value was thrown by this package, or `null` otherwise.
+ *
+ * ```
+ * try {
+ *   await store.put(key, bytes)
+ * } catch (err) {
+ *   const failure = asStorageFailure(err)
+ *   if (failure?._tag === "StorageAuth") { ... }
+ * }
+ * ```
+ */
+export const asStorageFailure = (err: unknown): StorageFailure | null => {
+  if (
+    err !== null &&
+    typeof err === "object" &&
+    "cause" in err &&
+    typeof (err as { cause: unknown }).cause === "object" &&
+    (err as { cause: { _tag?: unknown } }).cause !== null &&
+    typeof (err as { cause: { _tag?: unknown } }).cause._tag === "string" &&
+    ((err as { cause: { _tag: string } }).cause._tag as string).startsWith(
+      "Storage",
+    )
+  ) {
+    return (err as { cause: StorageFailure }).cause
+  }
+  return null
+}
+
+/**
  * The fundamental object storage interface.
  *
  * All five methods MUST be implemented. The interface is async-only;
  * no synchronous variant exists (local-fs uses fs.promises).
+ *
+ * Implementations throw the four typed error classes from
+ * `./errors.ts` (see also {@link StorageNotFoundError} for the
+ * `get`/`head`/`delete` 404 case, which returns `null` instead).
  */
-export interface ObjectStore {
+export type ObjectStore = {
   /**
-   * PUT bytes at `key`. Idempotent: PUTing the same key twice replaces
-   * the value. `body` is consumed; the caller must not use it after.
+   * PUT bytes at `key`. Idempotent: PUTing the same key twice
+   * replaces the value. `body` is consumed; the caller must not use
+   * it after.
    *
    * Implementations may choose to stream the body (R2 preferred,
-   * efficient for large objects) or buffer it (local-fs simpler for
-   * small files, atomic-write guarantees).
+   * efficient for large objects) or buffer it (local-fs simpler
+   * for small files, atomic-write guarantees).
    *
    * Throws:
    *  - {@link StorageAuthError} on 401/403
    *  - {@link StorageNetworkError} on transient failure
+   *  - {@link StorageNotFoundError} if the bucket is missing
    *  - {@link StorageError} base class for anything else
    */
-  put(key: ObjectKey, body: Uint8Array | ObjectBody): Promise<void>
+  readonly put: (
+    key: ObjectKey,
+    body: Uint8Array | ObjectBody,
+  ) => Promise<void>
 
   /**
-   * GET bytes for `key`. Returns null on a 404 (so callers can branch
-   * without catching). Throws {@link StorageNotFoundError} only when
-   * the caller wants the exception path (rare — most callers prefer
-   * null for the "not found" branch).
+   * GET bytes for `key`. Returns null on a 404 (so callers can
+   * branch without catching). Throws {@link StorageNotFoundError}
+   * only when the caller wants the exception path (rare — most
+   * callers prefer null for the "not found" branch).
    *
    * The returned stream is owned by the caller. Reading past EOF
    * returns empty bytes; cancellation aborts the in-flight fetch.
    */
-  get(key: ObjectKey): Promise<ObjectBody | null>
+  readonly get: (key: ObjectKey) => Promise<ObjectBody | null>
 
   /**
-   * DELETE the object at `key`. Idempotent — succeeds even if absent.
-   * Used for cleanup, eviction, and re-publication flows.
+   * DELETE the object at `key`. Idempotent — succeeds even if
+   * absent. Used for cleanup, eviction, and re-publication flows.
    */
-  delete(key: ObjectKey): Promise<void>
+  readonly delete: (key: ObjectKey) => Promise<void>
 
   /**
    * HEAD the object — return metadata without body. Returns null
@@ -129,7 +247,7 @@ export interface ObjectStore {
    * Preferred over `get()` for callers that only need size/etag/
    * lastModified. Avoids paying for bytes that won't be used.
    */
-  head(key: ObjectKey): Promise<ObjectMeta | null>
+  readonly head: (key: ObjectKey) => Promise<ObjectMeta | null>
 
   /**
    * LIST keys, optionally filtered by prefix.
@@ -157,5 +275,5 @@ export interface ObjectStore {
    * Key encoding (special characters, XML escapes, Unicode) is the
    * provider's responsibility. Callers receive keys verbatim.
    */
-  list(prefix?: ObjectKey): AsyncIterable<ObjectMeta>
+  readonly list: (prefix?: ObjectKey) => AsyncIterable<ObjectMeta>
 }

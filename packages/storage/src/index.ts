@@ -4,9 +4,12 @@
  * Re-exports the symbols consumers need:
  *
  *   - {@link ObjectStore}, {@link ObjectKey}, {@link ObjectMeta},
- *     {@link ObjectBody}: the storage abstraction interface and
- *     value types.
- *   - The four storage error classes.
+ *     {@link ObjectBody}: the storage abstraction types.
+ *   - {@link StorageFailure}: the discriminated union of every
+ *     failure this package can produce.
+ *   - {@link toStorageError}, {@link asStorageFailure}: helpers to
+ *     throw and unwrap a {@link StorageFailure} as a regular
+ *     `Error` (preserving the failure on `.cause`).
  *
  * Provider implementations are NOT re-exported here. Consumers
  * import them explicitly (`@workspace/storage/providers/local-fs`,
@@ -22,11 +25,7 @@ export type {
   ObjectKey,
   ObjectMeta,
   ObjectBody,
+  StorageFailure,
 } from "./object-store.js"
 
-export {
-  StorageError,
-  StorageNotFoundError,
-  StorageAuthError,
-  StorageNetworkError,
-} from "./errors.js"
+export { toStorageError, asStorageFailure } from "./object-store.js"

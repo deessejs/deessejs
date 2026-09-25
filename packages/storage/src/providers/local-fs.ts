@@ -2,10 +2,9 @@
  * Local filesystem implementation of {@link ObjectStore}.
  *
  * Functional style: `createLocalFsObjectStore(options)` returns an
- * `ObjectStore` whose methods are plain async functions that close
- * over the resolved `root`. All side effects go through
- * `node:fs/promises`; everything else (key resolution, recursive
- * walking, prefix normalisation) is pure.
+ * `ObjectStore` whose methods are plain async functions closing
+ * over the resolved `root`. All helpers are arrow `const`; no
+ * `function` declarations, no classes for the provider itself.
  *
  * For dev, CI, and tests. Not a production backend — there is no
  * replication, no concurrency control beyond POSIX rename semantics,
@@ -29,37 +28,43 @@ import path from "node:path"
 import crypto from "node:crypto"
 import { Readable } from "node:stream"
 
-import { StorageError } from "../errors.js"
-import type {
-  ObjectBody,
-  ObjectKey,
-  ObjectMeta,
-  ObjectStore,
+import {
+  asStorageFailure,
+  toStorageError,
+  type ObjectBody,
+  type ObjectKey,
+  type ObjectMeta,
+  type ObjectStore,
 } from "../object-store.js"
 
-export interface LocalFsOptions {
+export type LocalFsOptions = {
   /**
    * Root directory under which objects are stored. Resolved against
    * `process.cwd()` if relative. **All keys are interpreted relative
    * to this root**; absolute or `..`-containing keys throw at the
    * boundary, not at the filesystem.
    */
-  root: string
+  readonly root: string
 
   /**
    * Auto-create the root on first use. Defaults to true. Set to
    * false in test contexts where the root is pre-created.
    */
-  ensureRoot?: boolean
+  readonly ensureRoot?: boolean
 }
 
-/**
- * Resolve `root` once. Pure, no I/O aside from path normalisation.
- */
-function resolveRoot(root: string): string {
+// ---------------------------------------------------------------------------
+// Pure helpers
+// ---------------------------------------------------------------------------
+
+/** Resolve `root` once. Throws on empty input. */
+const resolveRoot = (root: string): string => {
   if (!root || root === "") {
-    throw new StorageError(
-      "storage.invalid_root",
+    throw toStorageError(
+      {
+        _tag: "StorageInvalidRoot",
+        message: "createLocalFsObjectStore requires a non-empty root path",
+      },
       "createLocalFsObjectStore requires a non-empty root path",
     )
   }
@@ -70,28 +75,25 @@ function resolveRoot(root: string): string {
  * Validate `key` and translate it to an absolute filesystem path
  * inside `root`. Pure: no I/O, just string manipulation.
  */
-function resolveKey(root: string, key: ObjectKey): string {
+const resolveKey = (root: string, key: ObjectKey): string => {
   if (key === "") {
-    throw new StorageError(
-      "storage.invalid_key",
+    throw toStorageError(
+      { _tag: "StorageInvalidKey", key },
       "ObjectStore key must not be empty",
-      { key },
     )
   }
   if (path.isAbsolute(key)) {
-    throw new StorageError(
-      "storage.invalid_key",
+    throw toStorageError(
+      { _tag: "StorageInvalidKey", key },
       `ObjectStore key must be relative, got absolute: ${key}`,
-      { key },
     )
   }
   const target = path.resolve(root, key)
   const rootWithSep = root.endsWith(path.sep) ? root : root + path.sep
   if (!target.startsWith(rootWithSep) && target !== root) {
-    throw new StorageError(
-      "storage.invalid_key",
+    throw toStorageError(
+      { _tag: "StorageInvalidKey", key },
       `ObjectStore key escapes the configured root: ${key}`,
-      { key },
     )
   }
   return target
@@ -100,15 +102,10 @@ function resolveKey(root: string, key: ObjectKey): string {
 /**
  * Recursively walk `dir`. Yields every file whose key (relative to
  * `root`, with `/` as separator) starts with `prefixFilter`.
- *
- * Always descends into every subdirectory — descent is cheap, and
- * the filter is applied at emission time. Handles arbitrary
- * nesting (a/b/c/d/file.json) without bespoke prefix-path
- * bookkeeping.
- *
- * Pure-ish: one fs.readdir per directory, but no hidden state.
+ * Always descends into every subdirectory — descent is cheap, the
+ * filter is applied at emission time.
  */
-async function* walk(
+const walk = async function* (
   dir: string,
   relativePrefix: string,
   prefixFilter: string,
@@ -137,20 +134,23 @@ async function* walk(
 }
 
 /** Normalise a list() prefix to "" or "foo/" (always ends with "/"). */
-function normalisePrefix(prefix: ObjectKey | undefined): string {
+const normalisePrefix = (prefix: ObjectKey | undefined): string => {
   if (prefix === undefined) return ""
   return prefix.endsWith("/") ? prefix : `${prefix}/`
 }
 
-/** Wrap a Uint8Array in a Web ReadableStream. Pure. */
-function bytesToWebStream(bytes: Uint8Array): ObjectBody {
-  return new ReadableStream({
+/** Wrap a Uint8Array in a Web ReadableStream. */
+const bytesToWebStream = (bytes: Uint8Array): ObjectBody =>
+  new ReadableStream({
     start(controller) {
       controller.enqueue(new Uint8Array(bytes))
       controller.close()
     },
   })
-}
+
+// ---------------------------------------------------------------------------
+// Factory
+// ---------------------------------------------------------------------------
 
 /**
  * Build an {@link ObjectStore} backed by the local filesystem.
@@ -158,26 +158,27 @@ function bytesToWebStream(bytes: Uint8Array): ObjectBody {
  * The returned object's methods close over `root` (resolved once
  * at construction time). There is no class instance to mutate;
  * if you need different roots, call this factory again.
+ *
+ * Throws `StorageError` if `options.root` is empty.
  */
-export function createLocalFsObjectStore(
+export const createLocalFsObjectStore = (
   options: LocalFsOptions,
-): ObjectStore {
+): ObjectStore => {
   const root = resolveRoot(options.root)
 
   return {
     async put(key, body) {
       const target = resolveKey(root, key)
       const dir = path.dirname(target)
-      const tmp = `${target}.tmp.${process.pid}.${crypto.randomBytes(6).toString("hex")}`
+      const tmp = `${target}.tmp.${process.pid}.${crypto
+        .randomBytes(6)
+        .toString("hex")}`
       try {
         await fs.mkdir(dir, { recursive: true })
         if (body instanceof Uint8Array) {
           await fs.writeFile(tmp, body)
         } else {
           // Web ReadableStream → Node Readable → fs.writeFile.
-          // The cast on `Readable.fromWeb` is because some
-          // libraries (e.g. tar-stream) overload the global
-          // ReadableStream; at runtime the input is a Web stream.
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const nodeSrc = Readable.fromWeb(body as unknown as any)
           await fs.writeFile(tmp, nodeSrc as unknown as NodeJS.ReadableStream)
@@ -187,7 +188,14 @@ export function createLocalFsObjectStore(
         // Best-effort cleanup. A stale .tmp is harmless and will
         // be overwritten on the next successful put().
         await fs.unlink(tmp).catch(() => undefined)
-        throw err
+        // If this is already one of our failures (e.g. invalid
+        // key), re-throw as-is. Otherwise wrap the fs-level error
+        // in a StorageNetwork failure.
+        if (asStorageFailure(err)) throw err
+        throw toStorageError(
+          { _tag: "StorageNetwork", key, cause: err },
+          `local-fs put ${key} failed: ${(err as Error).message}`,
+        )
       }
     },
 
@@ -201,7 +209,11 @@ export function createLocalFsObjectStore(
       } catch (err) {
         const code = (err as NodeJS.ErrnoException).code
         if (code === "ENOENT" || code === "EISDIR") return null
-        throw err
+        if (asStorageFailure(err)) throw err
+        throw toStorageError(
+          { _tag: "StorageNetwork", key, cause: err },
+          `local-fs get ${key} failed: ${(err as Error).message}`,
+        )
       }
     },
 
@@ -210,8 +222,15 @@ export function createLocalFsObjectStore(
       try {
         await fs.unlink(target)
       } catch (err) {
-        if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
-        // Idempotent: already-absent is success.
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+          // Idempotent: already-absent is success.
+          return
+        }
+        if (asStorageFailure(err)) throw err
+        throw toStorageError(
+          { _tag: "StorageNetwork", key, cause: err },
+          `local-fs delete ${key} failed: ${(err as Error).message}`,
+        )
       }
     },
 
@@ -227,7 +246,11 @@ export function createLocalFsObjectStore(
         }
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code === "ENOENT") return null
-        throw err
+        if (asStorageFailure(err)) throw err
+        throw toStorageError(
+          { _tag: "StorageNetwork", key, cause: err },
+          `local-fs head ${key} failed: ${(err as Error).message}`,
+        )
       }
     },
 

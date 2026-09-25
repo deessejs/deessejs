@@ -25,9 +25,8 @@ import path from "node:path"
 import { promises as fs } from "node:fs"
 
 import { createLocalFsObjectStore } from "../src/providers/local-fs.js"
-import { StorageError } from "../src/errors.js"
-import { runObjectStoreContractTests } from "./object-store.contract.js"
 import type { ObjectStore } from "../src/object-store.js"
+import { runObjectStoreContractTests } from "./object-store.contract.js"
 
 let scratch: string
 let store: ObjectStore
@@ -152,7 +151,7 @@ describe("LocalFsObjectStore — key-traversal defenses", () => {
 
   it("rejects an empty key", async () => {
     await expect(store.put("", new Uint8Array())).rejects.toThrow(
-      StorageError,
+      /ObjectStore key must not be empty/,
     )
   })
 

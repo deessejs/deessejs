@@ -16,8 +16,7 @@
  *
  * The `S3Client` instance is the only class-shaped value here, and
  * it's external to this package — the SDK's I/O boundary. Every
- * helper in this file (error mapping, response normalisation,
- * prefix handling) is a pure top-level function.
+ * helper in this file is a pure arrow `const` at the top level.
  *
  * Errors: see {@link ../errors.ts}. NoSuchKey surfaces as `null`
  * on get/head/delete. Other SDK errors translate via
@@ -40,23 +39,19 @@ import {
 } from "@aws-sdk/client-s3"
 
 import {
-  StorageAuthError,
-  StorageError,
-  StorageNetworkError,
-  StorageNotFoundError,
-} from "../errors.js"
-import type {
-  ObjectBody,
-  ObjectKey,
-  ObjectMeta,
-  ObjectStore,
+  asStorageFailure,
+  toStorageError,
+  type ObjectBody,
+  type ObjectKey,
+  type ObjectMeta,
+  type ObjectStore,
 } from "../object-store.js"
 
-export interface R2Options {
+export type R2Options = {
   /** Cloudflare account ID (numeric). */
-  accountId: string
+  readonly accountId: string
   /** R2 bucket name. */
-  bucket: string
+  readonly bucket: string
   /**
    * Pre-read credentials. We do not touch process.env directly so the
    * factory stays explicit about its inputs (testable + deployable
@@ -67,54 +62,57 @@ export interface R2Options {
    * available in Cloudflare Workers without `nodejs_compat`. On
    * Workers, use the R2 binding directly instead.
    */
-  credentials: {
-    accessKeyId: string
-    secretAccessKey: string
+  readonly credentials: {
+    readonly accessKeyId: string
+    readonly secretAccessKey: string
   }
   /**
    * Optional S3Client override. Production callers omit this; the
    * factory builds a real client with the R2 endpoint. Tests inject
    * a mock to assert command shape without network.
    */
-  client?: S3Client
+  readonly client?: S3Client
   /** Optional SDK config overrides (retry policy, request handler). */
-  clientConfig?: Omit<S3ClientConfig, "endpoint" | "region" | "credentials">
+  readonly clientConfig?: Omit<
+    S3ClientConfig,
+    "endpoint" | "region" | "credentials"
+  >
 }
 
 /** Default region per Cloudflare's R2 spec. */
 const R2_REGION = "auto"
 
 // ---------------------------------------------------------------------------
-// Pure helpers
+// Pure helpers (arrow const)
 // ---------------------------------------------------------------------------
 
-/** Strip surrounding double-quotes from an ETag. Pure. */
-function stripQuotes(etag: string): string {
-  return etag.replace(/^"|"$/g, "")
-}
+/** Strip surrounding double-quotes from an ETag. */
+const stripQuotes = (etag: string): string =>
+  etag.replace(/^"|"$/g, "")
 
 /**
  * Normalise a list() prefix to undefined (no prefix) or a string
  * ending with "/". S3 prefix matching is a strict string-prefix
  * match, so "foo" without a trailing slash would also match
- * "foobar/..." — which violates the contract. Always normalise
- * before handing to the SDK.
+ * "foobar/..." — which violates the contract.
  */
-function normaliseListPrefix(prefix: ObjectKey | undefined): string | undefined {
+const normaliseListPrefix = (
+  prefix: ObjectKey | undefined,
+): string | undefined => {
   if (prefix === undefined) return undefined
   return prefix.endsWith("/") ? prefix : `${prefix}/`
 }
 
-/** Translate a HeadObjectCommandOutput into ObjectMeta. Pure. */
-function metaFromHeadResponse(
+/** Translate a HeadObjectCommandOutput into ObjectMeta. */
+const metaFromHeadResponse = (
   out: {
-    ETag?: string | undefined
-    ContentLength?: number | undefined
-    LastModified?: Date | undefined
-    ContentType?: string | undefined
+    readonly ETag?: string | undefined
+    readonly ContentLength?: number | undefined
+    readonly LastModified?: Date | undefined
+    readonly ContentType?: string | undefined
   },
   key: ObjectKey,
-): ObjectMeta {
+): ObjectMeta => {
   const meta: {
     key: ObjectKey
     etag?: string
@@ -129,13 +127,13 @@ function metaFromHeadResponse(
   return meta
 }
 
-/** Translate a single ListObjectsV2 Contents entry into ObjectMeta. Pure. */
-function metaFromListObject(obj: {
-  Key?: string | undefined
-  Size?: number | undefined
-  LastModified?: Date | undefined
-  ETag?: string | undefined
-}): ObjectMeta {
+/** Translate a single ListObjectsV2 Contents entry into ObjectMeta. */
+const metaFromListObject = (obj: {
+  readonly Key?: string | undefined
+  readonly Size?: number | undefined
+  readonly LastModified?: Date | undefined
+  readonly ETag?: string | undefined
+}): ObjectMeta => {
   const meta: {
     key: ObjectKey
     size?: number
@@ -148,8 +146,8 @@ function metaFromListObject(obj: {
   return meta
 }
 
-/** True if the SDK error indicates "resource not found". Pure. */
-function isNotFound(err: unknown): boolean {
+/** True if the SDK error indicates "resource not found". */
+const isNotFound = (err: unknown): boolean => {
   if (!(err instanceof S3ServiceException)) return false
   if (err.name === "NoSuchKey") return true
   if (err.name === "NotFound") return true
@@ -157,8 +155,8 @@ function isNotFound(err: unknown): boolean {
   return false
 }
 
-/** True if the SDK error indicates an auth/credentials failure. Pure. */
-function isAuthError(err: unknown): boolean {
+/** True if the SDK error indicates an auth/credentials failure. */
+const isAuthError = (err: unknown): boolean => {
   if (!(err instanceof S3ServiceException)) return false
   if (err.name === "InvalidAccessKeyId") return true
   if (err.name === "SignatureDoesNotMatch") return true
@@ -168,8 +166,8 @@ function isAuthError(err: unknown): boolean {
   return status === 401 || status === 403
 }
 
-/** Human-readable description of an SDK error. Pure. */
-function describeS3Error(err: unknown): string {
+/** Human-readable description of an SDK error. */
+const describeS3Error = (err: unknown): string => {
   if (err instanceof S3ServiceException) {
     return `${err.name} (${err.$metadata?.httpStatusCode ?? "?"}): ${err.message}`
   }
@@ -178,67 +176,85 @@ function describeS3Error(err: unknown): string {
 }
 
 /**
- * Translate an SDK error to our 4-class taxonomy. The caller must
+ * Translate an SDK error to our `StorageFailure` union. The caller must
  * have already checked `isNotFound` if they want to return null
  * instead of throwing on 404.
  *
- * - 404 (NoSuchKey, NotFound) → StorageNotFoundError
- * - 401/403                  → StorageAuthError
- * - everything else          → StorageNetworkError
+ * - 404 (NoSuchKey, NotFound) → StorageNotFound (or StorageMissingBucket
+ *   if the bucket itself is the absent resource)
+ * - 401/403                  → StorageAuth
+ * - everything else          → StorageNetwork
  */
-function mapS3Error(err: unknown, key: ObjectKey, method: string): never {
-  if (err instanceof StorageError) {
-    throw err
-  }
+const mapS3Error = (err: unknown, key: ObjectKey, method: string): never => {
+  if (asStorageFailure(err)) throw err
   if (isNotFound(err)) {
-    throw new StorageNotFoundError(
+    if (err instanceof S3ServiceException && err.name === "NoSuchBucket") {
+      throw toStorageError(
+        { _tag: "StorageMissingBucket", key, cause: err },
+        `R2 ${method} ${key} failed: bucket not found`,
+      )
+    }
+    throw toStorageError(
+      { _tag: "StorageNotFound", key },
       `R2 ${method} ${key} failed: resource not found`,
-      { key },
-      { cause: err },
     )
   }
   if (isAuthError(err)) {
-    throw new StorageAuthError(
+    throw toStorageError(
+      { _tag: "StorageAuth", key, cause: err },
       `R2 ${method} ${key} failed: ${describeS3Error(err)}`,
-      { key },
-      { cause: err },
     )
   }
-  throw new StorageNetworkError(
+  throw toStorageError(
+    { _tag: "StorageNetwork", key, cause: err },
     `R2 ${method} ${key} failed: ${describeS3Error(err)}`,
-    { key },
-    { cause: err },
   )
 }
 
-/** Validate options eagerly. Pure. */
-function validateOptions(options: R2Options): void {
+/** Validate options eagerly. */
+const validateOptions = (options: R2Options): void => {
   if (!options.accountId) {
-    throw new Error("createR2ObjectStore: accountId is required")
+    throw toStorageError(
+      { _tag: "StorageInvalidOptions", message: "accountId is required" },
+      "createR2ObjectStore: accountId is required",
+    )
   }
   if (!options.bucket) {
-    throw new Error("createR2ObjectStore: bucket is required")
+    throw toStorageError(
+      { _tag: "StorageInvalidOptions", message: "bucket is required" },
+      "createR2ObjectStore: bucket is required",
+    )
   }
   if (!options.credentials.accessKeyId) {
-    throw new Error("createR2ObjectStore: accessKeyId is required")
+    throw toStorageError(
+      { _tag: "StorageInvalidOptions", message: "accessKeyId is required" },
+      "createR2ObjectStore: accessKeyId is required",
+    )
   }
   if (!options.credentials.secretAccessKey) {
-    throw new Error("createR2ObjectStore: secretAccessKey is required")
+    throw toStorageError(
+      {
+        _tag: "StorageInvalidOptions",
+        message: "secretAccessKey is required",
+      },
+      "createR2ObjectStore: secretAccessKey is required",
+    )
   }
 }
 
 /** Build the S3Client against the R2 endpoint. */
-function buildClient(options: R2Options): S3Client {
-  return (
-    options.client ??
-    new S3Client({
-      region: R2_REGION,
-      endpoint: `https://${options.accountId}.r2.cloudflarestorage.com`,
-      credentials: options.credentials,
-      ...(options.clientConfig ?? {}),
-    })
-  )
-}
+const buildClient = (options: R2Options): S3Client =>
+  options.client ??
+  new S3Client({
+    region: R2_REGION,
+    endpoint: `https://${options.accountId}.r2.cloudflarestorage.com`,
+    credentials: options.credentials,
+    ...(options.clientConfig ?? {}),
+  })
+
+// ---------------------------------------------------------------------------
+// Factory
+// ---------------------------------------------------------------------------
 
 /**
  * Build an {@link ObjectStore} backed by Cloudflare R2.
@@ -246,7 +262,7 @@ function buildClient(options: R2Options): S3Client {
  * The returned object's methods close over `client` and `bucket`.
  * Calling this factory twice gives two independent stores.
  */
-export function createR2ObjectStore(options: R2Options): ObjectStore {
+export const createR2ObjectStore = (options: R2Options): ObjectStore => {
   validateOptions(options)
   const client = buildClient(options)
   const bucket = options.bucket
@@ -277,10 +293,9 @@ export function createR2ObjectStore(options: R2Options): ObjectStore {
         throw mapS3Error(err, key, "GET")
       }
       if (!out.Body) {
-        throw new StorageError(
-          "storage.empty_body",
-          `Empty body on GET ${key}`,
-          { key },
+        throw toStorageError(
+          { _tag: "StorageUnexpected", key, cause: undefined },
+          `R2 GET ${key} returned no body`,
         )
       }
       // SDK returns a Node Readable. Convert to Web ReadableStream.

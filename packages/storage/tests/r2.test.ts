@@ -25,11 +25,30 @@ import { Readable } from "node:stream"
 
 import { createR2ObjectStore } from "../src/providers/r2.js"
 import {
-  StorageAuthError,
-  StorageNetworkError,
-  StorageNotFoundError,
-} from "../src/errors.js"
-import type { ObjectMeta } from "../src/object-store.js"
+  asStorageFailure,
+  type ObjectMeta,
+  type StorageFailure,
+} from "../src/object-store.js"
+
+/**
+ * Assert that a thrown value unwraps to a StorageFailure with the
+ * given `_tag`. The wrapped `Error` carries the failure on
+ * `.cause`; the message lives on the Error itself.
+ */
+const expectFailureTag = async (
+  promise: Promise<unknown>,
+  tag: StorageFailure["_tag"],
+): Promise<void> => {
+  try {
+    await promise
+  } catch (err) {
+    const failure = asStorageFailure(err)
+    expect(failure).not.toBeNull()
+    expect(failure!._tag).toBe(tag)
+    return
+  }
+  throw new Error(`Expected promise to reject with ${tag}, but it resolved`)
+}
 
 // We import the SDK exception class via the same path the provider
 // uses, so the test mocks against the real type contract.
@@ -214,31 +233,29 @@ describe("R2ObjectStore — get", () => {
     expect(await store.get("missing")).toBeNull()
   })
 
-  it("throws StorageAuthError on 403", async () => {
+  it("throws StorageAuth on 403", async () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("SignatureDoesNotMatch", 403)
     })
     const store = createR2ObjectStore(baseOpts(client))
-    await expect(store.get("k")).rejects.toBeInstanceOf(StorageAuthError)
+    await expectFailureTag(store.get("k"), "StorageAuth")
   })
 
-  it("throws StorageNetworkError on 5xx", async () => {
+  it("throws StorageNetwork on 5xx", async () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("InternalServerError", 500)
     })
     const store = createR2ObjectStore(baseOpts(client))
-    await expect(store.get("k")).rejects.toBeInstanceOf(StorageNetworkError)
+    await expectFailureTag(store.get("k"), "StorageNetwork")
   })
 
-  it("throws StorageError when the body is missing", async () => {
+  it("throws StorageUnexpected when the body is missing", async () => {
     const { client } = makeFakeClient(() => ({
       Body: undefined,
       $metadata: { httpStatusCode: 200 },
     }))
     const store = createR2ObjectStore(baseOpts(client))
-    await expect(store.get("k")).rejects.toMatchObject({
-      code: "storage.empty_body",
-    })
+    await expectFailureTag(store.get("k"), "StorageUnexpected")
   })
 })
 
@@ -280,24 +297,26 @@ describe("R2ObjectStore — put", () => {
     expect(Buffer.concat(chunks).toString()).toBe("streamed")
   })
 
-  it("throws StorageNetworkError on 404 (PUT 404 = bucket missing, NOT success)", async () => {
+  it("throws StorageMissingBucket on 404 (PUT 404 = bucket missing, NOT success)", async () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("NoSuchBucket", 404)
     })
     const store = createR2ObjectStore(baseOpts(client))
-    await expect(
+    await expectFailureTag(
       store.put("k", new Uint8Array([1, 2, 3])),
-    ).rejects.toBeInstanceOf(StorageNotFoundError)
+      "StorageMissingBucket",
+    )
   })
 
-  it("throws StorageAuthError on 403", async () => {
+  it("throws StorageAuth on 403", async () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("AccessDenied", 403)
     })
     const store = createR2ObjectStore(baseOpts(client))
-    await expect(
+    await expectFailureTag(
       store.put("k", new Uint8Array([1, 2, 3])),
-    ).rejects.toBeInstanceOf(StorageAuthError)
+      "StorageAuth",
+    )
   })
 })
 
@@ -327,12 +346,12 @@ describe("R2ObjectStore — delete", () => {
     await expect(store.delete("k")).resolves.toBeUndefined()
   })
 
-  it("throws StorageAuthError on 403", async () => {
+  it("throws StorageAuth on 403", async () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("InvalidAccessKeyId", 403)
     })
     const store = createR2ObjectStore(baseOpts(client))
-    await expect(store.delete("k")).rejects.toBeInstanceOf(StorageAuthError)
+    await expectFailureTag(store.delete("k"), "StorageAuth")
   })
 })
 
@@ -470,13 +489,16 @@ describe("R2ObjectStore — list", () => {
     expect(out).toEqual([])
   })
 
-  it("throws StorageAuthError on 403", async () => {
+  it("throws StorageAuth on 403", async () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("AccessDenied", 403)
     })
     const store = createR2ObjectStore(baseOpts(client))
-    await expect(async () => {
-      for await (const _ of store.list()) void _
-    }).rejects.toBeInstanceOf(StorageAuthError)
+    await expectFailureTag(
+      (async () => {
+        for await (const _ of store.list()) void _
+      })(),
+      "StorageAuth",
+    )
   })
 })
