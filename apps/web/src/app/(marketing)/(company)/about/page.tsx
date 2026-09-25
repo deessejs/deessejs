@@ -1,8 +1,8 @@
-import Link from "next/link"
 import type { Metadata } from "next"
 
-import { H1, H2 } from "@workspace/ui/components/typography"
 import { Separator } from "@workspace/ui/components/separator"
+
+import { RelatedLinks } from "@/components/pages/_shared/related-links"
 
 export const metadata: Metadata = {
   title: "About",
@@ -56,12 +56,14 @@ export default function AboutPage() {
   return (
     <>
       {/* Hero */}
-      <div className="max-w-5xl mx-auto py-16">
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-16">
       <header className="flex flex-col gap-4 ">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           About
         </p>
-        <H1>The main app.</H1>
+        <h1 className="text-heading-40 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
+          The main app.
+        </h1>
         <p className="text-muted-foreground text-copy-20 leading-7 max-w-3xl [&:not(:first-child)]:mt-0">
           DeesseJS is the main app of the deessejs organization —
           the surface that holds the templates, the contracts, the
@@ -149,58 +151,30 @@ export default function AboutPage() {
       <Separator />
 
       {/* Cross-link CTA */}
-      <nav
-        aria-label="Related pages"
-        className="flex flex-col gap-6"
-      >
-        <H2>Read next</H2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Link
-            href="/manifesto"
-            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
-          >
-            <span className="text-label-14 font-semibold text-foreground">
-              Manifesto
-            </span>
-            <span className="text-copy-13 text-muted-foreground">
-              Why we&apos;re here: the beliefs behind the work.
-            </span>
-          </Link>
-          <Link
-            href="/principles"
-            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
-          >
-            <span className="text-label-14 font-semibold text-foreground">
-              Principles
-            </span>
-            <span className="text-copy-13 text-muted-foreground">
-              How we work, day to day.
-            </span>
-          </Link>
-          <Link
-            href="/vision"
-            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
-          >
-            <span className="text-label-14 font-semibold text-foreground">
-              Vision
-            </span>
-            <span className="text-copy-13 text-muted-foreground">
-              Where this is going next.
-            </span>
-          </Link>
-          <Link
-            href="/ecosystem"
-            className="flex flex-col gap-1 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
-          >
-            <span className="text-label-14 font-semibold text-foreground">
-              Ecosystem
-            </span>
-            <span className="text-copy-13 text-muted-foreground">
-              The sub-domains and shared values.
-            </span>
-          </Link>
-        </div>
-      </nav>
+      <RelatedLinks
+        links={[
+          {
+            label: "Manifesto",
+            href: "/manifesto",
+            body: "Why we're here: the beliefs behind the work.",
+          },
+          {
+            label: "Principles",
+            href: "/principles",
+            body: "How we work, day to day.",
+          },
+          {
+            label: "Vision",
+            href: "/vision",
+            body: "Where this is going next.",
+          },
+          {
+            label: "Ecosystem",
+            href: "/ecosystem",
+            body: "The sub-domains and shared values.",
+          },
+        ]}
+      />
       </div>
     </>
   )
