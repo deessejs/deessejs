@@ -358,9 +358,6 @@ importers:
       '@orpc/server':
         specifier: ^1.14.7
         version: 1.14.7(crossws@0.4.12(srvx@1.0.5))
-      '@workspace/registry-client':
-        specifier: workspace:*
-        version: link:../../packages/registry-client
       better-auth:
         specifier: ^1.6.23
         version: 1.6.23(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@types/pg@8.20.0)(kysely@0.29.2)(pg@8.22.0)(postgres@3.4.9))(next@16.2.10(@playwright/test@1.62.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(pg@8.22.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vitest@2.1.9(@types/node@24.13.2)(lightningcss@1.32.0))
@@ -392,6 +389,9 @@ importers:
       '@workspace/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      '@workspace/registry-client':
+        specifier: workspace:*
+        version: link:../../packages/registry-client
       '@workspace/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
