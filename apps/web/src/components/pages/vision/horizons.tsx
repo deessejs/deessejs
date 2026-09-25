@@ -19,15 +19,20 @@ import { slugify } from "@/lib/company/slugify"
  * because they derive from data, not from textContent
  * mutations.
  *
- * Layout note (deliberate, do not "fix"): the items inside each
- * horizon are stacked vertically, not in a grid. The vertical
- * stack preserves the temporal reading order (each item builds
- * on the previous one in its horizon). A grid would flatten that
- * into equal-weight tiles and break the Now → Next → Beyond
- * progression that the page is built around.
+ * Items flagged `pullQuote: true` render their description
+ * inside a raw `<blockquote>` with a 4px primary left-border
+ * — heavier than the default 2px border-border — instead
+ * of a plain <p>. The package <Blockquote> doesn't accept
+ * className, so this is inlined here. The single pull-quote
+ * per page (the last item of the Beyond horizon — "Templates
+ * that ship themselves") is the strongest quotable line in
+ * the data set.
  *
- * Rhythm: per-horizon section space-y-6, items ul space-y-3,
- * Card space-y-2.
+ * Layout note (deliberate, do not "fix"): the items inside
+ * each horizon are stacked vertically, not in a grid. The
+ * vertical stack preserves the temporal reading order
+ * (Now → Next → Beyond). A grid would flatten that into
+ * equal-weight tiles and break the progression.
  */
 export function Horizons() {
   return (
@@ -56,9 +61,15 @@ export function Horizons() {
                   >
                     {item.title}
                   </h3>
-                  <p className="text-copy-14 text-foreground leading-7">
-                    {item.description}
-                  </p>
+                  {item.pullQuote ? (
+                    <blockquote className="border-l-4 border-primary pl-6 italic text-copy-14 text-foreground leading-7">
+                      {item.description}
+                    </blockquote>
+                  ) : (
+                    <p className="text-copy-14 text-foreground leading-7">
+                      {item.description}
+                    </p>
+                  )}
                 </Card>
               </li>
             ))}
