@@ -1,3 +1,28 @@
 # Local Vale scratch files
 B-RULES.txt
 B-VIOLATIONS.txt
+
+# Node / pnpm
+node_modules/
+.pnpm-store/
+**/node_modules/
+
+# Build artifacts
+**/.next/
+**/dist/
+**/.turbo/
+**/.tsbuildinfo
+
+# Local env
+.env
+.env.local
+.env.*.local
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Test artifacts
+coverage/
+**/coverage/

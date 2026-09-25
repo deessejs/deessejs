@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Check } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 
+import { MarketingPage } from "../_components/marketing-page"
 
 export const metadata: Metadata = {
   title: "Students",
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
  */
 export default function StudentsPage() {
   return (
-    <>
+    <MarketingPage>
       <header className="flex flex-col gap-4">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           Students
@@ -123,6 +124,6 @@ export default function StudentsPage() {
           </a>
         </Button>
       </div>
-    </>
+    </MarketingPage>
   )
 }

@@ -5,15 +5,13 @@ import type { LicenseTypeId } from "@/lib/pricing"
  * so the marketing copy can name them differently than the data slug.
  *
  * - `open-community`  → "MIT"
- * - `professional`    → "Pro"
- * - `agency`          → "Team"
+ * - `per-project`     → "Pro"
  * - `subscription`    → "Pro"
  * - `enterprise`      → "Enterprise"
  */
 export const LICENSE_KICKER: Record<LicenseTypeId, string> = {
   "open-community": "MIT",
-  professional: "Pro",
-  agency: "Team",
+  "per-project": "Pro",
   subscription: "Pro",
   enterprise: "Enterprise",
 }

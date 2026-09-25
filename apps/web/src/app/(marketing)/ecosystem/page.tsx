@@ -6,6 +6,7 @@ import { Card } from "@workspace/ui/components/card"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 
+import { MarketingPage } from "../_components/marketing-page"
 
 export const metadata: Metadata = {
   title: "Ecosystem",
@@ -138,6 +139,7 @@ const SHARED_VALUES: ReadonlyArray<{ title: string; body: string }> = [
 
 export default function EcosystemPage() {
   return (
+    <MarketingPage>
       <div className="mx-auto max-w-4xl py-16">
         {/* Hero */}
         <header className="flex flex-col gap-6">
@@ -303,5 +305,6 @@ export default function EcosystemPage() {
         </div>
       </nav>
       </div>
+    </MarketingPage>
   )
 }

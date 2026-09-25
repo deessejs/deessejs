@@ -4,39 +4,19 @@ import Link from "next/link"
 
 import { Button } from "@workspace/ui/components/button"
 
-import type { LicenseType, LicenseTypeId } from "@/lib/pricing"
+import type { LicenseType } from "@/lib/pricing"
 
 import { usePricingCadence } from "./pricing-cadence-context"
 
 /**
- * Monthly price when the cadence is flipped to `subscription`.
- *
- * Only `subscription` has a monthly figure in the licensing model;
- * other tiers (`open-community`, `per-project`, `enterprise`) keep
- * their one-shot or custom pricing regardless of cadence and bypass
- * the monthly branch below.
+ * Client-only block for the Pro tier card. Reads the shared cadence
+ * from the hero tabs and renders the matching price + CTA. The rest
+ * of the card copy (forWho / positioning / ships) is unchanged
+ * across cadences because the Pro catalog is the same.
  */
-const SUBSCRIPTION_PRICE: Partial<Record<LicenseTypeId, number>> = {
-  subscription: 23,
-}
-
-/**
- * Cadence-aware price + CTA block for the Pro and Agency tier cards.
- *
- * Reads the shared cadence from the hero tabs and renders the
- * matching price (e.g. `$299 one-shot` vs `$23 / month` for Pro,
- * `$799 one-shot` vs `$79 / month` for Agency). The rest of the
- * card copy (forWho / positioning / ships) is unchanged across
- * cadences because the catalog is the same — only the payment
- * cadence changes.
- *
- * Replaces the previous `ProCardPricing` (Pro-only). Agency uses the
- * same toggle and the same component.
- */
-export function TierCardPricing({ license }: { license: LicenseType }) {
+export function ProCardPricing({ license }: { license: LicenseType }) {
   const { cadence } = usePricingCadence()
   const isSubscription = cadence === "subscription"
-  const monthlyPrice = SUBSCRIPTION_PRICE[license.id]
   const href = isSubscription
     ? `${license.cta.href}?cadence=monthly`
     : license.cta.href
@@ -44,23 +24,19 @@ export function TierCardPricing({ license }: { license: LicenseType }) {
 
   return (
     <>
-      {isSubscription && monthlyPrice !== undefined ? (
+      {isSubscription ? (
         <p className="text-heading-32 tracking-tight text-foreground">
-          ${monthlyPrice}
+          $23
           <span className="text-copy-14 ml-2 font-normal text-muted-foreground">
             / month, cancel any time
           </span>
         </p>
-      ) : license.price.kind === "fixed" ? (
+      ) : (
         <p className="text-heading-32 tracking-tight text-foreground">
-          ${license.price.amount}
+          $299
           <span className="text-copy-14 ml-2 font-normal text-muted-foreground">
             one-shot, lifetime
           </span>
-        </p>
-      ) : (
-        <p className="text-heading-32 tracking-tight text-foreground">
-          Custom
         </p>
       )}
 
