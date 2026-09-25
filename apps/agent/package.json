@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@github-tools/eve-extension": "catalog:",
     "ai": "catalog:",
     "eve": "catalog:",
     "vercel-minimax-ai-provider": "catalog:",

@@ -43,6 +43,7 @@ catalog:
   ai: ^7.0.106
   eve: ^0.60.0
   'vercel-minimax-ai-provider': ^0.0.2
+  '@github-tools/eve-extension': ^0.7.1
 
   # Markdown rendering (apps/web — untrusted GitHub READMEs on /templates/[slug])
   react-markdown: ^10.1.0
