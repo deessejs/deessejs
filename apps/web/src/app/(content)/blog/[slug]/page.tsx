@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react"
 import { Separator } from "@workspace/ui/components/separator"
 import { WEB_URL } from "@/lib/urls"
 import { AuthorBio } from "@/components/blog/author-bio"
-import { PostCardGrid } from "@/components/blog/blog-post-grid"
+import { PostCard } from "@/components/blog/post-card"
 import { PostMeta } from "@/components/blog/post-meta"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
 import { TableOfContents } from "@/components/blog/table-of-contents"
@@ -16,6 +16,7 @@ import {
   getRelatedPosts,
 } from "@/lib/blog/posts"
 import { allPosts } from "content-collections"
+import type { Post } from "@/lib/blog/types"
 import { ORG_ID } from "@/lib/seo/organization"
 import { buildPersonJsonLd } from "@/lib/seo/person-jsonld"
 import { jsonLdScript } from "@/lib/json-ld"
@@ -202,7 +203,13 @@ export default async function PostPage(
           <h2 className="mb-6 text-2xl font-semibold tracking-tight">
             Related reading
           </h2>
-          <PostCardGrid posts={related} gridCols="1-2-3" />
+          <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-2 lg:grid-cols-3 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:nth-child(3n)]:lg:border-r-0 [&>li:nth-last-child(-n+2)]:md:border-b-0 [&>li:nth-last-child(-n+3)]:lg:border-b-0 [&>li:first-child]:border-t">
+            {related.map((r: Post) => (
+              <li key={r.slug}>
+                <PostCard post={r} />
+              </li>
+            ))}
+          </ul>
         </section>
       )}
     </article>

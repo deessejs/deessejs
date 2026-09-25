@@ -13,11 +13,8 @@
  */
 
 import { useEffect, useState } from "react"
-import * as m from "motion/react-m"
-import { AnimatePresence } from "motion/react"
+import { AnimatePresence, motion } from "motion/react"
 import { Check, Loader } from "lucide-react"
-
-import { MockupMotionBoundary } from "./motion-boundary"
 
 type AuthPhase = "form" | "loading" | "success"
 
@@ -46,92 +43,90 @@ export function AuthFlowMockup() {
   }, [])
 
   return (
-    <MockupMotionBoundary>
-      <div className="p-4">
-        <div className="mb-3 flex items-center gap-1.5 border-b border-border pb-2">
-          <span className="size-2 rounded-full bg-red-500" aria-hidden />
-          <span className="size-2 rounded-full bg-amber-500" aria-hidden />
-          <span className="size-2 rounded-full bg-emerald-500" aria-hidden />
-          <span className="ml-1 font-mono text-label-12 text-muted-foreground/70">
-            sign-in
-          </span>
-        </div>
+    <div className="p-4">
+      <div className="mb-3 flex items-center gap-1.5 border-b border-border pb-2">
+        <span className="size-2 rounded-full bg-red-500" aria-hidden />
+        <span className="size-2 rounded-full bg-amber-500" aria-hidden />
+        <span className="size-2 rounded-full bg-emerald-500" aria-hidden />
+        <span className="ml-1 font-mono text-label-12 text-muted-foreground/70">
+          sign-in
+        </span>
+      </div>
 
-        <div className="relative flex h-[120px] items-center justify-center p-2">
-          <AnimatePresence mode="wait" initial={false}>
-            {phase === "form" && (
-              <m.div
-                key="form"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.25 }}
-                className="absolute inset-x-2 inset-y-0 flex flex-col gap-2 justify-center"
-              >
-                <TypingField label="email" text="sarah@acme.io" startMs={300} />
-                <TypingField
-                  label="password"
-                  text="hunter22!"
-                  mask
-                  startMs={1100}
-                />
-                <m.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.85, duration: 0.3 }}
-                  className="mt-1 flex items-center justify-end"
-                >
-                  <span className="rounded-sm border border-zinc-800 bg-zinc-950 px-2 py-0.5 font-mono text-label-12 text-zinc-100">
-                    Continue
-                  </span>
-                </m.div>
-              </m.div>
-            )}
-            {phase === "loading" && (
-              <m.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, scale: 0.96 }}
-                transition={{ duration: 0.3 }}
-                className="absolute inset-x-2 inset-y-0 flex flex-col items-center justify-center gap-2"
-              >
-                <Loader
-                  className="size-4 animate-spin text-foreground"
-                  aria-hidden
-                />
-                <span className="font-mono text-label-12 text-muted-foreground">
-                  Signing in...
-                </span>
-              </m.div>
-            )}
-            {phase === "success" && (
-              <m.div
-                key="success"
+      <div className="relative flex h-[120px] items-center justify-center p-2">
+        <AnimatePresence mode="wait" initial={false}>
+          {phase === "form" && (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.25 }}
+              className="absolute inset-x-2 inset-y-0 flex flex-col gap-2 justify-center"
+            >
+              <TypingField label="email" text="sarah@acme.io" startMs={300} />
+              <TypingField
+                label="password"
+                text="hunter22!"
+                mask
+                startMs={1100}
+              />
+              <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute inset-x-2 inset-y-0 flex items-center justify-center gap-2"
+                transition={{ delay: 0.85, duration: 0.3 }}
+                className="mt-1 flex items-center justify-end"
               >
-                <span
+                <span className="rounded-sm border border-zinc-800 bg-zinc-950 px-2 py-0.5 font-mono text-label-12 text-zinc-100">
+                  Continue
+                </span>
+              </motion.div>
+            </motion.div>
+          )}
+          {phase === "loading" && (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-x-2 inset-y-0 flex flex-col items-center justify-center gap-2"
+            >
+              <Loader
+                className="size-4 animate-spin text-foreground"
+                aria-hidden
+              />
+              <span className="font-mono text-label-12 text-muted-foreground">
+                Signing in...
+              </span>
+            </motion.div>
+          )}
+          {phase === "success" && (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-x-2 inset-y-0 flex items-center justify-center gap-2"
+            >
+              <span
+                aria-hidden
+                className="flex size-7 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/15"
+              >
+                <Check
+                  className="size-3.5 text-emerald-500"
+                  strokeWidth={3}
                   aria-hidden
-                  className="flex size-7 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/15"
-                >
-                  <Check
-                    className="size-3.5 text-emerald-500"
-                    strokeWidth={3}
-                    aria-hidden
-                  />
-                </span>
-                <span className="font-mono text-label-13 text-foreground">
-                  Authenticated
-                </span>
-              </m.div>
-            )}
-          </AnimatePresence>
-        </div>
+                />
+              </span>
+              <span className="font-mono text-label-13 text-foreground">
+                Authenticated
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </MockupMotionBoundary>
+    </div>
   )
 }
 

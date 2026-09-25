@@ -1,51 +1,48 @@
 import { defineCollection, defineConfig } from "@content-collections/core"
 import { compileMDX } from "@content-collections/mdx"
 import rehypeShiki from "@shikijs/rehype"
-import type { Element, Root } from "hast"
+import type { Root, Element } from "hast"
 import { visit } from "unist-util-visit"
-import { z } from "zod"
-import readingTime from "reading-time"
 
 /**
- * Build-time rehype plugin that assigns stable `id` attributes to
- * every <h2> and <h3> emitted by the MDX. Without this, the table
- * of contents on the guide / blog / changelog detail pages links
- * to anchors that do not exist in the SSR HTML — clicking a TOC
- * item does nothing on the first paint because the ids are added
- * by a client-side useEffect that runs only after hydration.
+ * Custom rehype plugin (inlined to avoid esbuild import-resolution
+ * issues at content-collections build time). Captures the raw source
+ * text of every fenced code block and stores it in `data-code` and
+ * `data-language` attributes on the `<pre>` element so the runtime
+ * `MdxPre` adapter can re-run shiki via the `CodeBlock` component.
  *
- * Slug rules match the popular `github-slugger` behavior (which we
- * do not have as a dependency): lowercase, dashes for whitespace,
- * drop non-word characters, dedupe by suffixing -1, -2, … when two
- * headings share the same text (e.g. consecutive "What's next").
- *
- * Must run BEFORE @shikijs/rehype so the heading ids are stable when
- * code blocks are highlighted. Runs as a custom plugin below the
- * @shikijs/rehype slot in every rehypePlugins array; cheap (only
- * walks headings, of which there are at most ~20 per doc).
+ * Runs before `rehype-pretty-code` / `@shikijs/rehype` in the
+ * pipeline configured below. Those downstream plugins transform
+ * `<pre><code>` into the syntax-highlighted HTML that the MDX
+ * runtime ships to the browser. The `data-code` and `data-language`
+ * attributes survive the downstream transforms and reach the runtime
+ * as JSX props passed to `mdxComponents.pre({ code, language })`.
  */
-function rehypeHeadingIds() {
+function rehypeStoreRawCode() {
   return (tree: Root) => {
-    const counts = new Map<string, number>()
     visit(tree, "element", (node: Element) => {
-      if (node.tagName !== "h2" && node.tagName !== "h3") return
+      if (node.tagName !== "pre") return
 
-      const existing = node.properties?.id
-      if (typeof existing === "string" && existing.length > 0) {
-        // Editor-supplied id (rare in our MDX) wins.
-        counts.set(existing, (counts.get(existing) ?? 0) + 1)
-        return
-      }
+      const codeNode = node.children.find(
+        (child): child is Element =>
+          child.type === "element" && child.tagName === "code",
+      )
+      if (!codeNode) return
 
-      const text = collectText(node)
-      const base = slugify(text)
-      const seen = counts.get(base) ?? 0
-      counts.set(base, seen + 1)
-      const id = seen === 0 ? base : `${base}-${seen}`
+      const raw = collectText(codeNode).replace(/\n$/, "")
+
+      const classNames = Array.isArray(codeNode.properties?.className)
+        ? ((codeNode.properties.className as string[]) ?? [])
+        : []
+      const langClass = classNames.find(
+        (c: string) => typeof c === "string" && c.startsWith("language-"),
+      )
+      const language = langClass ? langClass.replace("language-", "") : undefined
 
       node.properties = {
-        ...(node.properties ?? {}),
-        id,
+        ...node.properties,
+        "data-code": raw,
+        ...(language ? { "data-language": language } : {}),
       }
     })
   }
@@ -62,16 +59,8 @@ function collectText(node: Element): string {
   }
   return out
 }
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .slice(0, 80)
-}
+import { z } from "zod"
+import readingTime from "reading-time"
 
 const authors = defineCollection({
   name: "authors",
@@ -156,15 +145,14 @@ const posts = defineCollection({
 
     const mdxCode = await compileMDX(context, post, {
       rehypePlugins: [
-        // Build-time Shiki: @shikijs/rehype replaces every fenced
-        // code block in the MDX with the shiki-highlighted HTML
-        // (theme="github-dark", class="shiki shiki-themes …", inline
-        // `color` on token spans). The MDX runtime then renders that
-        // HTML through MdxPre, which only adds the surrounding
-        // border/overflow chrome — no runtime shiki, no client
-        // bundling, no async boundary.
-        [rehypeHeadingIds],
-        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
+        [rehypeStoreRawCode],
+        [
+          rehypeShiki,
+          {
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          },
+        ],
       ],
     })
 
@@ -236,8 +224,14 @@ const releases = defineCollection({
 
     const mdxCode = await compileMDX(context, release, {
       rehypePlugins: [
-        [rehypeHeadingIds],
-        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
+        [rehypeStoreRawCode],
+        [
+          rehypeShiki,
+          {
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          },
+        ],
       ],
     })
 
@@ -269,8 +263,14 @@ const kbTopics = defineCollection({
 
     const mdxCode = await compileMDX(context, topic, {
       rehypePlugins: [
-        [rehypeHeadingIds],
-        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
+        [rehypeStoreRawCode],
+        [
+          rehypeShiki,
+          {
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          },
+        ],
       ],
     })
 
@@ -324,8 +324,14 @@ const kbGuides = defineCollection({
 
     const mdxCode = await compileMDX(context, guide, {
       rehypePlugins: [
-        [rehypeHeadingIds],
-        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
+        [rehypeStoreRawCode],
+        [
+          rehypeShiki,
+          {
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          },
+        ],
       ],
     })
 

@@ -8,9 +8,23 @@ import { TierCardPricing } from "@/app/(marketing)/_components/tier-card-pricing
 import { TierTagline } from "@/app/(marketing)/_components/tier-tagline"
 import type { LicenseType } from "@/lib/pricing"
 
-import { Cell } from "./_shared/cell"
 import { LICENSE_KICKER } from "./license-kicker"
 import { PriceBlock } from "./price-block"
+
+/**
+ * Generic shared-border cell. The wrapper card supplies the outer
+ * borders; cells contribute only their own padding + optional flex
+ * layout. Kept local because pricing-only.
+ */
+function Cell({
+  className,
+  children,
+}: {
+  className?: string
+  children: React.ReactNode
+}) {
+  return <div className={cn("flex flex-col p-6", className)}>{children}</div>
+}
 
 /**
  * License card — kicker + name + tagline + price + bullets + CTA.

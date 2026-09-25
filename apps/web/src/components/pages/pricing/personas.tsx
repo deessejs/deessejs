@@ -1,6 +1,17 @@
-import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
+import { cn } from "@workspace/ui/lib/utils"
 
-import { Cell } from "./_shared/cell"
+/**
+ * Generic shared-border cell. Local to pricing.
+ */
+function Cell({
+  className,
+  children,
+}: {
+  className?: string
+  children: React.ReactNode
+}) {
+  return <div className={cn("flex flex-col p-6", className)}>{children}</div>
+}
 
 /**
  * The four buyers the licensing model is built around. Free-tier floor
@@ -49,24 +60,38 @@ export function Personas() {
             the one closest to you.
           </h2>
         </div>
-        <KbCardGrid className="md:grid-cols-2">
-          {PERSONAS.map((persona) => (
-            <Cell
+        <div className="grid grid-cols-1 md:grid-cols-2 divide-y divide-border md:divide-y-0 md:divide-x">
+          {PERSONAS.map((persona, index) => (
+            <div
               key={persona.label}
-              className="group gap-3 transition-colors hover:bg-accent/40"
+              className={cn(
+                "group border-border transition-colors hover:bg-accent/40",
+                // Mobile: every card except the last gets a bottom border
+                // (the grid's divide-y handles the visual).
+                // Desktop: cards in the first row (Primary, Secondary)
+                // get a bottom border to separate rows 1 and 2; cards
+                // in the second row (Tertiary, Floor) drop it. The
+                // vertical separator between columns is set by the
+                // grid's md:divide-x.
+                "border-b last:border-b-0",
+                index < 2 && "md:border-b",
+                index % 2 === 1 && "md:border-l",
+              )}
             >
-              <span className="text-label-13 font-mono text-muted-foreground">
-                {persona.label}
-              </span>
-              <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
-                {persona.title}
-              </h3>
-              <p className="text-copy-14 text-muted-foreground leading-7 line-clamp-4 [&:not(:first-child)]:mt-0">
-                {persona.body}
-              </p>
-            </Cell>
+              <Cell className="gap-3">
+                <span className="text-label-13 font-mono text-muted-foreground">
+                  {persona.label}
+                </span>
+                <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                  {persona.title}
+                </h3>
+                <p className="text-copy-14 text-muted-foreground leading-7 line-clamp-4 [&:not(:first-child)]:mt-0">
+                  {persona.body}
+                </p>
+              </Cell>
+            </div>
           ))}
-        </KbCardGrid>
+        </div>
       </Cell>
     </div>
   )

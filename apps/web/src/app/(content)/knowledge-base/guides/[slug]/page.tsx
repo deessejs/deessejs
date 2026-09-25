@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
+import Link from "next/link"
 import { allKbGuides, allKbTopics } from "content-collections"
 
 import {
@@ -10,6 +11,10 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
+import { Button } from "@workspace/ui/components/button"
+import { Card } from "@workspace/ui/components/card"
+import { H2 } from "@workspace/ui/components/typography"
+import { Separator } from "@workspace/ui/components/separator"
 
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
 import { TableOfContents } from "@/components/blog/table-of-contents"
@@ -21,6 +26,50 @@ import { ORG_ID } from "@/lib/seo/organization"
 import { jsonLdScript } from "@/lib/json-ld"
 
 type Params = { slug: string }
+
+/**
+ * Per-topic CTA copy. Inline for v1 — promoting `cta` to a
+ * topic frontmatter field is a future ADR if editorial wants
+ * per-topic copy. The fallback below covers any topic that
+ * isn't listed.
+ */
+const TOPIC_CTAS: Record<
+  string,
+  { heading: string; body: string }
+> = {
+  "getting-started": {
+    heading: "Ship your first project",
+    body: "Bootstrap a working preview in under ten minutes. The CLI scaffolds, the templates fill the gaps, and the docs walk you through the rest.",
+  },
+  agents: {
+    heading: "Compose your first agent",
+    body: "Wire a model, a tool registry, and a streaming endpoint. The agent stack ships ready; you bring the prompt.",
+  },
+  deployment: {
+    heading: "Promote to production",
+    body: "Connect the repo, configure environments, run the production-readiness checklist, and ship.",
+  },
+  databases: {
+    heading: "Wire your first migration",
+    body: "Drizzle generates the SQL; CI applies it; the rollback runbook is on standby.",
+  },
+  ui: {
+    heading: "Reskin for your brand",
+    body: "Pick a starting palette, override the semantic tokens, and the rest of the app inherits the change.",
+  },
+  cli: {
+    heading: "Install the CLI",
+    body: "One install, one login, one list command. The registry is the entry point to every template.",
+  },
+  queue: {
+    heading: "Move async work off the request path",
+    body: "Enqueue, run the worker, retry on failure. The queue substrate is already wired.",
+  },
+  observability: {
+    heading: "Capture the three signals",
+    body: "Logs, traces, and metrics. The baseline setup is a one-file install.",
+  },
+}
 
 export function generateStaticParams(): Array<Params> {
   return allKbGuides.map((guide) => ({ slug: guide.slug }))
@@ -88,11 +137,94 @@ export default async function KnowledgeGuidePage({
     )
   }
 
-  const related = getRelatedGuides(slug, 2)
+  const related = getRelatedGuides(slug, 3)
+  const cta = TOPIC_CTAS[topic.slug] ?? {
+    heading: `Explore the ${topic.title} guides`,
+    body: `Browse every guide in the ${topic.title} topic.`,
+  }
 
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
       <article className="mx-auto flex min-w-0 max-w-4xl flex-col gap-10 overflow-x-clip">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: jsonLdScript({
+              "@context": "https://schema.org",
+              "@type": "TechArticle",
+              headline: guide.title,
+              description: guide.description,
+              inLanguage: "en",
+              keywords: guide.products,
+              mainEntityOfPage: {
+                "@type": "WebPage",
+                "@id": guide.url,
+              },
+              url: guide.url,
+              publisher: { "@id": ORG_ID },
+              author: {
+                "@type": "Organization",
+                name: "DeesseJS",
+                "@id": ORG_ID,
+              },
+              // `about` ties the guide to its KB topic as the parent
+              // definedTerm. Crawlers use this to build a topic graph
+              // alongside the BreadcrumbList below.
+              about: {
+                "@type": "DefinedTerm",
+                name: topic.title,
+                url: `/knowledge-base/topics/${topic.slug}`,
+              },
+              // `dependencies` surfaces the PaaS/products the guide
+              // touches. This is the JSON-LD counterpart of the
+              // `GuideProductPill` badges in the header — the visual
+              // representation alone is invisible to crawlers.
+              ...(guide.products.length > 0
+                ? {
+                    dependencies: guide.products.map((product) => ({
+                      "@type": "Service",
+                      name: product,
+                    })),
+                  }
+                : {}),
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: jsonLdScript({
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                {
+                  "@type": "ListItem",
+                  position: 1,
+                  name: "Home",
+                  item: "/",
+                },
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: "Knowledge Base",
+                  item: "/knowledge-base",
+                },
+                {
+                  "@type": "ListItem",
+                  position: 3,
+                  name: topic.title,
+                  item: `/knowledge-base/topics/${topic.slug}`,
+                },
+                {
+                  "@type": "ListItem",
+                  position: 4,
+                  name: guide.title,
+                  item: guide.url,
+                },
+              ],
+            }),
+          }}
+        />
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -127,120 +259,54 @@ export default async function KnowledgeGuidePage({
           </p>
         </header>
 
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_180px] lg:gap-12">
-          <div className="min-w-0">
-            <MdxRenderer id="guide-prose" className="mt-2" code={guide.mdxCode} />
-          </div>
-          <aside aria-label="Table of contents" className="hidden lg:block">
-            <TableOfContents targetId="guide-prose" />
-          </aside>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_180px] lg:gap-12">
+        <div className="min-w-0">
+          <MdxRenderer id="guide-prose" className="mt-2" code={guide.mdxCode} />
         </div>
+        <aside className="hidden lg:block">
+          <TableOfContents targetId="guide-prose" />
+        </aside>
+      </div>
 
-        <section
-          aria-labelledby="similar-guides-heading"
-          className="flex flex-col gap-4"
-        >
-          <h2
-            id="similar-guides-heading"
-            className="text-balance text-3xl font-semibold tracking-tight first:mt-0"
-          >
-            Similar guides
+      <Separator className="my-12" />
+
+      <Card className="flex flex-col gap-4 p-6 sm:p-8">
+        <div className="flex flex-col gap-2">
+          <span className="font-mono text-label-13 uppercase tracking-widest text-muted-foreground">
+            Next steps in {topic.title}
+          </span>
+          <h2 className="text-balance text-2xl font-semibold tracking-tight">
+            {cta.heading}
           </h2>
-          {related.length > 0 ? (
-            <KbCardGrid className="md:grid-cols-2 lg:grid-cols-2">
-              {related.map((relatedGuide) => (
-                <li key={relatedGuide.slug}>
-                  <GuideCard guide={relatedGuide} />
-                </li>
-              ))}
-            </KbCardGrid>
-          ) : (
-            <p className="text-copy-14 text-muted-foreground leading-7">
-              No similar guides in the {topic.title} topic yet.
-            </p>
-          )}
-        </section>
-      </article>
+          <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+            {cta.body}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Button asChild>
+            <Link href={`/knowledge-base/topics/${topic.slug}`}>
+              Browse all {topic.title} guides
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/templates">Start with a template</Link>
+          </Button>
+        </div>
+      </Card>
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: jsonLdScript({
-            "@context": "https://schema.org",
-            "@type": "TechArticle",
-            headline: guide.title,
-            description: guide.description,
-            inLanguage: "en",
-            keywords: guide.products,
-            mainEntityOfPage: {
-              "@type": "WebPage",
-              "@id": guide.url,
-            },
-            url: guide.url,
-            publisher: { "@id": ORG_ID },
-            author: {
-              "@type": "Organization",
-              name: "DeesseJS",
-              "@id": ORG_ID,
-            },
-            // `about` ties the guide to its KB topic as the parent
-            // definedTerm. Crawlers use this to build a topic graph
-            // alongside the BreadcrumbList below.
-            about: {
-              "@type": "DefinedTerm",
-              name: topic.title,
-              url: `/knowledge-base/topics/${topic.slug}`,
-            },
-            // `dependencies` surfaces the PaaS/products the guide
-            // touches. This is the JSON-LD counterpart of the
-            // `GuideProductPill` badges in the header — the visual
-            // representation alone is invisible to crawlers.
-            ...(guide.products.length > 0
-              ? {
-                  dependencies: guide.products.map((product) => ({
-                    "@type": "Service",
-                    name: product,
-                  })),
-                }
-              : {}),
-          }),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: jsonLdScript({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              {
-                "@type": "ListItem",
-                position: 1,
-                name: "Home",
-                item: "/",
-              },
-              {
-                "@type": "ListItem",
-                position: 2,
-                name: "Knowledge Base",
-                item: "/knowledge-base",
-              },
-              {
-                "@type": "ListItem",
-                position: 3,
-                name: topic.title,
-                item: `/knowledge-base/topics/${topic.slug}`,
-              },
-              {
-                "@type": "ListItem",
-                position: 4,
-                name: guide.title,
-                item: guide.url,
-              },
-            ],
-          }),
-        }}
-      />
+      {related.length > 0 ? (
+        <section className="flex flex-col gap-4">
+          <H2>Similar guides</H2>
+          <KbCardGrid>
+            {related.map((relatedGuide) => (
+              <li key={relatedGuide.slug}>
+                <GuideCard guide={relatedGuide} />
+              </li>
+            ))}
+          </KbCardGrid>
+        </section>
+      ) : null}
+      </article>
     </section>
   )
 }

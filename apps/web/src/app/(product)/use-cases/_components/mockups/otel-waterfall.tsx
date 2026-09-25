@@ -11,11 +11,9 @@
  *   - error -> red
  */
 
-import * as m from "motion/react-m"
+import { motion } from "motion/react"
 import { Activity } from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
-
-import { MockupMotionBoundary } from "./motion-boundary"
 
 type OtelRowSpec = {
   indent: number
@@ -41,79 +39,73 @@ const LEVEL_COLOR = {
 
 export function OtelWaterfallMockup() {
   return (
-    <MockupMotionBoundary>
-      <ul className="flex flex-col gap-1.5 p-4 font-mono text-copy-13">
-        <m.li
+    <ul className="flex flex-col gap-1.5 p-4 font-mono text-copy-13">
+      <motion.li
+        initial={{ opacity: 0, x: -8 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.4 }}
+        className="flex flex-col gap-1"
+      >
+        <div className="flex items-center gap-2 text-foreground">
+          <Activity className="size-3" aria-hidden />
+          <span>GET /checkout</span>
+          <span className="ml-auto text-muted-foreground">142ms</span>
+        </div>
+        <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-muted">
+          <motion.div
+            aria-hidden
+            initial={{ width: 0 }}
+            whileInView={{ width: "12%" }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="h-full bg-zinc-400"
+          />
+          <motion.div
+            aria-hidden
+            initial={{ width: 0 }}
+            whileInView={{ width: "32%" }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="h-full bg-zinc-400"
+          />
+          <motion.div
+            aria-hidden
+            initial={{ width: 0 }}
+            whileInView={{ width: "44%" }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="h-full bg-amber-500"
+          />
+          <motion.div
+            aria-hidden
+            initial={{ width: 0 }}
+            whileInView={{ width: "12%" }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.3, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            className="h-full bg-red-500"
+          />
+        </div>
+      </motion.li>
+      {otelRows.slice(1).map((row, i) => (
+        <motion.li
+          key={row.label}
           initial={{ opacity: 0, x: -8 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.4 }}
-          className="flex flex-col gap-1"
+          transition={{ delay: 0.4 + i * 0.12, duration: 0.3 }}
+          className="flex items-center gap-2"
+          style={{ paddingLeft: `${row.indent * 12}px` }}
         >
-          <div className="flex items-center gap-2 text-foreground">
-            <Activity className="size-3" aria-hidden />
-            <span>GET /checkout</span>
-            <span className="ml-auto text-muted-foreground">142ms</span>
-          </div>
-          <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-muted">
-            <m.div
-              aria-hidden
-              initial={{ scaleX: 0 }}
-              whileInView={{ scaleX: 1 }}
-              style={{ transformOrigin: "left center" }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="h-full w-[12%] bg-zinc-400"
-            />
-            <m.div
-              aria-hidden
-              initial={{ scaleX: 0 }}
-              whileInView={{ scaleX: 1 }}
-              style={{ transformOrigin: "left center" }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="h-full w-[32%] bg-zinc-400"
-            />
-            <m.div
-              aria-hidden
-              initial={{ scaleX: 0 }}
-              whileInView={{ scaleX: 1 }}
-              style={{ transformOrigin: "left center" }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="h-full w-[44%] bg-amber-500"
-            />
-            <m.div
-              aria-hidden
-              initial={{ scaleX: 0 }}
-              whileInView={{ scaleX: 1 }}
-              style={{ transformOrigin: "left center" }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.3, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
-              className="h-full w-[12%] bg-red-500"
-            />
-          </div>
-        </m.li>
-        {otelRows.slice(1).map((row, i) => (
-          <m.li
-            key={row.label}
-            initial={{ opacity: 0, x: -8 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.4 + i * 0.12, duration: 0.3 }}
-            className="flex items-center gap-2"
-            style={{ paddingLeft: `${row.indent * 12}px` }}
-          >
-            {row.branch ? (
-              <span className="text-muted-foreground/60">{row.branch}</span>
-            ) : null}
-            <span className={LEVEL_COLOR[row.level]}>{row.label}</span>
-            <span className={cn("ml-auto", LEVEL_COLOR[row.level])}>
-              {row.duration}
-            </span>
-          </m.li>
-        ))}
-      </ul>
-    </MockupMotionBoundary>
+          {row.branch ? (
+            <span className="text-muted-foreground/60">{row.branch}</span>
+          ) : null}
+          <span className={LEVEL_COLOR[row.level]}>{row.label}</span>
+          <span className={cn("ml-auto", LEVEL_COLOR[row.level])}>
+            {row.duration}
+          </span>
+        </motion.li>
+      ))}
+    </ul>
   )
 }

@@ -7,7 +7,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import type { Post } from "@/lib/blog/types"
 
-import { PostCardGrid } from "./blog-post-grid"
+import { BlogPostGrid } from "./blog-post-grid"
 
 /**
  * Client root that owns the search query and renders the input next
@@ -98,7 +98,7 @@ export function BlogSearch({
           </p>
         </div>
       ) : (
-        <PostCardGrid
+        <BlogPostGrid
           posts={filtered}
           featured={isSearching ? undefined : featured}
         />

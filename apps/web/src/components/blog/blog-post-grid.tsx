@@ -1,42 +1,26 @@
 import type { Post } from "@/lib/blog/types"
 
-import { FeaturedRow } from "./featured-row"
 import { PostCard } from "./post-card"
 
 /**
- * Shared `PostCard` grid for every blog surface: `/blog`, `/blog/tag/[tag]`,
- * `/blog/author/[handle]`, and the "Related reading" block on `/blog/[slug]`.
+ * Recipe B post grid for /blog index and the blog-search component.
  *
  * Layout:
- * - Optional featured row at the top, rendered by `FeaturedRow`
- *   (1 column mobile, 2 columns `lg+`). No per-cell `border-b` — the
- *   first row of the main grid supplies the visual divider.
- * - Main grid renders the remaining posts. Responsive column count is
- *   controlled by `gridCols`.
+ * - Optional featured row at the top: 1-2 `<PostCard>` cells in a
+ *   1/2-col grid, separated from the main grid by `border-b`.
+ * - All other posts as standard `<PostCard>` cells in a 1/2/3/4-col
+ *   grid with shared borders.
  *
- * Border strategy (Pattern B — see `.claude/skills/tailwind-borders`):
- * - Outer wrapper `overflow-hidden rounded-xl border border-border
- *   bg-background` is the single source of the visible frame.
- * - Inner `<ul>` shifts by `-mr-px -mb-px` so the last row's bottom and
- *   the last column's right borders are clipped by the wrapper instead
- *   of doubling against it.
- * - Each cell carries `border-b border-r border-border`. No `nth-child`
- *   needed — the negative-margin trick gives us the shared-border
- *   surface for any column count.
+ * The grid relies on Tailwind nth-child selectors to drop the trailing
+ * borders on the rightmost and bottom cells so the grid sits inside a
+ * single shared-border wrapper.
  */
-const GRID_COLS_CLASS: Record<"1-2-3" | "1-2-3-4", string> = {
-  "1-2-3": "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-  "1-2-3-4": "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4",
-}
-
-export function PostCardGrid({
+export function BlogPostGrid({
   posts,
   featured,
-  gridCols = "1-2-3-4",
 }: {
   posts: ReadonlyArray<Post>
   featured?: ReadonlyArray<Post> | undefined
-  gridCols?: "1-2-3" | "1-2-3-4"
 }) {
   if (posts.length === 0 && (!featured || featured.length === 0)) {
     return null
@@ -45,22 +29,36 @@ export function PostCardGrid({
   const featuredSlugs = new Set(featured?.map((p) => p.slug) ?? [])
   const filteredPosts = posts.filter((post) => !featuredSlugs.has(post.slug))
 
-  const mainAriaLabel =
-    featured && featured.length > 0 ? "All blog posts" : "Posts"
-
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-background">
+      {/* 1. Featured row — 1 PostCard on mobile, 2 PostCards on lg+.
+          Each card is a full PostCard so the featured row reads as
+          a hero pair, not a different bespoke layout. */}
       {featured && featured.length > 0 ? (
-        <FeaturedRow featured={featured} />
+        <ul className="grid list-none grid-cols-1 p-0 lg:grid-cols-2">
+          {featured.map((post, index) => (
+            <li
+              key={post.slug}
+              className={
+                index === 0
+                  ? "border-b border-border lg:border-b lg:border-r"
+                  : "border-b border-border"
+              }
+            >
+              <PostCard post={post} featured />
+            </li>
+          ))}
+        </ul>
       ) : null}
 
+      {/* 2. Grille de cartes (Zéro nth-child, zéro double bordure) */}
       {filteredPosts.length > 0 ? (
-        <ul
-          aria-label={mainAriaLabel}
-          className={`-mr-px -mb-px grid list-none p-0 ${GRID_COLS_CLASS[gridCols]}`}
-        >
+        <ul className="-mr-px -mb-px grid list-none grid-cols-1 p-0 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {filteredPosts.map((post) => (
-            <li key={post.slug} className="border-b border-r border-border">
+            <li
+              key={post.slug}
+              className="border-b border-r border-border"
+            >
               <PostCard post={post} />
             </li>
           ))}

@@ -78,7 +78,7 @@ export function PostCard({ post, featured }: { post: Post; featured?: boolean })
                 key={a.handle}
                 className="inline-flex items-center gap-2"
               >
-                <AuthorAvatarLink author={a} size={20} asLink={false} />
+                <AuthorAvatarLink author={a} size={20} />
                 <span className="text-xs text-foreground">{a.name}</span>
                 {a.role ? (
                   <span className="hidden text-xs text-muted-foreground sm:inline">

@@ -2,18 +2,23 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowRight, Boxes, Database, GitBranch, LineChart, Mail } from "lucide-react"
 
-import { clientEnv } from "@workspace/env/client"
-
 import { UseCaseHero } from "../_components/use-case-page"
 import { UseCaseStack } from "../_components/use-case-stack"
 import { CopyCommand } from "../_components/copy-command"
-import { FinalCta } from "@/components/pages/use-cases/final-cta"
 import {
   AndMoreSection,
   type MoreTile,
   SimulatedSection,
 } from "../_components/simulated-section"
-import { TestMockup } from "../_components/mockups/test-mockup"
+import {
+  AdminDashboardMockup,
+  ApiEndpointMockup,
+  AuthFlowMockup,
+  BillingWidgetMockup,
+  CmsEditorMockup,
+  DbTerminalMockup,
+  MultiTenantSwitcherMockup,
+} from "../_components/mockups"
 
 export const metadata: Metadata = {
   title: "SaaS apps | DeesseJS",
@@ -81,9 +86,6 @@ const AND_MORE: ReadonlyArray<MoreTile> = [
 ]
 
 export default function SaasAppsPage() {
-  // Resolve the apps/app signup URL server-side. See FinalCta doc.
-  const signupHref = new URL("/signup", clientEnv.NEXT_PUBLIC_APP_URL).toString()
-
   return (
     <div className="border border-border bg-background rounded-none">
         {/* 1. Hero */}
@@ -111,7 +113,7 @@ export default function SaasAppsPage() {
             "OAuth providers behind the same Better Auth contract",
             "Sessions scoped to orgs, not just users",
           ]}
-          mockup={<TestMockup reverse={false} />}
+          mockup={<AuthFlowMockup />}
         />
 
         {/* 3. Database simulation */}
@@ -124,7 +126,7 @@ export default function SaasAppsPage() {
             "pg-mem for unit tests, no Postgres required",
             "Migration history generated, never hand-edited",
           ]}
-          mockup={<TestMockup reverse={true} />}
+          mockup={<DbTerminalMockup />}
           reverse
         />
 
@@ -138,7 +140,7 @@ export default function SaasAppsPage() {
             "OpenAPI generated from the router",
             "Auth and rate limits applied per procedure",
           ]}
-          mockup={<TestMockup reverse={false} />}
+          mockup={<ApiEndpointMockup />}
         />
 
         {/* 5. Billing simulation */}
@@ -151,7 +153,7 @@ export default function SaasAppsPage() {
             "Usage metering shape matches your contract",
             "Webhook handler typed, ready to extend",
           ]}
-          mockup={<TestMockup reverse={true} />}
+          mockup={<BillingWidgetMockup />}
           reverse
         />
 
@@ -165,7 +167,7 @@ export default function SaasAppsPage() {
             "Preview pane matches production render",
             "Taxonomy wired into search and the KB",
           ]}
-          mockup={<TestMockup reverse={false} />}
+          mockup={<CmsEditorMockup />}
         />
 
         {/* 7. Multi-tenant switcher (roadmap Q4) */}
@@ -178,7 +180,7 @@ export default function SaasAppsPage() {
             "Member roles scoped to the org",
             "Audit log records every cross-org call",
           ]}
-          mockup={<TestMockup reverse={true} />}
+          mockup={<MultiTenantSwitcherMockup />}
           reverse
         />
 
@@ -192,7 +194,7 @@ export default function SaasAppsPage() {
             "User table filters by role and last-seen",
             "Bulk actions hit the same RPC as the API",
           ]}
-          mockup={<TestMockup reverse={false} />}
+          mockup={<AdminDashboardMockup />}
         />
 
         {/* 9. And more - dense grid of remaining capabilities */}
@@ -296,9 +298,6 @@ export default function SaasAppsPage() {
             ))}
           </div>
         </div>
-
-        {/* Final CTA — closing shared-border block (noBorderB) */}
-        <FinalCta signupHref={signupHref} />
       </div>
   )
 }

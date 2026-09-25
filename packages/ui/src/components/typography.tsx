@@ -31,28 +31,22 @@ export function H4({ children }: { children: React.ReactNode }) {
 }
 
 export function P({ children }: { children: React.ReactNode }) {
-  // Spacing is handled by the <MdxRenderer> wrapper's `space-y-6`
-  // between direct children. No per-component margin here — that was
-  // the source of the old alternating mt-6 / 0 / mt-6 spacing that
-  // made the KB guide detail page read as "text glued together".
-  return <p className="leading-7">{children}</p>
+  return (
+    <p className="leading-7 not-first:mt-6">{children}</p>
+  )
 }
 
 export function Blockquote({ children }: { children: React.ReactNode }) {
-  // The wrapper's space-y-* handles vertical rhythm. Inside, the
-  // <blockquote> still carries its left-border and italic style.
   return (
-    <blockquote className="border-l-2 pl-6 italic">{children}</blockquote>
+    <blockquote className="mt-6 border-l-2 pl-6 italic">
+      {children}
+    </blockquote>
   )
 }
 
 export function List({ children }: { children: React.ReactNode }) {
-  // ml-6 + list-disc for the bullet indent. space-y-2 between items
-  // is applied by the article wrapper via [&_ul]:space-y-2, so the
-  // [&>li]:mt-2 override is no longer needed (it would double the
-  // gap now that the parent space-y-* governs).
   return (
-    <ul className="ml-6 list-disc">{children}</ul>
+    <ul className="my-6 ml-6 list-disc [&>li]:mt-2">{children}</ul>
   )
 }
 
@@ -114,8 +108,7 @@ export function Em({ children }: { children: React.ReactNode }) {
 }
 
 export function Hr() {
-  // Wrapper space-y-* handles rhythm. The border color stays.
-  return <hr className="border-border/40" />
+  return <hr className="border-border/40 my-8" />
 }
 
 export function Img({
@@ -132,7 +125,7 @@ export function Img({
       src={src}
       alt={alt ?? ""}
       className={cn(
-        "rounded-lg border border-border/40 max-w-full h-auto",
+        "rounded-lg border border-border/40 my-4 max-w-full h-auto",
         className,
       )}
     />
@@ -141,7 +134,7 @@ export function Img({
 
 export function Table({ children }: { children: React.ReactNode }) {
   return (
-    <div className="w-full overflow-y-auto rounded-lg border">
+    <div className="my-6 w-full overflow-y-auto rounded-lg border">
       <table className="w-full">{children}</table>
     </div>
   )

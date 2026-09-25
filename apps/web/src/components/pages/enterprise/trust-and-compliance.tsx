@@ -1,6 +1,6 @@
-import Link from "next/link"
+import { cn } from "@workspace/ui/lib/utils"
 
-import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
+import Link from "next/link"
 
 import { TRUST_BADGES } from "@/lib/enterprise/trust-badges"
 
@@ -11,14 +11,6 @@ import { TRUST_BADGES } from "@/lib/enterprise/trust-badges"
  * verifiable claim only — no fabricated SOC 2 / ISO 27001
  * badges. The eyebrow + heading pair rides above the grid inside
  * a full-width band, matching the homepage section header recipe.
- *
- * Border strategy (Pattern C from `.claude/skills/tailwind-borders`):
- * the shared `KbCardGrid` paints the wrapper with `bg-border`,
- * lets `gap-px` carry the separator between cells, and per-cell
- * `bg-background` covers the inside. This handles the last-row
- * short-cell case correctly (no dropped right border) and avoids
- * the Pattern A (per-position border-r) arithmetic that the
- * previous divide-* implementation required.
  *
  * Outer `border-b border-border` matches the divider on every
  * other section of the page.
@@ -35,11 +27,15 @@ export function TrustAndCompliance() {
             Procurement paperwork fast-tracked, not stalled.
           </h2>
         </header>
-        <KbCardGrid className="md:grid-cols-3">
-          {TRUST_BADGES.map((badge) => (
-            <div
+        <ul className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-border md:divide-y divide-border">
+          {TRUST_BADGES.map((badge, index) => (
+            <li
               key={badge.label}
-              className="flex flex-col gap-1 bg-background p-5 transition-colors hover:bg-accent/40 lg:p-6"
+              className={cn(
+                "flex flex-col gap-1 p-5 lg:p-6 transition-colors hover:bg-accent/40",
+                index < TRUST_BADGES.length - 1 &&
+                  "md:border-r md:border-border",
+              )}
             >
               <span className="text-heading-16 font-semibold tracking-tight text-foreground">
                 {badge.label}
@@ -53,9 +49,9 @@ export function TrustAndCompliance() {
                   Request
                 </Link>
               </p>
-            </div>
+            </li>
           ))}
-        </KbCardGrid>
+        </ul>
       </div>
     </div>
   )

@@ -15,12 +15,6 @@ function Cell({
   return <div className={cn("flex flex-col p-6", className)}>{children}</div>
 }
 
-const INTAKE_NOTES = [
-  "Your data stays with you. We do not share intake data.",
-  "Mutual NDA available on request. Countersigned within one business day.",
-  "We review your codebase or requirements before the call so we start with solutions.",
-] as const
-
 /**
  * Intake section. 2-col on md+: intro copy + micro-disclosure
  * on the left, sticky form on the right. Anchored by
@@ -45,14 +39,30 @@ export function Intake() {
           technical scoping call.
         </p>
         <ul className="flex flex-col gap-2 text-copy-13 text-muted-foreground">
-          {INTAKE_NOTES.map((note) => (
-            <li key={note} className="flex gap-2">
-              <span aria-hidden className="select-none">
-                •
-              </span>
-              <span>{note}</span>
-            </li>
-          ))}
+          <li className="flex gap-2">
+            <span aria-hidden className="select-none">
+              •
+            </span>
+            <span>Your data stays with you. We do not share intake data.</span>
+          </li>
+          <li className="flex gap-2">
+            <span aria-hidden className="select-none">
+              •
+            </span>
+            <span>
+              Mutual NDA available on request. Countersigned within
+              one business day.
+            </span>
+          </li>
+          <li className="flex gap-2">
+            <span aria-hidden className="select-none">
+              •
+            </span>
+            <span>
+              We review your codebase or requirements before the call
+              so we start with solutions.
+            </span>
+          </li>
         </ul>
       </Cell>
       <Cell className="lg:!p-10 md:sticky md:top-20 md:self-start">

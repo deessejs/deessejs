@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react"
+import type { ReactNode } from "react"
 
 import {
   H1,
@@ -8,6 +8,7 @@ import {
   P,
   Blockquote,
   List,
+  InlineCode,
   Link,
   Strong,
   Em,
@@ -24,25 +25,24 @@ import {
 /**
  * MDX runtime adapter for `<pre>` elements.
  *
- * Shiki runs at build time inside the content-collections pipeline
- * (`@shikijs/rehype` with theme="github-dark"). The resulting HTML
- * already carries the .shiki class, the theme variable, and the
- * per-token inline `color` styles — we just need to wrap it so the
- * visitor sees a border, padding, and a horizontal scroll on
- * overflow. Spreading `{...props}` is what makes this work: the
- * rehype-emitted className, style, and children all pass through.
+ * Renders the shiki-highlighted `<pre>` block (produced by the
+ * build-time rehype pipeline) inside the macOS-dots chrome without
+ * re-running shiki at request time. The shiki output is already
+ * fully styled; we only add a window frame and the traffic-light
+ * dots around it.
  *
- * Adding a fresh <code> here would nest inside the shiki-emitted
- * <code><span>…</span></code> tree, which is why the previous
- * <pre><code>{children}</code></pre> shape broke colors (the inner
- * code ate the inline style of the shiki tokens).
+ * The optional `title` prop comes from the rehype store-code plugin
+ * (when the markdown fenced block had metadata like
+ * ````ts title="x"`); defaults to undefined.
  */
-function MdxPre(props: ComponentProps<"pre">) {
+function MdxPre({
+  children,
+}: {
+  children?: ReactNode
+}) {
   return (
-    <div className="w-full overflow-hidden rounded-md border border-border">
-      <div className="overflow-x-auto p-4 text-sm">
-        <pre {...props} />
-      </div>
+    <div className="bg-background w-full rounded-md p-4 overflow-hidden border border-border">
+      <div className="overflow-x-auto">{children}</div>
     </div>
   )
 }
@@ -65,6 +65,7 @@ export const mdxComponents = {
   blockquote: Blockquote,
   ul: List,
   ol: List,
+  code: InlineCode,
   pre: MdxPre,
   a: Link,
   strong: Strong,

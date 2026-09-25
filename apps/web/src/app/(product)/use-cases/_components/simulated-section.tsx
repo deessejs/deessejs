@@ -74,7 +74,7 @@ export function SimulatedSection({
           reverse ? "lg:order-1" : "lg:order-2",
         )}
       >
-        <div className="relative m-4 overflow-hidden rounded-none border border-border bg-background lg:m-6">
+        <div className="m-4 overflow-hidden rounded-none border border-border bg-background lg:m-6">
           {mockup}
         </div>
       </div>
