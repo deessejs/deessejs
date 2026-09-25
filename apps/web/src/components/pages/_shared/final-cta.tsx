@@ -64,7 +64,7 @@ export function FinalCta({
   return (
     <div
       className={cn(
-        "grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x",
+        "grid grid-cols-1 lg:grid-cols-2 divide-y border-t divide-border lg:divide-y-0 lg:divide-x",
         noBorderB ? "border-b-0" : "border-b border-border",
       )}
     >
@@ -76,7 +76,7 @@ export function FinalCta({
           {title}
         </h2>
         {body ? (
-          <p className="text-copy-16 text-muted-foreground leading-7 max-w-xl [&:not(:first-child)]:mt-0">
+          <p className="text-copy-16 text-muted-foreground leading-7 max-w-md [&:not(:first-child)]:mt-0">
             {body}
           </p>
         ) : null}

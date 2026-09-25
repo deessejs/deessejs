@@ -2,9 +2,12 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
+import { clientEnv } from "@workspace/env/client"
+
 import { UseCaseHero } from "../_components/use-case-page"
 import { UseCaseStack } from "../_components/use-case-stack"
 import { CopyCommand } from "../_components/copy-command"
+import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 export const metadata: Metadata = {
   title: "Mobile backend | DeesseJS",
@@ -51,6 +54,9 @@ const RELATED = [
 ] as const
 
 export default function MobileBackendPage() {
+  // Resolve the apps/app signup URL server-side. See FinalCta doc.
+  const signupHref = new URL("/signup", clientEnv.NEXT_PUBLIC_APP_URL).toString()
+
   return (
     <div className="border border-border bg-background rounded-none">
         <UseCaseHero
@@ -156,6 +162,9 @@ export default function MobileBackendPage() {
             ))}
           </div>
         </div>
+
+        {/* Final CTA — closing shared-border block (noBorderB) */}
+        <FinalCta signupHref={signupHref} />
       </div>
   )
 }

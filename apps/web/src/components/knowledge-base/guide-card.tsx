@@ -6,7 +6,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@workspace/ui/components/card"
 
 import { AuthorAvatarLink } from "@/components/blog/author-avatar"
@@ -71,9 +70,9 @@ export function GuideCard({
               <time dateTime={guide.date}>{guide.date}</time>
             </div>
           ) : null}
-          <CardTitle className="mt-1 text-balance text-xl tracking-tight">
+          <h3 className="mt-1 text-balance text-xl font-medium tracking-tight text-foreground">
             {guide.title}
-          </CardTitle>
+          </h3>
           <CardDescription className="mt-2 line-clamp-3 text-sm text-muted-foreground">
             {guide.description}
           </CardDescription>
@@ -96,6 +95,7 @@ export function GuideCard({
                       handle: guide.author.handle,
                     }}
                     size={20}
+                    asLink={false}
                   />
                   <span className="text-xs text-foreground">
                     {guide.author.name}
@@ -111,7 +111,7 @@ export function GuideCard({
             {guide.readingTime ? (
               <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
-                  <Clock className="size-3" />
+                  <Clock aria-hidden="true" className="size-3" />
                   {guide.readingTime} min read
                 </span>
               </div>

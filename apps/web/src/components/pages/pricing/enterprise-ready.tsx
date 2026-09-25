@@ -1,21 +1,8 @@
 import { Briefcase, FileCheck, ShieldCheck } from "lucide-react"
 
-import { cn } from "@workspace/ui/lib/utils"
-
 import { EnterpriseInquiryForm } from "./enterprise-inquiry-form"
 
-/**
- * Generic shared-border cell. Local to pricing.
- */
-function Cell({
-  className,
-  children,
-}: {
-  className?: string
-  children: React.ReactNode
-}) {
-  return <div className={cn("flex flex-col p-6", className)}>{children}</div>
-}
+import { Cell } from "./_shared/cell"
 
 const PILLARS = [
   {
