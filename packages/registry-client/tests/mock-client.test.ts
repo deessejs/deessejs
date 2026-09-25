@@ -159,13 +159,13 @@ const mockResponder = (req: CapturedRequest): Response => {
 // ---------------------------------------------------------------------------
 
 describe("RegistryClient — mock fetch", () => {
-  it("fetchDescriptor returns Ok for a valid slug", async () => {
+  it("getTemplate returns Ok for a valid slug", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
     const client = createRegistryClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
-    const result = await client.fetchDescriptor("valid-slug")
+    const result = await client.getTemplate("valid-slug")
     expect(result._tag).toBe("Ok")
     if (result._tag === "Ok") {
       expect(result.value.descriptor.name).toBe("valid-template")
@@ -176,78 +176,78 @@ describe("RegistryClient — mock fetch", () => {
     }
   })
 
-  it("fetchDescriptor returns RegistryNotFound on 404", async () => {
+  it("getTemplate returns RegistryNotFound on 404", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
     const client = createRegistryClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
-    const result = await client.fetchDescriptor("unknown-slug")
+    const result = await client.getTemplate("unknown-slug")
     expect(result._tag).toBe("Err")
     if (result._tag === "Err") {
       expect(result.error._tag).toBe("RegistryNotFound")
     }
   })
 
-  it("fetchDescriptor returns RegistryAuthRequired on 401", async () => {
+  it("getTemplate returns RegistryAuthRequired on 401", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
     const client = createRegistryClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
-    const result = await client.fetchDescriptor("gated-slug")
+    const result = await client.getTemplate("gated-slug")
     expect(result._tag).toBe("Err")
     if (result._tag === "Err") {
       expect(result.error._tag).toBe("RegistryAuthRequired")
     }
   })
 
-  it("fetchDescriptor returns RegistryInvalidDescriptor on bad payload", async () => {
+  it("getTemplate returns RegistryInvalidDescriptor on bad payload", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
     const client = createRegistryClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
-    const result = await client.fetchDescriptor("malformed-slug")
+    const result = await client.getTemplate("malformed-slug")
     expect(result._tag).toBe("Err")
     if (result._tag === "Err") {
       expect(result.error._tag).toBe("RegistryInvalidDescriptor")
     }
   })
 
-  it("fetchDescriptor returns RegistryNetworkError on transport failure", async () => {
+  it("getTemplate returns RegistryNetworkError on transport failure", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
     const client = createRegistryClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
-    const result = await client.fetchDescriptor("network-error-slug")
+    const result = await client.getTemplate("network-error-slug")
     expect(result._tag).toBe("Err")
     if (result._tag === "Err") {
       expect(result.error._tag).toBe("RegistryNetworkError")
     }
   })
 
-  it("fetchDescriptor returns RegistryFetchFailed on upstream 5xx", async () => {
+  it("getTemplate returns RegistryFetchFailed on upstream 5xx", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
     const client = createRegistryClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
-    const result = await client.fetchDescriptor("upstream-error-slug")
+    const result = await client.getTemplate("upstream-error-slug")
     expect(result._tag).toBe("Err")
     if (result._tag === "Err") {
       expect(result.error._tag).toBe("RegistryFetchFailed")
     }
   })
 
-  it("listCatalog returns the catalog", async () => {
+  it("listTemplates returns the catalog", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
     const client = createRegistryClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
-    const result = await client.listCatalog()
+    const result = await client.listTemplates()
     expect(result._tag).toBe("Ok")
     if (result._tag === "Ok") {
       expect(result.value).toHaveLength(2)

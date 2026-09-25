@@ -13,9 +13,9 @@ registry HTTP API, validates responses, and exposes a uniform
 Provides a single factory `createRegistryClient` that returns an
 object with two methods:
 
-- `fetchDescriptor(slug, options?)` — resolves a slug to a validated
+- `getTemplate(slug, options?)` — resolves a slug to a validated
   `TemplateV2` plus URLs for each file declared in `descriptor.files[]`.
-- `listCatalog()` — returns the editorial list of available templates.
+- `listTemplates()` — returns the editorial list of available templates.
 
 It does **not** talk to GitHub or R2 directly. The server-side
 registry API handles resolution, source fetching, descriptor
@@ -44,7 +44,7 @@ const client = createRegistryClient({
   apiUrl: "https://app.deessejs.com",
 })
 
-const result = await client.fetchDescriptor("@deessejs/nextjs-saas", {
+const result = await client.getTemplate("@deessejs/nextjs-saas", {
   ref: "v1.4.0",
 })
 
@@ -85,7 +85,7 @@ for (const file of descriptor.files ?? []) {
 ### Listing the catalog
 
 ```ts
-const result = await client.listCatalog()
+const result = await client.listTemplates()
 if (result._tag === "Ok") {
   for (const entry of result.value) {
     console.log(entry.slug, entry.latestVersion, entry.layer)
@@ -129,8 +129,8 @@ export const createRegistryClient: (options: RegistryClientOptions) => RegistryC
 
 // Interface
 export type RegistryClient = {
-  fetchDescriptor: (slug, options?) => Promise<Result<FetchedTemplate, RegistryFailure>>
-  listCatalog: () => Promise<Result<CatalogEntry[], RegistryFailure>>
+  getTemplate: (slug, options?) => Promise<Result<FetchedTemplate, RegistryFailure>>
+  listTemplates: () => Promise<Result<CatalogEntry[], RegistryFailure>>
 }
 
 // Types
@@ -174,6 +174,6 @@ copy or adapt.
 
 ## Versioning
 
-V1 ships with one method (`fetchDescriptor`) returning
+V1 ships with one method (`getTemplate`) returning
 `TemplateV2` plus `Record<path, url>`. The shape may evolve; consumers
 should pin to a specific version of this package.

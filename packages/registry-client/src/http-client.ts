@@ -215,7 +215,7 @@ const parseCatalogResponse = async (
  * errors to `RegistryInvalidDescriptor`. Never throws to the caller —
  * the public SDK API catches here and converts to `Result`.
  */
-export const fetchDescriptorFromApi = async (
+export const getTemplateFromApi = async (
   apiUrl: string,
   slug: string,
   ref: string | undefined,
@@ -241,7 +241,7 @@ export const fetchDescriptorFromApi = async (
 /**
  * Internal: fetch the catalog from the registry API.
  */
-export const listCatalogFromApi = async (
+export const listTemplatesFromApi = async (
   apiUrl: string,
   fetchImpl: typeof fetch,
 ): Promise<Result<readonly CatalogEntry[], RegistryFailure>> => {

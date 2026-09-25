@@ -31,9 +31,9 @@ export const runRegistryContractTests = (
       return client
     }
 
-    it("fetchDescriptor returns Ok with a validated template", async () => {
+    it("getTemplate returns Ok with a validated template", async () => {
       await fresh()
-      const result = await client.fetchDescriptor("valid-slug")
+      const result = await client.getTemplate("valid-slug")
       expect(result._tag).toBe("Ok")
       if (result._tag === "Ok") {
         expect(result.value.descriptor.name).toBeDefined()
@@ -42,75 +42,75 @@ export const runRegistryContractTests = (
       }
     })
 
-    it("fetchDescriptor returns Err RegistryNotFound for an unknown slug", async () => {
+    it("getTemplate returns Err RegistryNotFound for an unknown slug", async () => {
       await fresh()
-      const result = await client.fetchDescriptor("unknown-slug")
+      const result = await client.getTemplate("unknown-slug")
       expect(result._tag).toBe("Err")
       if (result._tag === "Err") {
         expect(result.error._tag).toBe("RegistryNotFound")
       }
     })
 
-    it("fetchDescriptor returns Err RegistryAuthRequired on 401/403", async () => {
+    it("getTemplate returns Err RegistryAuthRequired on 401/403", async () => {
       await fresh()
-      const result = await client.fetchDescriptor("gated-slug")
+      const result = await client.getTemplate("gated-slug")
       expect(result._tag).toBe("Err")
       if (result._tag === "Err") {
         expect(result.error._tag).toBe("RegistryAuthRequired")
       }
     })
 
-    it("fetchDescriptor returns Err RegistryInvalidDescriptor for malformed payloads", async () => {
+    it("getTemplate returns Err RegistryInvalidDescriptor for malformed payloads", async () => {
       await fresh()
-      const result = await client.fetchDescriptor("malformed-slug")
+      const result = await client.getTemplate("malformed-slug")
       expect(result._tag).toBe("Err")
       if (result._tag === "Err") {
         expect(result.error._tag).toBe("RegistryInvalidDescriptor")
       }
     })
 
-    it("fetchDescriptor returns Err RegistryNetworkError on transport failure", async () => {
+    it("getTemplate returns Err RegistryNetworkError on transport failure", async () => {
       await fresh()
-      const result = await client.fetchDescriptor("network-error-slug")
+      const result = await client.getTemplate("network-error-slug")
       expect(result._tag).toBe("Err")
       if (result._tag === "Err") {
         expect(result.error._tag).toBe("RegistryNetworkError")
       }
     })
 
-    it("fetchDescriptor returns Err RegistryFetchFailed on upstream 5xx", async () => {
+    it("getTemplate returns Err RegistryFetchFailed on upstream 5xx", async () => {
       await fresh()
-      const result = await client.fetchDescriptor("upstream-error-slug")
+      const result = await client.getTemplate("upstream-error-slug")
       expect(result._tag).toBe("Err")
       if (result._tag === "Err") {
         expect(result.error._tag).toBe("RegistryFetchFailed")
       }
     })
 
-    it("listCatalog returns Ok with an array of entries", async () => {
+    it("listTemplates returns Ok with an array of entries", async () => {
       await fresh()
-      const result = await client.listCatalog()
+      const result = await client.listTemplates()
       expect(result._tag).toBe("Ok")
       if (result._tag === "Ok") {
         expect(Array.isArray(result.value)).toBe(true)
       }
     })
 
-    it("listCatalog returns Err on transport failure", async () => {
+    it("listTemplates returns Err on transport failure", async () => {
       // Each provider's contract test factory should wire its own
-      // transport-failure simulation for listCatalog. The default
+      // transport-failure simulation for listTemplates. The default
       // mock used by this suite returns Ok for catalog calls, so
       // the assertion is opt-in via the provider's makeClient.
       await fresh()
-      const result = await client.listCatalog()
-      // Smoke test: listCatalog returns Ok or Err, never throws.
+      const result = await client.listTemplates()
+      // Smoke test: listTemplates returns Ok or Err, never throws.
       expect(result._tag === "Ok" || result._tag === "Err").toBe(true)
     })
 
     it("never throws — every method returns a Result", async () => {
       await fresh()
       // Trigger a transport error and assert no throw.
-      const result = await client.fetchDescriptor("network-error-slug")
+      const result = await client.getTemplate("network-error-slug")
       expect(result._tag).toBe("Err")
       expect(asRegistryFailure(new Error("test"))).toBeNull()
     })

@@ -12,8 +12,8 @@
  */
 
 import {
-  fetchDescriptorFromApi,
-  listCatalogFromApi,
+  getTemplateFromApi,
+  listTemplatesFromApi,
 } from "./http-client.js"
 import type {
   FetchedTemplate,
@@ -65,11 +65,11 @@ export const createRegistryClient = (
   const fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis)
 
   return {
-    async fetchDescriptor(
+    async getTemplate(
       slug: string,
       fetchOptions?: FetchOptions,
     ): Promise<Result<FetchedTemplate, RegistryFailure>> {
-      return fetchDescriptorFromApi(
+      return getTemplateFromApi(
         apiUrl,
         slug,
         fetchOptions?.ref,
@@ -77,8 +77,8 @@ export const createRegistryClient = (
       )
     },
 
-    async listCatalog() {
-      return listCatalogFromApi(apiUrl, fetchImpl)
+    async listTemplates() {
+      return listTemplatesFromApi(apiUrl, fetchImpl)
     },
   }
 }

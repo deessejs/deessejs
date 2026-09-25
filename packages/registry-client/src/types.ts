@@ -32,7 +32,7 @@ export type TemplateV2 = TemplateV2FromContracts
 export type ObjectKey = string
 
 /**
- * The result of `fetchDescriptor`: a validated descriptor plus a map
+ * The result of `getTemplate`: a validated descriptor plus a map
  * of `path → URL` for each file declared in `descriptor.files[]`.
  *
  * The SDK does NOT know what those URLs are (GitHub raw in V1,
@@ -50,11 +50,11 @@ export type FetchedTemplate = {
 }
 
 /**
- * A single entry in the catalog returned by `listCatalog`.
+ * A single entry in the catalog returned by `listTemplates`.
  *
  * The catalog is the editorial list of available templates. It's a
  * preview — consumers that need the full descriptor should call
- * `fetchDescriptor(slug)`.
+ * `getTemplate(slug)`.
  */
 export type CatalogEntry = {
   /** Canonical template identifier (e.g. `@deessejs/nextjs-saas`). */
@@ -73,7 +73,7 @@ export type CatalogEntry = {
 }
 
 /**
- * Options for `fetchDescriptor`.
+ * Options for `getTemplate`.
  *
  * `ref` lets callers pin to a specific version (tag, branch, or SHA).
  * When omitted, the server resolves to the latest stable version.
@@ -169,17 +169,17 @@ export const err = <E>(error: E): Result<never, E> => ({
  *
  * The SDK exposes two operations:
  *
- *   - `fetchDescriptor` resolves a slug to a validated descriptor
+ *   - `getTemplate` resolves a slug to a validated descriptor
  *     plus URLs for each file.
- *   - `listCatalog` returns the editorial list of available
+ *   - `listTemplates` returns the editorial list of available
  *     templates (cheap call, no descriptor fetch).
  *
  * Both return `Promise<Result<...>>` — the SDK never throws.
  */
 export type RegistryClient = {
-  readonly fetchDescriptor: (
+  readonly getTemplate: (
     slug: string,
     options?: FetchOptions,
   ) => Promise<Result<FetchedTemplate, RegistryFailure>>
-  readonly listCatalog: () => Promise<Result<readonly CatalogEntry[], RegistryFailure>>
+  readonly listTemplates: () => Promise<Result<readonly CatalogEntry[], RegistryFailure>>
 }

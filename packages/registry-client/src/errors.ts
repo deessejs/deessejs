@@ -39,7 +39,7 @@ export const toRegistryError = (
  *
  * ```
  * try {
- *   await client.fetchDescriptor(slug)
+ *   await client.getTemplate(slug)
  * } catch (err) {
  *   const failure = asRegistryFailure(err)
  *   if (failure?._tag === "RegistryNotFound") { ... }
