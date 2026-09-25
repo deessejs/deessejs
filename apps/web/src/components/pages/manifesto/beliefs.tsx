@@ -1,35 +1,35 @@
 import { Card } from "@workspace/ui/components/card"
 
 import { BELIEFS } from "@/lib/manifesto/beliefs"
+import { slugify } from "@/lib/company/slugify"
 
 /**
  * /manifesto — Beliefs section.
  *
- * Six belief Cards stacked vertically (`space-y-4`). The Card
- * surface replaces the previous plain `<article>` rows so the
- * section reads as six visibly-distinct blocks instead of a
- * wall of similar prose (the previous version was the most
- * "monotonous" of the five pages — commit 13 section 13).
+ * Six belief Cards stacked vertically (`space-y-4`). Each
+ * belief carries an explicit `id` (slugified from the number)
+ * so the page-level <TableOfContents targetId="manifesto-body">
+ * can scroll-spy to the right belief on click. The
+ * <TableOfContents> primitive
+ * (`apps/web/src/components/blog/table-of-contents.tsx`) also
+ * backfills ids via DOM scanning if any are missing — the
+ * explicit ids here keep the anchors stable and human-readable
+ * across re-renders.
  *
- * Each Card carries:
- * - The mono numeric prefix in a top-level visual slot
- *   (text-label-16 font-mono).
- * - The belief title at text-heading-24 (the prior H2 size,
- *   matches the inner header convention across the
- *   app).
- * - The body paragraph at text-copy-16 text-foreground
- *   (commit 6 rebalance — was muted).
- *
- * `space-y-4` between beliefs inside the section is the
- * default intra-card rhythm; the outer `space-y-12` between
- * sections (in `page.tsx`) gives the 48px block-narrative beat
- * that this section is known for.
+ * Six belief values: 01..06. Slugified "01" → "01", "02" → "02",
+ * etc., so the anchors are #01, #02, ... (the page does not
+ * rely on the ids being readable; they exist for <a href="#...">
+ * stability).
  */
 export function Beliefs() {
   return (
     <div className="space-y-4">
       {BELIEFS.map((belief) => (
-        <Card key={belief.number} className="space-y-3 p-6">
+        <Card
+          key={belief.number}
+          id={`belief-${slugify(belief.number)}`}
+          className="space-y-3 p-6"
+        >
           <div className="flex items-baseline gap-4">
             <span className="text-label-16 font-mono text-muted-foreground">
               {belief.number}

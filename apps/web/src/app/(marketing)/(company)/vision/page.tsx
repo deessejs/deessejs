@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 
+import { TableOfContents } from "@/components/blog/table-of-contents"
 import { RelatedLinks } from "@/components/pages/_shared/related-links"
 import { Vision } from "@/components/pages/vision"
 
@@ -18,9 +19,12 @@ export const metadata: Metadata = {
  *   - Next (in flight, expect this quarter)
  *   - Beyond (aspirational, no dates)
  *
- * The `<Separator />` between sections was replaced by
- * `border-b border-border` on each section's wrapper div — same
- * rhythm as every other marketing page.
+ * 2-col layout on lg+: scrollable horizons stack on the left,
+ * sticky <TableOfContents> on the right. The TOC targets the
+ * horizons block (`id="vision-body"`) and discovers both the 3
+ * horizon H2s ("Now" / "Next" / "Beyond") and the 12 item
+ * H3s — same scroll-spy pattern as the blog long-form
+ * template.
  */
 export default function VisionPage() {
   return (
@@ -30,8 +34,16 @@ export default function VisionPage() {
           <Vision.Hero />
         </div>
 
-        <div className="border-b border-border py-16 md:py-20 lg:py-24">
-          <Vision.Horizons />
+        <div className="grid grid-cols-1 gap-12 border-b border-border py-16 md:py-20 lg:py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,16rem)]">
+          <div id="vision-body" className="max-w-3xl space-y-12">
+            <Vision.Horizons />
+          </div>
+
+          <aside className="hidden lg:block">
+            <div className="sticky top-20">
+              <TableOfContents targetId="vision-body" />
+            </div>
+          </aside>
         </div>
 
         <RelatedLinks
