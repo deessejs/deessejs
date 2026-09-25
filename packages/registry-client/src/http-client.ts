@@ -10,7 +10,7 @@
  *   - Catching transport errors (`fetch` `TypeError`) and mapping
  *     them to `RegistryNetworkError`.
  *
- * The public SDK API (`createRegistryClient`) wraps these helpers
+ * The public SDK API (`createClient`) wraps these helpers
  * and re-validates the response against `TemplateV2Schema`.
  */
 

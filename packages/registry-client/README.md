@@ -10,7 +10,7 @@ registry HTTP API, validates responses, and exposes a uniform
 
 ## What this package does
 
-Provides a single factory `createRegistryClient` that returns an
+Provides a single factory `createClient` that returns an
 object with two methods:
 
 - `getTemplate(slug, options?)` — resolves a slug to a validated
@@ -36,11 +36,11 @@ is a thin, typed proxy.
 
 ```ts
 import {
-  createRegistryClient,
+  createClient,
   type FetchedTemplate,
 } from "@workspace/registry-client"
 
-const client = createRegistryClient({
+const client = createClient({
   apiUrl: "https://app.deessejs.com",
 })
 
@@ -125,7 +125,7 @@ type RegistryFailure =
 
 ```ts
 // Factory
-export const createRegistryClient: (options: RegistryClientOptions) => RegistryClient
+export const createClient: (options: RegistryClientOptions) => RegistryClient
 
 // Interface
 export type RegistryClient = {
@@ -145,7 +145,7 @@ export const ok, err, toRegistryError, asRegistryFailure
 Inject a `fetchImpl` to mock the API in unit tests:
 
 ```ts
-import { createRegistryClient } from "@workspace/registry-client"
+import { createClient } from "@workspace/registry-client"
 
 const myMockFetch: typeof fetch = async (url) => {
   if (url.toString().endsWith("/catalog")) {
@@ -154,7 +154,7 @@ const myMockFetch: typeof fetch = async (url) => {
   return new Response(JSON.stringify({ descriptor: {...}, files: {...} }), { status: 200 })
 }
 
-const client = createRegistryClient({
+const client = createClient({
   apiUrl: "https://fake.api",
   fetchImpl: myMockFetch,
 })

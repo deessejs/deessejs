@@ -34,7 +34,7 @@ import type {
  */
 const validateOptions = (options: RegistryClientOptions): void => {
   if (!options.apiUrl || typeof options.apiUrl !== "string") {
-    throw new Error("createRegistryClient: apiUrl is required")
+    throw new Error("createClient: apiUrl is required")
   }
   // Validate URL shape early. `new URL` throws on garbage; we wrap
   // the error so the message is actionable.
@@ -42,7 +42,7 @@ const validateOptions = (options: RegistryClientOptions): void => {
     new URL(options.apiUrl)
   } catch {
     throw new Error(
-      `createRegistryClient: apiUrl is not a valid URL: ${options.apiUrl}`,
+      `createClient: apiUrl is not a valid URL: ${options.apiUrl}`,
     )
   }
 }
@@ -57,7 +57,7 @@ const validateOptions = (options: RegistryClientOptions): void => {
  * errors (network, upstream failure) are returned as
  * `Result.Err` — never thrown.
  */
-export const createRegistryClient = (
+export const createClient = (
   options: RegistryClientOptions,
 ): RegistryClient => {
   validateOptions(options)

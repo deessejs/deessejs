@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from "vitest"
 
-import { createRegistryClient } from "../src/registry.js"
+import { createClient } from "../src/registry.js"
 import { runRegistryContractTests } from "./object-store.contract.js"
 
 // ---------------------------------------------------------------------------
@@ -161,7 +161,7 @@ const mockResponder = (req: CapturedRequest): Response => {
 describe("RegistryClient — mock fetch", () => {
   it("getTemplate returns Ok for a valid slug", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
-    const client = createRegistryClient({
+    const client = createClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
@@ -178,7 +178,7 @@ describe("RegistryClient — mock fetch", () => {
 
   it("getTemplate returns RegistryNotFound on 404", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
-    const client = createRegistryClient({
+    const client = createClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
@@ -191,7 +191,7 @@ describe("RegistryClient — mock fetch", () => {
 
   it("getTemplate returns RegistryAuthRequired on 401", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
-    const client = createRegistryClient({
+    const client = createClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
@@ -204,7 +204,7 @@ describe("RegistryClient — mock fetch", () => {
 
   it("getTemplate returns RegistryInvalidDescriptor on bad payload", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
-    const client = createRegistryClient({
+    const client = createClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
@@ -217,7 +217,7 @@ describe("RegistryClient — mock fetch", () => {
 
   it("getTemplate returns RegistryNetworkError on transport failure", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
-    const client = createRegistryClient({
+    const client = createClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
@@ -230,7 +230,7 @@ describe("RegistryClient — mock fetch", () => {
 
   it("getTemplate returns RegistryFetchFailed on upstream 5xx", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
-    const client = createRegistryClient({
+    const client = createClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
@@ -243,7 +243,7 @@ describe("RegistryClient — mock fetch", () => {
 
   it("listTemplates returns the catalog", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
-    const client = createRegistryClient({
+    const client = createClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })
@@ -257,13 +257,13 @@ describe("RegistryClient — mock fetch", () => {
 
   it("rejects invalid apiUrl at construction", () => {
     expect(() =>
-      createRegistryClient({ apiUrl: "not a url" }),
+      createClient({ apiUrl: "not a url" }),
     ).toThrow(/not a valid URL/)
   })
 
   it("rejects missing apiUrl at construction", () => {
     expect(() =>
-      createRegistryClient({ apiUrl: "" as unknown as string }),
+      createClient({ apiUrl: "" as unknown as string }),
     ).toThrow(/apiUrl is required/)
   })
 })
@@ -276,7 +276,7 @@ describe("RegistryClient — mock fetch", () => {
 runRegistryContractTests("mock-fetch", {
   makeClient: () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
-    return createRegistryClient({
+    return createClient({
       apiUrl: "https://api.example.com",
       fetchImpl,
     })

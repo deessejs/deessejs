@@ -3,7 +3,7 @@
  *
  * Re-exports the symbols consumers need:
  *
- *   - {@link createRegistryClient}: factory for the SDK.
+ *   - {@link createClient}: factory for the SDK.
  *   - {@link RegistryClient}: the interface every client implements.
  *   - Public types: {@link TemplateV2}, {@link FetchedTemplate},
  *     {@link CatalogEntry}, {@link FetchOptions}, {@link Result}.
@@ -17,7 +17,7 @@
  * details belongs here. This barrel is the consumer surface.
  */
 
-export { createRegistryClient } from "./registry.js"
+export { createClient } from "./registry.js"
 
 export type {
   CatalogEntry,
