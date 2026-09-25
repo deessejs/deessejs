@@ -22,7 +22,7 @@ export function FinalCta() {
       noBorderB
       eyebrow="Manifesto"
       title="Read the operating rules."
-      body="Manifesto is the why. Principles is the how. Both are short; both are public."
+      body="Manifesto is the why. Principles is the how. Two short public documents, meant to be read together."
       actions={[
         {
           label: "Read the principles",

@@ -18,7 +18,7 @@ export function FinalCta() {
       noBorderB
       eyebrow="About"
       title="Want to see the templates?"
-      body="All the moving pieces (registry, contracts, CLI, docs) anchor on one surface. Browse the catalog, or talk to a senior engineer about your specific stack."
+      body="All the moving pieces (registry, contracts, CLI, docs) anchor on one surface. Browse the catalog or talk to a senior engineer."
       actions={[
         {
           label: "Browse templates",
