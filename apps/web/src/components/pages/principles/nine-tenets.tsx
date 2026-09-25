@@ -45,7 +45,7 @@ export function NineTenets() {
               <h3 className="text-heading-20 tracking-tight text-foreground">
                 {principle.title}
               </h3>
-              <p className="text-copy-14 text-muted-foreground leading-7">
+              <p className="text-copy-14 text-foreground leading-7">
                 {principle.body}
               </p>
             </Card>
