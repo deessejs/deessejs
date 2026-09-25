@@ -2,14 +2,17 @@
 
 import * as React from "react"
 import {
+  Activity,
   Bell,
   CreditCard,
   Database,
   Layers,
   LineChart,
   Lock,
+  MessageSquare,
   type LucideIcon,
   Workflow,
+  Wrench,
 } from "lucide-react"
 
 import { cn } from "@workspace/ui/lib/utils"
@@ -40,13 +43,16 @@ import { cn } from "@workspace/ui/lib/utils"
 
 /** Icon registry. Add new entries here as the cluster list grows. */
 const ICON_REGISTRY: Record<string, LucideIcon> = {
+  Activity,
   Bell,
   CreditCard,
   Database,
   Layers,
   LineChart,
   Lock,
+  MessageSquare,
   Workflow,
+  Wrench,
 }
 
 export type CapabilityRow = {
