@@ -36,7 +36,6 @@ import { Readable } from "node:stream"
 
 import {
   StorageError,
-  StorageNotFoundError,
 } from "../errors.js"
 import type {
   ObjectBody,
@@ -191,26 +190,60 @@ export class LocalFsObjectStore implements ObjectStore {
   }
 
   async *list(prefix?: ObjectKey): AsyncIterable<ObjectMeta> {
-    const base = prefix !== undefined ? this.resolveKey(prefix) : this.root
+    // Locked contract (see object-store.ts): prefix is a key-prefix
+    // filter, NOT a directory path. list("dir/b") returns keys under
+    // dir/b/, even if dir/b/ is not a directory (or doesn't exist).
+    // This matches R2/S3 semantics where keys are flat strings with
+    // `/` as a separator but no implicit directory hierarchy.
+    //
+    // We walk the entire filesystem recursively and emit every key
+    // whose relative path begins with the normalised prefix.
+    const normalisedPrefix =
+      prefix === undefined
+        ? ""
+        : prefix.endsWith("/")
+          ? prefix
+          : `${prefix}/`
+    yield* this.walk(this.root, "", normalisedPrefix)
+  }
+
+  /**
+   * Recursively walk `dir`. Yields any file whose key (relative to
+   * the configured root, with `/` as separator) starts with
+   * `prefixFilter`. We always descend into subdirectories whose path
+   * is `prefixFilter` or a strict prefix of it (so the walker can
+   * reach keys like `dir/b/x.txt` when the filter is `dir/b/`).
+   */
+  private async *walk(
+    dir: string,
+    relativePrefix: string,
+    prefixFilter: string,
+  ): AsyncIterable<ObjectMeta> {
     let dirents: import("node:fs").Dirent[]
     try {
-      dirents = await fs.readdir(base, { withFileTypes: true })
+      dirents = await fs.readdir(dir, { withFileTypes: true })
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === "ENOENT") return
       throw err
     }
     for (const ent of dirents) {
-      const full = path.join(base, ent.name)
+      const key = relativePrefix === "" ? ent.name : `${relativePrefix}/${ent.name}`
+      const full = path.join(dir, ent.name)
       if (ent.isDirectory()) {
-        // Recurse one level. For nested keys we yield each descendant
-        // recursively. This is acceptable for the local-fs impl
-        // (dev-only, shallow trees); production R2 does its own
-        // server-side listing.
-        yield* this.list(path.relative(this.root, full) as ObjectKey)
-      } else if (ent.isFile()) {
+        // Descend if the directory is on the prefix path (either
+        // matches prefixFilter exactly, or is a strict prefix of it
+        // — i.e. a parent segment of the requested filter).
+        const onPrefixPath =
+          prefixFilter === "" ||
+          key === prefixFilter.slice(0, -1) || // trailing "/" trimmed
+          prefixFilter.startsWith(`${key}/`)
+        if (onPrefixPath) {
+          yield* this.walk(full, key, prefixFilter)
+        }
+      } else if (ent.isFile() && key.startsWith(prefixFilter)) {
         const stat = await fs.stat(full)
         yield {
-          key: path.relative(this.root, full).split(path.sep).join("/"),
+          key,
           size: stat.size,
           lastModified: stat.mtime.toISOString(),
         }

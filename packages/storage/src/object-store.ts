@@ -27,7 +27,12 @@
  * caller chooses a naming scheme (`templates/nextjs-app-router-saas/v1.4.0.json`
  * is the suggested convention but not enforced here).
  */
+// ObjectKey is intentionally a named alias — the consumer-facing
+// name documents intent better than raw `string` at every call
+// site.
+// eslint-disable-next-line sonarjs/redundant-type-aliases
 export type ObjectKey = string
+
 
 /**
  * Metadata returned by `head()` (and surfaced by implementations
@@ -44,9 +49,17 @@ export interface ObjectMeta {
   /** Total object size in bytes. Undefined if the provider doesn't know. */
   readonly size?: number
   /**
-   * Hex-encoded MD5 or SHA-256 of the body. Used for client-side
-   * integrity checks. Different providers use different hash
-   * algorithms; the field stores whatever the provider returned.
+   * Opaque version identifier returned by the provider (R2/S3 `ETag`).
+   *
+   * **DO NOT treat this as a content hash.** S3-compatible ETags are
+   * typically MD5 only for single-part PUTs of small bodies; for
+   * multipart uploads, multi-part objects, or composite operations,
+   * the ETag is a composite identifier that does not match the body
+   * byte-for-byte. If you need integrity verification, hash the body
+   * yourself at write time and store the digest alongside the key.
+   *
+   * Quotes (when present) are part of the raw header; callers should
+   * strip them if comparing against unquoted digests.
    */
   readonly etag?: string
   /** ISO-8601 timestamp of last modification, if known. */
@@ -119,16 +132,30 @@ export interface ObjectStore {
   head(key: ObjectKey): Promise<ObjectMeta | null>
 
   /**
-   * LIST keys under an optional prefix.
+   * LIST keys, optionally filtered by prefix.
    *
    * Returned as an AsyncIterable, not an array, because some
    * providers (R2, S3) paginate and materialising 10k objects in
    * memory would defeat the point of streaming. Consumers process
    * one item at a time and break out when they have enough.
    *
-   * The prefix is included in the returned keys (the consumer doesn't
-   * have to re-prepend it). Sorted or not: unspecified — depends
-   * on the provider.
+   * **`prefix` semantics (locked contract):**
+   *   - `prefix === undefined` → all keys in the bucket/root
+   *   - `prefix === "foo"` → all keys that begin with `"foo/"`
+   *   - `prefix === "foo/"` → all keys that begin with `"foo/"`
+   *     (trailing slash normalised identically)
+   *
+   * The prefix is included in the returned keys (the consumer does
+   * not have to re-prepend it). The prefix is **always** treated as
+   * a key-prefix filter, never as a directory path — `list("dir/b")`
+   * returns keys under `dir/b/`, NOT children of a `dir/b/`
+   * directory. This matches R2/S3 semantics; the local-fs
+   * implementation must honour it.
+   *
+   * Sorting is unspecified — depends on the provider.
+   *
+   * Key encoding (special characters, XML escapes, Unicode) is the
+   * provider's responsibility. Callers receive keys verbatim.
    */
   list(prefix?: ObjectKey): AsyncIterable<ObjectMeta>
 }

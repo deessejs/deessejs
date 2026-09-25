@@ -1,16 +1,15 @@
 /**
  * Tests for LocalFsObjectStore.
  *
- * Covers:
- *   - put/get round-trip for byte-array bodies
- *   - put/get round-trip for stream bodies
- *   - head returns size and mtime when present
- *   - head returns null when absent (no exception)
- *   - get returns null when absent (no exception)
- *   - delete is idempotent (succeeds when absent)
- *   - list streams children with correct keys
- *   - key-traversal defenses reject `..`, absolute paths, empty keys
- *   - atomic-write contract: a crashed write leaves no torn files
+ * Two layers:
+ *
+ *   1. **Contract tests** — the shared suite from
+ *      `./object-store.contract.ts` runs against the local-fs
+ *      provider. These guard against behavioural drift vs the R2
+ *      adapter.
+ *
+ *   2. **local-fs-specific tests** — traversal defenses (absolute,
+ *      `..`, empty keys) and atomic-write guarantees.
  */
 
 import {
@@ -20,16 +19,14 @@ import {
   expect,
   it,
 } from "vitest"
-import { mkdtempSync, rmSync, existsSync, statSync } from "node:fs"
+import { mkdtempSync, rmSync, existsSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { promises as fs } from "node:fs"
 
 import { LocalFsObjectStore } from "../src/providers/local-fs.js"
-import {
-  StorageError,
-  StorageNotFoundError,
-} from "../src/errors.js"
+import { StorageError } from "../src/errors.js"
+import { runObjectStoreContractTests } from "./object-store.contract.js"
 
 let scratch: string
 let store: LocalFsObjectStore
@@ -43,6 +40,13 @@ afterEach(() => {
   rmSync(scratch, { recursive: true, force: true })
 })
 
+runObjectStoreContractTests("local-fs", {
+  makeStore: () => new LocalFsObjectStore({ root: scratch }),
+  cleanup: () => {
+    /* afterEach already removes scratch */
+  },
+})
+
 /** Read a stream to completion and return the bytes. */
 async function readStream(
   stream: ReadableStream<Uint8Array>,
@@ -54,12 +58,14 @@ async function readStream(
     if (done) break
     if (value) chunks.push(value)
   }
-  return new Uint8Array(
-    chunks.reduce<number[]>((acc, c) => {
-      acc.push(...c)
-      return acc
-    }, []),
-  )
+  const total = chunks.reduce((s, c) => s + c.length, 0)
+  const out = new Uint8Array(total)
+  let offset = 0
+  for (const c of chunks) {
+    out.set(c, offset)
+    offset += c.length
+  }
+  return out
 }
 
 /** Compare Uint8Array to expected string byte-by-byte. */
@@ -107,66 +113,26 @@ describe("LocalFsObjectStore — put / get round-trip", () => {
   })
 })
 
-describe("LocalFsObjectStore — head / get / delete", () => {
-  it("head returns metadata when the object exists", async () => {
-    const body = new TextEncoder().encode("hello")
-    await store.put("key.bin", body)
-    const meta = await store.head("key.bin")
-    expect(meta).not.toBeNull()
-    expect(meta!.key).toBe("key.bin")
-    expect(meta!.size).toBe(5)
-    expect(meta!.lastModified).toMatch(/^\d{4}-\d{2}-\d{2}T/)
-  })
+describe("LocalFsObjectStore — list prefix filtering (key-prefix contract)", () => {
+  // The contract tests cover the happy paths. Here we cover the
+  // edge cases specific to local-fs.
 
-  it("head returns null when the object is absent", async () => {
-    const meta = await store.head("does-not-exist")
-    expect(meta).toBeNull()
-  })
-
-  it("get returns null when the object is absent", async () => {
-    const body = await store.get("absent")
-    expect(body).toBeNull()
-  })
-
-  it("delete removes the object", async () => {
-    await store.put("to-delete", new TextEncoder().encode("v"))
-    await store.delete("to-delete")
-    const meta = await store.head("to-delete")
-    expect(meta).toBeNull()
-  })
-
-  it("delete is idempotent on an absent object", async () => {
-    await expect(store.delete("never-existed")).resolves.toBeUndefined()
-  })
-})
-
-describe("LocalFsObjectStore — list", () => {
-  it("streams descendants with forward-slash keys", async () => {
-    await store.put("a.txt", new TextEncoder().encode("a"))
-    await store.put("dir/b.txt", new TextEncoder().encode("b"))
-    await store.put("dir/c.txt", new TextEncoder().encode("c"))
-
+  it("list('a/b/c') returns deeply-nested descendants", async () => {
+    await store.put("a/b/c/d.txt", new TextEncoder().encode("d"))
+    await store.put("a/b/c/e.txt", new TextEncoder().encode("e"))
+    await store.put("a/b/x.txt", new TextEncoder().encode("x"))
     const keys: string[] = []
-    for await (const m of store.list()) keys.push(m.key)
+    for await (const m of store.list("a/b/c")) keys.push(m.key)
     keys.sort()
-    expect(keys).toEqual(["a.txt", "dir/b.txt", "dir/c.txt"])
+    expect(keys).toEqual(["a/b/c/d.txt", "a/b/c/e.txt"])
   })
 
-  it("filters by prefix", async () => {
-    await store.put("a.txt", new TextEncoder().encode("a"))
-    await store.put("dir/b.txt", new TextEncoder().encode("b"))
-    await store.put("dir/c.txt", new TextEncoder().encode("c"))
-
+  it("list('trailing/') with a trailing slash is normalised identically", async () => {
+    await store.put("trailing/x.txt", new TextEncoder().encode("x"))
     const keys: string[] = []
-    for await (const m of store.list("dir")) keys.push(m.key)
+    for await (const m of store.list("trailing/")) keys.push(m.key)
     keys.sort()
-    expect(keys).toEqual(["dir/b.txt", "dir/c.txt"])
-  })
-
-  it("returns zero items under a non-existent prefix", async () => {
-    const keys: string[] = []
-    for await (const m of store.list("does-not-exist")) keys.push(m.key)
-    expect(keys).toEqual([])
+    expect(keys).toEqual(["trailing/x.txt"])
   })
 })
 
@@ -197,17 +163,12 @@ describe("LocalFsObjectStore — key-traversal defenses", () => {
     const watchFile = path.join(parentDir, "leaked.txt")
     try {
       await store.put("../leaked.txt", new TextEncoder().encode("hax"))
-      // If the put somehow succeeded, the leaked file is present.
-      // If it threw, this expect fails the test correctly.
       if (existsSync(watchFile)) {
         throw new Error("PUT escaped the configured root: " + watchFile)
       }
     } catch {
-      // Expected: the key validation throws, or fs.writeFile fails
-      // because the resolved path is outside the root. Either way,
-      // no file leaked.
+      // Expected: the key validation throws.
     } finally {
-      // Cleanup just in case.
       rmSync(watchFile, { force: true })
     }
   })
@@ -215,10 +176,6 @@ describe("LocalFsObjectStore — key-traversal defenses", () => {
 
 describe("LocalFsObjectStore — atomic write contract", () => {
   it("does not leave a torn file at the target when put fails", async () => {
-    // Trigger a write failure at the fs level: pre-create a
-    // *directory* at the target key. fs.writeFile to a path where
-    // a directory already exists fails with EISDIR, which routes
-    // through the same try/catch as a stream failure.
     const blocker = path.join(scratch, "blocker")
     await fs.mkdir(blocker)
 
@@ -226,9 +183,6 @@ describe("LocalFsObjectStore — atomic write contract", () => {
       store.put("blocker", new Uint8Array([1, 2, 3])),
     ).rejects.toThrow()
 
-    // The target key's resolved path is `blocker/`, a directory.
-    // The fs.rename call would have failed before any "torn" file
-    // could land at the target. There is no partial file.
     expect(existsSync(path.join(scratch, "blocker"))).toBe(true)
   })
 
@@ -240,7 +194,6 @@ describe("LocalFsObjectStore — atomic write contract", () => {
       store.put("blocker", new Uint8Array([1, 2, 3])),
     ).rejects.toThrow()
 
-    // Walk the entire tree under scratch and verify no .tmp.* remains.
     const walk = async (dir: string): Promise<string[]> => {
       const out: string[] = []
       const entries = await fs.readdir(dir, { withFileTypes: true })
