@@ -24,16 +24,17 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { promises as fs } from "node:fs"
 
-import { LocalFsObjectStore } from "../src/providers/local-fs.js"
+import { createLocalFsObjectStore } from "../src/providers/local-fs.js"
 import { StorageError } from "../src/errors.js"
 import { runObjectStoreContractTests } from "./object-store.contract.js"
+import type { ObjectStore } from "../src/object-store.js"
 
 let scratch: string
-let store: LocalFsObjectStore
+let store: ObjectStore
 
 beforeEach(() => {
   scratch = mkdtempSync(path.join(tmpdir(), "deessejs-storage-"))
-  store = new LocalFsObjectStore({ root: scratch })
+  store = createLocalFsObjectStore({ root: scratch })
 })
 
 afterEach(() => {
@@ -41,7 +42,7 @@ afterEach(() => {
 })
 
 runObjectStoreContractTests("local-fs", {
-  makeStore: () => new LocalFsObjectStore({ root: scratch }),
+  makeStore: () => createLocalFsObjectStore({ root: scratch }),
   cleanup: () => {
     /* afterEach already removes scratch */
   },

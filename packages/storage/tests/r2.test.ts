@@ -23,7 +23,7 @@ import {
 } from "vitest"
 import { Readable } from "node:stream"
 
-import { R2ObjectStore } from "../src/providers/r2.js"
+import { createR2ObjectStore } from "../src/providers/r2.js"
 import {
   StorageAuthError,
   StorageNetworkError,
@@ -139,18 +139,18 @@ const baseOpts = (client: S3Client) => ({
 describe("R2ObjectStore — constructor", () => {
   it("rejects empty accountId / bucket / creds", () => {
     const { client } = makeFakeClient(() => undefined)
-    expect(() => new R2ObjectStore({ ...baseOpts(client), accountId: "" })).toThrow(/accountId/)
-    expect(() => new R2ObjectStore({ ...baseOpts(client), bucket: "" })).toThrow(/bucket/)
+    expect(() => createR2ObjectStore({ ...baseOpts(client), accountId: "" })).toThrow(/accountId/)
+    expect(() => createR2ObjectStore({ ...baseOpts(client), bucket: "" })).toThrow(/bucket/)
     expect(
       () =>
-        new R2ObjectStore({
+        createR2ObjectStore({
           ...baseOpts(client),
           credentials: { accessKeyId: "", secretAccessKey: "x" },
         }),
     ).toThrow(/accessKeyId/)
     expect(
       () =>
-        new R2ObjectStore({
+        createR2ObjectStore({
           ...baseOpts(client),
           credentials: { accessKeyId: "x", secretAccessKey: "" },
         }),
@@ -158,12 +158,17 @@ describe("R2ObjectStore — constructor", () => {
   })
 
   it("builds a real S3Client when none is injected", () => {
-    const store = new R2ObjectStore({
+    const store = createR2ObjectStore({
       accountId: "acct",
       bucket: "b",
       credentials: { accessKeyId: "AKID", secretAccessKey: "SECRET" },
     })
-    expect(store).toBeInstanceOf(R2ObjectStore)
+    expect(store).toBeDefined()
+    expect(typeof store.put).toBe("function")
+    expect(typeof store.get).toBe("function")
+    expect(typeof store.delete).toBe("function")
+    expect(typeof store.head).toBe("function")
+    expect(typeof store.list).toBe("function")
   })
 })
 
@@ -178,7 +183,7 @@ describe("R2ObjectStore — get", () => {
       Body: stream,
       $metadata: { httpStatusCode: 200 },
     }))
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
 
     const out = await store.get("template.json")
 
@@ -197,7 +202,7 @@ describe("R2ObjectStore — get", () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("NoSuchKey", 404)
     })
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     expect(await store.get("missing")).toBeNull()
   })
 
@@ -205,7 +210,7 @@ describe("R2ObjectStore — get", () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("NotFound", 404)
     })
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     expect(await store.get("missing")).toBeNull()
   })
 
@@ -213,7 +218,7 @@ describe("R2ObjectStore — get", () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("SignatureDoesNotMatch", 403)
     })
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     await expect(store.get("k")).rejects.toBeInstanceOf(StorageAuthError)
   })
 
@@ -221,7 +226,7 @@ describe("R2ObjectStore — get", () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("InternalServerError", 500)
     })
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     await expect(store.get("k")).rejects.toBeInstanceOf(StorageNetworkError)
   })
 
@@ -230,7 +235,7 @@ describe("R2ObjectStore — get", () => {
       Body: undefined,
       $metadata: { httpStatusCode: 200 },
     }))
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     await expect(store.get("k")).rejects.toMatchObject({
       code: "storage.empty_body",
     })
@@ -246,7 +251,7 @@ describe("R2ObjectStore — put", () => {
     const { client, state } = makeFakeClient(() => ({
       $metadata: { httpStatusCode: 200 },
     }))
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     await store.put("k", new TextEncoder().encode("payload"))
 
     expect(state.calls).toHaveLength(1)
@@ -260,7 +265,7 @@ describe("R2ObjectStore — put", () => {
     const { client, state } = makeFakeClient(() => ({
       $metadata: { httpStatusCode: 200 },
     }))
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     const webStream = new ReadableStream({
       start(c) {
         c.enqueue(new TextEncoder().encode("streamed"))
@@ -279,7 +284,7 @@ describe("R2ObjectStore — put", () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("NoSuchBucket", 404)
     })
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     await expect(
       store.put("k", new Uint8Array([1, 2, 3])),
     ).rejects.toBeInstanceOf(StorageNotFoundError)
@@ -289,7 +294,7 @@ describe("R2ObjectStore — put", () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("AccessDenied", 403)
     })
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     await expect(
       store.put("k", new Uint8Array([1, 2, 3])),
     ).rejects.toBeInstanceOf(StorageAuthError)
@@ -305,7 +310,7 @@ describe("R2ObjectStore — delete", () => {
     const { client, state } = makeFakeClient(() => ({
       $metadata: { httpStatusCode: 204 },
     }))
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     await store.delete("k")
 
     expect(state.calls).toHaveLength(1)
@@ -318,7 +323,7 @@ describe("R2ObjectStore — delete", () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("NoSuchKey", 404)
     })
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     await expect(store.delete("k")).resolves.toBeUndefined()
   })
 
@@ -326,7 +331,7 @@ describe("R2ObjectStore — delete", () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("InvalidAccessKeyId", 403)
     })
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     await expect(store.delete("k")).rejects.toBeInstanceOf(StorageAuthError)
   })
 })
@@ -345,7 +350,7 @@ describe("R2ObjectStore — head", () => {
         contentType: "application/json",
       }),
     )
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     const meta = await store.head("k.json")
 
     expect(state.calls).toHaveLength(1)
@@ -363,7 +368,7 @@ describe("R2ObjectStore — head", () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("NoSuchKey", 404)
     })
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     expect(await store.head("missing")).toBeNull()
   })
 
@@ -371,7 +376,7 @@ describe("R2ObjectStore — head", () => {
     const { client } = makeFakeClient(() =>
       headResponse({ etag: '"abc123"', size: 1 }),
     )
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     const meta = await store.head("k")
     expect(meta!.etag).toBe("abc123")
   })
@@ -395,7 +400,7 @@ describe("R2ObjectStore — list", () => {
       KeyCount: 3,
       $metadata: { httpStatusCode: 200 },
     }))
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
 
     const out: ObjectMeta[] = []
     for await (const m of store.list("dir/")) out.push(m)
@@ -429,7 +434,7 @@ describe("R2ObjectStore — list", () => {
       ],
       $metadata: { httpStatusCode: 200 },
     }))
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
 
     const out: ObjectMeta[] = []
     for await (const m of store.list("dir")) out.push(m)
@@ -444,7 +449,7 @@ describe("R2ObjectStore — list", () => {
       Contents: [listObject({ key: "a.json" })],
       $metadata: { httpStatusCode: 200 },
     }))
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
 
     const out: ObjectMeta[] = []
     for await (const m of store.list()) out.push(m)
@@ -459,7 +464,7 @@ describe("R2ObjectStore — list", () => {
       Contents: [],
       $metadata: { httpStatusCode: 200 },
     }))
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     const out: ObjectMeta[] = []
     for await (const _ of store.list("nope/")) void _ // drain
     expect(out).toEqual([])
@@ -469,7 +474,7 @@ describe("R2ObjectStore — list", () => {
     const { client } = makeFakeClient(() => {
       throw s3Exception("AccessDenied", 403)
     })
-    const store = new R2ObjectStore(baseOpts(client))
+    const store = createR2ObjectStore(baseOpts(client))
     await expect(async () => {
       for await (const _ of store.list()) void _
     }).rejects.toBeInstanceOf(StorageAuthError)

@@ -27,7 +27,7 @@ import {
   type _Object,
 } from "@aws-sdk/client-s3"
 
-import { R2ObjectStore } from "../src/providers/r2.js"
+import { createR2ObjectStore } from "../src/providers/r2.js"
 import { runObjectStoreContractTests } from "./object-store.contract.js"
 
 // The bulk of this file's tests are emitted programmatically by
@@ -38,7 +38,7 @@ import { runObjectStoreContractTests } from "./object-store.contract.js"
 describe("R2 contract — in-memory mock sanity", () => {
   it("the mock bucket accepts a put then returns the bytes on get", async () => {
     const { client } = new InMemoryBucket().toClient()
-    const store = new R2ObjectStore({
+    const store = createR2ObjectStore({
       accountId: "fake",
       bucket: "test",
       credentials: { accessKeyId: "AKID", secretAccessKey: "SECRET" },
@@ -156,7 +156,7 @@ function stableEtag(bytes: Uint8Array): string {
 runObjectStoreContractTests("r2 (in-memory mock)", {
   makeStore: () => {
     const { client } = new InMemoryBucket().toClient()
-    return new R2ObjectStore({
+    return createR2ObjectStore({
       accountId: "fake",
       bucket: "test",
       credentials: { accessKeyId: "AKID", secretAccessKey: "SECRET" },

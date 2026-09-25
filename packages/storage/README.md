@@ -32,28 +32,35 @@ parsing + cache + offline). This package is the bytes layer.
 @workspace/storage                       barrel
 @workspace/storage/errors                typed error classes
 @workspace/storage/object-store          ObjectStore interface + types
-@workspace/storage/providers/local-fs   disk-backed impl (dev/test)
-@workspace/storage/providers/r2          Cloudflare R2 impl (prod)
+@workspace/storage/providers/local-fs   createLocalFsObjectStore (dev/test)
+@workspace/storage/providers/r2          createR2ObjectStore (prod)
 ```
 
-`internal/` is not exported. The two providers are imported explicitly at
-the call site so tree-shaking is declarative and there is no provider
+The package is functional at the API boundary: `ObjectStore` is an
+interface whose implementations are objects of async functions (no
+classes for the providers themselves). `S3Client` is the only
+class-shaped value, and it belongs to the SDK at our I/O boundary —
+not to this package.
+
+`internal/` is not exported. The two providers are imported explicitly
+at the call site so tree-shaking is declarative and there is no provider
 registry to leak.
 
 ## Implementations
 
-### `LocalFsObjectStore` — disk-backed
+### `createLocalFsObjectStore(options)` — disk-backed
 
-For dev, CI, and tests. Implements the same `ObjectStore` interface against
-the local filesystem under a configurable root. No credentials, no network.
-Keys are slash-separated paths; `list(prefix)` is a key-prefix filter, not a
+For dev, CI, and tests. Returns an `ObjectStore` whose methods close
+over a resolved `root` directory. No credentials, no network. Keys are
+slash-separated paths; `list(prefix)` is a key-prefix filter, not a
 directory path.
 
-### `R2ObjectStore` — Cloudflare R2
+### `createR2ObjectStore(options)` — Cloudflare R2
 
-For production. A thin adapter over `@aws-sdk/client-s3` configured with
-Cloudflare R2's endpoint (`https://<account>.r2.cloudflarestorage.com`,
-region `"auto"`, service `"s3"`).
+For production. Returns an `ObjectStore` whose methods close over a
+single `S3Client` configured against the R2 endpoint
+(`https://<account>.r2.cloudflarestorage.com`, region `"auto"`,
+service `"s3"`).
 
 The SDK owns:
 - SigV4 signing (correct key encoding — no double-encoding bugs).
@@ -77,21 +84,22 @@ Two test layers run side by side:
 - **`tests/object-store.contract.ts`** — a factory
   `runObjectStoreContractTests(label, factory)` that runs the same suite
   of contract tests against any `ObjectStore` implementation. Both
-  `LocalFsObjectStore` and `R2ObjectStore` (with a mocked `S3Client`) are
-  wired through it, so any future divergence between providers fails the
-  contract suite.
+  `createLocalFsObjectStore` and `createR2ObjectStore` (with a mocked
+  `S3Client`) are wired through it, so any future divergence between
+  providers fails the contract suite.
 
-- **Provider-specific tests** (`local-fs.test.ts`, `r2.test.ts`) — cover
-  details that don't belong in the shared contract: path-traversal
-  defenses and atomic-write guarantees for local-fs; SDK command shape
-  and error mapping for R2.
+- **Provider-specific tests** (`local-fs.test.ts`, `r2.test.ts`,
+  `r2-contract.test.ts`) — cover details that don't belong in the
+  shared contract: path-traversal defenses and atomic-write guarantees
+  for local-fs; SDK command shape and error mapping for R2; the
+  in-memory bucket mock used to run the contract suite against R2.
 
 A real-R2 round-trip integration test belongs to a follow-up PR gated on
 a CI secret.
 
 ## Versioning
 
-V1 ships with `LocalFsObjectStore` and `R2ObjectStore`. New implementations
-are added by creating a new file in `providers/` — never by editing an
-existing provider's wire-level concerns. If you find yourself reaching for
-SigV4 internals or raw HTTP, you are probably duplicating SDK work.
+V1 ships with the local-fs and R2 factories. New implementations are
+added by creating a new file in `providers/` — never by editing an
+existing provider's wire-level concerns. If you find yourself reaching
+for SigV4 internals or raw HTTP, you are probably duplicating SDK work.
