@@ -17,6 +17,7 @@
  */
 import { Contact } from "./contact"
 import { Editor } from "./editor"
+import { FinalCta } from "./final-cta"
 import { Hero } from "./hero"
 import { MainApp } from "./main-app"
 
@@ -25,8 +26,9 @@ export const About = {
   MainApp,
   Editor,
   Contact,
+  FinalCta,
 } as const
 
 // Named re-exports for consumers that want a single component
 // without going through the namespace (e.g. tests, storybook).
-export { Contact, Editor, Hero, MainApp }
+export { Contact, Editor, FinalCta, Hero, MainApp }

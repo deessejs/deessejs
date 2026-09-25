@@ -26,44 +26,48 @@ export const metadata: Metadata = {
  */
 export default function AboutPage() {
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-6 py-16">
-      <About.Hero />
+    <>
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-16">
+        <About.Hero />
 
-      <Separator />
+        <Separator />
 
-      <About.MainApp />
-      <About.Editor />
+        <About.MainApp />
+        <About.Editor />
 
-      <Separator />
+        <Separator />
 
-      <About.Contact />
+        <About.Contact />
 
-      <Separator />
+        <Separator />
 
-      <RelatedLinks
-        links={[
-          {
-            label: "Manifesto",
-            href: "/manifesto",
-            body: "Why we're here: the beliefs behind the work.",
-          },
-          {
-            label: "Principles",
-            href: "/principles",
-            body: "How we work, day to day.",
-          },
-          {
-            label: "Vision",
-            href: "/vision",
-            body: "Where this is going next.",
-          },
-          {
-            label: "Ecosystem",
-            href: "/ecosystem",
-            body: "The sub-domains and shared values.",
-          },
-        ]}
-      />
-    </div>
+        <RelatedLinks
+          links={[
+            {
+              label: "Manifesto",
+              href: "/manifesto",
+              body: "Why we're here: the beliefs behind the work.",
+            },
+            {
+              label: "Principles",
+              href: "/principles",
+              body: "How we work, day to day.",
+            },
+            {
+              label: "Vision",
+              href: "/vision",
+              body: "Where this is going next.",
+            },
+            {
+              label: "Ecosystem",
+              href: "/ecosystem",
+              body: "The sub-domains and shared values.",
+            },
+          ]}
+        />
+      </div>
+
+      <About.FinalCta />
+    </>
   )
 }
