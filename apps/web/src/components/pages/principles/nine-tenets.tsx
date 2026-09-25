@@ -18,6 +18,18 @@ import { PRINCIPLES } from "@/lib/principles/tenets"
  * title is conceptually part of the section block — same as
  * enterprise's <ProcessTimeline> and <TrustAndCompliance> sections
  * that own their inner heading.
+ *
+ * Rhythm:
+ * - The outer section rhythm is `flex flex-col gap-6` (heading
+ *   above the grid; gap-6 between heading and ol).
+ * - The inter-card grid uses `gap-4` (16px).
+ * - The Card is `flex h-full flex-col p-6`; h-full makes the
+ *   card fill its grid cell so visually equal-height cards in
+ *   the same row align body copy. The intra-Card rhythm (number,
+ *   h3, p) is owned by the package Card itself
+ *   (`flex flex-col gap-(--card-spacing)` already at the root,
+ *   which resolves to gap-4 in the default size).
+ * - We add the explicit `p-6` to match the prior override.
  */
 export function NineTenets() {
   return (
@@ -26,14 +38,14 @@ export function NineTenets() {
       <ol className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {PRINCIPLES.map((principle) => (
           <li key={principle.number} className="list-none">
-            <Card className="flex h-full flex-col gap-3 p-6">
+            <Card className="flex h-full flex-col p-6">
               <span className="text-label-13 font-mono text-muted-foreground">
                 {principle.number}
               </span>
-              <h3 className="text-heading-20 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
+              <h3 className="text-heading-20 tracking-tight text-foreground">
                 {principle.title}
               </h3>
-              <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+              <p className="text-copy-14 text-muted-foreground leading-7">
                 {principle.body}
               </p>
             </Card>
