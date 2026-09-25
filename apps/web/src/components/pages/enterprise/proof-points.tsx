@@ -20,7 +20,7 @@ import { PROOF_POINTS } from "@/lib/enterprise/proof-points"
 export function ProofPoints() {
   return (
     <div className="border-b border-border">
-      <KbCardGrid className="md:grid-cols-2">
+      <KbCardGrid className="md:grid-cols-2 lg:!grid-cols-2">
         {PROOF_POINTS.map((point) => (
           <div
             key={point.title}
