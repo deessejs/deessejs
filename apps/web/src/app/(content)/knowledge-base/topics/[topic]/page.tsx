@@ -14,7 +14,6 @@ import { TopicGuideList } from "@/components/knowledge-base/topic-guide-list"
 import { TopicEmptyState } from "@/components/knowledge-base/topic-empty-state"
 import { TopicTagPill } from "@/components/knowledge-base/badges"
 import { ORG_ID } from "@/lib/seo/organization"
-import { jsonLdScript } from "@/lib/json-ld"
 
 type Params = { topic: string }
 
@@ -104,7 +103,7 @@ export default async function KnowledgeTopicPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLdScript({
+          __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "TechArticle",
             headline: topicDoc.title,
@@ -128,7 +127,7 @@ export default async function KnowledgeTopicPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLdScript({
+          __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [

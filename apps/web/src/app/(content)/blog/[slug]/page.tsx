@@ -18,7 +18,6 @@ import {
 import { allPosts } from "content-collections"
 import { ORG_ID } from "@/lib/seo/organization"
 import { buildPersonJsonLd } from "@/lib/seo/person-jsonld"
-import { jsonLdScript } from "@/lib/json-ld"
 
 type Params = { slug: string }
 
@@ -72,7 +71,7 @@ export default async function PostPage(
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLdScript({
+          __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Article",
             headline: post.title,

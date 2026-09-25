@@ -3,7 +3,6 @@ import Link from "next/link"
 import { Check } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 
-import { MarketingPage } from "../_components/marketing-page"
 
 export const metadata: Metadata = {
   title: "Open Source Program",
@@ -22,7 +21,7 @@ export const metadata: Metadata = {
  */
 export default function OssPage() {
   return (
-    <MarketingPage>
+    <>
       <header className="flex flex-col gap-4">
         <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
           Open source
@@ -130,6 +129,6 @@ export default function OssPage() {
           </a>
         </Button>
       </div>
-    </MarketingPage>
+    </>
   )
 }

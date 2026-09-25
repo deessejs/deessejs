@@ -18,7 +18,6 @@ import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
 import { GuideProductPill } from "@/components/knowledge-base/badges"
 import { getRelatedGuides } from "@/lib/knowledge-base/guides"
 import { ORG_ID } from "@/lib/seo/organization"
-import { jsonLdScript } from "@/lib/json-ld"
 
 type Params = { slug: string }
 
@@ -165,7 +164,7 @@ export default async function KnowledgeGuidePage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLdScript({
+          __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "TechArticle",
             headline: guide.title,
@@ -209,7 +208,7 @@ export default async function KnowledgeGuidePage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLdScript({
+          __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [

@@ -25,16 +25,10 @@ const nextConfig: NextConfig = {
     ],
     // Vercel's avatar endpoint returns SVG. The remotePatterns
     // allowlist already restricts to vercel.com/api/www/avatar, so
-    // the only reachable SVG source is one specific endpoint on
-    // vercel.com. To neutralise the active-SVG-exposure risk
-    // (react-doctor/active-static-asset), the CSP below blocks all
-    // script, style, and inline execution inside the served image,
-    // and contentDispositionType forces a download rather than an
-    // inline render. Same trade-off as apps/app/next.config.ts.
+    // this is safe — same rationale as apps/app/next.config.ts.
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
-    contentSecurityPolicy:
-      "default-src 'none'; img-src 'self' https://vercel.com; script-src 'none'; style-src 'none'; sandbox;",
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     // On networks where DNS64/NAT64 resolves external hostnames to
     // private IPv6 ranges, Next.js's SSRF guard incorrectly rejects
     // the optimization request. remotePatterns is locked to

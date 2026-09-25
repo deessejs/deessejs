@@ -16,7 +16,6 @@ import {
 } from "@/lib/blog/releases"
 import type { Post } from "@/lib/blog/types"
 import { ORG_ID } from "@/lib/seo/organization"
-import { jsonLdScript } from "@/lib/json-ld"
 
 type Params = { slug: string }
 
@@ -66,7 +65,7 @@ export default async function ReleasePage(
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLdScript({
+          __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Article",
             headline: `${release.version} — ${release.title}`,
