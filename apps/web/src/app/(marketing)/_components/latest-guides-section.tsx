@@ -199,7 +199,7 @@ export function LatestGuidesSection({
                 className="group flex h-full flex-col border-r border-border transition-colors hover:bg-accent/40"
               >
                 {/* Rotated Shiki hero */}
-                <div className="border-y border-border bg-background p-4">
+                <div className="border-t border-border bg-background p-4">
                   <div
                     aria-hidden
                     data-slot={`hero-${guide.slug}`}
@@ -220,7 +220,7 @@ export function LatestGuidesSection({
                     )}
                   </div>
                 </div>
-                <div className="relative z-10 flex flex-1 flex-col gap-2 bg-background p-6 lg:p-8">
+                <div className="relative z-10 flex flex-1 flex-col gap-2 border-t border-border bg-background p-6 lg:p-8">
                   <h3 className="text-heading-20 tracking-tight text-foreground !m-0 text-balance lg:text-heading-24">
                     {guide.title}
                   </h3>
