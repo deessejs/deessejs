@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Copy } from "lucide-react"
+import { ArrowUpRight } from "lucide-react"
 
 import { Section } from "@/app/(marketing)/_components/section"
 import { CODING_AGENTS } from "@/lib/marketing/home-data"
@@ -78,7 +78,7 @@ export function CodingAgents() {
             ))}
           </span>
           <span className="font-medium">Onboard your agent</span>
-          <Copy
+          <ArrowUpRight
             aria-hidden
             className="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover/cta:text-foreground"
           />
@@ -87,20 +87,29 @@ export function CodingAgents() {
       <div className="border-t border-border">
         <ul className="grid grid-cols-2 divide-y divide-border border-0 sm:grid-cols-3 lg:grid-cols-6 lg:divide-y-0 lg:divide-x">
           {CODING_AGENTS.map((agent) => (
-            <li
-              key={agent.name}
-              className="flex items-center justify-center gap-3 p-6 text-copy-14 font-medium text-foreground lg:p-8"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`/logos/${agent.logo}.svg`}
-                alt=""
-                width={20}
-                height={20}
-                className="size-5 shrink-0 dark:invert"
-                aria-hidden
-              />
-              {agent.name}
+            <li key={agent.name} className="border-0 p-0">
+              <a
+                href={`https://docs.deessejs.com/agents/${agent.docsSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${agent.name} — open the docs.deessejs.com onboarding guide in a new tab`}
+                className="group/card flex h-full items-center justify-center gap-3 p-6 text-copy-14 font-medium text-foreground transition-colors hover:bg-accent/40 lg:p-8"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/logos/${agent.logo}.svg`}
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="size-5 shrink-0 dark:invert"
+                  aria-hidden
+                />
+                {agent.name}
+                <ArrowUpRight
+                  aria-hidden
+                  className="size-3 shrink-0 -translate-x-1 opacity-0 transition-[opacity,transform] duration-150 group-hover/card:translate-x-0 group-hover/card:opacity-100"
+                />
+              </a>
             </li>
           ))}
         </ul>

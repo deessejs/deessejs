@@ -263,15 +263,21 @@ export const INTEGRATIONS: ReadonlyArray<Integration> = [
 export type CodingAgent = {
   name: string
   logo: string
+  /**
+   * Slug used to build the docs.deessejs.com/agents/<docsSlug> URL
+   * rendered on each card. Lowercased display name. Each card links
+   * to the agent-specific onboarding guide on the public docs site.
+   */
+  docsSlug: string
 }
 
 export const CODING_AGENTS: ReadonlyArray<CodingAgent> = [
-  { name: "Claude Code", logo: "claudecode" },
-  { name: "Codex",       logo: "codex" },
-  { name: "Pi",          logo: "pi" },
-  { name: "Cursor",      logo: "cursor" },
-  { name: "Grok",        logo: "grok" },
-  { name: "OpenCode",    logo: "opencode" },
+  { name: "Claude Code", logo: "claudecode", docsSlug: "claude-code" },
+  { name: "Codex",       logo: "codex",      docsSlug: "codex" },
+  { name: "Pi",          logo: "pi",         docsSlug: "pi" },
+  { name: "Cursor",      logo: "cursor",     docsSlug: "cursor" },
+  { name: "Grok",        logo: "grok",       docsSlug: "grok" },
+  { name: "OpenCode",    logo: "opencode",   docsSlug: "opencode" },
 ]
 
 /**
