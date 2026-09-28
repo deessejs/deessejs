@@ -19,12 +19,14 @@ import { SectionHeader } from "@/app/(marketing)/_components/section-header"
  *
  * Combines three responsibilities under a single `"use client"` boundary
  * so the prev/next buttons (which need access to the live carousel state)
- * can sit in the SectionHeader `action` slot at the top-right of the
- * section, while the actual carousel lives below:
+ * can live below the carousel track in their own nav strip, while the
+ * actual carousel sits between the `SectionHeader` and the strip:
  *
- *   1. Render the SectionHeader with prev/next buttons on the right rail.
+ *   1. Render the SectionHeader with a "See all guides" link on the
+ *      RIGHT rail (the eyebrowAction/top-left chevrons stay disabled —
+ *      the buttons live in the nav strip below the carousel).
  *   2. Hold the Embla instance (`carouselApi`) at the boundary so the
- *      header buttons can call `scrollPrev()` / `scrollNext()`.
+ *      buttons can call `scrollPrev()` / `scrollNext()`.
  *   3. Render the carousel track and the guide cards.
  *
  * Buttons carry `rounded-md` (not the default carousel `rounded-full`)
@@ -112,15 +114,8 @@ export function LatestGuidesSection({
     carouselApi?.scrollNext()
   }, [carouselApi])
 
-  const headerActions = (
+  const navStrip = (
     <>
-      <Link
-        href="/knowledge-base"
-        className="mr-2 inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4"
-      >
-        See all guides
-        <ChevronRight className="size-3" aria-hidden />
-      </Link>
       <ChevronButton
         direction="prev"
         disabled={!canScrollPrev}
@@ -136,13 +131,23 @@ export function LatestGuidesSection({
     </>
   )
 
+  const rightAction = (
+    <Link
+      href="/knowledge-base"
+      className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4"
+    >
+      See all guides
+      <ChevronRight className="size-3" aria-hidden />
+    </Link>
+  )
+
   return (
     <>
       <SectionHeader
         eyebrow="Latest guides"
         title=""
         bordered={false}
-        action={headerActions}
+        action={rightAction}
       />
       <Carousel
         opts={{ align: "start", loop: false }}
@@ -186,6 +191,9 @@ export function LatestGuidesSection({
             </CarouselItem>
           ))}
         </CarouselContent>
+        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4 lg:px-10">
+          {navStrip}
+        </div>
       </Carousel>
     </>
   )
