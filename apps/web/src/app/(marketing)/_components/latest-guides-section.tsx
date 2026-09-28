@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useState } from "react"
-import { ArrowLeft, ArrowRight } from "lucide-react"
+import { ArrowLeft, ArrowRight, ChevronRight } from "lucide-react"
 
 import {
   Carousel,
@@ -114,6 +114,13 @@ export function LatestGuidesSection({
 
   const headerActions = (
     <>
+      <Link
+        href="/knowledge-base"
+        className="mr-2 inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4"
+      >
+        See all guides
+        <ChevronRight className="size-3" aria-hidden />
+      </Link>
       <ChevronButton
         direction="prev"
         disabled={!canScrollPrev}
