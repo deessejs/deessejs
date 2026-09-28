@@ -168,12 +168,12 @@ export function Integrations() {
                 />
                 {tech.name}
               </h3>
-              <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
+              <p className="text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {tech.description}
               </p>
               <span
                 aria-hidden
-                className="mt-auto inline-flex items-center gap-1 text-label-13 text-foreground transition-transform duration-150 group-hover/tech:translate-x-0.5"
+                className="mt-auto inline-flex items-center gap-1 text-label-14 text-foreground transition-transform duration-150 group-hover/tech:translate-x-0.5"
               >
                 Learn more <span aria-hidden>→</span>
               </span>
