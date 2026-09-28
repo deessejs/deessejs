@@ -1,23 +1,24 @@
-import { codeToHtml } from "shiki"
-
-import {
-  ECOSYSTEM_SNIPPETS,
-  type EcosystemSlug,
-} from "./ecosystem-snippets"
+import type { EcosystemSlug } from "./ecosystem-snippets"
 
 /**
- * Per-tab code mockup for the homepage Ecosystem section.
+ * Per-tab code mockup chrome for the homepage Ecosystem section.
  *
- * Server Component — runs `shiki` server-side, so the highlighted
- * HTML is produced once per page request and streamed into the React
- * tree without ever shipping `shiki` into the client JS bundle. The
- * dual-theme render (`themes: { light, dark }, defaultColor: false`)
- * relies on the CSS swap in
- * `packages/ui/src/styles/globals.css` (rules around line 169:
- * `html .shiki` -> `var(--shiki-light)`, `html.dark .shiki` -> `var(--shiki-dark)`).
- * The `defaultColor: false` flag is mandatory — without it, Shiki
- * emits inline `color` styles that win over the CSS variables and
- * dark mode would not flip.
+ * Pure presentational component — receives the pre-highlighted HTML
+ * (Shiki, dual-theme) from the parent Server Component and wraps it
+ * in the macOS-style chrome. The parent is responsible for calling
+ * `codeToHtml` (server-side) because Next 16 forbids rendering an
+ * async Server Component as a child of a Client Component: the
+ * `<EcosystemTabs>` is `"use client"` (Radix Tabs), so the snippets
+ * must be rendered up-tree and passed in as plain HTML strings.
+ *
+ * The dual-theme render (`themes: { light: github-light, dark:
+ * github-dark }, defaultColor: false`) relies on the CSS swap in
+ * `packages/ui/src/styles/globals.css` around line 169
+ * (`html .shiki` -> `var(--shiki-light)`,
+ * `html.dark .shiki` -> `var(--shiki-dark)`).
+ * `defaultColor: false` is mandatory — without it, Shiki emits inline
+ * `color` styles that win over the CSS variables and dark mode
+ * would not flip.
  *
  * Chrome mimics a macOS editor window: three coloured dots (red /
  * yellow / green) at the left of the title bar, the filename in
@@ -28,21 +29,25 @@ import {
  * `MdxPre` use `rounded-md` because they live inside a typography
  * container.
  *
- * Intended to be rendered inside `<TabsContent>` of
- * `ecosystem-tabs.tsx` — Radix's tab switching then only toggles
- * `data-state`, no re-rendering of this component.
+ * The `slug` param anchors the visual via `data-slug` on the root
+ * so DOM probes (and tests) can identify which tab the rendered
+ * mockup belongs to without grepping the HTML body.
  */
-export async function EcosystemCodeMockup({ slug }: { slug: EcosystemSlug }) {
-  const { code, lang, tabName } = ECOSYSTEM_SNIPPETS[slug]
-
-  const html = await codeToHtml(code, {
-    lang,
-    themes: { light: "github-light", dark: "github-dark" },
-    defaultColor: false,
-  })
-
+export function EcosystemCodeMockup({
+  slug,
+  tabName,
+  html,
+}: {
+  slug: EcosystemSlug
+  tabName: string
+  /** Pre-highlighted HTML from `shiki.codeToHtml({ ..., defaultColor: false })`. */
+  html: string
+}) {
   return (
-    <div className="bg-background border border-border overflow-hidden rounded-none">
+    <div
+      data-slug={slug}
+      className="bg-background border border-border overflow-hidden rounded-none"
+    >
       <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-background/40">
         <span
           aria-hidden

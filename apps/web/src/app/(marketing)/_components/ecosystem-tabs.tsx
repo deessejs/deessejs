@@ -16,6 +16,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
+import { cn } from "@workspace/ui/lib/utils"
 
 import { EcosystemCodeMockup } from "./ecosystem-code-mockup"
 import type { EcosystemSlug } from "./ecosystem-snippets"
@@ -38,11 +39,13 @@ import type { EcosystemSlug } from "./ecosystem-snippets"
  * Per-product cards on the right are tab triggers (all visible). The
  * active card picks up `bg-accent/40`.
  *
- * The `<EcosystemCodeMockup>` rendered inside each TabsContent is a
- * Server Component (async, calls `shiki` server-side); React renders
- * it as a child of this Client Component via the standard RSC
- * composition pattern, so the highlighted HTML streams at request
- * time and `shiki` never enters the client bundle.
+ * The four mockups are pre-rendered server-side by the parent
+ * `<Ecosystem>` Server Component (which calls `shiki.codeToHtml` once
+ * per snippet) and passed in via the `htmlBySlug` prop. This is
+ * required by Next 16: a Client Component cannot render an async
+ * Server Component as a child, so the highlighted HTML must travel
+ * through the boundary as plain strings instead of as a rendered
+ * subtree.
  */
 
 type EcosystemTab = {
@@ -51,6 +54,16 @@ type EcosystemTab = {
   description: string
   href: string
   icon: LucideIcon
+  /**
+   * When true, the card stays in the list to honour the "four tools"
+   * promise but renders as a passive state: a "Coming soon" pill
+   * next to the title, the TabsTrigger is disabled (Radix's primitive
+   * + shadcn CSS handle `disabled:pointer-events-none opacity-50`),
+   * and the "Learn more" CTA becomes a muted "Coming soon" label
+   * instead of an external link. Today: only Errors and FP ship;
+   * DRPC and Collections light up once their respective packages ship.
+   */
+  comingSoon?: boolean
 }
 
 const ECOSYSTEM_TABS: ReadonlyArray<EcosystemTab> = [
@@ -77,6 +90,7 @@ const ECOSYSTEM_TABS: ReadonlyArray<EcosystemTab> = [
       "Durable RPC for agent workflows. Long-running calls that survive restarts, with retries and replay built in.",
     href: "https://drpc.deessejs.com",
     icon: Radio,
+    comingSoon: true,
   },
   {
     slug: "collections",
@@ -85,10 +99,16 @@ const ECOSYSTEM_TABS: ReadonlyArray<EcosystemTab> = [
       "Type-safe data access with end-to-end inference. The schema is the source of truth, from the database to the client component.",
     href: "https://collections.deessejs.com",
     icon: ListTree,
+    comingSoon: true,
   },
 ]
 
-export function EcosystemTabs() {
+export function EcosystemTabs({
+  htmlBySlug,
+}: {
+  /** Pre-highlighted HTML for each tab's code mockup, keyed by slug. */
+  htmlBySlug: Record<EcosystemSlug, string>
+}) {
   const firstSlug = ECOSYSTEM_TABS[0]?.slug ?? "errors"
 
   return (
@@ -107,31 +127,55 @@ export function EcosystemTabs() {
             <TabsTrigger
               key={tab.slug}
               value={tab.slug}
-              className="group flex flex-col items-start gap-2 rounded-none bg-transparent p-6 text-left h-auto w-full shadow-none border-0
-                text-foreground/60 hover:text-foreground hover:bg-accent/40
-                data-[state=active]:bg-accent/40 data-[state=active]:text-foreground
-                [&:after]:hidden"
+              disabled={tab.comingSoon}
+              aria-disabled={tab.comingSoon || undefined}
+              className={cn(
+                "group flex flex-col items-start gap-2 rounded-none bg-transparent p-6 text-left h-auto w-full shadow-none border-0",
+                "text-foreground/60 hover:text-foreground hover:bg-accent/40",
+                "data-[state=active]:bg-accent/40 data-[state=active]:text-foreground",
+                "[&:after]:hidden",
+                tab.comingSoon &&
+                  "opacity-60 cursor-not-allowed hover:bg-transparent hover:text-foreground/60",
+              )}
             >
-              <div className="flex items-center gap-2">
-                <Icon
-                  className="text-foreground size-4 shrink-0"
-                  aria-hidden
-                />
-                <h3 className="text-heading-20 tracking-tight !m-0">{tab.name}</h3>
+              <div className="flex w-full items-start justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Icon
+                    className="text-foreground size-4 shrink-0"
+                    aria-hidden
+                  />
+                  <h3 className="text-heading-20 tracking-tight !m-0 truncate">
+                    {tab.name}
+                  </h3>
+                </div>
+                {tab.comingSoon ? (
+                  <span
+                    aria-label={`${tab.name} is coming soon`}
+                    className="shrink-0 uppercase tracking-wider font-mono text-[10px] leading-[1.6] text-muted-foreground border border-border rounded-full px-2 py-0.5"
+                  >
+                    Coming soon
+                  </span>
+                ) : null}
               </div>
               <p className="text-copy-14 text-muted-foreground leading-6 !m-0 text-balance">
                 {tab.description}
               </p>
-              <Link
-                href={tab.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4 pt-1"
-                onClick={(event) => event.stopPropagation()}
-              >
-                Learn more
-                <ArrowRight className="size-3" aria-hidden />
-              </Link>
+              {tab.comingSoon ? (
+                <span className="inline-flex items-center gap-1 text-label-13 text-muted-foreground/60 pt-1">
+                  Coming soon
+                </span>
+              ) : (
+                <Link
+                  href={tab.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4 pt-1"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  Learn more
+                  <ArrowRight className="size-3" aria-hidden />
+                </Link>
+              )}
             </TabsTrigger>
           )
         })}
@@ -141,14 +185,14 @@ export function EcosystemTabs() {
         <TabsContent
           key={tab.slug}
           value={tab.slug}
-          className="relative flex-1 outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden"
+          className="relative flex-1 outline-none min-h-[320px] lg:min-h-[480px] mt-0"
         >
-          {/* Mockup anchored to the bottom-right and translated 25%
-              right + 25% down so the visible portion sits in the
-              bottom-right corner with margin in the upper-left. Mirrors
-              the SurfacesTabs pattern. */}
-          <div className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%]">
-            <EcosystemCodeMockup slug={tab.slug} />
+          <div className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] overflow-hidden">
+            <EcosystemCodeMockup
+              slug={tab.slug}
+              tabName={`${tab.slug}.ts`}
+              html={htmlBySlug[tab.slug]}
+            />
           </div>
         </TabsContent>
       ))}
