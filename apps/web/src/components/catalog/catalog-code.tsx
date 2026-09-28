@@ -15,9 +15,9 @@ type Props = {
  * highlighting.
  *
  * Pre-refactor: this file lived as
- * `apps/web/src/app/(marketing)/components/_components/component-code.tsx`
+ * `apps/web/src/app/(product)/components/_components/component-code.tsx`
  * with a near-identical copy at
- * `apps/web/src/app/(marketing)/blocks/_components/code-block.tsx`.
+ * `apps/web/src/app/(product)/blocks/_components/code-block.tsx`.
  * The two files differed only in their JSDoc comment and the
  * exported component name. Both have been deleted; the call sites
  * import `CatalogCode` from here instead.

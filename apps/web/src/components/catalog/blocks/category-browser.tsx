@@ -26,7 +26,7 @@ type Props = {
  * calculation, and the two-column layout (sidebar + grid).
  *
  * Pre-refactor: this lived in
- * `apps/web/src/app/(marketing)/blocks/_components/blocks-category-browser.tsx`
+ * `apps/web/src/app/(product)/blocks/_components/blocks-category-browser.tsx`
  * — moved here to remove the per-surface `_components/`
  * directory.
  */

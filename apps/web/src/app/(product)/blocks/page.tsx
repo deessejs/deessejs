@@ -22,7 +22,7 @@ export const metadata: Metadata = {
  * Pricing, Testimonial, Stats, FAQ, Footer) with a layout-shaped
  * preview.
  *
- * Wrapper + final CTA from `(marketing)/blocks/layout.tsx`.
+ * Wrapper + final CTA from `(product)/blocks/layout.tsx`.
  *
  * Inlined from the previously-separate `BlocksBrowser` and
  * `BlocksCategoryGrid` orchestrators. UI is identical.

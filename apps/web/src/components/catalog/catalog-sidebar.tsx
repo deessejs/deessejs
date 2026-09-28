@@ -32,11 +32,11 @@ type Props<Id extends string> = {
  * right when `counts[id]` is provided.
  *
  * Pre-refactor: this was duplicated across
- * `apps/web/src/app/(marketing)/components/_components/component-list-sidebar.tsx`
- * and `apps/web/src/app/(marketing)/components/_components/component-nav-sidebar.tsx`
+ * `apps/web/src/app/(product)/components/_components/component-list-sidebar.tsx`
+ * and `apps/web/src/app/(product)/components/_components/component-nav-sidebar.tsx`
  * (the two were structurally identical; only the type bindings
  * and JSDoc differed), plus the blocks mirror
- * `apps/web/src/app/(marketing)/blocks/_components/blocks-sidebar.tsx`.
+ * `apps/web/src/app/(product)/blocks/_components/blocks-sidebar.tsx`.
  * All three have been replaced with calls to this component.
  */
 export function CatalogSidebar<Id extends string>({

@@ -34,9 +34,9 @@ type Props = {
  * already shown inline.
  *
  * Pre-refactor: this was duplicated across
- * `apps/web/src/app/(marketing)/components/_components/component-category-nav-sidebar.tsx`
+ * `apps/web/src/app/(product)/components/_components/component-category-nav-sidebar.tsx`
  * and its blocks mirror
- * `apps/web/src/app/(marketing)/blocks/_components/blocks-category-nav-sidebar.tsx`.
+ * `apps/web/src/app/(product)/blocks/_components/blocks-category-nav-sidebar.tsx`.
  * Both have been replaced with calls to this component.
  */
 export function CatalogItemNavSidebar({

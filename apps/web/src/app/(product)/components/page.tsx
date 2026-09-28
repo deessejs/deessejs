@@ -21,7 +21,7 @@ export const metadata: Metadata = {
  * Two-column layout: nav sidebar on the left, category grid on
  * the right. Each grid card is one category (Buttons, Inputs,
  * Badges). The wrapper (border, bg, diagonal stripes) and the
- * final 2-col CTA come from `(marketing)/components/layout.tsx`.
+ * final 2-col CTA come from `(product)/components/layout.tsx`.
  *
  * Inlined from the previously-separate `ComponentBrowser` and
  * `ComponentGrid` orchestrators. UI is identical.

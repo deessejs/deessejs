@@ -12,8 +12,8 @@
  * (these catalogues are static TS literals), so the helper is a
  * pure data-shaping function with no React or runtime deps. It
  * can be called from a Server Component (used by both
- * `(marketing)/components/page.tsx` and
- * `(marketing)/blocks/page.tsx`) or from a Client Component
+ * `(product)/components/page.tsx` and
+ * `(product)/blocks/page.tsx`) or from a Client Component
  * (used by the category browser, where the counts need to be
  * recomputed reactively when `pinned` changes).
  *

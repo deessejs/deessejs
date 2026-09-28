@@ -24,7 +24,7 @@ type Props = {
  * export `generateMetadata` / `generateStaticParams`.
  *
  * Pre-refactor: this lived in
- * `apps/web/src/app/(marketing)/components/_components/component-category-browser.tsx`
+ * `apps/web/src/app/(product)/components/_components/component-category-browser.tsx`
  * — moved here to remove the per-surface `_components/`
  * directory.
  */
