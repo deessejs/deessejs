@@ -4,12 +4,20 @@ import * as React from "react"
 import {
   Activity,
   Bell,
+  BellRing,
   CreditCard,
   Database,
+  FileCode,
+  GitBranch,
   Layers,
   LineChart,
   Lock,
   MessageSquare,
+  Package,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  Users,
   type LucideIcon,
   Workflow,
   Wrench,
@@ -41,16 +49,33 @@ import { cn } from "@workspace/ui/lib/utils"
  * while the registry resolves to a lucide component on the client.
  */
 
-/** Icon registry. Add new entries here as the cluster list grows. */
+/**
+ * Icon registry. Add new entries here as the cluster list grows.
+ *
+ * The 8 entries beyond the original 10 were added when mobile-backend
+ * and open-source were migrated to the 4-cluster pattern:
+ *   - BellRing, FileCode, GitBranch, Package, RefreshCw, Users
+ *     serve those two surfaces.
+ *   - ShieldCheck + Sparkles were already referenced by landing-pages
+ *     but were silently missing — they now render.
+ */
 const ICON_REGISTRY: Record<string, LucideIcon> = {
   Activity,
   Bell,
+  BellRing,
   CreditCard,
   Database,
+  FileCode,
+  GitBranch,
   Layers,
   LineChart,
   Lock,
   MessageSquare,
+  Package,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  Users,
   Workflow,
   Wrench,
 }
