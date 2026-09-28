@@ -220,7 +220,7 @@ export function LatestGuidesSection({
                     )}
                   </div>
                 </div>
-                <div className="flex flex-1 flex-col gap-2 p-6 lg:p-8">
+                <div className="relative z-10 flex flex-1 flex-col gap-2 bg-background p-6 lg:p-8">
                   <h3 className="text-heading-20 tracking-tight text-foreground !m-0 text-balance lg:text-heading-24">
                     {guide.title}
                   </h3>
