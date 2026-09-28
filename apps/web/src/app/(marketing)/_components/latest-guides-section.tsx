@@ -1,0 +1,178 @@
+"use client"
+
+import Link from "next/link"
+import { useCallback, useState } from "react"
+import { ArrowLeft, ArrowRight } from "lucide-react"
+
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@workspace/ui/components/carousel"
+import { cn } from "@workspace/ui/lib/utils"
+
+import { SectionHeader } from "@/app/(marketing)/_components/section-header"
+
+/**
+ * Client wrapper for the homepage LatestGuides section.
+ *
+ * Combines three responsibilities under a single `"use client"` boundary
+ * so the prev/next buttons (which need access to the live carousel state)
+ * can sit in the SectionHeader `action` slot at the top-right of the
+ * section, while the actual carousel lives below:
+ *
+ *   1. Render the SectionHeader with prev/next buttons on the right rail.
+ *   2. Hold the Embla instance (`carouselApi`) at the boundary so the
+ *      header buttons can call `scrollPrev()` / `scrollNext()`.
+ *   3. Render the carousel track and the guide cards.
+ *
+ * Buttons carry `rounded-md` (not the default carousel `rounded-full`)
+ * so the chrome reads as part of the homepage's shared-border rhythm
+ * — same vocabulary as the buttons elsewhere on `/`.
+ *
+ * Layout breakpoints (cards visible at a time):
+ *   • mobile (<md)  — full width, 1 visible
+ *   • md            — basis-1/2, 2 visible
+ *   • lg (≥1024px)  — basis-1/4, 4 visible
+ *
+ * Embla snap is `align: "start"` so the active card aligns flush with
+ * the section's left edge. Loop is off — reaching the end stops on the
+ * last card and the next button becomes disabled.
+ *
+ * 8 guides total — 4 visible at lg means 4 peek off-screen, giving the
+ * section room to advertise the navigation without an explicit "next
+ * 4" indicator.
+ */
+type CarouselGuide = {
+  slug: string
+  title: string
+  description: string
+  url: string
+}
+
+function ChevronButton({
+  direction,
+  disabled,
+  onClick,
+  label,
+}: {
+  direction: "prev" | "next"
+  disabled: boolean
+  onClick: () => void
+  label: string
+}) {
+  const Icon = direction === "prev" ? ArrowLeft : ArrowRight
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={cn(
+        "inline-flex size-8 items-center justify-center border border-border bg-background text-foreground transition-colors rounded-md",
+        "hover:bg-accent/40",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+        "disabled:pointer-events-none disabled:opacity-40",
+      )}
+    >
+      <Icon className="size-4" aria-hidden />
+    </button>
+  )
+}
+
+export function LatestGuidesSection({
+  guides,
+}: {
+  guides: ReadonlyArray<CarouselGuide>
+}) {
+  const [carouselApi, setCarouselApi] = useState<CarouselApi | undefined>(
+    undefined,
+  )
+  const [canScrollPrev, setCanScrollPrev] = useState(false)
+  const [canScrollNext, setCanScrollNext] = useState(false)
+
+  const onSelect = useCallback((api: NonNullable<CarouselApi>) => {
+    setCanScrollPrev(api.canScrollPrev())
+    setCanScrollNext(api.canScrollNext())
+  }, [])
+
+  const scrollPrev = useCallback(() => {
+    carouselApi?.scrollPrev()
+  }, [carouselApi])
+
+  const scrollNext = useCallback(() => {
+    carouselApi?.scrollNext()
+  }, [carouselApi])
+
+  const headerActions = (
+    <>
+      <ChevronButton
+        direction="prev"
+        disabled={!canScrollPrev}
+        onClick={scrollPrev}
+        label="Previous guides"
+      />
+      <ChevronButton
+        direction="next"
+        disabled={!canScrollNext}
+        onClick={scrollNext}
+        label="Next guides"
+      />
+    </>
+  )
+
+  return (
+    <>
+      <SectionHeader
+        eyebrow="Latest guides"
+        title=""
+        bordered={false}
+        action={headerActions}
+      />
+      <Carousel
+        opts={{ align: "start", loop: false }}
+        aria-label="Latest KB guides"
+        setApi={(api) => {
+          setCarouselApi(api)
+          if (api) onSelect(api)
+          api?.on("reInit", onSelect)
+          api?.on("select", onSelect)
+        }}
+      >
+        <CarouselContent className="px-6 lg:px-10">
+          {guides.map((guide) => (
+            <CarouselItem
+              key={guide.slug}
+              className="md:basis-1/2 lg:basis-1/4"
+            >
+              <Link
+                href={guide.url}
+                className="group flex h-full flex-col border-r border-border transition-colors hover:bg-accent/40"
+              >
+                {/* Placeholder thumbnail (mockup for now) */}
+                <div
+                  aria-hidden
+                  className="relative aspect-[16/9] border-b border-border bg-muted/40 overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[12px_12px] opacity-60" />
+                </div>
+                <div className="flex flex-1 flex-col gap-2 p-6 lg:p-8">
+                  <span className="font-mono uppercase text-[0.8125rem] leading-[1.2] text-foreground opacity-64 font-medium tracking-[-0.01em]">
+                    Guide
+                  </span>
+                  <h3 className="text-heading-20 tracking-tight text-foreground !m-0 text-balance lg:text-heading-24">
+                    {guide.title}
+                  </h3>
+                  <p className="text-copy-14 text-muted-foreground leading-6 !m-0 text-balance">
+                    {guide.description}
+                  </p>
+                </div>
+              </Link>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+    </>
+  )
+}
