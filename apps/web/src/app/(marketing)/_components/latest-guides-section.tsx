@@ -43,6 +43,13 @@ import { SectionHeader } from "@/app/(marketing)/_components/section-header"
  * 8 guides total — 4 visible at lg means 4 peek off-screen, giving the
  * section room to advertise the navigation without an explicit "next
  * 4" indicator.
+ *
+ * Pl-4 override: the shadcn `CarouselItem` ships with a default
+ * `pl-4` (horizontal) to space adjacent slides. We don't want that
+ * spacing here because each guide card already carries a `border-r`
+ * for visual separation, and additional padding would make the track
+ * look like a horizontal photo gallery. We override with `pl-0!` at
+ * the call site so the default shadcn component stays untouched.
  */
 type CarouselGuide = {
   slug: string
@@ -144,7 +151,7 @@ export function LatestGuidesSection({
           {guides.map((guide) => (
             <CarouselItem
               key={guide.slug}
-              className="md:basis-1/2 lg:basis-1/4"
+              className="pl-0! md:basis-1/2 lg:basis-1/4"
             >
               <Link
                 href={guide.url}
