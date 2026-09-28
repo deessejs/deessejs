@@ -25,11 +25,11 @@ import { CODING_AGENTS } from "@/lib/marketing/home-data"
  * so they render in monochrome against the text-foreground ink and
  * the dark:invert class flips them in dark mode.
  *
- * The CTA below the heading replaces a lead paragraph — it routes
- * visitors to the install guide instead of asking them to copy
- * paragraphs of body copy. The 3-icon stack shows a representative
- * slice (Claude Code, Codex, OpenCode); the full 6 sit in the grid
- * beneath.
+ * The CTA below the heading sits next to the lead paragraph — it
+ * routes visitors to the install guide instead of asking them to
+ * copy paragraphs of body copy. The 3-icon stack shows a
+ * representative slice (Claude Code, Codex, OpenCode); the full 6
+ * sit in the grid beneath.
  */
 const CTA_ICONS = [
   { src: "/logos/claudecode.svg", alt: "Claude Code" },
@@ -47,6 +47,12 @@ export function CodingAgents() {
         <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
           Works with any coding agent.
         </h2>
+        <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+          Every template ships with the contracts your coding agent reads —
+          typed at every boundary, AGENTS.md at the monorepo root, an MCP
+          manifest for the tools. Pick the CLI, the contracts stay the
+          same.
+        </p>
         <Link
           href="/knowledge-base/guides/install-deessejs-cli"
           aria-label="Onboard your agent — open the install guide"
