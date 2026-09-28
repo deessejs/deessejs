@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useState } from "react"
-import { ArrowLeft, ArrowRight, ChevronRight } from "lucide-react"
+import { ArrowLeft, ArrowRight, ChevronRight, Clock } from "lucide-react"
 
 import {
   Carousel,
@@ -13,6 +13,7 @@ import {
 import { cn } from "@workspace/ui/lib/utils"
 
 import { SectionHeader } from "@/app/(marketing)/_components/section-header"
+import { AuthorAvatarLink } from "@/components/blog/author-avatar"
 
 /**
  * Client wrapper for the homepage LatestGuides section.
@@ -54,15 +55,25 @@ import { SectionHeader } from "@/app/(marketing)/_components/section-header"
  * the call site so the default shadcn component stays untouched.
  *
  * Hero rotation: each card's image area is replaced with a real,
- * Shiki-highlighted code block rotated -3deg. The rotation lifts
- * to -1deg + scale-105 on hover via `group-hover:` utilities on
- * the inner wrapper. The class surface mirrors the popular
- * "rotated code card" pattern (Linear, Vercel examples gallery)
- * with the same corner-pin offsets (-mr-8 / -mb-8 push the bottom-
- * right corner past the card's outer padding so the rotated block
- * overflows into the gutter — a peeked, slightly tilted look that
- * gives the carousel kinetic energy without animation.
+ * Shiki-highlighted code block tilted -3deg (static, no animation).
+ * The default tilt pairs the rotated block with the card's outer
+ * border-y frame so the card reads as a layered chrome: outer
+ * rails / tilted gloss / Shiki content.
+ *
+ * Footer meta: each card ends with an author + reading-time row,
+ * mirroring the same footer that `GuideCard` renders in
+ * `/knowledge-base` and `PostCard` renders in `/blog`. The author
+ * uses `AuthorAvatarLink asLink={false}` (avoids nested `<a>`
+ * because the whole card is itself a `<Link>`). Reading-time uses
+ * the same `Clock size-3` chrome as `PostCard`.
  */
+type CarouselGuideAuthor = {
+  name: string
+  handle: string
+  avatar?: string
+  role?: string
+}
+
 type CarouselGuide = {
   slug: string
   title: string
@@ -72,6 +83,10 @@ type CarouselGuide = {
   html: string
   /** True when a snippet entry existed for this slug in LATEST_GUIDES_SNIPPETS. */
   hasSnippet: boolean
+  /** Author frontmatter (resolved content-collections-side). Optional. */
+  author?: CarouselGuideAuthor
+  /** Reading time in minutes (already rounded server-side). Optional. */
+  readingTime?: number
 }
 
 function ChevronButton({
@@ -206,15 +221,42 @@ export function LatestGuidesSection({
                   </div>
                 </div>
                 <div className="flex flex-1 flex-col gap-2 p-6 lg:p-8">
-                  <span className="font-mono uppercase text-[0.8125rem] leading-[1.2] text-foreground opacity-64 font-medium tracking-[-0.01em]">
-                    Guide
-                  </span>
                   <h3 className="text-heading-20 tracking-tight text-foreground !m-0 text-balance lg:text-heading-24">
                     {guide.title}
                   </h3>
                   <p className="text-copy-14 text-muted-foreground leading-6 !m-0 text-balance">
                     {guide.description}
                   </p>
+                  {/* Author + reading time — same footer row as
+                      /knowledge-base GuideCard and /blog PostCard so
+                      the carousel cards read as part of the same
+                      family. mt-auto pins the row to the bottom of
+                      the slide regardless of description length. */}
+                  <div className="mt-auto flex items-center justify-between gap-3 pt-4">
+                    {guide.author ? (
+                      <span className="inline-flex items-center gap-2">
+                        <AuthorAvatarLink
+                          author={{
+                            name: guide.author.name,
+                            handle: guide.author.handle,
+                          }}
+                          size={20}
+                          asLink={false}
+                        />
+                        <span className="text-xs text-foreground">
+                          {guide.author.name}
+                        </span>
+                      </span>
+                    ) : (
+                      <span aria-hidden />
+                    )}
+                    {guide.readingTime ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock aria-hidden className="size-3" />
+                        {guide.readingTime} min read
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </Link>
             </CarouselItem>

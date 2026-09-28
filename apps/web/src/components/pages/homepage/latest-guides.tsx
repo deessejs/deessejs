@@ -47,14 +47,30 @@ export async function LatestGuides() {
           })
         : ""
       htmlBySlug[guide.slug as LatestGuidesSlug] = html
-      return {
+      const payload = {
         slug: guide.slug,
         title: guide.title,
         description: guide.description,
         url: guide.url,
         html,
         hasSnippet: Boolean(snippet),
+        readingTime: guide.readingTime,
       }
+      if (guide.author) {
+        const author: {
+          name: string
+          handle: string
+          avatar?: string
+          role?: string
+        } = {
+          name: guide.author.name,
+          handle: guide.author.handle,
+        }
+        if (guide.author.avatar) author.avatar = guide.author.avatar
+        if (guide.author.role) author.role = guide.author.role
+        return { ...payload, author }
+      }
+      return payload
     }),
   )
 
