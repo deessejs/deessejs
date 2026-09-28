@@ -72,6 +72,19 @@ const RELATED = [
 ] as const
 
 /**
+ * First-party templates the org has built on this surface. They
+ * each ship on their own hosted URL once published — today they
+ * remain pre-launch. The card grid signals production-ready
+ * output without requiring links that don't resolve yet.
+ */
+const BUILT_TEMPLATES = [
+  { slug: "agent-runtime", title: "agent-runtime", body: "Streaming chat and tool-call loop, against the AI SDK." },
+  { slug: "kb-search",     title: "kb-search",     body: "pgvector-backed RAG over docs, KB articles, product schema." },
+  { slug: "trace-replay",  title: "trace-replay",  body: "Replay any agent run from the OpenTelemetry trace ID." },
+  { slug: "evals",         title: "evals",         body: "Score + rerank, with per-run cost and token budgets." },
+] as const
+
+/**
  * Four thematic clusters of capabilities an AI-product buyer reads
  * when they ask 'is this what I need to ship an agent?'. Same
  * shape as /saas-apps: each cluster leads with the question it
@@ -286,7 +299,55 @@ export default function AiProductsPage() {
         </ol>
       </div>
 
-      {/* 5. Related */}
+      {/* 5. Built on this */}
+      {/*    Same 2-row layout as the other 4 migrated use-case
+           pages: full-width header on top, then 4 cards on a
+           single lg:grid-cols-4 row. Each card is fully clickable
+           (entire <Link> wrapper) but uses href="#" since the
+           template URLs are not yet deployed. Replace "#" with
+           the live URL when each site ships. Each card carries a
+           grey placeholder block at the top (no illustration, no
+           label, no CTA below) so the section reads as 4 AI
+           surfaces waiting to render. */}
+      <section className="flex flex-col border-t border-border">
+        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
+          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            Built on this
+          </p>
+          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
+            Four templates, each on its own surface.
+          </h2>
+          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+            Production-ready starter templates, each deployed at its own
+            URL. Used as the reference set for what the registry can ship.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y divide-border sm:divide-y-0 sm:divide-x sm:divide-border">
+          {BUILT_TEMPLATES.map((tpl) => (
+            <Link
+              key={tpl.slug}
+              href="#"
+              aria-label={`Visit ${tpl.slug}`}
+              className="group flex flex-col transition-colors hover:bg-accent/40"
+            >
+              <div
+                aria-hidden
+                className="aspect-[16/10] w-full border-b border-border bg-muted/40 transition-colors group-hover:bg-muted/60"
+              />
+              <div className="flex flex-1 flex-col gap-2 p-6">
+                <h3 className="font-mono text-copy-16 font-medium text-foreground">
+                  {tpl.title}
+                </h3>
+                <p className="text-copy-14 leading-6 text-muted-foreground">
+                  {tpl.body}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* 6. Related */}
       <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
         <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
