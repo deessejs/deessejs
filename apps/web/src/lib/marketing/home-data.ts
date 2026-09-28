@@ -248,9 +248,12 @@ export const INTEGRATIONS: ReadonlyArray<Integration> = [
   { name: "Neon",        logo: "neon",       group: "providers" },
   { name: "Cloudflare",  logo: "cloudflare", group: "providers" },
   { name: "Stripe",      logo: "stripe",     group: "providers" },
-  { name: "Anthropic",     logo: "anthropic",   group: "agents" },
-  { name: "OpenAI",        logo: "openai",      group: "agents" },
-  { name: "Hugging Face",  logo: "huggingface", group: "agents" },
+  { name: "Claude Code", logo: "claudecode", group: "agents" },
+  { name: "Codex",       logo: "codex",      group: "agents" },
+  { name: "Pi",          logo: "pi",         group: "agents" },
+  { name: "Cursor",      logo: "cursor",     group: "agents" },
+  { name: "Grok",        logo: "grok",       group: "agents" },
+  { name: "OpenCode",    logo: "opencode",   group: "agents" },
 ]
 
 /**
