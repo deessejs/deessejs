@@ -15,7 +15,12 @@ export default function HomePage() {
       <Home.Ecosystem />
       <Home.Testimonials />
       <Home.Integrations />
-      <Home.Stats />
+      {/* Hidden until real traction: the strip showed "12K npm downloads"
+          and "3.2K GitHub stars" while the project isn't published in
+          any meaningful way. The component, the STATS const, and the
+          export all stay in place — uncomment to reactivate once the
+          numbers reflect actual registry + npm traffic. */}
+      {/* <Home.Stats /> */}
       <Home.FAQ />
       <Home.FinalCta />
     </>

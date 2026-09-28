@@ -224,21 +224,33 @@ export type Integration = {
   group: IntegrationGroup
 }
 
-/** Logo wall: frameworks, providers, AI agents. */
+/**
+ * Logo wall: frameworks, providers, AI agents.
+ *
+ * Logo slugs match the simple-icons convention and resolve to
+ * `/public/logos/<slug>.svg`. Each is rendered via `<IntegrationColumns>`,
+ * which applies `dark:invert` so monochrome marks stay legible in dark
+ * mode.
+ *
+ * SvelteKit was removed in this revision: simple-icons has no official
+ * SvelteKit mark (only the parent Svelte one). Reusing the Svelte
+ * mark would be visually deceptive — Svelte and SvelteKit are distinct.
+ * A four-framework column reads as a more honest promise than five
+ * with one fake logo.
+ */
 export const INTEGRATIONS: ReadonlyArray<Integration> = [
-  { name: "Next.js", logo: "vercel", group: "frameworks" },
-  { name: "Astro", logo: "cloudflare", group: "frameworks" },
-  { name: "SvelteKit", logo: "cloudflare", group: "frameworks" },
-  { name: "Vue", logo: "vercel", group: "frameworks" },
-  { name: "React", logo: "vercel", group: "frameworks" },
-  { name: "Vercel", logo: "vercel", group: "providers" },
-  { name: "Supabase", logo: "supabase", group: "providers" },
-  { name: "Neon", logo: "neon", group: "providers" },
-  { name: "Cloudflare", logo: "cloudflare", group: "providers" },
-  { name: "Stripe", logo: "stripe", group: "providers" },
-  { name: "Anthropic", logo: "anthropic", group: "agents" },
-  { name: "OpenAI", logo: "openai", group: "agents" },
-  { name: "Hugging Face", logo: "huggingface", group: "agents" },
+  { name: "Next.js", logo: "nextdotjs", group: "frameworks" },
+  { name: "Astro",   logo: "astro",    group: "frameworks" },
+  { name: "Vue",     logo: "vuedotjs", group: "frameworks" },
+  { name: "React",   logo: "react",    group: "frameworks" },
+  { name: "Vercel",      logo: "vercel",     group: "providers" },
+  { name: "Supabase",    logo: "supabase",   group: "providers" },
+  { name: "Neon",        logo: "neon",       group: "providers" },
+  { name: "Cloudflare",  logo: "cloudflare", group: "providers" },
+  { name: "Stripe",      logo: "stripe",     group: "providers" },
+  { name: "Anthropic",     logo: "anthropic",   group: "agents" },
+  { name: "OpenAI",        logo: "openai",      group: "agents" },
+  { name: "Hugging Face",  logo: "huggingface", group: "agents" },
 ]
 
 /**
