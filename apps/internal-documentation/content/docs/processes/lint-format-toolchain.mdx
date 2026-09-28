@@ -1,8 +1,16 @@
+---
+title: 'Lint and format toolchain'
+summary: 'Operational doc for the Oxlint + Oxfmt rollout tracked in ADR-031. Covers Phase 1 (Oxlint in parallel) and points to the next phases.'
+---
+
 # Lint and format toolchain
 
-Status: Phase 1 of [ADR-031](../../architecture/decisions/ADR-031-lint-format-toolchain.md) is
-shipped. ESLint + Prettier remain the gating tools. Oxlint runs in parallel as an
-informational signal.
+Status: **Phase 1** of [ADR-031](../decisions/ADR-031-lint-format-toolchain.mdx) is shipped.
+ESLint + Prettier remain the gating tools. Oxlint runs in parallel as an informational
+signal.
+
+This page is the operational companion to the ADR. Read the ADR for the decision and
+the phase plan; read this page for the day-to-day commands and CI behaviour.
 
 ## Tooling layout
 
@@ -67,9 +75,10 @@ Oxlint running with the four categories over ~428 `.ts`/`.tsx` files and
 
 - Finish in under five seconds on a developer laptop. ESLint takes ~10-25x
   longer on the same input. The CI artifact captures actual numbers.
-- Surface `correctness` errors that ESLint does not catch (the
+- Surface `correctness` errors that ESLint does not catch. The
   `suspicious` category's `no-unused-vars` is broadly aligned with
-  typescript-eslint's, but the universe of correctness checks differs).
+  typescript-eslint's; the rest of the universe of correctness checks
+  differs.
 - Produce zero or near-zero findings on `apps/*/eslint.config.mjs` and
   the workspace `package.json` files. These are not `.ts`/`.tsx` and are
   excluded by `ignorePatterns`.
@@ -113,5 +122,10 @@ Phase 2 introduces `eslint-plugin-oxlint` to auto-disable ESLint rules that
 Oxlint already covers. ESLint stays as the gate only for the four
 `no-restricted-syntax` selectors in `packages/eslint-config/base.js`,
 `sonarjs/cognitive-complexity`, `react/forbid-elements`, and any
-`@next/eslint-plugin-next` rule that Oxlint does not yet cover. See ADR-031
+`@next/eslint-plugin-next` rule that Oxlint does not yet cover. See the ADR
 for the full phase plan.
+
+## Related
+
+- [ADR-031: Lint and format toolchain (Oxlint + Oxfmt)](../decisions/ADR-031-lint-format-toolchain.mdx).
+  The decision and the phase plan. This page is the operational companion.

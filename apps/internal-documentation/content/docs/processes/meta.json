@@ -5,6 +5,8 @@
   "root": true,
   "pages": [
     "index",
+    "lint-format-toolchain",
+    "complexity-rollout",
     "---Release engineering---",
     "release-engineering/latest-release",
     "release-engineering/canary-releases",

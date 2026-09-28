@@ -176,7 +176,7 @@ function renderMarkdown(summary: Summary): string {
   })
   lines.push("")
   lines.push(
-    "Each `sonarjs/cognitive-complexity` violation also surfaces locally via `pnpm lint`. See `docs/engineering/complexity-rollout.md` for thresholds and how to refactor.",
+    "Each `sonarjs/cognitive-complexity` violation also surfaces locally via `pnpm lint`. See the rollout plan that ships with the rule (currently tracked in ADR-031 for the oxlint migration) for thresholds and how to refactor.",
   )
   return lines.join("\n")
 }

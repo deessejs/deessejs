@@ -279,7 +279,7 @@ Keep `turbo lint` as the gate; the runner is `oxlint`.
   conditional on Phase 3 passing, not a default outcome.
 - SonarJS cognitive complexity stays on ESLint through
   Phase 4. The Phase 1-4 rollout documented in
-  `docs/engineering/processes/complexity-rollout.md` is
+  `../processes/complexity-rollout.mdx` is
   unaffected. Phase 5 may replace it with a custom
   complexity collector (the existing `complexity-collect.ts`
   already emits the metric; wiring it to the lint gate is a
@@ -334,7 +334,7 @@ Keep `turbo lint` as the gate; the runner is `oxlint`.
   plugin or a documented exception.
 - Removing `sonarjs/cognitive-complexity` before the
   Phase 1-4 rollout in
-  `docs/engineering/processes/complexity-rollout.md` reaches
+  `../processes/complexity-rollout.mdx` reaches
   its terminal threshold (`error@20`).
 - Adding Prettier back as a runtime dep after Phase 5
   completes. If a project needs Prettier for a third-party
@@ -474,7 +474,7 @@ scripts. No Drizzle migration. No env var. No new
    via `lint:oxlint`).
 6. `scripts/env-check.ts` and the Drizzle migration check
    scripts — unchanged.
-7. `docs/engineering/processes/complexity-rollout.md` —
+7. `../processes/complexity-rollout.mdx` —
    flip the rollout terminal threshold; if the cognitive
    complexity metric is still needed, wire it through
    `complexity-collect.ts` in a follow-up ADR.
@@ -556,7 +556,7 @@ in this PR — the ADR is the deliverable.
   as a JS plugin.
 - `.prettierrc`. The single source of truth that
   `.oxfmtrc.json` mirrors in Phase 4.
-- `docs/engineering/processes/complexity-rollout.md`. The
+- `../processes/complexity-rollout.mdx`. The
   SonarJS rollout that this ADR does not touch until
   Phase 5. The doc is the source of truth for the exact
   global and per-package thresholds across the four
