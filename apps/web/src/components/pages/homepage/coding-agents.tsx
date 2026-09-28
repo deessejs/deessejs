@@ -2,6 +2,7 @@ import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
 
 import { Section } from "@/app/(marketing)/_components/section"
+import { cn } from "@workspace/ui/lib/utils"
 import { CODING_AGENTS } from "@/lib/marketing/home-data"
 
 /**
@@ -85,9 +86,15 @@ export function CodingAgents() {
         </Link>
       </div>
       <div className="border-t border-border">
-        <ul className="grid grid-cols-2 divide-y divide-border border-0 sm:grid-cols-3 lg:grid-cols-6 lg:divide-y-0 lg:divide-x">
-          {CODING_AGENTS.map((agent) => (
-            <li key={agent.name} className="border-0 p-0">
+        <ul className="grid grid-cols-2 divide-y divide-border border-0 sm:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
+          {CODING_AGENTS.map((agent, idx) => (
+            <li
+              key={agent.name}
+              className={cn(
+                "border-0 p-0",
+                "border-l border-border first:border-l-0",
+              )}
+            >
               <a
                 href={`https://docs.deessejs.com/agents/${agent.docsSlug}`}
                 target="_blank"
