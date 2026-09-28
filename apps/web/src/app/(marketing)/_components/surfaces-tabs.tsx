@@ -29,9 +29,12 @@ import {
  *     vertically and separated by `divide-y`. The active card picks
  *     up a subtle bg (`bg-accent/40`) to mirror the shared-border
  *     "selected" convention used elsewhere on the page.
- *   • The right column shows the placeholder for the active surface
- *     only. On lg+, the panel is a 2-col grid (cards on the left,
- *     placeholder on the right). Below lg, it stacks.
+ *   • On lg+ the panel is a 2-col CSS grid:
+ *       `grid-cols-[minmax(320px,28rem)_1fr]`
+ *     The left column is clamped between 320px and 28rem (448px),
+ *     and the right column takes the rest of the section width.
+ *     Below lg, the grid collapses to a single column and stacks
+ *     vertically.
  *
  * The placeholder mirrors the hero's media placeholder (lighter grey
  * background + radial dot overlay). Real per-surface mockups are not
@@ -90,11 +93,11 @@ export function SurfacesTabs() {
     <Tabs
       defaultValue={firstSlug}
       orientation="vertical"
-      className="flex flex-col lg:flex-row"
+      className="grid grid-cols-1 lg:grid-cols-[minmax(320px,28rem)_1fr]"
     >
       <TabsList
         aria-label="Surfaces"
-        className="flex flex-col divide-y divide-border border-b border-border lg:border-b-0 lg:border-r bg-transparent p-0 h-auto w-full lg:w-auto lg:min-w-[320px] lg:max-w-md"
+        className="flex flex-col divide-y divide-border border-b border-border lg:border-b-0 lg:border-r bg-transparent p-0 h-auto w-full"
       >
         {SURFACE_TABS.map((tab) => {
           const Icon = tab.icon
@@ -134,7 +137,7 @@ export function SurfacesTabs() {
         <TabsContent
           key={tab.slug}
           value={tab.slug}
-          className="relative flex-1 outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden"
+          className="relative outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden"
         >
           {/* Right column: placeholder mockup, anchored to the
               bottom-right and translated 25% right + 25% down so the

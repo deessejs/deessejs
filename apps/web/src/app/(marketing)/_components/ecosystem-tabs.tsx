@@ -23,20 +23,21 @@ import type { EcosystemSlug } from "./ecosystem-snippets"
 
 /**
  * Tabbed view of the four ecosystem tools: Errors, FP, DRPC,
- * Collections. Mirrors `<SurfacesTabs>` but mirrored horizontally —
- * the code mockup sits on the LEFT (wider column) and the four
- * product cards stack on the RIGHT.
+ * Collections.
  *
- * Layout:
- *   • On lg+, the panel is a 2-col grid with the mockup on the
- *     left (1.32fr) and the cards on the right (0.68fr). Below lg, the
- *     panel stacks vertically: mockup on top, cards beneath.
+ * Layout (mirrors `<SurfacesTabs>`):
+ *   • On lg+ the panel is a 2-col CSS grid:
+ *       `grid-cols-[minmax(320px,28rem)_1fr]`
+ *     The four product cards stack on the LEFT (clamped between
+ *     320px and 28rem), and the code mockup occupies the RIGHT
+ *     column. Below lg, the grid collapses to a single column and
+ *     stacks vertically: cards on top, mockup beneath.
  *   • The mockup is anchored to the bottom-right and translated
  *     25% right + 25% down so the visible portion sits in the
  *     bottom-right corner with margin in the upper-left — the same
  *     margin-break pattern as SurfacesTabs.
  *
- * Per-product cards on the right are tab triggers (all visible). The
+ * Per-product cards on the left are tab triggers (all visible). The
  * active card picks up `bg-accent/40`.
  *
  * The four mockups are pre-rendered server-side by the parent
@@ -115,11 +116,11 @@ export function EcosystemTabs({
     <Tabs
       defaultValue={firstSlug}
       orientation="vertical"
-      className="flex flex-col lg:flex-row"
+      className="grid grid-cols-1 lg:grid-cols-[minmax(320px,28rem)_1fr]"
     >
       <TabsList
         aria-label="Ecosystem"
-        className="flex flex-col divide-y divide-border border-b border-border lg:border-b-0 lg:border-r bg-transparent p-0 h-auto w-full lg:w-auto lg:min-w-[320px] lg:max-w-md"
+        className="flex flex-col divide-y divide-border border-b border-border lg:border-b-0 lg:border-r bg-transparent p-0 h-auto w-full"
       >
         {ECOSYSTEM_TABS.map((tab) => {
           const Icon = tab.icon
@@ -185,24 +186,15 @@ export function EcosystemTabs({
         <TabsContent
           key={tab.slug}
           value={tab.slug}
-          className="relative flex-1 outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden"
+          className="relative outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden"
         >
-          {/* Code mockup anchored to the bottom-right and translated
-              25% right + 25% down so the top-left of the displaced
-              wrapper is offset from the visible cell — leaves a
-              peek margin in the upper-left corner. TabsContent's
-              overflow-hidden clips the wrapper by the column edges
-              (same displacement recipe as <SurfacesTabs>, without
-              the placeholder canvas since this is a real code
-              block). */}
+
           <div className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] overflow-hidden">
-            <div className="absolute top-[12%] left-[12%] right-[12%] bottom-[12%]">
               <EcosystemCodeMockup
                 slug={tab.slug}
                 tabName={`${tab.slug}.ts`}
                 html={htmlBySlug[tab.slug]}
               />
-            </div>
           </div>
         </TabsContent>
       ))}
