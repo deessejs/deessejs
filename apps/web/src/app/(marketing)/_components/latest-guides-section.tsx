@@ -204,7 +204,7 @@ export function LatestGuidesSection({
                     aria-hidden
                     data-slot={`hero-${guide.slug}`}
                     className={cn(
-                      "-rotate-3 origin-bottom-right translate-x-[15%] translate-y-[15%]",
+                      "-rotate-3 origin-bottom-right translate-x-[10%] translate-y-[10%]",
                       "aspect-video overflow-hidden rounded-md border bg-background",
                     )}
                   >
