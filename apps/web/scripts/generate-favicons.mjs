@@ -65,10 +65,17 @@ const svgBuffer = readFileSync(sourceSvg)
 
 for (const target of targets) {
   mkdirSync(dirname(target.path), { recursive: true })
-  const instance = sharp(svgBuffer, { density: 384 })
-  const output = await target.pipeline(instance)
-  writeFileSync(target.path, output)
-  console.log(`wrote ${target.path} (${output.length} bytes)`)
+}
+const outputs = await Promise.all(
+  targets.map(async (target) => {
+    const instance = sharp(svgBuffer, { density: 384 })
+    const output = await target.pipeline(instance)
+    return { path: target.path, output }
+  }),
+)
+for (const { path, output } of outputs) {
+  writeFileSync(path, output)
+  console.log(`wrote ${path} (${output.length} bytes)`)
 }
 
 /**
