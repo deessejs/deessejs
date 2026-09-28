@@ -136,31 +136,29 @@ export function Integrations() {
           <Link
             key={tech.slug}
             href={`/stack/${tech.slug}`}
-            className="group/tech flex items-start gap-4 border-b border-r border-border p-6 transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 lg:p-8"
+            className="group/tech flex flex-col gap-3 border-b border-r border-border p-6 transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 lg:p-8"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/logos/${tech.logo}.svg`}
-              alt=""
-              width={28}
-              height={28}
-              className="mt-0.5 size-7 shrink-0 dark:invert"
-              aria-hidden
-            />
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
-                {tech.name}
-              </h3>
-              <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
-                {tech.description}
-              </p>
-              <span
+            <h3 className="flex items-center gap-2 text-heading-20 font-medium tracking-tight text-foreground">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/logos/${tech.logo}.svg`}
+                alt=""
+                width={20}
+                height={20}
+                className="size-5 shrink-0 dark:invert"
                 aria-hidden
-                className="mt-1 inline-flex items-center gap-1 text-label-13 text-foreground transition-transform duration-150 group-hover/tech:translate-x-0.5"
-              >
-                Learn more <span aria-hidden>→</span>
-              </span>
-            </div>
+              />
+              {tech.name}
+            </h3>
+            <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
+              {tech.description}
+            </p>
+            <span
+              aria-hidden
+              className="mt-auto inline-flex items-center gap-1 text-label-13 text-foreground transition-transform duration-150 group-hover/tech:translate-x-0.5"
+            >
+              Learn more <span aria-hidden>→</span>
+            </span>
           </Link>
         ))}
       </div>
