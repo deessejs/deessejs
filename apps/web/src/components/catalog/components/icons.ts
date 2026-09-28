@@ -1,7 +1,7 @@
 /**
  * Lucide icon map for the 15 components in the catalogue.
  *
- * Hand-maintained mirror of `components-list.ts`. V3 will
+ * Hand-maintained mirror of `catalogue.ts`. V3 will
  * auto-generate from a JSDoc `@icon` tag in the source.
  *
  * The trailing exhaustiveness check turns a missing slug into a
@@ -28,7 +28,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
-import type { CatalogueComponent } from "./components-list"
+import type { CatalogueComponent } from "./catalogue"
 
 const COMPONENT_ICONS = {
   // button

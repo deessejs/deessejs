@@ -1,13 +1,19 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { ComponentLeafHero } from "@/app/(marketing)/components/_components/component-page"
-import { ComponentPreviewTabs } from "@/app/(marketing)/components/_components/component-preview-tabs"
+import { CatalogPreviewTabs } from "@/components/catalog/catalog-preview-tabs"
+import { ComponentPreview } from "@/components/catalog/components/preview"
 import {
   getAllComponentParams,
   getComponent,
-} from "@/app/(marketing)/components/_components/components-list"
-import { getCategory } from "@/app/(marketing)/components/_components/categories"
+} from "@/components/catalog/components/catalogue"
+import {
+  getCategory,
+} from "@/components/catalog/components/categories"
+import { getComponentSnippet } from "@/components/catalog/components/snippets"
+
+const COMPONENTS_REPO_URL =
+  "https://github.com/deessejs/deessejs/tree/main/packages/ui/src/components"
 
 /**
  * /components/[category]/[component]
@@ -20,11 +26,12 @@ import { getCategory } from "@/app/(marketing)/components/_components/categories
  * `/components/forms/buttom` (wrong category for the slug) also
  * returns 404 rather than rendering the wrong page.
  *
- * The leaf body is `ComponentLeafHero` + `ComponentPreviewTabs`
- * (the same tabbed Preview / Code / install-command surface
- * used by the blocks registry).
+ * Pre-refactor: this route delegated to `ComponentLeafHero` and
+ * `ComponentPreviewTabs`. Both have been inlined here — the hero
+ * markup is small enough to write directly, and `ComponentPreviewTabs`
+ * was a one-line wrapper around `CatalogPreviewTabs` that resolved
+ * the snippet and the repo URL.
  */
-
 type Params = { category: string; component: string }
 
 export function generateStaticParams(): Array<Params> {
@@ -58,14 +65,34 @@ export default async function ComponentRoute({
   if (!match || match.category !== category) notFound()
   const categoryMatch = getCategory(category)
   if (!categoryMatch) notFound()
+
   return (
     <>
-      <ComponentLeafHero category={categoryMatch} component={match} />
+      <header className="border-b border-border px-6 py-16 lg:px-10 lg:py-20">
+        <div className="flex flex-col gap-3">
+          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            {categoryMatch.name}
+          </p>
+          <h1 className="text-heading-40 font-medium tracking-tight text-balance">
+            {match.name}.
+          </h1>
+          <p className="max-w-2xl text-copy-18 text-pretty leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
+            {match.description}
+          </p>
+        </div>
+      </header>
       <section
         aria-label={`${match.name} preview`}
         className="px-6 py-12 lg:px-10"
       >
-        <ComponentPreviewTabs component={match} />
+        <CatalogPreviewTabs
+          slug={match.slug}
+          itemName={match.name}
+          itemKind="component"
+          sourceRepoUrl={COMPONENTS_REPO_URL}
+          snippet={getComponentSnippet(match.slug)}
+          preview={<ComponentPreview slug={match.slug} />}
+        />
       </section>
     </>
   )

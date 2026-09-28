@@ -13,7 +13,7 @@
  * shape so V2 only has to swap the data source.
  */
 
-import type { BlockCategoryId } from "./block-categories"
+import type { BlockCategoryId } from "./categories"
 
 export type BlockLayout = "split" | "stacked" | "bento" | "centered"
 

@@ -14,7 +14,7 @@
  * error, not a runtime fallback.
  */
 
-import type { CatalogueBlock } from "./blocks-list"
+import type { CatalogueBlock } from "./catalogue"
 
 const PREVIEW_PLACEHOLDER = `// Source coming in V3.
 //

@@ -1,8 +1,12 @@
 import type { Metadata } from "next"
 
-import { BlocksBrowser } from "./_components/blocks-browser"
-import { BLOCK_CATEGORIES } from "./_components/block-categories"
-import { BLOCK_CATALOGUE } from "./_components/blocks-list"
+import { calculateCatalogCounts } from "@/components/catalog/catalog-counts"
+import { CatalogBrowserShell } from "@/components/catalog/catalog-browser-shell"
+import { CatalogCategoryGrid } from "@/components/catalog/catalog-category-grid"
+import { CatalogSidebar } from "@/components/catalog/catalog-sidebar"
+import { BlockCardPreview } from "@/components/catalog/blocks/card-preview"
+import { BLOCK_CATEGORIES } from "@/components/catalog/blocks/categories"
+import { BLOCK_CATALOGUE } from "@/components/catalog/blocks/catalogue"
 
 export const metadata: Metadata = {
   title: "Blocks",
@@ -19,13 +23,12 @@ export const metadata: Metadata = {
  * preview.
  *
  * Wrapper + final CTA from `(marketing)/blocks/layout.tsx`.
- * Mirror of `components/page.tsx` with block-specific copy.
+ *
+ * Inlined from the previously-separate `BlocksBrowser` and
+ * `BlocksCategoryGrid` orchestrators. UI is identical.
  */
 export default function BlocksPage() {
-  // Map each category to a representative block. The grid shows
-  // one card per category; the representative block drives the
-  // preview's layout discriminator. We pick the first block in
-  // the category for stability.
+  // Map each category to a representative block.
   const categoryToBlock = Object.fromEntries(
     BLOCK_CATEGORIES.map((category) => {
       const firstBlock = BLOCK_CATALOGUE.find(
@@ -33,7 +36,16 @@ export default function BlocksPage() {
       )
       return [category.id, firstBlock]
     }).filter(([, block]) => Boolean(block)),
-  ) as Record<(typeof BLOCK_CATEGORIES)[number]["id"], (typeof BLOCK_CATALOGUE)[number]>
+  ) as Record<
+    (typeof BLOCK_CATEGORIES)[number]["id"],
+    (typeof BLOCK_CATALOGUE)[number]
+  >
+
+  // Per-category counts.
+  const counts = calculateCatalogCounts(
+    BLOCK_CATALOGUE,
+    (block) => block.category,
+  )
 
   return (
     <>
@@ -55,10 +67,40 @@ export default function BlocksPage() {
       </header>
 
       {/* Two-column browser: sidebar + category grid. */}
-      <BlocksBrowser
-        categories={BLOCK_CATEGORIES}
-        categoryToBlock={categoryToBlock}
-      />
+      <CatalogBrowserShell
+        ariaLabel="Blocks catalogue"
+        sidebar={
+          <CatalogSidebar
+            heading="Categories"
+            basePath="/blocks"
+            entries={BLOCK_CATEGORIES}
+            counts={counts}
+          />
+        }
+      >
+        <CatalogCategoryGrid
+          columns={4}
+          entries={BLOCK_CATEGORIES.flatMap((category) => {
+            const block = categoryToBlock[category.id]
+            if (!block) return []
+            return [
+              {
+                id: category.id,
+                href: `/blocks/${category.slug}`,
+                ariaLabel: `Browse the ${category.name} category`,
+                preview: <BlockCardPreview block={block} />,
+                title: category.name,
+                description: category.description,
+                footer: (
+                  <span className="text-label-13 text-muted-foreground font-mono">
+                    {category.blockNames.split(",")[0]?.trim()}
+                  </span>
+                ),
+              },
+            ]
+          })}
+        />
+      </CatalogBrowserShell>
     </>
   )
 }

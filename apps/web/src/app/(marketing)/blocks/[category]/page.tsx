@@ -1,21 +1,13 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { BlocksCategoryPage } from "@/app/(marketing)/blocks/_components/blocks-category-page"
 import {
+  BLOCK_CATEGORIES,
   BLOCK_CATEGORY_ORDER,
   getBlockCategory,
-} from "@/app/(marketing)/blocks/_components/block-categories"
-
-/**
- * /blocks/[category]
- *
- * Dynamic route — single file catches every category slug. Static
- * params are pre-rendered at build time from `BLOCK_CATEGORY_ORDER`.
- *
- * Unknown slugs hit `notFound()` so a typo'd URL returns 404
- * instead of a placeholder page.
- */
+} from "@/components/catalog/blocks/categories"
+import { BLOCK_CATALOGUE } from "@/components/catalog/blocks/catalogue"
+import { BlocksCategoryBrowserClient } from "@/components/catalog/blocks/category-browser"
 
 type Params = { category: string }
 
@@ -40,6 +32,19 @@ export function generateMetadata({
   })
 }
 
+/**
+ * /blocks/[category]
+ *
+ * Dynamic route — single file catches every category slug. Static
+ * params are pre-rendered at build time from `BLOCK_CATEGORY_ORDER`.
+ *
+ * Unknown slugs hit `notFound()` so a typo'd URL returns 404
+ * instead of a placeholder page.
+ *
+ * Pre-refactor: the body was split across `BlocksCategoryPage`
+ * and `BlocksCategoryBrowser`. Both have been folded into
+ * `<BlocksCategoryBrowserClient>`.
+ */
 export default async function BlocksCategoryRoute({
   params,
 }: {
@@ -48,5 +53,12 @@ export default async function BlocksCategoryRoute({
   const { category } = await params
   const match = getBlockCategory(category)
   if (!match) notFound()
-  return <BlocksCategoryPage category={match} />
+
+  return (
+    <BlocksCategoryBrowserClient
+      blocks={BLOCK_CATALOGUE}
+      categories={BLOCK_CATEGORIES}
+      pinnedCategory={match.id}
+    />
+  )
 }

@@ -18,7 +18,7 @@
  * `packages/ui/src/components/<slug>.tsx`.
  */
 
-import type { CatalogueComponent } from "./components-list"
+import type { CatalogueComponent } from "./catalogue"
 
 const PREVIEW_PLACEHOLDER = `// Source coming in V3.
 //

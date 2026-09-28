@@ -1,11 +1,13 @@
 import type { Metadata } from "next"
 
-import { ComponentBrowser } from "@/app/(marketing)/components/_components/component-browser"
-import { COMPONENT_CATEGORIES } from "@/app/(marketing)/components/_components/categories"
-import {
-  CATALOGUE_COMPONENTS,
-  type CatalogueComponent,
-} from "@/app/(marketing)/components/_components/components-list"
+import { calculateCatalogCounts } from "@/components/catalog/catalog-counts"
+import { CatalogBrowserShell } from "@/components/catalog/catalog-browser-shell"
+import { CatalogCategoryGrid } from "@/components/catalog/catalog-category-grid"
+import { CatalogSidebar } from "@/components/catalog/catalog-sidebar"
+import { ComponentCardPreview } from "@/components/catalog/components/card-preview"
+import { getComponentIcon } from "@/components/catalog/components/icons"
+import { CATALOGUE_COMPONENTS } from "@/components/catalog/components/catalogue"
+import { COMPONENT_CATEGORIES } from "@/components/catalog/components/categories"
 
 export const metadata: Metadata = {
   title: "Components",
@@ -16,15 +18,13 @@ export const metadata: Metadata = {
 /**
  * Components catalogue index at `/components`.
  *
- * Renders a hero + a sidebar + a grid of 3 category cards
- * (Buttons, Inputs, Badges). Each card links to the
- * per-category page where the 5 components live.
+ * Two-column layout: nav sidebar on the left, category grid on
+ * the right. Each grid card is one category (Buttons, Inputs,
+ * Badges). The wrapper (border, bg, diagonal stripes) and the
+ * final 2-col CTA come from `(marketing)/components/layout.tsx`.
  *
- * The wrapper (border, bg, diagonal stripes) and the final 2-col
- * CTA come from `(marketing)/components/layout.tsx`.
- *
- *   ┌─ Hero ─────────────────────────┐
- *   └─ Browser (sidebar + grid) ─────┘
+ * Inlined from the previously-separate `ComponentBrowser` and
+ * `ComponentGrid` orchestrators. UI is identical.
  */
 export default function ComponentsPage() {
   // First component of each category drives the index card preview.
@@ -33,18 +33,16 @@ export default function ComponentsPage() {
       category.id,
       CATALOGUE_COMPONENTS.find((c) => c.category === category.id),
     ]),
-  ) as Record<(typeof COMPONENT_CATEGORIES)[number]["id"], CatalogueComponent>
+  ) as Record<
+    (typeof COMPONENT_CATEGORIES)[number]["id"],
+    (typeof CATALOGUE_COMPONENTS)[number]
+  >
 
-  // Number of components per category — drives the sidebar count
-  // badge. Cast widens the inferred `{ [k: string]: number }` to
-  // the exact `Record<CategoryId, number>` ComponentBrowser
-  // expects.
-  const counts = Object.fromEntries(
-    COMPONENT_CATEGORIES.map((category) => [
-      category.id,
-      CATALOGUE_COMPONENTS.filter((c) => c.category === category.id).length,
-    ]),
-  ) as Record<(typeof COMPONENT_CATEGORIES)[number]["id"], number>
+  // Number of components per category — drives the sidebar count badge.
+  const counts = calculateCatalogCounts(
+    CATALOGUE_COMPONENTS,
+    (component) => component.category,
+  )
 
   return (
     <>
@@ -65,11 +63,45 @@ export default function ComponentsPage() {
       </header>
 
       {/* Two-column browser: sidebar + category grid. */}
-      <ComponentBrowser
-        categories={COMPONENT_CATEGORIES}
-        componentByCategory={componentByCategory}
-        counts={counts}
-      />
+      <CatalogBrowserShell
+        ariaLabel="Components catalogue"
+        withBottomBorder
+        sidebar={
+          <CatalogSidebar
+            heading="Categories"
+            basePath="/components"
+            entries={COMPONENT_CATEGORIES}
+            counts={counts}
+          />
+        }
+      >
+        <CatalogCategoryGrid
+          columns={3}
+          entries={COMPONENT_CATEGORIES.flatMap((category) => {
+            const component = componentByCategory[category.id]
+            if (!component) return []
+            const Icon = getComponentIcon(component.slug)
+            return [
+              {
+                id: category.id,
+                href: `/components/${category.slug}`,
+                ariaLabel: `Browse the ${category.name} category`,
+                preview: <ComponentCardPreview slug={component.slug} />,
+                title: (
+                  <div className="flex items-start gap-3">
+                    <Icon
+                      aria-hidden
+                      className="text-muted-foreground mt-0.5 size-4 shrink-0"
+                    />
+                    <span>{category.name}</span>
+                  </div>
+                ),
+                description: category.description,
+              },
+            ]
+          })}
+        />
+      </CatalogBrowserShell>
     </>
   )
 }

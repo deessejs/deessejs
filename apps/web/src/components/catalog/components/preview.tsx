@@ -1,3 +1,5 @@
+"use client"
+
 import { useEffect, useState } from "react"
 import {
   Bell,
@@ -21,7 +23,7 @@ import {
 import { cn } from "@workspace/ui/lib/utils"
 
 import { ButtonPreviewDemo } from "./button-preview-demo"
-import type { CatalogueComponent } from "./components-list"
+import type { CatalogueComponent } from "./catalogue"
 
 type Props = {
   slug: CatalogueComponent["slug"]

@@ -1,9 +1,9 @@
 /**
- * Catalogue categories for /components/[category].
+ * Catalogue categories for `/components/[category]`.
  *
  * Single source of truth — V2 ships three categories: button,
  * input, badge. Each category has 5 components in
- * `components-list.ts` (one per component slug under the same
+ * `catalogue.ts` (one per component slug under the same
  * category id).
  *
  * No `componentNames` field anymore: the placeholder card prose

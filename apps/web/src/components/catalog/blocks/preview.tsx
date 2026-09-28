@@ -1,4 +1,4 @@
-import type { CatalogueBlock } from "./blocks-list"
+import type { CatalogueBlock } from "./catalogue"
 
 type Props = {
   block: CatalogueBlock

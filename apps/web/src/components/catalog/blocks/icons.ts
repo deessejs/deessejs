@@ -34,7 +34,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
-import type { CatalogueBlock } from "./blocks-list"
+import type { CatalogueBlock } from "./catalogue"
 
 export const BLOCK_ICONS = {
   "hero-centered": Sparkles,
