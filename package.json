@@ -26,6 +26,7 @@
     "@changesets/cli": "catalog:",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
+    "eslint-plugin-oxlint": "catalog:",
     "oxlint": "catalog:",
     "pkg-pr-new": "catalog:",
     "prettier": "^3.9.4",

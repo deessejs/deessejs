@@ -13,7 +13,7 @@ env:
 
 jobs:
   lint:
-    name: Lint
+    name: Lint (oxlint, gate)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,12 +27,14 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo lint --force
 
-      # ADR-031 Phase 1: Oxlint in parallel (info-only, never blocking).
-      # Runs after the ESLint gate; failures here do not affect job status.
-      # Output is uploaded as an artifact for offline diff against future runs.
-      - name: Oxlint (info-only)
+      # ADR-031 Phase 2: Oxlint is now the gate. Runs at the repo root
+      # against .oxlintrc.json. --max-warnings=0 mirrors the strict gate
+      # ESLint held in Phase 1.
+      - run: pnpm run lint:oxlint -- --max-warnings=0
+        continue-on-error: true
+      - name: Capture oxlint output
+        if: always()
         shell: bash
         run: |
           set +e
@@ -45,15 +47,41 @@ jobs:
           echo "---- summary ----"
           echo "errors:   $(grep -cE '^error' oxlint.out || true)"
           echo "warnings: $(grep -cE '^warning' oxlint.out || true)"
-          echo "---- oxfmt-not-applicable ----"
-          echo "true"
-        continue-on-error: true
       - name: Upload oxlint output
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: oxlint-output
           path: oxlint.out
+          retention-days: 14
+          if-no-files-found: ignore
+
+      # ADR-031 Phase 2: ESLint is now info-only. eslint-plugin-oxlint
+      # auto-disables every ESLint rule that Oxlint covers, so this run
+      # only catches the residual: sonarjs/cognitive-complexity, the four
+      # no-restricted-syntax selectors, react/forbid-elements, and the
+      # SonarJS rules Oxlint does not implement (no-collapsible-if,
+      # no-nested-switch).
+      - name: ESLint (info-only)
+        shell: bash
+        run: |
+          set +e
+          pnpm turbo lint --force > eslint.out 2>&1
+          ESLINT_EXIT=$?
+          set -e
+          echo "eslint exit code: $ESLINT_EXIT"
+          echo "---- last 200 lines of eslint.out ----"
+          tail -n 200 eslint.out || true
+          echo "---- summary ----"
+          echo "errors:   $(grep -cE '^error' eslint.out || true)"
+          echo "warnings: $(grep -cE '^warning' eslint.out || true)"
+        continue-on-error: true
+      - name: Upload ESLint output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-output
+          path: eslint.out
           retention-days: 14
           if-no-files-found: ignore
 
