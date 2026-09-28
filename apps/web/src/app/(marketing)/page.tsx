@@ -13,7 +13,12 @@ export default function HomePage() {
       <Home.CliInAction />
       <Home.LatestGuides />
       <Home.Ecosystem />
-      <Home.Testimonials />
+      {/* Hidden until real testimonials come in: the 12 quotes are
+          placeholder personas mapped to the for-who archetypes,
+          not real customers. The component, the TESTIMONIALS const,
+          and the export all stay in place — uncomment to reactivate
+          once we have verified customer quotes to ship. */}
+      {/* <Home.Testimonials /> */}
       <Home.Integrations />
       <Home.CodingAgents />
       {/* Hidden until real traction: the strip showed "12K npm downloads"
@@ -22,6 +27,12 @@ export default function HomePage() {
           export all stay in place — uncomment to reactivate once the
           numbers reflect actual registry + npm traffic. */}
       {/* <Home.Stats /> */}
+      {/* Hidden until real testimonials come in: the 12 quotes are
+          placeholder personas mapped to the for-who archetypes,
+          not real customers. The component, the TESTIMONIALS const,
+          and the export all stay in place — uncomment to reactivate
+          once we have verified customer quotes to ship. */}
+      {/* <Home.Testimonials /> */}
       <Home.FAQ />
       <Home.FinalCta />
     </>
