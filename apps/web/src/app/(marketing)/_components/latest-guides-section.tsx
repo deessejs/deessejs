@@ -154,7 +154,7 @@ export function LatestGuidesSection({
           api?.on("select", onSelect)
         }}
       >
-        <CarouselContent className="px-6 lg:px-10">
+        <CarouselContent>
           {guides.map((guide) => (
             <CarouselItem
               key={guide.slug}
