@@ -120,7 +120,7 @@ export function EcosystemTabs({
     >
       <TabsList
         aria-label="Ecosystem"
-        className="flex flex-col divide-y divide-border border-b border-border lg:border-b-0 lg:border-r bg-transparent p-0 h-auto w-full"
+        className="flex flex-col divide-y divide-border border-b border-border lg:border-b-0 lg:border-r bg-transparent p-0 h-auto w-full rounded-none!"
       >
         {ECOSYSTEM_TABS.map((tab) => {
           const Icon = tab.icon
