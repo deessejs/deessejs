@@ -6,17 +6,17 @@ import { Section } from "@/app/(marketing)/_components/section"
 /**
  * Integrations — 2-column layout.
  *
- * Left column (1fr): eyebrow + h2 + 4 bullets in the Vercel-style
+ * Left column (3fr): eyebrow + h2 + 4 bullets in the Vercel-style
  *   'icon + bold + descriptor' pattern.
  *
- * Right column (3fr): 8-tech grid (2 cols x 4 rows on desktop, 1
+ * Right column (7fr): 8-tech grid (2 cols x 4 rows on desktop, 1
  *   col on mobile). Each card is a self-contained tile with its
  *   logo, name, one-line description, and a 'Learn more' link that
  *   routes to /stack/<slug>.
  *
- * The 1fr / 3fr ratio targets a 25/75 split (≈320px copy / ≈960px
- * grid at a 1280px viewport) — copy column is intentionally narrow
- * to give the tech wall room to breathe.
+ * The 3fr / 7fr ratio targets a 30/70 split (≈384px copy / ≈896px
+ * grid at a 1280px viewport) — copy column fits the eyebrow + h2
+ * + 4 bullets without compressing them, tech wall stays wide.
  *
  * Inspired by trigger.dev's 'True runtime freedom for developers'
  * section but adapted to this repo's design tokens: card chrome
@@ -94,7 +94,7 @@ const TECHS: ReadonlyArray<Tech> = [
 export function Integrations() {
   return (
     <Section>
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_3fr] divide-y divide-border md:divide-y-0 md:divide-x">
+      <div className="grid grid-cols-1 md:grid-cols-[3fr_7fr] divide-y divide-border md:divide-y-0 md:divide-x">
         {/* Left column: copy + bullets */}
         <div className="flex flex-col justify-start gap-4 p-6 lg:gap-6 lg:p-10">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
