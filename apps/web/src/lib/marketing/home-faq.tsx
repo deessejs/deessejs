@@ -52,16 +52,9 @@ export const HOME_FAQ: ReadonlyArray<FaqItem> = [
     question: "How does the CLI work?",
     answer: (
       <>
-        Install it globally with{" "}
-        <span className="font-mono text-foreground/90">
-          npm install -g deessejs
-        </span>{" "}
-        and run{" "}
-        <span className="font-mono text-foreground/90">
-          deessejs init &lt;template-slug&gt;
-        </span>{" "}
-        to scaffold. The full walkthrough (install, authenticate, list,
-        init) lives in{" "}
+        Install it globally with <code>npm install -g deessejs</code> and
+        run <code>deessejs init &lt;template-slug&gt;</code> to scaffold.
+        The full walkthrough (install, authenticate, list, init) lives in{" "}
         <a
           href="/knowledge-base/guides/install-deessejs-cli"
           className="font-medium text-foreground underline-offset-4 hover:underline"
