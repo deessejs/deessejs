@@ -112,10 +112,6 @@ export function CodingAgents() {
                   aria-hidden
                 />
                 {agent.name}
-                <ArrowUpRight
-                  aria-hidden
-                  className="size-3 shrink-0 -translate-x-1 opacity-0 transition-[opacity,transform] duration-150 group-hover/card:translate-x-0 group-hover/card:opacity-100"
-                />
               </a>
             </li>
           ))}
