@@ -52,12 +52,26 @@ import { SectionHeader } from "@/app/(marketing)/_components/section-header"
  * for visual separation, and additional padding would make the track
  * look like a horizontal photo gallery. We override with `pl-0!` at
  * the call site so the default shadcn component stays untouched.
+ *
+ * Hero rotation: each card's image area is replaced with a real,
+ * Shiki-highlighted code block rotated -3deg. The rotation lifts
+ * to -1deg + scale-105 on hover via `group-hover:` utilities on
+ * the inner wrapper. The class surface mirrors the popular
+ * "rotated code card" pattern (Linear, Vercel examples gallery)
+ * with the same corner-pin offsets (-mr-8 / -mb-8 push the bottom-
+ * right corner past the card's outer padding so the rotated block
+ * overflows into the gutter — a peeked, slightly tilted look that
+ * gives the carousel kinetic energy without animation.
  */
 type CarouselGuide = {
   slug: string
   title: string
   description: string
   url: string
+  /** Pre-highlighted Shiki HTML for this guide's code snippet. */
+  html: string
+  /** True when a snippet entry existed for this slug in LATEST_GUIDES_SNIPPETS. */
+  hasSnippet: boolean
 }
 
 function ChevronButton({
@@ -169,12 +183,29 @@ export function LatestGuidesSection({
                 href={guide.url}
                 className="group flex h-full flex-col border-r border-border transition-colors hover:bg-accent/40"
               >
-                {/* Placeholder thumbnail (mockup for now) */}
-                <div
-                  aria-hidden
-                  className="relative aspect-[16/9] border-b border-border bg-muted/40 overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[12px_12px] opacity-60" />
+                {/* Rotated Shiki hero */}
+                <div className="overflow-hidden bg-background p-4">
+                  <div
+                    aria-hidden
+                    data-slot={`hero-${guide.slug}`}
+                    className={cn(
+                      "-rotate-3 origin-bottom-right",
+                      "aspect-video overflow-hidden rounded-md border bg-background",
+                      "transition-transform duration-300 ease-out",
+                      "group-hover:-rotate-1 group-hover:scale-105",
+                    )}
+                  >
+                    {guide.hasSnippet ? (
+                      <div
+                        className="h-full overflow-hidden p-3 text-xs leading-relaxed [&_pre]:!bg-transparent [&_pre]:!p-0"
+                        dangerouslySetInnerHTML={{ __html: guide.html }}
+                      />
+                    ) : (
+                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                        <span className="font-mono">// preview unavailable</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-1 flex-col gap-2 p-6 lg:p-8">
                   <span className="font-mono uppercase text-[0.8125rem] leading-[1.2] text-foreground opacity-64 font-medium tracking-[-0.01em]">
