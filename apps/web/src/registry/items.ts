@@ -24,3 +24,5 @@ export const ITEMS = {
   },
   blocks: {},
 } as const
+
+export { isShipped } from "./is-shipped"

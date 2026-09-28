@@ -1,11 +1,14 @@
 "use client"
 
+import { Badge } from "@workspace/ui/components/badge"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
+
+import { isShipped } from "@/registry/is-shipped"
 
 import type { CatalogueComponent } from "./components-list"
 import { ComponentCode } from "./component-code"
@@ -25,13 +28,22 @@ const COMPONENTS_REPO_URL =
  * in the header row:
  *   - **Tabs** (Preview | Code) on the left
  *   - **Install command** inline in the centre, copy-paste ready
+ *     — replaced with a "Preview" badge for slugs that aren't
+ *     in the registry yet
  *   - **Source** GitHub button on the right
  *
  * Below: Preview mock or Code snippet depending on the active tab.
  * Mirror of `BlockPreviewTabs` (blocks leaf page).
+ *
+ * The install command assumes the consumer has declared the
+ * `@deessejs` namespace in their `components.json` — see
+ * `apps/web/src/app/r/README.md` for the setup snippet. Without
+ * that declaration the shadcn CLI cannot resolve
+ * `@deessejs/<slug>` to the public registry.
  */
 export function ComponentPreviewTabs({ component }: Props) {
   const snippet = getComponentSnippet(component.slug)
+  const shipped = isShipped(component.slug)
   const installCommand = `npx shadcn@latest add @deessejs/${component.slug}`
 
   return (
@@ -42,9 +54,18 @@ export function ComponentPreviewTabs({ component }: Props) {
           <TabsTrigger value="code">Code</TabsTrigger>
         </TabsList>
         <div className="flex flex-1 items-center gap-2">
-          <code className="max-w-md flex-1 truncate rounded-md border border-border bg-muted/40 px-3 py-2 font-mono text-copy-13 text-foreground">
-            {installCommand}
-          </code>
+          {shipped ? (
+            <code className="max-w-md flex-1 truncate rounded-md border border-border bg-muted/40 px-3 py-2 font-mono text-copy-13 text-foreground">
+              {installCommand}
+            </code>
+          ) : (
+            <div className="flex flex-1 items-center gap-2 rounded-md border border-dashed border-border bg-muted/20 px-3 py-2">
+              <Badge variant="secondary">Preview</Badge>
+              <span className="text-copy-13 text-muted-foreground">
+                Package coming in V3.
+              </span>
+            </div>
+          )}
           <a
             href={COMPONENTS_REPO_URL}
             target="_blank"

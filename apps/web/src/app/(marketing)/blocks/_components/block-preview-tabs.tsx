@@ -1,10 +1,15 @@
+"use client"
+
+import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
-import { Button } from "@workspace/ui/components/button"
+
+import { isShipped } from "@/registry/is-shipped"
 
 import type { CatalogueBlock } from "./blocks-list"
 import { BlockPreview } from "./block-preview"
@@ -23,6 +28,8 @@ const BLOCKS_REPO_URL = "https://github.com/deessejs/deessejs"
  * in the header row:
  *   - **Tabs** (Preview | Code) on the left
  *   - **Install command** inline in the centre, copy-paste ready
+ *     — replaced with a "Preview" badge for slugs that aren't
+ *     in the registry yet
  *   - **Source** GitHub button on the right
  *
  * Below: Preview mock or Code snippet depending on the active tab.
@@ -33,6 +40,7 @@ const BLOCKS_REPO_URL = "https://github.com/deessejs/deessejs"
  */
 export function BlockPreviewTabs({ block }: Props) {
   const snippet = getBlockSnippet(block.slug)
+  const shipped = isShipped(block.slug)
   // shadcn CLI command against the DeesseJS registry. Consumer must
   // declare the registry once in their `components.json`:
   //   "registries": { "@deessejs": "https://deessejs.com/r/{name}.json" }
@@ -47,9 +55,18 @@ export function BlockPreviewTabs({ block }: Props) {
           <TabsTrigger value="code">Code</TabsTrigger>
         </TabsList>
         <div className="flex flex-col items-stretch gap-2 lg:flex-row lg:items-center">
-          <code className="max-w-md truncate rounded-md border border-border bg-muted/40 px-3 py-2 font-mono text-copy-13 text-foreground">
-            {installCommand}
-          </code>
+          {shipped ? (
+            <code className="max-w-md truncate rounded-md border border-border bg-muted/40 px-3 py-2 font-mono text-copy-13 text-foreground">
+              {installCommand}
+            </code>
+          ) : (
+            <div className="flex items-center gap-2 rounded-md border border-dashed border-border bg-muted/20 px-3 py-2">
+              <Badge variant="secondary">Preview</Badge>
+              <span className="text-copy-13 text-muted-foreground">
+                Package coming in V3.
+              </span>
+            </div>
+          )}
           <Button asChild variant="outline" size="sm" className="shrink-0">
             <a
               href={BLOCKS_REPO_URL}

@@ -4,12 +4,13 @@ import Link from "next/link"
 
 import { Button } from "@workspace/ui/components/button"
 
-import { MarketingPage } from "../_components/marketing-page"
-
 /**
  * Page-level wrapper for every page in `/blocks` and its category
- * / leaf routes. Mirror of `(marketing)/components/layout.tsx` —
- * same MarketingPage wrapper, same final CTA shape.
+ * / leaf routes. Renders the children directly (the shared-border
+ * card + diagonal stripes are now supplied by `<GlobalLayout>` at
+ * the root layout) and closes with the shared 2-col Final CTA.
+ *
+ * Mirror of `(marketing)/components/layout.tsx`.
  */
 export default function BlocksLayout({
   children,
@@ -17,7 +18,7 @@ export default function BlocksLayout({
   children: React.ReactNode
 }) {
   return (
-    <MarketingPage>
+    <>
       {children}
 
       {/* Final CTA — same 2-col shared-border grid as the homepage
@@ -55,6 +56,6 @@ export default function BlocksLayout({
           </Button>
         </div>
       </div>
-    </MarketingPage>
+    </>
   )
 }

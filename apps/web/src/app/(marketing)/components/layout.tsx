@@ -4,17 +4,16 @@ import Link from "next/link"
 
 import { Button } from "@workspace/ui/components/button"
 
-import { MarketingPage } from "../_components/marketing-page"
-
 /**
  * Page-level wrapper for every page in `/components` and its
- * category / leaf routes. Reuses the same outer container,
- * shared-border card, and diagonal-stripe framing as `/blog` and
- * `/changelog` so the visual signature of the site is uniform.
+ * category / leaf routes. Renders the children directly (the
+ * shared-border card + diagonal stripes are now supplied by
+ * `<GlobalLayout>` at the root layout) and closes with the
+ * shared 2-col Final CTA.
  *
- * Closes every page with a shared 2-col final CTA, identical in
- * shape to `(content)/layout.tsx`'s CTA so visitors hit the same
- * conversion lever regardless of which surface they arrived on.
+ * Same Final CTA shape as `(marketing)/blocks/layout.tsx` and
+ * the content routes — visitors hit the same conversion lever
+ * regardless of which surface they arrived on.
  */
 export default function ComponentsLayout({
   children,
@@ -22,7 +21,7 @@ export default function ComponentsLayout({
   children: React.ReactNode
 }) {
   return (
-    <MarketingPage>
+    <>
       {children}
 
       {/* Final CTA — same 2-col shared-border grid as the homepage
@@ -60,6 +59,6 @@ export default function ComponentsLayout({
           </Button>
         </div>
       </div>
-    </MarketingPage>
+    </>
   )
 }
