@@ -216,7 +216,7 @@ export const SKIP_TOTAL_HOURS = "124+"
 // Integrations (Section 12)
 // ---------------------------------------------------------------------------
 
-export type IntegrationGroup = "frameworks" | "providers" | "agents"
+export type IntegrationGroup = "frameworks" | "providers"
 
 export type Integration = {
   name: string
@@ -248,12 +248,30 @@ export const INTEGRATIONS: ReadonlyArray<Integration> = [
   { name: "Neon",        logo: "neon",       group: "providers" },
   { name: "Cloudflare",  logo: "cloudflare", group: "providers" },
   { name: "Stripe",      logo: "stripe",     group: "providers" },
-  { name: "Claude Code", logo: "claudecode", group: "agents" },
-  { name: "Codex",       logo: "codex",      group: "agents" },
-  { name: "Pi",          logo: "pi",         group: "agents" },
-  { name: "Cursor",      logo: "cursor",     group: "agents" },
-  { name: "Grok",        logo: "grok",       group: "agents" },
-  { name: "OpenCode",    logo: "opencode",   group: "agents" },
+]
+
+/**
+ * Coding-agent compatibility wall — the 6 CLI harnesses the registry's
+ * contracts work with. Distinct from INTEGRATIONS because agents are
+ * *consumers* of the system (they read the contracts), not interchangeable
+ * providers behind a contract. Mixing them in the same column conflated
+ * "what alternative providers can I plug in" with "what tool can drive
+ * the templates" — two separate questions that deserve their own sections.
+ *
+ * Renders as a 6-cell single row on lg (3-col on md, 2-col on mobile).
+ */
+export type CodingAgent = {
+  name: string
+  logo: string
+}
+
+export const CODING_AGENTS: ReadonlyArray<CodingAgent> = [
+  { name: "Claude Code", logo: "claudecode" },
+  { name: "Codex",       logo: "codex" },
+  { name: "Pi",          logo: "pi" },
+  { name: "Cursor",      logo: "cursor" },
+  { name: "Grok",        logo: "grok" },
+  { name: "OpenCode",    logo: "opencode" },
 ]
 
 /**
@@ -267,7 +285,6 @@ export const INTEGRATION_GROUP_LABELS: ReadonlyArray<{
 }> = [
   { key: "frameworks", label: "Frameworks" },
   { key: "providers", label: "Providers" },
-  { key: "agents", label: "AI agents" },
 ]
 
 // ---------------------------------------------------------------------------

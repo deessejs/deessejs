@@ -15,6 +15,7 @@ export default function HomePage() {
       <Home.Ecosystem />
       <Home.Testimonials />
       <Home.Integrations />
+      <Home.CodingAgents />
       {/* Hidden until real traction: the strip showed "12K npm downloads"
           and "3.2K GitHub stars" while the project isn't published in
           any meaningful way. The component, the STATS const, and the

@@ -21,6 +21,7 @@
  *   - `faq.tsx` exports `FAQ` (the inner accordion)
  */
 import { CliInAction } from "./cli-in-action"
+import { CodingAgents } from "./coding-agents"
 import { Contracts } from "./contracts"
 import { ContractsGrid } from "@/app/(marketing)/_components/contracts-grid"
 import { Ecosystem } from "./ecosystem"
@@ -56,6 +57,7 @@ export const Home = {
   Ecosystem,
   Testimonials,
   Integrations,
+  CodingAgents,
   Stats,
   FAQ: FAQSection,
   FinalCta,
@@ -65,6 +67,7 @@ export const Home = {
 // without going through the namespace (e.g. tests, storybook).
 export {
   CliInAction,
+  CodingAgents,
   Contracts,
   Ecosystem,
   FinalCta,
