@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Code, GitBranch, Layers, Lock } from "lucide-react"
+import { ArrowUpRight, Code, GitBranch, Layers, Lock } from "lucide-react"
 
 import { Section } from "@/app/(marketing)/_components/section"
 
@@ -154,9 +154,13 @@ export function Integrations() {
             <Link
               key={tech.slug}
               href={`/stack/${tech.slug}`}
-              className="group/tech flex flex-col gap-3 border-b border-r border-border p-6 transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 lg:p-8"
+              className="group/tech relative flex flex-col gap-3 border-b border-r border-border p-6 transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 lg:p-8"
             >
-              <h3 className="flex items-center gap-2 text-heading-20 font-medium tracking-tight text-foreground">
+              <ArrowUpRight
+                aria-hidden
+                className="absolute right-4 top-4 size-4 shrink-0 text-muted-foreground transition-colors group-hover/tech:text-foreground lg:right-6 lg:top-6"
+              />
+              <h3 className="flex items-center gap-2 pr-6 text-heading-20 font-medium tracking-tight text-foreground">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/logos/${tech.logo}.svg`}
@@ -171,12 +175,6 @@ export function Integrations() {
               <p className="text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {tech.description}
               </p>
-              <span
-                aria-hidden
-                className="mt-auto inline-flex items-center gap-1 text-label-14 text-foreground transition-transform duration-150 group-hover/tech:translate-x-0.5"
-              >
-                Learn more <span aria-hidden>→</span>
-              </span>
             </Link>
           ))}
         </div>
