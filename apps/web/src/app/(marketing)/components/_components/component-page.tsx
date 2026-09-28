@@ -61,7 +61,7 @@ export function ComponentLeafHero({
   component,
 }: {
   category: ComponentCategory
-  component: { name: string }
+  component: { name: string; description: string }
 }) {
   return (
     <header className="border-b border-border px-6 py-16 lg:px-10 lg:py-20">
@@ -73,7 +73,7 @@ export function ComponentLeafHero({
           {component.name}.
         </h1>
         <p className="max-w-2xl text-copy-18 text-pretty leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
-          {category.description}
+          {component.description}
         </p>
       </div>
     </header>

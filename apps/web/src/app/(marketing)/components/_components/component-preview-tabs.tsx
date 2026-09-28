@@ -21,7 +21,7 @@ type Props = {
 }
 
 const COMPONENTS_REPO_URL =
-  "https://github.com/deessejs/deessejs/tree/main/packages/ui/components"
+  "https://github.com/deessejs/deessejs/tree/main/packages/ui/src/components"
 
 /**
  * Client orchestrator for the leaf page tabs. Two regions

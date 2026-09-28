@@ -9,7 +9,12 @@ projects via the [shadcn CLI](https://ui.shadcn.com/docs/cli).
 | Path | Description |
 |---|---|
 | `GET /r/registry.json` | Catalogue index. Each entry is a full shadcn RegistryItem — `name`, `type`, `title`, `description`, `dependencies`, `registryDependencies`, `files`. Used by `shadcn list` / `search`. |
-| `GET /r/<name>.json` | Single-item resolver. `<name>` can be a bare slug (`button`) or namespaced (`components/button`, `blocks/hero-centered`). Returns the matching RegistryItem. |
+| `GET /r/<name>.json` | Single-item resolver. `<name>` is the flat slug (e.g. `button`, `input`, `badge`). Returns the matching RegistryItem. |
+
+Note: the route is a single-segment dynamic (`/[name].json`), not
+nested. The `components/button` / `blocks/<slug>` namespace lives
+on the consumer's `components.json` — the shadcn CLI rewrites
+`@deessejs/button` to `/r/button.json` on the consumer side.
 
 Currently shipped:
 
@@ -19,11 +24,13 @@ Currently shipped:
 ## Consumer setup
 
 A consumer project must declare the `@deessejs` namespace once in
-its `components.json` before running `npx shadcn add`:
+its `components.json` before running `npx shadcn add`. The
+schema for `components.json` is the top-level shadcn config
+schema, not the registry-item schema:
 
 ```json
 {
-  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "$schema": "https://ui.shadcn.com/schema.json",
   "registries": {
     "@deessejs": "https://deessejs.com/r/{name}.json"
   }

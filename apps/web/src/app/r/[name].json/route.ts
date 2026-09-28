@@ -18,6 +18,13 @@ import { ITEMS } from "@/registry/items"
  *   GET /r/components/button.json      → ITEMS.components.button
  *   GET /r/blocks/<anything>.json      → 404 (no blocks shipped)
  *
+ * The route lives at the canonical Next.js pattern
+ * `app/r/[name].json/route.ts`. Note that because of the
+ * literal `.json` directory suffix, Next.js 16 types the
+ * dynamic segment as opaque (`params: Promise<Record<string,
+ * string | string[]>>`), so we read the value defensively
+ * rather than relying on a named key.
+ *
  * Schema: https://ui.shadcn.com/docs/registry/registry-item-json
  *
  * The full catalogue index (used for `shadcn list` / `search`)
@@ -26,9 +33,15 @@ import { ITEMS } from "@/registry/items"
  */
 export async function GET(
   _req: Request,
-  { params }: { params: Promise<{ name: string }> },
+  {
+    params,
+  }: {
+    params: Promise<Record<string, string | string[]>>
+  },
 ) {
-  const { name } = await params
+  const resolved = await params
+  const rawName = resolved["name"]
+  const name = Array.isArray(rawName) ? rawName[0] ?? "" : rawName ?? ""
   const raw = name.endsWith(".json") ? name.slice(0, -5) : name
   const [maybeNamespace, slug] = raw.split("/")
   const namespace =
