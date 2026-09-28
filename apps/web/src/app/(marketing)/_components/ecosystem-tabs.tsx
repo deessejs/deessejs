@@ -187,27 +187,14 @@ export function EcosystemTabs({
           value={tab.slug}
           className="relative flex-1 outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden"
         >
-          {/* Background canvas + code mockup, both anchored to the
-              bottom-right and translated 25% right + 25% down so
-              the top-left of the displaced wrappers is offset from
-              the visible cell — leaves a "peek" margin in the
-              upper-left corner, identical to the recipe in
-              <SurfacesTabs>. TabsContent's overflow-hidden clips
-              both wrappers by the column edges.
-
-              Layer 1 — bg-muted/40 panel with a dotted overlay.
-              Same pattern as the Surfaces placeholder; reads as a
-              textured canvas, sits at the back.
-
-              Layer 2 — the Shiki-highlighted code block, lifted off
-              the canvas with an inner 12% margin so the wrapper's
-              clip and the canvas border don't crowd the code. */}
-          <div
-            aria-hidden
-            className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] bg-muted/40 border border-border overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[12px_12px] opacity-60" />
-          </div>
+          {/* Code mockup anchored to the bottom-right and translated
+              25% right + 25% down so the top-left of the displaced
+              wrapper is offset from the visible cell — leaves a
+              peek margin in the upper-left corner. TabsContent's
+              overflow-hidden clips the wrapper by the column edges
+              (same displacement recipe as <SurfacesTabs>, without
+              the placeholder canvas since this is a real code
+              block). */}
           <div className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] overflow-hidden">
             <div className="absolute top-[12%] left-[12%] right-[12%] bottom-[12%]">
               <EcosystemCodeMockup
