@@ -25,9 +25,14 @@ import {
  *   • lg (≥1024px)  — basis-1/4, 4 visible
  *
  * Embla snap is `align: "start"` so the active card aligns flush with
- * the section's left edge. The fixed-border rail is dropped (the
- * `<CarouselContent>` overflow-hidden handles the visual frame, so we
- * don't need divide-x / border-r on the items themselves).
+ * the section's left edge.
+ *
+ * The shadcn wrapper renders prev/next absolutely-positioned beside the
+ * track. We override that — the buttons sit on a row below the carousel,
+ * right-aligned, framed by a `border-t` that closes the section's
+ * shared-border rail. The overrides (`static! top-auto! left-auto!
+ * -translate-y-0!`) neutralise the wrapper's absolute positioning so
+ * the buttons participate in normal flow inside the nav strip.
  *
  * 8 guides total — 4 visible at lg means 4 peek off-screen, giving the
  * section room to advertise the navigation without an explicit "next
@@ -49,9 +54,8 @@ export function LatestGuidesCarousel({
     <Carousel
       opts={{ align: "start", loop: false }}
       aria-label="Latest KB guides"
-      className="px-6 lg:px-10"
     >
-      <CarouselContent>
+      <CarouselContent className="px-6 lg:px-10">
         {guides.map((guide) => (
           <CarouselItem
             key={guide.slug}
@@ -83,8 +87,10 @@ export function LatestGuidesCarousel({
           </CarouselItem>
         ))}
       </CarouselContent>
-      <CarouselPrevious />
-      <CarouselNext />
+      <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4 lg:px-10">
+        <CarouselPrevious className="static! top-auto! left-auto! -translate-y-0! size-8 rounded-full" />
+        <CarouselNext className="static! top-auto! left-auto! -translate-y-0! size-8 rounded-full" />
+      </div>
     </Carousel>
   )
 }
