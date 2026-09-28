@@ -11,7 +11,6 @@ export default function HomePage() {
       <Home.Skip />
       <Home.Contracts />
       <Home.CliInAction />
-      <Home.LatestGuides />
       <Home.Ecosystem />
       {/* Hidden until real testimonials come in: the 12 quotes are
           placeholder personas mapped to the for-who archetypes,
@@ -33,6 +32,7 @@ export default function HomePage() {
           and the export all stay in place — uncomment to reactivate
           once we have verified customer quotes to ship. */}
       {/* <Home.Testimonials /> */}
+      <Home.LatestGuides />
       <Home.FAQ />
       <Home.FinalCta />
     </>
