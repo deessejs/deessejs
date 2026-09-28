@@ -60,8 +60,8 @@ export const HOME_FAQ: ReadonlyArray<FaqItem> = [
         <span className="font-mono text-foreground/90">
           deessejs init &lt;template-slug&gt;
         </span>{" "}
-        to scaffold. The full walkthrough — install, authenticate, list,
-        init — lives in{" "}
+        to scaffold. The full walkthrough (install, authenticate, list,
+        init) lives in{" "}
         <a
           href="/knowledge-base/guides/install-deessejs-cli"
           className="font-medium text-foreground underline-offset-4 hover:underline"
