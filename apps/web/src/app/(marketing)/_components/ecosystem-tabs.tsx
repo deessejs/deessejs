@@ -187,26 +187,25 @@ export function EcosystemTabs({
           value={tab.slug}
           className="relative flex-1 outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden"
         >
-          {/* Mockup anchored to the bottom-right and translated 25%
-              right + 25% down so the top-left of the mockup is offset
-              from the visible cell, leaving a "peek" margin in the
-              upper-left corner of the column. The TabsContent
-              parent carries `overflow-hidden` so the displaced
-              wrapper is clipped by the column edges — same recipe
-              as <SurfacesTabs>.
-
-              Wrapper rides on `bg-muted/40` (matched to the shared
-              surface tone) with a dotted overlay (same bg
-              `bg-[radial-gradient(...)]` recipe as elsewhere). The
-              inner <EcosystemCodeMockup> renders the Shiki-highlighted
-              HTML — a small inner offset (`top-[12%] left-[12%]`)
-              keeps the code block clear of the wrapper's clipped
-              edges so the whole block reads legibly. */}
+          {/* Right-column background canvas: a textured
+              `bg-muted/40` panel with a dotted overlay, sized to
+              the whole TabsContent (no translate, no peek) so it
+              reads as the backdrop for the right-hand column. The
+              code mockup is layered on top of this canvas below. */}
           <div
             aria-hidden
-            className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] bg-muted/40 border border-border overflow-hidden"
+            className="absolute inset-0 bg-muted/40 overflow-hidden"
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[12px_12px] opacity-60" />
+          </div>
+          {/* Code mockup anchored to the bottom-right and translated
+              25% right + 25% down so the top-left of the mockup is
+              offset from the visible cell, leaving a peek margin in
+              the upper-left corner of the column. The TabsContent
+              parent carries `overflow-hidden` so the displaced
+              wrapper is clipped by the column edges — same recipe
+              as <SurfacesTabs>. */}
+          <div className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] overflow-hidden">
             <div className="absolute top-[12%] left-[12%] right-[12%] bottom-[12%]">
               <EcosystemCodeMockup
                 slug={tab.slug}

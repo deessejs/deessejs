@@ -46,7 +46,7 @@ export function EcosystemCodeMockup({
   return (
     <div
       data-slug={slug}
-      className="bg-background border border-border overflow-hidden rounded-none w-full h-full"
+      className="bg-background border border-border overflow-hidden rounded-none h-full w-full"
     >
       <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-background/40">
         <span
