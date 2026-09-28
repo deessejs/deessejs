@@ -105,17 +105,17 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
 /** Lines shown in the CLI-in-action section. */
 export const CLI_LINES: ReadonlyArray<{ prompt: string; output?: string }> = [
   {
-    prompt: "$ npx deessejs init my-saas --template=saas-starter",
+    prompt: "$ deessejs init my-saas --template=saas-starter",
     output:
       "Cloning template…\nInstalling contracts (auth, db, billing, jobs, storage, obs)\nWiring Better Auth + Drizzle + Stripe\n✔ Project ready at ./my-saas",
   },
   {
-    prompt: "$ npx deessejs list",
+    prompt: "$ deessejs list",
     output:
       "saas-starter        shipped    Next.js · Better Auth · Drizzle · Stripe\nai-chatbot          coming-soon\nlanding-page        coming-soon",
   },
   {
-    prompt: "$ npx deessejs info my-saas",
+    prompt: "$ deessejs info my-saas",
     output:
       "6 contracts wired · 0 missing · 0 outdated\nMCP server: ready · 12 tools exposed",
   },
@@ -139,7 +139,7 @@ export const PERSONAS: ReadonlyArray<Persona> = [
     label: "Indie hackers",
     headline: "Ship your first $ online this weekend.",
     outcome:
-      "From `npx deessejs init` to your first paying customer in days, not months.",
+      "From `deessejs init` to your first paying customer in days, not months.",
   },
   {
     slug: "saas-founders",

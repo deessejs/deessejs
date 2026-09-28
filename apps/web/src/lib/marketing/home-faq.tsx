@@ -22,27 +22,53 @@ export const HOME_FAQ: ReadonlyArray<FaqItem> = [
     value: "what-is-deessejs",
     question: "What is DeesseJS?",
     answer:
-      "DeesseJS is a registry of production-grade templates for SaaS, AI agents, mobile, desktop, CLIs, APIs, blogs, and e-commerce. Each template ships with the same six contracts wired (auth, database, billing, jobs, storage, observability) and the same AI-friendly conventions so a coding agent can extend it without re-discovering the boilerplate.",
+      "DeesseJS is a registry of production-grade templates for SaaS, AI agents, mobile, desktop, CLIs, APIs, blogs, and e-commerce. Every template ships with the same AI-friendly conventions so a coding agent can extend it without re-discovering the boilerplate.",
   },
   {
     value: "is-deessejs-free",
     question: "Is DeesseJS free to use?",
-    answer:
-      "The templates and the CLI are MIT-licensed and free. Install any template, modify it, ship it as your product. The delivery service (we ship it with you) is a paid engagement scoped per project. Contact us for a quote.",
+    answer: (
+      <>
+        It depends on which tier you pick.{" "}
+        <a
+          href="/pricing"
+          className="font-medium text-foreground underline-offset-4 hover:underline"
+        >
+          Full breakdown on /pricing
+        </a>
+        . In short: the Community templates and the CLI are MIT-licensed and
+        free. The Professional tier unlocks the full Pro catalog for $299
+        one-shot, lifetime, every project you ship. The Agency &amp; Team
+        tier covers 5 seats and adds a Commercial Extended License that lets
+        you re-sell to your clients without attribution. The Subscription
+        tier is Pro paid monthly ($23) for teams that prefer ongoing over
+        upfront. The delivery service (we ship it with you) is a separate
+        engagement scoped per project.
+      </>
+    ),
   },
   {
     value: "how-it-works",
     question: "How does the CLI work?",
     answer: (
       <>
-        Run{" "}
+        Install it globally with{" "}
         <span className="font-mono text-foreground/90">
-          npx @deessejs/cli@latest init my-project --template=saas-starter
+          npm install -g deessejs
         </span>{" "}
-        to scaffold a new project with every contract pre-wired. Use{" "}
-        <span className="font-mono text-foreground/90">list</span> to browse the
-        registry and <span className="font-mono text-foreground/90">info</span>{" "}
-        to verify the contracts in your project are present and in sync.
+        and run{" "}
+        <span className="font-mono text-foreground/90">
+          deessejs init &lt;template-slug&gt;
+        </span>{" "}
+        to scaffold. The full walkthrough — install, authenticate, list,
+        init — lives in{" "}
+        <a
+          href="/knowledge-base/guides/install-deessejs-cli"
+          className="font-medium text-foreground underline-offset-4 hover:underline"
+        >
+          the install guide
+        </a>
+        .
       </>
     ),
   },
@@ -50,7 +76,7 @@ export const HOME_FAQ: ReadonlyArray<FaqItem> = [
     value: "ai-first",
     question: "What does AI-first actually mean?",
     answer:
-      "Every template ships with an AGENTS.md file at the monorepo root, an MCP manifest exposing the project tools, typed contracts end-to-end, and a layout an agent can navigate without guessing. Your coding agent reads the contracts, builds on them, and cannot break them.",
+      "You can fire your coding agent on a fresh clone and it ships the same way you would. The contracts are typed at every boundary, RBAC enforces who can touch what, AGENTS.md documents the conventions, and the MCP manifest exposes the project tools. The agent cannot break the contracts, and cannot escalate beyond its role.",
   },
   {
     value: "ship-with-us",
