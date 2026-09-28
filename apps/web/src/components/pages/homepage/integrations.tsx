@@ -1,31 +1,28 @@
 import Link from "next/link"
+import { Code, GitBranch, Layers, Lock } from "lucide-react"
 
 import { Section } from "@/app/(marketing)/_components/section"
 
 /**
- * Integrations — v3 (tech card grid).
+ * Integrations — 2-column layout.
  *
- * Replaces both the v1 'Bring your own providers' 2-column logo wall
- * and the v2 '6 contracts × providers' block grid. Organised around
- * the technologies themselves rather than around categories — each
- * card is a self-contained tile with its logo, name, one-line
- * description, and a Learn more link that routes to /stack/<slug>.
+ * Left column: eyebrow + h2 + 4 bullets in the Vercel-style
+ *   'icon + bold + descriptor' pattern.
  *
- * Pattern inspired by trigger.dev's 'True runtime freedom for
- * developers' section but adapted to this repo's design tokens:
- * card chrome uses the shared-border rectangle (border border-border
- * bg-background) rather than trigger.dev's flat-with-no-border
- * aesthetic, so the section reads as part of the same shared-border
- * rhythm as every other section on the homepage.
+ * Right column: 8-tech grid (2 cols x 4 rows on desktop, 1 col on
+ *   mobile). Each card is a self-contained tile with its logo,
+ *   name, one-line description, and a 'Learn more' link that
+ *   routes to /stack/<slug>.
  *
- * 12 technologies hardcoded. Every href resolves to /stack/<slug>
+ * Inspired by trigger.dev's 'True runtime freedom for developers'
+ * section but adapted to this repo's design tokens: card chrome
+ * uses the shared-border rectangle (border border-border bg-background)
+ * so the section reads as part of the same shared-border rhythm
+ * as every other section on the homepage.
+ *
+ * 8 technologies hardcoded. Every href resolves to /stack/<slug>
  * which is not yet a real route — the links 404 today and will
  * activate when the stack detail page ships.
- *
- * Logo slugs match the simple-icons / t3.codes convention and
- * resolve to `/public/logos/<slug>.svg`. SVGs use fill='currentColor'
- * so they render in monochrome via the existing dark:invert +
- * text-foreground inheritance.
  */
 
 type Tech = {
@@ -77,12 +74,6 @@ const TECHS: ReadonlyArray<Tech> = [
     slug: "cloudflare",
   },
   {
-    logo: "supabase",
-    name: "Supabase",
-    description: "Hosted Postgres with auth, storage, and realtime. The Database contract adapts to the Supabase shape.",
-    slug: "supabase",
-  },
-  {
     logo: "postgresql",
     name: "Postgres",
     description: "Any wire-compatible host works. The Drizzle schema is the source of truth, ported anywhere.",
@@ -94,73 +85,101 @@ const TECHS: ReadonlyArray<Tech> = [
     description: "Default billing provider. Subscriptions, usage metering, and webhooks via the Billing contract.",
     slug: "stripe",
   },
-  {
-    logo: "resend",
-    name: "Resend",
-    description: "Default transactional email. Templates ship with React Email components wired to the auth flow.",
-    slug: "resend",
-  },
-  {
-    logo: "drizzle",
-    name: "Drizzle",
-    description: "Default ORM. Type-safe queries, migrations, and a single schema source for the whole stack.",
-    slug: "drizzle",
-  },
-  {
-    logo: "sentry",
-    name: "Sentry",
-    description: "Errors and performance tracing. Plugs into the same OTel pipeline as the rest of the observability contract.",
-    slug: "sentry",
-  },
 ]
 
 export function Integrations() {
   return (
     <Section>
-      <div className="flex flex-col gap-4 p-6 lg:p-10 border-b border-border">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          Plays well with
-        </p>
-        <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-          Bring the stack you already use.
-        </h2>
-        <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-          Every template is wired against the 6 contracts, not a
-          fixed set of brands. Run the frameworks, hosts, and
-          providers your team already knows — and swap the rest
-          without rewriting your app.
-        </p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {TECHS.map((tech) => (
-          <Link
-            key={tech.slug}
-            href={`/stack/${tech.slug}`}
-            className="group/tech flex flex-col gap-3 border-b border-r border-border p-6 transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 lg:p-8"
-          >
-            <h3 className="flex items-center gap-2 text-heading-20 font-medium tracking-tight text-foreground">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`/logos/${tech.logo}.svg`}
-                alt=""
-                width={20}
-                height={20}
-                className="size-5 shrink-0 dark:invert"
+      <div className="grid grid-cols-1 md:grid-cols-2 divide-y divide-border md:divide-y-0 md:divide-x">
+        {/* Left column: copy + bullets */}
+        <div className="flex flex-col justify-start gap-4 p-6 lg:gap-6 lg:p-10">
+          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            Plays well with
+          </p>
+          <h2 className="max-w-md text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
+            Bring the stack you already use.
+          </h2>
+          <p className="max-w-md text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+            Every template is wired against the 6 contracts, not a
+            fixed set of brands. Run the frameworks, hosts, and
+            providers your team already knows.
+          </p>
+          <ul className="flex flex-col gap-3 pt-2">
+            <li className="flex items-start gap-3 text-copy-14 leading-6 text-foreground">
+              <GitBranch
                 aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-foreground"
               />
-              {tech.name}
-            </h3>
-            <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
-              {tech.description}
-            </p>
-            <span
-              aria-hidden
-              className="mt-auto inline-flex items-center gap-1 text-label-13 text-foreground transition-transform duration-150 group-hover/tech:translate-x-0.5"
+              <span>
+                <strong>Deploy automatically</strong> from git or with
+                the CLI — no extra config.
+              </span>
+            </li>
+            <li className="flex items-start gap-3 text-copy-14 leading-6 text-foreground">
+              <Layers
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-foreground"
+              />
+              <span>
+                <strong>Wide range</strong> support for the most
+                popular frameworks and hosts.
+              </span>
+            </li>
+            <li className="flex items-start gap-3 text-copy-14 leading-6 text-foreground">
+              <Code
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-foreground"
+              />
+              <span>
+                <strong>Typed contracts</strong> at every boundary, so
+                your agent and your IDE stay in sync.
+              </span>
+            </li>
+            <li className="flex items-start gap-3 text-copy-14 leading-6 text-foreground">
+              <Lock
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-foreground"
+              />
+              <span>
+                <strong>Bring your own auth</strong> — Better Auth,
+                Clerk, Auth0, Lucia, or your own provider.
+              </span>
+            </li>
+          </ul>
+        </div>
+
+        {/* Right column: 8-tech grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 border-t border-border md:border-t-0">
+          {TECHS.map((tech) => (
+            <Link
+              key={tech.slug}
+              href={`/stack/${tech.slug}`}
+              className="group/tech flex flex-col gap-3 border-b border-r border-border p-6 transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 lg:p-8"
             >
-              Learn more <span aria-hidden>→</span>
-            </span>
-          </Link>
-        ))}
+              <h3 className="flex items-center gap-2 text-heading-20 font-medium tracking-tight text-foreground">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/logos/${tech.logo}.svg`}
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="size-5 shrink-0 dark:invert"
+                  aria-hidden
+                />
+                {tech.name}
+              </h3>
+              <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
+                {tech.description}
+              </p>
+              <span
+                aria-hidden
+                className="mt-auto inline-flex items-center gap-1 text-label-13 text-foreground transition-transform duration-150 group-hover/tech:translate-x-0.5"
+              >
+                Learn more <span aria-hidden>→</span>
+              </span>
+            </Link>
+          ))}
+        </div>
       </div>
     </Section>
   )
