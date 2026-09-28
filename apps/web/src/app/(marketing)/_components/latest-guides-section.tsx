@@ -19,14 +19,21 @@ import { SectionHeader } from "@/app/(marketing)/_components/section-header"
  *
  * Combines three responsibilities under a single `"use client"` boundary
  * so the prev/next buttons (which need access to the live carousel state)
- * can live below the carousel track in their own nav strip, while the
- * actual carousel sits between the `SectionHeader` and the strip:
+ * can sit in the SectionHeader on their own row, directly under the
+ * "Latest guides" eyebrow label, left-aligned. The `See all guides`
+ * link keeps the top-right slot (`action`):
  *
- *   1. Render the SectionHeader with a "See all guides" link on the
- *      RIGHT rail (the eyebrowAction/top-left chevrons stay disabled —
- *      the buttons live in the nav strip below the carousel).
+ *   ┌──────────────────────────────────────────────────┐
+ *   │ [bar] LATEST GUIDES           See all guides →   │
+ *   │ [‹] [›]                                          │
+ *   └──────────────────────────────────────────────────┘
+ *   ───────────── 8-card carousel track ───────────────
+ *
+ *   1. Render the SectionHeader with the chevrons in the
+ *      `eyebrowAction` slot (under the eyebrow, left-aligned)
+ *      and a "See all guides" link on the right rail.
  *   2. Hold the Embla instance (`carouselApi`) at the boundary so the
- *      buttons can call `scrollPrev()` / `scrollNext()`.
+ *      header buttons can call `scrollPrev()` / `scrollNext()`.
  *   3. Render the carousel track and the guide cards.
  *
  * Buttons carry `rounded-md` (not the default carousel `rounded-full`)
@@ -114,7 +121,7 @@ export function LatestGuidesSection({
     carouselApi?.scrollNext()
   }, [carouselApi])
 
-  const navStrip = (
+  const eyebrowAction = (
     <>
       <ChevronButton
         direction="prev"
@@ -148,6 +155,7 @@ export function LatestGuidesSection({
         title=""
         bordered={false}
         action={rightAction}
+        eyebrowAction={eyebrowAction}
       />
       <Carousel
         opts={{ align: "start", loop: false }}
@@ -191,9 +199,6 @@ export function LatestGuidesSection({
             </CarouselItem>
           ))}
         </CarouselContent>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4 lg:px-10">
-          {navStrip}
-        </div>
       </Carousel>
     </>
   )

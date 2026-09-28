@@ -31,6 +31,7 @@ export function SectionHeader({
   title,
   subtitle,
   action,
+  eyebrowAction,
   bordered = true,
   className,
 }: {
@@ -40,6 +41,15 @@ export function SectionHeader({
   action?:
     | { href: string; label: string }
     | React.ReactNode
+  /**
+   * Optional chrome rendered in its OWN row directly under the
+   * eyebrow row, before the h2 title. Most sections leave this
+   * empty; LatestGuides uses it to host the carousel prev/next
+   * chevrons left-aligned under the "Latest guides" label,
+   * while the right-side `action` slot stays available for the
+   * "See all guides" link.
+   */
+  eyebrowAction?: React.ReactNode
   bordered?: boolean
   className?: string
 }) {
@@ -88,6 +98,9 @@ export function SectionHeader({
           )
         ) : null}
       </div>
+      {eyebrowAction ? (
+        <div className="flex items-center gap-2">{eyebrowAction}</div>
+      ) : null}
       <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
         {title}
       </h2>
