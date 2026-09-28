@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error",
+    "style": "warn"
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/dist/**",
+    "**/.turbo/**",
+    "**/coverage/**",
+    "**/.source/**",
+    "**/.content-collections/**",
+    "**/reports/**",
+    "**/.next/cache/**",
+    "**/.pnpm-store/**",
+    "apps/docs/.source/**",
+    "apps/internal-documentation/.source/**",
+    "apps/web/.content-collections/**",
+    "packages/ui/.content-collections/**",
+    "packages/database/drizzle/**",
+    "**/*.d.ts",
+    "**/*.min.js",
+    "**/CHANGELOG.md",
+    "**/pnpm-lock.yaml"
+  ]
+}
