@@ -196,7 +196,7 @@ export function LatestGuidesSection({
             >
               <Link
                 href={guide.url}
-                className="group flex h-full flex-col border-r border-border transition-colors hover:bg-accent/40"
+                className="group flex h-full flex-col overflow-hidden border-r border-border transition-colors hover:bg-accent/40"
               >
                 {/* Rotated Shiki hero */}
                 <div className="border-t border-border bg-background p-4">
