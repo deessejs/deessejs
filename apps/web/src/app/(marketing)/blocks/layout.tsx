@@ -34,7 +34,7 @@ export default function BlocksLayout({
             Ready to ship?
           </p>
           <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-            Need a section we don't ship yet?
+            Need a section we don&apos;t ship yet?
           </h2>
           <p className="text-copy-16 text-muted-foreground text-pretty leading-7 max-w-xl [&:not(:first-child)]:mt-0">
             Blocks are still being carved out of the marketing
