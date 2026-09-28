@@ -90,7 +90,7 @@ const TECHS: ReadonlyArray<Tech> = [
 export function Integrations() {
   return (
     <Section>
-      <div className="grid grid-cols-1 md:grid-cols-[3fr_7fr] divide-y divide-border md:divide-y-0 md:divide-x">
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(320px,28rem)_1fr] divide-y divide-border md:divide-y-0 md:divide-x">
         {/* Left column: copy + bullets */}
         <div className="flex flex-col justify-start gap-4 p-6 lg:gap-6 lg:p-10">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
