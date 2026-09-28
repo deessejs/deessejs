@@ -113,6 +113,10 @@ catalog:
   # CI tooling
   pkg-pr-new: ^0.0.88
 
+  # Lint/format toolchain (ADR-031 — Phase 1: Oxlint native in parallel)
+  oxlint: ^1.85.0
+  eslint-plugin-oxlint: ^1.85.0
+
 # Strict mode: all dependencies MUST come from a catalog
 catalogMode: strict
 

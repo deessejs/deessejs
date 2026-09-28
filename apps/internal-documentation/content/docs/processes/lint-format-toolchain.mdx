@@ -1,0 +1,193 @@
+---
+title: 'Lint and format toolchain'
+summary: 'Operational doc for the Oxlint + Oxfmt rollout tracked in ADR-031. Covers Phases 1 and 2 and points to the next phases.'
+---
+
+# Lint and format toolchain
+
+Status: **Phase 2** of [ADR-031](../decisions/ADR-031-lint-format-toolchain.mdx) is shipped.
+Oxlint is the primary linter and the CI gate. ESLint is residual — it enforces the
+rules that have no Oxlint equivalent (SonarJS cognitive complexity, the four custom
+`no-restricted-syntax` selectors in `packages/eslint-config/base.js`, and
+`react/forbid-elements`).
+
+This page is the operational companion to the ADR. Read the ADR for the decision and
+the phase plan; read this page for the day-to-day commands and CI behaviour.
+
+## Tooling layout
+
+```
+.
+├── .eslintrc.js                  # Root ESLint flat config (residual, info-only)
+├── .prettierrc                   # Prettier config (used by apps/* format scripts)
+├── .prettierignore
+├── .oxlintrc.json                # Oxlint root config (GATE)
+└── package.json
+    scripts:
+      lint          → pnpm turbo lint --force                # ESLint residual
+      lint:oxlint   → oxlint .                                # GATE (strict)
+      format        → pnpm turbo format                       # Prettier (per workspace)
+```
+
+`pnpm run lint:oxlint` is the single blocking gate today (with `--max-warnings=0` in CI).
+`pnpm run lint` is the ESLint residual runner. The two are independent.
+
+## Phase 1 — Oxlint in parallel (shipped)
+
+What it does:
+
+- Installs `oxlint` at the catalog version (currently `^1.85.0`).
+- Adds `.oxlintrc.json` at the repo root enabling `correctness`, `suspicious`,
+  `perf`, and `style` categories. `style` is at `warn`, the other three at
+  `error`.
+- Adds the `oxlint` binary to the root `package.json` devDependencies.
+- Adds `pnpm run lint:oxlint` to the root scripts. The call is `oxlint .`.
+- Adds a CI step that runs `pnpm run lint:oxlint` after the ESLint job. The
+  step is `continue-on-error: true`, never affects job status, and uploads
+  `oxlint.out` as a 14-day artifact for diff over time.
+
+What it does **not** do:
+
+- It does not change ESLint behaviour. The four `no-restricted-syntax`
+  selectors, `sonarjs/cognitive-complexity`, `react/forbid-elements`, and the
+  SonarJS rules in `packages/eslint-config/base.js` are unchanged.
+- It does not remove Prettier. `apps/*` `format` scripts still call
+  `prettier --write`.
+- It does not write to `turbo.json`. Phase 1 is a single-shot info job at the
+  root; cache and per-workspace delegation arrive in Phase 2.
+
+## Running locally
+
+```
+# Gate
+pnpm run lint
+
+# Informational, never blocks
+pnpm run lint:oxlint
+
+# Diff the oxlint output against the cached artifact
+pnpm run lint:oxlint > oxlint.out 2>&1
+tail -n 200 oxlint.out
+```
+
+## Expected Phase 1 output
+
+Oxlint running with the four categories over ~428 `.ts`/`.tsx` files and
+~455 `.ts`/`.tsx`/`.js`/`.mjs` files is expected to:
+
+- Finish in under five seconds on a developer laptop. ESLint takes ~10-25x
+  longer on the same input. The CI artifact captures actual numbers.
+- Surface `correctness` errors that ESLint does not catch. The
+  `suspicious` category's `no-unused-vars` is broadly aligned with
+  typescript-eslint's; the rest of the universe of correctness checks
+  differs.
+- Produce zero or near-zero findings on `apps/*/eslint.config.mjs` and
+  the workspace `package.json` files. These are not `.ts`/`.tsx` and are
+  excluded by `ignorePatterns`.
+- Produce a non-zero exit code with findings that do not block the pipeline
+  during Phase 1.
+
+## Reading the artifact
+
+The `oxlint-output` artifact attached to the CI run is a UTF-8 text file with
+one finding per line in the form:
+
+```
+<file>:<line>:<column> [<rule-name>] <message>
+```
+
+A simple summary from the CI step:
+
+```
+errors:   <count>
+warnings: <count>
+```
+
+Compare counts across runs to track the gap between ESLint and Oxlint on the
+same commit.
+
+## Windows note
+
+The oxc project documents known OOM errors on Windows. If
+`pnpm run lint:oxlint` exits with an out-of-memory error, the workaround is
+to run oxlint inside WSL or to raise the Node heap size:
+
+```
+NODE_OPTIONS=--max-old-space-size=8192 pnpm run lint:oxlint
+```
+
+Local Mac and Linux runs are not affected.
+
+## Phase 2 — Oxlint becomes the gate (shipped)
+
+What it does:
+
+- Adds `eslint-plugin-oxlint` to the catalog (pinned to `^1.85.0` to match the
+  peer dependency on `oxlint ~1.85.0`).
+- Wraps the root `.eslintrc.js` with `oxlint.buildFromOxlintConfigFile('.oxlintrc.json')`,
+  so ESLint's effective rule set is automatically derived from the Oxlint config.
+- Promotes `pnpm run lint:oxlint` to the CI gate. The `lint` (ESLint) job becomes
+  `continue-on-error: true` and uploads `eslint.out` as a 14-day artifact for
+  diff-over-time.
+- The root `lint` script keeps `--max-warnings=0` in the root `package.json`,
+  but the CI passes it explicitly to `pnpm run lint:oxlint` rather than relying
+  on the turbo-level flag.
+
+Audit results on `apps/web` (one of the largest workspaces):
+
+| Bucket | Count |
+|---|---|
+| Total ESLint rules in effective config | 413 |
+| Auto-disabled by `eslint-plugin-oxlint` | 83 |
+| Still active in ESLint residual | 330 |
+
+The 83 auto-disabled rules break down as:
+
+- **76 SonarJS rules** — Oxlint implements its own variants for the same
+  semantic checks (e.g. `sonarjs/no-redundant-parentheses`, `sonarjs/no-sonar-comments`).
+- **3 ESLint core** — `no-array-constructor`, `no-unused-expressions`, `no-unused-vars`.
+  Oxlint's `no-unused-vars` matches the ESLint rule.
+- **4 React** — `react/jsx-uses-react`, `react/no-unsafe`, `react/prop-types`,
+  `react/react-in-jsx-scope`. Oxlint covers the imports-related ones; the rest
+  are deprecation-era React rules that no longer apply with the new JSX
+  transform.
+
+The 5 rules that **stay active** in ESLint residual (the load-bearing ones):
+
+| Rule | Why Oxlint does not cover it |
+|---|---|
+| `sonarjs/cognitive-complexity` | SonarJS' nested-weighted metric has no Oxlint equivalent. |
+| `sonarjs/no-collapsible-if` | Oxlint's `no-lonely-if` covers a narrower case. |
+| `sonarjs/no-nested-switch` | Oxlint does not flag nested switch statements. |
+| `react/forbid-elements` | Project-internal rule (force `<Input>` instead of raw `<input>`). |
+| `no-restricted-syntax` (4 selectors) | Oxlint has no native support for `no-restricted-syntax` (oxc-project/oxc#7342). The selectors are covered by `oxlint-plugin-eslint` in Phase 3, Option 0. |
+
+What it does **not** do:
+
+- ESLint config files in workspaces are not yet reduced. The auto-disabler
+  keeps them correct; only the effective rule set shrinks. Phase 5 will delete
+  the rules `eslint-plugin-oxlint` already disabled.
+- Prettier is unchanged. Phase 4.
+- No Drizzle migration, no changeset (tooling non-functional change).
+
+## Running locally
+
+```
+# Gate (Oxlint, strict)
+pnpm run lint:oxlint
+pnpm run lint:oxlint -- --max-warnings=0
+
+# ESLint residual (info-only)
+pnpm run lint
+pnpm run lint > eslint.out 2>&1
+tail -n 200 eslint.out
+
+# Diff against the cached artifact
+gh run download <run-id> -n oxlint-output -D /tmp/oxlint
+gh run download <run-id> -n eslint-output -D /tmp/eslint
+```
+
+## Related
+
+- [ADR-031: Lint and format toolchain (Oxlint + Oxfmt)](../decisions/ADR-031-lint-format-toolchain.mdx).
+  The decision and the phase plan. This page is the operational companion.
