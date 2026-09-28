@@ -29,6 +29,34 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo lint --force
 
+      # ADR-031 Phase 1: Oxlint in parallel (info-only, never blocking).
+      # Runs after the ESLint gate; failures here do not affect job status.
+      # Output is uploaded as an artifact for offline diff against future runs.
+      - name: Oxlint (info-only)
+        shell: bash
+        run: |
+          set +e
+          pnpm run lint:oxlint > oxlint.out 2>&1
+          OXLINT_EXIT=$?
+          set -e
+          echo "oxlint exit code: $OXLINT_EXIT"
+          echo "---- last 200 lines of oxlint.out ----"
+          tail -n 200 oxlint.out || true
+          echo "---- summary ----"
+          echo "errors:   $(grep -cE '^error' oxlint.out || true)"
+          echo "warnings: $(grep -cE '^warning' oxlint.out || true)"
+          echo "---- oxfmt-not-applicable ----"
+          echo "true"
+        continue-on-error: true
+      - name: Upload oxlint output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oxlint-output
+          path: oxlint.out
+          retention-days: 14
+          if-no-files-found: ignore
+
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
