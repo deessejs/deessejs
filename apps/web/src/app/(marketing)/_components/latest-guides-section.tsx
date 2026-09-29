@@ -175,7 +175,7 @@ export function LatestGuidesSection({
       <SectionHeader
         eyebrow="Latest guides"
         title="From the knowledge base."
-        subtitle="Patterns we use ourselves to ship the registry — typed at every boundary, contract-first, opinionated on the boring parts. Short, tested on real templates, free to copy."
+        subtitle="Patterns we use ourselves to ship the registry, typed at every boundary, contract-first, opinionated on the boring parts. Short, tested on real templates, free to copy."
         bordered={false}
         action={rightAction}
       />
