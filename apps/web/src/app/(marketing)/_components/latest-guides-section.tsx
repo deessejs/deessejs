@@ -190,18 +190,14 @@ export function LatestGuidesSection({
         }}
       >
         <CarouselContent>
-          {guides.map((guide, idx) => (
+          {guides.map((guide) => (
             <CarouselItem
               key={guide.slug}
               className="pl-0! md:basis-1/2 lg:basis-1/4"
             >
               <Link
                 href={guide.url}
-                className={cn(
-                  "group flex h-full flex-col overflow-hidden border-border transition-colors hover:bg-accent/40",
-                  idx === 0 ? "border-l" : "border-l-0",
-                  idx === guides.length - 1 ? "border-r" : "border-r-0",
-                )}
+                className="group flex h-full flex-col overflow-hidden border-r border-border transition-colors hover:bg-accent/40"
               >
                 {/* Rotated Shiki hero */}
                 <div className="border-t border-border bg-background p-4">
