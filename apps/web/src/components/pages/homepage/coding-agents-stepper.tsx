@@ -144,7 +144,7 @@ export function CodingAgentsStepper() {
               {step.title}
             </h3>
           </AccordionTrigger>
-          <AccordionContent className="pb-4 pl-6 pr-4 lg:pb-5 lg:pl-8 lg:pr-6">
+          <AccordionContent className="pb-4 pl-6 pr-4 pt-1 lg:pb-5 lg:pl-8 lg:pr-6">
             <p className="text-copy-16 leading-7 text-muted-foreground text-balance">
               {step.body}
             </p>
