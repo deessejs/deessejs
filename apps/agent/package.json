@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@deessejs/audit-toolkit": "workspace:*",
     "ai": "catalog:",
     "eve": "catalog:",
     "vercel-minimax-ai-provider": "catalog:",
