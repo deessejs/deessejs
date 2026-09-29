@@ -34,7 +34,6 @@ import { Hero } from "./hero"
 import { Integrations } from "./integrations"
 import { IntegrationColumns } from "@/app/(marketing)/_components/integration-columns"
 import { LatestGuides } from "./latest-guides"
-import { Skip } from "./skip"
 import { Stats } from "./stats"
 import { StatsStrip } from "@/app/(marketing)/_components/stats-strip"
 import { Surfaces } from "./surfaces"
@@ -49,7 +48,6 @@ export const Home = {
   TechStack,
   Surfaces,
   ForWho,
-  Skip,
   Contracts,
   CliInAction,
   LatestGuides,
@@ -76,7 +74,6 @@ export {
   Hero,
   Integrations,
   LatestGuides,
-  Skip,
   Stats,
   Surfaces,
   TechStack,

@@ -10,8 +10,8 @@
  *
  * Copy authority lives in
  * `apps/internal-documentation/content/docs/(root)/home-positioning-strategy.mdx`.
- * Numbers in `STATS` and `SKIP_ITEMS` are internal estimates, not
- * fetched from npm/GitHub APIs yet (see the TODO on STATS).
+ * Numbers in `STATS` are internal estimates, not fetched from npm/GitHub
+ * APIs yet (see the TODO on STATS).
  */
 
 import type { Contract } from "@/app/(marketing)/_components/contracts-grid"
@@ -152,54 +152,6 @@ export const PERSONAS: ReadonlyArray<Persona> = [
       "Templates an agent reads as well as you do. Typed end-to-end, MCP-ready, no plumbing to invent.",
   },
 ]
-
-// ---------------------------------------------------------------------------
-// What you skip (Section 5)
-// ---------------------------------------------------------------------------
-
-export type SkipItem = { hours: string; label: string }
-
-/**
- * Hour-counted plumbing the buyer does not have to repeat. Numbers are
- * internal estimates and stay approximate; they exist to make the
- * time-to-production metric legible to a non-engineer visitor.
- */
-export const SKIP_ITEMS: ReadonlyArray<SkipItem> = [
-  {
-    hours: "40+ hrs",
-    label: "Auth wired with orgs, invitations, OAuth, and 2FA",
-  },
-  {
-    hours: "24+ hrs",
-    label: "Stripe webhooks, subscriptions, customer portal, dunning",
-  },
-  {
-    hours: "16+ hrs",
-    label: "Drizzle schema, migrations, typed queries, RLS",
-  },
-  {
-    hours: "12+ hrs",
-    label: "Background jobs with retries, dead-letter, observability",
-  },
-  {
-    hours: "8 hrs",
-    label: "Email transport with DKIM, SPF, and DMARC",
-  },
-  {
-    hours: "8 hrs",
-    label: "Object storage with signed URLs and presigned uploads",
-  },
-  {
-    hours: "8 hrs",
-    label: "Observability with traces, logs, metrics, and dashboards",
-  },
-  {
-    hours: "∞ hrs",
-    label: "Overthinking the architecture",
-  },
-]
-
-export const SKIP_TOTAL_HOURS = "124+"
 
 // ---------------------------------------------------------------------------
 // Integrations (Section 12)

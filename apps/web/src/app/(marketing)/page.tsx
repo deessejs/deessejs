@@ -8,7 +8,6 @@ export default function HomePage() {
       <Home.TechStack />
       <Home.Surfaces />
       <Home.ForWho />
-      <Home.Skip />
       <Home.Contracts />
       <Home.CliInAction />
       <Home.Ecosystem />
