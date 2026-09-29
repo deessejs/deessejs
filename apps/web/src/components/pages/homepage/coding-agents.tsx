@@ -85,29 +85,27 @@ export function CodingAgents() {
             manifest for the tools. Pick the CLI, the contracts stay the
             same.
           </p>
-          <ul className="grid grid-cols-1 divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <ol className="flex flex-col divide-y divide-border border border-border">
             {TALK_STEPS.map((step) => (
               <li
                 key={step.title}
-                className="flex flex-col gap-3 p-5 lg:p-6"
+                className="flex items-start gap-4 p-5 lg:p-6"
               >
-                <span
-                  aria-hidden
-                  className="h-px w-6 bg-foreground"
-                />
                 <step.Icon
                   aria-hidden
-                  className="size-4 shrink-0 text-foreground"
+                  className="mt-0.5 size-4 shrink-0 text-foreground"
                 />
-                <h3 className="text-heading-20 font-medium tracking-tight text-foreground text-balance">
-                  {step.title}
-                </h3>
-                <p className="text-copy-14 leading-6 text-muted-foreground text-balance">
-                  {step.body}
-                </p>
+                <div className="flex flex-1 flex-col gap-2">
+                  <h3 className="text-heading-20 font-medium tracking-tight text-foreground text-balance">
+                    {step.title}
+                  </h3>
+                  <p className="text-copy-14 leading-6 text-muted-foreground text-balance">
+                    {step.body}
+                  </p>
+                </div>
               </li>
             ))}
-          </ul>
+          </ol>
           <Link
             href="/knowledge-base/guides/install-deessejs-cli"
             aria-label="Onboard your agent — open the install guide"
