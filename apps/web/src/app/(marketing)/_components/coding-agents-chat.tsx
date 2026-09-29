@@ -114,12 +114,19 @@ const ALL_TURNS: ReadonlyArray<TurnKey> = [
  */
 const AGENT_BUBBLE_CLASS = "max-w-none"
 
-/** Single-accent dot marker placed in each agent MessageAvatar slot. */
+/**
+ * Single-accent dot marker placed in each agent MessageAvatar slot.
+ *
+ * The MessageAvatar primitive paints a `bg-muted rounded-full` chrome
+ * by default; we override it to transparent so the violet dot reads
+ * against the section background. `self-end` on the avatar aligns
+ * the dot to the bubble's bottom edge (mirrors the original layout).
+ */
 function AgentDot() {
   return (
     <span
       aria-hidden
-      className="mt-1.5 size-1.5 shrink-0 rounded-full bg-violet-500 dark:bg-violet-400"
+      className="size-2 shrink-0 rounded-full bg-violet-500 dark:bg-violet-400"
     />
   )
 }

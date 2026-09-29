@@ -1,20 +1,19 @@
 import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@workspace/ui/lib/utils"
 
 /**
  * Row wrapper for a single message in a chat conversation.
  *
- * Ports the shadcn `Message` primitive (released June 2026) to the
- * project's design system. `align` drives row direction: `start` puts
- * the avatar on the left (assistant), `end` flips via
- * `flex-row-reverse` so the avatar lands on the right (user).
+ * Verified against the official shadcn source (June 2026). No CVA —
+ * the file ships plain `cn` class strings. The shell sets
+ * `group/message` so descendants can match `group-data-[align=end]/message:...`
+ * (Bubble flips via this selector, MessageContent children align to
+ * the end via `*:data-slot:self-end`).
  *
- * Role is conveyed visually by `align` plus the avatar slot —
- * `Message` itself is presentational. Accessibility comes from the
- * inner content; `MessageHeader` is the canonical place for sender
- * names, `MessageFooter` for timestamps and actions.
+ * Alignment is driven by `data-[align=end]:flex-row-reverse` on the
+ * Message shell — a single CSS rule replaces the two-variant CVA
+ * shadcn moved off 4 years ago.
  *
  * Composition:
  *   <Message>
@@ -25,41 +24,8 @@ import { cn } from "@workspace/ui/lib/utils"
  *       <MessageFooter />
  *     </MessageContent>
  *   </Message>
- *
- * `MessageAvatar` auto-hides when empty via the `[&:empty]:hidden`
- * selector — pass it on user rows where you don't render an avatar.
  */
-const messageVariants = cva("group/message flex items-start gap-3", {
-  variants: {
-    align: {
-      start: "",
-      end: "flex-row-reverse",
-    },
-  },
-  defaultVariants: {
-    align: "start",
-  },
-})
-
-export interface MessageProps
-  extends React.ComponentProps<"div">,
-    VariantProps<typeof messageVariants> {}
-
-function Message({ className, align, ...props }: MessageProps) {
-  return (
-    <div
-      data-slot="message"
-      data-align={align}
-      className={cn(messageVariants({ align }), className)}
-      {...props}
-    />
-  )
-}
-
-function MessageGroup({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+function MessageGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="message-group"
@@ -69,21 +35,35 @@ function MessageGroup({
   )
 }
 
-/**
- * Avatar slot anchored at the row's start or end depending on the
- * parent `Message` `align`. Renders empty by default — callers drop
- * in a dot, an `<Avatar>`, or leave it blank for asymmetric rows.
- * Auto-hidden when empty so user rows can omit the avatar entirely.
- */
-function MessageAvatar({
+interface MessageProps extends React.ComponentProps<"div"> {
+  /** `start` puts the avatar on the left (assistant), `end` flips via `flex-row-reverse` (user). */
+  align?: "start" | "end"
+}
+
+function Message({
   className,
+  align = "start",
   ...props
-}: React.ComponentProps<"div">) {
+}: MessageProps) {
+  return (
+    <div
+      data-slot="message"
+      data-align={align}
+      className={cn(
+        "group/message relative flex w-full min-w-0 gap-2 text-sm data-[align=end]:flex-row-reverse",
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function MessageAvatar({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="message-avatar"
       className={cn(
-        "flex size-7 shrink-0 items-center justify-center [&:empty]:hidden",
+        "flex w-fit min-w-8 shrink-0 items-center justify-center self-end overflow-hidden rounded-full bg-muted group-has-data-[slot=message-footer]/message:-translate-y-8",
         className,
       )}
       {...props}
@@ -91,28 +71,25 @@ function MessageAvatar({
   )
 }
 
-function MessageContent({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+function MessageContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="message-content"
-      className={cn("flex min-w-0 flex-1 flex-col gap-1", className)}
+      className={cn(
+        "flex w-full min-w-0 flex-col gap-2.5 wrap-break-word group-data-[align=end]/message:*:data-slot:self-end",
+        className,
+      )}
       {...props}
     />
   )
 }
 
-function MessageHeader({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+function MessageHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="message-header"
       className={cn(
-        "text-label-12 uppercase tracking-wider text-muted-foreground",
+        "flex max-w-full min-w-0 items-center px-3 text-xs font-medium text-muted-foreground group-has-data-[variant=ghost]/message:px-0",
         className,
       )}
       {...props}
@@ -120,14 +97,14 @@ function MessageHeader({
   )
 }
 
-function MessageFooter({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+function MessageFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="message-footer"
-      className={cn("text-label-12 text-muted-foreground", className)}
+      className={cn(
+        "flex max-w-full min-w-0 items-center px-3 text-xs font-medium text-muted-foreground group-has-data-[variant=ghost]/message:px-0 group-data-[align=end]/message:justify-end",
+        className,
+      )}
       {...props}
     />
   )
@@ -140,5 +117,4 @@ export {
   MessageContent,
   MessageHeader,
   MessageFooter,
-  messageVariants,
 }
