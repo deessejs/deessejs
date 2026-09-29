@@ -92,7 +92,7 @@ export function CodingAgents() {
             {TALK_STEPS.map((step) => (
               <li
                 key={step.title}
-                className="relative flex items-center gap-4 py-5 pl-4 pr-1 lg:py-6 lg:pl-6 lg:pr-2"
+                className="relative flex items-start gap-4 py-5 pl-4 pr-1 lg:py-6 lg:pl-6 lg:pr-2"
               >
                 {/* Left progress rail — a 1-px vertical bar that will
                     later animate (scale / fill) as the chat progresses
@@ -104,7 +104,7 @@ export function CodingAgents() {
                 />
                 <step.Icon
                   aria-hidden
-                  className="size-4 shrink-0 text-foreground"
+                  className="mt-[7px] size-4 shrink-0 text-foreground"
                 />
                 <div className="flex flex-1 flex-col gap-2">
                   <h3 className="text-heading-20 font-medium tracking-tight text-foreground text-balance">
