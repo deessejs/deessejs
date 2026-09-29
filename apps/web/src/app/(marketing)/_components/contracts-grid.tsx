@@ -9,11 +9,13 @@ import { AnimatePresence } from "motion/react"
  * Asymmetric 12-col bento on `lg+` — Auth spans two row tracks as the
  * pillar (the interactive form animation gets the most real estate);
  * Observability occupies the wide row-2 slot (waterfall needs horizontal
- * room for 4 sub-traces); Billing closes on a wide row-3 stripe (the
- * emerald usage bar reads as a deliberate horizontal arc); Database is
- * narrow row-3 (terminal aesthetic); Jobs + Storage stack row-1 as
- * compact infrastructure secondaries. Below `lg` the bento collapses to
- * a 2-col tablet grid then a 1-col mobile stack.
+ * room for 4 sub-traces); Billing closes row-3 as a full-width 12-col
+ * band (the emerald usage bar reads as a deliberate horizontal stripe
+ * that visually separates "product surface" from "infrastructure");
+ * Database + Cache share row-4 as a 2-col pair (terminal aesthetic +
+ * Redis-style key browser). Jobs + Storage stack row-1 as compact
+ * infrastructure secondaries. Below `lg` the bento collapses to a 2-col
+ * tablet grid then a 1-col mobile stack.
  *
  * Border discipline — Pattern C (`gap-px bg-border` on the parent + a
  * `bg-background` paint on every cell). `divide-*` would be the
@@ -53,6 +55,8 @@ import { AnimatePresence } from "motion/react"
  *      - otel-waterfall  — parent progress bar is segmented by level
  *        (zinc/zinc/amber/red); the four sub-traces take the colour
  *        of their level (info = zinc muted, warn = amber, error = red)
+ *      - cache-keys      — five key rows fading in with a stagger; the
+ *        active row pulses violet, the others stay monochrome
  *
  * `MotionConfig reducedMotion="user"` lives in `apps/web/src/app/layout.tsx`
  * — users with the OS-level preference set get opacity-only animations.
@@ -72,6 +76,7 @@ import {
   Folder,
   GitBranch,
   Image as ImageIcon,
+  Layers,
   LineChart,
   Loader,
   Zap,
@@ -89,7 +94,14 @@ type Provider = { name: string; logo: string }
 type Contract = {
   title: string
   description: string
-  icon: "auth" | "database" | "billing" | "jobs" | "storage" | "observability"
+  icon:
+    | "auth"
+    | "database"
+    | "billing"
+    | "jobs"
+    | "storage"
+    | "observability"
+    | "cache"
   providers: ReadonlyArray<Provider>
   mockup:
     | "auth-form"
@@ -98,6 +110,7 @@ type Contract = {
     | "jobs-trace"
     | "storage-browser"
     | "otel-waterfall"
+    | "cache-keys"
 }
 
 const ICON_MAP = {
@@ -107,6 +120,7 @@ const ICON_MAP = {
   jobs: GitBranch,
   storage: Boxes,
   observability: LineChart,
+  cache: Layers,
 } as const
 
 // Variant set shared by the parent grid and every cell. Variants are
@@ -143,11 +157,12 @@ const BENTO_SPAN: Record<
   }
 > = {
   Auth: { col: "lg:col-span-6", rowSpan: "lg:row-span-2", rowStart: "lg:row-start-1" },
-  Database: { col: "lg:col-span-3", rowStart: "lg:row-start-3" },
-  Billing: { col: "lg:col-span-9", rowStart: "lg:row-start-3" },
+  Database: { col: "lg:col-span-6", rowStart: "lg:row-start-4" },
+  Billing: { col: "lg:col-span-12", rowStart: "lg:row-start-3" },
   Jobs: { col: "lg:col-span-3", rowStart: "lg:row-start-1" },
   Storage: { col: "lg:col-span-3", rowStart: "lg:row-start-1" },
   Observability: { col: "lg:col-span-6", rowStart: "lg:row-start-2" },
+  Cache: { col: "lg:col-span-6", rowStart: "lg:row-start-4" },
 }
 
 export function ContractsGrid({
@@ -161,7 +176,7 @@ export function ContractsGrid({
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.2 }}
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 lg:grid-rows-3 lg:auto-rows-min gap-px bg-border"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 lg:grid-rows-4 lg:auto-rows-min gap-px bg-border"
     >
       {contracts.map((contract) => {
         const Icon = ICON_MAP[contract.icon]
@@ -944,6 +959,79 @@ function OtelWaterfallMockup() {
   )
 }
 
+/**
+ * Redis-style key browser — five rows of `key : type ttl hit%` with the
+ * active row (the one currently being read) pulsing violet, the others
+ * monochrome. Rows fade in with a stagger, simulating a `KEYS user:*`
+ * scan that fills the surface.
+ *
+ * Colour discipline: only the pulsing "active read" carries violet.
+ * Everything else stays foreground/muted so the page's overall
+ * monochrome rule holds.
+ */
+type CacheKeyRowSpec = {
+  key: string
+  type: "string" | "hash" | "list" | "set"
+  ttl: string
+  hit: string
+}
+
+const cacheKeyRows: ReadonlyArray<CacheKeyRowSpec> = [
+  { key: "user:42:session", type: "hash", ttl: "30m", hit: "94%" },
+  { key: "user:42:cart", type: "string", ttl: "2h", hit: "—  active", },
+  { key: "feature:flags", type: "hash", ttl: "60s", hit: "99%" },
+  { key: "rate:42:api", type: "string", ttl: "5m", hit: "78%" },
+  { key: "page:slug:home", type: "string", ttl: "10m", hit: "88%" },
+]
+
+function CacheKeysMockup() {
+  return (
+    <div className="flex flex-col gap-1 p-3 font-mono text-[11px]">
+      <div className="flex items-center gap-2 px-1 pb-1 text-label-13 text-muted-foreground/70">
+        <span>$ KEYS user:*</span>
+        <span className="ml-auto">{cacheKeyRows.length} keys</span>
+      </div>
+      <ul className="flex flex-col gap-0.5">
+        {cacheKeyRows.map((row, i) => {
+          const isActive = row.hit.includes("active")
+          return (
+            <motion.li
+              key={row.key}
+              initial={{ opacity: 0, x: -4 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 + i * 0.12, duration: 0.3 }}
+              className={cn(
+                "flex items-center gap-2 rounded-sm px-1.5 py-1",
+                isActive && "bg-violet-500/10",
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+                  isActive ? "bg-violet-500 animate-pulse" : "bg-muted-foreground/40",
+                )}
+                aria-hidden
+              />
+              <span className="text-foreground/90">{row.key}</span>
+              <span className="text-muted-foreground/70">:{row.type}</span>
+              <span className="ml-auto text-muted-foreground">{row.ttl}</span>
+              <span
+                className={cn(
+                  "w-14 text-right",
+                  isActive ? "text-violet-500" : "text-foreground/80",
+                )}
+              >
+                {row.hit}
+              </span>
+            </motion.li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 function ContractMockup({
   kind,
 }: {
@@ -962,6 +1050,8 @@ function ContractMockup({
       return <StorageBrowserMockup />
     case "otel-waterfall":
       return <OtelWaterfallMockup />
+    case "cache-keys":
+      return <CacheKeysMockup />
     default:
       return null
   }

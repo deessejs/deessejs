@@ -96,6 +96,18 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
     ],
     mockup: "otel-waterfall",
   },
+  {
+    title: "Cache",
+    description:
+      "KV stores, Redis-compatible. TTLs, namespacing, typed access. Drop-in for hot-path reads.",
+    icon: "cache",
+    providers: [
+      { name: "Redis", logo: "redis" },
+      { name: "Upstash", logo: "upstash" },
+      { name: "Vercel KV", logo: "vercel" },
+    ],
+    mockup: "cache-keys",
+  },
 ]
 
 // ---------------------------------------------------------------------------
