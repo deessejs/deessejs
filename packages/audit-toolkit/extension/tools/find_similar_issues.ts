@@ -31,11 +31,22 @@ export default defineTool({
     const [owner, repo] = repository.split("/")
     if (!owner || !repo) throw new Error("repository must be owner/name")
     const octokit = await getInstallationOctokit(installationId)
-    const { data } = await octokit.rest.search.issuesAndPullRequests({
+    const response = await octokit.rest.search.issuesAndPullRequests({
       q: `repo:${owner}/${repo} is:issue is:open label:audit ${query}`,
       per_page: 10,
     })
-    return data.items.map((i) => ({
+    // The Octokit types model the search response as a loose union in
+    // some versions; normalize the items we actually read here.
+    const items = response.data.items as Array<{
+      number: number
+      title: string
+      html_url: string
+      state: string
+      body?: string | null
+      labels: Array<string | { name?: string | null }>
+      updated_at: string
+    }>
+    return items.map((i) => ({
       number: i.number,
       title: i.title,
       url: i.html_url,

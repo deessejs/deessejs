@@ -2,6 +2,7 @@ import { z } from "zod"
 
 import type { InstallationOctokit } from "./octokit-app.js"
 import { computeFingerprint } from "./fingerprint.js"
+import { readRepositoryAllowlist } from "./env.js"
 
 export const CreateAuditIssueInput = z.object({
   repository: z.string().regex(/^[^/]+\/[^/]+$/),
@@ -69,23 +70,10 @@ export function buildIssueBody(
 }
 
 /**
- * Resolve the allowlist of repositories the audit may publish into.
- * Sourced from a CSV env var so multi-repo M3 setups can be expressed
- * without code changes. Empty allowlist rejects all writes — there is no
- * implicit "anything goes" mode.
+ * Repository allowlist enforcement. See ./env.ts for the precedence
+ * between AUDIT_TARGET_REPOSITORIES (CSV, M3) and AUDIT_TARGET_REPOSITORY
+ * (M1).
  */
-function readRepositoryAllowlist(): string[] {
-  const raw = process.env.AUDIT_TARGET_REPOSITORIES
-  if (raw && raw.trim().length > 0) {
-    return raw
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter((s) => s.length > 0)
-  }
-  const single = process.env.AUDIT_TARGET_REPOSITORY?.trim().toLowerCase()
-  return single ? [single] : []
-}
-
 function assertRepositoryAllowed(repository: string): void {
   const allow = readRepositoryAllowlist()
   if (allow.length === 0) {
@@ -181,8 +169,10 @@ export async function createAuditIssue(
     q: `repo:${owner}/${repo} is:open deessejs-audit:fingerprint=${fingerprint}`,
     per_page: 1,
   })
-  const markerHit = byMarker.data.items[0]
-  if (markerHit) {
+  const markerHit = byMarker.data.items[0] as
+    | { html_url?: string; number?: number }
+    | undefined
+  if (markerHit && markerHit.html_url && typeof markerHit.number === "number") {
     return {
       status: "already-tracked",
       url: markerHit.html_url,
@@ -197,10 +187,14 @@ export async function createAuditIssue(
     q: `repo:${owner}/${repo} is:issue is:open in:title "${encodedTitle(parsed.data.title)}"`,
     per_page: 5,
   })
-  const titleHit = byTitle.data.items.find(
-    (i) => i.title.toLowerCase() === parsed.data.title.toLowerCase(),
-  )
-  if (titleHit) {
+  const titleHit = byTitle.data.items
+    .map((i: { title?: string; html_url?: string; number?: number }) => i)
+    .find(
+      (i) =>
+        typeof i.title === "string" &&
+        i.title.toLowerCase() === parsed.data.title.toLowerCase(),
+    )
+  if (titleHit && titleHit.html_url && typeof titleHit.number === "number") {
     return {
       status: "already-tracked",
       url: titleHit.html_url,
@@ -215,10 +209,14 @@ export async function createAuditIssue(
     q: `repo:${owner}/${repo} is:pr is:open "${encodedTitle(parsed.data.title)}"`,
     per_page: 5,
   })
-  const prHit = byOpenPR.data.items.find(
-    (p) => p.title.toLowerCase() === parsed.data.title.toLowerCase(),
-  )
-  if (prHit) {
+  const prHit = byOpenPR.data.items
+    .map((p: { title?: string; html_url?: string; number?: number }) => p)
+    .find(
+      (p) =>
+        typeof p.title === "string" &&
+        p.title.toLowerCase() === parsed.data.title.toLowerCase(),
+    )
+  if (prHit && prHit.html_url && typeof prHit.number === "number") {
     return {
       status: "already-tracked",
       url: prHit.html_url,

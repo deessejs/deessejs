@@ -23,6 +23,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
+    "lint": "eslint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -36,7 +37,9 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
+    "eslint": "catalog:",
     "eve": "catalog:",
     "typescript": "catalog:"
   }

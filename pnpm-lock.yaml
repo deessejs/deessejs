@@ -766,9 +766,15 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
+      '@workspace/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@workspace/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.4(jiti@2.7.0)
       eve:
         specifier: 'catalog:'
         version: 0.60.1(ai@7.0.107(zod@4.4.3))
