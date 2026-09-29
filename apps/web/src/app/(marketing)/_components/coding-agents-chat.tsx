@@ -101,13 +101,18 @@ const ALL_TURNS: ReadonlyArray<TurnKey> = [
 ]
 
 /**
- * Visual variant the agent bubbles use. `tinted` is the
- * shadcn-default variant; we override its surface with a
- * translucent violet wash via className so the accent reads
- * without minting a new design-system token.
+ * Surface override applied to `BubbleContent` for agent bubbles.
+ *
+ * The `tinted` variant paints `BubbleContent` with `bg-primary/10`
+ * (near-black at 10% in this project). Consumer className wins the
+ * cascade over the variant's slot selector, so this overrides the
+ * surface with a translucent violet wash without minting a new
+ * design-system token.
+ *
+ * `max-w-none` on the wrapper Bubble lets the bubble span the
+ * message column beyond the variant's 80% clamp.
  */
-const AGENT_BUBBLE_CLASS =
-  "max-w-none bg-violet-500/5 ring-violet-500/30 text-foreground"
+const AGENT_BUBBLE_CLASS = "max-w-none"
 
 /** Single-accent dot marker placed in each agent MessageAvatar slot. */
 function AgentDot() {
@@ -343,7 +348,6 @@ export function CodingAgentsChat() {
                 <MessageContent>
                   <Bubble
                     variant="muted"
-                    align="end"
                     className="max-w-none"
                   >
                     <BubbleContent>
@@ -367,10 +371,9 @@ export function CodingAgentsChat() {
                 <MessageContent>
                   <Bubble
                     variant="tinted"
-                    align="start"
                     className={AGENT_BUBBLE_CLASS}
                   >
-                    <BubbleContent>
+                    <BubbleContent className="bg-violet-500/5 ring-1 ring-violet-500/30">
                       <StreamedText
                         shown={agent1Shown}
                         done={phases.agent1 === "done"}
@@ -392,7 +395,6 @@ export function CodingAgentsChat() {
                 <MessageContent>
                   <Bubble
                     variant="outline"
-                    align="start"
                     className="max-w-none"
                   >
                     <BubbleContent>
@@ -437,7 +439,6 @@ export function CodingAgentsChat() {
                 <MessageContent>
                   <Bubble
                     variant="muted"
-                    align="end"
                     className="max-w-none"
                   >
                     <BubbleContent>
@@ -461,10 +462,9 @@ export function CodingAgentsChat() {
                 <MessageContent>
                   <Bubble
                     variant="tinted"
-                    align="start"
                     className={AGENT_BUBBLE_CLASS}
                   >
-                    <BubbleContent>
+                    <BubbleContent className="bg-violet-500/5 ring-1 ring-violet-500/30">
                       <StreamedText
                         shown={agent2Shown}
                         done={phases.agent2 === "done"}
@@ -486,10 +486,9 @@ export function CodingAgentsChat() {
                 <MessageContent>
                   <Bubble
                     variant="tinted"
-                    align="start"
                     className={AGENT_BUBBLE_CLASS}
                   >
-                    <BubbleContent>
+                    <BubbleContent className="bg-violet-500/5 ring-1 ring-violet-500/30">
                       <StreamedText
                         shown={agent3Shown}
                         done={phases.agent3 === "done"}

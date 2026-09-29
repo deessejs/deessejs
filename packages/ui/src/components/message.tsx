@@ -29,7 +29,7 @@ import { cn } from "@workspace/ui/lib/utils"
  * `MessageAvatar` auto-hides when empty via the `[&:empty]:hidden`
  * selector — pass it on user rows where you don't render an avatar.
  */
-const messageVariants = cva("flex items-start gap-3", {
+const messageVariants = cva("group/message flex items-start gap-3", {
   variants: {
     align: {
       start: "",
@@ -63,7 +63,7 @@ function MessageGroup({
   return (
     <div
       data-slot="message-group"
-      className={cn("flex flex-col gap-2", className)}
+      className={cn("flex min-w-0 flex-col gap-2", className)}
       {...props}
     />
   )
