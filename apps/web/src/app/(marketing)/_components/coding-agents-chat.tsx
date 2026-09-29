@@ -544,22 +544,28 @@ export function CodingAgentsChat() {
           )}
         </m.div>
 
-        {/* Input bar — disabled, separated from the thread by a border-t */}
+        {/* Input bar — visual only (no submit handler, no focus, no keyboard).
+            We avoid the HTML `disabled` attribute because the parent
+            re-renders mid-hydration (useReducedMotion flips after mount)
+            and the boolean attribute drops in/out across renders, which
+            React flags as a hydration mismatch. Visual disabled look
+            comes from cursor-default + pointer-events-none + opacity-50. */}
         <div className="flex items-end gap-2 border-t border-border px-1 pt-3">
           <textarea
-            disabled
             rows={1}
+            readOnly
             placeholder="Ask your agent to do anything…"
-            aria-label="Type a message to your coding agent (visual demo, input is disabled)"
-            className="flex-1 resize-none border-0 bg-transparent text-copy-13 leading-6 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 disabled:cursor-default"
+            aria-label="Type a message to your coding agent (visual demo)"
+            tabIndex={-1}
+            className="flex-1 cursor-default resize-none border-0 bg-transparent text-copy-13 leading-6 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
           />
           <Button
             type="button"
             variant="ghost"
             size="icon-xs"
             aria-label="Send message"
-            disabled
-            className="size-7 shrink-0 text-muted-foreground"
+            tabIndex={-1}
+            className="size-7 shrink-0 pointer-events-none text-muted-foreground opacity-50"
           >
             <Send className="size-3.5" aria-hidden />
           </Button>
