@@ -29,8 +29,8 @@ export default defineTool({
     "(b) exact-title match on open issues, (c) open PR with the same title. " +
     "Returns { status: 'created' | 'already-tracked' | 'rejected', ... }.",
   inputSchema: CreateAuditIssueToolInput,
-  async execute({ installationId, ...rest }) {
+  async execute({ installationId, ...rest }, ctx) {
     const octokit = await getInstallationOctokit(installationId)
-    return createAuditIssue(CreateAuditIssueInput.parse(rest), octokit)
+    return createAuditIssue(CreateAuditIssueInput.parse(rest), octokit, ctx)
   },
 })

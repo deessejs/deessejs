@@ -103,9 +103,49 @@ function assertRepositoryAllowed(repository: string): void {
   }
 }
 
+/**
+ * Publication must come from the scheduled audit, not from a mention-loop
+ * conversation. Schedules authenticate the runtime as the app principal
+ * (see eve/schedules doc — ScheduleHandlerArgs.appAuth has
+ * authenticator: "app", principalType: "runtime"). GitHub channels
+ * authenticate the commenting user. We accept only the former.
+ *
+ * `ctx.session.auth.initiator` is the principal who created the session,
+ * which is the schedule's app principal for audit runs and the GitHub
+ * user for mention-loop sessions. A hostile mention prompt that tries to
+ * drive the root agent into dispatching the behaviour specialist cannot
+ * forge this — the channel layer derives auth from the verified webhook
+ * signature, never from body fields.
+ */
+function assertAuditOrigin(ctx: {
+  session: { auth: { initiator: unknown } }
+}): void {
+  const initiator = ctx.session.auth.initiator as
+    | {
+        authenticator?: string
+        principalType?: string
+      }
+    | null
+  if (
+    !initiator ||
+    initiator.authenticator !== "app" ||
+    initiator.principalType !== "runtime"
+  ) {
+    throw new Error(
+      "createAuditIssue refused: caller is not an audit run. " +
+        "Publication is only allowed from the scheduled nightly audit " +
+        "session, whose initiator authenticator is 'app' with " +
+        "'principalType: \"runtime\"'.",
+    )
+  }
+}
+
 export async function createAuditIssue(
   input: CreateAuditIssueInput,
   octokit: Octokit,
+  ctx: {
+    session: { auth: { initiator: unknown } }
+  },
 ): Promise<AuditIssueOutcome> {
   const parsed = CreateAuditIssueInput.safeParse(input)
   if (!parsed.success) {
@@ -117,6 +157,7 @@ export async function createAuditIssue(
   }
 
   try {
+    assertAuditOrigin(ctx)
     assertRepositoryAllowed(parsed.data.repository)
   } catch (error) {
     return {

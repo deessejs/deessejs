@@ -91,7 +91,9 @@ export default defineTool({
 
     // Stage as base64 to survive any sandbox-side string handling, then
     // decode inside the sandbox to keep the on-wire format minimal.
-    const base64 = bytes.toString("base64")
+    // Uint8Array has no .toString(encoding) — go through Buffer for the
+    // base64 codec.
+    const base64 = Buffer.from(bytes).toString("base64")
     await sandbox.writeTextFile({
       path: "/workspace/repo.tar.gz.b64",
       content: base64,

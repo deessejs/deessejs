@@ -53,7 +53,7 @@ export default defineTool({
     return {
       repository,
       installationId,
-      mainSha: ref.data.object.sha,
+      mainSha: ref.object.sha,
     }
   },
 })
