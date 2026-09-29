@@ -1,10 +1,12 @@
 import Link from "next/link"
-import { ArrowUpRight, MessageSquare, Rocket, Wrench } from "lucide-react"
+import { ArrowUpRight } from "lucide-react"
 
 import { CodingAgentsChat } from "@/app/(marketing)/_components/coding-agents-chat"
 import { Section } from "@/app/(marketing)/_components/section"
 import { cn } from "@workspace/ui/lib/utils"
 import { CODING_AGENTS } from "@/lib/marketing/home-data"
+
+import { CodingAgentsStepper } from "./coding-agents-stepper"
 
 /**
  * Coding-agents compatibility wall.
@@ -27,39 +29,19 @@ import { CODING_AGENTS } from "@/lib/marketing/home-data"
  * so they render in monochrome against the text-foreground ink and
  * the dark:invert class flips them in dark mode.
  *
- * The 3-step static stepper between the lead paragraph and the CTA
- * mirror the chat's 6 turn groups (Talk / Build / Ship) so the
- * editorial column reads as a legend to the demo on the left.
- * Each step is a vertical stack with a 1-px left rail (the
- * data-slot="step-rail-<slug>" hook for the progress animation
- * that will drive the rail height as the chat advances), a
- * lucide icon, a heading-20 title, and a copy-14 body.
- * No border or divide between steps — the rail carries the
- * structural rhythm.
+ * The 3-step animated stepper (Talk / Build / Ship) sits between
+ * the lead and the CTA. It lives in its own client component so
+ * the parent stays Server- and only the stepper pays the hydration
+ * cost. Each step carries a left rail that flips
+ * bg-border ↔ bg-foreground as the auto-cycle visits it; full
+ * mechanics live in `coding-agents-stepper.tsx`.
+ *
  * The CTA below the heading sits next to the stepper — it
  * routes visitors to the install guide instead of asking them to
  * copy paragraphs of body copy. The 3-icon stack shows a
  * representative slice (Claude Code, Codex, OpenCode); the full 6
  * sit in the grid beneath.
  */
-const TALK_STEPS = [
-  {
-    Icon: MessageSquare,
-    title: "Talk",
-    body: "Open a session with your agent the way you open a chat. It already knows the registry, reads AGENTS.md at the monorepo root, and runs the CLI when asked.",
-  },
-  {
-    Icon: Wrench,
-    title: "Build",
-    body: "Tell it what you need in plain language: scaffold a template, swap a contract, wire observability. It picks the right command and runs it, with the contracts as the source of truth.",
-  },
-  {
-    Icon: Rocket,
-    title: "Ship",
-    body: "Same conversation surface as your editor, same primitives across Claude Code, Codex, OpenCode, Cursor, Windsurf, and Gemini CLI. The CLI stays portable, the agent stays yours.",
-  },
-] as const
-
 const CTA_ICONS = [
   { src: "/logos/claudecode.svg", alt: "Claude Code" },
   { src: "/logos/codex.svg", alt: "Codex" },
@@ -76,9 +58,6 @@ export function CodingAgents() {
         </div>
         {/* Editorial — right column (8fr / 66%) */}
         <div className="flex flex-col gap-4 p-6 lg:p-10">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            Coding agents
-          </p>
           <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             Works with any coding agent.
           </h2>
@@ -88,35 +67,7 @@ export function CodingAgents() {
             manifest for the tools. Pick the CLI, the contracts stay the
             same.
           </p>
-          <ol className="flex flex-col">
-            {TALK_STEPS.map((step) => (
-              <li
-                key={step.title}
-                className="relative flex flex-col gap-2 py-5 pl-4 pr-1 lg:py-6 lg:pl-6 lg:pr-2"
-              >
-                {/* Left progress rail — a 1-px vertical bar that will
-                    later animate (scale / fill) as the chat progresses
-                    through each turn group. */}
-                <span
-                  aria-hidden
-                  data-slot={`step-rail-${step.title.toLowerCase()}`}
-                  className="absolute inset-y-0 left-0 w-px bg-border"
-                />
-                <div className="flex items-center gap-3">
-                  <step.Icon
-                    aria-hidden
-                    className="size-4 shrink-0 text-foreground"
-                  />
-                  <h3 className="text-heading-20 font-medium tracking-tight text-foreground text-balance">
-                    {step.title}
-                  </h3>
-                </div>
-                <p className="text-copy-16 leading-7 text-muted-foreground text-balance">
-                  {step.body}
-                </p>
-              </li>
-            ))}
-          </ol>
+          <CodingAgentsStepper />
           <Link
             href="/knowledge-base/guides/install-deessejs-cli"
             aria-label="Onboard your agent — open the install guide"
