@@ -89,7 +89,7 @@ function AnimatedWorkbench({
     >
       <div className="grid flex-1 grid-cols-[minmax(0,3fr)_minmax(0,9fr)] divide-x divide-border">
         <ExplorerPane />
-        <EditorPane editorHtml={editorHtml} animated />
+        <EditorPane editorHtml={editorHtml} />
       </div>
 
       <TerminalPane />
@@ -183,40 +183,19 @@ function ExplorerNodeView({
 
 function EditorPane({
   editorHtml,
-  animated,
 }: {
   editorHtml: Record<EditorTabId, string>
-  /**
-   * When true, the active tab's snippet reveals with a
-   * clip-path animation on first viewport entry. After the
-   * initial reveal, tab switches swap instantly.
-   */
-  animated: boolean
 }) {
   const [activeTab, setActiveTab] = useState<EditorTabId>(EDITOR_TABS[0]!.id)
-
-  const snippetClassName =
-    "flex-1 overflow-auto border-t-0 border-border bg-background p-3 [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:text-label-12 [&_pre]:leading-relaxed"
 
   return (
     <div className="flex flex-col">
       <EditorTabs activeTab={activeTab} onTabChange={setActiveTab} />
-      {animated ? (
-        <m.div
-          key={activeTab}
-          initial={{ opacity: 0, clipPath: "inset(0 0 100% 0)" }}
-          animate={{ opacity: 1, clipPath: "inset(0 0 0% 0)" }}
-          transition={{ duration: 0.25, ease: "easeOut" as const }}
-          className={snippetClassName}
-          dangerouslySetInnerHTML={{ __html: editorHtml[activeTab] }}
-        />
-      ) : (
-        <div
-          key={activeTab}
-          className={snippetClassName}
-          dangerouslySetInnerHTML={{ __html: editorHtml[activeTab] }}
-        />
-      )}
+      <div
+        key={activeTab}
+        className="flex-1 overflow-auto border-t-0 border-border bg-background p-3 [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:text-label-12 [&_pre]:leading-relaxed"
+        dangerouslySetInnerHTML={{ __html: editorHtml[activeTab] }}
+      />
     </div>
   )
 }
@@ -423,7 +402,7 @@ function StaticWorkbench({
             <StaticExplorer node={SAAS_STARTER_FILES[0]!} depth={0} />
           </div>
         </div>
-        <EditorPane editorHtml={editorHtml} animated={false} />
+        <EditorPane editorHtml={editorHtml} />
       </div>
       <div className="flex flex-col gap-2 border-t border-border p-4">
         <p className="flex items-center gap-1.5 text-label-13 uppercase tracking-wider text-muted-foreground">
