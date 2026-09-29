@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowUpRight } from "lucide-react"
+import { ArrowUpRight, ListChecks, MessageSquare, Rocket } from "lucide-react"
 
 import { CodingAgentsChat } from "@/app/(marketing)/_components/coding-agents-chat"
 import { Section } from "@/app/(marketing)/_components/section"
@@ -27,9 +27,10 @@ import { CODING_AGENTS } from "@/lib/marketing/home-data"
  * so they render in monochrome against the text-foreground ink and
  * the dark:invert class flips them in dark mode.
  *
- * The 3 numbered bullets between the lead paragraph and the CTA
+ * The 3 icon bullets between the lead paragraph and the CTA
  * mirror the chat's 6 turn groups (Talk / Tell / Watch) so the
  * editorial column reads as a legend to the demo on the left.
+ * Same icon-bullet pattern as the Integrations left column.
  * The CTA below the heading sits next to the bullet list — it
  * routes visitors to the install guide instead of asking them to
  * copy paragraphs of body copy. The 3-icon stack shows a
@@ -38,15 +39,18 @@ import { CODING_AGENTS } from "@/lib/marketing/home-data"
  */
 const TALK_BULLETS = [
   {
-    title: "1. Talk to your agent.",
+    Icon: MessageSquare,
+    title: "Talk to your agent.",
     body: "It knows the registry, runs the CLI, no setup.",
   },
   {
-    title: "2. Tell it what you need.",
+    Icon: ListChecks,
+    title: "Tell it what you need.",
     body: "Init a template, add observability, swap a contract — natural language.",
   },
   {
-    title: "3. Watch it ship.",
+    Icon: Rocket,
+    title: "Watch it ship.",
     body: "Same conversation surface as your editor. Same primitives.",
   },
 ] as const
@@ -79,18 +83,22 @@ export function CodingAgents() {
             manifest for the tools. Pick the CLI, the contracts stay the
             same.
           </p>
-          <ol className="flex flex-col gap-5">
+          <ul className="flex flex-col gap-3 pt-2">
             {TALK_BULLETS.map((bullet) => (
-              <li key={bullet.title} className="flex flex-col gap-2">
-                <h3 className="text-label-13 uppercase tracking-wider text-foreground">
-                  {bullet.title}
-                </h3>
-                <p className="text-copy-14 leading-6 text-muted-foreground text-balance">
-                  {bullet.body}
-                </p>
+              <li
+                key={bullet.title}
+                className="flex items-start gap-3 text-copy-14 leading-6 text-foreground"
+              >
+                <bullet.Icon
+                  aria-hidden
+                  className="mt-0.5 size-4 shrink-0 text-foreground"
+                />
+                <span>
+                  <strong>{bullet.title}</strong> {bullet.body}
+                </span>
               </li>
             ))}
-          </ol>
+          </ul>
           <Link
             href="/knowledge-base/guides/install-deessejs-cli"
             aria-label="Onboard your agent — open the install guide"
