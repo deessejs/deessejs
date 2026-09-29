@@ -20,21 +20,8 @@ import type { Contract } from "@/app/(marketing)/_components/contracts-grid"
 // Contracts (Section 6: "Under the hood")
 // ---------------------------------------------------------------------------
 
-/** The six contracts wired into every template. */
+/** The seven contracts wired into every template. */
 export const CONTRACTS: ReadonlyArray<Contract> = [
-  {
-    title: "Auth",
-    description:
-      "Sessions, organizations, invitations, OAuth. Typed against whichever provider you bring.",
-    icon: "auth",
-    providers: [
-      { name: "Better Auth", logo: "betterauth" },
-      { name: "Clerk", logo: "clerk" },
-      { name: "Auth0", logo: "auth0" },
-      { name: "Lucia", logo: "lucia" },
-    ],
-    mockup: "auth-form",
-  },
   {
     title: "Database",
     description:
@@ -49,6 +36,19 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Prisma", logo: "prisma" },
     ],
     mockup: "db-terminal",
+  },
+  {
+    title: "Auth",
+    description:
+      "Sessions, organizations, invitations, OAuth. Typed against whichever provider you bring.",
+    icon: "auth",
+    providers: [
+      { name: "Better Auth", logo: "betterauth" },
+      { name: "Clerk", logo: "clerk" },
+      { name: "Auth0", logo: "auth0" },
+      { name: "Lucia", logo: "lucia" },
+    ],
+    mockup: "auth-form",
   },
   {
     title: "Billing",

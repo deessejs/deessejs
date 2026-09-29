@@ -156,11 +156,13 @@ const BENTO_SPAN: Record<
     rowSpan?: string
   }
 > = {
-  Auth: { col: "lg:col-span-6", rowSpan: "lg:row-span-2", rowStart: "lg:row-start-1" },
-  Database: { col: "lg:col-span-6", rowStart: "lg:row-start-4" },
+  // Database takes the row-span-2 pillar slot — its terminal mockup
+  // gets the most vertical room. Auth is now a compact 3-col cell.
+  Database: { col: "lg:col-span-6", rowSpan: "lg:row-span-2", rowStart: "lg:row-start-1" },
+  Auth: { col: "lg:col-span-3", rowStart: "lg:row-start-1" },
+  Storage: { col: "lg:col-span-6", rowStart: "lg:row-start-4" },
   Billing: { col: "lg:col-span-12", rowStart: "lg:row-start-3" },
   Jobs: { col: "lg:col-span-3", rowStart: "lg:row-start-1" },
-  Storage: { col: "lg:col-span-3", rowStart: "lg:row-start-1" },
   Observability: { col: "lg:col-span-6", rowStart: "lg:row-start-2" },
   Cache: { col: "lg:col-span-6", rowStart: "lg:row-start-4" },
 }
@@ -353,7 +355,7 @@ function AuthFlowMockup() {
         </span>
       </div>
 
-      <div className="relative flex min-h-[160px] items-center justify-center p-1.5">
+      <div className="relative flex h-[88px] items-center justify-center p-1.5">
         <AnimatePresence mode="wait" initial={false}>
           {phase === "form" && (
             <motion.div
@@ -520,7 +522,7 @@ function DbTerminalMockup() {
   const line3 = "users · orgs · sessions · invoices ..."
 
   return (
-    <div className="bg-zinc-950 p-3 font-mono text-[11px] leading-5">
+    <div className="bg-zinc-950 p-3 font-mono text-[11px] leading-5 min-h-[200px]">
       <TypedLine
         segments={[
           { text: "$ ", color: "text-cyan-400" },
