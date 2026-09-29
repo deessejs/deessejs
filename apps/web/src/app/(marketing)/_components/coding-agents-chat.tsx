@@ -152,18 +152,16 @@ function UserAvatar() {
 }
 
 /**
- * Agent avatar — the Codex SVG logo (the agent's brand mark) on a
- * violet-tinted background. This is the ONLY violet accent in the
- * chat thread: the message bubbles themselves stay monochrome
- * (bg-background + border) so the conversation reads as a single
- * neutral surface. The avatar's violet chip is the role cue that
- * distinguishes user turns (avatar = initial "S", bg-muted) from
- * agent turns (avatar = Codex SVG, violet wash).
+ * Agent avatar — the Codex SVG logo on a neutral muted background.
+ * Both avatars in the thread share the same chrome (bg-muted + dark:invert
+ * on the brand mark); role differentiation comes from the message
+ * alignment (user = right, agent = left) and the avatar content
+ * (initial vs Codex SVG). No violet accent in the chat thread.
  */
 function AgentAvatar() {
   return (
-    <Avatar className="border border-violet-500/30 bg-violet-500/10">
-      <AvatarFallback className="bg-violet-500/10">
+    <Avatar className="bg-muted">
+      <AvatarFallback className="bg-muted">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/logos/codex.svg"
