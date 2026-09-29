@@ -143,7 +143,7 @@ const BUBBLE_CONTENT_CLASS = "bg-background border-border"
  */
 function UserAvatar() {
   return (
-    <Avatar size="sm" className="bg-muted">
+    <Avatar className="bg-muted">
       <AvatarFallback className="bg-muted text-foreground text-label-12 font-medium">
         S
       </AvatarFallback>
@@ -162,18 +162,15 @@ function UserAvatar() {
  */
 function AgentAvatar() {
   return (
-    <Avatar
-      size="sm"
-      className="border border-violet-500/30 bg-violet-500/10"
-    >
+    <Avatar className="border border-violet-500/30 bg-violet-500/10">
       <AvatarFallback className="bg-violet-500/10">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/logos/codex.svg"
           alt=""
-          width={14}
-          height={14}
-          className="size-3.5 dark:invert"
+          width={16}
+          height={16}
+          className="size-4 dark:invert"
           aria-hidden
         />
       </AvatarFallback>
@@ -181,27 +178,17 @@ function AgentAvatar() {
   )
 }
 
-/** Caret span the streaming message renders at its tail. */
-function Caret() {
-  return (
-    <span
-      aria-hidden
-      className="ml-px inline-block h-3 w-px animate-pulse bg-foreground align-middle"
-    />
-  )
-}
-
 /**
- * Renders the typed-out prefix of `text` followed by the streaming
- * caret. When `done` is true the caret is omitted — the message is
- * complete.
- *
- * Renders newlines as `<br />` so multi-line agent text wraps cleanly
- * inside the bubble without breaking the inline text rhythm.
+ * Renders the typed-out prefix of `text` while it's streaming. When
+ * `done` is true the full text is in place — no caret is appended.
+ * The `done` flag stays in the type so the prop signature matches
+ * the streaming state machine in the parent component, but we no
+ * longer draw a caret (the vertical bar read as a stray "|" pipe
+ * next to the text).
  */
 function StreamedText({
   shown,
-  done,
+  done: _done,
 }: {
   shown: string
   done: boolean
@@ -209,7 +196,6 @@ function StreamedText({
   return (
     <p className="whitespace-pre-line text-copy-13 leading-6 text-foreground">
       {shown}
-      {done ? null : <Caret />}
     </p>
   )
 }
