@@ -6,12 +6,14 @@ import { TECH_STACK } from "@/lib/marketing/home-data"
 export function TechStack() {
   return (
     <Section>
-      <div className="px-8 py-6">
-        <p className="text-heading-24 tracking-tighter text-balance [&:not(:first-child)]:mt-0">
-          Built with the stack senior engineers ship on.
-        </p>
+      <div className="flex flex-col divide-y divide-border">
+        <div className="px-8 py-6">
+          <p className="text-heading-24 tracking-tighter text-balance [&:not(:first-child)]:mt-0">
+            Built with the stack senior engineers ship on.
+          </p>
+        </div>
+        <TechStackGrid techs={TECH_STACK} />
       </div>
-      <TechStackGrid techs={TECH_STACK} />
     </Section>
   )
 }
