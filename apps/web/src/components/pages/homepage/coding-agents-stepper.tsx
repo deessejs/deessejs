@@ -129,7 +129,7 @@ export function CodingAgentsStepper() {
           >
             <step.Icon
               aria-hidden
-              className="size-4 shrink-0 text-foreground"
+              className="size-4 shrink-0 translate-y-px text-foreground"
             />
             <h3 className="text-heading-20 font-medium tracking-tight text-foreground text-balance">
               {step.title}
