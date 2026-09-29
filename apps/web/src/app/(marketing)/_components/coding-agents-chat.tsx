@@ -122,18 +122,17 @@ const ALL_TURNS: ReadonlyArray<TurnKey> = [
 ]
 
 /**
- * Surface override applied to `BubbleContent` for agent bubbles.
- *
- * The `tinted` variant paints `BubbleContent` with `bg-primary/10`
- * (near-black at 10% in this project). Consumer className wins the
- * cascade over the variant's slot selector, so this overrides the
- * surface with a translucent violet wash without minting a new
- * design-system token.
+ * Surface override applied to every Bubble in the thread so the chat
+ * reads as a monochrome conversation. Both user and agent bubbles
+ * use `bg-background` (the variant's slot selector lets the consumer
+ * className win the cascade), with `border-border` for the same
+ * shared-border rhythm the rest of the homepage uses.
  *
  * `max-w-none` on the wrapper Bubble lets the bubble span the
  * message column beyond the variant's 80% clamp.
  */
-const AGENT_BUBBLE_CLASS = "max-w-none"
+const BUBBLE_CLASS = "max-w-none"
+const BUBBLE_CONTENT_CLASS = "bg-background border-border"
 
 /**
  * User avatar — a 1-letter initial drawn from a casual first name.
@@ -154,13 +153,12 @@ function UserAvatar() {
 
 /**
  * Agent avatar — the Codex SVG logo (the agent's brand mark) on a
- * violet-tinted background. Mirrors the rest of the page's "violet =
- * agent" accent (see the streaming-chat mockup at apps/web/src/app/
- * (product)/use-cases/_components/mockups/streaming-chat.tsx).
- *
- * The SVG renders via plain <img> so the fill follows the surrounding
- * `dark:invert` rule that the rest of the marketing surface uses for
- * monochrome brand marks.
+ * violet-tinted background. This is the ONLY violet accent in the
+ * chat thread: the message bubbles themselves stay monochrome
+ * (bg-background + border) so the conversation reads as a single
+ * neutral surface. The avatar's violet chip is the role cue that
+ * distinguishes user turns (avatar = initial "S", bg-muted) from
+ * agent turns (avatar = Codex SVG, violet wash).
  */
 function AgentAvatar() {
   return (
@@ -183,12 +181,12 @@ function AgentAvatar() {
   )
 }
 
-/** Caret span the streaming agent message renders at its tail. */
+/** Caret span the streaming message renders at its tail. */
 function Caret() {
   return (
     <span
       aria-hidden
-      className="ml-px inline-block h-3 w-px animate-pulse bg-violet-500 align-middle"
+      className="ml-px inline-block h-3 w-px animate-pulse bg-foreground align-middle"
     />
   )
 }
@@ -404,10 +402,10 @@ export function CodingAgentsChat() {
                         </MessageAvatar>
                         <MessageContent>
                           <Bubble
-                            variant="muted"
-                            className="max-w-none"
+                            variant="outline"
+                            className={BUBBLE_CLASS}
                           >
-                            <BubbleContent>
+                            <BubbleContent className={BUBBLE_CONTENT_CLASS}>
                               <p className="text-copy-13 leading-6 text-foreground">
                                 {USER_PROMPT_1}
                               </p>
@@ -427,10 +425,10 @@ export function CodingAgentsChat() {
                         </MessageAvatar>
                         <MessageContent>
                           <Bubble
-                            variant="tinted"
-                            className={AGENT_BUBBLE_CLASS}
+                            variant="outline"
+                            className={BUBBLE_CLASS}
                           >
-                            <BubbleContent className="bg-violet-500/5 ring-1 ring-violet-500/30">
+                            <BubbleContent className={BUBBLE_CONTENT_CLASS}>
                               <StreamedText
                                 shown={agent1Shown}
                                 done={phases.agent1 === "done"}
@@ -497,10 +495,10 @@ export function CodingAgentsChat() {
                         </MessageAvatar>
                         <MessageContent>
                           <Bubble
-                            variant="muted"
-                            className="max-w-none"
+                            variant="outline"
+                            className={BUBBLE_CLASS}
                           >
-                            <BubbleContent>
+                            <BubbleContent className={BUBBLE_CONTENT_CLASS}>
                               <p className="text-copy-13 leading-6 text-foreground">
                                 {USER_PROMPT_2}
                               </p>
@@ -520,10 +518,10 @@ export function CodingAgentsChat() {
                         </MessageAvatar>
                         <MessageContent>
                           <Bubble
-                            variant="tinted"
-                            className={AGENT_BUBBLE_CLASS}
+                            variant="outline"
+                            className={BUBBLE_CLASS}
                           >
-                            <BubbleContent className="bg-violet-500/5 ring-1 ring-violet-500/30">
+                            <BubbleContent className={BUBBLE_CONTENT_CLASS}>
                               <StreamedText
                                 shown={agent2Shown}
                                 done={phases.agent2 === "done"}
@@ -544,10 +542,10 @@ export function CodingAgentsChat() {
                         </MessageAvatar>
                         <MessageContent>
                           <Bubble
-                            variant="tinted"
-                            className={AGENT_BUBBLE_CLASS}
+                            variant="outline"
+                            className={BUBBLE_CLASS}
                           >
-                            <BubbleContent className="bg-violet-500/5 ring-1 ring-violet-500/30">
+                            <BubbleContent className={BUBBLE_CONTENT_CLASS}>
                               <StreamedText
                                 shown={agent3Shown}
                                 done={phases.agent3 === "done"}
