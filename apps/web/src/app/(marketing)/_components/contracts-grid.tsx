@@ -6,6 +6,29 @@ import { AnimatePresence } from "motion/react"
 /**
  * Animated Contracts grid for the marketing homepage.
  *
+ * Asymmetric 12-col bento on `lg+` — Auth spans two row tracks as the
+ * pillar (the interactive form animation gets the most real estate);
+ * Observability occupies the wide row-2 slot (waterfall needs horizontal
+ * room for 4 sub-traces); Billing closes on a wide row-3 stripe (the
+ * emerald usage bar reads as a deliberate horizontal arc); Database is
+ * narrow row-3 (terminal aesthetic); Jobs + Storage stack row-1 as
+ * compact infrastructure secondaries. Below `lg` the bento collapses to
+ * a 2-col tablet grid then a 1-col mobile stack.
+ *
+ * Border discipline — Pattern C (`gap-px bg-border` on the parent + a
+ * `bg-background` paint on every cell). `divide-*` would be the
+ * repository's default, but row-span cells break it: `divide-x` uses
+ * `:not(:last-child)` per DOM child and only draws the inline-end edge,
+ * so the internal seam where a row-span-2 cell meets row 2 would be
+ * missing. Pattern C is the only option that draws a complete gridline
+ * through every junction. Precedent: `integration-columns.tsx`.
+ *
+ * `auto-rows-min` lets each row track size to its min-content so small
+ * cells (Billing at ~80 px) don't stretch to match tall ones (Auth at
+ * ~250 px row-span-2). `row-start-N` is set explicitly per cell so a
+ * future re-order of `CONTRACTS[]` in `home-data.ts` doesn't visually
+ * break the bento.
+ *
  * Lives in its own client component so the rest of the page can stay a
  * server component (KB guides, changelog, content-collections). Motion
  * needs the browser for its physics engine, so it can't run as an RSC.
@@ -106,6 +129,27 @@ const cell = {
   },
 }
 
+/**
+ * Bento span allocation per contract, keyed by `title`. Explicit
+ * `lg:col-span-*` + `lg:row-start-*` so re-ordering `CONTRACTS[]` in
+ * `home-data.ts` does not break the visual layout.
+ */
+const BENTO_SPAN: Record<
+  Contract["title"],
+  {
+    col: string
+    rowStart: string
+    rowSpan?: string
+  }
+> = {
+  Auth: { col: "lg:col-span-6", rowSpan: "lg:row-span-2", rowStart: "lg:row-start-1" },
+  Database: { col: "lg:col-span-3", rowStart: "lg:row-start-3" },
+  Billing: { col: "lg:col-span-9", rowStart: "lg:row-start-3" },
+  Jobs: { col: "lg:col-span-3", rowStart: "lg:row-start-1" },
+  Storage: { col: "lg:col-span-3", rowStart: "lg:row-start-1" },
+  Observability: { col: "lg:col-span-6", rowStart: "lg:row-start-2" },
+}
+
 export function ContractsGrid({
   contracts,
 }: {
@@ -117,10 +161,14 @@ export function ContractsGrid({
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.2 }}
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-x divide-y divide-border"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 lg:grid-rows-3 lg:auto-rows-min gap-px bg-border"
     >
       {contracts.map((contract) => {
         const Icon = ICON_MAP[contract.icon]
+        const span = BENTO_SPAN[contract.title] ?? {
+          col: "lg:col-span-3",
+          rowStart: "lg:row-start-1",
+        }
         return (
           <motion.article
             key={contract.title}
@@ -128,7 +176,12 @@ export function ContractsGrid({
             initial="rest"
             whileHover="hover"
             animate="rest"
-            className="group relative flex flex-col gap-4 p-6"
+            className={cn(
+              "group relative flex flex-col gap-4 bg-background p-6",
+              span.col,
+              span.rowStart,
+              span.rowSpan,
+            )}
           >
             {/* Ghost overlay — entire cell surface is a link to the
                 same destination. Sits at z-0 so the content layer can
@@ -143,7 +196,14 @@ export function ContractsGrid({
                 links to the filtered registry. Opens the same
                 destination in a new tab via window.open so the
                 user can keep the homepage open. e.stopPropagation()
-                keeps the parent ghost link from also firing. */}
+                keeps the parent ghost link from also firing.
+
+                Inset from the cell edge (top-3 right-3) rather than
+                pinned to it: on row-span-2 Auth the original
+                top-0 right-0 would land mid-cell vertically,
+                looking unbalanced. The `bg-background/80` chip
+                floats on top of the gap-px seam instead of
+                extending it. */}
             {/* eslint-disable-next-line react/forbid-elements */}
             <button
               type="button"
@@ -156,7 +216,7 @@ export function ContractsGrid({
                   "noopener,noreferrer",
                 )
               }}
-              className="absolute top-0 right-0 z-20 flex size-9 cursor-pointer items-center justify-center border-l border-b border-border text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
+              className="absolute top-3 right-3 z-20 flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
             >
               <ArrowUpRight className="size-3.5" aria-hidden />
             </button>
@@ -173,7 +233,7 @@ export function ContractsGrid({
                 </h3>
               </div>
 
-              <div className="rounded-md border border-border bg-background overflow-hidden">
+              <div className="rounded-md bg-background overflow-hidden">
                 <ContractMockup kind={contract.mockup} />
               </div>
 
@@ -278,7 +338,7 @@ function AuthFlowMockup() {
         </span>
       </div>
 
-      <div className="relative flex h-[88px] items-center justify-center p-1.5">
+      <div className="relative flex min-h-[160px] items-center justify-center p-1.5">
         <AnimatePresence mode="wait" initial={false}>
           {phase === "form" && (
             <motion.div
