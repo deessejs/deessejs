@@ -1,12 +1,27 @@
+import { codeToHtml } from "shiki"
+
 import { Section } from "@/app/(marketing)/_components/section"
 import { CliWorkbench } from "@/app/(marketing)/_components/cli-workbench"
 import { CliInActionStatic } from "@/app/(marketing)/_components/cli-in-action-static"
+import {
+  EDITOR_TAB_CONTENT,
+  EDITOR_TAB_LANG,
+  EDITOR_TABS,
+  type EditorTabId,
+} from "@/lib/marketing/cli-workbench-data"
 
 const COMMAND = "deessejs init saas-starter"
 const INSTALL_GUIDE_HREF = "/knowledge-base/guides/install-deessejs-cli"
 
 /**
  * CLI section on the marketing homepage.
+ *
+ * Server Component. The two editor snippets (package.json and
+ * AGENTS.md) are pre-highlighted by Shiki at request time and
+ * threaded into the Client `<CliWorkbench>` as plain HTML strings,
+ * because Next 16 forbids rendering an async Server Component as
+ * a child of a Client Component (the workbench is `"use client"`
+ * for the Motion choreography + tab state).
  *
  * Layout split:
  *   • `lg+`  : editorial column (4/12) + animated IDE workbench (8/12).
@@ -21,12 +36,28 @@ const INSTALL_GUIDE_HREF = "/knowledge-base/guides/install-deessejs-cli"
  *
  * Both branches share the canonical command (`deessejs init
  * saas-starter`, matching `apps/cli/src/commands/init.ts`) and the
- * install guide CTA. Neither shows a copy-button: the terminal's
- * purpose is to show the command being *run*, not to be a copy
- * affordance — the install guide is the explicit copy-on-demand
- * destination.
+ * install guide CTA.
  */
-export function CliInAction() {
+export async function CliInAction() {
+  // Pre-render every editor snippet to dual-theme Shiki HTML once
+  // at request time. `defaultColor: false` is mandatory: without it
+  // Shiki emits inline `color` styles that win over the CSS
+  // variables in `globals.css`, and dark mode would not flip.
+  const highlightedHtml = await Promise.all(
+    EDITOR_TABS.map(async (tab) => {
+      const html = await codeToHtml(EDITOR_TAB_CONTENT[tab.id], {
+        lang: EDITOR_TAB_LANG[tab.id],
+        themes: { light: "github-light", dark: "github-dark" },
+        defaultColor: false,
+      })
+      return [tab.id, html] as const
+    }),
+  )
+  const editorHtml: Record<EditorTabId, string> = {
+    "package.json": highlightedHtml[0]![1],
+    "AGENTS.md": highlightedHtml[1]![1],
+  }
+
   return (
     <Section>
       <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:divide-x lg:divide-y-0">
@@ -45,7 +76,7 @@ export function CliInAction() {
 
         {/* Desktop: animated workbench */}
         <div className="hidden p-4 lg:block">
-          <CliWorkbench />
+          <CliWorkbench editorHtml={editorHtml} />
         </div>
 
         {/* Mobile + tablet: static panel */}

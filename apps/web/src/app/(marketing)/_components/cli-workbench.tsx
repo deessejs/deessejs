@@ -3,14 +3,13 @@
 import { useState } from "react"
 import * as m from "motion/react-m"
 import { LazyMotion, domAnimation, useReducedMotion } from "motion/react"
-import { File, Folder, FolderOpen, TerminalSquare, X } from "lucide-react"
+import { File, FilePlus, Folder, FolderOpen, FolderPlus, TerminalSquare, X } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
 import {
   DEV_OUTPUT_LINE,
-  EDITOR_TAB_CONTENT,
   EDITOR_TABS,
   INIT_OUTPUT_LINES,
   SAAS_STARTER_FILES,
@@ -54,16 +53,21 @@ import {
  * detect PM + install). The template layout is a curated list in
  * `cli-workbench-data.ts`; update both in lockstep.
  */
-export function CliWorkbench() {
+export function CliWorkbench({
+  editorHtml,
+}: {
+  /** Pre-highlighted Shiki HTML per editor tab id. */
+  editorHtml: Record<EditorTabId, string>
+}) {
   const reduceMotion = useReducedMotion()
 
   if (reduceMotion) {
-    return <StaticWorkbench />
+    return <StaticWorkbench editorHtml={editorHtml} />
   }
 
   return (
     <LazyMotion features={domAnimation}>
-      <AnimatedWorkbench />
+      <AnimatedWorkbench editorHtml={editorHtml} />
     </LazyMotion>
   )
 }
@@ -72,16 +76,20 @@ export function CliWorkbench() {
 // Animated variant
 // ----------------------------------------------------------------------
 
-function AnimatedWorkbench() {
+function AnimatedWorkbench({
+  editorHtml,
+}: {
+  editorHtml: Record<EditorTabId, string>
+}) {
   return (
     <div
       role="img"
       aria-label="IDE workbench: a file tree fills as the CLI clones the saas-starter template, then pnpm dev starts the dev server."
       className="flex h-full flex-col overflow-hidden border border-border bg-background"
     >
-      <div className="grid flex-1 grid-cols-[minmax(0,5fr)_minmax(0,7fr)] divide-x divide-border">
+      <div className="grid flex-1 grid-cols-[minmax(0,3fr)_minmax(0,9fr)] divide-x divide-border">
         <ExplorerPane />
-        <EditorPane animated />
+        <EditorPane editorHtml={editorHtml} animated />
       </div>
 
       <TerminalPane />
@@ -91,11 +99,33 @@ function AnimatedWorkbench() {
 
 function ExplorerPane() {
   return (
-    <div className="flex flex-col gap-2 p-4">
-      <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-        Explorer
-      </p>
-      <div className="flex-1 overflow-hidden">
+    <div className="flex flex-col">
+      <PaneHeader
+        title="Explorer"
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label="New file"
+              className="rounded-none! text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+            >
+              <FilePlus aria-hidden className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label="New folder"
+              className="rounded-none! text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+            >
+              <FolderPlus aria-hidden className="size-3.5" />
+            </Button>
+          </>
+        }
+      />
+      <div className="flex-1 overflow-hidden p-4 pt-2">
         <ExplorerNodeView node={SAAS_STARTER_FILES[0]!} depth={0} />
       </div>
     </div>
@@ -151,32 +181,41 @@ function ExplorerNodeView({
   )
 }
 
-function EditorPane({ animated }: { animated: boolean }) {
+function EditorPane({
+  editorHtml,
+  animated,
+}: {
+  editorHtml: Record<EditorTabId, string>
+  /**
+   * When true, the active tab's snippet reveals with a
+   * clip-path animation on first viewport entry. After the
+   * initial reveal, tab switches swap instantly.
+   */
+  animated: boolean
+}) {
   const [activeTab, setActiveTab] = useState<EditorTabId>(EDITOR_TABS[0]!.id)
 
+  const snippetClassName =
+    "flex-1 overflow-auto border-t-0 border-border bg-background p-3 [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:text-label-12 [&_pre]:leading-relaxed"
+
   return (
-    <div className="flex flex-col gap-2 p-4">
-      <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-        Editor
-      </p>
+    <div className="flex flex-col">
       <EditorTabs activeTab={activeTab} onTabChange={setActiveTab} />
       {animated ? (
-        <m.pre
+        <m.div
           key={activeTab}
           initial={{ opacity: 0, clipPath: "inset(0 0 100% 0)" }}
           animate={{ opacity: 1, clipPath: "inset(0 0 0% 0)" }}
           transition={{ duration: 0.25, ease: "easeOut" as const }}
-          className="flex-1 overflow-auto rounded-none border border-border bg-background p-3 font-mono text-label-12 leading-relaxed text-foreground"
-        >
-          {EDITOR_TAB_CONTENT[activeTab]}
-        </m.pre>
+          className={snippetClassName}
+          dangerouslySetInnerHTML={{ __html: editorHtml[activeTab] }}
+        />
       ) : (
-        <pre
+        <div
           key={activeTab}
-          className="flex-1 overflow-auto rounded-none border border-border bg-background p-3 font-mono text-label-12 leading-relaxed text-foreground"
-        >
-          {EDITOR_TAB_CONTENT[activeTab]}
-        </pre>
+          className={snippetClassName}
+          dangerouslySetInnerHTML={{ __html: editorHtml[activeTab] }}
+        />
       )}
     </div>
   )
@@ -209,7 +248,7 @@ function EditorTabs({
             id={`editor-tab-${tab.id}`}
             onClick={() => onTabChange(tab.id)}
             className={cn(
-              "group/tab h-auto rounded-none! border-r border-border px-3 py-1.5 font-mono text-label-12 hover:bg-accent/40",
+              "group/tab h-auto rounded-none! border-r border-border px-4 py-2 font-mono text-label-12 hover:bg-accent/40",
               isActive
                 ? "-mb-px border-b border-b-background bg-background text-foreground"
                 : "text-muted-foreground",
@@ -226,6 +265,35 @@ function EditorTabs({
           </Button>
         )
       })}
+    </div>
+  )
+}
+
+/**
+ * Pane header — used by Explorer (and any future pane that wants a
+ * sticky title row). Title on the left, optional icon actions on
+ * the right, separated from the body by a `border-b`.
+ *
+ * The Explorer "new file" / "new folder" actions are decorative:
+ * they advertise the IDE affordance without binding to real logic,
+ * because the file tree is a curated storyboard, not an editable
+ * filesystem.
+ */
+function PaneHeader({
+  title,
+  actions,
+}: {
+  title: string
+  actions?: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
+      <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        {title}
+      </p>
+      {actions ? (
+        <div className="flex items-center gap-0.5">{actions}</div>
+      ) : null}
     </div>
   )
 }
@@ -313,26 +381,49 @@ function TypedLine({
 // Static variant (prefers-reduced-motion)
 // ----------------------------------------------------------------------
 
-function StaticWorkbench() {
+function StaticWorkbench({
+  editorHtml,
+}: {
+  editorHtml: Record<EditorTabId, string>
+}) {
   return (
     <div
       role="img"
       aria-label="IDE workbench showing a populated saas-starter project: file tree, tabbed editor, terminal session where deessejs init and pnpm dev have run."
       className="flex h-full flex-col overflow-hidden border border-border bg-background"
     >
-      <div className="grid flex-1 grid-cols-[minmax(0,5fr)_minmax(0,7fr)] divide-x divide-border">
-        <div className="flex flex-col gap-2 p-4">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            Explorer
-          </p>
-          <div className="flex-1 overflow-hidden">
-            <StaticExplorer
-              node={SAAS_STARTER_FILES[0]!}
-              depth={0}
-            />
+      <div className="grid flex-1 grid-cols-[minmax(0,3fr)_minmax(0,9fr)] divide-x divide-border">
+        <div className="flex flex-col">
+          <PaneHeader
+            title="Explorer"
+            actions={
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label="New file"
+                  className="rounded-none! text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+                >
+                  <FilePlus aria-hidden className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label="New folder"
+                  className="rounded-none! text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+                >
+                  <FolderPlus aria-hidden className="size-3.5" />
+                </Button>
+              </>
+            }
+          />
+          <div className="flex-1 overflow-hidden p-4 pt-2">
+            <StaticExplorer node={SAAS_STARTER_FILES[0]!} depth={0} />
           </div>
         </div>
-        <EditorPane animated={false} />
+        <EditorPane editorHtml={editorHtml} animated={false} />
       </div>
       <div className="flex flex-col gap-2 border-t border-border p-4">
         <p className="flex items-center gap-1.5 text-label-13 uppercase tracking-wider text-muted-foreground">

@@ -107,10 +107,13 @@ Run pnpm test before pushing.
  * `package.json` is the active tab by default — it is the file the
  * workbench opens first because the dev script (`pnpm dev`) is
  * visible there.
+ *
+ * `lang` drives Shiki highlighting on the server side. Use
+ * markdown for `.md` files; typescript / json otherwise.
  */
 export const EDITOR_TABS = [
-  { id: "package.json", label: "package.json" },
-  { id: "AGENTS.md", label: "AGENTS.md" },
+  { id: "package.json", label: "package.json", lang: "json" },
+  { id: "AGENTS.md", label: "AGENTS.md", lang: "markdown" },
 ] as const
 
 export type EditorTabId = (typeof EDITOR_TABS)[number]["id"]
@@ -119,6 +122,12 @@ export type EditorTabId = (typeof EDITOR_TABS)[number]["id"]
 export const EDITOR_TAB_CONTENT: Record<EditorTabId, string> = {
   "package.json": SAAS_STARTER_PACKAGE_JSON,
   "AGENTS.md": SAAS_STARTER_AGENTS_MD,
+}
+
+/** Map a tab id to the Shiki language identifier. */
+export const EDITOR_TAB_LANG: Record<EditorTabId, string> = {
+  "package.json": "json",
+  "AGENTS.md": "markdown",
 }
 
 /**
