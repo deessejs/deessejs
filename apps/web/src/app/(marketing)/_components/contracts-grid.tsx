@@ -258,7 +258,7 @@ export function ContractsGrid({
                 {contract.description}
               </p>
 
-              <ul className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+              <ul className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 pt-4">
                 {contract.providers.map((provider) => (
                   <li
                     key={provider.name}
