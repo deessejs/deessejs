@@ -1,6 +1,6 @@
 import { z } from "zod"
-import type { Octokit } from "@octokit/rest"
 
+import type { InstallationOctokit } from "./octokit-app.js"
 import { getInstallationOctokit } from "./octokit-app.js"
 
 const RepositoryProfile = z.object({
@@ -23,7 +23,14 @@ export async function listAuditRepositories(
     octokit.rest.apps.listReposAccessibleToInstallation,
     { per_page: 100 },
   )) {
-    for (const repo of response.data.repositories) {
+    // Paginate iterator yields the endpoint's `data` field directly per
+    // page (see @octokit/plugin-paginate-rest). The generated response
+    // type for listReposAccessibleToInstallation does not reflect that
+    // in @octokit/openapi-types yet, so the local cast keeps tsc strict.
+    const page = response.data as unknown as {
+      repositories: ReadonlyArray<unknown>
+    }
+    for (const repo of page.repositories) {
       const parsed = RepositoryProfile.safeParse(repo)
       if (parsed.success) out.push(parsed.data)
     }
@@ -32,7 +39,7 @@ export async function listAuditRepositories(
 }
 
 export async function resolveMainSha(
-  octokit: Octokit,
+  octokit: InstallationOctokit,
   owner: string,
   repo: string,
   defaultBranch: string,

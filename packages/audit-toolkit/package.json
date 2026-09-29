@@ -22,7 +22,7 @@
     }
   },
   "scripts": {
-    "build": "eve extension build",
+    "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 import { z } from "zod"
-import type { Octokit } from "@octokit/rest"
 
+import type { InstallationOctokit } from "./octokit-app.js"
 import { computeFingerprint } from "./fingerprint.js"
 
 export const CreateAuditIssueInput = z.object({
@@ -142,7 +142,7 @@ function assertAuditOrigin(ctx: {
 
 export async function createAuditIssue(
   input: CreateAuditIssueInput,
-  octokit: Octokit,
+  octokit: InstallationOctokit,
   ctx: {
     session: { auth: { initiator: unknown } }
   },

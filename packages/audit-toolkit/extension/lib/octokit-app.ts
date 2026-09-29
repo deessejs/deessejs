@@ -3,6 +3,18 @@ import { Octokit } from "@octokit/rest"
 
 import { getGitHubCredentials } from "./env.js"
 
+/**
+ * The full octokit instance returned by `new Octokit()` from @octokit/rest:
+ * core HTTP plus REST endpoint methods plus pagination. Use this type for
+ * every function that accepts an installation octokit.
+ *
+ * @octokit/app's `getInstallationOctokit` is typed as returning the
+ * minimal core Octokit, but the runtime object is an @octokit/rest
+ * instance because @octokit/app instantiates one internally. The cast
+ * below matches what runs and lets `octokit.rest.apps.*` etc. typecheck.
+ */
+export type InstallationOctokit = InstanceType<typeof Octokit>
+
 let app: App | null = null
 
 function getApp(): App {
@@ -18,6 +30,8 @@ function getApp(): App {
 
 export function getInstallationOctokit(
   installationId: number,
-): Promise<Octokit> {
-  return getApp().getInstallationOctokit(installationId)
+): Promise<InstallationOctokit> {
+  return getApp().getInstallationOctokit(
+    installationId,
+  ) as Promise<InstallationOctokit>
 }
