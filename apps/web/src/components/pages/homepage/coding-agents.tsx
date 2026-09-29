@@ -46,17 +46,17 @@ const TALK_STEPS = [
   {
     Icon: MessageSquare,
     title: "Talk",
-    body: "Your agent knows the registry and runs the CLI, no setup on your side.",
+    body: "Open a session with your agent the way you open a chat. It already knows the registry, reads AGENTS.md at the monorepo root, and runs the CLI when asked.",
   },
   {
     Icon: Wrench,
     title: "Build",
-    body: "Tell it what you need: a template, a contract, an observability wire. Natural language.",
+    body: "Tell it what you need in plain language: scaffold a template, swap a contract, wire observability. It picks the right command and runs it, with the contracts as the source of truth.",
   },
   {
     Icon: Rocket,
     title: "Ship",
-    body: "Same conversation surface as your editor. Same primitives, every CLI.",
+    body: "Same conversation surface as your editor, same primitives across Claude Code, Codex, OpenCode, Cursor, Windsurf, and Gemini CLI. The CLI stays portable, the agent stays yours.",
   },
 ] as const
 
@@ -110,7 +110,7 @@ export function CodingAgents() {
                   <h3 className="text-heading-20 font-medium tracking-tight text-foreground text-balance">
                     {step.title}
                   </h3>
-                  <p className="text-copy-14 leading-6 text-muted-foreground text-balance">
+                  <p className="text-copy-16 leading-7 text-muted-foreground text-balance">
                     {step.body}
                   </p>
                 </div>
