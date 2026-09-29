@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
 
+import { CodingAgentsChat } from "@/app/(marketing)/_components/coding-agents-chat"
 import { Section } from "@/app/(marketing)/_components/section"
 import { cn } from "@workspace/ui/lib/utils"
 import { CODING_AGENTS } from "@/lib/marketing/home-data"
@@ -41,49 +42,54 @@ const CTA_ICONS = [
 export function CodingAgents() {
   return (
     <Section>
-      <div className="flex flex-col gap-4 p-6 lg:p-10">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          Coding agents
-        </p>
-        <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-          Works with any coding agent.
-        </h2>
-        <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-          Every template ships with the contracts your coding agent reads —
-          typed at every boundary, AGENTS.md at the monorepo root, an MCP
-          manifest for the tools. Pick the CLI, the contracts stay the
-          same.
-        </p>
-        <Link
-          href="/knowledge-base/guides/install-deessejs-cli"
-          aria-label="Onboard your agent — open the install guide"
-          className="group/cta inline-flex w-fit items-center gap-3 self-start rounded-full border border-border bg-background py-1.5 pl-1.5 pr-3.5 text-copy-14 font-medium text-foreground transition-colors hover:bg-accent/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-        >
-          <span aria-hidden className="flex -space-x-3">
-            {CTA_ICONS.map((icon, idx) => (
-              <span
-                key={icon.src}
-                className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
-                style={{ zIndex: CTA_ICONS.length - idx }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={icon.src}
-                  alt=""
-                  width={14}
-                  height={14}
-                  className="size-3.5 dark:invert"
-                  aria-hidden
-                />
-              </span>
-            ))}
-          </span>
-          <span className="font-medium">Onboard your agent</span>
-          <ArrowUpRight
-            aria-hidden
-            className="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover/cta:text-foreground"
-          />
-        </Link>
+      <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        <div className="flex flex-col gap-4 p-6 lg:p-10">
+          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            Coding agents
+          </p>
+          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
+            Works with any coding agent.
+          </h2>
+          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+            Every template ships with the contracts your coding agent reads —
+            typed at every boundary, AGENTS.md at the monorepo root, an MCP
+            manifest for the tools. Pick the CLI, the contracts stay the
+            same.
+          </p>
+          <Link
+            href="/knowledge-base/guides/install-deessejs-cli"
+            aria-label="Onboard your agent — open the install guide"
+            className="group/cta inline-flex w-fit items-center gap-3 self-start rounded-full border border-border bg-background py-1.5 pl-1.5 pr-3.5 text-copy-14 font-medium text-foreground transition-colors hover:bg-accent/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <span aria-hidden className="flex -space-x-3">
+              {CTA_ICONS.map((icon, idx) => (
+                <span
+                  key={icon.src}
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: CTA_ICONS.length - idx }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={icon.src}
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                    aria-hidden
+                  />
+                </span>
+              ))}
+            </span>
+            <span className="font-medium">Onboard your agent</span>
+            <ArrowUpRight
+              aria-hidden
+              className="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover/cta:text-foreground"
+            />
+          </Link>
+        </div>
+        <div className="p-4 lg:p-6">
+          <CodingAgentsChat />
+        </div>
       </div>
       <div className="border-t border-border">
         <ul className="grid grid-cols-2 divide-y divide-border border-0 sm:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
