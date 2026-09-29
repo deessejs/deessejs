@@ -125,7 +125,7 @@ export function CodingAgentsStepper() {
             className="absolute inset-y-0 left-0 w-px bg-border transition-colors data-[state=open]:bg-foreground"
           />
           <AccordionTrigger
-            className="**:data-[slot=accordion-trigger-icon]:hidden justify-start gap-3 rounded-none border-0 pl-6 pr-4 py-5 hover:no-underline lg:pl-8 lg:pr-6 lg:py-6"
+            className="**:data-[slot=accordion-trigger-icon]:hidden items-center justify-start gap-3 rounded-none border-0 pl-6 pr-4 py-5 hover:no-underline lg:pl-8 lg:pr-6 lg:py-6"
           >
             <step.Icon
               aria-hidden
