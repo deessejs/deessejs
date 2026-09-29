@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Send } from "lucide-react"
+import { Bot, Send } from "lucide-react"
 import {
   LazyMotion,
   domAnimation,
@@ -10,6 +10,7 @@ import {
 } from "motion/react"
 import * as m from "motion/react-m"
 
+import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
 import {
   Bubble,
@@ -115,19 +116,38 @@ const ALL_TURNS: ReadonlyArray<TurnKey> = [
 const AGENT_BUBBLE_CLASS = "max-w-none"
 
 /**
- * Single-accent dot marker placed in each agent MessageAvatar slot.
- *
- * The MessageAvatar primitive paints a `bg-muted rounded-full` chrome
- * by default; we override it to transparent so the violet dot reads
- * against the section background. `self-end` on the avatar aligns
- * the dot to the bubble's bottom edge (mirrors the original layout).
+ * User avatar — a 1-letter initial drawn from a casual first name.
+ * The `bg-muted` chrome comes from the Avatar primitive's default
+ * `AvatarFallback`; the `text-foreground` ink is the default
+ * `text-muted-foreground` inverted to foreground so the initial
+ * reads on the muted background.
  */
-function AgentDot() {
+function UserAvatar() {
   return (
-    <span
-      aria-hidden
-      className="size-2 shrink-0 rounded-full bg-violet-500 dark:bg-violet-400"
-    />
+    <Avatar size="sm" className="bg-muted">
+      <AvatarFallback className="bg-muted text-foreground text-label-12 font-medium">
+        S
+      </AvatarFallback>
+    </Avatar>
+  )
+}
+
+/**
+ * Agent avatar — lucide `Bot` glyph on a violet-tinted background.
+ * Mirrors the rest of the page's "violet = agent" accent (see the
+ * streaming-chat mockup at apps/web/src/app/(product)/use-cases/
+ * _components/mockups/streaming-chat.tsx).
+ */
+function AgentAvatar() {
+  return (
+    <Avatar
+      size="sm"
+      className="border border-violet-500/30 bg-violet-500/10"
+    >
+      <AvatarFallback className="bg-violet-500/10 text-violet-600 dark:text-violet-400 [&>svg]:size-3.5">
+        <Bot aria-hidden className="size-3.5" />
+      </AvatarFallback>
+    </Avatar>
   )
 }
 
@@ -351,7 +371,9 @@ export function CodingAgentsChat() {
           {show("user1") && (
             <m.div variants={fadeIn}>
               <Message align="end">
-                <MessageAvatar />
+                <MessageAvatar>
+                  <UserAvatar />
+                </MessageAvatar>
                 <MessageContent>
                   <Bubble
                     variant="muted"
@@ -373,7 +395,7 @@ export function CodingAgentsChat() {
             <m.div variants={fadeIn}>
               <Message align="start">
                 <MessageAvatar>
-                  <AgentDot />
+                  <AgentAvatar />
                 </MessageAvatar>
                 <MessageContent>
                   <Bubble
@@ -397,7 +419,7 @@ export function CodingAgentsChat() {
             <m.div variants={fadeIn}>
               <Message align="start">
                 <MessageAvatar>
-                  <AgentDot />
+                  <AgentAvatar />
                 </MessageAvatar>
                 <MessageContent>
                   <Bubble
@@ -442,7 +464,9 @@ export function CodingAgentsChat() {
           {show("user2") && (
             <m.div variants={fadeIn}>
               <Message align="end">
-                <MessageAvatar />
+                <MessageAvatar>
+                  <UserAvatar />
+                </MessageAvatar>
                 <MessageContent>
                   <Bubble
                     variant="muted"
@@ -464,7 +488,7 @@ export function CodingAgentsChat() {
             <m.div variants={fadeIn}>
               <Message align="start">
                 <MessageAvatar>
-                  <AgentDot />
+                  <AgentAvatar />
                 </MessageAvatar>
                 <MessageContent>
                   <Bubble
@@ -488,7 +512,7 @@ export function CodingAgentsChat() {
             <m.div variants={fadeIn}>
               <Message align="start">
                 <MessageAvatar>
-                  <AgentDot />
+                  <AgentAvatar />
                 </MessageAvatar>
                 <MessageContent>
                   <Bubble
