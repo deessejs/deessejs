@@ -116,7 +116,7 @@ export function CodingAgentsStepper() {
         <AccordionItem
           key={step.value}
           value={step.value}
-          className="relative border-0"
+          className="relative border-0 not-last:border-b-0"
         >
           {/* Left progress rail — bg-border by default, flips to
               bg-foreground on the open item via data-[state=open}. */}
@@ -125,7 +125,7 @@ export function CodingAgentsStepper() {
             className="absolute inset-y-0 left-0 w-px bg-border transition-colors data-[state=open]:bg-foreground"
           />
           <AccordionTrigger
-            className="**:data-[slot=accordion-trigger-icon]:hidden items-center gap-3 rounded-none border-0 px-4 py-5 hover:no-underline lg:px-6 lg:py-6"
+            className="**:data-[slot=accordion-trigger-icon]:hidden justify-start gap-3 rounded-none border-0 px-4 py-5 hover:no-underline lg:px-6 lg:py-6"
           >
             <step.Icon
               aria-hidden
