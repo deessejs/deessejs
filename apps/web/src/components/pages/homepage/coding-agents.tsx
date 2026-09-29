@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowUpRight, ListChecks, MessageSquare, Rocket } from "lucide-react"
+import { ArrowUpRight, MessageSquare, Rocket, Wrench } from "lucide-react"
 
 import { CodingAgentsChat } from "@/app/(marketing)/_components/coding-agents-chat"
 import { Section } from "@/app/(marketing)/_components/section"
@@ -27,31 +27,33 @@ import { CODING_AGENTS } from "@/lib/marketing/home-data"
  * so they render in monochrome against the text-foreground ink and
  * the dark:invert class flips them in dark mode.
  *
- * The 3 icon bullets between the lead paragraph and the CTA
- * mirror the chat's 6 turn groups (Talk / Tell / Watch) so the
+ * The 3-step static stepper between the lead paragraph and the CTA
+ * mirror the chat's 6 turn groups (Talk / Build / Ship) so the
  * editorial column reads as a legend to the demo on the left.
- * Same icon-bullet pattern as the Integrations left column.
- * The CTA below the heading sits next to the bullet list — it
+ * Each step carries a 24-px vertical bar, a lucide icon, a
+ * heading-20 title, and a copy-14 body, separated by the
+ * shared-border rhythm (divide-y on mobile, divide-x on sm+).
+ * The CTA below the heading sits next to the stepper — it
  * routes visitors to the install guide instead of asking them to
  * copy paragraphs of body copy. The 3-icon stack shows a
  * representative slice (Claude Code, Codex, OpenCode); the full 6
  * sit in the grid beneath.
  */
-const TALK_BULLETS = [
+const TALK_STEPS = [
   {
     Icon: MessageSquare,
-    title: "Talk to your agent.",
-    body: "It knows the registry, runs the CLI, no setup.",
+    title: "Talk",
+    body: "Your agent knows the registry and runs the CLI, no setup on your side.",
   },
   {
-    Icon: ListChecks,
-    title: "Tell it what you need.",
-    body: "Init a template, add observability, swap a contract — natural language.",
+    Icon: Wrench,
+    title: "Build",
+    body: "Tell it what you need: a template, a contract, an observability wire. Natural language.",
   },
   {
     Icon: Rocket,
-    title: "Watch it ship.",
-    body: "Same conversation surface as your editor. Same primitives.",
+    title: "Ship",
+    body: "Same conversation surface as your editor. Same primitives, every CLI.",
   },
 ] as const
 
@@ -83,19 +85,26 @@ export function CodingAgents() {
             manifest for the tools. Pick the CLI, the contracts stay the
             same.
           </p>
-          <ul className="flex flex-col gap-3 pt-2">
-            {TALK_BULLETS.map((bullet) => (
+          <ul className="grid grid-cols-1 divide-y divide-border border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            {TALK_STEPS.map((step) => (
               <li
-                key={bullet.title}
-                className="flex items-start gap-3 text-copy-14 leading-6 text-foreground"
+                key={step.title}
+                className="flex flex-col gap-3 p-5 lg:p-6"
               >
-                <bullet.Icon
+                <span
                   aria-hidden
-                  className="mt-0.5 size-4 shrink-0 text-foreground"
+                  className="h-px w-6 bg-foreground"
                 />
-                <span>
-                  <strong>{bullet.title}</strong> {bullet.body}
-                </span>
+                <step.Icon
+                  aria-hidden
+                  className="size-4 shrink-0 text-foreground"
+                />
+                <h3 className="text-heading-20 font-medium tracking-tight text-foreground text-balance">
+                  {step.title}
+                </h3>
+                <p className="text-copy-14 leading-6 text-muted-foreground text-balance">
+                  {step.body}
+                </p>
               </li>
             ))}
           </ul>
