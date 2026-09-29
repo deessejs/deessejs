@@ -43,11 +43,7 @@ export function CodingAgents() {
   return (
     <Section>
       <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:divide-x lg:divide-y-0">
-        {/* Chat — left column (8fr / 66%) */}
-        <div className="p-4 lg:p-6">
-          <CodingAgentsChat />
-        </div>
-        {/* Editorial — right column (4fr / 33%) */}
+        {/* Editorial — left column (8fr / 66%) */}
         <div className="flex flex-col gap-4 p-6 lg:p-10">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
             Coding agents
@@ -91,6 +87,10 @@ export function CodingAgents() {
               className="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover/cta:text-foreground"
             />
           </Link>
+        </div>
+        {/* Chat — right column (4fr / 33%) */}
+        <div className="p-4 lg:p-6">
+          <CodingAgentsChat />
         </div>
       </div>
       <div className="border-t border-border">
