@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Bot, Send } from "lucide-react"
+import { Send } from "lucide-react"
 import {
   LazyMotion,
   domAnimation,
@@ -133,10 +133,14 @@ function UserAvatar() {
 }
 
 /**
- * Agent avatar — lucide `Bot` glyph on a violet-tinted background.
- * Mirrors the rest of the page's "violet = agent" accent (see the
- * streaming-chat mockup at apps/web/src/app/(product)/use-cases/
- * _components/mockups/streaming-chat.tsx).
+ * Agent avatar — the Codex SVG logo (the agent's brand mark) on a
+ * violet-tinted background. Mirrors the rest of the page's "violet =
+ * agent" accent (see the streaming-chat mockup at apps/web/src/app/
+ * (product)/use-cases/_components/mockups/streaming-chat.tsx).
+ *
+ * The SVG renders via plain <img> so the fill follows the surrounding
+ * `dark:invert` rule that the rest of the marketing surface uses for
+ * monochrome brand marks.
  */
 function AgentAvatar() {
   return (
@@ -144,8 +148,16 @@ function AgentAvatar() {
       size="sm"
       className="border border-violet-500/30 bg-violet-500/10"
     >
-      <AvatarFallback className="bg-violet-500/10 text-violet-600 dark:text-violet-400 [&>svg]:size-3.5">
-        <Bot aria-hidden className="size-3.5" />
+      <AvatarFallback className="bg-violet-500/10">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logos/codex.svg"
+          alt=""
+          width={14}
+          height={14}
+          className="size-3.5 dark:invert"
+          aria-hidden
+        />
       </AvatarFallback>
     </Avatar>
   )
