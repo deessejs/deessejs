@@ -118,11 +118,20 @@ export function CodingAgentsStepper() {
           value={step.value}
           className="relative border-0 not-last:border-b-0"
         >
-          {/* Left progress rail — bg-border by default, flips to
-              bg-foreground on the open item via data-[state=open}. */}
+          {/* Left progress rail. Two stacked layers:
+              - bg-border baseline (always visible)
+              - bg-foreground fill, scale-y 0 → 1 over STEP_INTERVAL_MS
+                so it appears to "grow" from top to bottom during the
+                5-second window the item is open. Resets when the item
+                closes, so the next item's animation plays from scratch. */}
           <span
             aria-hidden
-            className="absolute inset-y-0 left-0 w-px bg-border transition-colors data-[state=open]:bg-foreground"
+            className="absolute inset-y-0 left-0 w-px bg-border"
+          />
+          <span
+            aria-hidden
+            data-slot={`rail-fill-${step.value}`}
+            className="absolute inset-y-0 left-0 w-px origin-top scale-y-0 bg-foreground transition-[transform] duration-[5000ms] ease-linear [[data-state=open]_&]:scale-y-100"
           />
           <AccordionTrigger
             className="**:data-[slot=accordion-trigger-icon]:hidden items-center justify-start gap-3 rounded-none border-0 pl-6 pr-4 py-4 hover:no-underline lg:pl-8 lg:pr-6 lg:py-5"
