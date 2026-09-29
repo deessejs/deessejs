@@ -27,12 +27,30 @@ import { CODING_AGENTS } from "@/lib/marketing/home-data"
  * so they render in monochrome against the text-foreground ink and
  * the dark:invert class flips them in dark mode.
  *
- * The CTA below the heading sits next to the lead paragraph — it
+ * The 3 numbered bullets between the lead paragraph and the CTA
+ * mirror the chat's 6 turn groups (Talk / Tell / Watch) so the
+ * editorial column reads as a legend to the demo on the left.
+ * The CTA below the heading sits next to the bullet list — it
  * routes visitors to the install guide instead of asking them to
  * copy paragraphs of body copy. The 3-icon stack shows a
  * representative slice (Claude Code, Codex, OpenCode); the full 6
  * sit in the grid beneath.
  */
+const TALK_BULLETS = [
+  {
+    title: "1. Talk to your agent.",
+    body: "It knows the registry, runs the CLI, no setup.",
+  },
+  {
+    title: "2. Tell it what you need.",
+    body: "Init a template, add observability, swap a contract — natural language.",
+  },
+  {
+    title: "3. Watch it ship.",
+    body: "Same conversation surface as your editor. Same primitives.",
+  },
+] as const
+
 const CTA_ICONS = [
   { src: "/logos/claudecode.svg", alt: "Claude Code" },
   { src: "/logos/codex.svg", alt: "Codex" },
@@ -61,6 +79,18 @@ export function CodingAgents() {
             manifest for the tools. Pick the CLI, the contracts stay the
             same.
           </p>
+          <ol className="flex flex-col gap-5">
+            {TALK_BULLETS.map((bullet) => (
+              <li key={bullet.title} className="flex flex-col gap-2">
+                <h3 className="text-label-13 uppercase tracking-wider text-foreground">
+                  {bullet.title}
+                </h3>
+                <p className="text-copy-14 leading-6 text-muted-foreground text-balance">
+                  {bullet.body}
+                </p>
+              </li>
+            ))}
+          </ol>
           <Link
             href="/knowledge-base/guides/install-deessejs-cli"
             aria-label="Onboard your agent — open the install guide"
