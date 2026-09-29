@@ -41,7 +41,6 @@ import { Surfaces } from "./surfaces"
 import { SurfacesTabs } from "@/app/(marketing)/_components/surfaces-tabs"
 import { TechStack } from "./tech-stack"
 import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
-import { TerminalMockup } from "@/app/(marketing)/_components/terminal-mockup"
 import { Testimonials } from "./testimonials"
 import { TestimonialsMarquee } from "@/app/(marketing)/_components/testimonials-marquee"
 
@@ -94,6 +93,5 @@ export {
   StatsStrip,
   SurfacesTabs,
   TechStackGrid,
-  TerminalMockup,
   TestimonialsMarquee,
 }
