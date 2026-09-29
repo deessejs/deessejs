@@ -16,6 +16,7 @@ import {
   type Variants,
 } from "motion/react"
 import * as m from "motion/react-m"
+import { MessageScroller } from "@shadcn/react/message-scroller"
 
 import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
 import {
@@ -250,11 +251,6 @@ const fadeIn: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
 }
 
-const containerVariants: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.05 } },
-}
-
 export function CodingAgentsChat() {
   const reduceMotion = useReducedMotion()
 
@@ -389,179 +385,188 @@ export function CodingAgentsChat() {
         aria-label="Chat thread: a user asks a coding agent to initialize the saas-starter template, the agent reads the registry, runs deessejs init, then the user asks to add observability and the agent wires it up. The thread ends with a disabled input field."
         className="flex h-full flex-col gap-4 text-copy-13 leading-6 text-foreground"
       >
-        {/* Thread */}
-        <m.div
-          data-slot="chat-thread"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.3 }}
-          className="flex flex-1 flex-col gap-4 overflow-y-auto"
-        >
-          {/* 1. User prompt */}
-          {show("user1") && (
-            <m.div variants={fadeIn}>
-              <Message align="end">
-                <MessageAvatar>
-                  <UserAvatar />
-                </MessageAvatar>
-                <MessageContent>
-                  <Bubble
-                    variant="muted"
-                    className="max-w-none"
-                  >
-                    <BubbleContent>
-                      <p className="text-copy-13 leading-6 text-foreground">
-                        {USER_PROMPT_1}
-                      </p>
-                    </BubbleContent>
-                  </Bubble>
-                </MessageContent>
-              </Message>
-            </m.div>
-          )}
-
-          {/* 2. Agent plan */}
-          {show("agent1") && (
-            <m.div variants={fadeIn}>
-              <Message align="start">
-                <MessageAvatar>
-                  <AgentAvatar />
-                </MessageAvatar>
-                <MessageContent>
-                  <Bubble
-                    variant="tinted"
-                    className={AGENT_BUBBLE_CLASS}
-                  >
-                    <BubbleContent className="bg-violet-500/5 ring-1 ring-violet-500/30">
-                      <StreamedText
-                        shown={agent1Shown}
-                        done={phases.agent1 === "done"}
-                      />
-                    </BubbleContent>
-                  </Bubble>
-                </MessageContent>
-              </Message>
-            </m.div>
-          )}
-
-          {/* 3. Tool-call card */}
-          {show("tool") && (
-            <m.div variants={fadeIn}>
-              <Message align="start">
-                <MessageAvatar>
-                  <AgentAvatar />
-                </MessageAvatar>
-                <MessageContent>
-                  <Bubble
-                    variant="outline"
-                    className="max-w-none"
-                  >
-                    <BubbleContent>
-                      <pre className="overflow-x-auto font-mono text-copy-12 leading-6 text-foreground">
-                        {TOOL_CALL_LINES.map((line, i) => (
-                          <m.span
-                            key={i}
-                            initial={{ opacity: 0, x: -4 }}
-                            whileInView={{
-                              opacity: 1,
-                              x: 0,
-                            }}
-                            viewport={{ once: true }}
-                            transition={{
-                              duration: 0.25,
-                              delay: i * TIMING.toolLineStep,
-                              ease: "easeOut" as const,
-                            }}
-                            className={cn(
-                              "block",
-                              line.startsWith("▸") && "text-foreground",
-                              line.startsWith("✔") &&
-                                "text-emerald-600 dark:text-emerald-400",
-                            )}
+        {/* Thread — wrapped in MessageScroller (shadcn) so the chat follows
+            the canonical viewport + content + item contract. The user
+            prompt rows carry scrollAnchor so the viewport re-anchors at
+            the latest user message after each one renders. The agent
+            rows stay anchored at the live edge via the Provider's
+            defaultScrollPosition="end". */}
+        <MessageScroller.Provider defaultScrollPosition="end">
+          <MessageScroller.Root className="relative flex flex-1 flex-col">
+              <MessageScroller.Viewport className="flex flex-1 flex-col overflow-y-auto">
+                <MessageScroller.Content className="flex flex-1 flex-col gap-4">
+                  {/* 1. User prompt */}
+                  {show("user1") && (
+                    <m.div variants={fadeIn}>
+                      <Message align="end">
+                        <MessageAvatar>
+                          <UserAvatar />
+                        </MessageAvatar>
+                        <MessageContent>
+                          <Bubble
+                            variant="muted"
+                            className="max-w-none"
                           >
-                            {line}
-                          </m.span>
-                        ))}
-                      </pre>
-                    </BubbleContent>
-                  </Bubble>
-                </MessageContent>
-              </Message>
-            </m.div>
-          )}
+                            <BubbleContent>
+                              <p className="text-copy-13 leading-6 text-foreground">
+                                {USER_PROMPT_1}
+                              </p>
+                            </BubbleContent>
+                          </Bubble>
+                        </MessageContent>
+                      </Message>
+                    </m.div>
+                  )}
 
-          {/* 4. User follow-up */}
-          {show("user2") && (
-            <m.div variants={fadeIn}>
-              <Message align="end">
-                <MessageAvatar>
-                  <UserAvatar />
-                </MessageAvatar>
-                <MessageContent>
-                  <Bubble
-                    variant="muted"
-                    className="max-w-none"
-                  >
-                    <BubbleContent>
-                      <p className="text-copy-13 leading-6 text-foreground">
-                        {USER_PROMPT_2}
-                      </p>
-                    </BubbleContent>
-                  </Bubble>
-                </MessageContent>
-              </Message>
-            </m.div>
-          )}
+                  {/* 2. Agent plan */}
+                  {show("agent1") && (
+                    <m.div variants={fadeIn}>
+                      <Message align="start">
+                        <MessageAvatar>
+                          <AgentAvatar />
+                        </MessageAvatar>
+                        <MessageContent>
+                          <Bubble
+                            variant="tinted"
+                            className={AGENT_BUBBLE_CLASS}
+                          >
+                            <BubbleContent className="bg-violet-500/5 ring-1 ring-violet-500/30">
+                              <StreamedText
+                                shown={agent1Shown}
+                                done={phases.agent1 === "done"}
+                              />
+                            </BubbleContent>
+                          </Bubble>
+                        </MessageContent>
+                      </Message>
+                    </m.div>
+                  )}
 
-          {/* 5. Agent observability */}
-          {show("agent2") && (
-            <m.div variants={fadeIn}>
-              <Message align="start">
-                <MessageAvatar>
-                  <AgentAvatar />
-                </MessageAvatar>
-                <MessageContent>
-                  <Bubble
-                    variant="tinted"
-                    className={AGENT_BUBBLE_CLASS}
-                  >
-                    <BubbleContent className="bg-violet-500/5 ring-1 ring-violet-500/30">
-                      <StreamedText
-                        shown={agent2Shown}
-                        done={phases.agent2 === "done"}
-                      />
-                    </BubbleContent>
-                  </Bubble>
-                </MessageContent>
-              </Message>
-            </m.div>
-          )}
+                  {/* 3. Tool-call card */}
+                  {show("tool") && (
+                    <m.div variants={fadeIn}>
+                      <Message align="start">
+                        <MessageAvatar>
+                          <AgentAvatar />
+                        </MessageAvatar>
+                        <MessageContent>
+                          <Bubble
+                            variant="outline"
+                            className="max-w-none"
+                          >
+                            <BubbleContent>
+                              <pre className="overflow-x-auto font-mono text-copy-12 leading-6 text-foreground">
+                                {TOOL_CALL_LINES.map((line, i) => (
+                                  <m.span
+                                    key={i}
+                                    initial={{ opacity: 0, x: -4 }}
+                                    whileInView={{
+                                      opacity: 1,
+                                      x: 0,
+                                    }}
+                                    viewport={{ once: true }}
+                                    transition={{
+                                      duration: 0.25,
+                                      delay: i * TIMING.toolLineStep,
+                                      ease: "easeOut" as const,
+                                    }}
+                                    className={cn(
+                                      "block",
+                                      line.startsWith("▸") && "text-foreground",
+                                      line.startsWith("✔") &&
+                                        "text-emerald-600 dark:text-emerald-400",
+                                    )}
+                                  >
+                                    {line}
+                                  </m.span>
+                                ))}
+                              </pre>
+                            </BubbleContent>
+                          </Bubble>
+                        </MessageContent>
+                      </Message>
+                    </m.div>
+                  )}
 
-          {/* 6. Agent final */}
-          {show("agent3") && (
-            <m.div variants={fadeIn}>
-              <Message align="start">
-                <MessageAvatar>
-                  <AgentAvatar />
-                </MessageAvatar>
-                <MessageContent>
-                  <Bubble
-                    variant="tinted"
-                    className={AGENT_BUBBLE_CLASS}
-                  >
-                    <BubbleContent className="bg-violet-500/5 ring-1 ring-violet-500/30">
-                      <StreamedText
-                        shown={agent3Shown}
-                        done={phases.agent3 === "done"}
-                      />
-                    </BubbleContent>
-                  </Bubble>
-                </MessageContent>
-              </Message>
-            </m.div>
-          )}
-        </m.div>
+                  {/* 4. User follow-up */}
+                  {show("user2") && (
+                    <m.div variants={fadeIn}>
+                      <Message align="end">
+                        <MessageAvatar>
+                          <UserAvatar />
+                        </MessageAvatar>
+                        <MessageContent>
+                          <Bubble
+                            variant="muted"
+                            className="max-w-none"
+                          >
+                            <BubbleContent>
+                              <p className="text-copy-13 leading-6 text-foreground">
+                                {USER_PROMPT_2}
+                              </p>
+                            </BubbleContent>
+                          </Bubble>
+                        </MessageContent>
+                      </Message>
+                    </m.div>
+                  )}
+
+                  {/* 5. Agent observability */}
+                  {show("agent2") && (
+                    <m.div variants={fadeIn}>
+                      <Message align="start">
+                        <MessageAvatar>
+                          <AgentAvatar />
+                        </MessageAvatar>
+                        <MessageContent>
+                          <Bubble
+                            variant="tinted"
+                            className={AGENT_BUBBLE_CLASS}
+                          >
+                            <BubbleContent className="bg-violet-500/5 ring-1 ring-violet-500/30">
+                              <StreamedText
+                                shown={agent2Shown}
+                                done={phases.agent2 === "done"}
+                              />
+                            </BubbleContent>
+                          </Bubble>
+                        </MessageContent>
+                      </Message>
+                    </m.div>
+                  )}
+
+                  {/* 6. Agent final */}
+                  {show("agent3") && (
+                    <m.div variants={fadeIn}>
+                      <Message align="start">
+                        <MessageAvatar>
+                          <AgentAvatar />
+                        </MessageAvatar>
+                        <MessageContent>
+                          <Bubble
+                            variant="tinted"
+                            className={AGENT_BUBBLE_CLASS}
+                          >
+                            <BubbleContent className="bg-violet-500/5 ring-1 ring-violet-500/30">
+                              <StreamedText
+                                shown={agent3Shown}
+                                done={phases.agent3 === "done"}
+                              />
+                            </BubbleContent>
+                          </Bubble>
+                        </MessageContent>
+                      </Message>
+                    </m.div>
+                  )}
+                </MessageScroller.Content>
+              </MessageScroller.Viewport>
+              {/* Jump-to-latest button — appears when scrolled up. Uses
+                  inert to hide when at the live edge. */}
+              <MessageScroller.Button className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full border bg-background px-3 py-1 text-sm font-medium inert:opacity-0">
+                Jump to latest
+              </MessageScroller.Button>
+            </MessageScroller.Root>
+          </MessageScroller.Provider>
 
         {/* Input bar — visual only (no submit, no focus, no keyboard).
             The shadcn InputGroup pattern: textarea + block-end addon
