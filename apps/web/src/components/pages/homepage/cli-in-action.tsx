@@ -1,5 +1,6 @@
 import { Section } from "@/app/(marketing)/_components/section"
-import { CliInActionPanel } from "@/app/(marketing)/_components/cli-in-action-panel"
+import { CliWorkbench } from "@/app/(marketing)/_components/cli-workbench"
+import { CliInActionStatic } from "@/app/(marketing)/_components/cli-in-action-static"
 
 const COMMAND = "deessejs init saas-starter"
 const INSTALL_GUIDE_HREF = "/knowledge-base/guides/install-deessejs-cli"
@@ -7,18 +8,23 @@ const INSTALL_GUIDE_HREF = "/knowledge-base/guides/install-deessejs-cli"
 /**
  * CLI section on the marketing homepage.
  *
- * Replaces the previous "terminal mockup + 3 commands" layout. The
- * section now demonstrates the CLI as a transformation pipeline —
- * the new <CliInActionPanel> shows the canonical `deessejs init
- * saas-starter` command (matching `apps/cli/src/commands/init.ts`),
- * what it does in three steps (clone, detect PM, install), and the
- * project layout it produces. Below the panel, `deessejs info` is
- * positioned as the post-init inspection command, consistent with
- * `apps/cli/src/commands/info.ts`.
+ * Layout split:
+ *   • `lg+`  : editorial column (4/12) + animated IDE workbench (8/12).
+ *              The workbench shows the full transformation in a
+ *              single frame — Explorer / Editor / Terminal —
+ *              choreographed by Motion on viewport entry, plays once,
+ *              respects `prefers-reduced-motion`.
+ *   • `<lg`  : editorial + static 3-cell transformation panel
+ *              (`<CliInActionStatic>`). The IDE-style panel is too
+ *              dense to read on small screens; the static panel
+ *              carries the same information in a simpler shape.
  *
- * Layout: editorial column on the left (eyebrow + title + subtitle
- * + CTA), full-width panel on the right on lg+, stacked above the
- * panel below lg.
+ * Both branches share the canonical command (`deessejs init
+ * saas-starter`, matching `apps/cli/src/commands/init.ts`) and the
+ * install guide CTA. Neither shows a copy-button: the terminal's
+ * purpose is to show the command being *run*, not to be a copy
+ * affordance — the install guide is the explicit copy-on-demand
+ * destination.
  */
 export function CliInAction() {
   return (
@@ -37,10 +43,18 @@ export function CliInAction() {
           </p>
         </div>
 
-        <CliInActionPanel
-          command={COMMAND}
-          installGuideHref={INSTALL_GUIDE_HREF}
-        />
+        {/* Desktop: animated workbench */}
+        <div className="hidden lg:block">
+          <CliWorkbench />
+        </div>
+
+        {/* Mobile + tablet: static panel */}
+        <div className="block lg:hidden">
+          <CliInActionStatic
+            command={COMMAND}
+            installGuideHref={INSTALL_GUIDE_HREF}
+          />
+        </div>
       </div>
     </Section>
   )
