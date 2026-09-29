@@ -86,6 +86,42 @@ export const SAAS_STARTER_PACKAGE_JSON = `{
 }`
 
 /**
+ * Snippet of `saas-starter/AGENTS.md` rendered in the Editor pane
+ * when the user clicks the AGENTS.md tab. AGENTS.md is part of the
+ * template's agent-facing surface (the homepage CodingAgents section
+ * advertises this convention), so the snippet illustrates the shape
+ * of instructions a coding agent would read on a fresh clone.
+ *
+ * Kept short on purpose: the editor pane is dense; 6-8 lines fit
+ * comfortably at the panel's actual width.
+ */
+export const SAAS_STARTER_AGENTS_MD = `# AGENTS.md
+
+This codebase ships with typed contracts.
+Read packages/contracts before editing.
+Run pnpm test before pushing.
+`
+
+/**
+ * Files exposed as Editor tabs. Order is the order tabs render.
+ * `package.json` is the active tab by default — it is the file the
+ * workbench opens first because the dev script (`pnpm dev`) is
+ * visible there.
+ */
+export const EDITOR_TABS = [
+  { id: "package.json", label: "package.json" },
+  { id: "AGENTS.md", label: "AGENTS.md" },
+] as const
+
+export type EditorTabId = (typeof EDITOR_TABS)[number]["id"]
+
+/** Map a tab id to the snippet shown when it is active. */
+export const EDITOR_TAB_CONTENT: Record<EditorTabId, string> = {
+  "package.json": SAAS_STARTER_PACKAGE_JSON,
+  "AGENTS.md": SAAS_STARTER_AGENTS_MD,
+}
+
+/**
  * Three real output lines from `deessejs init saas-starter`,
  * matching the spinners in `apps/cli/src/commands/init.ts`:
  * clone → detect package manager → install dependencies.
