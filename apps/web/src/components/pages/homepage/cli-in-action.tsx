@@ -60,7 +60,13 @@ export async function CliInAction() {
 
   return (
     <Section>
-      <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:divide-x lg:divide-y-0">
+      <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:divide-x lg:divide-y-0">
+        {/* Desktop: animated workbench — now left (was right) */}
+        <div className="hidden p-4 lg:block">
+          <CliWorkbench editorHtml={editorHtml} />
+        </div>
+
+        {/* Editorial copy — now right (was left) */}
         <div className="flex flex-col gap-4 p-6 md:p-8 lg:p-10">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
             The DeesseJS CLI
@@ -74,12 +80,8 @@ export async function CliInAction() {
           </p>
         </div>
 
-        {/* Desktop: animated workbench */}
-        <div className="hidden p-4 lg:block">
-          <CliWorkbench editorHtml={editorHtml} />
-        </div>
-
-        {/* Mobile + tablet: static panel */}
+        {/* Mobile + tablet: static panel — still after the copy in DOM
+            so the mobile stack reads copy-first */}
         <div className="block p-4 lg:hidden">
           <CliInActionStatic
             command={COMMAND}
