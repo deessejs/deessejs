@@ -30,9 +30,12 @@ import { CODING_AGENTS } from "@/lib/marketing/home-data"
  * The 3-step static stepper between the lead paragraph and the CTA
  * mirror the chat's 6 turn groups (Talk / Build / Ship) so the
  * editorial column reads as a legend to the demo on the left.
- * Each step carries a 24-px vertical bar, a lucide icon, a
- * heading-20 title, and a copy-14 body, separated by the
- * shared-border rhythm (divide-y on mobile, divide-x on sm+).
+ * Each step is a vertical stack with a 1-px left rail (the
+ * data-slot="step-rail-<slug>" hook for the progress animation
+ * that will drive the rail height as the chat advances), a
+ * lucide icon, a heading-20 title, and a copy-14 body.
+ * No border or divide between steps — the rail carries the
+ * structural rhythm.
  * The CTA below the heading sits next to the stepper — it
  * routes visitors to the install guide instead of asking them to
  * copy paragraphs of body copy. The 3-icon stack shows a
@@ -85,12 +88,20 @@ export function CodingAgents() {
             manifest for the tools. Pick the CLI, the contracts stay the
             same.
           </p>
-          <ol className="flex flex-col divide-y divide-border border border-border">
+          <ol className="flex flex-col">
             {TALK_STEPS.map((step) => (
               <li
                 key={step.title}
-                className="flex items-start gap-4 p-5 lg:p-6"
+                className="relative flex items-start gap-4 py-5 pl-4 pr-1 lg:py-6 lg:pl-6 lg:pr-2"
               >
+                {/* Left progress rail — a 2-px vertical bar that will
+                    later animate (scale / fill) as the chat progresses
+                    through each turn group. */}
+                <span
+                  aria-hidden
+                  data-slot={`step-rail-${step.title.toLowerCase()}`}
+                  className="absolute inset-y-0 left-0 w-px bg-border"
+                />
                 <step.Icon
                   aria-hidden
                   className="mt-0.5 size-4 shrink-0 text-foreground"
