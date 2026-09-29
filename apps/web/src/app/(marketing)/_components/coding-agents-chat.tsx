@@ -1,7 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Send } from "lucide-react"
+import {
+  ArrowUp,
+  Globe,
+  Image as ImageIcon,
+  Paperclip,
+  Plus,
+  Telescope,
+} from "lucide-react"
 import {
   LazyMotion,
   domAnimation,
@@ -11,11 +18,23 @@ import {
 import * as m from "motion/react-m"
 
 import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
-import { Button } from "@workspace/ui/components/button"
 import {
   Bubble,
   BubbleContent,
 } from "@workspace/ui/components/bubble"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from "@workspace/ui/components/input-group"
 import {
   Message,
   MessageAvatar,
@@ -544,32 +563,72 @@ export function CodingAgentsChat() {
           )}
         </m.div>
 
-        {/* Input bar — visual only (no submit handler, no focus, no keyboard).
-            We avoid the HTML `disabled` attribute because the parent
-            re-renders mid-hydration (useReducedMotion flips after mount)
-            and the boolean attribute drops in/out across renders, which
-            React flags as a hydration mismatch. Visual disabled look
-            comes from cursor-default + pointer-events-none + opacity-50. */}
-        <div className="flex items-end gap-2 border-t border-border px-1 pt-3">
-          <textarea
+        {/* Input bar — visual only (no submit, no focus, no keyboard).
+            The shadcn InputGroup pattern: textarea + block-end addon
+            with an Add-files DropdownMenu (left) and a Send button (right).
+            All controls are pointer-events-none + tabIndex={-1} to keep the
+            chat as a visual prop without a hydration mismatch on the
+            HTML `disabled` attribute. */}
+        <InputGroup className="mt-1 border-t border-border rounded-none bg-background">
+          <InputGroupTextarea
             rows={1}
             readOnly
             placeholder="Ask your agent to do anything…"
             aria-label="Type a message to your coding agent (visual demo)"
             tabIndex={-1}
-            className="flex-1 cursor-default resize-none border-0 bg-transparent text-copy-13 leading-6 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
+            className="cursor-default"
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            aria-label="Send message"
-            tabIndex={-1}
-            className="size-7 shrink-0 pointer-events-none text-muted-foreground opacity-50"
-          >
-            <Send className="size-3.5" aria-hidden />
-          </Button>
-        </div>
+          <InputGroupAddon align="block-end" className="pt-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <InputGroupButton
+                  aria-label="Add files"
+                  type="button"
+                  size="icon-sm"
+                  variant="outline"
+                  tabIndex={-1}
+                  className="pointer-events-none"
+                >
+                  <Plus aria-hidden />
+                </InputGroupButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                side="top"
+                className="w-44"
+              >
+                <DropdownMenuItem>
+                  <Paperclip aria-hidden />
+                  Add Photos & Files
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <ImageIcon aria-hidden />
+                  Create Image
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Telescope aria-hidden />
+                  Deep Research
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Globe aria-hidden />
+                  Web Search
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <InputGroupButton
+              type="submit"
+              variant="default"
+              size="icon-sm"
+              tabIndex={-1}
+              className="ml-auto pointer-events-none opacity-50"
+              aria-label="Send message"
+            >
+              <ArrowUp aria-hidden />
+              <span className="sr-only">Send</span>
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
       </div>
     </LazyMotion>
   )
