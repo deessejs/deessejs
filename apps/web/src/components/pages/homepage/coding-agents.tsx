@@ -62,7 +62,7 @@ export function CodingAgents() {
             Works with any coding agent.
           </h2>
           <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Every template ships with the contracts your coding agent reads —
+            Every template ships with the contracts your coding agent reads,
             typed at every boundary, AGENTS.md at the monorepo root, an MCP
             manifest for the tools. Pick the CLI, the contracts stay the
             same.
@@ -70,7 +70,7 @@ export function CodingAgents() {
           <CodingAgentsStepper />
           <Link
             href="/knowledge-base/guides/install-deessejs-cli"
-            aria-label="Onboard your agent — open the install guide"
+            aria-label="Onboard your agent, open the install guide"
             className="group/cta inline-flex w-fit items-center gap-3 self-start rounded-full border border-border bg-background py-1.5 pl-1.5 pr-3.5 text-copy-14 font-medium text-foreground transition-colors hover:bg-accent/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             <span aria-hidden className="flex -space-x-3">
@@ -114,7 +114,7 @@ export function CodingAgents() {
                 href={`https://docs.deessejs.com/agents/${agent.docsSlug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`${agent.name} — open the docs.deessejs.com onboarding guide in a new tab`}
+                aria-label={`${agent.name}, open the docs.deessejs.com onboarding guide in a new tab`}
                 className="group/card flex h-full items-center justify-center gap-3 p-6 text-copy-14 font-medium text-foreground transition-colors hover:bg-accent/40 lg:p-8"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
