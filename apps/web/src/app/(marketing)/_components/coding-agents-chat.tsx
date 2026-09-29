@@ -135,16 +135,30 @@ const BUBBLE_CLASS = "max-w-none"
 const BUBBLE_CONTENT_CLASS = "bg-background border-border"
 
 /**
- * User avatar — a 1-letter initial drawn from a casual first name.
- * The `bg-muted` chrome comes from the Avatar primitive's default
- * `AvatarFallback`; the `text-foreground` ink is the default
- * `text-muted-foreground` inverted to foreground so the initial
- * reads on the muted background.
+ * User avatar — a deterministic SVG identicon served by Vercel's
+ * universal avatar endpoint (the same one `apps/web/src/components/
+ * blog/author-avatar.tsx` uses for blog authors). Same `dpl=` cookie
+ * value so the rendered glyph stays visually consistent across the
+ * homepage and the blog surface.
+ *
+ * The handle is a stable, hardcoded string ("sarah@example.com")
+ * so the avatar is deterministic across renders and not PII-bound.
  */
+const VERCEL_AVATAR_BASE = "https://vercel.com/api/www/avatar"
+const VERCEL_AVATAR_DPL =
+  "dpl_AS99V7XmtTzE4xdb72tYFtNTVV48" as const
+
 function UserAvatar() {
+  const handle = "sarah@example.com"
+  const src = `${VERCEL_AVATAR_BASE}?s=64&u=${encodeURIComponent(handle)}&dpl=${VERCEL_AVATAR_DPL}`
   return (
     <Avatar className="bg-muted">
-      <AvatarFallback className="bg-muted text-foreground text-label-12 font-medium">
+      <AvatarImage
+        src={src}
+        alt=""
+        className="rounded-full dark:invert"
+      />
+      <AvatarFallback className="bg-muted text-label-12 text-muted-foreground">
         S
       </AvatarFallback>
     </Avatar>
