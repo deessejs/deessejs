@@ -29,8 +29,8 @@ const INSTALL_GUIDE_HREF = "/knowledge-base/guides/install-deessejs-cli"
 export function CliInAction() {
   return (
     <Section>
-      <div className="grid grid-cols-1 gap-6 p-6 md:p-8 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:gap-10 lg:p-10">
-        <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:divide-x lg:divide-y-0">
+        <div className="flex flex-col gap-4 p-6 md:p-8 lg:p-10">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
             The DeesseJS CLI
           </p>
@@ -44,12 +44,12 @@ export function CliInAction() {
         </div>
 
         {/* Desktop: animated workbench */}
-        <div className="hidden lg:block">
+        <div className="hidden p-4 lg:block">
           <CliWorkbench />
         </div>
 
         {/* Mobile + tablet: static panel */}
-        <div className="block lg:hidden">
+        <div className="block p-4 lg:hidden">
           <CliInActionStatic
             command={COMMAND}
             installGuideHref={INSTALL_GUIDE_HREF}
