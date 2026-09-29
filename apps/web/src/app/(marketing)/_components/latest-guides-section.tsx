@@ -174,7 +174,7 @@ export function LatestGuidesSection({
     <>
       <SectionHeader
         eyebrow="Latest guides"
-        title="From the KB."
+        title="From the knowledge base."
         subtitle="Patterns we use ourselves. Short, opinionated, and tested on the registry's templates."
         bordered={false}
         action={rightAction}
