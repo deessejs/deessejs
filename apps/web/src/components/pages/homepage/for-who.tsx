@@ -8,7 +8,7 @@ import { PERSONAS } from "@/lib/marketing/home-data"
 export function ForWho() {
   return (
     <Section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border">
-      <div className="flex flex-col p-6 col-span-1 md:col-span-2 lg:col-span-4 p-0 border-0">
+      <div className="flex flex-col col-span-1 md:col-span-2 lg:col-span-4 border-0">
         <div className="flex flex-col gap-2 p-6 border-b border-border">
           <p className="text-label-13 text-muted-foreground">Who it&apos;s for</p>
           <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
