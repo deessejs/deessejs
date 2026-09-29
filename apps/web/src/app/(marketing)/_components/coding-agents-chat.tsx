@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Send } from "lucide-react"
 import {
   LazyMotion,
   domAnimation,
@@ -9,6 +10,7 @@ import {
 } from "motion/react"
 import * as m from "motion/react-m"
 
+import { Button } from "@workspace/ui/components/button"
 import {
   Bubble,
   BubbleContent,
@@ -21,36 +23,38 @@ import {
 import { cn } from "@workspace/ui/lib/utils"
 
 /**
- * Chat-style mockup shown on the homepage CodingAgents section.
+ * Real-feel chat interface shown on the homepage CodingAgents section.
  *
- * Tells the "any coding agent can init a template" story in four
- * turns:
+ * Six turns tell the "any coding agent runs the CLI for you" story in
+ * two passes:
  *   1. user   — instant. "Initialize a saas-starter template…"
- *   2. agent  — streamed. "Reading the registry…"
+ *   2. agent  — streamed. "Reading the registry… here's the plan…"
  *   3. agent  — tool-call card. 4 monospace lines stagger in.
- *   4. agent  — streamed. "Project is ready at ./saas-starter…"
+ *   4. user   — instant. "Now add observability to it."
+ *   5. agent  — streamed. "Setting up the observability contract…"
+ *   6. agent  — streamed. Final reply.
  *
- * Mirrors the recipe at
+ * No wrapping card: the thread sits on the section background, the
+ * way a real chat surface does. A disabled input bar (textarea + send
+ * button) anchors the bottom — `border-t` separates it from the
+ * thread, no card chrome.
+ *
+ * Mirrors the streaming recipe at
  * `apps/web/src/app/(product)/use-cases/_components/mockups/streaming-chat.tsx`
  * (recursive setTimeout + state slice) but composes the conversation
- * through the new shadcn `Bubble` + `Message` primitives. Single
- * useEffect schedules all four phases with absolute timestamps so
- * later messages wait for earlier ones to settle.
+ * through the new shadcn `Bubble` + `Message` primitives.
  *
- * Trigger: `whileInView` once. `MotionConfig reducedMotion="user"`
- * at the root degrades the per-line stagger; `useReducedMotion()`
- * additionally short-circuits the streaming timer chain — each
- * message renders its full text immediately.
- *
- * Color discipline: only the violet dot marker and the agent
- * bubble tint carry color. Everything else stays in the
- * monochrome `foreground` / `muted-foreground` palette used by
- * the rest of the homepage.
+ * `useReducedMotion()` short-circuits the entire timer chain — every
+ * message renders with full text immediately, no per-line stagger.
  */
 
-const USER_PROMPT = "Initialize a saas-starter template from the registry."
+const TYPING_SPEED_MS = 28
 
-const AGENT_READING = "Reading the registry… Detecting your package manager."
+/** Conversation turns. */
+const USER_PROMPT_1 = "Initialize a saas-starter template from the registry."
+
+const AGENT_PLAN =
+  "Reading the registry… Detecting your package manager.\n\nHere's the plan:\n1. Clone the template repo\n2. Detect your package manager\n3. Install dependencies"
 
 const TOOL_CALL_LINES = [
   "▸ $ deessejs init saas-starter",
@@ -59,32 +63,45 @@ const TOOL_CALL_LINES = [
   "✔ Installed 487 packages",
 ] as const
 
-const AGENT_DONE = "Project is ready at ./saas-starter. Run pnpm dev to start."
+const USER_PROMPT_2 = "Now add observability to it."
 
-const TYPING_SPEED_MS = 28
+const AGENT_OBSERVABILITY =
+  "Setting up the observability contract…\nInitialised Drizzle adapter, traces + logs + metrics.\nWiring Sentry to Next.js and Better Stack to dashboards."
 
-/** Per-message timing budget (ms). Total ≈ 3.4s end-to-end. */
+const AGENT_DONE = "Project ready. Run `pnpm dev` to start the server."
+
+/** Per-message timing budget (ms). Total ≈ 7s end-to-end. */
 const TIMING = {
-  /** Delay before the first agent message starts streaming. */
-  agent1Start: 400,
-  /** Approx duration to type AGENT_READING (~46 chars × 28 ms). */
-  agent1Duration: AGENT_READING.length * TYPING_SPEED_MS,
-  /** Delay before the tool-call card lines start staggering in. */
-  toolCardStart: 1100,
-  /** Delay between consecutive tool-call lines (s). */
+  user1: 150,
+  agent1Start: 600,
+  toolStart: 1800,
   toolLineStep: 0.15,
-  /** Delay before the final agent message starts streaming. */
-  agent4Start: 2000,
+  user2: 3400,
+  agent2Start: 3800,
+  agent3Start: 5800,
 } as const
 
 type Phase = "pending" | "streaming" | "done"
 
-type SlotKey = "user" | "agent1" | "tool" | "agent4"
+type TurnKey =
+  | "user1"
+  | "agent1"
+  | "tool"
+  | "user2"
+  | "agent2"
+  | "agent3"
 
-const ALL_SLOTS: ReadonlyArray<SlotKey> = ["user", "agent1", "tool", "agent4"]
+const ALL_TURNS: ReadonlyArray<TurnKey> = [
+  "user1",
+  "agent1",
+  "tool",
+  "user2",
+  "agent2",
+  "agent3",
+]
 
 /**
- * Visual variants the agent bubbles use. `tinted` is the
+ * Visual variant the agent bubbles use. `tinted` is the
  * shadcn-default variant; we override its surface with a
  * translucent violet wash via className so the accent reads
  * without minting a new design-system token.
@@ -116,6 +133,9 @@ function Caret() {
  * Renders the typed-out prefix of `text` followed by the streaming
  * caret. When `done` is true the caret is omitted — the message is
  * complete.
+ *
+ * Renders newlines as `<br />` so multi-line agent text wraps cleanly
+ * inside the bubble without breaking the inline text rhythm.
  */
 function StreamedText({
   shown,
@@ -125,7 +145,7 @@ function StreamedText({
   done: boolean
 }) {
   return (
-    <p className="text-copy-13 leading-6 text-foreground">
+    <p className="whitespace-pre-line text-copy-13 leading-6 text-foreground">
       {shown}
       {done ? null : <Caret />}
     </p>
@@ -175,22 +195,21 @@ const containerVariants: Variants = {
 export function CodingAgentsChat() {
   const reduceMotion = useReducedMotion()
 
-  // Per-slot state. The two streamed messages also track a `shown`
-  // string; the tool-call card tracks per-line visibility via the
-  // phase alone (lines are revealed by the staggered m.li).
-  const [phases, setPhases] = useState<Record<SlotKey, Phase>>({
-    user: "pending",
+  const [phases, setPhases] = useState<Record<TurnKey, Phase>>({
+    user1: "pending",
     agent1: "pending",
     tool: "pending",
-    agent4: "pending",
+    user2: "pending",
+    agent2: "pending",
+    agent3: "pending",
   })
   const [agent1Shown, setAgent1Shown] = useState("")
-  const [agent4Shown, setAgent4Shown] = useState("")
+  const [agent2Shown, setAgent2Shown] = useState("")
+  const [agent3Shown, setAgent3Shown] = useState("")
 
   useEffect(() => {
     let cancelled = false
-    let agent1Cancel: (() => void) | undefined
-    let agent4Cancel: (() => void) | undefined
+    const streamCancels: Array<() => void> = []
     const toolTimers: Array<number> = []
 
     const safe = (fn: () => void) => {
@@ -198,22 +217,34 @@ export function CodingAgentsChat() {
       fn()
     }
 
-    // User prompt: instant.
-    safe(() =>
-      setPhases((p) => (p.user === "pending" ? { ...p, user: "done" } : p)),
-    )
+    const markDone = (key: TurnKey) =>
+      safe(() =>
+        setPhases((p) => (p[key] === "pending" ? { ...p, [key]: "done" } : p)),
+      )
+
+    const markStreaming = (key: TurnKey) =>
+      safe(() =>
+        setPhases((p) =>
+          p[key] === "pending" ? { ...p, [key]: "streaming" } : p,
+        ),
+      )
+
+    // All instant user turns render immediately.
+    markDone("user1")
 
     if (reduceMotion) {
-      // Bypass the streaming chain — every message appears with full
-      // text immediately, no per-line stagger on the tool card.
+      // Bypass the streaming chain entirely.
       safe(() => {
-        setAgent1Shown(AGENT_READING)
-        setAgent4Shown(AGENT_DONE)
+        setAgent1Shown(AGENT_PLAN)
+        setAgent2Shown(AGENT_OBSERVABILITY)
+        setAgent3Shown(AGENT_DONE)
         setPhases({
-          user: "done",
+          user1: "done",
           agent1: "done",
           tool: "done",
-          agent4: "done",
+          user2: "done",
+          agent2: "done",
+          agent3: "done",
         })
       })
       return () => {
@@ -221,92 +252,91 @@ export function CodingAgentsChat() {
       }
     }
 
-    // Agent message 1 — streamed after a 400 ms beat.
+    // Agent 1 — streamed plan after a short beat.
     const agent1Timer = window.setTimeout(() => {
-      safe(() =>
-        setPhases((p) =>
-          p.agent1 === "pending" ? { ...p, agent1: "streaming" } : p,
-        ),
+      markStreaming("agent1")
+      streamCancels.push(
+        streamText({
+          text: AGENT_PLAN,
+          speedMs: TYPING_SPEED_MS,
+          setShown: (s) => safe(() => setAgent1Shown(s)),
+        }),
       )
-      agent1Cancel = streamText({
-        text: AGENT_READING,
-        speedMs: TYPING_SPEED_MS,
-        setShown: (s) => safe(() => setAgent1Shown(s)),
-      })
     }, TIMING.agent1Start)
-    window.clearTimeout; // no-op, kept for symmetry with the cleanup below
 
-    // Tool-call card — 4 lines stagger in starting at 1100 ms.
-    const toolStart = TIMING.toolCardStart
+    // Tool-call card — 4 lines stagger in.
     for (let i = 0; i < TOOL_CALL_LINES.length; i++) {
-      const timer = window.setTimeout(() => {
-        safe(() => {
-          setPhases((p) =>
-            p.tool === "pending" && i === 0 ? { ...p, tool: "streaming" } : p,
-          )
-        })
-      }, toolStart + i * (TIMING.toolLineStep * 1000))
-      toolTimers.push(timer)
+      const t = window.setTimeout(() => {
+        if (i === 0) markStreaming("tool")
+      }, TIMING.toolStart + i * TIMING.toolLineStep * 1000)
+      toolTimers.push(t)
     }
-    // Mark tool done after the last line lands.
     const toolDone = window.setTimeout(
-      () => safe(() => setPhases((p) => ({ ...p, tool: "done" }))),
-      toolStart + (TOOL_CALL_LINES.length - 1) * (TIMING.toolLineStep * 1000) + 250,
+      () => markDone("tool"),
+      TIMING.toolStart +
+        (TOOL_CALL_LINES.length - 1) * TIMING.toolLineStep * 1000 +
+        250,
     )
     toolTimers.push(toolDone)
 
-    // Agent message 4 — streamed after 2000 ms.
-    const agent4Timer = window.setTimeout(() => {
-      safe(() =>
-        setPhases((p) =>
-          p.agent4 === "pending" ? { ...p, agent4: "streaming" } : p,
-        ),
+    // User 2 — instant follow-up after the tool finishes.
+    const user2Timer = window.setTimeout(() => markDone("user2"), TIMING.user2)
+    toolTimers.push(user2Timer)
+
+    // Agent 2 — streamed observability summary.
+    const agent2Timer = window.setTimeout(() => {
+      markStreaming("agent2")
+      streamCancels.push(
+        streamText({
+          text: AGENT_OBSERVABILITY,
+          speedMs: TYPING_SPEED_MS,
+          setShown: (s) => safe(() => setAgent2Shown(s)),
+        }),
       )
-      agent4Cancel = streamText({
-        text: AGENT_DONE,
-        speedMs: TYPING_SPEED_MS,
-        setShown: (s) => safe(() => setAgent4Shown(s)),
-      })
-    }, TIMING.agent4Start)
+    }, TIMING.agent2Start)
+
+    // Agent 3 — short final reply.
+    const agent3Timer = window.setTimeout(() => {
+      markStreaming("agent3")
+      streamCancels.push(
+        streamText({
+          text: AGENT_DONE,
+          speedMs: TYPING_SPEED_MS,
+          setShown: (s) => safe(() => setAgent3Shown(s)),
+        }),
+      )
+    }, TIMING.agent3Start)
 
     return () => {
       cancelled = true
-      window.clearTimeout(agent1Timer)
-      window.clearTimeout(agent4Timer)
+      ;[agent1Timer, agent2Timer, agent3Timer].forEach((t) =>
+        window.clearTimeout(t),
+      )
       toolTimers.forEach((t) => window.clearTimeout(t))
-      agent1Cancel?.()
-      agent4Cancel?.()
+      streamCancels.forEach((cancel) => cancel())
     }
   }, [reduceMotion])
 
-  const show = (slot: SlotKey, forceDone = false) =>
-    phases[slot] !== "pending" || forceDone
+  const show = (key: TurnKey) => phases[key] !== "pending"
 
   return (
     <LazyMotion features={domAnimation}>
       <div
         role="img"
-        aria-label="Chat thread: a user asks a coding agent to initialize the saas-starter template. The agent reads the registry, runs deessejs init, and confirms the project is ready."
-        className="flex flex-col gap-3 rounded-xl border border-border bg-background/60 p-4 text-copy-13 leading-6 text-foreground lg:p-6"
+        aria-label="Chat thread: a user asks a coding agent to initialize the saas-starter template, the agent reads the registry, runs deessejs init, then the user asks to add observability and the agent wires it up. The thread ends with a disabled input field."
+        className="flex h-full flex-col gap-4 text-copy-13 leading-6 text-foreground"
       >
-        {/* Header strip */}
-        <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-muted-foreground">
-          <span>Coding agent</span>
-          <span className="font-mono text-label-12 text-violet-600 dark:text-violet-400">
-            streaming
-          </span>
-        </div>
-
         {/* Thread */}
         <m.div
+          data-slot="chat-thread"
           variants={containerVariants}
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, amount: 0.3 }}
-          className="flex flex-col gap-3"
+          className="flex flex-1 flex-col gap-4 overflow-y-auto"
         >
           {/* 1. User prompt */}
-          {show("user") && (
+          {show("user1") && (
             <m.div variants={fadeIn}>
               <Message align="end">
                 <MessageAvatar />
@@ -318,7 +348,7 @@ export function CodingAgentsChat() {
                   >
                     <BubbleContent>
                       <p className="text-copy-13 leading-6 text-foreground">
-                        {USER_PROMPT}
+                        {USER_PROMPT_1}
                       </p>
                     </BubbleContent>
                   </Bubble>
@@ -327,7 +357,7 @@ export function CodingAgentsChat() {
             </m.div>
           )}
 
-          {/* 2. Agent reads the registry */}
+          {/* 2. Agent plan */}
           {show("agent1") && (
             <m.div variants={fadeIn}>
               <Message align="start">
@@ -399,8 +429,30 @@ export function CodingAgentsChat() {
             </m.div>
           )}
 
-          {/* 4. Agent confirms the project is ready */}
-          {show("agent4") && (
+          {/* 4. User follow-up */}
+          {show("user2") && (
+            <m.div variants={fadeIn}>
+              <Message align="end">
+                <MessageAvatar />
+                <MessageContent>
+                  <Bubble
+                    variant="muted"
+                    align="end"
+                    className="max-w-none"
+                  >
+                    <BubbleContent>
+                      <p className="text-copy-13 leading-6 text-foreground">
+                        {USER_PROMPT_2}
+                      </p>
+                    </BubbleContent>
+                  </Bubble>
+                </MessageContent>
+              </Message>
+            </m.div>
+          )}
+
+          {/* 5. Agent observability */}
+          {show("agent2") && (
             <m.div variants={fadeIn}>
               <Message align="start">
                 <MessageAvatar>
@@ -414,8 +466,33 @@ export function CodingAgentsChat() {
                   >
                     <BubbleContent>
                       <StreamedText
-                        shown={agent4Shown}
-                        done={phases.agent4 === "done"}
+                        shown={agent2Shown}
+                        done={phases.agent2 === "done"}
+                      />
+                    </BubbleContent>
+                  </Bubble>
+                </MessageContent>
+              </Message>
+            </m.div>
+          )}
+
+          {/* 6. Agent final */}
+          {show("agent3") && (
+            <m.div variants={fadeIn}>
+              <Message align="start">
+                <MessageAvatar>
+                  <AgentDot />
+                </MessageAvatar>
+                <MessageContent>
+                  <Bubble
+                    variant="tinted"
+                    align="start"
+                    className={AGENT_BUBBLE_CLASS}
+                  >
+                    <BubbleContent>
+                      <StreamedText
+                        shown={agent3Shown}
+                        done={phases.agent3 === "done"}
                       />
                     </BubbleContent>
                   </Bubble>
@@ -424,6 +501,27 @@ export function CodingAgentsChat() {
             </m.div>
           )}
         </m.div>
+
+        {/* Input bar — disabled, separated from the thread by a border-t */}
+        <div className="flex items-end gap-2 border-t border-border px-1 pt-3">
+          <textarea
+            disabled
+            rows={1}
+            placeholder="Ask your agent to do anything…"
+            aria-label="Type a message to your coding agent (visual demo, input is disabled)"
+            className="flex-1 resize-none border-0 bg-transparent text-copy-13 leading-6 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 disabled:cursor-default"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Send message"
+            disabled
+            className="size-7 shrink-0 text-muted-foreground"
+          >
+            <Send className="size-3.5" aria-hidden />
+          </Button>
+        </div>
       </div>
     </LazyMotion>
   )
