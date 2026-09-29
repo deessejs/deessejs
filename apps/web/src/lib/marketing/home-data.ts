@@ -119,23 +119,33 @@ export type Persona = {
   label: string
   headline: string
   outcome: string
+  /**
+   * Real destination on the marketing site. The previous incarnation
+   * pointed at `/solutions/<slug>` which 404'd; the section now routes
+   * each card to its closest existing surface — a use-case page for
+   * project-shaped audiences, the dedicated enterprise page for
+   * platform teams.
+   */
+  href: string
 }
 
-/** The four personas the registry explicitly serves. */
+/**
+ * The three audiences the homepage ForWho section names.
+ *
+ * Indie hackers absorbed into SaaS founders (Option B): both promise
+ * a fast path to a paying customer with the same registry entry
+ * point, and there is no distinct content downstream to justify a
+ * fourth card. Enterprise teams and AI-native teams keep dedicated
+ * destinations because each points at a different kind of asset.
+ */
 export const PERSONAS: ReadonlyArray<Persona> = [
-  {
-    slug: "indie-hackers",
-    label: "Indie hackers",
-    headline: "Ship your first $ online this weekend.",
-    outcome:
-      "From `deessejs init` to your first paying customer in days, not months.",
-  },
   {
     slug: "saas-founders",
     label: "SaaS founders",
     headline: "Skip 10 weeks of infra.",
     outcome:
       "Reach your first paying customer in 30 days, with contracts you can extend instead of rewrite.",
+    href: "/use-cases/saas-apps",
   },
   {
     slug: "enterprise",
@@ -143,6 +153,7 @@ export const PERSONAS: ReadonlyArray<Persona> = [
     headline: "Stop rebuilding the same eight services.",
     outcome:
       "Skip the internal platform build. Use ours. Same contracts, same guarantees, same audit trail.",
+    href: "/enterprise",
   },
   {
     slug: "ai-native",
@@ -150,6 +161,7 @@ export const PERSONAS: ReadonlyArray<Persona> = [
     headline: "Ship with your agent, not against it.",
     outcome:
       "Templates an agent reads as well as you do. Typed end-to-end, MCP-ready, no plumbing to invent.",
+    href: "/use-cases/ai-products",
   },
 ]
 
