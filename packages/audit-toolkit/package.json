@@ -1,0 +1,44 @@
+{
+  "name": "@deessejs/audit-toolkit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Reusable audit tools for the apps/agent nightly review. Mounted into the root agent and every specialist subagent via agent/extensions/audit-toolkit.ts.",
+  "eve": {
+    "extension": {
+      "source": "./extension",
+      "dist": "./dist/extension"
+    }
+  },
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./tools": {
+      "types": "./src/tools/index.ts",
+      "default": "./src/tools/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "eve extension build",
+    "prepare": "eve extension build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@octokit/app": "catalog:",
+    "@octokit/auth-app": "catalog:",
+    "@octokit/rest": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "eve": "*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@workspace/typescript-config": "workspace:*",
+    "eve": "catalog:",
+    "typescript": "catalog:"
+  }
+}
