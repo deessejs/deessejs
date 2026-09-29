@@ -92,10 +92,6 @@ export function CodingAgents() {
             />
           </Link>
         </div>
-        {/* Chat — right column (4fr / 33%) */}
-        <div className="p-4 lg:p-6">
-          <CodingAgentsChat />
-        </div>
       </div>
       <div className="border-t border-border">
         <ul className="grid grid-cols-2 divide-y divide-border border-0 sm:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
