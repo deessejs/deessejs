@@ -2,7 +2,7 @@
  * P-N session-aware header e2e suite (ADR-023).
  *
  * What this covers:
- *   - Anonymous visitors see the Log in / Sign up buttons in
+ *   - Anonymous visitors see the Log in / Get started buttons in
  *     the header on every public page.
  *   - Clicking Log in navigates to apps/app's /login page
  *     (cross-app navigation; the marketing origin has no
@@ -29,7 +29,7 @@ import {
 } from "./helpers/selectors.js"
 
 test.describe("Session-aware header (ADR-023)", () => {
-  test("anonymous visitor on / sees Log in and Sign up", async ({ page }) => {
+  test("anonymous visitor on / sees Log in and Get started", async ({ page }) => {
     await page.goto("/")
 
     // The right-side header control is always present (the
