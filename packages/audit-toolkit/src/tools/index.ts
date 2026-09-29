@@ -5,4 +5,5 @@
 export { default as checkoutRepo } from "../../extension/tools/checkout_repo.js"
 export { default as createAuditIssue } from "../../extension/tools/create_audit_issue.js"
 export { default as findSimilarIssues } from "../../extension/tools/find_similar_issues.js"
+export { default as getAuditTarget } from "../../extension/tools/get_audit_target.js"
 export { default as listAuditRepositories } from "../../extension/tools/list_audit_repositories.js"

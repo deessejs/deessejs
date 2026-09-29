@@ -13,7 +13,7 @@ export const CreateAuditIssueInput = z.object({
     .array(
       z.object({
         path: z.string().min(1),
-        line: z.number().int().positive().optional(),
+        line: z.number().int().optional(),
         explanation: z.string().min(10),
       }),
     )
@@ -68,6 +68,41 @@ export function buildIssueBody(
   ].join("\n")
 }
 
+/**
+ * Resolve the allowlist of repositories the audit may publish into.
+ * Sourced from a CSV env var so multi-repo M3 setups can be expressed
+ * without code changes. Empty allowlist rejects all writes — there is no
+ * implicit "anything goes" mode.
+ */
+function readRepositoryAllowlist(): string[] {
+  const raw = process.env.AUDIT_TARGET_REPOSITORIES
+  if (raw && raw.trim().length > 0) {
+    return raw
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter((s) => s.length > 0)
+  }
+  const single = process.env.AUDIT_TARGET_REPOSITORY?.trim().toLowerCase()
+  return single ? [single] : []
+}
+
+function assertRepositoryAllowed(repository: string): void {
+  const allow = readRepositoryAllowlist()
+  if (allow.length === 0) {
+    throw new Error(
+      "createAuditIssue refused: no AUDIT_TARGET_REPOSITORIES or " +
+        "AUDIT_TARGET_REPOSITORY is set in the deployment environment, " +
+        "so the allowlist is empty and no publication is permitted.",
+    )
+  }
+  if (!allow.includes(repository.toLowerCase())) {
+    throw new Error(
+      `createAuditIssue refused: '${repository}' is not in the audit ` +
+        `allowlist (${allow.join(", ")}).`,
+    )
+  }
+}
+
 export async function createAuditIssue(
   input: CreateAuditIssueInput,
   octokit: Octokit,
@@ -81,6 +116,15 @@ export async function createAuditIssue(
     return { status: "rejected", reason: "repository must be owner/name" }
   }
 
+  try {
+    assertRepositoryAllowed(parsed.data.repository)
+  } catch (error) {
+    return {
+      status: "rejected",
+      reason: error instanceof Error ? error.message : String(error),
+    }
+  }
+
   const fingerprint = computeFingerprint({
     repository: parsed.data.repository,
     category: parsed.data.category,
@@ -89,9 +133,11 @@ export async function createAuditIssue(
     evidencePaths: parsed.data.evidence.map((e) => e.path),
   })
 
-  // Idempotency check #1: marker search across the whole repo (open + closed).
+  // Idempotency check #1: marker search restricted to OPEN issues and
+  // PRs. A closed issue that previously carried the marker must not block a
+  // fresh report — the defect may have reappeared.
   const byMarker = await octokit.rest.search.issuesAndPullRequests({
-    q: `repo:${owner}/${repo} deessejs-audit:fingerprint=${fingerprint}`,
+    q: `repo:${owner}/${repo} is:open deessejs-audit:fingerprint=${fingerprint}`,
     per_page: 1,
   })
   const markerHit = byMarker.data.items[0]
@@ -104,9 +150,10 @@ export async function createAuditIssue(
     }
   }
 
-  // Idempotency check #2: exact-title match on open issues.
+  // Idempotency check #2: exact-title match on OPEN issues. Closed issues
+  // with the same title do not block — the regression is new.
   const byTitle = await octokit.rest.search.issuesAndPullRequests({
-    q: `repo:${owner}/${repo} is:issue in:title "${encodedTitle(parsed.data.title)}"`,
+    q: `repo:${owner}/${repo} is:issue is:open in:title "${encodedTitle(parsed.data.title)}"`,
     per_page: 5,
   })
   const titleHit = byTitle.data.items.find(

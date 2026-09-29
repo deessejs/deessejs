@@ -7,32 +7,34 @@ import { defineSchedule } from "eve/schedules"
  * The root agent switches to Job B (audit coordinator) mode and dispatches
  * the specialist subagents.
  *
- * M1 scope: only one subagent (`behavior`) over the single repository
- * named in AUDIT_TARGET_REPOSITORY. M3 will replace this constant with
- * the full enumeration from list_audit_repositories.
+ * M1 scope: a single specialist (`behavior`) over the single repository
+ * resolved by the `audit-toolkit__get_audit_target` tool. M3 will replace
+ * this with the full enumeration from `list_audit_repositories`.
  */
 export default defineSchedule({
   cron: "0 21 * * *",
   markdown: [
     "audit_context: true",
     "",
-    "Run the nightly DeesseJS audit for the repository named in the",
-    "AUDIT_TARGET_REPOSITORY environment variable. The audit is currently",
-    "in milestone 1: a single specialist (behavior) on a single repository.",
+    "Run the nightly DeesseJS audit (M1).",
     "",
     "Steps:",
-    "1. Read AUDIT_TARGET_REPOSITORY (format 'owner/repo'). If unset, fail",
-    "   loudly with a structured error.",
-    "2. Read AUDIT_INSTALLATION_ID. If unset, fail loudly.",
-    "3. Call checkout_repo with that installationId, repository, and a SHA",
-    "   you resolve by reading the repository's main branch through the",
-    "   octokit client you have access to.",
-    "4. Call the `behavior` subagent with message:",
-    "   { installationId, runId, repository, mainSha }",
-    "5. After the subagent returns, summarise the run as a JSON object:",
+    "1. Call the `audit-toolkit__get_audit_target` tool. It returns",
+    "   { installationId, repository, mainSha } read directly from the",
+    "   deployment environment. Do not try to read process.env yourself —",
+    "   you have no direct access to it.",
+    "2. Dispatch the behavior subagent. Pass this exact message:",
+    "   { installationId, repository, mainSha, runId: <the session id> }.",
+    "   The specialist owns its own sandbox and inspection. You do not need",
+    "   to call checkout_repo yourself; the specialist has it.",
+    "3. After the subagent returns, summarise the run as a JSON object:",
     "   { runId, repository, mainSha, scope, examinedPaths, issuesOpened, notes }",
     "",
-    "You must not edit the repository. You must not create issues directly.",
-    "Specialists do that through create_audit_issue.",
+    "Hard rules:",
+    "- Do not edit the repository.",
+    "- Do not create issues directly. Only specialists do that.",
+    "- Do not invent values for environment variables.",
+    "- The root mount has only inventory tools. The full toolkit lives in",
+    "  the specialist subagent.",
   ].join("\n"),
 })

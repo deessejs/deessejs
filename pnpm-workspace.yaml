@@ -52,7 +52,6 @@ catalog:
 
   # Sandbox backends (optional peers of eve, declared in the catalog so
   # both eve@0.60 and the audit-toolkit can resolve the same version)
-  just-bash: ^3.1.0
   microsandbox: ^0.5.5
 
   # Markdown rendering (apps/web — untrusted GitHub READMEs on /templates/[slug])
