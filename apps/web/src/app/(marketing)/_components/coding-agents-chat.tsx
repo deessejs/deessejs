@@ -18,7 +18,7 @@ import {
 import * as m from "motion/react-m"
 import { MessageScroller } from "@shadcn/react/message-scroller"
 
-import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
 import {
   Bubble,
   BubbleContent,
