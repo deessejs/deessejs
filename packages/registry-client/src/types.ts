@@ -89,8 +89,13 @@ export type RegistryClientOptions = {
   /**
    * Base URL of the registry API. Must be a full URL with no trailing
    * slash (the SDK uses `new URL(path, base)` to compose requests).
+   *
+   * Optional — the SDK also reads `DEESSEJS_API_URL` from the
+   * environment as a fallback. The constructor argument wins when
+   * both are present. Setting the env var lets tests and CI
+   * sandboxes wire the URL without changing every CLI invocation.
    */
-  readonly apiUrl: string
+  readonly apiUrl?: string
   /**
    * Optional `fetch` override. Tests inject a mock; production uses
    * the global `fetch`.

@@ -37,6 +37,16 @@ import type {
 import { ok as okResult, err as errResult } from "./types.js"
 
 /**
+ * Base URL for fetching `deesse-template.json` and its referenced
+ * files from GitHub. Defaults to the public
+ * `https://raw.githubusercontent.com` host. Tests / mirror
+ * deployments override via the `DEESSEJS_GITHUB_RAW_BASE` env var
+ * — see ADR-038 followup.
+ */
+const githubRawBase = (): string =>
+  process.env["DEESSEJS_GITHUB_RAW_BASE"] ?? "https://raw.githubusercontent.com"
+
+/**
  * Fetch `deesse-template.json` from GitHub raw for the given repo.
  *
  * Same surface as `getTemplateFromApi` (`http-client.ts:294-318`):
@@ -60,7 +70,7 @@ export const getTemplateFromGithub = async (
 ): Promise<Result<FetchedTemplate, RegistryFailure>> => {
   const slug = `${owner}/${repo}`
   const resolvedRef = ref ?? "main"
-  const url = `https://raw.githubusercontent.com/${owner}/${repo}/${resolvedRef}/deesse-template.json`
+  const url = `${githubRawBase()}/${owner}/${repo}/${resolvedRef}/deesse-template.json`
 
   let response: Response
   try {
@@ -139,7 +149,7 @@ export const getTemplateFromGithub = async (
   const descriptor: TemplateV2 = descriptorParsed.data
   const files: Record<ObjectKey, string> = {}
   for (const file of descriptor.files ?? []) {
-    files[file.path] = `https://raw.githubusercontent.com/${owner}/${repo}/${resolvedRef}/${file.path}`
+    files[file.path] = `${githubRawBase()}/${owner}/${repo}/${resolvedRef}/${file.path}`
   }
 
   return okResult<FetchedTemplate>({ descriptor, files })
@@ -163,7 +173,7 @@ export const getInfoFromGithub = async (
   fetchImpl: typeof fetch,
 ): Promise<Result<TemplateInfo, RegistryFailure>> => {
   const slug = `${owner}/${repo}`
-  const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/deesse-template.json`
+  const url = `${githubRawBase()}/${owner}/${repo}/main/deesse-template.json`
 
   let response: Response
   try {

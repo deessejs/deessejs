@@ -39,7 +39,13 @@ export const newCommand = new Command("new")
     // in --help.
     void _slug
     void _opts
-    throw internal(
+    // Throw a plain Error (not a CliError) so the message reaches
+    // the user verbatim. The catch in `src/index.ts` wraps any
+    // uncaught throw in `Error.internal`, which would reframe
+    // our message; bypassing that is what we want for a clear
+    // "not yet implemented" notice.
+    void internal
+    throw new Error(
       "deessejs template new is not yet implemented — see ADR-034 §3",
     )
   },

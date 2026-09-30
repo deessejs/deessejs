@@ -91,7 +91,16 @@ export const createClient = (
   options: RegistryClientOptions,
 ): RegistryClient => {
   validateOptions(options)
-  const apiUrl = options.apiUrl
+  // Resolve `apiUrl` from the constructor argument, falling back
+  // to `DEESSEJS_API_URL`. Lets integration tests (and CI sandboxes)
+  // wire the URL via env without changing every CLI invocation.
+  const apiUrl =
+    options.apiUrl ?? process.env["DEESSEJS_API_URL"] ?? ""
+  if (!apiUrl) {
+    throw new Error(
+      "createClient: apiUrl is required (pass it or set DEESSEJS_API_URL)",
+    )
+  }
   const fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis)
 
   return {
