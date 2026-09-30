@@ -469,8 +469,11 @@ export function CodingAgentsDemo() {
                   {item.summary}
                 </p>
                 <span
-                  aria-hidden
-                  className="mt-3 block h-1 overflow-hidden rounded-full bg-muted"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={1}
+                  aria-valuenow={isActive ? fill : 0}
+                  className="mt-4 block h-1.5 overflow-hidden rounded-full bg-border"
                 >
                   <span
                     className="block h-full origin-left bg-foreground transition-transform duration-75 ease-linear"
