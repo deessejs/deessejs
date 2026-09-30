@@ -9,6 +9,11 @@ import {
 import { initCommand } from "./commands/init.js"
 import { listCommand } from "./commands/list.js"
 import { infoCommand } from "./commands/info.js"
+import {
+	explainCommand,
+	newCommand,
+	validateCommand,
+} from "./commands/template/index.js"
 
 const program = new Command()
 
@@ -31,6 +36,18 @@ authCommand.addCommand(loginCommand)
 authCommand.addCommand(statusCommand)
 authCommand.addCommand(logoutCommand)
 program.addCommand(authCommand)
+
+// template subcommand (ADR-034). Three children: validate (shape
+// check, v1), new (scaffold from catalogue, placeholder until
+// the registry CDN ships), explain (render JSDoc field docs,
+// placeholder until the schema contract lands).
+const templateCommand = new Command("template").description(
+	"Author tooling for deesse-template.json",
+)
+templateCommand.addCommand(validateCommand)
+templateCommand.addCommand(newCommand)
+templateCommand.addCommand(explainCommand)
+program.addCommand(templateCommand)
 
 program.parseAsync(process.argv).catch((err) => {
   // Last-resort error handler. Per-command handlers catch CliError and exit
