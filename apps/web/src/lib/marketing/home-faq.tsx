@@ -8,6 +8,7 @@
  */
 
 import * as React from "react"
+import Link from "next/link"
 
 export type FaqItem = {
   /** Stable value for AccordionItem's controlled state. */
@@ -55,12 +56,12 @@ export const HOME_FAQ: ReadonlyArray<FaqItem> = [
         Install it globally with <code>npm install -g deessejs</code> and
         run <code>deessejs init &lt;template-slug&gt;</code> to scaffold.
         The full walkthrough (install, authenticate, list, init) lives in{" "}
-        <a
+        <Link
           href="/knowledge-base/guides/install-deessejs-cli"
           className="font-medium text-foreground underline-offset-4 hover:underline"
         >
           the install guide
-        </a>
+        </Link>
         .
       </>
     ),

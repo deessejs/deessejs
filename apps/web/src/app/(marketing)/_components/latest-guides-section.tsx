@@ -102,6 +102,7 @@ function ChevronButton({
 }) {
   const Icon = direction === "prev" ? ArrowLeft : ArrowRight
   return (
+    // eslint-disable-next-line react/forbid-elements
     <button
       type="button"
       onClick={onClick}
@@ -219,7 +220,7 @@ export function LatestGuidesSection({
                       />
                     ) : (
                       <div className="grid h-full place-items-center text-xs text-muted-foreground">
-                        <span className="font-mono">// preview unavailable</span>
+                        <span className="font-mono">{"// preview unavailable"}</span>
                       </div>
                     )}
                   </div>
