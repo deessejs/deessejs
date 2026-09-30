@@ -32,6 +32,7 @@ import {
   installFailed,
   internal,
   notFound,
+  parseError,
   targetExists,
 } from "../errors/index.js"
 import { printError, printJson } from "../output/index.js"
@@ -78,14 +79,16 @@ const toCliError = (
     case "RegistryIncompatibleTemplate": {
       const repo = failure.repo !== "" ? failure.repo : slug
       if (failure.cause === "missing_descriptor") {
-        return new Error(
+        return parseError(
           `Incompatible template: ${repo} exists on GitHub but does not ship a deesse-template.json at its root.\n` +
             `Add a deesse-template.json descriptor to make it a DeesseJS template.`,
+          `Add a deesse-template.json file at the repo root.`,
         )
       }
-      return new Error(
+      return parseError(
         `Incompatible template: ${repo} ships a deesse-template.json but it fails Zod validation.\n` +
           `Check that the descriptor matches the TemplateV2 schema.`,
+        `Fix the descriptor against the TemplateV2 schema.`,
       )
     }
     case "RegistryAuthRequired":

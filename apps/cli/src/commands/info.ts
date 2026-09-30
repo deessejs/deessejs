@@ -2,7 +2,7 @@ import { Command } from "commander"
 import ora from "ora"
 
 import { getRegistryClient } from "../registry/client.js"
-import { internal } from "../errors/index.js"
+import { internal, parseError } from "../errors/index.js"
 import { printError, printJson, printTemplateInfo } from "../output/index.js"
 
 /**
@@ -39,19 +39,21 @@ export const infoCommand = new Command("info")
             result.error.source.startsWith("unsupported_host:")
               ? result.error.source.slice("unsupported_host:".length)
               : result.error.source
-          throw new Error(
+          throw parseError(
             `Unsupported source: ${host}. The CLI supports github.com repositories only.`,
           )
         }
         if (result.error._tag === "RegistryIncompatibleTemplate") {
           const repo = result.error.repo !== "" ? result.error.repo : slug
           if (result.error.cause === "missing_descriptor") {
-            throw new Error(
+            throw parseError(
               `Incompatible template: ${repo} exists on GitHub but does not ship a deesse-template.json.`,
+              `Add a deesse-template.json file at the repo root.`,
             )
           }
-          throw new Error(
+          throw parseError(
             `Incompatible template: ${repo} ships a deesse-template.json but it fails Zod validation.`,
+            `Fix the descriptor against the TemplateV2 schema.`,
           )
         }
         throw internal(
