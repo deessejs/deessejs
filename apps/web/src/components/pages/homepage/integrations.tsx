@@ -44,7 +44,7 @@ const TECHS: ReadonlyArray<Tech> = [
   {
     logo: "nextdotjs",
     name: "Next.js",
-    description: "The default surface for every Pro template — server components, App Router, edge runtime.",
+    description: "The default surface for every Pro template, with server components, App Router, and the edge runtime.",
     slug: "nextjs",
   },
   {
@@ -116,7 +116,7 @@ export function Integrations() {
               />
               <span>
                 <strong>Deploy automatically</strong> from git or with
-                the CLI — no extra config.
+                the CLI. No extra config.
               </span>
             </li>
             <li className="flex items-start gap-3 text-copy-14 leading-6 text-foreground">
@@ -145,7 +145,7 @@ export function Integrations() {
                 className="mt-0.5 size-4 shrink-0 text-foreground"
               />
               <span>
-                <strong>Bring your own auth</strong> — Better Auth,
+                <strong>Bring your own auth</strong>: Better Auth,
                 Clerk, Auth0, Lucia, or your own provider.
               </span>
             </li>
