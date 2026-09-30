@@ -13,7 +13,6 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { MessageScroller } from "@shadcn/react/message-scroller"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
-import { Button } from "@workspace/ui/components/button"
 import {
   Bubble,
   BubbleContent,
@@ -453,34 +452,42 @@ export function CodingAgentsDemo() {
             const fill = isActive ? progress : 0
 
             return (
-              <Button
+              <div
                 key={item.id}
-                type="button"
                 role="tab"
-                variant="ghost"
                 aria-selected={isActive}
                 onClick={() => selectScenario(index)}
-                className="h-auto w-full overflow-hidden rounded-lg border border-border bg-background p-4 text-left transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    selectScenario(index)
+                  }
+                }}
+                tabIndex={0}
+                className="relative flex cursor-pointer items-stretch gap-4 overflow-hidden rounded-lg p-4 text-left transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
-                <span className="text-copy-14 font-medium text-foreground">
-                  {item.title}
-                </span>
-                <p className="mt-1 text-copy-13 text-muted-foreground">
-                  {item.summary}
-                </p>
                 <span
                   role="progressbar"
                   aria-valuemin={0}
                   aria-valuemax={1}
                   aria-valuenow={isActive ? fill : 0}
-                  className="mt-4 block h-1.5 overflow-hidden rounded-full bg-border"
+                  aria-hidden={!isActive}
+                  className="block w-1.5 self-stretch overflow-hidden rounded-full bg-border"
                 >
                   <span
-                    className="block h-full origin-left bg-foreground transition-transform duration-75 ease-linear"
-                    style={{ transform: `scaleX(${fill})` }}
+                    className="block h-full origin-top bg-foreground transition-transform duration-75 ease-linear"
+                    style={{ transform: `scaleY(${fill})` }}
                   />
                 </span>
-              </Button>
+                <div className="flex flex-1 flex-col gap-1">
+                  <span className="text-heading-20 font-medium tracking-tight text-foreground">
+                    {item.title}
+                  </span>
+                  <p className="text-copy-13 text-muted-foreground">
+                    {item.summary}
+                  </p>
+                </div>
+              </div>
             )
           })}
         </div>
