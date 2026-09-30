@@ -19,6 +19,7 @@ import {
 import { cn } from "@workspace/ui/lib/utils"
 
 import { EcosystemCodeMockup } from "./ecosystem-code-mockup"
+import { DotGrid } from "./dot-grid"
 import type { EcosystemSlug } from "./ecosystem-snippets"
 
 /**
@@ -108,7 +109,7 @@ export function EcosystemTabs({
   htmlBySlug,
 }: {
   /** Pre-highlighted HTML for each tab's code mockup, keyed by slug. */
-  htmlBySlug: Record<EcosystemSlug, string>
+  htmlBySlug: Record<EcosystemSlug, { tabName: string; html: string }[]>
 }) {
   const firstSlug = ECOSYSTEM_TABS[0]?.slug ?? "errors"
 
@@ -152,8 +153,9 @@ export function EcosystemTabs({
                 {tab.comingSoon ? (
                   <span
                     aria-label={`${tab.name} is coming soon`}
-                    className="shrink-0 uppercase tracking-wider font-mono text-[10px] leading-[1.6] text-muted-foreground border border-border rounded-full px-2 py-0.5"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider leading-[1.6] text-foreground"
                   >
+                    <span aria-hidden className="size-1.5 rounded-full bg-foreground" />
                     Coming soon
                   </span>
                 ) : null}
@@ -188,12 +190,12 @@ export function EcosystemTabs({
           value={tab.slug}
           className="relative outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden"
         >
+          <DotGrid className="absolute inset-0" />
 
           <div className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] overflow-hidden">
               <EcosystemCodeMockup
                 slug={tab.slug}
-                tabName={`${tab.slug}.ts`}
-                html={htmlBySlug[tab.slug]}
+                files={htmlBySlug[tab.slug]}
               />
           </div>
         </TabsContent>
