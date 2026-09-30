@@ -1,0 +1,236 @@
+---
+title: 'The registry-builder pipeline'
+description: 'Author-side build pipeline that turns a templates source folder into a published deesse-template.json descriptor. Pattern lifted from shadcn build: the author writes a TypeScript config with globs, the builder walks the source tree and emits an exhaustive files[] entry per file. Adds a prompts[].excludes mechanism that auto-injects when ?expands clause on gated files. The companion to ADR-032 (descriptor format).'
+---
+
+# ADR-038: The registry-builder pipeline
+
+## Status
+
+Proposed (2026-09). Companion to [ADR-032](./ADR-032-deesse-template.json). Companion to [RFC-002](./rfcs/RFC-002-deesse-template).
+
+## Context
+
+ADR-032 pins the `deesse-template.json` wire format: a closed-list top-level shape with a flat `files[]` of `{ path, type, target?, ... }` entries. Each entry describes one source file. The format is load-bearing because it travels over the registry CDN and every consumer's CLI parses it with no further magic.
+
+The format is good. **The authoring path is not.** A template author today must hand-write a `files[]` entry for every file the template ships. For a minimal pnpm + Turborepo monorepo (the `deessejs/package-template` reference), that's 145 files. For a SaaS starter (`deessejs/saas-template`), it's 200+. Hand-listing is:
+
+- **Drift-prone.** Files are added to the repo but forgotten in the descriptor. The user scaffolds and discovers a missing file at runtime.
+- **Unmaintainable.** Bumping a template version means re-syncing the descriptor by hand.
+- **Inconsistent.** Each author's instinct for ordering, comments, and naming differs; the registry gets messy fast.
+
+shadcn solved this in [their registry-item.json](https://ui.shadcn.com/docs/registry/registry-item.json) by introducing a build pipeline (`shadcn build`). The author maintains a source folder; the build walks it and emits a `registry-item.json` with one entry per file. The author never lists files by hand.
+
+This ADR ports that pattern to DeesseJS.
+
+## Decision
+
+A new package, `@workspace/registry-builder`, takes a TypeScript config and emits a flat `deesse-template.json` descriptor that conforms to the Zod schema in `@workspace/contracts/v2`.
+
+### Inputs
+
+The author commits a `_registry/config.ts` at the root of the template repo:
+
+```ts
+// _registry/config.ts (TypeScript, NOT JSON)
+import { defineTemplate } from "@workspace/registry-builder"
+
+export default defineTemplate({
+  name: "package-template",
+  title: "TypeScript Package Template",
+  type: "template:app",
+  version: "1.0.0",
+  author: "deessejs",
+  description: "Minimal pnpm + Turborepo monorepo.",
+  license: "MIT",
+  category: "library",
+  labels: ["typescript", "monorepo", "pnpm", "turborepo"],
+
+  source: { repo: "deessejs/package-template" },
+
+  requires: {
+    runtime: "node",
+    packageManager: "pnpm@9",
+  },
+
+  prompts: [
+    {
+      name: "includeExampleApp",
+      type: "confirm",
+      message: "Include example app (apps/app)?",
+      default: true,
+      excludes: ["apps/app/**"],
+    },
+  ],
+
+  hooks: {
+    postInit: ["pnpm install"],
+  },
+
+  files: {
+    include: [
+      "package.json",
+      "pnpm-workspace.yaml",
+      "turbo.json",
+      "tsconfig.base.json",
+      ".npmrc",
+      ".gitignore",
+      ".gitattributes",
+      ".editorconfig",
+      ".prettierrc",
+      ".prettierignore",
+      ".vale.ini",
+      "README.md",
+      "LICENSE",
+      "CONTRIBUTING.md",
+      "CHANGELOG.md",
+      ".github/**",
+      ".husky/**",
+      "apps/**",
+      "packages/**",
+      "scripts/**",
+    ],
+    exclude: [
+      "_registry/**",
+      "node_modules/**",
+      ".git/**",
+      "dist/**",
+      ".turbo/**",
+    ],
+    // Per-extension override of the inferred `type`:
+    typeOverrides: {
+      "pnpm-workspace.yaml": "template:config",
+    },
+  },
+})
+```
+
+The author also adds a `build` script to the repo's root `package.json`:
+
+```jsonc
+{
+  "scripts": {
+    "build": "registry-builder build"
+  },
+  "devDependencies": {
+    "@workspace/registry-builder": "workspace:*"
+  }
+}
+```
+
+### Output
+
+Running `pnpm build` produces `deesse-template.json` at the repo root:
+
+```jsonc
+{
+  "$schema": "https://registry.deessejs.com/schema/template/v2.json",
+  "name": "package-template",
+  "title": "TypeScript Package Template",
+  "type": "template:app",
+  "version": "1.0.0",
+  "author": "deessejs",
+  "description": "Minimal pnpm + Turborepo monorepo.",
+  "license": "MIT",
+  "category": "library",
+  "labels": ["typescript", "monorepo", "pnpm", "turborepo"],
+  "source": { "repo": "deessejs/package-template" },
+  "requires": { "runtime": "node", "packageManager": "pnpm@9" },
+  "prompts": [
+    {
+      "name": "includeExampleApp",
+      "type": "confirm",
+      "message": "Include example app (apps/app)?",
+      "default": true
+    }
+  ],
+  "hooks": { "postInit": ["pnpm install"] },
+  "files": [
+    { "path": "package.json",            "type": "template:config" },
+    { "path": "pnpm-workspace.yaml",     "type": "template:config" },
+    { "path": "turbo.json",              "type": "template:config" },
+    // ... 142 more entries, emitted from the glob walk ...
+    { "path": "apps/app/package.json",   "type": "template:config", "when": "includeExampleApp" },
+    { "path": "apps/app/src/index.ts",   "type": "template:source", "when": "includeExampleApp" },
+    // ...
+  ]
+}
+```
+
+### Pipeline steps
+
+The builder runs four steps in order:
+
+1. **Resolve config.** Load `_registry/config.ts` via `tsx` (or `jiti` if monorepos already use it). Validate against a `defineTemplate` schema that mirrors `TemplateV2` minus `files` (which is the part being generated).
+2. **Walk the source tree.** For each `include` glob, enumerate matches via `fast-glob` against the repo root, minus the `exclude` set. Skip dotfiles unless the user explicitly included them.
+3. **Infer `type` per file.** Map extension to `FileType`:
+   - `.json`, `.yaml`, `.yml`, `.toml`, `.lock`, `.npmrc`, `.editorconfig` → `template:config`
+   - `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs` → `template:source`
+   - `.css`, `.scss`, `.sass`, `.pcss` → `template:style`
+   - `.test.ts`, `.spec.ts`, `.test.tsx`, `.spec.tsx` → `template:test`
+   - `.md`, `.mdx`, `.txt` → `template:doc`
+   - `.env*`, `.env.*` → `template:env`
+   - images / fonts / binaries → `template:asset`
+   - other → `template:file`
+   - Apply `typeOverrides[path]` first if present.
+4. **Apply `prompts[].excludes`.** For each `confirm` prompt with `default: true` and `excludes: [".../..."]`, mark every file matching the glob with `when: "<prompt-name>"`. Confirm prompts with `default: false` flip the sense: `when` is set when the answer is truthy.
+5. **Validate + write.** Run the resulting descriptor through `@workspace/contracts/v2#TemplateV2.safeParse`. On success, write `deesse-template.json` to disk. On failure, exit non-zero with a path-prefixed list of validation errors.
+
+The CLI's `when` filter (per [ADR-032 §"Conditional files"](./ADR-032-deesse-template.json)) consumes the generated `when` fields at install time; the builder and CLI share the same Zod schema, so the `when` field round-trips.
+
+## Consequences
+
+**Positive**
+
+- Author writes a globs-and-config source. Builder walks. The `files[]` is always exhaustive and current.
+- `excludes` declaratively ties file gating to prompt answers. Hand-authoring `when` on every file is replaced by one `excludes: [...]` on the relevant prompt.
+- The descriptor stays the wire format defined by [ADR-032](./ADR-032-deesse-template.json). Runtime consumers (server, SDK, CLI) are unchanged.
+- A registry-builder pipeline isolates the complexity: the schema layer (contracts) and the wiring layer (API, SDK, CLI) do not need to know about globs.
+- Aligns with [shadcn build](https://ui.shadcn.com/docs/registry/registry-item.json), the de-facto reference model.
+
+**Negative**
+
+- Templates now require a build step before publishing. Authors who skip it ship a stale or missing descriptor.
+- The `_registry/config.ts` is TypeScript, not JSON. The registry cannot author it on behalf of the user; it is the author's responsibility.
+- The builder must be added to every template repo's `devDependencies`. CI must run `pnpm build` on PRs touching the source tree.
+- A new package to maintain (`@workspace/registry-builder`).
+
+**Neutral**
+
+- The wire format is unchanged. Hand-authored `deesse-template.json` files still work; the builder is opt-in by format.
+- The CLI does not need to know whether a descriptor was hand-authored or builder-generated.
+
+## Alternatives considered
+
+### Option A — Hand-author only (status quo)
+
+Keep ADR-032 as-is. Authors list files by hand. **Rejected**: 145-entry descriptors are unmaintainable, and `package-template`-class templates stay impractical.
+
+### Option B — Globs on the wire (`files.include` / `files.exclude`)
+
+Make the descriptor itself support globs. The CLI walks the source repo at install time. **Rejected**: forces every consumer (CLI, future SDK, server-side preview) to ship a `fast-glob` + walk the repo. The wire format should be flat and explicit; the walk belongs to the build pipeline, not the runtime.
+
+### Option C — Server-side build on fetch
+
+Skip the build step in repos. The API server fetches `deesse-template.json` (or its absence), then walks the GitHub contents API to enumerate files. **Rejected**: couples the API to GitHub's contents API (auth, rate limits); bloats the server's responsibilities; doesn't help non-GitHub sources.
+
+### Option D — JSON config (not TypeScript)
+
+Make `_registry/config.json` instead of `.ts`. **Rejected**: a JSON config can't import helpers (`defineTemplate`) and the type-safety is lost. shadcn's `components.json` is JSON precisely because it has no logic; ours has prompts with `excludes` and per-extension type maps — that's logic.
+
+## Migration
+
+1. Add the `@workspace/registry-builder` package to the workspace. ~250 LOC + 80 LOC tests.
+2. Add a CI workflow on the `deessejs/*` template repos that runs `pnpm build` on push and surfaces a failing descriptor-validation check.
+3. Author `deesse-template.json` for `deessejs/package-template` via the new pipeline (1 PR upstream).
+4. Backfill the remaining catalogue entries (`saas-template`, `landing-template`, etc.) in subsequent PRs.
+5. Document the workflow in the DeesseJS docs site (1 PR docs).
+
+## References
+
+- [ADR-032: deesse-template.json](./ADR-032-deesse-template.json) — the wire format the builder emits.
+- [ADR-031: deesse.json](./ADR-031-deesse-json) — the consumer-side config the scaffolded project receives.
+- [ADR-036: contract evolution](./ADR-036-contract-evolution) — closed-enum invariance the builder must respect.
+- [shadcn registry-item.json](https://ui.shadcn.com/docs/registry/registry-item.json) — the reference model this ADR ports.
+- [shadcn-ui/ui repository](https://github.com/shadcn-ui/ui) — example source layout (`apps/v4/registry/new-york-v4/blocks/...`).
+- [PR #137](https://github.com/deessejs/deessejs/pull/137) — where the SDK + registry changes that consume this descriptor land.

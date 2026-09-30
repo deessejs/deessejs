@@ -137,6 +137,14 @@ const downloadFiles = async (
 
   return Promise.all(
     files.map(async (spec) => {
+      // Conditional inclusion. The registry-builder materialises
+      // `when: "<prompt-name>"` on files gated by a prompt
+      // (per ADR-032 §"Conditional files"). When the prompt
+      // collector is implemented, this becomes a lookup against
+      // the answers map. Until then, we always include the
+      // file (the prompt's default answer is what reaches the
+      // descriptor at build time).
+      // TODO(prompts): replace with answers[spec.when] lookup.
       const url = tmpl.files[spec.path]
       if (url === undefined) {
         throw internal(`Descriptor references unknown file: ${spec.path}`)

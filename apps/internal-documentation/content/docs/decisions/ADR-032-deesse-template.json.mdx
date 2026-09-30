@@ -466,7 +466,7 @@ Path to a Markdown document inside the template repo. The CLI renders this when 
 
 **Type**: array of prompt objects. **Optional.
 
-Interactive questions the CLI asks the user at install time. Each prompt has a `name`, `type`, `message`, `default`, optional `when`, optional `validate`, and optional `consumes[]`. The answers may be routed to project-side targets via `consumes[]` (see below) or consumed in-memory by `hooks{}`.
+Interactive questions the CLI asks the user at install time. Each prompt has a `name`, `type`, `message`, `default`, optional `when`, optional `validate`, optional `consumes[]`, and optional `excludes[]`. The answers may be routed to project-side targets via `consumes[]` (see below) or consumed in-memory by `hooks{}`.
 
 **Schema**:
 
@@ -480,8 +480,14 @@ interface Prompt {
   validate?: string;        // regex string (POSIX extended), optional
   when?: string;            // sandboxed DSL expression, optional
   consumes?: Consume[];     // explicit routing, optional
+  excludes?: string[];      // glob patterns removed from files[] when the
+                            // prompt's answer is falsy. See ADR-032 §"Prompt-driven
+                            // file gating". Processed by the build pipeline,
+                            // not at install time.
 }
 ```
+
+**Prompt-driven file gating — `excludes[]`.** Each prompt may declare glob patterns that are **removed from the generated `files[]`** when the answer is falsy. The build pipeline (per [ADR-038](./ADR-038-registry-builder)) applies this before publishing: a `confirm` prompt with `default: true` and `excludes: ["apps/app/**"]` produces a descriptor where every file matching `apps/app/**` carries `when: "<prompt-name>"`. The CLI's `when` filter then gates the install at runtime. Two equivalent mechanisms — the prompt declares the intent declaratively, the file carries the gate explicitly. The hand-authored path skips this: an author who writes a 30-file descriptor by hand adds `when` to the relevant entries and ignores `excludes`.
 
 **Examples**:
 
@@ -649,7 +655,12 @@ interface FileSpec {
   target?: string;    // destination path, with @* placeholders (see below)
   transform?: "rename" | "interpolate" | "remove" | "merge";
   overwrite?: boolean; // default: false. See [ADR-033 Decision #7](./ADR-033-deessejs-add.mdx).
+  when?: string;      // name of a prompt; file is included only if the prompt's
+                      // answer is truthy. See ADR-032 §"Conditional files".
 }
+```
+
+**Conditional files — `when` clause.** A file with `when: "<prompt-name>"` is included in the install only if the user's answer to that prompt is truthy. The `when` clause references a `prompts[].name` from the same descriptor. The CLI's load gate (`f.when && !answers[f.when]` skip) is the only consumer of the field; the server and SDK ignore it. Default prompts are resolved by the build pipeline (per [ADR-038](./ADR-038-registry-builder)) before the descriptor is published, so consumers see a stable `files[]`. The `when` field is optional and absent from hand-authored descriptors that don't need gating.
 
 type FileType =
   | "template:env"     // .env.example, .env.local — environment configuration
