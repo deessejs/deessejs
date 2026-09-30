@@ -25,6 +25,8 @@ import {
 
 import { cn } from "@workspace/ui/lib/utils"
 
+import { DotGrid } from "../../../(marketing)/_components/dot-grid"
+
 /**
  * Cluster-driven capabilities section for use-case pages.
  *
@@ -179,10 +181,7 @@ export function CapabilityClustersSection({
                   in the column's far corner. The dots are the
                   page's "there's more here" texture; the mockup
                   is the corner you can see. */}
-              <div
-                aria-hidden
-                className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[12px_12px] opacity-60"
-              />
+              <DotGrid aria-hidden className="absolute inset-0" />
               <MockupFrame
                 clusterId={cluster.id}
                 className={cn(

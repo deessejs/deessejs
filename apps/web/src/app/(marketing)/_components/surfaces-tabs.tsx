@@ -17,6 +17,8 @@ import {
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
 
+import { DotGrid } from "./dot-grid"
+
 /**
  * Tabbed view of the four core surfaces in the registry: SaaS, AI
  * agents, Mobile, Desktop. Each surface is rendered as a vertical
@@ -149,7 +151,7 @@ export function SurfacesTabs() {
             aria-hidden
             className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] bg-muted/40 border border-border overflow-hidden"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[12px_12px] opacity-60" />
+            <DotGrid className="absolute inset-0" />
           </div>
         </TabsContent>
       ))}
