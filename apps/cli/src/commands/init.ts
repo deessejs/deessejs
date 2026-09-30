@@ -35,7 +35,12 @@ import {
   parseError,
   targetExists,
 } from "../errors/index.js"
-import { printError, printJson } from "../output/index.js"
+import {
+  buildInstallPlan,
+  printError,
+  printInstallPlan,
+  printJson,
+} from "../output/index.js"
 import {
   detectPackageManager,
   getInstallCommand,
@@ -176,6 +181,10 @@ export const initCommand = new Command("init")
   )
   .option("--no-install", "skip the install step")
   .option("--force", "overwrite target directory if it exists")
+  .option(
+    "--dry-run",
+    "preview the install plan without writing files or running installs",
+  )
   .option("--json", "JSON output for scripting")
   .action(
     async (
@@ -186,6 +195,7 @@ export const initCommand = new Command("init")
         ref?: string
         install: boolean
         force?: boolean
+        dryRun?: boolean
         json?: boolean
       },
     ) => {
@@ -213,6 +223,21 @@ export const initCommand = new Command("init")
           process.cwd(),
           opts.dir ?? `./${defaultDirName}`,
         )
+
+        // 2.5. Dry-run — build the plan, print or JSON it, exit.
+        // The plan reads descriptor fields but does NOT download
+        // files, write to disk, or run installs. The `existsSync`
+        // check below is bypassed: in dry-run mode a non-empty
+        // target dir is a *warning*, not an error.
+        if (opts.dryRun) {
+          const plan = buildInstallPlan(tmpl.descriptor, slug, dir)
+          if (opts.json) {
+            printJson({ ok: true, dryRun: true, plan })
+          } else {
+            printInstallPlan(plan)
+          }
+          return
+        }
 
         // 3. Check target directory
         const { existsSync } = await import("node:fs")
