@@ -71,14 +71,54 @@ describe("deessejs template (integration)", () => {
     const path = join(sandbox, "deesse-template.json")
     writeFileSync(path, JSON.stringify(invalid))
 
-    await expect(
-      withCwd(sandbox, async () =>
+    let capturedStdout = ""
+    let exitCode = -1
+    try {
+      await withCwd(sandbox, async () =>
         invoke({
           cwd: sandbox,
           args: ["template", "validate", path],
         }),
-      ),
-    ).rejects.toThrow(/validation/i)
+      )
+    } catch (err) {
+      capturedStdout = (err as { stdout?: string }).stdout ?? ""
+      exitCode = (err as { exitCode?: number }).exitCode ?? -1
+    }
+
+    // `validate` is a read-only command: it prints the human-
+    // readable error to stdout (per validate.ts), then exits
+    // non-zero. The exit code being non-zero is the load-
+    // bearing assertion; the message shape is asserted in the
+    // unit test.
+    expect(capturedStdout).toMatch(/validation/i)
+    expect(exitCode).not.toBe(0)
+  })
+
+  it("validate surfaces a clean 'does not exist' message (not 'unexpected internal error')", async () => {
+    // Regression: the last-resort error handler in `src/index.ts`
+    // used to format any CliError as `Internal error: <message>`,
+    // hiding the structured Error/Hint/Code from the user. After
+    // the fix that branches on `instanceof CliError`, the user
+    // should see the proper message — here, "does not exist" —
+    // not the generic wrapper. `validate` writes the message to
+    // stdout (not stderr) before exiting — see apps/cli/src/
+    // commands/template/validate.ts.
+    let capturedStdout = ""
+    let capturedStderr = ""
+    try {
+      await withCwd(sandbox, async () =>
+        invoke({
+          cwd: sandbox,
+          args: ["template", "validate"], // no path → defaults to ./deesse-template.json
+        }),
+      )
+    } catch (err) {
+      capturedStdout = (err as { stdout?: string }).stdout ?? ""
+      capturedStderr = (err as { stderr?: string }).stderr ?? ""
+    }
+    const combined = capturedStdout + capturedStderr
+    expect(combined).toContain("does not exist")
+    expect(combined).not.toContain("unexpected internal error")
   })
 
   it("validate --json emits machine-readable error output", async () => {
@@ -101,14 +141,12 @@ describe("deessejs template (integration)", () => {
           ),
       )
     } catch (err) {
-      // The thrown error carries stdout/stderr as fields.
       captured = (err as { stdout?: string }).stdout ?? ""
     }
 
-    // Even if we don't capture stdout, the throw path should
-    // round-trip. The shape of the JSON we emit is asserted by
-    // the unit test in apps/cli/test/unit/template-validate.test.ts.
-    expect(captured === "" || captured.includes('"ok": false')).toBe(true)
+    // `validate --json` writes the payload to stdout, then exits
+    // non-zero. The shape of the JSON is what we care about.
+    expect(captured).toContain('"ok": false')
   })
 
   it("new exits with the 'not yet implemented' message", async () => {

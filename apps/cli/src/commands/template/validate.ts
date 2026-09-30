@@ -27,8 +27,8 @@ import pc from "picocolors"
 
 import { TemplateV2 as TemplateV2Schema } from "@workspace/contracts/v2"
 
-import { internal } from "../../errors/index.js"
-import { printError, printJson } from "../../output/index.js"
+import { EXIT_ERROR } from "../../constants/exit.js"
+import { printJson } from "../../output/index.js"
 
 type ValidateOutcome = {
   path: string
@@ -98,63 +98,64 @@ export const validateCommand = new Command("validate")
     (
       paths: readonly string[],
       opts: { json?: boolean },
-    ): void => {
-      try {
-        // Default to ./deesse-template.json in the current dir.
-        // ADR-034 §2 — the first invocation of `template validate`
-        // should require zero arguments to validate the canonical
-        // descriptor at the repo root.
-        const targets =
-          paths.length === 0 ? ["./deesse-template.json"] : paths
+    ): never => {
+      // `validate` is a read-only command. It reports its own
+      // errors to stderr in human mode and to stdout in JSON
+      // mode, then exits with `EXIT_ERROR` on failure. We do
+      // NOT throw a CliError: that path goes through the
+      // top-level `catch` in `src/index.ts` and would double-
+      // report the same failure to the user (once as the
+      // human-format output below, once as the generic
+      // `Internal error: …` line from the last-resort handler).
+      //
+      // ADR-034 §2 — the first invocation of `template validate`
+      // should require zero arguments to validate the canonical
+      // descriptor at the repo root.
+      const targets =
+        paths.length === 0 ? ["./deesse-template.json"] : paths
 
-        const outcomes = targets.map(validateFile)
-        const ok = outcomes.every((o) => o.ok)
-        const allErrors = outcomes.flatMap((o) =>
-          o.ok
-            ? []
-            : o.errors.map((e) => ({ file: o.path, path: e.path, message: e.message })),
+      const outcomes = targets.map(validateFile)
+      const ok = outcomes.every((o) => o.ok)
+      const allErrors = outcomes.flatMap((o) =>
+        o.ok
+          ? []
+          : o.errors.map((e) => ({
+              file: o.path,
+              path: e.path,
+              message: e.message,
+            })),
+      )
+
+      if (opts.json) {
+        printJson({
+          ok,
+          checked: outcomes.length,
+          errors: allErrors,
+        })
+      } else if (ok) {
+        const n = outcomes.length
+        console.log(
+          pc.green(`✓ ${n} descriptor${n === 1 ? "" : "s"} validated`),
         )
-
-        if (opts.json) {
-          printJson({
-            ok,
-            checked: outcomes.length,
-            errors: allErrors,
-          })
-        } else if (ok) {
-          const n = outcomes.length
+      } else {
+        console.log(
+          pc.red(
+            `✗ ${allErrors.length} validation error${allErrors.length === 1 ? "" : "s"}`,
+          ),
+        )
+        for (const err of allErrors) {
           console.log(
-            pc.green(`✓ ${n} descriptor${n === 1 ? "" : "s"} validated`),
+            `  ${pc.dim(err.file)} ${pc.cyan(err.path)} ${err.message}`,
           )
-        } else {
-          console.log(
-            pc.red(`✗ ${allErrors.length} validation error${allErrors.length === 1 ? "" : "s"}`),
-          )
-          for (const err of allErrors) {
-            console.log(
-              `  ${pc.dim(err.file)} ${pc.cyan(err.path)} ${err.message}`,
-            )
-          }
         }
-
-        // Use the same CLI exit-code path as other commands.
-        if (!ok) {
-          throw internal(`Validation failed for ${allErrors.length} field${allErrors.length === 1 ? "" : "s"}`)
-        }
-      } catch (err) {
-        if (err instanceof Error && err.name === "CliError") {
-          if (opts.json) {
-            printJson({
-              ok: false,
-              code: (err as { code?: string }).code,
-              message: err.message,
-            })
-          } else {
-            printError(err as Parameters<typeof printError>[0])
-          }
-          process.exit(1)
-        }
-        throw err
       }
+
+      if (!ok) {
+        process.exit(EXIT_ERROR)
+      }
+      // Commander's `.action()` returns `void` by convention, but
+      // this handler always exits or succeeds — make the type
+      // system aware so we can drop the catch wrapper.
+      process.exit(0)
     },
   )
