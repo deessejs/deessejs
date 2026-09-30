@@ -104,7 +104,15 @@ export type RegistryClientOptions = {
  *
  * Each variant carries the minimum context to act on the failure:
  *
- *   - `RegistryNotFound` — slug does not exist in the catalog.
+ *   - `RegistryNotFound` — slug could not be resolved to a known
+ *     repository reference (malformed slug, unknown short name).
+ *   - `RegistryIncompatibleTemplate` — the slug resolved to a real
+ *     GitHub repository, but that repository does not ship a valid
+ *     `deesse-template.json` at its root. This is a USER-FACING
+ *     failure: the source exists, but it cannot be consumed by the
+ *     DeesseJS registry. `cause` distinguishes `missing_descriptor`
+ *     (file absent) from `invalid_descriptor` (file present but
+ *     fails Zod validation).
  *   - `RegistryFetchFailed` — upstream provider (GitHub/R2) failed;
  *     the API could not satisfy the request.
  *   - `RegistryInvalidDescriptor` — the descriptor returned by the
@@ -119,6 +127,12 @@ export type RegistryClientOptions = {
  */
 export type RegistryFailure =
   | { readonly _tag: "RegistryNotFound"; readonly slug: string }
+  | {
+      readonly _tag: "RegistryIncompatibleTemplate"
+      readonly slug: string
+      readonly repo: string
+      readonly cause: "missing_descriptor" | "invalid_descriptor"
+    }
   | {
       readonly _tag: "RegistryFetchFailed"
       readonly slug: string

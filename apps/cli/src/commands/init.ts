@@ -47,6 +47,26 @@ import { spawn } from "../utils/spawn.js"
  *
  * The CLI has its own typed errors (`@deessejs/errors`) so the
  * downstream rendering (printError, exit codes) keeps working.
+ *
+ * Each case maps a single `_tag` from the SDK's discriminated union
+ * to the closest CLI error. The mapping is intentionally narrow:
+ * the CLI's user-facing copy is the contract. Adding a new
+ * `RegistryFailure` variant is breaking — both this function and
+ * its TypeScript exhaustiveness check must be updated in the same
+ * change.
+ *
+ * Special case — `RegistryIncompatibleTemplate`:
+ *   The server returned 422 because the resolved GitHub repository
+ *   exists but does not ship a `deesse-template.json`. The CLI uses
+ *   the `repo` field (resolved `owner/repo`) instead of the user's
+ *   original `slug` because the user often types a short alias
+ *   (`saas-starter`) and the actual repo (`deessejs/saas-template`)
+ *   is what they need to fix on GitHub.
+ *
+ *   Two sub-messages depending on `cause`:
+ *     - `missing_descriptor`: the file is absent. Action: add it.
+ *     - `invalid_descriptor`: the file is present but fails Zod.
+ *       Action: fix it against `TemplateV2`.
  */
 const toCliError = (
   failure: RegistryFailure,
@@ -55,6 +75,19 @@ const toCliError = (
   switch (failure._tag) {
     case "RegistryNotFound":
       return notFound(slug, [] as string[])
+    case "RegistryIncompatibleTemplate": {
+      const repo = failure.repo !== "" ? failure.repo : slug
+      if (failure.cause === "missing_descriptor") {
+        return new Error(
+          `Incompatible template: ${repo} exists on GitHub but does not ship a deesse-template.json at its root.\n` +
+            `Add a deesse-template.json descriptor to make it a DeesseJS template.`,
+        )
+      }
+      return new Error(
+        `Incompatible template: ${repo} ships a deesse-template.json but it fails Zod validation.\n` +
+          `Check that the descriptor matches the TemplateV2 schema.`,
+      )
+    }
     case "RegistryAuthRequired":
       return new Error("This template requires authentication.")
     case "RegistryInvalidDescriptor":

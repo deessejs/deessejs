@@ -33,6 +33,58 @@ const FETCH_DESCRIPTOR_PATH = "/api/v1/registry/fetch-descriptor"
 const CATALOG_PATH = "/api/v1/registry/catalog"
 
 /**
+ * Parse a 422 body and translate it into a typed
+ * `RegistryIncompatibleTemplate` failure.
+ *
+ * The server's body is `{ error, code, cause, repo }` where:
+ *   - `code` is the stable machine-readable discriminator
+ *     (`"incompatible_template"`).
+ *   - `cause` is `"missing_descriptor"` when the file is absent at
+ *     the repo root, or `"invalid_descriptor"` when the file exists
+ *     but fails Zod validation (malformed JSON or schema drift).
+ *   - `repo` is the resolved GitHub `owner/repo` pair. Optional,
+ *     but the server always emits it when it knows the answer.
+ *
+ * Defensive behaviour:
+ *   - Non-JSON bodies fall through to `missing_descriptor` (the
+ *     default — most common cause of a 422 is "the file isn't
+ *     there").
+ *   - An unknown `cause` value is coerced to `missing_descriptor`
+ *     rather than rejected — the wire contract may evolve, and the
+ *     SDK should not fail to surface the failure just because the
+ *     server added a new cause value.
+ *   - A missing `repo` falls back to the original `slug` so the
+ *     consumer still has something to log.
+ *
+ * Returns `Result<never, RegistryFailure>` — this helper only
+ * produces errors, never successes.
+ */
+const parseIncompatibleAnswer = async (
+  response: Response,
+  slug: string,
+): Promise<Result<never, RegistryFailure>> => {
+  let payload: { code?: unknown; cause?: unknown; error?: unknown; repo?: unknown } = {}
+  try {
+    payload = (await response.json()) as typeof payload
+  } catch {
+    // Body wasn't parseable; fall through with empty object.
+  }
+  const causeRaw = payload.cause
+  const causeValue: "missing_descriptor" | "invalid_descriptor" =
+    causeRaw === "invalid_descriptor" ? "invalid_descriptor" : "missing_descriptor"
+  const repoValue =
+    typeof payload.repo === "string" && payload.repo.length > 0
+      ? payload.repo
+      : slug
+  return errResult<RegistryFailure>({
+    _tag: "RegistryIncompatibleTemplate",
+    slug,
+    repo: repoValue,
+    cause: causeValue,
+  })
+}
+
+/**
  * Resolve a path against the API base URL.
  *
  * Throws (does NOT return a Result) because a malformed `apiUrl` is
@@ -62,6 +114,9 @@ const parseDescriptorResponse = async (
 ): Promise<Result<FetchedTemplate, RegistryFailure>> => {
   if (response.status === 404) {
     return errResult<RegistryFailure>({ _tag: "RegistryNotFound", slug })
+  }
+  if (response.status === 422) {
+    return parseIncompatibleAnswer(response, slug)
   }
   if (response.status === 401 || response.status === 403) {
     return errResult<RegistryFailure>({
@@ -275,6 +330,9 @@ const parseInfoResponse = async (
 ): Promise<Result<TemplateInfo, RegistryFailure>> => {
   if (response.status === 404) {
     return errResult<RegistryFailure>({ _tag: "RegistryNotFound", slug })
+  }
+  if (response.status === 422) {
+    return parseIncompatibleAnswer(response, slug)
   }
   if (response.status === 401 || response.status === 403) {
     return errResult<RegistryFailure>({

@@ -100,6 +100,18 @@ const jsonResponse = (status: number, body: unknown): Response =>
     headers: { "content-type": "application/json" },
   })
 
+/**
+ * Shared 422 payload for "missing_descriptor" responses. Extracted
+ * to avoid sonarjs/no-duplicated-branches between the descriptor
+ * mock and the info mock.
+ */
+const incompatibleMissingPayload = {
+  error: "incompatible template",
+  code: "incompatible_template",
+  cause: "missing_descriptor",
+  repo: "deessejs/no-descriptor",
+} as const
+
 const mockResponder = (req: CapturedRequest): Response => {
   // /catalog endpoint
   if (req.url.endsWith("/api/v1/registry/catalog")) {
@@ -131,6 +143,8 @@ const mockResponder = (req: CapturedRequest): Response => {
         return jsonResponse(200, { title: "missing fields" })
       case "network-error-slug":
         throw new TypeError("fetch failed: ECONNRESET")
+      case "incompatible-info-slug":
+        return jsonResponse(422, incompatibleMissingPayload)
       default:
         return jsonResponse(200, {
           slug,
@@ -177,6 +191,24 @@ const mockResponder = (req: CapturedRequest): Response => {
 
     case "upstream-error-slug":
       return jsonResponse(502, { error: "upstream GitHub down" })
+
+    case "incompatible-missing-slug":
+      return jsonResponse(422, incompatibleMissingPayload)
+
+    case "incompatible-invalid-slug":
+      return jsonResponse(422, {
+        error: "incompatible template",
+        code: "incompatible_template",
+        cause: "invalid_descriptor",
+        repo: "deessejs/bad-descriptor",
+      })
+
+    case "incompatible-empty-body-slug":
+      // Server emits 422 but no JSON body — defensive path.
+      return new Response("not json", { status: 422 })
+
+    case "info-incompatible-missing-slug":
+      return jsonResponse(422, incompatibleMissingPayload)
 
     default:
       return jsonResponse(200, {
@@ -276,6 +308,56 @@ describe("RegistryClient — mock fetch", () => {
     }
   })
 
+  it("getTemplate returns RegistryIncompatibleTemplate on 422 missing_descriptor", async () => {
+    const { fetchImpl } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.getTemplate("incompatible-missing-slug")
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryIncompatibleTemplate")
+      if (result.error._tag === "RegistryIncompatibleTemplate") {
+        expect(result.error.cause).toBe("missing_descriptor")
+        expect(result.error.repo).toBe("deessejs/no-descriptor")
+      }
+    }
+  })
+
+  it("getTemplate returns RegistryIncompatibleTemplate on 422 invalid_descriptor", async () => {
+    const { fetchImpl } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.getTemplate("incompatible-invalid-slug")
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryIncompatibleTemplate")
+      if (result.error._tag === "RegistryIncompatibleTemplate") {
+        expect(result.error.cause).toBe("invalid_descriptor")
+      }
+    }
+  })
+
+  it("getTemplate tolerates a non-JSON 422 body (defensive path)", async () => {
+    const { fetchImpl } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.getTemplate("incompatible-empty-body-slug")
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryIncompatibleTemplate")
+      if (result.error._tag === "RegistryIncompatibleTemplate") {
+        // Falls back to missing_descriptor when cause is unparseable.
+        expect(result.error.cause).toBe("missing_descriptor")
+      }
+    }
+  })
+
   it("info returns Ok with template metadata for a valid slug", async () => {
     const { fetchImpl } = makeMockFetch(mockResponder)
     const client = createClient({
@@ -329,6 +411,19 @@ describe("RegistryClient — mock fetch", () => {
     expect(result._tag).toBe("Err")
     if (result._tag === "Err") {
       expect(result.error._tag).toBe("RegistryNetworkError")
+    }
+  })
+
+  it("info returns RegistryIncompatibleTemplate on 422", async () => {
+    const { fetchImpl } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.info("incompatible-info-slug")
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryIncompatibleTemplate")
     }
   })
 

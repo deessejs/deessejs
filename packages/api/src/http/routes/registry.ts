@@ -17,50 +17,91 @@
  *     follow the same REST pattern.
  *
  * Source strategy (V1):
- *   - The catalogue is served from a static `TEMPLATES` constant
- *     declared in `templates.ts`. No network call.
- *   - `fetch-descriptor` and `info` resolve the slug to a GitHub
- *     `owner/repo`, then read `deesse-template.json` from
- *     `raw.githubusercontent.com`. This is the V1 single-source
- *     strategy. R2 + auth-gated templates land in V2.
+ *   - Any GitHub repository with a valid `deesse-template.json` at
+ *     its root is a valid template source. The registry resolves
+ *     three slug shapes via `registry-resolver.ts`:
  *
- * Errors:
- *   - 404 when the slug is unknown.
- *   - 404 when the GitHub source returns 404 (the descriptor file
- *     doesn't exist yet for this template).
- *   - 502 when the upstream is unreachable / rate-limited.
- *   - 500 when the descriptor exists but fails Zod validation.
+ *       1. Bare slug in the editorial `TEMPLATES` constant
+ *          (e.g. `saas-starter` → `deessejs/saas-template`)
+ *       2. `owner/repo` shorthand (e.g. `vercel/next.commerce`)
+ *       3. GitHub URL — HTTPS or SSH
+ *
+ *   - A repository that exists on GitHub but does NOT ship a
+ *     valid `deesse-template.json` returns 422
+ *     `incompatible_template` with a `cause` discriminator of
+ *     `missing_descriptor` or `invalid_descriptor`. The CLI
+ *     surfaces this as `RegistryIncompatibleTemplate` and exits
+ *     with a clear message. There is no implicit `git clone`
+ *     fallback — the descriptor is the contract, and the contract
+ *     must be present.
+ *
+ *   - `fetch-descriptor` and `info` always resolve through the
+ *     same path; the catalogue is an editorial convenience, NOT a
+ *     whitelist. This is what unlocks "init any GitHub repo that
+ *     ships a deesse-template.json".
+ *
+ * Error vocabulary (status → wire shape):
+ *   - 400 — malformed slug (e.g. non-github URL): body has
+ *     `{ error, host }`.
+ *   - 404 — slug unparseable as a GitHub reference: body has
+ *     `{ error }`. SDK translates to `RegistryNotFound`.
+ *   - 422 — source exists yet descriptor is missing or invalid:
+ *     body has `{ error, code: "incompatible_template",
+ *     cause: "missing_descriptor" | "invalid_descriptor", repo }`.
+ *     SDK translates to `RegistryIncompatibleTemplate`.
+ *   - 502 — upstream unreachable / rate-limited: body has
+ *     `{ error }`. SDK translates to `RegistryFetchFailed`.
+ *
+ * Authentication (V2): none. The route is public; gating paid
+ * templates lives on a separate auth-protected route group.
  */
 
-import { TemplateV2Schema, type TemplateV2 } from "@workspace/contracts/v2"
+import { TemplateV2 as TemplateV2Schema, type TemplateV2 } from "@workspace/contracts/v2"
 import { logger } from "../../constants/logger.js"
-import { TEMPLATES, type RegistryEntry } from "../../templates.js"
+import { TEMPLATES } from "../../templates.js"
 import type { ApiEnv } from "../env.js"
 import type { Hono } from "hono"
 
-/**
- * Resolve a slug to its registry entry. Returns `null` if the slug
- * is unknown. Used by all three endpoints below.
- */
-const findEntry = (slug: string): RegistryEntry | null =>
-  TEMPLATES.find((t) => t.slug === slug) ?? null
+import {
+  resolveSource,
+  type ResolvedRepo,
+  type ResolvedSource,
+} from "./registry-resolver.js"
 
 /**
- * Fetch `deesse-template.json` from GitHub raw for the given entry.
+ * Fetch `deesse-template.json` from GitHub raw for the resolved repo.
  *
- * Returns the raw text on success, or `null` if the upstream returns
- * 404. Network errors / non-404 upstream statuses are surfaced as
- * a thrown Error so the caller can translate to a 502.
+ * Returns `{ text, ref }` on success (the ref actually used, which
+ * is the caller's input or "main" by default) or `null` when the
+ * upstream responds 404. Network errors and non-404 upstream
+ * statuses are surfaced as thrown `Error` so the caller can
+ * translate them to a 502.
+ *
+ * Why we don't use the GitHub API for this:
+ *   - `raw.githubusercontent.com` is content-addressed and
+ *     unauthenticated (no rate limit at the level a CLI generates).
+ *   - The 404 response is the load-bearing signal: it means the
+ *     repo exists but doesn't ship the descriptor, which is what
+ *     `incompatible_template` reports. Using the GitHub API would
+ *     require distinguishing "repo missing" from "repo present,
+ *     file missing" — `raw` returns the same 404 for both, which
+ *     is fine because the error message is the same for the user.
+ *
+ * Ref resolution:
+ *   - `ref` is a tag, branch, or SHA. We pass it verbatim to GitHub
+ *     raw; the server interprets it.
+ *   - We do NOT implement `main` → `master` fallback here. A user
+ *     who needs the default branch on a repo that doesn't use `main`
+ *     must pass `--ref master` (or whichever the default is). This is
+ *     a deliberate trade-off: a fallback would be a heuristic, and
+ *     heuristics on remote metadata are the failure mode the
+ *     strict resolver avoids.
  */
 const fetchDescriptorFromGithub = async (
-  entry: RegistryEntry,
+  repo: ResolvedRepo,
   ref?: string,
 ): Promise<{ text: string; ref: string } | null> => {
-  // The repo's `deesse-template.json` is conventionally at the
-  // repo root. We don't yet encode the path in the registry entry
-  // (that comes when descriptors are split per-template); for V1
-  // we hard-code the canonical path.
-  const url = `https://raw.githubusercontent.com/${entry.owner}/${entry.repo}/${ref ?? "main"}/deesse-template.json`
+  const url = `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${ref ?? "main"}/deesse-template.json`
   const response = await fetch(url, {
     headers: { accept: "application/json" },
   })
@@ -72,16 +113,38 @@ const fetchDescriptorFromGithub = async (
 }
 
 /**
- * Convert an internal `RegistryEntry` into the SDK's
+ * Convert an internal `TEMPLATES` entry into the SDK's
  * `CatalogEntry` wire shape.
+ *
+ * Editorial metadata only — the descriptor JSON is NOT embedded.
+ * `latestVersion` is a placeholder until the descriptor is
+ * fetched; the catalogue row is marketing metadata, not a version
+ * source of truth. The wire shape requires a value, so we emit
+ * `"0.0.0"` and let the real descriptor overwrite it via
+ * `client.info(slug)` when the consumer needs the actual version.
  */
-const toCatalogEntry = (entry: RegistryEntry) => ({
+const toCatalogEntry = (entry: (typeof TEMPLATES)[number]) => ({
   slug: entry.slug,
   title: entry.name,
   ...(entry.description !== undefined ? { description: entry.description } : {}),
   layer: entry.layer,
-  latestVersion: entry.version ?? "0.0.0",
+  latestVersion: "0.0.0",
 })
+
+/**
+ * Extract the `owner/repo` pair from any resolved source.
+ *
+ * For catalogue-sourced slugs we already have the pair on the entry
+ * (the catalogue row's `owner` + `repo`). For github-sourced slugs
+ * (owner/repo shorthand or URL) the pair is already on `repo`.
+ *
+ * This collapses the two kinds of resolved source into a single
+ * shape the fetch step can consume.
+ */
+const repoFromSource = (source: ResolvedSource): ResolvedRepo =>
+  source.kind === "catalog"
+    ? { owner: source.entry.owner, repo: source.entry.repo }
+    : source.repo
 
 /**
  * Mount the three registry HTTP routes on the given Hono app.
@@ -108,22 +171,44 @@ export const mountRegistry = (api: Hono<ApiEnv>): void => {
     const slug = body.slug
     const ref = typeof body.ref === "string" ? body.ref : undefined
 
-    const entry = findEntry(slug)
-    if (entry === null) {
+    const resolved = resolveSource(slug)
+    if (!resolved.ok) {
+      if (resolved.error._tag === "unsupported_host") {
+        return c.json(
+          { error: `unsupported host: ${resolved.error.host}` },
+          400,
+        )
+      }
       return c.json({ error: `unknown slug: ${slug}` }, 404)
     }
 
+    const repo = repoFromSource(resolved.source)
+
     let raw: { text: string; ref: string } | null
     try {
-      raw = await fetchDescriptorFromGithub(entry, ref)
+      raw = await fetchDescriptorFromGithub(repo, ref)
     } catch (cause) {
-      logger.error("registry_fetch_failed", { slug, message: String(cause) })
+      logger.error("registry_fetch_failed", {
+        slug,
+        repo: `${repo.owner}/${repo.repo}`,
+        message: String(cause),
+      })
       return c.json({ error: "upstream fetch failed" }, 502)
     }
     if (raw === null) {
+      logger.warn("registry_incompatible_template", {
+        slug,
+        repo: `${repo.owner}/${repo.repo}`,
+        cause: "missing_descriptor",
+      })
       return c.json(
-        { error: `descriptor not found for ${slug}` },
-        404,
+        {
+          error: `incompatible template: ${repo.owner}/${repo.repo} does not ship a deesse-template.json`,
+          code: "incompatible_template",
+          cause: "missing_descriptor",
+          repo: `${repo.owner}/${repo.repo}`,
+        },
+        422,
       )
     }
 
@@ -131,27 +216,47 @@ export const mountRegistry = (api: Hono<ApiEnv>): void => {
     try {
       json = JSON.parse(raw.text)
     } catch (cause) {
-      logger.error("registry_invalid_descriptor", {
+      logger.error("registry_incompatible_template", {
         slug,
+        repo: `${repo.owner}/${repo.repo}`,
+        cause: "invalid_descriptor",
         message: String(cause),
       })
-      return c.json({ error: "descriptor is not valid JSON" }, 500)
+      return c.json(
+        {
+          error: `incompatible template: ${repo.owner}/${repo.repo} descriptor is not valid JSON`,
+          code: "incompatible_template",
+          cause: "invalid_descriptor",
+          repo: `${repo.owner}/${repo.repo}`,
+        },
+        422,
+      )
     }
 
     const parsed = TemplateV2Schema.safeParse(json)
     if (!parsed.success) {
-      logger.error("registry_invalid_descriptor", {
+      logger.error("registry_incompatible_template", {
         slug,
+        repo: `${repo.owner}/${repo.repo}`,
+        cause: "invalid_descriptor",
         issues: parsed.error.issues,
       })
-      return c.json({ error: "descriptor failed validation" }, 500)
+      return c.json(
+        {
+          error: `incompatible template: ${repo.owner}/${repo.repo} descriptor failed validation`,
+          code: "incompatible_template",
+          cause: "invalid_descriptor",
+          repo: `${repo.owner}/${repo.repo}`,
+        },
+        422,
+      )
     }
 
     const descriptor: TemplateV2 = parsed.data
     // Build URLs for each declared file at the resolved ref.
     const files: Record<string, string> = {}
     for (const file of descriptor.files ?? []) {
-      files[file.path] = `https://raw.githubusercontent.com/${entry.owner}/${entry.repo}/${raw.ref}/${file.path}`
+      files[file.path] = `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${raw.ref}/${file.path}`
     }
     return c.json({ descriptor, files })
   })
@@ -164,51 +269,115 @@ export const mountRegistry = (api: Hono<ApiEnv>): void => {
     if (typeof slug !== "string" || slug === "") {
       return c.json({ error: "missing slug" }, 400)
     }
-    const entry = findEntry(slug)
-    if (entry === null) {
+
+    const resolved = resolveSource(slug)
+    if (!resolved.ok) {
+      if (resolved.error._tag === "unsupported_host") {
+        return c.json(
+          { error: `unsupported host: ${resolved.error.host}` },
+          400,
+        )
+      }
       return c.json({ error: `unknown slug: ${slug}` }, 404)
     }
 
+    const repo = repoFromSource(resolved.source)
+    const catalogueEntry =
+      resolved.source.kind === "catalog" ? resolved.source.entry : null
+
     // Pull the descriptor to extract versions / labels / etc.
-    // Returns 503 if upstream is down — caller's `info()` returns
-    // a RegistryNetworkError / RegistryFetchFailed in that case.
     let raw: { text: string; ref: string } | null
     try {
-      raw = await fetchDescriptorFromGithub(entry)
+      raw = await fetchDescriptorFromGithub(repo)
     } catch (cause) {
       logger.error("registry_info_failed", {
         slug,
+        repo: `${repo.owner}/${repo.repo}`,
         message: String(cause),
       })
       return c.json({ error: "upstream fetch failed" }, 502)
     }
 
-    // If GitHub returns 404, fall back to the static catalogue
-    // entry. Better than returning an error — the consumer asked
-    // for metadata, not the full descriptor.
+    // If GitHub returns 404, surface incompatible_template so the
+    // CLI's `info` command gives a meaningful error rather than
+    // silently degrading to a partial response.
     if (raw === null) {
-      return c.json(toCatalogEntry(entry))
+      logger.warn("registry_incompatible_template", {
+        slug,
+        repo: `${repo.owner}/${repo.repo}`,
+        cause: "missing_descriptor",
+        endpoint: "info",
+      })
+      return c.json(
+        {
+          error: `incompatible template: ${repo.owner}/${repo.repo} does not ship a deesse-template.json`,
+          code: "incompatible_template",
+          cause: "missing_descriptor",
+        },
+        422,
+      )
     }
 
     let json: unknown
     try {
       json = JSON.parse(raw.text)
-    } catch {
-      return c.json(toCatalogEntry(entry))
+    } catch (cause) {
+      logger.error("registry_incompatible_template", {
+        slug,
+        repo: `${repo.owner}/${repo.repo}`,
+        cause: "invalid_descriptor",
+        message: String(cause),
+        endpoint: "info",
+      })
+      return c.json(
+        {
+          error: `incompatible template: ${repo.owner}/${repo.repo} descriptor is not valid JSON`,
+          code: "incompatible_template",
+          cause: "invalid_descriptor",
+        },
+        422,
+      )
     }
     const parsed = TemplateV2Schema.safeParse(json)
     if (!parsed.success) {
-      return c.json(toCatalogEntry(entry))
+      logger.error("registry_incompatible_template", {
+        slug,
+        repo: `${repo.owner}/${repo.repo}`,
+        cause: "invalid_descriptor",
+        issues: parsed.error.issues,
+        endpoint: "info",
+      })
+      return c.json(
+        {
+          error: `incompatible template: ${repo.owner}/${repo.repo} descriptor failed validation`,
+          code: "incompatible_template",
+          cause: "invalid_descriptor",
+        },
+        422,
+      )
     }
 
     const d = parsed.data
+    // For non-catalog sources, derive a minimal title from the
+    // repo's name when the descriptor doesn't supply one.
+    const fallbackTitle =
+      catalogueEntry?.name ??
+      d.title ??
+      d.name ??
+      `${repo.owner}/${repo.repo}`
+    const fallbackDescription =
+      catalogueEntry?.description ?? d.description
+    const fallbackLayer = catalogueEntry?.layer ?? "open-community"
+
     return c.json({
-      slug: entry.slug,
-      title: entry.name,
-      ...(entry.description !== undefined
-        ? { description: entry.description }
+      slug:
+        catalogueEntry?.slug ??
+        `${repo.owner}/${repo.repo}`,
+      title: fallbackTitle,
+      ...(fallbackDescription !== undefined
+        ? { description: fallbackDescription }
         : {}),
-      layer: entry.layer,
+      layer: fallbackLayer,
       latestVersion: d.version,
       versions: [d.version],
       ...(d.labels !== undefined ? { labels: d.labels } : {}),
