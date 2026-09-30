@@ -100,7 +100,7 @@ const SCENARIOS: ReadonlyArray<Scenario> = [
   {
     id: "initialize",
     title: "Initialize a template",
-    summary: "The agent reads AGENTS.md at the monorepo root, picks the right template from the registry, and runs 'deessejs init' for you. You watch the scaffold land and start the dev server from a clean checkout.",
+    summary: "The agent reads AGENTS.md, picks a template, and runs the init for you.",
     turns: [
       {
         id: "initialize-user-1",
@@ -135,7 +135,7 @@ const SCENARIOS: ReadonlyArray<Scenario> = [
   {
     id: "observability",
     title: "Add observability",
-    summary: "Once the project is up, ask for traces, logs, and metrics in plain language. The agent wires the observability contract end-to-end - Drizzle adapter, Sentry for Next.js, Better Stack for dashboards - without you touching a config file.",
+    summary: "Wires traces, logs, and metrics end-to-end from a single ask.",
     turns: [
       {
         id: "observability-user-1",
@@ -170,7 +170,7 @@ const SCENARIOS: ReadonlyArray<Scenario> = [
   {
     id: "swap-contract",
     title: "Swap a contract",
-    summary: "Decided to migrate off Better Auth to Clerk mid-project? Tell the agent. It reads the auth contract, verifies the new provider covers the same surface, swaps the adapter, and updates AGENTS.md and the MCP manifest - your call sites keep working.",
+    summary: "Swap a provider mid-project. Call sites keep working.",
     turns: [
       {
         id: "swap-user-1",
@@ -483,7 +483,7 @@ export function CodingAgentsDemo() {
                   <span className="text-heading-20 font-medium tracking-tight text-foreground">
                     {item.title}
                   </span>
-                  <p className="text-copy-13 text-muted-foreground">
+                  <p className="text-copy-14 leading-6 text-muted-foreground">
                     {item.summary}
                   </p>
                 </div>
