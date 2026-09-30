@@ -100,7 +100,7 @@ const SCENARIOS: ReadonlyArray<Scenario> = [
   {
     id: "initialize",
     title: "Initialize a template",
-    summary: "The agent reads AGENTS.md, picks a template, and runs the init for you.",
+    summary: "The agent reads AGENTS.md at the root, picks the right template, and runs the init for you. You start the dev server from a clean checkout.",
     turns: [
       {
         id: "initialize-user-1",
@@ -135,7 +135,7 @@ const SCENARIOS: ReadonlyArray<Scenario> = [
   {
     id: "observability",
     title: "Add observability",
-    summary: "Wires traces, logs, and metrics end-to-end from a single ask.",
+    summary: "Ask for traces, logs, and metrics in plain language. The agent wires the contract end-to-end without you touching a config file.",
     turns: [
       {
         id: "observability-user-1",
@@ -170,7 +170,7 @@ const SCENARIOS: ReadonlyArray<Scenario> = [
   {
     id: "swap-contract",
     title: "Swap a contract",
-    summary: "Swap a provider mid-project. Call sites keep working.",
+    summary: "Migrate off Better Auth to Clerk mid-project without rewriting call sites. The agent reads the contract, verifies the new provider, and swaps the adapter.",
     turns: [
       {
         id: "swap-user-1",
