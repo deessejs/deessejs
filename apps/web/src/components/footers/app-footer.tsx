@@ -9,14 +9,12 @@ const footerSections: ReadonlyArray<{
   links: ReadonlyArray<FooterLink>
 }> = [
   {
-    heading: "DeesseJS",
+    heading: "Ecosystem",
     links: [
       { label: "Errors", href: "https://errors.deessejs.com" },
       { label: "DRPC", href: "https://drpc.deessejs.com" },
       { label: "Collections", href: "https://collections.deessejs.com" },
       { label: "FP", href: "https://fp.deessejs.com" },
-      { label: "UI", href: "https://ui.deessejs.com" },
-      { label: "Admin", href: "https://admin.deessejs.com" },
     ],
   },
   {
