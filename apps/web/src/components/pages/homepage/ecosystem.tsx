@@ -51,6 +51,7 @@ export async function Ecosystem() {
       <SectionHeader
         eyebrow="The ecosystem"
         title="The tools your templates ship with"
+        subtitle="The runtime half of every contract: typed errors, durable RPC, typed collections, and functional primitives. Each one runs behind the same boundary your templates already import, so the same handler signature compiles in five frameworks and one agent."
         action={{ href: "/ecosystem", label: "See the ecosystem" }}
         bordered={true}
       />
