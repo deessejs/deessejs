@@ -41,7 +41,6 @@
     "ADR-034-template-namespace",
     "ADR-035-feature-not-subtree",
     "ADR-036-contract-evolution",
-    "ADR-037-direct-github-fallback",
-    "ADR-038-registry-builder"
+    "ADR-037-direct-github-fallback"
   ]
 }

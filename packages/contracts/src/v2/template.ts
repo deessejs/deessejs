@@ -196,15 +196,6 @@ const FileSpec = z.object({
   target: z.string().optional(),
   transform: FileTransform.optional(),
   overwrite: z.boolean().optional(),
-  /**
-   * Conditional inclusion. References a `prompts[].name`. The
-   * file is included in the install only when the prompt's
-   * answer is truthy. Materialised by the registry-builder
-   * (per ADR-038) from the corresponding `prompts[].excludes`
-   * entry; hand-authored descriptors can also use `when`
-   * directly. See ADR-032 §"Conditional files".
-   */
-  when: z.string().min(1).optional(),
 })
 
 // -- templateDependencies --------------------------------------------------
