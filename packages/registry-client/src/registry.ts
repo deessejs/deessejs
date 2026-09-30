@@ -6,16 +6,43 @@
  * `RegistryClient` whose methods close over the resolved `apiUrl`
  * and the optional `fetchImpl`.
  *
+ * ## Slug routing
+ *
+ * `createClient` parses the input slug for `getTemplate` and `info`
+ * and routes deterministically:
+ *
+ *   1. **GitHub-shaped slug** (`owner/repo`, HTTPS URL, SSH URL)
+ *      → fetched directly from `raw.githubusercontent.com` via
+ *      `github.ts`. Bypasses the API server entirely.
+ *   2. **Non-GitHub HTTPS URL** (gitlab.com, bitbucket.org, …)
+ *      → `RegistryUnsupportedSource` with `source` carrying the host
+ *      for the CLI to surface in the user message.
+ *   3. **Anything else** (catalogue slug, local path, malformed
+ *      input) → fetched from the API server via `http-client.ts`.
+ *      The server owns the catalogue lookup and the auth layer.
+ *
+ * `listTemplates` stays API-only — the catalogue is editorial
+ * metadata that lives on the server, not on GitHub.
+ *
  * The factory is the only way to construct a client — there is no
  * class to instantiate. This keeps the package's surface narrow and
  * makes mocking in tests straightforward.
  */
 
 import {
+  parseGitHubSlug,
+  type ResolvedRepo,
+} from "@workspace/contracts/shared"
+
+import {
   getInfoFromApi,
   getTemplateFromApi,
   listTemplatesFromApi,
 } from "./http-client.js"
+import {
+  getInfoFromGithub,
+  getTemplateFromGithub,
+} from "./github.js"
 import type {
   FetchedTemplate,
   FetchOptions,
@@ -25,6 +52,7 @@ import type {
   Result,
   TemplateInfo,
 } from "./types.js"
+import { err as errResult } from "./types.js"
 
 /**
  * Validate the SDK options eagerly.
@@ -71,6 +99,23 @@ export const createClient = (
       slug: string,
       fetchOptions?: FetchOptions,
     ): Promise<Result<FetchedTemplate, RegistryFailure>> {
+      const gh = parseGitHubSlug(slug)
+      if (gh.kind === "ok") {
+        return getTemplateFromGithub(
+          gh.repo.owner,
+          gh.repo.repo,
+          fetchOptions?.ref,
+          fetchImpl,
+        )
+      }
+      if (gh.kind === "unsupported_host") {
+        return errResult<RegistryFailure>({
+          _tag: "RegistryUnsupportedSource",
+          source: `unsupported_host:${gh.host}`,
+        })
+      }
+      // gh.kind === "not_github" → catalogue lookup territory; let
+      // the API server resolve it.
       return getTemplateFromApi(
         apiUrl,
         slug,
@@ -80,6 +125,16 @@ export const createClient = (
     },
 
     async info(slug: string): Promise<Result<TemplateInfo, RegistryFailure>> {
+      const gh = parseGitHubSlug(slug)
+      if (gh.kind === "ok") {
+        return getInfoFromGithub(gh.repo.owner, gh.repo.repo, fetchImpl)
+      }
+      if (gh.kind === "unsupported_host") {
+        return errResult<RegistryFailure>({
+          _tag: "RegistryUnsupportedSource",
+          source: `unsupported_host:${gh.host}`,
+        })
+      }
       return getInfoFromApi(apiUrl, slug, fetchImpl)
     },
 
@@ -88,3 +143,10 @@ export const createClient = (
     },
   }
 }
+
+/**
+ * Re-export the resolved-repo type for tests that exercise the
+ * routing. Production callers should never need this — they go
+ * through `createClient`.
+ */
+export type { ResolvedRepo }

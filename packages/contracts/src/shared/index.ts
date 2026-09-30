@@ -13,3 +13,8 @@ export {
   REPO_SLUG,
   type RepoSlug,
 } from "./refs.js"
+export {
+  parseGitHubSlug,
+  type GitHubSlugResult,
+  type ResolvedRepo,
+} from "./slug.js"

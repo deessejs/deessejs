@@ -23,7 +23,7 @@ This RFC proposes **the first command a user runs** when they adopt the DeesseJS
 
 The contract is straightforward in shape but load-bearing in execution:
 
-1. **Resolve the registry item address.** `<slug>` is a registry item address, a bare slug (`saas-starter`), a namespaced slug (`@deessejs/saas-starter`, `@community/auth-addon`), a full URL (`https://example.com/r/saas-starter.json`), or a local file path (`./saas-starter.json`). The same resolver as `add` (per [RFC-003 §"Surface area"](./RFC-003-deessejs-add)), with the namespace map read from `deesse.json#registries` if it exists, or from the default `@deessejs` registry if it does not (this is the only command where `deesse.json` is optional, see §"First-write semantics").
+1. **Resolve the registry item address.** `<slug>` is a registry item address, a bare slug (`saas-starter`), a namespaced slug (`@deessejs/saas-starter`, `@community/auth-addon`), a full URL (`https://example.com/r/saas-starter.json`), a GitHub repository reference (`vercel/next.commerce`, `https://github.com/owner/repo`, `git@github.com:owner/repo.git`), or a local file path (`./saas-starter.json`). The same resolver as `add` (per [RFC-003 §"Surface area"](./RFC-003-deessejs-add)), with the namespace map read from `deesse.json#registries` if it exists, or from the default `@deessejs` registry if it does not (this is the only command where `deesse.json` is optional, see §"First-write semantics"). See §"Slug resolution: client-side fallback" for routing.
 2. **Enforce the `template:app` discriminator.** Refuse any non-`template:app` type with `parse_error`. This is the **only** consumer of `template:app`; the discriminator exists for this command. `template:package` and the other overlay types belong to `deessejs add` (or, in the future, to `deessejs-block` per [RFC-005](./RFC-005-deessejs-block)).
 3. **Run prompts eagerly.** Aggregate `prompts[]` across the resolved dependency graph **before any disk write**. Same rule as `add` (per [RFC-003 §"Install sequence"](./RFC-003-deessejs-add) and [RFC-002 §"Upfront prompt aggregation"](./RFC-002-deesse-template)). The user answers each prompt once; the answers drive `tokens{}`, `database`, and `paths{}` defaults.
 4. **Acquire the source tree.** Tarball-first from `registry.deessejs.com/t/<slug>-<version>.tar.gz` (per [RFC-002 §"CDN tarball hosting"](./RFC-002-deesse-template)), with `git clone --depth 1 --branch <ref>` as fallback. The CLI does **not** depend on `codeload.github.com` for the official registry.
@@ -75,6 +75,25 @@ The second motivation is **the first-write moment for `deesse.json`**. Every con
 The third motivation is **the `template:app` discriminator's reason to exist**. The seven-value `template:type` discriminator (per [RFC-002 §"The `template:type` discriminator"](./RFC-002-deesse-template)) has one value that means "starter" (`template:app`) and six that mean "overlay" (per the deprecation path in [RFC-005 §"Deprecation path"](./RFC-005-deessejs-block)). The starter value exists for `init`. Without `init`, the starter value would be dead weight; with it, the partition between `init` (starters) and `add` (overlays) is load-bearing.
 
 ## Detailed Design
+
+### Slug resolution: client-side fallback
+
+The `<slug>` input is parsed by `@workspace/registry-client` and routed deterministically before the install sequence runs. The routing is silent — the user sees one path, never a fallback trail.
+
+| Input shape | Example | Resolved by |
+|---|---|---|
+| Bare catalogue slug | `saas-starter` | API server (catalogue lookup, then GitHub fetch) |
+| `owner/repo` shorthand | `vercel/next.commerce` | Direct GitHub fetch from `raw.githubusercontent.com` |
+| HTTPS GitHub URL | `https://github.com/deessejs/blog-template` | Direct GitHub fetch |
+| SSH GitHub URL | `git@github.com:deessejs/blog-template.git` | Direct GitHub fetch |
+| Non-GitHub HTTPS URL | `https://gitlab.com/foo/bar` | `RegistryUnsupportedSource` (400) |
+| Local path | `./saas-starter.json` | Reserved for V2 (RFC-002 §"Local file path") |
+
+The shared slug parser (`parseGitHubSlug`) lives in `@workspace/contracts/src/shared/slug.ts` and is consumed by both the SDK router and the server-side resolver. Single source of truth for "what counts as a GitHub-shaped slug".
+
+**Why a fallback at all**: a CLI that depends on a hosted registry API is one outage away from being useless for a brand-new user. The fallback ensures that any GitHub repository with a `deesse-template.json` at the root can be installed by the CLI, regardless of the API server's deployment state. See [ADR-037](./../decisions/ADR-037-direct-github-fallback) for the full rationale and the alternatives considered.
+
+The fallback is **strict, not opportunistic**. There is no "try API then try GitHub" branch — the slug shape decides the path at construction time, and the user gets one path's failures. Identical `_tag` values map to identical user-facing error messages regardless of path (per [ADR-037 §"Failure surface unchanged"](./../decisions/ADR-037-direct-github-fallback)).
 
 ### Surface area
 

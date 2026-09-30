@@ -113,6 +113,47 @@ const incompatibleMissingPayload = {
 } as const
 
 const mockResponder = (req: CapturedRequest): Response => {
+  // raw.githubusercontent.com — direct-GitHub path
+  if (req.url.startsWith("https://raw.githubusercontent.com/")) {
+    // /<owner>/<repo>/<ref>/deesse-template.json
+    const m =
+      /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/deesse-template\.json$/.exec(
+        req.url,
+      )
+    if (m === null) return jsonResponse(404, { error: "not found" })
+    const owner = m[1] ?? ""
+    const repo = m[2] ?? ""
+    if (owner === "no-descriptor") {
+      return jsonResponse(404, { error: "not found" })
+    }
+    if (owner === "bad-template") {
+      return jsonResponse(200, { $schema: "wrong", name: 123 })
+    }
+    if (owner === "private") {
+      return jsonResponse(401, { error: "auth required" })
+    }
+    if (owner === "upstream-error") {
+      return jsonResponse(502, { error: "upstream down" })
+    }
+    // TemplateV2.name must match ^[a-z0-9][a-z0-9-]*[a-z0-9]$, so we
+    // build the name from a sanitised slug. Tests use fixtures
+    // (vercel/next.commerce, deessejs/saas-template) which are
+    // valid; sanitise by replacing any non-alphanumeric with `-`.
+    // The two `replace` regexes below are simple character classes
+    // that don't backtrack — disable the slow-regex warning, which
+    // fires for any `[^...]` class.
+    /* eslint-disable sonarjs/slow-regex */
+    const sanitisedName = `${owner}-${repo}`
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/^-+|-+$/g, "")
+    /* eslint-enable sonarjs/slow-regex */
+    return jsonResponse(200, {
+      ...VALID_TEMPLATE,
+      name: sanitisedName,
+    })
+  }
+
   // /catalog endpoint
   if (req.url.endsWith("/api/v1/registry/catalog")) {
     return jsonResponse(200, { catalog: VALID_CATALOG })
@@ -451,6 +492,132 @@ describe("RegistryClient — mock fetch", () => {
     expect(() =>
       createClient({ apiUrl: "" as unknown as string }),
     ).toThrow(/apiUrl is required/)
+  })
+
+  // -------------------------------------------------------------------------
+  // Slug routing — GitHub-shaped inputs bypass the API
+  // -------------------------------------------------------------------------
+
+  it("getTemplate routes owner/repo to GitHub direct (no API call)", async () => {
+    const { fetchImpl, state } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.getTemplate("vercel/next.commerce")
+    if (result._tag === "Err") {
+      // Surface the failure mode in the test output
+      throw new Error(`expected Ok, got Err: ${JSON.stringify(result.error)}`)
+    }
+    expect(result._tag).toBe("Ok")
+    // No API call — only the GitHub raw fetch.
+    expect(state.calls.every((c) => c.url.startsWith("https://raw."))).toBe(
+      true,
+    )
+    expect(state.calls).toHaveLength(1)
+  })
+
+  it("getTemplate routes HTTPS GitHub URL to GitHub direct", async () => {
+    const { fetchImpl, state } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.getTemplate(
+      "https://github.com/deessejs/saas-template",
+    )
+    expect(result._tag).toBe("Ok")
+    expect(state.calls.every((c) => c.url.startsWith("https://raw."))).toBe(
+      true,
+    )
+  })
+
+  it("getTemplate routes SSH URL to GitHub direct", async () => {
+    const { fetchImpl, state } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.getTemplate(
+      "git@github.com:deessejs/saas-template.git",
+    )
+    expect(result._tag).toBe("Ok")
+    expect(state.calls.every((c) => c.url.startsWith("https://raw."))).toBe(
+      true,
+    )
+  })
+
+  it("getTemplate returns RegistryUnsupportedSource for gitlab.com", async () => {
+    const { fetchImpl, state } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.getTemplate("https://gitlab.com/foo/bar")
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryUnsupportedSource")
+      if (result.error._tag === "RegistryUnsupportedSource") {
+        expect(result.error.source).toBe("unsupported_host:gitlab.com")
+      }
+    }
+    // No fetch made — fail fast.
+    expect(state.calls).toHaveLength(0)
+  })
+
+  it("getTemplate keeps catalogue slugs on the API path", async () => {
+    const { fetchImpl, state } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    // `valid-slug` is a catalogue-shaped bare slug → API.
+    const result = await client.getTemplate("valid-slug")
+    expect(result._tag).toBe("Ok")
+    expect(state.calls.some((c) => c.url.includes("/api/v1/"))).toBe(true)
+  })
+
+  it("getTemplate GitHub path: 404 → RegistryIncompatibleTemplate", async () => {
+    const { fetchImpl } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.getTemplate("no-descriptor/whatever")
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryIncompatibleTemplate")
+      if (result.error._tag === "RegistryIncompatibleTemplate") {
+        expect(result.error.cause).toBe("missing_descriptor")
+      }
+    }
+  })
+
+  it("info routes owner/repo to GitHub direct", async () => {
+    const { fetchImpl, state } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.info("vercel/next.commerce")
+    expect(result._tag).toBe("Ok")
+    expect(state.calls.every((c) => c.url.startsWith("https://raw."))).toBe(
+      true,
+    )
+  })
+
+  it("info returns RegistryUnsupportedSource for gitlab.com", async () => {
+    const { fetchImpl, state } = makeMockFetch(mockResponder)
+    const client = createClient({
+      apiUrl: "https://api.example.com",
+      fetchImpl,
+    })
+    const result = await client.info("https://gitlab.com/foo/bar")
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryUnsupportedSource")
+    }
+    expect(state.calls).toHaveLength(0)
   })
 })
 

@@ -30,6 +30,30 @@ export const infoCommand = new Command("info")
         if (result.error._tag === "RegistryNotFound") {
           throw new Error(`Template "${slug}" not found`)
         }
+        if (result.error._tag === "RegistryUnsupportedSource") {
+          // Mirrors the init command's mapping. The SDK's router
+          // emits `source: "unsupported_host:<host>"` for non-GitHub
+          // URLs (gitlab.com, bitbucket.org). Strip the prefix for
+          // a clean user message.
+          const host =
+            result.error.source.startsWith("unsupported_host:")
+              ? result.error.source.slice("unsupported_host:".length)
+              : result.error.source
+          throw new Error(
+            `Unsupported source: ${host}. The CLI supports github.com repositories only.`,
+          )
+        }
+        if (result.error._tag === "RegistryIncompatibleTemplate") {
+          const repo = result.error.repo !== "" ? result.error.repo : slug
+          if (result.error.cause === "missing_descriptor") {
+            throw new Error(
+              `Incompatible template: ${repo} exists on GitHub but does not ship a deesse-template.json.`,
+            )
+          }
+          throw new Error(
+            `Incompatible template: ${repo} ships a deesse-template.json but it fails Zod validation.`,
+          )
+        }
         throw internal(
           `Failed to fetch template info: ${result.error._tag}`,
         )

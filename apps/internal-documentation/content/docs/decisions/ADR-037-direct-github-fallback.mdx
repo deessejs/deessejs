@@ -1,0 +1,141 @@
+---
+title: 'Direct-GitHub fallback for resolvable slugs'
+description: 'The CLI bypasses the registry API and fetches deesse-template.json directly from raw.githubusercontent.com when the input slug resolves to a GitHub-shaped reference (owner/repo shorthand, HTTPS URL, SSH URL). Keeps the API as the authority for the editorial catalogue and for auth-gated templates. The shared slug parser lives in @workspace/contracts and is consumed by both the SDK router and the server-side resolver. Unblocks CLI usage against any GitHub repo that ships a deesse-template.json, regardless of whether the API server has the resolver deployed.'
+---
+
+# ADR-037: Direct-GitHub fallback for resolvable slugs
+
+## Status
+
+Accepted (2026-09). Tracked by [PR #137](https://github.com/deessejs/deessejs/pull/137). Companion to [RFC-006](./rfcs/RFC-006-deessejs-init) (init command surface) and [ADR-032](./ADR-032-deesse-template.json) (descriptor format).
+
+## Context
+
+Before this ADR, the `deessejs init` CLI was entirely API-mediated. The chain was:
+
+```
+CLI init → SDK getTemplate(slug)
+        → POST https://app.deessejs.com/api/v1/registry/fetch-descriptor
+        → API fetches https://raw.githubusercontent.com/<owner>/<repo>/<ref>/deesse-template.json
+        → API returns { descriptor, files: Record<path, url> }
+        → CLI fetches each file URL and writes to disk
+```
+
+The CLI had zero direct GitHub access (verified by grep: `apps/cli/src/commands/init.ts` contained no `github.com`, `githubusercontent`, or `clone` references). Every `init` invocation required the API server to resolve the slug and proxy the GitHub fetch.
+
+This worked when the API was healthy and up-to-date. It broke in two scenarios:
+
+1. **Production drift.** The API server (`app.deessejs.com`) does not currently expose `POST /api/v1/registry/fetch-descriptor` — verified by `curl`, which returned `"Route not found"`. The CLI installed via `npx https://pkg.pr.new/@deessejs/cli@<sha>` therefore fails for every slug, even when the target GitHub repo ships a valid descriptor.
+2. **Multi-tenant deployments.** The team has framed the registry as spanning packages, CLI, SaaS multi-tenant, mobile, desktop, AI agent, and landing page starters. Each consumer may want to bootstrap from a public GitHub repo without depending on a hosted server.
+
+A user who typed `deessejs init https://github.com/vercel/next.commerce` got the same `template not found` error they would get for a malformed slug. The CLI was failing on inputs the upstream registry could trivially satisfy.
+
+## Decision
+
+The SDK now parses the input slug and routes deterministically by shape:
+
+1. **GitHub-shaped slug** (`owner/repo`, HTTPS GitHub URL, SSH GitHub URL)
+   → fetched directly from `raw.githubusercontent.com/<owner>/<repo>/<ref>/deesse-template.json`.
+2. **Non-GitHub HTTPS URL** (gitlab.com, bitbucket.org, …)
+   → `RegistryUnsupportedSource` with `source: "unsupported_host:<host>"`.
+3. **Anything else** (catalogue slug, local path, malformed input)
+   → fetched from the API server, which owns the catalogue lookup.
+
+`listTemplates` stays API-only — the catalogue is editorial metadata that lives on the server, not on GitHub.
+
+### Routing layer
+
+```
+@workspace/registry-client/src/registry.ts:createClient
+  getTemplate(slug)
+    parseGitHubSlug(slug)
+      → "ok"            : getTemplateFromGithub(owner, repo, ref?, fetchImpl)
+      → "unsupported_host": err(RegistryUnsupportedSource)
+      → "not_github"    : getTemplateFromApi(apiUrl, slug, ref?, fetchImpl)
+  info(slug)
+    → same routing as getTemplate
+  listTemplates()
+    → listTemplatesFromApi(apiUrl, fetchImpl)
+```
+
+### Shared slug parser
+
+The parser lives in `@workspace/contracts/src/shared/slug.ts` and is consumed by both the SDK and the server-side `registry-resolver.ts`. It returns a discriminated union (`{ kind: "ok", repo } | { kind: "unsupported_host", host } | { kind: "not_github" }`) so neither caller needs to re-implement the URL/SSH/regex logic.
+
+Single source of truth for "what counts as a GitHub-shaped slug". Adding a value (e.g. GitLab support) is an ADR; the regex stays in one file.
+
+### Failure surface unchanged
+
+The direct-GitHub path produces the same `RegistryFailure` variants as the API path:
+
+| Direct-GitHub event | Mapped variant |
+|---|---|
+| 404 on raw.githubusercontent.com | `RegistryIncompatibleTemplate(cause: missing_descriptor)` |
+| Network error (fetch TypeError) | `RegistryNetworkError` |
+| 5xx on raw.githubusercontent.com | `RegistryFetchFailed` |
+| JSON parse error | `RegistryIncompatibleTemplate(cause: invalid_descriptor)` |
+| Zod validation failure | `RegistryInvalidDescriptor` |
+| Non-github URL | `RegistryUnsupportedSource` (was unused; now used) |
+
+User-facing error strings are identical between the two paths. The CLI's existing `toCliError` mapping in `apps/cli/src/commands/init.ts` already covers every variant — no new failure vocabulary introduced.
+
+## Consequences
+
+**Positive**
+
+- The CLI works against any GitHub repo that ships a `deesse-template.json`, regardless of the API server's deployment state.
+- The fallback is silent and deterministic. The user sees one path, not "trying API... trying GitHub...".
+- The catalogue stays editorial: short slugs (`saas-starter`) go through the API and benefit from server-side cache + auth. Other slugs go direct.
+- Web consumers that adopt the SDK get the fallback for free.
+
+**Negative**
+
+- The SDK grows two parallel code paths. Each path needs its own test coverage (~150 LOC of new tests). Drift between the paths is the load-bearing risk — mitigated by reusing `parseGitHubSlug` on both sides and by mirroring the API server's `fetchDescriptorFromGithub` line-for-line in `packages/registry-client/src/github.ts`.
+- The CLI can bypass the API for templates the API would otherwise gate (e.g. private templates behind auth, rate-limited templates). V1 does not address this — the direct path always returns `RegistryAuthRequired` on 401, which is the same failure the API path would produce. Private template gating remains a server-side concern.
+- GitHub raw is unauthenticated and rate-limited at 60 req/h per IP. The CLI surfaces 429 as `RegistryFetchFailed` with `cause: "HTTP 429"`. Rate-limit handling (Retry-After, caching, auth tokens) is deferred.
+
+**Neutral**
+
+- The server-side resolver (`packages/api/src/http/routes/registry-resolver.ts`) is now a thin wrapper around `parseGitHubSlug` plus a catalogue lookup. The two implementations share the regex, which removes a class of subtle drift bugs but does not change the API's public surface.
+- The CLI gains no new flag. The fallback is default behaviour for GitHub-shaped slugs.
+
+## Alternatives considered
+
+### Option A: opt-in `--direct-github` flag
+
+Add a CLI flag that opts into the direct-GitHub path. Pros: zero behaviour change for existing users. Cons: requires every user who wants the fallback to discover and pass the flag; the production breakage scenario (the one this ADR exists to fix) is still broken for users who don't pass it. **Rejected.**
+
+### Option B: try API then fall back to GitHub
+
+For every slug, attempt the API first; on `RegistryNetworkError` (transport failure), retry against GitHub raw using the slug as the source. Pros: minimal API change. Cons: doubles the request count for every init; ambiguous inputs (`saas-starter` vs `deessejs/saas-template`) can't be resolved without prior knowledge; the API's `RegistryNotFound` is not a transport failure, so it wouldn't trigger the fallback. **Rejected.**
+
+### Option C: drop the server-side resolver
+
+Move the entire GitHub fetch logic into the SDK; the API becomes a thin catalogue + auth layer. Pros: simpler architecture. Cons: the API is still needed for the catalogue and for templates that R2 serves behind auth. The server-side resolver remains load-bearing for `info` output that wants editorial metadata (layer, description). **Rejected.**
+
+### Option D: ship a static CDN at `registry.deessejs.com`
+
+Host descriptors on a CDN, like shadcn's `ui.shadcn.com/r/<slug>.json`. Pros: pure read, fast, content-addressed. Cons: requires a publication pipeline (RFC-002 §"Publication CI") and a registry namespace layer; doesn't address the "any GitHub repo with a descriptor" goal of V1; an entire new infrastructure component for a problem the SDK + API can already solve. **Deferred to V2.**
+
+### Option E: require auth for any GitHub fetch
+
+Add a `GITHUB_TOKEN` requirement for the direct-GitHub path. Pros: 5000 req/h instead of 60. Cons: a CLI on a fresh machine can't run `init` without first configuring a token; the worst first-impression problem in the registry. **Rejected for V1; revisit when rate limits become a real constraint.**
+
+## Migration
+
+1. Slug-parser extracted into `@workspace/contracts/src/shared/slug.ts` (file: `packages/contracts/src/shared/slug.ts`). The server-side resolver now composes it; the SDK router uses it directly.
+2. Direct-GitHub fetch implemented in `packages/registry-client/src/github.ts`. The file mirrors the API server's `fetchDescriptorFromGithub` to keep the failure surface aligned.
+3. CLI `info` command gets explicit `RegistryIncompatibleTemplate` and `RegistryUnsupportedSource` cases in `apps/cli/src/commands/info.ts`. `init` already handled them.
+4. RFC-006 updated to document the routing and link to this ADR.
+5. 26 unit tests in `packages/contracts/tests/parse-github-slug.test.ts` pin the parser behaviour. 11 tests in `packages/registry-client/tests/github.test.ts` pin the direct fetch. 9 routing tests in `packages/registry-client/tests/mock-client.test.ts` pin the SDK factory's branch logic. The 29 existing server-side resolver tests still pass against the refactored `resolveSource`.
+
+## References
+
+- [PR #137](https://github.com/deessejs/deessejs/pull/137)
+- [RFC-006: deessejs init](./rfcs/RFC-006-deessejs-init)
+- [ADR-032: deesse-template.json](./ADR-032-deesse-template.json) — descriptor schema
+- [ADR-031: deesse.json](./ADR-031-deesse-json) — consumer-side config
+- [ADR-036: contract evolution](./ADR-036-contract-evolution) — wire-shape evolution policy
+- [`packages/contracts/src/shared/slug.ts`](https://github.com/deessejs/deessejs/blob/docs/adr-031-templates-json/packages/contracts/src/shared/slug.ts)
+- [`packages/registry-client/src/github.ts`](https://github.com/deessejs/deessejs/blob/docs/adr-031-templates-json/packages/registry-client/src/github.ts)
+- [`packages/api/src/http/routes/registry-resolver.ts`](https://github.com/deessejs/deessejs/blob/docs/adr-031-templates-json/packages/api/src/http/routes/registry-resolver.ts)
