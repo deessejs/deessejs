@@ -35,7 +35,6 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Drizzle", logo: "drizzle" },
       { name: "Prisma", logo: "prisma" },
     ],
-    mockup: "db-terminal",
   },
   {
     title: "Auth",
@@ -48,7 +47,6 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Auth0", logo: "auth0" },
       { name: "Lucia", logo: "lucia" },
     ],
-    mockup: "auth-form",
   },
   {
     title: "Billing",
@@ -59,7 +57,6 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Stripe", logo: "stripe" },
       { name: "Resend", logo: "resend" },
     ],
-    mockup: "billing-widget",
   },
   {
     title: "Jobs",
@@ -72,7 +69,6 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Trigger.dev", logo: "triggerdotdev" },
       { name: "Inngest", logo: "inngest-missing" },
     ],
-    mockup: "jobs-trace",
   },
   {
     title: "Storage",
@@ -83,7 +79,6 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Supabase", logo: "supabase" },
       { name: "Cloudflare", logo: "cloudflare" },
     ],
-    mockup: "storage-browser",
   },
   {
     title: "Observability",
@@ -94,7 +89,6 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Sentry", logo: "sentry" },
       { name: "Better Stack", logo: "betterstack" },
     ],
-    mockup: "otel-waterfall",
   },
   {
     title: "Cache",
@@ -106,7 +100,6 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Upstash", logo: "upstash" },
       { name: "Vercel KV", logo: "vercel" },
     ],
-    mockup: "cache-keys",
   },
 ]
 
