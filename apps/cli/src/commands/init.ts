@@ -105,8 +105,15 @@ const toCliError = (
       return internal(
         `The registry reported an upstream failure. Try again later.`,
       )
-    case "RegistryUnsupportedSource":
-      return internal(`Registry reported unsupported source: ${failure.source}`)
+    case "RegistryUnsupportedSource": {
+      const host = failure.source.startsWith("unsupported_host:")
+        ? failure.source.slice("unsupported_host:".length)
+        : failure.source
+      return parseError(
+        `Unsupported source: ${host}. The CLI supports github.com repositories only.`,
+        `Provide an owner/repo (e.g. deessejs/saas-template), an HTTPS URL on github.com, or an SSH URL.`,
+      )
+    }
   }
 }
 
