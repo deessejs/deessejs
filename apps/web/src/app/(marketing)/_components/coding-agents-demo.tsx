@@ -472,7 +472,7 @@ export function CodingAgentsDemo() {
                   aria-valuemax={1}
                   aria-valuenow={isActive ? fill : 0}
                   aria-hidden={!isActive}
-                  className="block w-1.5 self-stretch overflow-hidden rounded-full bg-border"
+                  className="block w-1 self-stretch overflow-hidden rounded-full bg-border"
                 >
                   <span
                     className="block h-full origin-top bg-foreground transition-transform duration-75 ease-linear"
