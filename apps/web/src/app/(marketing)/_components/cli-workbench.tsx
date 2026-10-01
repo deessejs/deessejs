@@ -3,7 +3,16 @@
 import { useState } from "react"
 import * as m from "motion/react-m"
 import { LazyMotion, domAnimation, useReducedMotion } from "motion/react"
-import { File, FilePlus, Folder, FolderOpen, FolderPlus, TerminalSquare, X } from "lucide-react"
+import {
+  File,
+  FilePlus,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  TerminalSquare,
+  X,
+  type LucideIcon,
+} from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
@@ -97,6 +106,26 @@ function AnimatedWorkbench({
   )
 }
 
+function ExplorerActionButton({
+  label,
+  icon: Icon,
+}: {
+  label: string
+  icon: LucideIcon
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-xs"
+      aria-label={label}
+      className="rounded-none! text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+    >
+      <Icon aria-hidden className="size-3.5" />
+    </Button>
+  )
+}
+
 function ExplorerPane() {
   return (
     <div className="flex flex-col">
@@ -104,24 +133,8 @@ function ExplorerPane() {
         title="Explorer"
         actions={
           <>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="New file"
-              className="rounded-none! text-muted-foreground hover:bg-accent/40 hover:text-foreground"
-            >
-              <FilePlus aria-hidden className="size-3.5" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="New folder"
-              className="rounded-none! text-muted-foreground hover:bg-accent/40 hover:text-foreground"
-            >
-              <FolderPlus aria-hidden className="size-3.5" />
-            </Button>
+            <ExplorerActionButton label="New file" icon={FilePlus} />
+            <ExplorerActionButton label="New folder" icon={FolderPlus} />
           </>
         }
       />

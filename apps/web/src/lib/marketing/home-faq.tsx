@@ -31,12 +31,12 @@ export const HOME_FAQ: ReadonlyArray<FaqItem> = [
     answer: (
       <>
         It depends on which tier you pick.{" "}
-        <a
+        <Link
           href="/pricing"
           className="font-medium text-foreground underline-offset-4 hover:underline"
         >
           Full breakdown on /pricing
-        </a>
+        </Link>
         . In short: the Community templates and the CLI are MIT-licensed and
         free. The Professional tier unlocks the full Pro catalog for $299
         one-shot, lifetime, every project you ship. The Agency &amp; Team
