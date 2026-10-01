@@ -8,7 +8,7 @@ export default function HomePage() {
       <Home.TechStack />
       <Home.Surfaces />
       <Home.ForWho />
-      <Home.Contracts />
+      { /*<Home.Contracts /> */}
       <Home.CliInAction />
       <Home.Ecosystem />
       {/* Hidden until real testimonials come in: the 12 quotes are
