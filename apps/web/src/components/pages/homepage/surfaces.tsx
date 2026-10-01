@@ -11,7 +11,7 @@ export function Surfaces() {
         title="Pick the surface. Get the convention."
         subtitle="Four surfaces, one registry. Each surface ships with the same contracts, the same patterns, and the same guarantees, whether you build it yourself or ship with us."
         action={{ href: "/templates", label: "Explore all surfaces" }}
-        bordered={false}
+        bordered={true}
       />
       <SurfacesTabs />
     </Section>
