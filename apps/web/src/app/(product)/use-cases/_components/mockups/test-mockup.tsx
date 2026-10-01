@@ -23,6 +23,9 @@
  * then it is visually consistent and accessibility-correct
  * (aria-hidden on the wrapper because it is decorative).
  */
+
+import { DotGrid } from "../../../../(marketing)/_components/dot-grid"
+
 export function TestMockup({ reverse = false }: { reverse?: boolean }) {
   return (
     <div
@@ -42,7 +45,7 @@ export function TestMockup({ reverse = false }: { reverse?: boolean }) {
         <span className="block size-3 rounded-full bg-[#febc2e]" />
         <span className="block size-3 rounded-full bg-[#28c840]" />
       </div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[12px_12px] opacity-60" />
+      <DotGrid className="absolute inset-0" />
     </div>
   )
 }
