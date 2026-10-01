@@ -17,6 +17,18 @@ export const BLOG_TAGS = [
 
 export type BlogTag = (typeof BLOG_TAGS)[number]
 
+/** Display label per closed-set tag. The slug stays lowercase
+ *  (BLOG_TAGS) — this map is what surfaces render in H1, eyebrows,
+ *  titles, and OG metadata. Same shape as RELEASE_CATEGORY_LABELS
+ *  below so a future i18n pass has one consistent home for both. */
+export const BLOG_TAG_LABELS: Record<BlogTag, string> = {
+  engineering: "Engineering",
+  community: "Community",
+  news: "News",
+  customers: "Customers",
+  security: "Security",
+}
+
 export function getAllTags(): BlogTag[] {
   const tagSet = new Set<BlogTag>()
   for (const post of allPosts) {
