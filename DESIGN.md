@@ -8,7 +8,7 @@
 
 ## 0. Positioning context
 
-The marketing positioning was pivoted from **"The Apple of SaaS templates"** (completeness + DX, the original wedge from `documents/internal/product/positioning.md`) to **"The SaaS template that never sleeps — your agents are the developers"** (the agentic wedge from `documents/internal/marketing/landing-page.md`).
+The marketing positioning was pivoted from **"The Apple of SaaS templates"** (completeness + DX, the original wedge) to **"The SaaS template that never sleeps — your agents are the developers"** (the agentic wedge).
 
 **What this means for the design system:**
 

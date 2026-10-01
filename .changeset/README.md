@@ -1,6 +1,6 @@
 # Changesets
 
-This directory holds changesets for `@deessejs/cli` releases. See [docs/engineering/processes/versioning.md](../docs/engineering/processes/versioning.md) for the full operational process.
+This directory holds changesets for `@deessejs/cli` releases. See [the release-engineering process](../apps/internal-documentation/content/docs/processes/release-engineering/latest-release.mdx) for the full operational process.
 
 ## What is a changeset?
 
@@ -22,7 +22,7 @@ Skip the changeset when your PR:
 - Only touches internal packages (`packages/*`), other apps, or `apps/cli/test/**`.
 - Only updates docs, comments, or formatting in `apps/cli/**`.
 - Bumps a catalog dependency without changing how the CLI is invoked (e.g. `commander` from `^12.1.0` to `^12.2.0` with no API change).
-- **Adds, updates, or removes a template entry** in `packages/api/src/templates.ts` (or any future database table backing the templates endpoint). Templates are content served by an API; the CLI is a client. See [docs/engineering/reports/versioning/11-templates-not-cli.md](../docs/engineering/reports/versioning/11-templates-not-cli.md) for the full reasoning and edge cases.
+- **Adds, updates, or removes a template entry** in `packages/api/src/templates.ts` (or any future database table backing the templates endpoint). Templates are content served by an API; the CLI is a client. The full reasoning and edge cases are documented inline in the bullets above and in `apps/internal-documentation/content/docs/decisions/`.
 
 If unsure, look at recent merged PRs to `apps/cli/**` on GitHub — they should each carry a changeset.
 
@@ -119,5 +119,5 @@ The CLI walks you through selecting the package, bump type, and message. It writ
 
 ## See also
 
-- [docs/engineering/processes/versioning.md](../docs/engineering/processes/versioning.md) — full operational process.
+- [the release-engineering process](../apps/internal-documentation/content/docs/processes/release-engineering/latest-release.mdx) — full operational process.
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — contributor workflow.

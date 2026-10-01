@@ -44,7 +44,7 @@ const AUTH_BASE_PATH = "/api/v1/auth"
  * `host-allowlist.ts` for the rationale.
  *
  * See https://better-auth.com/docs/guides/dynamic-base-url and
- * `docs/guides/better-auth/pitfalls.md` §5.
+ * apps/internal-documentation/content/docs/decisions/ADR-029-preview-url-wiring.mdx.
  */
 
 /**

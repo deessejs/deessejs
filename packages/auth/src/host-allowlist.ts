@@ -6,15 +6,15 @@
  * `packages/auth/src/auth.ts` (Better Auth `baseURL.allowedHosts`) and
  * `packages/api/src/index.ts` (Hono CORS `origin` function). The
  * apex+wildcards shape is load-bearing: Better Auth's `allowedHosts`
- * pattern table (`docs/reference/options`) does NOT let `*.vercel.app`
- * match the apex `vercel.app` itself, so the apex entry is listed
- * explicitly. Trimming the apex reintroduces the
- * "Fixed baseURL breaks Vercel preview deployments" bug that
- * `docs/guides/better-auth/pitfalls.md` §5 exists to prevent.
+ * pattern table does NOT let `*.vercel.app` match the apex `vercel.app`
+ * itself, so the apex entry is listed explicitly. Trimming the apex
+ * reintroduces the "Fixed baseURL breaks Vercel preview deployments"
+ * bug — see apps/internal-documentation/content/docs/decisions/ADR-029-preview-url-wiring.mdx
+ * and https://better-auth.com/docs/guides/dynamic-base-url.
  *
  * Localhost entries are gated on `NODE_ENV === "development"` to keep
- * the prod allowlist minimal — matches the same hazard pitfalls.md §2
- * warns about for `trustedOrigins`.
+ * the prod allowlist minimal — matches the same hazard for
+ * `trustedOrigins` in `packages/auth/src/auth.ts`.
  */
 
 const PRODUCTION_HOSTS = [

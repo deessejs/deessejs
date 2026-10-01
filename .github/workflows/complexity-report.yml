@@ -3,7 +3,10 @@ name: Complexity report
 # Runs on every push and every PR. Aggregates the cognitive-complexity findings
 # across all workspaces, uploads them as an artifact, and posts a top-10
 # summary as a PR comment (no-op on push events). Hard-blocking on findings
-# is intentionally disabled — see `docs/engineering/complexity-rollout.md`.
+# is intentionally disabled. The current phase and threshold live in
+# `packages/eslint-config/base.js` (see the inline comment block at the
+# top of the cognitive-complexity rule). Background on the metric:
+# https://www.sonarsource.com/resources/cognitive-complexity/
 
 on:
   pull_request:

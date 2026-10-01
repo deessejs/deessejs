@@ -40,7 +40,7 @@ If your PR touches `apps/cli/**` and changes the CLI's published surface, you mu
 
 - ✅ New command, new flag, user-visible behavior change, bug fix.
 - ❌ Internal package changes, other apps, test-only changes, docs-only, catalog dependency bumps without API changes.
-- ❌ **Adding, updating, or removing a template entry** in `packages/api/src/templates.ts` (templates are content served by the API; the CLI is just a client). See [docs/engineering/reports/versioning/11-templates-not-cli.md](docs/engineering/reports/versioning/11-templates-not-cli.md) for the full reasoning and the edge cases where a template-related change IS a CLI change.
+- ❌ **Adding, updating, or removing a template entry** in `packages/api/src/templates.ts` (templates are content served by the API; the CLI is just a client). The rationale and the edge cases where a template-related change IS a CLI change are documented in [.changeset/README.md](.changeset/README.md#when-to-add-one).
 
 **Quick start:**
 
@@ -58,7 +58,7 @@ Or create `.changeset/<random-slug>.md` manually:
 Add `deessejs list --category <name>` flag for filtering templates by category
 ```
 
-CI verifies the changeset is present on PRs that touch `apps/cli/**`. For full format details, examples, and the lifecycle of a changeset, see [.changeset/README.md](.changeset/README.md). For the broader release process, see [docs/engineering/processes/versioning.md](docs/engineering/processes/versioning.md).
+CI verifies the changeset is present on PRs that touch `apps/cli/**`. For full format details, examples, and the lifecycle of a changeset, see [.changeset/README.md](.changeset/README.md). For the broader release process, see [apps/internal-documentation/content/docs/processes/release-engineering/latest-release.mdx](apps/internal-documentation/content/docs/processes/release-engineering/latest-release.mdx).
 
 ### Pull Requests
 

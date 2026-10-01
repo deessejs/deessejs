@@ -582,10 +582,10 @@ this ADR.
   device-authorization plugin doesn't introduce
   organization concepts; it adds a `deviceCode` table
   and five endpoints that operate on user identity, not
-  on organization membership. The locked-in decisions in
-  `docs/guides/Better-Auth/index.md` (no
-  `organization(...)`, no `databaseHooks.session.create.before`,
-  no `useActiveOrganization`) are unchanged.
+  on organization membership. The locked-in single-tenant decisions in
+  this repo (no `organization(...)`, no `databaseHooks.session.create.before`,
+  no `useActiveOrganization`) are unchanged — see `packages/auth/src/auth.ts`
+  and README.md §"Customization".
 - **The session cookie configuration.** The device flow
   creates a session with the existing
   `session.expiresIn: 7 days`, `updateAge: 1 day`
@@ -789,7 +789,7 @@ sole session management surface for V1.
 - Review rejects a PR that regenerates `schema/auth.ts` without
   reviewing the diff. The generator may
   overwrite custom field names or indexes (per
-  `docs/guides/better-auth/setup.md`).
+  `packages/auth/src/auth.ts` `account` block).
 - Review rejects a PR that ships a CLI binary with the auth commands
   without a changeset. The
   `check-changeset` CI job rejects it (per ADR-010 §6).
@@ -812,7 +812,9 @@ Three options:
    shell). The approach fails the threat model: shell
    history, copy-paste, screen sharing. It also fails
    the email-verification gate (per
-   `docs/guides/better-auth/email.md`): a CLI that
+   `packages/auth/src/auth.ts` `emailVerification` block:
+   `sendOnSignUp: true`, `requireEmailVerification: true`,
+   and ADR-013 §"GitHub OAuth"): a CLI that
    requires verified email can't verify a user who has
    not yet logged in to the web app.
 2. **A long-lived API key issued from the web app.** The
@@ -867,22 +869,23 @@ the protocol; the server enforces it.
   Better Auth `/auth/*` mount, which ADR-011 classifies
   as a delegated system route. The CLI consumes them
   through the same mount; nothing adds a new mount.
-- [`docs/guides/better-auth/index.md`](../knowledge-base/better-auth/index.md).
-  The single-tenant rules that this ADR doesn't change.
+- The single-tenant rules that this ADR doesn't change.
   The device-authorization plugin doesn't require
   `organization(...)`, doesn't require
   `databaseHooks.session.create.before`, and doesn't
-  require `useActiveOrganization`.
-- [`docs/guides/better-auth/setup.md`](../knowledge-base/better-auth/setup.md).
-  The `nextCookies()`-must-be-last rule and the
-  `pnpm auth:generate` workflow that the schema
-  regeneration step inherits.
-- [`docs/guides/better-auth/pitfalls.md`](../knowledge-base/better-auth/pitfalls.md).
-  The known issues that this ADR inherits. None of the
+  require `useActiveOrganization`. See `packages/auth/src/auth.ts`
+  and README.md §"Customization" for the canonical lock-ins.
+- The `nextCookies()`-must-be-last rule (enforced in
+  `packages/auth/src/auth.ts` `plugins` array — `nextCookies()` is
+  the last entry) and the `pnpm auth:generate` workflow that the
+  schema regeneration step inherits.
+- The known issues that this ADR inherits. None of the
   three tracked pitfalls (`useSecureCookies: true`,
   `localhost` in `trustedOrigins`, `sendOnSignUp`
-  implicit) applies to the device-auth plugin; the
-  contributor reads pitfalls.md before implementing.
+  implicit) applies to the device-auth plugin; each
+  rule is enforced inline in `packages/auth/src/auth.ts`
+  (`advanced.useSecureCookies`, `trustedOrigins` filtering,
+  `emailVerification.sendOnSignUp`).
 - Better Auth device-authorization plugin docs:
   [the Better-Auth plugin docs site](https://www.better-auth.com/docs/plugins/device-authorization).
   The upstream source of truth for the five endpoints,

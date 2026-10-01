@@ -176,7 +176,7 @@ function renderMarkdown(summary: Summary): string {
   })
   lines.push("")
   lines.push(
-    "Each `sonarjs/cognitive-complexity` violation also surfaces locally via `pnpm lint`. See `docs/engineering/complexity-rollout.md` for thresholds and how to refactor.",
+    "Each `sonarjs/cognitive-complexity` violation also surfaces locally via `pnpm lint`. See [cognitive complexity](https://www.sonarsource.com/resources/cognitive-complexity/) for why scores rank the way they do, and [`sonarjs/cognitive-complexity`](https://github.com/SonarSource/eslint-plugin-sonarjs/blob/master/docs/rules/cognitive-complexity.md) for the rule mechanics. Thresholds live in `packages/eslint-config/base.js`.",
   )
   return lines.join("\n")
 }

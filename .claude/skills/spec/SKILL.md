@@ -18,7 +18,10 @@ Read a `status:ready` GitHub issue, explore the codebase, write a spec, and ask 
 1. Fetch    — read the issue, check status:ready
 2. Branch   — create impl/{n}-{slug} from staging
 3. Explore  — read the codebase, related files, learnings
-4. Write    — build docs/plans/{n}.md from PLAN_TEMPLATE.md
+4. Write    — build the spec at temp/specs/{n}.md from PLAN_TEMPLATE.md
+                    (the legacy `docs/plans/{n}.md` path was retired by
+                    commit 537aec8; specs now live outside the tracked
+                    tree so they don't need cleanup after merge)
 5. Review   — present to human for approval
 6. Push     — push branch so the plan persists on origin
 ```
@@ -66,7 +69,7 @@ Read:
 - Files mentioned in the issue's acceptance criteria or description
 - Relevant config (turbo.json, tsconfig.json, eslint.config.mjs, etc.)
 - Existing patterns in the target packages (`apps/`, `packages/`)
-- Learning docs in `docs/internal/learnings/` if referenced
+- Learning docs in the now-deleted `docs/internal/learnings/` if referenced (none survive — fall back to the ADRs in `apps/internal-documentation/content/docs/decisions/`)
 - Related issues with `gh search issues`
 
 Keep notes — they feed the spec.
@@ -75,11 +78,11 @@ Keep notes — they feed the spec.
 
 ## §4 — Write the spec
 
-Create the plan directory and copy the template:
+Create the spec directory and copy the template:
 
 ```bash
-mkdir -p "docs/plans"
-cp .claude/skills/spec/PLAN_TEMPLATE.md "docs/plans/{n}.md"
+mkdir -p "temp/specs"
+cp .claude/skills/spec/PLAN_TEMPLATE.md "temp/specs/{n}.md"
 ```
 
 Fill in every section. Key points:
@@ -102,19 +105,19 @@ Use `AskUserQuestion` with a single approve/reject option. Include:
 - TL;DR
 - Files count + step count
 - Key risk (especially if `breaking-change` label present)
-- Branch + docs/plans/{n}.md path
+- Branch + temp/specs/{n}.md path
 
 **If approved:**
 1. Update YAML: `status: approved`, `reviewer: martyy-code`, `reviewed: {date}`
 2. Push branch
 
 **If rejected:**
-> "Spec rejected. Branch `{slug}` still exists with the spec at `docs/plans/{n}.md`. Say the word and I'll delete it, or keep it open for later."
+> "Spec rejected. Branch `{slug}` still exists with the spec at `temp/specs/{n}.md`. Say the word and I'll delete it, or keep it open for later."
 
 ## §6 — Push
 
 ```bash
-git add docs/plans/{n}.md
+git add temp/specs/{n}.md
 git commit -m "docs: write spec for issue #{n}
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
@@ -125,7 +128,7 @@ git push -u origin "{slug}"
 ## Idempotency
 
 - **Spec already approved** → "A spec already exists and is approved. Run `/implement #{n}` to start."
-- **Spec is draft** → "A draft spec exists. Review it at `docs/plans/{n}.md` on `{slug}`, or run `/spec #{n}` again to overwrite it."
+- **Spec is draft** → "A draft spec exists. Review it at `temp/specs/{n}.md` on `{slug}`, or run `/spec #{n}` again to overwrite it."
 
 ## Error handling
 

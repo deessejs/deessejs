@@ -73,6 +73,6 @@ The orphan is not new — it has been the default state of the repo since the fi
 
 - [AGENTS.md](../../../../AGENTS.md), the staging-first workflow whose `main` ownership rule this ADR aligns with.
 - [`.github/workflows/release.yml`](../../../../.github/workflows/release.yml), the workflow modified by this ADR. The comment block in section `1a` references this ADR.
-- [`docs/engineering/processes/release-engineering/latest-release.mdx`](../../../../processes/release-engineering/latest-release.mdx), the operational process page that documents the orphan behavior for contributors.
+- [`../../processes/release-engineering/latest-release.mdx`](../../processes/release-engineering/latest-release.mdx), the operational process page that documents the orphan behavior for contributors.
 - [ADR-024: Auto-publish on main](./ADR-024-auto-publish-on-main.mdx), the rule that allows push to `main` to trigger `@latest` publication without human intervention. This ADR is the boundary of that rule — ADR-024 governs the publish trigger, this ADR governs the absence of a push-back-to-main step.
 - [ADR-025: Auto-canary on staging](./ADR-025-auto-canary-on-staging.mdx), the canary path that is unchanged by this ADR.

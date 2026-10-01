@@ -4,7 +4,7 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-This repo is the **DeesseJS main app** — the monorepo that powers the deessejs organization. Started from [`deessejs/saas-template`](https://github.com/deessejs/saas-template) in July 2026. See [docs/engineering/plans/saas-template-divergence.md](docs/engineering/plans/saas-template-divergence.md) for the divergence map and [docs/engineering/plans/deessejs-main-app-repositioning.md](docs/engineering/plans/deessejs-main-app-repositioning.md) for the identity-surface plan.
+This repo is the **DeesseJS main app** — the monorepo that powers the deessejs organization. Started from [`deessejs/saas-template`](https://github.com/deessejs/saas-template) in July 2026. The repo's design and divergence from the template are described in [DESIGN.md](DESIGN.md).
 
 ## Git workflow — staging-first
 
@@ -39,18 +39,17 @@ feature/fix branch  ─PR─▶  staging  ─merge (manual, human)─▶  main  
 
 ### Better-Auth guides
 
-Pattern senior pour better-auth dans ce repo. **Lis toujours `docs/guides/better-auth/index.md` en premier** avant de modifier `packages/auth` ou `packages/database/src/schema/auth.ts`.
+Pattern senior pour better-auth dans ce repo. La configuration vit dans **`packages/auth/src/auth.ts`** (source de vérité déclarée par son propre header). Avant de modifier `packages/auth` ou `packages/database/src/schema/auth.ts`, lis :
 
-| Guide | Contenu |
+| Source | Contenu |
 |---|---|
-| [docs/guides/better-auth/index.md](docs/guides/better-auth/index.md) | Décisions verrouillées + état du code — **point d'entrée obligatoire** |
-| [docs/guides/better-auth/setup.md](docs/guides/better-auth/setup.md) | Config de base, drizzle-adapter, secrets, trustedOrigins |
-| [docs/guides/better-auth/hooks.md](docs/guides/better-auth/hooks.md) | `databaseHooks`, ordering, fire-and-forget |
-| [docs/guides/better-auth/org.md](docs/guides/better-auth/org.md) | Organization plugin, auto-create org, invitations, rôles |
-| [docs/guides/better-auth/email.md](docs/guides/better-auth/email.md) | Email verification, password reset, Resend + console dev |
-| [docs/guides/better-auth/session.md](docs/guides/better-auth/session.md) | Session config, cookies, expiration, trustedOrigins |
-| [docs/guides/better-auth/client.md](docs/guides/better-auth/client.md) | Hooks React, `useActiveOrganization`, workaround #9710 |
-| [docs/guides/better-auth/pitfalls.md](docs/guides/better-auth/pitfalls.md) | Bugs ouverts (#9070, #9710), options supprimées, gotchas — **à lire AVANT toute implémentation** |
+| [packages/auth/src/auth.ts](packages/auth/src/auth.ts) | Config canonique (`baseURL`, `account`, `emailVerification`, `plugins[]`). Le header du fichier documente chaque bloc. |
+| [packages/auth/src/host-allowlist.ts](packages/auth/src/host-allowlist.ts) | Allowlist des hosts (apex + wildcards, ADR-029 Decision #2). Single source of truth pour `isHostAllowed()`. |
+| [apps/internal-documentation/content/docs/knowledge-base/better-auth/hono-integration.mdx](apps/internal-documentation/content/docs/knowledge-base/better-auth/hono-integration.mdx) | Mount du handler dans Hono (le subtree `/api/v1/auth/*`). |
+| [apps/internal-documentation/content/docs/knowledge-base/better-auth/test-utils.mdx](apps/internal-documentation/content/docs/knowledge-base/better-auth/test-utils.mdx) | Test plugin pattern (utilisé dans les tests d'intégration). |
+| [apps/internal-documentation/content/docs/decisions/](apps/internal-documentation/content/docs/decisions/) | ADRs auth/CLI (ADR-020 device-auth, ADR-022 fixes, ADR-028 GitHub OAuth, ADR-029 preview-URL wiring, ADR-030 account-only page). |
+
+> **Note historique :** un guide complet `docs/guides/better-auth/` (8 fichiers) existait avant le commit `537aec8` mais a été supprimé. Les sujets qu'il couvrait (setup, hooks, organisation, email, session, client, pitfalls) sont aujourd'hui dispersés dans le code source et les ADRs ci-dessus. Pour les questions sur `databaseHooks`, l'organisation multi-tenant, ou `useActiveOrganization` : **ce repo est single-tenant — n'introduis pas ces patterns**.
 
 ### Fresh CLI 
 

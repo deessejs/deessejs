@@ -250,9 +250,10 @@ The migration is mechanical. In one PR:
    `base-path.ts` to remove the consumer view.
 4. Update the consumer side (`apps/cli/src/`) to call the
    new path `/api/v1/version` instead of `/api/v1/cli-version`.
-5. Update the documentation in `docs/guides/`,
-   `docs/engineering/architecture/overview.md`, and any
-   knowledge-base entry that references the old path.
+5. Update the documentation in any knowledge-base entry that
+   references the old path. See
+   [`../knowledge-base/`](../knowledge-base/) for the canonical
+   library notes.
 
 The migration is reviewable in one PR. The wire contract
 breaks; the fix is to update the CLI in the same PR or in
@@ -275,7 +276,7 @@ a follow-up PR that lands before the server ships.
   migration, `constants/version.ts` replaces
   `cli-version.ts`; the file lives in the right layer
   regardless of the rename.
-- [docs/engineering/architecture/clients.md](../clients.md),
+- [API consumer-agnostic: §Related](#related),
   the document that describes what each consumer does with
   the API. The mapping lives here, in the consumers' docs,
   not in the API.
