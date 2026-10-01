@@ -6,8 +6,6 @@ tags: [engineering]
 author: admin
 ---
 
-# Background jobs that don't wake you up at night
-
 Every product we've shipped has a background job. Every background job we've shipped has broken at 2am. The breaking isn't the bug — the bug is expected. The breaking is the pattern: a job that retries silently, a job that processes the same event twice, a job that fails without telling anyone.
 
 This post is the three patterns every job needs, and the mistakes we made so you don't have to make them.
