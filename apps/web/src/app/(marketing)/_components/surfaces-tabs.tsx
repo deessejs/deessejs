@@ -107,9 +107,9 @@ export function SurfacesTabs() {
             <TabsTrigger
               key={tab.slug}
               value={tab.slug}
-              className="group flex flex-col items-start gap-2 rounded-none bg-transparent p-6 text-left h-auto w-full shadow-none border-0
+              className="group flex flex-col items-start gap-2 rounded-none bg-transparent p-6 text-left h-auto w-full shadow-none border-0 border-l-2 border-transparent
                 text-foreground/60 hover:text-foreground hover:bg-accent/40
-                data-[state=active]:bg-accent/40 data-[state=active]:text-foreground
+                data-[state=active]:bg-accent/40 data-[state=active]:text-foreground data-[state=active]:border-l-foreground
                 [&:after]:hidden"
             >
               <div className="flex items-center gap-2">
