@@ -7,9 +7,9 @@ export function Surfaces() {
   return (
     <Section>
       <SectionHeader
-        eyebrow="Pick the surface, skip the boilerplate"
+        eyebrow="Surfaces"
         title="Pick the surface. Get the convention."
-        subtitle="Six surfaces, one registry. Each surface ships with the same contracts, the same patterns, and the same guarantees, whether you build it yourself or ship with us."
+        subtitle="Four surfaces, one registry. Each surface ships with the same contracts, the same patterns, and the same guarantees, whether you build it yourself or ship with us."
         action={{ href: "/templates", label: "Explore all surfaces" }}
         bordered={false}
       />
