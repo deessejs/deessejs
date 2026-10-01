@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { ArrowLeft, ArrowRight, ChevronRight, Clock } from "lucide-react"
 
 import {
@@ -125,24 +125,23 @@ export function LatestGuidesSection({
 }: {
   guides: ReadonlyArray<CarouselGuide>
 }) {
-  const [carouselApi, setCarouselApi] = useState<CarouselApi | undefined>(
-    undefined,
-  )
+  const carouselApiRef = useRef<CarouselApi | undefined>(undefined)
   const [canScrollPrev, setCanScrollPrev] = useState(false)
   const [canScrollNext, setCanScrollNext] = useState(false)
 
   const onSelect = useCallback((api: NonNullable<CarouselApi>) => {
+    carouselApiRef.current = api
     setCanScrollPrev(api.canScrollPrev())
     setCanScrollNext(api.canScrollNext())
   }, [])
 
   const scrollPrev = useCallback(() => {
-    carouselApi?.scrollPrev()
-  }, [carouselApi])
+    carouselApiRef.current?.scrollPrev()
+  }, [])
 
   const scrollNext = useCallback(() => {
-    carouselApi?.scrollNext()
-  }, [carouselApi])
+    carouselApiRef.current?.scrollNext()
+  }, [])
 
   const navStrip = (
     <>
@@ -184,10 +183,16 @@ export function LatestGuidesSection({
         opts={{ align: "start", loop: false }}
         aria-label="Latest KB guides"
         setApi={(api) => {
-          setCarouselApi(api)
-          if (api) onSelect(api)
-          api?.on("reInit", onSelect)
-          api?.on("select", onSelect)
+          carouselApiRef.current = api
+          if (api) {
+            onSelect(api)
+            api.on("reInit", onSelect)
+            api.on("select", onSelect)
+          }
+          return () => {
+            api?.off("reInit", onSelect)
+            api?.off("select", onSelect)
+          }
         }}
       >
         <CarouselContent>
