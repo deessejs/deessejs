@@ -20,6 +20,7 @@
     "orpc/client-plugins",
     "---standalone---",
     "commander",
-    "fumadocs"
+    "fumadocs",
+    "vercel-prebuilt-deploy"
   ]
 }
