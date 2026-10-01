@@ -11,7 +11,8 @@ import { normaliseError } from "../../src/api/index.js"
  * not delegate to a tested helper (RPCLink, the official oRPC plugins,
  * Zod contract). Mocking the global `fetch` is the wrong layer for
  * RPCLink tests — see Phase 3 of
- * docs/engineering/plans/orpc-client-migration.md. So we test the
+ * apps/internal-documentation/content/docs/decisions/ADR-005-api-consumer-agnostic.mdx
+ * ("API is consumer-agnostic") — so we test the
  * normaliser directly here.
  *
  * The normaliser uses `toORPCError` from `@orpc/client` and the

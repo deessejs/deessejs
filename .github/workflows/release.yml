@@ -20,7 +20,10 @@ name: Release
 #
 # First-ever publish of @deessejs/cli is manual from a maintainer's machine
 # (npm has no "pending publisher" feature). See
-# docs/engineering/reports/versioning/12-npm-setup-walkthrough.md.
+# First-ever publish of @deessejs/cli is manual from a maintainer's machine
+# (npm has no "pending publisher" feature). See
+# apps/internal-documentation/content/docs/decisions/ADR-013-cli-publish-verify.mdx
+# for the equivalent setup walkthrough.
 
 on:
   push:

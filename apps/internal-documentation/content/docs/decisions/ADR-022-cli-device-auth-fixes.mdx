@@ -293,7 +293,7 @@ The existing `isAuthPage` block at `proxy.ts:86-88` already redirects a signed-i
 
 ### What this rule doesn't change
 
-- **The single-tenant decision.** `bearer()` doesn't introduce organization concepts; the locked-in rules from `docs/guides/better-auth/index.md` stay the same.
+- **The single-tenant decision.** `bearer()` doesn't introduce organization concepts; the locked-in rules (no `organization(...)`, no `databaseHooks.session.create.before`, no `useActiveOrganization`) stay the same. See `packages/auth/src/auth.ts` and README.md §"Customization" for the canonical lock-ins.
 - **The session cookie configuration.** The device flow still creates a session with the existing `session.expiresIn: 7 days`, `updateAge: 1 day` configuration (`packages/auth/src/auth.ts:100-103`). The bearer plugin reads the same session row.
 - **The CLI's public command set.** `deesse auth login`, `auth status`, `auth logout` keep their flags, output format, and exit codes (ADR-010 §1).
 - **The CLI's closed public error code list.** `cli_device_denied` and `cli_device_expired` keep their codes; the latter gains a new message variant but no new code.

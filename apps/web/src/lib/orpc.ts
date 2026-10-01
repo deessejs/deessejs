@@ -94,7 +94,7 @@ export const buildFetchIsrInit = (
  *   tag. Issue #81 proved that approach unsafe: a single runtime error
  *   cached `{ templates: [] }` under the site-wide tag and pinned the
  *   empty-state for ten minutes. See
- *   docs/engineering/plans/orpc-client-migration.md for history.
+ *   apps/internal-documentation/content/docs/decisions/ADR-005-api-consumer-agnostic.mdx for history.
  *
  *   No `revalidateTag` purge route exists in this repo today; if one
  *   is added later, target `templates:live` for runtime content.

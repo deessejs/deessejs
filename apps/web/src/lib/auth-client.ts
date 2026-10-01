@@ -37,8 +37,9 @@ import { API_AUTH_PATH } from "@workspace/api/base-path"
  *
  * The SERVER-side auth handler at `packages/auth/src/auth.ts`
  * resolves its `baseURL` per request from `x-forwarded-host` /
- * `host` via the dynamic `{ allowedHosts }` form (see
- * `docs/guides/better-auth/pitfalls.md` §5).
+ * `host` via the dynamic `{ allowedHosts }` form. The host allowlist
+ * (apex + wildcards) lives in `packages/auth/src/host-allowlist.ts`
+ * (single source of truth, ADR-029 Decision #2).
  */
 export function createAuthClientFor(apiBaseUrl: string) {
   return createAuthClient({
