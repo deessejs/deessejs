@@ -9,7 +9,7 @@
  *
  * Adding a fourth command: append the row here and re-export from
  * the page. Do not invent flags that don't exist in the CLI
- * source — this is the marketing surface that tells users what
+ * source. This is the marketing surface that tells users what
  * they can actually type.
  */
 

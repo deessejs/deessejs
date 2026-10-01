@@ -54,38 +54,38 @@ export const metadata: Metadata = {
 }
 
 /**
- * Marketing route at `/cli` — deep-dive on the `@dejs/cli` package
+ * Marketing route at `/cli`. Deep-dive on the `@dejs/cli` package
  * the nav already links to from the Products dropdown.
  *
- * Composition (top → bottom):
- *   1. Hero                — `UseCaseHero` reused as-is (eyebrow
+ * Composition (top to bottom):
+ *   1. Hero                : `UseCaseHero` reused as-is (eyebrow
  *                            hard-codes `Use case · `).
- *   2. CliWorkbench       — Server-pre-rendered Shiki HTML,
+ *   2. CliWorkbench       : Server-pre-rendered Shiki HTML,
  *                            threaded into the `"use client"`
  *                            `<CliWorkbench>` as plain strings
  *                            (Next 16 forbids rendering an async
  *                            Server Component as a child of a
  *                            Client Component). Same lg+/<lg
  *                            split as the homepage section.
- *   3. Commands grid      — 3 cards (init / list / info), data
+ *   3. Commands grid      : 3 cards (init / list / info), data
  *                            from `./_components/cli-commands.ts`.
- *   4. Install steps      — 4 cells in a 6-col grid (header
+ *   4. Install steps      : 4 cells in a 6-col grid (header
  *                            left, steps right). Mirrors the
  *                            use-case Process pattern but with
  *                            `md:grid-cols-4` to fit 4 cells.
- *   5. Final CTA          — `FinalCtaShell` from
+ *   5. Final CTA          : `FinalCtaShell` from
  *                            `@/components/pages/_shared/final-cta`
- *                            (NOT the use-case-namespaced one —
+ *                            (NOT the use-case-namespaced one,
  *                            it hard-codes use-case copy).
  *
  * Shiki runs at request time on the Server Component. Each tab
- * snippet is the same one the homepage CliInAction highlights —
+ * snippet is the same one the homepage CliInAction highlights.
  * `EDITOR_TAB_CONTENT` + `EDITOR_TAB_LANG` from
  * `@/lib/marketing/cli-workbench-data` are the single source of
  * truth shared across both surfaces. `defaultColor: false` is
  * mandatory (without it Shiki emits inline `color` styles that
  * win over the CSS variables in `globals.css` and dark-mode
- * flipping breaks — see `cli-in-action.tsx` lines 44-47).
+ * flipping breaks; see `cli-in-action.tsx` lines 44-47).
  */
 export default async function CliPage() {
   const highlightedHtml = await Promise.all(
@@ -120,7 +120,7 @@ export default async function CliPage() {
         }}
       />
 
-      {/* 2. CliWorkbench section — same lg+/<lg split as the homepage
+      {/* 2. CliWorkbench section. Same lg+/<lg split as the homepage
              CliInAction section, so the visitor sees the same IDE-style
              animation on `/cli` as they do on `/`. The editorial
              column (4/12 on lg) carries the canonical command and the
@@ -166,14 +166,14 @@ export default async function CliPage() {
         </div>
       </Section>
 
-      {/* 3. Commands grid — 3 cards (init / list / info). Data sourced
-             from `./_components/cli-commands.ts`, which is the
-             marketing mirror of `apps/cli/src/commands/*.ts`. */}
+      {/* 3. Commands grid. 3 cards (init / list / info). Data sourced
+             from `./_components/cli-commands.ts`, the marketing
+             mirror of `apps/cli/src/commands/*.ts`. */}
       <Section>
         <SectionHeader
           eyebrow="Commands"
           title="Three commands, one registry."
-          subtitle="Everything you do with the registry starts here. No flags to memorize for the common case — `init <slug>` is enough to scaffold a working project."
+          subtitle="Everything you do with the registry starts here. No flags to memorize for the common case. `init <slug>` is enough to scaffold a working project."
         />
         <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-3 lg:divide-x lg:divide-y-0">
           {CLI_COMMANDS.map((cmd) => (
@@ -205,7 +205,7 @@ export default async function CliPage() {
         </div>
       </Section>
 
-      {/* 4. Install steps — 6-col grid: header left (col-span-2),
+      {/* 4. Install steps. 6-col grid: header left (col-span-2),
              ordered list right (col-span-4, md:grid-cols-4 to fit
              4 cells). Mirrors the use-case Process pattern but
              drops the `Step 0X` mono label into the same row as
@@ -242,7 +242,7 @@ export default async function CliPage() {
         </ol>
       </div>
 
-      {/* 5. Final CTA — two doors: browse the templates, or read
+      {/* 5. Final CTA. Two doors: browse the templates, or read
              the install guide for the step-by-step. Calls the
              `_shared/final-cta` shell directly because the
              use-case-namespaced `FinalCta` hard-codes use-case
