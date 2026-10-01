@@ -64,7 +64,7 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
           {
             label: "CLI",
             href: "/cli",
-            description: "npx deessejs init / list / info",
+            description: "deessejs init / list / info",
           },
         ],
       },

@@ -1,7 +1,5 @@
 import type { Metadata } from "next"
 
-import { Separator } from "@workspace/ui/components/separator"
-
 import { RelatedLinks } from "@/components/pages/_shared/related-links"
 import { About } from "@/components/pages/about"
 
@@ -14,57 +12,60 @@ export const metadata: Metadata = {
 /**
  * About page at /about.
  *
- * Three-section narrative, matching the shape of /manifesto,
- * /principles, /vision, /ecosystem:
- *   1. The main app — what DeesseJS is for the org
- *   2. Edited by Nesalia Inc. — the open model
- *   3. Get in touch — channels
+ * Hybrid layout:
+ * - The Hero is centered full-width via its own wrapper
+ *   (centered text on mobile, left-aligned on lg+, max-w-2xl
+ *   lead). The hero carries its own `border-b border-border`.
+ * - The three body sections (MainApp, Editor, Contact) and
+ *   the "Read next" RelatedLinks block all sit inside a
+ *   single `max-w-5xl` column, centered on the page. Each
+ *   section component owns its own `border-b border-border`
+ *   and padding.
+ * - The FinalCta breaks out of the column and traces the full
+ *   viewport with its `border-t border-border` (the same
+ *   `noBorderB` boolean removes its closing border-b).
  *
- * Each section lives in `components/pages/about/<section>.tsx`;
- * data (channels) lives in `lib/about/channels.ts`. The route file
- * is just a table of contents.
+ * This hybrid layout keeps the hero full-width (which matches
+ * `/delivery`, `/enterprise`, `/pricing`) and the body boxed
+ * at 1024px (which is the user's preferred reading width).
  */
 export default function AboutPage() {
   return (
     <>
-      <div className="max-w-5xl mx-auto px-4 md:px-6 py-16">
-        <About.Hero />
+      <About.Hero />
 
-        <Separator />
-
+      <div className="mx-auto max-w-5xl">
         <About.MainApp />
         <About.Editor />
 
-        <Separator />
-
         <About.Contact />
 
-        <Separator />
-
-        <RelatedLinks
-          links={[
-            {
-              label: "Manifesto",
-              href: "/manifesto",
-              body: "Why we're here: the beliefs behind the work.",
-            },
-            {
-              label: "Principles",
-              href: "/principles",
-              body: "How we work, day to day.",
-            },
-            {
-              label: "Vision",
-              href: "/vision",
-              body: "Where this is going next.",
-            },
-            {
-              label: "Ecosystem",
-              href: "/ecosystem",
-              body: "The sub-domains and shared values.",
-            },
-          ]}
-        />
+        <div className="py-16 md:py-20 lg:py-24">
+          <RelatedLinks
+            links={[
+              {
+                label: "Manifesto",
+                href: "/manifesto",
+                body: "Why we're here: the beliefs behind the work.",
+              },
+              {
+                label: "Principles",
+                href: "/principles",
+                body: "How we work, day to day.",
+              },
+              {
+                label: "Vision",
+                href: "/vision",
+                body: "Where this is going next.",
+              },
+              {
+                label: "Ecosystem",
+                href: "/ecosystem",
+                body: "The sub-domains and shared values.",
+              },
+            ]}
+          />
+        </div>
       </div>
 
       <About.FinalCta />

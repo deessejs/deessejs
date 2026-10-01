@@ -10,8 +10,8 @@
  *
  * Copy authority lives in
  * `apps/internal-documentation/content/docs/(root)/home-positioning-strategy.mdx`.
- * Numbers in `STATS` and `SKIP_ITEMS` are internal estimates, not
- * fetched from npm/GitHub APIs yet (see the TODO on STATS).
+ * Numbers in `STATS` are internal estimates, not fetched from npm/GitHub
+ * APIs yet (see the TODO on STATS).
  */
 
 import type { Contract } from "@/app/(marketing)/_components/contracts-grid"
@@ -20,21 +20,8 @@ import type { Contract } from "@/app/(marketing)/_components/contracts-grid"
 // Contracts (Section 6: "Under the hood")
 // ---------------------------------------------------------------------------
 
-/** The six contracts wired into every template. */
+/** The seven contracts wired into every template. */
 export const CONTRACTS: ReadonlyArray<Contract> = [
-  {
-    title: "Auth",
-    description:
-      "Sessions, organizations, invitations, OAuth. Typed against whichever provider you bring.",
-    icon: "auth",
-    providers: [
-      { name: "Better Auth", logo: "betterauth" },
-      { name: "Clerk", logo: "clerk" },
-      { name: "Auth0", logo: "auth0" },
-      { name: "Lucia", logo: "lucia" },
-    ],
-    mockup: "auth-form",
-  },
   {
     title: "Database",
     description:
@@ -48,7 +35,18 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Drizzle", logo: "drizzle" },
       { name: "Prisma", logo: "prisma" },
     ],
-    mockup: "db-terminal",
+  },
+  {
+    title: "Auth",
+    description:
+      "Sessions, organizations, invitations, OAuth. Typed against whichever provider you bring.",
+    icon: "auth",
+    providers: [
+      { name: "Better Auth", logo: "betterauth" },
+      { name: "Clerk", logo: "clerk" },
+      { name: "Auth0", logo: "auth0" },
+      { name: "Lucia", logo: "lucia" },
+    ],
   },
   {
     title: "Billing",
@@ -59,7 +57,6 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Stripe", logo: "stripe" },
       { name: "Resend", logo: "resend" },
     ],
-    mockup: "billing-widget",
   },
   {
     title: "Jobs",
@@ -72,7 +69,6 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Trigger.dev", logo: "triggerdotdev" },
       { name: "Inngest", logo: "inngest-missing" },
     ],
-    mockup: "jobs-trace",
   },
   {
     title: "Storage",
@@ -83,7 +79,6 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Supabase", logo: "supabase" },
       { name: "Cloudflare", logo: "cloudflare" },
     ],
-    mockup: "storage-browser",
   },
   {
     title: "Observability",
@@ -94,30 +89,17 @@ export const CONTRACTS: ReadonlyArray<Contract> = [
       { name: "Sentry", logo: "sentry" },
       { name: "Better Stack", logo: "betterstack" },
     ],
-    mockup: "otel-waterfall",
-  },
-]
-
-// ---------------------------------------------------------------------------
-// CLI in action (Section 7)
-// ---------------------------------------------------------------------------
-
-/** Lines shown in the CLI-in-action section. */
-export const CLI_LINES: ReadonlyArray<{ prompt: string; output?: string }> = [
-  {
-    prompt: "$ npx deessejs init my-saas --template=saas-starter",
-    output:
-      "Cloning template…\nInstalling contracts (auth, db, billing, jobs, storage, obs)\nWiring Better Auth + Drizzle + Stripe\n✔ Project ready at ./my-saas",
   },
   {
-    prompt: "$ npx deessejs list",
-    output:
-      "saas-starter        shipped    Next.js · Better Auth · Drizzle · Stripe\nai-chatbot          coming-soon\nlanding-page        coming-soon",
-  },
-  {
-    prompt: "$ npx deessejs info my-saas",
-    output:
-      "6 contracts wired · 0 missing · 0 outdated\nMCP server: ready · 12 tools exposed",
+    title: "Cache",
+    description:
+      "KV stores, Redis-compatible. TTLs, namespacing, typed access. Drop-in for hot-path reads.",
+    icon: "cache",
+    providers: [
+      { name: "Redis", logo: "redis" },
+      { name: "Upstash", logo: "upstash" },
+      { name: "Vercel KV", logo: "vercel" },
+    ],
   },
 ]
 
@@ -130,23 +112,33 @@ export type Persona = {
   label: string
   headline: string
   outcome: string
+  /**
+   * Real destination on the marketing site. The previous incarnation
+   * pointed at `/solutions/<slug>` which 404'd; the section now routes
+   * each card to its closest existing surface — a use-case page for
+   * project-shaped audiences, the dedicated enterprise page for
+   * platform teams.
+   */
+  href: string
 }
 
-/** The four personas the registry explicitly serves. */
+/**
+ * The three audiences the homepage ForWho section names.
+ *
+ * Indie hackers absorbed into SaaS founders (Option B): both promise
+ * a fast path to a paying customer with the same registry entry
+ * point, and there is no distinct content downstream to justify a
+ * fourth card. Enterprise teams and AI-native teams keep dedicated
+ * destinations because each points at a different kind of asset.
+ */
 export const PERSONAS: ReadonlyArray<Persona> = [
-  {
-    slug: "indie-hackers",
-    label: "Indie hackers",
-    headline: "Ship your first $ online this weekend.",
-    outcome:
-      "From `npx deessejs init` to your first paying customer in days, not months.",
-  },
   {
     slug: "saas-founders",
     label: "SaaS founders",
     headline: "Skip 10 weeks of infra.",
     outcome:
       "Reach your first paying customer in 30 days, with contracts you can extend instead of rewrite.",
+    href: "/use-cases/saas-apps",
   },
   {
     slug: "enterprise",
@@ -154,6 +146,7 @@ export const PERSONAS: ReadonlyArray<Persona> = [
     headline: "Stop rebuilding the same eight services.",
     outcome:
       "Skip the internal platform build. Use ours. Same contracts, same guarantees, same audit trail.",
+    href: "/enterprise",
   },
   {
     slug: "ai-native",
@@ -161,62 +154,15 @@ export const PERSONAS: ReadonlyArray<Persona> = [
     headline: "Ship with your agent, not against it.",
     outcome:
       "Templates an agent reads as well as you do. Typed end-to-end, MCP-ready, no plumbing to invent.",
+    href: "/use-cases/ai-products",
   },
 ]
-
-// ---------------------------------------------------------------------------
-// What you skip (Section 5)
-// ---------------------------------------------------------------------------
-
-export type SkipItem = { hours: string; label: string }
-
-/**
- * Hour-counted plumbing the buyer does not have to repeat. Numbers are
- * internal estimates and stay approximate; they exist to make the
- * time-to-production metric legible to a non-engineer visitor.
- */
-export const SKIP_ITEMS: ReadonlyArray<SkipItem> = [
-  {
-    hours: "40+ hrs",
-    label: "Auth wired with orgs, invitations, OAuth, and 2FA",
-  },
-  {
-    hours: "24+ hrs",
-    label: "Stripe webhooks, subscriptions, customer portal, dunning",
-  },
-  {
-    hours: "16+ hrs",
-    label: "Drizzle schema, migrations, typed queries, RLS",
-  },
-  {
-    hours: "12+ hrs",
-    label: "Background jobs with retries, dead-letter, observability",
-  },
-  {
-    hours: "8 hrs",
-    label: "Email transport with DKIM, SPF, and DMARC",
-  },
-  {
-    hours: "8 hrs",
-    label: "Object storage with signed URLs and presigned uploads",
-  },
-  {
-    hours: "8 hrs",
-    label: "Observability with traces, logs, metrics, and dashboards",
-  },
-  {
-    hours: "∞ hrs",
-    label: "Overthinking the architecture",
-  },
-]
-
-export const SKIP_TOTAL_HOURS = "124+"
 
 // ---------------------------------------------------------------------------
 // Integrations (Section 12)
 // ---------------------------------------------------------------------------
 
-export type IntegrationGroup = "frameworks" | "providers" | "agents"
+export type IntegrationGroup = "frameworks" | "providers"
 
 export type Integration = {
   name: string
@@ -224,21 +170,60 @@ export type Integration = {
   group: IntegrationGroup
 }
 
-/** Logo wall: frameworks, providers, AI agents. */
+/**
+ * Logo wall: frameworks, providers, AI agents.
+ *
+ * Logo slugs match the simple-icons convention and resolve to
+ * `/public/logos/<slug>.svg`. Each is rendered via `<IntegrationColumns>`,
+ * which applies `dark:invert` so monochrome marks stay legible in dark
+ * mode.
+ *
+ * SvelteKit was removed in this revision: simple-icons has no official
+ * SvelteKit mark (only the parent Svelte one). Reusing the Svelte
+ * mark would be visually deceptive — Svelte and SvelteKit are distinct.
+ * A four-framework column reads as a more honest promise than five
+ * with one fake logo.
+ */
 export const INTEGRATIONS: ReadonlyArray<Integration> = [
-  { name: "Next.js", logo: "vercel", group: "frameworks" },
-  { name: "Astro", logo: "cloudflare", group: "frameworks" },
-  { name: "SvelteKit", logo: "cloudflare", group: "frameworks" },
-  { name: "Vue", logo: "vercel", group: "frameworks" },
-  { name: "React", logo: "vercel", group: "frameworks" },
-  { name: "Vercel", logo: "vercel", group: "providers" },
-  { name: "Supabase", logo: "supabase", group: "providers" },
-  { name: "Neon", logo: "neon", group: "providers" },
-  { name: "Cloudflare", logo: "cloudflare", group: "providers" },
-  { name: "Stripe", logo: "stripe", group: "providers" },
-  { name: "Anthropic", logo: "anthropic", group: "agents" },
-  { name: "OpenAI", logo: "openai", group: "agents" },
-  { name: "Hugging Face", logo: "huggingface", group: "agents" },
+  { name: "Next.js", logo: "nextdotjs", group: "frameworks" },
+  { name: "Astro",   logo: "astro",    group: "frameworks" },
+  { name: "Vue",     logo: "vuedotjs", group: "frameworks" },
+  { name: "React",   logo: "react",    group: "frameworks" },
+  { name: "Vercel",      logo: "vercel",     group: "providers" },
+  { name: "Supabase",    logo: "supabase",   group: "providers" },
+  { name: "Neon",        logo: "neon",       group: "providers" },
+  { name: "Cloudflare",  logo: "cloudflare", group: "providers" },
+  { name: "Stripe",      logo: "stripe",     group: "providers" },
+]
+
+/**
+ * Coding-agent compatibility wall — the 6 CLI harnesses the registry's
+ * contracts work with. Distinct from INTEGRATIONS because agents are
+ * *consumers* of the system (they read the contracts), not interchangeable
+ * providers behind a contract. Mixing them in the same column conflated
+ * "what alternative providers can I plug in" with "what tool can drive
+ * the templates" — two separate questions that deserve their own sections.
+ *
+ * Renders as a 6-cell single row on lg (3-col on md, 2-col on mobile).
+ */
+export type CodingAgent = {
+  name: string
+  logo: string
+  /**
+   * Slug used to build the docs.deessejs.com/agents/<docsSlug> URL
+   * rendered on each card. Lowercased display name. Each card links
+   * to the agent-specific onboarding guide on the public docs site.
+   */
+  docsSlug: string
+}
+
+export const CODING_AGENTS: ReadonlyArray<CodingAgent> = [
+  { name: "Claude Code", logo: "claudecode", docsSlug: "claude-code" },
+  { name: "Codex",       logo: "codex",      docsSlug: "codex" },
+  { name: "Pi",          logo: "pi",         docsSlug: "pi" },
+  { name: "Cursor",      logo: "cursor",     docsSlug: "cursor" },
+  { name: "Grok",        logo: "grok",       docsSlug: "grok" },
+  { name: "OpenCode",    logo: "opencode",   docsSlug: "opencode" },
 ]
 
 /**
@@ -252,7 +237,6 @@ export const INTEGRATION_GROUP_LABELS: ReadonlyArray<{
 }> = [
   { key: "frameworks", label: "Frameworks" },
   { key: "providers", label: "Providers" },
-  { key: "agents", label: "AI agents" },
 ]
 
 // ---------------------------------------------------------------------------

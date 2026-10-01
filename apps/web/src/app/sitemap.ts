@@ -183,10 +183,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.4,
   }))
 
-  // Use cases — hardcoded list mirrors the same hardcoded record in
-  // apps/web/src/app/(product)/use-cases/[slug]/page.tsx. Single-source
+  // Use cases — one entry per static route under
+  // apps/web/src/app/(product)/use-cases/<slug>/page.tsx. Single-source
   // would mean a content collection; for now this stays in sync by
-  // virtue of being a small, hand-curated list.
+  // virtue of being a small, hand-curated list. When a new slug ships,
+  // add it here at the same time as the static route.
   const useCaseSlugs = [
     "saas-apps",
     "ai-products",

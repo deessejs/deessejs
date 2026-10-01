@@ -1,48 +1,82 @@
-import Link from "next/link"
+import { codeToHtml } from "shiki"
 import { allKbGuides } from "content-collections"
 
 import { Section } from "@/app/(marketing)/_components/section"
-import { SectionHeader } from "@/app/(marketing)/_components/section-header"
+import { LatestGuidesSection } from "@/app/(marketing)/_components/latest-guides-section"
+import {
+  LATEST_GUIDES_SNIPPETS,
+  type LatestGuidesSlug,
+} from "@/app/(marketing)/_components/latest-guides-snippets"
 
-/** Latest guides — 4 featured KB articles, placeholder thumbnails. */
-export function LatestGuides() {
-  const featuredGuides = allKbGuides.slice(0, 4)
+/**
+ * Latest guides — 8 featured KB articles, navigated via a shadcn
+ * carousel whose prev/next buttons live in a border-t strip below
+ * the carousel track.
+ *
+ * Server Component: pulls the top 8 KB guides from content-collections
+ * at build time, looks up a per-guide code snippet in
+ * `LATEST_GUIDES_SNIPPETS`, asks Shiki for the highlighted HTML, and
+ * threads both the guide frontmatter and the highlighted code blocks
+ * into the Client `<LatestGuidesSection>` wrapper. Embla stays out of
+ * the server bundle.
+ *
+ * Snippet policy: a guide that doesn't have a matching entry in
+ * `LATEST_GUIDES_SNIPPETS` renders an empty hero block (the card still
+ * works — just no code visible). The carousel map is exhaustive today
+ * (9 entries in the registry, 8 in the carousel) so this fallback
+ * should not fire in production.
+ */
+export async function LatestGuides() {
+  const featuredGuides = allKbGuides.slice(0, 8)
+
+  const htmlBySlug: Record<LatestGuidesSlug, string> = {} as Record<
+    LatestGuidesSlug,
+    string
+  >
+
+  const guides = await Promise.all(
+    featuredGuides.map(async (guide) => {
+      const snippet = LATEST_GUIDES_SNIPPETS[
+        guide.slug as LatestGuidesSlug
+      ]
+      const html = snippet
+        ? await codeToHtml(snippet.code, {
+            lang: "typescript",
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          })
+        : ""
+      htmlBySlug[guide.slug as LatestGuidesSlug] = html
+      const payload = {
+        slug: guide.slug,
+        title: guide.title,
+        description: guide.description,
+        url: guide.url,
+        html,
+        hasSnippet: Boolean(snippet),
+        readingTime: guide.readingTime,
+      }
+      if (guide.author) {
+        const author: {
+          name: string
+          handle: string
+          avatar?: string
+          role?: string
+        } = {
+          name: guide.author.name,
+          handle: guide.author.handle,
+        }
+        if (guide.author.avatar) author.avatar = guide.author.avatar
+        if (guide.author.role) author.role = guide.author.role
+        return { ...payload, author }
+      }
+      return payload
+    }),
+  )
+
   return (
     <Section>
-      <SectionHeader
-        eyebrow="Latest guides"
-        title=""
-        action={{ href: "/knowledge-base", label: "All guides" }}
-        bordered={false}
-      />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border">
-        {featuredGuides.map((guide) => (
-          <Link
-            key={guide.slug}
-            href={guide.url}
-            className="group flex flex-col transition-colors hover:bg-accent/40"
-          >
-            {/* Placeholder thumbnail (mockup for now) */}
-            <div
-              aria-hidden
-              className="relative aspect-[16/9] border-b border-border bg-muted/40 overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[12px_12px] opacity-60" />
-            </div>
-            <div className="flex flex-col gap-2 p-6 lg:p-8 flex-1">
-              <span className="font-mono uppercase text-[0.8125rem] leading-[1.2] text-foreground opacity-64 font-medium tracking-[-0.01em]">
-                Guide
-              </span>
-              <h3 className="text-heading-20 lg:text-heading-24 tracking-tight text-foreground !m-0 text-balance">
-                {guide.title}
-              </h3>
-              <p className="text-copy-14 text-muted-foreground leading-6 !m-0 text-balance">
-                {guide.description}
-              </p>
-            </div>
-          </Link>
-        ))}
-      </div>
+      <LatestGuidesSection guides={guides} />
     </Section>
   )
 }

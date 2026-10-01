@@ -25,6 +25,7 @@ import {
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import {
+	ChevronRight,
 	LayoutDashboardIcon,
 	LogOutIcon,
 } from "lucide-react"
@@ -38,7 +39,7 @@ import { getAvatarUrl, getInitials } from "./user-menu-helpers"
  * Three render branches keyed off `authClient.useSession()`:
  *   - isPending: Skeleton placeholder (avoids the flash of an
  *     unauthenticated CTA set before the session resolves).
- *   - session is null: Log in + Sign up buttons linking to apps/app.
+ *   - session is null: Log in + Get started buttons linking to apps/app.
  *   - session is set: Avatar trigger + DropdownMenu with Dashboard
  *     and Sign out (with a confirmation Dialog, mirroring
  *     apps/app/components/sidebars/nav-user.tsx).
@@ -104,7 +105,10 @@ export function UserMenu({
 						<Link href={loginHref}>Log in</Link>
 					</Button>
 					<Button asChild>
-						<Link href={signupHref}>Sign up</Link>
+						<Link href={signupHref}>
+							Get started
+							<ChevronRight className="size-3.5" aria-hidden />
+						</Link>
 					</Button>
 				</div>
 			)
@@ -115,7 +119,10 @@ export function UserMenu({
 					<Link href={loginHref}>Log in</Link>
 				</Button>
 				<Button asChild className="w-full">
-					<Link href={signupHref}>Sign up</Link>
+					<Link href={signupHref}>
+						Get started
+						<ChevronRight className="size-3.5" aria-hidden />
+					</Link>
 				</Button>
 			</div>
 		)

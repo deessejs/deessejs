@@ -18,6 +18,13 @@ import { cn } from "@workspace/ui/lib/utils"
  *   - `false` drops the bottom border for sections where the header
  *     flows directly into content (e.g. the Surfaces grid header
  *     which already sits inside a `border-b` parent).
+ *
+ * The `action` prop accepts either:
+ *   • the classic `{ href, label }` shape — rendered as a `<Link>`
+ *     with a `ChevronRight` and the same label-13 / underline
+ *     affordance used elsewhere on the homepage.
+ *   • a `ReactNode` — useful when a section needs richer chrome on
+ *     the right rail (e.g. prev/next buttons wired to a carousel).
  */
 export function SectionHeader({
   eyebrow,
@@ -30,10 +37,25 @@ export function SectionHeader({
   eyebrow: string
   title: string
   subtitle?: string
-  action?: { href: string; label: string }
+  action?:
+    | { href: string; label: string }
+    | React.ReactNode
   bordered?: boolean
   className?: string
 }) {
+  function isLinkAction(
+  action: unknown,
+): action is { href: string; label: string } {
+  return (
+    typeof action === "object" &&
+    action !== null &&
+    "href" in action &&
+    "label" in action
+  )
+}
+
+  const renderLinkAction = action && isLinkAction(action)
+
   return (
     <header
       className={cn(
@@ -53,13 +75,17 @@ export function SectionHeader({
           </span>
         </div>
         {action ? (
-          <Link
-            href={action.href}
-            className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4 shrink-0"
-          >
-            {action.label}
-            <ChevronRight className="size-3" aria-hidden />
-          </Link>
+          renderLinkAction ? (
+            <Link
+              href={action.href}
+              className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4 shrink-0"
+            >
+              {action.label}
+              <ChevronRight className="size-3" aria-hidden />
+            </Link>
+          ) : (
+            <div className="flex shrink-0 items-center gap-2">{action}</div>
+          )
         ) : null}
       </div>
       <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">

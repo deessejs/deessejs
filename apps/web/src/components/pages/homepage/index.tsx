@@ -21,6 +21,7 @@
  *   - `faq.tsx` exports `FAQ` (the inner accordion)
  */
 import { CliInAction } from "./cli-in-action"
+import { CodingAgents } from "./coding-agents"
 import { Contracts } from "./contracts"
 import { ContractsGrid } from "@/app/(marketing)/_components/contracts-grid"
 import { Ecosystem } from "./ecosystem"
@@ -33,14 +34,12 @@ import { Hero } from "./hero"
 import { Integrations } from "./integrations"
 import { IntegrationColumns } from "@/app/(marketing)/_components/integration-columns"
 import { LatestGuides } from "./latest-guides"
-import { Skip } from "./skip"
 import { Stats } from "./stats"
 import { StatsStrip } from "@/app/(marketing)/_components/stats-strip"
 import { Surfaces } from "./surfaces"
 import { SurfacesTabs } from "@/app/(marketing)/_components/surfaces-tabs"
 import { TechStack } from "./tech-stack"
 import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
-import { TerminalMockup } from "@/app/(marketing)/_components/terminal-mockup"
 import { Testimonials } from "./testimonials"
 import { TestimonialsMarquee } from "@/app/(marketing)/_components/testimonials-marquee"
 
@@ -49,13 +48,13 @@ export const Home = {
   TechStack,
   Surfaces,
   ForWho,
-  Skip,
   Contracts,
   CliInAction,
   LatestGuides,
   Ecosystem,
   Testimonials,
   Integrations,
+  CodingAgents,
   Stats,
   FAQ: FAQSection,
   FinalCta,
@@ -65,6 +64,7 @@ export const Home = {
 // without going through the namespace (e.g. tests, storybook).
 export {
   CliInAction,
+  CodingAgents,
   Contracts,
   Ecosystem,
   FinalCta,
@@ -74,7 +74,6 @@ export {
   Hero,
   Integrations,
   LatestGuides,
-  Skip,
   Stats,
   Surfaces,
   TechStack,
@@ -91,6 +90,5 @@ export {
   StatsStrip,
   SurfacesTabs,
   TechStackGrid,
-  TerminalMockup,
   TestimonialsMarquee,
 }
