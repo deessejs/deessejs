@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest"
 import {
   getInfoFromGithub,
   getTemplateFromGithub,
+  resolveTemplateFromGithub,
 } from "../src/github.js"
 
 const VALID_TEMPLATE = {
@@ -286,6 +287,94 @@ describe("getInfoFromGithub", () => {
       if (result.error._tag === "RegistryIncompatibleTemplate") {
         expect(result.error.cause).toBe("invalid_descriptor")
       }
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// resolveTemplateFromGithub
+// ---------------------------------------------------------------------------
+
+const TREE_BODY = {
+  sha: "abc123",
+  tree: [
+    { path: "package.json", type: "blob" },
+    { path: "src/index.ts", type: "blob" },
+    { path: "src/foo.test.ts", type: "blob" },
+    { path: "docs", type: "tree" }, // ignored: not a blob
+  ],
+  truncated: false,
+}
+
+const treeResponse = (status: number, body: unknown): Response =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  })
+
+describe("resolveTemplateFromGithub", () => {
+  it("returns Ok with descriptor + resolved files when both descriptor and tree succeed", async () => {
+    const { fetchImpl, state } = makeMockFetch((req) => {
+      if (req.url.includes("/git/trees/")) return treeResponse(200, TREE_BODY)
+      return jsonResponse(200, VALID_TEMPLATE)
+    })
+    const result = await resolveTemplateFromGithub(
+      "deessejs",
+      "saas-template",
+      undefined,
+      fetchImpl,
+    )
+    expect(result._tag).toBe("Ok")
+    if (result._tag === "Ok") {
+      expect(result.value.descriptor.name).toBe("valid-template")
+      expect(result.value.treeRef).toBe("main")
+      expect(result.value.source).toBe("github-tree")
+      // Files: package.json + src/index.ts (VALID_TEMPLATE.files) + src/foo.test.ts (tree)
+      // src/foo.test.ts is excluded because VALID_TEMPLATE.files only declares package.json + src/index.ts
+      // but the resolver uses includes/excludes from VALID_TEMPLATE.files... wait, no — resolver uses descriptor.includes/excludes
+      // VALID_TEMPLATE has neither, so default includes=["**"] applies, all blobs survive.
+      const paths = result.value.files.map((f) => f.path).sort()
+      expect(paths).toContain("package.json")
+      expect(paths).toContain("src/index.ts")
+      expect(paths).toContain("src/foo.test.ts")
+    }
+    // Two fetch calls: descriptor + tree
+    expect(state.calls).toHaveLength(2)
+  })
+
+  it("returns RegistryTreeFailed when tree fetch returns 5xx", async () => {
+    const { fetchImpl } = makeMockFetch((req) => {
+      if (req.url.includes("/git/trees/")) return treeResponse(502, { error: "bad gateway" })
+      return jsonResponse(200, VALID_TEMPLATE)
+    })
+    const result = await resolveTemplateFromGithub(
+      "deessejs",
+      "saas-template",
+      undefined,
+      fetchImpl,
+    )
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryTreeFailed")
+    }
+  })
+
+  it("returns RegistryTreeFailed when tree is truncated", async () => {
+    const { fetchImpl } = makeMockFetch((req) => {
+      if (req.url.includes("/git/trees/")) {
+        return treeResponse(200, { ...TREE_BODY, truncated: true })
+      }
+      return jsonResponse(200, VALID_TEMPLATE)
+    })
+    const result = await resolveTemplateFromGithub(
+      "deessejs",
+      "huge-template",
+      undefined,
+      fetchImpl,
+    )
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryTreeFailed")
     }
   })
 })

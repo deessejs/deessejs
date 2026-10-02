@@ -29,7 +29,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@workspace/contracts": "workspace:*"
+    "@workspace/contracts": "workspace:*",
+    "picomatch": "^4.0.4"
   },
   "devDependencies": {
     "@types/node": "catalog:",

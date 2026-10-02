@@ -23,14 +23,20 @@ export type {
   CatalogEntry,
   FetchOptions,
   FetchedTemplate,
+  FileKind,
   ObjectKey,
   RegistryClient,
   RegistryClientOptions,
   RegistryFailure,
+  ResolvedTemplate,
+  ResolvedTemplateFile,
   Result,
+  TemplateInfo,
   TemplateV2,
 } from "./types.js"
 
 export { ok, err } from "./types.js"
 
 export { asRegistryFailure, toRegistryError } from "./errors.js"
+
+export { resolveFiles } from "./resolve.js"

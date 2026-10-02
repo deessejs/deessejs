@@ -247,3 +247,131 @@ export const getInfoFromGithub = async (
   }
   return okResult<TemplateInfo>(info)
 }
+
+/**
+ * Base URL for the GitHub Git Trees API. Not overridable: the API
+ * host is fixed at api.github.com. Tests mock `fetchImpl`.
+ */
+const GITHUB_API_BASE = "https://api.github.com"
+
+/**
+ * Fetch the recursive Git tree for a repository.
+ *
+ * Endpoint: `GET https://api.github.com/repos/{owner}/{repo}/git/trees/{ref}?recursive=1`
+ * Auth: unauthenticated. Rate limit: 60 req/h per IP — fine for the
+ * CLI's per-invocation cadence, expensive for CI matrix runs.
+ *
+ * The response includes a `truncated: true` flag when the repo has
+ * more than ~100k files. We do not paginate (a follow-up ADR can add
+ * it for very large monorepos); truncated trees return
+ * `RegistryTreeFailed(cause: "truncated")`.
+ */
+export const getTreeFromGithub = async (
+  owner: string,
+  repo: string,
+  ref: string,
+  fetchImpl: typeof fetch,
+): Promise<Result<{ readonly ref: string; readonly paths: readonly string[] }, RegistryFailure>> => {
+  const slug = `${owner}/${repo}`
+  const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`
+
+  let response: Response
+  try {
+    response = await fetchImpl(url, {
+      headers: { accept: "application/vnd.github+json" },
+    })
+  } catch (cause) {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryNetworkError",
+      slug,
+      cause,
+    })
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    return errResult<RegistryFailure>({ _tag: "RegistryAuthRequired", slug })
+  }
+  if (!response.ok) {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryTreeFailed",
+      slug,
+      cause: `HTTP ${response.status}`,
+    })
+  }
+
+  let json: unknown
+  try {
+    json = await response.json()
+  } catch {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryTreeFailed",
+      slug,
+      cause: "malformed tree body",
+    })
+  }
+
+  if (
+    typeof json !== "object" ||
+    json === null ||
+    !("tree" in json) ||
+    !Array.isArray((json as { tree: unknown }).tree)
+  ) {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryTreeFailed",
+      slug,
+      cause: "expected `{ tree: GitTreeNode[] }`",
+    })
+  }
+
+  const tree = (json as {
+    tree: Array<{ path?: unknown; type?: unknown; truncated?: unknown }>
+  }).tree
+  const truncated = (json as { truncated?: unknown }).truncated === true
+  if (truncated) {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryTreeFailed",
+      slug,
+      cause: "tree truncated (>100k entries); pagination not supported in V1",
+    })
+  }
+
+  // Filter to blobs only (skip trees, submodules).
+  const paths = tree
+    .filter((n) => n.type === "blob" && typeof n.path === "string")
+    .map((n) => n.path as string)
+
+  return okResult({ ref, paths })
+}
+
+import { resolveFiles as resolveFilesPure } from "./resolve.js"
+import type { ResolvedTemplate } from "./types.js"
+
+/**
+ * Fetch descriptor + tree, then resolve the file list via
+ * `resolveFiles`. Returned on the GitHub direct path only.
+ */
+export const resolveTemplateFromGithub = async (
+  owner: string,
+  repo: string,
+  ref: string | undefined,
+  fetchImpl: typeof fetch,
+): Promise<Result<ResolvedTemplate, RegistryFailure>> => {
+  // Fetch descriptor (reuses the GitHub raw fetch logic).
+  const templateResult = await getTemplateFromGithub(owner, repo, ref, fetchImpl)
+  if (templateResult._tag === "Err") return templateResult
+  const resolvedRef = ref ?? "main"
+
+  // Fetch tree.
+  const treeResult = await getTreeFromGithub(owner, repo, resolvedRef, fetchImpl)
+  if (treeResult._tag === "Err") return treeResult
+
+  // Resolve files.
+  const files = resolveFilesPure(templateResult.value.descriptor, treeResult.value.paths)
+
+  return okResult<ResolvedTemplate>({
+    descriptor: templateResult.value.descriptor,
+    files,
+    treeRef: treeResult.value.ref,
+    source: "github-tree",
+  })
+}

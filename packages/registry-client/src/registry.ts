@@ -42,6 +42,7 @@ import {
 import {
   getInfoFromGithub,
   getTemplateFromGithub,
+  resolveTemplateFromGithub,
 } from "./github.js"
 import type {
   FetchedTemplate,
@@ -49,6 +50,7 @@ import type {
   RegistryClient,
   RegistryClientOptions,
   RegistryFailure,
+  ResolvedTemplate,
   Result,
   TemplateInfo,
 } from "./types.js"
@@ -149,6 +151,46 @@ export const createClient = (
 
     async listTemplates() {
       return listTemplatesFromApi(apiUrl, fetchImpl)
+    },
+
+    async resolveTemplate(
+      slug: string,
+      fetchOptions?: FetchOptions,
+    ): Promise<Result<ResolvedTemplate, RegistryFailure>> {
+      const gh = parseGitHubSlug(slug)
+      if (gh.kind === "ok") {
+        return resolveTemplateFromGithub(
+          gh.repo.owner,
+          gh.repo.repo,
+          fetchOptions?.ref,
+          fetchImpl,
+        )
+      }
+      if (gh.kind === "unsupported_host") {
+        return errResult<RegistryFailure>({
+          _tag: "RegistryUnsupportedSource",
+          source: `unsupported_host:${gh.host}`,
+        })
+      }
+      // API path: fetch the descriptor (no tree expansion). The CLI
+      // surfaces the descriptor's declared fields; `files` is empty
+      // because we don't have the GitHub tree on this path.
+      const templateResult = await getTemplateFromApi(
+        apiUrl,
+        slug,
+        fetchOptions?.ref,
+        fetchImpl,
+      )
+      if (templateResult._tag === "Err") return templateResult
+      return {
+        _tag: "Ok",
+        value: {
+          descriptor: templateResult.value.descriptor,
+          files: [],
+          treeRef: "",
+          source: "descriptor-only",
+        },
+      }
     },
   }
 }

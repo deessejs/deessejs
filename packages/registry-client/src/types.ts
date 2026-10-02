@@ -23,6 +23,60 @@ import type { TemplateV2 as TemplateV2FromContracts } from "@workspace/contracts
 export type TemplateV2 = TemplateV2FromContracts
 
 /**
+ * Closed-list kind of a `TemplateV2` `fileTypes{}` value or
+ * extension-heuristic result. Re-exported from `@workspace/contracts/v2`'s
+ * `FILE_TYPE_TEMPLATE` enum so the resolver and the renderer cannot
+ * drift.
+ *
+ * Note: the contract enum uses the `template:*` namespace
+ * (`template:source`, `template:doc`, etc.); that's the canonical wire
+ * form and the SDK does not rebrand it.
+ */
+export type FileKind =
+  | "template:env"
+  | "template:doc"
+  | "template:config"
+  | "template:source"
+  | "template:style"
+  | "template:test"
+  | "template:asset"
+
+/**
+ * A single resolved file in a template. The `kind` field is always
+ * present (set by the resolver from `fileTypes{}` or by extension
+ * fallback). `target` and `transform` come from explicit
+ * `descriptor.files[]` entries — they are `undefined` for files
+ * matched by globs only.
+ *
+ * `source: "descriptor"` means the file came from an explicit
+ * `files[]` entry (rare in the post-amendment world).
+ * `source: "tree"` means the resolver matched it via globs.
+ */
+export type ResolvedTemplateFile = {
+  readonly path: string
+  readonly kind: FileKind
+  readonly target?: string
+  readonly transform?: string
+  readonly source: "descriptor" | "tree"
+}
+
+/**
+ * The full output of `client.resolveTemplate(slug)` — descriptor +
+ * resolved file list + a marker for which path produced the result.
+ *
+ * `source: "github-tree"` is the GitHub-direct path (descriptor
+ * fetched from raw.githubusercontent.com + tree from the GitHub API).
+ * `source: "descriptor-only"` is the API-catalogue path (descriptor
+ * only; tree resolution is N/A).
+ */
+export type ResolvedTemplate = {
+  readonly descriptor: TemplateV2
+  readonly files: ReadonlyArray<ResolvedTemplateFile>
+  readonly treeRef: string
+  readonly source: "github-tree" | "descriptor-only"
+}
+
+/**
  * A template path. Re-declared here (rather than imported from
  * `@workspace/storage`) so this package doesn't take a runtime
  * dependency on storage. Keys are slash-separated strings; the
@@ -129,6 +183,9 @@ export type RegistryClientOptions = {
  *     the consumer must authenticate first.
  *   - `RegistryUnsupportedSource` — guard rail: should never happen
  *     in production. Caught early to surface a bug.
+ *   - `RegistryTreeFailed` — descriptor is OK, the upstream Git tree
+ *     fetch failed (network error, 4xx/5xx, truncated response).
+ *     Carries the underlying cause for diagnostics.
  */
 export type RegistryFailure =
   | { readonly _tag: "RegistryNotFound"; readonly slug: string }
@@ -155,6 +212,11 @@ export type RegistryFailure =
     }
   | { readonly _tag: "RegistryAuthRequired"; readonly slug: string }
   | { readonly _tag: "RegistryUnsupportedSource"; readonly source: string }
+  | {
+      readonly _tag: "RegistryTreeFailed"
+      readonly slug: string
+      readonly cause: unknown
+    }
 
 /**
  * Result of an SDK operation. Discriminated union: `Ok` carries the
@@ -239,4 +301,13 @@ export type RegistryClient = {
     slug: string,
   ) => Promise<Result<TemplateInfo, RegistryFailure>>
   readonly listTemplates: () => Promise<Result<readonly CatalogEntry[], RegistryFailure>>
+  /**
+   * Resolve the descriptor + the file list via the GitHub-direct path
+   * (when the slug is GitHub-shape) or the API path (catalogue slug,
+   * no tree expansion). Use this for the `deessejs info` command.
+   */
+  readonly resolveTemplate: (
+    slug: string,
+    options?: FetchOptions,
+  ) => Promise<Result<ResolvedTemplate, RegistryFailure>>
 }
