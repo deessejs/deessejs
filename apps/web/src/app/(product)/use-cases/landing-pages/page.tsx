@@ -1,6 +1,9 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
+import {
+  RelatedUseCases,
+  type RelatedUseCaseItem,
+} from "../_components/related-use-cases"
 
 import { UseCaseHero } from "../_components/use-case-page"
 import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
@@ -60,7 +63,7 @@ const RELATED = [
     tagline:
       "Admin dashboards and operator consoles that work behind SSO.",
   },
-] as const
+] as const satisfies ReadonlyArray<RelatedUseCaseItem>
 
 const BUILT_TEMPLATES = [
   { slug: "landing-page",     title: "landing-page",     body: "Marketing-ready hero, surfaces, FAQ, two-door CTA." },
@@ -321,40 +324,7 @@ export default function LandingPagesPage() {
       </section>
 
       {/* 6. Related */}
-      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            Explore
-          </p>
-          <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            Related use cases.
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
-          {RELATED.map((item) => (
-            <Link
-              key={item.slug}
-              href={`/use-cases/${item.slug}`}
-              className="group flex flex-col gap-2 p-6 transition-colors hover:bg-accent/40 lg:p-8"
-            >
-              <p className="text-label-13 text-muted-foreground">Related</p>
-              <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
-                {item.title}
-              </h3>
-              <p className="line-clamp-3 text-copy-14 leading-6 text-muted-foreground">
-                {item.tagline}
-              </p>
-              <p className="inline-flex items-center gap-1 pt-1 text-label-13 text-foreground">
-                Read more
-                <ArrowRight
-                  className="size-3 transition-transform group-hover:translate-x-0.5"
-                  aria-hidden
-                />
-              </p>
-            </Link>
-          ))}
-        </div>
-      </div>
+      <RelatedUseCases items={RELATED} />
 
       <FinalCta />
     </div>
