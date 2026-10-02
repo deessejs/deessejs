@@ -84,6 +84,72 @@ export function countLive(grid: Uint8Array): number {
 }
 
 /**
+ * Convert a pointer position to grid coordinates. Returns null when the
+ * pointer is outside the SVG rectangle, the rectangle is degenerate,
+ * or the grid dimensions are invalid. Strictly validates that the
+ * returned row and column are integers in bounds — `Math.floor` on a
+ * floating point can occasionally land on a boundary value, and the
+ * extra checks make the contract explicit.
+ */
+export function pointerToCell(
+  clientX: number,
+  clientY: number,
+  rect: { left: number; top: number; width: number; height: number },
+  cols: number,
+  rows: number,
+): { col: number; row: number } | null {
+  if (cols <= 0 || rows <= 0) return null
+  if (rect.width <= 0 || rect.height <= 0) return null
+  const x = clientX - rect.left
+  const y = clientY - rect.top
+  if (x < 0 || y < 0 || x >= rect.width || y >= rect.height) return null
+  const col = Math.floor((x / rect.width) * cols)
+  const row = Math.floor((y / rect.height) * rows)
+  if (!Number.isInteger(col) || !Number.isInteger(row)) return null
+  if (col < 0 || col >= cols || row < 0 || row >= rows) return null
+  return { col, row }
+}
+
+/**
+ * Bresenham line algorithm between two grid cells. Returns the list of
+ * cells along the inclusive segment `[x0, y0] .. [x1, y1]`. Iteration
+ * count is bounded by `dx + dy + 2` so a malformed input cannot
+ * infinite-loop.
+ */
+export function drawLine(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+): Array<[number, number]> {
+  if (x0 === x1 && y0 === y1) return [[x0, y0]]
+  const cells: Array<[number, number]> = [[x0, y0]]
+  const dx = Math.abs(x1 - x0)
+  const dy = Math.abs(y1 - y0)
+  const sx = x0 < x1 ? 1 : -1
+  const sy = y0 < y1 ? 1 : -1
+  let err = dx - dy
+  let x = x0
+  let y = y0
+  const maxIter = dx + dy + 2
+  let i = 0
+  while (i++ < maxIter) {
+    if (x === x1 && y === y1) break
+    const e2 = 2 * err
+    if (e2 > -dy) {
+      err -= dy
+      x += sx
+    }
+    if (e2 < dx) {
+      err += dx
+      y += sy
+    }
+    cells.push([x, y])
+  }
+  return cells
+}
+
+/**
  * Seed a grid with radial density. Centre has up to 50% chance of being
  * alive per cell; edges have ~5%. If the random roll produces a fully-dead
  * grid, force a single live cell at `centerIndex` so the band never starts
@@ -341,6 +407,7 @@ type SimAction =
   | { type: "STEP" }
   | { type: "INJECT"; pattern: ConwayPattern; x: number; y: number }
   | { type: "SEED"; grid: Uint8Array; cols: number; rows: number }
+  | { type: "DRAW"; cells: ReadonlyArray<readonly [number, number]> }
 
 function simReducer(state: SimState, action: SimAction): SimState {
   switch (action.type) {
@@ -391,6 +458,32 @@ function simReducer(state: SimState, action: SimAction): SimState {
         // nothing.
         return state
       }
+      return { ...state, grid: next, mode: "active" }
+    }
+    case "DRAW": {
+      // Allocate the next Uint8Array lazily — only when at least one
+      // cell actually changes (0 -> 1). Cells already alive are
+      // skipped, so repainting the same cell is idempotent. The mode
+      // flips to "active" because the user just drew something: a
+      // stable grid should wake up and run again.
+      let next: Uint8Array | null = null
+      for (const cell of action.cells) {
+        const col = cell[0]
+        const row = cell[1]
+        if (!Number.isInteger(col) || !Number.isInteger(row)) continue
+        if (
+          col < 0 ||
+          col >= state.cols ||
+          row < 0 ||
+          row >= state.rows
+        )
+          continue
+        const idx = row * state.cols + col
+        if (state.grid[idx] === 1) continue
+        if (next === null) next = new Uint8Array(state.grid)
+        next[idx] = 1
+      }
+      if (next === null) return state
       return { ...state, grid: next, mode: "active" }
     }
   }
@@ -461,6 +554,42 @@ export function ConwayGrid({ className }: { className?: string }) {
     modeRef.current = sim.mode
   }, [sim.grid, sim.mode])
 
+  // Drawing state. The pointer keeps capturing on the SVG until it is
+  // released or the gesture ends. `lastCellRef` is cleared whenever the
+  // pointer leaves the grid so a re-entry doesn't draw a long line back
+  // to the last interior point.
+  const svgRef = useRef<SVGSVGElement>(null)
+  const isDrawingRef = useRef(false)
+  const lastCellRef = useRef<[number, number] | null>(null)
+  const pointerIdRef = useRef<number | null>(null)
+
+  // Keyboard cursor state. Initialised to null; set on focus or on the
+  // first arrow-key press.
+  const [cursor, setCursor] = useState<[number, number] | null>(null)
+
+  /**
+   * End the active gesture cleanly. Releases the pointer capture if
+   * it's still held, then resets the gesture state. Called on
+   * pointerup / pointercancel / lostpointercapture, and on resize
+   * before the grid is replaced.
+   */
+  const endGesture = () => {
+    const id = pointerIdRef.current
+    if (id !== null) {
+      const svg = svgRef.current
+      if (svg && svg.hasPointerCapture(id)) {
+        try {
+          svg.releasePointerCapture(id)
+        } catch {
+          // The pointer may already be released. Swallow.
+        }
+      }
+    }
+    pointerIdRef.current = null
+    isDrawingRef.current = false
+    lastCellRef.current = null
+  }
+
   // Initial measurement + seed. useLayoutEffect runs synchronously after
   // the DOM is mounted but before the browser paints, which lets us
   // measure the wrapper width and seed the grid without a visible
@@ -486,10 +615,12 @@ export function ConwayGrid({ className }: { className?: string }) {
   }, [])
 
   // ResizeObserver: re-measure cols on every layout change. When the
-  // measured column count differs from the current one, reseed. The
-  // callback runs as an observer callback, not inside a useEffect body,
-  // so the cascading-render lint rule does not apply. A measured width
-  // below 3 cells leaves the existing grid in place (suspended).
+  // measured column count differs from the current one, terminate any
+  // active gesture (the wrapper dimensions are about to change and the
+  // cached lastCellRef would otherwise trace a parasite line on the
+  // next gesture), then reseed. The callback runs as an observer
+  // callback, not inside a useEffect body, so the cascading-render
+  // lint rule does not apply.
   useEffect(() => {
     const el = wrapperRef.current
     if (!el) return
@@ -497,6 +628,7 @@ export function ConwayGrid({ className }: { className?: string }) {
       const w = el.getBoundingClientRect().width
       const measured = Math.floor(w / CELL_SIZE)
       if (measured === cols) return
+      endGesture()
       if (measured >= 3) {
         dispatch({
           type: "SEED",
@@ -509,6 +641,14 @@ export function ConwayGrid({ className }: { className?: string }) {
           FIRST_INJECTION_TICKS_MAX,
           Math.random,
         )
+        // Keep the cursor inside the new grid bounds.
+        setCursor((cur) => {
+          if (!cur) return cur
+          return [
+            Math.min(cur[0], measured - 1),
+            Math.min(cur[1], ROWS - 1),
+          ]
+        })
       } else {
         // Below the safe dimension — suspend by zeroing out cols. The
         // tick effect's `cols < 3` gate stops Conway and injections.
@@ -618,19 +758,69 @@ export function ConwayGrid({ className }: { className?: string }) {
     return rects
   }, [grid, cols, rows, columnOpacity])
 
+  // When the wrapper takes focus, initialise the keyboard cursor at
+  // the centre of the grid (if the grid is wide enough).
+  const handleFocus = () => {
+    if (cols >= 3 && rows >= 1 && cursor === null) {
+      setCursor([Math.floor(cols / 2), Math.floor(rows / 2)])
+    }
+  }
+
   return (
     <div
       ref={wrapperRef}
-      aria-hidden="true"
-      role="presentation"
-      className={cn("relative h-60 overflow-hidden", className)}
+      role="application"
+      aria-label="Conway grid. Click or drag to add live cells. Use arrow keys to move the cursor and Space to add a cell at the cursor."
+      tabIndex={0}
+      onFocus={handleFocus}
+      onKeyDown={(e) =>
+        handleKeyDown(e, cols, rows, cursor, setCursor, dispatch)
+      }
+      className={cn(
+        "relative h-60 overflow-hidden touch-none focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+        className,
+      )}
     >
       {cols > 0 && grid.length === cols * rows && (
         <svg
+          ref={svgRef}
           width={cols * CELL_SIZE}
           height={rows * CELL_SIZE}
           viewBox={`0 0 ${cols * CELL_SIZE} ${rows * CELL_SIZE}`}
-          className="block text-foreground"
+          aria-hidden="true"
+          className="block cursor-crosshair text-foreground"
+          onPointerDown={(e) =>
+            handlePointerDown(
+              e,
+              cols,
+              rows,
+              isDrawingRef,
+              lastCellRef,
+              pointerIdRef,
+              svgRef,
+              dispatch,
+            )
+          }
+          onPointerMove={(e) =>
+            handlePointerMove(
+              e,
+              cols,
+              rows,
+              isDrawingRef,
+              lastCellRef,
+              pointerIdRef,
+              dispatch,
+            )
+          }
+          onPointerUp={(e) =>
+            handlePointerEnd(e, isDrawingRef, lastCellRef, pointerIdRef, svgRef)
+          }
+          onPointerCancel={(e) =>
+            handlePointerEnd(e, isDrawingRef, lastCellRef, pointerIdRef, svgRef)
+          }
+          onLostPointerCapture={(e) =>
+            handlePointerEnd(e, isDrawingRef, lastCellRef, pointerIdRef, svgRef)
+          }
         >
           {liveRects.map((cell) => (
             <rect
@@ -643,6 +833,20 @@ export function ConwayGrid({ className }: { className?: string }) {
               fillOpacity={cell.opacity}
             />
           ))}
+          {cursor && (
+            <rect
+              x={cursor[0] * CELL_SIZE}
+              y={cursor[1] * CELL_SIZE}
+              width={CELL_SIZE}
+              height={CELL_SIZE}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeDasharray="2 2"
+              pointerEvents="none"
+              data-testid="conway-cursor"
+            />
+          )}
         </svg>
       )}
     </div>
@@ -650,8 +854,148 @@ export function ConwayGrid({ className }: { className?: string }) {
 }
 
 // ----------------------------------------------------------------------
+// Pointer handlers — the user can click or drag to add live cells.
+// The simulation keeps running underneath; `DRAW` is just another
+// reducer action. Only one pointer is tracked at a time: a second
+// pointerdown while a gesture is active is rejected.
+// ----------------------------------------------------------------------
+
+const handlePointerDown = (
+  e: React.PointerEvent<SVGSVGElement>,
+  cols: number,
+  rows: number,
+  isDrawingRef: React.MutableRefObject<boolean>,
+  lastCellRef: React.MutableRefObject<[number, number] | null>,
+  pointerIdRef: React.MutableRefObject<number | null>,
+  svgRef: React.RefObject<SVGSVGElement | null>,
+  dispatch: React.Dispatch<SimAction>,
+) => {
+  if (pointerIdRef.current !== null) return
+  // Reject non-primary buttons on mouse pointers. PointerType "mouse"
+  // exposes e.button; touch / pen always have button === 0.
+  if (e.pointerType === "mouse" && e.button !== 0) return
+  const rect = e.currentTarget.getBoundingClientRect()
+  const cell = pointerToCell(e.clientX, e.clientY, rect, cols, rows)
+  if (!cell) return
+  e.preventDefault()
+  try {
+    e.currentTarget.setPointerCapture(e.pointerId)
+  } catch {
+    // Some browsers throw if the pointer has already been released.
+  }
+  pointerIdRef.current = e.pointerId
+  isDrawingRef.current = true
+  const tuple: [number, number] = [cell.col, cell.row]
+  lastCellRef.current = tuple
+  dispatch({ type: "DRAW", cells: [tuple] })
+}
+
+const handlePointerMove = (
+  e: React.PointerEvent<SVGSVGElement>,
+  cols: number,
+  rows: number,
+  isDrawingRef: React.MutableRefObject<boolean>,
+  lastCellRef: React.MutableRefObject<[number, number] | null>,
+  pointerIdRef: React.MutableRefObject<number | null>,
+  dispatch: React.Dispatch<SimAction>,
+) => {
+  if (!isDrawingRef.current) return
+  if (pointerIdRef.current !== e.pointerId) return
+  const rect = e.currentTarget.getBoundingClientRect()
+  const cell = pointerToCell(e.clientX, e.clientY, rect, cols, rows)
+  if (!cell) {
+    // Out of bounds — clear the last cell so a re-entry doesn't
+    // draw a line back to the previous interior position.
+    lastCellRef.current = null
+    return
+  }
+  const next: [number, number] = [cell.col, cell.row]
+  const last = lastCellRef.current
+  if (last) {
+    if (last[0] === next[0] && last[1] === next[1]) {
+      // Same cell — dispatch anyway so a cell killed by Conway
+      // between two pointermoves can be revived.
+      dispatch({ type: "DRAW", cells: [next] })
+      lastCellRef.current = next
+      return
+    }
+    dispatch({
+      type: "DRAW",
+      cells: drawLine(last[0], last[1], next[0], next[1]),
+    })
+  } else {
+    dispatch({ type: "DRAW", cells: [next] })
+  }
+  lastCellRef.current = next
+}
+
+const handlePointerEnd = (
+  e: React.PointerEvent<SVGSVGElement>,
+  isDrawingRef: React.MutableRefObject<boolean>,
+  lastCellRef: React.MutableRefObject<[number, number] | null>,
+  pointerIdRef: React.MutableRefObject<number | null>,
+  svgRef: React.RefObject<SVGSVGElement | null>,
+) => {
+  if (pointerIdRef.current !== e.pointerId) return
+  const svg = svgRef.current
+  if (svg && svg.hasPointerCapture(e.pointerId)) {
+    try {
+      svg.releasePointerCapture(e.pointerId)
+    } catch {
+      // ignore
+    }
+  }
+  pointerIdRef.current = null
+  isDrawingRef.current = false
+  lastCellRef.current = null
+}
+
+// ----------------------------------------------------------------------
+// Keyboard handler — focusable cursor + Space / Enter to draw. The
+// cursor is initialised at the centre of the grid the first time the
+// wrapper takes focus or an arrow key is pressed.
+// ----------------------------------------------------------------------
+
+const handleKeyDown = (
+  e: React.KeyboardEvent<HTMLDivElement>,
+  cols: number,
+  rows: number,
+  cursor: [number, number] | null,
+  setCursor: React.Dispatch<React.SetStateAction<[number, number] | null>>,
+  dispatch: React.Dispatch<SimAction>,
+) => {
+  if (cols < 3 || rows < 1) return
+  const isArrow =
+    e.key === "ArrowUp" ||
+    e.key === "ArrowDown" ||
+    e.key === "ArrowLeft" ||
+    e.key === "ArrowRight"
+  const isActivate = e.key === " " || e.key === "Enter"
+  if (!isArrow && !isActivate) return
+  e.preventDefault()
+  const current: [number, number] = cursor ?? [
+    Math.floor(cols / 2),
+    Math.floor(rows / 2),
+  ]
+  if (isActivate) {
+    dispatch({ type: "DRAW", cells: [current] })
+    setCursor(current)
+    return
+  }
+  let next: [number, number] = current
+  if (e.key === "ArrowUp") next = [current[0], Math.max(0, current[1] - 1)]
+  else if (e.key === "ArrowDown")
+    next = [current[0], Math.min(rows - 1, current[1] + 1)]
+  else if (e.key === "ArrowLeft")
+    next = [Math.max(0, current[0] - 1), current[1]]
+  else if (e.key === "ArrowRight")
+    next = [Math.min(cols - 1, current[0] + 1), current[1]]
+  setCursor(next)
+}
+
+// ----------------------------------------------------------------------
 // ConwayBand — the only component the footer imports. Renders the
-// visual grid (aria-hidden). Keys <ConwayGrid /> by pathname so every
+// interactive grid. Keys <ConwayGrid /> by pathname so every
 // client-side navigation reseeds the simulation.
 // ----------------------------------------------------------------------
 

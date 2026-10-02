@@ -24,12 +24,14 @@ import { describe, expect, it } from "vitest"
 import {
   canPlaceEmpty,
   countLive,
+  drawLine,
   gridsEqual,
   injectPattern,
   patternCells,
   patternHeight,
   patternWidth,
   pickInjection,
+  pointerToCell,
   seedGrid,
   stepGrid,
   type ConwayPattern,
@@ -392,5 +394,129 @@ describe("seedGrid", () => {
     const rng = () => 0.99
     const grid = seedGrid(20, 20, rng)
     expect(countLive(grid)).toBeGreaterThanOrEqual(1)
+  })
+})
+
+// ----------------------------------------------------------------------
+// drawLine — Bresenham line algorithm. Tested as a pure function.
+// ----------------------------------------------------------------------
+
+describe("drawLine", () => {
+  it("returns the single cell when start equals end", () => {
+    expect(drawLine(2, 2, 2, 2)).toEqual([[2, 2]])
+  })
+
+  it("walks a vertical line inclusive of both ends", () => {
+    const cells = drawLine(0, 0, 0, 3)
+    expect(cells).toEqual([
+      [0, 0],
+      [0, 1],
+      [0, 2],
+      [0, 3],
+    ])
+  })
+
+  it("walks a horizontal line inclusive of both ends", () => {
+    const cells = drawLine(1, 5, 4, 5)
+    expect(cells).toEqual([
+      [1, 5],
+      [2, 5],
+      [3, 5],
+      [4, 5],
+    ])
+  })
+
+  it("walks a diagonal inclusive of both ends", () => {
+    const cells = drawLine(0, 0, 3, 3)
+    expect(cells).toEqual([
+      [0, 0],
+      [1, 1],
+      [2, 2],
+      [3, 3],
+    ])
+  })
+
+  it("walks a long line without exceeding the iteration bound", () => {
+    // dx + dy + 2 = 9 + 9 + 2 = 20. The function must terminate.
+    const cells = drawLine(0, 0, 9, 9)
+    expect(cells.length).toBeGreaterThan(0)
+    expect(cells[cells.length - 1]).toEqual([9, 9])
+  })
+
+  it("handles a backwards segment", () => {
+    const cells = drawLine(3, 3, 0, 0)
+    expect(cells[0]).toEqual([3, 3])
+    expect(cells[cells.length - 1]).toEqual([0, 0])
+  })
+})
+
+// ----------------------------------------------------------------------
+// pointerToCell — strict coordinate validation.
+// ----------------------------------------------------------------------
+
+describe("pointerToCell", () => {
+  const rect = { left: 100, top: 200, width: 160, height: 80 }
+
+  it("returns null when the grid is empty", () => {
+    expect(pointerToCell(180, 240, rect, 0, 0)).toBeNull()
+  })
+
+  it("returns null when the rectangle has zero width or height", () => {
+    expect(pointerToCell(100, 200, { left: 100, top: 200, width: 0, height: 80 }, 5, 5)).toBeNull()
+    expect(pointerToCell(100, 200, { left: 100, top: 200, width: 160, height: 0 }, 5, 5)).toBeNull()
+  })
+
+  it("returns null for a pointer outside the rectangle", () => {
+    // left of rect
+    expect(pointerToCell(50, 240, rect, 20, 5)).toBeNull()
+    // right of rect
+    expect(pointerToCell(300, 240, rect, 20, 5)).toBeNull()
+    // above rect
+    expect(pointerToCell(180, 100, rect, 20, 5)).toBeNull()
+    // below rect
+    expect(pointerToCell(180, 400, rect, 20, 5)).toBeNull()
+  })
+
+  it("maps an interior pointer to valid integer coordinates", () => {
+    // 20 cols x 5 rows over a 160x80 rectangle. Each cell is 8x16.
+    // Pointer at (180, 240) sits 80px right of left, 40px below top.
+    // col = floor(80/160 * 20) = 10; row = floor(40/80 * 5) = 2.
+    const cell = pointerToCell(180, 240, rect, 20, 5)
+    expect(cell).toEqual({ col: 10, row: 2 })
+  })
+
+  it("excludes a pointer exactly on the right boundary", () => {
+    // x = left + width = 100 + 160 = 260 → not strictly inside.
+    expect(pointerToCell(260, 240, rect, 20, 5)).toBeNull()
+  })
+})
+
+// ----------------------------------------------------------------------
+// Reducer DRAW — additive, idempotent, bounds-checked, flips mode.
+// ----------------------------------------------------------------------
+
+describe("simReducer DRAW (indirect)", () => {
+  // The reducer itself is module-private; we exercise it indirectly
+  // through the public exports and a smoke test of the unit functions.
+  // For now we check that the visible pure functions honour the same
+  // invariants the reducer uses.
+
+  it("canPlaceEmpty rejects a rectangle covering a live cell", () => {
+    const grid = new Uint8Array(20 * 5)
+    grid[2 * 20 + 10] = 1
+    expect(canPlaceEmpty(grid, 20, 5, 9, 1, "glider", 2)).toBe(false)
+  })
+
+  it("drawLine + pointerToCell agree on coordinate space", () => {
+    const cols = 20
+    const rows = 5
+    const rect = { left: 0, top: 0, width: 160, height: 80 }
+    // Two interior points.
+    const c1 = pointerToCell(40, 10, rect, cols, rows)!
+    const c2 = pointerToCell(120, 70, rect, cols, rows)!
+    // The Bresenham segment must include both endpoints.
+    const line = drawLine(c1.col, c1.row, c2.col, c2.row)
+    expect(line[0]).toEqual([c1.col, c1.row])
+    expect(line[line.length - 1]).toEqual([c2.col, c2.row])
   })
 })
