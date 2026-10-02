@@ -125,6 +125,31 @@ const parseDescriptorResponse = async (
     })
   }
   if (response.status >= 500) {
+    // Distinguish "tree fetch failed" (set by the API server after
+    // it tried to resolve descriptor.files via the GitHub tree API)
+    // from a generic upstream failure. The body is parsed with
+    // .clone() so the consumer can still read the original body.
+    let isTreeFailure = false
+    try {
+      const peeked = (await response.clone().json()) as { error?: unknown }
+      if (
+        typeof peeked === "object" &&
+        peeked !== null &&
+        peeked.error === "tree fetch failed"
+      ) {
+        isTreeFailure = true
+      }
+    } catch {
+      // Body wasn't JSON or unreadable; fall through to the default
+      // upstream-failure mapping.
+    }
+    if (isTreeFailure) {
+      return errResult<RegistryFailure>({
+        _tag: "RegistryTreeFailed",
+        slug,
+        cause: `HTTP ${response.status}`,
+      })
+    }
     return errResult<RegistryFailure>({
       _tag: "RegistryFetchFailed",
       slug,

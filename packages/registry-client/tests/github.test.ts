@@ -232,6 +232,106 @@ describe("getTemplateFromGithub", () => {
       expect(result.error._tag).toBe("RegistryInvalidDescriptor")
     }
   })
+
+  it("returns an empty map when descriptor declares no files and no globs (V1 empty case)", async () => {
+    const empty = {
+      $schema:
+        "https://registry.deessejs.com/schema/template/v2.json" as const,
+      name: "empty-template",
+      title: "Empty Template",
+      type: "template:app" as const,
+      version: "1.0.0",
+      source: { repo: "deessejs/empty-template", ref: "main" },
+      files: [],
+    }
+    const { fetchImpl, state } = makeMockFetch(() => jsonResponse(200, empty))
+    const result = await getTemplateFromGithub(
+      "deessejs",
+      "empty-template",
+      undefined,
+      fetchImpl,
+    )
+    expect(result._tag).toBe("Ok")
+    if (result._tag === "Ok") {
+      expect(result.value.files).toEqual({})
+    }
+    // Only one fetch (descriptor). No tree fetch on the empty path.
+    expect(state.calls).toHaveLength(1)
+  })
+
+  it("fetches the tree and synthesises URLs when descriptor is glob-only (V2 path)", async () => {
+    const globOnly = {
+      $schema:
+        "https://registry.deessejs.com/schema/template/v2.json" as const,
+      name: "package-template",
+      title: "Package Template",
+      type: "template:starter" as const,
+      version: "1.0.0",
+      source: { repo: "deessejs/package-template", ref: "main" },
+      includes: ["**"],
+      excludes: [".claude/**"],
+      fileTypes: { "scripts/setup.mjs": "source" },
+    }
+    const TREE = {
+      sha: "abc",
+      tree: [
+        { path: "package.json", type: "blob" },
+        { path: "scripts/setup.mjs", type: "blob" },
+        { path: ".claude/MEMORY.md", type: "blob" },
+      ],
+      truncated: false,
+    }
+    const { fetchImpl, state } = makeMockFetch((req) => {
+      if (req.url.includes("/git/trees/")) return treeResponse(200, TREE)
+      return jsonResponse(200, globOnly)
+    })
+    const result = await getTemplateFromGithub(
+      "deessejs",
+      "package-template",
+      undefined,
+      fetchImpl,
+    )
+    expect(result._tag).toBe("Ok")
+    if (result._tag === "Ok") {
+      // Two files survive excludes: package.json + scripts/setup.mjs.
+      // .claude/MEMORY.md is excluded.
+      expect(Object.keys(result.value.files).sort()).toEqual([
+        "package.json",
+        "scripts/setup.mjs",
+      ])
+      expect(result.value.files["package.json"]).toContain("package.json")
+      expect(result.value.files["scripts/setup.mjs"]).toContain("setup.mjs")
+    }
+    // Two fetches: descriptor + tree (no repo-existence probe here — only resolveTemplate adds that).
+    expect(state.calls).toHaveLength(2)
+  })
+
+  it("preserves the V1 fast-path when descriptor.files[] is non-empty (no tree fetch)", async () => {
+    // Even when the descriptor also declares includes, an explicit
+    // files[] entry wins via the resolver's dedup. But more
+    // importantly, no tree fetch happens because descriptor.files[]
+    // is the fast-path.
+    const mixed = {
+      ...VALID_TEMPLATE, // includes package.json + src/index.ts in files
+      includes: ["**"],
+      excludes: ["**/*.test.ts"],
+    }
+    const { fetchImpl, state } = makeMockFetch(() => jsonResponse(200, mixed))
+    const result = await getTemplateFromGithub(
+      "deessejs",
+      "saas-template",
+      undefined,
+      fetchImpl,
+    )
+    expect(result._tag).toBe("Ok")
+    if (result._tag === "Ok") {
+      expect(Object.keys(result.value.files).sort()).toEqual([
+        "package.json",
+        "src/index.ts",
+      ])
+    }
+    expect(state.calls).toHaveLength(1)
+  })
 })
 
 // ---------------------------------------------------------------------------

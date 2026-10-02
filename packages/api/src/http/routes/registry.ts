@@ -57,6 +57,7 @@
  */
 
 import { TemplateV2 as TemplateV2Schema, type TemplateV2 } from "@workspace/contracts/v2"
+import { resolveFiles } from "@workspace/registry-client"
 import { logger } from "../../constants/logger.js"
 import { TEMPLATES } from "../../templates.js"
 import type { ApiEnv } from "../env.js"
@@ -110,6 +111,46 @@ const fetchDescriptorFromGithub = async (
     throw new Error(`GitHub responded ${response.status}`)
   }
   return { text: await response.text(), ref: ref ?? "main" }
+}
+
+/**
+ * Fetch the recursive Git tree for a template repo.
+ *
+ * Endpoint: `GET https://api.github.com/repos/{owner}/{repo}/git/trees/{ref}?recursive=1`
+ * Returns the list of blob paths at the given ref. 404 means the repo
+ * is fine but the ref is missing (shouldn't happen for `main`). 5xx
+ * throws a tagged `Error("tree fetch failed")` that the API client
+ * surfaces as `RegistryTreeFailed` (see
+ * `@workspace/registry-client/src/http-client.ts`).
+ *
+ * Mirrors the descriptor-fetch pattern but with a different status
+ * mapping: 404 here is rare (ref doesn't exist) and 5xx is the
+ * load-bearing failure mode (the user-facing CLI message differs).
+ */
+const fetchTreeFromGithub = async (
+  owner: string,
+  repo: string,
+  ref: string,
+): Promise<{ paths: string[]; ref: string } | null> => {
+  const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`
+  const response = await fetch(url, {
+    headers: { accept: "application/vnd.github+json" },
+  })
+  if (response.status === 404) return null
+  if (!response.ok) {
+    throw new Error("tree fetch failed")
+  }
+  const json = (await response.json()) as {
+    truncated?: boolean
+    tree?: Array<{ path?: string; type?: string }>
+  }
+  if (json.truncated === true) {
+    throw new Error("tree fetch failed")
+  }
+  const paths = (json.tree ?? [])
+    .filter((n) => n.type === "blob" && typeof n.path === "string")
+    .map((n) => n.path as string)
+  return { paths, ref }
 }
 
 /**
@@ -255,8 +296,46 @@ export const mountRegistry = (api: Hono<ApiEnv>): void => {
     const descriptor: TemplateV2 = parsed.data
     // Build URLs for each declared file at the resolved ref.
     const files: Record<string, string> = {}
-    for (const file of descriptor.files ?? []) {
-      files[file.path] = `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${raw.ref}/${file.path}`
+    if (descriptor.files && descriptor.files.length > 0) {
+      // V1 fast-path: descriptor.files[] is non-empty. No tree fetch.
+      for (const file of descriptor.files) {
+        files[file.path] = `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${raw.ref}/${file.path}`
+      }
+    } else if (
+      descriptor.includes !== undefined ||
+      descriptor.excludes !== undefined ||
+      descriptor.fileTypes !== undefined
+    ) {
+      // V2 path: descriptor declares a glob pipeline. Fetch the tree,
+      // resolve via `resolveFiles` (same algorithm as the SDK; the SDK
+      // calls the same function on its GitHub-direct path), build the
+      // URL map from the resolved entries.
+      let tree: { paths: string[]; ref: string } | null
+      try {
+        tree = await fetchTreeFromGithub(repo.owner, repo.repo, raw.ref)
+      } catch (cause) {
+        logger.error("registry_tree_failed", {
+          slug,
+          repo: `${repo.owner}/${repo.repo}`,
+          message: String(cause),
+        })
+        return c.json({ error: "tree fetch failed" }, 502)
+      }
+      if (tree === null) {
+        return c.json(
+          {
+            error: `tree not found for ${repo.owner}/${repo.repo} @ ${raw.ref}`,
+            code: "tree_fetch_failed",
+          },
+          502,
+        )
+      }
+      const rawBase = `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${tree.ref}`
+      const resolved = resolveFiles(descriptor, tree.paths)
+      for (const f of resolved) {
+        const target = f.target ?? f.path
+        files[target] = `${rawBase}/${f.path}`
+      }
     }
     return c.json({ descriptor, files })
   })

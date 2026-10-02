@@ -148,9 +148,34 @@ export const getTemplateFromGithub = async (
 
   const descriptor: TemplateV2 = descriptorParsed.data
   const files: Record<ObjectKey, string> = {}
-  for (const file of descriptor.files ?? []) {
-    files[file.path] = `${githubRawBase()}/${owner}/${repo}/${resolvedRef}/${file.path}`
+
+  // V1 fast-path: descriptor.files[] is non-empty → iterate directly.
+  // Preserves the original V1 wire shape (one URL per declared file).
+  // No tree fetch required — saves an HTTP round-trip for the common case.
+  if (descriptor.files && descriptor.files.length > 0) {
+    for (const file of descriptor.files) {
+      files[file.path] = `${githubRawBase()}/${owner}/${repo}/${resolvedRef}/${file.path}`
+    }
+  } else if (
+    descriptor.includes !== undefined ||
+    descriptor.excludes !== undefined ||
+    descriptor.fileTypes !== undefined
+  ) {
+    // V2 path: descriptor declares a glob pipeline. Fetch the tree,
+    // resolve the file list, build the URL map from the resolved
+    // entries. `resolveFiles` is the same function the server uses
+    // on the API path — see @workspace/registry-client/src/resolve.ts
+    // for the algorithm contract.
+    const treeResult = await getTreeFromGithub(owner, repo, resolvedRef, fetchImpl)
+    if (treeResult._tag === "Err") return treeResult
+    const resolved = resolveFilesPure(descriptor, treeResult.value.paths)
+    for (const f of resolved) {
+      const target = f.target ?? f.path
+      files[target] = `${githubRawBase()}/${owner}/${repo}/${resolvedRef}/${f.path}`
+    }
   }
+  // else: descriptor has neither files[] nor globs. Empty map is the
+  // correct behaviour (matches V1; init scaffolds zero files).
 
   return okResult<FetchedTemplate>({ descriptor, files })
 }
@@ -249,10 +274,13 @@ export const getInfoFromGithub = async (
 }
 
 /**
- * Base URL for the GitHub Git Trees API. Not overridable: the API
- * host is fixed at api.github.com. Tests mock `fetchImpl`.
+ * Base URL for the GitHub Git Trees API. Defaults to the public
+ * `https://api.github.com` host. Tests / mirror deployments override
+ * via the `DEESSEJS_GITHUB_API_BASE` env var — same pattern as
+ * `DEESSEJS_GITHUB_RAW_BASE` for the raw host.
  */
-const GITHUB_API_BASE = "https://api.github.com"
+const GITHUB_API_BASE = (): string =>
+  process.env["DEESSEJS_GITHUB_API_BASE"] ?? "https://api.github.com"
 
 /**
  * Fetch the recursive Git tree for a repository.
@@ -273,7 +301,7 @@ export const getTreeFromGithub = async (
   fetchImpl: typeof fetch,
 ): Promise<Result<{ readonly ref: string; readonly paths: readonly string[] }, RegistryFailure>> => {
   const slug = `${owner}/${repo}`
-  const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`
+  const url = `${GITHUB_API_BASE()}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`
 
   let response: Response
   try {
@@ -364,7 +392,7 @@ export const getRepoExists = async (
   fetchImpl: typeof fetch,
 ): Promise<Result<true, RegistryFailure>> => {
   const slug = `${owner}/${repo}`
-  const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}`
+  const url = `${GITHUB_API_BASE()}/repos/${owner}/${repo}`
 
   let response: Response
   try {
