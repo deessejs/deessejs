@@ -1,6 +1,14 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import {
+  CreditCard,
+  Globe,
+  ShieldCheck,
+  Sparkles,
+  Workflow,
+  Zap,
+} from "lucide-react"
+import {
   RelatedUseCases,
   type RelatedUseCaseItem,
 } from "../_components/related-use-cases"
@@ -185,6 +193,64 @@ const PILLARS: ReadonlyArray<Pillar> = [
 ]
 
 /**
+ * "One codebase, endless benefits" -- 6 cells in a 3x2 grid.
+ * Each cell answers a benefit the buyer gets when they ship a
+ * SaaS template, beyond the eight pillars above. Mirrors the
+ * Vercel shape (eyebrow + icon + title + body) without the
+ * per-cell mockup: text-only keeps the page lean and matches
+ * the "less illustration-heavy" direction.
+ */
+const BENEFITS: ReadonlyArray<{
+  id: string
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  body: string
+}> = [
+  {
+    id: "instant-scaffold",
+    icon: Zap,
+    title: "Instant scaffold",
+    body:
+      "Run one CLI line, the contracts wire before the first file is generated. Auth, billing, jobs, mail, the database schema -- all preconfigured against the same registry the rest of your app will read.",
+  },
+  {
+    id: "pay-ready",
+    icon: CreditCard,
+    title: "Pay-ready",
+    body:
+      "Stripe subscriptions, proration, and a customer portal come wired against the same contract the database reads. Usage metering matches the shape your app code reads, not a fork you bolted onto.",
+  },
+  {
+    id: "background-work",
+    icon: Workflow,
+    title: "Background work, wired",
+    body:
+      "Queues, retries, and cron live in the same registry as the rest of the code. Failed jobs surface in the same dashboard as 5xx; retries are typed, not free-form shell scripts.",
+  },
+  {
+    id: "ship-with-confidence",
+    icon: Sparkles,
+    title: "Ship with confidence",
+    body:
+      "Feature flags and gradual rollouts go into the registry with the rest of the code. No second vendor to monitor, no parallel dashboard for the team to ignore.",
+  },
+  {
+    id: "multi-region",
+    icon: Globe,
+    title: "Multi-region, day one",
+    body:
+      "Edge cache, regional failover, and CDN propagation are wired before the first deploy. A customer in Tokyo and a customer in Berlin hit the same surface, not a degraded variant.",
+  },
+  {
+    id: "compliance-ready",
+    icon: ShieldCheck,
+    title: "Compliance-ready",
+    body:
+      "Audit trail, RBAC, and secret rotation live in the registry as typed primitives. Regulated buyers spend the first call on the demo, not on explaining what comprehensive logging looks like.",
+  },
+]
+
+/**
  * Page wrapper. The wrapper's outer border + bg is provided by
  * GlobalLayout in apps/web/src/app/layout.tsx -- we don't render
  * our own card frame, so the page sits flush inside the global
@@ -252,7 +318,47 @@ export default function SaasAppsPage() {
         </div>
       </section>
 
-      {/* 3. Stack */}
+      {/* 3. One codebase, endless benefits -- 6 cells in a 3x2
+           grid (Pattern C, bg-border gap-px). Icon + title + body
+           per cell, no mockups. */}
+      <section className="border-b border-border">
+        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
+          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            One codebase, endless benefits
+          </p>
+          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
+            What you ship on top of the eight pillars.
+          </h2>
+          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+            Six concrete outcomes you get for free, because the
+            contracts the app reads under, the registry already knows
+            about.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 bg-border gap-px sm:grid-cols-2 md:grid-cols-3">
+          {BENEFITS.map((b) => {
+            const Icon = b.icon
+            return (
+              <article
+                key={b.id}
+                className="flex flex-col gap-3 bg-background p-6 lg:p-8"
+              >
+                <div className="flex items-center gap-2">
+                  <Icon className="size-4 shrink-0 text-foreground" aria-hidden />
+                  <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
+                    {b.title}
+                  </h3>
+                </div>
+                <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
+                  {b.body}
+                </p>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* 4. Stack */}
       {/*    Same TechStackGrid used on the homepage and /pricing.
            Header row on top, brand wall underneath. The brand
            tiles rotate on a swap animation, so the surface
