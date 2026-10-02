@@ -347,6 +347,52 @@ import { resolveFiles as resolveFilesPure } from "./resolve.js"
 import type { ResolvedTemplate } from "./types.js"
 
 /**
+ * Check whether the GitHub repo exists.
+ *
+ * Used to distinguish "owner/repo not found" from "owner/repo found
+ * but descriptor missing". `raw.githubusercontent.com` returns 404 in
+ * both cases (the file doesn't exist either way), so the SDK can't
+ * rely on it for the distinction. The repo endpoint
+ * (`GET /repos/{owner}/{repo}`) is the canonical existence probe.
+ *
+ * Returns `Ok(true)` if the repo exists, `Err(RegistryNotFound)` if
+ * 404, or another `Err(RegistryFailure)` for transport / 5xx.
+ */
+export const getRepoExists = async (
+  owner: string,
+  repo: string,
+  fetchImpl: typeof fetch,
+): Promise<Result<true, RegistryFailure>> => {
+  const slug = `${owner}/${repo}`
+  const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}`
+
+  let response: Response
+  try {
+    response = await fetchImpl(url, {
+      headers: { accept: "application/vnd.github+json" },
+    })
+  } catch (cause) {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryNetworkError",
+      slug,
+      cause,
+    })
+  }
+
+  if (response.status === 404) {
+    return errResult<RegistryFailure>({ _tag: "RegistryNotFound", slug })
+  }
+  if (!response.ok) {
+    return errResult<RegistryFailure>({
+      _tag: "RegistryFetchFailed",
+      slug,
+      cause: `HTTP ${response.status}`,
+    })
+  }
+  return okResult(true)
+}
+
+/**
  * Fetch descriptor + tree, then resolve the file list via
  * `resolveFiles`. Returned on the GitHub direct path only.
  */
@@ -356,6 +402,12 @@ export const resolveTemplateFromGithub = async (
   ref: string | undefined,
   fetchImpl: typeof fetch,
 ): Promise<Result<ResolvedTemplate, RegistryFailure>> => {
+  // Existence check first: if the repo doesn't exist on GitHub,
+  // surface RegistryNotFound (a 404 from raw.githubusercontent.com
+  // would otherwise be misreported as RegistryIncompatibleTemplate).
+  const exists = await getRepoExists(owner, repo, fetchImpl)
+  if (exists._tag === "Err") return exists
+
   // Fetch descriptor (reuses the GitHub raw fetch logic).
   const templateResult = await getTemplateFromGithub(owner, repo, ref, fetchImpl)
   if (templateResult._tag === "Err") return templateResult

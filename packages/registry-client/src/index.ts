@@ -40,3 +40,9 @@ export { ok, err } from "./types.js"
 export { asRegistryFailure, toRegistryError } from "./errors.js"
 
 export { resolveFiles } from "./resolve.js"
+export {
+  getInfoFromGithub,
+  getRepoExists,
+  getTemplateFromGithub,
+  resolveTemplateFromGithub,
+} from "./github.js"

@@ -21,6 +21,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   getInfoFromGithub,
+  getRepoExists,
   getTemplateFromGithub,
   resolveTemplateFromGithub,
 } from "../src/github.js"
@@ -338,8 +339,8 @@ describe("resolveTemplateFromGithub", () => {
       expect(paths).toContain("src/index.ts")
       expect(paths).toContain("src/foo.test.ts")
     }
-    // Two fetch calls: descriptor + tree
-    expect(state.calls).toHaveLength(2)
+    // Three fetch calls: repo-existence probe + descriptor + tree
+    expect(state.calls).toHaveLength(3)
   })
 
   it("returns RegistryTreeFailed when tree fetch returns 5xx", async () => {
@@ -375,6 +376,73 @@ describe("resolveTemplateFromGithub", () => {
     expect(result._tag).toBe("Err")
     if (result._tag === "Err") {
       expect(result.error._tag).toBe("RegistryTreeFailed")
+    }
+  })
+
+  it("returns RegistryNotFound when the repo does not exist on GitHub", async () => {
+    // Without this check, the raw.githubusercontent.com fetch would
+    // also 404 and we'd mis-report as RegistryIncompatibleTemplate
+    // (missing_descriptor), which is misleading.
+    const { fetchImpl, state } = makeMockFetch((req) => {
+      if (req.url.endsWith("/repos/deessejs/template")) {
+        return new Response(JSON.stringify({ message: "Not Found" }), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        })
+      }
+      // The descriptor + tree endpoints must NOT be called.
+      throw new Error(`unexpected fetch to ${req.url}`)
+    })
+    const result = await resolveTemplateFromGithub(
+      "deessejs",
+      "template",
+      undefined,
+      fetchImpl,
+    )
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryNotFound")
+    }
+    // Only one fetch: the repo existence probe.
+    expect(state.calls).toHaveLength(1)
+  })
+})
+
+describe("getRepoExists", () => {
+  it("returns Ok(true) when the repo exists (200)", async () => {
+    const { fetchImpl } = makeMockFetch(() =>
+      new Response(JSON.stringify({ full_name: "deessejs/package-template" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    const result = await getRepoExists("deessejs", "package-template", fetchImpl)
+    expect(result._tag).toBe("Ok")
+    if (result._tag === "Ok") expect(result.value).toBe(true)
+  })
+
+  it("returns RegistryNotFound when the repo is absent (404)", async () => {
+    const { fetchImpl } = makeMockFetch(() =>
+      new Response(JSON.stringify({ message: "Not Found" }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    const result = await getRepoExists("deessejs", "nope", fetchImpl)
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryNotFound")
+    }
+  })
+
+  it("returns RegistryFetchFailed on 5xx", async () => {
+    const { fetchImpl } = makeMockFetch(() =>
+      new Response("server error", { status: 502 }),
+    )
+    const result = await getRepoExists("deessejs", "package-template", fetchImpl)
+    expect(result._tag).toBe("Err")
+    if (result._tag === "Err") {
+      expect(result.error._tag).toBe("RegistryFetchFailed")
     }
   })
 })
