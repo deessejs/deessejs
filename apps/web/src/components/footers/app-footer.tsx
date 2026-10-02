@@ -2,6 +2,7 @@ import Image from "next/image"
 
 import { CookiePreferencesButton } from "@workspace/cookies"
 
+import { ConwayBand } from "./conway-grid"
 import { FooterColumn, type FooterLink } from "./footer-column"
 
 const footerSections: ReadonlyArray<{
@@ -111,6 +112,12 @@ export function AppFooter() {
               links={section.links}
             />
           ))}
+        </div>
+
+        {/* Conway signature band — bleeds to the container max-width,
+            separates from the section grid with a border-t. */}
+        <div className="mt-12 -mx-6 border-t border-border">
+          <ConwayBand />
         </div>
 
         {/* Bottom bar */}
