@@ -31,9 +31,12 @@
  *   - Suspension preserves the remaining delay. The countdown only
  *     decrements when the component is not suspended.
  *
- * Performance: at 1200px wide, an estimated ~525 live `<rect>` on
- * average (varies). 1.5KB `Uint8Array`. The timer calls `dispatch` with
- * a pure reducer; no setState updaters carry side effects.
+ * Performance: at 1200px wide, the grid is `~150 cols × 30 rows`
+ * (~4 500 cells, ~4.4 KiB `Uint8Array`). The live-cell count varies by
+ * seed but is roughly bounded by the cell count. The timer calls
+ * `dispatch` with a pure reducer; the countdown and grid are mirrored
+ * to refs so the interval is set up once per (cols, visibility)
+ * change — not on every tick.
  *
  * Exports:
  *   - `<ConwayBand />`            — the only thing the footer imports.
@@ -112,10 +115,13 @@ export function seedGrid(
 }
 
 /**
- * Classic Conway B3/S23 with hard borders. A live cell with 2 or 3
+ * Classic Conway B3/S23 on a toroidal grid. A live cell with 2 or 3
  * live neighbours survives; a dead cell with exactly 3 live neighbours
- * becomes alive; everything else dies. Cells outside the grid count
- * as 0 neighbours (no wraparound).
+ * becomes alive; everything else dies. The grid wraps on both axes: the
+ * left edge is adjacent to the right edge, and the top edge to the
+ * bottom edge. `cols` and `rows` must both be >= 3 for the standard
+ * 8-neighbour kernel to have distinct coordinates after wrapping; below
+ * that, the caller should not invoke the simulation.
  */
 export function stepGrid(
   grid: Uint8Array,
@@ -129,9 +135,9 @@ export function stepGrid(
       for (let dr = -1; dr <= 1; dr++) {
         for (let dc = -1; dc <= 1; dc++) {
           if (dr === 0 && dc === 0) continue
-          const rr = r + dr
-          const cc = c + dc
-          if (rr < 0 || rr >= rows || cc < 0 || cc >= cols) continue
+          // ((x % n) + n) % n handles negative remainders in JS.
+          const rr = ((r + dr) % rows + rows) % rows
+          const cc = ((c + dc) % cols + cols) % cols
           n += grid[rr * cols + cc] ?? 0
         }
       }
@@ -388,12 +394,23 @@ export function ConwayGrid({ className }: { className?: string }) {
       : document.visibilityState === "visible",
   )
 
-  // Injection countdown in ticks. Decremented on every non-suspended
-  // tick. Independent of `sim.mode` so a stable grid still receives
-  // injections on the same schedule.
-  const [ticksUntilInjection, setTicksUntilInjection] = useState<number>(
-    () => randomInRange(FIRST_INJECTION_TICKS_MIN, FIRST_INJECTION_TICKS_MAX, Math.random),
+  // Refs that mirror the reducer's state and the injection countdown so
+  // the timer effect does not have to re-install on every generation or
+  // every countdown decrement. The interval is set up once per
+  // dependency change of `cols`, `isInView`, `docVisible`, and
+  // `reduceMotion` — none of which flips on each tick.
+  const gridRef = useRef<Uint8Array>(sim.grid)
+  const modeRef = useRef<SimState["mode"]>(sim.mode)
+  const countdownRef = useRef<number>(
+    randomInRange(FIRST_INJECTION_TICKS_MIN, FIRST_INJECTION_TICKS_MAX, Math.random),
   )
+
+  // Keep `gridRef` and `modeRef` in sync with the reducer output.
+  // This is a one-way mirror; we never read the ref to drive a render.
+  useEffect(() => {
+    gridRef.current = sim.grid
+    modeRef.current = sim.mode
+  }, [sim.grid, sim.mode])
 
   // Initial measurement + seed. useLayoutEffect runs synchronously after
   // the DOM is mounted but before the browser paints, which lets us
@@ -404,20 +421,26 @@ export function ConwayGrid({ className }: { className?: string }) {
     if (!el) return
     const w = el.getBoundingClientRect().width
     const measured = Math.floor(w / CELL_SIZE)
-    if (measured > 0) {
+    if (measured >= 3) {
       dispatch({
         type: "SEED",
         grid: seedGrid(measured, ROWS, Math.random),
         cols: measured,
         rows: ROWS,
       })
+      countdownRef.current = randomInRange(
+        FIRST_INJECTION_TICKS_MIN,
+        FIRST_INJECTION_TICKS_MAX,
+        Math.random,
+      )
     }
   }, [])
 
   // ResizeObserver: re-measure cols on every layout change. When the
   // measured column count differs from the current one, reseed. The
   // callback runs as an observer callback, not inside a useEffect body,
-  // so the cascading-render lint rule does not apply.
+  // so the cascading-render lint rule does not apply. A measured width
+  // below 3 cells leaves the existing grid in place (suspended).
   useEffect(() => {
     const el = wrapperRef.current
     if (!el) return
@@ -425,16 +448,22 @@ export function ConwayGrid({ className }: { className?: string }) {
       const w = el.getBoundingClientRect().width
       const measured = Math.floor(w / CELL_SIZE)
       if (measured === cols) return
-      if (measured > 0) {
+      if (measured >= 3) {
         dispatch({
           type: "SEED",
           grid: seedGrid(measured, ROWS, Math.random),
           cols: measured,
           rows: ROWS,
         })
-        setTicksUntilInjection(
-          randomInRange(FIRST_INJECTION_TICKS_MIN, FIRST_INJECTION_TICKS_MAX, Math.random),
+        countdownRef.current = randomInRange(
+          FIRST_INJECTION_TICKS_MIN,
+          FIRST_INJECTION_TICKS_MAX,
+          Math.random,
         )
+      } else {
+        // Below the safe dimension — suspend by zeroing out cols. The
+        // tick effect's `cols < 3` gate stops Conway and injections.
+        dispatch({ type: "SEED", grid: new Uint8Array(0), cols: 0, rows: ROWS })
       }
     })
     observer.observe(el)
@@ -463,51 +492,65 @@ export function ConwayGrid({ className }: { className?: string }) {
     return () => document.removeEventListener("visibilitychange", onVis)
   }, [])
 
-  // Tick effect. The setInterval is set up once per dep change and is
-  // NOT re-created on every `ticksUntilInjection` mutation (that would
-  // introduce drift). The countdown is decremented inside the timer
-  // callback on every non-suspended tick, regardless of `sim.mode`.
+  // Tick effect. The interval is set up once per visibility / dimension
+  // change and is NOT re-installed on every grid mutation or countdown
+  // decrement. The countdown is decremented inside the timer callback
+  // on every non-suspended tick, regardless of `sim.mode`. The previous
+  // state of the grid and the current countdown are read from refs so
+  // the callback always sees the latest values without depending on
+  // them.
   useEffect(() => {
-    if (cols === 0) return
+    if (cols < 3) return
     if (!isInView || !docVisible || reduceMotion) return
 
     const interval = window.setInterval(() => {
-      // (1) Decrement the countdown. Do this first so the injection check
-      // below sees the updated value.
-      setTicksUntilInjection((t) => {
-        if (t <= 0) return 0
-        return t - 1
-      })
+      const current = gridRef.current
+      const countdown = countdownRef.current
 
-      // (2) Try an injection if the countdown has reached zero.
-      if (ticksUntilInjection <= 0) {
-        const pick = pickInjection(grid, cols, rows, Math.random)
+      // (1) Decrement the countdown first.
+      const nextCountdown = countdown > 0 ? countdown - 1 : 0
+      countdownRef.current = nextCountdown
+
+      // (2) Injection path: countdown reached zero (we are "at or past"
+      // the scheduled tick). This was previously the off-by-one issue
+      // — by reading the value before decrementing and checking <= 0
+      // on the previous value, we fire the injection as soon as the
+      // countdown drops to zero, not one tick later.
+      if (countdown <= 0) {
+        const pick = pickInjection(current, cols, rows, Math.random)
         if (pick) {
-          dispatch({ type: "INJECT", pattern: pick.pattern, x: pick.x, y: pick.y })
-          setTicksUntilInjection(
-            randomInRange(NEXT_INJECTION_TICKS_MIN, NEXT_INJECTION_TICKS_MAX, Math.random),
+          dispatch({
+            type: "INJECT",
+            pattern: pick.pattern,
+            x: pick.x,
+            y: pick.y,
+          })
+          countdownRef.current = randomInRange(
+            NEXT_INJECTION_TICKS_MIN,
+            NEXT_INJECTION_TICKS_MAX,
+            Math.random,
           )
         } else {
           // No placement found this tick — retry in INJECTION_RETRY_TICKS
           // ticks instead of hammering the picker.
-          setTicksUntilInjection(INJECTION_RETRY_TICKS)
+          countdownRef.current = INJECTION_RETRY_TICKS
         }
         return
       }
 
       // (3) Otherwise, advance Conway if the grid is still active. A
       // stable grid stays put; the next injection will reactivate it.
-      if (sim.mode === "active") {
+      if (modeRef.current === "active") {
         dispatch({ type: "STEP" })
       }
     }, TICK_MS)
 
     return () => window.clearInterval(interval)
-    // rows is a module-level constant (ROWS), never changes — no need
-    // to include it in deps. The exhaustive-deps lint sees `cols` from
-    // sim but not the matching `rows` extraction.
+    // `rows` is `sim.rows` which is always equal to the module-level
+    // constant ROWS (30). Including it in deps is fine but triggers a
+    // false-positive warning on every render. Skip it intentionally.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cols, sim.mode, grid, ticksUntilInjection, isInView, docVisible, reduceMotion])
+  }, [cols, isInView, docVisible, reduceMotion])
 
   const liveRects = useMemo(() => {
     if (cols === 0 || grid.length !== cols * rows) return []

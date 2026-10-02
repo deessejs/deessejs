@@ -250,17 +250,102 @@ describe("stepGrid", () => {
     expect(phaseB[3 * cols + 2]).toBe(1)
   })
 
-  it("honours hard borders (no wraparound)", () => {
+  it("births across the horizontal seam", () => {
+    // 5x5 grid, three live cells at (1, 4), (2, 4), (3, 4) on the
+    // right column. A dead cell at (2, 0) sees all three as its
+    // wrapped left neighbours and becomes alive.
     const cols = 5
     const rows = 5
     const grid = new Uint8Array(cols * rows)
-    // 3 cells at row 0 (top row): their top neighbours are missing
-    grid[0 * cols + 0] = 1
-    grid[0 * cols + 1] = 1
-    grid[0 * cols + 2] = 1
-    // After one step the corner cell (0,0) sees 1 neighbour (0,1) — dies.
+    grid[1 * cols + 4] = 1
+    grid[2 * cols + 4] = 1
+    grid[3 * cols + 4] = 1
     const next = stepGrid(grid, cols, rows)
-    expect(next[0 * cols + 0]).toBe(0)
+    expect(next[2 * cols + 0]).toBe(1)
+  })
+
+  it("births across the vertical seam", () => {
+    // Three live cells in row 4 at columns 1, 2, 3. A dead cell at
+    // row 0, col 2 sees all three as wrapped top neighbours.
+    const cols = 5
+    const rows = 5
+    const grid = new Uint8Array(cols * rows)
+    grid[4 * cols + 1] = 1
+    grid[4 * cols + 2] = 1
+    grid[4 * cols + 3] = 1
+    const next = stepGrid(grid, cols, rows)
+    expect(next[0 * cols + 2]).toBe(1)
+  })
+
+  it("births across a diagonal corner", () => {
+    // The cell at (0, 0) sees three live neighbours all in opposite
+    // corners of the 5x5 grid: (0, 4) wraps horizontally, (4, 0)
+    // wraps vertically, (4, 4) wraps both ways.
+    const cols = 5
+    const rows = 5
+    const grid = new Uint8Array(cols * rows)
+    grid[0 * cols + 4] = 1
+    grid[4 * cols + 0] = 1
+    grid[4 * cols + 4] = 1
+    const next = stepGrid(grid, cols, rows)
+    expect(next[0 * cols + 0]).toBe(1)
+  })
+
+  it("keeps a 2x2 block stable across both seams", () => {
+    // Place a 2x2 block across the wraparound so cells appear at all
+    // four corners. Each cell still has two live neighbours (its two
+    // mates in the block), so the block survives.
+    const cols = 5
+    const rows = 5
+    const grid = new Uint8Array(cols * rows)
+    grid[(rows - 2) * cols + (cols - 2)] = 1
+    grid[(rows - 2) * cols + (cols - 1)] = 1
+    grid[(rows - 1) * cols + (cols - 2)] = 1
+    grid[(rows - 1) * cols + (cols - 1)] = 1
+    const next = stepGrid(grid, cols, rows)
+    // Block stays put
+    expect(countLive(next)).toBe(4)
+    expect(next[(rows - 2) * cols + (cols - 2)]).toBe(1)
+    expect(next[(rows - 2) * cols + (cols - 1)]).toBe(1)
+    expect(next[(rows - 1) * cols + (cols - 2)]).toBe(1)
+    expect(next[(rows - 1) * cols + (cols - 1)]).toBe(1)
+  })
+
+  it("preserves population across the seam", () => {
+    // A 3-cell horizontal blinker straddles the right seam of a 5x5
+    // grid: cells at (2, 3), (2, 4), (2, 0). Each tick flips the
+    // blinker to its vertical phase and back; the population stays at
+    // 3 forever (an oscillator). This proves toroidal stepping does
+    // not drop or duplicate cells across the seam.
+    const cols = 5
+    const rows = 5
+    const grid = new Uint8Array(cols * rows)
+    grid[2 * cols + 3] = 1
+    grid[2 * cols + 4] = 1
+    grid[2 * cols + 0] = 1
+    let state: Uint8Array = new Uint8Array(grid) as Uint8Array
+    for (let i = 0; i < 8; i++) {
+      state = stepGrid(state, cols, rows)
+      expect(countLive(state)).toBe(3)
+    }
+  })
+
+  it("behaves the same as hard borders for a pattern far from the edges", () => {
+    // A pattern that doesn't touch any border should produce the same
+    // result under toroidal stepping as it did previously under hard borders.
+    // Use the 5x5 blinker (which sits entirely inside a 5x5 grid, away
+    // from edges by at least one row).
+    const cols = 5
+    const rows = 5
+    const grid = new Uint8Array(cols * rows)
+    grid[2 * cols + 1] = 1
+    grid[2 * cols + 2] = 1
+    grid[2 * cols + 3] = 1
+    const phaseA = new Uint8Array(grid)
+    const phaseB = stepGrid(phaseA, cols, rows)
+    expect(phaseB[1 * cols + 2]).toBe(1)
+    expect(phaseB[2 * cols + 2]).toBe(1)
+    expect(phaseB[3 * cols + 2]).toBe(1)
   })
 })
 
