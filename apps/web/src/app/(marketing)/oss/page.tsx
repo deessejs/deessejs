@@ -6,6 +6,7 @@ import { SectionHeader } from "@/app/(marketing)/_components/section-header"
 import { FinalCta } from "@/components/pages/_shared/final-cta"
 
 import { APPLY_STEPS, ELIGIBILITY, WHAT_YOU_GET } from "./_components/oss-content"
+import { OssApplicationForm } from "./_components/oss-application-form"
 
 export const metadata: Metadata = {
   title: "Open Source Program",
@@ -43,10 +44,17 @@ export const metadata: Metadata = {
  *                            `Section`.
  *   5. How to apply        : 3-cell grid (`APPLY_STEPS`) inside a
  *                            `Section`.
- *   6. Final CTA           : `FinalCta` from
+ *   6. Apply now           : split layout, editorial copy on the left,
+ *                            `<OssApplicationForm />` on the right.
+ *                            Form is visual-only for now (submit
+ *                            disabled); the actual submit pipeline
+ *                            will be wired in a follow-up.
+ *   7. Final CTA           : `FinalCta` from
  *                            `@/components/pages/_shared/final-cta`,
  *                            `noBorderB` so `GlobalLayout` closes
- *                            cleanly.
+ *                            cleanly. Re-pitches email as the
+ *                            escape-hatch for visitors who would
+ *                            rather write than fill the form.
  */
 export default function OssPage() {
   return (
@@ -155,17 +163,65 @@ export default function OssPage() {
         </ol>
       </Section>
 
-      {/* 5. Final CTA. Two doors: apply by email, or read the
-             student program if you are enrolled. `noBorderB` closes
-             the GlobalLayout outline. */}
+      {/* 5. Apply now — split layout with editorial copy on the left
+             and the application form on the right. Form is visual-only
+             for now (submit disabled); the actual submission logic will
+             be wired in a follow-up. See
+             `./_components/oss-application-form.tsx`. */}
+      <Section>
+        <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+          <div className="flex flex-col gap-4 p-6 lg:p-10">
+            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+              Apply now
+            </p>
+            <h2 className="text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
+              Tell us about the project.
+            </h2>
+            <p className="max-w-md text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+              Five fields. We reply within five business days with a
+              license file scoped to the project.
+            </p>
+            <ul className="mt-2 flex flex-col gap-2 text-copy-14 text-muted-foreground">
+              <li className="flex gap-2">
+                <span
+                  aria-hidden
+                  className="mt-1 inline-block size-1.5 shrink-0 rounded-full bg-foreground/40"
+                />
+                The repo must satisfy the four eligibility rules
+                (public, active, listed in maintainer file, scoped).
+              </li>
+              <li className="flex gap-2">
+                <span
+                  aria-hidden
+                  className="mt-1 inline-block size-1.5 shrink-0 rounded-full bg-foreground/40"
+                />
+                The license binds to the project. A maintainer change
+                does not invalidate it.
+              </li>
+              <li className="flex gap-2">
+                <span
+                  aria-hidden
+                  className="mt-1 inline-block size-1.5 shrink-0 rounded-full bg-foreground/40"
+                />
+                No cash, no co-marketing. The offer is the license.
+              </li>
+            </ul>
+          </div>
+          <div className="p-6 lg:p-10">
+            <OssApplicationForm />
+          </div>
+        </div>
+      </Section>
+
+      {/* 6. Final CTA. `noBorderB` closes the GlobalLayout outline. */}
       <FinalCta
         noBorderB
-        eyebrow="Apply"
-        title="Open source maintainers: apply for a project-scoped Pro license."
-        body="Reply within five business days with a license file scoped to the named project. The offer is the license: no cash, no co-marketing, no swag."
+        eyebrow="Prefer email"
+        title="Open source maintainers who would rather write to us."
+        body="If the form is too much, the same five fields by email to support@deessejs.com. We reply within five business days."
         actions={[
           {
-            label: "Apply by email",
+            label: "Email support@deessejs.com",
             href: "mailto:support@deessejs.com?subject=OSS%20license%20application",
           },
           {
