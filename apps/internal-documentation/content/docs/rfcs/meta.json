@@ -1,0 +1,13 @@
+{
+  "title": "RFCs",
+  "pages": [
+    "index",
+    "RFC-001-deesse-json",
+    "RFC-002-deesse-template",
+    "RFC-003-deessejs-add",
+    "RFC-004-template-author-tooling",
+    "RFC-005-deessejs-block",
+    "RFC-006-deessejs-init",
+    "RFC-007-template-ingestion"
+  ]
+}

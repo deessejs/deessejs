@@ -1,0 +1,223 @@
+---
+title: 'RFC-003: The DeesseJS Overlay Command (deessejs add)'
+description: 'Senior RFC for the deessejs add feature command. The fourth public CLI command that layers a feature overlay onto an existing project: reads deesse.json to resolve paths, fetches the matching deesse-template.json, runs prompts eagerly, applies file transforms with an atomic-write guarantee, installs npm dependencies, runs hooks, and updates deesse.lock. Pairs with RFC-001 (project config) and RFC-002 (item descriptor); the load-bearing spec lives at ADR-033.'
+---
+
+# RFC-003: The DeesseJS Overlay Command (`deessejs add feature`)
+
+## Status
+
+**Accepted (2026-09).** This RFC is the **senior narrative** that motivates and consolidates the spec at [ADR-033](./RFC-001-deesse-json). The contract (commands, flags, install sequence, dry-run, error mapping, re-install semantics, CI offline invariant) is pinned by ADR-033; this RFC explains *why* each decision was made and traces the design lineage from shadcn's `add`, through ADR-033's amendments, to the final shape. Three senior review rounds resolved critical blockers: install sequence ordering, type-discriminator enforcement, `--force` vs `overwrite: true` sovereignty, re-install drift handling, error taxonomy, and CI offline invariant. All blockers resolved and inlined into ADR-033.
+
+## Summary
+
+This RFC proposes **the fourth public CLI command** in the `@deessejs/cli` surface: `deessejs add feature`. Where `deessejs init` clones a full template repo into an empty directory (per RFC-001), `add` **layers a feature overlay onto an existing project** without cloning. The command:
+
+1. Reads `deesse.json` to know where to write (filesystem-relative paths, import-relative aliases, runtime database choice).
+2. Resolves the feature's `template:type` discriminator and refuses if the type is incompatible (`template:app` is refused, `template:package` and the other five types are accepted).
+3. Fetches `deesse-template.json` from the registry CDN (or git fallback).
+4. Resolves `templateDependencies` topologically (cycle-detected, depth-limited to 5).
+5. Aggregates `prompts[]` across the whole resolved graph **before any disk write** (eager collection).
+6. Acquires the source tree (tarball-first from CDN, Zip Slip-guarded, symlinks rejected).
+7. Applies `files[]` transformations (staged in memory, atomic write, rollback on failure).
+8. Installs npm dependencies (`pnpm/npm/yarn/bun add <dependencies>`).
+9. Runs `hooks.postInit` and `hooks.postInstall` with `shell: false` and tokenised argv.
+10. Updates `deesse.lock#templates["feature"]` atomically (`fs.writeFile(tmp); fs.rename(tmp, real)`).
+
+`deesse.json` is **never** written to during `add`; only `deesse.lock` is.
+
+The command is the load-bearing primitive that turns the registry from a "starter gallery" into a **long-lived composable architecture**: a user installs the Saa starter with `init`, then composes features (`auth`, `crud`, `stripe-billing`, `analytics`, `emails`) over time via repeated `add` calls, each tracked in the lockfile, each re-installable via the 4-by-3 re-install matrix (ADR-033 §8).
+
+## Goals and Non-Goals
+
+### Goals
+
+1. **Be the shadcn `add` mental model adapted to feature-level items.** shadcn's `add` layers a single component (a few hundred lines). The DeesseJS `add` layers a feature (a route + a Prisma adapter + a server-side handler + a UI form, potentially multiple files and a hundred-plus dependencies). The mental model stays the same, "declarative descriptor, overlay onto the project, atomic write", but the scope and the install sequence scale up.
+2. **Refuse everything that is not an overlay.** `template:app` is the only type that clones a full repo; that type belongs to `init`. `add` accepts the other six types (`template:package`, `template:cli`, `template:mobile`, `template:desktop`, `template:agent`, `template:landing`) and refuses `template:app` with `invalid_item_type` (per ADR-033 §6b Error taxonomy).
+3. **Read `deesse.json` for every install decision.** Where to write (paths), what to import (aliases), what database adapter to use (database), what package manager to invoke (packageManager). The CLI does **not** infer or guess, the file is the single source of truth.
+4. **Aggregate prompts across the dependency graph before any disk write.** Eager collection is non-negotiable (per RFC-002 §"Upfront prompt aggregation" and ADR-033 §6). Interleaving prompts with writes breaks atomic rollback.
+5. **Be transactional.** Every step is idempotent except step 1 (read-only) and step 12 (lockfile update). On any failure between step 0 and step 11, the CLI rolls back staged files and exits non-zero without updating `deesse.lock`. The user can re-run the command or `git checkout` to restore the prior state.
+6. **Be safe by default in CI.** When `process.env.CI` is set (or `/.deesse-ci` is present), the CLI refuses to fetch from the CDN and refuses to `git clone` from upstream. CI must be stable against upstream churn. There is no `--allow-remote-in-ci` flag (per ADR-033 §5b "CI never touches the CDN"); the opt-out is the failure mode the rule prevents.
+7. **Surface drift loudly.** Re-installing a feature with `--upgrade --preserve-local` writes the new version to `<path>.deesse-new` (adjacent to the original) when the original has drifted from the locked version. The CLI never silently overwrites a file the user has hand-edited, except when `--force` is passed (per ADR-033 §7) or `--upgrade` is passed without `--preserve-local` (per ADR-033 §8 4-by-3 matrix).
+8. **Provide a read-only inspection path.** `deessejs add feature --diff` (no writes) compares local files to the registry version and prints a unified diff. This is the load-bearing command for CI checks and human review ("what would this add do?") without writing anything.
+
+### Non-Goals
+
+1. **Cloning a full project.** `template:app` is the only type that clones a repo; that belongs to `init` (per RFC-001). `add` refuses `template:app` with `invalid_item_type`.
+2. **Auto-merging user-edited files.** AST-level code merging is explicitly forbidden in the wire contract (per RFC-002 §"AST-level code merging"). The CLI does not parse `.ts`/`.tsx`/`.py`/`.rs`/`.prisma` to splice new lines into a user's hand-edited file; that path is the failure mode the contract rules out.
+4. **Tracking which files were created.** `deesse.lock#templates["feature"]` records `version`, `installedAt`, `source`, and (per ADR-032 §"Same-day install tie-break rule") `installerHost`. It does not record per-file checksums or creation timestamps. Drift detection (per ADR-033 §8) is computed **at install time** by comparing the current local file to the locked version's hash, not by reading historical metadata. Per-file history is a future ADR.
+5. **Removing an installed item.** There is no `deessejs remove feature` in this contract. The user reverts via `git` (which is why step 0 of the install sequence enforces a clean working directory, `git checkout` restores pre-existing files that were overwritten). Removal is a future ADR.
+6. **Multi-version upgrades.** A user re-running `add` against a feature at a newer registry version upgrades to the new version; there is no support for upgrading only some files (no selective patch). Selective patching is a future ADR.
+7. **Promoting `@community` items to `@deessejs`.** The CLI does not validate, sign, or re-host community items as official. Trust boundaries are explicit (per RFC-001 §"Namespaces").
+
+## Motivation
+
+The DeesseJS CLI today ships three public commands (`init`, `list`, `info`) and an `auth` subcommand group (per ADR-010 §1). Each is a singleton surface that solves one problem. The missing primitive is **incremental composition**: a user who started with the Saa starter six months ago, and who now wants to add auth or payments or analytics, has no command. They have to merge two cloned trees by hand, or copy-paste from a documentation page.
+
+shadcn solves this with `shadcn add`. The DeesseJS equivalent is structurally similar but operates at a different scale:
+
+- shadcn's `add` targets a **single component** (a few hundred lines of `.tsx`). The descriptor is small enough to inline the file contents in the registry JSON (`files[].content`).
+- DeesseJS's `add` targets a **feature** (a route + a server handler + a database adapter + a UI form + dependencies). The descriptor is large enough that inlining would bloat the registry JSON past what a CDN can comfortably serve.
+
+The two implementations diverge on **file acquisition** (shadcn inlines; DeesseJS uses tarballs, per ADR-033 §5) and on **install sequencing** (shadcn has 4 steps; DeesseJS has 13, per ADR-033 §6). They converge on **the user mental model**: declarative descriptor, overlay onto the project, atomic write, dry-run first-class, drift surfacing on re-install.
+
+The motivation for `add` got stronger once [ADR-031](./ADR-031-deesse-json) and [ADR-032](./ADR-032-deesse-template.json) landed:
+
+- ADR-031 gives the CLI a project-side config (`deesse.json#paths`, `aliases`, `database`) that an overlay command can read to know where to write. Without `deesse.json`, the overlay command has to guess the project's layout, same guess-fail pattern that motivates `deesse.json` in the first place.
+- ADR-032 gives the CLI an item descriptor (`deesse-template.json#type = "template:package" | "template:cli" | ...`) that distinguishes a full project clone (`template:app`, today's `init`) from an overlay (`template:package` and the other five types). Without the `type` discriminator, an item is either a full clone or it has no install semantics at all.
+
+`add` is the primitive that **binds the consumer-side config to the item-side descriptor**.
+
+## Detailed Design
+
+The Detailed Design section **does not duplicate the spec at [ADR-033](./ADR-033-deessejs-add)**. It points at the load-bearing decisions and explains the rationale for each.
+
+### Surface area
+
+```
+deessejs add feature [options]
+
+  --ref <ref>             Override deesse-template.json#source.ref (used for pinning a version)
+  --dry-run               Print the diff without writing anything; exit 0 if no errors
+  --diff                  Read-only inspection: print unified diff for every file the install would touch
+  --force                 Overwrite existing files regardless of the descriptor's overwrite field
+  --upgrade               Refresh the lockfile entry's version; apply re-install semantics per the 4-by-3 matrix
+  --preserve-local        (with --upgrade), never overwrite a drifted file; write the new version to <path>.deesse-new
+  --yes                   Skip all prompts; use the descriptor's documented default for every prompt
+  --strict-git            Hard-crash on non-Git projects (default: skip with one-time warning)
+  --allow-dirty           Bypass the step-0 pre-flight git-status check
+  --path <dir>            Override the project root detection (cwd by default; walk-up discovery per RFC-001)
+  --json                  Emit machine-readable JSON to stdout instead of human-readable text
+```
+
+The flags are documented exhaustively at ADR-033 §6 (Install sequence) and ADR-033 §7 (`--force` vs `overwrite: true`). The flag surface is **additive on top of ADR-010 §1**, it adds no new top-level command, only new flags on an existing command.
+
+### Install sequence (13 steps)
+
+Documented at ADR-033 §6 with the full step list, error codes, and rollback semantics. The high-level shape:
+
+| Step | Action | Failure mode |
+|---|---|---|
+| 0 | Pre-flight dirty-git check (`git status --porcelain`) | `--allow-dirty` bypass; non-Git projects skip with warning |
+| 1 | Detect project root (walk-up discovery per RFC-001, 5-level cap, fs.realpath containment) | `parse_error` if no `deesse.json` found |
+| 2 | Load `deesse.json` + `deesse.lock` (RFC-001 §Monorepo walk-up discovery) | `parse_error` if either fails Zod validation |
+| 3 | Fetch item descriptor (CDN-first, git-clone fallback, CI mode refuses per ADR-033 §5b) | `network_error`, `ci_offline_violation` |
+| 4 | Refuse on `template:app` with `invalid_item_type` | `invalid_item_type` |
+| 5 | Resolve `templateDependencies` (topological, cycle-detected, depth ≤ 5) | `circular_dependency`, `dependency_depth_exceeded` |
+| 6 | Aggregate `prompts[]` across the resolved graph (eager, with `when` scope `{ answers, project }`) | `unresolved_token` if `env:<VAR>` is unset |
+| 7 | Acquire source tree (tarball-first, Zip Slip-guarded, symlinks rejected) | `security_violation`, `network_error` |
+| 8 | Apply `files[]` transformations (staged in memory, atomic write, rollback on failure) | `parse_error`, `drift_protected` (with `--preserve-local`) |
+| 9 | Install npm dependencies (`{pm} add <dependencies>` and `{pm} add -D <devDependencies>`) | `install_failed` |
+| 10 | Run `hooks.postInit` and `hooks.postInstall` (whitelist, `shell: false`, tokenised argv) | `hook_failed` |
+| 11 | Compute file checksums for drift detection at next re-install | (read-only) |
+| 12 | Update `deesse.lock#templates["feature"]` (atomic write, same-day tie-break per ADR-032) | `lockfile_write_failed` |
+
+Every step except 1 (read-only) is idempotent. Re-running `add feature` after a successful install hits the **4-by-3 re-install matrix** at ADR-033 §8.
+
+### Re-install semantics: the 4-by-3 matrix
+
+Documented at ADR-033 §8 with the exhaustive per-cell behaviour. The matrix pins **exactly** what the CLI writes for every combination of file state (Identical / Drift / New / Removed) × flag combination (`--diff` / `--upgrade` / `--upgrade --preserve-local`). The matrix is unit-test-mandatory at `apps/cli/test/unit/reinstall-matrix.test.ts`.
+
+### CI offline invariant
+
+Documented at ADR-033 §5b. The CLI detects CI via `process.env.CI` (GitHub Actions, GitLab CI, CircleCI, Buildkite, Travis, Jenkins, Drone all set this to a truthy string) or via a `/.deesse-ci` marker file at the repo root. In CI mode, the CLI refuses any operation that would require an outbound HTTP request to the CDN or upstream git host, with `ci_offline_violation`. The error names the missing artefact and the `deessejs cache populate <ref>` command to fill the local cache from a developer machine. There is no opt-out flag.
+
+### File acquisition
+
+Documented at ADR-033 §5. Tarball-first from `registry.deessejs.com/t/<slug>-<version>.tar.gz` (pre-built by the publication CI), with `git clone --depth 1 --branch <ref>` as fallback for non-CDN sources. `tar-stream` (pure-JS) handles extraction; symlinks and hardlinks are rejected by reading the tar header type byte (per RFC-002 §"Archive Extraction Guarantees"). Path-containment (`path.resolve(destDir + path.sep + entry.name)`) prevents Zip Slip.
+
+### Hooks runner
+
+Documented at ADR-032 §"Hooks". `shell: false` and tokenised argv prevent manifest command injection (an item author writing `&& rm -rf /` in `deesse-template.json#hooks`). The whitelist (`apps/cli/src/hooks/whitelist.ts`) is closed-list; verbs not on it fail at item-fetch time with `parse_error`. Unit-tested at `apps/cli/test/unit/hooks-runner.test.ts`.
+
+**Threat boundary**: the runner eliminates **manifest command injection** but does **not** sandbox downstream package-manager lifecycle scripts. `{pm} install` and `{pm} add <dependency>` execute the npm `preinstall`, `install`, and `postinstall` scripts of every dependency in the registry item's `dependencies[]`. A malicious or compromised dependency runs arbitrary shell code at install time. The CLI does not block this, third-party registries are an explicit trust boundary (per RFC-001 §"Namespaces"); the user must opt in to registries they trust (or pass `--ignore-scripts` to npm-family package managers, accepting that native-dependency packages like Prisma and esbuild break). The full trust model is documented at `docs/security/cli-trust-model.md` (to be written).
+
+### Type-discriminator enforcement
+
+Documented at ADR-032 §"`template:type` discriminator". `add feature` refuses `template:app` with `parse_error`: *"`feature` is a template: app; use `deessejs init feature` instead."* The reverse direction (`init` refusing non-`template:app` types) is symmetric. The discriminator is the only field on `deesse-template.json` that is checked **before** any I/O, the CLI fetches the descriptor, parses the `type` field, and short-circuits on mismatch.
+
+### Lockfile update
+
+Documented at ADR-032 §"Same-day install tie-break rule". The lockfile entry for the installed feature records `version`, `installedAt` (date-only `YYYY-MM-DD` UTC, per RFC-001 §"Implementation notes"), `source` (registry host or namespace), and `installerHost` (`os.hostname()`) for same-day tie-breaking. The CLI writes `deesse.lock` atomically (`fs.writeFile(tmp); fs.rename(tmp, real)`); `deesse.json` is **never** written to on `add` (per RFC-001 §"Detailed Design").
+
+## Implementation notes
+
+These are the operational details that surfaced during the senior review. They are **not architectural blockers**, they are details that the implementation must capture.
+
+### A. Atomic write pattern (steps 8 and 12)
+
+Steps 8 (file transforms) and 12 (lockfile update) use the standard atomic-write pattern:
+
+```
+const tmpPath = `${targetPath}.deesse-tmp-${process.pid}-${Date.now()}`;
+fs.writeFile(tmpPath, content, { mode: 0o644 });
+fs.rename(tmpPath, targetPath);
+```
+
+The `rename` syscall is atomic on POSIX and Windows-NTFS (per Node.js `fs.rename` guarantee). A crash mid-`writeFile` leaves the original `targetPath` untouched. The `deesse-tmp-<pid>-<ts>` suffix prevents concurrent-process collisions (two `deessejs add` runs in parallel against the same lockfile).
+
+### B. Staged-write rollback (step 8)
+
+Step 8 stages every file in memory **before** any disk write. The CLI maintains a `Map<resolvedPath, originalContent>` of files it modified. On any step failure (9, 10, 11), the CLI:
+
+1. Walks the map in reverse order.
+2. For each entry, restores the original content via `fs.writeFile(path, originalContent, ...)`.
+3. **For newly created files** (not present before step 8): `fs.unlink(path)` instead of restoring content.
+4. **For overwritten tracked files**: the user restores via `git checkout -- <files>`, the CLI prints the exact command in the rollback stderr message.
+
+The rollback is **best-effort**. If a file was created by the install but then `chmod 0` or removed by a parallel process, the unlink fails; the CLI logs the failure and continues. The user is the ultimate safety net (which is why step 0 enforces a clean git working directory).
+
+### C. Pre-flight dirty check & non-Git environments (step 0)
+
+Step 0 runs `git status --porcelain`. The output must be empty (or only contain files the user explicitly whitelists via `--allow-dirty`).
+
+For non-Git projects (no `.git/` directory, or `git` not installed), the check is skipped silently and the CLI prints a **one-time warning** (cached in `~/.deessejs/warnings.log` so it does not spam): *"Not a Git repository: automatic rollback on install failure is unavailable. Review your changes manually."* The `--strict-git` flag (off by default) hard-crashes on non-Git projects; useful for CI environments that always run in a git checkout.
+
+### D. Dry-run vs diff
+
+`--dry-run` and `--diff` are **different commands** with different semantics:
+
+- `--dry-run` runs the full install sequence up to step 7 (file acquisition), then **stops** instead of writing. The output lists every file the install would write, every dependency it would install, every hook it would run, and the diff to `deesse.lock`. Lockfile is **not** updated.
+- `--diff` is a pure read-only operation. It only reads `deesse.lock` and the local files; it does **not** fetch the registry. It compares the local files to the locked version's checksums (per ADR-033 §8) and prints a unified diff. Lockfile is **not** updated; no network I/O.
+
+CI uses `--diff` (per ADR-033 §5b CI mode); interactive users use `--dry-run`.
+
+## Open Questions
+
+Three design calls remain open and may be revisited in a follow-up ADR.
+
+### Q1: Should `deessejs add feature --upgrade` require `--preserve-local` by default?
+
+Currently `--upgrade` overwrites drifted files silently. A future ADR may flip the default to `--upgrade --preserve-local`, requiring the user to pass `--upgrade --force-overwrite` to get today's behaviour. The flip would be **breaking** (per ADR-031 §"Schema closed-list" / widening-vs-narrowing rules); the flip would need a major-version bump and a migration window.
+
+**Resolution tracked in a follow-up ADR if real user feedback surfaces.**
+
+### Q2: Should `add` support installing multiple features in one invocation?
+
+`deessejs add feature-a feature-b feature-c` would resolve all three dependency graphs, aggregate all prompts across all three, and apply all transforms in one transaction. The benefit is fewer prompts for the user; the cost is harder error reporting (one feature's failure blocks the others). Currently the contract pins one feature per invocation for clarity.
+
+**Resolution tracked in a follow-up ADR if a real use case surfaces.**
+
+### Q3: Should `add` support a `--target=<app>` flag for cross-app installs in monorepos?
+
+`deessejs add auth --target=apps/web` would write the overlay into `apps/web/` only, ignoring any `deesse.json` walk-up discovery. Currently the contract pins walk-up discovery (per RFC-001 §"Monorepo walk-up discovery"); cross-app installs are out of scope.
+
+**Resolution tracked in a follow-up ADR if a real use case surfaces.**
+
+## Cross-references
+
+- **[ADR-031: deesse.json](./ADR-031-deesse-json)**, the project-side config that `add` reads for paths, aliases, database.
+- **[ADR-032: deesse-template.json](./ADR-032-deesse-template.json)**, the item-side descriptor that `add` fetches, validates, and applies.
+- **[ADR-033: deessejs add feature](./ADR-033-deessejs-add)**, the **load-bearing spec** for `add`. This RFC is the senior narrative; ADR-033 is the contract.
+- **[ADR-034: deessejs template namespace](./ADR-034-template-namespace)**, the author tooling (`validate | new | explain`) that produces the items `add` consumes. Pairs with this RFC as the producer-side counterpart.
+- **[ADR-035: features and sub-templates are the same thing](./ADR-035-feature-not-subtree)**, confirms that a blog is a `template:package` feature, not a separate CLI verb or descriptor type. `add` handles the blog case via the standard flow.
+- **[RFC-001: The DeesseJS Project Config](./RFC-001-deesse-json)**, the consumer-side RFC for `deesse.json` + `deesse.lock`. `add` reads both files.
+- **[RFC-002: The DeesseJS Template Item Descriptor](./RFC-002-deesse-template)**, the producer-side RFC for `deesse-template.json` + the registry CDN + the add + author tooling ecosystem. This RFC extracts the `add` portion of RFC-002 into a focused senior narrative.
+
+## Related
+
+- **[ADR-010: CLI public surface](./ADR-010-cli-public-surface)**, the invariants that fence the CLI's published surface. `add` is the first public command added under ADR-010 §1's closed-list rule, sanctioned as the second exception after `deessejs auth subcommand`. The closed list stays closed at four entries (`init`, `list`, `info`, `add`); the `auth` and `template` namespaces are subcommand groups under their own sanctioned exceptions.
+- **[ADR-001: oRPC is load-bearing](./ADR-001-orpc-is-load-bearing)**, the wire-transport discipline. `add` fetches `deesse-template.json` from the static CDN (plain `fetch`), not via the typed oRPC client. The split is documented in RFC-002 §"Wire contract split".
+- **[ADR-002: file organization](./ADR-002-file-organization)**, the one-folder-per-concept rule. `add` lives at `apps/cli/src/commands/add.ts`; the install-sequence state machine lives at `apps/cli/src/add/sequence/`; the file transforms live at `apps/cli/src/transforms/`; the hooks runner lives at `apps/cli/src/hooks/`.
+- **[ADR-009: test strategy](./ADR-009-test-strategy)**, the unit + e2e + integration test discipline. `add` is unit-tested at `apps/cli/test/unit/add/` (one file per ADR-033 §6 step); e2e-tested at `apps/cli/test/e2e/add/`; integration-tested at `apps/cli/test/integration/add/` against a local mock registry.
+- **[shadcn `add` command](https://ui.shadcn.com/docs/cli)**, the reference implementation. The mental model is identical; the implementation diverges on file acquisition (inline JSON vs tarball) and install sequencing (4 steps vs 13). The mental-model inheritance is load-bearing; the implementation differences are documented inline.

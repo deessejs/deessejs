@@ -42,6 +42,7 @@
     "@workspace/contracts": "workspace:*",
     "@workspace/database": "workspace:*",
     "@workspace/env": "workspace:*",
+    "@workspace/registry-client": "workspace:*",
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",
