@@ -51,6 +51,7 @@ import type {
   RegistryClientOptions,
   RegistryFailure,
   ResolvedTemplate,
+  ResolvedTemplateFile,
   Result,
   TemplateInfo,
 } from "./types.js"
@@ -172,9 +173,13 @@ export const createClient = (
           source: `unsupported_host:${gh.host}`,
         })
       }
-      // API path: fetch the descriptor (no tree expansion). The CLI
-      // surfaces the descriptor's declared fields; `files` is empty
-      // because we don't have the GitHub tree on this path.
+      // API path: fetch the descriptor. The server returns
+      // `{descriptor, files: Record<path, url>}` (V1 shape). We
+      // synthesise the resolved file list from the server-provided
+      // URLs, preserving any `target` aliases from descriptor.files[].
+      // V2 server-side tree resolution (descriptor includes/excludes
+      // resolved on the server) lands in a follow-up; this path stays
+      // V1-compatible: explicit `descriptor.files[]` only.
       const templateResult = await getTemplateFromApi(
         apiUrl,
         slug,
@@ -182,12 +187,28 @@ export const createClient = (
         fetchImpl,
       )
       if (templateResult._tag === "Err") return templateResult
+      const { descriptor: apiDescriptor, files: urlMap } =
+        templateResult.value
+      const targetByPath = new Map<string, string>()
+      for (const spec of apiDescriptor.files ?? []) {
+        if (spec.target !== undefined) {
+          targetByPath.set(spec.path, spec.target)
+        }
+      }
+      const apiFiles: ResolvedTemplateFile[] = Object.keys(urlMap).map(
+        (path) => ({
+          path,
+          kind: "template:source", // API path doesn't carry kind metadata; safe default
+          ...(targetByPath.has(path) ? { target: targetByPath.get(path)! } : {}),
+          source: "descriptor",
+        }),
+      )
       return {
         _tag: "Ok",
         value: {
-          descriptor: templateResult.value.descriptor,
-          files: [],
-          treeRef: "",
+          descriptor: apiDescriptor,
+          files: apiFiles,
+          treeRef: apiDescriptor.source.ref,
           source: "descriptor-only",
         },
       }

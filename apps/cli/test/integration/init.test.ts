@@ -213,4 +213,47 @@ describe("deessejs init (integration)", () => {
       ]),
     ).rejects.toThrow(/incompatible|missing/i)
   })
+
+  it("--dry-run on a glob descriptor still works through the API path (V2 descriptor is accepted by the schema)", async () => {
+    // The CLI's init command on a catalogue-slug (path API) only
+    // scaffolds files explicitly listed in `descriptor.files[]`. A
+    // glob-only descriptor therefore scaffolds zero files. This
+    // test pins that behaviour: a glob-only descriptor does NOT crash,
+    // it just produces an empty scaffold.
+    //
+    // The full V2 init flow (tree fetch + resolveFiles for the
+    // GitHub-direct path) lands in a follow-up; this test guards
+    // the API-path behaviour.
+    const descriptor = {
+      $schema: "https://registry.deessejs.com/schema/template/v2.json",
+      name: "starter-dry",
+      title: "Starter Dry",
+      type: "template:starter",
+      version: "1.0.0",
+      source: { repo: "deessejs/starter-dry", ref: "main" },
+      includes: ["**"],
+      excludes: ["**/*.test.ts"],
+    }
+    registry.setCatalogue([
+      {
+        slug: "starter-dry",
+        title: "Starter Dry",
+        layer: "open-community",
+        latestVersion: "1.0.0",
+        owner: "deessejs",
+        repo: "starter-dry",
+        descriptor,
+        files: {}, // no explicit files → no scaffold
+      },
+    ])
+
+    // --dry-run on a glob-only descriptor: does NOT crash.
+    await runInit(registry, sandbox, [
+      "init",
+      "starter-dry",
+      "--no-install",
+      "--dry-run",
+    ])
+    expect(existsSync(join(sandbox, "starter-dry"))).toBe(false)
+  })
 })

@@ -23,8 +23,8 @@ import ora from "ora"
 import pc from "picocolors"
 
 import {
+  type FetchedTemplate,
   type RegistryFailure,
-  type ResolvedTemplate,
 } from "@workspace/registry-client"
 
 import { getRegistryClient } from "../registry/client.js"
@@ -128,37 +128,32 @@ const toCliError = (
 }
 
 /**
- * Download all files in the resolved list, in parallel.
+ * Download all files declared in `descriptor.files[]` in parallel.
  *
- * The resolved list comes from `client.resolveTemplate(slug)` — for
- * GitHub-shape slugs the SDK has already fetched the tree and
- * applied `descriptor.includes/excludes/fileTypes`; for catalogue
- * API slugs the API server has resolved. We get plain paths (no
- * URL map) because the base URL is derived from `descriptor.source`
- * (`<raw>/<repo>`) — same on both paths.
- *
- * Each URL is fetched with the global `fetch`. Errors from any
- * single file fail the whole operation.
+ * Each URL is fetched with the global `fetch` (no SDK indirection
+ * here — the SDK has already done its job returning URLs). Errors
+ * from any single file fail the whole operation.
  */
-const downloadResolvedFiles = async (
-  rt: ResolvedTemplate,
+const downloadFiles = async (
+  tmpl: FetchedTemplate,
 ): Promise<Array<{ path: string; content: string }>> => {
-  if (rt.files.length === 0) return []
+  const files = tmpl.descriptor.files ?? []
+  if (files.length === 0) return []
 
-  const baseUrl = `https://raw.githubusercontent.com/${rt.descriptor.source.repo}/${
-    rt.treeRef || rt.descriptor.source.ref
-  }`
   return Promise.all(
-    rt.files.map(async (f) => {
-      const url = `${baseUrl}/${f.path}`
+    files.map(async (spec) => {
+      const url = tmpl.files[spec.path]
+      if (url === undefined) {
+        throw internal(`Descriptor references unknown file: ${spec.path}`)
+      }
       const response = await fetch(url)
       if (!response.ok) {
         throw internal(
-          `Failed to fetch ${f.path}: HTTP ${response.status}`,
+          `Failed to fetch ${spec.path}: HTTP ${response.status}`,
         )
       }
       const content = await response.text()
-      return { path: f.target ?? f.path, content }
+      return { path: spec.target ?? spec.path, content }
     }),
   )
 }
@@ -210,21 +205,21 @@ export const initCommand = new Command("init")
       },
     ) => {
       try {
-        // 1. Resolve template (descriptor + file list)
+        // 1. Fetch template
         const fetchSpinner = ora(
           `Fetching ${pc.cyan(slug)} from registry...`,
         ).start()
         const client = getRegistryClient()
-        const tmplResult = await client.resolveTemplate(slug, {
+        const tmplResult = await client.getTemplate(slug, {
           ...(opts.ref ? { ref: opts.ref } : {}),
         })
         if (tmplResult._tag === "Err") {
           fetchSpinner.fail("Fetch failed")
           throw toCliError(tmplResult.error, slug)
         }
-        const rt = tmplResult.value
+        const tmpl = tmplResult.value
         fetchSpinner.succeed(
-          `Got ${pc.cyan(rt.descriptor.title)} v${rt.descriptor.version}`,
+          `Got ${pc.cyan(tmpl.descriptor.title)} v${tmpl.descriptor.version}`,
         )
 
         // 2. Resolve target directory
@@ -235,17 +230,12 @@ export const initCommand = new Command("init")
         )
 
         // 2.5. Dry-run — build the plan, print or JSON it, exit.
-        // The plan reads the descriptor fields AND the resolved file
-        // list so the user sees what `init` WOULD do (including the
-        // glob-resolved file paths).
+        // The plan reads descriptor fields but does NOT download
+        // files, write to disk, or run installs. The `existsSync`
+        // check below is bypassed: in dry-run mode a non-empty
+        // target dir is a *warning*, not an error.
         if (opts.dryRun) {
-          const plan = buildInstallPlan(
-            rt.descriptor,
-            slug,
-            dir,
-            undefined,
-            rt.files.map((f) => ({ path: f.path, target: f.target })),
-          )
+          const plan = buildInstallPlan(tmpl.descriptor, slug, dir)
           if (opts.json) {
             printJson({ ok: true, dryRun: true, plan })
           } else {
@@ -260,13 +250,13 @@ export const initCommand = new Command("init")
           throw targetExists(dir)
         }
 
-        // 4. Download all resolved files in parallel
+        // 4. Download all files in parallel
         const downloadSpinner = ora(
-          `Downloading ${rt.files.length} files...`,
+          `Downloading ${tmpl.descriptor.files?.length ?? 0} files...`,
         ).start()
         let files: Array<{ path: string; content: string }>
         try {
-          files = await downloadResolvedFiles(rt)
+          files = await downloadFiles(tmpl)
           downloadSpinner.succeed(`Downloaded ${files.length} files`)
         } catch (err) {
           downloadSpinner.fail("Download failed")
@@ -291,7 +281,6 @@ export const initCommand = new Command("init")
               slug,
               dir,
               installed: false,
-              files: rt.files.map((f) => f.target ?? f.path),
             })
           } else {
             console.log(
@@ -349,7 +338,6 @@ export const initCommand = new Command("init")
             dir,
             installed: pmInfo !== null,
             packageManager: pmInfo?.pm ?? null,
-            files: rt.files.map((f) => f.target ?? f.path),
           })
         } else {
           console.log()
