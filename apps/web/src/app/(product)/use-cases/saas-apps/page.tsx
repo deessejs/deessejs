@@ -12,11 +12,29 @@ import {
   BillingWidgetMockup,
 } from "../_components/mockups"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
+import { APP_CONFIG } from "@/lib/app-config"
 
 export const metadata: Metadata = {
   title: "SaaS apps | DeesseJS",
   description:
-    "Multi-tenant B2B SaaS with auth, billing, and a working dashboard on day one.",
+    "Multi-tenant B2B SaaS with auth, billing, jobs, mail, DB, admin, and a working API on day one.",
+  alternates: {
+    canonical: "/use-cases/saas-apps",
+  },
+  openGraph: {
+    title: "SaaS apps | DeesseJS",
+    description:
+      "Multi-tenant B2B SaaS with auth, billing, jobs, mail, DB, admin, and a working API on day one.",
+    siteName: APP_CONFIG.name,
+    locale: "en_US",
+    url: "/use-cases/saas-apps",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SaaS apps | DeesseJS",
+    description:
+      "Multi-tenant B2B SaaS with auth, billing, jobs, mail, DB, admin, and a working API on day one.",
+  },
 }
 
 /**
