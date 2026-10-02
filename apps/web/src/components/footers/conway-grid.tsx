@@ -194,26 +194,92 @@ export function stepGrid(
   cols: number,
   rows: number,
 ): Uint8Array {
-  const next = new Uint8Array(grid.length)
+  return stepWithTopology(grid, createTopology(cols, rows)).grid
+}
+
+/**
+ * Precomputed toroidal topology. The dimensions only change there; the
+ * neighbour offsets can be prepared once and reused on every step.
+ *
+ * `left[c]` and `right[c]` are column indices. `above[r]` and `below[r]`
+ * are direct offsets in the row-major grid, so the inner loop avoids a
+ * multiplication per neighbour.
+ */
+export type ConwayTopology = {
+  cols: number
+  rows: number
+  left: Int32Array
+  right: Int32Array
+  above: Int32Array
+  below: Int32Array
+}
+
+export function createTopology(cols: number, rows: number): ConwayTopology {
+  const left = new Int32Array(cols)
+  const right = new Int32Array(cols)
+  const above = new Int32Array(rows)
+  const below = new Int32Array(rows)
+
+  for (let c = 0; c < cols; c++) {
+    left[c] = c === 0 ? cols - 1 : c - 1
+    right[c] = c === cols - 1 ? 0 : c + 1
+  }
+
   for (let r = 0; r < rows; r++) {
+    above[r] = (r === 0 ? rows - 1 : r - 1) * cols
+    below[r] = (r === rows - 1 ? 0 : r + 1) * cols
+  }
+
+  return { cols, rows, left, right, above, below }
+}
+
+/**
+ * Apply one B3/S23 generation using a precomputed topology. Returns
+ * the new grid plus a `changed` flag (true if at least one cell
+ * flipped). The caller decides what to do with stability; the pure
+ * function does not mutate any input.
+ *
+ * `cols` and `rows` must both be >= 3 for the standard 8-neighbour
+ * kernel to have distinct coordinates after wrapping.
+ */
+export function stepWithTopology(
+  grid: Uint8Array,
+  topology: ConwayTopology,
+): { grid: Uint8Array; changed: boolean } {
+  const { cols, rows, left, right, above, below } = topology
+  const next = new Uint8Array(grid.length)
+  let changed = false
+
+  for (let r = 0; r < rows; r++) {
+    const row = r * cols
+    const up = above[r] ?? 0
+    const down = below[r] ?? 0
+
     for (let c = 0; c < cols; c++) {
-      let n = 0
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue
-          // ((x % n) + n) % n handles negative remainders in JS.
-          const rr = ((r + dr) % rows + rows) % rows
-          const cc = ((c + dc) % cols + cols) % cols
-          n += grid[rr * cols + cc] ?? 0
-        }
-      }
-      const idx = r * cols + c
-      const alive = grid[idx] === 1
-      next[idx] =
-        alive && (n === 2 || n === 3) ? 1 : !alive && n === 3 ? 1 : 0
+      const l = left[c] ?? 0
+      const rr = right[c] ?? 0
+      const idx = row + c
+
+      const neighbours =
+        (grid[up + l] ?? 0) +
+        (grid[up + c] ?? 0) +
+        (grid[up + rr] ?? 0) +
+        (grid[row + l] ?? 0) +
+        (grid[row + rr] ?? 0) +
+        (grid[down + l] ?? 0) +
+        (grid[down + c] ?? 0) +
+        (grid[down + rr] ?? 0)
+
+      const alive = grid[idx] ?? 0
+      const value =
+        neighbours === 3 || (alive === 1 && neighbours === 2) ? 1 : 0
+
+      next[idx] = value
+      if (value !== alive) changed = true
     }
   }
-  return next
+
+  return { grid: next, changed }
 }
 
 /**
@@ -401,6 +467,7 @@ type SimState = {
   rows: number
   grid: Uint8Array
   mode: "active" | "stable"
+  topology: ConwayTopology
 }
 
 type SimAction =
@@ -417,14 +484,18 @@ function simReducer(state: SimState, action: SimAction): SimState {
         rows: action.rows,
         grid: action.grid,
         mode: "active",
+        topology: createTopology(action.cols, action.rows),
       }
     case "STEP": {
       if (state.mode !== "active") return state
-      const next = stepGrid(state.grid, state.cols, state.rows)
-      if (gridsEqual(state.grid, next)) {
-        return { ...state, grid: next, mode: "stable" }
+      if (state.cols < 3 || state.rows < 3) return state
+      const result = stepWithTopology(state.grid, state.topology)
+      if (!result.changed) {
+        // Grid reached a fixed point — flip to stable without
+        // allocating a new Uint8Array (the reference is unchanged).
+        return { ...state, mode: "stable" }
       }
-      return { ...state, grid: next }
+      return { ...state, grid: result.grid }
     }
     case "INJECT": {
       // Belt-and-braces: even though `pickInjection` only returns
@@ -494,6 +565,7 @@ const INITIAL_SIM: SimState = {
   rows: 0,
   grid: new Uint8Array(0),
   mode: "active",
+  topology: createTopology(0, 0),
 }
 
 // ----------------------------------------------------------------------
@@ -505,6 +577,55 @@ const INITIAL_SIM: SimState = {
 function randomInRange(min: number, max: number, rng: () => number): number {
   return min + Math.floor(rng() * (max - min + 1))
 }
+
+// ----------------------------------------------------------------------
+// LiveCells — a memoised SVG layer that draws one <path> per column.
+// Each path groups all live cells in that column under a single
+// `fillOpacity` (the per-column radial gradient), so the DOM count is
+// bounded by the number of columns rather than by the number of live
+// cells. React.memo + stable props keep the cursor's keyboard state
+// from re-rendering this layer.
+// ----------------------------------------------------------------------
+
+type LiveCellsProps = {
+  grid: Uint8Array
+  cols: number
+  rows: number
+  columnOpacity: Float64Array
+}
+
+const LiveCells = React.memo(function LiveCells({
+  grid,
+  cols,
+  rows,
+  columnOpacity,
+}: LiveCellsProps) {
+  const paths = useMemo(() => {
+    if (cols === 0 || rows === 0 || grid.length !== cols * rows) return [] as Array<{ col: number; d: string }>
+    const out: Array<{ col: number; d: string }> = []
+    for (let c = 0; c < cols; c++) {
+      const x = c * CELL_SIZE
+      const commands: string[] = []
+      for (let r = 0; r < rows; r++) {
+        if (grid[r * cols + c] !== 1) continue
+        const y = r * CELL_SIZE
+        commands.push(`M${x},${y}h${CELL_SIZE}v${CELL_SIZE}h-${CELL_SIZE}Z`)
+      }
+      if (commands.length > 0) {
+        out.push({ col: c, d: commands.join("") })
+      }
+    }
+    return out
+  }, [grid, cols, rows])
+
+  return (
+    <g fill="currentColor" pointerEvents="none">
+      {paths.map(({ col, d }) => (
+        <path key={col} d={d} fillOpacity={columnOpacity[col] ?? 0} />
+      ))}
+    </g>
+  )
+})
 
 export function ConwayGrid({ className }: { className?: string }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -694,69 +815,49 @@ export function ConwayGrid({ className }: { className?: string }) {
 
     const interval = window.setInterval(() => {
       const current = gridRef.current
-      const countdown = countdownRef.current
 
-      // (1) Decrement the countdown first. The injection check uses the
-      // post-decrement value: when the countdown reaches zero on this
-      // tick, the injection fires immediately -- no off-by-one.
-      const nextCountdown = countdown > 0 ? countdown - 1 : 0
-      countdownRef.current = nextCountdown
-
-      // (2) Injection path.
-      if (nextCountdown <= 0) {
-        const pick = pickInjection(current, cols, rows, Math.random)
-        if (pick) {
-          dispatch({
-            type: "INJECT",
-            pattern: pick.pattern,
-            x: pick.x,
-            y: pick.y,
-          })
-          countdownRef.current = randomInRange(
-            NEXT_INJECTION_TICKS_MIN,
-            NEXT_INJECTION_TICKS_MAX,
-            Math.random,
-          )
-        } else {
-          // No placement found this tick — retry in INJECTION_RETRY_TICKS
-          // ticks instead of hammering the picker.
-          countdownRef.current = INJECTION_RETRY_TICKS
-        }
-        return
-      }
-
-      // (3) Otherwise, advance Conway if the grid is still active. A
-      // stable grid stays put; the next injection will reactivate it.
+      // (1) Conway step first. Runs on every tick when the grid is
+      // active, even when an injection also lands on this tick. The
+      // injection is re-validated by the reducer against the latest
+      // state after STEP, so a too-crowded pick may still be rejected.
       if (modeRef.current === "active") {
         dispatch({ type: "STEP" })
       }
+
+      // (2) Decrement the countdown. The injection check fires when the
+      // countdown reaches zero.
+      const remaining = countdownRef.current > 0 ? countdownRef.current - 1 : 0
+      countdownRef.current = remaining
+
+      if (remaining > 0) return
+
+      // (3) Injection attempt. Note: we deliberately do NOT re-run
+      // Conway here to "find a placement" — that would double the
+      // work. The reducer's INJECT branch re-checks canPlaceEmpty
+      // against the post-STEP grid.
+      const pick = pickInjection(current, cols, rows, Math.random)
+      if (!pick) {
+        // No placement found — retry in INJECTION_RETRY_TICKS ticks
+        // instead of hammering the picker.
+        countdownRef.current = INJECTION_RETRY_TICKS
+        return
+      }
+
+      dispatch({
+        type: "INJECT",
+        pattern: pick.pattern,
+        x: pick.x,
+        y: pick.y,
+      })
+      countdownRef.current = randomInRange(
+        NEXT_INJECTION_TICKS_MIN,
+        NEXT_INJECTION_TICKS_MAX,
+        Math.random,
+      )
     }, TICK_MS)
 
     return () => window.clearInterval(interval)
   }, [cols, rows, isInView, docVisible, reduceMotion])
-
-  const liveRects = useMemo(() => {
-    if (cols === 0 || grid.length !== cols * rows || columnOpacity.length === 0) return []
-    const rects: Array<{
-      idx: number
-      x: number
-      y: number
-      opacity: number
-    }> = []
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const idx = r * cols + c
-        if (grid[idx] !== 1) continue
-        rects.push({
-          idx,
-          x: c * CELL_SIZE,
-          y: r * CELL_SIZE,
-          opacity: columnOpacity[c] ?? 0,
-        })
-      }
-    }
-    return rects
-  }, [grid, cols, rows, columnOpacity])
 
   // When the wrapper takes focus, initialise the keyboard cursor at
   // the centre of the grid (if the grid is wide enough).
@@ -822,17 +923,12 @@ export function ConwayGrid({ className }: { className?: string }) {
             handlePointerEnd(e, isDrawingRef, lastCellRef, pointerIdRef, svgRef)
           }
         >
-          {liveRects.map((cell) => (
-            <rect
-              key={cell.idx}
-              x={cell.x}
-              y={cell.y}
-              width={CELL_SIZE}
-              height={CELL_SIZE}
-              fill="currentColor"
-              fillOpacity={cell.opacity}
-            />
-          ))}
+          <LiveCells
+            grid={grid}
+            cols={cols}
+            rows={rows}
+            columnOpacity={columnOpacity}
+          />
           {cursor && (
             <rect
               x={cursor[0] * CELL_SIZE}
