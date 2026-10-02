@@ -235,6 +235,26 @@ const Postinstall = z.array(z.string().min(1)).optional()
 // -- file selection (glob pipeline) ----------------------------------------
 
 /**
+ * File kind, accepts both the closed 7-value enum (`template:source`,
+ * `template:doc`, etc.) and the 4-value short form (`source`, `doc`,
+ * `config`, `asset`) the resolver infers from extensions. Authors who
+ * want the full canonical wire shape use the `template:*` prefix;
+ * authors who just want to override the extension heuristic use the
+ * short form. Both forms are accepted and normalised to the long
+ * form on parse.
+ *
+ * @see FILE_TYPE_TEMPLATE for the canonical enum.
+ */
+const FILE_TYPE_KIND = z
+  .union([
+    FILE_TYPE_TEMPLATE,
+    z.enum(["source", "doc", "config", "asset", "test", "env", "style"]),
+  ])
+  .transform((v) =>
+    v.startsWith("template:") ? v : `template:${v}`,
+  )
+
+/**
  * Per ADR-032 amendment applied in this PR, the descriptor carries a
  * `includes[]` / `excludes[]` / `fileTypes{}` triple that lets a starter
  * template author declare "everything except X" without listing every
@@ -285,7 +305,7 @@ export const TemplateV2 = z
     files: z.array(FileSpec).optional(),
     includes: z.array(GlobPattern).optional(),
     excludes: z.array(GlobPattern).optional(),
-    fileTypes: z.record(GlobPattern, FILE_TYPE_TEMPLATE).optional(),
+    fileTypes: z.record(GlobPattern, FILE_TYPE_KIND).optional(),
   })
   .refine(
     (t) =>

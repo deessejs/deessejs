@@ -211,6 +211,28 @@ describe("TemplateV2 — `includes[]` / `excludes[]` / `fileTypes{}`", () => {
     }
     expect(() => TemplateV2.parse(broken)).toThrow()
   })
+
+  it("accepts the short form for fileTypes values and normalises to the template:* prefix", () => {
+    // Author ergonomics: the closed enum requires `template:source` etc.,
+    // but the resolver infers from extensions using the short names
+    // (`source`, `doc`, `config`, `asset`). Authors override with
+    // either form; the parser normalises.
+    const parsed = TemplateV2.parse({
+      ...BASE_VALID,
+      fileTypes: {
+        "scripts/setup.mjs": "source",
+        "README.md": "doc",
+        ".changeset/config.json": "config",
+        "public/banner-ds.jpg": "asset",
+      },
+    })
+    expect(parsed.fileTypes).toEqual({
+      "scripts/setup.mjs": "template:source",
+      "README.md": "template:doc",
+      ".changeset/config.json": "template:config",
+      "public/banner-ds.jpg": "template:asset",
+    })
+  })
 })
 
 describe("TemplateV2 — `template:starter` is accepted", () => {
