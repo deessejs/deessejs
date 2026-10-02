@@ -3,11 +3,9 @@
 /**
  * Conway Game of Life signature band rendered in the apps/web footer.
  *
- * Decorative only, not content. `<ConwayBand />` is the entry point — it
- * owns the local `paused` state and renders both the visual grid
- * (`<ConwayGrid />`, aria-hidden) and the keyboard-accessible pause
- * control (`<ConwayPauseButton />`). The footer stays a Server Component
- * and only references `<ConwayBand />`.
+ * Decorative only, not content. `<ConwayBand />` is the entry point
+ * imported by the footer. It renders the visual grid (`<ConwayGrid />`,
+ * aria-hidden).
  *
  * Wiring rules:
  *   - Navigation reseeds: `<ConwayGrid />` is keyed by `pathname` in
@@ -15,29 +13,35 @@
  *     resetting all state and seeding with a fresh `Math.random` draw.
  *     Query strings do NOT change `pathname` and therefore do NOT reseed.
  *   - `useReducedMotion()` freezes the grid when the user has the OS
- *     reduced-motion flag on. The seed runs so the band has a frozen
- *     initial frame.
- *   - `IntersectionObserver` pauses the tick when scrolled off-screen.
- *   - `document.visibilityState` pauses the tick when the tab is hidden.
- *   - The pause button flips a local `paused` flag — the timer early-
- *     returns without touching the simulation state. Resume is a true
- *     continuation, not a reseed.
+ *     reduced-motion flag on. The simulation and the injection timer are
+ *     both suspended. The seed runs so the band has a frozen initial frame.
+ *   - `IntersectionObserver` suspends when scrolled off-screen.
+ *   - `document.visibilityState` suspends when the tab is hidden.
  *   - The simulation reaches a fixed point when `stepGrid(current)`
- *     equals `current` cell-by-cell. We set `finished = true` and the
- *     timer effect re-runs with an early return; no further ticks.
- *     Oscillators (blinker, pulsar) are not equal to themselves, so they
- *     keep ticking. Resize and remount both reset `finished`.
+ *     equals `current` cell-by-cell. The reducer switches `mode` to
+ *     `"stable"`; the next Conway step is a no-op until the next
+ *     injection reactivates it.
+ *   - Pattern injection: every 8-15 seconds (first injection 8-12s after
+ *     seed), the timer attempts to drop a glider, LWSS, or R-pentomino
+ *     into an empty rectangle (with a 2-cell margin) anywhere in the
+ *     grid. The placement is rejected if no such rectangle exists after
+ *     5 attempts; in that case the next attempt is rescheduled in 1s.
+ *     Injection is orthogonal to `mode`: oscillators and still lives both
+ *     receive injections on the same schedule.
+ *   - Suspension preserves the remaining delay. The countdown only
+ *     decrements when the component is not suspended.
  *
- * Performance: at 1200px wide, an estimated ~525 live `<rect>` on average
- * (varies). 1.5KB `Uint8Array`. The tick callback uses the `setGrid`
- * updater (pure function of the current state).
+ * Performance: at 1200px wide, an estimated ~525 live `<rect>` on
+ * average (varies). 1.5KB `Uint8Array`. The timer calls `dispatch` with
+ * a pure reducer; no setState updaters carry side effects.
  *
  * Exports:
  *   - `<ConwayBand />`            — the only thing the footer imports.
  *   - `<ConwayGrid />`             — visual grid (aria-hidden).
- *   - `<ConwayPauseButton />`      — keyboard-accessible toggle.
  *   - `seedGrid` / `stepGrid` / `gridsEqual` / `centerIndex` / `countLive`
  *     — pure functions, unit-testable in isolation.
+ *   - `patternCells` / `canPlaceEmpty` / `injectPattern` / `pickInjection`
+ *     — pure functions used by the injection path, also unit-testable.
  */
 
 import * as React from "react"
@@ -45,6 +49,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react"
@@ -56,6 +61,14 @@ const CELL_SIZE = 8
 const HEIGHT = 240
 const ROWS = Math.floor(HEIGHT / CELL_SIZE)
 const TICK_MS = 100
+const INJECTION_MARGIN = 2
+const INJECTION_ATTEMPTS = 5
+const INJECTION_RETRY_DELAY = 1_000
+const INJECTION_RETRY_TICKS = Math.round(INJECTION_RETRY_DELAY / TICK_MS)
+const FIRST_INJECTION_TICKS_MIN = 80 // 8s at 100ms/tick
+const FIRST_INJECTION_TICKS_MAX = 120 // 12s
+const NEXT_INJECTION_TICKS_MIN = 80 // 8s
+const NEXT_INJECTION_TICKS_MAX = 150 // 15s
 
 export function centerIndex(cols: number, rows: number): number {
   return Math.floor(rows / 2) * cols + Math.floor(cols / 2)
@@ -143,55 +156,243 @@ export function gridsEqual(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 // ----------------------------------------------------------------------
-// ConwayPauseButton — keyboard-accessible toggle. Stable label,
-// aria-pressed reflects state. W3C APG-aligned.
+// Pattern injection — used to relive stable or looping grids
 // ----------------------------------------------------------------------
 
-export function ConwayPauseButton({
-  paused,
-  onToggle,
-}: {
-  paused: boolean
-  onToggle: () => void
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={paused}
-      onClick={onToggle}
-      className="text-muted-foreground hover:text-foreground text-label-13 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-    >
-      Pause animation
-    </button>
-  )
+export type ConwayPattern = "glider" | "lwss-h" | "r-pentomino"
+
+/**
+ * Relative cell coordinates for each pattern, anchored at (0, 0).
+ * Bounding box is derived from max(col) + 1 by max(row) + 1.
+ */
+const PATTERNS: Readonly<Record<ConwayPattern, ReadonlyArray<readonly [number, number]>>> = {
+  glider: [
+    [1, 0],
+    [2, 1],
+    [0, 2],
+    [1, 2],
+    [2, 2],
+  ],
+  "lwss-h": [
+    [1, 0],
+    [4, 0],
+    [0, 1],
+    [0, 2],
+    [4, 2],
+    [0, 3],
+    [1, 3],
+    [2, 3],
+    [3, 3],
+  ],
+  "r-pentomino": [
+    [1, 0],
+    [2, 0],
+    [0, 1],
+    [1, 1],
+    [1, 2],
+  ],
+}
+
+export function patternCells(
+  pattern: ConwayPattern,
+): ReadonlyArray<readonly [number, number]> {
+  return PATTERNS[pattern]
+}
+
+export function patternWidth(pattern: ConwayPattern): number {
+  let max = -1
+  for (const [c] of PATTERNS[pattern]) if (c > max) max = c
+  return max + 1
+}
+
+export function patternHeight(pattern: ConwayPattern): number {
+  let max = -1
+  for (const [, r] of PATTERNS[pattern]) if (r > max) max = r
+  return max + 1
+}
+
+/**
+ * True if the rectangle [x-margin, x+W+margin) × [y-margin, y+H+margin)
+ * is fully inside the grid AND fully empty (every cell is 0). The margin
+ * is a buffer so the pattern's B3/S23 neighbourhood is unconstrained.
+ */
+export function canPlaceEmpty(
+  grid: Uint8Array,
+  cols: number,
+  rows: number,
+  x: number,
+  y: number,
+  pattern: ConwayPattern,
+  margin: number,
+): boolean {
+  const w = patternWidth(pattern)
+  const h = patternHeight(pattern)
+  const x0 = x - margin
+  const y0 = y - margin
+  const x1 = x + w + margin
+  const y1 = y + h + margin
+  if (x0 < 0 || y0 < 0 || x1 > cols || y1 > rows) return false
+  for (let r = y0; r < y1; r++) {
+    for (let c = x0; c < x1; c++) {
+      if (grid[r * cols + c] === 1) return false
+    }
+  }
+  return true
+}
+
+/**
+ * Add the pattern's cells to the grid. Returns a new Uint8Array; the
+ * original is not mutated. Cells already alive stay alive (additive
+ * OR, not XOR). The caller is responsible for verifying the placement
+ * is valid via `canPlaceEmpty` first.
+ */
+export function injectPattern(
+  grid: Uint8Array,
+  cols: number,
+  rows: number,
+  x: number,
+  y: number,
+  pattern: ConwayPattern,
+): Uint8Array {
+  const next = new Uint8Array(grid)
+  for (const [dc, dr] of PATTERNS[pattern]) {
+    const c = x + dc
+    const r = y + dr
+    if (r < 0 || r >= rows || c < 0 || c >= cols) continue
+    next[r * cols + c] = 1
+  }
+  return next
+}
+
+const PATTERN_KEYS: ReadonlyArray<ConwayPattern> = [
+  "glider",
+  "lwss-h",
+  "r-pentomino",
+]
+
+/**
+ * Pick a random pattern + position where the pattern can be placed in
+ * an empty rectangle (with margin). Returns null if no such placement
+ * exists after `maxAttempts` tries. Pure (no Math.random side effect
+ * beyond reading from `rng`).
+ */
+export function pickInjection(
+  grid: Uint8Array,
+  cols: number,
+  rows: number,
+  rng: () => number,
+  maxAttempts: number = INJECTION_ATTEMPTS,
+): { pattern: ConwayPattern; x: number; y: number } | null {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const pattern = PATTERN_KEYS[Math.floor(rng() * PATTERN_KEYS.length)]
+    if (!pattern) continue
+    const w = patternWidth(pattern)
+    const h = patternHeight(pattern)
+    // Origin bounds: x ∈ [margin, cols - w - margin] inclusive.
+    // Position count = cols - w - 2*margin + 1.
+    const xRange = cols - w - 2 * INJECTION_MARGIN + 1
+    const yRange = rows - h - 2 * INJECTION_MARGIN + 1
+    if (xRange <= 0 || yRange <= 0) continue
+    const x = Math.floor(rng() * xRange) + INJECTION_MARGIN
+    const y = Math.floor(rng() * yRange) + INJECTION_MARGIN
+    if (canPlaceEmpty(grid, cols, rows, x, y, pattern, INJECTION_MARGIN)) {
+      return { pattern, x, y }
+    }
+  }
+  return null
 }
 
 // ----------------------------------------------------------------------
-// ConwayGrid — visual, aria-hidden. The parent <ConwayBand /> owns the
-// `paused` state and passes it down. <ConwayGrid /> is also keyed by
-// `pathname` in the parent, so every client-side navigation triggers a
-// full remount (fresh Math.random seed).
+// Sim reducer — pure, atomic state transitions for the grid + mode
 // ----------------------------------------------------------------------
 
-export function ConwayGrid({
-  paused,
-  className,
-}: {
-  paused: boolean
-  className?: string
-}) {
+type SimState = {
+  cols: number
+  rows: number
+  grid: Uint8Array
+  mode: "active" | "stable"
+}
+
+type SimAction =
+  | { type: "STEP" }
+  | { type: "INJECT"; pattern: ConwayPattern; x: number; y: number }
+  | { type: "SEED"; grid: Uint8Array; cols: number; rows: number }
+
+function simReducer(state: SimState, action: SimAction): SimState {
+  switch (action.type) {
+    case "SEED":
+      return {
+        cols: action.cols,
+        rows: action.rows,
+        grid: action.grid,
+        mode: "active",
+      }
+    case "STEP": {
+      if (state.mode !== "active") return state
+      const next = stepGrid(state.grid, state.cols, state.rows)
+      if (gridsEqual(state.grid, next)) {
+        return { ...state, grid: next, mode: "stable" }
+      }
+      return { ...state, grid: next }
+    }
+    case "INJECT": {
+      const next = injectPattern(
+        state.grid,
+        state.cols,
+        state.rows,
+        action.x,
+        action.y,
+        action.pattern,
+      )
+      if (gridsEqual(state.grid, next)) {
+        // No cells were added (or the pattern was a subset of an existing
+        // still life). Do not flip mode — avoids reactivating Conway for
+        // nothing.
+        return state
+      }
+      return { ...state, grid: next, mode: "active" }
+    }
+  }
+}
+
+const INITIAL_SIM: SimState = {
+  cols: 0,
+  rows: 0,
+  grid: new Uint8Array(0),
+  mode: "active",
+}
+
+// ----------------------------------------------------------------------
+// ConwayGrid — visual, aria-hidden. Keyed by `pathname` in the parent
+// <ConwayBand />, so every client-side navigation triggers a full
+// remount (fresh Math.random seed).
+// ----------------------------------------------------------------------
+
+function randomInRange(min: number, max: number, rng: () => number): number {
+  return min + Math.floor(rng() * (max - min + 1))
+}
+
+export function ConwayGrid({ className }: { className?: string }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const reduceMotion = useReducedMotion()
 
-  const [cols, setCols] = useState(0)
-  const [finished, setFinished] = useState(false)
-  const [grid, setGrid] = useState<Uint8Array>(() => new Uint8Array(0))
+  const [sim, dispatch] = useReducer(simReducer, INITIAL_SIM)
+  const cols = sim.cols
+  const rows = sim.rows
+  const grid = sim.grid
 
   const [isInView, setIsInView] = useState(true)
   const [docVisible, setDocVisible] = useState<boolean>(
     typeof document === "undefined"
       ? true
       : document.visibilityState === "visible",
+  )
+
+  // Injection countdown in ticks. Decremented on every non-suspended
+  // tick. Independent of `sim.mode` so a stable grid still receives
+  // injections on the same schedule.
+  const [ticksUntilInjection, setTicksUntilInjection] = useState<number>(
+    () => randomInRange(FIRST_INJECTION_TICKS_MIN, FIRST_INJECTION_TICKS_MAX, Math.random),
   )
 
   // Initial measurement + seed. useLayoutEffect runs synchronously after
@@ -203,10 +404,13 @@ export function ConwayGrid({
     if (!el) return
     const w = el.getBoundingClientRect().width
     const measured = Math.floor(w / CELL_SIZE)
-    setCols(measured)
     if (measured > 0) {
-      setGrid(seedGrid(measured, ROWS, Math.random))
-      setFinished(false)
+      dispatch({
+        type: "SEED",
+        grid: seedGrid(measured, ROWS, Math.random),
+        cols: measured,
+        rows: ROWS,
+      })
     }
   }, [])
 
@@ -221,17 +425,23 @@ export function ConwayGrid({
       const w = el.getBoundingClientRect().width
       const measured = Math.floor(w / CELL_SIZE)
       if (measured === cols) return
-      setCols(measured)
       if (measured > 0) {
-        setGrid(seedGrid(measured, ROWS, Math.random))
-        setFinished(false)
+        dispatch({
+          type: "SEED",
+          grid: seedGrid(measured, ROWS, Math.random),
+          cols: measured,
+          rows: ROWS,
+        })
+        setTicksUntilInjection(
+          randomInRange(FIRST_INJECTION_TICKS_MIN, FIRST_INJECTION_TICKS_MAX, Math.random),
+        )
       }
     })
     observer.observe(el)
     return () => observer.disconnect()
   }, [cols])
 
-  // IntersectionObserver: pause when scrolled out of view.
+  // IntersectionObserver: suspend when scrolled out of view.
   useEffect(() => {
     const el = wrapperRef.current
     if (!el) return
@@ -246,39 +456,61 @@ export function ConwayGrid({
     return () => observer.disconnect()
   }, [])
 
-  // document.visibilityState: pause when the tab is hidden.
+  // document.visibilityState: suspend when the tab is hidden.
   useEffect(() => {
     const onVis = () => setDocVisible(document.visibilityState === "visible")
     document.addEventListener("visibilitychange", onVis)
     return () => document.removeEventListener("visibilitychange", onVis)
   }, [])
 
-  // Tick effect. Re-runs whenever a gating dep flips. The setGrid
-  // updater is a pure function of the current state. On stable-grid
-  // detection, sets `finished = true` (no other bump), the effect re-runs
-  // and the early-return keeps the timer off.
+  // Tick effect. The setInterval is set up once per dep change and is
+  // NOT re-created on every `ticksUntilInjection` mutation (that would
+  // introduce drift). The countdown is decremented inside the timer
+  // callback on every non-suspended tick, regardless of `sim.mode`.
   useEffect(() => {
     if (cols === 0) return
-    if (reduceMotion) return
-    if (paused) return
-    if (finished) return
-    if (!isInView || !docVisible) return
+    if (!isInView || !docVisible || reduceMotion) return
 
     const interval = window.setInterval(() => {
-      setGrid((current) => {
-        const next = stepGrid(current, cols, ROWS)
-        if (gridsEqual(current, next)) {
-          setFinished(true)
-        }
-        return next
+      // (1) Decrement the countdown. Do this first so the injection check
+      // below sees the updated value.
+      setTicksUntilInjection((t) => {
+        if (t <= 0) return 0
+        return t - 1
       })
+
+      // (2) Try an injection if the countdown has reached zero.
+      if (ticksUntilInjection <= 0) {
+        const pick = pickInjection(grid, cols, rows, Math.random)
+        if (pick) {
+          dispatch({ type: "INJECT", pattern: pick.pattern, x: pick.x, y: pick.y })
+          setTicksUntilInjection(
+            randomInRange(NEXT_INJECTION_TICKS_MIN, NEXT_INJECTION_TICKS_MAX, Math.random),
+          )
+        } else {
+          // No placement found this tick — retry in INJECTION_RETRY_TICKS
+          // ticks instead of hammering the picker.
+          setTicksUntilInjection(INJECTION_RETRY_TICKS)
+        }
+        return
+      }
+
+      // (3) Otherwise, advance Conway if the grid is still active. A
+      // stable grid stays put; the next injection will reactivate it.
+      if (sim.mode === "active") {
+        dispatch({ type: "STEP" })
+      }
     }, TICK_MS)
 
     return () => window.clearInterval(interval)
-  }, [cols, paused, finished, isInView, docVisible, reduceMotion])
+    // rows is a module-level constant (ROWS), never changes — no need
+    // to include it in deps. The exhaustive-deps lint sees `cols` from
+    // sim but not the matching `rows` extraction.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cols, sim.mode, grid, ticksUntilInjection, isInView, docVisible, reduceMotion])
 
   const liveRects = useMemo(() => {
-    if (cols === 0 || grid.length !== cols * ROWS) return []
+    if (cols === 0 || grid.length !== cols * rows) return []
     const centerCol = (cols - 1) / 2
     const maxDistance = Math.max(centerCol, 1)
     const rects: Array<{
@@ -287,7 +519,7 @@ export function ConwayGrid({
       y: number
       opacity: number
     }> = []
-    for (let r = 0; r < ROWS; r++) {
+    for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const idx = r * cols + c
         if (grid[idx] !== 1) continue
@@ -302,20 +534,20 @@ export function ConwayGrid({
       }
     }
     return rects
-  }, [grid, cols])
+  }, [grid, cols, rows])
 
   return (
     <div
       ref={wrapperRef}
       aria-hidden="true"
       role="presentation"
-      className={cn("relative h-60 overflow-hidden bg-muted/20", className)}
+      className={cn("relative h-60 overflow-hidden", className)}
     >
-      {cols > 0 && grid.length === cols * ROWS && (
+      {cols > 0 && grid.length === cols * rows && (
         <svg
           width={cols * CELL_SIZE}
-          height={ROWS * CELL_SIZE}
-          viewBox={`0 0 ${cols * CELL_SIZE} ${ROWS * CELL_SIZE}`}
+          height={rows * CELL_SIZE}
+          viewBox={`0 0 ${cols * CELL_SIZE} ${rows * CELL_SIZE}`}
           className="block text-foreground"
         >
           {liveRects.map((cell) => (
@@ -336,24 +568,16 @@ export function ConwayGrid({
 }
 
 // ----------------------------------------------------------------------
-// ConwayBand — the only component the footer imports. Owns `paused`,
-// renders the visual grid (aria-hidden) plus the keyboard-accessible
-// pause button. Keys <ConwayGrid /> by pathname so every client-side
-// navigation reseeds the simulation.
+// ConwayBand — the only component the footer imports. Renders the
+// visual grid (aria-hidden). Keys <ConwayGrid /> by pathname so every
+// client-side navigation reseeds the simulation.
 // ----------------------------------------------------------------------
 
 export function ConwayBand({ className }: { className?: string }) {
   const pathname = usePathname()
-  const [paused, setPaused] = useState(false)
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
-      <ConwayGrid key={pathname} paused={paused} />
-      <div className="flex items-center justify-end px-6">
-        <ConwayPauseButton
-          paused={paused}
-          onToggle={() => setPaused((v) => !v)}
-        />
-      </div>
+    <div className={cn("flex flex-col", className)}>
+      <ConwayGrid key={pathname} />
     </div>
   )
 }
