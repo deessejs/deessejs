@@ -53,7 +53,7 @@ import { useReducedMotion } from "motion/react"
 import { cn } from "@workspace/ui/lib/utils"
 
 const CELL_SIZE = 8
-const HEIGHT = 80
+const HEIGHT = 240
 const ROWS = Math.floor(HEIGHT / CELL_SIZE)
 const TICK_MS = 100
 
@@ -309,7 +309,7 @@ export function ConwayGrid({
       ref={wrapperRef}
       aria-hidden="true"
       role="presentation"
-      className={cn("relative h-20 overflow-hidden bg-muted/20", className)}
+      className={cn("relative h-60 overflow-hidden bg-muted/20", className)}
     >
       {cols > 0 && grid.length === cols * ROWS && (
         <svg
