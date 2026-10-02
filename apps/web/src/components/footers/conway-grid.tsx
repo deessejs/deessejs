@@ -168,53 +168,73 @@ export function gridsEqual(a: Uint8Array, b: Uint8Array): boolean {
 export type ConwayPattern = "glider" | "lwss-h" | "r-pentomino"
 
 /**
- * Relative cell coordinates for each pattern, anchored at (0, 0).
- * Bounding box is derived from max(col) + 1 by max(row) + 1.
+ * Pre-computed metadata for each pattern. `cells` are the relative
+ * coordinates; `width` and `height` are the bounding box dimensions.
+ * Computing them once at module load avoids re-scanning the cell
+ * lists in `pickInjection` and the reducer.
  */
-const PATTERNS: Readonly<Record<ConwayPattern, ReadonlyArray<readonly [number, number]>>> = {
-  glider: [
-    [1, 0],
-    [2, 1],
-    [0, 2],
-    [1, 2],
-    [2, 2],
-  ],
-  "lwss-h": [
-    [1, 0],
-    [4, 0],
-    [0, 1],
-    [0, 2],
-    [4, 2],
-    [0, 3],
-    [1, 3],
-    [2, 3],
-    [3, 3],
-  ],
-  "r-pentomino": [
-    [1, 0],
-    [2, 0],
-    [0, 1],
-    [1, 1],
-    [1, 2],
-  ],
-}
+const PATTERN_META: Readonly<
+  Record<
+    ConwayPattern,
+    {
+      cells: ReadonlyArray<readonly [number, number]>
+      width: number
+      height: number
+    }
+  >
+> = (() => {
+  const build = (
+    cells: ReadonlyArray<readonly [number, number]>,
+  ): { cells: ReadonlyArray<readonly [number, number]>; width: number; height: number } => {
+    let width = 0
+    let height = 0
+    for (const [c, r] of cells) {
+      if (c + 1 > width) width = c + 1
+      if (r + 1 > height) height = r + 1
+    }
+    return { cells, width, height }
+  }
+  return {
+    glider: build([
+      [1, 0],
+      [2, 1],
+      [0, 2],
+      [1, 2],
+      [2, 2],
+    ]),
+    "lwss-h": build([
+      [1, 0],
+      [4, 0],
+      [0, 1],
+      [0, 2],
+      [4, 2],
+      [0, 3],
+      [1, 3],
+      [2, 3],
+      [3, 3],
+    ]),
+    "r-pentomino": build([
+      [1, 0],
+      [2, 0],
+      [0, 1],
+      [1, 1],
+      [1, 2],
+    ]),
+  }
+})()
 
 export function patternCells(
   pattern: ConwayPattern,
 ): ReadonlyArray<readonly [number, number]> {
-  return PATTERNS[pattern]
+  return PATTERN_META[pattern].cells
 }
 
 export function patternWidth(pattern: ConwayPattern): number {
-  let max = -1
-  for (const [c] of PATTERNS[pattern]) if (c > max) max = c
-  return max + 1
+  return PATTERN_META[pattern].width
 }
 
 export function patternHeight(pattern: ConwayPattern): number {
-  let max = -1
-  for (const [, r] of PATTERNS[pattern]) if (r > max) max = r
-  return max + 1
+  return PATTERN_META[pattern].height
 }
 
 /**
@@ -231,12 +251,11 @@ export function canPlaceEmpty(
   pattern: ConwayPattern,
   margin: number,
 ): boolean {
-  const w = patternWidth(pattern)
-  const h = patternHeight(pattern)
+  const meta = PATTERN_META[pattern]
   const x0 = x - margin
   const y0 = y - margin
-  const x1 = x + w + margin
-  const y1 = y + h + margin
+  const x1 = x + meta.width + margin
+  const y1 = y + meta.height + margin
   if (x0 < 0 || y0 < 0 || x1 > cols || y1 > rows) return false
   for (let r = y0; r < y1; r++) {
     for (let c = x0; c < x1; c++) {
@@ -261,7 +280,7 @@ export function injectPattern(
   pattern: ConwayPattern,
 ): Uint8Array {
   const next = new Uint8Array(grid)
-  for (const [dc, dr] of PATTERNS[pattern]) {
+  for (const [dc, dr] of PATTERN_META[pattern].cells) {
     const c = x + dc
     const r = y + dr
     if (r < 0 || r >= rows || c < 0 || c >= cols) continue
@@ -292,12 +311,11 @@ export function pickInjection(
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const pattern = PATTERN_KEYS[Math.floor(rng() * PATTERN_KEYS.length)]
     if (!pattern) continue
-    const w = patternWidth(pattern)
-    const h = patternHeight(pattern)
+    const meta = PATTERN_META[pattern]
     // Origin bounds: x ∈ [margin, cols - w - margin] inclusive.
     // Position count = cols - w - 2*margin + 1.
-    const xRange = cols - w - 2 * INJECTION_MARGIN + 1
-    const yRange = rows - h - 2 * INJECTION_MARGIN + 1
+    const xRange = cols - meta.width - 2 * INJECTION_MARGIN + 1
+    const yRange = rows - meta.height - 2 * INJECTION_MARGIN + 1
     if (xRange <= 0 || yRange <= 0) continue
     const x = Math.floor(rng() * xRange) + INJECTION_MARGIN
     const y = Math.floor(rng() * yRange) + INJECTION_MARGIN
@@ -342,6 +360,23 @@ function simReducer(state: SimState, action: SimAction): SimState {
       return { ...state, grid: next }
     }
     case "INJECT": {
+      // Belt-and-braces: even though `pickInjection` only returns
+      // placements with empty margins, the grid might have changed
+      // between the picker call and the dispatch (a render-delay race).
+      // Reject if the rectangle around (x, y) is no longer empty.
+      if (
+        !canPlaceEmpty(
+          state.grid,
+          state.cols,
+          state.rows,
+          action.x,
+          action.y,
+          action.pattern,
+          INJECTION_MARGIN,
+        )
+      ) {
+        return state
+      }
       const next = injectPattern(
         state.grid,
         state.cols,
@@ -401,9 +436,23 @@ export function ConwayGrid({ className }: { className?: string }) {
   // `reduceMotion` — none of which flips on each tick.
   const gridRef = useRef<Uint8Array>(sim.grid)
   const modeRef = useRef<SimState["mode"]>(sim.mode)
-  const countdownRef = useRef<number>(
-    randomInRange(FIRST_INJECTION_TICKS_MIN, FIRST_INJECTION_TICKS_MAX, Math.random),
-  )
+  const countdownRef = useRef<number>(0)
+
+  // Per-column opacity pre-computed when the column count changes. The
+  // radial gradient is a function of column index only; computing it
+  // once per (cols) change avoids recomputing the same alpha for every
+  // live cell on every generation.
+  const columnOpacity = useMemo<Float64Array>(() => {
+    const out = new Float64Array(cols)
+    if (cols === 0) return out
+    const centerCol = (cols - 1) / 2
+    const maxDistance = Math.max(centerCol, 1)
+    for (let c = 0; c < cols; c++) {
+      const distance = Math.abs(c - centerCol) / maxDistance
+      out[c] = 0.05 + (1 - distance * distance) * 0.95
+    }
+    return out
+  }, [cols])
 
   // Keep `gridRef` and `modeRef` in sync with the reducer output.
   // This is a one-way mirror; we never read the ref to drive a render.
@@ -507,16 +556,14 @@ export function ConwayGrid({ className }: { className?: string }) {
       const current = gridRef.current
       const countdown = countdownRef.current
 
-      // (1) Decrement the countdown first.
+      // (1) Decrement the countdown first. The injection check uses the
+      // post-decrement value: when the countdown reaches zero on this
+      // tick, the injection fires immediately -- no off-by-one.
       const nextCountdown = countdown > 0 ? countdown - 1 : 0
       countdownRef.current = nextCountdown
 
-      // (2) Injection path: countdown reached zero (we are "at or past"
-      // the scheduled tick). This was previously the off-by-one issue
-      // — by reading the value before decrementing and checking <= 0
-      // on the previous value, we fire the injection as soon as the
-      // countdown drops to zero, not one tick later.
-      if (countdown <= 0) {
+      // (2) Injection path.
+      if (nextCountdown <= 0) {
         const pick = pickInjection(current, cols, rows, Math.random)
         if (pick) {
           dispatch({
@@ -546,16 +593,10 @@ export function ConwayGrid({ className }: { className?: string }) {
     }, TICK_MS)
 
     return () => window.clearInterval(interval)
-    // `rows` is `sim.rows` which is always equal to the module-level
-    // constant ROWS (30). Including it in deps is fine but triggers a
-    // false-positive warning on every render. Skip it intentionally.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cols, isInView, docVisible, reduceMotion])
+  }, [cols, rows, isInView, docVisible, reduceMotion])
 
   const liveRects = useMemo(() => {
-    if (cols === 0 || grid.length !== cols * rows) return []
-    const centerCol = (cols - 1) / 2
-    const maxDistance = Math.max(centerCol, 1)
+    if (cols === 0 || grid.length !== cols * rows || columnOpacity.length === 0) return []
     const rects: Array<{
       idx: number
       x: number
@@ -566,18 +607,16 @@ export function ConwayGrid({ className }: { className?: string }) {
       for (let c = 0; c < cols; c++) {
         const idx = r * cols + c
         if (grid[idx] !== 1) continue
-        const distance = Math.abs(c - centerCol) / maxDistance
-        const opacity = 0.05 + (1 - distance * distance) * 0.95
         rects.push({
           idx,
           x: c * CELL_SIZE,
           y: r * CELL_SIZE,
-          opacity,
+          opacity: columnOpacity[c] ?? 0,
         })
       }
     }
     return rects
-  }, [grid, cols, rows])
+  }, [grid, cols, rows, columnOpacity])
 
   return (
     <div
