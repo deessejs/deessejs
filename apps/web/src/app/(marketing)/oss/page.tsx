@@ -47,9 +47,6 @@ export const metadata: Metadata = {
  *                            `@/components/pages/_shared/final-cta`,
  *                            `noBorderB` so `GlobalLayout` closes
  *                            cleanly.
- *
- * The FinalCta cross-links to `/students`, mirroring `/students`
- * cross-linking to `/oss`. The two pages form a paired surface.
  */
 export default function OssPage() {
   return (
@@ -172,9 +169,10 @@ export default function OssPage() {
             href: "mailto:support@deessejs.com?subject=OSS%20license%20application",
           },
           {
-            label: "Read student program",
-            href: "/students",
+            label: "Browse templates",
+            href: "/templates",
             variant: "outline",
+            withArrow: true,
           },
         ]}
       />
