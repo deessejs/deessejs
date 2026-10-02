@@ -227,7 +227,7 @@ export default function SaasAppsPage() {
             registry ships to answer them.
           </p>
         </div>
-        <div className="grid grid-cols-1 bg-border gap-px sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 bg-border gap-px sm:grid-cols-2">
           {PILLARS.map((p) => (
             <article
               key={p.id}
