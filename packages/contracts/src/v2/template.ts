@@ -232,6 +232,33 @@ const Docs = z.string().min(1).optional()
  */
 const Postinstall = z.array(z.string().min(1)).optional()
 
+// -- file selection (glob pipeline) ----------------------------------------
+
+/**
+ * Per ADR-032 amendment applied in this PR, the descriptor carries a
+ * `includes[]` / `excludes[]` / `fileTypes{}` triple that lets a starter
+ * template author declare "everything except X" without listing every
+ * file individually.
+ *
+ * Resolution algorithm (implemented in `@workspace/registry-client`):
+ *   1. Apply `includes[]` (default `["**"]`) to the repo tree.
+ *   2. Subtract `excludes[]` (default `[]`).
+ *   3. For each surviving path, look up the kind in `fileTypes{}`
+ *      (longest-prefix wins). Fallback is extension-based.
+ *
+ * Defaults are applied by the resolver, not by Zod — Zod only validates
+ * shape. An absent `includes` is treated the same as `includes: []`
+ * (i.e. resolved as the default `["**"]`).
+ *
+ * Why glob patterns and not file paths: a starter template like
+ * `deessejs/package-template` ships ~60 files that the user wants to
+ * copy on `init`. Listing each path manually is brittle (every new
+ * file in the repo requires a descriptor edit). A glob captures the
+ * intent ("everything except the docs and the agent memory") in
+ * one line and lets the resolver expand against the live tree.
+ */
+const GlobPattern = z.string().min(1)
+
 // -- the full schema -------------------------------------------------------
 
 export const TemplateV2 = z
@@ -256,6 +283,9 @@ export const TemplateV2 = z
     hooks: Hooks,
     postinstall: Postinstall,
     files: z.array(FileSpec).optional(),
+    includes: z.array(GlobPattern).optional(),
+    excludes: z.array(GlobPattern).optional(),
+    fileTypes: z.record(GlobPattern, FILE_TYPE_TEMPLATE).optional(),
   })
   .refine(
     (t) =>

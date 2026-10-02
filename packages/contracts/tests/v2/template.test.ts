@@ -161,6 +161,69 @@ describe("TemplateV2 — $schema invariant", () => {
   })
 })
 
+describe("TemplateV2 — `includes[]` / `excludes[]` / `fileTypes{}`", () => {
+  it("parses a descriptor with the three optional fields present", () => {
+    const withGlobs = {
+      ...BASE_VALID,
+      type: "template:starter" as const,
+      includes: ["apps/**", "packages/**"],
+      excludes: [".claude/**", ".changeset/*.md"],
+      fileTypes: {
+        "scripts/setup.mjs": "template:source" as const,
+        "README.md": "template:doc" as const,
+      },
+    }
+    const parsed = TemplateV2.parse(withGlobs)
+    expect(parsed.includes).toEqual(["apps/**", "packages/**"])
+    expect(parsed.excludes).toEqual([".claude/**", ".changeset/*.md"])
+    expect(parsed.fileTypes).toEqual({
+      "scripts/setup.mjs": "template:source",
+      "README.md": "template:doc",
+    })
+  })
+
+  it("accepts all three fields absent (resolver applies defaults)", () => {
+    const parsed = TemplateV2.parse(BASE_VALID)
+    expect(parsed.includes).toBeUndefined()
+    expect(parsed.excludes).toBeUndefined()
+    expect(parsed.fileTypes).toBeUndefined()
+  })
+
+  it("rejects an empty-string glob pattern", () => {
+    const broken = { ...BASE_VALID, includes: [""] }
+    expect(() => TemplateV2.parse(broken)).toThrow()
+  })
+
+  it("rejects a fileTypes value outside the closed enum", () => {
+    const broken = {
+      ...BASE_VALID,
+      fileTypes: { "**/*.ts": "block:page" as never },
+    }
+    expect(() => TemplateV2.parse(broken)).toThrow()
+  })
+
+  it("rejects a fileTypes value with the wrong discriminator (template:env vs template:style)", () => {
+    // The closed 7-value enum means any of the 6 non-source kinds
+    // outside the fileTypes map is fine; an invented kind fails.
+    const broken = {
+      ...BASE_VALID,
+      fileTypes: { "**/*.ts": "template:invented" as never },
+    }
+    expect(() => TemplateV2.parse(broken)).toThrow()
+  })
+})
+
+describe("TemplateV2 — `template:starter` is accepted", () => {
+  it("parses a `template:starter` descriptor end-to-end", () => {
+    const starter = {
+      ...BASE_VALID,
+      type: "template:starter" as const,
+    }
+    const parsed = TemplateV2.parse(starter)
+    expect(parsed.type).toBe("template:starter")
+  })
+})
+
 describe("TemplateV2 — `type` closed enum", () => {
   it("rejects an invented `type` value", () => {
     const broken = { ...BASE_VALID, type: "template:blog" }

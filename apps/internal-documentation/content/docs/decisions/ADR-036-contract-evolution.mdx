@@ -39,12 +39,27 @@ Apply the following table when proposing a change to any contract. The bottom th
 | Loosen a constraint (e.g. accept `[A, B]` where the schema required `[A]`) | minor | Existing clients still accept the wider shape. |
 | Add a required field | **major** | Older clients throw `parse_error`. |
 | Add a value to a closed enum (e.g. a new `block.type`) | **major** | Older clients that map enum values to fixed routes reject the unknown. |
+| Add a value to `TEMPLATE_TYPE` (opt-in discriminator) | **none** | The discriminator is opt-in per command; new values are no-ops for clients that don't know them. See §2.1 below. |
 | Tighten a constraint (e.g. require `[A]` where the schema accepted `[A, B]`) | **major** | Older clients send the wider shape and break. |
 | Rename a field | **major** | Older clients that read the old name see `undefined`. |
 | Delete a field, even an optional one | **major** | Authors who relied on it for documentation or tooling break. |
 | Restructure the discriminator (e.g. `{ type: 'template:app' }` to `{ template: { type: 'app' } }`) | **major** | A breaking `parse_error` for every older client. |
 
 A **patch bump** never applies to a contract. Fixing a JSON Schema URL typo, correcting a description, or repairing a JSDoc comment without changing the wire shape is **not a version bump** — it is a content edit on the same version and rolls out without ceremony.
+
+### 2.1 Opt-in new values for `TEMPLATE_TYPE`
+
+`TEMPLATE_TYPE` is a **discriminator** consumed by command-routing logic (`deessejs init` vs `deessejs add`). Unlike the closed enums in §2 — *which are mapped to fixed behaviour by clients* — `TEMPLATE_TYPE` is **exhaustive-by-default at parse time**: any value an older client doesn't know produces a `parse_error` rather than a silent mis-route. That makes new values safe to add without bumping the major.
+
+**The rule**: adding a value to `TEMPLATE_TYPE` is a **non-bump** (no major, no minor, no patch). The `$schema` URL stays at `/schema/template/v{n}.json` for the lifetime of the version. The first opt-in addition was `template:starter` (2026-10, PR-137).
+
+**Why this carve-out is narrow**: the carve-out applies to `TEMPLATE_TYPE` only. Other enums (`FILE_TYPE_TEMPLATE`, `BLOCK_TYPE`, `LICENSE`) are mapped to fixed routes by client code (the CLI's per-type transform, the registry's per-block route). Adding to those remains a non-major bump per §2.
+
+**Concrete consequence for clients**:
+
+- An older CLI build that doesn't know about `template:starter` will refuse the descriptor with `parse_error` (`unsupported template type`). Safe failure.
+- An older SDK client that doesn't know about `template:starter` will refuse the descriptor with `RegistryInvalidDescriptor` (the same error any unknown discriminator already produces).
+- A newer CLI build does the right thing for every `TEMPLATE_TYPE` value present at commit time, including the older ones.
 
 ### 3. The `$schema` URL is **immutable per version**
 
