@@ -180,7 +180,7 @@ export default function SaasAppsPage() {
       <UseCaseHero
         category="SaaS"
         title="Production-grade B2B SaaS, out of the box."
-        body="Multi-tenant auth, billing, an operator console, and the jobs and observability behind it. The four sub-systems a SaaS needs are wired into the registry before your first commit."
+        body="In one click, you have a working SaaS app. Auth, billing, jobs, mail, and the operator console wired against the same contract as the rest of your stack. Eight pillars, not twelve capabilities. The registry ships them before the first commit."
         primaryCta={{
           label: "Use it yourself",
           href: "/templates",
