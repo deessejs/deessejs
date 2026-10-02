@@ -47,6 +47,24 @@ const githubRawBase = (): string =>
   process.env["DEESSEJS_GITHUB_RAW_BASE"] ?? "https://raw.githubusercontent.com"
 
 /**
+ * Read the optional `GITHUB_TOKEN` env var. When set, the value is
+ * attached to every GitHub fetch as `Authorization: token <value>`.
+ * This lifts the 60-req/h anonymous rate limit on
+ * `raw.githubusercontent.com` and the API.
+ *
+ * The CLI does not require this var; public repos on a fresh IP work
+ * fine without it. Power users can `export GITHUB_TOKEN=ghp_…` to
+ * unlock 5000 req/h. The CLI is intentionally unopinionated about
+ * where the token comes from — environment variable, 1Password CLI,
+ * `gh auth token`, all work.
+ */
+const githubAuthHeader = (): Record<string, string> => {
+  const token = process.env["GITHUB_TOKEN"]
+  if (token === undefined || token === "") return {}
+  return { authorization: `token ${token}` }
+}
+
+/**
  * Fetch `deesse-template.json` from GitHub raw for the given repo.
  *
  * Same surface as `getTemplateFromApi` (`http-client.ts:294-318`):
@@ -75,7 +93,10 @@ export const getTemplateFromGithub = async (
   let response: Response
   try {
     response = await fetchImpl(url, {
-      headers: { accept: "application/json" },
+      headers: {
+        accept: "application/json",
+        ...githubAuthHeader(),
+      },
     })
   } catch (cause) {
     return errResult<RegistryFailure>({
@@ -203,7 +224,10 @@ export const getInfoFromGithub = async (
   let response: Response
   try {
     response = await fetchImpl(url, {
-      headers: { accept: "application/json" },
+      headers: {
+        accept: "application/json",
+        ...githubAuthHeader(),
+      },
     })
   } catch (cause) {
     return errResult<RegistryFailure>({
@@ -306,7 +330,10 @@ export const getTreeFromGithub = async (
   let response: Response
   try {
     response = await fetchImpl(url, {
-      headers: { accept: "application/vnd.github+json" },
+      headers: {
+        accept: "application/vnd.github+json",
+        ...githubAuthHeader(),
+      },
     })
   } catch (cause) {
     return errResult<RegistryFailure>({
@@ -397,7 +424,10 @@ export const getRepoExists = async (
   let response: Response
   try {
     response = await fetchImpl(url, {
-      headers: { accept: "application/vnd.github+json" },
+      headers: {
+        accept: "application/vnd.github+json",
+        ...githubAuthHeader(),
+      },
     })
   } catch (cause) {
     return errResult<RegistryFailure>({

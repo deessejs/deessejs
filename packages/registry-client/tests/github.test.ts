@@ -44,6 +44,32 @@ const VALID_TEMPLATE = {
   ],
 } as const
 
+/**
+ * The GITHUB_TOKEN env var is read once per fetch (not cached at
+ * module load). Tests that exercise the auth path set the env var,
+ * call the SDK, then unset it — even within a single `it`.
+ */
+const withGithubToken = async <T>(
+  token: string | undefined,
+  fn: () => Promise<T>,
+): Promise<T> => {
+  const previous = process.env["GITHUB_TOKEN"]
+  if (token === undefined) {
+    delete process.env["GITHUB_TOKEN"]
+  } else {
+    process.env["GITHUB_TOKEN"] = token
+  }
+  try {
+    return await fn()
+  } finally {
+    if (previous === undefined) {
+      delete process.env["GITHUB_TOKEN"]
+    } else {
+      process.env["GITHUB_TOKEN"] = previous
+    }
+  }
+}
+
 interface CapturedRequest {
   url: string
   method: string
@@ -412,6 +438,35 @@ const treeResponse = (status: number, body: unknown): Response =>
     status,
     headers: { "content-type": "application/json" },
   })
+
+describe("getTemplateFromGithub — GITHUB_TOKEN", () => {
+  it("does not crash and returns Ok when GITHUB_TOKEN is unset", async () => {
+    // The "no auth header" property is implicitly exercised: the
+    // mock fetch (which doesn't set Authorization) accepts the call,
+    // proving the SDK doesn't require a token to talk to the public
+    // raw.githubusercontent.com host.
+    const { fetchImpl } = makeMockFetch(() => jsonResponse(200, VALID_TEMPLATE))
+    const result = await withGithubToken(undefined, () =>
+      getTemplateFromGithub("deessejs", "saas-template", undefined, fetchImpl),
+    )
+    expect(result._tag).toBe("Ok")
+  })
+
+  it("sends an Authorization: token <GITHUB_TOKEN> header when the env var is set", async () => {
+    let capturedHeaders: Headers | undefined
+    const fetchImpl: typeof fetch = async (_url, init) => {
+      capturedHeaders = new Headers(init?.headers)
+      return new Response(JSON.stringify(VALID_TEMPLATE), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    }
+    await withGithubToken("ghp_testtoken123", () =>
+      getTemplateFromGithub("deessejs", "saas-template", undefined, fetchImpl),
+    )
+    expect(capturedHeaders?.get("authorization")).toBe("token ghp_testtoken123")
+  })
+})
 
 describe("resolveTemplateFromGithub", () => {
   it("returns Ok with descriptor + resolved files when both descriptor and tree succeed", async () => {
