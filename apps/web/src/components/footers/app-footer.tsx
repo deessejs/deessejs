@@ -62,7 +62,6 @@ const footerSections: ReadonlyArray<{
     heading: "Community",
     links: [
       { label: "Open Source Program", href: "/oss" },
-      { label: "Students", href: "/students" },
       { label: "Github", href: "https://github.com/deessejs" },
       { label: "LinkedIn", href: "#" },
       { label: "X", href: "#" },
