@@ -94,12 +94,28 @@ export const buildInstallPlan = (
   slug: string,
   targetDir: string,
   fsProbe: FsProbe = defaultFsProbe,
+  resolvedFiles?: ReadonlyArray<{ readonly path: string; readonly target?: string }>,
 ): InstallPlan => {
   const files: PlannedFile[] = []
-  for (const spec of descriptor.files ?? []) {
-    const path = spec.target ?? spec.path
-    const target = resolve(targetDir, path)
-    files.push({ path, target, wouldOverwrite: fsProbe(target) })
+  if (resolvedFiles && resolvedFiles.length > 0) {
+    // The init command resolved the file list via the SDK
+    // (`client.resolveTemplate(slug)`). Use that resolved list — it's
+    // already authoritative (glob pipeline applied, descriptor.files
+    // deduped against `includes/excludes/fileTypes`).
+    for (const f of resolvedFiles) {
+      const path = f.target ?? f.path
+      const target = resolve(targetDir, path)
+      files.push({ path, target, wouldOverwrite: fsProbe(target) })
+    }
+  } else {
+    // V1 fallback: build the file list from the descriptor's explicit
+    // `files[]` entry. Preserves backwards-compat for callers that
+    // don't pass resolution (e.g. unit tests with synthetic fixtures).
+    for (const spec of descriptor.files ?? []) {
+      const path = spec.target ?? spec.path
+      const target = resolve(targetDir, path)
+      files.push({ path, target, wouldOverwrite: fsProbe(target) })
+    }
   }
   const wouldOverwriteTarget = fsProbe(targetDir)
   const deps: PlannedDeps = {
