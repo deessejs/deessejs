@@ -63,6 +63,9 @@ export function CliCommandsGrid() {
                 {flag.title}
               </h3>
               <p className="text-copy-14 leading-6 text-foreground [&:not(:first-child)]:mt-0">
+                {flag.description}
+              </p>
+              <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {flag.body}
               </p>
               <code className="mt-1 rounded bg-muted px-2 py-1 font-mono text-copy-12 text-foreground/90">
