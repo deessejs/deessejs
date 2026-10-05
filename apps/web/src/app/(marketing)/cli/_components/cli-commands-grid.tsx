@@ -31,7 +31,7 @@ export function CliCommandsGrid() {
               className="flex flex-col gap-3 p-6 lg:p-8"
             >
               <span className="font-mono text-copy-13 text-muted-foreground">
-                Step {String(command.step).padStart(2, "0")}
+                Command
               </span>
               <h3 className="font-mono text-copy-16 font-medium text-foreground !m-0">
                 {command.name}
@@ -56,12 +56,12 @@ export function CliCommandsGrid() {
               key={`flag-${idx}`}
               className="flex flex-col gap-3 p-6 lg:p-8"
             >
+              <span className="font-mono text-copy-13 text-muted-foreground">
+                Flag
+              </span>
               <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
                 {flag.title}
               </h3>
-              <span className="font-mono text-copy-13 text-muted-foreground">
-                {flag.flag}
-              </span>
               <p className="text-copy-14 leading-6 text-foreground [&:not(:first-child)]:mt-0">
                 {flag.body}
               </p>
