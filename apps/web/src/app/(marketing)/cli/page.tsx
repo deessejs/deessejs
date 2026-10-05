@@ -13,76 +13,52 @@ import {
   EDITOR_TAB_LANG,
 } from "@/lib/marketing/cli-workbench-data"
 
-import { CLI_COMMANDS } from "./_components/cli-commands"
+import { CliControl } from "./_components/cli-control"
+import { CliFaqSection } from "./_components/cli-faq-section"
+import { CliParcours } from "./_components/cli-parcours"
+import { CliStart } from "./_components/cli-start"
+import { CLI_INSTALL_GUIDE_HREF } from "./_components/cli-page-constants"
 import { ProductHero } from "./_components/product-hero"
-
-const CLI_INSTALL_GUIDE_HREF = "/knowledge-base/guides/install-deessejs-cli"
-
-/**
- * Four canonical install steps, lifted from
- * `apps/web/content/knowledge-base/guides/install-deessejs-cli.mdx`
- * sections 1-3 plus the scaffold example. Order matches the order
- * the steps appear in the KB guide. The KB guide is the source of
- * truth; update this list in lockstep if the KB guide changes.
- */
-const INSTALL_STEPS = [
-  {
-    heading: "Install",
-    body: "npm install -g deessejs. Verify with deessejs --version.",
-  },
-  {
-    heading: "Authenticate",
-    body: "Run deessejs auth login. The browser opens for the device flow; the token is stored locally and reused.",
-  },
-  {
-    heading: "Discover",
-    body: "Run deessejs list. Pick the template closest to your target stack.",
-  },
-  {
-    heading: "Scaffold",
-    body: "Run deessejs init <slug>. The CLI clones the repo, detects your package manager, and installs dependencies.",
-  },
-] as const
 
 export const metadata: Metadata = {
   title: "CLI",
   description:
-    "The deessejs CLI: scaffold projects from the template catalog. Install with npm install -g deessejs, then run deessejs init <slug>.",
+    "The deessejs CLI: scaffold projects from the template registry. Install with npm i -g @deessejs/cli, then run deessejs init <slug>.",
 }
 
 /**
- * Marketing route at `/cli`. Deep-dive on the `@dejs/cli` package
- * the nav already links to from the Products dropdown.
+ * Marketing route at `/cli`. Deep-dive on the `@deessejs/cli`
+ * package the nav already links to from the Products dropdown.
  *
- * Composition (top to bottom):
- *   1. Hero                : `UseCaseHero` reused as-is (eyebrow
- *                            hard-codes `Use case · `).
- *   2. CliWorkbench       : Server-pre-rendered Shiki HTML,
- *                            threaded into the `"use client"`
- *                            `<CliWorkbench>` as plain strings
- *                            (Next 16 forbids rendering an async
- *                            Server Component as a child of a
- *                            Client Component). Same lg+/<lg
- *                            split as the homepage section.
- *   3. Commands grid      : 3 cards (init / list / info), data
- *                            from `./_components/cli-commands.ts`.
- *   4. Install steps      : 4 cells in a 6-col grid (header
- *                            left, steps right). Mirrors the
- *                            use-case Process pattern but with
- *                            `md:grid-cols-4` to fit 4 cells.
- *   5. Final CTA          : `FinalCtaShell` from
- *                            `@/components/pages/_shared/final-cta`
- *                            (NOT the use-case-namespaced one,
- *                            it hard-codes use-case copy).
+ * Composition (top to bottom, six sections):
+ *   1. Hero              — `<ProductHero>` with eyebrow
+ *                          "Product · CLI", primary CTA "Get
+ *                          started" (in-page anchor), secondary
+ *                          CTA "Browse templates".
+ *   2. Demo              — shared workbench + per-page editorial
+ *                          column, fed real `init.ts` terminal
+ *                          lines (cloned → dependencies installed
+ *                          → ready → cd → pnpm dev) so the
+ *                          Terminal is truthful, not invented.
+ *   3. Parcours          — 3 numbered cells
+ *                          (list → info → init) so the
+ *                          commands grid reads as a user
+ *                          journey, not a tech reference.
+ *   4. Contrôle          — 3 useful flags
+ *                          (--dir, --pm, --no-install). The
+ *                          other flags live in the full
+ *                          reference guide.
+ *   5. Démarrage         — vertical 4-step install procedure.
+ *                          No `auth login` (init does not
+ *                          require authentication).
+ *   6. FAQ + CTA         — 3 questions and answers, then a
+ *                          two-action final CTA.
  *
  * Shiki runs at request time on the Server Component. Each tab
  * snippet is the same one the homepage CliInAction highlights.
- * `EDITOR_TAB_CONTENT` + `EDITOR_TAB_LANG` from
- * `@/lib/marketing/cli-workbench-data` are the single source of
- * truth shared across both surfaces. `defaultColor: false` is
- * mandatory (without it Shiki emits inline `color` styles that
- * win over the CSS variables in `globals.css` and dark-mode
- * flipping breaks; see `cli-in-action.tsx` lines 44-47).
+ * `defaultColor: false` is mandatory (without it Shiki emits
+ * inline `color` styles that win over the CSS variables in
+ * `globals.css` and dark-mode flipping breaks).
  */
 export default async function CliPage() {
   const highlightedHtml = await Promise.all(
@@ -100,43 +76,57 @@ export default async function CliPage() {
     string
   >
 
+  // Real terminal lines for the /cli demo, mirroring what
+  // `apps/cli/src/commands/init.ts` prints. Includes the
+  // `cd saas-starter` step the previous demo skipped, and
+  // the post-install "Template ready" summary the CLI emits
+  // on the success path. The /cli page opts into these
+  // instead of the workbench's default lines.
+  const terminalLines: readonly [string, ReadonlyArray<string>, string] = [
+    "$ deessejs init saas-starter",
+    [
+      "✔ Cloned into ./saas-starter",
+      "✔ Detected package manager: pnpm",
+      "✔ Dependencies installed",
+      "✓ Template ready",
+    ],
+    "$ cd saas-starter && pnpm dev",
+  ]
+
   return (
     <>
       {/* 1. Hero */}
       <ProductHero
         eyebrow="Product · CLI"
-        title="Run one command. Get a working project."
-        body="The deessejs CLI is the entry point to the rest of the registry: it talks to the template catalog, scaffolds new projects, and authenticates against the cloud runtime."
+        title="Start your next project from your terminal."
+        body="Find a template, clone its repository, and install its dependencies with the deessejs CLI. Start from an existing codebase and make it your own."
         primaryCta={{
+          label: "Get started",
+          href: "#get-started",
+        }}
+        secondaryCta={{
           label: "Browse templates",
           href: "/templates",
         }}
-        secondaryCta={{
-          label: "Read the install guide",
-          href: CLI_INSTALL_GUIDE_HREF,
-        }}
       />
 
-      {/* 2. Shared workbench + editorial column. Same surface as the
-             homepage CliInAction — visitor sees the same IDE-style
-             animation on `/cli` as they do on `/`. The block is now
-             composed inline from `<CliWorkbench>` and
-             `<CliInActionEditorial>`; the /cli page and the homepage
-             can each write their own copy. */}
+      {/* 2. Demo — shared workbench + per-page editorial column */}
       <Section className="border-t border-border">
         <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:divide-x lg:divide-y-0">
           <div className="hidden p-4 lg:block">
-            <CliWorkbench editorHtml={editorHtml} />
+            <CliWorkbench
+              editorHtml={editorHtml}
+              terminalLines={terminalLines}
+            />
           </div>
 
           <CliInActionEditorial
-            eyebrow="The DeesseJS CLI"
-            heading="From registry to working project."
-            body="Run one command and the CLI scaffolds the same stack the docs use: contracts wired, providers connected, the template ready to start. Edit the template name to swap surfaces, databases, or auth providers before the first file lands."
-            afterBody="Choose a template, initialize it with the CLI, then inspect the result."
+            eyebrow="From template to local project"
+            heading="A starting point you can inspect and change."
+            body="The CLI clones the selected template, detects your package manager, and installs dependencies. You get the source files on your machine; follow the template's setup steps to wire the services it expects, then start building."
             command="deessejs init saas-starter"
             cta={{
-              label: "Read the install guide",
+              label: "Read the setup guide",
               href: CLI_INSTALL_GUIDE_HREF,
             }}
           />
@@ -150,92 +140,42 @@ export default async function CliPage() {
         </div>
       </Section>
 
-      {/* 3. Commands grid. 3 cards (init / list / info). Data sourced
-             from `./_components/cli-commands.ts`, the marketing
-             mirror of `apps/cli/src/commands/*.ts`. */}
+      {/* 3. Parcours — list → info → init */}
       <Section>
         <SectionHeader
-          eyebrow="Commands"
-          title="Three commands, one registry."
-          subtitle="Everything you do with the registry starts here. No flags to memorize for the common case. `init <slug>` is enough to scaffold a working project."
+          eyebrow="Parcours"
+          title="Three commands, one journey."
+          subtitle="Discover, inspect, then scaffold. The order matches the workflow a developer follows end to end."
         />
-        <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-3 lg:divide-x lg:divide-y-0">
-          {CLI_COMMANDS.map((cmd) => (
-            <div
-              key={cmd.name}
-              className="flex flex-col gap-3 p-6 lg:p-8"
-            >
-              <h3 className="font-mono text-copy-16 font-medium text-foreground">
-                {cmd.name}
-              </h3>
-              <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
-                {cmd.description}
-              </p>
-              <code className="mt-1 rounded bg-muted px-2 py-1 font-mono text-copy-12 text-foreground/90">
-                $ {cmd.example}
-              </code>
-              <ul className="mt-1 flex flex-col gap-1">
-                {cmd.flags.map((flag) => (
-                  <li
-                    key={flag}
-                    className="font-mono text-label-13 text-muted-foreground"
-                  >
-                    {flag}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+        <CliParcours />
       </Section>
 
-      {/* 4. Install steps. 6-col grid: header left (col-span-2),
-             ordered list right (col-span-4, md:grid-cols-4 to fit
-             4 cells). Mirrors the use-case Process pattern but
-             drops the `Step 0X` mono label into the same row as
-             the heading. */}
-      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            Install
-          </p>
-          <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            From npm install to a running project.
-          </h2>
-          <p className="max-w-md text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Four steps and the CLI is yours. The same flow works on every template the registry ships.
-          </p>
-        </div>
-        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-4 md:divide-x md:divide-y-0">
-          {INSTALL_STEPS.map((step, idx) => (
-            <li
-              key={step.heading}
-              className="flex flex-col gap-3 p-6 lg:p-8"
-            >
-              <span className="font-mono text-copy-13 text-muted-foreground">
-                Step {String(idx + 1).padStart(2, "0")}
-              </span>
-              <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
-                {step.heading}
-              </h3>
-              <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
-                {step.body}
-              </p>
-            </li>
-          ))}
-        </ol>
+      {/* 4. Contrôle — three useful init flags */}
+      <Section>
+        <SectionHeader
+          eyebrow="Contrôle"
+          title="Three flags worth knowing."
+          subtitle="Defaults work for the common case. Reach for a flag when the defaults do not fit."
+        />
+        <CliControl />
+      </Section>
+
+      {/* 5. Démarrage — vertical 4-step install procedure */}
+      <div id="get-started">
+        <CliStart />
       </div>
 
-      {/* 5. Final CTA. Two doors: browse the templates, or read
-             the install guide for the step-by-step. Calls the
-             `_shared/final-cta` shell directly because the
-             use-case-namespaced `FinalCta` hard-codes use-case
-             copy that does not fit this page. */}
+      {/* 6. FAQ */}
+      <Section>
+        <CliFaqSection />
+      </Section>
+
+      {/* Final CTA — two doors, same CLI */}
       <FinalCta
         noBorderB
-        eyebrow="Try it"
+        eyebrow="Choose your starting point"
         title="Two doors, same CLI."
-        body="Pick a template and scaffold it yourself, or read the install guide for the step-by-step."
+        body="Browse the registry to pick a template, or read the setup guide for the step-by-step."
         actions={[
           {
             label: "Browse templates",
@@ -244,7 +184,7 @@ export default async function CliPage() {
             withArrow: true,
           },
           {
-            label: "Read the install guide",
+            label: "Read the setup guide",
             href: CLI_INSTALL_GUIDE_HREF,
             variant: "outline",
           },

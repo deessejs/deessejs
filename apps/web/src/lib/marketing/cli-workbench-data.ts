@@ -25,37 +25,50 @@ export type ExplorerNode = {
 }
 
 /**
- * Top-level layout of the `saas-starter` template as it appears
- * after a successful `deessejs init saas-starter`. Order matches
- * the order nodes are revealed by the workbench animation.
+ * Top-level layout of the cloned `deessejs/saas-template` repo as
+ * it appears locally after `deessejs init saas-starter`. The CLI
+ * derives the local directory name from the slug (see
+ * `apps/cli/src/commands/init.ts:53`), so `init saas-starter`
+ * produces `./saas-starter/` even though the GitHub repo is
+ * called `saas-template`.
+ *
+ * Reflects the real monorepo layout: Turborepo with `apps/`
+ * (app / docs / web) and `packages/` (api / auth / cookies /
+ * database / email / env / eslint-config / typescript-config /
+ * ui / utils), plus the root `AGENTS.md`, `README.md`,
+ * `package.json` (named `next-monorepo`), `pnpm-workspace.yaml`
+ * and `turbo.json`.
+ *
+ * Order matches the order nodes are revealed by the workbench
+ * animation.
  */
 export const SAAS_STARTER_FILES: ReadonlyArray<ExplorerNode> = [
   {
     name: "saas-starter",
     children: [
-      { name: "package.json" },
       { name: "AGENTS.md" },
       { name: "README.md" },
+      { name: "package.json" },
       {
-        name: "src",
+        name: "apps",
         children: [
-          {
-            name: "app",
-            children: [
-              { name: "layout.tsx" },
-              { name: "page.tsx" },
-            ],
-          },
-          {
-            name: "lib",
-            children: [
-              { name: "auth.ts" },
-              { name: "db.ts" },
-            ],
-          },
+          { name: "app" },
+          { name: "docs" },
+          { name: "web" },
         ],
       },
-      { name: "public" },
+      {
+        name: "packages",
+        children: [
+          { name: "api" },
+          { name: "auth" },
+          { name: "database" },
+          { name: "ui" },
+          { name: "utils" },
+        ],
+      },
+      { name: "pnpm-workspace.yaml" },
+      { name: "turbo.json" },
     ],
   },
 ]
@@ -71,18 +84,14 @@ export const SAAS_STARTER_FILES: ReadonlyArray<ExplorerNode> = [
  * misconception that one command does everything.
  */
 export const SAAS_STARTER_PACKAGE_JSON = `{
-  "name": "saas-starter",
+  "name": "next-monorepo",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint"
   },
-  "dependencies": {
-    "next": "^16.2.0",
-    "react": "19.2.0",
-    ...
-  }
+  "packageManager": "pnpm@9.12.0"
 }`
 
 /**
@@ -97,8 +106,8 @@ export const SAAS_STARTER_PACKAGE_JSON = `{
  */
 export const SAAS_STARTER_AGENTS_MD = `# AGENTS.md
 
-This codebase ships with typed contracts.
-Read packages/contracts before editing.
+Branch from staging. PRs target staging, not main.
+Better-Auth is the auth layer — see docs.better-auth.com.
 Run pnpm test before pushing.
 `
 
