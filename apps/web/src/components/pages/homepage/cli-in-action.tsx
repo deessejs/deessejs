@@ -55,7 +55,7 @@ export async function CliInAction() {
         <CliInActionEditorial
           eyebrow="The DeesseJS CLI"
           heading="From registry to working project."
-          body="Run one command and the CLI scaffolds the same stack the docs use: contracts wired, providers connected, the template ready to start. Edit the template name to swap surfaces, databases, or auth providers before the first file lands."
+          body="Run one command and the CLI clones the template, installs its dependencies, and leaves you with a working project you can configure and start. Pick a different template slug to bring a different surface into your workspace."
           afterBody="Choose a template, initialize it with the CLI, then inspect the result."
           command="deessejs init saas-starter"
           cta={{
