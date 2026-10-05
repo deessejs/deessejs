@@ -126,11 +126,23 @@ export function LatestGuidesSection({
   guides: ReadonlyArray<CarouselGuide>
 }) {
   const carouselApiRef = useRef<CarouselApi | undefined>(undefined)
+  // Embla's `canScrollNext()` is only knowable after the API mounts
+  // (a `useEffect` in the Carousel). Hydration requires the first
+  // client render to match the server output exactly. The server
+  // has no embla instance, so it renders `disabled={true}` for
+  // both chevrons. We mirror that on the client with an
+  // `apiReady` flag, flipped to `true` only by embla's own event
+  // callback (not an effect). Until embla fires its first
+  // `select` / `reInit`, both server and client agree on
+  // `disabled={true}`. Once embla reports, the state re-renders
+  // with the live values.
+  const [apiReady, setApiReady] = useState(false)
   const [canScrollPrev, setCanScrollPrev] = useState(false)
   const [canScrollNext, setCanScrollNext] = useState(false)
 
   const onSelect = useCallback((api: NonNullable<CarouselApi>) => {
     carouselApiRef.current = api
+    setApiReady(true)
     setCanScrollPrev(api.canScrollPrev())
     setCanScrollNext(api.canScrollNext())
   }, [])
@@ -147,13 +159,13 @@ export function LatestGuidesSection({
     <>
       <ChevronButton
         direction="prev"
-        disabled={!canScrollPrev}
+        disabled={apiReady ? !canScrollPrev : true}
         onClick={scrollPrev}
         label="Previous guides"
       />
       <ChevronButton
         direction="next"
-        disabled={!canScrollNext}
+        disabled={apiReady ? !canScrollNext : true}
         onClick={scrollNext}
         label="Next guides"
       />
