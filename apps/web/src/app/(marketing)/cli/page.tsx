@@ -31,27 +31,27 @@ export const metadata: Metadata = {
  * package the nav already links to from the Products dropdown.
  *
  * Composition (top to bottom, six sections):
- *   1. Hero              — `<ProductHero>` with eyebrow
+ *   1. Hero              : `<ProductHero>` with eyebrow
  *                          "Product · CLI", primary CTA "Get
  *                          started" (in-page anchor), secondary
  *                          CTA "Browse templates".
- *   2. Demo              — shared workbench + per-page editorial
+ *   2. Demo              : shared workbench + per-page editorial
  *                          column, fed real `init.ts` terminal
- *                          lines (cloned → dependencies installed
- *                          → ready → cd → pnpm dev) so the
- *                          Terminal is truthful, not invented.
- *   3. Parcours          — 3 numbered cells
- *                          (list → info → init) so the
- *                          commands grid reads as a user
- *                          journey, not a tech reference.
- *   4. Contrôle          — 3 useful flags
+ *                          lines (cloned, dependencies installed,
+ *                          ready, cd, pnpm dev) so the Terminal
+ *                          is truthful, not invented.
+ *   3. Parcours          : 3 numbered cells
+ *                          (list, info, init) so the commands
+ *                          grid reads as a user journey, not
+ *                          a tech reference.
+ *   4. Contrôle          : 3 useful flags
  *                          (--dir, --pm, --no-install). The
  *                          other flags live in the full
  *                          reference guide.
- *   5. Démarrage         — vertical 4-step install procedure.
+ *   5. Démarrage         : vertical 4-step install procedure.
  *                          No `auth login` (init does not
  *                          require authentication).
- *   6. FAQ + CTA         — 3 questions and answers, then a
+ *   6. FAQ + CTA         : 3 questions and answers, then a
  *                          two-action final CTA.
  *
  * Shiki runs at request time on the Server Component. Each tab
@@ -110,7 +110,7 @@ export default async function CliPage() {
         }}
       />
 
-      {/* 2. Demo — shared workbench + per-page editorial column */}
+      {/* 2. Demo : shared workbench + per-page editorial column */}
       <Section className="border-t border-border">
         <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:divide-x lg:divide-y-0">
           <div className="hidden p-4 lg:block">
@@ -140,7 +140,7 @@ export default async function CliPage() {
         </div>
       </Section>
 
-      {/* 3. Parcours — list → info → init */}
+      {/* 3. Parcours : list, info, init */}
       <Section>
         <SectionHeader
           eyebrow="Parcours"
@@ -150,7 +150,7 @@ export default async function CliPage() {
         <CliParcours />
       </Section>
 
-      {/* 4. Contrôle — three useful init flags */}
+      {/* 4. Contrôle : three useful init flags */}
       <Section>
         <SectionHeader
           eyebrow="Contrôle"
@@ -160,17 +160,16 @@ export default async function CliPage() {
         <CliControl />
       </Section>
 
-      {/* 5. Démarrage — vertical 4-step install procedure */}
-      <div id="get-started">
-        <CliStart />
-      </div>
+      {/* 5. Démarrage : vertical 4-step install procedure, each
+             step a 2-col split (explanation left, code block right). */}
+      <CliStart id="get-started" />
 
       {/* 6. FAQ */}
       <Section>
         <CliFaqSection />
       </Section>
 
-      {/* Final CTA — two doors, same CLI */}
+      {/* Final CTA : two doors, same CLI */}
       <FinalCta
         noBorderB
         eyebrow="Choose your starting point"
