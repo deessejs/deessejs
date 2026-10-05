@@ -13,7 +13,7 @@ const HATCH_BG =
 
 export function DiagonalStripDivider() {
   return (
-    <div aria-hidden className="flex h-8 gap-1 max-lg:hidden">
+    <div aria-hidden className="flex h-6 gap-1 px-2 max-lg:hidden">
       <div className="flex-1 border" />
       <div
         className="h-full w-52 border-2 border-dashed"
