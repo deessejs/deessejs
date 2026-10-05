@@ -61,7 +61,7 @@ export async function CliInAction() {
   }
 
   return (
-    <Section>
+    <Section className="border-t border-border">
       <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:divide-x lg:divide-y-0">
         {/* Left column: animated workbench (the code editor) */}
         <div className="hidden p-4 lg:block">
