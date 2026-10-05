@@ -14,7 +14,7 @@ const HATCH_BG =
 export function DiagonalStripDivider() {
   return (
     <div aria-hidden className="flex h-6 gap-1 my-2 max-lg:hidden">
-      <div className="flex-1 border" />
+      <div className="flex-1 border-y border-r" />
       <div
         className="h-full w-52 border-2 border-dashed"
         style={{ backgroundImage: HATCH_BG }}
@@ -29,7 +29,7 @@ export function DiagonalStripDivider() {
         className="h-full w-52 border-2 border-dashed"
         style={{ backgroundImage: HATCH_BG }}
       />
-      <div className="flex-1 border" />
+      <div className="flex-1 border-y border-l" />
     </div>
   )
 }
