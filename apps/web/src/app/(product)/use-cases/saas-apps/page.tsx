@@ -47,8 +47,9 @@ export const metadata: Metadata = {
 }
 
 /**
- * Stack specific to the SaaS surface. Six brands, same set the
- * hero CTA already names implicitly. Re-rendered through
+ * Stack specific to the SaaS surface. Same eight brands the
+ * homepage and /pricing page ship on, so the brand wall reads
+ * the same way across every surface. Re-rendered through
  * <TechStackGrid> (the same component the homepage + pricing
  * page use) so every brand display on the site stays in lockstep.
  */
@@ -58,7 +59,9 @@ const STACK = [
   { name: "Drizzle",     logo: "drizzle" },
   { name: "Postgres",    logo: "postgresql" },
   { name: "Stripe",      logo: "stripe" },
+  { name: "Cloudflare",  logo: "cloudflare" },
   { name: "Resend",      logo: "resend" },
+  { name: "OpenAI",      logo: "openai" },
 ] as const
 
 const STEPS = [
