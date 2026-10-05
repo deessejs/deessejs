@@ -17,11 +17,11 @@ export const CLI_FAQ: ReadonlyArray<CliFaqItem> = [
   {
     question: "Does the CLI configure external services?",
     answer:
-      "No. The CLI scaffolds a project whose .env.example lists the keys you need (Postgres, Stripe, Resend, Better Auth, etc.). You bring the accounts; the templates wire the SDKs.",
+      "No. The selected template ships a .env.example with the credentials it expects. You bring the accounts; the template wires the SDKs. Service configuration happens after the CLI has finished.",
   },
   {
     question: "Can I change the generated code?",
     answer:
-      "Yes. The templates are scaffolds, not sealed images. Edit anything: rename the app, swap the auth provider, replace the database. The conventions (typed contracts, AGENTS.md, monorepo layout) stay stable so a coding agent on a fresh clone still navigates it the same way.",
+      "Yes. You can inspect and edit the source files locally. Follow the selected template's license, and update its documentation as your project evolves.",
   },
 ]
