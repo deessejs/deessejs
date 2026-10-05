@@ -46,10 +46,14 @@ const listFile: CliStartSnippet = {
   tabName: "terminal",
   lang: "bash",
   code: `$ deessejs list
-saas-starter       Production-ready Next.js SaaS boilerplate
-ai-starter         Next.js + MCP-ready template for AI products
-marketing-site     Astro + Decap CMS for marketing surfaces
-internal-tools     TanStack Start + typed contracts for ops
+slug                  name                    category       license
+eve-starter           Eve Starter             ai             MIT
+landing-starter       Landing Starter         marketing      MIT
+electron-starter      Electron Starter        desktop        MIT
+saas-starter          SaaS Starter            saas           MIT
+saas-starter-multi-tenant  SaaS Starter (MT)   saas           MIT
+
+8 templates. Use --category <name> to filter, --json for scripting.
 `,
 }
 
@@ -57,11 +61,15 @@ const infoFile: CliStartSnippet = {
   tabName: "terminal",
   lang: "bash",
   code: `$ deessejs info saas-starter
-saas-starter
-  Production-ready Next.js + Better Auth + Postgres boilerplate
-  Stack: next, react, postgres, better-auth
-  Repo: github.com/deessejs/saas-template
-  License: MIT
+slug         saas-starter
+name         SaaS Starter
+description  Production-ready Next.js + Better Auth + Postgres boilerplate for B2B SaaS.
+category     saas
+license      MIT
+repo         deessejs/saas-template
+labels       nextjs, saas, auth, postgres
+
+Install: example will go here.
 `,
 }
 
