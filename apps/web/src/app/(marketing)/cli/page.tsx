@@ -1,25 +1,19 @@
 import type { Metadata } from "next"
-import Link from "next/link"
-import { ArrowUpRight } from "lucide-react"
 import { codeToHtml } from "shiki"
 
-import { CliWorkbench } from "@/app/(marketing)/_components/cli-workbench"
-import { CliInActionStatic } from "@/app/(marketing)/_components/cli-in-action-static"
+import { CliInActionBlock } from "@/app/(marketing)/_components/cli-in-action-block"
+import { CLI_INSTALL_GUIDE_HREF } from "@/app/(marketing)/_components/cli-in-action-block-constants"
 import { Section } from "@/app/(marketing)/_components/section"
 import { SectionHeader } from "@/app/(marketing)/_components/section-header"
-import { UseCaseHero } from "@/app/(product)/use-cases/_components/use-case-page"
 import { FinalCta } from "@/components/pages/_shared/final-cta"
 import {
   EDITOR_TABS,
   EDITOR_TAB_CONTENT,
   EDITOR_TAB_LANG,
-  type EditorTabId,
 } from "@/lib/marketing/cli-workbench-data"
 
 import { CLI_COMMANDS } from "./_components/cli-commands"
-
-const COMMAND = "deessejs init saas-starter"
-const INSTALL_GUIDE_HREF = "/knowledge-base/guides/install-deessejs-cli"
+import { ProductHero } from "./_components/product-hero"
 
 /**
  * Four canonical install steps, lifted from
@@ -98,16 +92,16 @@ export default async function CliPage() {
       return [tab.id, html] as const
     }),
   )
-  const editorHtml: Record<EditorTabId, string> = {
-    "package.json": highlightedHtml[0]![1],
-    "AGENTS.md": highlightedHtml[1]![1],
-  }
+  const editorHtml = Object.fromEntries(highlightedHtml) as Record<
+    (typeof EDITOR_TABS)[number]["id"],
+    string
+  >
 
   return (
     <>
       {/* 1. Hero */}
-      <UseCaseHero
-        category="CLI"
+      <ProductHero
+        eyebrow="Product · CLI"
         title="Run one command. Get a working project."
         body="The deessejs CLI is the entry point to the rest of the registry: it talks to the template catalog, scaffolds new projects, and authenticates against the cloud runtime."
         primaryCta={{
@@ -116,55 +110,14 @@ export default async function CliPage() {
         }}
         secondaryCta={{
           label: "Read the install guide",
-          href: INSTALL_GUIDE_HREF,
+          href: CLI_INSTALL_GUIDE_HREF,
         }}
       />
 
-      {/* 2. CliWorkbench section. Same lg+/<lg split as the homepage
-             CliInAction section, so the visitor sees the same IDE-style
-             animation on `/cli` as they do on `/`. The editorial
-             column (4/12 on lg) carries the canonical command and the
-             install guide link. */}
-      <Section>
-        <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:divide-x lg:divide-y-0">
-          <div className="hidden p-4 lg:block">
-            <CliWorkbench editorHtml={editorHtml} />
-          </div>
-
-          <div className="flex flex-col gap-4 p-6 lg:p-10">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-              The deessejs CLI
-            </p>
-            <h2 className="text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-              From registry to working project.
-            </h2>
-            <p className="text-copy-14 leading-6 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
-              Run one command and the CLI scaffolds the same stack the docs use: contracts wired, providers connected, the template ready to start. Edit the template name to swap surfaces, databases, or auth providers before the first file lands.
-            </p>
-            <p className="text-copy-14 text-muted-foreground mt-2">
-              Run{" "}
-              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-copy-13 text-foreground/90">
-                $ deessejs init saas-starter
-              </code>{" "}
-              from your terminal.
-            </p>
-            <Link
-              href={INSTALL_GUIDE_HREF}
-              className="inline-flex w-fit items-center gap-1 self-start text-label-13 text-foreground hover:underline underline-offset-4"
-            >
-              Read the install guide
-              <ArrowUpRight aria-hidden className="size-3" />
-            </Link>
-          </div>
-
-          <div className="block p-4 lg:hidden">
-            <CliInActionStatic
-              command={COMMAND}
-              installGuideHref={INSTALL_GUIDE_HREF}
-            />
-          </div>
-        </div>
-      </Section>
+      {/* 2. Shared CliInActionBlock. Same surface as the homepage
+             CliInAction — visitor sees the same IDE-style animation
+             on `/cli` as they do on `/`. */}
+      <CliInActionBlock editorHtml={editorHtml} />
 
       {/* 3. Commands grid. 3 cards (init / list / info). Data sourced
              from `./_components/cli-commands.ts`, the marketing
@@ -261,7 +214,7 @@ export default async function CliPage() {
           },
           {
             label: "Read the install guide",
-            href: INSTALL_GUIDE_HREF,
+            href: CLI_INSTALL_GUIDE_HREF,
             variant: "outline",
           },
         ]}
