@@ -11,7 +11,7 @@ import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
  *
  * Same visual signature as `<UseCaseHero>` (full-bleed FlickeringGrid
  * background, centered eyebrow + H1 + body + primary CTA + optional
- * secondary CTA) but the eyebrow is **not** hardcoded — the caller
+ * secondary CTA) but the eyebrow is **not** hardcoded. The caller
  * supplies the full string ("Product · CLI", "Docs · Registry", …)
  * because product pages do not share a common prefix the way
  * use-case pages do.

@@ -26,7 +26,7 @@ export const CLI_CONTROL_FLAGS: ReadonlyArray<CliControlFlag> = [
   },
   {
     flag: "--no-install",
-    body: "Clone only. Run the install command yourself — offline or in a constrained CI.",
+    body: "Clone only. Run the install command yourself (offline or in a constrained CI).",
     command: "deessejs init saas-starter --no-install",
   },
 ]

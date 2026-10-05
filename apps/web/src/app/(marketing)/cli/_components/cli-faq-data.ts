@@ -12,7 +12,7 @@ export const CLI_FAQ: ReadonlyArray<CliFaqItem> = [
   {
     question: "What does the CLI set up?",
     answer:
-      "The CLI clones the selected template's repo into a local directory named after the slug, detects your package manager (pnpm, npm, yarn, or bun), and runs the install command. The CLI does not start the dev server — that is a separate command inside the cloned project.",
+      "The CLI clones the selected template's repo into a local directory named after the slug, detects your package manager (pnpm, npm, yarn, or bun), and runs the install command. The CLI does not start the dev server. That is a separate command inside the cloned project.",
   },
   {
     question: "Does the CLI configure external services?",

@@ -20,7 +20,7 @@ export function CliFaqSection() {
           Before you start
         </p>
         <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-          What the CLI does — and what it does not.
+          What the CLI does, and what it does not.
         </h2>
         <p className="max-w-md text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
           Three answers to the questions a first-time visitor asks most often.

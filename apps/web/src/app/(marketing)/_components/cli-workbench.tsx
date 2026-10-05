@@ -27,7 +27,7 @@ import {
 } from "@/lib/marketing/cli-workbench-data"
 
 /**
- * CLI workbench — IDE-style transformation panel shown on the
+ * CLI workbench. IDE-style transformation panel shown on the
  * marketing homepage (Section 7, CliInAction).
  *
  * Three panes inside a single shared-border frame, mirroring the
@@ -39,7 +39,7 @@ import {
  *                            its snippet on entry.
  *   • Terminal  (bottom)    : shows the canonical `deessejs init`
  *                            command, then its real output, then
- *                            `pnpm dev` (a separate command —
+ *                            `pnpm dev` (a separate command;
  *                            `init` does NOT start the server).
  *
  * Choreography (plays once on viewport entry, ~4s total):
@@ -50,16 +50,16 @@ import {
  *   t=2.6s   command 2 (`pnpm dev`) starts typing
  *   t=3.2s   dev output line appears
  *
- * Editor tabs are interactive after the reveal — clicking a tab
+ * Editor tabs are interactive after the reveal. Clicking a tab
  * swaps the snippet in place. No animation between tabs (the
  * reveal animation already plays once on viewport entry; toggling
  * tabs is a discrete user action).
  *
- * `useReducedMotion` short-circuits to a static variant — same
+ * `useReducedMotion` short-circuits to a static variant. Same
  * layout, same tabs, same content, all visible immediately.
  *
- * Source-of-truth: `apps/cli/src/commands/init.ts` (clone +
- * detect PM + install). The template layout is a curated list in
+ * Source-of-truth: `apps/cli/src/commands/init.ts` (clone,
+ * detect PM, install). The template layout is a curated list in
  * `cli-workbench-data.ts`; update both in lockstep.
  */
 export function CliWorkbench({
@@ -338,7 +338,7 @@ function TerminalPane({
           </m.div>
         ))}
 
-        {/* Command 2 — passed by the caller. `init` does not start
+        {/* Command 2 : passed by the caller. `init` does not start
             the server; whatever the caller types here is a SEPARATE
             command. */}
         <TypedLine text={secondCommand} delay={2.6} duration={0.5} />

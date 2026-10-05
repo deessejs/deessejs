@@ -20,7 +20,7 @@ export const CLI_PARCOURS: ReadonlyArray<CliParcoursStep> = [
   },
   {
     name: "deessejs info <slug>",
-    body: "Inspect one template. Stack, contracts, scripts — before you scaffold.",
+    body: "Inspect one template. Stack, contracts, scripts. Use it before you scaffold.",
     command: "deessejs info saas-starter",
   },
   {
