@@ -254,10 +254,12 @@ export default async function SaasAppsPage() {
       {/* 2. What's in the box -- 4+4 mirrored tabs.
            Customer surface (Auth, Billing, Admin, Database) reads
            first with tabs LEFT and a Shiki peek on the RIGHT. Behind
-           the curtain (API, MCP, Jobs, Mail) follows with the same
-           Tabs component flipped (tabs RIGHT, peek LEFT). The
-           sub-eyebrow names the boundary so the reader can follow
-           the seam between the two halves. */}
+           the curtain (API, MCP, Jobs, Mail) follows as its own
+           <Section> with the same Tabs component flipped (tabs RIGHT,
+           peek LEFT). The sub-eyebrow names the boundary so the reader
+           can follow the seam between the two halves. Two <Section>s
+           keep the page's border rhythm identical to the rest of the
+           marketing surface (one border-b per section). */}
       <Section>
         <SectionHeader
           eyebrow="What's in the box"
@@ -269,9 +271,13 @@ export default async function SaasAppsPage() {
           pillars={PILLARS_GROUP_1}
           htmlBySlug={htmlBySlug}
         />
+      </Section>
+
+      <Section>
         <SectionHeader
           eyebrow="Behind the curtain"
           title="What keeps a SaaS running."
+          subtitle="The four sub-systems an on-call engineer names first. Same contracts, same registry, same auth, just on the other side of the same RPC."
           bordered={true}
         />
         <SaasPillarsTabs
