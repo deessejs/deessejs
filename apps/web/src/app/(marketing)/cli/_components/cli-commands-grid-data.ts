@@ -25,8 +25,6 @@ export type CliCommandCell =
       kind: "flag"
       /** Short human-readable title for the flag (e.g. "Override directory"). */
       title: string
-      /** One-line muted description (e.g. "Target directory override"). */
-      description: string
       /** The flag invocation (e.g. `--dir <path>`). */
       flag: string
       body: string
@@ -59,7 +57,6 @@ export const CLI_COMMANDS_GRID: ReadonlyArray<CliCommandCell> = [
   {
     kind: "flag",
     title: "Override directory",
-    description: "Override the target directory.",
     body: "Useful when the project lives in a subfolder of a monorepo.",
     flag: "--dir <path>",
     example: "deessejs init saas-starter --dir apps/web",
@@ -67,7 +64,6 @@ export const CLI_COMMANDS_GRID: ReadonlyArray<CliCommandCell> = [
   {
     kind: "flag",
     title: "Pin package manager",
-    description: "Pin a package manager.",
     body: "Use it when the auto-detected one is wrong.",
     flag: "--pm <name>",
     example: "deessejs init saas-starter --pm bun",
@@ -75,7 +71,6 @@ export const CLI_COMMANDS_GRID: ReadonlyArray<CliCommandCell> = [
   {
     kind: "flag",
     title: "Clone only",
-    description: "Skip the install step.",
     body: "Run the install command yourself, offline or in a constrained CI.",
     flag: "--no-install",
     example: "deessejs init saas-starter --no-install",

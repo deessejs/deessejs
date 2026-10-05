@@ -62,9 +62,6 @@ export function CliCommandsGrid() {
               <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
                 {flag.title}
               </h3>
-              <p className="text-copy-14 leading-6 text-foreground [&:not(:first-child)]:mt-0">
-                {flag.description}
-              </p>
               <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {flag.body}
               </p>
