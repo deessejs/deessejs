@@ -13,9 +13,8 @@ import {
   EDITOR_TAB_LANG,
 } from "@/lib/marketing/cli-workbench-data"
 
-import { CliControl } from "./_components/cli-control"
+import { CliCommandsGrid } from "./_components/cli-commands-grid"
 import { CliFaqSection } from "./_components/cli-faq-section"
-import { CliParcours } from "./_components/cli-parcours"
 import { CliStart } from "./_components/cli-start"
 import { CLI_INSTALL_GUIDE_HREF } from "./_components/cli-page-constants"
 import { ProductHero } from "./_components/product-hero"
@@ -140,31 +139,28 @@ export default async function CliPage() {
         </div>
       </Section>
 
-      {/* 3. Parcours : list, info, init */}
+      {/* 3. Commands + flags : one unified 2-col bento grid.
+             Three commands (list, info, init) on the left in the
+             order a developer uses them; three useful init flags
+             (--dir, --pm, --no-install) on the right as the
+             customisation layer. Replaces the previous two
+             sections (Parcours + Contrôle) that were rendered
+             as separate blocks with duplicated headers. */}
       <Section>
         <SectionHeader
-          eyebrow="Parcours"
-          title="Three commands, one journey."
-          subtitle="Discover, inspect, then scaffold. The order matches the workflow a developer follows end to end."
+          eyebrow="CLI"
+          title="Three commands, three flags, one workflow."
+          subtitle="The commands are the flow; the flags are the customisation. Defaults first; reach for a flag when the defaults do not fit."
         />
-        <CliParcours />
+        <CliCommandsGrid />
       </Section>
 
-      {/* 4. Contrôle : three useful init flags */}
-      <Section>
-        <SectionHeader
-          eyebrow="Contrôle"
-          title="Three flags worth knowing."
-          subtitle="Defaults work for the common case. Reach for a flag when the defaults do not fit."
-        />
-        <CliControl />
-      </Section>
-
-      {/* 5. Démarrage : vertical 4-step install procedure, each
-             step a 2-col split (explanation left, code block right). */}
+      {/* 4. Get started : mirror of the homepage Ecosystem section,
+             4 tabs (install / list / info / init) with the
+             corresponding bash code mockup on the right. */}
       <CliStart id="get-started" />
 
-      {/* 6. FAQ */}
+      {/* 5. FAQ */}
       <Section>
         <CliFaqSection />
       </Section>
