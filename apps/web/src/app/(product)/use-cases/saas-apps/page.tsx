@@ -2,16 +2,6 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { codeToHtml } from "shiki"
 import {
-  Boxes,
-  CreditCard,
-  Database,
-  KeyRound,
-  Mail,
-  Radio,
-  ShieldCheck,
-  Wrench,
-} from "lucide-react"
-import {
   RelatedUseCases,
   type RelatedUseCaseItem,
 } from "../_components/related-use-cases"
@@ -141,7 +131,7 @@ const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
   {
     id: "auth",
     slug: "auth",
-    icon: KeyRound,
+    iconName: "KeyRound",
     title: "Auth",
     description:
       "Better Auth on the same proxy the dashboard talks through. Email + password, magic links, and OAuth providers, all behind one session.",
@@ -149,7 +139,7 @@ const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
   {
     id: "billing",
     slug: "billing",
-    icon: CreditCard,
+    iconName: "CreditCard",
     title: "Billing",
     description:
       "Stripe subscriptions, plans, proration, and a generated customer portal. Usage metering matches the shape your app code reads.",
@@ -157,7 +147,7 @@ const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
   {
     id: "admin",
     slug: "admin",
-    icon: ShieldCheck,
+    iconName: "ShieldCheck",
     title: "Admin",
     description:
       "Operator console on the same RPC the customer surface uses. Impersonate, refund, override plans, with the same audit trail the rest of the app carries.",
@@ -165,7 +155,7 @@ const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
   {
     id: "database",
     slug: "database",
-    icon: Database,
+    iconName: "Database",
     title: "Database",
     description:
       "Drizzle on Postgres, migrations as a typed registry command. The schema the app code reads is the schema the operator console reads.",
@@ -173,7 +163,7 @@ const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
   {
     id: "api",
     slug: "api",
-    icon: Wrench,
+    iconName: "Wrench",
     title: "API",
     description:
       "Hono + oRPC, end-to-end typed. The contract the customer app sends is the contract the public docs publish, with no hand-written translation.",
@@ -181,7 +171,7 @@ const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
   {
     id: "mcp",
     slug: "mcp",
-    icon: Radio,
+    iconName: "Radio",
     title: "MCP",
     description:
       "Typed tools exposed over the same oRPC contract the API uses. The model calls your data the same way your app does, on the same auth and trace.",
@@ -189,7 +179,7 @@ const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
   {
     id: "jobs",
     slug: "jobs",
-    icon: Boxes,
+    iconName: "Boxes",
     title: "Jobs",
     description:
       "Queues, retries, and cron on the same registry as the rest of the code. Failed jobs surface in the same dashboard as 5xx; retries are typed.",
@@ -197,7 +187,7 @@ const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
   {
     id: "mail",
     slug: "mail",
-    icon: Mail,
+    iconName: "Mail",
     title: "Mail",
     description:
       "Resend + React Email on the same contract the rest of the app sends through. Welcome, renewals, dunning, and security alerts, all on one queue.",

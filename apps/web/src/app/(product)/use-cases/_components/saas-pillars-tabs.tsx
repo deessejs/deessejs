@@ -2,7 +2,18 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowRight, type LucideIcon } from "lucide-react"
+import {
+  ArrowRight,
+  Boxes,
+  CreditCard,
+  Database,
+  KeyRound,
+  Mail,
+  Radio,
+  ShieldCheck,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react"
 
 import {
   Tabs,
@@ -58,11 +69,29 @@ import { DotGrid } from "@/app/(marketing)/_components/dot-grid"
  * Server Components as children of Client Components.
  */
 
+/**
+ * Icon registry keyed by string name. The server-rendered page
+ * passes `iconName: "KeyRound"` etc. through the boundary; this
+ * Client Component resolves the name to a real lucide component
+ * without ever trying to serialise a React element across the
+ * Server->Client boundary (which Next 16 forbids).
+ */
+const ICON_REGISTRY: Record<string, LucideIcon> = {
+  Boxes,
+  CreditCard,
+  Database,
+  KeyRound,
+  Mail,
+  Radio,
+  ShieldCheck,
+  Wrench,
+}
+
 export type SaasPillarTab = {
   slug: string
   title: string
   description: string
-  icon: LucideIcon
+  iconName: string
 }
 
 export function SaasPillarsTabs({
@@ -96,7 +125,7 @@ export function SaasPillarsTabs({
         )}
       >
         {pillars.map((tab) => {
-          const Icon = tab.icon
+          const Icon = ICON_REGISTRY[tab.iconName]
           return (
             <TabsTrigger
               key={tab.slug}
@@ -109,10 +138,12 @@ export function SaasPillarsTabs({
               )}
             >
               <div className="flex w-full items-center gap-2">
-                <Icon
-                  className="text-foreground size-4 shrink-0"
-                  aria-hidden
-                />
+                {Icon ? (
+                  <Icon
+                    className="text-foreground size-4 shrink-0"
+                    aria-hidden
+                  />
+                ) : null}
                 <h3 className="text-heading-20 tracking-tight !m-0 truncate">
                   {tab.title}
                 </h3>
