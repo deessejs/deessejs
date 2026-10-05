@@ -148,9 +148,9 @@ export default async function CliPage() {
              as separate blocks with duplicated headers. */}
       <Section>
         <SectionHeader
-          eyebrow="CLI"
-          title="Three commands, three flags, one workflow."
-          subtitle="The commands are the flow; the flags are the customisation. Defaults first; reach for a flag when the defaults do not fit."
+          eyebrow="Commands and flags"
+          title="Find your template. Make it your project."
+          subtitle="Explore the catalog, inspect your choice, and initialize it locally. Adjust the directory and installation options when you need to."
         />
         <CliCommandsGrid />
       </Section>
@@ -165,11 +165,11 @@ export default async function CliPage() {
         <CliFaqSection />
       </Section>
 
-      {/* Final CTA : two doors, same CLI */}
+      {/* Final CTA : swap eyebrow and title so the promise leads */}
       <FinalCta
         noBorderB
-        eyebrow="Choose your starting point"
-        title="Two doors, same CLI."
+        eyebrow="Two doors"
+        title="Choose your starting point."
         body="Browse the registry to pick a template, or read the setup guide for the step-by-step."
         actions={[
           {
