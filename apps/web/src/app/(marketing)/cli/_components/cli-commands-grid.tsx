@@ -1,8 +1,4 @@
-import Link from "next/link"
-
 import { CLI_COMMANDS_GRID } from "./cli-commands-grid-data"
-
-const FULL_OPTIONS_HREF = "/knowledge-base/guides/install-deessejs-cli"
 
 /**
  * The unified CLI "commands + flags" grid on /cli. A single
@@ -14,60 +10,64 @@ const FULL_OPTIONS_HREF = "/knowledge-base/guides/install-deessejs-cli"
  * that were rendered as separate `<Section>` blocks with
  * duplicated headers. Same content, one rhythm.
  *
- * Layout: 2 rows × 3 cols on `lg+` (commands top, flags
- * bottom); single column on mobile with `divide-y divide-border`.
+ * Layout: two stacked 3-col grids, one per row. The 2nd grid
+ * carries a `border-t border-border` on `lg+` so a 1px line
+ * separates the two rows. On mobile the grid is single-column
+ * with `divide-y divide-border` between every cell.
  */
 export function CliCommandsGrid() {
+  const commands = CLI_COMMANDS_GRID.filter((c) => c.kind === "command")
+  const flags = CLI_COMMANDS_GRID.filter((c) => c.kind === "flag")
+
   return (
     <div className="flex flex-col">
+      {/* Row 1 : the three commands */}
       <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-3 lg:divide-x lg:divide-y-0">
-        {CLI_COMMANDS_GRID.map((cell, idx) => {
-          const isFirst = idx === 0
+        {commands.map((cell, idx) => {
+          const command = cell as Extract<typeof cell, { kind: "command" }>
           return (
             <div
-              key={isFirst ? "command-1" : cell.kind === "command" ? `command-${cell.step}` : `flag-${cell.flag}`}
+              key={`command-${idx}`}
               className="flex flex-col gap-3 p-6 lg:p-8"
             >
-              {cell.kind === "command" ? (
-                <>
-                  <span className="font-mono text-copy-13 text-muted-foreground">
-                    Step {String(cell.step).padStart(2, "0")}
-                  </span>
-                  <h3 className="font-mono text-copy-16 font-medium text-foreground !m-0">
-                    {cell.name}
-                  </h3>
-                  <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
-                    {cell.body}
-                  </p>
-                  <code className="mt-1 rounded bg-muted px-2 py-1 font-mono text-copy-12 text-foreground/90">
-                    $ {cell.example}
-                  </code>
-                </>
-              ) : (
-                <>
-                  <span className="font-mono text-copy-13 text-muted-foreground">
-                    {cell.flag}
-                  </span>
-                  <p className="text-copy-14 leading-6 text-foreground [&:not(:first-child)]:mt-0">
-                    {cell.body}
-                  </p>
-                  <code className="mt-1 rounded bg-muted px-2 py-1 font-mono text-copy-12 text-foreground/90">
-                    $ {cell.example}
-                  </code>
-                </>
-              )}
+              <span className="font-mono text-copy-13 text-muted-foreground">
+                Step {String(command.step).padStart(2, "0")}
+              </span>
+              <h3 className="font-mono text-copy-16 font-medium text-foreground !m-0">
+                {command.name}
+              </h3>
+              <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
+                {command.body}
+              </p>
+              <code className="mt-1 rounded bg-muted px-2 py-1 font-mono text-copy-12 text-foreground/90">
+                $ {command.example}
+              </code>
             </div>
           )
         })}
       </div>
-      <div className="flex items-center justify-end border-t border-border px-6 py-4 lg:px-8">
-        <Link
-          href={FULL_OPTIONS_HREF}
-          className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4"
-        >
-          View all CLI options
-          <span aria-hidden>↗</span>
-        </Link>
+
+      {/* Row 2 : the three flags, separated from row 1 by a 1px border */}
+      <div className="grid grid-cols-1 divide-y divide-border border-t border-border lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+        {flags.map((cell, idx) => {
+          const flag = cell as Extract<typeof cell, { kind: "flag" }>
+          return (
+            <div
+              key={`flag-${idx}`}
+              className="flex flex-col gap-3 p-6 lg:p-8"
+            >
+              <span className="font-mono text-copy-13 text-muted-foreground">
+                {flag.flag}
+              </span>
+              <p className="text-copy-14 leading-6 text-foreground [&:not(:first-child)]:mt-0">
+                {flag.body}
+              </p>
+              <code className="mt-1 rounded bg-muted px-2 py-1 font-mono text-copy-12 text-foreground/90">
+                $ {flag.example}
+              </code>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
