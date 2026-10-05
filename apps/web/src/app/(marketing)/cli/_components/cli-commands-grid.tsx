@@ -56,6 +56,9 @@ export function CliCommandsGrid() {
               key={`flag-${idx}`}
               className="flex flex-col gap-3 p-6 lg:p-8"
             >
+              <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                {flag.title}
+              </h3>
               <span className="font-mono text-copy-13 text-muted-foreground">
                 {flag.flag}
               </span>
