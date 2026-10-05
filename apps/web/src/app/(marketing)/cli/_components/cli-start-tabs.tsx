@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, type LucideIcon } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 
 import {
   Tabs,
@@ -24,9 +24,9 @@ import type { CliStartSlug } from "./cli-start-snippets"
  * On smaller viewports the grid collapses to a single column
  * with the cards on top and the mockup below.
  *
- * Each card on the left is a `TabsTrigger` (icon + heading +
- * description + "Read the step" link). The active card picks
- * up `bg-accent/40`. The code mockup on the right uses the
+ * Each card on the left is a `TabsTrigger` (heading + description
+ * + "Read the step" link). The active card picks up
+ * `bg-accent/40`. The code mockup on the right uses the
  * same DotGrid background + margin-break translation as the
  * Ecosystem section.
  *
@@ -39,7 +39,6 @@ type CliStartTab = {
   slug: CliStartSlug
   name: string
   description: string
-  icon: LucideIcon
 }
 
 const CLI_START_TABS: ReadonlyArray<CliStartTab> = [
@@ -48,28 +47,24 @@ const CLI_START_TABS: ReadonlyArray<CliStartTab> = [
     name: "Install the CLI",
     description:
       "Node.js 20 or later. The package ships under @deessejs/cli; npm makes it available on your PATH.",
-    icon: ArrowRight,
   },
   {
     slug: "list",
     name: "Find a template",
     description:
       "Browse the registry with one command. Filter by category to narrow your options.",
-    icon: ArrowRight,
   },
   {
     slug: "info",
     name: "Inspect your choice",
     description:
       "Read the template's stack, scripts, and contracts before you bring it into your project.",
-    icon: ArrowRight,
   },
   {
     slug: "init",
     name: "Scaffold the project",
     description:
       "Clone the template and install its dependencies. Then move into the new directory and start the dev server.",
-    icon: ArrowRight,
   },
 ]
 
@@ -94,7 +89,6 @@ export function CliStartTabs({
         className="flex flex-col divide-y divide-border border-b border-border lg:border-b-0 lg:border-r bg-transparent p-0 h-auto w-full rounded-none!"
       >
         {CLI_START_TABS.map((tab) => {
-          const Icon = tab.icon
           return (
             <TabsTrigger
               key={tab.slug}
@@ -106,15 +100,9 @@ export function CliStartTabs({
                 "[&:after]:hidden",
               )}
             >
-              <div className="flex w-full items-start gap-2">
-                <Icon
-                  className="text-foreground size-4 shrink-0"
-                  aria-hidden
-                />
-                <h3 className="text-heading-20 tracking-tight !m-0">
-                  {tab.name}
-                </h3>
-              </div>
+              <h3 className="text-heading-20 tracking-tight !m-0">
+                {tab.name}
+              </h3>
               <p className="text-copy-14 text-muted-foreground leading-6 !m-0 text-balance">
                 {tab.description}
               </p>
