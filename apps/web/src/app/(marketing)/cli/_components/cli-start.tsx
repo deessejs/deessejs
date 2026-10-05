@@ -53,7 +53,7 @@ export async function CliStart({ id }: { id?: string } = {}) {
       <SectionHeader
         eyebrow="Get started"
         title="Bring your first template into your workspace."
-        subtitle="Four steps. Each command runs independently; copy and paste as you go."
+        subtitle="Four steps. Each command runs independently."
         bordered={true}
       />
       <CliStartTabs htmlBySlug={htmlBySlug} />

@@ -10,8 +10,6 @@ import {
 } from "@workspace/ui/components/tabs"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { DotGrid } from "@/app/(marketing)/_components/dot-grid"
-
 import { CliStartMockup } from "./cli-start-mockup"
 import type { CliStartSlug } from "./cli-start-snippets"
 
@@ -25,10 +23,10 @@ import type { CliStartSlug } from "./cli-start-snippets"
  * with the cards on top and the mockup below.
  *
  * Each card on the left is a `TabsTrigger` (heading + description
- * + "Read the step" link). The active card picks up
- * `bg-accent/40`. The code mockup on the right uses the
- * same DotGrid background + margin-break translation as the
- * Ecosystem section.
+ * + "View command" link). The active card picks up
+ * `bg-accent/40`. The code mockup on the right is fully
+ * visible (no margin-break translation; the terminal must
+ * stay readable end to end).
  *
  * Pre-rendered HTML is threaded in by the parent Server
  * Component because the Radix Tabs primitive is a Client
@@ -58,13 +56,13 @@ const CLI_START_TABS: ReadonlyArray<CliStartTab> = [
     slug: "info",
     name: "Inspect your choice",
     description:
-      "Read the template's stack, scripts, and contracts before you bring it into your project.",
+      "Read the template's description, category, license, and repository before you bring it into your project.",
   },
   {
     slug: "init",
     name: "Scaffold the project",
     description:
-      "Clone the template and install its dependencies. Then move into the new directory and start the dev server.",
+      "Clone the template, install its dependencies. Follow the selected template's README to complete setup.",
   },
 ]
 
@@ -107,7 +105,7 @@ export function CliStartTabs({
                 {tab.description}
               </p>
               <span className="inline-flex items-center gap-1 text-label-13 text-foreground pt-1">
-                Read the step
+                View command
                 <ArrowRight className="size-3" aria-hidden />
               </span>
             </TabsTrigger>
@@ -119,11 +117,9 @@ export function CliStartTabs({
         <TabsContent
           key={tab.slug}
           value={tab.slug}
-          className="relative outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden"
+          className="relative outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden p-0"
         >
-          <DotGrid className="absolute inset-0" />
-
-          <div className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] overflow-hidden">
+          <div className="h-full w-full p-6">
             <CliStartMockup
               slug={tab.slug}
               files={htmlBySlug[tab.slug]}
