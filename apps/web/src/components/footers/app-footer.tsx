@@ -116,7 +116,7 @@ export function AppFooter() {
 
         {/* Conway signature band — bleeds to the container max-width,
             separates from the section grid with a border-t. */}
-        <div className="mt-12 -mx-6 border-t border-border">
+        <div className="mt-12">
           <ConwayBand />
         </div>
 
