@@ -131,15 +131,25 @@ export const EDITOR_TAB_LANG: Record<EditorTabId, string> = {
 }
 
 /**
- * Three real output lines from `deessejs init saas-starter`,
- * matching the spinners in `apps/cli/src/commands/init.ts`:
- * clone → detect package manager → install dependencies.
- * Kept short so each fits on one terminal row.
+ * Default `deessejs init saas-starter` output lines, matching the
+ * spinners in `apps/cli/src/commands/init.ts`: clone → detect
+ * package manager → install dependencies. Kept short so each fits
+ * on one terminal row.
+ *
+ * `Installed 487 packages` was previously in this array; that
+ * exact count is not emitted by `init.ts` (the CLI only prints
+ * `Dependencies installed` on success). The marketing demo now
+ * uses the CLI's actual success line.
+ *
+ * Callers can override the lines entirely via the `terminalLines`
+ * prop on `<CliWorkbenchDemo>` / `<CliWorkbench>`. The /cli page
+ * does so to render the full real `init.ts` output (with `cd
+ * <dir>` and `pnpm dev`) for a truthful demo.
  */
-export const INIT_OUTPUT_LINES = [
+export const DEFAULT_INIT_OUTPUT_LINES = [
   "✔ Cloned into ./saas-starter",
   "✔ Detected package manager: pnpm",
-  "✔ Installed 487 packages",
+  "✔ Dependencies installed",
 ] as const
 
 /**
@@ -149,4 +159,5 @@ export const INIT_OUTPUT_LINES = [
  * server. `pnpm dev` is the conventional Next.js dev script the
  * template exposes via its `package.json`.
  */
-export const DEV_OUTPUT_LINE = "▲ Next.js ready on http://localhost:3000"
+export const DEFAULT_DEV_OUTPUT_LINE =
+  "$ pnpm dev"

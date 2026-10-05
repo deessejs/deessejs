@@ -1,6 +1,9 @@
 import { codeToHtml } from "shiki"
 
-import { CliInActionBlock } from "@/app/(marketing)/_components/cli-in-action-block"
+import { CliInActionEditorial } from "@/app/(marketing)/_components/cli-in-action-editorial"
+import { CliInActionStatic } from "@/app/(marketing)/_components/cli-in-action-static"
+import { CliWorkbench } from "@/app/(marketing)/_components/cli-workbench"
+import { Section } from "@/app/(marketing)/_components/section"
 import {
   EDITOR_TAB_CONTENT,
   EDITOR_TAB_LANG,
@@ -12,18 +15,19 @@ import {
  *
  * Server Component (async). Pre-renders every editor snippet to
  * dual-theme Shiki HTML at request time and threads the result
- * into the shared `<CliInActionBlock>` as plain strings, because
- * Next 16 forbids rendering an async Server Component as a child
- * of a Client Component (the workbench is `"use client"` for the
- * Motion choreography + tab state).
+ * into the shared `<CliWorkbench>` (a Client Component) as plain
+ * strings, because Next 16 forbids rendering an async Server
+ * Component as a child of a Client Component.
  *
  * `defaultColor: false` is mandatory: without it Shiki emits
  * inline `color` styles that win over the CSS variables in
  * `globals.css`, and dark mode would not flip.
  *
- * The block itself, the copy, and the layout live in
- * `<CliInActionBlock>` so the `/cli` product page can render the
- * same surface without copy drift.
+ * The workbench (`<CliWorkbench>`) and the editorial column
+ * (`<CliInActionEditorial>`) are two separate shared components.
+ * The homepage assembles them inside a `<Section>` so the
+ * surrounding border rhythm matches every other section on the
+ * page. The `/cli` product page does the same with its own copy.
  */
 export async function CliInAction() {
   const highlightedHtml = await Promise.all(
@@ -41,5 +45,32 @@ export async function CliInAction() {
     string
   >
 
-  return <CliInActionBlock editorHtml={editorHtml} />
+  return (
+    <Section className="border-t border-border">
+      <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:divide-x lg:divide-y-0">
+        <div className="hidden p-4 lg:block">
+          <CliWorkbench editorHtml={editorHtml} />
+        </div>
+
+        <CliInActionEditorial
+          eyebrow="The DeesseJS CLI"
+          heading="From registry to working project."
+          body="Run one command and the CLI scaffolds the same stack the docs use: contracts wired, providers connected, the template ready to start. Edit the template name to swap surfaces, databases, or auth providers before the first file lands."
+          afterBody="Choose a template, initialize it with the CLI, then inspect the result."
+          command="deessejs init saas-starter"
+          cta={{
+            label: "Read the install guide",
+            href: "/knowledge-base/guides/install-deessejs-cli",
+          }}
+        />
+
+        <div className="block p-4 lg:hidden">
+          <CliInActionStatic
+            command="deessejs init saas-starter"
+            installGuideHref="/knowledge-base/guides/install-deessejs-cli"
+          />
+        </div>
+      </div>
+    </Section>
+  )
 }

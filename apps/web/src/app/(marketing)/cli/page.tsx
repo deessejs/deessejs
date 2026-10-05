@@ -1,8 +1,9 @@
 import type { Metadata } from "next"
 import { codeToHtml } from "shiki"
 
-import { CliInActionBlock } from "@/app/(marketing)/_components/cli-in-action-block"
-import { CLI_INSTALL_GUIDE_HREF } from "@/app/(marketing)/_components/cli-in-action-block-constants"
+import { CliInActionEditorial } from "@/app/(marketing)/_components/cli-in-action-editorial"
+import { CliInActionStatic } from "@/app/(marketing)/_components/cli-in-action-static"
+import { CliWorkbench } from "@/app/(marketing)/_components/cli-workbench"
 import { Section } from "@/app/(marketing)/_components/section"
 import { SectionHeader } from "@/app/(marketing)/_components/section-header"
 import { FinalCta } from "@/components/pages/_shared/final-cta"
@@ -14,6 +15,8 @@ import {
 
 import { CLI_COMMANDS } from "./_components/cli-commands"
 import { ProductHero } from "./_components/product-hero"
+
+const CLI_INSTALL_GUIDE_HREF = "/knowledge-base/guides/install-deessejs-cli"
 
 /**
  * Four canonical install steps, lifted from
@@ -114,10 +117,38 @@ export default async function CliPage() {
         }}
       />
 
-      {/* 2. Shared CliInActionBlock. Same surface as the homepage
-             CliInAction — visitor sees the same IDE-style animation
-             on `/cli` as they do on `/`. */}
-      <CliInActionBlock editorHtml={editorHtml} />
+      {/* 2. Shared workbench + editorial column. Same surface as the
+             homepage CliInAction — visitor sees the same IDE-style
+             animation on `/cli` as they do on `/`. The block is now
+             composed inline from `<CliWorkbench>` and
+             `<CliInActionEditorial>`; the /cli page and the homepage
+             can each write their own copy. */}
+      <Section className="border-t border-border">
+        <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:divide-x lg:divide-y-0">
+          <div className="hidden p-4 lg:block">
+            <CliWorkbench editorHtml={editorHtml} />
+          </div>
+
+          <CliInActionEditorial
+            eyebrow="The DeesseJS CLI"
+            heading="From registry to working project."
+            body="Run one command and the CLI scaffolds the same stack the docs use: contracts wired, providers connected, the template ready to start. Edit the template name to swap surfaces, databases, or auth providers before the first file lands."
+            afterBody="Choose a template, initialize it with the CLI, then inspect the result."
+            command="deessejs init saas-starter"
+            cta={{
+              label: "Read the install guide",
+              href: CLI_INSTALL_GUIDE_HREF,
+            }}
+          />
+
+          <div className="block p-4 lg:hidden">
+            <CliInActionStatic
+              command="deessejs init saas-starter"
+              installGuideHref={CLI_INSTALL_GUIDE_HREF}
+            />
+          </div>
+        </div>
+      </Section>
 
       {/* 3. Commands grid. 3 cards (init / list / info). Data sourced
              from `./_components/cli-commands.ts`, the marketing
