@@ -121,11 +121,13 @@ export function SaasPillarsTabs({
         className={cn(
           // Radix's TabsList is inline-flex by default, which would
           // let the grid auto-place it on lg+ and break the
-          // 28rem / 1fr split. Force it into column 1 at lg+ via
-          // explicit grid placement.
+          // 28rem / 1fr split. Force it into the leftmost (default)
+          // or rightmost (reverse) column at lg+ via explicit grid
+          // placement. The border swaps sides to match.
           "flex flex-col divide-y divide-border border-b border-border bg-transparent p-0 h-auto w-full rounded-none!",
-          reverse ? "lg:border-b-0 lg:border-l" : "lg:border-b-0 lg:border-r",
-          "lg:col-start-1 lg:row-start-1",
+          reverse
+            ? "lg:border-b-0 lg:border-l lg:col-start-2 lg:row-start-1"
+            : "lg:border-b-0 lg:border-r lg:col-start-1 lg:row-start-1",
         )}
       >
         {pillars.map((tab) => {
