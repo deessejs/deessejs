@@ -113,15 +113,19 @@ export function SaasPillarsTabs({
       orientation="vertical"
       className={cn(
         "grid grid-cols-1 lg:grid-cols-[minmax(320px,28rem)_1fr]",
-        reverse && "lg:[&>*:first-child]:order-2",
         className,
       )}
     >
       <TabsList
         aria-label="Pillars"
         className={cn(
+          // Radix's TabsList is inline-flex by default, which would
+          // let the grid auto-place it on lg+ and break the
+          // 28rem / 1fr split. Force it into column 1 at lg+ via
+          // explicit grid placement.
           "flex flex-col divide-y divide-border border-b border-border bg-transparent p-0 h-auto w-full rounded-none!",
           reverse ? "lg:border-b-0 lg:border-l" : "lg:border-b-0 lg:border-r",
+          "lg:col-start-1 lg:row-start-1",
         )}
       >
         {pillars.map((tab) => {
@@ -168,7 +172,15 @@ export function SaasPillarsTabs({
         <TabsContent
           key={tab.slug}
           value={tab.slug}
-          className="relative outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden"
+          // Place the active content panel in column 2 by default
+          // (mockup on the right). When `reverse`, swap to column 1
+          // so the mockup lives on the left side instead.
+          className={cn(
+            "relative outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden",
+            reverse
+              ? "lg:col-start-1 lg:row-start-1"
+              : "lg:col-start-2 lg:row-start-1",
+          )}
         >
           <DotGrid className="absolute inset-0" />
           <div
