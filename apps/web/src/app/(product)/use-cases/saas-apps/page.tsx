@@ -1,12 +1,15 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { codeToHtml } from "shiki"
 import {
+  Boxes,
   CreditCard,
-  Globe,
+  Database,
+  KeyRound,
+  Mail,
+  Radio,
   ShieldCheck,
-  Sparkles,
-  Workflow,
-  Zap,
+  Wrench,
 } from "lucide-react"
 import {
   RelatedUseCases,
@@ -14,12 +17,17 @@ import {
 } from "../_components/related-use-cases"
 
 import { Section } from "@/app/(marketing)/_components/section"
+import { SectionHeader } from "@/app/(marketing)/_components/section-header"
 import { UseCaseHero } from "../_components/use-case-page"
 import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
 import {
-  AuthFlowMockup,
-  BillingWidgetMockup,
-} from "../_components/mockups"
+  SaasPillarsTabs,
+  type SaasPillarTab,
+} from "../_components/saas-pillars-tabs"
+import {
+  SAAS_SNIPPETS,
+  type SaasPillarSlug,
+} from "../_components/saas-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 import { APP_CONFIG } from "@/lib/app-config"
 
@@ -116,143 +124,93 @@ const BUILT_TEMPLATES = [
 /**
  * Eight global pillars a buyer reads when they ask "do I get a
  * real SaaS app on day one, or a half-wired scaffold?". Each
- * pillar is framed as a problem the buyer's customer creates,
- * followed by what the registry ships to answer it. Two pillars
- * (Auth, Billing) anchor the page visually with a real mockup;
- * the other six are text-only so the grid stays clean and the
- * reading order stays B-team rather than visual showcase.
+ * pillar ships as a tab in a 4+4 mirrored layout, with a real
+ * TypeScript snippet peeking out of the column's far corner.
  *
- * Order is decision-critical first (Auth, Billing, Admin), then
- * operational (Jobs, Mail), then infrastructure (Database, API,
- * MCP). The buyer reads "I can charge" before "I can wire a
- * trace".
+ * The first half ("Customer surface") lists the four pillars a
+ * buyer names when they think about a paying customer: Auth,
+ * Billing, Admin, Database. The second half ("Behind the
+ * curtain") lists the four pillars they name when they think
+ * about operations: API, MCP, Jobs, Mail. The two halves
+ * read in the order a customer-facing product person cares
+ * about first, then the order an on-call engineer cares about.
  */
-type Pillar = {
-  id: string
-  problem: string
-  title: string
-  solution: string
-  mockup?: React.ReactNode
-}
+type PillarEntry = SaasPillarTab & { id: SaasPillarSlug }
 
-const PILLARS: ReadonlyArray<Pillar> = [
+const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
   {
     id: "auth",
-    problem: "First sign-up decides whether you sell or keep tickets.",
+    slug: "auth",
+    icon: KeyRound,
     title: "Auth",
-    solution:
-      "Better Auth under the hood. Magic links, email + password, and six OAuth providers wired against the same proxy the dashboard talks through. Email verification happens before the workspace opens, so the Enterprise tier never sells to a fake at gmail.",
-    mockup: <AuthFlowMockup />,
+    description:
+      "Better Auth on the same proxy the dashboard talks through. Email + password, magic links, and OAuth providers, all behind one session.",
   },
   {
     id: "billing",
-    problem: "Every invoice you can't reconcile is a refund waiting to happen.",
+    slug: "billing",
+    icon: CreditCard,
     title: "Billing",
-    solution:
-      "Stripe subscriptions, plans, proration, dunning, and a generated customer portal wired against the same contract the database reads. Usage metering matches the shape your app code reads, so month-end is the same query as the in-app counter.",
-    mockup: <BillingWidgetMockup />,
+    description:
+      "Stripe subscriptions, plans, proration, and a generated customer portal. Usage metering matches the shape your app code reads.",
   },
   {
     id: "admin",
-    problem: "An admin dashboard that drifts from the customer surface is a support ticket waiting to happen.",
+    slug: "admin",
+    icon: ShieldCheck,
     title: "Admin",
-    solution:
-      "The operator console sits on the same RPC the customer surface uses, so what an admin changes is what a customer sees. MRR, churn, last-seen, bulk actions -- all on the same trace as the app code, not a parallel dashboard.",
-  },
-  {
-    id: "jobs",
-    problem: "A 500 the customer sees is only ever the half of it.",
-    title: "Jobs",
-    solution:
-      "Queues, retries, and cron live in the same registry as the rest of the code. Failed jobs surface in the same dashboard as 5xx; retries are typed, not free-form shell scripts.",
-  },
-  {
-    id: "mail",
-    problem: "A receipt that lands late is a chargeback that lands faster.",
-    title: "Mail",
-    solution:
-      "Resend + React Email, all channels on the same contract the rest of the app sends through. Welcome mail, renewals, dunning, and security alerts run on the same queue and the same retry policy, so a single misfire has one place to look.",
+    description:
+      "Operator console on the same RPC the customer surface uses. Impersonate, refund, override plans, with the same audit trail the rest of the app carries.",
   },
   {
     id: "database",
-    problem: "Two ORMs hide the truth.",
+    slug: "database",
+    icon: Database,
     title: "Database",
-    solution:
-      "Drizzle + Postgres, migrations as a typed registry command. The schema your app code reads is the schema the operator console reads; there is no second ORM hiding under the admin tools.",
+    description:
+      "Drizzle on Postgres, migrations as a typed registry command. The schema the app code reads is the schema the operator console reads.",
   },
   {
     id: "api",
-    problem: "Drift between your docs and your types is the front door for a bug report.",
+    slug: "api",
+    icon: Wrench,
     title: "API",
-    solution:
-      "Hono + oRPC, end-to-end typed. The contract the customer app sends is the contract the public docs publish -- same types, same validator, no hand-written translation between the two.",
+    description:
+      "Hono + oRPC, end-to-end typed. The contract the customer app sends is the contract the public docs publish, with no hand-written translation.",
   },
   {
     id: "mcp",
-    problem: "A model that calls your data through a one-off integration is tomorrow's incident.",
+    slug: "mcp",
+    icon: Radio,
     title: "MCP",
-    solution:
-      "Twelve typed tools exposed over the same oRPC contract the API uses. The model calls your data the same way your app does, on the same auth and the same trace.",
+    description:
+      "Typed tools exposed over the same oRPC contract the API uses. The model calls your data the same way your app does, on the same auth and trace.",
+  },
+  {
+    id: "jobs",
+    slug: "jobs",
+    icon: Boxes,
+    title: "Jobs",
+    description:
+      "Queues, retries, and cron on the same registry as the rest of the code. Failed jobs surface in the same dashboard as 5xx; retries are typed.",
+  },
+  {
+    id: "mail",
+    slug: "mail",
+    icon: Mail,
+    title: "Mail",
+    description:
+      "Resend + React Email on the same contract the rest of the app sends through. Welcome, renewals, dunning, and security alerts, all on one queue.",
   },
 ]
 
-/**
- * "One codebase, endless benefits" -- 6 cells in a 3x2 grid.
- * Each cell answers a benefit the buyer gets when they ship a
- * SaaS template, beyond the eight pillars above. Mirrors the
- * Vercel shape (eyebrow + icon + title + body) without the
- * per-cell mockup: text-only keeps the page lean and matches
- * the "less illustration-heavy" direction.
- */
-const BENEFITS: ReadonlyArray<{
-  id: string
-  icon: React.ComponentType<{ className?: string }>
-  title: string
-  body: string
-}> = [
-  {
-    id: "instant-scaffold",
-    icon: Zap,
-    title: "Instant scaffold",
-    body:
-      "Run one CLI line, the contracts wire before the first file is generated. Auth, billing, jobs, mail, the database schema -- all preconfigured against the same registry the rest of your app will read.",
-  },
-  {
-    id: "pay-ready",
-    icon: CreditCard,
-    title: "Pay-ready",
-    body:
-      "Stripe subscriptions, proration, and a customer portal come wired against the same contract the database reads. Usage metering matches the shape your app code reads, not a fork you bolted onto.",
-  },
-  {
-    id: "background-work",
-    icon: Workflow,
-    title: "Background work, wired",
-    body:
-      "Queues, retries, and cron live in the same registry as the rest of the code. Failed jobs surface in the same dashboard as 5xx; retries are typed, not free-form shell scripts.",
-  },
-  {
-    id: "ship-with-confidence",
-    icon: Sparkles,
-    title: "Ship with confidence",
-    body:
-      "Feature flags and gradual rollouts go into the registry with the rest of the code. No second vendor to monitor, no parallel dashboard for the team to ignore.",
-  },
-  {
-    id: "multi-region",
-    icon: Globe,
-    title: "Multi-region, day one",
-    body:
-      "Edge cache, regional failover, and CDN propagation are wired before the first deploy. A customer in Tokyo and a customer in Berlin hit the same surface, not a degraded variant.",
-  },
-  {
-    id: "compliance-ready",
-    icon: ShieldCheck,
-    title: "Compliance-ready",
-    body:
-      "Audit trail, RBAC, and secret rotation live in the registry as typed primitives. Regulated buyers spend the first call on the demo, not on explaining what comprehensive logging looks like.",
-  },
-]
+const PILLARS_GROUP_1: ReadonlyArray<SaasPillarTab> = PILLAR_ENTRIES.filter(
+  (p) => p.id === "auth" || p.id === "billing" || p.id === "admin" || p.id === "database",
+)
+
+const PILLARS_GROUP_2: ReadonlyArray<SaasPillarTab> = PILLAR_ENTRIES.filter(
+  (p) => p.id === "api" || p.id === "mcp" || p.id === "jobs" || p.id === "mail",
+)
 
 /**
  * Page wrapper. The wrapper's outer border + bg is provided by
@@ -261,7 +219,31 @@ const BENEFITS: ReadonlyArray<{
  * card with the same border treatment as the rest of the
  * marketing surface.
  */
-export default function SaasAppsPage() {
+export default async function SaasAppsPage() {
+  // Pre-render the eight saas pillar snippets server-side via Shiki,
+  // so the SaasPillarsTabs Client Component below receives plain
+  // highlighted HTML strings (Next 16 forbids async Server Components
+  // as children of Client Components). Same pattern as the homepage
+  // Ecosystem section and the /cli CliStart section.
+  const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
+    auth: [], billing: [], admin: [], database: [],
+    api: [], mcp: [], jobs: [], mail: [],
+  }
+
+  await Promise.all(
+    (Object.keys(SAAS_SNIPPETS) as SaasPillarSlug[]).flatMap((slug) =>
+      SAAS_SNIPPETS[slug].files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        }),
+      ),
+    ),
+  )
+
   return (
     <div className="flex flex-col">
       {/* 1. Hero -- one-promise framing */}
@@ -279,90 +261,37 @@ export default function SaasAppsPage() {
         }}
       />
 
-      {/* 2. What's in the box -- 8 global pillars, 4-col Pattern C
-           grid (bg-border gap-px). Mockups for Auth + Billing, text-only
-           for the other 6. */}
-      <section className="border-b border-border">
-        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            What&apos;s in the box
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            Eight pillars. One working SaaS.
-          </h2>
-          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            The sub-systems every SaaS needs, wired against the same
-            contract before the first commit. Not a feature catalog
-            -- the problems a paying customer creates, and what the
-            registry ships to answer them.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 bg-border gap-px sm:grid-cols-2">
-          {PILLARS.map((p) => (
-            <article
-              key={p.id}
-              className="flex flex-col gap-3 bg-background p-6 lg:p-8"
-            >
-              {p.mockup ? (
-                <div className="overflow-hidden rounded-md border border-border bg-background">
-                  {p.mockup}
-                </div>
-              ) : null}
-              <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-                {p.problem}
-              </p>
-              <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
-                {p.title}
-              </h3>
-              <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
-                {p.solution}
-              </p>
-            </article>
-          ))}
-        </div>
-      </section>
+      {/* 2. What's in the box -- 4+4 mirrored tabs.
+           Customer surface (Auth, Billing, Admin, Database) reads
+           first with tabs LEFT and a Shiki peek on the RIGHT. Behind
+           the curtain (API, MCP, Jobs, Mail) follows with the same
+           Tabs component flipped (tabs RIGHT, peek LEFT). The
+           sub-eyebrow names the boundary so the reader can follow
+           the seam between the two halves. */}
+      <Section>
+        <SectionHeader
+          eyebrow="What's in the box"
+          title="Eight pillars. One working SaaS."
+          subtitle="The sub-systems every SaaS needs, wired against the same contract before the first commit. Two halves: what your customers see, and what keeps it running."
+          bordered={true}
+        />
+        <SaasPillarsTabs
+          pillars={PILLARS_GROUP_1}
+          htmlBySlug={htmlBySlug}
+        />
+        <SectionHeader
+          eyebrow="Behind the curtain"
+          title="What keeps a SaaS running."
+          bordered={true}
+        />
+        <SaasPillarsTabs
+          pillars={PILLARS_GROUP_2}
+          htmlBySlug={htmlBySlug}
+          reverse
+        />
+      </Section>
 
-      {/* 3. One codebase, endless benefits -- 6 cells in a 3x2
-           grid (Pattern C, bg-border gap-px). Icon + title + body
-           per cell, no mockups. */}
-      <section className="border-b border-border">
-        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            One codebase, endless benefits
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            What you ship on top of the eight pillars.
-          </h2>
-          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Six concrete outcomes you get for free, because the
-            contracts the app reads under, the registry already knows
-            about.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 bg-border gap-px sm:grid-cols-2 md:grid-cols-3">
-          {BENEFITS.map((b) => {
-            const Icon = b.icon
-            return (
-              <article
-                key={b.id}
-                className="flex flex-col gap-3 bg-background p-6 lg:p-8"
-              >
-                <div className="flex items-center gap-2">
-                  <Icon className="size-4 shrink-0 text-foreground" aria-hidden />
-                  <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
-                    {b.title}
-                  </h3>
-                </div>
-                <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
-                  {b.body}
-                </p>
-              </article>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* 4. Stack */}
+      {/* 3. Stack */}
       {/*    Same TechStackGrid + same Section shape as the homepage
            and /pricing. Header row on top, brand wall underneath. The
            brand tiles rotate on a swap animation, so the surface
