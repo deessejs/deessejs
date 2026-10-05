@@ -24,6 +24,7 @@ import { CliInAction } from "./cli-in-action"
 import { CodingAgents } from "./coding-agents"
 import { Contracts } from "./contracts"
 import { ContractsGrid } from "@/app/(marketing)/_components/contracts-grid"
+import { DiagonalStripDivider } from "@/app/(marketing)/_components/diagonal-strip-divider"
 import { Ecosystem } from "./ecosystem"
 import { EcosystemTabs } from "@/app/(marketing)/_components/ecosystem-tabs"
 import { FinalCta } from "./final-cta"
@@ -48,6 +49,7 @@ export const Home = {
   TechStack,
   Surfaces,
   ForWho,
+  DiagonalStripDivider,
   Contracts,
   CliInAction,
   LatestGuides,
@@ -66,6 +68,7 @@ export {
   CliInAction,
   CodingAgents,
   Contracts,
+  DiagonalStripDivider,
   Ecosystem,
   FinalCta,
   FAQ,
