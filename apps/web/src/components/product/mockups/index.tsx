@@ -3,7 +3,7 @@
 /**
  * Reusable product UI mockups for use-case pages.
  *
- * Sourced from apps/web/src/app/(marketing)/_components/contracts-grid.tsx
+ * Sourced from apps/web/src/components/marketing/contracts-grid.tsx
  * (AuthFlowMockup, DbTerminalMockup, BillingWidgetMockup, OtelWaterfallMockup)
  * and re-exported here so the use-case pages can render them in larger
  * sections without duplicating Motion wiring.

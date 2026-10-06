@@ -1,11 +1,11 @@
 import type { Metadata } from "next"
 import { codeToHtml } from "shiki"
 
-import { CliInActionEditorial } from "@/app/(marketing)/_components/cli-in-action-editorial"
-import { CliInActionStatic } from "@/app/(marketing)/_components/cli-in-action-static"
-import { CliWorkbench } from "@/app/(marketing)/_components/cli-workbench"
-import { Section } from "@/app/(marketing)/_components/section"
-import { SectionHeader } from "@/app/(marketing)/_components/section-header"
+import { CliInActionEditorial } from "@/components/marketing/cli-in-action-editorial"
+import { CliInActionStatic } from "@/components/marketing/cli-in-action-static"
+import { CliWorkbench } from "@/components/marketing/cli-workbench"
+import { Section } from "@/components/marketing/section"
+import { SectionHeader } from "@/components/marketing/section-header"
 import { FinalCta } from "@/components/pages/_shared/final-cta"
 import {
   EDITOR_TABS,
@@ -13,11 +13,11 @@ import {
   EDITOR_TAB_LANG,
 } from "@/lib/marketing/cli-workbench-data"
 
-import { CliCommandsGrid } from "./_components/cli-commands-grid"
-import { CliFaqSection } from "./_components/cli-faq-section"
-import { CliStart } from "./_components/cli-start"
-import { CLI_INSTALL_GUIDE_HREF } from "./_components/cli-page-constants"
-import { ProductHero } from "./_components/product-hero"
+import { CliCommandsGrid } from "@/components/marketing/cli/cli-commands-grid"
+import { CliFaqSection } from "@/components/marketing/cli/cli-faq-section"
+import { CliStart } from "@/components/marketing/cli/cli-start"
+import { CLI_INSTALL_GUIDE_HREF } from "@/components/marketing/cli/cli-page-constants"
+import { ProductHero } from "@/components/marketing/cli/product-hero"
 
 export const metadata: Metadata = {
   title: "CLI",

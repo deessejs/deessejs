@@ -1,12 +1,12 @@
 import { codeToHtml } from "shiki"
 import { allKbGuides } from "content-collections"
 
-import { Section } from "@/app/(marketing)/_components/section"
-import { LatestGuidesSection } from "@/app/(marketing)/_components/latest-guides-section"
+import { Section } from "@/components/marketing/section"
+import { LatestGuidesSection } from "@/components/marketing/latest-guides-section"
 import {
   LATEST_GUIDES_SNIPPETS,
   type LatestGuidesSlug,
-} from "@/app/(marketing)/_components/latest-guides-snippets"
+} from "@/components/marketing/latest-guides-snippets"
 
 /**
  * Latest guides — 8 featured KB articles, navigated via a shadcn

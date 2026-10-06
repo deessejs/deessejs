@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
-import { Section } from "@/app/(marketing)/_components/section"
+import { Section } from "@/components/marketing/section"
 import { PERSONAS } from "@/lib/marketing/home-data"
 
 /** Who it's for — 3-cell persona grid, each card routes to a real surface. */

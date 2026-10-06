@@ -14,7 +14,7 @@
  * APIs yet (see the TODO on STATS).
  */
 
-import type { Contract } from "@/app/(marketing)/_components/contracts-grid"
+import type { Contract } from "@/components/marketing/contracts-grid"
 
 // ---------------------------------------------------------------------------
 // Contracts (Section 6: "Under the hood")

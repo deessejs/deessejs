@@ -1,4 +1,4 @@
-import type { UseCaseTab } from "../_components/use-case-tabs"
+import type { UseCaseTab } from "@/components/product/use-case/use-case-tabs"
 
 /**
  * Group 1 - the four existing internal-tools clusters (auth +

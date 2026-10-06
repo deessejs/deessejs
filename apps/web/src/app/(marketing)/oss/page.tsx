@@ -1,12 +1,12 @@
 import type { Metadata } from "next"
 import { APP_CONFIG } from "@/lib/app-config"
-import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
-import { Section } from "@/app/(marketing)/_components/section"
-import { SectionHeader } from "@/app/(marketing)/_components/section-header"
+import { FlickeringGrid } from "@/components/marketing/flickering-grid"
+import { Section } from "@/components/marketing/section"
+import { SectionHeader } from "@/components/marketing/section-header"
 import { FinalCta } from "@/components/pages/_shared/final-cta"
 
-import { APPLY_STEPS, ELIGIBILITY, WHAT_YOU_GET } from "./_components/oss-content"
-import { OssApplicationForm } from "./_components/oss-application-form"
+import { APPLY_STEPS, ELIGIBILITY, WHAT_YOU_GET } from "@/components/marketing/oss/oss-content"
+import { OssApplicationForm } from "@/components/marketing/oss/oss-application-form"
 
 export const metadata: Metadata = {
   title: "Open Source Program",
@@ -167,7 +167,7 @@ export default function OssPage() {
              and the application form on the right. Form is visual-only
              for now (submit disabled); the actual submission logic will
              be wired in a follow-up. See
-             `./_components/oss-application-form.tsx`. */}
+             `@/components/marketing/oss/oss-application-form`. */}
       <Section>
         <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
           <div className="flex flex-col gap-4 p-6 lg:p-10">

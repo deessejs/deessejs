@@ -5,7 +5,7 @@ import { ChevronRight } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
+import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 
 /**
  * Per-page hero for use-case pages, aligned with the marketing site

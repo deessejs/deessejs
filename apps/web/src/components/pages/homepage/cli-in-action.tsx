@@ -1,9 +1,9 @@
 import { codeToHtml } from "shiki"
 
-import { CliInActionEditorial } from "@/app/(marketing)/_components/cli-in-action-editorial"
-import { CliInActionStatic } from "@/app/(marketing)/_components/cli-in-action-static"
-import { CliWorkbench } from "@/app/(marketing)/_components/cli-workbench"
-import { Section } from "@/app/(marketing)/_components/section"
+import { CliInActionEditorial } from "@/components/marketing/cli-in-action-editorial"
+import { CliInActionStatic } from "@/components/marketing/cli-in-action-static"
+import { CliWorkbench } from "@/components/marketing/cli-workbench"
+import { Section } from "@/components/marketing/section"
 import {
   EDITOR_TAB_CONTENT,
   EDITOR_TAB_LANG,

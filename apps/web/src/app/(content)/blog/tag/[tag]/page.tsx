@@ -3,7 +3,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Badge } from "@workspace/ui/components/badge"
 import { BlogSearch } from "@/components/blog/blog-search"
-import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
+import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 import { getPostsByTag } from "@/lib/blog/posts"
 import { BLOG_TAG_LABELS, BLOG_TAGS, type BlogTag, getAllTags } from "@/lib/blog/types"
 

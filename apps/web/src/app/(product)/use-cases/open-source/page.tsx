@@ -4,14 +4,14 @@ import Link from "next/link"
 import {
   RelatedUseCases,
   type RelatedUseCaseItem,
-} from "../_components/related-use-cases"
+} from "@/components/product/use-case/related-use-cases"
 
-import { Section } from "@/app/(marketing)/_components/section"
-import { SectionHeader } from "@/app/(marketing)/_components/section-header"
-import { UseCaseHero } from "../_components/use-case-page"
-import { UseCaseStack } from "../_components/use-case-stack"
-import { UseCaseTabs } from "../_components/use-case-tabs"
-import { OPEN_SOURCE_SNIPPETS, type OpenSourcePillarSlug } from "../_components/open-source-snippets"
+import { Section } from "@/components/marketing/section"
+import { SectionHeader } from "@/components/marketing/section-header"
+import { UseCaseHero } from "@/components/product/use-case/use-case-page"
+import { UseCaseStack } from "@/components/product/use-case/use-case-stack"
+import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
+import { OPEN_SOURCE_SNIPPETS, type OpenSourcePillarSlug } from "@/components/product/use-case/open-source-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 import { GROUP_1, GROUP_2 } from "./open-source-tabs"
