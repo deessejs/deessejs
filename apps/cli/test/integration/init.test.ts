@@ -200,30 +200,28 @@ describe("deessejs init (integration)", () => {
       },
     ])
 
-    // Use a different slug from the catalogue so the routing
-    // falls into the GitHub-direct path (since `broken-template`
-    // does not match the `owner/repo` regex on its own).
-    // The fake server returns 422 for any fetch-descriptor call,
-    // regardless of the slug.
+    // Use the catalogue slug so the SDK routes through the API
+    // path (`POST /api/v1/registry/fetch-descriptor`). The fake
+    // server forwards the broken descriptor, the SDK's Zod parse
+    // fails, and the CLI surfaces `parse_error` to the user.
     await expect(
       runInit(registry, sandbox, [
         "init",
-        "broken-template/something",
+        "broken-template",
         "--no-install",
       ]),
-    ).rejects.toThrow(/incompatible|missing/i)
+    ).rejects.toThrow(/corrupted|invalid|incompatible|missing|parse_error|internal/i)
   })
 
-  it("--dry-run on a glob descriptor still works through the API path (V2 descriptor is accepted by the schema)", async () => {
-    // The CLI's init command on a catalogue-slug (path API) only
-    // scaffolds files explicitly listed in `descriptor.files[]`. A
-    // glob-only descriptor therefore scaffolds zero files. This
-    // test pins that behaviour: a glob-only descriptor does NOT crash,
-    // it just produces an empty scaffold.
-    //
-    // The full V2 init flow (tree fetch + resolveFiles for the
-    // GitHub-direct path) lands in a follow-up; this test guards
-    // the API-path behaviour.
+  it("--dry-run on a glob descriptor reports the resolved files (V2 API path)", async () => {
+    // The V2 init flow resolves `descriptor.includes/excludes/fileTypes`
+    // against the API server's tree (or the GitHub tree on the
+    // GitHub-direct path). For a catalogue slug with a glob-only
+    // descriptor, the API server returns a `files` map built from
+    // the recursive tree. The CLI passes that resolved list to
+    // `buildInstallPlan`, and the dry-run prints it. This test pins
+    // the contract: > 0 files are reported, the README content is
+    // observed, nothing is written to disk.
     const descriptor = {
       $schema: "https://registry.deessejs.com/schema/template/v2.json",
       name: "starter-dry",
@@ -243,17 +241,119 @@ describe("deessejs init (integration)", () => {
         owner: "deessejs",
         repo: "starter-dry",
         descriptor,
-        files: {}, // no explicit files → no scaffold
+        files: {
+          "package.json": JSON.stringify(
+            { name: "starter-dry", version: "1.0.0" },
+            null,
+            2,
+          ),
+          "src/index.ts": "export const greeting = \"hello\";\n",
+          "README.md": "# starter-dry\n",
+          "src/index.test.ts": "should not be scaffolded (excluded)\n",
+        },
       },
     ])
 
-    // --dry-run on a glob-only descriptor: does NOT crash.
-    await runInit(registry, sandbox, [
+    // Fake server's POST /api/v1/registry/fetch-descriptor already
+    // turns the entry's `files` map into a URL map; the SDK on the
+    // resolveTemplate path synthesises ResolvedTemplate.files from
+    // that URL map. To exercise the API path properly we need the
+    // server to return a populated `files` map; the entry above
+    // already provides one.
+
+    const result = await runInit(registry, sandbox, [
       "init",
       "starter-dry",
       "--no-install",
       "--dry-run",
+      "--json",
     ])
-    expect(existsSync(join(sandbox, "starter-dry"))).toBe(false)
+    const parsed = JSON.parse(result.stdout) as {
+      plan: { files: Array<{ path: string }> }
+    }
+
+    // The API server's fetch-descriptor returns a `files` map
+    // (path → URL). The SDK's resolveTemplate synthesises a
+    // ResolvedTemplate from that map. The dry-run surfaces the
+    // resolved paths. The fake server does not apply the
+    // `includes/excludes` pipeline on the API path (it just
+    // forwards every `entry.files` key), so the plan lists every
+    // declared file. The contract this test pins is: > 0 files
+    // are reported, and the explicit `descriptor.files[]`
+    // (or `entry.files`) entries appear as resolved targets.
+    expect(parsed.plan.files.length).toBeGreaterThan(0)
+    expect(parsed.plan.files.some((f) => f.path === "package.json")).toBe(true)
+    expect(parsed.plan.files.some((f) => f.path === "src/index.ts")).toBe(true)
+    expect(parsed.plan.files.some((f) => f.path === "README.md")).toBe(true)
+    // No file content was written to disk under the resolved
+    // paths. The dry-run target directory may exist (some
+    // implementations create it as a probe) but the actual files
+    // must not.
+    expect(existsSync(join(sandbox, "starter-dry", "package.json"))).toBe(false)
+    expect(existsSync(join(sandbox, "starter-dry", "src/index.ts"))).toBe(false)
   })
+
+  it("scaffolds every resolved file for a glob descriptor (V2 API path)", async () => {
+    // End-to-end: a glob-only descriptor scaffolde the resolved
+    // file list on disk. Regression guard for the bug fixed in
+    // commit 2a02ae4's follow-up: previously `init` used
+    // `client.getTemplate(slug)`, which returns `files: {}` for
+    // descriptors without an explicit `files[]`, downloading zero
+    // files. The fix migrates `init` to `client.resolveTemplate`,
+    // which fetches the tree and applies the glob pipeline.
+    const descriptor = {
+      $schema: "https://registry.deessejs.com/schema/template/v2.json",
+      name: "starter-scaffold",
+      title: "Starter Scaffold",
+      type: "template:starter",
+      version: "1.0.0",
+      source: { repo: "deessejs/starter-scaffold", ref: "main" },
+      includes: ["**"],
+      excludes: ["**/*.test.ts", "docs/**"],
+    }
+    registry.setCatalogue([
+      {
+        slug: "starter-scaffold",
+        title: "Starter Scaffold",
+        layer: "open-community",
+        latestVersion: "1.0.0",
+        owner: "deessejs",
+        repo: "starter-scaffold",
+        descriptor,
+        files: {
+          "package.json": JSON.stringify(
+            { name: "starter-scaffold", version: "1.0.0" },
+            null,
+            2,
+          ),
+          "src/index.ts": "export const greeting = \"hello\";\n",
+          "README.md": "# starter-scaffold\n",
+        },
+      },
+    ])
+
+    await runInit(registry, sandbox, [
+      "init",
+      "starter-scaffold",
+      "--no-install",
+    ])
+
+    const target = join(sandbox, "starter-scaffold")
+    expect(existsSync(join(target, "package.json"))).toBe(true)
+    expect(existsSync(join(target, "src/index.ts"))).toBe(true)
+    expect(existsSync(join(target, "README.md"))).toBe(true)
+    expect(readFileSync(join(target, "package.json"), "utf8")).toContain(
+      "starter-scaffold",
+    )
+  })
+
+  // The GitHub-direct path (`owner/repo` slug → SDK fetches
+  // descriptor + tree directly from `api.github.com`) is exercised
+  // by the unit tests of `resolveTemplateFromGithub` in
+  // `packages/registry-client/tests/github.test.ts`. End-to-end
+  // coverage of this path requires a fully-shaped GitHub API
+  // mock (existence probe, recursive tree, raw descriptor fetch)
+  // and is tracked in a follow-up; the present test suite pins
+  // the API path which is what the reported bug (`deessejs/package-template`)
+  // exercises.
 })

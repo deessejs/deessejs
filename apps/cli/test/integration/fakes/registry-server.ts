@@ -8,6 +8,8 @@
  *   POST /api/v1/registry/fetch-descriptor
  *   GET  /api/v1/registry/templates/<slug>/info
  *   GET  /raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>
+ *   GET  /repos/<owner>/<repo>
+ *   GET  /repos/<owner>/<repo>/git/trees/<ref>
  *
  * The catalogue is mutable from the test — `setCatalogue`
  * replaces it after the server has started. Tests can pre-load
@@ -21,6 +23,14 @@
  * to the fake server's URL. The fake serves the same paths
  * the real GitHub raw host serves, so the SDK code path is
  * identical between test and prod.
+ *
+ * **GitHub API routes**: the SDK also probes the API at
+ * `DEESSEJS_GITHUB_API_BASE` (default `https://api.github.com`).
+ * The fake serves `/repos/<owner>/<repo>` (existence check) and
+ * `/repos/<owner>/<repo>/git/trees/<ref>` (recursive tree fetch)
+ * so `client.resolveTemplate` exercises the GitHub-direct path
+ * end-to-end. Tests should set `DEESSEJS_GITHUB_API_BASE` to the
+ * fake server URL — see `_invoke.ts` helpers.
  *
  * **Why a single server, not separate ones per route family**:
  * one `http.createServer` listens on one random port, fewer
@@ -146,6 +156,55 @@ export const startFakeRegistry = async (
           : "text/plain"
       sendText(res, 200, fileBody, contentType)
       return
+    }
+
+    // GitHub API: /repos/<owner>/<repo> — existence probe
+    // consumed by `getRepoExists` in registry-client/src/github.ts.
+    if (method === "GET" && path.startsWith("/repos/")) {
+      const repoMatch = /^\/repos\/([^/]+)\/([^/]+)(?:\/(.+))?$/.exec(path)
+      if (repoMatch !== null) {
+        const owner = repoMatch[1] ?? ""
+        const repo = repoMatch[2] ?? ""
+        const rest = repoMatch[3]
+        const entry = catalogue.find(
+          (e) => e.owner === owner && e.repo === repo,
+        )
+        if (entry === undefined) {
+          send(res, 404, { message: "Not Found" })
+          return
+        }
+        // /repos/<owner>/<repo>/git/trees/<ref>?recursive=1
+        if (rest !== undefined && rest.startsWith("git/trees/")) {
+          const ref = rest.slice("git/trees/".length)
+          // Build a blob-only tree from the entry's file map.
+          // `truncated: false` keeps `getTreeFromGithub` happy.
+          const tree = Object.keys(entry.files).map((filePath) => ({
+            path: filePath,
+            type: "blob",
+            mode: "100644",
+            sha: `fake-${filePath}`,
+            size: entry.files[filePath]?.length ?? 0,
+            url: "",
+          }))
+          send(res, 200, {
+            sha: `fake-tree-${owner}-${repo}-${ref}`,
+            url: "",
+            tree,
+            truncated: false,
+          })
+          return
+        }
+        // Plain GET /repos/<owner>/<repo> — return a stub
+        // shaped like the GitHub API repo payload.
+        send(res, 200, {
+          id: 1,
+          name: repo,
+          full_name: `${owner}/${repo}`,
+          default_branch: "main",
+          private: false,
+        })
+        return
+      }
     }
 
     // /api/v1/registry/catalog — wire shape is `{ catalog: CatalogEntry[] }`
