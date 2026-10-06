@@ -5,8 +5,8 @@ import { Section } from "@/components/marketing/section"
 import { SectionHeader } from "@/components/marketing/section-header"
 import { FinalCta } from "@/components/pages/_shared/final-cta"
 
-import { APPLY_STEPS, ELIGIBILITY, WHAT_YOU_GET } from "./_components/oss-content"
-import { OssApplicationForm } from "./_components/oss-application-form"
+import { APPLY_STEPS, ELIGIBILITY, WHAT_YOU_GET } from "@/components/marketing/oss/oss-content"
+import { OssApplicationForm } from "@/components/marketing/oss/oss-application-form"
 
 export const metadata: Metadata = {
   title: "Open Source Program",

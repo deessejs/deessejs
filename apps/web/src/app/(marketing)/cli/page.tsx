@@ -13,11 +13,11 @@ import {
   EDITOR_TAB_LANG,
 } from "@/lib/marketing/cli-workbench-data"
 
-import { CliCommandsGrid } from "./_components/cli-commands-grid"
-import { CliFaqSection } from "./_components/cli-faq-section"
-import { CliStart } from "./_components/cli-start"
-import { CLI_INSTALL_GUIDE_HREF } from "./_components/cli-page-constants"
-import { ProductHero } from "./_components/product-hero"
+import { CliCommandsGrid } from "@/components/marketing/cli/cli-commands-grid"
+import { CliFaqSection } from "@/components/marketing/cli/cli-faq-section"
+import { CliStart } from "@/components/marketing/cli/cli-start"
+import { CLI_INSTALL_GUIDE_HREF } from "@/components/marketing/cli/cli-page-constants"
+import { ProductHero } from "@/components/marketing/cli/product-hero"
 
 export const metadata: Metadata = {
   title: "CLI",
