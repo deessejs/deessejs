@@ -1,11 +1,11 @@
 /**
- * CLI workbench data — files and code snippets shown by the
+ * CLI workbench data. Files and code snippets shown by the
  * homepage CliInAction IDE-style panel.
  *
  * SOURCE OF TRUTH: this file is the canonical reference for the
  * `saas-starter` template structure as it appears in the marketing
  * storyboard. The actual template repository lives in a separate
- * codebase (`apps/cli` clones from a remote registry) — we cannot
+ * codebase (`apps/cli` clones from a remote registry); we cannot
  * read its filesystem from here. When the template changes (new
  * top-level file, renamed manifest, different dev script), update
  * this file in lockstep and verify the workbench still tells a
@@ -25,37 +25,50 @@ export type ExplorerNode = {
 }
 
 /**
- * Top-level layout of the `saas-starter` template as it appears
- * after a successful `deessejs init saas-starter`. Order matches
- * the order nodes are revealed by the workbench animation.
+ * Top-level layout of the cloned `deessejs/saas-template` repo as
+ * it appears locally after `deessejs init saas-starter`. The CLI
+ * derives the local directory name from the slug (see
+ * `apps/cli/src/commands/init.ts:53`), so `init saas-starter`
+ * produces `./saas-starter/` even though the GitHub repo is
+ * called `saas-template`.
+ *
+ * Reflects the real monorepo layout: Turborepo with `apps/`
+ * (app / docs / web) and `packages/` (api / auth / cookies /
+ * database / email / env / eslint-config / typescript-config /
+ * ui / utils), plus the root `AGENTS.md`, `README.md`,
+ * `package.json` (named `next-monorepo`), `pnpm-workspace.yaml`
+ * and `turbo.json`.
+ *
+ * Order matches the order nodes are revealed by the workbench
+ * animation.
  */
 export const SAAS_STARTER_FILES: ReadonlyArray<ExplorerNode> = [
   {
     name: "saas-starter",
     children: [
-      { name: "package.json" },
       { name: "AGENTS.md" },
       { name: "README.md" },
+      { name: "package.json" },
       {
-        name: "src",
+        name: "apps",
         children: [
-          {
-            name: "app",
-            children: [
-              { name: "layout.tsx" },
-              { name: "page.tsx" },
-            ],
-          },
-          {
-            name: "lib",
-            children: [
-              { name: "auth.ts" },
-              { name: "db.ts" },
-            ],
-          },
+          { name: "app" },
+          { name: "docs" },
+          { name: "web" },
         ],
       },
-      { name: "public" },
+      {
+        name: "packages",
+        children: [
+          { name: "api" },
+          { name: "auth" },
+          { name: "database" },
+          { name: "ui" },
+          { name: "utils" },
+        ],
+      },
+      { name: "pnpm-workspace.yaml" },
+      { name: "turbo.json" },
     ],
   },
 ]
@@ -65,24 +78,20 @@ export const SAAS_STARTER_FILES: ReadonlyArray<ExplorerNode> = [
  * pane. Truncated to the most informative subset; the `...` line
  * is intentional and signals "more lines exist, not shown".
  *
- * `pnpm dev` is the actual command the template runs after install
- * — `init` itself only clones + installs, never starts a server.
+ * `pnpm dev` is the actual command the template runs after install.
+ * `init` itself only clones + installs, never starts a server.
  * The animation surfaces both commands explicitly to avoid the
  * misconception that one command does everything.
  */
 export const SAAS_STARTER_PACKAGE_JSON = `{
-  "name": "saas-starter",
+  "name": "next-monorepo",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint"
   },
-  "dependencies": {
-    "next": "^16.2.0",
-    "react": "19.2.0",
-    ...
-  }
+  "packageManager": "pnpm@9.12.0"
 }`
 
 /**
@@ -97,14 +106,14 @@ export const SAAS_STARTER_PACKAGE_JSON = `{
  */
 export const SAAS_STARTER_AGENTS_MD = `# AGENTS.md
 
-This codebase ships with typed contracts.
-Read packages/contracts before editing.
+Branch from staging. PRs target staging, not main.
+Better-Auth is the auth layer. See docs.better-auth.com.
 Run pnpm test before pushing.
 `
 
 /**
  * Files exposed as Editor tabs. Order is the order tabs render.
- * `package.json` is the active tab by default — it is the file the
+ * `package.json` is the active tab by default. It is the file the
  * workbench opens first because the dev script (`pnpm dev`) is
  * visible there.
  *
@@ -131,22 +140,33 @@ export const EDITOR_TAB_LANG: Record<EditorTabId, string> = {
 }
 
 /**
- * Three real output lines from `deessejs init saas-starter`,
- * matching the spinners in `apps/cli/src/commands/init.ts`:
- * clone → detect package manager → install dependencies.
- * Kept short so each fits on one terminal row.
+ * Default `deessejs init saas-starter` output lines, matching the
+ * spinners in `apps/cli/src/commands/init.ts`: clone, detect
+ * package manager, install dependencies. Kept short so each fits
+ * on one terminal row.
+ *
+ * `Installed 487 packages` was previously in this array. That
+ * exact count is not emitted by `init.ts` (the CLI only prints
+ * `Dependencies installed` on success). The marketing demo now
+ * uses the CLI's actual success line.
+ *
+ * Callers can override the lines entirely via the `terminalLines`
+ * prop on `<CliWorkbenchDemo>` / `<CliWorkbench>`. The /cli page
+ * does so to render the full real `init.ts` output (with
+ * `cd <dir>` and `pnpm dev`) for a truthful demo.
  */
-export const INIT_OUTPUT_LINES = [
+export const DEFAULT_INIT_OUTPUT_LINES = [
   "✔ Cloned into ./saas-starter",
   "✔ Detected package manager: pnpm",
-  "✔ Installed 487 packages",
+  "✔ Dependencies installed",
 ] as const
 
 /**
  * `deessejs info saas-starter` is the post-init inspection
  * command (see `apps/cli/src/commands/info.ts`). The animation
- * shows it as a separate command — `init` does not start the
+ * shows it as a separate command. `init` does not start the
  * server. `pnpm dev` is the conventional Next.js dev script the
  * template exposes via its `package.json`.
  */
-export const DEV_OUTPUT_LINE = "▲ Next.js ready on http://localhost:3000"
+export const DEFAULT_DEV_OUTPUT_LINE =
+  "$ pnpm dev"

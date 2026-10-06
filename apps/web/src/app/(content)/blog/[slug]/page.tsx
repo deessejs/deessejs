@@ -5,7 +5,6 @@ import Image from "next/image"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 import { Separator } from "@workspace/ui/components/separator"
 import { WEB_URL } from "@/lib/urls"
-import { AuthorBio } from "@/components/blog/author-bio"
 import { PostCardGrid } from "@/components/blog/blog-post-grid"
 import { PostMeta } from "@/components/blog/post-meta"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
@@ -154,7 +153,12 @@ export default async function PostPage(
         </aside>
       </div>
 
-      <AuthorBio authors={post.authors} />
+      {/* Hidden: redundant with the byline already shown in <PostMeta>
+          at the top of the article (date + author + reading time + tags).
+          AuthorBio, the import, and the export all stay in place;
+          uncomment to reactivate if a future article genuinely needs a
+          longer-form author block below the body. */}
+      {/* <AuthorBio authors={post.authors} /> */}
 
       {(prev || next) && (
         <>
