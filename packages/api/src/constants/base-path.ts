@@ -6,7 +6,7 @@
  * `basePath(API_BASE_PATH)`, and the oRPC client targets `API_RPC_PATH` to
  * reach the procedures endpoint.
  *
- * Versioning strategy (locked in docs/engineering/plans/robust-shared-backend.md):
+ * Versioning strategy (see apps/internal-documentation/content/docs/decisions/ADR-004-api-package-structure.mdx):
  *   - Each contract version lives under `packages/contracts/src/vN/`.
  *   - The HTTP URL prefix mirrors that: `API_BASE_PATH_V1 = "/api/v1"`.
  *   - `API_BASE_PATH` aliases the *active* version. When a V2 is introduced,

@@ -53,7 +53,9 @@ import { userCodeSchema } from "@/components/auth/schemas"
  *
  * Per ADR-020, this page does NOT gate on `emailVerified`.
  * The verification gate that protects `/home` and `/settings`
- * (`docs/guides/better-auth/pitfalls.md` §3) is unchanged; the
+ * (`packages/auth/src/auth.ts` `emailVerification` block, where
+ * `sendOnSignUp: true` and `sendOnSignIn: true` are both set
+ * explicitly) is unchanged; the
  * device page is not a protected prefix.
  */
 export default async function DevicePage({

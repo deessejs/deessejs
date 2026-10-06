@@ -85,7 +85,7 @@ See [ADR-027](../../decisions/ADR-027-version-bump-orphan.mdx) for the rationale
 
 **`apps/cli/package.json#private: true` left in place:** changesets refuses to publish. Verify the field is `false` before re-running.
 
-**Workflow misbehaves and a release must still go out today:** use the [manual fallback](../../../../../documents/internal/process/release-engineering.md#manual-fallback) — publish from a maintainer machine, accept the loss of provenance for that one release, and file an issue to repair `release.yml`.
+**Workflow misbehaves and a release must still go out today:** publish from a maintainer machine with `pnpm --filter @deessejs/cli build && pnpm --filter @deessejs/cli publish --provenance --access public --no-git-checks`. Provenance will fail outside GitHub Actions (expected) — accept the loss of provenance for that one release, and file an issue to repair `release.yml`.
 
 **Within 72 hours of a bad publish:** `npm unpublish @deessejs/cli@x.y.z` removes the version entirely.
 

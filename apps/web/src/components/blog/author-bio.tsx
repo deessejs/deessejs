@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
 import { AvatarNextImage } from "./avatar-image"
 import type { Author } from "@/lib/blog/types"
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function SingleAuthorBlock({ author }: { author: Author }) {
   const fallback = author.name
     .split(" ")
@@ -50,29 +51,13 @@ export function AuthorBio({
   authors?: Author[]
   author?: Author
 }) {
-  const list: Author[] =
-    authors && authors.length > 0
-      ? authors
-      : author
-        ? [author]
-        : []
-
-  if (list.length === 0) return null
-
-  return (
-    <aside className="mt-12 rounded-xl border border-border/40 bg-muted/20 p-6">
-      <p className="mb-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-        Written by
-      </p>
-      {list.length === 1 ? (
-        <SingleAuthorBlock author={list[0]!} />
-      ) : (
-        <div className="space-y-6">
-          {list.map((a) => (
-            <SingleAuthorBlock key={a.handle} author={a} />
-          ))}
-        </div>
-      )}
-    </aside>
-  )
+  // Hidden: the article page already shows the author via <PostMeta>
+  // (date + author handle + reading time + tags) in the page header.
+  // The "Written by" card below the body duplicates that information.
+  // The component, the import, and the export all stay in place so
+  // uncommenting this guard reactives the block for any future caller
+  // that genuinely needs a longer-form bio card.
+  void authors
+  void author
+  return null
 }

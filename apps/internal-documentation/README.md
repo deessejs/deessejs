@@ -5,17 +5,16 @@ Built with [Next.js](https://nextjs.org) + [Fumadocs](https://fumadocs.dev).
 
 ## Scope
 
-This site renders a curated subset of the engineering
-documentation as a navigable web surface. It does **not**
-mirror the full `docs/engineering/architecture/` tree — the
-ADRs, rules, and knowledge-base entries live as Markdown
-files in version control and are read directly.
+This site renders the engineering documentation as a
+navigable web surface. The ADRs, rules, knowledge-base
+entries, and process guides live as MDX files in
+`content/docs/` and are read directly.
 
 The site's content source is `content/docs/`. The source is
-intentionally empty at the moment — the existing docs in
-`docs/engineering/` are the source of truth; this site is
-the rendering target for content that needs a web treatment
-(onboarding, process, culture).
+intentionally curated — this site is the rendering target
+for content that benefits from a web treatment (onboarding,
+process, culture). Code-adjacent reference content lives in
+JSDoc and source comments.
 
 ## Development
 
@@ -61,6 +60,5 @@ This app follows the DeesseJS monorepo conventions:
 
 ## See also
 
-- [Docs architecture overview](../docs/engineering/architecture/README.md)
 - [MDX content authoring guide](https://fumadocs.dev/docs/mdx)
 

@@ -1,80 +1,96 @@
 import Link from "next/link"
 
+import { Card } from "@workspace/ui/components/card"
+
 /**
  * /help Email-the-team section.
  *
- * <ul> of four contact rows (General / Security / Pro Education /
- * Enterprise). Each row pairs a <strong> label with a mailto: link
- * and a muted-foreground qualifier. The Security row also links to
- * the internal /security page.
+ * 2-col grid of Cards (one per contact row: General,
+ * Security, Pro Education, Enterprise). Each row pairs a
+ * `<strong>General:</strong>` label with a mailto: link and
+ * a muted caption; the Security row also links to the
+ * internal /security page.
  *
- * All four rows share `support@deessejs.com` today; the labels
- * disambiguate routing on the team side. Splitting them when the
- * team grows is a copy change only.
+ * The Card grid replaces the previous flat-list rendering so
+ * the page matches the rest of the marketing app (cards on
+ * about/trust, manifesto/beliefs, principles/tenets, vision/
+ * horizons).
  */
 export function Email() {
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-heading-24 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
+    <section className="space-y-4">
+      <h2 className="text-heading-24 tracking-tight text-foreground">
         Email the team
       </h2>
-      <ul className="flex flex-col gap-2 text-copy-16">
-        <li>
-          <strong className="text-foreground">General:</strong>{" "}
-          <a
-            href="mailto:support@deessejs.com"
-            className="text-foreground underline underline-offset-4 hover:text-foreground"
-          >
-            support@deessejs.com
-          </a>{" "}
-          <span className="text-muted-foreground">
-            questions, sales, anything else.
-          </span>
-        </li>
-        <li>
-          <strong className="text-foreground">Security:</strong>{" "}
-          <a
-            href="mailto:support@deessejs.com"
-            className="text-foreground underline underline-offset-4 hover:text-foreground"
-          >
-            support@deessejs.com
-          </a>{" "}
-          <span className="text-muted-foreground">
-            vulnerability reports. See{" "}
-            <Link
-              href="/security"
-              className="underline underline-offset-4 hover:text-foreground"
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Card className="p-5">
+          <p className="text-copy-16 text-foreground">
+            <strong>General:</strong>{" "}
+            <a
+              href="mailto:support@deessejs.com"
+              className="text-foreground underline underline-offset-4 hover:text-foreground"
             >
-              security policy
-            </Link>{" "}
-            for disclosure rules.
-          </span>
-        </li>
-        <li>
-          <strong className="text-foreground">Pro Education:</strong>{" "}
-          <a
-            href="mailto:support@deessejs.com"
-            className="text-foreground underline underline-offset-4 hover:text-foreground"
-          >
-            support@deessejs.com
-          </a>{" "}
-          <span className="text-muted-foreground">
-            student or OSS verification.
-          </span>
-        </li>
-        <li>
-          <strong className="text-foreground">Enterprise:</strong>{" "}
-          <a
-            href="mailto:support@deessejs.com"
-            className="text-foreground underline underline-offset-4 hover:text-foreground"
-          >
-            support@deessejs.com
-          </a>{" "}
-          <span className="text-muted-foreground">
-            custom engagements, procurement.
-          </span>
-        </li>
-      </ul>
+              support@deessejs.com
+            </a>
+            <span className="text-muted-foreground">
+              <br />
+              questions, sales, anything else.
+            </span>
+          </p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-copy-16 text-foreground">
+            <strong>Security:</strong>{" "}
+            <a
+              href="mailto:support@deessejs.com"
+              className="text-foreground underline underline-offset-4 hover:text-foreground"
+            >
+              support@deessejs.com
+            </a>
+            <span className="text-muted-foreground">
+              <br />
+              vulnerability reports. See{" "}
+              <Link
+                href="/security"
+                className="underline underline-offset-4 hover:text-foreground"
+              >
+                security policy
+              </Link>{" "}
+              for disclosure rules.
+            </span>
+          </p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-copy-16 text-foreground">
+            <strong>Pro Education:</strong>{" "}
+            <a
+              href="mailto:support@deessejs.com"
+              className="text-foreground underline underline-offset-4 hover:text-foreground"
+            >
+              support@deessejs.com
+            </a>
+            <span className="text-muted-foreground">
+              <br />
+              student or OSS verification.
+            </span>
+          </p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-copy-16 text-foreground">
+            <strong>Enterprise:</strong>{" "}
+            <a
+              href="mailto:support@deessejs.com"
+              className="text-foreground underline underline-offset-4 hover:text-foreground"
+            >
+              support@deessejs.com
+            </a>
+            <span className="text-muted-foreground">
+              <br />
+              custom engagements, procurement.
+            </span>
+          </p>
+        </Card>
+      </div>
     </section>
   )
 }

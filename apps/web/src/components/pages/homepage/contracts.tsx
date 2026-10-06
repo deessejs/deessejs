@@ -1,22 +1,19 @@
-import { Section } from "@/app/(marketing)/_components/section"
-import { ContractsGrid } from "@/app/(marketing)/_components/contracts-grid"
+import { Section } from "@/components/marketing/section"
+import { SectionHeader } from "@/components/marketing/section-header"
+import { ContractsGrid } from "@/components/marketing/contracts-grid"
 import { CONTRACTS } from "@/lib/marketing/home-data"
 
-/** Contracts — 3-col bento with mini-UI mockups + stack matrix. */
+/** Contracts - 3-col bento with mini-UI mockups + stack matrix. */
 export function Contracts() {
   return (
     <Section>
-      <div className="flex flex-col gap-2 p-6 border-b border-border">
-        <p className="text-label-13 text-muted-foreground">Under the hood</p>
-        <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-          Six contracts. Open stack. Typed end-to-end.
-        </h2>
-        <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-          Auth, database, billing, jobs, storage, observability. Typed
-          against whichever provider you bring. The contracts your agent
-          reads. The integration you don&apos;t have to write.
-        </p>
-      </div>
+      <SectionHeader
+        eyebrow="Under the hood"
+        title="Six contracts. Open stack. Typed end-to-end."
+        subtitle="Each contract exports its own TypeScript types. Your agent reads them through MCP, your IDE autocompletes them, your tests cover them. Swap Postgres for Neon without rewriting a query, swap Stripe for Paddle without touching the handler. The contract is the API; the provider is an implementation detail."
+        action={{ href: "/stack", label: "Browse the stack" }}
+        bordered={true}
+      />
       <ContractsGrid contracts={CONTRACTS} />
     </Section>
   )

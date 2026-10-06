@@ -3,7 +3,8 @@ import { ArrowRight, ChevronRight, Layers } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
 
-import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
+import { FlickeringGrid } from "@/components/marketing/flickering-grid"
+import { DotGrid } from "@/components/marketing/dot-grid"
 
 /**
  * Marketing homepage hero at `/`.
@@ -85,7 +86,7 @@ export function Hero() {
           aria-hidden
           className="relative w-full aspect-[2/1] border border-border bg-muted/40 overflow-hidden"
         >
-          <div className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[12px_12px] opacity-60" />
+          <DotGrid className="absolute inset-0" />
         </div>
       </div>
     </div>

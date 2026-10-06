@@ -12,7 +12,7 @@ import {
 } from "@workspace/api/templates-labels"
 import { Button } from "@workspace/ui/components/button"
 
-import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
+import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 import { liveCache, orpc } from "@/lib/orpc"
 import { SUBMIT_TEMPLATE_URL } from "@/lib/templates/urls"
 import { CategorySidebar } from "@/components/templates/category-sidebar"

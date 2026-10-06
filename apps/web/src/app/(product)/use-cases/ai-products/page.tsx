@@ -1,24 +1,20 @@
 import type { Metadata } from "next"
+import { codeToHtml } from "shiki"
 import Link from "next/link"
-import { ArrowRight, BarChart3, Database, FileText, GitBranch, Globe, Mail, MessageSquare, ShieldCheck, Zap } from "lucide-react"
-
-import { clientEnv } from "@workspace/env/client"
-
-import { UseCaseHero } from "../_components/use-case-page"
-import { UseCaseStack } from "../_components/use-case-stack"
-import { CopyCommand } from "../_components/copy-command"
 import {
-  AgentLoopMockup,
-  ApiEndpointMockup,
-  OtelWaterfallMockup,
-  StreamingChatMockup,
-} from "../_components/mockups"
-import {
-  AndMoreSection,
-  type MoreTile,
-  SimulatedSection,
-} from "../_components/simulated-section"
+  RelatedUseCases,
+  type RelatedUseCaseItem,
+} from "@/components/product/use-case/related-use-cases"
+
+import { Section } from "@/components/marketing/section"
+import { SectionHeader } from "@/components/marketing/section-header"
+import { UseCaseHero } from "@/components/product/use-case/use-case-page"
+import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
+import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
+import { AI_PRODUCTS_SNIPPETS, type AiProductsPillarSlug } from "@/components/product/use-case/ai-products-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
+
+import { GROUP_1, GROUP_2 } from "./ai-products-tabs"
 
 export const metadata: Metadata = {
   title: "AI products | DeesseJS",
@@ -26,80 +22,39 @@ export const metadata: Metadata = {
     "RAG, chat, and agents wired against the same contracts your app uses.",
 }
 
+/**
+ * Stack specific to the AI surface. Same shape as /saas-apps so
+ * the brand display stays uniform with the rest of the marketing
+ * surface, just with the AI-relevant technologies.
+ */
 const STACK = [
-  "Next.js",
-  "AI SDK",
-  "OpenAI",
-  "pgvector",
-  "Resend",
+  { name: "Next.js",     logo: "vercel" },
+  { name: "AI SDK",      logo: "openai" },
+  { name: "OpenAI",      logo: "openai" },
+  { name: "pgvector",    logo: "postgresql" },
+  { name: "Drizzle",     logo: "drizzle" },
+  { name: "Better Auth",  logo: "betterauth" },
+  { name: "Cloudflare",  logo: "cloudflare" },
+  { name: "Resend",      logo: "resend" },
 ] as const
 
-type Tool = {
-  name: string
-  description: string
-  inputs: string
-  outputs: string
-  icon: React.ComponentType<{ className?: string }>
-}
-
-const TOOLS: ReadonlyArray<Tool> = [
+const STEPS = [
   {
-    name: "searchDocs",
-    description: "Semantic search across your indexed docs and KB articles.",
-    inputs: "query: string",
-    outputs: "Array<{ id; snippet; score }>",
-    icon: FileText,
+    heading: "Define the agent in TypeScript",
+    body:
+      "Tools, memory, and routing live in the same source as the rest of your app. The AI SDK reads them and wires the runtime.",
   },
   {
-    name: "fetchUser",
-    description: "Look up a user record from Postgres with role check.",
-    inputs: "userId: string",
-    outputs: "User | null",
-    icon: Database,
+    heading: "Index what the agent should know",
+    body:
+      "Docs, KB articles, product data — pgvector indexes them in one query. No second database, no second dashboard.",
   },
   {
-    name: "sendEmail",
-    description: "Send a transactional email via Resend with a typed template.",
-    inputs: "to: string; templateId: string; vars: Record<string, unknown>",
-    outputs: "{ id: string }",
-    icon: Mail,
+    heading: "Ship. Every tool call is on the trace.",
+    body:
+      "Tool calls stream into the same observability contract as your HTTP routes. Replay any run from the trace ID.",
   },
-  {
-    name: "scrapeUrl",
-    description: "Fetch a URL and return a typed markdown extract.",
-    inputs: "url: string; maxLength?: number",
-    outputs: "{ title; markdown }",
-    icon: Globe,
-  },
-  {
-    name: "logEvent",
-    description: "Append a typed event to the run trace.",
-    inputs: "kind: EventKind; payload: unknown",
-    outputs: "void",
-    icon: GitBranch,
-  },
-  {
-    name: "askFollowUp",
-    description: "Pause and ask the user a clarifying question mid-run.",
-    inputs: "question: string; choices: Array<{ label; value }>",
-    outputs: "{ choice: string }",
-    icon: MessageSquare,
-  },
-  {
-    name: "getMetrics",
-    description: "Pull a metric from observability for a given window.",
-    inputs: "name: string; window: TimeWindow",
-    outputs: "MetricSeries",
-    icon: BarChart3,
-  },
-  {
-    name: "checkPolicy",
-    description: "Validate a candidate action against org-level policies.",
-    inputs: "action: Action; context: unknown",
-    outputs: "{ allowed: boolean; reason?: string }",
-    icon: ShieldCheck,
-  },
-]
+] as const
 
 const RELATED = [
   {
@@ -120,262 +75,192 @@ const RELATED = [
     tagline:
       "Auth, sync, and push notifications for native apps, on the same backend.",
   },
-] as const
-
-const AND_MORE: ReadonlyArray<MoreTile> = [
-  { id: "auth",       title: "Auth",          description: "Better Auth + sessions",                 icon: Zap },
-  { id: "database",   title: "Database",      description: "Postgres + pgvector",                    icon: Database },
-  { id: "email",      title: "Email",         description: "Resend + React Email",                   icon: Mail },
-  { id: "public-api", title: "Public API",    description: "Versioned, documented",                  icon: Globe },
-  { id: "background", title: "Background",    description: "Queues + retries",                       icon: GitBranch },
-]
-
-export default function AiProductsPage() {
-  // Resolve the apps/app signup URL server-side so the Final CTA link
-  // is a fully-formed absolute URL by the time it reaches the browser.
-  // Same convention as /pricing (apps/web/src/app/(marketing)/pricing/
-  // page.tsx): env defaults to http://localhost:3001/signup in dev,
-  // https://app.deessejs.com/signup in prod.
-  const signupHref = new URL("/signup", clientEnv.NEXT_PUBLIC_APP_URL).toString()
-
-  return (
-    <div className="border border-border bg-background rounded-none">
-        {/* 1. Hero — dark */}
-        <UseCaseHero
-          category="AI"
-          title="Ship an agent that reads your contracts, not your docs."
-          body="Tool calls typed against the same registry the UI uses. Every step is in the run trace."
-          variant="dark"
-          primaryCta={{
-            label: "View ai-chatbot",
-            href: "/templates/ai-chatbot",
-          }}
-          secondaryCta={{
-            label: "Browse templates",
-            href: "/templates",
-          }}
-        />
-
-        {/* 2. Agent loop */}
-        <SimulatedSection
-          eyebrow="Agent loop"
-          title="Plan, call, read, repeat."
-          body="The agent plans a tool call, executes it against your typed contract, reads the result, and decides the next step. Every step is in the run trace."
-          bullets={[
-            "Plan and tool-call are explicit, not implicit",
-            "Tool results are typed, not free-form",
-            "Run trace persists every step for replay",
-          ]}
-          mockup={<AgentLoopMockup />}
-          reverse
-        />
-
-        {/* 3. Streaming chat */}
-        <SimulatedSection
-          eyebrow="Streaming"
-          title="Responses stream live, not as a blob."
-          body="The user prompt lands, the agent responds token by token. The cursor blinks at the end of the stream until completion. No waiting for a 4-second silence."
-          bullets={[
-            "Server-sent events, no WebSocket plumbing",
-            "Cancel mid-stream without orphaned tokens",
-            "Token count surfaced in the footer",
-          ]}
-          mockup={<StreamingChatMockup />}
-        />
-
-        {/* 4. Tool registry — dark, unique to this page */}
-        <div className="border-t border-zinc-800 bg-zinc-950 text-zinc-100">
-          <div className="grid grid-cols-1 lg:grid-cols-6 lg:divide-x lg:divide-zinc-800">
-            <div className="flex flex-col gap-3 p-6 lg:col-span-2 lg:p-10">
-              <p className="text-label-13 uppercase tracking-wider text-zinc-400">
-                Tool registry
-              </p>
-              <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-zinc-50 text-balance lg:text-heading-40">
-                Eight typed tools out of the box.
-              </h2>
-              <p className="max-w-2xl text-copy-16 leading-7 text-zinc-400">
-                Every tool is a typed function. The agent sees the schema, the
-                runtime enforces it.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 divide-y divide-zinc-800 lg:col-span-4 !p-0 border-0 md:grid-cols-2 md:divide-x md:divide-y-0">
-              {TOOLS.map((tool) => (
-                <ToolCard key={tool.name} tool={tool} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 5. Observable runs */}
-        <SimulatedSection
-          eyebrow="Observable"
-          title="Every agent run is a trace."
-          body="Tool calls, latency, errors land in the same waterfall your HTTP routes already use. The same observability contract - no second dashboard."
-          bullets={[
-            "OpenTelemetry waterfall, no extra setup",
-            "Errors tagged with tool name and call site",
-            "Replay any run from the trace ID",
-          ]}
-          mockup={<OtelWaterfallMockup />}
-          reverse
-        />
-
-        {/* 6. The agent hits your API */}
-        <SimulatedSection
-          eyebrow="Contracts"
-          title="The agent hits your typed API."
-          body="Hono + oRPC procedures are typed end-to-end. The agent reads the schema the same way your runtime does - it cannot drift from the contract."
-          bullets={[
-            "Procedure types flow into the agent's tool manifest",
-            "Auth and rate limits applied per procedure",
-            "OpenAPI generated from the same router",
-          ]}
-          mockup={<ApiEndpointMockup />}
-        />
-
-        {/* 7. And more */}
-        <AndMoreSection tiles={AND_MORE} />
-
-        {/* 8. Stack */}
-        <TwoThirdsHeaderSection
-          eyebrow="Stack"
-          title="Built on the AI primitives that ship in production."
-        >
-          <UseCaseStack items={[...STACK]} />
-        </TwoThirdsHeaderSection>
-
-        {/* 9. Process */}
-        <TwoThirdsHeaderSection
-          eyebrow="Process"
-          title="Three lines."
-        >
-          <ol className="flex flex-col gap-4 p-6 lg:col-span-4 lg:p-10">
-            {[
-              "Define your tools in TypeScript. The schema is the contract your agent calls.",
-              "Wire the agent loop with the AI SDK. Tools, memory, and streaming come preconfigured.",
-              "Ship. Every tool call is typed, traced, and persisted against the same contracts.",
-            ].map((step, idx) => (
-              <li key={step} className="flex gap-4">
-                <span className="w-8 shrink-0 font-mono text-copy-13 text-violet-600 dark:text-violet-400">
-                  {String(idx + 1).padStart(2, "0")}
-                </span>
-                <p className="text-copy-16 leading-7 text-foreground">
-                  {step}
-                </p>
-              </li>
-            ))}
-          </ol>
-        </TwoThirdsHeaderSection>
-
-        {/* 10. CTA */}
-        <div className="grid grid-cols-1 border-t border-border lg:grid-cols-2 lg:divide-x lg:divide-border">
-          <div className="flex flex-col gap-4 p-6 lg:p-10">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-              Get started
-            </p>
-            <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-              Start from the tool registry, not from scratch.
-            </h2>
-            <CopyCommand command="deessejs init ai-chatbot" className="mt-2" />
-            <p className="font-mono text-copy-13 text-muted-foreground">
-              or run{" "}
-              <span className="text-foreground/90">deessejs init --help</span> for
-              the full list.
-            </p>
-          </div>
-        </div>
-
-        {/* 11. Related */}
-        <TwoThirdsHeaderSection
-          eyebrow="Explore"
-          title="Related use cases."
-        >
-          <div className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
-            {RELATED.map((item) => (
-              <Link
-                key={item.slug}
-                href={`/use-cases/${item.slug}`}
-                className="group flex flex-col gap-2 p-6 transition-colors hover:bg-accent/40 lg:p-8"
-              >
-                <p className="text-label-13 text-muted-foreground">Related</p>
-                <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
-                  {item.title}
-                </h3>
-                <p className="line-clamp-3 text-copy-14 leading-6 text-muted-foreground">
-                  {item.tagline}
-                </p>
-                <p className="inline-flex items-center gap-1 pt-1 text-label-13 text-foreground">
-                  Read more
-                  <ArrowRight
-                    className="size-3 transition-transform group-hover:translate-x-0.5"
-                    aria-hidden
-                  />
-                </p>
-              </Link>
-            ))}
-          </div>
-        </TwoThirdsHeaderSection>
-
-        {/* 12. Final CTA — closing shared-border block (noBorderB) */}
-        <FinalCta signupHref={signupHref} />
-      </div>
-  )
-}
+] as const satisfies ReadonlyArray<RelatedUseCaseItem>
 
 /**
- * Shared-border section with a 2-col header (eyebrow + H2) on the
- * left and a 4-col body on the right. Reused by the Stack, Process,
- * and Related blocks on this page so the layout doesn't repeat.
+ * First-party templates the org has built on this surface. They
+ * each ship on their own hosted URL once published — today they
+ * remain pre-launch. The card grid signals production-ready
+ * output without requiring links that don't resolve yet.
  */
-function TwoThirdsHeaderSection({
-  eyebrow,
-  title,
-  children,
-}: {
-  eyebrow: string
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-      <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-          {eyebrow}
-        </p>
-        <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-          {title}
-        </h2>
-      </div>
-      {children}
-    </div>
-  )
-}
+const BUILT_TEMPLATES = [
+  { slug: "agent-runtime", title: "agent-runtime", body: "Streaming chat and tool-call loop, against the AI SDK." },
+  { slug: "kb-search",     title: "kb-search",     body: "pgvector-backed RAG over docs, KB articles, product schema." },
+  { slug: "trace-replay",  title: "trace-replay",  body: "Replay any agent run from the OpenTelemetry trace ID." },
+  { slug: "evals",         title: "evals",         body: "Score + rerank, with per-run cost and token budgets." },
+] as const
 
-function ToolCard({ tool }: { tool: Tool }) {
-  const Icon = tool.icon
+/**
+ * Four thematic clusters of capabilities an AI-product buyer reads
+ * when they ask 'is this what I need to ship an agent?'. Same
+ * shape as /saas-apps: each cluster leads with the question it
+ * answers, then exposes 3 rows of selling copy. Plain prose, no
+ * marketing fluff.
+ */
+export default async function AiProductsPage() {
+  // Pre-render the eight ai-products pillar snippets server-side via
+  // Shiki, identical to the homepage Ecosystem and /cli CliStart
+  // pattern, and the saas-apps use case. Strings travel through the
+  // Client Component boundary as plain HTML.
+  const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
+    "agent-loop": [], "typed-tools": [], "pgvector-search": [], "otel-trace": [],
+    "streaming-cancel": [], "citation-prompt": [], "eval-scoring": [], "replay-console": [],
+  }
+
+  await Promise.all(
+    (Object.keys(AI_PRODUCTS_SNIPPETS) as AiProductsPillarSlug[]).flatMap((slug) =>
+      AI_PRODUCTS_SNIPPETS[slug].files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        }),
+      ),
+    ),
+  )
+
   return (
-    <div className="flex flex-col gap-3 border-t border-zinc-800 p-5 transition-colors hover:bg-zinc-900 first:border-t-0 lg:p-6">
-      <div className="flex items-center gap-2">
-        <span className="flex size-7 items-center justify-center rounded-md border border-violet-500/30 bg-violet-500/10">
-          <Icon className="size-3.5 text-violet-400" aria-hidden />
-        </span>
-        <code className="font-mono text-copy-13 font-medium text-zinc-50">
-          {tool.name}
-        </code>
+    <div className="flex flex-col">
+      {/* 1. Hero */}
+      <UseCaseHero
+        category="AI"
+        title="Production agents, wired like the rest of your app."
+        body="Streaming chat, typed tools, retrieval over your own data, and traces that survive the agent into the same observability dashboard. The four sub-systems an AI product needs are wired into the registry before your first commit."
+        primaryCta={{
+          label: "Use it yourself",
+          href: "/templates",
+        }}
+        secondaryCta={{
+          label: "Talk to delivery",
+          href: "/delivery",
+        }}
+      />
+
+      {/* 2. What's in the box — 4 tabs (customer surface).
+           Same canonical Tabs + peek pattern as the saas-apps
+           page; tabs LEFT, Shiki peek RIGHT. */}
+      <Section>
+        <SectionHeader
+          eyebrow="What's in the box"
+          title="The four sub-systems every AI product needs."
+          subtitle="Eight capabilities grouped by the buyer-side question they answer. Two halves: what the agent does for the user, and what keeps it correct in production."
+          bordered={true}
+        />
+        <UseCaseTabs pillars={GROUP_1} htmlBySlug={htmlBySlug} />
+      </Section>
+
+      {/* 3. Behind the curtain — 4 tabs (runtime), mirrored. */}
+      <Section>
+        <SectionHeader
+          eyebrow="Behind the curtain"
+          title="What keeps an agent in production."
+          subtitle="The four sub-systems an on-call engineer names first. Same contracts, same registry, same auth, just on the other side of the same RPC."
+          bordered={true}
+        />
+        <UseCaseTabs pillars={GROUP_2} htmlBySlug={htmlBySlug} reverse />
+      </Section>
+
+      {/* 3. Stack */}
+      {/*    Same TechStackGrid + same Section shape as the saas-apps
+           page (and the homepage + /pricing page). Header row on top,
+           brand wall underneath. The brand tiles rotate on a swap
+           animation, so the surface reads as a living tech stack
+           rather than a static logo dump. */}
+      <Section>
+        <div className="flex flex-col divide-y divide-border">
+          <div className="px-6 py-6 lg:px-10">
+            <p className="text-heading-24 tracking-tighter text-balance [&:not(:first-child)]:mt-0">
+              Built with the stack senior engineers ship on.
+            </p>
+          </div>
+          <TechStackGrid techs={STACK} />
+        </div>
+      </Section>
+
+      {/* 4. Process */}
+      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-12 lg:divide-x lg:divide-border">
+        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-3 lg:p-10">
+          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            Process
+          </p>
+          <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
+            How an AI product ships.
+          </h2>
+        </div>
+        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-9 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
+          {STEPS.map((step, idx) => (
+            <li
+              key={step.heading}
+              className="flex flex-col gap-3 p-6 lg:p-8"
+            >
+              <span className="font-mono text-copy-13 text-muted-foreground">
+                Step {String(idx + 1).padStart(2, "0")}
+              </span>
+              <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
+                {step.heading}
+              </h3>
+              <p className="text-copy-14 leading-6 text-muted-foreground">
+                {step.body}
+              </p>
+            </li>
+          ))}
+        </ol>
       </div>
-      <p className="text-copy-13 leading-5 text-zinc-400">
-        {tool.description}
-      </p>
-      <dl className="mt-auto flex flex-col gap-1 border-t border-violet-500/20 pt-2">
-        <div className="flex gap-2 text-label-12">
-          <dt className="w-12 shrink-0 text-zinc-500">in:</dt>
-          <dd className="truncate font-mono text-zinc-300">{tool.inputs}</dd>
+
+      {/* 5. Built on this */}
+      {/*    Same 2-row layout as the other 4 migrated use-case
+           pages: full-width header on top, then 4 cards on a
+           single lg:grid-cols-4 row. Each card is fully clickable
+           (entire <Link> wrapper) but uses href="#" since the
+           template URLs are not yet deployed. Replace "#" with
+           the live URL when each site ships. Each card carries a
+           grey placeholder block at the top (no illustration, no
+           label, no CTA below) so the section reads as 4 AI
+           surfaces waiting to render. */}
+      <section className="flex flex-col border-t border-border">
+        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
+          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            Built on this
+          </p>
+          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
+            Four templates, each on its own surface.
+          </h2>
+          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+            Production-ready starter templates, each deployed at its own
+            URL. Used as the reference set for what the registry can ship.
+          </p>
         </div>
-        <div className="flex gap-2 text-label-12">
-          <dt className="w-12 shrink-0 text-zinc-500">out:</dt>
-          <dd className="truncate font-mono text-zinc-300">{tool.outputs}</dd>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y divide-border sm:divide-y-0 sm:divide-x sm:divide-border">
+          {BUILT_TEMPLATES.map((tpl) => (
+            <Link
+              key={tpl.slug}
+              href="#"
+              aria-label={`Visit ${tpl.slug}`}
+              className="group flex flex-col transition-colors hover:bg-accent/40"
+            >
+              <div
+                aria-hidden
+                className="aspect-[16/10] w-full border-b border-border bg-muted/40 transition-colors group-hover:bg-muted/60"
+              />
+              <div className="flex flex-1 flex-col gap-2 p-6">
+                <h3 className="font-mono text-copy-16 font-medium text-foreground">
+                  {tpl.title}
+                </h3>
+                <p className="text-copy-14 leading-6 text-muted-foreground">
+                  {tpl.body}
+                </p>
+              </div>
+            </Link>
+          ))}
         </div>
-      </dl>
+      </section>
+
+      {/* 6. Related */}
+      <RelatedUseCases items={RELATED} />
+
+      <FinalCta />
     </div>
   )
 }

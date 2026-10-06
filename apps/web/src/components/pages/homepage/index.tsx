@@ -21,41 +21,42 @@
  *   - `faq.tsx` exports `FAQ` (the inner accordion)
  */
 import { CliInAction } from "./cli-in-action"
+import { CodingAgents } from "./coding-agents"
 import { Contracts } from "./contracts"
-import { ContractsGrid } from "@/app/(marketing)/_components/contracts-grid"
+import { ContractsGrid } from "@/components/marketing/contracts-grid"
+import { DiagonalStripDivider } from "@/components/marketing/diagonal-strip-divider"
 import { Ecosystem } from "./ecosystem"
-import { EcosystemTabs } from "@/app/(marketing)/_components/ecosystem-tabs"
+import { EcosystemTabs } from "@/components/marketing/ecosystem-tabs"
 import { FinalCta } from "./final-cta"
 import { FAQ } from "./faq"
 import { FAQSection } from "./faq-section"
 import { ForWho } from "./for-who"
 import { Hero } from "./hero"
 import { Integrations } from "./integrations"
-import { IntegrationColumns } from "@/app/(marketing)/_components/integration-columns"
+import { IntegrationColumns } from "@/components/marketing/integration-columns"
 import { LatestGuides } from "./latest-guides"
-import { Skip } from "./skip"
 import { Stats } from "./stats"
-import { StatsStrip } from "@/app/(marketing)/_components/stats-strip"
+import { StatsStrip } from "@/components/marketing/stats-strip"
 import { Surfaces } from "./surfaces"
-import { SurfacesTabs } from "@/app/(marketing)/_components/surfaces-tabs"
+import { SurfacesTabs } from "@/components/marketing/surfaces-tabs"
 import { TechStack } from "./tech-stack"
-import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
-import { TerminalMockup } from "@/app/(marketing)/_components/terminal-mockup"
+import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import { Testimonials } from "./testimonials"
-import { TestimonialsMarquee } from "@/app/(marketing)/_components/testimonials-marquee"
+import { TestimonialsMarquee } from "@/components/marketing/testimonials-marquee"
 
 export const Home = {
   Hero,
   TechStack,
   Surfaces,
   ForWho,
-  Skip,
+  DiagonalStripDivider,
   Contracts,
   CliInAction,
   LatestGuides,
   Ecosystem,
   Testimonials,
   Integrations,
+  CodingAgents,
   Stats,
   FAQ: FAQSection,
   FinalCta,
@@ -65,7 +66,9 @@ export const Home = {
 // without going through the namespace (e.g. tests, storybook).
 export {
   CliInAction,
+  CodingAgents,
   Contracts,
+  DiagonalStripDivider,
   Ecosystem,
   FinalCta,
   FAQ,
@@ -74,7 +77,6 @@ export {
   Hero,
   Integrations,
   LatestGuides,
-  Skip,
   Stats,
   Surfaces,
   TechStack,
@@ -91,6 +93,5 @@ export {
   StatsStrip,
   SurfacesTabs,
   TechStackGrid,
-  TerminalMockup,
   TestimonialsMarquee,
 }

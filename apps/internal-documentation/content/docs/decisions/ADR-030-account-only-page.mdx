@@ -103,7 +103,7 @@ The authenticated shell (`apps/app/app/(protected)/layout.tsx`) loses the shadcn
 
 ## Out of scope (deferred)
 
-- **2FA / passkeys.** The current Better Auth config (per `docs/guides/better-auth/setup.md`) doesn't enable the two-factor plugin. When it does, "Two-factor authentication" becomes a new section card on `/settings/profile` (the section grows inline). No ADR needed.
+- **2FA / passkeys.** The current `plugins` array in `packages/auth/src/auth.ts` (line 175-200 — `deviceAuthorization`, `bearer`, `nextCookies()`) doesn't include `twoFactor()`. When it does, "Two-factor authentication" becomes a new section card on `/settings/profile` (the section grows inline). No ADR needed.
 - **API tokens / personal access tokens.** Same shape: new rail entry when the feature ships.
 - **Org / team membership.** Single-tenant by design (per README and AGENTS.md); out of scope.
 - **Billing.** Not in V1. When it ships, it's a new rail entry.
