@@ -40,5 +40,6 @@ jobs:
           filter_mode: added
           fail_level: error
           min_alert_level: error
+          fail_on_error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://registry.deessejs.com/schema/block/v1.json",
+  "name": "blog",
+  "title": "Blog",
+  "description": "A full blog feature: index page, server API, post card, use-blog hook, and the blog config.",
+  "type": "block:feature",
+  "version": "1.0.0",
+  "author": "DeesseJS <hello@deessejs.com>",
+  "license": "MIT",
+  "category": "feature",
+  "labels": ["blog", "routing", "crud", "nextjs"],
+  "source": {
+    "repo": "deessejs/blog-block",
+    "ref": "v1.0.0"
+  },
+  "requires": {
+    "runtime": "nextjs",
+    "node": ">=20.0.0",
+    "djs": "^0.5.0"
+  },
+  "dependencies": ["zod@^3.23"],
+  "devDependencies": ["@types/node@^20"],
+  "blockDependencies": ["auth", "crud"],
+  "docs": "./docs/blog-block.md",
+  "prompts": [
+    {
+      "name": "blog_slug",
+      "type": "text",
+      "message": "URL slug for the blog index page (e.g. 'blog', 'news'):",
+      "default": "blog",
+      "validate": "^[a-z0-9-_]+$",
+      "consumes": [
+        { "target": "tokens:BLOG_SLUG" }
+      ]
+    },
+    {
+      "name": "enable_comments",
+      "type": "confirm",
+      "message": "Enable comments on blog posts?",
+      "default": false
+    }
+  ],
+  "hooks": {
+    "postInstall": ["{pm} generate"]
+  },
+  "files": [
+    {
+      "path": "files/blog-index-page.tsx",
+      "type": "block:page",
+      "target": "@routes/blog/page.tsx"
+    },
+    {
+      "path": "files/blog-posts-page.tsx",
+      "type": "block:page",
+      "target": "@routes/blog/posts/page.tsx"
+    },
+    {
+      "path": "files/blog-server-api.ts",
+      "type": "block:lib",
+      "target": "@lib/blog/server.ts"
+    },
+    {
+      "path": "files/blog-post-card.tsx",
+      "type": "block:component",
+      "target": "@components/blog/post-card.tsx"
+    },
+    {
+      "path": "files/use-blog.ts",
+      "type": "block:hook",
+      "target": "@hooks/use-blog.ts"
+    },
+    {
+      "path": "files/blog.config.ts",
+      "type": "block:source",
+      "target": "@lib/blog/config.ts"
+    }
+  ]
+}
