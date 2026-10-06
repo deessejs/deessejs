@@ -3,7 +3,7 @@
  * tested without pulling the React component, lucide icons, the
  * auth client, or the env schema into the test graph.
  *
- * See `apps/web/test/unit/user-menu.test.ts` for the pinned
+ * See `apps/web/tests/unit/user-menu.test.ts` for the pinned
  * expectations.
  */
 
