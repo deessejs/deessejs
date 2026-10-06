@@ -147,17 +147,20 @@ export default async function OpenSourcePage() {
       </Section>
 
       {/* 4. Standards */}
-      <section className="flex flex-col border-t border-border">
-        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            Standards
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            What ships with every template.
-          </h2>
+      {/*    Same Section + heading-24 shape as the saas-apps Stack
+           section. The content is <UseCaseStack> (not the brand
+           wall) because OSS standards are not brand logos: MIT
+           license, public roadmap, deessejs CLI, accepted registry. */}
+      <Section>
+        <div className="flex flex-col divide-y divide-border">
+          <div className="px-6 py-6 lg:px-10">
+            <p className="text-heading-24 tracking-tighter text-balance [&:not(:first-child)]:mt-0">
+              Built with the stack senior engineers ship on.
+            </p>
+          </div>
+          <UseCaseStack items={[...STACK]} />
         </div>
-        <UseCaseStack items={[...STACK]} />
-      </section>
+      </Section>
 
       {/* 5. Process */}
       <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">

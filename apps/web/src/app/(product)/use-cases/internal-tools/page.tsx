@@ -139,17 +139,21 @@ export default async function InternalToolsPage() {
       </Section>
 
       {/* 3. Stack */}
-      <section className="flex flex-col border-t border-border">
-        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            Stack
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            What runs on day one.
-          </h2>
+      {/*    Same TechStackGrid + same Section shape as the saas-apps
+           page (and the homepage + /pricing page). Header row on top,
+           brand wall underneath. The brand tiles rotate on a swap
+           animation, so the surface reads as a living tech stack
+           rather than a static logo dump. */}
+      <Section>
+        <div className="flex flex-col divide-y divide-border">
+          <div className="px-6 py-6 lg:px-10">
+            <p className="text-heading-24 tracking-tighter text-balance [&:not(:first-child)]:mt-0">
+              Built with the stack senior engineers ship on.
+            </p>
+          </div>
+          <TechStackGrid techs={STACK} />
         </div>
-        <TechStackGrid techs={STACK} />
-      </section>
+      </Section>
 
       {/* 4. Process */}
       <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
