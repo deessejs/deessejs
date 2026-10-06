@@ -180,8 +180,8 @@ export default async function AiProductsPage() {
       </Section>
 
       {/* 4. Process */}
-      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
+      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-12 lg:divide-x lg:divide-border">
+        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-3 lg:p-10">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
             Process
           </p>
@@ -189,7 +189,7 @@ export default async function AiProductsPage() {
             How an AI product ships.
           </h2>
         </div>
-        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
+        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-9 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
           {STEPS.map((step, idx) => (
             <li
               key={step.heading}
