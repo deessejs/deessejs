@@ -1,5 +1,5 @@
-import { CliWorkbench } from "@/app/(marketing)/_components/cli-workbench"
-import { CliInActionStatic } from "@/app/(marketing)/_components/cli-in-action-static"
+import { CliWorkbench } from "@/components/marketing/cli-workbench"
+import { CliInActionStatic } from "@/components/marketing/cli-in-action-static"
 import { Section } from "@/components/marketing/section"
 import type { EditorTabId } from "@/lib/marketing/cli-workbench-data"
 

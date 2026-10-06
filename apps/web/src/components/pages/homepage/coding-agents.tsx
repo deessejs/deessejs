@@ -1,4 +1,4 @@
-import { CodingAgentsDemo } from "@/app/(marketing)/_components/coding-agents-demo"
+import { CodingAgentsDemo } from "@/components/marketing/coding-agents-demo"
 import { Section } from "@/components/marketing/section"
 import { cn } from "@workspace/ui/lib/utils"
 import { CODING_AGENTS } from "@/lib/marketing/home-data"

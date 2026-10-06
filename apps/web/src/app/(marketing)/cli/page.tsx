@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
 import { codeToHtml } from "shiki"
 
-import { CliInActionEditorial } from "@/app/(marketing)/_components/cli-in-action-editorial"
-import { CliInActionStatic } from "@/app/(marketing)/_components/cli-in-action-static"
-import { CliWorkbench } from "@/app/(marketing)/_components/cli-workbench"
+import { CliInActionEditorial } from "@/components/marketing/cli-in-action-editorial"
+import { CliInActionStatic } from "@/components/marketing/cli-in-action-static"
+import { CliWorkbench } from "@/components/marketing/cli-workbench"
 import { Section } from "@/components/marketing/section"
 import { SectionHeader } from "@/components/marketing/section-header"
 import { FinalCta } from "@/components/pages/_shared/final-cta"

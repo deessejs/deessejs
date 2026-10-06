@@ -37,8 +37,8 @@ import {
 } from "@workspace/ui/components/tabs"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { EcosystemCodeMockup } from "@/app/(marketing)/_components/ecosystem-code-mockup"
-import { DotGrid } from "@/app/(marketing)/_components/dot-grid"
+import { EcosystemCodeMockup } from "@/components/marketing/ecosystem-code-mockup"
+import { DotGrid } from "@/components/marketing/dot-grid"
 
 /**
  * Tabbed view of four use-case pillars, used twice on every

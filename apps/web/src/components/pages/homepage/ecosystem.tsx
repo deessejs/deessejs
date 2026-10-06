@@ -2,12 +2,12 @@ import { codeToHtml } from "shiki"
 
 import { Section } from "@/components/marketing/section"
 import { SectionHeader } from "@/components/marketing/section-header"
-import { EcosystemTabs } from "@/app/(marketing)/_components/ecosystem-tabs"
+import { EcosystemTabs } from "@/components/marketing/ecosystem-tabs"
 
 import {
   ECOSYSTEM_SNIPPETS,
   type EcosystemSlug,
-} from "@/app/(marketing)/_components/ecosystem-snippets"
+} from "@/components/marketing/ecosystem-snippets"
 
 /**
  * Ecosystem section on the marketing homepage.

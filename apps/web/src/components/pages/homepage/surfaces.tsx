@@ -1,6 +1,6 @@
 import { Section } from "@/components/marketing/section"
 import { SectionHeader } from "@/components/marketing/section-header"
-import { SurfacesTabs } from "@/app/(marketing)/_components/surfaces-tabs"
+import { SurfacesTabs } from "@/components/marketing/surfaces-tabs"
 
 /** Surfaces — eyebrow + title + 8-surface tabbed grid. */
 export function Surfaces() {

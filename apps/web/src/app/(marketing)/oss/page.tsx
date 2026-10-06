@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { APP_CONFIG } from "@/lib/app-config"
-import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
+import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 import { Section } from "@/components/marketing/section"
 import { SectionHeader } from "@/components/marketing/section-header"
 import { FinalCta } from "@/components/pages/_shared/final-cta"

@@ -9,7 +9,7 @@ import {
 import { Section } from "@/components/marketing/section"
 import { SectionHeader } from "@/components/marketing/section-header"
 import { UseCaseHero } from "../_components/use-case-page"
-import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
+import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import {
   UseCaseTabs,
   type UseCaseTab,
