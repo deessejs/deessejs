@@ -4,14 +4,14 @@ import Link from "next/link"
 import {
   RelatedUseCases,
   type RelatedUseCaseItem,
-} from "../_components/related-use-cases"
+} from "@/components/product/use-case/related-use-cases"
 
 import { Section } from "@/components/marketing/section"
 import { SectionHeader } from "@/components/marketing/section-header"
-import { UseCaseHero } from "../_components/use-case-page"
+import { UseCaseHero } from "@/components/product/use-case/use-case-page"
 import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
-import { UseCaseTabs } from "../_components/use-case-tabs"
-import { MOBILE_BACKEND_SNIPPETS, type MobileBackendPillarSlug } from "../_components/mobile-backend-snippets"
+import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
+import { MOBILE_BACKEND_SNIPPETS, type MobileBackendPillarSlug } from "@/components/product/use-case/mobile-backend-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 import { GROUP_1, GROUP_2 } from "./mobile-backend-tabs"

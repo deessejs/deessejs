@@ -167,7 +167,7 @@ export default function OssPage() {
              and the application form on the right. Form is visual-only
              for now (submit disabled); the actual submission logic will
              be wired in a follow-up. See
-             `./_components/oss-application-form.tsx`. */}
+             `@/components/marketing/oss/oss-application-form`. */}
       <Section>
         <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
           <div className="flex flex-col gap-4 p-6 lg:p-10">

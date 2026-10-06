@@ -4,20 +4,20 @@ import { codeToHtml } from "shiki"
 import {
   RelatedUseCases,
   type RelatedUseCaseItem,
-} from "../_components/related-use-cases"
+} from "@/components/product/use-case/related-use-cases"
 
 import { Section } from "@/components/marketing/section"
 import { SectionHeader } from "@/components/marketing/section-header"
-import { UseCaseHero } from "../_components/use-case-page"
+import { UseCaseHero } from "@/components/product/use-case/use-case-page"
 import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import {
   UseCaseTabs,
   type UseCaseTab,
-} from "../_components/use-case-tabs"
+} from "@/components/product/use-case/use-case-tabs"
 import {
   SAAS_SNIPPETS,
   type SaasPillarSlug,
-} from "../_components/saas-snippets"
+} from "@/components/product/use-case/saas-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 import { APP_CONFIG } from "@/lib/app-config"
 

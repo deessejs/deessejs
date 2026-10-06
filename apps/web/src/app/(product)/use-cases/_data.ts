@@ -8,7 +8,7 @@
  * Use-case pages pick a curated subset via CAPABILITIES_BY_USE_CASE so the
  * page surfaces only the capabilities that apply to that scenario. Each
  * capability may carry a `mockupSlug` — a key into the mockup registry
- * shipped by the use-cases tree (`_components/mockups/`). When set, the
+ * shipped by the use-cases tree (`src/components/product/mockups/`). When set, the
  * capability-tabs component renders that mockup as the "peek"
  * illustration when the capability card is selected.
  *
