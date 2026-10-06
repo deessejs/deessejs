@@ -6,8 +6,8 @@ import {
   type RelatedUseCaseItem,
 } from "../_components/related-use-cases"
 
-import { Section } from "@/app/(marketing)/_components/section"
-import { SectionHeader } from "@/app/(marketing)/_components/section-header"
+import { Section } from "@/components/marketing/section"
+import { SectionHeader } from "@/components/marketing/section-header"
 import { UseCaseHero } from "../_components/use-case-page"
 import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
 import { UseCaseTabs } from "../_components/use-case-tabs"

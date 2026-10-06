@@ -1,4 +1,4 @@
-import { Section } from "@/app/(marketing)/_components/section"
+import { Section } from "@/components/marketing/section"
 import { StatsStrip } from "@/app/(marketing)/_components/stats-strip"
 import { STATS } from "@/lib/marketing/home-data"
 

@@ -1,5 +1,5 @@
-import { Section } from "@/app/(marketing)/_components/section"
-import { SectionHeader } from "@/app/(marketing)/_components/section-header"
+import { Section } from "@/components/marketing/section"
+import { SectionHeader } from "@/components/marketing/section-header"
 import { ContractsGrid } from "@/app/(marketing)/_components/contracts-grid"
 import { CONTRACTS } from "@/lib/marketing/home-data"
 

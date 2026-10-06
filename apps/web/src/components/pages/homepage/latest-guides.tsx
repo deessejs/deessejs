@@ -1,7 +1,7 @@
 import { codeToHtml } from "shiki"
 import { allKbGuides } from "content-collections"
 
-import { Section } from "@/app/(marketing)/_components/section"
+import { Section } from "@/components/marketing/section"
 import { LatestGuidesSection } from "@/app/(marketing)/_components/latest-guides-section"
 import {
   LATEST_GUIDES_SNIPPETS,

@@ -1,4 +1,4 @@
-import { Section } from "@/app/(marketing)/_components/section"
+import { Section } from "@/components/marketing/section"
 import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
 import { TECH_STACK } from "@/lib/marketing/home-data"
 

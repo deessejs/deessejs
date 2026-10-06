@@ -12,7 +12,7 @@ import {
 } from "@workspace/ui/components/carousel"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { SectionHeader } from "@/app/(marketing)/_components/section-header"
+import { SectionHeader } from "@/components/marketing/section-header"
 import { AuthorAvatarLink } from "@/components/blog/author-avatar"
 
 /**

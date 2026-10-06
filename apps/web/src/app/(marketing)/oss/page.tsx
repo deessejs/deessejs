@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 import { APP_CONFIG } from "@/lib/app-config"
 import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
-import { Section } from "@/app/(marketing)/_components/section"
-import { SectionHeader } from "@/app/(marketing)/_components/section-header"
+import { Section } from "@/components/marketing/section"
+import { SectionHeader } from "@/components/marketing/section-header"
 import { FinalCta } from "@/components/pages/_shared/final-cta"
 
 import { APPLY_STEPS, ELIGIBILITY, WHAT_YOU_GET } from "./_components/oss-content"

@@ -1,6 +1,6 @@
 import { CliWorkbench } from "@/app/(marketing)/_components/cli-workbench"
 import { CliInActionStatic } from "@/app/(marketing)/_components/cli-in-action-static"
-import { Section } from "@/app/(marketing)/_components/section"
+import { Section } from "@/components/marketing/section"
 import type { EditorTabId } from "@/lib/marketing/cli-workbench-data"
 
 /**

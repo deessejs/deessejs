@@ -1,4 +1,4 @@
-import { Section } from "@/app/(marketing)/_components/section"
+import { Section } from "@/components/marketing/section"
 import { FAQ } from "./faq"
 
 /**
