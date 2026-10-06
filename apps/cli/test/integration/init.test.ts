@@ -118,7 +118,13 @@ const runInit = async (
   withEnv(
     {
       DEESSEJS_API_URL: registry.url,
-      DEESSEJS_GITHUB_RAW_BASE: registry.url,
+      // The fake mounts raw content at
+      // `/raw.githubusercontent.com/...`. Production uses
+      // `https://raw.githubusercontent.com` (which already
+      // includes the path segment). We mirror the production
+      // shape so the test exercises the same URL construction
+      // as prod.
+      DEESSEJS_GITHUB_RAW_BASE: `${registry.url}/raw.githubusercontent.com`,
     },
     async () =>
       withHome(sandbox, async () =>

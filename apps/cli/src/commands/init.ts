@@ -149,20 +149,26 @@ const githubRawBase = (): string =>
  * `packages/registry-client/src/github.ts` (GitHub-direct path)
  * and `packages/api/src/http/routes/registry.ts` (API path) so
  * the consumer-side `fetch` reaches the same host.
+ *
+ * `DEESSEJS_GITHUB_RAW_BASE` is the raw content host root — its
+ * default is `https://raw.githubusercontent.com` (note: includes
+ * the `/raw.githubusercontent.com` path segment, not just the
+ * origin). The SDK's `getTemplateFromGithub` appends
+ * `/<owner>/<repo>/<ref>/<path>` directly to that base. We follow
+ * the same convention so a single `DEESSEJS_GITHUB_RAW_BASE`
+ * override redirects the descriptor fetch, the per-file fetches,
+ * and any future code path.
  */
 const buildFileUrl = (
   rt: ResolvedTemplate,
   filePath: string,
 ): string => {
   const ref = rt.treeRef || rt.descriptor.source.ref
-  // GitHub's raw content host serves from `/<owner>/<repo>/<ref>/<path>`.
-  // `DEESSEJS_GITHUB_RAW_BASE` includes the scheme + host only (the
-  // fake test server intercepts at `/raw.githubusercontent.com/...`).
   const base = githubRawBase()
-  const repoPath = base.endsWith("/")
-    ? base
-    : `${base}/raw.githubusercontent.com/${rt.descriptor.source.repo}/${ref}`
-  return `${repoPath}/${filePath}`
+  // Strip a single trailing slash — the base may end with one
+  // (some users set `DEESSEJS_GITHUB_RAW_BASE=http://.../`).
+  const trimmed = base.endsWith("/") ? base.slice(0, -1) : base
+  return `${trimmed}/${rt.descriptor.source.repo}/${ref}/${filePath}`
 }
 
 /**
