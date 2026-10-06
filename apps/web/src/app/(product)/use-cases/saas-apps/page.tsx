@@ -11,9 +11,9 @@ import { SectionHeader } from "@/app/(marketing)/_components/section-header"
 import { UseCaseHero } from "../_components/use-case-page"
 import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
 import {
-  SaasPillarsTabs,
-  type SaasPillarTab,
-} from "../_components/saas-pillars-tabs"
+  UseCaseTabs,
+  type UseCaseTab,
+} from "../_components/use-case-tabs"
 import {
   SAAS_SNIPPETS,
   type SaasPillarSlug,
@@ -125,7 +125,7 @@ const BUILT_TEMPLATES = [
  * read in the order a customer-facing product person cares
  * about first, then the order an on-call engineer cares about.
  */
-type PillarEntry = SaasPillarTab & { id: SaasPillarSlug }
+type PillarEntry = UseCaseTab & { id: SaasPillarSlug }
 
 const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
   {
@@ -194,11 +194,11 @@ const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
   },
 ]
 
-const PILLARS_GROUP_1: ReadonlyArray<SaasPillarTab> = PILLAR_ENTRIES.filter(
+const PILLARS_GROUP_1: ReadonlyArray<UseCaseTab> = PILLAR_ENTRIES.filter(
   (p) => p.id === "auth" || p.id === "billing" || p.id === "admin" || p.id === "database",
 )
 
-const PILLARS_GROUP_2: ReadonlyArray<SaasPillarTab> = PILLAR_ENTRIES.filter(
+const PILLARS_GROUP_2: ReadonlyArray<UseCaseTab> = PILLAR_ENTRIES.filter(
   (p) => p.id === "api" || p.id === "mcp" || p.id === "jobs" || p.id === "mail",
 )
 
@@ -211,7 +211,7 @@ const PILLARS_GROUP_2: ReadonlyArray<SaasPillarTab> = PILLAR_ENTRIES.filter(
  */
 export default async function SaasAppsPage() {
   // Pre-render the eight saas pillar snippets server-side via Shiki,
-  // so the SaasPillarsTabs Client Component below receives plain
+  // so the UseCaseTabs Client Component below receives plain
   // highlighted HTML strings (Next 16 forbids async Server Components
   // as children of Client Components). Same pattern as the homepage
   // Ecosystem section and the /cli CliStart section.
@@ -267,7 +267,7 @@ export default async function SaasAppsPage() {
           subtitle="The sub-systems every SaaS needs, wired against the same contract before the first commit. Two halves: what your customers see, and what keeps it running."
           bordered={true}
         />
-        <SaasPillarsTabs
+        <UseCaseTabs
           pillars={PILLARS_GROUP_1}
           htmlBySlug={htmlBySlug}
         />
@@ -280,7 +280,7 @@ export default async function SaasAppsPage() {
           subtitle="The four sub-systems an on-call engineer names first. Same contracts, same registry, same auth, just on the other side of the same RPC."
           bordered={true}
         />
-        <SaasPillarsTabs
+        <UseCaseTabs
           pillars={PILLARS_GROUP_2}
           htmlBySlug={htmlBySlug}
           reverse
