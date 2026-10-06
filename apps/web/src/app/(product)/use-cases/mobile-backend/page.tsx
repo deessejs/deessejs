@@ -32,6 +32,9 @@ const STACK = [
   { name: "Drizzle",     logo: "drizzle" },
   { name: "Expo",        logo: "expo" },
   { name: "Resend",      logo: "resend" },
+  { name: "Postgres",    logo: "postgresql" },
+  { name: "OpenTelemetry", logo: "cloudflare" },
+  { name: "Cloudflare",  logo: "cloudflare" },
 ] as const
 
 const STEPS = [

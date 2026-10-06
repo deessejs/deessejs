@@ -23,9 +23,14 @@ export const metadata: Metadata = {
 }
 
 const STACK = [
-  { name: "Astro",   logo: "astro" },
-  { name: "Tailwind", logo: "tailwindcss" },
+  { name: "Astro",         logo: "astro" },
+  { name: "Tailwind",      logo: "tailwindcss" },
   { name: "shadcn blocks", logo: "shadcnui" },
+  { name: "MDX",           logo: "shadcnui" },
+  { name: "RSS",           logo: "shadcnui" },
+  { name: "Sitemap",       logo: "shadcnui" },
+  { name: "Open Graph",    logo: "shadcnui" },
+  { name: "Analytics",     logo: "cloudflare" },
 ] as const
 
 const STEPS = [

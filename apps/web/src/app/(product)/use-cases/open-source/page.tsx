@@ -34,6 +34,10 @@ const STACK = [
   "Public roadmap",
   "deessejs CLI",
   "Accepted registry",
+  "Conventional commits",
+  "CHANGELOG.md",
+  "AGENTS.md",
+  "CODEOWNERS",
 ] as const
 
 const STEPS = [

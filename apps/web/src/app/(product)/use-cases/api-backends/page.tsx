@@ -27,10 +27,14 @@ export const metadata: Metadata = {
  * use-case pages so the brand display stays uniform.
  */
 const STACK = [
-  { name: "Hono",     logo: "cloudflare" },
-  { name: "oRPC",     logo: "cloudflare" },
-  { name: "Drizzle",  logo: "drizzle" },
-  { name: "Postgres", logo: "postgresql" },
+  { name: "Hono",        logo: "cloudflare" },
+  { name: "oRPC",        logo: "cloudflare" },
+  { name: "Drizzle",     logo: "drizzle" },
+  { name: "Postgres",    logo: "postgresql" },
+  { name: "Better Auth", logo: "betterauth" },
+  { name: "Cloudflare",  logo: "cloudflare" },
+  { name: "Turborepo",   logo: "vercel" },
+  { name: "Resend",      logo: "resend" },
 ] as const
 
 const STEPS = [

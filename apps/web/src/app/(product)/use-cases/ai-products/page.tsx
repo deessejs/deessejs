@@ -28,11 +28,14 @@ export const metadata: Metadata = {
  * surface, just with the AI-relevant technologies.
  */
 const STACK = [
-  { name: "Next.js",   logo: "vercel" },
-  { name: "AI SDK",    logo: "openai" },
-  { name: "OpenAI",    logo: "openai" },
-  { name: "pgvector",  logo: "postgresql" },
-  { name: "Resend",    logo: "resend" },
+  { name: "Next.js",     logo: "vercel" },
+  { name: "AI SDK",      logo: "openai" },
+  { name: "OpenAI",      logo: "openai" },
+  { name: "pgvector",    logo: "postgresql" },
+  { name: "Drizzle",     logo: "drizzle" },
+  { name: "Better Auth",  logo: "betterauth" },
+  { name: "Cloudflare",  logo: "cloudflare" },
+  { name: "Resend",      logo: "resend" },
 ] as const
 
 const STEPS = [

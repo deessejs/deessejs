@@ -31,6 +31,10 @@ const STACK = [
   { name: "Better Auth", logo: "betterauth" },
   { name: "TanStack",    logo: "cloudflare" },
   { name: "shadcn/ui",   logo: "shadcnui" },
+  { name: "Drizzle",     logo: "drizzle" },
+  { name: "Postgres",    logo: "postgresql" },
+  { name: "Turborepo",   logo: "vercel" },
+  { name: "Resend",      logo: "resend" },
 ] as const
 
 const STEPS = [
