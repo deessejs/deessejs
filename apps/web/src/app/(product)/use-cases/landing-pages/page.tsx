@@ -1,14 +1,20 @@
 import type { Metadata } from "next"
+import { codeToHtml } from "shiki"
 import Link from "next/link"
 import {
   RelatedUseCases,
   type RelatedUseCaseItem,
 } from "../_components/related-use-cases"
 
+import { Section } from "@/app/(marketing)/_components/section"
+import { SectionHeader } from "@/app/(marketing)/_components/section-header"
 import { UseCaseHero } from "../_components/use-case-page"
 import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
-import { CapabilityClustersSection } from "../_components/capability-cluster"
+import { UseCaseTabs } from "../_components/use-case-tabs"
+import { LANDING_PAGES_SNIPPETS, type LandingPagesPillarSlug } from "../_components/landing-pages-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
+
+import { GROUP_1, GROUP_2 } from "./landing-pages-tabs"
 
 export const metadata: Metadata = {
   title: "Landing pages | DeesseJS",
@@ -16,10 +22,6 @@ export const metadata: Metadata = {
     "High-converting marketing surfaces, tuned for the B2B SaaS shelf.",
 }
 
-/**
- * Stack specific to the landing-page surface. Same shape as the
- * other use-case pages so the brand display stays uniform.
- */
 const STACK = [
   { name: "Astro",   logo: "astro" },
   { name: "Tailwind", logo: "tailwindcss" },
@@ -72,137 +74,26 @@ const BUILT_TEMPLATES = [
   { slug: "changelog",        title: "changelog",        body: "Tagged entries + author credits + RSS feed." },
 ] as const
 
-/**
- * The landing-page use-case is auto-referential: every block on
- * the marketing site is also a block the buyer can drop into
- * their own page. The four clusters below mirror the four
- * structural pieces the DeesseJS marketing uses itself.
- */
-const CAPABILITY_CLUSTERS = [
-  {
-    id: "hero-and-promise",
-    iconName: "Sparkles",
-    title: "Hero & promise",
-    lead:
-      "The first 50px above the fold. Earn the click in five seconds or lose the visitor for the day.",
-    rows: [
-      {
-        id: "headline-subline",
-        title: "Headline + sub-line",
-        body:
-          "The hero carries one declarative promise, one sentence of context, and one primary CTA. Eyebrow + lead + dual CTA is the recipe. No carousel, no stock imagery, no slider.",
-      },
-      {
-        id: "specificity",
-        title: "Specificity beats superlatives",
-        body:
-          "Concrete promises outperform adjectives. 'Ship a B2B SaaS with auth, billing, and a working dashboard on day one' outperforms 'the best platform for your business needs'.",
-      },
-      {
-        id: "dual-cta",
-        title: "Two doors, one hero",
-        body:
-          "Self-serve + engagement, side by side. Different buyers, same page. Both visible above the fold; the page never forces a single funnel.",
-      },
-    ],
-  },
-  {
-    id: "surface-grid",
-    iconName: "Layers",
-    title: "Surface grid",
-    lead:
-      "Show what the registry covers, not what the product is. Surfaces over templates: SaaS, AI, mobile, desktop, CLIs, APIs, blogs, e-commerce.",
-    rows: [
-      {
-        id: "surface-tiles",
-        title: "Surface tiles, not product tour",
-        body:
-          "The grid lists categories of work the visitor can ship with the registry. Eight tiles in two rows reads as a portfolio, not a feature dump.",
-      },
-      {
-        id: "tabbed-explorer",
-        title: "Tabbed deep-dive",
-        body:
-          "Selecting a tile reveals what the registry ships for that surface — a few paragraphs of selling copy, a working mockup, an install hint. The same tabbed pattern on the homepage.",
-      },
-      {
-        id: "self-referential",
-        title: "Self-referential surfaces",
-        body:
-          "Each surface tile points at a use-case page that documents the surface in detail. The landing page IS the registry's overview — clicking a tile never leaves the marketing site.",
-      },
-    ],
-  },
-  {
-    id: "authority",
-    iconName: "ShieldCheck",
-    title: "Authority",
-    lead:
-      "Earn trust without testimonials. Manifesto + KB docs + public changelog. Evidence that the team ships, on the same domain.",
-    rows: [
-      {
-        id: "manifesto",
-        title: "Manifesto link",
-        body:
-          "The page points at a manifesto that explains why the work exists. Buyers read the manifesto before they read the pricing; the manifesto carries the conviction the rest of the page inherits.",
-      },
-      {
-        id: "docs-link",
-        title: "Knowledge base link",
-        body:
-          "A live docs surface, not a screenshot of one. The KB articles the visitor can search are the same articles they will live with after they buy.",
-      },
-      {
-        id: "changelog-link",
-        title: "Public changelog",
-        body:
-          "A versioned changelog is the receipt that the team ships. The presence of one is more convincing than any testimonial.",
-      },
-    ],
-  },
-  {
-    id: "process-and-cta",
-    iconName: "Workflow",
-    title: "Process & CTA",
-    lead:
-      "From interest to commitment. Numbered steps the visitor can mentally complete in one read, then a final CTA that asks for the close.",
-    rows: [
-      {
-        id: "numbered-steps",
-        title: "Numbered steps, not marketing prose",
-        body:
-          "Three to five steps the visitor can rephrase back to a colleague. The numbered cadence reads as 'this is how shipping works' rather than 'this is what we want you to believe'.",
-      },
-      {
-        id: "stack-block",
-        title: "Stack block",
-        body:
-          "The names of the technologies the page ships with — Next.js, Better Auth, Drizzle, Stripe, Resend. Senior visitors scan the stack before they read the copy.",
-      },
-      {
-        id: "two-door-cta",
-        title: "Two-door CTA",
-        body:
-          "Self-serve side by side with engagement. No single funnel forced on every visitor; no contact form the visitor must fill to see pricing.",
-      },
-    ],
-  },
-] as const
+export default async function LandingPagesPage() {
+  const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
+    "hero-block": [], "surface-grid": [], "authority-block": [], "process-cta": [],
+    "headline-spec": [], "tabbed-explorer": [], "kb-link": [], "numbered-steps": [],
+  }
 
-/**
- * No mockups for the landing-page use case. The clusters ARE
- * the surface the buyer is shipping, so a mocked-up version of
- * the marketing site reading itself would be noise. The right
- * column renders a quiet preview panel for every cluster.
- */
-const CLUSTER_MOCKUPS = {
-  "hero-and-promise": undefined,
-  "surface-grid":      undefined,
-  authority:           undefined,
-  "process-and-cta":   undefined,
-} as const
+  await Promise.all(
+    (Object.keys(LANDING_PAGES_SNIPPETS) as LandingPagesPillarSlug[]).flatMap((slug) =>
+      LANDING_PAGES_SNIPPETS[slug].files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        }),
+      ),
+    ),
+  )
 
-export default function LandingPagesPage() {
   return (
     <div className="flex flex-col">
       {/* 1. Hero */}
@@ -220,27 +111,29 @@ export default function LandingPagesPage() {
         }}
       />
 
-      {/* 2. What's in the box — self-referential structure */}
-      <section className="border-b border-border">
-        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            What&apos;s in the box
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            The four structural blocks every landing page needs.
-          </h2>
-          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            The same blocks the marketing site you are reading
-            ships with. Add or remove as your story needs.
-          </p>
-        </div>
-        <CapabilityClustersSection
-          clusters={CAPABILITY_CLUSTERS}
-          mockups={CLUSTER_MOCKUPS}
+      {/* 2. What's in the box — 4 tabs (structural blocks). */}
+      <Section>
+        <SectionHeader
+          eyebrow="What's in the box"
+          title="The four structural blocks every landing page needs."
+          subtitle="The same blocks the marketing site you are reading ships with. Add or remove as your story needs."
+          bordered={true}
         />
-      </section>
+        <UseCaseTabs pillars={GROUP_1} htmlBySlug={htmlBySlug} />
+      </Section>
 
-      {/* 3. Stack */}
+      {/* 3. Behind the curtain — 4 tabs (primitives), mirrored. */}
+      <Section>
+        <SectionHeader
+          eyebrow="Behind the curtain"
+          title="What keeps a landing page converting."
+          subtitle="The four primitives the template ships with. Headline spec, tabbed explorer, KB link, numbered steps — all the building blocks a buyer can drop into their own page."
+          bordered={true}
+        />
+        <UseCaseTabs pillars={GROUP_2} htmlBySlug={htmlBySlug} reverse />
+      </Section>
+
+      {/* 4. Stack */}
       <section className="flex flex-col border-t border-border">
         <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -253,7 +146,7 @@ export default function LandingPagesPage() {
         <TechStackGrid techs={STACK} />
       </section>
 
-      {/* 4. Process */}
+      {/* 5. Process */}
       <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
         <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -283,7 +176,7 @@ export default function LandingPagesPage() {
         </ol>
       </div>
 
-      {/* 5. Built on this */}
+      {/* 6. Built on this */}
       <section className="flex flex-col border-t border-border">
         <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -323,7 +216,7 @@ export default function LandingPagesPage() {
         </div>
       </section>
 
-      {/* 6. Related */}
+      {/* 7. Related */}
       <RelatedUseCases items={RELATED} />
 
       <FinalCta />

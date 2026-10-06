@@ -1,18 +1,20 @@
 import type { Metadata } from "next"
+import { codeToHtml } from "shiki"
 import Link from "next/link"
 import {
   RelatedUseCases,
   type RelatedUseCaseItem,
 } from "../_components/related-use-cases"
 
+import { Section } from "@/app/(marketing)/_components/section"
+import { SectionHeader } from "@/app/(marketing)/_components/section-header"
 import { UseCaseHero } from "../_components/use-case-page"
 import { UseCaseStack } from "../_components/use-case-stack"
-import { CapabilityClustersSection } from "../_components/capability-cluster"
-import {
-  CmsEditorMockup,
-  QueueLogMockup,
-} from "../_components/mockups"
+import { UseCaseTabs } from "../_components/use-case-tabs"
+import { OPEN_SOURCE_SNIPPETS, type OpenSourcePillarSlug } from "../_components/open-source-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
+
+import { GROUP_1, GROUP_2 } from "./open-source-tabs"
 
 export const metadata: Metadata = {
   title: "Open source | DeesseJS",
@@ -26,11 +28,6 @@ export const metadata: Metadata = {
  * them through <UseCaseStack> (which falls back to a mono-letter chip
  * for unbranded entries) instead of <TechStackGrid> (which expects a
  * /logos/<slug>.svg resolve).
- *
- * Note: this is the only migrated use-case page that still uses
- * <UseCaseStack>. The component is intentionally retained for any
- * surface whose stack list isn't a permutation of brand logos — the
- * other 6 pages use the animated <TechStackGrid>.
  */
 const STACK = [
   "MIT license",
@@ -90,142 +87,26 @@ const BUILT_TEMPLATES = [
   { slug: "versioning-rules", title: "versioning-rules", body: "Semver + changesets, enforced at the registry level." },
 ] as const
 
-/**
- * Four thematic clusters of capabilities for an open-source maintainer
- * (license hygiene, public CLI, community shape, release automation).
- * Same shape as /use-cases/saas-apps and /use-cases/ai-products.
- *
- * The two middle clusters (registry-cli, community-shapes) intentionally
- * have no mockup — they are the surface the registry ships, so a UI
- * preview would be self-referential. The cluster component falls back to
- * a quiet "preview unavailable" panel.
- */
-const CAPABILITY_CLUSTERS = [
-  {
-    id: "license-and-changelog",
-    iconName: "FileCode",
-    title: "License + changelog, day one",
-    lead:
-      "The two things every real OSS project has, written into the template from the first commit.",
-    rows: [
-      {
-        id: "mit-license",
-        title: "MIT baked into every template",
-        body:
-          "Every template ships with an MIT LICENSE file in the right place, the right name. No copy-paste from a previous project, no half-licensed dep tree. The registry checks at template acceptance.",
-      },
-      {
-        id: "changelog-driven",
-        title: "CHANGELOG.md, generated",
-        body:
-          "Conventional commits flow into CHANGELOG.md on every release. Not a manual edit, not a stale bullet from 18 months ago. The release notes read like the project has been alive for years.",
-      },
-      {
-        id: "public-roadmap",
-        title: "Public roadmap, written into the repo",
-        body:
-          "Roadmap lives at docs/roadmap/ in the repo, versioned with the code. Users see what's coming without subscribing to a Notion page maintained by one person.",
-      },
-    ],
-  },
-  {
-    id: "registry-cli",
-    iconName: "Package",
-    title: "The public registry CLI",
-    lead:
-      "Users install with one command and update with the same. They never need to learn the internal toolchain.",
-    rows: [
-      {
-        id: "deessejs-init",
-        title: "deessejs init — one command to scaffold",
-        body:
-          "Users run deessejs init <template>. The CLI resolves the version, scaffolds the project, installs deps. They never see a tarball URL, never edit a workflow file, never know what's underneath.",
-      },
-      {
-        id: "versioned-updates",
-        title: "Versioned updates, through the same path",
-        body:
-          "deessejs update bumps the user to the next template version, with the same changelog-style notes they get from any dependency. The update path is the install path — no separate upgrade ritual.",
-      },
-      {
-        id: "registry-discovery",
-        title: "Templates discoverable, not pinned in a doc",
-        body:
-          "deessejs list <query> resolves from the live registry, not from a hardcoded catalog. Templates appear when published, disappear when deprecated, version themselves naturally.",
-      },
-    ],
-  },
-  {
-    id: "community-shapes",
-    iconName: "Users",
-    title: "Same shape across contributors",
-    lead:
-      "A PR from outside the team lands in the same shape as one from inside. Conventions outlive the original author.",
-    rows: [
-      {
-        id: "agents-md",
-        title: "AGENTS.md at the template root",
-        body:
-          "Every template ships with an AGENTS.md at the root, describing the conventions a contributor needs to know. An outside contributor reads it once and writes code the same way the inside team does.",
-      },
-      {
-        id: "ci-checklist",
-        title: "CI enforces the checklist",
-        body:
-          "Typecheck, lint, format, dependency audit — the same checklist runs on every PR, internal or external. A contribution that doesn't pass the checklist isn't a contribution.",
-      },
-      {
-        id: "codeowners",
-        title: "CODEOWNERS routes reviews correctly",
-        body:
-          "Each area has an owner — not always the same person, but always someone who knows the surface. An outside PR to the auth layer doesn't wait for a maintainer who never touched auth to review it.",
-      },
-    ],
-  },
-  {
-    id: "release-automation",
-    iconName: "GitBranch",
-    title: "Releases that don't break",
-    lead:
-      "Tagged, tested, and announced through the channels the project already uses. No release-day scramble.",
-    rows: [
-      {
-        id: "changesets",
-        title: "Changesets, not guesswork",
-        body:
-          "Every PR carries a changeset. The release PR aggregates them; the maintainer reviews them; the registry publishes them. No 'oops, that was a breaking change' after the tag lands.",
-      },
-      {
-        id: "version-bump",
-        title: "Semver bumps, enforced",
-        body:
-          "Major, minor, patch — enforced at the registry level from the changeset content. A feat with a breaking change bumps major; a feat without breaking bumps minor. The version matches the change.",
-      },
-      {
-        id: "announce",
-        title: "GitHub release + published announcement",
-        body:
-          "The release job opens a GitHub release with the same notes the CHANGELOG carries, posts to the social channels the maintainer configures, and pings the consumers via the registry's update path.",
-      },
-    ],
-  },
-] as const
+export default async function OpenSourcePage() {
+  const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
+    "conventional-commits": [], "deessejs-init": [], "agents-md": [], "changeset-release": [],
+    "license-check": [], "deessejs-update": [], "codeowners-route": [], "semver-bump": [],
+  }
 
-/**
- * Mockup map keyed by cluster.id.
- *   - CmsEditorMockup  → License + changelog (renders a CHANGELOG-shaped page)
- *   - QueueLogMockup    → Release automation (release pipelines)
- *   - registry-cli, community-shapes → undefined (self-referential surfaces;
- *     the cluster component falls back to "preview unavailable")
- */
-const CLUSTER_MOCKUPS = {
-  "license-and-changelog": <CmsEditorMockup />,
-  "registry-cli":          undefined,
-  "community-shapes":      undefined,
-  "release-automation":    <QueueLogMockup />,
-} as const
+  await Promise.all(
+    (Object.keys(OPEN_SOURCE_SNIPPETS) as OpenSourcePillarSlug[]).flatMap((slug) =>
+      OPEN_SOURCE_SNIPPETS[slug].files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        }),
+      ),
+    ),
+  )
 
-export default function OpenSourcePage() {
   return (
     <div className="flex flex-col">
       {/* 1. Hero */}
@@ -243,31 +124,29 @@ export default function OpenSourcePage() {
         }}
       />
 
-      {/* 2. What's in the box — four capability clusters */}
-      <section className="border-b border-border">
-        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            What&apos;s in the box
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            The four sub-systems every OSS project needs.
-          </h2>
-          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Twelve capabilities grouped by the maintainer-side question
-            they answer. Pick a cluster, read what you actually get,
-            and ship it.
-          </p>
-        </div>
-        <CapabilityClustersSection
-          clusters={CAPABILITY_CLUSTERS}
-          mockups={CLUSTER_MOCKUPS}
+      {/* 2. What's in the box — 4 tabs (maintainer surface). */}
+      <Section>
+        <SectionHeader
+          eyebrow="What's in the box"
+          title="The four sub-systems every OSS project needs."
+          subtitle="Eight capabilities grouped by the maintainer-side question they answer. Two halves: what ships from day one, and what keeps the project alive for years."
+          bordered={true}
         />
-      </section>
+        <UseCaseTabs pillars={GROUP_1} htmlBySlug={htmlBySlug} />
+      </Section>
 
-      {/* 3. Stack (Standards) — semantic eyebrow kept from the prior
-          version. The other 4 migrated pages use "Stack"; the OSS
-          surface is wider than brand logos (license, roadmap, CLI,
-          registry acceptance) so "Standards" reads more honestly. */}
+      {/* 3. Behind the curtain — 4 tabs (release ops), mirrored. */}
+      <Section>
+        <SectionHeader
+          eyebrow="Behind the curtain"
+          title="What keeps an OSS project maintained."
+          subtitle="The four sub-systems a maintainer names first. License check, deessejs update, CODEOWNERS routing, semver bump — all on the same registry."
+          bordered={true}
+        />
+        <UseCaseTabs pillars={GROUP_2} htmlBySlug={htmlBySlug} reverse />
+      </Section>
+
+      {/* 4. Standards */}
       <section className="flex flex-col border-t border-border">
         <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -280,7 +159,7 @@ export default function OpenSourcePage() {
         <UseCaseStack items={[...STACK]} />
       </section>
 
-      {/* 4. Process */}
+      {/* 5. Process */}
       <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
         <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -310,7 +189,7 @@ export default function OpenSourcePage() {
         </ol>
       </div>
 
-      {/* 5. Built on this */}
+      {/* 6. Built on this */}
       <section className="flex flex-col border-t border-border">
         <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -349,7 +228,7 @@ export default function OpenSourcePage() {
         </div>
       </section>
 
-      {/* 6. Related */}
+      {/* 7. Related */}
       <RelatedUseCases items={RELATED} />
 
       <FinalCta />

@@ -1,19 +1,20 @@
 import type { Metadata } from "next"
+import { codeToHtml } from "shiki"
 import Link from "next/link"
 import {
   RelatedUseCases,
   type RelatedUseCaseItem,
 } from "../_components/related-use-cases"
 
+import { Section } from "@/app/(marketing)/_components/section"
+import { SectionHeader } from "@/app/(marketing)/_components/section-header"
 import { UseCaseHero } from "../_components/use-case-page"
 import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
-import { CapabilityClustersSection } from "../_components/capability-cluster"
-import {
-  AdminDashboardMockup,
-  ApiEndpointMockup,
-  AuthFlowMockup,
-} from "../_components/mockups"
+import { UseCaseTabs } from "../_components/use-case-tabs"
+import { INTERNAL_TOOLS_SNIPPETS, type InternalToolsPillarSlug } from "../_components/internal-tools-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
+
+import { GROUP_1, GROUP_2 } from "./internal-tools-tabs"
 
 export const metadata: Metadata = {
   title: "Internal tools | DeesseJS",
@@ -78,130 +79,26 @@ const BUILT_TEMPLATES = [
   { slug: "support-inbox",  title: "support-inbox",  body: "Tickets land in the same DB the customer uses." },
 ] as const
 
-/**
- * Four thematic clusters of capabilities for an internal-tools
- * buyer (operator console / support console). Same shape as
- * /use-cases/saas-apps and /use-cases/ai-products.
- */
-const CAPABILITY_CLUSTERS = [
-  {
-    id: "auth-and-rbac",
-    iconName: "Lock",
-    title: "Auth & RBAC",
-    lead:
-      "Operator identity sits behind the same wall as customer identity, with role-based gating.",
-    rows: [
-      {
-        id: "sso",
-        title: "SSO from your existing provider",
-        body:
-          "Better Auth wires the operator console against the same user table your customer app uses. No separate password store to provision, no separate rotation cycle.",
-      },
-      {
-        id: "rbac",
-        title: "Role-based access",
-        body:
-          "Scoped roles per operator: read-only, support, finance, ops. Role gates live on the procedure definition, not in a separate middleware you forget to wire up.",
-      },
-      {
-        id: "audit-log",
-        title: "Audit trail by default",
-        body:
-          "Every operator action records the actor, the action, and the target. Buyers in regulated verticals audit this in the first call.",
-      },
-    ],
-  },
-  {
-    id: "operator-console",
-    iconName: "Layers",
-    title: "Operator console",
-    lead:
-      "The surface the support team operates from. Same data the customer sees, scoped to the operator's role.",
-    rows: [
-      {
-        id: "users-table",
-        title: "Users table with bulk actions",
-        body:
-          "Searchable user table with role filters and bulk operations (impersonate, suspend, reset). Bulk actions hit the same RPC the customer API does, so the two never drift.",
-      },
-      {
-        id: "subscription-ops",
-        title: "Subscription overrides",
-        body:
-          "Override plans, refund invoices, extend trials — without writing SQL. Every override records the actor and the reason.",
-      },
-      {
-        id: "kpis",
-        title: "Live KPIs",
-        body:
-          "MRR, churn, active users, p95 latency. The numbers come from the same queries the product runs, so they're never a stale export.",
-      },
-    ],
-  },
-  {
-    id: "support-and-tickets",
-    iconName: "MessageSquare",
-    title: "Support & tickets",
-    lead:
-      "The inbox your support team works in. Tied to the product surface, not a separate vendor.",
-    rows: [
-      {
-        id: "ticket-in-context",
-        title: "Tickets in product context",
-        body:
-          "Support tickets open from any user detail and carry the full session history. No context-switching to a separate Zendesk tab to find what the customer did.",
-      },
-      {
-        id: "shared-data",
-        title: "Shared data, scoped writes",
-        body:
-          "Support can read everything; can write only the fields their role allows. The same typed schema governs both customer and operator actions.",
-      },
-      {
-        id: "csat",
-        title: "CSAT and time-to-first-response",
-        body:
-          "Per-operator response time and customer rating surface in the same dashboard. The data the support manager needs is on the same screen as the team.",
-      },
-    ],
-  },
-  {
-    id: "automation",
-    iconName: "Workflow",
-    title: "Automation",
-    lead:
-      "Background work the operator team sets up once and forgets.",
-    rows: [
-      {
-        id: "background-jobs",
-        title: "Background jobs",
-        body:
-          "Queues and retries wired against the same contract the rest of the app uses. Failed jobs visible in the same dashboard; retries are typed.",
-      },
-      {
-        id: "feature-flags",
-        title: "Feature flags",
-        body:
-          "Per-org, per-plan flag targeting with history. A flag turned off for an enterprise account last Tuesday is still queryable today.",
-      },
-      {
-        id: "scheduled",
-        title: "Scheduled tasks",
-        body:
-          "Cron-style tasks read the same schema, log to the same trace, fail with the same retry policy.",
-      },
-    ],
-  },
-] as const
+export default async function InternalToolsPage() {
+  const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
+    "better-auth-rbac": [], "admin-table": [], "ticket-in-context": [], "feature-flag": [],
+    "impersonate": [], "audit-replay": [], "csat-tracker": [], "scheduled-job": [],
+  }
 
-const CLUSTER_MOCKUPS = {
-  "auth-and-rbac":     <AuthFlowMockup />,
-  "operator-console":  <AdminDashboardMockup />,
-  "support-and-tickets": undefined,
-  automation:          <ApiEndpointMockup />,
-} as const
+  await Promise.all(
+    (Object.keys(INTERNAL_TOOLS_SNIPPETS) as InternalToolsPillarSlug[]).flatMap((slug) =>
+      INTERNAL_TOOLS_SNIPPETS[slug].files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        }),
+      ),
+    ),
+  )
 
-export default function InternalToolsPage() {
   return (
     <div className="flex flex-col">
       {/* 1. Hero */}
@@ -219,25 +116,27 @@ export default function InternalToolsPage() {
         }}
       />
 
-      {/* 2. What's in the box */}
-      <section className="border-b border-border">
-        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            What&apos;s in the box
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            The four sub-systems every internal tool needs.
-          </h2>
-          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Eleven capabilities grouped by the buyer-side question
-            they answer. Pick a cluster, read what you actually get.
-          </p>
-        </div>
-        <CapabilityClustersSection
-          clusters={CAPABILITY_CLUSTERS}
-          mockups={CLUSTER_MOCKUPS}
+      {/* 2. What's in the box — 4 tabs (customer surface). */}
+      <Section>
+        <SectionHeader
+          eyebrow="What's in the box"
+          title="The four sub-systems every internal tool needs."
+          subtitle="Eight capabilities grouped by the buyer-side question they answer. Two halves: what the operator sees, and what keeps the support team accountable."
+          bordered={true}
         />
-      </section>
+        <UseCaseTabs pillars={GROUP_1} htmlBySlug={htmlBySlug} />
+      </Section>
+
+      {/* 3. Behind the curtain — 4 tabs (governance), mirrored. */}
+      <Section>
+        <SectionHeader
+          eyebrow="Behind the curtain"
+          title="What keeps an internal tool safe."
+          subtitle="The four sub-systems an audit reviewer names first. Impersonation, audit replay, CSAT, scheduled jobs — all on the same typed contract as the customer surface."
+          bordered={true}
+        />
+        <UseCaseTabs pillars={GROUP_2} htmlBySlug={htmlBySlug} reverse />
+      </Section>
 
       {/* 3. Stack */}
       <section className="flex flex-col border-t border-border">

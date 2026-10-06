@@ -1,19 +1,20 @@
 import type { Metadata } from "next"
+import { codeToHtml } from "shiki"
 import Link from "next/link"
 import {
   RelatedUseCases,
   type RelatedUseCaseItem,
 } from "../_components/related-use-cases"
 
+import { Section } from "@/app/(marketing)/_components/section"
+import { SectionHeader } from "@/app/(marketing)/_components/section-header"
 import { UseCaseHero } from "../_components/use-case-page"
 import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
-import { CapabilityClustersSection } from "../_components/capability-cluster"
-import {
-  ApiEndpointMockup,
-  DbTerminalMockup,
-  OtelWaterfallMockup,
-} from "../_components/mockups"
+import { UseCaseTabs } from "../_components/use-case-tabs"
+import { API_BACKENDS_SNIPPETS, type ApiBackendsPillarSlug } from "../_components/api-backends-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
+
+import { GROUP_1, GROUP_2 } from "./api-backends-tabs"
 
 export const metadata: Metadata = {
   title: "API backends | DeesseJS",
@@ -82,138 +83,26 @@ const BUILT_TEMPLATES = [
   { slug: "webhook-receiver", title: "webhook-receiver", body: "Signed, retried, typed webhook ingestion." },
   { slug: "service-to-service", title: "service-to-service", body: "Internal RPC with token rotation and audit trail." },
 ] as const
+export default async function ApiBackendsPage() {
+  const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
+    "orpc-router": [], "drizzle-schema": [], "rate-limit": [], "audit-log": [],
+    "openapi-gen": [], "pgmem-test": [], "service-token": [], "otel-waterfall": [],
+  }
 
-/**
- * Four thematic clusters of capabilities for an API-backend buyer.
- * Plain prose, no marketing fluff — each row says what shape the
- * buyer actually ships.
- */
-const CAPABILITY_CLUSTERS = [
-  {
-    id: "typed-rpc",
-    iconName: "Workflow",
-    title: "Typed RPC",
-    lead:
-      "The wire format is the source of truth. Clients import the type; the server enforces it.",
-    rows: [
-      {
-        id: "router-as-schema",
-        title: "Router is the schema",
-        body:
-          "Procedures live in TypeScript. Inputs, outputs, and errors flow from the router, not from a hand-written DTO. Rename a property and every client fails the build the same day.",
-      },
-      {
-        id: "end-to-end-types",
-        title: "End-to-end typed clients",
-        body:
-          "Generated clients carry input/output types so call sites read like typed function calls. Refactors propagate through the typed layer instead of through stale documentation.",
-      },
-      {
-        id: "openapi",
-        title: "OpenAPI from the router",
-        body:
-          "OpenAPI is generated from the same router the typed clients see. Partner integrations consume a spec that is actually in sync with the implementation, not a hand-trimmed copy.",
-      },
-    ],
-  },
-  {
-    id: "storage",
-    iconName: "Database",
-    title: "Storage layer",
-    lead:
-      "The data shape that the contracts sit on top of. Swap providers without rewriting callers.",
-    rows: [
-      {
-        id: "drizzle",
-        title: "Drizzle by default",
-        body:
-          "Schemas live in TypeScript alongside the contracts. Migrations run from the same CLI you ship to ops. Postgres by default, swap to MySQL or SQLite without rewriting the API surface.",
-      },
-      {
-        id: "typed-queries",
-        title: "Typed queries",
-        body:
-          "Query builders carry the schema types end-to-end: a typo on a column name fails compilation. Tests use pg-mem so the test suite runs without a Postgres in CI.",
-      },
-      {
-        id: "migrations",
-        title: "Migration history",
-        body:
-          "Migrations are generated, never hand-edited. Drift between schema and migrations is impossible because the same source produces both.",
-      },
-    ],
-  },
-  {
-    id: "auth-and-perimeter",
-    iconName: "Lock",
-    title: "Auth & perimeter",
-    lead:
-      "Same auth and rate limits whether the caller is a user, a partner, or another service.",
-    rows: [
-      {
-        id: "auth-on-routes",
-        title: "Auth on every procedure",
-        body:
-          "Better Auth sessions validated per procedure. No global middleware that forgets to wrap the new route — the auth check is on the procedure definition itself.",
-      },
-      {
-        id: "rate-limits",
-        title: "Rate limits per route",
-        body:
-          "Per-route rate limits with named buckets, so /search has a different ceiling than /webhook. Limits surface in the same dashboard as the rest of observability.",
-      },
-      {
-        id: "service-tokens",
-        title: "Service-to-service tokens",
-        body:
-          "Internal callers get scoped, time-bound tokens with rotation. Audit log records every call, who issued the token, and which routes it has touched.",
-      },
-    ],
-  },
-  {
-    id: "observability",
-    iconName: "Activity",
-    title: "Observability",
-    lead:
-      "When a partner files an integration ticket, you already know what changed.",
-    rows: [
-      {
-        id: "otel-traces",
-        title: "OpenTelemetry traces",
-        body:
-          "Every request, every DB query, every outbound call carries a trace ID. One OpenTelemetry pipeline; no second dashboard to monitor.",
-      },
-      {
-        id: "errors-tagged",
-        title: "Errors tagged by procedure",
-        body:
-          "Errors carry the procedure name and the input shape that caused them. Stack traces are usable; breadcrumbs are not a separate system.",
-      },
-      {
-        id: "audit-log",
-        title: "Audit trail",
-        body:
-          "Sensitive operations record the actor, the action, and the resource. Buyers in regulated verticals audit this in the first call; you don't have to explain what 'comprehensive logging' looks like.",
-      },
-    ],
-  },
-] as const
+  await Promise.all(
+    (Object.keys(API_BACKENDS_SNIPPETS) as ApiBackendsPillarSlug[]).flatMap((slug) =>
+      API_BACKENDS_SNIPPETS[slug].files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        }),
+      ),
+    ),
+  )
 
-/**
- * One mockup per cluster. ApiEndpointMockup covers Typed RPC,
- * DbTerminalMockup covers Storage. Auth and Observability are
- * intentionally shown as static product surfaces — there is
- * no compelling ops-side visual for either, and a quiet
- * preview-unavailable panel would weaken the alternation.
- */
-const CLUSTER_MOCKUPS = {
-  "typed-rpc":           <ApiEndpointMockup />,
-  storage:               <DbTerminalMockup />,
-  "auth-and-perimeter":  undefined,
-  observability:         <OtelWaterfallMockup />,
-} as const
-
-export default function ApiBackendsPage() {
   return (
     <div className="flex flex-col">
       {/* 1. Hero */}
@@ -231,25 +120,27 @@ export default function ApiBackendsPage() {
         }}
       />
 
-      {/* 2. What's in the box — four capability clusters */}
-      <section className="border-b border-border">
-        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            What&apos;s in the box
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            The four sub-systems a service-only backend needs.
-          </h2>
-          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Twelve capabilities grouped by the buyer-side question
-            they answer. Pick a cluster, read what you actually ship.
-          </p>
-        </div>
-        <CapabilityClustersSection
-          clusters={CAPABILITY_CLUSTERS}
-          mockups={CLUSTER_MOCKUPS}
+      {/* 2. What's in the box — 4 tabs (customer surface). */}
+      <Section>
+        <SectionHeader
+          eyebrow="What's in the box"
+          title="The four sub-systems a service-only backend needs."
+          subtitle="Eight capabilities grouped by the buyer-side question they answer. Two halves: what the partner integration calls, and what keeps the service running in production."
+          bordered={true}
         />
-      </section>
+        <UseCaseTabs pillars={GROUP_1} htmlBySlug={htmlBySlug} />
+      </Section>
+
+      {/* 3. Behind the curtain — 4 tabs (operational), mirrored. */}
+      <Section>
+        <SectionHeader
+          eyebrow="Behind the curtain"
+          title="What keeps an API serviceable."
+          subtitle="The four sub-systems an on-call engineer names first. OpenAPI generation, the test harness, service tokens, audit log — all on the same typed contract."
+          bordered={true}
+        />
+        <UseCaseTabs pillars={GROUP_2} htmlBySlug={htmlBySlug} reverse />
+      </Section>
 
       {/* 3. Stack */}
       <section className="flex flex-col border-t border-border">

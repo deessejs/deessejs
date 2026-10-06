@@ -1,20 +1,20 @@
 import type { Metadata } from "next"
+import { codeToHtml } from "shiki"
 import Link from "next/link"
 import {
   RelatedUseCases,
   type RelatedUseCaseItem,
 } from "../_components/related-use-cases"
 
+import { Section } from "@/app/(marketing)/_components/section"
+import { SectionHeader } from "@/app/(marketing)/_components/section-header"
 import { UseCaseHero } from "../_components/use-case-page"
 import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
-import { CapabilityClustersSection } from "../_components/capability-cluster"
-import {
-  ApiEndpointMockup,
-  AuthFlowMockup,
-  NotificationsInboxMockup,
-  OtelWaterfallMockup,
-} from "../_components/mockups"
+import { UseCaseTabs } from "../_components/use-case-tabs"
+import { MOBILE_BACKEND_SNIPPETS, type MobileBackendPillarSlug } from "../_components/mobile-backend-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
+
+import { GROUP_1, GROUP_2 } from "./mobile-backend-tabs"
 
 export const metadata: Metadata = {
   title: "Mobile backend | DeesseJS",
@@ -84,138 +84,26 @@ const BUILT_TEMPLATES = [
   { slug: "push-relay",    title: "push-relay",    body: "Expo push + Resend, routed through your existing queue." },
   { slug: "device-traces", title: "device-traces", body: "OpenTelemetry spans from the client into the same backend." },
 ] as const
+export default async function MobileBackendPage() {
+  const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
+    "better-auth-session": [], "drizzle-offline-queue": [], "expo-push-relay": [], "otel-client-span": [],
+    "app-attest": [], "conflict-resolve": [], "targeting-query": [], "crash-correlate": [],
+  }
 
-/**
- * Four thematic clusters of capabilities for a mobile-backend buyer
- * (native client side of the same backend). Same shape as
- * /use-cases/saas-apps and /use-cases/ai-products.
- */
-const CAPABILITY_CLUSTERS = [
-  {
-    id: "identity",
-    iconName: "Lock",
-    title: "Identity across form factors",
-    lead:
-      "The same user table, the same session token, the same org boundary — phone, web, watch, tablet.",
-    rows: [
-      {
-        id: "shared-session",
-        title: "Sessions shared with the web app",
-        body:
-          "Better Auth issues a single session, validated by the same public key from the web app. Sign in on web, pick up on the device. The device's session isn't a separate identity to provision, rotate, or revoke — it lives next to the user's other sessions.",
-      },
-      {
-        id: "platform-attestation",
-        title: "Apple/Google attestation, optional",
-        body:
-          "For apps that need it, App Attest and Play Integrity sit on top of the same session. Verified against the same auth middleware the rest of your app uses, with no second vendor to contract.",
-      },
-      {
-        id: "org-scoped",
-        title: "Org-scoped, by default",
-        body:
-          "A device belongs to one org at a time, but switching works. The session carries the org boundary the same way the web session does — the device never sees cross-org data without an explicit org switch.",
-      },
-    ],
-  },
-  {
-    id: "offline-sync",
-    iconName: "RefreshCw",
-    title: "Offline-first sync",
-    lead:
-      "The client can lose the network and still ship work. The server reconciles on reconnect, not on tap.",
-    rows: [
-      {
-        id: "drizzle-cache",
-        title: "Drizzle shapes the offline cache",
-        body:
-          "The same Drizzle schema your server reads defines the offline cache on the device. Reads return from cache, writes queue locally, the reconciler replays them on reconnect — no separate ORM on the client.",
-      },
-      {
-        id: "realtime-bridge",
-        title: "Realtime bridge, opt-in",
-        body:
-          "When the network is there, Server-Sent Events push the same deltas your web client already gets. The bridge lives on your existing oRPC procedure, not a third pub/sub.",
-      },
-      {
-        id: "conflict-resolution",
-        title: "Conflict resolution at the source",
-        body:
-          "Conflicts resolve at the row, not the row+timestamp table. The same Drizzle migration runs offline; the server applies the migration on first reconnect; the client and the server converge on the same schema.",
-      },
-    ],
-  },
-  {
-    id: "push-and-realtime",
-    iconName: "BellRing",
-    title: "Push + realtime channels",
-    lead:
-      "Wake the app for what matters. Don't wake it for what doesn't.",
-    rows: [
-      {
-        id: "expo-push",
-        title: "Expo Push, through your queue",
-        body:
-          "Push notifications route through the same background-job contract the rest of your app uses. A delayed job is a delayed push; a failed push is a retryable job. The queue's dashboard is the push dashboard.",
-      },
-      {
-        id: "targeting",
-        title: "Targeting at the schema level",
-        body:
-          "Push targets resolve from the same query layer web push uses — org, role, last-active, geo. The targeting rules live next to the notification, not in a separate vendor console.",
-      },
-      {
-        id: "in-app-inbox",
-        title: "In-app inbox, shared with email",
-        body:
-          "An in-app inbox the user can scan when push misses (or when they've silenced notifications). The inbox is a query against the same notification table your transactional mail reads — one source of truth.",
-      },
-    ],
-  },
-  {
-    id: "observability",
-    iconName: "Activity",
-    title: "Device + network observability",
-    lead:
-      "What happened on the phone, end to end. Same traces as the web app, in the same dashboard.",
-    rows: [
-      {
-        id: "client-traces",
-        title: "Spans from the device",
-        body:
-          "OpenTelemetry spans from the device (cold start, first paint, network roundtrip) land on the same pipeline your HTTP routes already use. A 5-second cold start on a Pixel 7 has a trace ID you can grep.",
-      },
-      {
-        id: "crash-and-anr",
-        title: "Crash + ANR reports, correlated",
-        body:
-          "Crash and ANR reports reference the trace ID of the failing request. The support engineer can answer 'why did this user get stuck on the checkout screen?' from a single run, not three.",
-      },
-      {
-        id: "cost-and-battery",
-        title: "Battery + cost budgets",
-        body:
-          "Per-device battery cost and per-session network budget surface in the same dashboard as your server costs. A backround-job pattern that burns the user's battery is a bug, not a feature.",
-      },
-    ],
-  },
-] as const
+  await Promise.all(
+    (Object.keys(MOBILE_BACKEND_SNIPPETS) as MobileBackendPillarSlug[]).flatMap((slug) =>
+      MOBILE_BACKEND_SNIPPETS[slug].files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        }),
+      ),
+    ),
+  )
 
-/**
- * Mockup map keyed by cluster.id. One real mockup per cluster.
- *   - AuthFlowMockup             → Identity
- *   - ApiEndpointMockup          → Offline sync (RPC contract view)
- *   - NotificationsInboxMockup   → Push + realtime
- *   - OtelWaterfallMockup        → Observability
- */
-const CLUSTER_MOCKUPS = {
-  "identity":          <AuthFlowMockup />,
-  "offline-sync":      <ApiEndpointMockup />,
-  "push-and-realtime": <NotificationsInboxMockup />,
-  "observability":     <OtelWaterfallMockup />,
-} as const
-
-export default function MobileBackendPage() {
   return (
     <div className="flex flex-col">
       {/* 1. Hero */}
@@ -233,26 +121,27 @@ export default function MobileBackendPage() {
         }}
       />
 
-      {/* 2. What's in the box — four capability clusters */}
-      <section className="border-b border-border">
-        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            What&apos;s in the box
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            The four sub-systems every mobile app needs.
-          </h2>
-          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Twelve capabilities grouped by the buyer-side question
-            they answer. Pick a cluster, read what you actually get,
-            and ship it.
-          </p>
-        </div>
-        <CapabilityClustersSection
-          clusters={CAPABILITY_CLUSTERS}
-          mockups={CLUSTER_MOCKUPS}
+      {/* 2. What's in the box — 4 tabs (customer surface). */}
+      <Section>
+        <SectionHeader
+          eyebrow="What's in the box"
+          title="The four sub-systems every mobile app needs."
+          subtitle="Eight capabilities grouped by the buyer-side question they answer. Two halves: what the user does on the device, and what keeps the app in sync with the backend."
+          bordered={true}
         />
-      </section>
+        <UseCaseTabs pillars={GROUP_1} htmlBySlug={htmlBySlug} />
+      </Section>
+
+      {/* 3. Behind the curtain — 4 tabs (device), mirrored. */}
+      <Section>
+        <SectionHeader
+          eyebrow="Behind the curtain"
+          title="What keeps a mobile app in sync."
+          subtitle="The four sub-systems a mobile engineer names first. App Attest, conflict resolution, targeting query, crash correlation — all on the same typed contract as the web app."
+          bordered={true}
+        />
+        <UseCaseTabs pillars={GROUP_2} htmlBySlug={htmlBySlug} reverse />
+      </Section>
 
       {/* 3. Stack */}
       <section className="flex flex-col border-t border-border">

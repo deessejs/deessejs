@@ -84,9 +84,9 @@ const licenseCheckFile: OpenSourcePillarSnippet = {
   code: `import { readFile } from "node:fs/promises"
 
 export const assertMit = async (cwd: string) => {
-  const license = await readFile(\`\${cwd}/LICENSE\`, "utf8\")
+  const license = await readFile(cwd + "/LICENSE", "utf8")
   if (!license.startsWith("MIT License")) {
-    throw new Error(\`\${cwd} is not MIT-licensed\`)
+    throw new Error(cwd + " is not MIT-licensed")
   }
 }`,
 }
