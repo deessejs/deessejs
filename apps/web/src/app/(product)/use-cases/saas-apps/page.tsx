@@ -1,27 +1,53 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
-
-import { UseCaseHero } from "../_components/use-case-page"
-import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
-import { CapabilityClustersSection } from "../_components/capability-cluster"
+import { codeToHtml } from "shiki"
 import {
-  AdminDashboardMockup,
-  BillingWidgetMockup,
-  OnboardingMockup,
-  QueueLogMockup,
-} from "../_components/mockups"
+  RelatedUseCases,
+  type RelatedUseCaseItem,
+} from "@/components/product/use-case/related-use-cases"
+
+import { Section } from "@/components/marketing/section"
+import { SectionHeader } from "@/components/marketing/section-header"
+import { UseCaseHero } from "@/components/product/use-case/use-case-page"
+import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
+import {
+  UseCaseTabs,
+  type UseCaseTab,
+} from "@/components/product/use-case/use-case-tabs"
+import {
+  SAAS_SNIPPETS,
+  type SaasPillarSlug,
+} from "@/components/product/use-case/saas-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
+import { APP_CONFIG } from "@/lib/app-config"
 
 export const metadata: Metadata = {
   title: "SaaS apps | DeesseJS",
   description:
-    "Multi-tenant B2B SaaS with auth, billing, and a working dashboard on day one.",
+    "Multi-tenant B2B SaaS with auth, billing, jobs, mail, DB, admin, and a working API on day one.",
+  alternates: {
+    canonical: "/use-cases/saas-apps",
+  },
+  openGraph: {
+    title: "SaaS apps | DeesseJS",
+    description:
+      "Multi-tenant B2B SaaS with auth, billing, jobs, mail, DB, admin, and a working API on day one.",
+    siteName: APP_CONFIG.name,
+    locale: "en_US",
+    url: "/use-cases/saas-apps",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SaaS apps | DeesseJS",
+    description:
+      "Multi-tenant B2B SaaS with auth, billing, jobs, mail, DB, admin, and a working API on day one.",
+  },
 }
 
 /**
- * Stack specific to the SaaS surface. Six brands, same set the
- * hero CTA already names implicitly. Re-rendered through
+ * Stack specific to the SaaS surface. Same eight brands the
+ * homepage and /pricing page ship on, so the brand wall reads
+ * the same way across every surface. Re-rendered through
  * <TechStackGrid> (the same component the homepage + pricing
  * page use) so every brand display on the site stays in lockstep.
  */
@@ -31,7 +57,9 @@ const STACK = [
   { name: "Drizzle",     logo: "drizzle" },
   { name: "Postgres",    logo: "postgresql" },
   { name: "Stripe",      logo: "stripe" },
+  { name: "Cloudflare",  logo: "cloudflare" },
   { name: "Resend",      logo: "resend" },
+  { name: "OpenAI",      logo: "openai" },
 ] as const
 
 const STEPS = [
@@ -41,7 +69,7 @@ const STEPS = [
   },
   {
     heading: "Wire your domain",
-    body: "Replace the placeholder with the product. The eight capabilities stay stable, so the surface you ship to customers is the only thing that changes.",
+    body: "Replace the placeholder with the product. The eight pillars stay stable, so the surface you ship to customers is the only thing that changes.",
   },
   {
     heading: "Ship to your first customer",
@@ -68,11 +96,11 @@ const RELATED = [
     tagline:
       "RAG, chat, and agents wired against the same contracts your app uses.",
   },
-] as const
+] as const satisfies ReadonlyArray<RelatedUseCaseItem>
 
 /**
  * First-party templates the org has built on this surface. They
- * each ship on their own hosted URL once published — today they
+ * each ship on their own hosted URL once published -- today they
  * remain pre-launch. The card grid signals production-ready
  * output without requiring links that don't resolve yet.
  */
@@ -84,151 +112,135 @@ const BUILT_TEMPLATES = [
 ] as const
 
 /**
- * Four thematic clusters of capabilities a buyer reads when they
- * ask "is this everything I need to ship a B2B SaaS?". Each
- * cluster owns 3 capability rows with 2-3 sentence copy that says
- * what the buyer actually gets — concrete shape, not feature
- * label. Plain prose, no marketing fluff.
+ * Eight global pillars a buyer reads when they ask "do I get a
+ * real SaaS app on day one, or a half-wired scaffold?". Each
+ * pillar ships as a tab in a 4+4 mirrored layout, with a real
+ * TypeScript snippet peeking out of the column's far corner.
+ *
+ * The first half ("Customer surface") lists the four pillars a
+ * buyer names when they think about a paying customer: Auth,
+ * Billing, Admin, Database. The second half ("Behind the
+ * curtain") lists the four pillars they name when they think
+ * about operations: API, MCP, Jobs, Mail. The two halves
+ * read in the order a customer-facing product person cares
+ * about first, then the order an on-call engineer cares about.
  */
-const CAPABILITY_CLUSTERS = [
-  {
-    id: "auth-identity",
-    iconName: "Lock",
-    title: "Auth & identity",
-    lead:
-      "Who signs up, who pays, who is who. The four walls your customer data lives inside.",
-    rows: [
-      {
-        id: "workspace-creation",
-        title: "Workspace creation",
-        body:
-          "The signup form captures the workspace name, not just the user. Email verification uses the same provider the rest of your app already talks to, so a stray typo never opens a tenant in your org. Welcome mail sends before the dashboard renders, with the right slug pre-filled.",
-      },
-      {
-        id: "multi-tenant",
-        title: "Multi-tenant by default",
-        body:
-          "Every session is scoped to a workspace. Switching workspaces doesn't sign the user out — it filters what they see. Org-level roles travel with the workspace, not the user, so a freelancer leaving the team doesn't take the customer list with them.",
-      },
-      {
-        id: "magic-oauth",
-        title: "Magic links + OAuth",
-        body:
-          "Better Auth under the hood, with magic links, email+password, and six OAuth providers pre-wired. The proxy verifies email at signup so your Enterprise tier isn't selling to fake at gmail.",
-      },
-    ],
-  },
-  {
-    id: "billing-growth",
-    iconName: "CreditCard",
-    title: "Billing & growth",
-    lead:
-      "How the money comes in, how the customer stays. The plumbing that pays for the rest.",
-    rows: [
-      {
-        id: "subscriptions",
-        title: "Subscriptions that scale",
-        body:
-          "Stripe subscriptions with plans, proration, and dunning wired against the same contract your database reads. Customer portal is generated, not built — your users see invoices and change plans without a support ticket.",
-      },
-      {
-        id: "usage-metering",
-        title: "Usage metering",
-        body:
-          "Charge per API call, per seat, per GB — whatever your product actually sells. The metering shape matches the contract your app code reads, so you never reconcile two sources of truth at month end.",
-      },
-      {
-        id: "notifications",
-        title: "Customer notifications",
-        body:
-          "Receipts, renewal warnings, and dunning sequences run on the same mail and queue layer as the rest of your app. No second vendor, no second dashboard to monitor.",
-      },
-    ],
-  },
-  {
-    id: "operator-console",
-    iconName: "Layers",
-    title: "Operator console",
-    lead:
-      "What you see of your users — the surface that keeps the team out of the database.",
-    rows: [
-      {
-        id: "admin",
-        title: "Admin dashboard",
-        body:
-          "MRR, active users, churn at a glance. The user table is filtered by role and shows last-seen. Bulk actions hit the same RPC the customer API uses, so the operator console and the customer surface never drift.",
-      },
-      {
-        id: "audit-log",
-        title: "Audit trail",
-        body:
-          "Every cross-org call is recorded with the actor, the action, and the resource. Buyers in regulated verticals audit this in the first call; you don't have to explain what 'comprehensive logging' looks like.",
-      },
-      {
-        id: "product-surface",
-        title: "Domain data + search",
-        body:
-          "The CRUD layer on top of your Drizzle schema, with search and CSV export. Operators do not poke the database to find a customer; they use the same surface your support team uses.",
-      },
-    ],
-  },
-  {
-    id: "background-work",
-    iconName: "Workflow",
-    title: "Background work",
-    lead:
-      "The work your users never see — but that holds the product together when it scales.",
-    rows: [
-      {
-        id: "jobs",
-        title: "Background jobs",
-        body:
-          "Queues and retries wired against the same contract the rest of the app uses. Failed jobs are visible in the same dashboard; retries are typed, not free-form shell scripts.",
-      },
-      {
-        id: "observability",
-        title: "Observability",
-        body:
-          "OpenTelemetry waterfall shows every job, every RPC call, every email send, on the same dashboard as your HTTP routes. Errors are tagged with the tool name and the call site, so a 500 in production has a runtime.",
-      },
-      {
-        id: "scheduled",
-        title: "Scheduled tasks",
-        body:
-          "Cron-style tasks live in the same registry as the rest of your code. They read the same schema, log to the same trace, fail with the same retry policy.",
-      },
-    ],
-  },
-] as const
+type PillarEntry = UseCaseTab & { id: SaasPillarSlug }
 
-/**
- * Mockup map keyed by cluster.id. One real mockup per cluster —
- * the right column swaps when the visitor selects a cluster card.
- * Unselected clusters get a quiet placeholder so the column
- * never reads as blank.
- */
-const CLUSTER_MOCKUPS = {
-  "auth-identity":     <OnboardingMockup />,
-  "billing-growth":    <BillingWidgetMockup />,
-  "operator-console":  <AdminDashboardMockup />,
-  "background-work":   <QueueLogMockup />,
-} as const
+const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
+  {
+    id: "auth",
+    slug: "auth",
+    iconName: "KeyRound",
+    title: "Auth",
+    description:
+      "Better Auth on the same proxy the dashboard talks through. Email + password, magic links, and OAuth providers, all behind one session.",
+  },
+  {
+    id: "billing",
+    slug: "billing",
+    iconName: "CreditCard",
+    title: "Billing",
+    description:
+      "Stripe subscriptions, plans, proration, and a generated customer portal. Usage metering matches the shape your app code reads.",
+  },
+  {
+    id: "admin",
+    slug: "admin",
+    iconName: "ShieldCheck",
+    title: "Admin",
+    description:
+      "Operator console on the same RPC the customer surface uses. Impersonate, refund, override plans, with the same audit trail the rest of the app carries.",
+  },
+  {
+    id: "database",
+    slug: "database",
+    iconName: "Database",
+    title: "Database",
+    description:
+      "Drizzle on Postgres, migrations as a typed registry command. The schema the app code reads is the schema the operator console reads.",
+  },
+  {
+    id: "api",
+    slug: "api",
+    iconName: "Wrench",
+    title: "API",
+    description:
+      "Hono + oRPC, end-to-end typed. The contract the customer app sends is the contract the public docs publish, with no hand-written translation.",
+  },
+  {
+    id: "mcp",
+    slug: "mcp",
+    iconName: "Radio",
+    title: "MCP",
+    description:
+      "Typed tools exposed over the same oRPC contract the API uses. The model calls your data the same way your app does, on the same auth and trace.",
+  },
+  {
+    id: "jobs",
+    slug: "jobs",
+    iconName: "Boxes",
+    title: "Jobs",
+    description:
+      "Queues, retries, and cron on the same registry as the rest of the code. Failed jobs surface in the same dashboard as 5xx; retries are typed.",
+  },
+  {
+    id: "mail",
+    slug: "mail",
+    iconName: "Mail",
+    title: "Mail",
+    description:
+      "Resend + React Email on the same contract the rest of the app sends through. Welcome, renewals, dunning, and security alerts, all on one queue.",
+  },
+]
+
+const PILLARS_GROUP_1: ReadonlyArray<UseCaseTab> = PILLAR_ENTRIES.filter(
+  (p) => p.id === "auth" || p.id === "billing" || p.id === "admin" || p.id === "database",
+)
+
+const PILLARS_GROUP_2: ReadonlyArray<UseCaseTab> = PILLAR_ENTRIES.filter(
+  (p) => p.id === "api" || p.id === "mcp" || p.id === "jobs" || p.id === "mail",
+)
 
 /**
  * Page wrapper. The wrapper's outer border + bg is provided by
- * GlobalLayout in apps/web/src/app/layout.tsx — we don't render
+ * GlobalLayout in apps/web/src/app/layout.tsx -- we don't render
  * our own card frame, so the page sits flush inside the global
  * card with the same border treatment as the rest of the
  * marketing surface.
  */
-export default function SaasAppsPage() {
+export default async function SaasAppsPage() {
+  // Pre-render the eight saas pillar snippets server-side via Shiki,
+  // so the UseCaseTabs Client Component below receives plain
+  // highlighted HTML strings (Next 16 forbids async Server Components
+  // as children of Client Components). Same pattern as the homepage
+  // Ecosystem section and the /cli CliStart section.
+  const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
+    auth: [], billing: [], admin: [], database: [],
+    api: [], mcp: [], jobs: [], mail: [],
+  }
+
+  await Promise.all(
+    (Object.keys(SAAS_SNIPPETS) as SaasPillarSlug[]).flatMap((slug) =>
+      SAAS_SNIPPETS[slug].files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        }),
+      ),
+    ),
+  )
+
   return (
     <div className="flex flex-col">
-      {/* 1. Hero — capabilities (not a single template) */}
+      {/* 1. Hero -- one-promise framing */}
       <UseCaseHero
         category="SaaS"
         title="Production-grade B2B SaaS, out of the box."
-        body="Multi-tenant auth, billing, an operator console, and the jobs and observability behind it. The four sub-systems a SaaS needs are wired into the registry before your first commit."
+        body="In one click, you have a working SaaS app. Auth, billing, jobs, mail, and the operator console wired against the same contract as the rest of your stack. Eight pillars, not twelve capabilities. The registry ships them before the first commit."
         primaryCta={{
           label: "Use it yourself",
           href: "/templates",
@@ -239,52 +251,61 @@ export default function SaasAppsPage() {
         }}
       />
 
-      {/* 2. What's in the box — four clusters of capabilities.
-           Each cluster owns 3 capability rows with 2-3 sentence
-           selling copy. The selected cluster drives the right
-           column's mockup. Below the cluster list, a single
-           CTA pushes the visitor to action. */}
-      <section className="border-b border-border">
-        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            What&apos;s in the box
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            The four sub-systems every SaaS needs.
-          </h2>
-          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Twelve capabilities grouped by the buyer-side question
-            they answer. Pick a cluster, read what you actually get,
-            and ship it.
-          </p>
-        </div>
-        <CapabilityClustersSection
-          clusters={CAPABILITY_CLUSTERS}
-          mockups={CLUSTER_MOCKUPS}
+      {/* 2. What's in the box -- 4+4 mirrored tabs.
+           Customer surface (Auth, Billing, Admin, Database) reads
+           first with tabs LEFT and a Shiki peek on the RIGHT. Behind
+           the curtain (API, MCP, Jobs, Mail) follows as its own
+           <Section> with the same Tabs component flipped (tabs RIGHT,
+           peek LEFT). The sub-eyebrow names the boundary so the reader
+           can follow the seam between the two halves. Two <Section>s
+           keep the page's border rhythm identical to the rest of the
+           marketing surface (one border-b per section). */}
+      <Section>
+        <SectionHeader
+          eyebrow="What's in the box"
+          title="Eight pillars. One working SaaS."
+          subtitle="The sub-systems every SaaS needs, wired against the same contract before the first commit. Two halves: what your customers see, and what keeps it running."
+          bordered={true}
         />
-      </section>
+        <UseCaseTabs
+          pillars={PILLARS_GROUP_1}
+          htmlBySlug={htmlBySlug}
+        />
+      </Section>
+
+      <Section>
+        <SectionHeader
+          eyebrow="Behind the curtain"
+          title="What keeps a SaaS running."
+          subtitle="The four sub-systems an on-call engineer names first. Same contracts, same registry, same auth, just on the other side of the same RPC."
+          bordered={true}
+        />
+        <UseCaseTabs
+          pillars={PILLARS_GROUP_2}
+          htmlBySlug={htmlBySlug}
+          reverse
+        />
+      </Section>
 
       {/* 3. Stack */}
-      {/*    Same TechStackGrid used on the homepage and /pricing.
-           Header row on top, brand wall underneath. The brand
-           tiles rotate on a swap animation, so the surface
-           reads as a living tech stack rather than a static
-           logo dump. */}
-      <section className="flex flex-col border-t border-border">
-        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            Stack
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            What runs on day one.
-          </h2>
+      {/*    Same TechStackGrid + same Section shape as the homepage
+           and /pricing. Header row on top, brand wall underneath. The
+           brand tiles rotate on a swap animation, so the surface
+           reads as a living tech stack rather than a static logo dump. */}
+      <Section>
+        <div className="flex flex-col divide-y divide-border">
+          <div className="px-6 py-6 lg:px-10">
+            <p className="text-heading-24 tracking-tighter text-balance [&:not(:first-child)]:mt-0">
+              Built with the stack senior engineers ship on.
+            </p>
+          </div>
+          <TechStackGrid techs={STACK} />
         </div>
-        <TechStackGrid techs={STACK} />
-      </section>
+      </Section>
 
       {/* 4. Process */}
-      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
+      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-12 lg:divide-x lg:divide-border">
+        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-3 lg:p-10">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
             Process
           </p>
@@ -292,7 +313,7 @@ export default function SaasAppsPage() {
             How a SaaS ships.
           </h2>
         </div>
-        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
+        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-9 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
           {STEPS.map((step, idx) => (
             <li
               key={step.heading}
@@ -361,40 +382,7 @@ export default function SaasAppsPage() {
       </section>
 
       {/* 6. Related */}
-      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            Explore
-          </p>
-          <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            Related use cases.
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
-          {RELATED.map((item) => (
-            <Link
-              key={item.slug}
-              href={`/use-cases/${item.slug}`}
-              className="group flex flex-col gap-2 p-6 transition-colors hover:bg-accent/40 lg:p-8"
-            >
-              <p className="text-label-13 text-muted-foreground">Related</p>
-              <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
-                {item.title}
-              </h3>
-              <p className="line-clamp-3 text-copy-14 leading-6 text-muted-foreground">
-                {item.tagline}
-              </p>
-              <p className="inline-flex items-center gap-1 pt-1 text-label-13 text-foreground">
-                Read more
-                <ArrowRight
-                  className="size-3 transition-transform group-hover:translate-x-0.5"
-                  aria-hidden
-                />
-              </p>
-            </Link>
-          ))}
-        </div>
-      </div>
+      <RelatedUseCases items={RELATED} />
 
       {/* 7. Final CTA */}
       <FinalCta />

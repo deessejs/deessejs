@@ -14,7 +14,7 @@
  * APIs yet (see the TODO on STATS).
  */
 
-import type { Contract } from "@/app/(marketing)/_components/contracts-grid"
+import type { Contract } from "@/components/marketing/contracts-grid"
 
 // ---------------------------------------------------------------------------
 // Contracts (Section 6: "Under the hood")
@@ -137,7 +137,7 @@ export const PERSONAS: ReadonlyArray<Persona> = [
     label: "SaaS founders",
     headline: "Skip 10 weeks of infra.",
     outcome:
-      "Reach your first paying customer in 30 days, with contracts you can extend instead of rewrite.",
+      "Reach your first paying customer in 30 days, with contracts you can extend. One stack, six providers, the same typed contracts and audit trail across every surface.",
     href: "/use-cases/saas-apps",
   },
   {
@@ -145,7 +145,7 @@ export const PERSONAS: ReadonlyArray<Persona> = [
     label: "Enterprise teams",
     headline: "Stop rebuilding the same eight services.",
     outcome:
-      "Skip the internal platform build. Use ours. Same contracts, same guarantees, same audit trail.",
+      "Skip the internal platform build. Use ours, with the same contracts, the same guarantees, the same audit trail across every service, every provider, every team.",
     href: "/enterprise",
   },
   {
@@ -153,7 +153,7 @@ export const PERSONAS: ReadonlyArray<Persona> = [
     label: "AI-native teams",
     headline: "Ship with your agent, not against it.",
     outcome:
-      "Templates an agent reads as well as you do. Typed end-to-end, MCP-ready, no plumbing to invent.",
+      "Templates an agent reads as well as you do. MCP-ready, typed end-to-end, no plumbing to invent. One command to scaffold, your agent runs it.",
     href: "/use-cases/ai-products",
   },
 ]

@@ -25,7 +25,7 @@ Three obstacles block the wiring.
    `packages/auth/src/auth.ts:105-107` sets no `crossSubDomainCookies`.
    A Better Auth client created in `apps/web` would call `get-session`, the cookie would not be sent, the server would resolve the request as anonymous, and the marketing header would always show the anonymous state.
 3. No env field carries the bare parent hostname that Better Auth needs for the `Domain=.parent` cookie attribute.
-   `PARENT_DOMAIN` is referenced once in `documents/internal/architecture/11-packages/auth/setup.md:276` but is not declared in any env schema.
+   `PARENT_DOMAIN` is referenced once in the now-deleted `documents/internal/architecture/11-packages/auth/setup.md:276` but is not declared in any env schema today.
 
 ADR-021 already mandated the cross-origin prerequisites this ADR relies on.
 `ALLOWED_ORIGINS=https://deessejs.com` is already required on `apps/app`'s Vercel project for the credentialed templates fetch (`.changeset/feat-inter-app-url-config.md:54-58`).
@@ -112,7 +112,7 @@ The avatar source falls back to the Vercel avatar endpoint (`vercel.com/api/www/
 
 ### Unit
 
-- `apps/web/test/unit/user-menu.test.ts` covers `getInitials` (empty input, single word, multi-word) and `getAvatarUrl` (explicit image wins, Vercel fallback otherwise).
+- `apps/web/tests/unit/user-menu.test.ts` covers `getInitials` (empty input, single word, multi-word) and `getAvatarUrl` (explicit image wins, Vercel fallback otherwise).
   The component itself is exercised by Playwright.
 
 ### E2E (Playwright)
@@ -169,7 +169,7 @@ The runtime contract matches the oRPC client's contract (`apps/web/src/lib/orpc.
 - The doc-comment at `apps/web/src/components/headers/site-header.tsx:20-28` explicitly plans this change.
 - ADR-021 §"Cross-origin considerations" §2 already mandates `ALLOWED_ORIGINS=https://deessejs.com` on `apps/app` for the cross-origin credentialed templates fetch.
   This ADR reuses the same Vercel env var.
-- The architecture docs at `documents/internal/architecture/03-web-app/pages.md:233`, `setup.md:293`, `11-packages/auth/admin.md:99`, and `11-packages/auth/README.md:94` all refer to an `apps/web` auth client that does not exist in the code today.
+- The now-deleted architecture docs at `documents/internal/architecture/03-web-app/pages.md:233`, `setup.md:293`, `11-packages/auth/admin.md:99`, and `11-packages/auth/README.md:94` all referred to an `apps/web` auth client that does not exist in the code today.
   This ADR makes the client real.
 
 ## Related

@@ -3,8 +3,8 @@ import { ArrowRight, ChevronRight, Layers } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
 
-import { FlickeringGrid } from "@/app/(marketing)/_components/flickering-grid"
-import { DotGrid } from "@/app/(marketing)/_components/dot-grid"
+import { FlickeringGrid } from "@/components/marketing/flickering-grid"
+import { DotGrid } from "@/components/marketing/dot-grid"
 
 /**
  * Marketing homepage hero at `/`.

@@ -24,7 +24,7 @@
  * (aria-hidden on the wrapper because it is decorative).
  */
 
-import { DotGrid } from "../../../../(marketing)/_components/dot-grid"
+import { DotGrid } from "@/components/marketing/dot-grid"
 
 export function TestMockup({ reverse = false }: { reverse?: boolean }) {
   return (

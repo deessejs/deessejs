@@ -1,6 +1,6 @@
-import { Section } from "@/app/(marketing)/_components/section"
-import { SectionHeader } from "@/app/(marketing)/_components/section-header"
-import { TestimonialsMarquee } from "@/app/(marketing)/_components/testimonials-marquee"
+import { Section } from "@/components/marketing/section"
+import { SectionHeader } from "@/components/marketing/section-header"
+import { TestimonialsMarquee } from "@/components/marketing/testimonials-marquee"
 
 /** Testimonials — infinite horizontal marquee, paused on hover. */
 export function Testimonials() {

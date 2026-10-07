@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useRef } from "react"
 import { ArrowLeft, ArrowRight, ChevronRight, Clock } from "lucide-react"
 
 import {
@@ -12,7 +12,7 @@ import {
 } from "@workspace/ui/components/carousel"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { SectionHeader } from "@/app/(marketing)/_components/section-header"
+import { SectionHeader } from "@/components/marketing/section-header"
 import { AuthorAvatarLink } from "@/components/blog/author-avatar"
 
 /**
@@ -91,12 +91,10 @@ type CarouselGuide = {
 
 function ChevronButton({
   direction,
-  disabled,
   onClick,
   label,
 }: {
   direction: "prev" | "next"
-  disabled: boolean
   onClick: () => void
   label: string
 }) {
@@ -106,13 +104,11 @@ function ChevronButton({
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
       aria-label={label}
       className={cn(
         "inline-flex size-8 items-center justify-center border border-border bg-background text-foreground transition-colors rounded-md",
         "hover:bg-accent/40",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-        "disabled:pointer-events-none disabled:opacity-40",
       )}
     >
       <Icon className="size-4" aria-hidden />
@@ -126,14 +122,6 @@ export function LatestGuidesSection({
   guides: ReadonlyArray<CarouselGuide>
 }) {
   const carouselApiRef = useRef<CarouselApi | undefined>(undefined)
-  const [canScrollPrev, setCanScrollPrev] = useState(false)
-  const [canScrollNext, setCanScrollNext] = useState(false)
-
-  const onSelect = useCallback((api: NonNullable<CarouselApi>) => {
-    carouselApiRef.current = api
-    setCanScrollPrev(api.canScrollPrev())
-    setCanScrollNext(api.canScrollNext())
-  }, [])
 
   const scrollPrev = useCallback(() => {
     carouselApiRef.current?.scrollPrev()
@@ -147,13 +135,11 @@ export function LatestGuidesSection({
     <>
       <ChevronButton
         direction="prev"
-        disabled={!canScrollPrev}
         onClick={scrollPrev}
         label="Previous guides"
       />
       <ChevronButton
         direction="next"
-        disabled={!canScrollNext}
         onClick={scrollNext}
         label="Next guides"
       />
@@ -184,15 +170,6 @@ export function LatestGuidesSection({
         aria-label="Latest KB guides"
         setApi={(api) => {
           carouselApiRef.current = api
-          if (api) {
-            onSelect(api)
-            api.on("reInit", onSelect)
-            api.on("select", onSelect)
-          }
-          return () => {
-            api?.off("reInit", onSelect)
-            api?.off("select", onSelect)
-          }
         }}
       >
         <CarouselContent>

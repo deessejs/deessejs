@@ -1,4 +1,4 @@
-import { PricingHeroTabs } from "@/app/(marketing)/_components/pricing-hero-tabs"
+import { PricingHeroTabs } from "@/components/marketing/pricing-hero-tabs"
 
 /**
  * Cadence toggle — 16px tall strip flush against the license cards

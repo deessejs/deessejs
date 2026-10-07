@@ -1,9 +1,10 @@
 /**
  * Pricing config for the /pricing page.
  *
- * Single source of truth for the licensing model defined in
- * documents/internal/product/pricing.md. All copy strings here come from
- * that strategy doc. No prose is duplicated in JSX.
+ * Single source of truth for the licensing model. The strategy that
+ * shaped these copy strings was defined for the `/pricing` route work
+ * (recorded in apps/web/CHANGELOG.md). All copy strings here come from
+ * that strategy. No prose is duplicated in JSX.
  *
  * The page is organized around license TYPES (how your license works),
  * not around product tiers (what you buy):

@@ -4,8 +4,8 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { TierCardPricing } from "@/app/(marketing)/_components/tier-card-pricing"
-import { TierTagline } from "@/app/(marketing)/_components/tier-tagline"
+import { TierCardPricing } from "@/components/marketing/tier-card-pricing"
+import { TierTagline } from "@/components/marketing/tier-tagline"
 import type { LicenseType } from "@/lib/pricing"
 
 import { Cell } from "./_shared/cell"

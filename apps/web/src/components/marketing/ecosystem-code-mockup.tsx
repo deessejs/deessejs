@@ -12,6 +12,13 @@ type MockupFile = {
   html: string
 }
 
+// The mockup is reused on `/use-cases/saas-apps` with saas pillar
+// slugs, not the ecosystem ones. The `slug` prop only feeds the
+// `data-slug` attribute (a DOM probe) and inner tab ids, so widening
+// to `string` keeps the public surface honest for non-ecosystem
+// callers without affecting the homepage behaviour.
+type MockupSlug = EcosystemSlug | (string & {})
+
 /**
  * Per-tab code mockup chrome for the homepage Ecosystem section.
  *
@@ -44,7 +51,7 @@ export function EcosystemCodeMockup({
   slug,
   files,
 }: {
-  slug: EcosystemSlug
+  slug: MockupSlug
   /** Pre-highlighted HTML, one entry per file in the tool. */
   files: ReadonlyArray<MockupFile>
 }) {
@@ -111,7 +118,7 @@ function MockupFileTabs({
   activeIndex,
   onChange,
 }: {
-  slug: EcosystemSlug
+  slug: MockupSlug
   files: ReadonlyArray<MockupFile>
   activeIndex: number
   onChange: (index: number) => void

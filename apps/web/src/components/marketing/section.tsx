@@ -17,11 +17,18 @@ import { cn } from "@workspace/ui/lib/utils"
 export function Section({
   children,
   className,
+  id,
 }: {
   children: React.ReactNode
   className?: string
+  id?: string
 }) {
   return (
-    <div className={cn("border-b border-border", className)}>{children}</div>
+    <div
+      {...(id ? { id } : {})}
+      className={cn("border-b border-border", className)}
+    >
+      {children}
+    </div>
   )
 }

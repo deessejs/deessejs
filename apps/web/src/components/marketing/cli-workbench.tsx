@@ -18,16 +18,16 @@ import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
 import {
-  DEV_OUTPUT_LINE,
+  DEFAULT_DEV_OUTPUT_LINE,
+  DEFAULT_INIT_OUTPUT_LINES,
   EDITOR_TABS,
-  INIT_OUTPUT_LINES,
   SAAS_STARTER_FILES,
   type EditorTabId,
   type ExplorerNode,
 } from "@/lib/marketing/cli-workbench-data"
 
 /**
- * CLI workbench — IDE-style transformation panel shown on the
+ * CLI workbench. IDE-style transformation panel shown on the
  * marketing homepage (Section 7, CliInAction).
  *
  * Three panes inside a single shared-border frame, mirroring the
@@ -39,7 +39,7 @@ import {
  *                            its snippet on entry.
  *   • Terminal  (bottom)    : shows the canonical `deessejs init`
  *                            command, then its real output, then
- *                            `pnpm dev` (a separate command —
+ *                            `pnpm dev` (a separate command;
  *                            `init` does NOT start the server).
  *
  * Choreography (plays once on viewport entry, ~4s total):
@@ -50,33 +50,48 @@ import {
  *   t=2.6s   command 2 (`pnpm dev`) starts typing
  *   t=3.2s   dev output line appears
  *
- * Editor tabs are interactive after the reveal — clicking a tab
+ * Editor tabs are interactive after the reveal. Clicking a tab
  * swaps the snippet in place. No animation between tabs (the
  * reveal animation already plays once on viewport entry; toggling
  * tabs is a discrete user action).
  *
- * `useReducedMotion` short-circuits to a static variant — same
+ * `useReducedMotion` short-circuits to a static variant. Same
  * layout, same tabs, same content, all visible immediately.
  *
- * Source-of-truth: `apps/cli/src/commands/init.ts` (clone +
- * detect PM + install). The template layout is a curated list in
+ * Source-of-truth: `apps/cli/src/commands/init.ts` (clone,
+ * detect PM, install). The template layout is a curated list in
  * `cli-workbench-data.ts`; update both in lockstep.
  */
 export function CliWorkbench({
   editorHtml,
+  terminalLines,
 }: {
   /** Pre-highlighted Shiki HTML per editor tab id. */
   editorHtml: Record<EditorTabId, string>
+  /**
+   * Optional override for the Terminal pane content. Provide three
+   * strings: the first command (typed out), the output lines
+   * (faded in one by one), and the second command (typed out). When
+   * omitted, falls back to a default that mirrors the real
+   * `deessejs init saas-starter` flow.
+   */
+  terminalLines?: readonly [string, ReadonlyArray<string>, string]
 }) {
   const reduceMotion = useReducedMotion()
+  const lines =
+    terminalLines ?? [
+      "$ deessejs init saas-starter",
+      DEFAULT_INIT_OUTPUT_LINES,
+      DEFAULT_DEV_OUTPUT_LINE,
+    ]
 
   if (reduceMotion) {
-    return <StaticWorkbench editorHtml={editorHtml} />
+    return <StaticWorkbench editorHtml={editorHtml} terminalLines={lines} />
   }
 
   return (
     <LazyMotion features={domAnimation}>
-      <AnimatedWorkbench editorHtml={editorHtml} />
+      <AnimatedWorkbench editorHtml={editorHtml} terminalLines={lines} />
     </LazyMotion>
   )
 }
@@ -87,8 +102,10 @@ export function CliWorkbench({
 
 function AnimatedWorkbench({
   editorHtml,
+  terminalLines,
 }: {
   editorHtml: Record<EditorTabId, string>
+  terminalLines: readonly [string, ReadonlyArray<string>, string]
 }) {
   return (
     <div
@@ -101,7 +118,7 @@ function AnimatedWorkbench({
         <EditorPane editorHtml={editorHtml} />
       </div>
 
-      <TerminalPane />
+      <TerminalPane terminalLines={terminalLines} />
     </div>
   )
 }
@@ -290,7 +307,12 @@ function PaneHeader({
   )
 }
 
-function TerminalPane() {
+function TerminalPane({
+  terminalLines,
+}: {
+  terminalLines: readonly [string, ReadonlyArray<string>, string]
+}) {
+  const [firstCommand, outputLines, secondCommand] = terminalLines
   return (
     <div className="flex flex-col gap-2 border-t border-border p-4">
       <p className="flex items-center gap-1.5 text-label-13 uppercase tracking-wider text-muted-foreground">
@@ -298,8 +320,8 @@ function TerminalPane() {
         Terminal
       </p>
       <div className="flex flex-col gap-1 overflow-hidden font-mono text-label-13 leading-relaxed text-foreground">
-        <TypedLine text="$ deessejs init saas-starter" delay={0} duration={0.6} />
-        {INIT_OUTPUT_LINES.map((line, i) => (
+        <TypedLine text={firstCommand} delay={0} duration={0.6} />
+        {outputLines.map((line, i) => (
           <m.div
             key={line}
             initial={{ opacity: 0, x: -2 }}
@@ -316,22 +338,10 @@ function TerminalPane() {
           </m.div>
         ))}
 
-        {/* Command 2: pnpm dev (a SEPARATE command — init does not
-            start the server) */}
-        <TypedLine text="$ pnpm dev" delay={2.6} duration={0.5} />
-        <m.div
-          initial={{ opacity: 0, x: -2 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true, margin: "0px 0px -10% 0px" }}
-          transition={{
-            duration: 0.25,
-            delay: 3.2,
-            ease: "easeOut" as const,
-          }}
-          className="text-muted-foreground"
-        >
-          {DEV_OUTPUT_LINE}
-        </m.div>
+        {/* Command 2 : passed by the caller. `init` does not start
+            the server; whatever the caller types here is a SEPARATE
+            command. */}
+        <TypedLine text={secondCommand} delay={2.6} duration={0.5} />
       </div>
     </div>
   )
@@ -375,13 +385,16 @@ function TypedLine({
 
 function StaticWorkbench({
   editorHtml,
+  terminalLines,
 }: {
   editorHtml: Record<EditorTabId, string>
+  terminalLines: readonly [string, ReadonlyArray<string>, string]
 }) {
+  const [firstCommand, outputLines, secondCommand] = terminalLines
   return (
     <div
       role="img"
-      aria-label="IDE workbench showing a populated saas-starter project: file tree, tabbed editor, terminal session where deessejs init and pnpm dev have run."
+      aria-label="IDE workbench showing a populated saas-starter project: file tree, tabbed editor, terminal session where deessejs init and a follow-up command have run."
       className="flex h-full flex-col overflow-hidden border border-border bg-background"
     >
       <div className="grid flex-1 grid-cols-[minmax(0,3fr)_minmax(0,9fr)] divide-x divide-border">
@@ -423,14 +436,13 @@ function StaticWorkbench({
           Terminal
         </p>
         <div className="flex flex-col gap-1 overflow-hidden font-mono text-label-13 leading-relaxed text-foreground">
-          <div>$ deessejs init saas-starter</div>
-          {INIT_OUTPUT_LINES.map((line) => (
+          <div>{firstCommand}</div>
+          {outputLines.map((line) => (
             <div key={line} className="text-muted-foreground">
               {line}
             </div>
           ))}
-          <div>$ pnpm dev</div>
-          <div className="text-muted-foreground">{DEV_OUTPUT_LINE}</div>
+          <div>{secondCommand}</div>
         </div>
       </div>
     </div>

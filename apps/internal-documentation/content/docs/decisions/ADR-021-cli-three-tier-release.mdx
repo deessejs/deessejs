@@ -9,7 +9,7 @@ description: 'Per-PR ephemeral previews via pkg.pr.new, a @canary dist-tag publi
 
 Draft (2026-08). Awaiting review.
 
-Supersedes the implicit constraint in [docs/engineering/reports/versioning/04-prereleases.md](../../../../docs/engineering/reports/versioning/04-prereleases.md), which deferred pre-release channels "until (if) the CLI ever needs an opt-in beta channel." This ADR revives that deferral with concrete triggers.
+Supersedes the implicit constraint in the now-deleted `docs/engineering/reports/versioning/04-prereleases.md`, which deferred pre-release channels "until (if) the CLI ever needs an opt-in beta channel." This ADR revives that deferral with concrete triggers.
 
 ## Context
 
@@ -139,7 +139,7 @@ The existing `release.yml` behavior, with one new conditional: steps that would 
 
 **One trusted publisher, one workflow filename, two publish paths.** The npm-side configuration on `https://www.npmjs.com/package/@deessejs/cli/access` does not change. `release.yml` remains the sole trusted publisher. Both Tier 2 and Tier 3 publish through that one entry.
 
-**No NPM_TOKEN introduced.** The OIDC-only invariant from `docs/engineering/processes/versioning.md` and ADR-013 is preserved. The original Tier 2 design (a separate `cli-canary.yml`) would have required either a second trusted publisher entry (impossible per npm's policy) or a long-lived NPM_TOKEN (rejected by the senior pattern). The single-workflow design sidesteps both.
+**No NPM_TOKEN introduced.** The OIDC-only invariant from the now-deleted `docs/engineering/processes/versioning.md` and ADR-013 is preserved. The original Tier 2 design (a separate `cli-canary.yml`) would have required either a second trusted publisher entry (impossible per npm's policy) or a long-lived NPM_TOKEN (rejected by the senior pattern). The single-workflow design sidesteps both.
 
 **Tier 1's auth path is completely separate.** `cli-preview.yml` does not have `id-token: write`; pkg.pr.new authenticates via its own GitHub App. A compromise of the Tier 1 workflow's secrets cannot affect Tier 2 or Tier 3 because the two workflows share zero authentication surface.
 
@@ -179,7 +179,7 @@ The original draft of this ADR. Rejected because **npm Trusted Publishing allows
 
 ### B. Three workflows with one NPM_TOKEN for the canary
 
-Considered. Rejected explicitly. The `04-prereleases.md` deferral, ADR-013, and the broader senior-pattern reasoning in `docs/engineering/processes/versioning.md` are all built on "no NPM_TOKEN, OIDC only." Trading that invariant for canary automation is the wrong call.
+Considered. Rejected explicitly. The `04-prereleases.md` deferral, ADR-013, and the broader senior-pattern reasoning in the now-deleted `docs/engineering/processes/versioning.md` are all built on "no NPM_TOKEN, OIDC only." Trading that invariant for canary automation is the wrong call.
 
 ### C. Changesets pre-release mode (`pre enter canary`)
 
@@ -222,8 +222,8 @@ For the PR that lands this ADR:
 4. **Install the [pkg.pr.new GitHub App](https://github.com/apps/pkg-pr-new)** on `deessejs/deessejs`. Manual repo-admin step. Without this, Tier 1's workflow will fail at the `pkg-pr-new publish` step.
 5. **Smoke-test the PR comment on a real PR after installation.** Open a throwaway PR (a one-line `docs:` change is enough) and confirm that the bot posts a sticky comment with an installable URL. This catches the [issue #300](https://github.com/stackblitz-labs/pkg.pr.new/issues/300) failure mode — a stale or scope-mismatched App installation can let `pkg-pr-new publish` succeed while the comment step silently 403s. If the comment does not appear but the publish job is green, the documented workaround is `--comment=off`. Do not consider Tier 1 "shipped" until this step passes.
 6. **Smoke-test the canary path.** Trigger `Actions → release.yml → Run workflow → ☑ canary` from a `staging` branch ref. Confirm: the synthetic version string is computed correctly, the publish lands on the `canary` dist-tag (verify with `npm view @deessejs/cli dist-tags`), `latest` is unchanged, the GitHub Release is created with `--prerelease`. Then run the workflow once without the canary input (or via push to `main`) to confirm Tier 3 still works end-to-end.
-7. **Update `docs/engineering/processes/versioning.md`** to document the three tiers and the on-demand canary workflow.
-8. **Update `docs/engineering/reports/versioning/04-prereleases.md`** to mark this ADR as the superseding decision and link from §"When to revisit."
+7. **Update `apps/internal-documentation/content/docs/processes/release-engineering/`** to document the three tiers and the on-demand canary workflow. See [`../../processes/release-engineering/latest-release.mdx`](../../processes/release-engineering/latest-release.mdx) and [`../../processes/release-engineering/canary-releases.mdx`](../../processes/release-engineering/canary-releases.mdx).
+8. **Update the now-deleted `docs/engineering/reports/versioning/04-prereleases.md`** to mark this ADR as the superseding decision. (No action available — file deleted by 537aec8; this ADR itself is the replacement.)
 9. **Update `apps/cli/README.md`** with a one-line note that `@canary` and per-PR previews are now available, pointing to the ADR for detail.
 
 ## References
@@ -242,7 +242,7 @@ For the PR that lands this ADR:
 - [ADR-013: CLI publish verify](../ADR-013-cli-publish-verify) — the pre-existing publish-path gate (unaffected by this ADR)
 - [ADR-019: CLI version build injection](../ADR-019-cli-version-build-injection) — the tsup `define` mechanism Tier 2 depends on
 - [ADR-020: apps/web browser end-to-end tests](../ADR-020-apps-web-e2e-browser-tests) — the most recent ADR; same numbering pattern
-- `docs/engineering/reports/versioning/04-prereleases.md` — the deferral this ADR supersedes
-- `docs/engineering/reports/versioning/12-npm-setup-walkthrough.md` §12.4 — the trusted publisher config that Tier 2+3 reuse unchanged
-- `docs/engineering/processes/versioning.md` — the operational doc that gets updated
+- `docs/engineering/reports/versioning/04-prereleases.md` (now deleted) — the deferral this ADR supersedes
+- `docs/engineering/reports/versioning/12-npm-setup-walkthrough.md` §12.4 (now deleted) — the trusted publisher config that Tier 2+3 reuse unchanged
+- `docs/engineering/processes/versioning.md` (now deleted; equivalent in [`../../processes/release-engineering/latest-release.mdx`](../../processes/release-engineering/latest-release.mdx)) — the operational doc that gets updated
 - `AGENTS.md` — the staging-first workflow that all three tiers respect

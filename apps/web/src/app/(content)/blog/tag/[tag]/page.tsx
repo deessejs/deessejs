@@ -3,8 +3,9 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Badge } from "@workspace/ui/components/badge"
 import { BlogSearch } from "@/components/blog/blog-search"
+import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 import { getPostsByTag } from "@/lib/blog/posts"
-import { BLOG_TAGS, type BlogTag, getAllTags } from "@/lib/blog/types"
+import { BLOG_TAG_LABELS, BLOG_TAGS, type BlogTag, getAllTags } from "@/lib/blog/types"
 
 type Params = { tag: string }
 
@@ -17,9 +18,29 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { tag } = await params
   const decoded = decodeURIComponent(tag)
+  const blogTag = decoded as BlogTag
+  const label = BLOG_TAG_LABELS[blogTag]
+  const postCount = getPostsByTag(blogTag).length
+  const path = `/blog/tag/${encodeURIComponent(decoded)}`
   return {
-    title: `Posts tagged "${decoded}" — Blog`,
-    description: `Articles tagged ${decoded}.`,
+    title: label,
+    description: `${postCount} ${postCount === 1 ? "post" : "posts"} tagged "${label}" on the DeesseJS blog.`,
+    alternates: {
+      canonical: path,
+    },
+    openGraph: {
+      type: "website",
+      siteName: "DeesseJS",
+      locale: "en_US",
+      title: `${label} — Blog`,
+      description: `Articles tagged ${label}.`,
+      url: path,
+    },
+    twitter: {
+      card: "summary",
+      title: `${label} — Blog`,
+      description: `Articles tagged ${label}.`,
+    },
   }
 }
 
@@ -35,26 +56,41 @@ export default async function TagPage(
     notFound()
   }
   const blogTag = decoded as BlogTag
+  const label = BLOG_TAG_LABELS[blogTag]
   const posts = getPostsByTag(blogTag)
   const tags = getAllTags()
   const featured = posts[0] ? [posts[0]] : []
 
   return (
     <section>
-      <header className="mb-8">
-        <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
-          Blog
-        </h1>
-        <p className="mt-2 text-pretty text-lg text-muted-foreground">
-          Articles and updates. Subscribe via{" "}
-          <a
-            href="/blog/feed.xml"
-            className="underline underline-offset-4 hover:text-foreground"
-          >
-            RSS
-          </a>
-          .
-        </p>
+      <header className="relative overflow-hidden border-b border-border">
+        <FlickeringGrid
+          className="absolute inset-0 z-0 opacity-60"
+          squareSize={3}
+          gridGap={5}
+          flickerChance={0.15}
+          maxOpacity={0.18}
+          color="rgb(120, 120, 120)"
+        />
+        <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
+          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            Tag
+          </p>
+          <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
+            {label}
+          </h1>
+          <p className="max-w-2xl text-copy-18 leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
+            {posts.length} {posts.length === 1 ? "post" : "posts"} tagged
+            with this topic. Subscribe via{" "}
+            <a
+              href="/blog/feed.xml"
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              RSS
+            </a>{" "}
+            for the full feed.
+          </p>
+        </div>
       </header>
 
       <BlogSearch

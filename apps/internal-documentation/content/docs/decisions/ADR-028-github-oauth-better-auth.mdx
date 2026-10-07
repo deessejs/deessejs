@@ -353,9 +353,10 @@ not own it.
   `refreshToken` (when present) are persisted in the
   `account` table in plaintext. Token encryption is an
   explicit follow-up via `databaseHooks.account.create.before`,
-  not part of this ADR's scope; it is gated by the
-  `docs/guides/better-auth/hooks.md` precedent of
-  fire-and-forget hooks and was not requested.
+  not part of this ADR's scope. Token encryption would require
+  introducing a `databaseHooks.account.create.before` pattern that
+  is not currently wired in `packages/auth/src/auth.ts`, so it is
+  gated by a separate decision and was not requested here.
 - The `apps/cli/` published surface. The CLI does not
   sign in. OAuth is a web/app concern only.
 
@@ -419,22 +420,23 @@ page edit.
 4. `.env.example` — annotate the two keys with the
    `user:email` scope caveat. Add a comment pointing
    to the GitHub OAuth App permissions page (Account
-   permissions > Email addresses > Read-only). The
-   same comment is mirrored in
-   `docs/guides/better-auth/setup.md`.
+   permissions > Email addresses > Read-only). The same
+   comment lives in `.env.example` §"GitHub OAuth".
 
-5. `docs/guides/better-auth/setup.md` — extend the
-   env-var table (line 49-54), the Base Configuration
-   block (line 19-37), and the Trusted Origins block
-   (line 81-96) with the two new keys and the
-   `socialProviders.github` snippet.
+5. Extend `.env.example` §"GitHub OAuth" with the two new keys,
+   `packages/auth/src/auth.ts` `socialProviders.github` block with
+   the `clientId`/`clientSecret` wiring (already in place — see
+   line 159-163), and `packages/env/src/schema.ts` `serverInputShape`
+   with `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` (already in
+   place — see line 122-123).
 
-6. `docs/guides/better-auth/pitfalls.md` — add a new
-   section covering GitHub OAuth specifics: `scope`
-   is an OAuth App concern (not in the better-auth
-   config), `accountLinking` semantics, the absence
-   of a refresh token (GitHub access tokens do not
-   expire on a short interval), and the
+6. Document GitHub OAuth specifics inline in `.env.example` §"GitHub
+   OAuth" and `packages/auth/src/auth.ts` `account.accountLinking`
+   block: `scope` is an OAuth App concern (not in the better-auth
+   config — the `user:email` scope is configured on the OAuth App
+   side, NOT here), `accountLinking` semantics (`trustedProviders:
+   ["github"]`), the absence of a refresh token (GitHub access
+   tokens do not expire on a short interval), and the
    `redirectPlugin` misinformation at
    `apps/app/components/auth/oauth-buttons.tsx:32`.
 
@@ -517,9 +519,7 @@ fix surface is enumerated in the `Implementation
 surface` section above: three runtime files
 (`packages/auth/src/auth.ts`,
 `packages/env/src/schema.ts`,
-`packages/env/src/server.ts`) plus `.env.example`
-and the two doc guides under
-`docs/guides/better-auth/`.
+`packages/env/src/server.ts`) plus `.env.example`.
 
 The git context for this ADR is the staging branch
 `chore/adr-013-github-oauth-better-auth`, opened from

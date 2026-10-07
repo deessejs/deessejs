@@ -1,17 +1,20 @@
 import type { Metadata } from "next"
+import { codeToHtml } from "shiki"
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
-
-import { UseCaseHero } from "../_components/use-case-page"
-import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
-import { CapabilityClustersSection } from "../_components/capability-cluster"
 import {
-  AgentLoopMockup,
-  ApiEndpointMockup,
-  KnowledgeRetrievalMockup,
-  OtelWaterfallMockup,
-} from "../_components/mockups"
+  RelatedUseCases,
+  type RelatedUseCaseItem,
+} from "@/components/product/use-case/related-use-cases"
+
+import { Section } from "@/components/marketing/section"
+import { SectionHeader } from "@/components/marketing/section-header"
+import { UseCaseHero } from "@/components/product/use-case/use-case-page"
+import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
+import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
+import { AI_PRODUCTS_SNIPPETS, type AiProductsPillarSlug } from "@/components/product/use-case/ai-products-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
+
+import { GROUP_1, GROUP_2 } from "./ai-products-tabs"
 
 export const metadata: Metadata = {
   title: "AI products | DeesseJS",
@@ -25,11 +28,14 @@ export const metadata: Metadata = {
  * surface, just with the AI-relevant technologies.
  */
 const STACK = [
-  { name: "Next.js",   logo: "vercel" },
-  { name: "AI SDK",    logo: "openai" },
-  { name: "OpenAI",    logo: "openai" },
-  { name: "pgvector",  logo: "postgresql" },
-  { name: "Resend",    logo: "resend" },
+  { name: "Next.js",     logo: "vercel" },
+  { name: "AI SDK",      logo: "openai" },
+  { name: "OpenAI",      logo: "openai" },
+  { name: "pgvector",    logo: "postgresql" },
+  { name: "Drizzle",     logo: "drizzle" },
+  { name: "Better Auth",  logo: "betterauth" },
+  { name: "Cloudflare",  logo: "cloudflare" },
+  { name: "Resend",      logo: "resend" },
 ] as const
 
 const STEPS = [
@@ -69,7 +75,7 @@ const RELATED = [
     tagline:
       "Auth, sync, and push notifications for native apps, on the same backend.",
   },
-] as const
+] as const satisfies ReadonlyArray<RelatedUseCaseItem>
 
 /**
  * First-party templates the org has built on this surface. They
@@ -91,133 +97,30 @@ const BUILT_TEMPLATES = [
  * answers, then exposes 3 rows of selling copy. Plain prose, no
  * marketing fluff.
  */
-const CAPABILITY_CLUSTERS = [
-  {
-    id: "conversational-agent",
-    iconName: "MessageSquare",
-    title: "Conversational agent",
-    lead:
-      "The user-facing surface. How the agent talks to the user, and stays coherent past the first reply.",
-    rows: [
-      {
-        id: "streaming",
-        title: "Streaming responses",
-        body:
-          "Tokens stream token by token over server-sent events, no WebSocket plumbing, no 4-second silence before the first character. The cursor sits at the end of the stream until completion, and the user can cancel mid-stream without orphaned tokens.",
-      },
-      {
-        id: "memory",
-        title: "Conversation memory",
-        body:
-          "Conversation state persists across turns and sessions. The agent reads prior messages before each step, so 'what was that variable again?' works without rebuilding the prompt inline. Memory writes go through the same observability contract as the rest of the app.",
-      },
-      {
-        id: "follow-ups",
-        title: "Pausing for clarification",
-        body:
-          "When the model needs more input, the agent pauses the run and asks the user a typed choice. No 'context has gone, please re-enter' surprises — the run resumes with the new input appended.",
-      },
-    ],
-  },
-  {
-    id: "tool-integration",
-    iconName: "Wrench",
-    title: "Tool integration",
-    lead:
-      "Where the agent stops being a chat and becomes useful — the contract surface where it touches the rest of your app.",
-    rows: [
-      {
-        id: "tool-schema",
-        title: "Typed tool schema",
-        body:
-          "Tools are TypeScript functions; the schema is the contract your agent calls. Inputs and outputs are typed against the same registry your UI reads, so a tool that compiles in your app compiles for the agent.",
-      },
-      {
-        id: "hono-orpc",
-        title: "Hono + oRPC bridges",
-        body:
-          "Procedure types from your existing oRPC router flow into the agent's tool manifest. The agent consumes the contract, not the implementation — no drift between what your UI does and what the agent does.",
-      },
-      {
-        id: "auth-rate-limit",
-        title: "Auth + rate limits, applied",
-        body:
-          "Auth and rate limits follow the same rules when the agent calls as when a user does. Every tool call carries the org context, so a customer-scoped tool only reads that customer's data.",
-      },
-    ],
-  },
-  {
-    id: "knowledge-retrieval",
-    iconName: "Database",
-    title: "Knowledge retrieval",
-    lead:
-      "How the agent grounds itself in your domain — without re-training, without a second database.",
-    rows: [
-      {
-        id: "pgvector",
-        title: "pgvector, indexed at write time",
-        body:
-          "Postgres + pgvector is the index. The same Drizzle schema your app reads, the same pgvector index the agent queries. No second database to provision, no second backup to schedule, no second connection pool to monitor.",
-      },
-      {
-        id: "reranking",
-        title: "Score + rerank",
-        body:
-          "Search returns scored chunks the agent reads in order. Top results carry enough context for grounding; the agent cites the chunk IDs in its reply so the user can audit what fed the answer.",
-      },
-      {
-        id: "documents",
-        title: "Documents and KB articles",
-        body:
-          "The same ingestion pipeline handles docs, KB articles, and product schema — anything with a version and a slug. Old versions are pruned automatically so the agent never answers from stale context.",
-      },
-    ],
-  },
-  {
-    id: "production-operations",
-    iconName: "Activity",
-    title: "Production operations",
-    lead:
-      "How the agent stays correct, fast, and observable the day a customer files a support ticket about a wrong answer.",
-    rows: [
-      {
-        id: "run-trace",
-        title: "Run traces",
-        body:
-          "Tool calls, latency, errors, and token counts land in the same waterfall your HTTP routes already use. One OpenTelemetry pipeline. Errors tagged with tool name and call site so a 500 in production has a runtime.",
-      },
-      {
-        id: "replay",
-        title: "Replay from a trace ID",
-        body:
-          "Every run has a trace ID you can replay from the operator console. Re-run with the same inputs, compare outputs, ship a fix without ever touching production traffic.",
-      },
-      {
-        id: "cost",
-        title: "Token + cost budgets",
-        body:
-          "Per-run, per-user, per-org. Hard limits surface in the dashboard before the bill does. No month-end surprise when the agent hit an unbounded loop over the weekend.",
-      },
-    ],
-  },
-] as const
+export default async function AiProductsPage() {
+  // Pre-render the eight ai-products pillar snippets server-side via
+  // Shiki, identical to the homepage Ecosystem and /cli CliStart
+  // pattern, and the saas-apps use case. Strings travel through the
+  // Client Component boundary as plain HTML.
+  const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
+    "agent-loop": [], "typed-tools": [], "pgvector-search": [], "otel-trace": [],
+    "streaming-cancel": [], "citation-prompt": [], "eval-scoring": [], "replay-console": [],
+  }
 
-/**
- * Mockup map keyed by cluster.id. One real mockup per cluster.
- * Pre-existing tree mockups retained for the surfaces they cover:
- *   - AgentLoopMockup        → Conversational agent
- *   - ApiEndpointMockup      → Tool integration
- *   - KnowledgeRetrievalMockup → Knowledge retrieval (first version)
- *   - OtelWaterfallMockup    → Production operations
- */
-const CLUSTER_MOCKUPS = {
-  "conversational-agent": <AgentLoopMockup />,
-  "tool-integration":      <ApiEndpointMockup />,
-  "knowledge-retrieval":   <KnowledgeRetrievalMockup />,
-  "production-operations": <OtelWaterfallMockup />,
-} as const
+  await Promise.all(
+    (Object.keys(AI_PRODUCTS_SNIPPETS) as AiProductsPillarSlug[]).flatMap((slug) =>
+      AI_PRODUCTS_SNIPPETS[slug].files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        }),
+      ),
+    ),
+  )
 
-export default function AiProductsPage() {
   return (
     <div className="flex flex-col">
       {/* 1. Hero */}
@@ -235,43 +138,50 @@ export default function AiProductsPage() {
         }}
       />
 
-      {/* 2. What's in the box — four capability clusters */}
-      <section className="border-b border-border">
-        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            What&apos;s in the box
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            The four sub-systems every AI product needs.
-          </h2>
-          <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Eleven capabilities grouped by the buyer-side question
-            they answer. Pick a cluster, read what you actually get,
-            and ship it.
-          </p>
-        </div>
-        <CapabilityClustersSection
-          clusters={CAPABILITY_CLUSTERS}
-          mockups={CLUSTER_MOCKUPS}
+      {/* 2. What's in the box — 4 tabs (customer surface).
+           Same canonical Tabs + peek pattern as the saas-apps
+           page; tabs LEFT, Shiki peek RIGHT. */}
+      <Section>
+        <SectionHeader
+          eyebrow="What's in the box"
+          title="The four sub-systems every AI product needs."
+          subtitle="Eight capabilities grouped by the buyer-side question they answer. Two halves: what the agent does for the user, and what keeps it correct in production."
+          bordered={true}
         />
-      </section>
+        <UseCaseTabs pillars={GROUP_1} htmlBySlug={htmlBySlug} />
+      </Section>
+
+      {/* 3. Behind the curtain — 4 tabs (runtime), mirrored. */}
+      <Section>
+        <SectionHeader
+          eyebrow="Behind the curtain"
+          title="What keeps an agent in production."
+          subtitle="The four sub-systems an on-call engineer names first. Same contracts, same registry, same auth, just on the other side of the same RPC."
+          bordered={true}
+        />
+        <UseCaseTabs pillars={GROUP_2} htmlBySlug={htmlBySlug} reverse />
+      </Section>
 
       {/* 3. Stack */}
-      <section className="flex flex-col border-t border-border">
-        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            Stack
-          </p>
-          <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            What runs on day one.
-          </h2>
+      {/*    Same TechStackGrid + same Section shape as the saas-apps
+           page (and the homepage + /pricing page). Header row on top,
+           brand wall underneath. The brand tiles rotate on a swap
+           animation, so the surface reads as a living tech stack
+           rather than a static logo dump. */}
+      <Section>
+        <div className="flex flex-col divide-y divide-border">
+          <div className="px-6 py-6 lg:px-10">
+            <p className="text-heading-24 tracking-tighter text-balance [&:not(:first-child)]:mt-0">
+              Built with the stack senior engineers ship on.
+            </p>
+          </div>
+          <TechStackGrid techs={STACK} />
         </div>
-        <TechStackGrid techs={STACK} />
-      </section>
+      </Section>
 
       {/* 4. Process */}
-      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
+      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-12 lg:divide-x lg:divide-border">
+        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-3 lg:p-10">
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
             Process
           </p>
@@ -279,7 +189,7 @@ export default function AiProductsPage() {
             How an AI product ships.
           </h2>
         </div>
-        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
+        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-9 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
           {STEPS.map((step, idx) => (
             <li
               key={step.heading}
@@ -348,40 +258,7 @@ export default function AiProductsPage() {
       </section>
 
       {/* 6. Related */}
-      <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
-            Explore
-          </p>
-          <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
-            Related use cases.
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 divide-y divide-border lg:col-span-4 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
-          {RELATED.map((item) => (
-            <Link
-              key={item.slug}
-              href={`/use-cases/${item.slug}`}
-              className="group flex flex-col gap-2 p-6 transition-colors hover:bg-accent/40 lg:p-8"
-            >
-              <p className="text-label-13 text-muted-foreground">Related</p>
-              <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
-                {item.title}
-              </h3>
-              <p className="line-clamp-3 text-copy-14 leading-6 text-muted-foreground">
-                {item.tagline}
-              </p>
-              <p className="inline-flex items-center gap-1 pt-1 text-label-13 text-foreground">
-                Read more
-                <ArrowRight
-                  className="size-3 transition-transform group-hover:translate-x-0.5"
-                  aria-hidden
-                />
-              </p>
-            </Link>
-          ))}
-        </div>
-      </div>
+      <RelatedUseCases items={RELATED} />
 
       <FinalCta />
     </div>

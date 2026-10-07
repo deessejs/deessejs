@@ -1,4 +1,4 @@
-import { TechStackGrid } from "@/app/(marketing)/_components/tech-stack-grid"
+import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import { TECH_STACK } from "@/lib/marketing/home-data"
 
 /**

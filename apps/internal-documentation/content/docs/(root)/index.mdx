@@ -6,9 +6,9 @@ description: The internal documentation site for the DeesseJS monorepo.
 This site renders a curated subset of the engineering
 documentation as a navigable web surface. The full
 architecture decisions, rules, and knowledge-base entries
-live as Markdown files in version control at
-`docs/engineering/architecture/`; the docs site reads them
-directly. {/* vale fix: write-good.Passive */}
+live as MDX files in version control under
+`apps/internal-documentation/content/docs/`; the docs site
+reads them directly. {/* vale fix: write-good.Passive */}
 
 ## What's here
 
@@ -22,10 +22,10 @@ directly. {/* vale fix: write-good.Passive */}
 
 The authoritative documentation lives in the monorepo:
 
-- **ADR documents** live in `docs/engineering/architecture/decisions/`. {/* vale fix: Vale.Spelling */}
-- **Rules** are in `docs/engineering/architecture/rules/`.
-- **Knowledge base** is in `docs/engineering/architecture/knowledge-base/`.
-- **Process guides** are in `docs/guides/`.
+- **ADR documents** live in [`decisions/`](decisions/). {/* vale fix: Vale.Spelling */}
+- **Rules** are in [`rules/`](rules/).
+- **Knowledge base** is in [`knowledge-base/`](knowledge-base/).
+- **Process guides** are in [`processes/`](processes/).
 
 This site is a **rendering target** for the content that
 benefits from a web surface (new-hire ramp-up, culture).
