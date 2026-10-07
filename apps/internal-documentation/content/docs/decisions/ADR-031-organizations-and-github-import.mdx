@@ -182,6 +182,12 @@ organization at all times.
   account) or an organization"; the schema has a single `ownerType` +
   `ownerId` pair, or two nullable FKs with a CHECK constraint. The
   implementation ADR will pick the shape.
+- A personal-account organization that is treated as user-deletable
+  or user-renamable. The personal account is the user's identity
+  anchor and persists for the lifetime of the user. The UI hides
+  rename and delete actions for personal accounts; the better-auth
+  server-side calls reject them. See §"Cycle of life" below for
+  the rename / delete rules that apply to real organizations.
 
 #### What this rule forbids
 
@@ -202,6 +208,17 @@ organization at all times.
   surfaces rows scoped to a personal account or an organization must
   filter on `activeOrganizationId` (or the resolved owner id) and
   must not assume that the personal account's id is the user's id.
+- Deleting or renaming a personal-account organization. The personal
+  account is the user's identity anchor (it carries the user's
+  personal projects during the onboarding window, it is the default
+  context for the user-menu, and it is the fallback when an org is
+  deleted — see §"Cycle of life" in the next amendment). The UI hides
+  rename and delete actions for personal accounts, and the better-auth
+  `authClient.organization.update` / `authClient.organization.delete`
+  calls must reject personal-account ids server-side. The plugin's
+  default behaviour (the creator is the sole `owner`) is the only
+  enforcement: there is no application-level fallback that would
+  re-create a personal account once deleted.
 
 ### 2. Two roles: `owner` and `admin`
 
@@ -209,12 +226,29 @@ The better-auth `organization` plugin ships with `owner` and `admin`
 roles by default. This ADR adopts both as the only roles for V1.
 
 - `owner` — can delete the organization, transfer ownership, manage
-  billing (when billing ships). Exactly one per organization.
+  billing (when billing ships), and rename the organization (the
+  `name` and the `slug`). Exactly one per organization.
 - `admin` — can invite and remove members, change organization
-  settings, create and delete projects. Multiple admins per
+  settings, create and delete projects, and rename the organization
+  (the `name` and the `slug`). Cannot delete the organization
+  (destructive operation reserved for `owner`). Multiple admins per
   organization allowed.
 - New members arrive as `admin` (the plugin default), unless the invite
   specifies otherwise.
+
+**Cycle of life permissions (added 2026-10).** The two-role model maps
+to the org lifecycle as follows:
+
+- **Rename** (`name` and/or `slug`): `owner` and `admin` can both
+  rename. The UI exposes the rename action in the org settings page
+  (`/<org-slug>/settings`); the action is available to every member
+  of the org. The slug change triggers 301 redirects of the old
+  URLs.
+- **Delete** (hard delete, cascades to `member`, `project`,
+  `invitation`): `owner` only. The UI exposes the delete action in
+  a destructive zone of the org settings page; `admin` does not see
+  the action. The personal account is not deletable by anyone (see
+  §1 §"What this rule forbids").
 
 #### Why this rule decides
 

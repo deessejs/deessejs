@@ -221,6 +221,82 @@ No other section of `AGENTS.md` changes. The
 "Staging-first workflow" and the "Fresh CLI" sections are
 unaffected.
 
+#### 5. Org lifecycle: rename, delete, personal-account immutability
+
+> **Amendment (2026-10).** The wizard creates a real organization
+> on top of the user's personal account (per `ADR-031` §1 and §2).
+> Once the org exists, the user expects to be able to rename it
+> (typo on the name, brand change) and, in the end, delete it
+> (project cancelled, team dissolved). This sub-section scopes the
+> org lifecycle surfaces in the implementation PR that follows.
+
+**Rename.** The `name` and the `slug` of a real organization are
+modifiable at any time from `/<org-slug>/settings` (the
+organization settings page, owned by the per-org settings entry in
+the sidebar). The action calls
+`authClient.organization.update({ organizationId, name, slug })`.
+The `slug` is the URL segment, so a change must propagate to every
+in-app link to the org; the implementation uses the `app-config.ts`
+`orgHome(orgSlug)` and `orgSettings(orgSlug)` helpers (per the
+amended `ADR-030`) so the slug is never hardcoded. External links
+to the old slug (search engines, bookmarks) are redirected to the
+new slug via a 301 in `next.config.ts` rewrites. Per
+`ADR-031` §2 §"Cycle of life permissions", both `owner` and
+`admin` can rename.
+
+**Delete.** The `name` and the `slug` of a real organization can
+also be removed entirely, by hard delete. The action calls
+`authClient.organization.delete({ organizationId })`. The
+better-auth `organization` plugin's hard delete cascades to the
+`member`, `invitation`, and `team` tables (the plugin's contract).
+The `project` rows that FK the organization are also hard-deleted
+(the schema's FK is `ON DELETE CASCADE` per the implementation
+PR's Drizzle migration). The `user` rows and the `account` rows
+(GitHub OAuth, per `ADR-028`) survive: the user still has their
+identity, and the user can still re-link a GitHub account later.
+Per `ADR-031` §2 §"Cycle of life permissions", only `owner` can
+delete. The personal account is not deletable by anyone; see
+`ADR-031` §1 §"What this rule forbids" and §"What this rule
+allows".
+
+**Session after delete.** If the user deletes the active
+organization, the session's `activeOrganizationId` is reset to
+the user's personal account (the always-available fallback). The
+user is redirected to `/<personal-slug>/home` (the
+personal-account dashboard) with a toast confirming the deletion.
+The user is never left without an active organization.
+
+**Redirect target.** The post-delete redirect is
+`/<personal-slug>/home` because the route shape adopted by the
+amended `ADR-030` is Vercel-style `/[org_slug]/*`; the personal
+account's slug is the user's custom slug (default = username), per
+`ADR-031` §6 step 1 and `ADR-032` §"Decision" §2. The
+implementation looks up the personal-account slug at request time
+from the `auth.api.getSession` response (the session carries the
+active organization id; the personal-account slug is the user row's
+`username` field or, if the user has run the wizard's step 1, the
+personal-account organization's `slug`).
+
+**The org settings page.** The page lives at
+`apps/app/app/(protected)/[org_slug]/settings/page.tsx` (new
+route, parallel to the `/<org-slug>/home` page). It is a
+server-rendered page that mounts a client component
+`OrgSettingsForm` (new, at
+`apps/app/components/orgs/org-settings-form.tsx`) for the rename
+form and a destructive-zone `DeleteOrgDialog` (new, at
+`apps/app/components/orgs/delete-org-dialog.tsx`) for the delete
+confirmation. The page reuses the `Card`, `Field`, `Input`,
+`Button`, and `Dialog` primitives the rest of `apps/app` uses
+(the `use-shadcn` rule applies).
+
+**Server-side calls.** Rename and delete go through the
+better-auth handlers at `/api/v1/auth/organization/update` and
+`/api/v1/auth/organization/delete` (the plugin's built-in
+routes; the implementation does not add a wrapper Hono route).
+The `update` and `delete` handlers enforce role on the server
+side; the client-side role check (hiding the delete button for
+`admin`) is a UX nicety, not a security boundary.
+
 ### What this rule allows
 
 - The proxy at `apps/app/proxy.ts` adding the
@@ -232,7 +308,7 @@ unaffected.
   to the existing `(protected)` and `(unprotected)` groups.
 - The client component
   `apps/app/components/onboarding/onboarding-wizard.tsx` and the
-  three step components.
+  four step components.
 - The three Hono routes
   (`GET /api/v1/organization/check-slug`,
   `POST /api/v1/organization/create`,
@@ -250,6 +326,22 @@ unaffected.
   the better-auth response). The toast is fired from the
   `step-invite` client component, not from the Members page
   itself.
+- A `/<org-slug>/settings` page (per §"Decision" §5) with a
+  `OrgSettingsForm` client component (rename) and a
+  `DeleteOrgDialog` client component (destructive confirmation).
+  The page reuses the layout chrome defined in the amended
+  `ADR-030`.
+- `next.config.ts` rewrites that 301-redirect the old slug to the
+  new slug when an org is renamed (per §"Decision" §5). The
+  rewrite list is the source of truth for "what URL was an
+  org's old home"; the org's `slug` history is stored in a
+  small `organization_slug_history` table (or a JSON column on
+  the `organization` row — implementation choice in the
+  implementation PR).
+- A toast on the deletion confirmation that confirms the
+  deletion, plus a redirect to `/<personal-slug>/home` after
+  the session's `activeOrganizationId` resets to the personal
+  account.
 
 ### What this rule forbids
 
@@ -284,6 +376,24 @@ unaffected.
   client uses `authClient.organization.inviteMember(...)`
   directly. The implementation does not wrap it in an oRPC
   procedure or a Hono route.
+- Deleting or renaming a personal-account organization (per
+  `ADR-031` §1 §"What this rule forbids"). The UI hides rename
+  and delete actions for personal accounts; the implementation
+  must not surface them in any context (the `/<org-slug>/settings`
+  page is only reachable for real organizations, and the
+  `app-config.ts` helpers resolve the personal slug to the
+  `account/settings` route, never to `/<org-slug>/settings`).
+- Letting `admin` delete an organization. The destructive zone
+  of the org settings page is `owner`-only; the client-side
+  check is a UX nicety, but the better-auth `auth.api.deleteOrganization`
+  server-side handler also enforces the role (per `ADR-031` §2
+  §"Cycle of life permissions"). An implementation that bypasses
+  the server-side check is a security bug, not a feature.
+- A re-implementation of the rename or delete logic in
+  client-side code. Both calls go through
+  `authClient.organization.update(...)` and
+  `authClient.organization.delete(...)`; the implementation
+  does not reimplement role checks or cascade logic client-side.
 
 ### Why not the alternatives
 
@@ -392,6 +502,14 @@ unaffected.
   `/<org-slug>/home`. A future ADR can scope a richer
   per-organization dashboard (`/<org-slug>/projects` or
   equivalent) when the project-import screen is in scope.
+- **The org lifecycle surfaces ship together with the
+  onboarding.** The `/<org-slug>/settings` page (rename + delete)
+  and the slug-rewrite 301 in `next.config.ts` land in the same
+  implementation PR that ships the wizard. The personal account
+  is immutable: the UI hides rename and delete actions, and the
+  better-auth handlers reject personal-account ids. Deleting the
+  active org resets the session to the personal account and
+  redirects to `/<personal-slug>/home`.
 
 ## Out of scope (deferred)
 
