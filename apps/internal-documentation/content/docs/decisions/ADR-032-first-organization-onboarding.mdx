@@ -147,20 +147,21 @@ server-rendered page that mounts a client component
 reads the session server-side (via the better-auth `auth.api.getSession`
 call the implementation already uses for `(protected)` pages) and
 hands the session's `user.id` to the client component. The client
-component owns the step state (`useState<1 | 2 | 3>(1)`), the per-step
-form state, and the calls to the two Hono routes.
+component owns the step state (`useState<1 | 2 | 3 | 4>(1)`), the
+per-step form state, and the calls to the two Hono routes.
 
 The page renders a minimal layout: a centered card with the
-`APP_NAME` logo at the top, a step indicator (`1 — Name`, `2 —
-Invite`, `3 — GitHub`) with the current step highlighted, the
-active step's form, and a "Skip this step" button on steps 2 and 3
-(absent on step 1, per ADR-031 §6). The card uses the same
-`Card`, `Input`, `Button`, and `Field` primitives the rest of
-`apps/app` uses (the `use-shadcn` rule applies — no raw HTML form
-controls).
+`APP_NAME` logo at the top, a step indicator (`1 — Personal slug`,
+`2 — Org name and slug`, `3 — Invite`, `4 — GitHub`) with the
+current step highlighted, the active step's form, and a "Skip this
+step" button on steps 1, 3, and 4 (absent on step 2, per
+ADR-031 §6). The card uses the same `Card`, `Input`, `Button`, and
+`Field` primitives the rest of `apps/app` uses (the `use-shadcn`
+rule applies — no raw HTML form controls).
 
-The three step components live next to the wizard:
+The four step components live next to the wizard:
 
+- `apps/app/components/onboarding/step-personal-slug.tsx`
 - `apps/app/components/onboarding/step-name-slug.tsx`
 - `apps/app/components/onboarding/step-invite.tsx`
 - `apps/app/components/onboarding/step-github.tsx`
@@ -383,11 +384,13 @@ unaffected.
   `ADR-028`) for the GitHub step; no new env vars are
   introduced. The `BETTER_AUTH_SECRET` is unchanged.
 - **The wizard's post-onboarding landing.** This ADR scopes
-  the landing to the existing `/home` route (the same
-  landing every other first-signin flow uses). The
-  `?redirect=<path>` query param is honored if set; if not,
-  the user lands on `/home`. A future ADR can scope a
-  per-organization landing (`/o/<slug>/projects` or
+  the landing to the new organization's dashboard at
+  `/<org-slug>/home` (the Vercel-style `/[org_slug]/*` route
+  shape scoped in the amended `ADR-030`). The
+  `?redirect=<path>` query param is honored if it points to a
+  route under `/<org-slug>/*`; otherwise the user lands on
+  `/<org-slug>/home`. A future ADR can scope a richer
+  per-organization dashboard (`/<org-slug>/projects` or
   equivalent) when the project-import screen is in scope.
 
 ## Out of scope (deferred)
@@ -494,13 +497,15 @@ on a Vercel preview:
 
 ## Known limitations in this version
 
-### Limitation 1: post-onboarding landing is `/home`, not the org dashboard
+### Limitation 1: post-onboarding landing is `/<org-slug>/home`, not a per-organization dashboard
 
-The post-onboarding landing is `/home` (per the §"Consequences"
-note above). A per-organization landing
-(`/o/<slug>/projects` or equivalent) is a future ADR. The
-user can navigate to the org's content from `/home`'s
-organization switcher; the landing is not org-shaped in V1.
+The post-onboarding landing is `/<org-slug>/home` (per the
+§"Consequences" note above, after the amendment to the route
+shape in the amended `ADR-030`). A richer per-organization
+dashboard (`/<org-slug>/projects` or equivalent) is a future
+ADR. The user lands on a placeholder home page scoped to the
+new organization; the org's content (members, projects, settings)
+is reachable from the sidebar.
 
 ### Limitation 2: the proxy gate re-fetches the active organization
 
@@ -531,6 +536,20 @@ refreshes, loses the typed name. This is a known V1
 limitation; partial-state persistence is the
 mitigation, and ADR-031 §6 forbids it. The mitigation
 in V1 is "type, then submit; do not refresh mid-form."
+
+## Open questions
+
+1. **Does the better-auth `organization` plugin's `update` action
+   allow modifying the slug of a personal-account organization?**
+   `ADR-031` §6 step 1 calls
+   `authClient.organization.update({ organizationId: <personal>, slug })`
+   to apply the custom slug the user picks. If the plugin rejects the
+   update (or if personal accounts are not regular `organization` rows
+   the plugin accepts `update` on), the step is a no-op that advances
+   to step 2 with the username as the slug, and the customisation is
+   deferred to a follow-up ADR. The implementation PR resolves this
+   against the live plugin API; the fallback shape is documented
+   here so the implementation is not blocked on the question.
 
 ## Where this rule came from
 

@@ -170,8 +170,11 @@ organization at all times.
   enforced server-side, in `apps/app/proxy.ts` or the `(protected)`
   layout (the implementation ADR picks the layer), and is the only way
   to reach the app on first login. The wizard is `/onboarding/first-organization`
-  (shape in §6 below); the post-onboarding landing is scoped in the
-  implementation ADR.
+  (shape in §6 below). The post-onboarding landing is `/<org-slug>/home`
+  (the new organization's dashboard, in the Vercel-style `/[org_slug]/*`
+  route shape scoped in the amended `ADR-030`). The `?redirect=<path>`
+  query param is honored if it points to a route under `/<org-slug>/*`;
+  otherwise the user lands on `/<org-slug>/home`.
 - Business rows (projects, in the V1 sense) that FK either
   `organization.id` (when the project belongs to a real organization)
   or `user.id` (when the project belongs to a personal account). The
@@ -477,64 +480,86 @@ full Vercel flow. Specifically:
   time of the import. Different organizations do not get different
   GitHub identities in V1.
 
-### 6. Onboarding wizard shape: three steps, per-step skip
+### 6. Onboarding wizard shape: four steps, per-step skip
 
 > **Amendment (2026-10).** The gate in §1 needs a destination. The
-> destination is `/onboarding/first-organization`, a three-step wizard
-> rendered as a single page with internal step state. The first step is
-> required (creating the organization is the whole point of the gate);
-> steps 2 and 3 each carry their own "Skip this step" button. The wizard
-> has no global skip button and no "Save and finish later" exit; the
-> server-side gate in §1 keeps the user on the wizard until the first
-> step's submit succeeds. The implementation detail (route, components,
-> proxy wiring, tests) is in `ADR-032`.
+> destination is `/onboarding/first-organization`, a four-step wizard
+> rendered as a single page with internal step state. The first step
+> is the personal-account slug customisation (default = username,
+> editable). The second step is the organization creation (the gate
+> itself). Steps 3 and 4 each carry their own "Skip this step" button.
+> The wizard has no global skip button and no "Save and finish later"
+> exit; the server-side gate in §1 keeps the user on the wizard until
+> the second step's submit succeeds. The implementation detail (route,
+> components, proxy wiring, tests) is in `ADR-032`.
 
 #### Why this rule decides
 
-- **Three steps, not one.** A single "name + slug" form would be faster
-  but loses the chance to seed the organization with teammates and a
-  GitHub identity while the user's intent is fresh. The reference
-  (Vercel, Linear) front-loads the same three decisions in the same
-  order (team identity → collaborators → integrations).
+- **Four steps, not one.** A single "name + slug" form would be faster
+  but loses the chance to customise the personal-account slug (the
+  Vercel-style `/[org_slug]/*` route shape scoped in the amended
+  `ADR-030` requires every user to have a customisable slug for their
+  personal account), to seed the organization with teammates, and to
+  connect a GitHub identity. The reference (Vercel, Linear)
+  front-loads the same decisions in the same order.
 - **Per-step skip, no global skip.** The gate is the org creation
-  (§1); everything after is value-add. Forcing every user to invite
-  teammates or to connect GitHub would create a paywall on features
-  that are not coupled to the product's primary use case. A user who
-  signs up solo and wants to evaluate the product must be able to
-  reach the app after one form.
-- **Step 1 is required because it is the gate.** "Skip this step" on
-  step 1 would mean "skip the gate", which is what §1 forbids. The
-  button is absent on step 1, present on steps 2 and 3.
+  (step 2); everything after is value-add. Forcing every user to
+  invite teammates or to connect GitHub would create a paywall on
+  features that are not coupled to the product's primary use case. A
+  user who signs up solo and wants to evaluate the product must be
+  able to reach the app after one form.
+- **Step 2 is required because it is the gate.** "Skip this step" on
+  step 2 would mean "skip the gate", which is what §1 forbids. The
+  button is absent on step 2, present on steps 3 and 4. Step 1
+  (personal-account slug) carries a "Skip this step" button because
+  the default is the username and most users will keep it.
 
 #### Why not the alternatives
 
-- **One step (name + slug only).** Faster, but loses the team-seeding
-  moment. Rejected because the cost of the extra two steps (each has a
-  skip) is small and the upside (a user who does invite teammates from
-  the wizard does not have to revisit the Members page later) is real.
-- **Three steps with a global "Skip onboarding" button.** Defeats the
+- **One step (name + slug only).** Faster, but loses the
+  personal-account slug customisation, the team-seeding moment, and
+  the GitHub connect. Rejected because the cost of the extra three
+  steps (each has a skip) is small and the upside is real.
+- **Four steps with a global "Skip onboarding" button.** Defeats the
   gate. Rejected by §1.
-- **Three steps with step 3 (GitHub) mandatory.** Forces a feature
+- **Four steps with step 4 (GitHub) mandatory.** Forces a feature
   the user has not asked for. Rejected on the same ground as
   per-step skip: the gate is the org, not the integration.
-- **More than three steps (e.g. add a "Pick a plan" step).** Billing
+- **More than four steps (e.g. add a "Pick a plan" step).** Billing
   is out of scope per `Out of scope (deferred)`. Adding a billing
   step would push the wizard into a V2 product shape that this ADR
   does not have authority over.
+- **Personal-account slug not customisable, fixed to the username.**
+  The Vercel-style route shape (per the amended `ADR-030`) requires
+  the slug to be a valid dynamic-segment value, which the username
+  always is. The customisation adds flexibility (the user can pick
+  a cleaner slug) without removing the default. Rejected because
+  the team wants the customisation; the alternative is to defer it
+  to a future ADR and ship a fixed-slug V1.
 
-#### The three steps
+#### The four steps
 
-1. **Name and slug.** Required. The slug is auto-generated from the
-   name (`"Acme Inc"` becomes `acme-inc`), editable before submit.
-   Validation: live check on slug uniqueness (a
-   `GET /api/v1/organization/check-slug?slug=...` route, debounced
-   ~250 ms), regex check on slug format (`^[a-z0-9-]+$`,
-   length 3-32). On submit, the better-auth
+1. **Personal-account slug.** Optional. The slug is pre-filled with
+   the user's username, editable. Validation: live check on slug
+   uniqueness (the same `GET /api/v1/organization/check-slug?slug=...`
+   route is reused), regex check on slug format
+   (`^[a-z0-9-]+$`, length 3-32). On submit, the better-auth
+   `authClient.organization.update({ organizationId: <personal>, slug })`
+   call runs (if the better-auth `organization` plugin's `update`
+   action allows modifying the slug of a personal-account
+   organization; otherwise this step is a no-op that advances to
+   step 2 with the username as the slug — see `ADR-032`
+   §"Open questions"). A "Skip this step" button advances without
+   modifying the slug (the username stays the default).
+2. **Name and slug of the organization.** Required. The org slug is
+   auto-generated from the name (`"Acme Inc"` becomes `acme-inc`),
+   editable before submit. Validation: same `check-slug` route and
+   regex as step 1. On submit, the better-auth
    `authClient.organization.create({ name, slug })` call runs, the
    session's `activeOrganizationId` switches to the new organization,
-   and the wizard advances to step 2. **No "Skip this step" button on
-   step 1.** The submit button is the only way out of step 1.
-2. **Invite teammates.** Optional. A multi-email input (`textarea`
+   and the wizard advances to step 3. **No "Skip this step" button
+   on step 2.** The submit button is the only way out of step 2.
+3. **Invite teammates.** Optional. A multi-email input (`textarea`
    parsed as one email per line, validated client-side against a
    basic email regex, dedup'd against already-invited addresses, with
    a per-line error display). On submit, the better-auth
@@ -543,28 +568,29 @@ full Vercel flow. Specifically:
    partial-failure count is shown in a toast). A "Skip this step"
    button advances without sending any invitation. The user can
    always invite later from the Members page.
-3. **Connect GitHub.** Optional. A "Connect GitHub" button runs
+4. **Connect GitHub.** Optional. A "Connect GitHub" button runs
    `authClient.signIn.social({ provider: "github", callbackURL:
-   "/onboarding/first-organization?step=3" })`. On return, the wizard
-   advances regardless of whether the user linked a GitHub account
-   (the linked-or-not state is read from the `account` table, not
-   inferred from a redirect param). A "Skip this step" button
+   "/onboarding/first-organization?step=4" })`. On return, the
+   wizard advances regardless of whether the user linked a GitHub
+   account (the linked-or-not state is read from the `account` table,
+   not inferred from a redirect param). A "Skip this step" button
    advances without connecting. The user can connect later from the
-   project-import screen or from `/settings/connections`.
+   project-import screen or from `/account/settings/connections`.
 
 #### Post-onboarding landing
 
-After step 3 (skipped or completed), the wizard redirects to the
-post-onboarding landing. The implementation ADR (`ADR-032`) picks
-the target: either the new organization's dashboard
-(`/o/<slug>/projects` or equivalent) or the existing `/home` route
-scoped to the new active organization. This ADR does not pick; it
-scopes the choice.
+After step 4 (skipped or completed), the wizard redirects to the
+post-onboarding landing. The target is `/<org-slug>/home` (the new
+organization's dashboard, in the Vercel-style `/[org_slug]/*` route
+shape scoped in the amended `ADR-030`). The `?redirect=<path>`
+query param is honored if it points to a route under `/<org-slug>/*`;
+otherwise the user lands on `/<org-slug>/home`. The implementation
+ADR (`ADR-032`) scopes the wiring.
 
 #### What this rule allows
 
 - A single page at `apps/app/app/(onboarding)/first-organization/page.tsx`
-  (or the implementation ADR's chosen path) that renders the three
+  (or the implementation ADR's chosen path) that renders the four
   steps as internal state, with a step indicator at the top of the
   page.
 - A `POST /api/v1/organization/check-slug` route (Hono, under the
