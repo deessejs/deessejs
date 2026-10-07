@@ -27,7 +27,7 @@ catalog:
   '@content-collections/mdx': ^0.2.2
   '@content-collections/next': ^0.2.11
   '@deessejs/errors': ^1.1.1
-  '@deessejs/fp': ^1.0.0
+  '@deessejs/fp': ^5.0.1
   "@hookform/resolvers": ^5.0.0
 
   # Next.js

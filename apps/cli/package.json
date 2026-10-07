@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "@deessejs/errors": "^1.1.1",
-    "@deessejs/fp": "^1.0.0",
+    "@deessejs/fp": "catalog:",
     "@orpc/client": "^1.14.7",
     "@orpc/server": "^1.14.7",
     "better-auth": "^1.6.23",
