@@ -1,16 +1,23 @@
 ---
 title: 'Organizations and GitHub project import'
-description: 'Adopt the better-auth organization plugin in Vercel style (personal accounts + organizations, owner + admin roles, N orgs per user, email-only invites) and scope V1 of GitHub project import to "list repos and select which to import", with no webhook and no auto-sync. Replaces the single-tenant rule from the README and AGENTS.md.'
+description: 'Adopt the better-auth organization plugin in Vercel style (personal accounts + organizations, owner + admin roles, N orgs per user, email-only invites) and scope V1 of GitHub project import to "list repos and select which to import", with no webhook and no auto-sync. Amended in-place to require a first-organization gate after signup, with per-step skips in the onboarding wizard. Replaces the single-tenant rule from the README and AGENTS.md.'
 ---
 
 # ADR-031: Organizations and GitHub project import
 
 ## Status
 
-Proposed (2026-10). Under review on `chore/adr-031-organizations-and-github-import`.
-The ADR ships no code. It is the decision record for the product shape that
-two follow-up implementation ADRs (one for the `organization` plugin, one for
-the GitHub project import screen) will reference.
+Amended (2026-10). Originally proposed on
+`chore/adr-031-organizations-and-github-import` (PR #205). Amended in-place
+on the same branch to require a first-organization gate after signup, with
+per-step skips in the onboarding wizard. The amendment lifts the "no
+signup-time org gate" and "no /home redirect" rules in §1 below, and folds
+the GitHub OAuth step into the onboarding wizard in §5 below (the step has
+its own "Skip this step" button, like every other step in the wizard). The
+ADR ships no code. The implementation ADRs that follow inherit the amended
+shape: ADR-032 scopes the onboarding wizard in detail, and the two
+follow-up ADRs from the original proposal (organization plugin, GitHub
+project import screen) inherit the new gate.
 
 ## Context
 
@@ -77,7 +84,7 @@ decision for the GitHub project import. They ship together because the
 product shape is the answer to all of them; the implementation ADRs
 inherit the shape.
 
-### 1. Organizations are optional, with a personal account per user
+### 1. Organizations are mandatory as the post-signup destination; the personal account is a default-only fallback
 
 The better-auth `organization` plugin is configured with
 `personalAccountEnabled: true`. Every user has, on creation, a personal
@@ -86,6 +93,17 @@ The user can also create organizations (multi-member) and join
 organizations they have been invited to. The session carries an
 "active organization" field; the app works in the context of the active
 organization at all times.
+
+> **Amendment (2026-10).** This ADR, as originally proposed, scoped
+> organizations as optional. The amendment inverts the gate: a user whose
+> only organization is their personal account is redirected to
+> `/onboarding/first-organization` on their next visit to a `(protected)`
+> route. The personal account remains in the data model (it carries the
+> user's projects during the onboarding window and remains the default
+> context for the user-menu), but the app does not render until a real
+> organization exists. **Each step in the wizard has its own "Skip this
+> step" button; the onboarding itself has no global skip.** The wizard
+> shape is detailed in §6 below.
 
 #### Why this rule decides
 
@@ -146,6 +164,14 @@ organization at all times.
   re-fetches the org-scoped data.
 - A "Join organization" entry point on invitations: the user clicks the
   invite link, accepts, the organization appears in the switcher.
+- A redirect from any `(protected)` route to `/onboarding/first-organization`
+  when the session's active organization is the user's personal account
+  and the user has not yet created a real organization. The redirect is
+  enforced server-side, in `apps/app/proxy.ts` or the `(protected)`
+  layout (the implementation ADR picks the layer), and is the only way
+  to reach the app on first login. The wizard is `/onboarding/first-organization`
+  (shape in §6 below); the post-onboarding landing is scoped in the
+  implementation ADR.
 - Business rows (projects, in the V1 sense) that FK either
   `organization.id` (when the project belongs to a real organization)
   or `user.id` (when the project belongs to a personal account). The
@@ -156,12 +182,12 @@ organization at all times.
 
 #### What this rule forbids
 
-- A signup flow that requires the user to pick an organization name
-  before they see `/home`. The post-signup landing is the app, not the
-  organization-creation screen.
-- A redirect from `/home` to `/new-organization` for users who have a
-  personal account but no real organization. The personal account is
-  the default; "no real organization" is a valid state.
+- A global "Skip onboarding" button. The onboarding wizard has per-step
+  "Skip this step" buttons (see §6), but no button that exits the wizard
+  without creating an organization. The gate is enforceable server-side:
+  a request to a `(protected)` route that resolves to a user whose only
+  organization is their personal account returns a redirect to
+  `/onboarding/first-organization`, not a 200 with the app rendered.
 - Treating the user's `id` as a synonym for a personal organization.
   The personal account is an `organization` row whose `id` is *not* the
   user's `id`. The two share a slug (the username) and the user is the
@@ -341,6 +367,14 @@ shareable-link invite for V1.
 
 ### 5. V1 scope of "Import a project from GitHub"
 
+> **Amendment (2026-10).** The amendment folds the GitHub connect step
+> into the onboarding wizard (see §6) as a step the user can skip. The
+> underlying V1 scope (list + select, no webhook, no auto-sync) is
+> unchanged. The wizard step is a `signIn.social({ provider: "github" })`
+> call followed by a redirect back into the wizard; on return, the wizard
+> advances regardless of whether the user linked an account, and the
+> project-import screen remains reachable later from the app.
+
 The V1 feature is **list the user's GitHub repositories and let them
 select which to import into the current organization**. It is not the
 full Vercel flow. Specifically:
@@ -410,6 +444,12 @@ full Vercel flow. Specifically:
   the user has not yet linked a GitHub account. The affordance is
   hidden if the user already has a GitHub account linked (the
   `account` table has a row with `providerId: "github"`).
+- A "Connect GitHub" step in the onboarding wizard (§6 below) that
+  calls `authClient.signIn.social({ provider: "github",
+  callbackURL: "/onboarding/first-organization?step=3" })` and
+  advances on return (linked or not). The step carries its own
+  "Skip this step" button. The actual project-import screen is
+  reached later from the org dashboard, not from this wizard step.
 - A server-side Hono route (or an oRPC procedure) that takes the
   active organization, reads the user's GitHub `accessToken` from
   the `account` row, calls `GET https://api.github.com/user/repos`
@@ -436,6 +476,151 @@ full Vercel flow. Specifically:
   identity imports land in whichever organization is active at the
   time of the import. Different organizations do not get different
   GitHub identities in V1.
+
+### 6. Onboarding wizard shape: three steps, per-step skip
+
+> **Amendment (2026-10).** The gate in §1 needs a destination. The
+> destination is `/onboarding/first-organization`, a three-step wizard
+> rendered as a single page with internal step state. The first step is
+> required (creating the organization is the whole point of the gate);
+> steps 2 and 3 each carry their own "Skip this step" button. The wizard
+> has no global skip button and no "Save and finish later" exit; the
+> server-side gate in §1 keeps the user on the wizard until the first
+> step's submit succeeds. The implementation detail (route, components,
+> proxy wiring, tests) is in `ADR-032`.
+
+#### Why this rule decides
+
+- **Three steps, not one.** A single "name + slug" form would be faster
+  but loses the chance to seed the organization with teammates and a
+  GitHub identity while the user's intent is fresh. The reference
+  (Vercel, Linear) front-loads the same three decisions in the same
+  order (team identity → collaborators → integrations).
+- **Per-step skip, no global skip.** The gate is the org creation
+  (§1); everything after is value-add. Forcing every user to invite
+  teammates or to connect GitHub would create a paywall on features
+  that are not coupled to the product's primary use case. A user who
+  signs up solo and wants to evaluate the product must be able to
+  reach the app after one form.
+- **Step 1 is required because it is the gate.** "Skip this step" on
+  step 1 would mean "skip the gate", which is what §1 forbids. The
+  button is absent on step 1, present on steps 2 and 3.
+
+#### Why not the alternatives
+
+- **One step (name + slug only).** Faster, but loses the team-seeding
+  moment. Rejected because the cost of the extra two steps (each has a
+  skip) is small and the upside (a user who does invite teammates from
+  the wizard does not have to revisit the Members page later) is real.
+- **Three steps with a global "Skip onboarding" button.** Defeats the
+  gate. Rejected by §1.
+- **Three steps with step 3 (GitHub) mandatory.** Forces a feature
+  the user has not asked for. Rejected on the same ground as
+  per-step skip: the gate is the org, not the integration.
+- **More than three steps (e.g. add a "Pick a plan" step).** Billing
+  is out of scope per `Out of scope (deferred)`. Adding a billing
+  step would push the wizard into a V2 product shape that this ADR
+  does not have authority over.
+
+#### The three steps
+
+1. **Name and slug.** Required. The slug is auto-generated from the
+   name (`"Acme Inc"` becomes `acme-inc`), editable before submit.
+   Validation: live check on slug uniqueness (a
+   `GET /api/v1/organization/check-slug?slug=...` route, debounced
+   ~250 ms), regex check on slug format (`^[a-z0-9-]+$`,
+   length 3-32). On submit, the better-auth
+   `authClient.organization.create({ name, slug })` call runs, the
+   session's `activeOrganizationId` switches to the new organization,
+   and the wizard advances to step 2. **No "Skip this step" button on
+   step 1.** The submit button is the only way out of step 1.
+2. **Invite teammates.** Optional. A multi-email input (`textarea`
+   parsed as one email per line, validated client-side against a
+   basic email regex, dedup'd against already-invited addresses, with
+   a per-line error display). On submit, the better-auth
+   `authClient.organization.inviteMember({ email, role: "admin" })`
+   call runs once per email (fire-and-forget per email; the success /
+   partial-failure count is shown in a toast). A "Skip this step"
+   button advances without sending any invitation. The user can
+   always invite later from the Members page.
+3. **Connect GitHub.** Optional. A "Connect GitHub" button runs
+   `authClient.signIn.social({ provider: "github", callbackURL:
+   "/onboarding/first-organization?step=3" })`. On return, the wizard
+   advances regardless of whether the user linked a GitHub account
+   (the linked-or-not state is read from the `account` table, not
+   inferred from a redirect param). A "Skip this step" button
+   advances without connecting. The user can connect later from the
+   project-import screen or from `/settings/connections`.
+
+#### Post-onboarding landing
+
+After step 3 (skipped or completed), the wizard redirects to the
+post-onboarding landing. The implementation ADR (`ADR-032`) picks
+the target: either the new organization's dashboard
+(`/o/<slug>/projects` or equivalent) or the existing `/home` route
+scoped to the new active organization. This ADR does not pick; it
+scopes the choice.
+
+#### What this rule allows
+
+- A single page at `apps/app/app/(onboarding)/first-organization/page.tsx`
+  (or the implementation ADR's chosen path) that renders the three
+  steps as internal state, with a step indicator at the top of the
+  page.
+- A `POST /api/v1/organization/check-slug` route (Hono, under the
+  `mountHttp` mount per `ADR-011`) that validates a slug's format
+  and uniqueness, returns `{ available: true }` or `{ available:
+  false, reason: "taken" | "invalid" }`, and is rate-limited at the
+  proxy layer.
+- A `POST /api/v1/organization/create` route that calls the
+  better-auth `auth.api.createOrganization` server-side (the route
+  exists in the better-auth `organization` plugin), validates the
+  payload, and returns the new `organization.id`. The client then
+  calls `authClient.organization.setActive({ organizationId })` to
+  switch the session's active organization.
+- A `POST /api/v1/organization/invite` route that calls the
+  better-auth `auth.api.inviteMember` server-side once per email in
+  the request body. The route accepts a `{ emails: string[] }`
+  payload and returns `{ sent: number, failed: { email, reason }[] }`.
+- A server-side check in `apps/app/proxy.ts` (or the `(protected)`
+  layout) that redirects to `/onboarding/first-organization` when
+  the session's active organization is the user's personal account
+  and the request targets a `(protected)` route other than
+  `/onboarding/*`. The check is the load-bearing piece of the gate
+  in §1.
+
+#### What this rule forbids
+
+- A "Skip this step" button on step 1. Step 1 is the gate; skipping
+  it would skip the gate.
+- A global "Skip onboarding" or "Save and finish later" exit. The
+  user cannot leave the wizard without completing step 1. The
+  server-side redirect keeps them on the wizard.
+- A multi-step indicator that allows free navigation between steps
+  (e.g. clicking step 2 to go back). The wizard advances forward
+  only; "Back" is allowed, "Skip ahead" is not.
+- A progress-persistence mechanism (e.g. "we saved your partial
+  invites, finish them later"). Each wizard run is a single
+  in-memory flow. The user re-runs the wizard if they navigate
+  away.
+
+#### What this rule does not change
+
+- The `personalAccountEnabled: true` configuration in
+  `packages/auth/src/auth.ts` (scoped in §1). The wizard creates a
+  *real* organization on top of the existing personal account; the
+  personal account remains the data-model default.
+- The two-role model (`owner` + `admin`) from §2. The user who
+  completes step 1 is the `owner` of the new organization by
+  construction (the plugin assigns `owner` to the creator).
+  Invited teammates arrive as `admin` (the plugin default).
+- The email-only invitation flow from §4. Step 2 of the wizard
+  uses the same `auth.api.inviteMember` server-side call the
+  Members page will use; no second flow.
+- The V1 GitHub scope (list + select, no webhook) from §5. Step 3
+  of the wizard is the OAuth connect; the actual import screen
+  remains the project-import surface scoped in §5 and in the
+  implementation ADR.
 
 ## Consequences
 
@@ -635,3 +820,9 @@ the implementation ADR; they are listed here for visibility:
 - [GitHub REST API: List repositories for the authenticated user](https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user).
   The `GET /user/repos` endpoint the V1 server calls with the
   `accessToken` from the `account` row.
+- [ADR-032: First-organization onboarding implementation](./ADR-032-first-organization-onboarding).
+  The implementation ADR that scopes the wizard in §6 in detail:
+  page route, internal step state, the `check-slug` and `create`
+  Hono routes, the proxy wiring, the post-onboarding landing, the
+  test surface, and the `AGENTS.md` amendment that lifts the
+  single-tenant guard.
