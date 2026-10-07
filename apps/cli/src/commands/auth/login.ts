@@ -9,7 +9,7 @@ import {
 	requestDeviceCode,
 } from "../../lib/auth/flow/index.js"
 import { writeAuth } from "../../lib/auth/store/store.js"
-import { type CliError } from "../../errors/index.js"
+import { CliError } from "../../errors/index.js"
 import { printError, printJson } from "../../output/index.js"
 
 /**
@@ -86,12 +86,11 @@ export const loginCommand = new Command("login")
 			}
 		} catch (e) {
 			spinner?.stop()
-			if (e instanceof Error && "code" in e && "exitCode" in e) {
-				const err = e as CliError
+			if (e instanceof CliError) {
 				if (opts.json) {
-					printJson({ ok: false, code: err.code, message: err.message })
+					printJson({ ok: false, code: e.code, message: e.message })
 				} else {
-					printError(err)
+					printError(e)
 				}
 				// Rethrow so the index.ts last-resort handler
 				// calls process.exit(err.exitCode()). This is
@@ -99,7 +98,7 @@ export const loginCommand = new Command("login")
 				// catches the throw, asserts on the error shape,
 				// and the production path still exits with the
 				// right code (via the central handler).
-				throw err
+				throw e
 			}
 			throw e
 		}

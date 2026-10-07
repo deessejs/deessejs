@@ -32,6 +32,7 @@ import {
 
 import { getRegistryClient } from "../registry/client.js"
 import {
+  CliError,
   installFailed,
   internal,
   notFound,
@@ -410,20 +411,18 @@ export const initCommand = new Command("init")
           console.log()
         }
       } catch (err) {
-        if (err instanceof Error && err.name === "CliError") {
+        if (err instanceof CliError) {
           if (opts.json) {
             printJson({
               ok: false,
-              code: (err as { code?: string }).code,
+              code: err.code,
               message: err.message,
-              hint: (err as { hint?: string }).hint,
+              hint: err.hint,
             })
           } else {
-            printError(err as Parameters<typeof printError>[0])
+            printError(err)
           }
-          process.exit(
-            (err as { exitCode?: () => number }).exitCode?.() ?? 1,
-          )
+          process.exit(err.exitCode())
         }
         throw internal(err instanceof Error ? err.message : String(err))
       }

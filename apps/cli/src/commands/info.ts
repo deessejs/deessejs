@@ -11,7 +11,7 @@ import { Command } from "commander"
 import ora from "ora"
 
 import { getRegistryClient } from "../registry/client.js"
-import { internal, parseError } from "../errors/index.js"
+import { CliError, internal, parseError } from "../errors/index.js"
 import { printError, printJson, printResolvedTemplate } from "../output/index.js"
 
 export const infoCommand = new Command("info")
@@ -94,16 +94,16 @@ export const infoCommand = new Command("info")
       }
     } catch (err) {
       spinner?.fail("Failed to fetch template")
-      if (err instanceof Error && err.name === "CliError") {
+      if (err instanceof CliError) {
         if (opts.json) {
           printJson({
             ok: false,
-            code: (err as { code?: string }).code,
+            code: err.code,
             message: err.message,
-            hint: (err as { hint?: string }).hint,
+            hint: err.hint,
           })
         } else {
-          printError(err as Parameters<typeof printError>[0])
+          printError(err)
         }
         process.exit(1)
       }
