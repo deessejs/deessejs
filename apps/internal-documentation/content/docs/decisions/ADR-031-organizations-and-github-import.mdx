@@ -1,0 +1,637 @@
+---
+title: 'Organizations and GitHub project import'
+description: 'Adopt the better-auth organization plugin in Vercel style (personal accounts + organizations, owner + admin roles, N orgs per user, email-only invites) and scope V1 of GitHub project import to "list repos and select which to import", with no webhook and no auto-sync. Replaces the single-tenant rule from the README and AGENTS.md.'
+---
+
+# ADR-031: Organizations and GitHub project import
+
+## Status
+
+Proposed (2026-10). Under review on `chore/adr-031-organizations-and-github-import`.
+The ADR ships no code. It is the decision record for the product shape that
+two follow-up implementation ADRs (one for the `organization` plugin, one for
+the GitHub project import screen) will reference.
+
+## Context
+
+`packages/auth/src/auth.ts` instantiates `betterAuth({...})` with
+`emailAndPassword`, `emailVerification`, `session`, `socialProviders.github`,
+`account.accountLinking`, and a `plugins: [deviceAuthorization, bearer,
+nextCookies()]` block. None of the three plugins is the better-auth
+`organization` plugin. The Better Auth schema at
+`packages/database/src/schema/auth.ts` carries `user`, `session`, `account`,
+and `verification` only — no `organization`, `member`, `invitation`, or
+`team` table. The npm template that seeded this repo was single-tenant by
+design; the choice propagated into the README ("single-tenant by design")
+and into the agent instructions in `AGENTS.md`, which mark
+`useActiveOrganization` as forbidden ("ce repo est single-tenant — n'introduis
+pas ces patterns").
+
+The product has outgrown the constraint. The roadmap asks for organizations
+— a user can create one, invite teammates, and have the organization import
+projects from GitHub "à la Vercel" (the same mental model the user lands on
+when they look at the Vercel dashboard: a personal account, teams, projects
+under each team). Three things converge to force the change:
+
+1. **Roadmap pressure.** The next product iteration lists organizations as a
+   hard dependency. Blocking on the single-tenant rule blocks the roadmap.
+2. **No production users.** The repo has no users in production today. The
+   migration cost of moving from single-tenant to multi-tenant is zero
+   today; deferring the change to the day production users exist makes the
+   migration cost non-zero and the design choices harder to reverse.
+3. **A reference shape is already chosen.** The product call-out ("à la
+   Vercel") pins the reference implementation. Vercel is itself a
+   personal-accounts-plus-organizations model: every user has a personal
+   account, can create or join any number of organizations, and the
+   active-organization context scopes the work. Picking the same shape
+   matches the user's mental model and removes a category of design
+   questions.
+
+The two questions this ADR answers are scoped to the product shape, not the
+implementation. The questions are:
+
+- **What is the user-organization model?** Solo users with a personal
+  account, or organizations-first where every user must belong to an org?
+- **What does V1 of "import a project from GitHub" actually do?** A
+  full Vercel-style "connect, webhook, auto-deploy on every push" is a
+  multi-week feature. A list-and-select flow is a single screen. Picking
+  the V1 scope up front avoids the trap of building the connector without
+  scoping the surface.
+
+The implementation questions — which tables the plugin adds, how the
+schema migration runs, which Hono route exposes the project-import list,
+how the GitHub OAuth `accessToken` is read for the API call — are out of
+scope here. They will be answered in two follow-up ADRs that this one
+references from the "Related" section.
+
+The four product decisions the team converged on (the discussion that
+produced them is in the conversation history that opens this ADR's PR) are
+detailed in the Decision section below. They are framed as answers to
+specific questions with alternatives, so a future reader can see the
+trade-offs that were weighed.
+
+## Decision
+
+This ADR is one decision with four sub-questions, plus a V1-scope
+decision for the GitHub project import. They ship together because the
+product shape is the answer to all of them; the implementation ADRs
+inherit the shape.
+
+### 1. Organizations are optional, with a personal account per user
+
+The better-auth `organization` plugin is configured with
+`personalAccountEnabled: true`. Every user has, on creation, a personal
+account (a single-member organization whose slug is the user's username).
+The user can also create organizations (multi-member) and join
+organizations they have been invited to. The session carries an
+"active organization" field; the app works in the context of the active
+organization at all times.
+
+#### Why this rule decides
+
+- **The user can start using the product the moment they sign up.** No
+  "create your organization" gate between signup and the first useful
+  action. This matters for activation: the first session is the
+  highest-leverage moment in the funnel, and a friction gate is the
+  easiest way to lose a user.
+- **Vercel, GitHub, Linear, and Notion all work this way.** Picking the
+  same shape means the user does not have to learn a new mental model.
+  The reference implementation the product roadmap already cites
+  (Vercel) is also the reference for this shape.
+- **No users in production today.** The migration cost of the
+  personal-accounts-plus-organizations shape is zero (no user to migrate).
+  The migration cost of a "organizations-first" shape is also zero
+  today; the difference is that the personal-accounts shape stays
+  viable as the product grows, while the organizations-first shape
+  either stays restrictive or has to be re-engineered the day a user
+  wants to try the product solo.
+- **The plugin's `personalAccountEnabled` is the canonical mechanism.**
+  Better-auth ships the feature; the configuration is one boolean. No
+  custom schema, no manual bootstrap, no `if user has no org, redirect
+  to /onboarding/create-org` route.
+
+#### Why not the alternatives
+
+- **`personalAccountEnabled: false` (organizations-first).** Every user
+  must create or join an organization at signup. The argument for it is
+  uniformity: every user is always "in an org", and the schema can FK
+  every business row directly to `organization.id` without a personal
+  account branch. The argument against it is activation: a solo user
+  who wants to evaluate the product must pick a name, a slug, an
+  optional logo, and confirm a creation step before they see any value.
+  The reference (Vercel) does not work this way, and the product
+  roadmap explicitly anchors on the Vercel reference. Rejected.
+- **No organization table at all; teams as a first-class concept
+  separate from the user.** A user belongs to teams; projects belong to
+  teams. The argument for it is that it is the minimal model: no
+  `organization` table, no active-organization state. The argument
+  against it is that the better-auth `organization` plugin does not
+  model this shape, and the reference (Vercel) is organization-shaped.
+  Adopting the plugin in spirit-but-not-letter reintroduces a custom
+  implementation that drifts from upstream on every release. Rejected.
+
+#### What this rule allows
+
+- A signup flow that ends on `/home` (or the `?redirect=` target) with
+  the new user's personal account already active in the session. The
+  user has not been asked to name an organization.
+- A "Create organization" entry point on the user menu (or a dedicated
+  `/new-organization` page) that runs the better-auth
+  `authClient.organization.create({ name, slug })` call and switches the
+  active organization to the new one.
+- A "Switch organization" control in the header (a dropdown listing the
+  user's personal account and every organization they belong to) that
+  runs the better-auth `authClient.organization.setActive(...)` call.
+  The session's `activeOrganizationId` updates; the next navigation
+  re-fetches the org-scoped data.
+- A "Join organization" entry point on invitations: the user clicks the
+  invite link, accepts, the organization appears in the switcher.
+- Business rows (projects, in the V1 sense) that FK either
+  `organization.id` (when the project belongs to a real organization)
+  or `user.id` (when the project belongs to a personal account). The
+  data model is "an owning entity that is either a user (personal
+  account) or an organization"; the schema has a single `ownerType` +
+  `ownerId` pair, or two nullable FKs with a CHECK constraint. The
+  implementation ADR will pick the shape.
+
+#### What this rule forbids
+
+- A signup flow that requires the user to pick an organization name
+  before they see `/home`. The post-signup landing is the app, not the
+  organization-creation screen.
+- A redirect from `/home` to `/new-organization` for users who have a
+  personal account but no real organization. The personal account is
+  the default; "no real organization" is a valid state.
+- Treating the user's `id` as a synonym for a personal organization.
+  The personal account is an `organization` row whose `id` is *not* the
+  user's `id`. The two share a slug (the username) and the user is the
+  sole `member` of the personal-account organization, but they are
+  distinct rows. This matters for FK consistency: every business row
+  FKs `organization.id` (or the equivalent `ownerId`); none FKs
+  `user.id` directly.
+- Cross-tenant data leaks in queries. Every business query that
+  surfaces rows scoped to a personal account or an organization must
+  filter on `activeOrganizationId` (or the resolved owner id) and
+  must not assume that the personal account's id is the user's id.
+
+### 2. Two roles: `owner` and `admin`
+
+The better-auth `organization` plugin ships with `owner` and `admin`
+roles by default. This ADR adopts both as the only roles for V1.
+
+- `owner` — can delete the organization, transfer ownership, manage
+  billing (when billing ships). Exactly one per organization.
+- `admin` — can invite and remove members, change organization
+  settings, create and delete projects. Multiple admins per
+  organization allowed.
+- New members arrive as `admin` (the plugin default), unless the invite
+  specifies otherwise.
+
+#### Why this rule decides
+
+- **The plugin provides them for free.** Adopting the defaults is one
+  less piece of custom configuration. The defaults are the
+  well-trodden path; the plugin's docs, examples, and support assume
+  them.
+- **It separates "controls the org" from "works in the org".** A team
+  of three does not need more granularity, and a team of thirty can
+  still rely on the separation (one owner, a few admins who can
+  invite/remove, everyone else admin by default). The shape scales
+  without further design work.
+- **It prepares billing without shipping it.** The day billing lands,
+  the question "who can see and change the billing settings?" has an
+  answer: the owner. The day a paid plan requires an admin to manage
+  seats, the same answer holds. V1 does not need to implement any of
+  this; it just needs the role to exist.
+
+#### Why not the alternatives
+
+- **One role: `owner`.** Everyone in the org can do everything. The
+  argument for it is minimalism. The argument against it is that the
+  first day a billing question shows up ("who gets the invoice?") or a
+  permission question shows up ("can a contractor delete the org?"),
+  the answer is "anyone, and that's a problem." Rejected because the
+  plugin default is two roles, and the cost of adopting it is
+  negligible.
+- **Three roles: `owner` + `admin` + `member`.** `member` cannot
+  invite or change settings. The argument for it is that it
+  anticipates a hierarchical organization. The argument against it is
+  that V1 has no settings worth protecting (no billing, no
+  destructive-only actions, no sensitive team-level config). Adding a
+  role for a feature that does not yet exist is over-engineering.
+  Rejected; the implementation ADR can add `member` (and a `viewer`
+  read-only role, if the GitHub-import scope expands) when the
+  product needs it.
+
+#### What this rule allows
+
+- The default better-auth role configuration; no custom role list
+  in the plugin options.
+- An "Owner" badge on the personal-account organization. The user is
+  the sole `member` and is `owner` of their own personal account by
+  construction. The badge is informational; the enforcement is the
+  plugin's.
+- A future addition of `member` (and `viewer`) without breaking
+  existing organizations. Better-auth's role model is open; adding a
+  role to the options is additive.
+
+#### What this rule forbids
+
+- A custom role list that omits `owner`. `owner` is the plugin's
+  load-bearing role; removing it breaks the contract.
+- More than one `owner` per organization. The plugin enforces this
+  implicitly (the creator is owner; transfer-of-ownership is a
+  first-class action). The implementation must not introduce a code
+  path that grants `owner` to two members.
+- A role hierarchy in the Vercel sense (e.g. `developer` /
+  `viewer` / `billing`). Hierarchies come when there is a use case
+  for them; V1 has none.
+
+### 3. Unlimited organizations per user
+
+A user can belong to as many organizations as they want, in addition to
+their personal account. The session's `activeOrganizationId` selects
+which one is current.
+
+#### Why this rule decides
+
+- **It matches the reference (Vercel, GitHub, Linear).** Every
+  reference implementation allows N orgs per user. Picking the same
+  shape keeps the mental model familiar.
+- **It supports the freelance / multi-client case.** A user who works
+  for three clients in three organizations can keep the three
+  contexts separate. Forcing a single organization would either lose
+  the separation (bad) or require a workaround (worse).
+- **The plugin handles it natively.** The session model is built for
+  this; no custom code.
+
+#### Why not the alternatives
+
+- **One organization per user.** Restrictive; breaks the
+  freelance case. Rejected because the plugin default is N and the
+  restriction would have to be enforced by application logic, not by
+  the schema.
+
+#### What this rule allows
+
+- A "Switch organization" dropdown listing every organization the user
+  belongs to, with the active one highlighted. The dropdown is
+  present in the header on every authenticated page (per the chrome
+  decision in `ADR-030`).
+- A user creating a second organization without leaving the first.
+  The "Create organization" entry point is reachable at any time, not
+  gated on "you have no other organization."
+
+#### What this rule forbids
+
+- Hardcoding a count limit ("max 3 organizations per user"). The
+  plugin does not enforce one; the application does not add one.
+- Removing the personal account from the switcher. The personal
+  account is always listed alongside real organizations, always
+  present even if the user has joined many real ones.
+
+### 4. Invitations: email only
+
+Organization invites go out by email. The recipient clicks the link in
+the email, lands on an accept page, and joins. There is no
+shareable-link invite for V1.
+
+#### Why this rule decides
+
+- **The plugin's `invitation` feature is email-based.** The default
+  flow is the well-trodden path; the implementation does not need
+  to invent a token system.
+- **Email is auditable.** The invite has a sender, a recipient, a
+  timestamp, and a status. A shareable link trades auditability for
+  speed; for V1 the audit is more important than the speed.
+- **The security surface is smaller.** A leaked invite link is a
+  leaked token. An email is not a credential.
+
+#### Why not the alternatives
+
+- **Email + shareable link.** Generate a token, expose a `/invite/<token>`
+  route, let anyone with the link join. The argument for it is speed:
+  the inviter can paste the link in Slack and onboard the team in
+  seconds. The argument against it is that a leaked link is an
+  open door until the link expires or is revoked; building the
+  revocation, expiration, and rate-limiting is non-trivial; and
+  nothing in the V1 product calls for it. Rejected; revisit if user
+  feedback surfaces.
+
+#### What this rule allows
+
+- The better-auth `authClient.organization.inviteMember({ email, role })`
+  call from the organization's "Members" page. The plugin sends the
+  email; the application renders the form.
+- A "Pending invitations" list on the same page, with a "Revoke"
+  action per row.
+- An "Accept invite" page at a route the plugin controls
+  (`/accept-invitation/<id>`), rendered as part of the authenticated
+  app, that calls `authClient.organization.acceptInvitation(...)`.
+
+#### What this rule forbids
+
+- A custom `shareableInviteToken` column on the `invitation` table
+  for V1. The plugin's invitation lifecycle (pending → accepted /
+  revoked / expired) is the only flow.
+- Sending the invitation from a domain other than the
+  `apps/internal-documentation` documented Resend sender. The
+  transactional-email contract is owned by `packages/email`; the
+  invite flow uses the same pipeline.
+
+### 5. V1 scope of "Import a project from GitHub"
+
+The V1 feature is **list the user's GitHub repositories and let them
+select which to import into the current organization**. It is not the
+full Vercel flow. Specifically:
+
+- **In scope:** GitHub OAuth already wired (per `ADR-028`); the
+  `accessToken` stored on the `account` row is read server-side and
+  used to call the GitHub REST API; the user sees a paginated list of
+  repositories they have access to; the user selects one or more
+  repositories; the selected ones are recorded as `project` rows
+  belonging to the active organization; the user lands on a
+  per-project page in the app.
+- **Out of scope (V1):** webhooks; auto-sync on push; auto-deploy;
+  branch / pull-request / commit metadata in the app; the
+  multi-account-GitHub case (one org linked to several GitHub
+  identities); a "refresh" action that re-reads the repo state from
+  GitHub. These are deferred to V2 and live in their own ADR when
+  scoped.
+
+#### Why this rule decides
+
+- **The reference (Vercel) is a multi-year implementation.** A
+  faithful Vercel clone requires webhooks, a build queue, a deploy
+  surface, and a secrets model. None of those are scoped today. A
+  list-and-select flow is one screen and one server route, achievable
+  in the same milestone as the organizations feature.
+- **The OAuth `accessToken` is already in the database.** Per
+  `ADR-028`, the `account` table carries the `accessToken` from the
+  GitHub OAuth flow. The V1 import does not need a second GitHub
+  connect; it reads the existing token and calls the API. This is a
+  load-bearing simplification.
+- **V1 establishes the data model.** The `project` row (org-scoped,
+  GitHub-sourced, link to the repo) is the foundation V2 webhooks and
+  auto-deploy build on. Shipping V1 without V2 is still a useful
+  feature (the user can see "we have a record of this repo") and
+  ships the schema that V2 will extend.
+
+#### Why not the alternatives
+
+- **V1 = full Vercel flow (connect, webhook, auto-deploy).** The
+  argument for it is "ship the real thing." The argument against it
+  is that the real thing is a multi-quarter build with infrastructure
+  (a build runner, a deploy surface, a secrets store) that does not
+  exist in this repo today. Rejected on the same ground as
+  the other "build the full version first" patterns the team has
+  learned to avoid: scope creep kills features.
+- **V1 = "paste a GitHub repo URL".** No OAuth, no list, just a text
+  field. The argument for it is simplicity. The argument against it
+  is that it skips the OAuth flow entirely and the
+  `accessToken`-from-`account` read, which is the same infrastructure
+  V2 will need. It also loses the "see the repos you have access to"
+  affordance, which is the user's most common starting point for an
+  import. Rejected because V1 should establish the OAuth reuse, not
+  work around it.
+- **V1 = GitHub App instead of OAuth App.** A GitHub App has finer
+  permissions, a webhook-first model, and is what Vercel actually
+  uses. The argument for it is that it is the "right" integration
+  shape. The argument against it is that it is a separate
+  registration flow (not the OAuth App that `ADR-028` already wired),
+  requires a webhook endpoint up-front (V1 has none), and adds a
+  second identity story for the user. Rejected for V1; revisited
+  when V2 webhooks are scoped.
+
+#### What this rule allows
+
+- A "Connect GitHub" affordance on the project-import screen that
+  triggers `authClient.signIn.social({ provider: "github" })` if
+  the user has not yet linked a GitHub account. The affordance is
+  hidden if the user already has a GitHub account linked (the
+  `account` table has a row with `providerId: "github"`).
+- A server-side Hono route (or an oRPC procedure) that takes the
+  active organization, reads the user's GitHub `accessToken` from
+  the `account` row, calls `GET https://api.github.com/user/repos`
+  (paginated), and returns the repository list to the client. The
+  client renders it.
+- A server-side route that records a `project` row per selected
+  repository, FK'd to the active organization, with the repo's
+  `full_name` and `default_branch` as initial fields. The schema
+  decision is in the implementation ADR.
+
+#### What this rule forbids
+
+- Registering a webhook with GitHub in V1. No webhook endpoint, no
+  webhook secret, no `push` event handler.
+- A "Sync now" button in V1. The user can re-trigger the import
+  from the project list (re-running the list-and-select flow), but
+  there is no background re-sync.
+- Storing the GitHub `accessToken` outside the `account` table. The
+  token lives where the OAuth flow put it; the V1 server reads it
+  from there at request time, never copies it to a separate
+  `github_connection` table or a per-org secret store.
+- Per-organization GitHub accounts. A user has one GitHub identity
+  (the one they linked to their user account); the projects that
+  identity imports land in whichever organization is active at the
+  time of the import. Different organizations do not get different
+  GitHub identities in V1.
+
+## Consequences
+
+- **The single-tenant rule from the README and `AGENTS.md` is
+  superseded.** This ADR lifts the "no `useActiveOrganization`" guard
+  in `AGENTS.md`. The implementation ADR that follows this one updates
+  `AGENTS.md` to remove the "ce repo est single-tenant" line and to
+  add a pointer to `ADR-031` for the multi-tenant shape. Until that
+  follow-up lands, the guard stands; the contradiction is one PR
+  long.
+- **The schema gains four tables (or more).** The `organization`
+  plugin's schema additions are: `organization`, `member`,
+  `invitation`, and (optionally) `team`. The implementation ADR
+  decides whether `team` is in scope for V1; this ADR scopes the
+  feature to `organization` + `member` + `invitation` and leaves
+  `team` for a follow-up.
+- **The session shape gains `activeOrganizationId`.** Every
+  authenticated request resolves the active organization (defaulting
+  to the user's personal account) and the rest of the app reads it
+  from the session. The `apps/app` `(protected)` layout will be the
+  first consumer; it renders the org switcher in the header
+  (extending the chrome that `ADR-030` sets).
+- **Every business row gains an owner.** The `project` table (and
+  every future business table) FKs the active organization. The
+  implementation ADR pins the FK shape (one nullable `userId` + one
+  nullable `organizationId` with a CHECK, vs. a single `ownerId` +
+  `ownerType` discriminator). This ADR does not pick; the
+  implementation does.
+- **The GitHub `accessToken` is reused for the API call.** No second
+  GitHub connect, no per-org token. The V1 server reads the
+  `account` row's `accessToken` at request time. Token encryption
+  (called out in `ADR-028` §"What this rule does not change" as a
+  follow-up) is a prerequisite for shipping the V1 import in
+  production: the token must be encrypted at rest before the import
+  flow reads it. The implementation ADR scopes whether the V1 import
+  ships behind token encryption or whether the encryption ADR lands
+  in parallel.
+- **V1 is not a deploy surface.** The V1 import records a `project`
+  row per selected repository. It does not run a build, deploy
+  anything, or subscribe to webhook events. The user can see their
+  imported projects in the app, click through to a project page,
+  and (per the V1 scope) that is the feature. V2 adds the build /
+  deploy / webhook layer.
+- **The `invitation` flow uses the existing `packages/email`
+  pipeline.** No new email template is added by this ADR; the
+  implementation ADR either reuses an existing template or adds a
+  new one (the `packages/email` package owns the decision).
+
+## What this rule allows
+
+- Adding the better-auth `organization` plugin to the `plugins` array
+  in `packages/auth/src/auth.ts` with `personalAccountEnabled: true`
+  and the default two-role model.
+- A `/new-organization` page in `apps/app` that calls
+  `authClient.organization.create({ name, slug })` and switches the
+  active organization.
+- An "Organization switcher" control in the
+  `apps/app/app/(protected)/layout.tsx` header (extending the
+  `ADR-030` chrome) that calls
+  `authClient.organization.setActive({ organizationId })`.
+- A `/accept-invitation/<id>` page in `apps/app` that calls
+  `authClient.organization.acceptInvitation(...)` and lands the user
+  in the new organization.
+- A "Members" page at `apps/app/app/(protected)/<org>/settings/members/page.tsx`
+  that lists members, pending invitations, and exposes invite /
+  revoke / role-change actions.
+- A Drizzle migration that adds the `organization`, `member`, and
+  `invitation` tables; the migration is generated by
+  `pnpm auth:generate` and reviewed before merge.
+- A `project` table (schema decided in the implementation ADR) that
+  FKs the active organization.
+- A "Import a project from GitHub" page in `apps/app` that lists
+  the user's GitHub repositories (via the existing OAuth
+  `accessToken`) and records a `project` row per selected
+  repository.
+
+## What this rule forbids
+
+- The `team` table in V1. The plugin supports teams, but the V1
+  product shape (owner + admin, no nested permissions) does not need
+  them. The `team` table is a follow-up ADR's scope.
+- More than two roles in V1. `owner` + `admin` only. Adding `member`
+  or `viewer` is a follow-up.
+- A shareable-link invite flow. Email only.
+- A webhook endpoint subscribed to GitHub `push` events. V1 has no
+  webhook surface.
+- A "Sync now" / auto-sync button. V1 is a one-shot import.
+- A per-organization GitHub identity. One user identity, one
+  `accessToken` on the `account` table, used for every org's
+  imports.
+- Reverting the single-tenant guard in `AGENTS.md` without an
+  implementation ADR that ships the plugin. The guard stands until
+  the implementation lands; the lift is part of the implementation
+  PR, not a separate cleanup.
+
+## What this rule does not change
+
+- **`apps/web`.** The marketing site does not gain an
+  organization-shaped surface. It still uses the auth client for
+  signup / sign-in (per `ADR-028`); the personal account is created
+  on signup as before. The marketing site does not show an org
+  switcher.
+- **The CLI (`apps/cli/`).** The CLI does not interact with
+  organizations in V1. It uses the device-flow + bearer-token auth
+  (per `ADR-020`, `ADR-022`) and works in the context of the user's
+  personal account. A future ADR scopes the CLI's organization
+  surface if the product needs it.
+- **The `account` table schema.** The columns GitHub OAuth writes
+  (`providerId`, `accountId`, `accessToken`, `refreshToken`, …) are
+  the columns V1 reads. No new columns. Token encryption
+  (deferred in `ADR-028`) is a separate ADR; this ADR does not
+  change the storage shape.
+- **The Hono / oRPC API consumer-agnostic boundary.** The new
+  organization and project routes are system routes in `mountHttp`
+  (per `ADR-011`), not oRPC procedures. The shape matches the
+  OAuth callback precedent.
+- **The `apps/app/proxy.ts` route protection.** The proxy still
+  gates `(protected)` routes on `emailVerified`. The new
+  organization and project routes live under `(protected)` and
+  inherit the gate.
+- **The `apps/app/components/sidebars/nav-user.tsx` avatar
+  fallback** (the Vercel deployment token). `ADR-028` notes the
+  fragility; this ADR does not change it.
+- **The Drizzle migration CI gate.** New tables from the
+  `organization` plugin are generated by `pnpm auth:generate` and
+  committed alongside the schema change, per `ADR-015`.
+
+## Out of scope (deferred)
+
+These are explicitly **not** part of V1. Each gets its own ADR when
+the team is ready to scope it.
+
+- **Teams (`team` table, nested permissions, sub-orgs).** Plugin
+  feature; V1 product does not need it.
+- **More than two roles.** `member`, `viewer`, custom roles.
+- **Shareable-link invites.** Tokens, expiration, revocation.
+- **GitHub App integration.** Webhook-first, finer permissions,
+  per-org install.
+- **Webhook-driven auto-sync.** `push` event handler, build
+  trigger, deploy.
+- **Auto-deploy.** Build runner, deploy surface, secrets store,
+  preview environments.
+- **Multi-account GitHub per user.** One user, one GitHub identity,
+  one `accessToken`.
+- **Billing.** Plans, seats, invoices, the `owner`-only
+  billing-settings page.
+- **Project transfer between organizations.** A `project` belongs
+  to one organization; transferring it is a future feature.
+- **Token encryption.** The V1 import reads the `accessToken` from
+  the `account` table; the column is plaintext until the
+  token-encryption ADR ships. The implementation ADR scopes whether
+  V1 is gated on token encryption or whether the two ADRs ship in
+  parallel.
+
+## Open questions
+
+Two design calls surface in the Decision section and are deferred to
+the implementation ADR; they are listed here for visibility:
+
+1. **`project` table FK shape.** One nullable `userId` + one nullable
+   `organizationId` with a CHECK that exactly one is set, vs. a
+   single `ownerId` + `ownerType` discriminator. The implementation
+   ADR picks, with arguments.
+2. **Token-encryption gating.** Does V1 ship behind the
+   token-encryption ADR, or do the two ADRs ship independently? The
+   security argument is for the first; the velocity argument is for
+   the second. The implementation ADR scopes the call.
+
+## Related
+
+- [`AGENTS.md`](../../../../../../AGENTS.md) §"Better-Auth guides".
+  Contains the "ce repo est single-tenant" guard that this ADR
+  lifts. The implementation ADR updates the guard.
+- [ADR-028: GitHub OAuth sign-in via better-auth](./ADR-028-github-oauth-better-auth).
+  The OAuth `socialProviders.github` block that supplies the
+  `accessToken` V1's project import reads. The `account` table
+  schema is owned by this ADR; the import does not modify it.
+- [ADR-029: Vercel preview URL wiring](./ADR-029-preview-url-wiring).
+  The Hono CORS allowlist and the `packages/auth/src/host-allowlist.ts`
+  shared module. The new organization / project routes ride on the
+  same Hono catch-all; no change to the host allowlist is required.
+- [ADR-030: apps/app uses left rail nav](./ADR-030-account-only-page).
+  The chrome the organization switcher extends. The new "Members"
+  page and the new "Import a project" page live under
+  `(protected)/<org>/...` (the route shape is the implementation
+  ADR's call), and the header gains a switcher dropdown.
+- [ADR-022: CLI device auth fixes](./ADR-022-cli-device-auth-fixes).
+  The bearer plugin that the device-flow uses. The V1
+  organization / project surface is web-only; the CLI is unchanged.
+- [Better Auth: Organization plugin](https://www.better-auth.com/docs/plugins/organization).
+  Upstream docs for the `organization` plugin. The
+  `personalAccountEnabled`, two-role default, invitation lifecycle,
+  and active-organization session field all come from this page.
+- [Vercel: Teams and projects](https://vercel.com/docs/teams-and-projects/create-or-join-a-team).
+  Reference for the personal-accounts-plus-organizations shape the
+  product roadmap anchors on.
+- [GitHub REST API: List repositories for the authenticated user](https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user).
+  The `GET /user/repos` endpoint the V1 server calls with the
+  `accessToken` from the `account` row.
