@@ -2,6 +2,7 @@ import Image from "next/image"
 
 import { CookiePreferencesButton } from "@workspace/cookies"
 
+import { ConwayBand } from "./conway-grid"
 import { FooterColumn, type FooterLink } from "./footer-column"
 
 const footerSections: ReadonlyArray<{
@@ -9,15 +10,12 @@ const footerSections: ReadonlyArray<{
   links: ReadonlyArray<FooterLink>
 }> = [
   {
-    heading: "DeesseJS",
+    heading: "Ecosystem",
     links: [
       { label: "Errors", href: "https://errors.deessejs.com" },
       { label: "DRPC", href: "https://drpc.deessejs.com" },
       { label: "Collections", href: "https://collections.deessejs.com" },
       { label: "FP", href: "https://fp.deessejs.com" },
-      { label: "UI", href: "https://ui.deessejs.com" },
-      { label: "Admin", href: "https://admin.deessejs.com" },
-      { label: "Cloud", href: "https://cloud.deessejs.com" },
     ],
   },
   {
@@ -47,6 +45,7 @@ const footerSections: ReadonlyArray<{
       { label: "Principles", href: "/principles" },
       { label: "Vision", href: "/vision" },
       { label: "Enterprise", href: "/enterprise" },
+      { label: "Delivery", href: "/delivery" },
       { label: "Help", href: "/help" },
     ],
   },
@@ -64,7 +63,6 @@ const footerSections: ReadonlyArray<{
     heading: "Community",
     links: [
       { label: "Open Source Program", href: "/oss" },
-      { label: "Students", href: "/students" },
       { label: "Github", href: "https://github.com/deessejs" },
       { label: "LinkedIn", href: "#" },
       { label: "X", href: "#" },
@@ -84,7 +82,7 @@ const footerSections: ReadonlyArray<{
 export function AppFooter() {
   return (
     <footer className="border-t border-border bg-background">
-      <div className="max-w-6xl mx-auto px-6 py-12">
+      <div className="container mx-auto px-6 py-12">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-3 lg:col-span-2">
@@ -114,6 +112,12 @@ export function AppFooter() {
               links={section.links}
             />
           ))}
+        </div>
+
+        {/* Conway signature band — bleeds to the container max-width,
+            separates from the section grid with a border-t. */}
+        <div className="mt-12">
+          <ConwayBand />
         </div>
 
         {/* Bottom bar */}

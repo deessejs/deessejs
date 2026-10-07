@@ -64,7 +64,7 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
           {
             label: "CLI",
             href: "/cli",
-            description: "npx deessejs init / list / info",
+            description: "deessejs init / list / info",
           },
         ],
       },
@@ -110,12 +110,6 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
             label: "Admin",
             href: "https://admin.deessejs.com",
             description: "Operator console",
-            external: true,
-          },
-          {
-            label: "Cloud",
-            href: "https://cloud.deessejs.com",
-            description: "Hosted runtime, coming soon",
             external: true,
           },
         ],

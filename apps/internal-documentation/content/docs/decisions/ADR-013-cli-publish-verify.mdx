@@ -21,7 +21,7 @@ None of these bugs surfaced in CI. The CI runs `pnpm install --frozen-lockfile`,
 
 The pattern that would have caught all three bugs: **build the tarball, install it in a clean project, run the binary**. CI has no step that does this today.
 
-The repo's senior publish pattern (`docs/engineering/processes/versioning.md`) rests on the assumption that the publish artifact is correct. The pattern omits a verify step. With three failures in a row, the omission no longer defends itself.
+The repo's senior publish pattern (now documented at [`../../processes/release-engineering/latest-release.mdx`](../../processes/release-engineering/latest-release.mdx)) rests on the assumption that the publish artifact is correct. The pattern omits a verify step. With three failures in a row, the omission no longer defends itself.
 
 ## Decision
 

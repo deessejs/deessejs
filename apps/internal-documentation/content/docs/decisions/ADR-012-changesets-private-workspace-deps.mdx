@@ -51,7 +51,7 @@ Please add "@deessejs/cli" to the `ignore` option.
 
 The fix targets the config rather than the CLI itself.
 
-The original config came from
+The original config came from the now-deleted
 `docs/engineering/reports/versioning/06-implementation-specs.md`
 section 6.1 with the rationale: *"Suppresses cosmetic version
 bumps on private packages."* That assumption was correct in
@@ -78,7 +78,8 @@ have a load-bearing flaw:
    bumped, tagged, published, and release-noted by Changesets.
    Adding it to `ignore` would force every CLI release to be
    manual, which is the opposite of the senior pattern locked in
-   by `docs/engineering/reports/versioning/07-decisions.md`.
+   by the now-deleted `docs/engineering/reports/versioning/07-decisions.md`
+   and restated in [`./ADR-021-cli-three-tier-release.mdx`](./ADR-021-cli-three-tier-release.mdx).
 2. **Bundle the deps via `bundledDependencies`.** The code is
    already in the bundle via tsup's `noExternal`. The npm
    protocol `bundledDependencies` would require removing the
@@ -143,8 +144,8 @@ keeping the CLI on the senior release pattern.
   release. The entries are real (the version did move) but
   carry no consumer-facing meaning. A noise filter at
   consumption time isn't worth the complexity.
-- The versioning report (`docs/engineering/reports/versioning/
-  01-current-state.md`) needs an update to reflect that the
+- The now-deleted versioning report (`docs/engineering/reports/versioning/01-current-state.md`)
+  needs an update to reflect that the
   assumption *"@deessejs/cli has no workspace deps"* (line 27
   of `06-implementation-specs.md`) no longer holds. Tracking
   happens in a separate issue; the report's recommendation is

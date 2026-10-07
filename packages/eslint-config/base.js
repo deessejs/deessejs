@@ -19,7 +19,8 @@ const config = [
       // lets the entire existing codebase stay green on adoption. We pay the
       // debt down via the weekly `complexity-report` artifact, then tighten
       // to warn@15 (Phase 2) and eventually warn@10/error@20 (Phase 3-4).
-      // See docs/engineering/processes/complexity-rollout.md.
+      // Background: https://www.sonarsource.com/resources/cognitive-complexity/
+      // Rule docs: https://github.com/SonarSource/eslint-plugin-sonarjs/blob/master/docs/rules/cognitive-complexity.md
       "sonarjs/cognitive-complexity": [
         "warn",
         30,
@@ -30,7 +31,8 @@ const config = [
       // Phase 0 — SonarJS recommended config ships with several rules that produce
       // false positives against pre-existing code in this monorepo. We disable
       // them at adoption time and re-enable them in focused follow-ups after
-      // the affected code is triaged. See docs/engineering/processes/complexity-rollout.md.
+      // the affected code is triaged. Phase progression is tracked inline above
+      // (this comment block) and in the weekly `complexity-report` artifact.
       //
       // Re-enablement tracking:
       //   - sonarjs/no-clear-text-protocols, sonarjs/code-eval

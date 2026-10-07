@@ -85,11 +85,11 @@ export const browseAllTemplatesLink = (page: Page) =>
 export const headerUserMenu = (page: Page) =>
   page.getByTestId("header-user-menu")
 
-// Anonymous visitors: "Log in" and "Sign up" buttons.
+// Anonymous visitors: "Log in" and "Get started" buttons.
 export const headerSignInButton = (page: Page) =>
   page.getByRole("link", { name: "Log in", exact: true })
 export const headerSignUpButton = (page: Page) =>
-  page.getByRole("link", { name: "Sign up", exact: true })
+  page.getByRole("link", { name: /Get started/ })
 
 // Authenticated visitors: avatar dropdown trigger.
 export const headerAvatarTrigger = (page: Page) =>

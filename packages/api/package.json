@@ -18,6 +18,11 @@
       "types": "./dist/constants/base-path.d.ts",
       "import": "./dist/constants/base-path.js",
       "default": "./dist/constants/base-path.js"
+    },
+    "./templates-labels": {
+      "types": "./dist/templates-labels.d.ts",
+      "import": "./dist/templates-labels.js",
+      "default": "./dist/templates-labels.js"
     }
   },
   "types": "./dist/index.d.ts",

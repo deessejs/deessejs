@@ -166,10 +166,28 @@
  *
  * See https://shiki.style/guide/dual-themes#class-based-dark-mode
  */
+html .shiki,
+html .shiki span {
+    color: var(--shiki-light);
+}
+
 html.dark .shiki,
 html.dark .shiki span {
     color: var(--shiki-dark) !important;
-    background-color: var(--shiki-dark-bg) !important;
+}
+
+/*
+ * Inline-code chip. Applied to <code> only when it's NOT inside a
+ * <pre> — Shiki emits <pre><code> for code blocks and we must let
+ * the tokens speak for themselves (Shiki's inline color style would
+ * otherwise be overridden by the chip background). Selectors stay
+ * repo-wide so prose anywhere — blog, KB, changelog, marketing —
+ * gets the chip consistently.
+ */
+@layer base {
+    code:not(pre code) {
+        @apply relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold;
+    }
 }
 
 @layer base {

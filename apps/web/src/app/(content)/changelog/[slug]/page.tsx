@@ -3,16 +3,18 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 import { Separator } from "@workspace/ui/components/separator"
+import { WEB_URL } from "@/lib/urls"
 import { allReleases } from "content-collections"
 import { PostCard } from "@/components/blog/post-card"
-import { Prose } from "@/components/blog/prose"
-import { ReleaseMeta } from "@/components/blog/release-meta"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
+import { ReleaseMeta } from "@/components/blog/release-meta"
+import { TableOfContents } from "@/components/blog/table-of-contents"
 import {
   getAdjacentReleases,
   getRelatedBlogPosts,
   getReleaseBySlug,
 } from "@/lib/blog/releases"
+import type { Post } from "@/lib/blog/types"
 import { ORG_ID } from "@/lib/seo/organization"
 
 type Params = { slug: string }
@@ -59,7 +61,7 @@ export default async function ReleasePage(
   const { prev, next } = getAdjacentReleases(slug)
 
   return (
-    <article className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+    <article className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -76,9 +78,9 @@ export default async function ReleasePage(
             keywords: release.categories,
             mainEntityOfPage: {
               "@type": "WebPage",
-              "@id": release.url,
+              "@id": `${WEB_URL}${release.url}`,
             },
-            url: release.url,
+            url: `${WEB_URL}${release.url}`,
             publisher: { "@id": ORG_ID },
             author: {
               "@type": "Organization",
@@ -88,6 +90,7 @@ export default async function ReleasePage(
           }),
         }}
       />
+
       <Link
         href="/changelog"
         className="mb-8 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -103,19 +106,27 @@ export default async function ReleasePage(
         <p className="mt-4 text-pretty text-lg text-muted-foreground">
           {release.description}
         </p>
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
           <ReleaseMeta release={release} />
         </div>
       </header>
 
-      <Prose className="mt-10">
-        <MdxRenderer code={release.mdxCode} />
-      </Prose>
+      <div className="lg:grid lg:grid-cols-[1fr_180px] lg:gap-12">
+        <div className="min-w-0">
+          <MdxRenderer id="article-prose" className="mt-10" code={release.mdxCode} />
+        </div>
+        <aside className="hidden lg:block">
+          <TableOfContents targetId="article-prose" />
+        </aside>
+      </div>
 
       {(prev || next) && (
         <>
           <Separator className="my-12" />
-          <nav className="grid gap-4 sm:grid-cols-2" aria-label="Release navigation">
+          <nav
+            className="grid gap-4 sm:grid-cols-2"
+            aria-label="Release navigation"
+          >
             {prev ? (
               <Link
                 href={prev.url}
@@ -157,8 +168,8 @@ export default async function ReleasePage(
           <h2 className="mb-6 text-2xl font-semibold tracking-tight">
             Related reading
           </h2>
-          <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 md:grid-cols-2 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:last-child]:md:border-b-0 [&>li:first-child]:border-t">
-            {relatedPosts.map((post) => (
+          <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-2 lg:grid-cols-3 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:nth-child(3n)]:lg:border-r-0 [&>li:nth-last-child(-n+2)]:md:border-b-0 [&>li:nth-last-child(-n+3)]:lg:border-b-0 [&>li:first-child]:border-t">
+            {relatedPosts.map((post: Post) => (
               <li key={post.slug}>
                 <PostCard post={post} />
               </li>

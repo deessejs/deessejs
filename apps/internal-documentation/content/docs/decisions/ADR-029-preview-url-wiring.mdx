@@ -185,7 +185,7 @@ but break silently in production.
 
 The companion runbook promised by Decision #4
 (`documents/internal/runbooks/preview-url-wiring.md`) does not yet exist
-on disk. The only concrete runbook today is `apps/web/tests/e2e/RUNBOOK.md`,
+on disk and was not authored. The only concrete runbook today is [`apps/web/tests/e2e/RUNBOOK.md`](../../../web/tests/e2e/RUNBOOK.md),
 which covers Vercel Deployment Protection and the
 `VERCEL_AUTOMATION_BYPASS_SECRET` wiring, not the preview URL flow.
 
@@ -358,7 +358,7 @@ export const webUrl = withRelatedProject({
   default per Vercel environment. The line "One source of truth for
   all env vars across the monorepo" at `.env.example:2` becomes
   literal rather than aspirational.
-- `documents/internal/runbooks/preview-url-wiring.md` (new) walks the
+- [`apps/web/tests/e2e/RUNBOOK.md`](../../../web/tests/e2e/RUNBOOK.md) walks the
   Vercel dashboard click-path to record the two project IDs, edit the
   `vercel.json` per app, mirror `VERCEL_RELATED_PROJECTS` to the
   GitHub Actions secret if a CI consumer needs it, and smoke-test the
@@ -528,8 +528,7 @@ Three patterns the team considered and rejected.
   code review. The Vercel docs explicitly mark CLI deploys as
   unsupported, but the team's deploy path is Git-based so this
   constraint is acceptable. The dashboard click-path is documented
-  in `documents/internal/runbooks/preview-url-wiring.md` (new file,
-  Decision #6).
+  in [`apps/web/tests/e2e/RUNBOOK.md`](../../../web/tests/e2e/RUNBOOK.md) (Decision #6).
 - **`@vercel/related-projects` is added to the workspace dependency
   graph.** The package is small (no transitive server deps for the
   client import), Vercel-maintained, and the only path that does
@@ -557,7 +556,7 @@ Three patterns the team considered and rejected.
 - **`.env.example` and the runbook close the operational gap.** A
   new contributor can read `.env.example` and discover every URL
   var the schema declares. A new operator can read
-  `documents/internal/runbooks/preview-url-wiring.md` and execute
+  [`apps/web/tests/e2e/RUNBOOK.md`](../../../web/tests/e2e/RUNBOOK.md) and execute
   the Vercel dashboard + `vercel.json` + smoke-test sequence in one
   sitting. The runbook complements (does not duplicate)
   `apps/web/tests/e2e/RUNBOOK.md`, which covers Deployment Protection
@@ -764,8 +763,7 @@ adopts CLI-based preview deploys.
   reference documents the pattern table (`?`, `*`, `**`) and the
   apex-non-match behaviour that motivates the three-entry host
   list in `PRODUCTION_ALLOWED_HOSTS`.
-- The Better Auth guide `pitfalls.md` §5 (in
-  `docs/guides/better-auth/pitfalls.md`) is the canonical doc for
+- `packages/auth/src/host-allowlist.ts` is the canonical doc for
   the dynamic `baseURL` fix; it pins the production fallback to
   `https://app.deessejs.com` and `protocol: "https"`.
 - ADR-021 §"Follow-ups" §1 explicitly defers the preview-deployment
@@ -796,13 +794,14 @@ adopts CLI-based preview deploys.
 - [Better Auth: Options reference](https://better-auth.com/docs/reference/options).
   Source for the `allowedHosts` pattern table that motivates the
   three-entry apex-plus-wildcards shape.
-- [Better Auth pitfalls guide §5](../../../../docs/guides/better-auth/pitfalls#5-fixed-baseurl-breaks-vercel-preview-deployments).
+- [`packages/auth/src/host-allowlist.ts`](../../../../packages/auth/src/host-allowlist.ts).
   Canonical doc for the dynamic `baseURL` fix; pins the production
-  fallback and protocol that Decision #2 mirrors in
-  `packages/auth/src/host-allowlist.ts`.
-- [Better Auth setup guide](../../../../docs/guides/better-auth/setup).
-  Canonical `baseURL.allowedHosts` config block; documents
-  `ALLOWED_ORIGINS` as the ad-hoc-only mechanism.
+  fallback and protocol that Decision #2 mirrors in this file.
+- [`packages/auth/src/auth.ts`](../../../../packages/auth/src/auth.ts)
+  (`baseURL` block) and [`.env.example`](../../../../.env.example)
+  §"better-auth (server-side)". Canonical `baseURL.allowedHosts`
+  config block; documents `ALLOWED_ORIGINS` as the ad-hoc-only
+  mechanism.
 - [Vercel: System environment variables](https://vercel.com/docs/environment-variables/system-environment-variables).
   Source for `VERCEL_BRANCH_URL`, `VERCEL_PROJECT_PRODUCTION_URL`,
   `VERCEL_ENV`, and `VERCEL_RELATED_PROJECTS` semantics.

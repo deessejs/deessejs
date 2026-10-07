@@ -1,0 +1,12 @@
+import { Section } from "@/components/marketing/section"
+import { StatsStrip } from "@/components/marketing/stats-strip"
+import { STATS } from "@/lib/marketing/home-data"
+
+/** Stats — 4-cell strip (npm, GH, templates, license). */
+export function Stats() {
+  return (
+    <Section>
+      <StatsStrip stats={STATS} />
+    </Section>
+  )
+}

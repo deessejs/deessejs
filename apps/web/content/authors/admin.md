@@ -1,6 +1,7 @@
 ---
 handle: admin
-name: Admin
+name: David Pereira
+role: Chief Executive Officer
 bio: Template author.
 # Optional identity links surfaced as schema.org `sameAs` on the
 # Person JSON-LD emitted by /blog/[slug] and /blog/author/[handle].
@@ -11,4 +12,4 @@ bio: Template author.
 # website: https://example.com
 ---
 
-Admin is the author of this template.
+David Pereira is the author of this template.

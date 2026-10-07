@@ -61,8 +61,8 @@ export function GuideList({
   const showEmpty = hasFilters && filtered.length === 0
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col">
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between border-y border-border">
         <div className="flex items-center gap-3">
           <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             Filter
@@ -129,7 +129,7 @@ export function GuideList({
               <Link
                 href={guide.url}
                 aria-label={`Read the ${guide.title} guide`}
-                className="group flex flex-col gap-2 px-2 py-4 transition-colors hover:bg-accent/30 focus-visible:bg-accent/30 focus-visible:outline-none"
+                className="group flex flex-col gap-2 px-6 py-4 transition-colors hover:bg-accent/30 focus-visible:bg-accent/30 focus-visible:outline-none"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="text-balance text-base font-medium tracking-tight text-foreground underline-offset-4 group-hover:underline">

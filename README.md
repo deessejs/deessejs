@@ -34,7 +34,7 @@
   </a>
 </p>
 
-> **Started from [`deessejs/saas-template`](https://github.com/deessejs/saas-template)** (MIT, July 2026). This repo was cloned from it as the foundation for the deessejs main app and has since diverged — see [docs/engineering/plans/saas-template-divergence.md](docs/engineering/plans/saas-template-divergence.md) for the divergence map.
+> **Started from [`deessejs/saas-template`](https://github.com/deessejs/saas-template)** (MIT, July 2026). This repo was cloned from it as the foundation for the deessejs main app and has since diverged — see [DESIGN.md](DESIGN.md) for the current state of the monorepo.
 
 > 👉 **Need workspaces / multi-tenant?** See [`deessejs/saas-template-multi-tenant`](https://github.com/deessejs/saas-template-multi-tenant) — same monorepo with the Better Auth Organization plugin wired in, for users who need per-tenant data isolation and invite-based memberships.
 
@@ -167,7 +167,7 @@ Click the **Deploy with Vercel** button at the top. The monorepo is detected aut
 
 ## Customization
 
-DeesseJS is **single-tenant by design**. The auth guides under `docs/guides/better-auth/` explain the lock-ins:
+DeesseJS is **single-tenant by design**. The lock-ins live in the code:
 
 - No `organization(...)` plugin in `packages/auth/src/auth.ts`.
 - No `databaseHooks.session.create.before` for org auto-create.
