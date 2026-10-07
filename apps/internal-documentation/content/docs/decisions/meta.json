@@ -35,6 +35,7 @@
     "ADR-027-version-bump-orphan",
     "ADR-029-preview-url-wiring",
     "ADR-030-account-only-page",
-    "ADR-031-organizations-and-github-import"
+    "ADR-031-organizations-and-github-import",
+    "ADR-032-first-organization-onboarding"
   ]
 }
