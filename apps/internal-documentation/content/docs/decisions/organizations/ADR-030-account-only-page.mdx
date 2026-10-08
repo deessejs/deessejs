@@ -41,7 +41,11 @@ The npm account page, GitHub settings, Linear settings, and Vercel Dashboard all
 
 The authenticated shell (`apps/app/app/(protected)/layout.tsx`) loses the shadcn `Sidebar`-based chrome. It gains a custom left sidebar under the header, with three zones: the organizations menu at the top, the five settings sections in the middle, and a "Create organization" entry point at the bottom. `NavUser` stays in the header (no change from the original); a `Contact us` button lives in the header to the left of `NavUser`. The route shape adopts the `/[org_slug]/*` prefix (Vercel-style) and renames the settings routes from `/settings/*` to `/account/settings/*`. The hub `/account/settings` becomes a server-side redirect to `/account/settings/profile`. The `/(protected)` group is renamed to `/([org_slug])` to make the org slug a required dynamic segment, and `/home` becomes `/[org_slug]/home`.
 
-### What this rule decides
+The seven decisions below compose the full product shape. §1 is the chrome (this ADR's original scope). §2-§7 are the organizations and GitHub v1 decisions formerly scoped in `ADR-031` (now merged into this ADR). The implementation ADRs that follow (`ADR-032` for the onboarding wizard, `ADR-033` for the GitHub v2 long-term reference) inherit the shape.
+
+### §1 Chrome: left sidebar with organizations menu and settings sections
+
+#### What this rule decides
 
 1. **The `(protected)` layout becomes header + left sidebar + main.** `apps/app/app/(protected)/layout.tsx` (kept as the route group, even though the chrome is no longer "protected" in the visual sense) drops `SidebarProvider`, `AppSidebar`, `SidebarInset`, `SidebarRail`, and `SidebarTrigger`. The new layout has two zones in the header: the `APP_NAME` slot on the left (matching today's header at `apps/app/app/(protected)/layout.tsx:15-19`), and on the right a `Contact us` outline button followed by `NavUser`. Below the header, a left sidebar ~280 px wide renders the organizations menu at the top, the five settings sections in the middle, and a "Create organization" entry point at the bottom. The `<main>` content area expands to fill the remaining width. The new layout is implemented as plain flex (no `SidebarProvider` context, no `SidebarInset` wrapper). The shadcn `Sidebar` component family is not used, except for the `Sheet` primitive that backs the mobile drawer of the organizations menu (the drawer is full-screen on mobile, where a 280px sidebar does not fit).
 
@@ -77,7 +81,7 @@ The authenticated shell (`apps/app/app/(protected)/layout.tsx`) loses the shadcn
 ### What this rule forbids
 
 - The shadcn `Sidebar` component family (`SidebarProvider`, `SidebarInset`, `SidebarRail`, `SidebarTrigger`, `SidebarMenu*`) in `apps/app`, except for the `Sheet` primitive that backs the mobile drawer of the organizations menu. The left sidebar is custom plain HTML (`<nav>` + `<Link>` + styled rows + the organizations menu at the top). If a future feature needs vertical nav inside a leaf page (for example, a Templates Library), it ships its own scoped nav within that page, not a top-level shadcn `Sidebar`.
-- Re-introducing a hub `/settings` page that lists sections. The hub is replaced by the left rail; it doesn't come back as a separate page.
+- Re-introducing a hub `/settings` page that lists sections. The hub is replaced by the left sidebar; it doesn't come back as a separate page.
 - Items in the avatar dropdown that don't go anywhere. Every `DropdownMenuItem` has an `href` / `onClick` or it isn't there. The `Upgrade to Pro` / `Account` / `Billing` / `Notifications` pattern is dead.
 - Adding new `(protected)/<x>/page.tsx` routes that don't appear in the rail. Every new protected route ships with a new rail entry. The two lists stay in lockstep.
 
@@ -89,7 +93,7 @@ The authenticated shell (`apps/app/app/(protected)/layout.tsx`) loses the shadcn
 
 3. **Collapsible icon sidebar (current pattern, just visually tightened).** Sidebar is already collapsible (`apps/app/components/sidebars/app-sidebar.tsx:87` — `collapsible="icon"`). Tightening the visual doesn't address the structural cost: two nav components, one hub page, one shortcut, one back action, all routing-specific. Rejected because the visual was never the problem; the routing-specific branching was.
 
-4. **Horizontal tabs row under the header (a previous draft of this ADR).** A row of tabs beneath the header. Rejected after a first review pass: the team prefers the left rail shape — it scales better visually when entries gain icons and labels grow longer, and it matches the npm / GitHub / Linear / Vercel reference shape. The tabs row is documented in the ADR's superseded draft (see git history); the rail wins.
+4. **Horizontal tabs row under the header (a previous draft of this ADR).** A row of tabs beneath the header. Rejected after a first review pass: the team prefers the left sidebar shape — it scales better visually when entries gain icons and labels grow longer, and it matches the npm / GitHub / Linear / Vercel reference shape. The tabs row is documented in the ADR's superseded draft (see git history); the sidebar wins.
 
 ### What this rule does not change
 
@@ -102,17 +106,58 @@ The authenticated shell (`apps/app/app/(protected)/layout.tsx`) loses the shadcn
 - **The proxy.** `apps/app/proxy.ts` is unchanged. Same protected prefixes, same matcher, same auth-page bounce.
 - **The `nav-main.tsx` and `nav-projects.tsx` sidebar components.** They are deleted because no consumer references them outside `AppSidebar` (verified by repo-wide grep), but the patterns they expose (`Collapsible` with `ChevronRightIcon`, project `DropdownMenu` with destructive action) are reusable for future tab-internal sub-navigation. If a future tab needs them, copy the pattern; do not bring the components back.
 
+### §2-§7 Organizations and GitHub v1
+
+The remaining six decisions in this ADR scope the organizations
+product shape and the V1 of GitHub project import. They are
+documented in detail in
+[`ADR-031-organizations-and-github-import`](./ADR-031-organizations-and-github-import)
+(now merged into this ADR's scope; the file remains on disk for
+historical reference and to keep the implementation ADRs
+`ADR-032` and `ADR-033` linkable). The decisions are:
+
+- **§2 Organizations are mandatory as the post-signup destination.**
+  `personalAccountEnabled: true` on the better-auth `organization`
+  plugin. The personal account exists in the data model but does
+  not give the user access to the app until a real organization
+  is created. A server-side gate redirects users whose only org is
+  their personal account to `/onboarding/first-organization`.
+- **§3 Two roles: `owner` and `admin`.** The plugin's default
+  two-role model. `owner` can delete the organization; `owner`
+  and `admin` can both rename. The personal account is
+  immutable: cannot be renamed or deleted by anyone.
+- **§4 Unlimited organizations per user.** A user can belong to
+  as many organizations as they want, plus their personal account.
+  Matches the Vercel/GitHub/Linear reference.
+- **§5 Invitations: email only.** The plugin's `invitation` flow.
+  No shareable-link invites in V1.
+- **§6 V1 scope of "Import a project from GitHub".** The V1
+  feature is **list the user's GitHub repositories and let them
+  select which to import into the current organization**. The
+  GitHub `accessToken` already on the `account` row (per
+  `ADR-028`) is reused for the API call. No webhook, no
+  auto-sync, no auto-deploy. V2 (webhooks, GitHub App, auto-deploy)
+  is scoped in `ADR-033`.
+- **§7 Onboarding wizard: four steps, per-step skip.** A user
+  whose only org is the personal account is redirected to
+  `/onboarding/first-organization`, a four-step wizard. Step 1
+  is the personal-account slug customisation (default = username,
+  per-step skip). Step 2 is the organization creation (the gate,
+  no skip). Steps 3 and 4 are invite teammates and connect
+  GitHub (per-step skip). The implementation is scoped in
+  `ADR-032`.
+
 ## Consequences
 
-- **`apps/app` has one chrome across every authenticated page.** The `SidebarProvider` branching (`inSettings ? <SettingsNav /> : <SettingsShortcut />`) is gone. Every page sees the same header + left rail + main.
+- **`apps/app` has one chrome across every authenticated page.** The `SidebarProvider` branching (`inSettings ? <SettingsNav /> : <SettingsShortcut />`) is gone. Every page sees the same header + left sidebar + main.
 - **~7 files are deleted.** `app-sidebar.tsx`, `settings-nav.tsx`, `sidebar-back-action.tsx`, `nav-main.tsx`, `nav-projects.tsx`, `(protected)/settings/page.tsx`, and one inline `SettingsShortcut` block. The other sidebar components are kept only if they have a consumer; `NavUser` migrates to the header.
-- **One file is rewritten, one new file.** `(protected)/layout.tsx` becomes header + left rail + main (a `Contact us` button is added between the header logo and `NavUser`). The left rail component is a new file at `apps/app/components/nav/settings-tabs.tsx` (or co-located under `(protected)/_components/` — design call during implementation); despite the filename carrying `tabs` for historical reasons, the file renders plain `<nav>` + `<Link>` rows and uses no shadcn `Tabs` primitive.
+- **One file is rewritten, one new file.** `(protected)/layout.tsx` becomes header + left sidebar + main (a `Contact us` button is added between the header logo and `NavUser`). The left sidebar component is a new file at `apps/app/components/nav/sidebar.tsx` (or co-located under `(protected)/_components/` — design call during implementation); the file renders plain `<nav>` + `<Link>` rows (plus the organizations menu at the top) and uses no shadcn `Sidebar` primitive.
 - **The hub `/settings` is gone.** A visit to `/settings` server-redirects to `/settings/profile`. External links (none today, verified) land on the Profile entry.
 - **No route or form content changes.** All eight `/settings/*` leaves and `/home` are byte-identical after the ADR ships. Reviewers can verify by `git diff` on those files: zero changes expected.
 - **No data-layer change.** Same auth-client calls, same Better Auth schema, same Hono procedures. The change is a chrome swap.
 - **`Contact us` is a V1 placeholder.** The header button has no `onClick` and no `href`. A future ADR scopes the real wiring (likely `mailto:` or an external helpdesk URL).
-- **Reversibility cost is low.** The deleted files restore from git history if a future ADR reintroduces a shadcn `Sidebar` (or a different left rail primitive). The settings routes stay at their current URLs, so a rollback of the layout does not affect any deep-link.
-- **Mobile rendering is decided.** The left rail stays visible at all viewport widths; on narrow screens it collapses to a narrower column (icon-only labels hidden). The mobile collapse shape is documented in the implementation PR; the ADR scopes itself to the desktop shape.
+- **Reversibility cost is low.** The deleted files restore from git history if a future ADR reintroduces a shadcn `Sidebar` (or a different left sidebar primitive). The settings routes stay at their current URLs, so a rollback of the layout does not affect any deep-link.
+- **Mobile rendering is decided.** The left sidebar stays visible at all viewport widths; on narrow screens it collapses to a narrower column (icon-only labels hidden) or to a Sheet drawer (the organizations menu). The mobile collapse shape is documented in the implementation PR; the ADR scopes itself to the desktop shape.
 
 ## Out of scope (deferred)
 
@@ -125,7 +170,7 @@ The authenticated shell (`apps/app/app/(protected)/layout.tsx`) loses the shadcn
 
 ## Open questions
 
-None. Three design calls surfaced during review and have been resolved in this version of the ADR: the chrome is a custom left rail (not the shadcn `Sidebar`); `NavUser` renders avatar-only (no name, no chevrons) with a single `Log out` item, and a `Contact us` outline button sits to its left in the header; each entry target is a real page hub that already renders summary cards linking to its sub-pages.
+None. The chrome is a custom left sidebar (not the shadcn `Sidebar`); `NavUser` renders avatar-only (no name, no chevrons) with a single `Log out` item, and a `Contact us` outline button sits to its left in the header; each entry target is a real page hub that already renders summary cards linking to its sub-pages. The organizations and GitHub v1 decisions in §2-§7 are documented in detail in the merged `ADR-031` (the file remains on disk for historical reference and to keep the implementation ADRs `ADR-032` and `ADR-033` linkable).
 
 ## Related
 
