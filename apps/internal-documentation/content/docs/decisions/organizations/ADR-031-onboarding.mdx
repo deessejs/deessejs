@@ -1,0 +1,503 @@
+---
+title: 'Onboarding wizard'
+description: 'Implementation scoping for the /onboarding/first-organization wizard introduced by ADR-030 §1. The wizard is a four-step page (personal-account slug, organization name and slug, invite teammates, connect GitHub) with per-step skips on steps 1, 3, and 4 (step 2 is the gate). The proxy at apps/app/proxy.ts enforces the gate by redirecting users whose only organization is their personal account.'
+---
+
+# ADR-031: Onboarding
+
+## Status
+
+Proposed (2026-10). Scopes the implementation of the
+onboarding wizard that the `ADR-030` §1 gate requires. The
+ADR ships no code; the implementation lands in a follow-up
+PR after this one merges.
+
+## Context
+
+`ADR-030` §1 requires that a user whose only organization is
+their personal account be redirected to
+`/onboarding/first-organization` on their next visit to a
+`(protected)` route. The redirect is server-enforced; the
+wizard is the only way to reach the app on first login. The
+wizard shape is detailed in §6 below.
+
+The better-auth `organization` plugin handles the underlying
+data model (the `create` and `update` actions, the
+`activeOrganizationId` session field). The wizard is the
+client-side and server-side glue that calls these actions,
+validates the inputs, and transitions the user through the
+four steps.
+
+## Decision
+
+### 1. The proxy gains a third gate
+
+`apps/app/proxy.ts` adds a third check after the
+`isProtected && !session?.session` and
+`isProtected && session?.session?.user && !session.session.user.emailVerified`
+checks. The check:
+
+- Only runs for `isProtected` requests.
+- Reads the session's `activeOrganizationId` from the
+  `get-session` response (the response shape is widened by
+  the `organization` plugin; the existing `GetSessionResponse`
+  interface in `apps/app/proxy.ts:45-47` gains a typed
+  `activeOrganizationId` field).
+- Resolves the active organization via a second self-fetch
+  to a new Hono route `GET /api/v1/organization/active`
+  (described below). The fetch is necessary because
+  `get-session` returns the organization id, not the
+  organization row; the gate needs the row to know whether
+  the active organization is the user's personal account.
+  The personal account has a known marker (its slug equals
+  the user's username, or it carries a `personalAccount:
+  true` column that the better-auth `organization` plugin
+  sets). The fetch is cheap and uses the same self-fetch
+  pattern the proxy already relies on.
+- If the active organization is the personal account, the
+  proxy redirects to `/onboarding/first-organization`
+  (preserving the `?redirect=` query param so the user
+  lands back on the page they were trying to reach after
+  onboarding).
+
+The check does not run for `isAuthPage` requests (the
+`(unprotected)/(auth)/*` routes) and does not run for the
+`/onboarding/*` route group itself. The `config.matcher`
+at `apps/app/proxy.ts:18-30` gains the `/onboarding/:path*`
+entry but the proxy body short-circuits for it.
+
+### 2. The wizard page lives under a new `(onboarding)` route group
+
+`apps/app/app/(onboarding)/first-organization/page.tsx` is
+a server-rendered page that mounts a client component
+`OnboardingWizard` (new, at
+`apps/app/components/onboarding/onboarding-wizard.tsx`). The
+page reads the session server-side (via the better-auth
+`auth.api.getSession` call the implementation already uses
+for `(protected)` pages) and hands the session's `user.id`
+to the client component. The client component owns the step
+state (`useState<1 | 2 | 3 | 4>(1)`), the per-step form
+state, and the calls to the two Hono routes.
+
+The page renders a minimal layout: a centered card with
+the `APP_NAME` logo at the top, a step indicator (`1 —
+Personal slug`, `2 — Org name and slug`, `3 — Invite`, `4 —
+GitHub`) with the current step highlighted, the active
+step's form, and a "Skip this step" button on steps 1, 3,
+and 4 (absent on step 2, per `ADR-030` §1). The card uses
+the same `Card`, `Input`, `Button`, and `Field` primitives
+the rest of `apps/app` uses.
+
+The four step components live next to the wizard:
+
+- `apps/app/components/onboarding/step-personal-slug.tsx`
+- `apps/app/components/onboarding/step-name-slug.tsx`
+- `apps/app/components/onboarding/step-invite.tsx`
+- `apps/app/components/onboarding/step-github.tsx`
+
+Each step is a controlled form with a single submit handler
+that returns to the parent. The parent advances the step on
+success.
+
+### 3. Two Hono routes under `/api/v1/organization/*`
+
+Both routes are direct HTTP routes in the `mountHttp` mount
+at `packages/api/src/http/routes/http.ts:21-58`, not oRPC
+procedures. The shape matches the existing system routes
+(`/auth/*`, `/health`, `/ready`).
+
+- `GET /api/v1/organization/check-slug?slug=<slug>` —
+  validates the slug format (`^[a-z0-9-]+$`, length 3-32)
+  and queries the `organization` table for an existing row
+  with the same slug. Returns `{ available: true }` or
+  `{ available: false, reason: "taken" | "invalid" | "format" }`.
+  The route is rate-limited at the proxy layer (a new
+  rate-limit bucket on `RATE_LIMIT_PER_MINUTE`, same as
+  `/version`).
+- `POST /api/v1/organization/create` — accepts
+  `{ name: string, slug: string }`, calls the better-auth
+  `auth.api.createOrganization` server-side, validates the
+  response, and returns `{ organizationId: string, slug: string }`.
+  The client then calls
+  `authClient.organization.setActive({ organizationId })`
+  to switch the session's active organization.
+
+A third route, `GET /api/v1/organization/active`, is added
+to support the proxy gate (see §1). It returns the active
+organization's `id`, `slug`, and `personalAccount` boolean
+for the session's user. The proxy is its only consumer.
+
+The `invite` route is the better-auth
+`auth.api.inviteMember` server-side call invoked directly
+from the client via `authClient.organization.inviteMember(...)`
+— the existing better-auth handler at
+`/api/v1/auth/organization/invite-member` serves it. No new
+Hono route is needed for the invite step; the wizard uses
+the better-auth handler.
+
+### 4. The wizard shape: four steps, per-step skip
+
+The wizard is `/onboarding/first-organization`, a four-step
+wizard rendered as a single page with internal step state.
+The first step is the personal-account slug customisation
+(default = username, editable). The second step is the
+organization creation (the gate itself). Steps 3 and 4 each
+carry their own "Skip this step" button. The wizard has no
+global skip button and no "Save and finish later" exit; the
+server-side gate in `ADR-030` §1 keeps the user on the
+wizard until the second step's submit succeeds.
+
+1. **Personal-account slug.** Optional. The slug is
+   pre-filled with the user's username, editable.
+   Validation: live check on slug uniqueness (the same
+   `GET /api/v1/organization/check-slug?slug=...` route
+   is reused), regex check on slug format
+   (`^[a-z0-9-]+$`, length 3-32). On submit, the
+   better-auth
+   `authClient.organization.update({ organizationId: <personal>, slug })`
+   call runs (if the better-auth `organization` plugin's
+   `update` action allows modifying the slug of a
+   personal-account organization; otherwise this step is a
+   no-op that advances to step 2 with the username as the
+   slug — see §"Open questions"). A "Skip this step"
+   button advances without modifying the slug (the username
+   stays the default).
+2. **Name and slug of the organization.** Required. The org
+   slug is auto-generated from the name (`"Acme Inc"`
+   becomes `acme-inc`), editable before submit. Validation:
+   same `check-slug` route and regex as step 1. On submit,
+   the better-auth
+   `authClient.organization.create({ name, slug })` call
+   runs, the session's `activeOrganizationId` switches to
+   the new organization, and the wizard advances to step
+   3. **No "Skip this step" button on step 2.** The submit
+   button is the only way out of step 2.
+3. **Invite teammates.** Optional. A multi-email input
+   (`textarea` parsed as one email per line, validated
+   client-side against a basic email regex, dedup'd
+   against already-invited addresses, with a per-line error
+   display). On submit, the better-auth
+   `authClient.organization.inviteMember({ email, role: "admin" })`
+   call runs once per email (fire-and-forget per email;
+   the success / partial-failure count is shown in a
+   toast). A "Skip this step" button advances without
+   sending any invitation. The user can always invite
+   later from the Members page.
+4. **Connect GitHub.** Optional. A "Connect GitHub" button
+   runs `authClient.signIn.social({ provider: "github",
+   callbackURL: "/onboarding/first-organization?step=4" })`.
+   On return, the wizard advances regardless of whether
+   the user linked a GitHub account (the linked-or-not
+   state is read from the `account` table, not inferred
+   from a redirect param). A "Skip this step" button
+   advances without connecting. The user can connect later
+   from the project-import screen or from
+   `/account/settings/connections`.
+
+#### Post-onboarding landing
+
+After step 4 (skipped or completed), the wizard redirects
+to the post-onboarding landing. The target is
+`/<org-slug>/home` (the new organization's dashboard, in
+the Vercel-style `/[org_slug]/*` route shape). The
+`?redirect=<path>` query param is honored if it points to
+a route under `/<org-slug>/*`; otherwise the user lands on
+`/<org-slug>/home`.
+
+### 5. `AGENTS.md` amendment
+
+`AGENTS.md` §"Better-Auth guides" gains two changes:
+
+- The line "ce repo est single-tenant — n'introduis pas
+  ces patterns" is deleted.
+- A new row in the guides table pointing to `ADR-030`
+  (product shape) and this ADR (implementation), with the
+  description "Multi-tenant: every user has a personal
+  account, the active organization gates `(protected)`
+  routes, and the `organization` plugin is the source of
+  truth."
+
+No other section of `AGENTS.md` changes.
+
+## Consequences
+
+- **The proxy gains a third gate.** A user whose only
+  organization is their personal account is redirected to
+  `/onboarding/first-organization` on their next visit to
+  a `(protected)` route. The redirect carries a
+  `?redirect=<path>` query param so the user lands back
+  where they were trying to go after onboarding.
+- **The wizard is reachable from the proxy's
+  `config.matcher`.** The matcher gains
+  `/onboarding/:path*`; the proxy body short-circuits for
+  it (no gate runs, no redirect, the request flows through
+  to the page). This is the only `(onboarding)` route in
+  V1.
+- **The better-auth `organization` plugin is enabled.**
+  The plugin's routes (`/api/v1/auth/organization/*`) are
+  available; the schema gains `organization`, `member`,
+  and `invitation` tables; the session shape gains
+  `activeOrganizationId`. The `AGENTS.md` single-tenant
+  guard is lifted in the same commit.
+- **A Drizzle migration lands.** The migration is
+  generated by `pnpm auth:generate` after the
+  `organization` plugin is enabled, reviewed, and
+  committed. The migration follows the same shape as
+  every other schema change in the repo (per `ADR-015`).
+- **Three Hono routes ship.** `check-slug`, `create`, and
+  `active`. The `check-slug` route is rate-limited at the
+  proxy layer; the other two are session-authenticated.
+- **The wizard page is server-rendered, client-interacted.**
+  The initial state (current step, user session) is
+  computed server-side; the step transitions and form
+  submits are client-side.
+- **No new env vars.** The wizard reuses
+  `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` (per
+  `ADR-028`) for the GitHub step; no new env vars are
+  introduced.
+- **The wizard's post-onboarding landing is
+  `/<org-slug>/home`.** The `?redirect=<path>` query
+  param is honored if it points to a route under
+  `/<org-slug>/*`; otherwise the user lands on
+  `/<org-slug>/home`.
+
+## What this rule allows
+
+- The proxy at `apps/app/proxy.ts` adding the
+  `(protected)`-route-redirect-to-`/onboarding/first-organization`
+  gate, with a `?redirect=<original-pathname>` query param
+  preserved on the redirect.
+- The new route group `(onboarding)` at
+  `apps/app/app/(onboarding)/first-organization/page.tsx`,
+  parallel to the existing `(protected)` and `(unprotected)`
+  groups.
+- The client component
+  `apps/app/components/onboarding/onboarding-wizard.tsx`
+  and the four step components.
+- The three Hono routes
+  (`GET /api/v1/organization/check-slug`,
+  `POST /api/v1/organization/create`,
+  `GET /api/v1/organization/active`) in
+  `packages/api/src/http/routes/organization.ts` (new file)
+  and wired in `packages/api/src/http/routes/http.ts:21-58`
+  via a new `mountOrganization(api)` call.
+- The Drizzle migration generated by
+  `pnpm auth:generate` after the `organization` plugin is
+  enabled, committed alongside the schema change.
+- The `AGENTS.md` §"Better-Auth guides" amendment lifting
+  the single-tenant guard and adding the ADR pointer.
+- A toast on the Members page when an invite is sent
+  from the wizard.
+
+## What this rule forbids
+
+- A `useActiveOrganization` import from the better-auth
+  React client in any file outside the onboarding wizard
+  and the `(protected)` layout's `NavUser`. Other consumers
+  read the active organization from the server-side
+  `auth.api.getSession` call or from the `get-session`
+  self-fetch the proxy already uses. The React-client hook
+  is a footgun for SSR (the value can be stale on a
+  server-rendered page) and the codebase has decided to
+  read it server-side.
+- A `useEffect`-driven redirect from the wizard's step
+  components to the post-onboarding landing. The redirect
+  is computed in the parent `OnboardingWizard` after the
+  last step's submit resolves; per-step `useEffect`
+  redirects are fragile.
+- A re-implementation of the slug-validation logic in
+  client-side code. The validation regex
+  (`^[a-z0-9-]+$`, length 3-32) lives in the Hono route
+  and is re-used by the client only for instant feedback.
+- A global "Skip onboarding" button on the wizard. The
+  per-step skips are the only skip affordance.
+- A second Hono route for the invite step. The better-auth
+  handler at
+  `/api/v1/auth/organization/invite-member` is the call.
+
+## Why not the alternatives
+
+- **A wizard that lives under `(protected)` with a
+  special-case in the proxy to allow it.** A separate
+  `(onboarding)` group that the proxy explicitly does not
+  redirect away from is more readable in the route tree
+  and easier to reason about.
+- **A modal-based onboarding instead of a full page.** A
+  modal would be harder to recover from (the user could
+  close it by accident and lose the gate), and the gate
+  is server-enforced.
+
+## What this rule does not change
+
+- The `personalAccountEnabled: true` configuration in
+  `packages/auth/src/auth.ts` (scoped in `ADR-030` §1).
+- The two-role model (`owner` + `admin`) from `ADR-030`
+  §2.
+- The email-only invitation flow from `ADR-030` §4.
+- The Hono CORS allowlist (per `ADR-029`). The new
+  `/api/v1/organization/*` routes ride the same Hono
+  catch-all in `apps/app/app/api/[[...route]]/route.ts`.
+- The CLI (`apps/cli/`). The CLI is unchanged.
+
+## Out of scope (deferred)
+
+- **GitHub project-import screen.** `ADR-032` scopes the
+  shape (list + select, no webhook).
+- **The `team` table.** Per `ADR-030` §"Out of scope".
+- **More than two roles.** Per `ADR-030` §2.
+- **Shareable-link invites.** Per `ADR-030` §4.
+- **Token encryption.** Per `ADR-030` §"Out of scope".
+- **A per-organization landing page.** The post-onboarding
+  landing is `/<org-slug>/home` (with the `?redirect` param
+  honored); a per-org dashboard is a future ADR.
+- **Email-template changes for the invite step.** The
+  invite uses the better-auth default template.
+
+## Test strategy
+
+### Unit
+
+- `apps/app/components/onboarding/onboarding-wizard.test.tsx`
+  (new) — renders the wizard with a mocked session,
+  asserts the four steps render in order, asserts the
+  "Skip this step" button is absent on step 2 and present
+  on steps 1, 3, and 4, asserts the post-onboarding
+  redirect is fired after step 4.
+- One test per step component asserting the form
+  validation, the API call, and the parent handoff.
+
+### Integration
+
+- `packages/api/tests/integration/organization-routes.test.ts`
+  (new) — exercises the three Hono routes against a test
+  database.
+- `apps/app/tests/integration/proxy-gate.test.ts` (new) —
+  exercises the proxy's third gate. Asserts a request to
+  `/<org-slug>/home` for a user with only a personal
+  account returns a 302 to
+  `/onboarding/first-organization?redirect=%2F<org-slug>%2Fhome`.
+  Asserts a request to `/onboarding/first-organization` for
+  the same user returns a 200. Asserts a request to
+  `/<org-slug>/home` for a user with a real organization
+  returns a 200.
+
+### Manual staging smoke
+
+- Sign up a fresh user. Land on `/<personal-slug>/home`.
+  Confirm the proxy redirects to
+  `/onboarding/first-organization`.
+- Step 1: enter a custom slug. Confirm the slug is
+  pre-filled with the username. Confirm "Skip this step"
+  is present. Submit. Confirm the wizard advances to step
+  2.
+- Step 2: enter "Acme Inc". Confirm the slug auto-fills to
+  `acme-inc`. Confirm "Skip this step" is absent. Submit.
+  Confirm the wizard advances to step 3 and the new
+  organization is created.
+- Step 3: paste three email addresses, one per line, with
+  one invalid. Confirm the invalid line is highlighted,
+  the valid ones are sent, the toast shows
+  `{ sent: 2, failed: 1 }`. Click "Skip this step" on a
+  re-run of step 3. Confirm the wizard advances without
+  sending any invitation.
+- Step 4: click "Connect GitHub". Confirm the OAuth flow
+  runs, the user returns to
+  `/onboarding/first-organization?step=4`, the wizard
+  advances, and the post-onboarding redirect lands on
+  `/<org-slug>/home` (or the `?redirect` target if set).
+- Re-run the wizard on a fresh user with a real
+  organization. Confirm the proxy does not redirect away
+  from `/<org-slug>/home`.
+
+## Open questions
+
+1. **Does the better-auth `organization` plugin's `update`
+   action allow modifying the slug of a personal-account
+   organization?** Step 1 calls
+   `authClient.organization.update({ organizationId: <personal>, slug })`
+   to apply the custom slug. If the plugin rejects the
+   update, the step is a no-op that advances to step 2
+   with the username as the slug, and the customisation is
+   deferred. The implementation PR resolves this against
+   the live plugin API; the fallback shape is documented
+   here so the implementation is not blocked on the
+   question.
+
+## Known limitations in this version
+
+### Limitation 1: post-onboarding landing is `/<org-slug>/home`
+
+The post-onboarding landing is `/<org-slug>/home`. A richer
+per-organization dashboard (`/<org-slug>/projects` or
+equivalent) is a future ADR.
+
+### Limitation 2: the proxy gate re-fetches the active organization
+
+The proxy's third gate re-fetches
+`GET /api/v1/organization/active` on every request to a
+`(protected)` route. The fetch is cheap (one DB row) but
+adds a roundtrip to every protected navigation. A future
+optimization caches the `activeOrganizationId` on the
+session.
+
+### Limitation 3: the wizard does not persist partial state
+
+If the user navigates away from the wizard mid-flow, the
+in-memory step state is lost. On their next visit, the
+wizard restarts from step 1. The limitation is by design.
+
+### Limitation 4: the wizard does not survive a refresh on step 1
+
+The `useState<1 | 2 | 3 | 4>(1)` initialization in the
+`OnboardingWizard` resets on a full page refresh. A user
+who has typed a custom slug but not submitted, then
+refreshes, loses the typed slug. The mitigation in V1 is
+"type, then submit; do not refresh mid-form."
+
+## Where this rule came from
+
+- `ADR-030` §1 (gate) and §6 (chrome). The gate needs a
+  destination; the destination is the wizard.
+- The better-auth `organization` plugin docs. The
+  `create`, `update`, `setActive`, `inviteMember`, and
+  `activeOrganizationId` calls in this ADR all come from
+  this page.
+- The proxy at `apps/app/proxy.ts:32-43` documents the
+  self-fetch pattern for the session lookup. The third
+  gate reuses the same pattern.
+- `ADR-015` (Drizzle migrations CI) documents the
+  `auth:generate` workflow and the migration commit
+  pattern. The schema change follows it.
+- `ADR-028` (GitHub OAuth) documents the
+  `socialProviders.github` block and the `accessToken`
+  storage on the `account` row. The wizard's step 4
+  invokes the OAuth flow via the same
+  `authClient.signIn.social` call the rest of the app
+  uses.
+- `ADR-029` (Vercel preview URL wiring) documents the
+  Hono CORS allowlist and the `host-allowlist.ts` shared
+  module. The new Hono routes ride the same catch-all.
+- `ADR-030` (the chrome). The wizard has its own minimal
+  layout; the protected chrome is unchanged.
+
+## Related
+
+- [ADR-030: Organizations system](./ADR-030-organizations).
+  §1 (gate) and §6 (chrome) are the source of the
+  wizard's shape.
+- [ADR-032: GitHub integration](./ADR-032-github-integration).
+  Scopes the V1 GitHub import (list + select) and the V2
+  long-term reference. The wizard's step 4 connects
+  GitHub; the actual import screen is a separate
+  surface in `ADR-032` V1.
+- [ADR-028: GitHub OAuth sign-in via better-auth](../ADR-028-github-oauth-better-auth).
+  The OAuth flow step 4 invokes.
+- [ADR-029: Vercel preview URL wiring](../ADR-029-preview-url-wiring).
+  The Hono CORS allowlist and the `host-allowlist.ts`
+  shared module. The new Hono routes ride the same
+  catch-all.
+- [ADR-015: Drizzle migrations CI](../ADR-015-drizzle-migrations-ci).
+  The `auth:generate` workflow and the migration commit
+  pattern.
+- [ADR-011: Hono for system routes](../ADR-011-hono-for-system-routes).
+  The Hono catch-all mount.

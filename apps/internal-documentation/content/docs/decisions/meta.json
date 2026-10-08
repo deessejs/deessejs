@@ -34,9 +34,7 @@
     "ADR-026-changesets-merge-gate",
     "ADR-027-version-bump-orphan",
     "ADR-029-preview-url-wiring",
-    "organizations/ADR-030-account-only-page",
-    "organizations/ADR-031-organizations-and-github-import",
-    "organizations/ADR-032-first-organization-onboarding",
-    "organizations/ADR-033-github-integration-v2"
-  ]
+    "organizations/ADR-030-organizations",
+    "organizations/ADR-031-onboarding",
+    "organizations/ADR-032-github-integration"
 }

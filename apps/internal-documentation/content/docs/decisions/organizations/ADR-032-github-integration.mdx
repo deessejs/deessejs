@@ -1,0 +1,698 @@
+---
+title: 'GitHub integration'
+description: 'Scope the GitHub integration end-to-end across two iterations. V1: list the user GitHub repositories and let them select which to import into the current organization, reusing the existing OAuth App accessToken. V2: add a GitHub App alongside the OAuth App, a webhook endpoint with signature verification, an auto-deploy pipeline triggered by push, and a rate-limit-aware client. V1 ships in the current milestone; V2 is a long-term reference.'
+---
+
+# ADR-032: GitHub integration
+
+## Status
+
+Proposed (2026-10). Scopes the full GitHub integration
+end-to-end. §1-§5 are the V1 product shape (list + select, no
+webhook, no auto-sync); §6-§9 are the V2 long-term reference
+(GitHub App, webhooks, auto-deploy, rate-limit-aware client).
+V1 ships in the current milestone; V2 ships in a later
+milestone, after V1 is in production and after the org
+plugin + onboarding wizard are in production. The decisions
+in §6-§9 are proposed, not ratified; they are the team's best
+current thinking and will be challenged in review against the
+production data that V1 produces.
+
+Ships no code.
+
+## Context
+
+The current GitHub integration is the v1 list-and-select flow
+scoped in §1-§5. The OAuth App config is owned by `ADR-028`
+(the `socialProviders.github` block in
+`packages/auth/src/auth.ts`). V1 covers:
+
+- OAuth sign-in via the GitHub OAuth App.
+- Reading the user's GitHub `accessToken` from the
+  `account` table.
+- Calling `GET /user/repos` server-side, paginating, and
+  rendering the list in the project-import screen.
+- Recording a `project` row per selected repository, FK'd
+  to the active organization, with the repo's `full_name`
+  and `default_branch` as initial fields.
+
+V1 is enough to record a project's existence in the app. It
+is not enough to keep the project's data fresh, to react to
+upstream changes, or to deploy on push. V2 is the next
+iteration that fills the gap, scoped in §6-§9.
+
+## Decision
+
+### §1 V1 scope: list the user's GitHub repositories
+
+The V1 feature is **list the user's GitHub repositories and
+let them select which to import into the current
+organization**. It is not the full Vercel flow. Specifically:
+
+- **In scope:** GitHub OAuth already wired (per
+  `ADR-028`); the `accessToken` stored on the `account`
+  row is read server-side and used to call the GitHub REST
+  API; the user sees a paginated list of repositories they
+  have access to; the user selects one or more
+  repositories; the selected ones are recorded as `project`
+  rows belonging to the active organization; the user
+  lands on a per-project page in the app.
+- **Out of scope (V1):** webhooks; auto-sync on push;
+  auto-deploy; branch / pull-request / commit metadata
+  in the app; the multi-account-GitHub case (one org
+  linked to several GitHub identities); a "refresh"
+  action that re-reads the repo state from GitHub. These
+  are deferred to V2.
+
+#### Why this rule decides
+
+- **The reference (Vercel) is a multi-year implementation.**
+  A faithful Vercel clone requires webhooks, a build
+  queue, a deploy surface, and a secrets model. None of
+  those are scoped today. A list-and-select flow is one
+  screen and one server route, achievable in the same
+  milestone as the organizations feature.
+- **The OAuth `accessToken` is already in the database.**
+  Per `ADR-028`, the `account` table carries the
+  `accessToken` from the GitHub OAuth flow. The V1
+  import does not need a second GitHub connect; it reads
+  the existing token and calls the API. This is a
+  load-bearing simplification.
+- **V1 establishes the data model.** The `project` row
+  (org-scoped, GitHub-sourced, link to the repo) is the
+  foundation V2 webhooks and auto-deploy build on.
+
+#### Why not the alternatives
+
+- **V1 = full Vercel flow (connect, webhook, auto-deploy).**
+  Multi-quarter build with infrastructure (a build runner,
+  a deploy surface, a secrets store) that does not exist
+  in this repo today. Rejected.
+- **V1 = "paste a GitHub repo URL".** Skips the OAuth flow
+  entirely and the `accessToken`-from-`account` read,
+  which is the same infrastructure V2 will need. Rejected.
+- **V1 = GitHub App instead of OAuth App.** A separate
+  registration flow (not the OAuth App that `ADR-028`
+  already wired), requires a webhook endpoint up-front
+  (V1 has none), and adds a second identity story for
+  the user. Rejected for V1; revisited in §6.
+
+#### What this rule allows
+
+- A "Connect GitHub" affordance on the project-import
+  screen that triggers
+  `authClient.signIn.social({ provider: "github" })` if
+  the user has not yet linked a GitHub account. The
+  affordance is hidden if the user already has a GitHub
+  account linked (the `account` table has a row with
+  `providerId: "github"`).
+- A "Connect GitHub" step in the onboarding wizard
+  (`ADR-031` §6 step 4) that calls
+  `authClient.signIn.social({ provider: "github",
+  callbackURL: "/onboarding/first-organization?step=4" })`
+  and advances on return (linked or not). The step
+  carries its own "Skip this step" button.
+- A server-side Hono route (or an oRPC procedure) that
+  takes the active organization, reads the user's GitHub
+  `accessToken` from the `account` row, calls
+  `GET https://api.github.com/user/repos` (paginated),
+  and returns the repository list to the client. The
+  client renders it.
+- A server-side route that records a `project` row per
+  selected repository, FK'd to the active organization,
+  with the repo's `full_name` and `default_branch` as
+  initial fields.
+
+#### What this rule forbids
+
+- Registering a webhook with GitHub in V1. No webhook
+  endpoint, no webhook secret, no `push` event handler.
+- A "Sync now" button in V1. The user can re-trigger the
+  import from the project list, but there is no
+  background re-sync.
+- Storing the GitHub `accessToken` outside the `account`
+  table.
+- Per-organization GitHub accounts. A user has one
+  GitHub identity; the projects that identity imports
+  land in whichever organization is active at the time of
+  the import.
+
+### §2 OAuth App config (unchanged from ADR-028)
+
+`packages/auth/src/auth.ts:159-164` carries the
+`socialProviders.github` block. The `clientId` and
+`clientSecret` are read from `serverEnv.GITHUB_CLIENT_ID` /
+`.GITHUB_CLIENT_SECRET` (added in `ADR-028`). The
+`accountLinking` block (`ADR-028` §"Account-linking policy")
+handles the case where a user with an email/password account
+later signs in with GitHub: same-email auto-link is enabled
+via `trustedProviders: ["github"]`.
+
+V1 reuses this OAuth flow. The user signs in (or has
+already signed in) with GitHub, the `accessToken` is on the
+`account` row, and the project-import screen reads it.
+
+### §3 V1 implementation surface
+
+The implementation PR that follows this ADR ships code. It
+touches exactly these files (in addition to the
+implementation PRs for `ADR-030` and `ADR-031`):
+
+- `apps/app/app/(protected)/[org_slug]/projects/import/page.tsx`
+  (new) — the project-import screen. Server-rendered for
+  the initial state; client-rendered for the list and the
+  selection.
+- `apps/app/app/api/[[...route]]/route.ts` (or a new
+  Hono route) — the `GET /api/v1/github/repos` route
+  that reads the `accessToken` and calls
+  `GET /user/repos`.
+- `packages/api/src/clients/github.ts` (new) — the
+  rate-limit-aware GitHub API client (see §9).
+- `apps/app/components/projects/repo-list.tsx` (new) —
+  the list and selection UI.
+- The Drizzle migration that adds the `project` table
+  with the FK to `organization` (per `ADR-030` §"Open
+  questions" §1 for the FK shape).
+
+### §4 V1 test surface
+
+- `packages/api/tests/integration/github-repos.test.ts`
+  (new) — exercises the `GET /api/v1/github/repos` route
+  against a mocked `account` table and a mocked GitHub
+  API.
+- `apps/app/components/projects/repo-list.test.tsx`
+  (new) — renders the list, asserts the selection state,
+  asserts the submit calls the project-creation route.
+
+### §5 V1 out of scope (V2 candidates)
+
+- Webhooks; auto-sync on push; auto-deploy; branch /
+  pull-request / commit metadata in the app; the
+  multi-account-GitHub case; a "refresh" action. These
+  are scoped in §6-§9.
+
+### §6 V2: a GitHub App alongside the OAuth App
+
+The OAuth App (per `ADR-028`) continues to handle sign-in.
+A new GitHub App is registered with the deessejs GitHub
+organization and shipped to users as the integration
+target. The two are independent:
+
+- The OAuth App's `clientId` / `clientSecret` are
+  configured in `packages/auth/src/auth.ts` and are the
+  source of truth for `socialProviders.github` (per
+  `ADR-028`).
+- The GitHub App's `appId`, `clientId`, `clientSecret`,
+  `privateKey`, and `webhookSecret` are configured in
+  `packages/env/src/server.ts` as new env vars. The
+  `privateKey` is a multi-line PEM; the loader handles it
+  via `z.string()` with
+  `.transform((s) => s.replace(/\\n/g, "\n"))` to support
+  Vercel's env-var inlining of multi-line strings.
+
+The user flow on the project-import screen is unchanged
+for V1 (connect GitHub via OAuth, list repos, select).
+For V2, the user is prompted to **install the GitHub App**
+on the GitHub organization or user that owns the repos
+they want to integrate. The install flow is the
+GitHub-standard "install on user/org" redirect; the
+callback lands on a v2-only route
+`/api/v1/github/install/callback` that records the
+installation id on the `organization` row (new column
+`github_app_installation_id`).
+
+#### Why this rule decides
+
+- **OAuth App stays in place for sign-in.** Migrating the
+  sign-in flow to a GitHub App is a separate effort. V2
+  does not touch it.
+- **GitHub App is the right primitive for webhooks and
+  permissions.** OAuth Apps cannot subscribe to webhooks
+  with fine-grained repository permissions. The GitHub
+  App model is the only one that fits V2.
+- **One installation per GitHub org/user, not per
+  deessejs org.** The GitHub App is installed on the
+  GitHub side; the mapping is one-to-many: one GitHub
+  installation can serve many deessejs orgs that the
+  same GitHub user belongs to. This is the Vercel shape.
+
+#### Why not the alternatives
+
+- **Replace the OAuth App with the GitHub App entirely.**
+  Cleaner long-term, but requires migrating the sign-in
+  flow. Out of scope for V2.
+- **Use the OAuth App's webhook capability.** OAuth Apps
+  do not have a webhook subscription model; the
+  alternative is polling. Rejected.
+- **One GitHub App per deessejs org.** The mapping is on
+  the wrong axis. Rejected.
+
+#### What this rule allows
+
+- A `GitHub App` registration flow that records the
+  `appId`, `clientId`, `clientSecret`, `privateKey`, and
+  `webhookSecret` in `packages/env/src/server.ts`.
+  Optional fields, like the OAuth credentials in
+  `ADR-028`; CI runs without them.
+- A new `github_app_installation_id` column on the
+  `organization` table.
+- A `GET /api/v1/github/install` route that returns the
+  GitHub install URL.
+- A `GET /api/v1/github/install/callback` route that
+  receives the install id, validates the `state`, and
+  writes the installation id on the active
+  `organization` row.
+
+#### What this rule forbids
+
+- Touching the OAuth App config in
+  `packages/auth/src/auth.ts:159-164`. V2 does not
+  change the sign-in flow.
+- Storing the GitHub App's `privateKey` anywhere other
+  than `packages/env/src/server.ts` (env-validated,
+  server-only).
+
+### §7 V2: a webhook endpoint with signature verification
+
+A new route `POST /api/v1/webhooks/github` is mounted in
+`packages/api/src/http/routes/http.ts:21-58` (the existing
+direct HTTP routes mount, per `ADR-011`). The route is a
+system route, not an oRPC procedure, because the request
+body is the raw GitHub webhook payload (JSON, signed).
+
+The route handler:
+
+1. Reads the raw request body (not the parsed JSON; the
+   signature is computed over the raw bytes).
+2. Reads the `X-Hub-Signature-256` header and the
+   `X-GitHub-Event` header.
+3. Looks up the webhook secret for the active
+   installation. The secret is stored on the `organization`
+   row that owns the `github_app_installation_id` (a new
+   column `github_webhook_secret` is added; the secret is
+   generated at install time and persisted encrypted, per
+   `ADR-030` §"Out of scope" §"Token encryption").
+4. Computes `sha256=` + HMAC-SHA256 hex digest of the
+   raw body with the secret, and compares it to the
+   header value using `crypto.timingSafeEqual` (per the
+   GitHub docs on validating webhook deliveries, which
+   explicitly warn against `==`).
+5. Returns 403 if the signature does not match. Returns
+   200 if it does.
+6. Dispatches the event to a per-event-type handler
+   (`push`, `pull_request`) via an internal map; unknown
+   events return 200 with no-op (GitHub requires 2xx to
+   stop retrying).
+
+The route is unauthenticated (no session cookie) — the
+signature is the authentication. The proxy at
+`apps/app/proxy.ts` excludes this path from the auth
+gates.
+
+#### Why this rule decides
+
+- **Signature verification is mandatory.** Per the GitHub
+  docs, "Never use a plain `==` operator; instead use a
+  constant-time comparison such as `secure_compare` or
+  `crypto.timingSafeEqual` to mitigate timing attacks."
+  The implementation uses `crypto.timingSafeEqual`.
+- **Raw body, not parsed JSON.** The signature is
+  computed over the raw bytes. Parsing the body to JSON
+  and then re-serializing it can change whitespace and
+  break the signature.
+- **Per-installation secret.** The GitHub App model
+  supports one webhook secret per installation, not one
+  per app. The secret is generated at install time and
+  stored on the deessejs `organization` row that owns
+  the installation. This is the GitHub-recommended
+  shape.
+- **System route, not oRPC procedure.** The request is
+  an unauthenticated POST with a raw signed body; it is
+  not a typed RPC call. The existing system route
+  pattern in `packages/api/src/http/routes/http.ts:21-58`
+  (per `ADR-011`) fits this surface.
+
+#### Why not the alternatives
+
+- **Verify the signature in middleware that wraps every
+  API route.** Only the webhook route needs signature
+  verification; middleware applied broadly is wasted
+  work and complicates the route handlers that do not
+  need it.
+- **Store the webhook secret in `packages/env`
+  (server-wide).** The secret is per-installation, not
+  server-wide. A single shared secret across all
+  installations means revoking one installation's access
+  requires rotating the secret for all.
+
+#### What this rule allows
+
+- A new Hono route `POST /api/v1/webhooks/github` mounted
+  in `mountHttp` (per `ADR-011`).
+- A new `github_webhook_secret` column on the
+  `organization` table (encrypted at rest, per the
+  token-encryption ADR referenced above).
+- A new `github_app_installation_id` column on the
+  `organization` table (per §6).
+- An event dispatcher in
+  `packages/api/src/http/routes/webhooks-github.ts` (new
+  file) that maps `X-GitHub-Event` to a per-event
+  handler.
+- The `push` and `pull_request` event handlers in V2;
+  all other events return 200 with no-op.
+
+#### What this rule forbids
+
+- A plain `===` comparison of the signature. Per the
+  GitHub docs, this is a security bug.
+- Parsing the body to JSON before verifying the
+  signature.
+- Re-using a single secret across installations.
+
+### §8 V2: an auto-deploy pipeline triggered by `push`
+
+A `push` event on the default branch of a repo linked to
+a deessejs project triggers a build. The build is
+asynchronous: the webhook handler enqueues a job and
+returns 200 immediately. The actual build runs in a
+worker process that is **out of scope** for this ADR (the
+worker is a separate project; the queue, the runner, and
+the secret store are scoped in a follow-up ADR).
+
+The V2 webhook handler's `push` event handler:
+
+1. Validates the `repository.full_name` matches a
+   `project` row (FK to the active `organization`).
+2. Validates the `ref` is the project's `default_branch`
+   (per §1, the `default_branch` is recorded at import
+   time).
+3. Enqueues a build job (the queue is the follow-up
+   ADR's scope; V2's enqueue call is a no-op stub in the
+   implementation that the follow-up ADR fills in).
+4. Returns 200.
+
+The `pull_request` event handler is identical in shape but
+operates on `pull_request.base.ref` instead of `ref`. The
+build output is a preview deployment, scoped in the
+follow-up ADR.
+
+#### Why this rule decides
+
+- **Async enqueue, not sync build.** GitHub requires the
+  webhook to return 2xx within a few seconds. A sync
+  build would time out on slow builds.
+- **Default branch only for V2.** Pull-request previews
+  are a v2.1 follow-up; the V2 webhook handles `push` to
+  the default branch first, and `pull_request` is
+  reserved for the v2.1 follow-up.
+
+#### Why not the alternatives
+
+- **Run the build synchronously in the webhook handler.**
+  Ties the request lifecycle to the build duration;
+  risks timeouts. Rejected.
+- **Use GitHub Actions as the build runner.** Possible
+  (the GitHub App can trigger a workflow via
+  `POST /repos/{owner}/{repo}/actions/workflows/{id}/dispatches`)
+  but locks the product into GitHub Actions. Out of
+  scope for the SaaS template.
+
+#### What this rule allows
+
+- A `push` event handler in
+  `packages/api/src/http/routes/webhooks-github.ts` that
+  validates the payload, looks up the matching `project`
+  row, and enqueues a build job.
+- A stub enqueue function in the implementation that
+  the follow-up ADR fills in. The stub logs the job and
+  returns immediately.
+
+#### What this rule forbids
+
+- A sync build in the webhook handler. The build is
+  async.
+- A `pull_request` build in V2. V2 handles `push` to
+  the default branch only.
+- A build queue implementation in this ADR's scope. The
+  queue is a follow-up.
+
+### §9 V2: a rate-limit-aware GitHub API client
+
+The V1 implementation reads the GitHub `accessToken` from
+the `account` table and calls `GET /user/repos` per
+request. V1 does not handle rate limits (the list call is
+per-user, per-import, and the limit is unlikely to be hit
+in normal use). V2 adds a rate-limit-aware client because
+V2 calls the API more frequently (every webhook event
+triggers a follow-up API call to fetch the commit details,
+the PR head, etc.).
+
+The client wraps every GitHub REST API call and:
+
+1. Reads the `x-ratelimit-*` headers on the response.
+2. When `x-ratelimit-remaining` is below a threshold
+   (proposed: 10% of the limit), the client backs off
+   exponentially and retries up to 3 times.
+3. When the call hits a secondary rate limit (search,
+   graphql, code_search), the client respects the
+   `Retry-After` header and retries.
+4. Surfaces a typed error to the caller when the limit
+   is exhausted; the caller decides whether to fail the
+   operation or queue it for later.
+
+The rate-limit categories and headers are documented at
+the GitHub REST API rate-limit reference. The primary
+limit is the `core` resource (default for non-search REST
+API endpoints); secondary limits cover `search`,
+`code_search`, `graphql`, `integration_manifest`,
+`dependency_snapshots`, `code_scanning_upload`, and
+`actions_runner_registration`.
+
+#### Why this rule decides
+
+- **V2 calls the API more than V1.** Every webhook event
+  triggers at least one follow-up API call. The rate
+  limit is 5000 req/h per token for authenticated REST
+  calls; V1 is unlikely to hit it, V2 might.
+- **`x-ratelimit-*` headers are the source of truth.**
+  Per the GitHub docs, the headers "reflect the
+  counters that govern enforcement" and are "the
+  authoritative source for the remaining allowance in
+  the current window."
+- **Constant-time back-off, not immediate retry.** A
+  naive retry-on-429 floods the API and worsens the
+  rate-limit pressure. The exponential back-off
+  (1s, 2s, 4s) with jitter is the GitHub-recommended
+  pattern.
+
+#### Why not the alternatives
+
+- **Polling the rate limit endpoint.** Wasteful; the
+  `x-ratelimit-*` headers are on every response.
+  Rejected.
+- **Caching responses.** Possible for read-only
+  endpoints (`GET /repos/{owner}/{repo}`) but not for
+  the webhook follow-up calls. Out of scope for V2.
+- **Using GraphQL to bypass the REST rate limit.**
+  GraphQL has its own rate limit (calculated
+  differently) and requires a separate client. Out of
+  scope for V2.
+
+#### What this rule allows
+
+- A `GitHubClient` class in
+  `packages/api/src/clients/github.ts` (new file) that
+  wraps every GitHub REST API call with rate-limit
+  handling.
+- A typed `RateLimitError` that the caller can catch and
+  decide how to handle (fail, queue, retry).
+- The threshold (10% of the limit) and the back-off
+  parameters (3 retries, 1s base, jitter) as
+  configurable constants in
+  `packages/api/src/clients/github.ts`.
+
+#### What this rule forbids
+
+- A naive retry on 429 without back-off.
+- A retry that ignores the `Retry-After` header on
+  secondary rate limits.
+- A bypass of the rate-limit client. Every GitHub REST
+  call goes through `GitHubClient`.
+
+## Consequences
+
+- **The OAuth App stays in place.** `ADR-028` is
+  unchanged. V2 does not touch the sign-in flow.
+- **The V1 list-and-select flow ships in the current
+  milestone.** V1 is enough to record a project's
+  existence in the app.
+- **V2 ships in a later milestone, after V1 is in
+  production and after the org plugin + onboarding
+  wizard are in production.** V2 features require
+  installing the GitHub App.
+- **V2 adds two columns to `organization`.** The
+  `github_app_installation_id` and
+  `github_webhook_secret` columns are added by the V2
+  migration. The `github_webhook_secret` is encrypted at
+  rest per the token-encryption ADR.
+- **V2 adds a new Hono route.** `POST
+  /api/v1/webhooks/github` is added; the existing
+  routes are unchanged.
+- **V2 adds a new client.** `packages/api/src/clients/github.ts`
+  wraps every GitHub REST call with rate-limit handling.
+  The V1 implementation refactors to use the client.
+
+## What this rule allows
+
+- Adding the GitHub App env vars to
+  `packages/env/src/server.ts`: `GITHUB_APP_ID`,
+  `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`,
+  `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_WEBHOOK_SECRET`.
+  Optional fields, like the OAuth credentials in
+  `ADR-028`; CI runs without them.
+- Adding the `github_app_installation_id` and
+  `github_webhook_secret` columns to the `organization`
+  table.
+- The Drizzle migration that lands the schema change.
+- The new Hono route `POST /api/v1/webhooks/github`
+  mounted in `mountHttp` (per `ADR-011`).
+- The `GitHubClient` class in
+  `packages/api/src/clients/github.ts`.
+- The `push` and `pull_request` event handlers in
+  `packages/api/src/http/routes/webhooks-github.ts`.
+- The proxy at `apps/app/proxy.ts` excluding
+  `/api/v1/webhooks/github` from the auth gates.
+
+## What this rule forbids
+
+- Touching the OAuth App config in
+  `packages/auth/src/auth.ts:159-164`. V2 does not
+  change the sign-in flow.
+- Storing the GitHub App's `privateKey` anywhere other
+  than `packages/env/src/server.ts` (env-validated,
+  server-only).
+- A plain `===` comparison of the webhook signature.
+- Parsing the webhook body to JSON before verifying
+  the signature.
+- A sync build in the webhook handler.
+- A `pull_request` build in V2.
+- A direct `fetch` to `api.github.com` outside of
+  `packages/api/src/clients/github.ts`.
+- A retry on 429 without back-off.
+
+## What this rule does not change
+
+- The OAuth App config in `packages/auth/src/auth.ts:159-164`
+  (per `ADR-028`).
+- The Hono CORS allowlist (per `ADR-029`). The webhook
+  route is server-to-server; CORS does not apply.
+- The proxy auth gates for `(protected)` routes (per
+  `ADR-031`). The webhook route is excluded from the
+  gates (signature-based auth, not session-based).
+
+## Out of scope (deferred)
+
+- **Build queue, worker, secret store, runner.** Each
+  is a separate ADR. The V2 webhook handler's enqueue
+  call is a stub in the implementation; the follow-up
+  ADRs fill it in.
+- **`pull_request` event handler.** V2 handles `push`
+  only; v2.1 adds `pull_request` previews.
+- **GitHub Actions integration.** Possible via
+  `POST /repos/{owner}/{repo}/actions/workflows/{id}/dispatches`
+  but locks the product into GitHub Actions. Out of
+  scope for the SaaS template.
+- **GitHub Marketplace listing.** A future consideration.
+- **OAuth App migration to GitHub App.** Out of scope
+  for V2; the OAuth flow is in production and migrating
+  it is its own effort.
+- **Token encryption for the webhook secret.** The
+  webhook secret is encrypted at rest per the
+  token-encryption ADR referenced in §7.
+- **Per-repo permissions UI.** The GitHub App's
+  permissions are configured at install time on
+  github.com.
+
+## Open questions
+
+The decisions in §6-§9 are proposed, not ratified. The
+following questions surface in review and will be resolved
+when V2 enters a milestone:
+
+1. **Threshold for the rate-limit back-off.** The 10%
+   threshold is proposed.
+2. **Retry budget for the rate-limit client.** The
+   3-retry budget is proposed.
+3. **Webhook secret rotation.** The secret is generated
+   at install time and stored on the `organization` row.
+   Rotation is not in scope for V2.
+4. **Per-org vs per-installation webhook secret.** V2
+   stores the secret per installation. The team may want
+   to scope it per deessejs org instead.
+
+## Where this rule came from
+
+- The GitHub Apps overview
+  (https://docs.github.com/en/apps/overview) documents
+  the recommendation to prefer GitHub Apps over OAuth
+  Apps: "GitHub Apps use fine-grained permissions, give
+  the user more control over which repositories the app
+  can access, and use short-lived tokens."
+- The GitHub webhook signature validation docs
+  (https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries)
+  document the `X-Hub-Signature-256` header format
+  (`sha256=` + HMAC-SHA256 hex digest of the raw body
+  keyed with the secret), the recommendation to use
+  `crypto.timingSafeEqual` (Node.js) for the constant-time
+  comparison, and the test vector
+  (`secret: "It's a Secret to Everybody"`,
+  `payload: "Hello, World!"`,
+  `expected: "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17"`).
+- The GitHub REST API rate-limit reference
+  (https://docs.github.com/en/rest/rate-limit/rate-limit)
+  documents the `x-ratelimit-*` response headers as
+  "the authoritative source for the remaining allowance
+  in the current window" and the secondary rate limits
+  for `search`, `code_search`, `graphql`,
+  `integration_manifest`, `dependency_snapshots`,
+  `code_scanning_upload`, and `actions_runner_registration`.
+- `ADR-028` (GitHub OAuth sign-in via better-auth) is
+  the source of truth for the OAuth App config. V1
+  reuses the OAuth flow; V2 adds the GitHub App
+  alongside it.
+- `ADR-030` §"Organizations system" is the source of
+  truth for the personal-account model, the two roles,
+  and the org lifecycle that the V1 import and the V2
+  webhook both depend on.
+- `ADR-011` (Hono for system routes) documents the
+  `mountHttp` mount and the direct HTTP route pattern.
+- `ADR-015` (Drizzle migrations CI) documents the
+  `auth:generate` workflow and the migration commit
+  pattern.
+
+## Related
+
+- [ADR-030: Organizations system](./ADR-030-organizations).
+  The product shape (personal account, two roles, N orgs
+  per user, cycle of life) that V1 and V2 both depend on.
+- [ADR-031: Onboarding](./ADR-031-onboarding). The
+  onboarding wizard's step 4 (connect GitHub) is the
+  first touchpoint with the V1 import flow.
+- [ADR-028: GitHub OAuth sign-in via better-auth](../ADR-028-github-oauth-better-auth).
+  The OAuth App config that V1 reuses and V2 leaves
+  in place.
+- [ADR-011: Hono for system routes](../ADR-011-hono-for-system-routes).
+  The `mountHttp` mount.
+- [ADR-015: Drizzle migrations CI](../ADR-015-drizzle-migrations-ci).
+  The Drizzle migration pattern.
+- [GitHub Apps overview](https://docs.github.com/en/apps/overview).
+  The recommendation to prefer GitHub Apps over OAuth
+  Apps.
+- [GitHub webhook signature validation](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries).
+  The `X-Hub-Signature-256` format, the constant-time
+  comparison requirement.
+- [GitHub REST API rate limits](https://docs.github.com/en/rest/rate-limit/rate-limit).
+  The `x-ratelimit-*` headers and the secondary rate
+  limits.
+- [Vercel: Git integration](https://vercel.com/docs/git).
+  The product reference.
