@@ -1,20 +1,20 @@
 ---
 title: 'Onboarding wizard'
-description: 'Implementation scoping for the /onboarding/first-organization wizard introduced by ADR-030 §1. The wizard is a four-step page (personal-account slug, organization name and slug, invite teammates, connect GitHub) with per-step skips on steps 1, 3, and 4 (step 2 is the gate). The proxy at apps/app/proxy.ts enforces the gate by redirecting users whose only organization is their personal account.'
+description: 'Implementation scoping for the /onboarding/first-organization wizard introduced by RFC-001 §1. The wizard is a four-step page (personal-account slug, organization name and slug, invite teammates, connect GitHub) with per-step skips on steps 1, 3, and 4 (step 2 is the gate). The proxy at apps/app/proxy.ts enforces the gate by redirecting users whose only organization is their personal account.'
 ---
 
-# ADR-031: Onboarding
+# RFC-002: Onboarding
 
 ## Status
 
 Proposed (2026-10). Scopes the implementation of the
-onboarding wizard that the `ADR-030` §1 gate requires. The
+onboarding wizard that the `RFC-001` §1 gate requires. The
 ADR ships no code; the implementation lands in a follow-up
 PR after this one merges.
 
 ## Context
 
-`ADR-030` §1 requires that a user whose only organization is
+`RFC-001` §1 requires that a user whose only organization is
 their personal account be redirected to
 `/onboarding/first-organization` on their next visit to a
 `(protected)` route. The redirect is server-enforced; the
@@ -84,7 +84,7 @@ the `APP_NAME` logo at the top, a step indicator (`1 —
 Personal slug`, `2 — Org name and slug`, `3 — Invite`, `4 —
 GitHub`) with the current step highlighted, the active
 step's form, and a "Skip this step" button on steps 1, 3,
-and 4 (absent on step 2, per `ADR-030` §1). The card uses
+and 4 (absent on step 2, per `RFC-001` §1). The card uses
 the same `Card`, `Input`, `Button`, and `Field` primitives
 the rest of `apps/app` uses.
 
@@ -144,7 +144,7 @@ The first step is the personal-account slug customisation
 organization creation (the gate itself). Steps 3 and 4 each
 carry their own "Skip this step" button. The wizard has no
 global skip button and no "Save and finish later" exit; the
-server-side gate in `ADR-030` §1 keeps the user on the
+server-side gate in `RFC-001` §1 keeps the user on the
 wizard until the second step's submit succeeds.
 
 1. **Personal-account slug.** Optional. The slug is
@@ -210,7 +210,7 @@ a route under `/<org-slug>/*`; otherwise the user lands on
 
 - The line "ce repo est single-tenant — n'introduis pas
   ces patterns" is deleted.
-- A new row in the guides table pointing to `ADR-030`
+- A new row in the guides table pointing to `RFC-001`
   (product shape) and this ADR (implementation), with the
   description "Multi-tenant: every user has a personal
   account, the active organization gates `(protected)`
@@ -330,10 +330,10 @@ No other section of `AGENTS.md` changes.
 ## What this rule does not change
 
 - The `personalAccountEnabled: true` configuration in
-  `packages/auth/src/auth.ts` (scoped in `ADR-030` §1).
-- The two-role model (`owner` + `admin`) from `ADR-030`
+  `packages/auth/src/auth.ts` (scoped in `RFC-001` §1).
+- The two-role model (`owner` + `admin`) from `RFC-001`
   §2.
-- The email-only invitation flow from `ADR-030` §4.
+- The email-only invitation flow from `RFC-001` §4.
 - The Hono CORS allowlist (per `ADR-029`). The new
   `/api/v1/organization/*` routes ride the same Hono
   catch-all in `apps/app/app/api/[[...route]]/route.ts`.
@@ -341,12 +341,12 @@ No other section of `AGENTS.md` changes.
 
 ## Out of scope (deferred)
 
-- **GitHub project-import screen.** `ADR-032` scopes the
+- **GitHub project-import screen.** `RFC-003` scopes the
   shape (list + select, no webhook).
-- **The `team` table.** Per `ADR-030` §"Out of scope".
-- **More than two roles.** Per `ADR-030` §2.
-- **Shareable-link invites.** Per `ADR-030` §4.
-- **Token encryption.** Per `ADR-030` §"Out of scope".
+- **The `team` table.** Per `RFC-001` §"Out of scope".
+- **More than two roles.** Per `RFC-001` §2.
+- **Shareable-link invites.** Per `RFC-001` §4.
+- **Token encryption.** Per `RFC-001` §"Out of scope".
 - **A per-organization landing page.** The post-onboarding
   landing is `/<org-slug>/home` (with the `?redirect` param
   honored); a per-org dashboard is a future ADR.
@@ -456,7 +456,7 @@ refreshes, loses the typed slug. The mitigation in V1 is
 
 ## Where this rule came from
 
-- `ADR-030` §1 (gate) and §6 (chrome). The gate needs a
+- `RFC-001` §1 (gate) and §6 (chrome). The gate needs a
   destination; the destination is the wizard.
 - The better-auth `organization` plugin docs. The
   `create`, `update`, `setActive`, `inviteMember`, and
@@ -477,19 +477,24 @@ refreshes, loses the typed slug. The mitigation in V1 is
 - `ADR-029` (Vercel preview URL wiring) documents the
   Hono CORS allowlist and the `host-allowlist.ts` shared
   module. The new Hono routes ride the same catch-all.
-- `ADR-030` (the chrome). The wizard has its own minimal
+- `RFC-001` (the chrome). The wizard has its own minimal
   layout; the protected chrome is unchanged.
 
 ## Related
 
-- [ADR-030: Organizations system](./ADR-030-organizations).
+- [RFC-001: Organizations system](./RFC-001-organizations). Scopes the
+  product shape: plugin config, data model, two roles, N orgs
+  per user, cycle of life, chrome.
   §1 (gate) and §6 (chrome) are the source of the
   wizard's shape.
-- [ADR-032: GitHub integration](./ADR-032-github-integration).
+- [RFC-003: GitHub integration](./RFC-003-github-integration). Scopes the
+  V1 GitHub import (list + select) and the V2 long-term
+  reference. The wizard's step 4 connects GitHub; the actual
+  import screen is a separate surface in `RFC-003` V1.
   Scopes the V1 GitHub import (list + select) and the V2
   long-term reference. The wizard's step 4 connects
   GitHub; the actual import screen is a separate
-  surface in `ADR-032` V1.
+  surface in `RFC-003` V1.
 - [ADR-028: GitHub OAuth sign-in via better-auth](../ADR-028-github-oauth-better-auth).
   The OAuth flow step 4 invokes.
 - [ADR-029: Vercel preview URL wiring](../ADR-029-preview-url-wiring).

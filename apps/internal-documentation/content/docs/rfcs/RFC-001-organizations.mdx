@@ -3,7 +3,7 @@ title: 'Organizations system'
 description: 'Adopt the better-auth organization plugin in Vercel style (personal accounts + organizations, owner + admin roles, N orgs per user, email-only invitations), plus the apps/app chrome (left sidebar with organizations menu and settings sections, the /[org_slug]/* route prefix, the /account/settings/* rename, and the org lifecycle: rename, delete, personal-account immutability).'
 ---
 
-# ADR-030: Organizations system
+# RFC-001: Organizations system
 
 ## Status
 
@@ -49,7 +49,7 @@ The implementation questions — which tables the plugin adds, how
 the schema migration runs, which Hono route exposes the
 project-import list, how the GitHub OAuth `accessToken` is read
 for the API call — are out of scope here. They are scoped in
-`ADR-031` (onboarding) and `ADR-032` (GitHub integration).
+`RFC-002` (onboarding) and `RFC-003` (GitHub integration).
 
 ## Decision
 
@@ -76,7 +76,7 @@ the data model (it carries the user's projects during the
 onboarding window and remains the default context for the
 user-menu), but the app does not render until a real
 organization exists. The onboarding wizard shape is in
-`ADR-031` §6.
+`RFC-002` §6.
 
 #### Why this rule decides
 
@@ -142,7 +142,7 @@ organization exists. The onboarding wizard shape is in
   enforced server-side, in `apps/app/proxy.ts` or the
   `(protected)` layout (the implementation ADR picks the
   layer). The wizard is `/onboarding/first-organization`
-  (shape in `ADR-031` §6). The post-onboarding landing is
+  (shape in `RFC-002` §6). The post-onboarding landing is
   `/<org-slug>/home`. The `?redirect=<path>` query param is
   honored if it points to a route under `/<org-slug>/*`;
   otherwise the user lands on `/<org-slug>/home`.
@@ -159,7 +159,7 @@ organization exists. The onboarding wizard shape is in
 #### What this rule forbids
 
 - A global "Skip onboarding" button. The onboarding wizard
-  has per-step "Skip this step" buttons (see `ADR-031` §6),
+  has per-step "Skip this step" buttons (see `RFC-002` §6),
   but no button that exits the wizard without creating an
   organization. The gate is enforceable server-side.
 - Treating the user's `id` as a synonym for a personal
@@ -617,7 +617,7 @@ the org slug a required dynamic segment, and `/home` becomes
   prefix, and the org-lifecycle permissions.
 - `ADR-028` (GitHub OAuth sign-in via better-auth). The
   OAuth App's `accessToken` is read from the `account`
-  row by the GitHub import flow in `ADR-032`; the
+  row by the GitHub import flow in `RFC-003`; the
   `account` table schema is owned by this ADR.
 - `ADR-011` (Hono for system routes). The new
   organization and project routes ride the same Hono
@@ -627,11 +627,14 @@ the org slug a required dynamic segment, and `/home` becomes
 
 ## Related
 
-- [ADR-031: Onboarding](./ADR-031-onboarding). Scopes the
+- [RFC-002: Onboarding](./RFC-002-onboarding). Scopes the
   onboarding wizard in detail: the four-step shape, the
   proxy gate, the post-onboarding landing, the test
   surface, the `AGENTS.md` amendment.
-- [ADR-032: GitHub integration](./ADR-032-github-integration).
+- [RFC-003: GitHub integration](./RFC-003-github-integration). Scopes
+  the V1 of "import a project from GitHub" (list + select)
+  and the V2 long-term reference (webhooks, GitHub App,
+  auto-deploy).
   Scopes the V1 of "import a project from GitHub"
   (list + select) and the V2 long-term reference
   (webhooks, GitHub App, auto-deploy).

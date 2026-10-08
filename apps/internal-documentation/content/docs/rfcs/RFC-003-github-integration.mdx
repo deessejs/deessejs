@@ -3,7 +3,7 @@ title: 'GitHub integration'
 description: 'Scope the GitHub integration end-to-end across two iterations. V1: list the user GitHub repositories and let them select which to import into the current organization, reusing the existing OAuth App accessToken. V2: add a GitHub App alongside the OAuth App, a webhook endpoint with signature verification, an auto-deploy pipeline triggered by push, and a rate-limit-aware client. V1 ships in the current milestone; V2 is a long-term reference.'
 ---
 
-# ADR-032: GitHub integration
+# RFC-003: GitHub integration
 
 ## Status
 
@@ -107,7 +107,7 @@ organization**. It is not the full Vercel flow. Specifically:
   account linked (the `account` table has a row with
   `providerId: "github"`).
 - A "Connect GitHub" step in the onboarding wizard
-  (`ADR-031` §6 step 4) that calls
+  (`RFC-002` §6 step 4) that calls
   `authClient.signIn.social({ provider: "github",
   callbackURL: "/onboarding/first-organization?step=4" })`
   and advances on return (linked or not). The step
@@ -156,7 +156,7 @@ already signed in) with GitHub, the `accessToken` is on the
 
 The implementation PR that follows this ADR ships code. It
 touches exactly these files (in addition to the
-implementation PRs for `ADR-030` and `ADR-031`):
+implementation PRs for `RFC-001` and `RFC-002`):
 
 - `apps/app/app/(protected)/[org_slug]/projects/import/page.tsx`
   (new) — the project-import screen. Server-rendered for
@@ -171,7 +171,7 @@ implementation PRs for `ADR-030` and `ADR-031`):
 - `apps/app/components/projects/repo-list.tsx` (new) —
   the list and selection UI.
 - The Drizzle migration that adds the `project` table
-  with the FK to `organization` (per `ADR-030` §"Open
+  with the FK to `organization` (per `RFC-001` §"Open
   questions" §1 for the FK shape).
 
 ### §4 V1 test surface
@@ -291,7 +291,7 @@ The route handler:
    row that owns the `github_app_installation_id` (a new
    column `github_webhook_secret` is added; the secret is
    generated at install time and persisted encrypted, per
-   `ADR-030` §"Out of scope" §"Token encryption").
+   `RFC-001` §"Out of scope" §"Token encryption").
 4. Computes `sha256=` + HMAC-SHA256 hex digest of the
    raw body with the secret, and compares it to the
    header value using `crypto.timingSafeEqual` (per the
@@ -587,7 +587,7 @@ API endpoints); secondary limits cover `search`,
 - The Hono CORS allowlist (per `ADR-029`). The webhook
   route is server-to-server; CORS does not apply.
 - The proxy auth gates for `(protected)` routes (per
-  `ADR-031`). The webhook route is excluded from the
+  `RFC-002`). The webhook route is excluded from the
   gates (signature-based auth, not session-based).
 
 ## Out of scope (deferred)
@@ -660,7 +660,7 @@ when V2 enters a milestone:
   the source of truth for the OAuth App config. V1
   reuses the OAuth flow; V2 adds the GitHub App
   alongside it.
-- `ADR-030` §"Organizations system" is the source of
+- `RFC-001` §"Organizations system" is the source of
   truth for the personal-account model, the two roles,
   and the org lifecycle that the V1 import and the V2
   webhook both depend on.
@@ -672,10 +672,12 @@ when V2 enters a milestone:
 
 ## Related
 
-- [ADR-030: Organizations system](./ADR-030-organizations).
+- [RFC-001: Organizations system](./RFC-001-organizations). The
+  product shape (personal account, two roles, N orgs per
+  user, cycle of life) that V1 and V2 both depend on.
   The product shape (personal account, two roles, N orgs
   per user, cycle of life) that V1 and V2 both depend on.
-- [ADR-031: Onboarding](./ADR-031-onboarding). The
+- [RFC-002: Onboarding](./RFC-002-onboarding). The
   onboarding wizard's step 4 (connect GitHub) is the
   first touchpoint with the V1 import flow.
 - [ADR-028: GitHub OAuth sign-in via better-auth](../ADR-028-github-oauth-better-auth).
