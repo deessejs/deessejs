@@ -854,11 +854,11 @@ the implementation ADR; they are listed here for visibility:
 - [`AGENTS.md`](../../../../../../AGENTS.md) §"Better-Auth guides".
   Contains the "ce repo est single-tenant" guard that this ADR
   lifts. The implementation ADR updates the guard.
-- [ADR-028: GitHub OAuth sign-in via better-auth](./ADR-028-github-oauth-better-auth).
+- [ADR-028: GitHub OAuth sign-in via better-auth](../ADR-028-github-oauth-better-auth).
   The OAuth `socialProviders.github` block that supplies the
   `accessToken` V1's project import reads. The `account` table
   schema is owned by this ADR; the import does not modify it.
-- [ADR-029: Vercel preview URL wiring](./ADR-029-preview-url-wiring).
+- [ADR-029: Vercel preview URL wiring](../ADR-029-preview-url-wiring).
   The Hono CORS allowlist and the `packages/auth/src/host-allowlist.ts`
   shared module. The new organization / project routes ride on the
   same Hono catch-all; no change to the host allowlist is required.
@@ -867,7 +867,7 @@ the implementation ADR; they are listed here for visibility:
   page and the new "Import a project" page live under
   `(protected)/<org>/...` (the route shape is the implementation
   ADR's call), and the header gains a switcher dropdown.
-- [ADR-022: CLI device auth fixes](./ADR-022-cli-device-auth-fixes).
+- [ADR-022: CLI device auth fixes](../ADR-022-cli-device-auth-fixes).
   The bearer plugin that the device-flow uses. The V1
   organization / project surface is web-only; the CLI is unchanged.
 - [Better Auth: Organization plugin](https://www.better-auth.com/docs/plugins/organization).

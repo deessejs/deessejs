@@ -713,21 +713,21 @@ in V1 is "type, then submit; do not refresh mid-form."
   the per-step skip rules. §1 ("Organizations are mandatory
   as the post-signup destination") is the source of the
   gate.
-- [ADR-028: GitHub OAuth sign-in via better-auth](./ADR-028-github-oauth-better-auth).
+- [ADR-028: GitHub OAuth sign-in via better-auth](../ADR-028-github-oauth-better-auth).
   The OAuth flow step 3 invokes. The `account` table schema
   (where the `accessToken` is stored) is owned by this ADR
   and is not changed here.
-- [ADR-029: Vercel preview URL wiring](./ADR-029-preview-url-wiring).
+- [ADR-029: Vercel preview URL wiring](../ADR-029-preview-url-wiring).
   The Hono CORS allowlist and the `host-allowlist.ts` shared
   module. The new Hono routes ride the same catch-all.
 - [ADR-030: apps/app uses left rail nav](./ADR-030-account-only-page).
   The `(protected)` chrome. The wizard has its own minimal
   layout; the protected chrome is unchanged.
-- [ADR-015: Drizzle migrations CI](./ADR-015-drizzle-migrations-ci).
+- [ADR-015: Drizzle migrations CI](../ADR-015-drizzle-migrations-ci).
   The `auth:generate` workflow and the migration commit
   pattern. The schema change in the implementation PR
   follows it.
-- [ADR-011: Hono for system routes](./ADR-011-hono-for-system-routes).
+- [ADR-011: Hono for system routes](../ADR-011-hono-for-system-routes).
   The Hono catch-all mount. The new
   `/api/v1/organization/*` routes follow the same pattern
   as the existing system routes.

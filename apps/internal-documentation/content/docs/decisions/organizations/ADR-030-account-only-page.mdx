@@ -129,8 +129,8 @@ None. Three design calls surfaced during review and have been resolved in this v
 
 ## Related
 
-- [ADR-028: GitHub OAuth on Better Auth](./ADR-028-github-oauth-better-auth). The Better Auth config that supplies the `linkSocial` / `unlinkAccount` calls the `ConnectedAccountsList` page surfaces. No code change here.
-- [ADR-029: Vercel preview URL wiring](./ADR-029-preview-url-wiring). The apps/app preview domain (`https://deessejs-app-git-<branch>-<scope>.vercel.app`) is unaffected. The chrome swap renders identically on every preview.
+- [ADR-028: GitHub OAuth on Better Auth](../ADR-028-github-oauth-better-auth). The Better Auth config that supplies the `linkSocial` / `unlinkAccount` calls the `ConnectedAccountsList` page surfaces. No code change here.
+- [ADR-029: Vercel preview URL wiring](../ADR-029-preview-url-wiring). The apps/app preview domain (`https://deessejs-app-git-<branch>-<scope>.vercel.app`) is unaffected. The chrome swap renders identically on every preview.
 - [root `AGENTS.md` §"Staging-first workflow"](../../../../../../AGENTS.md). The branch this ADR ships on (`chore/adr-030-account-only-page`) follows the `chore/{slug}` convention (no GitHub issue backing it).
 - [npm: Profile settings](https://docs.npmjs.com/) and [Linear: Settings](https://linear.app/settings) — production references for the left-rail nav pattern this ADR adopts.
 - [shadcn/ui Button](https://ui.shadcn.com/docs/components/button). The `Contact us` outline button uses this primitive; the variant `outline` is canonical for "secondary action in a header."
