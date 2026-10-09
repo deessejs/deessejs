@@ -26,3 +26,53 @@ This changeset delivers the actual fix:
 - A new unit suite `packages/api/tests/unit/mount-rpc-status.test.ts` pins the Hono status preservation contract.
 
 The previous changeset is superseded.
+
+Follow-up — sidebar/grid unification, versioned READMEs, hardened tests
+
+Review of the static-build commit surfaced four load-bearing items
+that needed closure before the work is ready for review:
+
+- Sidebar filters did not share URL state with the grid. The
+  index passed `activeTypes={[]}` to the `CategorySidebar`, the
+  filter UI never reflected active selection, and toggles had no
+  client-side path. The whole surface — sidebar + search + grid —
+  is now one client component (`TemplatesBrowser`) reading and
+  writing the same `useSearchParams`. Selecting a type or
+  framework entry updates the URL via `router.replace`, the grid
+  reflects the change immediately, and back/forward restores
+  prior filter state. The `CategorySidebar` server component is
+  no longer imported from the page; the new component owns the
+  surface end-to-end.
+
+- README content was missing from the detail pages. The
+  previous commit removed the runtime GitHub fetch, which also
+  removed the README entirely. `/templates/[slug]` is now read
+  from versioned snapshots at
+  `packages/api/src/templates/readmes/{slug}.md`. A `prebuild`
+  step inlines them into a TS module
+  (`readmes.generated.ts`) so consumers never need a runtime
+  filesystem read. A refresh script at
+  `scripts/refresh-template-readmes.ts` pulls the canonical
+  README from each GitHub repo on demand; the build never hits
+  GitHub. The build-artifact test asserts every detail page
+  embeds its README H1.
+
+- The mount-rpc-status test re-implemented a parallel
+  middleware; that left it blind to regressions inside the real
+  `mountRpc`. The suite now drives the production `api` Hono
+  object against the e2e-guard failure path and asserts the
+  status preservation contract end-to-end. The build-artifact
+  test reads `prerender-manifest.json` and verifies every
+  catalog slug ships an HTML payload containing its README
+  heading. These tests run against the actual build artifacts,
+  not just the runtime behaviour.
+
+- The P0 e2e suite now covers the index → detail → back → reload
+  path with the API network blocked, and the P1 suite adds
+  multi-select, deselection, and back/forward coverage.
+
+The CLI publish-verify, vale-docs, and Vercel deessejs-agent
+checks were failing on `staging` (commit `cb2a2c5`) before this
+work; they remain failing on `staging` and the same is true on
+this PR. They are infrastructure issues unrelated to the
+catalog work.
