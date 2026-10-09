@@ -30,10 +30,19 @@
  * (see `enrich.ts`), so we only assert they are strings or
  * arrays, not specific values.
  */
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { inject } from "vitest"
 
 import { api } from "../../../src/index.js"
+
+// Mock `enrich()` so the e2e guard tests do not depend on
+// GitHub. The handler still runs every code path; only the
+// network axis is removed. Vitest hoists `vi.mock` calls above
+// all imports. We mock the index re-export so the handler
+// receives the stub via the same import path it uses.
+vi.mock("../../../src/core/templates/index.js", () => ({
+  enrich: async (entries: ReadonlyArray<unknown>) => entries,
+}))
 
 const GITHUB_READY = inject("github:ready") === true
 
@@ -189,10 +198,16 @@ describeUnit("enrich() failure surface (issue #81 wire-code)", () => {
  * Playwright e2e suite drive the failure / empty paths
  * without a real upstream outage.
  *
- * These tests do NOT hit the network — they run on every PR
- * regardless of the GitHub rate limit. They only need to
- * assert the guard's behavior under three specific shapes
- * of the bypass header.
+ * These tests do NOT hit the network. We mock `enrich()` so
+ * the guard contract is exercised against an honest success
+ * path. The original implementation called the real `enrich()`
+ * and asserted `expect(res.status).not.toBe(502)` — but with
+ * `mountRpc` now preserving upstream status correctly, an
+ * unmocked run against rate-limited GitHub returns an honest
+ * 502 from `enrich()` rejection and the assertion is no longer
+ * meaningful. Mocking `enrich()` to a success branch lets the
+ * assertion reduce to "the guard did not fire," which is the
+ * real invariant.
  */
 describeUnit("templates.list e2e guard (ADR-020)", () => {
   const SECRET = "test-only-bypass-secret"
@@ -206,6 +221,28 @@ describeUnit("templates.list e2e guard (ADR-020)", () => {
       body: BODY,
     })
 
+  /**
+   * The guard's whole reason to exist is to short-circuit the
+   * response shape before any upstream call. When the guard is
+   * closed, we must reach a "happy path" success body (the
+   * mocked `enrich()` returning the registry). When the guard
+   * fires, the body carries an oRPC error envelope at `body.json`
+   * with `code: "TEMPLATES_FETCH_FAILED"` and `defined: false`.
+   *
+   * Returns true only for the happy path. Both 200-with-templates
+   * and the (unused) `{ templates: [] }` happy path qualify.
+   */
+  const isHappyPathBody = async (res: Response) => {
+    const body = (await res.json()) as {
+      json?: { templates?: unknown[]; code?: string }
+    }
+    // oRPC error envelopes nest the error JSON inside `body.json`
+    // with a `code` field when `defined: false`. A happy path
+    // body never has a `code` field at that location.
+    if (typeof body.json?.code === "string") return false
+    return Array.isArray(body.json?.templates)
+  }
+
   itUnit(
     "closed by default: missing secret OR missing/non-matching bypass header means the guard is a no-op",
     async () => {
@@ -216,11 +253,10 @@ describeUnit("templates.list e2e guard (ADR-020)", () => {
       try {
         // No headers — guard should be closed.
         const res = await call({ "x-e2e-force-fail": "1" })
-        // The guard is closed, so we hit `enrich()` (which
-        // requires GitHub in real network but here we are in
-        // CI with mocked network — see globalSetup). The test
-        // pins that the response is NOT the wire-code 502.
-        expect(res.status).not.toBe(502)
+        // The guard is closed; we expect the happy-path body
+        // (the mocked enrich returns the registry unchanged).
+        // This is the strongest pin now that 502 is honest.
+        expect(await isHappyPathBody(res)).toBe(true)
       } finally {
         if (saved !== undefined) process.env.VERCEL_AUTOMATION_BYPASS_SECRET = saved
       }
@@ -242,7 +278,7 @@ describeUnit("templates.list e2e guard (ADR-020)", () => {
           "x-vercel-protection-bypass": SECRET,
           "x-e2e-force-fail": "1",
         })
-        expect(res.status).not.toBe(502)
+        expect(await isHappyPathBody(res)).toBe(true)
       } finally {
         process.env.VERCEL_AUTOMATION_BYPASS_SECRET = savedSecret
         process.env.NODE_ENV = savedNodeEnv
@@ -263,11 +299,42 @@ describeUnit("templates.list e2e guard (ADR-020)", () => {
           "x-vercel-protection-bypass": "wrong-secret",
           "x-e2e-force-fail": "1",
         })
-        expect(res.status).not.toBe(502)
+        expect(await isHappyPathBody(res)).toBe(true)
       } finally {
         process.env.VERCEL_AUTOMATION_BYPASS_SECRET = savedSecret
         process.env.NODE_ENV = savedNodeEnv
       }
     },
   )
+
+  /**
+   * Positive control: when the guard IS enabled, the response
+   * carries the `TEMPLATES_FETCH_FAILED` wire-code and the
+   * happy path is unreachable. This pins that the mock does
+   * not accidentally cover the failure paths too.
+   */
+  itUnit("guard fires when bypass secret matches and force-fail is set", async () => {
+    const savedSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    const savedNodeEnv = process.env.NODE_ENV
+    process.env.VERCEL_AUTOMATION_BYPASS_SECRET = SECRET
+    process.env.NODE_ENV = "test"
+    try {
+      const res = await call({
+        "x-vercel-protection-bypass": SECRET,
+        "x-e2e-force-fail": "1",
+      })
+      // Status preserved end-to-end: 502 from the oRPC handler
+      // arrives as 502, exactly the contract the previous spread
+      // bug broke.
+      expect(res.status).toBe(502)
+      const body = (await res.json()) as {
+        json?: { code?: string; defined?: boolean }
+      }
+      expect(body.json?.code).toBe("TEMPLATES_FETCH_FAILED")
+      expect(body.json?.defined).toBe(false)
+    } finally {
+      process.env.VERCEL_AUTOMATION_BYPASS_SECRET = savedSecret
+      process.env.NODE_ENV = savedNodeEnv
+    }
+  })
 })
