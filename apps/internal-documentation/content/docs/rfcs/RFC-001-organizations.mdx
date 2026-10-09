@@ -1,0 +1,652 @@
+---
+title: 'Organizations system'
+description: 'Adopt the better-auth organization plugin in Vercel style (personal accounts + organizations, owner + admin roles, N orgs per user, email-only invitations), plus the apps/app chrome (left sidebar with organizations menu and settings sections, the /[org_slug]/* route prefix, the /account/settings/* rename, and the org lifecycle: rename, delete, personal-account immutability).'
+---
+
+# RFC-001: Organizations system
+
+## Status
+
+Proposed (2026-10). Scopes the full product shape for the
+organizations feature: the better-auth `organization` plugin
+configuration, the data model, the two-role RBAC, the
+personal-account model, the unlimited-orgs-per-user policy, the
+email-only invitation flow, the org lifecycle (rename, delete,
+personal-account immutability), and the apps/app chrome that
+renders the organizations menu and the per-user settings
+sections. Ships no code.
+
+## Context
+
+`packages/auth/src/auth.ts` instantiates `betterAuth({...})` with
+`emailAndPassword`, `emailVerification`, `session`,
+`socialProviders.github`, `account.accountLinking`, and a
+`plugins: [deviceAuthorization, bearer, nextCookies()]` block. The
+better-auth `organization` plugin is not in the `plugins` array.
+The Better Auth schema at
+`packages/database/src/schema/auth.ts` carries `user`, `session`,
+`account`, and `verification` only — no `organization`, `member`,
+`invitation`, or `team` table.
+
+The product has outgrown the single-tenant constraint. The
+roadmap lists organizations as a hard dependency. The product
+reference (« à la Vercel ») pins the implementation shape:
+Vercel itself is a personal-accounts-plus-organizations model —
+every user has a personal account, can create or join any number
+of organizations, and the active-organization context scopes the
+work.
+
+`apps/app` today renders a single chrome (a shadcn
+`SidebarProvider`-based shell) with a `Home` entry, a `/settings`
+hub listing five sections, and no concept of organizations. The
+chrome needs to evolve to render the organizations menu at the
+top, the five settings sections (renamed to `/account/settings/*`)
+in the middle, and a "Create organization" entry point. The
+route shape needs to adopt the Vercel-style `/[org_slug]/*`
+prefix so every page is scoped to an organization.
+
+The implementation questions — which tables the plugin adds, how
+the schema migration runs, which Hono route exposes the
+project-import list, how the GitHub OAuth `accessToken` is read
+for the API call — are out of scope here. They are scoped in
+`RFC-002` (onboarding) and `RFC-003` (GitHub integration).
+
+## Decision
+
+This ADR is one decision with seven sub-questions, plus a
+chrome-rendering decision and an org-lifecycle decision. They
+ship together because the product shape is the answer to all of
+them; the implementation ADRs that follow inherit the shape.
+
+### 1. Organizations are mandatory as the post-signup destination; the personal account is a default-only fallback
+
+The better-auth `organization` plugin is configured with
+`personalAccountEnabled: true`. Every user has, on creation, a
+personal account (a single-member organization whose slug is the
+user's username, customisable at sign-up). The user can also
+create organizations (multi-member) and join organizations they
+have been invited to. The session carries an "active
+organization" field; the app works in the context of the active
+organization at all times.
+
+A user whose only organization is their personal account is
+redirected to `/onboarding/first-organization` on their next
+visit to a `(protected)` route. The personal account remains in
+the data model (it carries the user's projects during the
+onboarding window and remains the default context for the
+user-menu), but the app does not render until a real
+organization exists. The onboarding wizard shape is in
+`RFC-002` §6.
+
+#### Why this rule decides
+
+- **The user can start using the product the moment they sign
+  up.** No "create your organization" gate between signup and
+  the first useful action. This matters for activation: the
+  first session is the highest-leverage moment in the funnel,
+  and a friction gate is the easiest way to lose a user.
+- **Vercel, GitHub, Linear, and Notion all work this way.**
+  Picking the same shape means the user does not have to
+  learn a new mental model.
+- **No users in production today.** The migration cost of the
+  personal-accounts-plus-organizations shape is zero today;
+  deferring it to the day production users exist makes the
+  migration cost non-zero and the design choices harder to
+  reverse.
+- **The plugin's `personalAccountEnabled` is the canonical
+  mechanism.** Better-auth ships the feature; the
+  configuration is one boolean. No custom schema, no manual
+  bootstrap.
+
+#### Why not the alternatives
+
+- **`personalAccountEnabled: false` (organizations-first).**
+  Every user must create or join an organization at signup.
+  The argument for it is uniformity: every user is always
+  "in an org", and the schema can FK every business row
+  directly to `organization.id` without a personal account
+  branch. The argument against it is activation: a solo user
+  who wants to evaluate the product must pick a name, a
+  slug, and confirm a creation step before they see any
+  value. The reference (Vercel) does not work this way.
+  Rejected.
+- **No organization table at all; teams as a first-class
+  concept separate from the user.** The better-auth
+  `organization` plugin does not model this shape, and the
+  reference (Vercel) is organization-shaped. Adopting the
+  plugin in spirit-but-not-letter reintroduces a custom
+  implementation that drifts from upstream on every release.
+  Rejected.
+
+#### What this rule allows
+
+- A signup flow that creates the personal account on signup
+  and lands the user on `/<personal-slug>/home` (or the
+  `?redirect=` target) with the new user's personal account
+  already active in the session.
+- A "Create organization" entry point on the sidebar (or a
+  dedicated `/new-organization` page) that runs the
+  better-auth `authClient.organization.create({ name, slug })`
+  call and switches the active organization to the new one.
+- A "Switch organization" control in the sidebar (a list of
+  the user's personal account and every organization they
+  belong to) that runs
+  `authClient.organization.setActive({ organizationId })`.
+- A "Join organization" entry point on invitations: the user
+  clicks the invite link, accepts, the organization appears
+  in the switcher.
+- A redirect from any `(protected)` route to
+  `/onboarding/first-organization` when the session's active
+  organization is the user's personal account and the user
+  has not yet created a real organization. The redirect is
+  enforced server-side, in `apps/app/proxy.ts` or the
+  `(protected)` layout (the implementation ADR picks the
+  layer). The wizard is `/onboarding/first-organization`
+  (shape in `RFC-002` §6). The post-onboarding landing is
+  `/<org-slug>/home`. The `?redirect=<path>` query param is
+  honored if it points to a route under `/<org-slug>/*`;
+  otherwise the user lands on `/<org-slug>/home`.
+- Business rows (projects, in the V1 sense) that FK either
+  `organization.id` (when the project belongs to a real
+  organization) or `user.id` (when the project belongs to a
+  personal account). The implementation ADR picks the schema
+  shape.
+- A personal-account organization that is treated as
+  user-deletable or user-renamable. The personal account is
+  the user's identity anchor and persists for the lifetime
+  of the user.
+
+#### What this rule forbids
+
+- A global "Skip onboarding" button. The onboarding wizard
+  has per-step "Skip this step" buttons (see `RFC-002` §6),
+  but no button that exits the wizard without creating an
+  organization. The gate is enforceable server-side.
+- Treating the user's `id` as a synonym for a personal
+  organization. The personal account is an `organization` row
+  whose `id` is *not* the user's `id`. Every business row
+  FKs `organization.id` (or the equivalent `ownerId`); none
+  FKs `user.id` directly.
+- Cross-tenant data leaks in queries. Every business query
+  that surfaces rows scoped to a personal account or an
+  organization must filter on `activeOrganizationId` (or the
+  resolved owner id).
+- Deleting or renaming a personal-account organization. The
+  personal account is the user's identity anchor. The UI
+  hides rename and delete actions for personal accounts; the
+  better-auth server-side calls reject them. See §"Cycle of
+  life" below.
+
+### 2. Two roles: `owner` and `admin`
+
+The better-auth `organization` plugin ships with `owner` and
+`admin` roles by default. This ADR adopts both as the only
+roles for V1.
+
+- `owner` — can delete the organization, transfer ownership,
+  manage billing (when billing ships), and rename the
+  organization (the `name` and the `slug`). Exactly one per
+  organization.
+- `admin` — can invite and remove members, change
+  organization settings, create and delete projects, and
+  rename the organization (the `name` and the `slug`).
+  Cannot delete the organization (destructive operation
+  reserved for `owner`). Multiple admins per organization
+  allowed.
+- New members arrive as `admin` (the plugin default), unless
+  the invite specifies otherwise.
+
+**Cycle of life permissions.** The two-role model maps to the
+org lifecycle as follows:
+
+- **Rename** (`name` and/or `slug`): `owner` and `admin` can
+  both rename. The UI exposes the rename action in the org
+  settings page (`/<org-slug>/settings`); the action is
+  available to every member of the org. The slug change
+  triggers 301 redirects of the old URLs.
+- **Delete** (hard delete, cascades to `member`, `project`,
+  `invitation`): `owner` only. The UI exposes the delete
+  action in a destructive zone of the org settings page;
+  `admin` does not see the action. The personal account is
+  not deletable by anyone (see §1 §"What this rule forbids").
+
+#### Why this rule decides
+
+- **The plugin provides them for free.** Adopting the
+  defaults is one less piece of custom configuration.
+- **It separates "controls the org" from "works in the
+  org".** A team of three does not need more granularity,
+  and a team of thirty can still rely on the separation.
+- **It prepares billing without shipping it.** The day
+  billing lands, the question "who can see and change the
+  billing settings?" has an answer: the owner.
+
+#### Why not the alternatives
+
+- **One role: `owner`.** Rejected because the plugin default
+  is two roles, and the cost of adopting it is negligible.
+- **Three roles: `owner` + `admin` + `member`.** V1 has no
+  settings worth protecting (no billing, no destructive-only
+  actions, no sensitive team-level config). Adding a role
+  for a feature that does not yet exist is
+  over-engineering. Rejected.
+
+#### What this rule allows
+
+- The default better-auth role configuration; no custom role
+  list in the plugin options.
+- An "Owner" badge on the personal-account organization.
+  The user is the sole `member` and is `owner` of their own
+  personal account by construction.
+- A future addition of `member` (and `viewer`) without
+  breaking existing organizations. Better-auth's role
+  model is open; adding a role to the options is additive.
+
+#### What this rule forbids
+
+- A custom role list that omits `owner`. `owner` is the
+  plugin's load-bearing role; removing it breaks the
+  contract.
+- More than one `owner` per organization. The plugin
+  enforces this implicitly (the creator is owner;
+  transfer-of-ownership is a first-class action).
+- A role hierarchy in the Vercel sense (e.g. `developer` /
+  `viewer` / `billing`). Hierarchies come when there is a
+  use case for them; V1 has none.
+
+### 3. Unlimited organizations per user
+
+A user can belong to as many organizations as they want, in
+addition to their personal account. The session's
+`activeOrganizationId` selects which one is current.
+
+#### Why this rule decides
+
+- **It matches the reference (Vercel, GitHub, Linear).**
+  Every reference implementation allows N orgs per user.
+- **It supports the freelance / multi-client case.** A user
+  who works for three clients in three organizations can
+  keep the three contexts separate.
+- **The plugin handles it natively.** The session model is
+  built for this; no custom code.
+
+#### Why not the alternatives
+
+- **One organization per user.** Restrictive; breaks the
+  freelance case. Rejected.
+
+#### What this rule allows
+
+- A "Switch organization" control in the sidebar listing
+  every organization the user belongs to, with the active
+  one highlighted.
+- A user creating a second organization without leaving
+  the first.
+
+#### What this rule forbids
+
+- Hardcoding a count limit ("max 3 organizations per user").
+- Removing the personal account from the switcher. The
+  personal account is always listed alongside real
+  organizations.
+
+### 4. Invitations: email only
+
+Organization invites go out by email. The recipient clicks
+the link in the email, lands on an accept page, and joins.
+There is no shareable-link invite for V1.
+
+#### Why this rule decides
+
+- **The plugin's `invitation` feature is email-based.** The
+  default flow is the well-trodden path.
+- **Email is auditable.** The invite has a sender, a
+  recipient, a timestamp, and a status.
+- **The security surface is smaller.** A leaked invite
+  link is a leaked token. An email is not a credential.
+
+#### Why not the alternatives
+
+- **Email + shareable link.** A leaked link is an open
+  door until the link expires or is revoked; building
+  revocation, expiration, and rate-limiting is non-trivial.
+  Rejected.
+
+#### What this rule allows
+
+- The better-auth
+  `authClient.organization.inviteMember({ email, role })`
+  call from the organization's "Members" page.
+- A "Pending invitations" list on the same page, with a
+  "Revoke" action per row.
+- An "Accept invite" page at a route the plugin controls,
+  that calls `authClient.organization.acceptInvitation(...)`.
+
+#### What this rule forbids
+
+- A custom `shareableInviteToken` column on the `invitation`
+  table for V1.
+- Sending the invitation from a domain other than the
+  documented Resend sender. The transactional-email
+  contract is owned by `packages/email`.
+
+### 5. Org lifecycle: rename, delete, personal-account immutability
+
+The `name` and the `slug` of a real organization are
+modifiable at any time from `/<org-slug>/settings` (the
+organization settings page, owned by the per-org settings
+entry in the sidebar). The action calls
+`authClient.organization.update({ organizationId, name, slug })`.
+The `slug` is the URL segment, so a change must propagate to
+every in-app link to the org; the implementation uses
+`app-config.ts` helpers so the slug is never hardcoded.
+External links to the old slug (search engines, bookmarks)
+are redirected to the new slug via a 301 in `next.config.ts`
+rewrites. Per §2 §"Cycle of life permissions", both `owner`
+and `admin` can rename.
+
+A real organization can also be removed entirely, by hard
+delete. The action calls
+`authClient.organization.delete({ organizationId })`. The
+better-auth `organization` plugin's hard delete cascades to
+the `member`, `invitation`, and `team` tables (the plugin's
+contract). The `project` rows that FK the organization are
+also hard-deleted (the schema's FK is `ON DELETE CASCADE`).
+The `user` rows and the `account` rows (GitHub OAuth) survive:
+the user still has their identity, and the user can still
+re-link a GitHub account later. Per §2 §"Cycle of life
+permissions", only `owner` can delete. The personal account
+is not deletable by anyone.
+
+If the user deletes the active organization, the session's
+`activeOrganizationId` is reset to the user's personal account
+(the always-available fallback). The user is redirected to
+`/<personal-slug>/home` (the personal-account dashboard) with
+a toast confirming the deletion. The user is never left
+without an active organization.
+
+#### Why this rule decides
+
+- **Rename is reversible (via 301 redirects).** The slug
+  change is the URL segment; old URLs are 301-redirected to
+  the new slug, so external links and bookmarks keep
+  working.
+- **Hard delete with cascade is the simplest model.** No
+  soft-delete columns, no `deletedAt` plumbing, no
+  retention policy. The trade-off (no undo) is acceptable
+  for V1 because the destructive zone requires explicit
+  confirmation.
+- **The personal account is the user's identity anchor.**
+  It persists for the lifetime of the user. Rename and
+  delete are forbidden for personal accounts; the UI hides
+  the actions, the better-auth handlers reject the calls.
+
+#### Why not the alternatives
+
+- **Soft delete with `deletedAt`.** Adds a column and
+  retention logic for a feature that is not asked for. A
+  future ADR can add it if user feedback surfaces.
+- **Transfer of ownership / transfer of projects between
+  orgs.** A future feature. V1 ships hard delete with
+  cascade.
+- **Allowing `admin` to delete.** The destructive zone is
+  `owner`-only. The better-auth server-side handler also
+  enforces the role.
+
+#### What this rule allows
+
+- A `/<org-slug>/settings` page (the per-org settings
+  page) with a rename form and a destructive delete dialog.
+- `next.config.ts` rewrites that 301-redirect the old slug
+  to the new slug when an org is renamed.
+- A toast on the deletion confirmation that confirms the
+  deletion, plus a redirect to `/<personal-slug>/home`
+  after the session's `activeOrganizationId` resets to the
+  personal account.
+
+#### What this rule forbids
+
+- Deleting or renaming a personal-account organization.
+  The UI hides rename and delete actions for personal
+  accounts; the implementation must not surface them in any
+  context.
+- Letting `admin` delete an organization. The destructive
+  zone of the org settings page is `owner`-only; the
+  client-side check is a UX nicety, but the better-auth
+  server-side handler also enforces the role.
+- A re-implementation of the rename or delete logic in
+  client-side code.
+
+### 6. Chrome: left sidebar with organizations menu and settings sections
+
+The authenticated shell (`apps/app/app/(protected)/layout.tsx`)
+loses the shadcn `Sidebar`-based chrome. It gains a custom
+left sidebar under the header, with three zones: the
+organizations menu at the top, the five settings sections in
+the middle, and a "Create organization" entry point at the
+bottom. `NavUser` stays in the header; a `Contact us` button
+lives in the header to the left of `NavUser`. The route
+shape adopts the `/[org_slug]/*` prefix (Vercel-style) and
+renames the settings routes from `/settings/*` to
+`/account/settings/*`. The hub `/account/settings` becomes
+a server-side redirect to `/account/settings/profile`. The
+`/(protected)` group is renamed to `/([org_slug])` to make
+the org slug a required dynamic segment, and `/home` becomes
+`/[org_slug]/home`.
+
+#### What this rule decides
+
+1. **The `(protected)` layout becomes header + left sidebar
+   + main.** The new layout has two zones in the header:
+   the `APP_NAME` slot on the left, and on the right a
+   `Contact us` outline button followed by `NavUser`. Below
+   the header, a left sidebar ~280 px wide renders the
+   organizations menu at the top, the five settings
+   sections in the middle, and a "Create organization"
+   entry point at the bottom. The shadcn `Sidebar`
+   component family is not used, except for the `Sheet`
+   primitive that backs the mobile drawer of the
+   organizations menu.
+
+2. **Two zones, six entries plus the org menu.** The left
+   sidebar exposes, in order: the organizations menu at the
+   top, then the five settings sections: `Profile`
+   (`/account/settings/profile`), `Sessions`
+   (`/account/settings/sessions`), `Connections`
+   (`/account/settings/connections`), `Account`
+   (`/account/settings/account`). The `Home` entry is gone
+   (the active organization is its own home; `/[org_slug]/home`
+   is the dashboard of the active organization).
+
+3. **The hub `/account/settings` becomes a redirect.** A
+   server component at `account/settings/page.tsx` returns
+   `redirect("/account/settings/profile")`.
+
+4. **`apps/app/lib/app-config.ts` gains a helper for the
+   org-prefixed routes.** The `home: "/home"` key is
+   removed; the new `orgHome(orgSlug)` helper returns
+   `/<org-slug>/home` for the active organization. A new
+   `accountSettings` key holds the `/account/settings`
+   prefix; `orgSettings(orgSlug)` returns
+   `/<org-slug>/settings` for the per-org settings path.
+
+#### What this rule allows
+
+- A V1 product where every authenticated page uses the
+  same chrome: header + left sidebar + content.
+- A left sidebar that shows the surface at a glance.
+- An organizations menu at the top of the sidebar, listing
+  the user's personal account and every organization they
+  belong to, with the active organization highlighted. The
+  menu includes a "Create organization" entry point at the
+  bottom.
+- A `Contact us` entry point in the header — placeholder
+  for V1, with a real wiring in a follow-up ADR.
+
+#### What this rule forbids
+
+- The shadcn `Sidebar` component family (`SidebarProvider`,
+  `SidebarInset`, `SidebarRail`, `SidebarTrigger`,
+  `SidebarMenu*`) in `apps/app`, except for the `Sheet`
+  primitive that backs the mobile drawer of the
+  organizations menu.
+- Re-introducing a hub `/settings` page that lists
+  sections. The hub is replaced by the left sidebar; it
+  doesn't come back as a separate page.
+- Items in the avatar dropdown that don't go anywhere. Every
+  `DropdownMenuItem` has an `href` / `onClick` or it isn't
+  there.
+
+## Consequences
+
+- **The single-tenant rule from the README and `AGENTS.md`
+  is superseded.** This ADR lifts the "no
+  `useActiveOrganization`" guard in `AGENTS.md`. The
+  implementation ADR that follows this one updates
+  `AGENTS.md` to remove the "ce repo est single-tenant"
+  line.
+- **The schema gains four tables (or more).** The
+  `organization` plugin's schema additions are:
+  `organization`, `member`, `invitation`, and (optionally)
+  `team`. The implementation ADR scopes the feature to
+  `organization` + `member` + `invitation` and leaves
+  `team` for a follow-up.
+- **The session shape gains `activeOrganizationId`.** Every
+  authenticated request resolves the active organization
+  (defaulting to the user's personal account) and the rest
+  of the app reads it from the session.
+- **The chrome is a custom left sidebar with the
+  organizations menu.** The shadcn `Sidebar` family is gone
+  (`Sheet` is allowed for the mobile drawer).
+- **The route shape is Vercel-style `/[org_slug]/*`.** The
+  settings routes are renamed to `/account/settings/*`;
+  `/home` becomes `/[org_slug]/home`.
+- **Cycle of life.** Rename is allowed (`owner` + `admin`),
+  delete is `owner`-only with cascade, the personal
+  account is immutable.
+
+## What this rule allows
+
+- Adding the better-auth `organization` plugin to the
+  `plugins` array in `packages/auth/src/auth.ts` with
+  `personalAccountEnabled: true` and the default two-role
+  model.
+- A `/new-organization` page in `apps/app` that calls
+  `authClient.organization.create({ name, slug })` and
+  switches the active organization.
+- An "Organization switcher" control in the sidebar that
+  calls `authClient.organization.setActive({ organizationId })`.
+- A `/accept-invitation/<id>` page in `apps/app` that
+  calls `authClient.organization.acceptInvitation(...)`
+  and lands the user in the new organization.
+- A "Members" page that lists members, pending
+  invitations, and exposes invite / revoke / role-change
+  actions.
+- A Drizzle migration that adds the `organization`,
+  `member`, and `invitation` tables; the migration is
+  generated by `pnpm auth:generate` and reviewed before
+  merge.
+- A `/<org-slug>/settings` page with rename and delete
+  dialogs.
+- A sidebar with the organizations menu and the five
+  `/account/settings/*` sections.
+
+## What this rule forbids
+
+- The `team` table in V1. The plugin supports teams, but
+  the V1 product shape (owner + admin, no nested
+  permissions) does not need them.
+- More than two roles in V1. `owner` + `admin` only.
+- A shareable-link invite flow. Email only.
+- Deleting or renaming a personal-account organization.
+- The shadcn `Sidebar` component family in `apps/app`,
+  except for `Sheet`.
+- Reverting the single-tenant guard in `AGENTS.md` without
+  an implementation ADR that ships the plugin.
+
+## What this rule does not change
+
+- **`apps/web`.** The marketing site does not gain an
+  organization-shaped surface. It still uses the auth
+  client for signup / sign-in (per `ADR-028`); the
+  personal account is created on signup as before.
+- **The CLI (`apps/cli/`).** The CLI does not interact with
+  organizations in V1. It uses the device-flow + bearer-token
+  auth (per `ADR-020`, `ADR-022`) and works in the context
+  of the user's personal account.
+- **The `account` table schema.** The columns GitHub OAuth
+  writes (`providerId`, `accountId`, `accessToken`,
+  `refreshToken`, …) are the columns V1 reads. No new
+  columns.
+- **The Hono / oRPC API consumer-agnostic boundary.** The
+  new organization and project routes are system routes
+  in `mountHttp` (per `ADR-011`).
+
+## Out of scope (deferred)
+
+- **Teams (`team` table, nested permissions, sub-orgs).**
+  Plugin feature; V1 product does not need it.
+- **More than two roles.** `member`, `viewer`, custom
+  roles.
+- **Shareable-link invites.** Tokens, expiration,
+  revocation.
+- **Multi-account GitHub per user.** One user, one GitHub
+  identity, one `accessToken`.
+- **Billing.** Plans, seats, invoices, the `owner`-only
+  billing-settings page.
+- **Token encryption.** The `accessToken` is read in
+  plaintext from the `account` row; encryption lands in
+  its own ADR.
+
+## Open questions
+
+1. **`project` table FK shape.** One nullable `userId` +
+   one nullable `organizationId` with a CHECK that exactly
+   one is set, vs. a single `ownerId` + `ownerType`
+   discriminator. The implementation ADR picks.
+
+## Where this rule came from
+
+- The better-auth `organization` plugin docs
+  (https://www.better-auth.com/docs/plugins/organization).
+  The `personalAccountEnabled`, two-role default,
+  invitation lifecycle, and active-organization session
+  field all come from this page.
+- Vercel's product shape. The personal-accounts-plus-organizations
+  model is the reference for the chrome, the route
+  prefix, and the org-lifecycle permissions.
+- `ADR-028` (GitHub OAuth sign-in via better-auth). The
+  OAuth App's `accessToken` is read from the `account`
+  row by the GitHub import flow in `RFC-003`; the
+  `account` table schema is owned by this ADR.
+- `ADR-011` (Hono for system routes). The new
+  organization and project routes ride the same Hono
+  catch-all in `apps/app/app/api/[[...route]]/route.ts`.
+- `ADR-015` (Drizzle migrations CI). The `auth:generate`
+  workflow and the migration commit pattern.
+
+## Related
+
+- [RFC-002: Onboarding](./RFC-002-onboarding). Scopes the
+  onboarding wizard in detail: the four-step shape, the
+  proxy gate, the post-onboarding landing, the test
+  surface, the `AGENTS.md` amendment.
+- [RFC-003: GitHub integration](./RFC-003-github-integration). Scopes
+  the V1 of "import a project from GitHub" (list + select)
+  and the V2 long-term reference (webhooks, GitHub App,
+  auto-deploy).
+  Scopes the V1 of "import a project from GitHub"
+  (list + select) and the V2 long-term reference
+  (webhooks, GitHub App, auto-deploy).
+- [ADR-028: GitHub OAuth sign-in via better-auth](../ADR-028-github-oauth-better-auth).
+  The OAuth App config that supplies the `accessToken` the
+  V1 import reads.
+- [ADR-011: Hono for system routes](../ADR-011-hono-for-system-routes).
+  The Hono catch-all mount.
+- [ADR-015: Drizzle migrations CI](../ADR-015-drizzle-migrations-ci).
+  The Drizzle migration pattern.
+- [Better Auth: Organization plugin](https://www.better-auth.com/docs/plugins/organization).
+  Upstream docs.
+- [Vercel: Teams and projects](https://vercel.com/docs/teams-and-projects/create-or-join-a-team).
+  Reference for the personal-accounts-plus-organizations
+  shape.
