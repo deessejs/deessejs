@@ -428,7 +428,7 @@ export function CodingAgentsDemo() {
           <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
             Coding agents
           </p>
-          <h2 className="text-heading-32 font-medium tracking-tight text-balance lg:text-heading-48">
+          <h2 className="text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             Works with any coding agent.
           </h2>
           <p className="text-copy-16 leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">

@@ -1,0 +1,60 @@
+---
+title: Comparisons
+description: How DeesseJS differs from the alternatives.
+icon: Scale
+---
+
+Most DeesseJS users arrive from one of three starting points: `create-t3-app`, the original `SaaS Template`, or a hand-rolled scaffold. This page calls out where DeesseJS converges and where it diverges.
+
+## DeesseJS versus Create-T3-App
+
+`create-t3-app` is a single CLI that scaffolds **one** thing: a Next.js app with the t3 stack (Prisma, NextAuth, tRPC). DeesseJS sits closer to a curated marketplace than to a single scaffolder.
+
+| | `create-t3-app` | DeesseJS |
+| --- | --- | --- |
+| Scope | One app, one stack | Many surfaces (web, mobile, edge, AI), one contract family |
+| Stack | t3 conventions (drizzle + tRPC + NextAuth) | drizzle + oRPC + Better Auth (similar shape, modernized choices) |
+| Output | A repo on disk | A repo on disk, plus a CLI you can re-run |
+| Auth | NextAuth only | Better Auth + device-flow CLI login |
+| Updates | Re-run the CLI, accept new defaults | `deessejs list` to see new templates, fork the new repo |
+| Lock-in | Zero (no runtime service) | Zero (templates fork cleanly) |
+
+If you only need one Next.js app with the t3 stack, `create-t3-app` is the right tool. If you want consistent contracts across many apps and surfaces (web + mobile + AI assistant, all signing in against the same Better Auth instance) that's what DeesseJS optimises for.
+
+## DeesseJS versus the original SaaS Template
+
+DeesseJS forked from `deessejs/saas-template` in July 2026. The fork relationship carries weight: the divergence map (`docs/engineering/plans/saas-template-divergence.md` in the source repo) forms the canonical record.
+
+What changed in the fork:
+
+- **Identity**: copy, README wording, and the brand surface. The SaaS Template name disappears from DeesseJS-flavoured repos.
+- **Contracts package layout**: auth, database, and email publish as workspace packages and version independently.
+- **API surface**: Hono + oRPC mount at `/api/v1/`, with versioned Zod contracts in `@workspace/contracts/v1`. The original used ad-hoc route handlers.
+- **Device-flow auth**: added (ADR-020) so the CLI can authenticate against the web app without copying cookies.
+- **CLI**: `@deessejs/cli` publishes to npm. The original had no CLI; everything was a fork-and-edit workflow.
+
+What stayed the same:
+
+- Next.js App Router
+- drizzle + Postgres- Tailwind + shadcn/ui (now under `@workspace/ui`)
+- Better Auth (the original used NextAuth; the fork migrated to Better Auth for the device-flow plugin)
+
+## DeesseJS versus hand-rolled scaffolds
+
+If you copy a previous project and tweak it, you have a hand-rolled scaffold. The trade-offs:
+
+- **No audit trail.** When the original moves on, your fork drifts apart. DeesseJS templates version and re-list.
+- **No shared contracts.** Your auth works one way; your partner's fork works another. DeesseJS contracts import from `@workspace/auth`, `@workspace/database`, `@workspace/email`, one version per monorepo, one version per npm release.
+- **No CLI surface.** A copy-pasted scaffold has no `deessejs list`, no `deessejs info`, no `deessejs auth login`. You either build those yourself or you don't have them.
+
+The break-even sits small: if you only ever need one starter, hand-rolling is fine. The moment you want a second surface or a CLI, the shared infrastructure starts paying for itself.
+
+## DeesseJS versus Vercel's `create-next-app`
+
+`create-next-app` scaffolds a Next.js app with Vercel's defaults but no opinion on auth, database, or any cross-cutting concern. DeesseJS templates always include the contract stack. If you want a blank Next.js canvas, use `create-next-app`. If you want a working app with auth, database, and email already wired, use a DeesseJS template.
+
+## Summary
+
+DeesseJS is a **registry of opinionated starters plus a CLI**, optimised for teams that ship across many surfaces and want consistent contracts everywhere. The trade-off versus single-purpose scaffolders mirrors the monorepo-versus-polyrepo trade-off: more shared infrastructure, more opinion, more leverage, at the cost of buying into a specific contract family.
+
+If you want to evaluate it hands-on, [Quick Start](/docs) is the fastest path. If you want to see the CLI surface in depth before installing, [CLI: Commands Reference](/docs/cli-commands) covers every flag and exit code.
