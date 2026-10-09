@@ -100,13 +100,15 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
       </header>
 
       <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-muted/40">
-        <Image
-          src="/ship-your-saas.png"
-          alt="Template preview"
-          fill
-          sizes="(max-width: 768px) 100vw, 896px"
-          className="object-cover"
-        />
+        {template.image ? (
+          <Image
+            src={template.image}
+            alt={`${template.name} preview`}
+            fill
+            sizes="(max-width: 768px) 100vw, 896px"
+            className="object-cover"
+          />
+        ) : null}
       </div>
 
       <Separator />
@@ -163,7 +165,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Submit your template to the registry"
-            className="flex flex-col items-start gap-3 rounded-lg border border-border bg-muted/30 p-4 transition-colors hover:bg-accent/30 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col items-start gap-3 rounded-none border-t border-border bg-background p-4 transition-colors hover:bg-accent/30 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex flex-col gap-1">
               <span className="text-label-14 font-semibold tracking-tight text-foreground">
