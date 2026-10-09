@@ -10,38 +10,32 @@ import { Button } from "@workspace/ui/components/button"
 import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 import { SUBMIT_TEMPLATE_URL } from "@/lib/templates/urls"
 import { TemplatesBrowser } from "@/components/templates/templates-browser"
-import { CategorySidebar } from "@/components/templates/category-sidebar"
 
 /**
  * Index page at /templates.
  *
  * Static render. The catalog and its metadata are read directly from
  * the local registry (`@workspace/api/templates-catalog`); the page
- * makes NO network call at request time. Filtering, search, and URL
- * sync happen client-side in `TemplatesBrowser`. The full grid is
- * shipped in the initial HTML so the page is usable without
- * JavaScript.
+ * makes NO network call at request time.
  *
- * Why static and not ISR / dynamic:
- *   - The registry is versioned in the repo; updates ship via a new
- *     build, not via a revalidation window.
- *   - Dynamic rendering with `searchParams` reading on the server
- *     was the source of the catalog-empty incident: a transient
- *     GitHub failure surfaced as a missing catalog.
- *   - The Next.js / oRPC transport previously collapsed 4xx/5xx into
- *     200 (spread-Response bug in `mountRpc`). Even with that
- *     fixed, an oRPC catalogue that depends on GitHub can never be
- *     more reliable than GitHub. Moving the source-of-truth into
- *     the repo removes that whole class of failure.
+ * The body — sidebar + search + grid — is one client component
+ * (`TemplatesBrowser`) so all filter UI shares a single URL-driven
+ * state. The page only owns the static hero, the registry payload
+ * passed to the browser surface, and the closing CTA.
+ *
+ * Why static:
+ *   The registry is versioned in the repo; updates ship via a new
+ *   build, not via a revalidation window. The previous design read
+ *   `searchParams` server-side, which forced the page dynamic and
+ *   re-introduced the runtime-fetch surface that produced the
+ *   empty-catalog incident in the first place.
  *
  * Filter URL handling:
- *   Filtering previously relied on reading `searchParams` on the
- *   server, which forced the page dynamic and re-introduced the
- *   runtime-fetch surface. The new design lets `TemplatesBrowser`
- *   read query params with `useSearchParams` inside a Suspense
- *   boundary, while the outer page stays purely static — the
- *   initial server render paints the entire catalog and lets the
- *   browser apply filters without a network round-trip.
+ *   Filtering happens client-side with `useSearchParams` inside the
+ *   `TemplatesBrowser` Suspense boundary. The URL is the source of
+ *   truth for shareable state. The initial server render paints
+ *   the full grid (no filters applied) so the page is never empty
+ *   before hydration.
  */
 
 export const metadata: Metadata = {
@@ -55,8 +49,7 @@ const ALL_TEMPLATES: ReadonlyArray<Template> = TEMPLATES
 const TemplatesIndexPage = () => {
   return (
     <>
-      {/* Hero — centered FlickeringGrid header matching /blog and
-          /changelog. Eyebrow + scale H1 + balanced subtitle. */}
+      {/* Hero — centered FlickeringGrid header. */}
       <header className="relative overflow-hidden border-b border-border">
         <FlickeringGrid
           className="absolute inset-0 z-0 opacity-60"
@@ -80,47 +73,31 @@ const TemplatesIndexPage = () => {
         </div>
       </header>
 
-      {/* Body — shared-border 2-col: filters left, grid right. */}
-      <div className="border-b border-border">
-        <div className="grid grid-cols-2 divide-y divide-border border-border lg:grid-cols-[18rem_minmax(0,1fr)] lg:divide-x lg:divide-y-0">
-          <aside className="p-6 md:p-8 lg:p-10">
-            <CategorySidebar
-              templates={[...ALL_TEMPLATES]}
-              activeTypes={[]}
-              activeFrameworks={[]}
-            />
-          </aside>
-          <div className="flex min-w-0 flex-col">
-            <TemplatesBrowser allTemplates={ALL_TEMPLATES} />
-            <a
-              href={SUBMIT_TEMPLATE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Submit your template to the registry"
-              className="flex flex-col items-start gap-3 rounded-none border-t border-border bg-background p-4 transition-colors hover:bg-accent/30 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="flex flex-col gap-1">
-                <span className="text-label-14 font-semibold tracking-tight text-foreground">
-                  Ship your template to the registry
-                </span>
-                <span className="text-copy-13 text-muted-foreground">
-                  Open a PR on deessejs/deessejs. Slug, category,
-                  and labels are collected via the form.
-                </span>
-              </div>
-              <span className="text-label-14 text-foreground underline-offset-4 whitespace-nowrap group-hover:underline">
-                Submit your template →
-              </span>
-            </a>
-          </div>
-        </div>
-      </div>
+      <TemplatesBrowser allTemplates={ALL_TEMPLATES} />
 
-      {/* Final CTA — 2-col shared-border block. Same shape as the
-          homepage's "Use the templates. Or ship with us." block
-          and the `(content)` layout's final block, so visitors hit
-          the same conversion lever regardless of which surface
-          they arrived on. */}
+      {/* Trailing CTA mirroring the homepage shape. */}
+      <a
+        href={SUBMIT_TEMPLATE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Submit your template to the registry"
+        className="flex flex-col items-start gap-3 rounded-none border-b border-border bg-background p-4 transition-colors hover:bg-accent/30 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="flex flex-col gap-1">
+          <span className="text-label-14 font-semibold tracking-tight text-foreground">
+            Ship your template to the registry
+          </span>
+          <span className="text-copy-13 text-muted-foreground">
+            Open a PR on deessejs/deessejs. Slug, category,
+            and labels are collected via the form.
+          </span>
+        </div>
+        <span className="text-label-14 text-foreground underline-offset-4 whitespace-nowrap group-hover:underline">
+          Submit your template →
+        </span>
+      </a>
+
+      {/* Final CTA — 2-col shared-border block. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
         <div className="flex flex-col gap-4 p-6 lg:p-10">
           <p className="text-label-13 text-muted-foreground">
