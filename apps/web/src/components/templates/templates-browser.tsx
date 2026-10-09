@@ -2,8 +2,8 @@
 
 import {
   Suspense,
+  useCallback,
   useDeferredValue,
-  useEffect,
   useId,
   useMemo,
   useState,
@@ -45,22 +45,29 @@ import { TemplateGrid } from "./template-grid"
  *   - `?framework=foo`      — multi-select frameworks.
  *   - Unknown values are silently dropped (they are filtered against
  *     the canonical taxonomy on read).
- *   - When all filters are cleared, the URL drops both keys
- *     entirely.
+ *   - When all filters are cleared, the URL drops both keys.
+ *
+ * Synchronisation strategy:
+ *
+ *   The URL is the source of truth for shareable state. We do NOT
+ *   mirror it into local state on every change with a `useEffect`
+ *   that calls `setState` — that triggers a cascading render and
+ *   trips `react-hooks/set-state-in-effect`. Instead we keep the
+ *   active filter set as a derivable value from `useSearchParams`
+ *   and only enter local state for the search box (which has no
+ *   URL contract).
  *
  * Performance:
  *
- *   We pre-build index `Set`s once per filter pass so membership
- *   tests run in O(1) instead of O(N). Without the index, the
- *   sidebar's "count templates per slug" walk and the per-template
- *   framework match were both O(N*M*L) per render — measurable
- *   for the small registry today, but a footgun once a richer
- *   catalog ships. The precomputed sets collapse it to O(N+M+L).
+ *   We pre-build index `Set`/`Map`s once per registry change so
+ *   membership and counts run in O(1) instead of O(N*M*L).
  */
-const ALLOWED_CATEGORIES = Object.keys(CATEGORY_LABELS) as ReadonlyArray<CategorySlug>
-const ALLOWED_FRAMEWORKS = Object.keys(FRAMEWORK_LABELS) as ReadonlyArray<FrameworkSlug>
-const ALLOWED_CATEGORIES_SET: ReadonlySet<string> = new Set(ALLOWED_CATEGORIES)
-const ALLOWED_FRAMEWORKS_SET: ReadonlySet<string> = new Set(ALLOWED_FRAMEWORKS)
+const ALLOWED_CATEGORIES_SET: ReadonlySet<string> = new Set(
+  Object.keys(CATEGORY_LABELS),
+)
+const ALLOWED_FRAMEWORKS_SET: ReadonlySet<string> = new Set(
+  Object.keys(FRAMEWORK_LABELS),
+)
 
 const CATEGORIES = Object.entries(CATEGORY_LABELS).map(
   ([slug, label]) => ({ slug: slug as CategorySlug, label }),
@@ -69,17 +76,6 @@ const CATEGORIES = Object.entries(CATEGORY_LABELS).map(
 const FRAMEWORKS = Object.entries(FRAMEWORK_LABELS).map(
   ([slug, label]) => ({ slug: slug as FrameworkSlug, label }),
 ) as ReadonlyArray<{ slug: FrameworkSlug; label: string }>
-
-const toFilterList = (
-  raw: ReadonlyArray<string> | undefined,
-  allowedSet: ReadonlySet<string>,
-): string[] => {
-  const out: string[] = []
-  for (const v of raw ?? []) {
-    if (allowedSet.has(v) && !out.includes(v)) out.push(v)
-  }
-  return out
-}
 
 const matchesTemplate = (
   template: Template,
@@ -108,20 +104,19 @@ const matchesTemplate = (
 /**
  * Pre-computes the lookup tables we need for fast filter and
  * counter evaluation. Returns:
- *   - `typesSet` / `frameworksSet` for membership tests
  *   - `categoryCount` / `frameworkCount` maps for sidebar counter chips
- *   - `labelsByFramework` for the "visible frameworks" filter
+ *   - `frameworkLabels` for the "visible frameworks" filter
  *
  * Built once per `allTemplates` change. Memoisation lives in the
  * consuming component to keep this factory pure.
  */
-const buildIndex = (
-  allTemplates: ReadonlyArray<Template>,
-): {
+type RegistryIndex = {
   categoryCount: Map<string, number>
   frameworkCount: Map<string, number>
   frameworkLabels: Set<string>
-} => {
+}
+
+const buildIndex = (allTemplates: ReadonlyArray<Template>): RegistryIndex => {
   const categoryCount = new Map<string, number>()
   const frameworkCount = new Map<string, number>()
   const frameworkLabels = new Set<string>()
@@ -142,16 +137,12 @@ const FiltersSidebar = ({
   index,
   activeTypesSet,
   activeFrameworksSet,
-  activeTypesList,
-  activeFrameworksList,
   onToggle,
   onClearAll,
 }: {
-  index: ReturnType<typeof buildIndex>
+  index: RegistryIndex
   activeTypesSet: ReadonlySet<string>
   activeFrameworksSet: ReadonlySet<string>
-  activeTypesList: ReadonlyArray<string>
-  activeFrameworksList: ReadonlyArray<string>
   onToggle: (key: "type" | "framework", value: string) => void
   onClearAll: () => void
 }) => {
@@ -170,7 +161,6 @@ const FiltersSidebar = ({
     <aside className="w-full lg:sticky lg:top-20 lg:self-start">
       <div className="flex flex-col gap-6">
         <FilterGroup
-          title="Type"
           entries={CATEGORIES}
           activeSet={activeTypesSet}
           countMap={index.categoryCount}
@@ -178,7 +168,6 @@ const FiltersSidebar = ({
           data-testid="templates-sidebar-type"
         />
         <FilterGroup
-          title="Framework"
           entries={visibleFrameworks}
           activeSet={activeFrameworksSet}
           countMap={index.frameworkCount}
@@ -192,14 +181,16 @@ const FiltersSidebar = ({
           {totalShown} template{totalShown === 1 ? "" : "s"} in catalog
         </p>
         {(activeTypesSet.size > 0 || activeFrameworksSet.size > 0) && (
-          <button
+          <Button
             type="button"
+            variant="link"
+            size="sm"
             onClick={onClearAll}
-            className="text-copy-13 text-muted-foreground underline-offset-4 hover:underline text-left"
+            className="text-copy-13 text-muted-foreground underline-offset-4 hover:underline !p-0 h-auto justify-start"
             data-testid="templates-sidebar-clear"
           >
             Clear all filters
-          </button>
+          </Button>
         )}
       </div>
     </aside>
@@ -207,14 +198,12 @@ const FiltersSidebar = ({
 }
 
 const FilterGroup = ({
-  title,
   entries,
   activeSet,
   countMap,
   onToggle,
   "data-testid": dataTestId,
 }: {
-  title: string
   entries: ReadonlyArray<{ slug: string; label: string }>
   activeSet: ReadonlySet<string>
   countMap: ReadonlyMap<string, number>
@@ -223,18 +212,20 @@ const FilterGroup = ({
 }) => {
   return (
     <div data-testid={dataTestId}>
-      <h3 className="text-label-13 mb-3 font-semibold tracking-tight text-foreground">
-        {title}
-      </h3>
       <ul className="flex flex-col gap-1">
         {entries.map((entry) => {
           const isActive = activeSet.has(entry.slug)
           const count = countMap.get(entry.slug) ?? 0
           return (
             <li key={entry.slug}>
-              <label
+              <Button
+                type="button"
+                variant="ghost"
+                aria-pressed={isActive}
+                onClick={() => onToggle(entry.slug)}
+                data-testid={`sidebar-toggle-${entry.slug}`}
                 className={cn(
-                  "text-label-13 flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-1.5 text-left transition-colors hover:bg-accent hover:text-foreground",
+                  "text-label-13 !p-0 h-auto w-full justify-between rounded-md px-3 py-1.5 font-normal hover:bg-accent hover:text-foreground",
                   isActive
                     ? "bg-accent text-foreground"
                     : "text-muted-foreground",
@@ -251,16 +242,10 @@ const FilterGroup = ({
                   />
                   {entry.label}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => onToggle(entry.slug)}
-                  className="text-copy-13 text-muted-foreground/70"
-                  aria-label={`Toggle ${entry.label}`}
-                  data-testid={`sidebar-toggle-${entry.slug}`}
-                >
+                <span className="text-copy-13 text-muted-foreground/70 tabular-nums">
                   {count}
-                </button>
-              </label>
+                </span>
+              </Button>
             </li>
           )
         })}
@@ -320,8 +305,6 @@ const buildUrl = (
   },
 ): string => {
   const params = new URLSearchParams(searchString ?? "")
-  // Rewrite the patched keys with their new values; preserve all
-  // other params untouched.
   if (patch.type !== undefined) {
     params.delete("type")
     for (const v of patch.type) params.append("type", v)
@@ -341,64 +324,35 @@ const TemplatesBrowserInner = ({
 }) => {
   const router = useRouter()
   const search = useSearchParams()
-
-  // `usePathname()` returns the same string across renders unless
-  // the route changes. Reading it lazily inside the toggle handler
-  // (rather than subscribing on every render) lets us skip the
-  // subscription overhead for the common case where the pathname
-  // is stable. We capture it once via window.location when a
-  // toggle is invoked — that does not require a React re-render
-  // on URL change to drive the handler.
   const index = useMemo(() => buildIndex(allTemplates), [allTemplates])
-
-  const [activeTypesList, setActiveTypesList] = useState<string[]>(() =>
-    toFilterList(
-      search?.getAll("type") ?? undefined,
-      ALLOWED_CATEGORIES_SET,
-    ),
-  )
-  const [activeFrameworksList, setActiveFrameworksList] = useState<string[]>(
-    () =>
-      toFilterList(
-        search?.getAll("framework") ?? undefined,
-        ALLOWED_FRAMEWORKS_SET,
-      ),
-  )
   const [query, setQuery] = useState("")
   const deferredQuery = useDeferredValue(query)
   const normalizedQuery = deferredQuery.trim().toLowerCase() || null
 
-  // Re-sync local state when the URL changes (e.g. back/forward).
-  // The URL is the source of truth and we mirror it into local
-  // state on every change so a multi-select survives navigation.
-  useEffect(() => {
-    const nextTypes = toFilterList(
-      search?.getAll("type") ?? undefined,
-      ALLOWED_CATEGORIES_SET,
-    )
-    const nextFrameworks = toFilterList(
-      search?.getAll("framework") ?? undefined,
-      ALLOWED_FRAMEWORKS_SET,
-    )
-    const sameTypes =
-      nextTypes.length === activeTypesList.length &&
-      nextTypes.every((v, i) => v === activeTypesList[i])
-    const sameFrameworks =
-      nextFrameworks.length === activeFrameworksList.length &&
-      nextFrameworks.every((v, i) => v === activeFrameworksList[i])
-    if (!sameTypes) setActiveTypesList(nextTypes)
-    if (!sameFrameworks) setActiveFrameworksList(nextFrameworks)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  /**
+   * Derive the active filter sets directly from `useSearchParams`.
+   * No local mirror state — every URL change re-renders this
+   * component via the `useSearchParams` subscription, so the
+   * derived sets are always in lockstep with the URL. Memoise
+   * to keep the `Set` identity stable between renders for
+   * downstream memoisations.
+   */
+  const activeTypesSet = useMemo(() => {
+    const allowed = ALLOWED_CATEGORIES_SET
+    const out = new Set<string>()
+    for (const v of search?.getAll("type") ?? []) {
+      if (allowed.has(v)) out.add(v)
+    }
+    return out
   }, [search])
-
-  const activeTypesSet = useMemo(
-    () => new Set(activeTypesList),
-    [activeTypesList],
-  )
-  const activeFrameworksSet = useMemo(
-    () => new Set(activeFrameworksList),
-    [activeFrameworksList],
-  )
+  const activeFrameworksSet = useMemo(() => {
+    const allowed = ALLOWED_FRAMEWORKS_SET
+    const out = new Set<string>()
+    for (const v of search?.getAll("framework") ?? []) {
+      if (allowed.has(v)) out.add(v)
+    }
+    return out
+  }, [search])
 
   const filtered = useMemo(
     () =>
@@ -414,38 +368,44 @@ const TemplatesBrowserInner = ({
   )
 
   /**
-   * Toggle a single filter slug in the URL without driving a React
-   * re-render of the screen. We call `useRouter` (subscription) and
-   * `useSearchParams` (subscription) at the top of this component,
-   * so toggling IS visible to React via the re-render that follows
-   * the URL change. But computing the next URL inside the event
-   * handler — using `window.location` for the pathname — keeps the
-   * render path free of `usePathname()`. The router.replace is the
-   * only side effect.
+   * Toggle a single filter slug in the URL. The pathname read is
+   * done lazily via `window.location` — not via the
+   * `usePathname()` subscription — so we do not re-render on
+   * every route change. The router subscription alone is enough
+   * to drive filter state.
+   *
+   * `useCallback` ties the handler to the current `search`
+   * snapshot so we always read the latest params when the user
+   * clicks; re-creating per render is fine here because the
+   * handler is consumed by the JSX below, which re-renders with
+   * it on every filter change anyway.
    */
-  const handleToggle = (key: "type" | "framework", value: string): void => {
-    const current =
-      key === "type" ? activeTypesList : activeFrameworksList
-    const set = new Set(current)
-    if (set.has(value)) {
-      set.delete(value)
-    } else {
-      set.add(value)
-    }
-    const nextTypes =
-      key === "type" ? Array.from(set) : activeTypesList
-    const nextFrameworks =
-      key === "framework" ? Array.from(set) : activeFrameworksList
-    const pathname =
-      typeof window !== "undefined" ? window.location.pathname : "/templates"
-    const url = buildUrl(pathname, search?.toString() ?? "", {
-      type: nextTypes,
-      framework: nextFrameworks,
-    })
-    router.replace(url, { scroll: false })
-  }
+  const handleToggle = useCallback(
+    (key: "type" | "framework", value: string): void => {
+      const currentTypeList = Array.from(activeTypesSet)
+      const currentFrameworkList = Array.from(activeFrameworksSet)
+      const current = key === "type" ? currentTypeList : currentFrameworkList
+      const set = new Set(current)
+      if (set.has(value)) {
+        set.delete(value)
+      } else {
+        set.add(value)
+      }
+      const nextTypes = key === "type" ? Array.from(set) : currentTypeList
+      const nextFrameworks =
+        key === "framework" ? Array.from(set) : currentFrameworkList
+      const pathname =
+        typeof window !== "undefined" ? window.location.pathname : "/templates"
+      const url = buildUrl(pathname, search?.toString() ?? "", {
+        type: nextTypes,
+        framework: nextFrameworks,
+      })
+      router.replace(url, { scroll: false })
+    },
+    [activeTypesSet, activeFrameworksSet, router, search],
+  )
 
-  const handleClearAll = (): void => {
+  const handleClearAll = useCallback((): void => {
     const pathname =
       typeof window !== "undefined" ? window.location.pathname : "/templates"
     const url = buildUrl(pathname, search?.toString() ?? "", {
@@ -453,7 +413,7 @@ const TemplatesBrowserInner = ({
       framework: [],
     })
     router.replace(url, { scroll: false })
-  }
+  }, [router, search])
 
   return (
     <div className="border-b border-border">
@@ -463,8 +423,6 @@ const TemplatesBrowserInner = ({
             index={index}
             activeTypesSet={activeTypesSet}
             activeFrameworksSet={activeFrameworksSet}
-            activeTypesList={activeTypesList}
-            activeFrameworksList={activeFrameworksList}
             onToggle={handleToggle}
             onClearAll={handleClearAll}
           />
@@ -510,9 +468,3 @@ export const TemplatesBrowser = ({
     </Suspense>
   )
 }
-
-// Pre-build the count map for known templates. Useful for direct
-// vitest snapshots in the unit test suite; not consumed at runtime
-// because `buildIndex` runs in `useMemo` on the consumer side.
-void ALLOWED_CATEGORIES
-void ALLOWED_FRAMEWORKS

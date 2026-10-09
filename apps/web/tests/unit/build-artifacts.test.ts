@@ -37,6 +37,23 @@ const PRERENDER_MANIFEST = join(NEXT_DIR, "prerender-manifest.json")
 const APP_DIR = join(NEXT_DIR, "server", "app")
 
 describe("build artifacts — /templates", () => {
+  it("TEMPLATES_WITH_READMES is non-empty and every entry has a non-empty readme", () => {
+    // Always-on guard. The build-artifact tests below are
+    // conditional on `next build` having run; this one ensures
+    // the catalog itself is never empty and each entry has a
+    // snapshot shipped in the package, regardless of CI setup.
+    expect(TEMPLATES_WITH_READMES.length).toBeGreaterThan(0)
+    for (const template of TEMPLATES_WITH_READMES) {
+      expect(template.slug.length).toBeGreaterThan(0)
+      expect(template.name.length).toBeGreaterThan(0)
+      const readme = template.readme ?? ""
+      expect(
+        readme.length,
+        `template ${template.slug}: readme snapshot is empty or missing`,
+      ).toBeGreaterThan(0)
+    }
+  })
+
   it.skipIf(!existsSync(NEXT_DIR))(
     "prerender-manifest.json exists after build",
     () => {
@@ -93,7 +110,7 @@ describe("build artifacts — /templates", () => {
         // present in the HTML — if the loader is broken or the
         // snapshot is missing, the page would render with no
         // README at all and the snapshot title would not appear.
-        const firstHeading = template.readme
+        const firstHeading = (template.readme ?? "")
           .split("\n")
           .map((l) => l.replace(/^#\s+/, ""))
           .find((l) => l.length > 0)
@@ -149,7 +166,7 @@ describe("build artifacts — /templates", () => {
         // if it does not, the loader is broken or the snapshot
         // is missing entirely. We split on newlines and accept
         // the first non-empty `H1` line as the marker.
-        const headings = template.readme
+        const headings = (template.readme ?? "")
           .split("\n")
           .map((l) => l.replace(/^#\s+/, ""))
           .filter((l) => l.length > 0)

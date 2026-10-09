@@ -18,7 +18,6 @@
 import { expect, test } from "@playwright/test"
 
 import {
-  detailHeading,
   detailBreadcrumb,
   templatesCard,
   templatesHeading,
