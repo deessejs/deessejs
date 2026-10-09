@@ -73,7 +73,6 @@ describe("POST /api/v1/rpc/templates/list", () => {
         "landing-starter",
         "package-starter",
         "saas-starter",
-        "saas-starter-multi-tenant",
       ])
 
       const bySlug = new Map(templates.map((t) => [t.slug, t]))

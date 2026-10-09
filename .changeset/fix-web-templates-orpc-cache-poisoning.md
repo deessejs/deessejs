@@ -2,20 +2,27 @@
 "web": patch
 ---
 
-Fixes issue #81: the `/templates` index page rendered the empty-state for up to ten minutes after a single transient failure of `orpc.templates.list()`. Two interacting anti-patterns caused it:
+Replaces the previous (incorrect) diagnostic with the actual root cause and the static-render fix.
 
-- `apps/web/src/lib/orpc.ts` hard-coded `next: { revalidate: 600, tags: ["templates"] }` on every oRPC call, so every RSC call-site shared a single Next.js data-cache key.
-- The four call-sites for `orpc.templates.list()` (`templates/page.tsx` index, `templates/[template_slug]/page.tsx` `generateStaticParams` / `generateMetadata` / detail page) swallowed errors as `[]`. The first thrown error cached `{ templates: [] }` for ten minutes.
+The earlier patch assumed the catalog-empty incident (issue #81) was a Next.js data-cache key collision. That diagnosis was wrong. Two interacting transport bugs caused the empty catalog to surface on the public site, and they survive the cache-key fix:
 
-What's in this patch:
+- `packages/api/src/http/mount-rpc.ts` spread an upstream `Response` into `Hono.Context.newResponse(body, { ...response, headers })`. `status` and `statusText` are non-enumerable on the Response prototype chain, so the spread silently dropped them. Hono fell back to its default 200, an `ORPCError` translated to a 502 envelope arrived as HTTP 200, and oRPC's `StandardRPCLinkCodec.decode` interpreted it as success.
+- `packages/api/src/orpc/routes/templates.ts` invoked `logger.error("templates_fetch_failed", { requestId, message })`. The `logger.error` signature is `error(msg, err, ctx)`, so the second argument was rendered as `[object Object]` and the request-id correlation was lost.
 
-- The `RPCLink` fetch wrapper now reads per-call `options.context.cache` and threads a namespaced tag (`templates:live` vs `templates:static`) and revalidate window onto the request. Without context the wrapper falls back to the previous site-wide behavior (`revalidate: 600`, tag `"templates"`) so any future call-site that forgets to set context does not silently change semantics.
-- Two ergonomic helpers are exported from `apps/web/src/lib/orpc.ts`: `liveCache` (`revalidate: 0`, tag `templates:live`) for live runtime + on-demand metadata, and `staticParamsCache` (`revalidate: 600`, tag `templates:static`) for `generateStaticParams`. They wrap the underlying `context.cache` shape so call-sites stay readable.
-- Live runtime call-sites now re-throw on fetch error so the segment's existing `error.tsx` client boundary renders the "Try again" state instead of silently caching an empty body. The detail-page catch deliberately does NOT call `notFound()` — a fetch error is not a 404.
-- During `next build` (`NEXT_PHASE === "phase-production-build"`) the runtime call-sites fall back to their previous graceful-degradation behavior so the build still ships when the API is unreachable. Production runtime always re-throws.
-- `generateStaticParams` keeps its `try/catch → []` so a flaky API does not break CI.
-- The misleading "build-time-only" comment in `templates/page.tsx` and the misleading "render a minimal placeholder" comment in the detail page are replaced with accurate descriptions.
-- The previously tautological per-call context type (`MarketingCallContext`) is renamed to `FetchCacheOptions` to avoid conflation with the server-side `BaseContext` (`packages/api/src/orpc/base-context.ts`). They are separate types with separate lifecycles; the rename makes the distinction self-documenting at call-sites.
-- The translation logic is extracted into a pure function `buildFetchIsrInit(init, cacheDirective)` colocated with the wrapper. A new vitest suite (`apps/web/src/lib/orpc.test.ts`) pins the translation contract — defaults, `liveCache`, `staticParamsCache`, partial directives, non-mutation of the input `init`, and pass-through of `headers` / `method` / `body`. The whole marketing site has unit-test infrastructure added (`vitest.config.ts`, `@workspace/vitest-config` devDep, `test` script) so future helpers can be tested the same way.
+Additionally, the previous changeset documented that "tags are separate cache keys" and that a `try/catch` returning `[]` in the page would poison the Data Cache. That is incorrect: tags are an invalidation mechanism. The Next.js v16 fetch cache key includes URL, method, headers, body, and other fetch options, never tags. The actual cache concern is the well-known rule that v16 fetch only persists responses with a 200 status — exactly what the spread bug broke. A separate defect in `CATEGORY_LABELS` (only `saas`, `ai`, `landing`) silently excluded entries whose `category` was `desktop`, `docs`, `marketing`, `content`, `library`, or `ai-agent`.
 
-No public consumer-facing API change. `/templates` and `/templates/[slug]` continue to render the same way they did before, except a transient upstream failure now resolves through the error boundary instead of pinning the empty-state.
+This changeset delivers the actual fix:
+
+- `mountRpc` passes `status: response.status` explicitly into `c.newResponse`, preserving upstream 4xx/5xx codes end-to-end. A unit test pins the behaviour with a custom Hono app and asserts the regression path (the spread) collapses the status.
+- The templates procedure uses the `logger.error(msg, err, ctx)` shape so logs carry the actual error and the request id.
+- The procedure enforces `.output(TemplatesListResponseV1)` so a malformed upstream payload cannot leak as `{ templates: undefined }` — the previous defensive coercion in the web client (`?? []`) is no longer load-bearing.
+- `CATEGORY_LABELS` mirrors the registry taxonomy (`saas`, `desktop`, `docs`, `marketing`, `content`, `library`, `ai-agent`).
+- `packages/api/src/templates.ts` is now exported as `@workspace/api/templates-catalog`. The `apps/web` index page and detail page read the registry directly — no oRPC call, no GitHub fetch, no `liveCache`. The page is now statically rendered.
+- Detail pages use `dynamicParams = false` and read the slug list from the registry via `generateStaticParams`. A missing slug returns a real 404, not a "Template not found" title served as 200.
+- `apps/web/src/components/templates/templates-browser.tsx` is the new client-side filter UI: type/framework/search filter against the static catalog without a server round-trip, retaining shareable `?type=` and `?framework=` URLs.
+- The sitemap now includes every detail URL derived from the registry.
+- The regression test `apps/web/tests/e2e/templates-cache.spec.ts` no longer asserts `x-nextjs-cache: HIT` is forbidden — under the static render a HIT is the EXPECTED outcome. The new assertion pins that a `MISS` is a regression to the dynamic path, and a separate test renders the page with the API blocked, confirming the catalog survives without an upstream call.
+- A new contract suite `packages/api/tests/contract/templates-catalog.test.ts` pins registry invariants (slug uniqueness, category coverage, declared-label consistency).
+- A new unit suite `packages/api/tests/unit/mount-rpc-status.test.ts` pins the Hono status preservation contract.
+
+The previous changeset is superseded.

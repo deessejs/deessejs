@@ -23,6 +23,11 @@
       "types": "./dist/templates-labels.d.ts",
       "import": "./dist/templates-labels.js",
       "default": "./dist/templates-labels.js"
+    },
+    "./templates-catalog": {
+      "types": "./dist/templates.d.ts",
+      "import": "./dist/templates.js",
+      "default": "./dist/templates.js"
     }
   },
   "types": "./dist/index.d.ts",
