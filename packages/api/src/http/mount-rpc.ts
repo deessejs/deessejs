@@ -68,7 +68,22 @@ export const mountRpc = (api: Hono<ApiEnv>): void => {
       // Refuse any caching of upstream RPC results at the
       // transport edge. See the JSDoc above.
       headers.set("Cache-Control", "no-store")
-      return c.newResponse(response.body, { ...response, headers })
+      // Preserve the upstream HTTP status. Spreading a `Response`
+      // instance into `c.newResponse` does NOT carry `status` /
+      // `statusText` because those are non-enumerable own fields
+      // on the Response prototype chain — the previous form
+      // silently collapsed 4xx/5xx envelopes into 200, which is
+      // exactly the shape that fed "empty catalog" back to the
+      // web client when GitHub rate-limited us. We construct a
+      // plain `Response` explicitly with `status` and
+      // `statusText` so the diagnostic value is preserved and
+      // Hono's narrow `StatusCode` union (which only accepts a
+      // finite set of literals) does not reject arbitrary values.
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      })
     }
 
     await next()

@@ -23,12 +23,24 @@
       "types": "./dist/templates-labels.d.ts",
       "import": "./dist/templates-labels.js",
       "default": "./dist/templates-labels.js"
+    },
+    "./templates-catalog": {
+      "types": "./dist/templates.d.ts",
+      "import": "./dist/templates.js",
+      "default": "./dist/templates.js"
+    },
+    "./templates-catalog-with-readmes": {
+      "types": "./dist/templates/readmes.d.ts",
+      "import": "./dist/templates/readmes.js",
+      "default": "./dist/templates/readmes.js"
     }
   },
   "types": "./dist/index.d.ts",
   "scripts": {
     "lint": "eslint --max-warnings=0",
+    "prebuild": "node --experimental-strip-types scripts/generate-readme-snapshot.ts",
     "build": "tsc",
+    "generate-readmes": "node --experimental-strip-types scripts/generate-readme-snapshot.ts",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",

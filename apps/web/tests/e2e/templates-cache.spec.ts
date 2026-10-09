@@ -1,72 +1,41 @@
 /**
- * P0 e2e suite — error boundary + issue #81 regression guard.
+ * P0 e2e suite — /templates resilience, repeated-visit behaviour,
+ * and post-cache-poisoning regression guard.
  *
- * Per ADR-020:
- *   P0-3 — error.tsx renders on a forced oRPC failure;
- *          "Try again" recovers to the populated state.
- *   P0-6 — issue #81 cache-poisoning regression guard:
- *          `x-nextjs-cache` header never reads "HIT" on the
- *          /templates document response.
- *
- * Both tests use the per-context `x-e2e-force-fail` header
- * to drive the handler's failure path. The x-vercel-protection-bypass
- * + x-vercel-set-bypass-cookie headers are set globally in
- * playwright.config.ts.
+ * P0-3 — /templates and /templates/[slug] stay populated across
+ *        reloads and back/forward navigation, even when the
+ *        upstream API is unreachable. The static build never
+ *        touches the API to render these pages; the catalog
+ *        lives in the artifact.
+ * P0-6 — under the static build, `x-nextjs-cache: HIT` is the
+ *        expected outcome on `/templates` and the detail pages.
+ *        A `MISS` indicates a regression to the dynamic /
+ *        oRPC-driven render path.
+ * P0-7 — repeated visits (index → detail → back → index, reload)
+ *        must keep the catalog populated end-to-end. This is the
+ *        scenario the production incident presented.
  */
 import { expect, test } from "@playwright/test"
 
 import {
-  errorHeading,
+  detailBreadcrumb,
+  templatesCard,
   templatesHeading,
-  tryAgainButton,
 } from "./helpers/selectors.js"
 
-test.describe("P0 /templates error + cache", () => {
-  test("P0-3: error.tsx renders on a forced oRPC failure; Try again recovers", async ({
+test.describe("P0 /templates resilience (static build)", () => {
+  test("P0-3: /templates stays populated without contacting the API", async ({
     page,
-    context,
   }) => {
-    // Drive the failure path: the handler throws ORPCError
-    // "TEMPLATES_FETCH_FAILED" with status 502.
-    await context.setExtraHTTPHeaders({ "x-e2e-force-fail": "1" })
-
-    try {
-      await page.goto("/templates")
-
-      // Error.tsx renders the documented copy. The error
-      // boundary catches the thrown ORPCError and renders the
-      // client-side fallback.
-      await expect(errorHeading(page)).toBeVisible()
-      await expect(
-        page.getByText(/Check your connection/i),
-      ).toBeVisible()
-      await expect(tryAgainButton(page)).toBeVisible()
-
-      // Clear the force-fail header so the recovery request
-      // reaches the real upstream.
-      await context.setExtraHTTPHeaders({ "x-e2e-force-fail": "" })
-
-      // Click "Try again" — calls `reset()` which re-runs
-      // the parent RSC. The second render must reach the
-      // populated state.
-      await tryAgainButton(page).click()
-      await expect(templatesHeading(page)).toBeVisible({
-        timeout: 10_000,
-      })
-      // The error boundary no longer renders.
-      await expect(errorHeading(page)).toHaveCount(0)
-    } finally {
-      await context.setExtraHTTPHeaders({ "x-e2e-force-fail": "" })
-    }
+    await page.route("**/api/v1/**", (route) => route.abort())
+    await page.goto("/templates")
+    await expect(templatesHeading(page)).toBeVisible()
+    await expect(templatesCard(page).first()).toBeVisible()
   })
 
-  test("P0-6: x-nextjs-cache header never reads HIT on /templates (issue #81 regression)", async ({
+  test("P0-6: x-nextjs-cache MISS on /templates signals a regression to the dynamic render path", async ({
     page,
   }) => {
-    // Capture every /templates response and assert none of
-    // them carry the x-nextjs-cache: HIT header value. A HIT
-    // here is the smoking gun for a regression to the old
-    // site-wide tag introduced before PR #85.
     const responses: Array<{
       url: string
       cacheState: string | null
@@ -83,19 +52,58 @@ test.describe("P0 /templates error + cache", () => {
 
     await page.goto("/templates")
     await expect(templatesHeading(page)).toBeVisible()
+    await expect(templatesCard(page).first()).toBeVisible()
 
-    // Navigate again to trigger a second RSC stream.
+    expect(responses.length).toBeGreaterThan(0)
+    const misses = responses.filter(
+      (r) => r.cacheState === "MISS" || r.cacheState === null,
+    )
+    expect(
+      misses,
+      `x-nextjs-cache MISS observed on /templates — static render regression. Responses: ${JSON.stringify(responses)}`,
+    ).toHaveLength(0)
+  })
+
+  test("P0-7: index → detail → back → reload keeps the catalog populated", async ({
+    page,
+  }) => {
+    // The scenario in the production incident: open the index,
+    // jump to a detail page, return to the index, reload. The
+    // catalog must stay visible at every step. With a static
+    // build this is trivial; before the fix, an upstream 502
+    // pinned the second visit to an empty catalog.
+    await page.route("**/api/v1/**", (route) => route.abort())
+
+    await page.goto("/templates")
+    await expect(templatesHeading(page)).toBeVisible()
+    await expect(templatesCard(page).first()).toBeVisible()
+
+    // Click the first card to navigate to a detail page.
+    const firstCardLink = templatesCard(page).first()
+    const href = await firstCardLink.getAttribute("href")
+    expect(href).toMatch(/^\/templates\/[a-z-]+$/)
+    await firstCardLink.click()
+    await page.waitForURL(/\/templates\/[a-z-]+/)
+
+    // Detail page renders the heading from its snapshot.
+    const slug = (page.url().match(/\/templates\/([a-z-]+)/) ?? [])[1]
+    expect(slug).toBeTruthy()
+    await expect(detailBreadcrumb(page)).toBeVisible()
+
+    // The detail page should expose its README content. The
+    // loader ships it from disk; a missing snapshot would
+    // collapse the page. The H1 of each snapshot is unique.
+    await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible()
+
+    // Back to the index via the in-page breadcrumb link.
+    await detailBreadcrumb(page).click()
+    await page.waitForURL("**/templates")
+    await expect(templatesHeading(page)).toBeVisible()
+    await expect(templatesCard(page).first()).toBeVisible()
+
+    // Reload. The catalog must remain.
     await page.reload()
     await expect(templatesHeading(page)).toBeVisible()
-
-    // We should have at least one captured response.
-    expect(responses.length).toBeGreaterThan(0)
-
-    // None of them may carry the HIT value.
-    const hits = responses.filter((r) => r.cacheState === "HIT")
-    expect(
-      hits,
-      `x-nextjs-cache: HIT observed on /templates — issue #81 regression. Responses: ${JSON.stringify(responses)}`,
-    ).toHaveLength(0)
+    await expect(templatesCard(page).first()).toBeVisible()
   })
 })

@@ -31,11 +31,23 @@ export type FrameworkSlug = keyof typeof FRAMEWORK_LABELS
  *
  * The key is the slug written into `RegistryEntry.category`. The value
  * is the human-readable label rendered in the sidebar and metadata.
+ *
+ * Taxonomy note:
+ *   These keys MUST mirror the `category` slugs used by every entry in
+ *   `templates.ts`. Adding a category to either side without the other
+ *   is a contract bug: it makes the filter sidebar silently exclude
+ *   some entries and breaks deep links like `?type=desktop`. The keys
+ *   below are generated from the actual registry and asserted by the
+ *   registry-validation tests so a drift cannot ship unnoticed.
  */
 export const CATEGORY_LABELS = {
   saas: "SaaS starters",
-  ai: "AI",
-  landing: "Landing pages",
+  desktop: "Desktop apps",
+  docs: "Documentation sites",
+  marketing: "Marketing & landing pages",
+  content: "Content & blogs",
+  library: "Libraries & packages",
+  "ai-agent": "AI agents",
 } as const
 
 /**

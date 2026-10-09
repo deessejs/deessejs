@@ -3,31 +3,39 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowRight } from "lucide-react"
 
-import { liveCache, orpc, staticParamsCache } from "@/lib/orpc"
-import { TemplateDetail } from "@/components/templates/template-detail"
+import {
+  TEMPLATES_WITH_READMES,
+  findTemplateWithReadme,
+} from "@workspace/api/templates-catalog-with-readmes"
 import { Button } from "@workspace/ui/components/button"
+
+import { TemplateDetail } from "@/components/templates/template-detail"
 
 type Params = { template_slug: string }
 
 /**
- * Pre-generate one static page per known slug at build time.
- * Falls back to on-demand rendering for slugs not seen at build
- * (Next.js handles ISR transparently for both).
+ * `/templates/[template_slug]` — static detail page.
  *
- * Uses `staticParamsCache` (revalidate: 600, tag `templates:static`)
- * so the slug list is cached across builds but cannot collide with
- * the runtime cache. If the fetch fails (no network in CI, backend
- * temporarily down), we return an empty array rather than failing
- * the build; missing slugs are generated on demand via ISR.
+ * Source of truth:
+ *   The catalog (`@workspace/api/templates-catalog-with-readmes`)
+ *   bundles the registry with versioned README snapshots from
+ *   `packages/api/src/templates/readmes/{slug}.md`. No oRPC, no
+ *   GitHub fetch at request time. The README is read directly
+ *   from the snapshot bundled in this package — a transient
+ *   upstream outage cannot erase it.
+ *
+ * `dynamicParams = false` rejects everything else with a real
+ * 404; we still call `notFound()` from the page body as a belt-
+ * and-braces guard.
  */
+
+export const dynamicParams = false
+
 export const generateStaticParams = async (): Promise<Params[]> => {
-  try {
-    const result = await orpc.templates.list(undefined, staticParamsCache)
-    return result.templates.map((t) => ({ template_slug: t.slug }))
-  } catch {
-    return []
-  }
+  return TEMPLATES_WITH_READMES.map((t) => ({ template_slug: t.slug }))
 }
+
+const SITE_URL = "https://deessejs.com"
 
 export const generateMetadata = async ({
   params,
@@ -35,78 +43,49 @@ export const generateMetadata = async ({
   params: Promise<Params>
 }): Promise<Metadata> => {
   const { template_slug } = await params
-  try {
-    const result = await orpc.templates.list(undefined, liveCache)
-    const template = result.templates.find((t) => t.slug === template_slug)
-    if (!template) return { title: "Template not found" }
+  const template = findTemplateWithReadme(template_slug)
+  if (!template) {
     return {
-      title: template.name,
+      title: "Template not found",
+      robots: { index: false, follow: false },
+    }
+  }
+  const canonicalPath = `/templates/${template.slug}`
+  return {
+    title: template.name,
+    description: template.description,
+    alternates: {
+      canonical: `${SITE_URL}${canonicalPath}`,
+    },
+    openGraph: {
+      title: `${template.name} — DeesseJS Templates`,
       description: template.description,
-    }
-  } catch {
-    // Build-time fallback: when the build worker has no network
-    // access to the API, fall back to the existing "Template not
-    // found" title so the build still ships. Production runtime
-    // always re-throws so the segment's error.tsx renders. Issue #81.
-    if (process.env.NEXT_PHASE === "phase-production-build") {
-      return { title: "Template not found" }
-    }
-    throw new Error("Failed to load template metadata")
+      url: `${SITE_URL}${canonicalPath}`,
+      type: "article",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${template.name} — DeesseJS Templates`,
+      description: template.description,
+    },
   }
 }
 
-/**
- * Detail page at /templates/[template_slug].
- *
- * Single source of truth: same `orpc.templates.list()` call as the
- * index page. The catalog is tiny, so doing a server-side `.find()`
- * is cheaper than maintaining a second endpoint.
- *
- * Uses `liveCache` (revalidate: 0, tag `templates:live`) so a
- * transient failure cannot poison the Next.js data cache. On a
- * runtime error the request propagates to the segment's `error.tsx`
- * boundary. A fetch error is NOT a 404 — do NOT `notFound()` in the
- * catch. During `next build` we fall back to `notFound()` so the
- * build still ships when the API is unreachable.
- */
 const TemplateDetailPage = async ({
   params,
 }: {
   params: Promise<Params>
 }) => {
   const { template_slug } = await params
-  let template
-  try {
-    const result = await orpc.templates.list(undefined, liveCache)
-    template = result.templates.find((t) => t.slug === template_slug)
-  } catch {
-    // Build-time fallback: a failed fetch during prerender becomes
-    // a 404 (the slug cannot be confirmed). Production runtime
-    // always re-throws so error.tsx renders. Issue #81.
-    if (process.env.NEXT_PHASE === "phase-production-build") {
-      notFound()
-    }
-    throw new Error("Failed to load template")
-  }
-  if (!template) {
-    notFound()
-  }
+  const template = findTemplateWithReadme(template_slug)
+  if (!template) notFound()
+
   return (
     <>
-      {/* Hero region — kept inside the GlobalLayout frame so the
-          detail page matches the index visually (border-card + xl:
-          diagonal stripes). Breadcrumb + H1 + CTAs layout is
-          retained from the original detail design because Install /
-          View source make sense next to the title. */}
       <div className="border-b border-border py-16 md:py-20 lg:py-24">
         <TemplateDetail template={template} />
       </div>
 
-      {/* Final CTA — 2-col shared-border block. Same shape as the
-          homepage's "Use the templates. Or ship with us." block,
-          the `(content)` layout's final block, and the templates
-          index page, so visitors hit the same conversion lever
-          regardless of which surface they arrived on. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
         <FinalCtaCopyColumn />
         <FinalCtaActionsColumn />
