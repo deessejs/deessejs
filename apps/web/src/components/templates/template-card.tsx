@@ -44,31 +44,38 @@ export type TemplateCardProps = {
  * tilted frame, so the separation line between hero and content stays
  * at the same y-offset whether the image exists or not.
  *
+ * The hero wrapper carries no border; the unique internal separator
+ * is the `border-t` on the content panel below. The tilted frame
+ * inside the hero still carries its own `border` because that border
+ * belongs to the illustration, not to the card's outer chrome.
+ *
  * Card height is flex-driven by the grid (see `template-grid.tsx`
- * `auto-rows-fr` + `flex` on `<li>` + `h-full` on the Card). The Card
- * does not impose a min-height; the panel's `min-h-40` is a safety
- * floor so a card with a very short description still has readable
- * chrome.
+ * `auto-rows-fr` + `flex` on `<li>` + `h-full` on the Card). The
+ * shadcn Card ships with a `flex flex-col gap-(--card-spacing)`
+ * layout and a `ring-1 ring-foreground/10` outline; both are
+ * neutralised here (`gap-0`, `ring-0`) because the grid already
+ * manages layout and spacing, and the page-level chrome provides
+ * the outer frame. `overflow-hidden` on the Card contains the
+ * rotated hero's visual overflow inside the card surface.
  */
 export const TemplateCard = ({ template, className }: TemplateCardProps) => {
   return (
     <Card
       className={cn(
-        "group relative isolate flex h-full min-w-0 w-full flex-col gap-0 overflow-hidden rounded-none border-0 bg-background py-0 ring-0 transition-colors hover:bg-accent/40",
+        "group relative isolate h-full w-full min-w-0 gap-0 overflow-hidden rounded-none border-0 bg-background py-0 ring-0 transition-colors hover:bg-accent/40",
         className,
       )}
     >
       <Link
         href={`/templates/${template.slug}`}
         aria-label={`View ${template.name} template`}
-        className="flex min-w-0 flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="flex h-full min-w-0 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        {/* Hero — outer panel is opaque so the rotated visual's
-            bottom edge does not bleed into the page background, and
-            so the content panel has a clean surface to sit on. The
-            inner rotated frame keeps the same `-rotate-3` chrome as
-            `latest-guides-section.tsx`. */}
-        <div className="shrink-0 border-t border-border bg-background p-4">
+        {/* Hero — opaque panel (no border; the separator above the
+            content is drawn by the content panel's own `border-t`
+            below). The inner rotated frame keeps the same
+            `-rotate-3` chrome as `latest-guides-section.tsx`. */}
+        <div className="shrink-0 bg-background p-4">
           <div
             aria-hidden
             className={cn(
@@ -91,9 +98,11 @@ export const TemplateCard = ({ template, className }: TemplateCardProps) => {
         </div>
 
         {/* Content — opaque panel, in front of the hero via z-10.
-            flex-1 lets it absorb the leftover row height so the
-            labels row can pin to the bottom via mt-auto. */}
-        <div className="relative z-10 flex min-h-40 flex-1 flex-col gap-4 border-t border-border bg-background p-6 lg:p-8">
+            The single `border-t` here is the unique internal
+            separator between the hero and the content. `flex-1`
+            absorbs the leftover row height so the labels row can
+            pin to the bottom via `mt-auto`. */}
+        <div className="relative z-10 flex min-h-40 flex-1 flex-col gap-4 border-t border-border bg-background p-6">
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-heading-20 tracking-tight !m-0 text-balance lg:text-heading-24">
               {template.name}

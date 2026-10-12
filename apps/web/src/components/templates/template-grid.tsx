@@ -18,52 +18,45 @@ export type TemplateGridProps = {
  * - `flex` on each `<li>` lets the child Card fill the cell height.
  *   The Card itself is `h-full` (see `TemplateCard`).
  *
- * Border strategy (see `.claude/skills/tailwind-borders`):
- * Each cell draws its left and top border ONLY when it has a neighbor
- * in that direction. This keeps incomplete rows correctly delimited:
- * a card above an empty slot keeps its bottom edge because the
- * next cell's `border-t` paints it; the last card of an incomplete
- * row keeps its right edge because the wrapper provides the frame.
+ * Border strategy (Pattern B — see `.claude/skills/tailwind-borders`):
+ * - Each cell carries `border-r border-b` always.
+ * - The inner `<ul>` shifts by `-mr-px -mb-px` so the last column's
+ *   right border and the last row's bottom border are clipped by the
+ *   wrapper's `overflow-hidden` instead of doubling against the page
+ *   frame. No `nth-child` selectors, no per-breakpoint toggle.
+ * - The wrapper does NOT carry its own `border` (unlike the blog
+ *   grid): the page already frames the catalogue (sidebar divider,
+ *   hero `border-b`, CTA `border-t`). Adding a wrapper border would
+ *   produce double rules against the surrounding chrome.
  *
- * - Mobile (1 col): every cell from the second onwards draws
- *   `border-t` (separator above).
- * - md (2 col): even cells draw `border-l`; cells from the third
- *   onwards draw `border-t` (top of the second row).
- * - lg (3 col): every cell that is NOT in column 1 draws `border-l`;
- *   cells from the fourth onwards draw `border-t` (top of the second
- *   row). A card in the last row keeps its right edge because the
- *   page-level wrapper (the templates body div) carries the frame.
+ * Incomplete rows are correctly delimited: a card above an empty
+ * slot keeps its bottom edge (the cell still has `border-b`); the
+ * last card of an incomplete row keeps its right edge (the cell
+ * still has `border-r`). The clipping only removes the borders that
+ * touch the wrapper's outer edge.
  */
 export const TemplateGrid = ({ templates, className }: TemplateGridProps) => {
   return (
-    <ul
-      data-testid="templates-grid"
+    <div
       className={cn(
-        "grid auto-rows-fr grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
-        "[&>li]:min-w-0 [&>li]:flex [&>li]:border-border",
-
-        // Mobile: top separators from the second cell onwards.
-        "[&>li:nth-child(n+2)]:max-md:border-t",
-
-        // Two columns: left separator on every even cell; top
-        // separator from the third cell onwards.
-        "md:max-lg:[&>li:nth-child(2n)]:border-l",
-        "md:max-lg:[&>li:nth-child(n+3)]:border-t",
-
-        // Three columns: left separator on every cell that is NOT
-        // the first in its row; top separator from the fourth cell
-        // onwards (i.e. the second row's top edge).
-        "lg:[&>li:not(:nth-child(3n+1))]:border-l",
-        "lg:[&>li:nth-child(n+4)]:border-t",
-
+        "min-w-0 overflow-hidden rounded-none bg-background",
         className,
       )}
     >
-      {templates.map((template) => (
-        <li key={template.slug} data-testid="templates-card">
-          <TemplateCard template={template} />
-        </li>
-      ))}
-    </ul>
+      <ul
+        data-testid="templates-grid"
+        className="-mr-px -mb-px grid auto-rows-fr list-none grid-cols-1 gap-0 p-0 md:grid-cols-2 lg:grid-cols-3"
+      >
+        {templates.map((template) => (
+          <li
+            key={template.slug}
+            data-testid="templates-card"
+            className="flex min-w-0 border-r border-b border-border"
+          >
+            <TemplateCard template={template} />
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
