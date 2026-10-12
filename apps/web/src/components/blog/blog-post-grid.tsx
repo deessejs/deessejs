@@ -26,7 +26,12 @@ import { PostCard } from "./post-card"
  */
 const GRID_COLS_CLASS: Record<"1-2-3" | "1-2-3-4", string> = {
   "1-2-3": "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-  "1-2-3-4": "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4",
+  // Capped at 3 columns even on 2xl viewports. PostCard hero blocks
+  // become too cramped in a 4-column layout (each card is ~360px
+  // wide on a 1536px viewport) and the post cover image loses its
+  // framing. The "1-2-3-4" key is kept as the named preset so future
+  // surfaces can opt back in by name without a type change.
+  "1-2-3-4": "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-3",
 }
 
 export function PostCardGrid({
