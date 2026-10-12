@@ -11,31 +11,51 @@ export type TemplateGridProps = {
 /**
  * Responsive grid: 1 col mobile, 2 col md, 3 col lg.
  *
- * Card surface treatment:
- * - `gap-0` so adjacent cards share a single border, no double-rule.
- * - `bg-background` and `rounded-none` (set on the Card itself) so
- *   the grid reads as one continuous table-like surface rather than
- *   a stack of floating tiles.
- * - Dividers are drawn per-card with `border-r border-b border-border`.
- *   The last card in each row drops its right border via
- *   `[&:nth-child(3n)]:border-r-0`; the last row drops its bottom
- *   border via `[&:nth-last-child(-n+3)]:border-b-0`. This avoids
- *   Tailwind's known `divide-*` issue (tailwindlabs/tailwindcss#18265)
- *   on grid containers, and stays portable across all browsers
- *   without depending on `row-rule` / `column-rule` (CSS Gap
- *   Decorations — not Baseline yet).
+ * Height strategy:
+ * - `auto-rows-fr` makes every row the same height (the height of the
+ *   tallest card in that row), so cards across rows align and the
+ *   `mt-auto` labels in `TemplateCard` pin consistently to the bottom.
+ * - `flex` on each `<li>` lets the child Card fill the cell height.
+ *   The Card itself is `h-full` (see `TemplateCard`).
+ *
+ * Border strategy (see `.claude/skills/tailwind-borders`):
+ * Each cell draws its left and top border ONLY when it has a neighbor
+ * in that direction. This keeps incomplete rows correctly delimited:
+ * a card above an empty slot keeps its bottom edge because the
+ * next cell's `border-t` paints it; the last card of an incomplete
+ * row keeps its right edge because the wrapper provides the frame.
+ *
+ * - Mobile (1 col): every cell from the second onwards draws
+ *   `border-t` (separator above).
+ * - md (2 col): even cells draw `border-l`; cells from the third
+ *   onwards draw `border-t` (top of the second row).
+ * - lg (3 col): every cell that is NOT in column 1 draws `border-l`;
+ *   cells from the fourth onwards draw `border-t` (top of the second
+ *   row). A card in the last row keeps its right edge because the
+ *   page-level wrapper (the templates body div) carries the frame.
  */
 export const TemplateGrid = ({ templates, className }: TemplateGridProps) => {
   return (
     <ul
       data-testid="templates-grid"
       className={cn(
-        "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
-        "[&>li]:border-r [&>li]:border-b [&>li]:border-border",
-        "[&>li:nth-child(2n)]:md:border-r-0",
-        "[&>li:nth-child(3n)]:lg:border-r-0",
-        "[&>li:nth-last-child(-n+2)]:md:border-b-0",
-        "[&>li:nth-last-child(-n+3)]:lg:border-b-0",
+        "grid auto-rows-fr grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+        "[&>li]:min-w-0 [&>li]:flex [&>li]:border-border",
+
+        // Mobile: top separators from the second cell onwards.
+        "[&>li:nth-child(n+2)]:max-md:border-t",
+
+        // Two columns: left separator on every even cell; top
+        // separator from the third cell onwards.
+        "md:max-lg:[&>li:nth-child(2n)]:border-l",
+        "md:max-lg:[&>li:nth-child(n+3)]:border-t",
+
+        // Three columns: left separator on every cell that is NOT
+        // the first in its row; top separator from the fourth cell
+        // onwards (i.e. the second row's top edge).
+        "lg:[&>li:not(:nth-child(3n+1))]:border-l",
+        "lg:[&>li:nth-child(n+4)]:border-t",
+
         className,
       )}
     >

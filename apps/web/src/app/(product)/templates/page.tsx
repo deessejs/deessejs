@@ -209,9 +209,13 @@ const TemplatesIndexPage = async ({
 
       {/* Body — shared-border 2-col: filters left, grid right. The
           sidebar carries `p-6 md:p-8 lg:p-10` to match the canonical
-          cell padding used by the homepage and pricing surfaces. */}
+          cell padding used by the homepage and pricing surfaces.
+          The body is single-column below `lg`: putting the sidebar
+          and the grid side-by-side at `md` cramped the cards
+          (the catalogue was split into 2 narrow columns at the same
+          width as the sidebar was supposed to occupy). */}
       <div className="border-b border-border">
-        <div className="grid grid-cols-2 divide-y divide-border border-border lg:grid-cols-[18rem_minmax(0,1fr)] lg:divide-x lg:divide-y-0">
+        <div className="grid grid-cols-1 divide-y divide-border border-border lg:grid-cols-[18rem_minmax(0,1fr)] lg:divide-x lg:divide-y-0">
           <aside className="p-6 md:p-8 lg:p-10">
             <CategorySidebar
               templates={templates}
