@@ -1,14 +1,12 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowRight } from "lucide-react"
 
 import {
   TEMPLATES_WITH_READMES,
   findTemplateWithReadme,
 } from "@workspace/api/templates-catalog-with-readmes"
-import { Button } from "@workspace/ui/components/button"
 
+import { FinalCta } from "@/components/pages/_shared/final-cta"
 import { TemplateDetail } from "@/components/templates/template-detail"
 
 type Params = { template_slug: string }
@@ -27,6 +25,14 @@ type Params = { template_slug: string }
  * `dynamicParams = false` rejects everything else with a real
  * 404; we still call `notFound()` from the page body as a belt-
  * and-braces guard.
+ *
+ * Closing block:
+ *   The page closes with the shared `<FinalCta>` shell from
+ *   `@/components/pages/_shared/final-cta`. Every public page
+ *   uses that same shell so the closing rhythm stays uniform;
+ *   page-specific copy flows in as props. Previously this page
+ *   had its own `FinalCtaCopyColumn` + `FinalCtaActionsColumn`
+ *   pair inline, duplicating the shell's two columns.
  */
 
 export const dynamicParams = false
@@ -86,44 +92,25 @@ const TemplateDetailPage = async ({
         <TemplateDetail template={template} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
-        <FinalCtaCopyColumn />
-        <FinalCtaActionsColumn />
-      </div>
+      <FinalCta
+        eyebrow="Ready to ship?"
+        title="Browse the registry. Or ship with us."
+        body="Install the CLI to scaffold a project in under five minutes, or talk to our delivery team if you need a hand. Same templates, same contracts, same guarantees."
+        actions={[
+          {
+            label: "Install the CLI",
+            href: "/knowledge-base/guides/install-deessejs-cli",
+            withArrow: true,
+          },
+          {
+            label: "Browse the registry",
+            href: "/templates",
+            variant: "outline",
+          },
+        ]}
+      />
     </>
   )
 }
 
 export default TemplateDetailPage
-
-function FinalCtaCopyColumn() {
-  return (
-    <div className="flex flex-col gap-4 p-6 lg:p-10">
-      <p className="text-label-13 text-muted-foreground">Ready to ship?</p>
-      <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-        Browse the registry. Or ship with us.
-      </h2>
-      <p className="text-copy-16 text-muted-foreground leading-7 max-w-xl [&:not(:first-child)]:mt-0">
-        Install the CLI to scaffold a project in under five minutes, or talk to
-        our delivery team if you need a hand. Same templates, same contracts,
-        same guarantees.
-      </p>
-    </div>
-  )
-}
-
-function FinalCtaActionsColumn() {
-  return (
-    <div className="flex flex-col items-stretch justify-center gap-4 p-6 lg:p-10">
-      <Button asChild size="lg">
-        <Link href="/knowledge-base/guides/install-deessejs-cli">
-          Install the CLI
-          <ArrowRight className="size-3.5" aria-hidden />
-        </Link>
-      </Button>
-      <Button variant="outline" size="lg" asChild>
-        <Link href="/templates">Browse the registry</Link>
-      </Button>
-    </div>
-  )
-}
