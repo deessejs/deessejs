@@ -102,7 +102,7 @@ export default async function AuthorPage({
       {posts.length === 0 ? (
         <p className="text-muted-foreground">No articles yet.</p>
       ) : (
-        <PostCardGrid posts={posts} gridCols="1-2-3" />
+        <PostCardGrid posts={posts} />
       )}
     </section>
   )

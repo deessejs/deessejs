@@ -9,39 +9,27 @@ import { PostCard } from "./post-card"
  *
  * Layout:
  * - Optional featured row at the top, rendered by `FeaturedRow`
- *   (1 column mobile, 2 columns `lg+`). No per-cell `border-b` — the
- *   first row of the main grid supplies the visual divider.
- * - Main grid renders the remaining posts. Responsive column count is
- *   controlled by `gridCols`.
+ *   (1 column mobile, 2 columns `lg+`).
+ * - Main grid renders the remaining posts. Always `1-2-3` columns
+ *   (1 col mobile, 2 cols `sm+`, 3 cols `lg+`).
  *
- * Border strategy (Pattern B — see `.claude/skills/tailwind-borders`):
- * - Outer wrapper `overflow-hidden rounded-xl border border-border
- *   bg-background` is the single source of the visible frame.
- * - Inner `<ul>` shifts by `-mr-px -mb-px` so the last row's bottom and
- *   the last column's right borders are clipped by the wrapper instead
- *   of doubling against it.
- * - Each cell carries `border-b border-r border-border`. No `nth-child`
- *   needed — the negative-margin trick gives us the shared-border
- *   surface for any column count.
+ * Border strategy: the outer wrapper supplies the frame. Each cell
+ * carries explicit top/left borders that are toggled per breakpoint so
+ * the grid reads as a single shared-border surface with no double
+ * rules and no orphan borders on the last row. No negative margins,
+ * no `nth-child` arithmetic at the consumer level — the
+ * `[&>li:nth-child(...)]` selectors are scoped to this component and
+ * re-derived per breakpoint. The previous implementation used Pattern
+ * B (`-mr-px -mb-px` + clip via `overflow-hidden`) and a `GRID_COLS_CLASS`
+ * lookup; both were retired because they were redundant once the
+ * column count was fixed at 3 max.
  */
-const GRID_COLS_CLASS: Record<"1-2-3" | "1-2-3-4", string> = {
-  "1-2-3": "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-  // Capped at 3 columns even on 2xl viewports. PostCard hero blocks
-  // become too cramped in a 4-column layout (each card is ~360px
-  // wide on a 1536px viewport) and the post cover image loses its
-  // framing. The "1-2-3-4" key is kept as the named preset so future
-  // surfaces can opt back in by name without a type change.
-  "1-2-3-4": "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-3",
-}
-
 export function PostCardGrid({
   posts,
   featured,
-  gridCols = "1-2-3-4",
 }: {
   posts: ReadonlyArray<Post>
   featured?: ReadonlyArray<Post> | undefined
-  gridCols?: "1-2-3" | "1-2-3-4"
 }) {
   if (posts.length === 0 && (!featured || featured.length === 0)) {
     return null
@@ -62,10 +50,32 @@ export function PostCardGrid({
       {filteredPosts.length > 0 ? (
         <ul
           aria-label={mainAriaLabel}
-          className={`-mr-px -mb-px grid list-none p-0 ${GRID_COLS_CLASS[gridCols]}`}
+          className={[
+            "m-0 grid list-none grid-cols-1 p-0 sm:grid-cols-2 lg:grid-cols-3",
+            "[&>li]:min-w-0 [&>li]:border-border",
+
+            // Mobile: separation before every post except the first.
+            "[&>li:nth-child(n+2)]:border-t",
+
+            // Two columns: top reset, top borders from row 2 onwards,
+            // left borders on every even cell.
+            "sm:[&>li]:border-t-0",
+            "sm:[&>li:nth-child(n+3)]:border-t",
+            "sm:[&>li:nth-child(2n)]:border-l",
+
+            // Three columns: same pattern, recomputed for 3 per row.
+            "lg:[&>li]:border-t-0",
+            "lg:[&>li]:border-l-0",
+            "lg:[&>li:nth-child(n+4)]:border-t",
+            "lg:[&>li:not(:nth-child(3n+1))]:border-l",
+
+            // Visual divider between the featured row and the main
+            // grid when featured is present.
+            featured && featured.length > 0 ? "border-t border-border" : "",
+          ].join(" ")}
         >
           {filteredPosts.map((post) => (
-            <li key={post.slug} className="border-b border-r border-border">
+            <li key={post.slug}>
               <PostCard post={post} />
             </li>
           ))}

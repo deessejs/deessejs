@@ -26,7 +26,7 @@ export function PostCard({ post, featured }: { post: Post; featured?: boolean })
   const authors = post.authors?.length ? post.authors : post.author ? [post.author] : []
 
   return (
-    <Card className="group relative flex h-full flex-col overflow-hidden rounded-none border-0 bg-background transition-colors hover:bg-accent/30">
+    <Card className="group relative flex h-full flex-col overflow-hidden rounded-none border-0 ring-0 bg-background transition-colors hover:bg-accent/30">
       {hasCover ? (
         <div className="relative block aspect-video w-full overflow-hidden bg-muted">
           <Image
