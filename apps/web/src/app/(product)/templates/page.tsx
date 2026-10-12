@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, ChevronRight } from "lucide-react"
 
 import type { TemplateV1 } from "@workspace/contracts/v1"
 import {
@@ -251,7 +251,8 @@ const TemplatesIndexPage = async ({
                     </span>
                   </div>
                   <span className="text-label-14 text-foreground underline-offset-4 whitespace-nowrap group-hover:underline">
-                    Submit your template →
+                    Submit your template
+                    <ChevronRight className="ml-1 inline-block size-3" aria-hidden />
                   </span>
                 </a>
               </>
