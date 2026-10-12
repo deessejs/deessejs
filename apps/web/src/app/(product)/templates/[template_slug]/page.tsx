@@ -1,33 +1,47 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowRight } from "lucide-react"
 
-import { liveCache, orpc, staticParamsCache } from "@/lib/orpc"
+import {
+  TEMPLATES_WITH_READMES,
+  findTemplateWithReadme,
+} from "@workspace/api/templates-catalog-with-readmes"
+
+import { FinalCta } from "@/components/pages/_shared/final-cta"
 import { TemplateDetail } from "@/components/templates/template-detail"
-import { Button } from "@workspace/ui/components/button"
 
 type Params = { template_slug: string }
 
 /**
- * Pre-generate one static page per known slug at build time.
- * Falls back to on-demand rendering for slugs not seen at build
- * (Next.js handles ISR transparently for both).
+ * `/templates/[template_slug]` — static detail page.
  *
- * Uses `staticParamsCache` (revalidate: 600, tag `templates:static`)
- * so the slug list is cached across builds but cannot collide with
- * the runtime cache. If the fetch fails (no network in CI, backend
- * temporarily down), we return an empty array rather than failing
- * the build; missing slugs are generated on demand via ISR.
+ * Source of truth:
+ *   The catalog (`@workspace/api/templates-catalog-with-readmes`)
+ *   bundles the registry with versioned README snapshots from
+ *   `packages/api/src/templates/readmes/{slug}.md`. No oRPC, no
+ *   GitHub fetch at request time. The README is read directly
+ *   from the snapshot bundled in this package — a transient
+ *   upstream outage cannot erase it.
+ *
+ * `dynamicParams = false` rejects everything else with a real
+ * 404; we still call `notFound()` from the page body as a belt-
+ * and-braces guard.
+ *
+ * Closing block:
+ *   The page closes with the shared `<FinalCta>` shell from
+ *   `@/components/pages/_shared/final-cta`. Every public page
+ *   uses that same shell so the closing rhythm stays uniform;
+ *   page-specific copy flows in as props. Previously this page
+ *   had its own `FinalCtaCopyColumn` + `FinalCtaActionsColumn`
+ *   pair inline, duplicating the shell's two columns.
  */
+
+export const dynamicParams = false
+
 export const generateStaticParams = async (): Promise<Params[]> => {
-  try {
-    const result = await orpc.templates.list(undefined, staticParamsCache)
-    return result.templates.map((t) => ({ template_slug: t.slug }))
-  } catch {
-    return []
-  }
+  return TEMPLATES_WITH_READMES.map((t) => ({ template_slug: t.slug }))
 }
+
+const SITE_URL = "https://deessejs.com"
 
 export const generateMetadata = async ({
   params,
@@ -35,116 +49,68 @@ export const generateMetadata = async ({
   params: Promise<Params>
 }): Promise<Metadata> => {
   const { template_slug } = await params
-  try {
-    const result = await orpc.templates.list(undefined, liveCache)
-    const template = result.templates.find((t) => t.slug === template_slug)
-    if (!template) return { title: "Template not found" }
+  const template = findTemplateWithReadme(template_slug)
+  if (!template) {
     return {
-      title: template.name,
+      title: "Template not found",
+      robots: { index: false, follow: false },
+    }
+  }
+  const canonicalPath = `/templates/${template.slug}`
+  return {
+    title: template.name,
+    description: template.description,
+    alternates: {
+      canonical: `${SITE_URL}${canonicalPath}`,
+    },
+    openGraph: {
+      title: `${template.name} — DeesseJS Templates`,
       description: template.description,
-    }
-  } catch {
-    // Build-time fallback: when the build worker has no network
-    // access to the API, fall back to the existing "Template not
-    // found" title so the build still ships. Production runtime
-    // always re-throws so the segment's error.tsx renders. Issue #81.
-    if (process.env.NEXT_PHASE === "phase-production-build") {
-      return { title: "Template not found" }
-    }
-    throw new Error("Failed to load template metadata")
+      url: `${SITE_URL}${canonicalPath}`,
+      type: "article",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${template.name} — DeesseJS Templates`,
+      description: template.description,
+    },
   }
 }
 
-/**
- * Detail page at /templates/[template_slug].
- *
- * Single source of truth: same `orpc.templates.list()` call as the
- * index page. The catalog is tiny, so doing a server-side `.find()`
- * is cheaper than maintaining a second endpoint.
- *
- * Uses `liveCache` (revalidate: 0, tag `templates:live`) so a
- * transient failure cannot poison the Next.js data cache. On a
- * runtime error the request propagates to the segment's `error.tsx`
- * boundary. A fetch error is NOT a 404 — do NOT `notFound()` in the
- * catch. During `next build` we fall back to `notFound()` so the
- * build still ships when the API is unreachable.
- */
 const TemplateDetailPage = async ({
   params,
 }: {
   params: Promise<Params>
 }) => {
   const { template_slug } = await params
-  let template
-  try {
-    const result = await orpc.templates.list(undefined, liveCache)
-    template = result.templates.find((t) => t.slug === template_slug)
-  } catch {
-    // Build-time fallback: a failed fetch during prerender becomes
-    // a 404 (the slug cannot be confirmed). Production runtime
-    // always re-throws so error.tsx renders. Issue #81.
-    if (process.env.NEXT_PHASE === "phase-production-build") {
-      notFound()
-    }
-    throw new Error("Failed to load template")
-  }
-  if (!template) {
-    notFound()
-  }
+  const template = findTemplateWithReadme(template_slug)
+  if (!template) notFound()
+
   return (
     <>
-      {/* Hero region — kept inside the GlobalLayout frame so the
-          detail page matches the index visually (border-card + xl:
-          diagonal stripes). Breadcrumb + H1 + CTAs layout is
-          retained from the original detail design because Install /
-          View source make sense next to the title. */}
       <div className="border-b border-border py-16 md:py-20 lg:py-24">
         <TemplateDetail template={template} />
       </div>
 
-      {/* Final CTA — 2-col shared-border block. Same shape as the
-          homepage's "Use the templates. Or ship with us." block,
-          the `(content)` layout's final block, and the templates
-          index page, so visitors hit the same conversion lever
-          regardless of which surface they arrived on. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
-        <FinalCtaCopyColumn />
-        <FinalCtaActionsColumn />
-      </div>
+      <FinalCta
+        eyebrow="Ready to ship?"
+        title="Browse the registry. Or ship with us."
+        body="Install the CLI to scaffold a project in under five minutes, or talk to our delivery team if you need a hand. Same templates, same contracts, same guarantees."
+        actions={[
+          {
+            label: "Install the CLI",
+            href: "/knowledge-base/guides/install-deessejs-cli",
+            withArrow: true,
+          },
+          {
+            label: "Browse the registry",
+            href: "/templates",
+            variant: "outline",
+          },
+        ]}
+      />
     </>
   )
 }
 
 export default TemplateDetailPage
-
-function FinalCtaCopyColumn() {
-  return (
-    <div className="flex flex-col gap-4 p-6 lg:p-10">
-      <p className="text-label-13 text-muted-foreground">Ready to ship?</p>
-      <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-        Browse the registry. Or ship with us.
-      </h2>
-      <p className="text-copy-16 text-muted-foreground leading-7 max-w-xl [&:not(:first-child)]:mt-0">
-        Install the CLI to scaffold a project in under five minutes, or talk to
-        our delivery team if you need a hand. Same templates, same contracts,
-        same guarantees.
-      </p>
-    </div>
-  )
-}
-
-function FinalCtaActionsColumn() {
-  return (
-    <div className="flex flex-col items-stretch justify-center gap-4 p-6 lg:p-10">
-      <Button asChild size="lg">
-        <Link href="/knowledge-base/guides/install-deessejs-cli">
-          Install the CLI
-          <ArrowRight className="size-3.5" aria-hidden />
-        </Link>
-      </Button>
-      <Button variant="outline" size="lg" asChild>
-        <Link href="/templates">Browse the registry</Link>
-      </Button>
-    </div>
-  )
-}

@@ -4,7 +4,7 @@ import type { TemplateV1 as Template } from "@workspace/contracts/v1"
 import { TemplateCard } from "./template-card"
 
 export type TemplateGridProps = {
-  templates: Template[]
+  templates: ReadonlyArray<Template>
   className?: string
 }
 

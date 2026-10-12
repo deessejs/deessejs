@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next"
+import { TEMPLATES } from "@workspace/api/templates-catalog"
 import { WEB_URL } from "@/lib/app-config"
 import { allPosts, allReleases, allAuthors, allKbTopics, allKbGuides } from "content-collections"
 
@@ -199,6 +200,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.5,
   }))
 
+  // Template detail pages. Sourced from the local registry so a
+  // new template slug ships in the sitemap on the same build the
+  // page goes live — no separate manual sync, no oRPC call.
+  const templatePages: MetadataRoute.Sitemap = TEMPLATES.map((template) => ({
+    url: `${WEB_URL}/templates/${template.slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }))
+
   return [
     ...staticPages,
     ...blogPosts,
@@ -208,5 +219,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...kbTopicPages,
     ...kbGuidePages,
     ...useCasePages,
+    ...templatePages,
   ]
 }

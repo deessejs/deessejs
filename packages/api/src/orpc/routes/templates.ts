@@ -91,6 +91,14 @@ export const list = base
         "Try again in a few minutes.",
     },
   })
+  // Pin the wire payload at the procedure level. A malformed
+  // response from `enrich()` (e.g. an upstream yielding a non-array
+  // for `templates`) becomes a typed INTERNAL_SERVER_ERROR here
+  // instead of silently leaking through as `{ templates: undefined }`
+  // — which the previous web client defensively coerced to `[]` and
+  // surfaced as "No templates". This is the server-side companion
+  // to the client-side `TemplatesListResponseV1.parse(...)` guard.
+  .output(TemplatesListResponseV1)
   .handler(async ({ context }): Promise<TemplatesListResponseV1> => {
     // E2E guard runs in EVERY environment except production.
     // In production the guard is a no-op (closed-by-default + the
@@ -110,9 +118,12 @@ export const list = base
       // genuine server bugs).
       const message =
         error instanceof Error ? error.message : "Upstream fetch failed"
-      logger.error("templates_fetch_failed", {
+      // logger.error signature is `error(message, err, ctx)`. The
+      // previous form passed an object as the second argument and
+      // produced `[object Object]` in the logs with no request-id
+      // correlation.
+      logger.error("templates_fetch_failed", error, {
         requestId: context.requestId,
-        message,
       })
       throw new ORPCError("TEMPLATES_FETCH_FAILED", {
         status: 502,

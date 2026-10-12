@@ -18,7 +18,8 @@
     "env:check": "node --experimental-strip-types scripts/env-check.ts",
     "dedupe:check": "pnpm dedupe --check",
     "complex:collect": "node --experimental-strip-types scripts/complexity-collect.ts",
-    "complex:report": "node --experimental-strip-types scripts/complexity-report.ts"
+    "complex:report": "node --experimental-strip-types scripts/complexity-report.ts",
+    "refresh-template-readmes": "node --experimental-strip-types scripts/refresh-template-readmes.ts"
   },
   "devDependencies": {
     "@changesets/changelog-git": "catalog:",
