@@ -42,7 +42,7 @@ export function PostCardGrid({
     featured && featured.length > 0 ? "All blog posts" : "Posts"
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-background">
+    <div className="overflow-hidden rounded-none border border-border bg-background">
       {featured && featured.length > 0 ? (
         <FeaturedRow featured={featured} />
       ) : null}
