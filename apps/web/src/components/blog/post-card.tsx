@@ -60,7 +60,7 @@ export function PostCard({ post, featured }: { post: Post; featured?: boolean })
           className={
             featured
               ? "mt-1 text-balance text-2xl tracking-tight"
-              : "mt-1 text-balance text-xl tracking-tight"
+              : "mt-1 text-balance text-2xl tracking-tight"
           }
         >
           {post.title}
