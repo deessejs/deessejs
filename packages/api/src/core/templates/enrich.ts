@@ -70,12 +70,13 @@ export async function enrich(
         fetchReadme(entry.owner, entry.repo, token),
       ])
 
-      // Prefer the live repo name over the registry name when they differ.
-      // In practice the registry name is editorial and matches the repo,
-      // but this keeps the wire shape aligned with GitHub's canonical name.
+      // `name` and `description` are registry-owned: the registry is the
+      // editorial source of truth for the display name and the marketing
+      // description. Overwriting `name` with `repo.name` (the slugified
+      // GitHub repo name) rendered cards as `saas-template` instead of
+      // `SaaS Starter`. GitHub provides only live metadata here.
       return {
         ...entry,
-        name: repo.name,
         description: repo.description ?? entry.description,
         license:
           repo.license?.spdx_id ??
