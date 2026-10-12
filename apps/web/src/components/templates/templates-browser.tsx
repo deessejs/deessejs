@@ -450,20 +450,15 @@ export const TemplatesBrowser = ({
 }: {
   allTemplates: ReadonlyArray<Template>
 }) => {
+  // The Suspense boundary exists because `TemplatesBrowserInner`
+  // calls `useSearchParams()`, which during static generation
+  // opts the whole subtree out of static rendering. We want the
+  // page to ship a fully-rendered grid in its initial HTML, so
+  // the fallback IS the full catalog. With this, the user sees
+  // the full grid on first paint, and once hydration runs the
+  // search-param filter applies on top.
   return (
-    <Suspense
-      fallback={
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="border border-border bg-muted/40 h-64"
-              aria-hidden
-            />
-          ))}
-        </div>
-      }
-    >
+    <Suspense fallback={<TemplateGrid templates={allTemplates} />}>
       <TemplatesBrowserInner allTemplates={allTemplates} />
     </Suspense>
   )
