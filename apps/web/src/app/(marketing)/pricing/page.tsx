@@ -7,7 +7,7 @@ import { Pricing } from "@/components/pages/pricing"
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "How DeesseJS licensing works: per-project one-shot licenses, optional subscription for ongoing updates, MIT for the open community, and custom engagements for enterprise teams.",
+    "How DeesseJS licensing works: monthly or annual subscriptions for every paid plan, MIT for the open community, and custom engagements for enterprise teams. Cancel any time; projects in production at the time of cancellation stay covered.",
 }
 
 export default function PricingPage() {

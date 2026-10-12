@@ -37,7 +37,7 @@ export const ENTERPRISE_FAQ: ReadonlyArray<EnterpriseFaqItem> = [
   {
     question: "How do we migrate off a custom engagement when the contract ends?",
     answer:
-      "You own every line of code from day one. The Pro license continues for the lifetime of your account, so the source stays in your repository regardless of the engagement outcome. There is no lock-in.",
+      "You own every line of code from day one. The Pro subscription keeps the source in your repository throughout the engagement and after, and projects already in production stay covered if you cancel. There is no lock-in.",
   },
   {
     question: "Where is the data hosted, and which providers do you ship against?",
