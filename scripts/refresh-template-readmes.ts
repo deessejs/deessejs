@@ -25,11 +25,17 @@
  *   work but are rate-limited (60 req/h per IP). With a token, the
  *   budget is 5000 req/h.
  *
- * Failure semantics:
- *   On any failure (missing file upstream, 4xx, 5xx, timeout) the
- *   script logs the error and exits non-zero — leaving existing
- *   snapshots untouched. Partial success is not supported; the
- *   next PR should run the refresh again.
+ * Failure semantics — transactional:
+ *   The script collects every README into memory first, then
+ *   verifies all fetches succeeded, then writes all files. A
+ *   single failure aborts the run BEFORE any snapshot is touched;
+ *   the existing snapshots remain exactly as they were. The
+ *   previous implementation wrote each file as it was fetched,
+ *   which left the registry in a partial state on any failure
+ *   after the first success — contradicting the "leave existing
+ *   snapshots untouched" promise. A request timeout (default
+ *   15s per slug) bounds each fetch so a hung socket cannot
+ *   stall the run indefinitely.
  */
 import { writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -37,10 +43,22 @@ import { fileURLToPath } from "node:url"
 
 import { TEMPLATES } from "../packages/api/src/templates.ts"
 
-type FetchResult = { slug: string; ok: true } | { slug: string; ok: false; error: string }
+type FetchResult =
+  | { slug: string; ok: true; body: string }
+  | { slug: string; ok: false; error: string }
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const README_DIR = join(HERE, "..", "packages", "api", "src", "templates", "readmes")
+const README_DIR = join(
+  HERE,
+  "..",
+  "packages",
+  "api",
+  "src",
+  "templates",
+  "readmes",
+)
+
+const REQUEST_TIMEOUT_MS = 15_000
 
 const token = process.env.GITHUB_TOKEN
 const headers: Record<string, string> = {
@@ -55,11 +73,25 @@ const fetchReadme = async (
   repo: string,
 ): Promise<{ status: number; body: string }> => {
   const url = `https://api.github.com/repos/${owner}/${repo}/readme`
-  const response = await fetch(url, { headers })
-  return { status: response.status, body: response.ok ? await response.text() : "" }
+  // `fetch` is now built into Node 22+. The AbortController
+  // bounds the request so a hung socket cannot stall the run.
+  const controller = new AbortController()
+  const timer = setTimeout(
+    () => controller.abort(new Error("request timeout")),
+    REQUEST_TIMEOUT_MS,
+  )
+  try {
+    const response = await fetch(url, { headers, signal: controller.signal })
+    return {
+      status: response.status,
+      body: response.ok ? await response.text() : "",
+    }
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
-const refreshOne = async (
+const fetchOne = async (
   slug: string,
   owner: string,
   repo: string,
@@ -67,9 +99,7 @@ const refreshOne = async (
   try {
     const { status, body } = await fetchReadme(owner, repo)
     if (status === 200 && body.length > 0) {
-      writeFileSync(join(README_DIR, `${slug}.md`), body, "utf8")
-      console.log(`[refresh] ${slug}: ok (${body.length} bytes)`)
-      return { slug, ok: true }
+      return { slug, ok: true, body }
     }
     return { slug, ok: false, error: `upstream returned ${status}` }
   } catch (err) {
@@ -89,18 +119,34 @@ if (targets.length === 0) {
   process.exit(1)
 }
 
-const results: Array<FetchResult> = []
+// Phase 1 — collect every README into memory. No file is
+// written yet; an error here is the "no partial snapshot"
+// guarantee.
+const collected: Array<FetchResult> = []
 for (const t of targets) {
-  results.push(await refreshOne(t.slug, t.owner, t.repo))
+  console.log(`[refresh] fetching ${t.slug}…`)
+  collected.push(await fetchOne(t.slug, t.owner, t.repo))
 }
 
-const failures = results.filter((r) => !r.ok)
+const failures = collected.filter((r): r is Extract<FetchResult, { ok: false }> => !r.ok)
+
+// Phase 2 — abort cleanly if any fetch failed. Existing
+// snapshots stay on disk, untouched.
 if (failures.length > 0) {
-  console.error("[refresh] failed:")
+  console.error("[refresh] failed (no snapshots were modified):")
   for (const f of failures) {
-    console.error(`  - ${f.slug}: ${"error" in f ? f.error : "?"}`)
+    console.error(`  - ${f.slug}: ${f.error}`)
   }
   process.exit(1)
 }
 
-console.log(`[refresh] ${results.length} slug(s) updated`)
+// Phase 3 — all fetches succeeded; commit the writes.
+const successes = collected.filter(
+  (r): r is Extract<FetchResult, { ok: true }> => r.ok,
+)
+for (const r of successes) {
+  writeFileSync(join(README_DIR, `${r.slug}.md`), r.body, "utf8")
+  console.log(`[refresh] ${r.slug}: ok (${r.body.length} bytes)`)
+}
+
+console.log(`[refresh] ${successes.length} slug(s) updated`)
