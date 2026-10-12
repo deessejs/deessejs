@@ -67,14 +67,15 @@ export function PriceBlock({
     <div className="flex flex-col gap-1">
       <p className="text-heading-32 tracking-tight text-foreground">
         {currencySymbol}
-        {monthlyEquivalentDisplay}
+        {price.annual.amount}
         <span className="text-copy-14 ml-2 font-normal text-muted-foreground">
-          / month
+          / year
         </span>
       </p>
       <p className="text-copy-13 text-muted-foreground [&:not(:first-child)]:mt-0">
-        Billed annually at {currencySymbol}
-        {price.annual.amount} (saves {savingsPercent}%). Taxes included.
+        Equivalent to {currencySymbol}
+        {monthlyEquivalentDisplay} / month. Saves {savingsPercent}% vs
+        monthly. Taxes included.
       </p>
     </div>
   )
