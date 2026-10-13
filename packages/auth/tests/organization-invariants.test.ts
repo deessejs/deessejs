@@ -35,34 +35,39 @@ function uniqueSlug(prefix: string): string {
 	return `${prefix}-${suffix}`.slice(0, 41)
 }
 
-// Helper: create a verified user. We use the testUtils
-// plugin's `createUser`, which creates the user row directly
-// without going through the email-verification flow. We then
-// flip `email_verified = true` directly in the database so
-// the user can satisfy the organization plugin's "verified
-// users only" guard.
+// Helper: create a verified user. The testUtils `createUser`
+// factory is in-memory only — it returns a `User` object
+// without writing to the database. Persisting it requires
+// `saveUser`, which goes through the proper internal adapter
+// (creates the row + matching `account` row with the
+// credentials). The factory already defaults
+// `emailVerified: true`, so the user satisfies the
+// organization plugin's "verified users only" guard without
+// any direct UPDATE on the row.
+//
+// To get an authenticated session, we use `login({ userId })`
+// (or `getAuthHeaders({ userId })`), which creates a session
+// directly via `internalAdapter.createSession`. This bypasses
+// the password round-trip — important because `createUser` +
+// `saveUser` does not establish a known password, and a
+// `signInEmail` call with a hard-coded test password would
+// fail with "invalid credentials" (the password was never
+// registered with the credentials plugin).
 async function createVerifiedUser(
 	prefix: string,
 ): Promise<{ userId: string; headers: Headers; email: string } | null> {
 	const ctx = await auth.$context
 	const test = ctx.test as TestHelpers | undefined
-	if (!test?.createUser) {
+	if (!test?.createUser || !test.saveUser || !test.login) {
 		return null
 	}
 	const email = `${prefix}-${randomBytes(6).toString("hex")}@example.test`
-	const user = await test.createUser({ email })
+	const user = test.createUser({ email })
 	if (!user) return null
-	await db.execute(
-		sql`UPDATE "user" SET "email_verified" = true WHERE "id" = ${user.id}`,
-	)
-	const signin = await auth.api.signInEmail({
-		body: { email, password: "TestPassword!1" },
-		asResponse: true,
-	})
-	const cookies = signin.headers.getSetCookie()
-	const headers = new Headers()
-	for (const c of cookies) headers.append("cookie", c)
-	return { userId: user.id, headers, email }
+	const saved = await test.saveUser(user)
+	if (!saved?.id) return null
+	const { headers } = await test.login({ userId: saved.id })
+	return { userId: saved.id, headers, email }
 }
 
 // Helper: create an organization and a default row for the
@@ -195,28 +200,40 @@ describe.skipIf(skip())("RFC-001 §7 — Last-line defense", () => {
 		).rejects.toMatchObject({ code: "23505" }) // unique_violation
 	})
 
-	test("organization.bootstrap_operation_id allows NULLs and allows duplicates (no longer unique)", async () => {
-		// After the migration 0002 amendment, the partial
-		// unique index on bootstrap_operation_id is gone. The
-		// marker is a correlation pointer, not a global key.
-		// Two orgs with the same marker is allowed; two
-		// orgs with NULL is allowed; the only invariant is
-		// that account_organization_provisioning.user_id is
-		// the primary key.
+	test("organization.bootstrap_operation_id is unique when not NULL (partial unique index)", async () => {
+		// The partial unique index
+		// `organization_bootstrap_operation_id_uidx` is
+		// defined as `CREATE UNIQUE INDEX ... ON
+		// "organization" ("bootstrap_operation_id") WHERE
+		// "bootstrap_operation_id" IS NOT NULL`. NULLs are
+		// excluded from uniqueness, but two non-NULL
+		// markers must collide. The marker is a correlation
+		// pointer for the provisioning protocol — the index
+		// is the safety net that prevents a second
+		// organization from silently binding to an
+		// operation id owned by another account's
+		// provisioning row.
 		const dup = randomBytes(8).toString("hex")
 		await db.execute(
 			sql`INSERT INTO "organization" ("id", "name", "slug", "created_at", "metadata", "bootstrap_operation_id") VALUES (${randomBytes(8).toString("hex")}, 'A', ${`a-${dup}`}, now(), null, ${dup})`,
 		)
-		// Duplicate marker is now allowed.
+		// A second organization with the SAME non-NULL
+		// marker is rejected by the partial unique index.
 		await expect(
 			db.execute(
 				sql`INSERT INTO "organization" ("id", "name", "slug", "created_at", "metadata", "bootstrap_operation_id") VALUES (${randomBytes(8).toString("hex")}, 'B', ${`b-${dup}`}, now(), null, ${dup})`,
 			),
-		).resolves.toBeDefined()
-		// NULL is also allowed (and was before).
+		).rejects.toMatchObject({ code: "23505" }) // unique_violation
+		// NULL is excluded from the index, so two NULLs
+		// (and any number of NULLs) coexist.
 		await expect(
 			db.execute(
 				sql`INSERT INTO "organization" ("id", "name", "slug", "created_at", "metadata", "bootstrap_operation_id") VALUES (${randomBytes(8).toString("hex")}, 'C', ${`c-${dup}`}, now(), null, null)`,
+			),
+		).resolves.toBeDefined()
+		await expect(
+			db.execute(
+				sql`INSERT INTO "organization" ("id", "name", "slug", "created_at", "metadata", "bootstrap_operation_id") VALUES (${randomBytes(8).toString("hex")}, 'D', ${`d-${dup}`}, now(), null, null)`,
 			),
 		).resolves.toBeDefined()
 	})

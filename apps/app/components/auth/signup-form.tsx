@@ -1,12 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
+import { safeRedirect } from "@workspace/utils/safe-redirect"
 import { OAuthButtons } from "./oauth-buttons"
 import { Field, PasswordField } from "./field"
 import { PasswordStrength } from "./password-strength"
@@ -14,6 +15,18 @@ import { signupSchema } from "@/components/auth/schemas"
 
 export function SignupForm() {
 	const router = useRouter()
+	const searchParams = useSearchParams()
+	// Preserve the post-signup destination through the email
+	// verification gate. The login form's "Sign up" link passes
+	// `?redirect=<path>` (RFC-001 §10: an unauthenticated
+	// visitor on /accept-invitation/<id> is sent to
+	// /login?redirect=/accept-invitation/<id>; the login
+	// form's "Sign up" link preserves the redirect). After
+	// sign-up, we forward to /verify-email?redirect=<same>,
+	// which the verify-email page reads and uses to land the
+	// user on the original destination once their email is
+	// verified.
+	const redirectTo = safeRedirect(searchParams.get("redirect"))
 
 	const form = useForm({
 		defaultValues: {
@@ -43,7 +56,20 @@ export function SignupForm() {
 					name: value.name,
 				},
 				{
-					onSuccess: () => router.push("/verify-email"),
+					// The email verification link includes
+					// `callbackURL=<value>`; better-auth
+					// redirects there after the user clicks
+					// the magic link. Forwarding the same
+					// destination keeps the post-verification
+					// bounce consistent with the in-page
+					// navigation we do below.
+					...(redirectTo ? { callbackURL: redirectTo } : {}),
+					onSuccess: () => {
+						const target = redirectTo
+							? `/verify-email?redirect=${encodeURIComponent(redirectTo)}`
+							: "/verify-email"
+						router.push(target)
+					},
 				},
 			)
 			if (error) {
@@ -127,11 +153,18 @@ export function SignupForm() {
 				</div>
 			</div>
 
-			<OAuthButtons />
+			<OAuthButtons callbackURL={redirectTo} />
 
 			<p className="text-center text-sm text-muted-foreground">
 				Already have an account?{" "}
-				<Link href="/login" className="text-primary underline-offset-4 hover:underline">
+				<Link
+					href={
+						redirectTo
+							? `/login?redirect=${encodeURIComponent(redirectTo)}`
+							: "/login"
+					}
+					className="text-primary underline-offset-4 hover:underline"
+				>
 					Log in
 				</Link>
 			</p>

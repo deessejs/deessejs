@@ -12,6 +12,7 @@ import {
 	getDefaultOrganization,
 	getProvisioningState,
 	recordProvisioningRequest,
+	withProvisioningAttempt,
 } from "@workspace/auth/organization-policy"
 import { requireAccountSession } from "@/lib/organization-auth"
 
@@ -144,7 +145,12 @@ export async function createFirstOrganization(
 	// `beforeCreateOrganization` hook validates the slug and
 	// claims the durable provisioning record. We retry on slug
 	// collision (deterministic suffix then random suffixes) up
-	// to a small bound.
+	// to a small bound. The whole loop is wrapped in a single
+	// `withProvisioningAttempt` so the (userId, attemptId)
+	// tuple the hook writes is the same one Step 5 reads back
+	// via `consumeProvisioningClaim`. Without the wrapper the
+	// hook's stash has no scope and the consume returns null.
+	const attemptId = randomBytes(16).toString("hex")
 	const MAX_SLUG_ATTEMPTS = 5
 	let organizationId: string | null = null
 	let slug: string | null = null
@@ -155,10 +161,15 @@ export async function createFirstOrganization(
 				? buildSlugCandidate(input.name, session.user.id)
 				: buildRandomSlugCandidate(input.name)
 		try {
-			const result = await auth.api.createOrganization({
-				body: { name: input.name, slug: candidate },
-				headers: await headers(),
-			})
+			const result = await withProvisioningAttempt(
+				session.user.id,
+				attemptId,
+				() =>
+					auth.api.createOrganization({
+						body: { name: input.name, slug: candidate },
+						headers: await headers(),
+					}),
+			)
 			const org = result as unknown as { id?: string; slug?: string }
 			if (!org?.id || !org?.slug) {
 				return { ok: false, error: "Server returned an invalid organization" }

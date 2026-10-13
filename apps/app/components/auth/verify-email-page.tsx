@@ -22,8 +22,15 @@ function VerifyEmailPageContent() {
   async function handleResend() {
     setResending(true)
     const email = searchParams.get("email")
+    const redirect = searchParams.get("redirect")
     if (email) {
-      await authClient.sendVerificationEmail({ email })
+      // The resend uses the same `callbackURL` so a click on
+      // the freshly-sent link lands on the original destination
+      // (e.g. the invited organization).
+      await authClient.sendVerificationEmail({
+        email,
+        ...(redirect ? { callbackURL: redirect } : {}),
+      })
     }
     setResending(false)
     setResent(true)
