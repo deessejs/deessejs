@@ -1,7 +1,7 @@
 import {
   annualBreakdown,
   type BillingCadence,
-  type PricingPrice,
+  type PlanPricing,
 } from "@/lib/pricing"
 
 /**
@@ -24,7 +24,7 @@ export function PriceBlock({
   price,
   cadence,
 }: {
-  price: PricingPrice
+  price: PlanPricing
   cadence: BillingCadence
 }) {
   if (price.kind === "free") {

@@ -33,11 +33,7 @@ export function TierCardPricing({ license }: { license: LicenseType }) {
 
   return (
     <>
-      {license.price.kind === "subscription" ? (
-        <PriceBlock price={license.price} cadence={cadence} />
-      ) : (
-        <PriceBlock price={license.price} cadence={cadence} />
-      )}
+      <PriceBlock price={license.price} cadence={cadence} />
 
       <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
         {license.forWho}

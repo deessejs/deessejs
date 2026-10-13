@@ -76,8 +76,6 @@ export type LicenseTypeId =
   | "agency"
   | "enterprise"
 
-export type PricingPrice = PlanPricing
-
 export type LicenseType = {
   id: LicenseTypeId
   name: string

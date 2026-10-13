@@ -7,13 +7,11 @@ import type { LicenseTypeId } from "@/lib/pricing"
  * - `open-community`  → "MIT"
  * - `professional`    → "Pro"
  * - `agency`          → "Team"
- * - `subscription`    → "Pro"
  * - `enterprise`      → "Enterprise"
  */
 export const LICENSE_KICKER: Record<LicenseTypeId, string> = {
   "open-community": "MIT",
   professional: "Pro",
   agency: "Team",
-  subscription: "Pro",
   enterprise: "Enterprise",
 }
