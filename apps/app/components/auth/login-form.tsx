@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
@@ -12,8 +12,29 @@ import { OAuthButtons } from "./oauth-buttons"
 import { Field, PasswordField } from "./field"
 import { loginSchema } from "@/components/auth/schemas"
 
+/**
+ * Resolve the post-login destination. The proxy redirects
+ * unauthenticated users to `/login?redirect=<original path>`
+ * (apps/app/proxy.ts). We honor that, but only when it points
+ * to a same-origin path: an attacker who crafts a link
+ * `/login?redirect=https://evil.example/foo` must not get a
+ * post-login redirect to the attacker.
+ *
+ * The fallback is the root, which the (protected) root layout
+ * resolves to the account's default organization home or the
+ * onboarding wizard.
+ */
+function safeRedirect(raw: string | null): string {
+	if (!raw) return "/"
+	// Reject anything that isn't a same-origin path.
+	if (!raw.startsWith("/") || raw.startsWith("//")) return "/"
+	return raw
+}
+
 export function LoginForm() {
 	const router = useRouter()
+	const searchParams = useSearchParams()
+	const redirectTo = safeRedirect(searchParams.get("redirect"))
 
 	const form = useForm({
 		defaultValues: {
@@ -25,7 +46,7 @@ export function LoginForm() {
 		},
 		onSubmit: async ({ value }) => {
 			const { error } = await authClient.signIn.email(value, {
-				onSuccess: () => router.push("/home"),
+				onSuccess: () => router.push(redirectTo),
 			})
 			if (error) {
 				toast.error(error.message ?? "Invalid credentials")

@@ -99,7 +99,8 @@ export const config = {
  * Edge runtime).
  */
 interface GetSessionResponse {
-	session?: { user?: { id?: string; emailVerified?: boolean } }
+	user?: { id?: string; emailVerified?: boolean } | null
+	session?: unknown
 }
 
 export async function proxy(request: NextRequest) {
@@ -180,7 +181,7 @@ export async function proxy(request: NextRequest) {
 	// lives in the page-level layout (the proxy does not query
 	// memberships or provisioning rows per RFC-001 §10 "Auth
 	// transport and proxy").
-	if ((isOrgScoped || isAccountScoped) && !session?.session) {
+	if ((isOrgScoped || isAccountScoped) && !session?.user) {
 		const loginUrl = new URL("/login", request.url)
 		loginUrl.searchParams.set("redirect", pathname)
 		return NextResponse.redirect(loginUrl)
@@ -188,8 +189,8 @@ export async function proxy(request: NextRequest) {
 
 	if (
 		(isOrgScoped || isAccountScoped) &&
-		session?.session?.user &&
-		!session.session.user.emailVerified
+		session?.user &&
+		!session.user.emailVerified
 	) {
 		return NextResponse.redirect(new URL("/verify-email", request.url))
 	}
@@ -200,8 +201,17 @@ export async function proxy(request: NextRequest) {
 	// default. The proxy itself doesn't know the default, so the
 	// post-signin destination is `/`; the root page Server
 	// Component picks the right target.
-	if (isAuthPage && session?.session) {
-		return NextResponse.redirect(new URL("/", request.url))
+	//
+	// `/verify-email` is special: an authed user who has not yet
+	// verified their email must be allowed to land here, otherwise
+	// the gate sends them to `/verify-email` from `/` and back in
+	// a loop. We only bounce to `/` when the email IS verified.
+	if (isAuthPage && session?.user) {
+		const isVerifyEmailPage =
+			pathname === "/verify-email" || pathname.startsWith("/verify-email/")
+		if (!isVerifyEmailPage || session.user.emailVerified) {
+			return NextResponse.redirect(new URL("/", request.url))
+		}
 	}
 
 	return NextResponse.next()
