@@ -224,6 +224,12 @@ export async function assertOrganizationIsDeletable(
  * organization: it cannot be removed, left or demoted, even if
  * another owner exists."
  *
+ * The role comparison is multi-role aware: the plugin can store
+ * `"owner,admin"` for an account that holds both roles. A
+ * strict `member.role !== "owner"` check would let a
+ * multi-role membership bypass this guard, because
+ * `"owner,admin" !== "owner"`. We use `hasOwnerRole` instead.
+ *
  * The native `leaveOrganization` path does not call
  * `beforeRemoveMember`; this helper is also called from a separate
  * server hook for the leave path (the implementation branch adds
@@ -233,7 +239,7 @@ export async function assertOrganizationIsDeletable(
 export async function assertDefaultOwnerMembershipIsRetained(
 	member: Member,
 ): Promise<void> {
-	if (member.role !== "owner") return
+	if (!hasOwnerRole(member.role)) return
 	const rows = await db
 		.select({ userId: accountOrganizationDefaults.userId })
 		.from(accountOrganizationDefaults)
@@ -259,12 +265,20 @@ export async function assertDefaultOwnerMembershipIsRetained(
  * Block demotion of the creator's owner role in the account's
  * default organization. Throws `APIError` to abort the plugin's
  * update path.
+ *
+ * The current role check is multi-role aware (see
+ * `assertDefaultOwnerMembershipIsRetained` for the rationale).
+ * The new-role check is also multi-role aware: a caller
+ * demoting to "owner,admin" would still hold the owner
+ * capability, so we treat that as no-op and let the call
+ * through; only a demotion that drops `owner` from the new
+ * role set is forbidden.
  */
 export async function assertDefaultOwnerRoleIsRetained(
 	member: Member,
 	newRole: string,
 ): Promise<void> {
-	if (member.role !== "owner" || newRole === "owner") return
+	if (!hasOwnerRole(member.role) || hasOwnerRole(newRole)) return
 	const rows = await db
 		.select({ userId: accountOrganizationDefaults.userId })
 		.from(accountOrganizationDefaults)
