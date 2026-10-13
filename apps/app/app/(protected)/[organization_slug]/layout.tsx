@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation"
 import { SidebarProvider } from "@workspace/ui/components/sidebar"
+import { listUserMemberships } from "@workspace/auth/organization-policy"
 import { AppSidebar } from "@/components/sidebars/app-sidebar"
 import {
 	requireCompletedOnboarding,
@@ -24,6 +25,12 @@ interface OrganizationLayoutProps {
  * check exists to fail fast and to render the sidebar in the
  * correct organization context.
  *
+ * The layout server-renders the user's memberships and passes
+ * them to the sidebar. The sidebar's switcher hydrates from
+ * the prop instead of issuing a client roundtrip on every
+ * mount; selection mutates the active org through the plugin
+ * client and the layout re-fetches on the next navigation.
+ *
  * The layout wraps the chrome in `SidebarProvider` (from the
  * shadcn `Sidebar` component family) so the `Sidebar`,
  * `SidebarHeader`, `SidebarContent`, and `SidebarFooter` inside
@@ -41,15 +48,20 @@ export default async function OrganizationLayout({
 	// First guard: account must be signed in, verified, and have
 	// completed onboarding. Redirects to onboarding or verify-email
 	// when those preconditions fail.
-	await requireCompletedOnboarding()
+	const session = await requireCompletedOnboarding()
 	// Second guard: account must be a member of the requested
 	// organization. Redirects to the account default home on miss.
 	await requireOrganizationAccess(organization_slug, "read")
+	// Server-render the memberships for the sidebar switcher.
+	const memberships = await listUserMemberships(session.user.id)
 
 	return (
 		<SidebarProvider>
 			<div className="flex min-h-dvh">
-				<AppSidebar organizationSlug={organization_slug} />
+				<AppSidebar
+					organizationSlug={organization_slug}
+					memberships={memberships}
+				/>
 				<main className="flex-1 p-6">{children}</main>
 			</div>
 		</SidebarProvider>

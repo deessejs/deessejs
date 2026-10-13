@@ -351,3 +351,109 @@ export async function createFirstOrganizationAndRedirect(
 	}
 	redirect(`/${result.slug}`)
 }
+
+interface CreateAdditionalOrganizationInput {
+	name: string
+}
+
+type CreateAdditionalOrganizationResult =
+	| { ok: true; slug: string; organizationId: string }
+	| { ok: false; error: string }
+
+/**
+ * Server Action: create an additional organization for an
+ * already-defaulted account. Used by the sidebar's "Create
+ * organization" dialog after onboarding is complete.
+ *
+ * The action deliberately goes through a Server Action rather
+ * than `authClient.organization.create` so the additional-org
+ * path is centralized: the slug generation lives here, the
+ * `prepareOrganizationCreation` hook returns `{}` for
+ * additional orgs (the marker is a one-time correlation
+ * pointer for the first org), and the response is a clean
+ * `{ ok, slug, organizationId }` shape the dialog can render
+ * without parsing the plugin's `{ data, error }` envelope.
+ *
+ * Preconditions: account has a default organization, the user
+ * is email-verified. We re-check both server-side and return a
+ * non-2xx-equivalent `{ ok: false }` rather than throwing so
+ * the dialog's existing error path renders the message
+ * inline.
+ */
+export async function createAdditionalOrganization(
+	input: CreateAdditionalOrganizationInput,
+): Promise<CreateAdditionalOrganizationResult> {
+	const session = await requireAccountSession()
+	if (!session.user.emailVerified) {
+		return { ok: false, error: "Verify your email first." }
+	}
+	const trimmed = input.name.trim()
+	if (trimmed.length < 1 || trimmed.length > 80) {
+		return {
+			ok: false,
+			error: "Name must be between 1 and 80 characters",
+		}
+	}
+	const existing = await getDefaultOrganization(session.user.id)
+	if (!existing) {
+		return {
+			ok: false,
+			error: "Complete onboarding before creating additional organizations.",
+		}
+	}
+
+	const MAX_SLUG_ATTEMPTS = 5
+	let organizationId: string | null = null
+	let slug: string | null = null
+	let lastError: unknown = null
+	for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
+		const candidate = buildRandomSlugCandidate(trimmed)
+		try {
+			const result = await auth.api.createOrganization({
+				body: { name: trimmed, slug: candidate },
+				headers: await headers(),
+			})
+			const org = result as unknown as { id?: string; slug?: string }
+			if (!org?.id || !org?.slug) {
+				return { ok: false, error: "Server returned an invalid organization" }
+			}
+			organizationId = org.id
+			slug = org.slug
+			lastError = null
+			break
+		} catch (err) {
+			lastError = err
+			const message = err instanceof Error ? err.message.toLowerCase() : ""
+			if (message.includes("slug")) {
+				continue
+			}
+			return {
+				ok: false,
+				error: err instanceof Error ? err.message : "Unknown error",
+			}
+		}
+	}
+	if (lastError || organizationId === null || slug === null) {
+		return {
+			ok: false,
+			error:
+				lastError instanceof Error
+					? `Could not allocate a slug after ${MAX_SLUG_ATTEMPTS} attempts: ${lastError.message}`
+					: `Could not allocate a slug after ${MAX_SLUG_ATTEMPTS} attempts`,
+		}
+	}
+
+	// Set the new organization active. Best-effort. The proxy
+	// will resolve the active org from the session on the next
+	// request if this fails.
+	try {
+		await auth.api.setActiveOrganization({
+			body: { organizationId },
+			headers: await headers(),
+		})
+	} catch {
+		// Swallow. The user can re-select from the sidebar.
+	}
+
+	return { ok: true, slug, organizationId }
+}

@@ -31,6 +31,7 @@ import { useState } from "react"
 
 interface AppSidebarProps {
 	organizationSlug: string
+	memberships: Array<{ id: string; slug: string; name: string }>
 }
 
 /**
@@ -42,16 +43,14 @@ interface AppSidebarProps {
  * page header), so the top of the page is reserved for content.
  *
  * The `OrganizationSwitcher` is a `DropdownMenu` listing the
- * current memberships; the "Create organization" action opens a
- * `Dialog` (Q15). Mobile surfaces inherit the shadcn `Sidebar`
- * built-in mobile drawer.
- *
- * STUB: for the scaffolding step the memberships list reads from
- * `authClient.organization.list()`; the implementation branch
- * passes a server-rendered initial value through props so the
- * sidebar hydrates without a client roundtrip.
+ * server-rendered memberships; the "Create organization" action
+ * opens a `Dialog` (Q15). Mobile surfaces inherit the shadcn
+ * `Sidebar` built-in mobile drawer.
  */
-export function AppSidebar({ organizationSlug }: AppSidebarProps) {
+export function AppSidebar({
+	organizationSlug,
+	memberships,
+}: AppSidebarProps) {
 	const router = useRouter()
 	const pathname = usePathname()
 	const [createOpen, setCreateOpen] = useState(false)
@@ -61,6 +60,7 @@ export function AppSidebar({ organizationSlug }: AppSidebarProps) {
 			<SidebarHeader>
 				<OrganizationSwitcher
 					activeSlug={organizationSlug}
+					memberships={memberships}
 					onCreateClick={() => setCreateOpen(true)}
 					onSelect={(slug) => router.push(`/${slug}/home`)}
 				/>
@@ -161,24 +161,18 @@ export function AppSidebar({ organizationSlug }: AppSidebarProps) {
  * the current memberships and offers a "Create organization" entry
  * (Q15). On selection, calls `onSelect(slug)`. The selected
  * organization is highlighted.
- *
- * STUB: memberships list reads from a `useState` initial empty
- * array; the implementation branch wires this to a server-rendered
- * prop and/or a `useSWR` refresh.
  */
 function OrganizationSwitcher({
 	activeSlug,
+	memberships,
 	onSelect,
 	onCreateClick,
 }: {
 	activeSlug: string
+	memberships: Array<{ id: string; slug: string; name: string }>
 	onSelect: (slug: string) => void
 	onCreateClick: () => void
 }) {
-	// STUB: the implementation branch passes an initial list as a
-	// prop from the layout. The client refresh on selection keeps
-	// the list current without a full page navigation.
-	const memberships: Array<{ id: string; slug: string; name: string }> = []
 	const active = memberships.find((m) => m.slug === activeSlug) ?? {
 		slug: activeSlug,
 		name: activeSlug,

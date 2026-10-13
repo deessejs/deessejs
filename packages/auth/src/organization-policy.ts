@@ -614,6 +614,34 @@ export async function getOrganizationBySlug(
 }
 
 /**
+ * List every organization the user is a member of. The list is
+ * the source of truth for the sidebar's organization switcher:
+ * the layout server-renders it once, the client hydrates from
+ * the prop, and selection updates the session's active org on
+ * the client.
+ *
+ * The query joins `member` to `organization` to get the
+ * display name; the (userId, organizationId) unique index on
+ * `member` makes the join O(memberships), not O(memberships *
+ * orgs).
+ */
+export async function listUserMemberships(userId: string): Promise<
+	Array<{ id: string; slug: string; name: string; role: string }>
+> {
+	const rows = await db
+		.select({
+			id: organization.id,
+			slug: organization.slug,
+			name: organization.name,
+			role: member.role,
+		})
+		.from(member)
+		.innerJoin(organization, eq(organization.id, member.organizationId))
+		.where(eq(member.userId, userId))
+	return rows
+}
+
+/**
  * Parse the `member.role` string the plugin stores. The plugin
  * accepts a single role OR a comma-separated list. We split on
  * commas, trim, and lowercase; an empty or missing token is

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import {
 	Dialog,
 	DialogContent,
@@ -11,29 +12,7 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
-import { authClient } from "@/lib/auth-client"
-
-/**
- * Client-side slug candidate for `organization.create`. Mirrors
- * the server-side `slugify` in `apps/app/lib/organization-onboarding.ts`
- * plus a 6-character random hex suffix so two parallel creates
- * from the same user on the same name don't collide before the
- * server's hook runs. The server still validates the format and
- * the database unique index arbitrates final uniqueness.
- */
-function clientSlugCandidate(name: string): string {
-	const base = name
-		.toLowerCase()
-		.normalize("NFKD")
-		.replace(/[̀-ͯ]/g, "")
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-+|-+$/g, "")
-	const safe = base || "org"
-	const suffix = Math.floor(Math.random() * 0xffffff)
-		.toString(16)
-		.padStart(6, "0")
-	return `${safe.slice(0, 41)}-${suffix}`
-}
+import { createAdditionalOrganization } from "@/lib/organization-onboarding"
 
 interface CreateOrganizationDialogProps {
 	open: boolean
@@ -44,60 +23,44 @@ interface CreateOrganizationDialogProps {
 /**
  * Create-organization dialog opened from the sidebar switcher (Q15).
  * Collects the organization name; the slug is generated server-side
- * by the plugin (RFC-001 §6) and returned in the response, so the
- * client does not preview a candidate.
+ * by the Server Action's `buildRandomSlugCandidate` and returned in
+ * the response, so the client does not preview a candidate.
  *
- * The dialog disables submit while the request is in flight and
- * surfaces server-side errors inline. On success, the parent
- * navigates to `/<slug>/home`.
+ * The dialog calls the `createAdditionalOrganization` Server Action
+ * (not `authClient.organization.create`) so the additional-org
+ * path is centralized: the `prepareOrganizationCreation` hook
+ * returns `{}` for additional orgs (the marker is a one-time
+ * correlation pointer for the first org), and the response is a
+ * clean `{ ok, slug, organizationId }` shape. The dialog renders
+ * server-side errors inline. On success, the parent navigates to
+ * `/<slug>/home`.
  */
 export function CreateOrganizationDialog({
 	open,
 	onOpenChange,
 	onCreated,
 }: CreateOrganizationDialogProps) {
+	const router = useRouter()
 	const [name, setName] = useState("")
-	const [submitting, setSubmitting] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const [pending, startTransition] = useTransition()
 
-	async function handleSubmit(event: React.FormEvent) {
+	function handleSubmit(event: React.FormEvent) {
 		event.preventDefault()
-		if (!name.trim()) return
-		setSubmitting(true)
+		const trimmed = name.trim()
+		if (!trimmed) return
 		setError(null)
-		try {
-			// The plugin requires a `slug` field; we provide a
-			// server-validated candidate derived from the name plus a
-			// 6-char random suffix. The server-side hook re-validates
-			// the format and the database unique index arbitrates
-			// collisions; a collision surfaces as a 4xx that we
-			// render inline so the user can retry.
-			const candidate = clientSlugCandidate(name.trim())
-			const result = await authClient.organization.create({
-				name: name.trim(),
-				slug: candidate,
-			})
-			if (!result || "error" in result) {
-				const message =
-					(result as { error?: { message?: string } })?.error?.message ??
-					"Failed to create organization"
-				setError(message)
+		startTransition(async () => {
+			const result = await createAdditionalOrganization({ name: trimmed })
+			if (!result.ok) {
+				setError(result.error)
 				return
 			}
-			const slug = (result as { slug?: string }).slug
-			if (!slug) {
-				setError("Server did not return a slug")
-				return
-			}
-			await authClient.organization.setActive({
-				organizationId: (result as { id: string }).id,
-			})
-			onCreated(slug)
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Unknown error")
-		} finally {
-			setSubmitting(false)
-		}
+			onCreated(result.slug)
+			// Force a refresh so the sidebar re-hydrates with the
+			// new membership in its server-rendered list.
+			router.refresh()
+		})
 	}
 
 	return (
@@ -123,7 +86,7 @@ export function CreateOrganizationDialog({
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							placeholder="Acme Inc"
-							disabled={submitting}
+							disabled={pending}
 						/>
 					</label>
 					{error && (
@@ -136,16 +99,16 @@ export function CreateOrganizationDialog({
 					<Button
 						variant="outline"
 						onClick={() => onOpenChange(false)}
-						disabled={submitting}
+						disabled={pending}
 					>
 						Cancel
 					</Button>
 					<Button
 						type="submit"
 						form="create-organization"
-						disabled={submitting || !name.trim()}
+						disabled={pending || !name.trim()}
 					>
-						{submitting ? "Creating…" : "Create"}
+						{pending ? "Creating…" : "Create"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
