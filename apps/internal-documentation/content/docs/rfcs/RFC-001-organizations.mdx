@@ -124,9 +124,21 @@ The plugin does not require first-organization onboarding; this is a DeesseJS ap
 
 ### First-organization provisioning
 
-/onboarding/first-organization requires a signed-in, verified account. Collect only the organization name; automatically fill the slug from that name without requiring the user to choose it. Generate and validate the final slug server-side and create through the native Organization pipeline. Atomically establish the organization, creator owner membership and account default relation before completing onboarding. Serialize provisioning per account and return the existing result on retries. Never accept a browser-provided organization ID as proof of completed onboarding.
+/onboarding/first-organization requires a signed-in, verified account. Collect only the organization name; automatically fill the slug from that name without requiring the user to choose it. Generate and validate the final slug server-side and create through the native Organization pipeline. Establish and verify the organization, creator owner membership and account default relation through the durable provisioning protocol below before marking onboarding complete. Serialize provisioning per account and return the existing result on retries. Never accept a browser-provided organization ID as proof of completed onboarding.
 
-The reviewed plugin pipeline must not be assumed to share a transaction with application after hooks. Implementation must either integrate default assignment into a proven transactional native write path or use a durable provisioning record with a stable operation ID and explicit recovery: reserve the account's operation, mark the newly created organization protected from deletion immediately, establish membership/default, and recover partial progress on retry. During provisioning, deletion and additional organization creation are blocked for that account. A bare create call followed by an unguarded profile update is insufficient.
+**Selected implementation: durable provisioning record (option B).** Do not attempt to wrap auth.api.createOrganization in a Drizzle transaction and assume the plugin uses that transaction's connection. The reviewed creation route writes the organization and then the membership; a before hook does not enlist subsequent native writes in an application transaction.
+
+Create account_organization_provisioning with userId primary key, a unique server-generated operationId, nullable organizationId, status (pending, completed), leaseUntil, monotonically increasing fencingToken and timestamps. Persist the requested name and final slug for retry consistency. One account has one onboarding operation. Add a nullable, immutable, unique, server-only bootstrapOperationId plugin organization additional field, with input: false, to correlate native creation with this operation. It is internal provenance, never caller-controlled metadata.
+
+Provisioning runs in a server-only service in packages/auth/src/organization-onboarding.ts called by the onboarding Server Action. Claim or resume the row atomically, using a short PostgreSQL transaction and row lock/conditional update. Lease proposal: 60 seconds; renew only while the current token owns the claim. Do not hold a database transaction or connection lock across a native auth call or email delivery. No session flag is authoritative.
+
+On initial creation, propagate the trusted operation marker through a request-scoped server context into beforeCreateOrganization; the hook returns the server-owned marker as plugin additional data. The same policy applies to native HTTP create calls by incomplete accounts. A plain browser-supplied marker must never be trusted. All creation paths participate in the claim policy; do not provide an unrestricted alternate create path.
+
+Before calling native creation on a retry, look up the organization by the immutable operation marker. Database uniqueness on that marker prevents a second organization if an earlier worker resumes late. If the organization exists, recover it rather than creating another. Verify the stored operation's user and organization provenance before repairing a missing creator membership using the trusted server-only native add-member helper. Unique (organizationId, userId) handles duplicate recovery. Never assign an unrelated existing organization as the default.
+
+After the native organization and owner membership are verified, finalize the default relation plus completed state in one application transaction, conditional on the current fencing token. Repeated completion returns the same result. Native creation, application finalization and session selection are deliberately separate commits; an interrupted selection is repaired on the next request. Test interruption at every boundary, including organization-created/member-missing and member-created/default-missing.
+
+Deletion rejects any organization bearing an incomplete bootstrap marker; completed defaults are protected by their restrictive foreign key. Additional creation is blocked until the account's durable default exists. Competing onboarding requests receive a retryable in-progress result or recover the completed result. An expired lease allows recovery, not an unconditional new creation. This is one small application table, not a queue or background provisioning service.
 
 Native create requests from accounts lacking a default must participate in the same provisioning policy; they cannot bypass onboarding by calling HTTP directly. After default assignment, ordinary native creation produces additional organizations and never replaces the default. Restrict joins/invitations only as needed for workspace gating: accepting an invitation does not fulfill the requirement to create one's own onboarding organization.
 
@@ -139,7 +151,7 @@ An organization has three distinct values:
 - name: editable display label.
 - slug: permanent public namespace.
 
-Slug generation is automatic for first and additional organization creation: normalize the name into lowercase ASCII letters/digits and hyphen-separated segments; use a neutral fallback when normalization produces no usable base. Fit within 2–48 characters and append a short generated suffix for collisions or reserved names. The server decides the final available value; users do not need to resolve namespace errors manually. Generate the candidate before invoking native creation, so plugin uniqueness checks see the final slug. Database uniqueness arbitrates concurrent claims; retry collisions with a new candidate. Keep a successful onboarding operation idempotent. Native requests still validate the submitted final slug. Renaming changes the display name only, not the established slug or URLs.
+**Slug generation is automatic** for first and additional organization creation. On collisions/reserved bases use a hyphen plus six lowercase hexadecimal characters from three cryptographically random bytes, truncating the base to 41 characters; retry at most five database collisions before returning a retryable error. The normal available base is unsuffixed. Generation steps: normalize the name into lowercase ASCII letters/digits and hyphen-separated segments; use a neutral fallback when normalization produces no usable base. Fit within 2–48 characters and append a six-character cryptographically random hexadecimal suffix for collisions or reserved names. The server decides the final available value; users do not need to resolve namespace errors manually. Generate the candidate before invoking native creation, so plugin uniqueness checks see the final slug. Database uniqueness arbitrates concurrent claims; retry collisions with a new candidate. Keep a successful onboarding operation idempotent. Native requests still validate the submitted final slug. Renaming changes the display name only, not the established slug or URLs.
 
 Reserve deessejs and nesalia. The first reservation is required by the templates RFC; the second is a proposed brand reservation. Also reserve top-level application segments: at least account, admin, onboarding, accept-invitation, api, login, signup, forgot-password, reset-password, verify-email and device. Maintain the set alongside actual static routes and reject framework/internal reserved prefixes such as _next. Apply the same policy to creation and availability feedback.
 
@@ -231,7 +243,7 @@ Proposed behavior:
 3. The landing page preserves its relative return path through login or signup.
 4. A verified recipient reviews the organization and intended role.
 5. Acceptance happens only after an explicit click.
-6. After successful acceptance, select the organization explicitly and navigate to /[organization_slug]/home.
+6. After successful acceptance, if the account lacks its default, preserve the invited organization return target and redirect to /onboarding/first-organization. Otherwise select the invited organization explicitly and navigate to /[organization_slug]/home. Onboarding completion validates that preserved target and membership before returning there.
 
 Configure requireEmailVerificationOnInvitation: true and a 48-hour expiration. Leave the default reinvitation behavior unchanged initially and provide the documented resend operation. Do not promise that resending always rotates the invitation ID.
 
@@ -239,7 +251,7 @@ Do not accept an invitation on page GET or link preview. Wrong account, expired,
 
 Add an OrganizationInvitation React email template to packages/email and export it through the existing templates object. It should identify the organization and inviter and contain one acceptance link.
 
-Create the URL from a validated application origin, never arbitrary user metadata or an unchecked forwarded host. Production invitations use the production app origin. Preview/test environments use deliberately configured matching origins and test delivery.
+Use the existing serverEnv.APP_URL from @workspace/env/server as the sole invitation origin, not BETTER_AUTH_URL, the browser mirror or request headers. Build `new URL("/accept-invitation/" + encodeURIComponent(data.id), serverEnv.APP_URL)`. Existing URL validation is insufficient for production origin safety: additionally require an origin-only URL without credentials, query or fragment, HTTPS outside localhost development, and deployment configuration matching the database/environment. Production sets APP_URL=https://app.deessejs.com; previews explicitly set their matching origin and use test delivery, otherwise invitation sending fails closed. Do not infer it from an unchecked forwarded host.
 
 Await sendAuthEmail, inspect result.ok, and report delivery failure. Do not reuse the current reset-password fire-and-forget pattern blindly. An email failure may follow a persisted invitation; never claim the invitation was rolled back. Offer resend and avoid logging invitation IDs, links or tokens.
 
@@ -251,13 +263,14 @@ An idempotency key must distinguish intentional resend attempts if used. A perma
 
 Add imports and the following plugin entry to packages/auth/src/auth.ts. Merge into the existing plugin list; retain device authorization, bearer and any Admin plugin added by its separate implementation. Keep nextCookies() last.
 
-The email and organization-policy helpers below are new implementation requirements, not existing exports. The configuration fragment alone does not implement atomic default assignment or the leave endpoint protection described below.
+The email and organization-policy helpers below are new implementation requirements, not existing exports. The configuration fragment alone does not implement durable provisioning/default assignment or the leave endpoint protection described below.
 
 ```ts
 import { APIError } from "better-auth/api";
 import { organization } from "better-auth/plugins";
 import { sendOrganizationInvitation } from "./organization-invitation.js";
 import {
+  prepareOrganizationCreation,
   assertOrganizationIsDeletable,
   assertDefaultOwnerMembershipIsRetained,
   assertDefaultOwnerRoleIsRetained,
@@ -292,13 +305,16 @@ organization({
   invitationExpiresIn: 60 * 60 * 48,
   disableOrganizationDeletion: false,
   organizationHooks: {
-    beforeCreateOrganization: async ({ organization: input }) => {
+    beforeCreateOrganization: async ({ organization: input, user }) => {
       validateOrganizationSlug(input.slug);
+      // New helper implements the mandatory claim/provenance protocol above.
+      const bootstrapData = await prepareOrganizationCreation(user.id);
       if (input.metadata != null) {
         throw new APIError("BAD_REQUEST", {
           message: "Organization metadata is not editable",
         });
       }
+      return { data: { ...input, ...bootstrapData } };
     },
     beforeDeleteOrganization: async ({ organization: target }) => {
       // New application helper; backed by the durable default relation.
@@ -362,6 +378,18 @@ The proxy currently models the session response as session.user; Better Auth ret
 
 Proxy gating provides navigation behavior. Organization authorization belongs in each protected server data operation and native plugin endpoint.
 
+### Authoritative guard placement
+
+Create apps/app/lib/organization-auth.ts with server-only `requireAccountSession()`, `requireCompletedOnboarding()` and `requireOrganizationAccess(slug, action)` helpers. The scoped [organization_slug]/layout.tsx invokes them before mounting the sidebar. Every page loading protected data, Server Action, Route Handler and business data-access operation invokes the appropriate helper independently. Layout checks alone are insufficient because layouts can persist across navigation. Native plugin endpoints retain their own checks plus application invariant hooks. This follows Next.js authentication guidance.
+
+The proxy performs early login/verification redirects using the existing auth transport; it does not query memberships or provisioning rows and does not determine tenant authorization. In its JavaScript classifier, handle reserved account/onboarding/admin/auth/API segments before possible organization segments. Matcher order is not routing priority. Account settings require account/session checks, onboarding checks its own completion state, and global admin keeps its independent guard. Neither (protected) as a route-group name nor the current visual layout is an authorization mechanism.
+
+### Application schema ownership
+
+Add account_organization_defaults and account_organization_provisioning in new packages/database/src/schema/organization-state.ts; export it from packages/database/src/schema/index.ts and preserve the root barrel exports. Do not hand-add these application tables to generated schema/auth.ts. Configure the internal bootstrap marker as a plugin additional field, then regenerate the plugin schema. Add the application indexes, restrictive foreign keys and required membership/default database enforcement through reviewed Drizzle/SQL migrations.
+
+auth:generate only generates the plugin schema; db:generate diffs all exported schemas, including the manually authored application schema. These new application tables require migration regardless of whether an Admin plugin migration was applied previously. Inspect actual schema/migration history instead of assuming every generation must produce an Admin change.
+
 ### Schema deployment
 
 Run the existing scripts from the repository root:
@@ -383,11 +411,11 @@ Application hooks are policy extension points, not proof of a transaction spanni
 
 The reviewed member routes count owners before separate writes. This suggests a concurrency risk: two owners could simultaneously leave or demote themselves after both observe another owner. Validate against the real PostgreSQL adapter; do not claim strict last-owner protection based on sequential tests.
 
-Before exposing ownership-changing operations, require a successful concurrency test or enforce the invariant transactionally in the database/native write path. A check in a before hook alone does not close the race. If the installed path cannot satisfy the invariant, disable the affected operations server-side until fixed; hiding buttons is insufficient.
+Before exposing ownership-changing operations, enforce the invariant transactionally in the database/native write path and prove it with real PostgreSQL concurrency tests in the implementation PR. Passing one race test without a reliable enforcement mechanism is not sufficient. A check in a before hook alone does not close the race. If the installed path cannot satisfy the invariant, disable the affected operations server-side until fixed; hiding buttons is insufficient.
 
 Similarly, test duplicate acceptance, simultaneous slug claims and configured capacity boundaries. Do not treat organization counts as payment-grade seat enforcement.
 
-Avoid after hooks for indispensable resource creation unless retry and compensation are designed. This increment creates the default organization relation as indispensable application state. Provision it atomically or through the explicit recovery protocol below; a fire-and-forget after hook is insufficient. No separate organization service or queue is required.
+Avoid after hooks for indispensable resource creation unless retry and compensation are designed. This increment creates the default organization relation as indispensable application state. Provision it through the selected durable recovery protocol in section 5; a fire-and-forget after hook is insufficient. No separate organization service or queue is required.
 
 ## 12. Alternatives considered
 
@@ -455,17 +483,57 @@ Avoid after hooks for indispensable resource creation unless retry and compensat
 
 Validate native HTTP calls in addition to UI behavior. Compile the proposed hooks against the resolved package; run relevant auth/database tests and browser flows. This document was reviewed as a design; those implementation checks have not yet run.
 
-## 15. Decisions still open
+## 15. Deferred decisions
 
-The V1 recommendation is deliberately concrete, but these product choices remain open:
+None of the following blocks this V1: future plan/seat/organization limits (one consolidated topic), community template permissions/publication, and mutable slug/namespace retirement. Namespace retirement means preventing reassignment of a deleted organization's old public prefix while published references still depend on it; no tombstone subsystem is required before publication exists. nesalia remains reserved by the selected policy. Account closure and owner succession must be designed before enabling account deletion that affects protected default ownership.
 
-1. Future plan-based limits and entitlements; V1 permits creation for all verified users without product quotas.
-2. Product limits on created organizations and members; technical defaults do not define paid seats.
-3. Whether nesalia needs an additional brand reservation.
-4. Which future organization roles may create/edit templates, and how publication approval is handled.
-5. Slug changes, namespace retirement for future publications and owner succession after account deletion. Additional organization deletion is already in scope; onboarding organization deletion remains forbidden.
+## 16. Developer questions: final answers (Q1–Q23)
 
-Do not silently remove membership/owner invariants when implementing future account deletion. An owner account must have an explicit succession or organization closure policy.
+Reviewed 13 October 2026 against this RFC version, repository main, Better Auth tag v1.6.23, the official Next.js/shadcn/PostgreSQL documentation and open Admin PR #214. Some quoted text in the questions comes from another/older document and is absent here.
+
+| Question | Decision / correction |
+|---|---|
+| Q1 — personalAccountEnabled | Do not set it. It is absent from the reviewed OrganizationOptions interface in v1.6.23. Use real plugin organizations plus the application default relation. No personal-workspace mechanism is needed. |
+| Q2 — pre-onboarding home | No personal slug or personal home. Workspace entry goes to /onboarding/first-organization; account settings, authentication and invitation handoff remain reachable. |
+| Q3 — slug collision | Option B: automatic suffix with no required slug-editing step. Automatic generation does not imply rejecting the user's name. Show the resulting URL normally, not a collision error the user must solve. |
+| Q4 — provisioning | Option B, the durable record and recovery protocol in section 5. A before hook plus native create does not prove one shared transaction. |
+| Q5 — blocking | Durable per-account provisioning row with atomic claim, lease and fencing token; unique operation marker and default relation. Neither a session flag nor a row lock held across native calls. |
+| Q6 — auth gate | Both early proxy navigation checks and authoritative server checks, with distinct responsibilities. The proxy is not the security boundary. |
+| Q7 — route priority | Option A for membership enforcement: scoped layout plus each page/data operation/action. Proxy classifier branches reserved segments first for redirects only. Matchers do not establish branch priority. |
+| Q8 — update slug validation | Intentionally reject any explicit slug update. Do not validate undefined as a slug or search other fields for hidden slugs. Validate each editable field according to its own contract. |
+| Q9 — metadata | The reviewed create route explicitly accepts metadata; it is also supported in organization updates. The check protects a real input, not a hypothetical future option. Reject application metadata edits; internal additional fields have input: false. |
+| Q10 — first org type | A genuine multi-member-capable plugin organization, initially containing one owner membership. Invitations work on it immediately; not a placeholder or separate personal account. |
+| Q11 — slug length | Keep 2–48 for final server-generated slugs. This is an application policy, not a plugin default. Uniqueness and automatic suffixing resolve short-name collisions. |
+| Q12 — suffix | Six lowercase hexadecimal characters from three cryptographically random bytes, e.g. acme-a19f02; truncate the base to at most 41 characters before appending the hyphen/suffix. Retry DB collisions with fresh random suffixes up to five times; return a retryable failure if exhausted. Normal available bases have no suffix. |
+| Q13 — ownership tests | The implementation author owns real PostgreSQL concurrency tests and invariant enforcement in the same PR. Merge/release gate for the operations shipped; no ownership-mutating UI with unprotected native HTTP endpoints. A layout/unit test does not satisfy it. |
+| Q14 — header placement | SidebarHeader inside the new sidebar, not the existing top-of-page header. |
+| Q15 — switcher shape | A DropdownMenu in SidebarHeader listing organizations plus Create organization; that action opens a Dialog. No organizations page. On mobile use the sidebar's normal mobile surface with accessible dropdown/dialog behavior. |
+| Q16 — invitation origin | Existing validated serverEnv.APP_URL with additional origin/HTTPS/environment checks, as specified in section 9. No arbitrary forwarded-host resolution. |
+| Q17 — schema ownership | New schema/organization-state.ts, exported by schema/index.ts; manual application schema plus Drizzle migrations. Generated plugin auth schema stays separate. |
+| Q18 — Admin RFC | It already exists: rfc-admin-dashboard.md, linked below. PR #214 targets staging and was open/unmerged at review; main still lacked admin(). No assumed merge dependency. Preserve whatever plugins exist on the actual implementation base and resolve overlap with #214. |
+| Q19 — Templates RFC | It already exists: rfc-templates-database.md plus rfc-registry-v2.md. The latest minimal catalog no longer requires implementing future namespace architecture. Reserve deessejs now as an organization/platform policy; no future ratification blocks V1. |
+| Q20 — GitHub paragraph | No secondary-rate-limit, graphql or code_search passage exists in this current Organization RFC. If the developer's local copy contains one, remove that unrelated material. Section 11 is exclusively organization lifecycle reliability. |
+| Q21 — pre-onboarding invite | Yes: permit authenticated/verified explicit acceptance, then complete creation of the user's own default before any workspace page. Preserve the invited org return target through onboarding; never treat invitation membership as the default. |
+| Q22 — duplicate open topics | Merge into one deferred limits/entitlements topic; V1 has no plan quota. Plugin technical defaults are separate implementation behavior. |
+| Q23 — namespace retirement | Deferred future-publication concern, explained in section 15. It introduces no table or work into V1. Stable slugs and reserved platform prefixes suffice now. |
+
+## Research references and repository evidence
+
+- Better Auth Organization documentation.
+- OrganizationOptions, v1.6.23: no personalAccountEnabled; supported hooks/options.
+- Native organization creation/update, v1.6.23: metadata input, proposed update hook payload and sequential creation writes.
+- Next.js authentication: authorization near data access; layout/proxy checks alone are insufficient.
+- PostgreSQL explicit locking: row locks last until transaction end; this does not extend a lock into unrelated plugin connections.
+- shadcn Sidebar: header/content/footer composition.
+- Current visual protected layout: existing header/SettingsRail shell; it performs no session or membership authorization.
+- Environment schema and server exposure: existing APP_URL, development default localhost:3001; additional production origin checks required.
+- Schema barrel: currently exports generated auth schema only.
+- Admin implementation PR #214: open at review, targets staging; preserve plugins, guard and updated redirect behavior when integrating.
+- Admin RFC.
+- Minimal Templates RFC.
+- Registry V2 RFC.
+
+These are reviewed design decisions. The new helpers, application state schema, marker, guards and recovery protocol do not yet exist in the repository. Compile and test them on the real implementation branch; do not mistake the illustrative config for a complete patch.
 
 ## Where this rule came from
 
@@ -476,8 +544,7 @@ Do not silently remove membership/owner invariants when implementing future acco
   page. The evidence in §2 lists the exact version
   reviewed.
 - Vercel's product shape. The mandatory first-organization
-  onboarding, the personal-account-plus-organizations
-  model, the per-organization chrome and the org lifecycle
+  onboarding, the per-organization chrome and the org lifecycle
   permissions all reference Vercel.
 - `ADR-028` (GitHub OAuth sign-in via better-auth). The
   OAuth App's `accessToken` is read from the `account`
