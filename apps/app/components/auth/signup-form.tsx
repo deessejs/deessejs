@@ -67,10 +67,22 @@ export function SignupForm() {
 				},
 				{
 					onSuccess: () => {
-						const target = redirectTo
-							? `/verify-email?redirect=${encodeURIComponent(redirectTo)}`
-							: "/verify-email"
-						router.push(target)
+						// Forward the submitted email so the
+						// verify-email page's resend button
+						// has the address to send to. Without
+						// this, the resend handler would
+						// silently no-op (the email is not
+						// derivable from the URL alone on a
+						// hard reload of the page).
+						const params = new URLSearchParams()
+						params.set("email", value.email)
+						if (redirectTo) {
+							params.set(
+								"redirect",
+								encodeURIComponent(redirectTo),
+							)
+						}
+						router.push(`/verify-email?${params.toString()}`)
 					},
 				},
 			)

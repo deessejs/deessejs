@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react"
 import { useSearchParams } from "next/navigation"
+import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { MailIcon } from "lucide-react"
@@ -21,19 +22,46 @@ function VerifyEmailPageContent() {
 
   async function handleResend() {
     setResending(true)
+    setResent(false)
     const email = searchParams.get("email")
     const redirect = searchParams.get("redirect")
-    if (email) {
-      // The resend uses the same `callbackURL` so a click on
-      // the freshly-sent link lands on the original destination
-      // (e.g. the invited organization).
-      await authClient.sendVerificationEmail({
+    if (!email) {
+      // Without an email we cannot call
+      // `sendVerificationEmail`. The signup form forwards
+      // `?email=`; if it's missing the user likely landed
+      // here via a stale link. Surface a clear error and
+      // leave the button in its idle state so the user
+      // can re-trigger the sign-up flow rather than
+      // seeing a false-positive "Email sent".
+      setResending(false)
+      toast.error(
+        "Missing email — return to sign-up to request a new verification link.",
+      )
+      return
+    }
+    try {
+      // The resend uses the same `callbackURL` so a
+      // click on the freshly-sent link lands on the
+      // original destination (e.g. the invited
+      // organization).
+      const { error } = await authClient.sendVerificationEmail({
         email,
         ...(redirect ? { callbackURL: redirect } : {}),
       })
+      if (error) {
+        toast.error(error.message ?? "Could not resend verification email")
+        return
+      }
+      setResent(true)
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Could not resend verification email",
+      )
+    } finally {
+      setResending(false)
     }
-    setResending(false)
-    setResent(true)
   }
 
   return (

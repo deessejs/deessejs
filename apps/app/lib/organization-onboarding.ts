@@ -51,9 +51,20 @@ function slugify(name: string): string {
 		.normalize("NFKD")
 		.replace(/[̀-ͯ]/g, "")
 		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-+|-+$/g, "")
 	const safe = base || "org"
-	return safe.slice(0, 41)
+	// Truncate BEFORE the leading/trailing dash strip.
+	// The earlier order (strip, then truncate) silently
+	// produced a trailing dash for inputs whose last
+	// non-alphanumeric run landed at the truncation
+	// boundary (e.g. 40 letters + " " + a letter ->
+	// "aaaa...a-z" truncated to 41 -> "aaaa...a-" ->
+	// "--suffix" after appending the random suffix, which
+	// the server then rejected as malformed on every
+	// retry). Stripping after the slice keeps the slug
+	// policy (no leading/trailing dashes) true at the
+	// final length.
+	const trimmed = safe.slice(0, 41).replace(/^-+|-+$/g, "")
+	return trimmed || "org"
 }
 
 function deterministicSlugSuffix(name: string, userId: string): string {

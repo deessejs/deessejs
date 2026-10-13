@@ -24,7 +24,18 @@ import { randomBytes } from "node:crypto"
 import { describe, expect, test } from "vitest"
 import { sql } from "drizzle-orm"
 import { auth, type TestHelpers } from "./setup"
-import { withProvisioningAttempt } from "@workspace/auth/organization-policy"
+// Import from the local SOURCE path rather than the
+// `@workspace/auth/organization-policy` subpath so the
+// `AsyncLocalStorage` instance is the SAME module instance
+// that `setup.ts` uses (and that the test auth's
+// `beforeCreateOrganization` hook closes over via
+// `prepareOrganizationCreation`). The package subpath
+// resolves to `dist/`, which compiles to a separate
+// JavaScript module with its own `AsyncLocalStorage` —
+// the test's `withProvisioningAttempt` call would set
+// the attempt id in one instance, and the hook would
+// read from another, and the context guard would throw.
+import { withProvisioningAttempt } from "../src/organization-policy.js"
 import { db } from "@workspace/database"
 
 // Toggle the suite on once TEST_DATABASE_URL is configured.
@@ -189,7 +200,11 @@ describe.skipIf(skip())(
 			// guard — `isDefaultCreator` — directly to prove
 			// the underlying lookup.
 			const { isDefaultCreator } = await import(
-				"@workspace/auth/organization-policy"
+				// Source path: see the import block at the
+				// top of this file for the rationale. The
+				// package subpath resolves to a separate
+				// `dist/` module instance.
+				"../src/organization-policy.js"
 			)
 			expect(await isDefaultCreator(user.userId, orgId)).toBe(true)
 		})
@@ -263,7 +278,11 @@ describe.skipIf(skip())("RFC-001 §7 — Last-line defense", () => {
 describe.skipIf(skip())("RFC-001 §5 — durable provisioning", () => {
 	test("prepareOrganizationCreation returns the same operationId on a re-claim", async () => {
 		const { prepareOrganizationCreation } = await import(
-			"@workspace/auth/organization-policy"
+			// Source path: see the import block at the
+			// top of this file for the rationale. The
+			// package subpath resolves to a separate
+			// `dist/` module instance.
+			"../src/organization-policy.js"
 		)
 		const user = await createVerifiedUser("reclaim")
 		if (!user) return
@@ -296,7 +315,11 @@ describe.skipIf(skip())("RFC-001 §5 — durable provisioning", () => {
 		// The function must throw and the default row must
 		// NOT be written.
 		const { finalizeOrganizationProvisioning, getProvisioningState } =
-			await import("@workspace/auth/organization-policy")
+			// Source path: see the import block at the
+			// top of this file for the rationale. The
+			// package subpath resolves to a separate
+			// `dist/` module instance.
+			await import("../src/organization-policy.js")
 		const user = await createVerifiedUser("tx-rollback")
 		if (!user) return
 		const { orgId } = await createDefaultOrganization(user, "tx-rollback")
@@ -335,7 +358,11 @@ describe.skipIf(skip())("RFC-001 §7 — multi-role owner retention", () => {
 		// still be protected.
 		const {
 			assertDefaultOwnerMembershipIsRetained,
-		} = await import("@workspace/auth/organization-policy")
+			// Source path: see the import block at the
+			// top of this file for the rationale. The
+			// package subpath resolves to a separate
+			// `dist/` module instance.
+		} = await import("../src/organization-policy.js")
 		const user = await createVerifiedUser("multi-role")
 		if (!user) return
 		const { orgId } = await createDefaultOrganization(user, "multi-role")
