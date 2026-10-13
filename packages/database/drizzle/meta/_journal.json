@@ -15,6 +15,13 @@
       "when": 1787131781490,
       "tag": "0001_magenta_firebrand",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789996800000,
+      "tag": "0002_admin_plugin_columns",
+      "breakpoints": true
     }
   ]
 }

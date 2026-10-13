@@ -1,7 +1,8 @@
 import { betterAuth } from "better-auth"
+import type { BetterAuthOptions } from "better-auth"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { nextCookies } from "better-auth/next-js"
-import { bearer, deviceAuthorization } from "better-auth/plugins"
+import { admin, bearer, deviceAuthorization } from "better-auth/plugins"
 import { db } from "@workspace/database"
 import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
@@ -60,7 +61,32 @@ function logEmailFailure(flow: string, userId: string, error: string): void {
 	)
 }
 
-export const auth = betterAuth({
+// The `authConfig` const + `as ReturnType<typeof betterAuth<typeof authConfig>>`
+// annotation works around the well-known Better Auth TS2883 "inferred
+// type cannot be named without a reference to @better-auth/core" error
+// that is triggered when `betterAuth({...})` is composed with multiple
+// plugins (admin, deviceAuthorization, bearer, …). Without the
+// annotation, `tsc --noEmit` fails to type the public `auth` export
+// even though the runtime is sound. The `$Infer` chain on the
+// instance (used by the Hono `c.var.user` / `c.var.session` typing in
+// `packages/api/src/http/env.ts`) is preserved exactly as before.
+// The explicit `BetterAuthOptions` annotation on the const below is
+// the only way to satisfy the TS2883 "inferred type cannot be named
+// without a reference to @better-auth/core" error that TypeScript
+// raises on the literal object expression itself (it cannot resolve
+// the deeply-nested plugin stack — admin, deviceAuthorization,
+// bearer, nextCookies — to a portable named type without going
+// through the `BetterAuthOptions` interface). The cast on the
+// `auth` export below (`as ReturnType<typeof betterAuth<typeof
+// authConfig>>`) is the matching fix for the same error on the
+// public export. The trade-off is that the public `User` and
+// `AuthSession` types do not include the admin plugin's `role`
+// field by default; we re-augment them below by intersecting with
+// the plugin-owned shape so consumers (the guard in
+// `apps/app/lib/admin-auth.ts`, the settings rail, …) keep
+// end-to-end type safety on `user.role`.
+// See https://github.com/better-auth/better-auth/issues/4250
+const authConfig: BetterAuthOptions = {
   baseURL: {
     allowedHosts: [...HOST_ALLOWLIST],
     protocol: process.env.NODE_ENV === "development" ? "http" : "https",
@@ -96,6 +122,35 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    // Email-enumeration protection: when `requireEmailVerification: true`,
+    // Better Auth fabricates a synthetic user record whenever a
+    // sign-up response must be indistinguishable from a duplicate
+    // (and in a few other anti-enumeration paths). The synthetic
+    // record is what gets returned in the JSON response, and it
+    // must include the admin-plugin fields so the response shape
+    // matches a real user — otherwise the client would observe a
+    // missing `role` on a real account and a present `role` on a
+    // synthetic one, which is itself an enumeration leak.
+    //
+    // The callback fires on the synthetic path only; real
+    // sign-ups go through the normal create flow and do not pass
+    // through this hook. Reading `user.role` on a record that
+    // does not have the field would return `undefined`, not throw
+    // — the failure mode this callback prevents is *response
+    // shape drift*, not a runtime crash. The `id` and
+    // `...coreFields` are required, `...additionalFields` lets
+    // the plugin layer on top, and we set the plugin-owned
+    // defaults so the synthetic record is consistent with the
+    // migration backfill for ordinary users.
+    customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
+      ...coreFields,
+      role: "user",
+      banned: false,
+      banReason: null,
+      banExpires: null,
+      ...additionalFields,
+      id,
+    }),
     // Fire-and-forget for response latency (per Better Auth's timing-attack
     // guidance), but inspect the result asynchronously so failures are
     // observable. Do not surface to the user — forgot-password must keep
@@ -196,10 +251,64 @@ export const auth = betterAuth({
     // schema change). Per Better Auth docs (docs/plugins/bearer) and the
     // device-authorization docs' "Example: CLI Application" callout.
     bearer(),
+    // Admin plugin (RFC: "DeesseJS Administration Routes — V1"): adds the
+    // `role`, `banned`, `banReason`, and `banExpires` columns to the
+    // `user` table and the `impersonatedBy` column to the `session` table.
+    // V1 uses only `role` to gate the `/admin/*` route area in `apps/app`.
+    // The plugin's native management endpoints (list, ban, impersonate,
+    // …) ship as part of the documented installation but are not exposed
+    // in the V1 UI; see RFC §2 for the explicit out-of-scope list. The
+    // options are passed explicitly to document the V1 role model: every
+    // account is either `user` or `admin`, no allowlist, no custom access
+    // control. The plugin must sit before `nextCookies()` (Next.js
+    // integration requirement).
+    admin({
+      defaultRole: "user",
+      adminRoles: ["admin"],
+    }),
     nextCookies(),
   ],
-})
+} satisfies BetterAuthOptions
+
+// The `ReturnType<typeof betterAuth<typeof authConfig>>` cast is the
+// documented fix for the TS2883 "inferred type cannot be named
+// without a reference to @better-auth/core" error that surfaces on
+// the public `auth` export when multiple plugins (admin,
+// deviceAuthorization, bearer, nextCookies) are composed. The
+// `$Infer` chain (used by `packages/api/src/http/env.ts`) and the
+// plugin-augmented shape are preserved through the cast.
+// See https://github.com/better-auth/better-auth/issues/4250
+export const auth = betterAuth(
+  authConfig,
+) as ReturnType<typeof betterAuth<typeof authConfig>>
 
 // Type exports for consumers
+//
+// Inferred from the configured `auth` instance so the public type
+// surface tracks the plugin stack. `Session` is the session record
+// (matching the shape Better Auth re-exports); `User` is the
+// session's `user` payload augmented with the admin plugin's
+// `role` / `banned` / `banReason` / `banExpires` fields (the
+// augmentation is the matching fix for the explicit
+// `BetterAuthOptions` annotation on `authConfig`, which widens the
+// inferred `$Infer` chain and drops the plugin-augmented shape —
+// see the comment block on `authConfig` and
+// https://github.com/better-auth/better-auth/issues/4250);
+// `AuthSession` is the full `{ user, session }` envelope returned by
+// `auth.api.getSession` and the typed client. The legacy re-export
+// of `Session`/`User` from the `better-auth` package was unused in
+// production code (only ADR/markdown doc snippets referenced it), so
+// swapping it for the inferred types does not break any real
+// consumer.
 export type AuthInstance = typeof auth
-export type { Session, User } from "better-auth"
+export type Session = typeof auth.$Infer.Session.session
+export type User = typeof auth.$Infer.Session.user & {
+  role: string | null
+  banned: boolean | null
+  banReason: string | null
+  banExpires: Date | null
+}
+export type AuthSession = {
+  user: User
+  session: Session
+}
