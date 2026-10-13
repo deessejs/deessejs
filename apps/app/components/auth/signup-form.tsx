@@ -77,10 +77,12 @@ export function SignupForm() {
 						const params = new URLSearchParams()
 						params.set("email", value.email)
 						if (redirectTo) {
-							params.set(
-								"redirect",
-								encodeURIComponent(redirectTo),
-							)
+							// Do NOT pre-encode: URLSearchParams.set
+							// already percent-encodes its argument, and
+							// encodeURIComponent on top would produce a
+							// double-encoded path that breaks the
+							// resend destination.
+							params.set("redirect", redirectTo)
 						}
 						router.push(`/verify-email?${params.toString()}`)
 					},

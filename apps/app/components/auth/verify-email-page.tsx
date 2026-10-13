@@ -4,6 +4,7 @@ import { Suspense, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
+import { safeRedirect } from "@workspace/utils/safe-redirect"
 import { Button } from "@workspace/ui/components/button"
 import { MailIcon } from "lucide-react"
 
@@ -24,7 +25,16 @@ function VerifyEmailPageContent() {
     setResending(true)
     setResent(false)
     const email = searchParams.get("email")
-    const redirect = searchParams.get("redirect")
+    // The signup form stores the redirect value as-is
+    // (`URLSearchParams.set` already percent-encodes it once,
+    // and a second pass via `encodeURIComponent` would
+    // produce a double-encoded path that breaks the magic
+    // link destination). `searchParams.get` returns the
+    // decoded form. Normalize it through `safeRedirect` —
+    // the same helper the login form uses — to reject
+    // protocol-relative URLs and backslash variants before
+    // it reaches `sendVerificationEmail`'s `callbackURL`.
+    const redirect = safeRedirect(searchParams.get("redirect"))
     if (!email) {
       // Without an email we cannot call
       // `sendVerificationEmail`. The signup form forwards
