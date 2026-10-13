@@ -22,7 +22,7 @@ const PERSONAS = [
     label: "Secondary",
     title: "In-house team at a startup past the weekend stage",
     body:
-      "You charge Professional seats against engineering time saved, the same way you buy Vercel or Linear. Layer the Subscription on top when your team is shipping actively and you want every new template the day it lands.",
+      "You charge Professional subscriptions against engineering time saved, the same way you buy Vercel or Linear. Switch to annual when your team is shipping actively and you want every new template the day it lands.",
   },
   {
     label: "Tertiary",
