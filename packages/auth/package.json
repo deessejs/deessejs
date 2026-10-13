@@ -28,7 +28,7 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "auth:generate": "node ./scripts/generate-schema.mjs"
+    "auth:generate": "pnpm exec auth generate --config ./src/auth.ts --output ../database/src/schema/auth.ts --yes"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "catalog:",
@@ -45,7 +45,6 @@
     "@types/pg": "catalog:",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
-    "auth": "catalog:",
     "eslint": "catalog:",
     "vitest": "catalog:",
     "@workspace/vitest-config": "workspace:*"

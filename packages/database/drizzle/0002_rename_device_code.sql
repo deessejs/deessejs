@@ -26,6 +26,5 @@
 -- restart latency, not by the migration duration. The device-code
 -- endpoints already retry on 5xx, so any in-flight query against
 -- the old name during the cut-over is retried by its caller once
--- the new application code starts up. See PR #218's "Deployment
--- sequence" for the full procedure.
+-- the new application code starts up.
 ALTER TABLE "deviceCode" RENAME TO "device_code";

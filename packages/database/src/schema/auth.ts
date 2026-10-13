@@ -4,8 +4,6 @@ import {
   boolean,
   foreignKey,
   index,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, sonarjs/unused-import
-  integer,
   pgTable,
   text,
   timestamp,
