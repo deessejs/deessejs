@@ -141,58 +141,134 @@ export async function createFirstOrganization(
 		if (replayed.ok) return replayed
 	}
 
-	// Step 3: native create. The plugin's
-	// `beforeCreateOrganization` hook validates the slug and
-	// claims the durable provisioning record. We retry on slug
-	// collision (deterministic suffix then random suffixes) up
-	// to a small bound. The whole loop is wrapped in a single
-	// `withProvisioningAttempt` so the (userId, attemptId)
-	// tuple the hook writes is the same one Step 5 reads back
-	// via `consumeProvisioningClaim`. Without the wrapper the
-	// hook's stash has no scope and the consume returns null.
+	// Steps 3–6 run inside ONE `withProvisioningAttempt` frame
+	// so the AsyncLocalStorage context that scopes the hook's
+	// claim stash is still live when the Server Action calls
+	// `consumeProvisioningClaim` below. A previous revision
+	// wrapped only the `createOrganization` call; the
+	// `consumeProvisioningClaim` then ran outside the frame and
+	// always returned null, breaking first-time org creation. The
+	// frame must therefore span BOTH the create AND the
+	// consume/finalize. The callback is `async` so we can `await
+	// headers()` and the various DB calls.
 	const attemptId = randomBytes(16).toString("hex")
-	const MAX_SLUG_ATTEMPTS = 5
-	let organizationId: string | null = null
-	let slug: string | null = null
-	let lastError: unknown = null
-	for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
-		const candidate =
-			attempt === 0
-				? buildSlugCandidate(input.name, session.user.id)
-				: buildRandomSlugCandidate(input.name)
-		try {
-			const result = await withProvisioningAttempt(
-				session.user.id,
-				attemptId,
-				() =>
-					auth.api.createOrganization({
+	return await withProvisioningAttempt(
+		session.user.id,
+		attemptId,
+		async () => {
+			// Step 3: native create. The plugin's
+			// `beforeCreateOrganization` hook validates the
+			// slug and claims the durable provisioning
+			// record. We retry on slug collision
+			// (deterministic suffix then random suffixes) up
+			// to a small bound.
+			const MAX_SLUG_ATTEMPTS = 5
+			let organizationId: string | null = null
+			let slug: string | null = null
+			let lastError: unknown = null
+			for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
+				const candidate =
+					attempt === 0
+						? buildSlugCandidate(input.name, session.user.id)
+						: buildRandomSlugCandidate(input.name)
+				try {
+					const result = await auth.api.createOrganization({
 						body: { name: input.name, slug: candidate },
 						headers: await headers(),
-					}),
-			)
-			const org = result as unknown as { id?: string; slug?: string }
-			if (!org?.id || !org?.slug) {
-				return { ok: false, error: "Server returned an invalid organization" }
+					})
+					const org = result as unknown as { id?: string; slug?: string }
+					if (!org?.id || !org?.slug) {
+						return {
+							ok: false,
+							error: "Server returned an invalid organization",
+						}
+					}
+					organizationId = org.id
+					slug = org.slug
+					lastError = null
+					break
+				} catch (err) {
+					lastError = err
+					if (
+						err &&
+						typeof err === "object" &&
+						"message" in err &&
+						typeof (err as { message: unknown }).message === "string" &&
+						(err as { message: string }).message
+							.toLowerCase()
+							.includes("slug")
+					) {
+						// Slug collision (or duplicate on
+						// retry). Re-read the provisioning
+						// state — a parallel retry may have
+						// already won the race and finalized;
+						// if so, return that result.
+						const recovered = await getDefaultOrganization(session.user.id)
+						if (recovered) {
+							return {
+								ok: true,
+								slug: recovered.slug,
+								organizationId: recovered.id,
+							}
+						}
+						continue
+					}
+					// Non-slug error. Surface it.
+					return {
+						ok: false,
+						error: err instanceof Error ? err.message : "Unknown error",
+					}
+				}
 			}
-			organizationId = org.id
-			slug = org.slug
-			lastError = null
-			break
-		} catch (err) {
-			lastError = err
-			if (
-				err &&
-				typeof err === "object" &&
-				"message" in err &&
-				typeof (err as { message: unknown }).message === "string" &&
-				(err as { message: string }).message
-					.toLowerCase()
-					.includes("slug")
-			) {
-				// Slug collision (or duplicate on retry). Re-read the
-				// provisioning state — a parallel retry may have
-				// already won the race and finalized; if so, return
-				// that result.
+			if (lastError || organizationId === null || slug === null) {
+				return {
+					ok: false,
+					error:
+						lastError instanceof Error
+							? `Could not allocate a slug after ${MAX_SLUG_ATTEMPTS} attempts: ${lastError.message}`
+							: `Could not allocate a slug after ${MAX_SLUG_ATTEMPTS} attempts`,
+				}
+			}
+
+			// Step 4: persist the final slug + requested name
+			// on the provisioning row so future replays (a
+			// network retry, a page refresh) see the SAME
+			// slug, not a fresh one. The hook already created
+			// the row in `pending` state; this update carries
+			// the slug through.
+			await recordProvisioningRequest({
+				userId: session.user.id,
+				requestedName: input.name,
+				finalSlug: slug,
+			})
+
+			// Step 5: finalize. Conditional update on
+			// `fencing_token` inside a single transaction with
+			// the default row insert. The fencing token + lease
+			// we pass are the ones the
+			// `beforeCreateOrganization` hook stashed via
+			// `prepareOrganizationCreation`. Reading them from
+			// the stash — rather than re-querying the row — is
+			// the only way to test the "stale worker" scenario:
+			// a worker that read fencing_token = 1 before
+			// another worker advanced it to 2 will fail our
+			// WHERE clause and the transaction rolls back. A
+			// function that re-reads would silently use the
+			// latest value and never fail.
+			const claim = consumeProvisioningClaim(session.user.id)
+			if (!claim) {
+				return {
+					ok: false,
+					error: "Provisioning state disappeared mid-flight",
+				}
+			}
+			try {
+				await finalizeOrganizationProvisioning({
+					userId: session.user.id,
+					organizationId,
+					expectedFencingToken: claim.fencingToken,
+				})
+			} catch (err) {
 				const recovered = await getDefaultOrganization(session.user.id)
 				if (recovered) {
 					return {
@@ -201,89 +277,29 @@ export async function createFirstOrganization(
 						organizationId: recovered.id,
 					}
 				}
-				continue
+				return {
+					ok: false,
+					error: err instanceof Error ? err.message : "Unknown error",
+				}
 			}
-			// Non-slug error. Surface it.
-			return {
-				ok: false,
-				error: err instanceof Error ? err.message : "Unknown error",
+
+			// Step 6: set the new organization active.
+			// Best-effort. The default relation is the source
+			// of truth for navigation; the session's active
+			// org is a convenience.
+			try {
+				await auth.api.setActiveOrganization({
+					body: { organizationId },
+					headers: await headers(),
+				})
+			} catch {
+				// Swallow. The proxy will resolve the active
+				// org from the default on the next request.
 			}
-		}
-	}
-	if (lastError || organizationId === null || slug === null) {
-		return {
-			ok: false,
-			error:
-				lastError instanceof Error
-					? `Could not allocate a slug after ${MAX_SLUG_ATTEMPTS} attempts: ${lastError.message}`
-					: `Could not allocate a slug after ${MAX_SLUG_ATTEMPTS} attempts`,
-		}
-	}
 
-	// Step 4: persist the final slug + requested name on the
-	// provisioning row so future replays (a network retry, a page
-	// refresh) see the SAME slug, not a fresh one. The hook
-	// already created the row in `pending` state; this update
-	// carries the slug through.
-	await recordProvisioningRequest({
-		userId: session.user.id,
-		requestedName: input.name,
-		finalSlug: slug,
-	})
-
-	// Step 5: finalize. Conditional update on `fencing_token`
-	// inside a single transaction with the default row insert.
-	// The fencing token + lease we pass are the ones the
-	// `beforeCreateOrganization` hook stashed via
-	// `prepareOrganizationCreation`. Reading them from the
-	// stash — rather than re-querying the row — is the only
-	// way to test the "stale worker" scenario: a worker that
-	// read fencing_token = 1 before another worker advanced it
-	// to 2 will fail its WHERE clause and the transaction
-	// rolls back. A function that re-reads would silently use
-	// the latest value and never fail.
-	const claim = consumeProvisioningClaim(session.user.id)
-	if (!claim) {
-		return {
-			ok: false,
-			error: "Provisioning state disappeared mid-flight",
-		}
-	}
-	try {
-		await finalizeOrganizationProvisioning({
-			userId: session.user.id,
-			organizationId,
-			expectedFencingToken: claim.fencingToken,
-		})
-	} catch (err) {
-		const recovered = await getDefaultOrganization(session.user.id)
-		if (recovered) {
-			return {
-				ok: true,
-				slug: recovered.slug,
-				organizationId: recovered.id,
-			}
-		}
-		return {
-			ok: false,
-			error: err instanceof Error ? err.message : "Unknown error",
-		}
-	}
-
-	// Step 6: set the new organization active. Best-effort. The
-	// default relation is the source of truth for navigation; the
-	// session's active org is a convenience.
-	try {
-		await auth.api.setActiveOrganization({
-			body: { organizationId },
-			headers: await headers(),
-		})
-	} catch {
-		// Swallow. The proxy will resolve the active org from the
-		// default on the next request.
-	}
-
-	return { ok: true, slug, organizationId }
+			return { ok: true, slug, organizationId }
+		},
+	)
 }
 
 /**
@@ -419,58 +435,78 @@ export async function createAdditionalOrganization(
 		}
 	}
 
-	const MAX_SLUG_ATTEMPTS = 5
-	let organizationId: string | null = null
-	let slug: string | null = null
-	let lastError: unknown = null
-	for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
-		const candidate = buildRandomSlugCandidate(trimmed)
-		try {
-			const result = await auth.api.createOrganization({
-				body: { name: trimmed, slug: candidate },
-				headers: await headers(),
-			})
-			const org = result as unknown as { id?: string; slug?: string }
-			if (!org?.id || !org?.slug) {
-				return { ok: false, error: "Server returned an invalid organization" }
+	// The plugin's `beforeCreateOrganization` hook enforces a
+	// provisioning-attempt context for every call. The hook
+	// returns `{}` early for additional orgs (the default
+	// relation already exists), so the attempt id is harmless
+	// here — but it MUST be present or the hook throws. The
+	// context is also a safety net: a future change that
+	// tightens the hook's additional-org path will be picked
+	// up here without further work.
+	const attemptId = randomBytes(16).toString("hex")
+	return await withProvisioningAttempt(
+		session.user.id,
+		attemptId,
+		async () => {
+			const MAX_SLUG_ATTEMPTS = 5
+			let organizationId: string | null = null
+			let slug: string | null = null
+			let lastError: unknown = null
+			for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
+				const candidate = buildRandomSlugCandidate(trimmed)
+				try {
+					const result = await auth.api.createOrganization({
+						body: { name: trimmed, slug: candidate },
+						headers: await headers(),
+					})
+					const org = result as unknown as { id?: string; slug?: string }
+					if (!org?.id || !org?.slug) {
+						return {
+							ok: false,
+							error: "Server returned an invalid organization",
+						}
+					}
+					organizationId = org.id
+					slug = org.slug
+					lastError = null
+					break
+				} catch (err) {
+					lastError = err
+					const message =
+						err instanceof Error ? err.message.toLowerCase() : ""
+					if (message.includes("slug")) {
+						continue
+					}
+					return {
+						ok: false,
+						error: err instanceof Error ? err.message : "Unknown error",
+					}
+				}
 			}
-			organizationId = org.id
-			slug = org.slug
-			lastError = null
-			break
-		} catch (err) {
-			lastError = err
-			const message = err instanceof Error ? err.message.toLowerCase() : ""
-			if (message.includes("slug")) {
-				continue
+			if (lastError || organizationId === null || slug === null) {
+				return {
+					ok: false,
+					error:
+						lastError instanceof Error
+							? `Could not allocate a slug after ${MAX_SLUG_ATTEMPTS} attempts: ${lastError.message}`
+							: `Could not allocate a slug after ${MAX_SLUG_ATTEMPTS} attempts`,
+				}
 			}
-			return {
-				ok: false,
-				error: err instanceof Error ? err.message : "Unknown error",
-			}
-		}
-	}
-	if (lastError || organizationId === null || slug === null) {
-		return {
-			ok: false,
-			error:
-				lastError instanceof Error
-					? `Could not allocate a slug after ${MAX_SLUG_ATTEMPTS} attempts: ${lastError.message}`
-					: `Could not allocate a slug after ${MAX_SLUG_ATTEMPTS} attempts`,
-		}
-	}
 
-	// Set the new organization active. Best-effort. The proxy
-	// will resolve the active org from the session on the next
-	// request if this fails.
-	try {
-		await auth.api.setActiveOrganization({
-			body: { organizationId },
-			headers: await headers(),
-		})
-	} catch {
-		// Swallow. The user can re-select from the sidebar.
-	}
+			// Set the new organization active. Best-effort.
+			// The proxy will resolve the active org from the
+			// session on the next request if this fails.
+			try {
+				await auth.api.setActiveOrganization({
+					body: { organizationId },
+					headers: await headers(),
+				})
+			} catch {
+				// Swallow. The user can re-select from the
+				// sidebar.
+			}
 
-	return { ok: true, slug, organizationId }
+			return { ok: true, slug, organizationId }
+		},
+	)
 }

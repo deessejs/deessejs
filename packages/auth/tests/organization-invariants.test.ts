@@ -24,6 +24,7 @@ import { randomBytes } from "node:crypto"
 import { describe, expect, test } from "vitest"
 import { sql } from "drizzle-orm"
 import { auth, type TestHelpers } from "./setup"
+import { withProvisioningAttempt } from "@workspace/auth/organization-policy"
 import { db } from "@workspace/database"
 
 // Toggle the suite on once TEST_DATABASE_URL is configured.
@@ -85,15 +86,26 @@ async function createVerifiedUser(
 // relation. The Server Action's `finalizeOrganizationProvisioning`
 // is the only sanctioned writer; for tests we mirror it with
 // a direct INSERT.
+//
+// The hook enforces a provisioning-attempt context, so we
+// wrap the create call in `withProvisioningAttempt`. The
+// attempt id is opaque (any unique string per call) and
+// scoped only to this synchronous create, since the test
+// does not call `consumeProvisioningClaim` afterwards.
 async function createDefaultOrganization(
 	user: { userId: string; headers: Headers },
 	prefix: string,
 ): Promise<{ orgId: string; slug: string; operationId: string }> {
 	const slug = uniqueSlug(prefix)
-	const created = (await auth.api.createOrganization({
-		body: { name: `Default ${prefix}`, slug },
-		headers: user.headers,
-	})) as { id: string; slug: string }
+	const created = (await withProvisioningAttempt(
+		user.userId,
+		randomBytes(16).toString("hex"),
+		async () =>
+			await auth.api.createOrganization({
+				body: { name: `Default ${prefix}`, slug },
+				headers: user.headers,
+			}),
+	)) as { id: string; slug: string }
 	// Read the operation id the hook stashed.
 	const opRows = await db.execute(
 		sql`SELECT "operation_id" FROM "account_organization_provisioning" WHERE "user_id" = ${user.userId} LIMIT 1`,
@@ -246,8 +258,25 @@ describe.skipIf(skip())("RFC-001 §5 — durable provisioning", () => {
 		)
 		const user = await createVerifiedUser("reclaim")
 		if (!user) return
-		const first = await prepareOrganizationCreation(user.userId)
-		const second = await prepareOrganizationCreation(user.userId)
+		// Direct calls to `prepareOrganizationCreation` must
+		// be wrapped in `withProvisioningAttempt`: the helper
+		// reads the attempt id from the AsyncLocalStorage
+		// frame and refuses to run without one (a Server
+		// Action or a real client always provides it). We
+		// also drive both calls from a single attempt frame
+		// so the second call is a true "re-claim" against
+		// the live lease the first call wrote — not two
+		// independent calls that race the lease.
+		const first = await withProvisioningAttempt(
+			user.userId,
+			"reclaim-attempt",
+			() => prepareOrganizationCreation(user.userId),
+		)
+		const second = await withProvisioningAttempt(
+			user.userId,
+			"reclaim-attempt",
+			() => prepareOrganizationCreation(user.userId),
+		)
 		expect(first.bootstrapOperationId).toBe(second.bootstrapOperationId)
 	})
 
@@ -314,14 +343,31 @@ describe.skipIf(skip())("RFC-001 §7 — multi-role owner retention", () => {
 })
 
 describe.skipIf(skip())("RFC-001 §6 — slug policy", () => {
+	// Helper: drive a single create call inside an
+	// provisioning-attempt frame so the plugin's hook does
+	// not throw the "must be called inside withProvisioningAttempt"
+	// guard. The attempt id is opaque; the test only
+	// exercises the slug-policy guard, not the consume flow.
+	async function createInsideAttempt(
+		user: { userId: string; headers: Headers },
+		body: { name: string; slug: string },
+	): Promise<unknown> {
+		return await withProvisioningAttempt(
+			user.userId,
+			randomBytes(16).toString("hex"),
+			async () =>
+				await auth.api.createOrganization({
+					body,
+					headers: user.headers,
+				}),
+		)
+	}
+
 	test("validateOrganizationSlug rejects reserved slugs", async () => {
 		const user = await createVerifiedUser("reserved")
 		if (!user) return
 		await expect(
-			auth.api.createOrganization({
-				body: { name: "Onboarding", slug: "onboarding" },
-				headers: user.headers,
-			}),
+			createInsideAttempt(user, { name: "Onboarding", slug: "onboarding" }),
 		).rejects.toMatchObject({ body: { code: "BAD_REQUEST" } })
 	})
 
@@ -330,10 +376,7 @@ describe.skipIf(skip())("RFC-001 §6 — slug policy", () => {
 		if (!user) return
 		for (const slug of ["a", "UPPER", "with spaces", "trailing-", "-lead"]) {
 			await expect(
-				auth.api.createOrganization({
-					body: { name: "Test", slug },
-					headers: user.headers,
-				}),
+				createInsideAttempt(user, { name: "Test", slug }),
 			).rejects.toMatchObject({ body: { code: "BAD_REQUEST" } })
 		}
 	})

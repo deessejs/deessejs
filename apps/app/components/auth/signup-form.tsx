@@ -54,16 +54,18 @@ export function SignupForm() {
 					email: value.email,
 					password: value.password,
 					name: value.name,
+					// Better Auth reads `callbackURL` from the
+					// BODY (not from request options). It is
+					// embedded in the verification magic link
+					// as `?token=…&callbackURL=<encoded>`, and
+					// better-auth redirects there after the
+					// user clicks the link. Forwarding the same
+					// destination here keeps the post-verification
+					// bounce consistent with the in-page
+					// navigation we do in `onSuccess` below.
+					...(redirectTo ? { callbackURL: redirectTo } : {}),
 				},
 				{
-					// The email verification link includes
-					// `callbackURL=<value>`; better-auth
-					// redirects there after the user clicks
-					// the magic link. Forwarding the same
-					// destination keeps the post-verification
-					// bounce consistent with the in-page
-					// navigation we do below.
-					...(redirectTo ? { callbackURL: redirectTo } : {}),
 					onSuccess: () => {
 						const target = redirectTo
 							? `/verify-email?redirect=${encodeURIComponent(redirectTo)}`

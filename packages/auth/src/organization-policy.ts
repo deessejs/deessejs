@@ -204,15 +204,15 @@ function generateOperationId(): string {
  *      worker that took over via a different attemptId is
  *      unrelated to ours.
  *   4. If no default and a row exists with an EXPIRED lease,
- *      the previous worker died. Take over: generate a fresh
- *      operationId, bump the fencing token (so the dead
- *      worker's finalize fails), and stamp a fresh lease.
- *      This is the only branch that creates a new marker; the
- *      old one is forgotten (the row's `operation_id` is
- *      overwritten). The partial unique index on
- *      `bootstrap_operation_id` allows this because the old
- *      org's marker is overwritten on the row, not duplicated
- *      on a new row.
+ *      the previous worker died. Take over: KEEP the existing
+ *      operationId (the marker is the durable correlation
+ *      pointer; re-rolling it would orphan a prior partial
+ *      attempt's organization and let a fresh create leak
+ *      in under a new marker). Bump the fencing token (so
+ *      the dead worker's finalize WHERE clause fails) and
+ *      renew the lease. The Server Action's `replayFinalize`
+ *      can then `findOrganizationByMarker` to recover the
+ *      prior org if the previous attempt committed it.
  */
 export async function prepareOrganizationCreation(
 	userId: string,
@@ -269,19 +269,25 @@ export async function prepareOrganizationCreation(
 			})
 			return { bootstrapOperationId: operationId }
 		}
-		// Expired lease. Take over: a fresh operationId +
-		// bumped token + fresh lease. The conditional UPDATE
-		// uses the current token as a guard; if a parallel
-		// worker raced us and bumped it first, the UPDATE
-		// affects 0 rows and we retry by re-reading.
-		let newOperationId = generateOperationId()
+		// Expired lease. Take over: KEEP the existing
+		// operationId (the marker is a durable correlation
+		// pointer — `findOrganizationByMarker` recovers a
+		// previous attempt's organization by it; abandoning
+		// it would orphan the prior org and let a fresh
+		// create leak in under a new marker). Bump the
+		// fencing token (so the dead worker's finalize
+		// WHERE clause fails) and renew the lease. The
+		// conditional UPDATE uses the current token as a
+		// guard; if a parallel worker raced us and bumped
+		// it first, the UPDATE affects 0 rows and we retry
+		// by re-reading.
+		const takeoverOperationId = operationId
 		let newFencingToken = fencingToken + 1
 		const newLeaseUntil = now + LEASE_DURATION_MS
 		for (let i = 0; i < 3; i++) {
 			const updated = await db
 				.update(accountOrganizationProvisioning)
 				.set({
-					operationId: newOperationId,
 					fencingToken: newFencingToken,
 					leaseUntil: newLeaseUntil,
 					updatedAt: new Date(),
@@ -291,7 +297,7 @@ export async function prepareOrganizationCreation(
 						eq(accountOrganizationProvisioning.userId, userId),
 						eq(
 							accountOrganizationProvisioning.fencingToken,
-							fencingToken,
+							newFencingToken - 1,
 						),
 						lte(accountOrganizationProvisioning.leaseUntil, now),
 					),
@@ -299,11 +305,11 @@ export async function prepareOrganizationCreation(
 				.returning({ operationId: accountOrganizationProvisioning.operationId })
 			if (updated.length > 0) {
 				stashProvisioningClaim(userId, attemptId, {
-					operationId: newOperationId,
+					operationId: takeoverOperationId,
 					fencingToken: newFencingToken,
 					leaseUntil: newLeaseUntil,
 				})
-				return { bootstrapOperationId: newOperationId }
+				return { bootstrapOperationId: takeoverOperationId }
 			}
 			// Lost the race. Re-read and decide again.
 			const reread = await db
@@ -332,8 +338,8 @@ export async function prepareOrganizationCreation(
 			// based on the current value. The conditional
 			// UPDATE re-asserts the new token under the
 			// fencing-token guard; the next iteration of the
-			// loop repeats the read+update cycle.
-			newOperationId = generateOperationId()
+			// loop repeats the read+update cycle. The
+			// operationId stays the same — never re-roll it.
 			newFencingToken = reread[0].fencingToken + 1
 		}
 		throw new APIError("CONFLICT", {
