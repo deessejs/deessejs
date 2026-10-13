@@ -107,7 +107,8 @@ organization**. It is not the full Vercel flow. Specifically:
   account linked (the `account` table has a row with
   `providerId: "github"`).
 - A "Connect GitHub" step in the onboarding wizard
-  (`RFC-002` §6 step 4) that calls
+  (`RFC-001` §5 first-organization provisioning, step 4)
+  that calls
   `authClient.signIn.social({ provider: "github",
   callbackURL: "/onboarding/first-organization?step=4" })`
   and advances on return (linked or not). The step
@@ -156,7 +157,7 @@ already signed in) with GitHub, the `accessToken` is on the
 
 The implementation PR that follows this ADR ships code. It
 touches exactly these files (in addition to the
-implementation PRs for `RFC-001` and `RFC-002`):
+implementation PR for `RFC-001`):
 
 - `apps/app/app/(protected)/[org_slug]/projects/import/page.tsx`
   (new) — the project-import screen. Server-rendered for
@@ -561,7 +562,8 @@ API endpoints); secondary limits cover `search`,
 - The `push` and `pull_request` event handlers in
   `packages/api/src/http/routes/webhooks-github.ts`.
 - The proxy at `apps/app/proxy.ts` excluding
-  `/api/v1/webhooks/github` from the auth gates.
+  `/api/v1/webhooks/github` from the auth gates (the
+  proxy gate shape itself is owned by `RFC-001` §8).
 
 ## What this rule forbids
 
@@ -587,7 +589,7 @@ API endpoints); secondary limits cover `search`,
 - The Hono CORS allowlist (per `ADR-029`). The webhook
   route is server-to-server; CORS does not apply.
 - The proxy auth gates for `(protected)` routes (per
-  `RFC-002`). The webhook route is excluded from the
+  `RFC-001` §8). The webhook route is excluded from the
   gates (signature-based auth, not session-based).
 
 ## Out of scope (deferred)
@@ -677,9 +679,21 @@ when V2 enters a milestone:
   user, cycle of life) that V1 and V2 both depend on.
   The product shape (personal account, two roles, N orgs
   per user, cycle of life) that V1 and V2 both depend on.
-- [RFC-002: Onboarding](./RFC-002-onboarding). The
-  onboarding wizard's step 4 (connect GitHub) is the
-  first touchpoint with the V1 import flow.
+- [RFC-001: Organizations system](./RFC-001-organizations). The
+  product shape (mandatory first-organization onboarding,
+  personal account, two roles, account default, additional
+  orgs, cycle of life, chrome) that V1 and V2 both depend on.
+  §5 (first-organization provisioning and the
+  /onboarding/first-organization wizard) and §9
+  (invitations and delivery) are the source of the
+  onboarding and invite surfaces.
+  The product shape (mandatory first-organization
+  onboarding, personal account, two roles, account
+  default, additional orgs, cycle of life, chrome) that V1
+  and V2 both depend on. §5 (first-organization
+  provisioning and the /onboarding/first-organization
+  wizard) and §9 (invitations and delivery) are the
+  source of the onboarding and invite surfaces.
 - [ADR-028: GitHub OAuth sign-in via better-auth](../ADR-028-github-oauth-better-auth).
   The OAuth App config that V1 reuses and V2 leaves
   in place.

@@ -5,7 +5,6 @@
   "root": true,
   "pages": [
     "RFC-001-organizations",
-    "RFC-002-onboarding",
     "RFC-003-github-integration"
   ]
 }
