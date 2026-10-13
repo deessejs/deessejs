@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { randomBytes, createHash } from "node:crypto"
 import { auth } from "@workspace/auth"
 import {
+	consumeProvisioningClaim,
 	ensureOwnerMembership,
 	finalizeOrganizationProvisioning,
 	findOrganizationByMarker,
@@ -221,12 +222,17 @@ export async function createFirstOrganization(
 
 	// Step 5: finalize. Conditional update on `fencing_token`
 	// inside a single transaction with the default row insert.
-	// The fencing token we pass is the one we read at claim
-	// time; passing it from the caller — rather than re-reading
-	// the row inside `finalizeOrganizationProvisioning` — is the
-	// only way to test the "stale worker" scenario.
-	const state = await getProvisioningState(session.user.id)
-	if (!state) {
+	// The fencing token + lease we pass are the ones the
+	// `beforeCreateOrganization` hook stashed via
+	// `prepareOrganizationCreation`. Reading them from the
+	// stash — rather than re-querying the row — is the only
+	// way to test the "stale worker" scenario: a worker that
+	// read fencing_token = 1 before another worker advanced it
+	// to 2 will fail its WHERE clause and the transaction
+	// rolls back. A function that re-reads would silently use
+	// the latest value and never fail.
+	const claim = consumeProvisioningClaim(session.user.id)
+	if (!claim) {
 		return {
 			ok: false,
 			error: "Provisioning state disappeared mid-flight",
@@ -236,7 +242,7 @@ export async function createFirstOrganization(
 		await finalizeOrganizationProvisioning({
 			userId: session.user.id,
 			organizationId,
-			expectedFencingToken: state.fencingToken,
+			expectedFencingToken: claim.fencingToken,
 		})
 	} catch (err) {
 		const recovered = await getDefaultOrganization(session.user.id)

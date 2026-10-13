@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { SidebarProvider } from "@workspace/ui/components/sidebar"
+import { SidebarProvider, SidebarTrigger } from "@workspace/ui/components/sidebar"
 import { listUserMemberships } from "@workspace/auth/organization-policy"
 import { AppSidebar } from "@/components/sidebars/app-sidebar"
 import {
@@ -62,7 +62,21 @@ export default async function OrganizationLayout({
 					organizationSlug={organization_slug}
 					memberships={memberships}
 				/>
-				<main className="flex-1 p-6">{children}</main>
+				<div className="flex flex-1 flex-col">
+					{/*
+					 * Mobile trigger. The shadcn Sidebar starts
+					 * closed on small viewports; the trigger is
+					 * the only way to open the chrome (and reach
+					 * the organization switcher + nav links).
+					 * Desktop users see the same button as a
+					 * collapse control; the shadcn primitive
+					 * renders it inline.
+					 */}
+					<header className="flex h-12 items-center border-b px-4 md:h-0 md:border-0 md:p-0">
+						<SidebarTrigger aria-label="Toggle navigation" />
+					</header>
+					<main className="flex-1 p-6">{children}</main>
+				</div>
 			</div>
 		</SidebarProvider>
 	)

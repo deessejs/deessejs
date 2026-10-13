@@ -18,19 +18,21 @@ interface AcceptInvitationProps {
 
 /**
  * Client-side invitation acceptance. RFC-001 §9 step 5: acceptance
- * happens only after an explicit click. On success, the user is
- * routed to the invited organization's home (`/<slug>/home`).
+ * happens only after an explicit click.
  *
- * If the account has no default organization yet (e.g. the user
- * is brand-new and was invited before completing onboarding), the
- * component preserves the invited organization return target
- * through `/onboarding/first-organization?return=<slug>` so the
- * post-onboarding landing lands them on the invited organization
- * instead of the freshly created default.
- *
- * The Server Action returns a clean `{ ok, slug, organizationId }`
- * shape; the component reads the error from that envelope and
- * renders it inline, rather than swallowing it.
+ * On success we have two destinations:
+ *   - If the account already has a default organization
+ *     (`hasDefault === true`), navigate to the invited org's
+ *     home. The org layout's `requireOrganizationAccess` guard
+ *     is the authoritative check.
+ *   - If the account has no default yet (a brand-new account
+ *     was invited before completing onboarding), navigate to
+ *     `/onboarding?return=<invited slug>`. The wizard's
+ *     `?error=` and `?return=` handling preserves the invited
+ *     destination through the onboarding flow: the
+ *     `createFirstOrganization` Server Action reads `?return=`
+ *     and lands the user on the invited org after creating the
+ *     fresh default.
  */
 export function AcceptInvitation({ invitationId }: AcceptInvitationProps) {
 	const router = useRouter()
@@ -45,16 +47,13 @@ export function AcceptInvitation({ invitationId }: AcceptInvitationProps) {
 				setError(result.error)
 				return
 			}
-			// The account may or may not have a default
-			// organization. We do not know here; the simplest
-			// is to navigate directly to the invited org's
-			// home — the org layout's `requireOrganizationAccess`
-			// guard will bounce the user to onboarding if the
-			// account is not yet default. The / route also
-			// handles "no default" by sending the user to the
-			// wizard; we use `return=` so the wizard can land
-			// the user on the invited org afterwards.
-			router.push(`/${result.slug}/home`)
+			if (result.hasDefault) {
+				router.push(`/${result.slug}/home`)
+			} else {
+				router.push(
+					`/onboarding/first-organization?return=${encodeURIComponent(`/${result.slug}/home`)}`,
+				)
+			}
 		})
 	}
 

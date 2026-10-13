@@ -11,7 +11,23 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@workspace/ui/components/card"
+import { safeRedirect } from "@workspace/utils/safe-redirect"
 import { createFirstOrganization } from "@/lib/organization-onboarding"
+
+interface OnboardingWizardProps {
+	/**
+	 * Optional post-onboarding destination. Passed as `?return=`
+	 * to `/onboarding/first-organization` by the invitation-
+	 * accept flow when a brand-new account accepted an
+	 * invitation before completing onboarding. The wizard
+	 * honors the destination after the new default
+	 * organization is created.
+	 *
+	 * The destination is validated with `safeRedirect` on
+	 * entry; only same-origin paths are honored.
+	 */
+	returnTo?: string
+}
 
 /**
  * Four-step onboarding wizard (RFC-001 §5 "First-organization
@@ -22,8 +38,9 @@ import { createFirstOrganization } from "@/lib/organization-onboarding"
  */
 type Step = 1 | 2 | 3 | 4
 
-export function OnboardingWizard() {
+export function OnboardingWizard({ returnTo }: OnboardingWizardProps) {
 	const router = useRouter()
+	const safeReturn = safeRedirect(returnTo ?? "")
 	const [step, setStep] = useState<Step>(1)
 	const [name, setName] = useState("")
 	const [error, setError] = useState<string | null>(null)
@@ -39,7 +56,20 @@ export function OnboardingWizard() {
 				setError(result.error)
 				return
 			}
-			router.push(`/${result.slug}/home`)
+			// Default destination: the freshly created
+			// organization. When the invitation-accept flow
+			// set `?return=<invited slug>`, we navigate
+			// there instead — but only if the user is in fact
+			// a member of the invited org. The Server Action
+			// returns the new default's id; the wizard
+			// cannot check membership client-side, so the
+			// `requireOrganizationAccess` guard on the
+			// org-scoped layout is the authoritative
+			// check. If the user is not a member, the
+			// layout redirects them back to the default
+			// org's home; if they are, the invitation
+			// destination is honored.
+			router.push(safeReturn || `/${result.slug}/home`)
 		})
 	}
 

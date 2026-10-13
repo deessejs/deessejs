@@ -34,7 +34,7 @@
 
 import { randomBytes } from "node:crypto"
 import { APIError } from "better-auth/api"
-import { and, eq } from "drizzle-orm"
+import { and, eq, gt, sql } from "drizzle-orm"
 import { db } from "@workspace/database"
 import {
 	accountOrganizationDefaults,
@@ -66,6 +66,44 @@ export type OrganizationBootstrapData = {
 	 * `account_organization_provisioning` row that owns it.
 	 */
 	bootstrapOperationId?: string
+}
+
+/**
+ * The full state of a user's provisioning claim. Returned by
+ * `prepareOrganizationCreation` and forwarded verbatim to
+ * `finalizeOrganizationProvisioning`. Carrying the operation
+ * id, fencing token, and lease expiry together is the only way
+ * to make the protocol concurrency-safe: the caller never
+ * re-reads the row mid-flow, so a parallel worker cannot
+ * advance past the caller without the caller noticing.
+ */
+export interface ProvisioningClaim {
+	operationId: string
+	fencingToken: number
+	leaseUntil: number
+}
+
+/**
+ * Process-local stash of the most recent provisioning claim
+ * for each user. Written by `prepareOrganizationCreation`,
+ * read-and-cleared by `consumeProvisioningClaim`. Used to
+ * forward the (opId, fencingToken, leaseUntil) tuple from the
+ * plugin hook back to the Server Action without re-reading
+ * the row mid-flow.
+ *
+ * The map is per-process; in a multi-instance deployment
+ * (Vercel functions) the stash lives in the request handler
+ * only — the Server Action and the plugin hook run in the
+ * same handler, so the value is available.
+ */
+const provisioningClaims = new Map<string, ProvisioningClaim>()
+
+export function consumeProvisioningClaim(
+	userId: string,
+): ProvisioningClaim | null {
+	const claim = provisioningClaims.get(userId) ?? null
+	provisioningClaims.delete(userId)
+	return claim
 }
 
 /**
@@ -409,56 +447,44 @@ export async function findOrganizationByMarker(
  * recovery when the plugin's `createOrganization` was
  * interrupted after the org row was written but before the
  * owner membership was inserted (or after the membership was
- * inserted but before the finalization committed). The
- * function is idempotent: a row that already exists with the
- * correct role is left alone; a row with the wrong role is
- * updated.
+ * inserted but before the finalization committed).
  *
- * Returns the membership id.
+ * The function is idempotent and concurrency-safe: a single
+ * `INSERT ... ON CONFLICT (organization_id, user_id) DO
+ * UPDATE` issues an atomic upsert. Two parallel recovery
+ * workers on the same (org, user) pair collide on the unique
+ * index and one row wins; both callers see the same final
+ * state.
+ *
+ * The `DO UPDATE` only promotes a non-owner to owner; an
+ * already-owner row is left alone. The role string is parsed
+ * multi-role aware so `"owner,admin"` is recognized as owner.
  */
 export async function ensureOwnerMembership(
 	userId: string,
 	organizationId: string,
 ): Promise<{ memberId: string }> {
-	return db.transaction(async (tx) => {
-		const existing = await tx
-			.select({ id: member.id, role: member.role })
-			.from(member)
-			.where(
-				and(
-					eq(member.userId, userId),
-					eq(member.organizationId, organizationId),
-				),
-			)
-			.limit(1)
-		if (existing.length > 0 && existing[0]) {
-			if (parseMemberRoles(existing[0].role).includes("owner")) {
-				return { memberId: existing[0].id }
-			}
-			// Promote to owner. The plugin's `beforeAddMember` and
-			// `beforeUpdateMemberRole` hooks both run; the latter
-			// refuses to demote the creator, but promotion to
-			// owner is the recovery path.
-			const updated = await tx
-				.update(member)
-				.set({ role: "owner" })
-				.where(eq(member.id, existing[0].id))
-				.returning({ id: member.id })
-			return { memberId: updated[0]?.id ?? existing[0].id }
-		}
-		const id = randomBytes(8).toString("hex")
-		const inserted = await tx
-			.insert(member)
-			.values({
-				id,
-				organizationId,
-				userId,
-				role: "owner",
-				createdAt: new Date(),
-			})
-			.returning({ id: member.id })
-		return { memberId: inserted[0]?.id ?? id }
-	})
+	const id = randomBytes(8).toString("hex")
+	const rows = await db
+		.insert(member)
+		.values({
+			id,
+			organizationId,
+			userId,
+			role: "owner",
+			createdAt: new Date(),
+		})
+		.onConflictDoUpdate({
+			target: [member.organizationId, member.userId],
+			set: {
+				role: sql`CASE
+					WHEN ${member.role} LIKE '%owner%' THEN ${member.role}
+					ELSE 'owner'
+				END`,
+			},
+		})
+		.returning({ id: member.id })
+	return { memberId: rows[0]?.id ?? id }
 }
 
 /**
@@ -502,16 +528,23 @@ export async function finalizeOrganizationProvisioning(input: {
 }): Promise<{ slug: string }> {
 	return db.transaction(async (tx) => {
 		// Step 1: conditional update. fencing_token = <expected>
-		// ensures a stale worker cannot overwrite a newer state.
-		// The update returns the row count; 0 means the caller
-		// has lost the race and the whole transaction rolls back.
+		// AND lease_until > now ensures:
+		//   - a stale worker (token was advanced) fails the
+		//     fencing check;
+		//   - an expired lease (the previous worker died) also
+		//     fails the lease check, even if no one else has
+		//     claimed the row yet. `prepareOrganizationCreation`
+		//     takes over expired leases and bumps the token; if
+		//     that hasn't happened, we reject the finalize and
+		//     let the next request re-claim.
+		const now = Date.now()
 		const updated = await tx
 			.update(accountOrganizationProvisioning)
 			.set({
 				organizationId: input.organizationId,
 				status: "completed",
 				fencingToken: input.expectedFencingToken + 1,
-				leaseUntil: Date.now() + LEASE_DURATION_MS,
+				leaseUntil: now + LEASE_DURATION_MS,
 			})
 			.where(
 				and(
@@ -520,6 +553,7 @@ export async function finalizeOrganizationProvisioning(input: {
 						accountOrganizationProvisioning.fencingToken,
 						input.expectedFencingToken,
 					),
+					gt(accountOrganizationProvisioning.leaseUntil, now),
 				),
 			)
 			.returning({
@@ -529,7 +563,7 @@ export async function finalizeOrganizationProvisioning(input: {
 		if (updated.length === 0) {
 			throw new APIError("CONFLICT", {
 				message:
-					"Provisioning was advanced by a concurrent worker. Retry the create request.",
+					"Provisioning was advanced by a concurrent worker or its lease expired. Retry the create request.",
 			})
 		}
 

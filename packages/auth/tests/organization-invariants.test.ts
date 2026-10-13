@@ -67,9 +67,19 @@ async function createVerifiedUser(
 
 // Helper: create an organization and a default row for the
 // user, simulating a completed onboarding. Returns the org
-// id and slug. The hook fires `prepareOrganizationCreation`,
-// so the `account_organization_provisioning` row is also
-// created as a side effect of the create.
+// id, slug, and the operation id the hook stashed on the
+// provisioning row.
+//
+// The plugin's `beforeCreateOrganization` hook calls
+// `prepareOrganizationCreation`, which inserts the
+// `account_organization_provisioning` row. The test must NOT
+// insert a second one for the same user_id (PK violation).
+// We read the operation id back from the row the hook wrote.
+//
+// The default row is the user-visible "this is my default"
+// relation. The Server Action's `finalizeOrganizationProvisioning`
+// is the only sanctioned writer; for tests we mirror it with
+// a direct INSERT.
 async function createDefaultOrganization(
 	user: { userId: string; headers: Headers },
 	prefix: string,
@@ -79,20 +89,30 @@ async function createDefaultOrganization(
 		body: { name: `Default ${prefix}`, slug },
 		headers: user.headers,
 	})) as { id: string; slug: string }
-	// The plugin's create does not write a default row. The
-	// Server Action's finalization is the only sanctioned
-	// writer. For tests we mirror the finalization by
-	// inserting the default row in a transaction.
-	const operationId = `op-${randomBytes(8).toString("hex")}`
+	// Read the operation id the hook stashed.
+	const opRows = await db.execute(
+		sql`SELECT "operation_id" FROM "account_organization_provisioning" WHERE "user_id" = ${user.userId} LIMIT 1`,
+	)
+	const opRow = (opRows as unknown as { rows: Array<{ operation_id: string }> })
+		.rows[0]
+	if (!opRow) {
+		throw new Error("Hook did not write a provisioning row")
+	}
+	// Mark the provisioning row as completed with the org id
+	// — mirrors what finalizeOrganizationProvisioning does in
+	// production.
 	await db.execute(
-		sql`INSERT INTO "account_organization_provisioning" ("user_id", "operation_id", "organization_id", "status", "requested_name", "final_slug", "lease_until", "fencing_token", "created_at", "updated_at")
-			VALUES (${user.userId}, ${operationId}, ${created.id}, 'completed', ${`Default ${prefix}`}, ${slug}, ${Date.now() + 60_000}, 1, now(), now())`,
+		sql`UPDATE "account_organization_provisioning"
+			SET "status" = 'completed', "organization_id" = ${created.id},
+				"final_slug" = ${slug}, "requested_name" = ${`Default ${prefix}`},
+				"fencing_token" = "fencing_token" + 1
+			WHERE "user_id" = ${user.userId}`,
 	)
 	await db.execute(
 		sql`INSERT INTO "account_organization_defaults" ("user_id", "organization_id", "created_at")
 			VALUES (${user.userId}, ${created.id}, now())`,
 	)
-	return { orgId: created.id, slug, operationId }
+	return { orgId: created.id, slug, operationId: opRow.operation_id }
 }
 
 describe.skipIf(skip())(

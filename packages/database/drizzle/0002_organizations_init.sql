@@ -56,22 +56,31 @@ CREATE UNIQUE INDEX "organization_slug_uidx" ON "organization" USING btree ("slu
 
 -- RFC-001 §5: bootstrapOperationId additional field (input: false).
 -- The plugin refuses to write this column from caller input; the
--- beforeCreateOrganization hook is the only writer. There is NO
--- unique index on this column: the marker is a correlation pointer
--- between the plugin's organization row and the
--- `account_organization_provisioning` row that owns it. Uniqueness
--- is enforced by `account_organization_provisioning.user_id` (the
--- primary key, one row per user), and a single user can own many
--- organizations across the account's lifetime. The marker is set
--- ONLY on the first (default) organization; additional orgs leave
--- the column NULL.
+-- beforeCreateOrganization hook is the only writer.
 --
--- A previous version of this migration added a partial UNIQUE
--- index on `bootstrap_operation_id WHERE NOT NULL`. That index
--- was wrong: it allows multiple NULLs but rejects duplicate
--- non-NULL values, which breaks additional org creation (the
--- user has exactly one marker, shared across all their orgs).
--- The marker is intentionally not a global key.
+-- The marker is a correlation pointer between the plugin's
+-- organization row and the `account_organization_provisioning`
+-- row that owns it. For the FIRST (default) organization, every
+-- account has exactly one provisioning row, and the marker is
+-- unique to that account: a partial UNIQUE index on
+-- `bootstrap_operation_id WHERE NOT NULL` makes a second
+-- organization row with the same marker a hard constraint
+-- violation. Two parallel onboarding attempts that share the
+-- same marker (because `prepareOrganizationCreation` re-reads
+-- the existing row) would otherwise both succeed and leave the
+-- system with two orgs that look like the same "bootstrap".
+--
+-- For ADDITIONAL organizations the column is set to NULL — the
+-- marker is a one-shot pointer for the default org only. A
+-- partial index on `NOT NULL` allows many NULLs, so the
+-- additional-org path is not blocked.
+--
+-- The primary key on `account_organization_provisioning.user_id`
+-- remains the per-user constraint; this index is the per-marker
+-- constraint.
+CREATE UNIQUE INDEX "organization_bootstrapOperationId_uidx"
+	ON "organization" ("bootstrap_operation_id")
+	WHERE "bootstrap_operation_id" IS NOT NULL;
 --> statement-breakpoint
 
 -- RFC-001 §7: Plugin-generated member table. Pair (organizationId,

@@ -6,19 +6,19 @@
  * fire in tests) and the `testUtils` plugin (so tests can mint
  * users without going through the email-verification flow).
  *
- * Tests that exercise the durable provisioning protocol import
- * the helpers from `@workspace/auth/organization-policy`
- * directly. The plugin is configured with the same
- * `organizationHooks` block as production so a test that
- * deletes a default org actually goes through the same
- * `beforeDeleteOrganization` guard as the live system.
+ * Database isolation: the test suite uses ONE database for
+ * both the test auth instance and the direct `db` queries
+ * (e.g. fixture inserts in `organization-invariants.test.ts`).
+ * Operators MUST set `DATABASE_URL` and `TEST_DATABASE_URL` to
+ * the same isolated database for the test run; the
+ * `db.execute(...)` calls in the tests would otherwise write
+ * to a different database from the one the plugin is reading.
  */
 import { betterAuth } from "better-auth"
 import { APIError } from "better-auth/api"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { organization, testUtils } from "better-auth/plugins"
-import { drizzle } from "drizzle-orm/postgres-js"
-import postgres from "postgres"
+import { db } from "@workspace/database"
 import * as schema from "@workspace/database/schema"
 import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
@@ -28,13 +28,6 @@ import {
 	assertOrganizationIsDeletable,
 	prepareOrganizationCreation,
 } from "../src/organization-policy.js"
-
-// Test database connection. The test env var is optional;
-// when absent, the suite is gated by `process.env.TEST_DATABASE_URL`
-// (see the top of `organization-invariants.test.ts`).
-const testDbUrl = serverEnv.TEST_DATABASE_URL ?? ""
-const pool = postgres(testDbUrl, { max: 1 })
-const db = drizzle(pool)
 
 const RESERVED_ORGANIZATION_SLUGS = new Set([
 	"deessejs",

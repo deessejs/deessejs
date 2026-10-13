@@ -8,32 +8,19 @@ import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
 import { Separator } from "@workspace/ui/components/separator"
+import { safeRedirect } from "@workspace/utils/safe-redirect"
 import { OAuthButtons } from "./oauth-buttons"
 import { Field, PasswordField } from "./field"
 import { loginSchema } from "@/components/auth/schemas"
 
-/**
- * Resolve the post-login destination. The proxy redirects
- * unauthenticated users to `/login?redirect=<original path>`
- * (apps/app/proxy.ts). We honor that, but only when it points
- * to a same-origin path: an attacker who crafts a link
- * `/login?redirect=https://evil.example/foo` must not get a
- * post-login redirect to the attacker.
- *
- * The fallback is the root, which the (protected) root layout
- * resolves to the account's default organization home or the
- * onboarding wizard.
- */
-function safeRedirect(raw: string | null): string {
-	if (!raw) return "/"
-	// Reject anything that isn't a same-origin path.
-	if (!raw.startsWith("/") || raw.startsWith("//")) return "/"
-	return raw
-}
-
 export function LoginForm() {
 	const router = useRouter()
 	const searchParams = useSearchParams()
+	// Reject open-redirect attempts (CVE-2025-27143 class):
+	// protocol-relative URLs and backslash variants. The
+	// shared helper is the single source of truth for this
+	// normalization; we deliberately do not re-implement it
+	// here.
 	const redirectTo = safeRedirect(searchParams.get("redirect"))
 
 	const form = useForm({
@@ -114,7 +101,7 @@ export function LoginForm() {
 				</div>
 			</div>
 
-			<OAuthButtons />
+			<OAuthButtons callbackURL={redirectTo} />
 
 			<p className="text-center text-sm text-muted-foreground">
 				Don&apos;t have an account?{" "}

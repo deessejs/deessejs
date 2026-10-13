@@ -2,10 +2,11 @@
 
 import { headers } from "next/headers"
 import { auth } from "@workspace/auth"
+import { getDefaultOrganization } from "@workspace/auth/organization-policy"
 import { requireAccountSession } from "@/lib/organization-auth"
 
 type AcceptInvitationResult =
-	| { ok: true; slug: string; organizationId: string }
+	| { ok: true; slug: string; organizationId: string; hasDefault: boolean }
 	| { ok: false; error: string }
 
 /**
@@ -22,16 +23,17 @@ type AcceptInvitationResult =
  *      `/onboarding/first-organization`, losing the invited
  *      organization context.
  *
- * The Server Action returns a clean `{ ok, slug, organizationId }`
- * shape so the client can render the error inline AND navigate to
- * the invited organization's home on success. For a brand-new
- * account that has no default yet, the client preserves the slug
- * through the onboarding wizard's `?return=` query param.
+ * The Server Action returns a clean `{ ok, slug, organizationId,
+ * hasDefault }` shape. `hasDefault` lets the client decide
+ * whether to navigate directly to the invited org's home (when
+ * the account is already completed) or to
+ * `/onboarding?return=<slug>` first (when the account is brand
+ * new and was invited before completing onboarding).
  */
 export async function acceptInvitation(
 	invitationId: string,
 ): Promise<AcceptInvitationResult> {
-	await requireAccountSession()
+	const session = await requireAccountSession()
 	try {
 		const result = (await auth.api.acceptInvitation({
 			body: { invitationId },
@@ -41,10 +43,6 @@ export async function acceptInvitation(
 		if (!organizationId) {
 			return { ok: false, error: "Invitation did not return an organization" }
 		}
-		// Resolve the slug for client navigation. The plugin
-		// already set the new organization active; `listOrganizations`
-		// returns the user's full list. We pick the just-joined
-		// org by id.
 		const orgs = (await auth.api.listOrganizations({
 			headers: await headers(),
 		})) as Array<{ id: string; slug: string }>
@@ -55,7 +53,13 @@ export async function acceptInvitation(
 				error: "Organization not found after acceptance",
 			}
 		}
-		return { ok: true, slug: org.slug, organizationId: org.id }
+		const defaultOrg = await getDefaultOrganization(session.user.id)
+		return {
+			ok: true,
+			slug: org.slug,
+			organizationId: org.id,
+			hasDefault: defaultOrg !== null,
+		}
 	} catch (err) {
 		return {
 			ok: false,

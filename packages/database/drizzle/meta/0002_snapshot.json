@@ -806,6 +806,22 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "organization_bootstrapOperationId_uidx": {
+          "name": "organization_bootstrapOperationId_uidx",
+          "columns": [
+            {
+              "expression": "bootstrap_operation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {},
+          "where": "bootstrap_operation_id IS NOT NULL"
         }
       },
       "foreignKeys": {},

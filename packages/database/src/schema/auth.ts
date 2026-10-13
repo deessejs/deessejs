@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
@@ -123,17 +123,21 @@ export const organization = pgTable(
     //
     // The marker is set ONLY on the first (default) organization
     // a user creates. Additional organizations leave the column
-    // NULL. There is NO unique index on this column: the marker
-    // is a per-user correlation pointer, and uniqueness is
-    // already enforced by the primary key on
-    // `account_organization_provisioning.user_id`. A previous
-    // version of the migration added a partial UNIQUE index on
-    // this column; that index broke additional org creation
-    // (multiple non-NULL values for the same user) and has been
-    // removed.
+    // NULL. A partial unique index on `bootstrap_operation_id
+    // WHERE NOT NULL` is the per-marker guarantee: a second
+    // organization row with the same marker (e.g. two parallel
+    // onboarding attempts that both re-read the same
+    // provisioning row) is a hard constraint violation. The
+    // partial predicate lets additional orgs coexist because
+    // they have NULL markers.
     bootstrapOperationId: text("bootstrap_operation_id"),
   },
-  (table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
+  (table) => [
+    uniqueIndex("organization_slug_uidx").on(table.slug),
+    uniqueIndex("organization_bootstrapOperationId_uidx")
+      .on(table.bootstrapOperationId)
+      .where(sql`bootstrap_operation_id IS NOT NULL`),
+  ],
 );
 
 export const member = pgTable(
