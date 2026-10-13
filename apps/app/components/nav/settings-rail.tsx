@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@workspace/ui/lib/utils"
 import {
   HomeIcon,
+  ShieldIcon,
   UserIcon,
   SmartphoneIcon,
   LinkIcon,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react"
 
 import { APP_CONFIG } from "@/lib/app-config"
+import { authClient } from "@/lib/auth-client"
 
 type RailItem = {
   label: string
@@ -19,7 +21,13 @@ type RailItem = {
   icon: React.ComponentType<{ className?: string }>
 }
 
-const RAIL: RailItem[] = [
+/**
+ * The account-scoped links. The Administration link is added at
+ * render time (when the current user has the global `admin` role)
+ * rather than here so the static array stays the source of truth for
+ * what every authenticated user sees.
+ */
+const ACCOUNT_RAIL: RailItem[] = [
   { label: "Home", href: APP_CONFIG.links.home, icon: HomeIcon },
   { label: "Profile", href: "/settings/profile", icon: UserIcon },
   { label: "Sessions", href: "/settings/sessions", icon: SmartphoneIcon },
@@ -32,14 +40,18 @@ const RAIL: RailItem[] = [
 ]
 
 /**
- * Returns the href of the active rail entry for the given pathname. The
- * active entry is the one whose href is the longest prefix of `pathname`
- * — `/settings/security/password` highlights Security (not Profile, even
- * though `/settings/...` is a prefix of Profile too).
+ * Returns the href of the active rail entry for the given pathname
+ * from a per-render list. The active entry is the one whose href is
+ * the longest prefix of `pathname` — `/settings/security/password`
+ * highlights Security (not Profile, even though `/settings/...` is a
+ * prefix of Profile too). Accepting the list as a parameter lets the
+ * caller pass a render-scoped array (e.g. with the Administration
+ * link included) without the helper needing to know about
+ * conditional entries.
  */
-function activeHref(pathname: string): string {
+function activeHref(pathname: string, items: RailItem[]): string {
   let best = ""
-  for (const item of RAIL) {
+  for (const item of items) {
     if (
       (pathname === item.href || pathname.startsWith(`${item.href}/`)) &&
       item.href.length > best.length
@@ -55,10 +67,35 @@ function activeHref(pathname: string): string {
  * `<Link>` rows; no shadcn `Sidebar` component (see ADR-030). The rail
  * is ~240 px wide on desktop; on narrow viewports it tightens to icon-only
  * via the `sm:` breakpoint classes below.
+ *
+ * The Administration link is shown only when `authClient.useSession()`
+ * reports `data?.user.role === "admin"` (RFC: "DeesseJS Administration
+ * Routes — V1" §7). The link is a navigation convenience — the server
+ * guard in `apps/app/lib/admin-auth.ts` remains the authoritative
+ * access check. Hiding the link does not lock the route; the server
+ * still rejects unauthenticated or non-admin requests.
  */
 export function SettingsRail() {
   const pathname = usePathname()
-  const active = activeHref(pathname)
+  // Top-level hook call: component top-level is a valid hook context per
+  // React's rules. The audit §3.5 bug was calling useSession() inside an
+  // async callback (useCallback body), which IS a violation. Here at
+  // top-level, useSession() is correct. The workspace-wide ESLint rule
+  // in `packages/eslint-config/base.js` flags every `authClient.useSession`
+  // call regardless of context — see the same disable comment in
+  // `apps/app/components/sidebars/nav-user.tsx`.
+  // eslint-disable-next-line no-restricted-syntax
+  const { data: session } = authClient.useSession()
+  const isAdmin = session?.user?.role === "admin"
+
+  const items: RailItem[] = isAdmin
+    ? [
+        ...ACCOUNT_RAIL,
+        { label: "Administration", href: "/admin/home", icon: ShieldIcon },
+      ]
+    : ACCOUNT_RAIL
+
+  const active = activeHref(pathname, items)
 
   return (
     <nav
@@ -66,7 +103,7 @@ export function SettingsRail() {
       className="hidden w-60 shrink-0 border-r bg-background md:block"
     >
       <ul className="flex flex-col gap-0.5 p-2">
-        {RAIL.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon
           const isActive = active === item.href
           return (

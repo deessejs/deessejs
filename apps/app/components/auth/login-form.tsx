@@ -8,11 +8,12 @@ import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
 import { Separator } from "@workspace/ui/components/separator"
+import { safeRedirect } from "@workspace/utils/safe-redirect"
 import { OAuthButtons } from "./oauth-buttons"
 import { Field, PasswordField } from "./field"
 import { loginSchema } from "@/components/auth/schemas"
 
-export function LoginForm() {
+export function LoginForm({ redirectTo = "/home" }: { redirectTo?: string } = {}) {
 	const router = useRouter()
 
 	const form = useForm({
@@ -24,8 +25,16 @@ export function LoginForm() {
 			onSubmit: loginSchema,
 		},
 		onSubmit: async ({ value }) => {
+			// The page already passed `redirectTo` through `safeRedirect`,
+			// but the workspace ESLint rule
+			// (`packages/eslint-config/base.js`) flags any
+			// `router.push` whose target originates from a
+			// search-param-adjacent flow. Re-running the helper
+			// here is idempotent and keeps the call site
+			// self-contained.
+			const target = safeRedirect(redirectTo, "/home")
 			const { error } = await authClient.signIn.email(value, {
-				onSuccess: () => router.push("/home"),
+				onSuccess: () => router.push(target),
 			})
 			if (error) {
 				toast.error(error.message ?? "Invalid credentials")
@@ -93,7 +102,7 @@ export function LoginForm() {
 				</div>
 			</div>
 
-			<OAuthButtons />
+			<OAuthButtons callbackURL={redirectTo} />
 
 			<p className="text-center text-sm text-muted-foreground">
 				Don&apos;t have an account?{" "}

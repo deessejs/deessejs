@@ -28,7 +28,7 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "auth:generate": "pnpm exec auth generate --config ./src/auth.ts --output ../database/src/schema/auth.ts --yes"
+    "auth:generate": "echo 'auth:generate is disabled — see the long-form comment at the top of packages/database/src/schema/auth.ts. The current auth CLI versions (1.4.22 and 1.6.23) silently rename the deviceCode table to device_code and drop its unique constraints / FK / indexes / created_at+updated_at columns / status default / pollingInterval bigint type, breaking every device-flow endpoint. Edit the schema by hand until the upstream CLI is fixed.' && exit 1"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "catalog:",
@@ -45,8 +45,9 @@
     "@types/pg": "catalog:",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
+    "@workspace/vitest-config": "workspace:*",
+    "auth": "catalog:",
     "eslint": "catalog:",
-    "vitest": "catalog:",
-    "@workspace/vitest-config": "workspace:*"
+    "vitest": "catalog:"
   }
 }
