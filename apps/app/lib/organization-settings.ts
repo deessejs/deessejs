@@ -4,10 +4,11 @@ import { headers } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { auth } from "@workspace/auth"
 import {
+	getMembership,
+	getOrganizationBySlug,
 	hasAdminOrOwnerRole,
 	hasOwnerRole,
 } from "@workspace/auth/organization-policy"
-import { getMembership } from "@workspace/auth/organization-policy"
 import { requireAccountSession } from "@/lib/organization-auth"
 
 interface RenameInput {
@@ -63,7 +64,6 @@ export async function renameOrganization(
 
 interface DeleteInput {
 	organizationSlug: string
-	organizationId: string
 	confirmation: string
 }
 
@@ -74,6 +74,18 @@ type DeleteResult = { ok: true } | { ok: false; error: string }
  * caller must type the organization's display name to arm the
  * action (RFC-001 §7 "destructive actions must require role
  * checks AND a typed confirmation").
+ *
+ * The action ignores the client-supplied `organizationId` field.
+ * It re-resolves the org by slug from the database and uses the
+ * membership-verified `organizationId` from the join — a caller
+ * who sends a different id is asking us to delete an org they
+ * did not prove membership for, and the type signature above
+ * says only `organizationSlug` + `confirmation` are required.
+ *
+ * The typed-confirmation guard compares the caller's input
+ * against the server-loaded `name` (NOT the slug) because the
+ * dialog prompts the user to type the display name; comparing
+ * to the slug would let a typed-slug bypass the guard.
  *
  * The plugin's `beforeDeleteOrganization` hook blocks deletion
  * of any organization referenced by an
@@ -93,11 +105,20 @@ export async function deleteOrganization(
 	if (!hasOwnerRole(membership.role)) {
 		return { ok: false, error: "Only owners can delete" }
 	}
-	if (input.confirmation.trim() !== input.organizationSlug) {
-		// Note: we compare against the slug, but the prompt asks
-		// the user to type the name. The two are not the same.
-		// The page-level form passes the display name; this
-		// check is the typed-confirmation guard.
+	// Load the org server-side. We use the membership-verified
+	// `organizationId` from the join — NOT whatever the client
+	// sent — for the plugin call. The `name` is fetched for
+	// the typed-confirmation guard.
+	const org = await getOrganizationBySlug(input.organizationSlug)
+	if (!org) return { ok: false, error: "Organization not found" }
+	if (org.id !== membership.organizationId) {
+		// Defensive: should be impossible because the slug is
+		// the join key, but a stale row or a future schema
+		// change could break the invariant. Refuse the call
+		// rather than risk a cross-org delete.
+		return { ok: false, error: "Organization mismatch" }
+	}
+	if (input.confirmation.trim() !== org.name) {
 		return {
 			ok: false,
 			error: "Confirmation does not match the organization name",
@@ -106,7 +127,7 @@ export async function deleteOrganization(
 	try {
 		await auth.api.deleteOrganization({
 			body: {
-				organizationId: input.organizationId,
+				organizationId: org.id,
 			},
 			headers: await headers(),
 		})

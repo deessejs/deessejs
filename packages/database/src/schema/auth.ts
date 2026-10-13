@@ -1,4 +1,4 @@
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import {
   bigint,
   boolean,
@@ -114,26 +114,26 @@ export const organization = pgTable(
     logo: text("logo"),
     createdAt: timestamp("created_at").notNull(),
     metadata: text("metadata"),
-    // RFC-001 §5: server-only, immutable, unique bootstrap
-    // marker. The plugin's `additionalFields.bootstrapOperationId`
-    // declaration in `packages/auth/src/auth.ts` is `input: false`,
-    // so this column is never written from caller input — only the
+    // RFC-001 §5: server-only, immutable correlation marker. The
+    // plugin's `additionalFields.bootstrapOperationId` declaration
+    // in `packages/auth/src/auth.ts` is `input: false`, so this
+    // column is never written from caller input — only the
     // `beforeCreateOrganization` hook sets it from
     // `prepareOrganizationCreation`.
     //
-    // This column is hand-added (the `auth:generate` command does
-    // not emit `input: false` additional fields). Future
-    // `auth:generate` runs will overwrite this file; the
-    // implementation branch adds a post-generate script that
-    // re-applies the hand-written lines.
+    // The marker is set ONLY on the first (default) organization
+    // a user creates. Additional organizations leave the column
+    // NULL. There is NO unique index on this column: the marker
+    // is a per-user correlation pointer, and uniqueness is
+    // already enforced by the primary key on
+    // `account_organization_provisioning.user_id`. A previous
+    // version of the migration added a partial UNIQUE index on
+    // this column; that index broke additional org creation
+    // (multiple non-NULL values for the same user) and has been
+    // removed.
     bootstrapOperationId: text("bootstrap_operation_id"),
   },
-  (table) => [
-    uniqueIndex("organization_slug_uidx").on(table.slug),
-    uniqueIndex("organization_bootstrapOperationId_uidx")
-      .on(table.bootstrapOperationId)
-      .where(sql`${table.bootstrapOperationId} IS NOT NULL`),
-  ],
+  (table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
 );
 
 export const member = pgTable(

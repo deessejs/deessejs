@@ -15,7 +15,7 @@ import {
 import { deleteOrganization } from "@/lib/organization-settings"
 
 interface DeleteOrganizationZoneProps {
-	organizationId: string
+	organizationSlug: string
 	organizationName: string
 }
 
@@ -29,6 +29,12 @@ interface DeleteOrganizationZoneProps {
  * the page-level layout enforces role, this dialog enforces the
  * typed confirmation.
  *
+ * The Server Action `deleteOrganization` ignores any client-
+ * supplied `organizationId` and re-resolves the org by slug from
+ * the database; we therefore pass only the slug here. The page
+ * provides it from the route param so we never depend on
+ * `window.location` parsing.
+ *
  * The plugin's `beforeDeleteOrganization` hook blocks deletion
  * of any organization referenced by an
  * `account_organization_defaults` row (the permanent default
@@ -36,7 +42,7 @@ interface DeleteOrganizationZoneProps {
  * database `ON DELETE RESTRICT` is the last line of defense.
  */
 export function DeleteOrganizationZone({
-	organizationId,
+	organizationSlug,
 	organizationName,
 }: DeleteOrganizationZoneProps) {
 	const router = useRouter()
@@ -50,8 +56,7 @@ export function DeleteOrganizationZone({
 		setError(null)
 		startTransition(async () => {
 			const result = await deleteOrganization({
-				organizationSlug: window.location.pathname.split("/")[1] ?? "",
-				organizationId,
+				organizationSlug,
 				confirmation,
 			})
 			if (!result.ok) {

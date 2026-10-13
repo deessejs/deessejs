@@ -112,7 +112,30 @@ function generateOperationId(): string {
 export async function prepareOrganizationCreation(
 	userId: string,
 ): Promise<OrganizationBootstrapData> {
-	// 1. If a provisioning row already exists, return its operation id.
+	// 1. Has the account already completed onboarding? If so,
+	// this is an additional-organization creation; the marker is
+	// NOT set on the new org (the marker is a one-time
+	// correlation pointer for the first org, see RFC-001 §5).
+	const existingDefault = await db
+		.select({ organizationId: accountOrganizationDefaults.organizationId })
+		.from(accountOrganizationDefaults)
+		.where(eq(accountOrganizationDefaults.userId, userId))
+		.limit(1)
+	if (existingDefault.length > 0) {
+		// The user already has a default. The provisioning row
+		// (if any) is left alone — the additional org gets no
+		// marker, so a future replay cannot correlate it to the
+		// provisioning row.
+		return {}
+	}
+
+	// 2. Onboarding path: claim or resume the durable
+	// provisioning record. If a row already exists (a previous
+	// attempt created the plugin's organization + membership but
+	// crashed before finalization), return its marker so the
+	// next attempt's `beforeCreateOrganization` is idempotent
+	// (it sets the same marker; the database unique index on
+	// `organization.slug` arbitrates final uniqueness).
 	const existing = await db
 		.select({
 			operationId: accountOrganizationProvisioning.operationId,
@@ -122,23 +145,14 @@ export async function prepareOrganizationCreation(
 		.where(eq(accountOrganizationProvisioning.userId, userId))
 		.limit(1)
 	if (existing.length > 0 && existing[0]) {
-		// The provisioning row is reused across additional org
-		// creations. The marker on the NEW organization row is
-		// still unique (the partial unique index on
-		// `bootstrap_operation_id` allows multiple organizations to
-		// share a marker, since this is the same user's history).
-		// The new organization gets the same marker; the create
-		// path's `beforeCreateOrganization` hook does not enforce
-		// marker uniqueness beyond what the partial index already
-		// allows.
 		return { bootstrapOperationId: existing[0].operationId }
 	}
 
-	// 2. Insert a fresh pending row. The primary key on `userId`
-	// makes this an atomic create-or-fail; a concurrent worker that
-	// raced us and inserted first will surface as a unique
-	// violation, which the caller can treat as "row exists, retry
-	// the read".
+	// 3. Insert a fresh pending row. The primary key on `userId`
+	// makes this an atomic create-or-fail; a concurrent worker
+	// that raced us and inserted first will surface as a unique
+	// violation, which the caller can treat as "row exists,
+	// retry the read".
 	const operationId = generateOperationId()
 	const now = Date.now()
 	try {
@@ -325,6 +339,8 @@ export async function getProvisioningState(userId: string): Promise<{
 	organizationId: string | null
 	status: string
 	finalSlug: string
+	fencingToken: number
+	leaseUntil: number
 } | null> {
 	const rows = await db
 		.select({
@@ -332,6 +348,8 @@ export async function getProvisioningState(userId: string): Promise<{
 			organizationId: accountOrganizationProvisioning.organizationId,
 			status: accountOrganizationProvisioning.status,
 			finalSlug: accountOrganizationProvisioning.finalSlug,
+			fencingToken: accountOrganizationProvisioning.fencingToken,
+			leaseUntil: accountOrganizationProvisioning.leaseUntil,
 		})
 		.from(accountOrganizationProvisioning)
 		.where(eq(accountOrganizationProvisioning.userId, userId))
@@ -343,7 +361,90 @@ export async function getProvisioningState(userId: string): Promise<{
 		organizationId: row.organizationId,
 		status: row.status,
 		finalSlug: row.finalSlug,
+		fencingToken: row.fencingToken,
+		leaseUntil: row.leaseUntil,
 	}
+}
+
+/**
+ * Find the organization that was created for a given bootstrap
+ * marker. Returns `null` if no organization carries the marker.
+ * Used by the onboarding Server Action to recover from
+ * "organization was created but the finalization crashed"
+ * without trusting `account_organization_provisioning.organization_id`
+ * (which is only set during finalization).
+ */
+export async function findOrganizationByMarker(
+	operationId: string,
+): Promise<{ id: string; slug: string; name: string } | null> {
+	const rows = await db
+		.select({
+			id: organization.id,
+			slug: organization.slug,
+			name: organization.name,
+		})
+		.from(organization)
+		.where(eq(organization.bootstrapOperationId, operationId))
+		.limit(1)
+	return rows[0] ?? null
+}
+
+/**
+ * Ensure the user has a membership row for the named
+ * organization with role `owner`. Used during onboarding
+ * recovery when the plugin's `createOrganization` was
+ * interrupted after the org row was written but before the
+ * owner membership was inserted (or after the membership was
+ * inserted but before the finalization committed). The
+ * function is idempotent: a row that already exists with the
+ * correct role is left alone; a row with the wrong role is
+ * updated.
+ *
+ * Returns the membership id.
+ */
+export async function ensureOwnerMembership(
+	userId: string,
+	organizationId: string,
+): Promise<{ memberId: string }> {
+	return db.transaction(async (tx) => {
+		const existing = await tx
+			.select({ id: member.id, role: member.role })
+			.from(member)
+			.where(
+				and(
+					eq(member.userId, userId),
+					eq(member.organizationId, organizationId),
+				),
+			)
+			.limit(1)
+		if (existing.length > 0 && existing[0]) {
+			if (parseMemberRoles(existing[0].role).includes("owner")) {
+				return { memberId: existing[0].id }
+			}
+			// Promote to owner. The plugin's `beforeAddMember` and
+			// `beforeUpdateMemberRole` hooks both run; the latter
+			// refuses to demote the creator, but promotion to
+			// owner is the recovery path.
+			const updated = await tx
+				.update(member)
+				.set({ role: "owner" })
+				.where(eq(member.id, existing[0].id))
+				.returning({ id: member.id })
+			return { memberId: updated[0]?.id ?? existing[0].id }
+		}
+		const id = randomBytes(8).toString("hex")
+		const inserted = await tx
+			.insert(member)
+			.values({
+				id,
+				organizationId,
+				userId,
+				role: "owner",
+				createdAt: new Date(),
+			})
+			.returning({ id: member.id })
+		return { memberId: inserted[0]?.id ?? id }
+	})
 }
 
 /**
@@ -363,6 +464,14 @@ export async function getProvisioningState(userId: string): Promise<{
  *      organization is the default of exactly one account: its
  *      creator.)
  *
+ * The `expectedFencingToken` is the value the caller read at
+ * claim time. Passing it from the caller — rather than re-reading
+ * the row inside the function — is the only way to test the
+ * "stale worker" scenario: a worker that read fencing_token = 1
+ * before another worker advanced it to 2 will fail its WHERE
+ * clause and the transaction rolls back. A function that
+ * re-reads would silently use the latest value and never fail.
+ *
  * The transaction guarantees that the `completed` provisioning
  * row and the `account_organization_defaults` row either both
  * land or neither does. A crash between the two steps leaves the
@@ -375,23 +484,9 @@ export async function getProvisioningState(userId: string): Promise<{
 export async function finalizeOrganizationProvisioning(input: {
 	userId: string
 	organizationId: string
+	expectedFencingToken: number
 }): Promise<{ slug: string }> {
 	return db.transaction(async (tx) => {
-		const provisioningRows = await tx
-			.select({
-				fencingToken: accountOrganizationProvisioning.fencingToken,
-				finalSlug: accountOrganizationProvisioning.finalSlug,
-			})
-			.from(accountOrganizationProvisioning)
-			.where(eq(accountOrganizationProvisioning.userId, input.userId))
-			.limit(1)
-		if (provisioningRows.length === 0 || !provisioningRows[0]) {
-			throw new APIError("BAD_REQUEST", {
-				message: "No provisioning record for this account",
-			})
-		}
-		const { fencingToken, finalSlug } = provisioningRows[0]
-
 		// Step 1: conditional update. fencing_token = <expected>
 		// ensures a stale worker cannot overwrite a newer state.
 		// The update returns the row count; 0 means the caller
@@ -401,17 +496,20 @@ export async function finalizeOrganizationProvisioning(input: {
 			.set({
 				organizationId: input.organizationId,
 				status: "completed",
-				fencingToken: fencingToken + 1,
+				fencingToken: input.expectedFencingToken + 1,
 				leaseUntil: Date.now() + LEASE_DURATION_MS,
 			})
 			.where(
 				and(
 					eq(accountOrganizationProvisioning.userId, input.userId),
-					eq(accountOrganizationProvisioning.fencingToken, fencingToken),
+					eq(
+						accountOrganizationProvisioning.fencingToken,
+						input.expectedFencingToken,
+					),
 				),
 			)
 			.returning({
-				operationId: accountOrganizationProvisioning.operationId,
+				finalSlug: accountOrganizationProvisioning.finalSlug,
 			})
 
 		if (updated.length === 0) {
@@ -429,7 +527,7 @@ export async function finalizeOrganizationProvisioning(input: {
 			organizationId: input.organizationId,
 		})
 
-		return { slug: finalSlug }
+		return { slug: updated[0]?.finalSlug ?? "" }
 	})
 }
 
@@ -491,6 +589,28 @@ export async function getMembership(
 		role: rows[0].role,
 		organizationId: rows[0].organizationId,
 	}
+}
+
+/**
+ * Load an organization by slug. Returns `null` when no such
+ * organization exists. Used by Server Actions that need the
+ * server-side `name` for typed-confirmation guards; the value
+ * is fetched from the database, never from client input, so a
+ * caller cannot bypass the check by sending a fake `name`.
+ */
+export async function getOrganizationBySlug(
+	organizationSlug: string,
+): Promise<{ id: string; slug: string; name: string } | null> {
+	const rows = await db
+		.select({
+			id: organization.id,
+			slug: organization.slug,
+			name: organization.name,
+		})
+		.from(organization)
+		.where(eq(organization.slug, organizationSlug))
+		.limit(1)
+	return rows[0] ?? null
 }
 
 /**

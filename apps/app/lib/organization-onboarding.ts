@@ -5,7 +5,9 @@ import { redirect } from "next/navigation"
 import { randomBytes, createHash } from "node:crypto"
 import { auth } from "@workspace/auth"
 import {
+	ensureOwnerMembership,
 	finalizeOrganizationProvisioning,
+	findOrganizationByMarker,
 	getDefaultOrganization,
 	getProvisioningState,
 	recordProvisioningRequest,
@@ -120,31 +122,21 @@ export async function createFirstOrganization(
 		}
 	}
 
-	// Step 2: replay detection. If a previous attempt left the
-	// provisioning row in `pending` or `completed` without a
-	// default, return the organization it created. This is the
-	// "the user refreshed the page after the network dropped"
-	// case: the plugin's organization + owner membership are
-	// already in the database; we just need to finalize.
+	// Step 2: replay detection. A previous attempt may have
+	// landed the plugin's organization row + owner membership but
+	// crashed before finalization. The marker is the ONLY way to
+	// find that organization: `account_organization_provisioning
+	// .organization_id` is null until the finalization
+	// transaction commits, so reading it from the provisioning
+	// row tells us nothing about a partial-attempt org.
 	const prior = await getProvisioningState(session.user.id)
-	if (prior && prior.organizationId) {
-		// Try to finalize. If the default already exists (a
-		// concurrent caller beat us), we get back the slug; if a
-		// fencing-token mismatch races us, we read the default
-		// again.
+	if (prior) {
 		const replayed = await replayFinalize({
 			userId: session.user.id,
-			organizationId: prior.organizationId,
+			operationId: prior.operationId,
+			fencingToken: prior.fencingToken,
 		})
 		if (replayed.ok) return replayed
-		const recovered = await getDefaultOrganization(session.user.id)
-		if (recovered) {
-			return {
-				ok: true,
-				slug: recovered.slug,
-				organizationId: recovered.id,
-			}
-		}
 	}
 
 	// Step 3: native create. The plugin's
@@ -229,12 +221,22 @@ export async function createFirstOrganization(
 
 	// Step 5: finalize. Conditional update on `fencing_token`
 	// inside a single transaction with the default row insert.
-	// A fencing-token mismatch means a concurrent worker won;
-	// we recover by re-reading the durable default.
+	// The fencing token we pass is the one we read at claim
+	// time; passing it from the caller — rather than re-reading
+	// the row inside `finalizeOrganizationProvisioning` — is the
+	// only way to test the "stale worker" scenario.
+	const state = await getProvisioningState(session.user.id)
+	if (!state) {
+		return {
+			ok: false,
+			error: "Provisioning state disappeared mid-flight",
+		}
+	}
 	try {
 		await finalizeOrganizationProvisioning({
 			userId: session.user.id,
 			organizationId,
+			expectedFencingToken: state.fencingToken,
 		})
 	} catch (err) {
 		const recovered = await getDefaultOrganization(session.user.id)
@@ -269,27 +271,65 @@ export async function createFirstOrganization(
 
 /**
  * Replay the finalize step on a previously-created organization.
- * Used when an interruption left the plugin's row in place but
- * the `account_organization_defaults` row was never written.
+ *
+ * Two recovery scenarios, distinguished by what we find in the
+ * database:
+ *
+ *   - **Default already exists** — a parallel caller won the
+ *     race. Return the durable default immediately; no
+ *     finalization needed.
+ *
+ *   - **No default yet** — the plugin's organization row + owner
+ *     membership may be on disk from a partial previous attempt.
+ *     Find the org by its `bootstrapOperationId` marker (the
+ *     provisioning row's `organization_id` is still NULL because
+ *     finalization never committed). If we find the org, repair
+ *     the owner membership in case the previous attempt crashed
+ *     AFTER creating the org but BEFORE the membership; then
+ *     re-issue the finalization with the fencing token we read
+ *     at the start of the request. A fencing-token mismatch means
+ *     a parallel request advanced past us — fall back to the
+ *     durable default.
  */
 async function replayFinalize(input: {
 	userId: string
-	organizationId: string
+	operationId: string
+	fencingToken: number
 }): Promise<{ ok: true; slug: string; organizationId: string } | { ok: false }> {
-	try {
-		await finalizeOrganizationProvisioning(input)
-	} catch {
-		// Fencing-token mismatch or a default already exists; both
-		// are recoverable by the caller through
-		// getDefaultOrganization.
+	const existing = await getDefaultOrganization(input.userId)
+	if (existing) {
+		return {
+			ok: true,
+			slug: existing.slug,
+			organizationId: existing.id,
+		}
+	}
+	const recovered = await findOrganizationByMarker(input.operationId)
+	if (!recovered) {
+		// The previous attempt did not even reach the
+		// organization insert. Let the caller create a fresh
+		// one.
 		return { ok: false }
 	}
-	const state = await getProvisioningState(input.userId)
-	if (!state?.finalSlug) return { ok: false }
+	await ensureOwnerMembership(input.userId, recovered.id)
+	try {
+		await finalizeOrganizationProvisioning({
+			userId: input.userId,
+			organizationId: recovered.id,
+			expectedFencingToken: input.fencingToken,
+		})
+	} catch {
+		// Fencing-token mismatch: a parallel worker advanced
+		// past us. The default is either already there (a
+		// parallel caller landed it) or the parallel caller is
+		// still mid-flight. The caller will re-read the default
+		// on the next pass.
+		return { ok: false }
+	}
 	return {
 		ok: true,
-		slug: state.finalSlug,
-		organizationId: input.organizationId,
+		slug: recovered.slug,
+		organizationId: recovered.id,
 	}
 }
 

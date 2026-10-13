@@ -70,7 +70,7 @@ export default async function OrganizationProfilePage({
 
 			{isOwner ? (
 				<DeleteOrganizationZone
-					organizationId={org.id}
+					organizationSlug={organization_slug}
 					organizationName={org.name}
 				/>
 			) : null}
