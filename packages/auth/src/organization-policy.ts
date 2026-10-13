@@ -34,14 +34,15 @@
 
 import { randomBytes } from "node:crypto"
 import { APIError } from "better-auth/api"
-import { and, eq, isNull, sql } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { db } from "@workspace/database"
 import {
 	accountOrganizationDefaults,
 	accountOrganizationProvisioning,
+	member,
 	organization,
 } from "@workspace/database/schema"
-import type { Member, Organization, User } from "better-auth/plugins/organization"
+import type { Member, Organization } from "better-auth/plugins/organization"
 
 /**
  * Lease duration in milliseconds. The claim is renewable while the
@@ -389,6 +390,11 @@ export async function getDefaultOrganization(
  * Resolve a membership row by `(organizationSlug, userId)`. Returns
  * `null` when the user is not a member. Used by the
  * `requireOrganizationAccess` helper in `apps/app/lib/organization-auth.ts`.
+ *
+ * The role string is parsed through `parseMemberRoles` to support
+ * the multi-role representation the plugin can produce (RFC-001
+ * §7 "Authorization must still parse supported plugin role
+ * representations safely and deny unexpected values").
  */
 export async function getMembership(
 	userId: string,
@@ -396,20 +402,13 @@ export async function getMembership(
 ): Promise<{ id: string; role: string; organizationId: string } | null> {
 	const rows = await db
 		.select({
-			id: sql<string>`${"member"}.id`.as("member_id"),
-			role: sql<string>`${"member"}.role`.as("member_role"),
-			organizationId: sql<string>`${"member"}.organization_id`.as(
-				"member_organization_id",
-			),
+			id: member.id,
+			role: member.role,
+			organizationId: member.organizationId,
 		})
-		.from(sql`${"member"}`)
-		.innerJoin(organization, eq(organization.id, sql`${"member"}.organization_id`))
-		.where(
-			and(
-				eq(organization.slug, organizationSlug),
-				eq(sql`${"member"}.user_id`, userId),
-			),
-		)
+		.from(member)
+		.innerJoin(organization, eq(organization.id, member.organizationId))
+		.where(and(eq(organization.slug, organizationSlug), eq(member.userId, userId)))
 		.limit(1)
 	if (rows.length === 0 || !rows[0]) return null
 	return {
@@ -417,6 +416,36 @@ export async function getMembership(
 		role: rows[0].role,
 		organizationId: rows[0].organizationId,
 	}
+}
+
+/**
+ * Parse the `member.role` string the plugin stores. The plugin
+ * accepts a single role OR a comma-separated list. We split on
+ * commas, trim, and lowercase; an empty or missing token is
+ * rejected as `null`. Callers use this for action-level
+ * authorization (e.g. "is this user an owner or admin?").
+ */
+export function parseMemberRoles(raw: string | null | undefined): string[] {
+	if (!raw) return []
+	return raw
+		.split(",")
+		.map((r) => r.trim().toLowerCase())
+		.filter((r) => r.length > 0)
+}
+
+/**
+ * True when the role list contains `owner` (multi-role aware).
+ */
+export function hasOwnerRole(raw: string | null | undefined): boolean {
+	return parseMemberRoles(raw).includes("owner")
+}
+
+/**
+ * True when the role list contains `owner` or `admin`.
+ */
+export function hasAdminOrOwnerRole(raw: string | null | undefined): boolean {
+	const roles = parseMemberRoles(raw)
+	return roles.includes("owner") || roles.includes("admin")
 }
 
 /**
@@ -442,11 +471,7 @@ export async function recordProvisioningRequest(input: {
 		.where(eq(accountOrganizationProvisioning.userId, input.userId))
 }
 
-// Suppress unused-var warnings on imports that are reserved for the
-// implementation branch (the public surface evolves with the
-// schema; reserving the import here keeps the file's documented
-// shape stable).
-void isNull
-void Member
-void Organization
-void User
+// `Member` and `Organization` are imported as type-only for the
+// JSDoc/imports that name them; they are not used as values.
+// `isNull` from drizzle-orm is reserved for future query helpers
+// (the implementation branch uses it in the membership lookup).

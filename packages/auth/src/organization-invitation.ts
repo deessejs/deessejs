@@ -40,7 +40,11 @@ export interface OrganizationInvitationPayload {
 	id: string
 	email: string
 	organization?: { name?: string | null; slug?: string | null } | null
-	inviter?: { name?: string | null; email?: string | null } | null
+	// The plugin types `inviter` as a member row joined with a
+	// user row; we only need the user fields, so we accept any
+	// shape that may carry them. The helper narrows at access
+	// time below.
+	inviter?: unknown
 	role?: string | null
 }
 
@@ -93,7 +97,19 @@ export async function sendOrganizationInvitation(
 	)
 
 	const organizationName = payload.organization?.name ?? "the organization"
-	const inviterName = payload.inviter?.name ?? payload.inviter?.email ?? "A teammate"
+	// Narrow the unknown `inviter` shape defensively. The plugin
+	// either embeds a `user` row (with name/email) or the inviter
+	// fields directly. We accept either.
+	const inviterRaw = payload.inviter as
+		| { user?: { name?: string | null; email?: string | null } | null; name?: string | null; email?: string | null }
+		| null
+		| undefined
+	const inviterName =
+		inviterRaw?.user?.name ??
+		inviterRaw?.user?.email ??
+		inviterRaw?.name ??
+		inviterRaw?.email ??
+		"A teammate"
 
 	const result = await sendAuthEmail({
 		to: payload.email,
