@@ -28,35 +28,53 @@
  *   - `assertDefaultOwnerRoleIsRetained` blocks demotion of the creator
  *     in the default organization. Pairs with the previous helper.
  *
- * STUB STATUS (2026-10-13): this file documents the contract. The
- * actual database reads against `account_organization_defaults` and
- * `account_organization_provisioning` are out of scope for this commit
- * because the application tables are not yet in the database (the
- * implementation branch will add them via Drizzle migrations and
- * `auth:generate` will produce the plugin schema). The plugin
- * configuration in `auth.ts` references these helpers so the wiring is
- * in place; once the tables exist on the implementation branch, the
- * bodies land in the same commit cycle as the migrations.
+ *   - `getDefaultOrganization` exposes the durable default lookup used by
+ *     the app-side guard helpers in `apps/app/lib/organization-auth.ts`.
  */
 
+import { randomBytes } from "node:crypto"
+import { APIError } from "better-auth/api"
+import { and, eq, isNull, sql } from "drizzle-orm"
+import { db } from "@workspace/database"
+import {
+	accountOrganizationDefaults,
+	accountOrganizationProvisioning,
+	organization,
+} from "@workspace/database/schema"
 import type { Member, Organization, User } from "better-auth/plugins/organization"
 
 /**
+ * Lease duration in milliseconds. The claim is renewable while the
+ * current fencing token is held; an expired lease allows recovery
+ * (a new claim), not an unconditional new creation.
+ */
+const LEASE_DURATION_MS = 60_000
+
+/**
  * The data shape the plugin's `beforeCreateOrganization` hook may
- * return. Includes the `additionalFields` keys defined in
- * `prepareOrganizationCreation` below. Kept as `unknown`-keyed for the
- * stub so the auth.ts type-checker doesn't complain about a missing
- * plugin configuration during the scaffolding step.
+ * return. Includes the `additionalFields` keys declared in
+ * `packages/auth/src/auth.ts` — specifically
+ * `bootstrapOperationId` with `input: false`.
  */
 export type OrganizationBootstrapData = {
 	/**
-	 * Server-only, unique, immutable bootstrap operation marker. Set
-	 * with `input: false` so a caller cannot provide it; the hook
-	 * always overrides it from the durable claim. The plugin's
-	 * organization additional field must be declared with this name
-	 * in the implementation branch.
+	 * Server-only, unique, immutable bootstrap operation marker. The
+	 * plugin refuses to write this column from caller input; the
+	 * hook always overrides it from the durable claim. The marker
+	 * correlates the plugin's organization row with the
+	 * `account_organization_provisioning` row that owns it.
 	 */
 	bootstrapOperationId?: string
+}
+
+/**
+ * Server-generated operation id. The id is a 32-character lowercase
+ * hex string (16 random bytes) — long enough to be globally unique
+ * for the lifetime of the application, short enough to fit in a
+ * `text` column without bloating the index.
+ */
+function generateOperationId(): string {
+	return randomBytes(16).toString("hex")
 }
 
 /**
@@ -70,18 +88,92 @@ export type OrganizationBootstrapData = {
  * row lock and conditional update. The lease proposal is 60 seconds;
  * renewals require the current fencing token. The function does NOT
  * hold a transaction across a native auth call.
+ *
+ * Behavior:
+ *   1. Reject the call if the account already has a completed
+ *      `account_organization_defaults` row. Native creation on a
+ *      defaulted account must produce an additional organization,
+ *      not a replacement.
+ *   2. If a row exists in `account_organization_provisioning` for
+ *      the user, return its `operationId`. Whether the row is
+ *      `pending` or `completed`, the marker is the same. (A
+ *      `completed` row implies a previous native create succeeded
+ *      and the organization id is already linked; the caller will
+ *      re-attach the existing organization on recovery.)
+ *   3. Otherwise insert a new `pending` row with a fresh
+ *      `operationId`, `fencingToken = 1`, and `leaseUntil =
+ *      now() + 60_000`. The partial unique index on `userId` (the
+ *      primary key) ensures the insert is atomic.
+ *
+ * The function never throws on concurrency; it returns the existing
+ * operation id and the caller treats the create as idempotent.
  */
 export async function prepareOrganizationCreation(
-	_userId: string,
+	userId: string,
 ): Promise<OrganizationBootstrapData> {
-	// Stub: the implementation branch queries
-	// `account_organization_provisioning` for an in-progress or
-	// completed row, claims it (insert/upsert with conditional update
-	// and `leaseUntil = now() + 60s`), and returns
-	// `{ bootstrapOperationId: row.operationId }`. The first-ever
-	// call inserts a new pending row with a freshly generated
-	// `operationId` and `fencingToken = 1`. Subsequent calls resume.
-	return {}
+	// 1. Reject if the account already has a default. Native
+	// `createOrganization` on a defaulted account is for additional
+	// orgs only; the onboarding path is closed.
+	const existingDefault = await db
+		.select({ organizationId: accountOrganizationDefaults.organizationId })
+		.from(accountOrganizationDefaults)
+		.where(eq(accountOrganizationDefaults.userId, userId))
+		.limit(1)
+	if (existingDefault.length > 0) {
+		throw new APIError("FORBIDDEN", {
+			message:
+				"Account already has a default organization. Use the additional-organization path.",
+		})
+	}
+
+	// 2. If a provisioning row already exists, return its operation id.
+	const existing = await db
+		.select({
+			operationId: accountOrganizationProvisioning.operationId,
+			fencingToken: accountOrganizationProvisioning.fencingToken,
+		})
+		.from(accountOrganizationProvisioning)
+		.where(eq(accountOrganizationProvisioning.userId, userId))
+		.limit(1)
+	if (existing.length > 0 && existing[0]) {
+		return { bootstrapOperationId: existing[0].operationId }
+	}
+
+	// 3. Insert a fresh pending row. The primary key on `userId`
+	// makes this an atomic create-or-fail; a concurrent worker that
+	// raced us and inserted first will surface as a unique
+	// violation, which the caller can treat as "row exists, retry
+	// the read".
+	const operationId = generateOperationId()
+	const now = Date.now()
+	try {
+		await db.insert(accountOrganizationProvisioning).values({
+			userId,
+			operationId,
+			organizationId: null,
+			status: "pending",
+			requestedName: "",
+			finalSlug: "",
+			leaseUntil: now + LEASE_DURATION_MS,
+			fencingToken: 1,
+		})
+	} catch (err) {
+		// Concurrent insert lost the race. The other worker now
+		// owns the row; re-read and return its operation id.
+		const reread = await db
+			.select({
+				operationId: accountOrganizationProvisioning.operationId,
+			})
+			.from(accountOrganizationProvisioning)
+			.where(eq(accountOrganizationProvisioning.userId, userId))
+			.limit(1)
+		if (reread[0]) {
+			return { bootstrapOperationId: reread[0].operationId }
+		}
+		throw err
+	}
+
+	return { bootstrapOperationId: operationId }
 }
 
 /**
@@ -91,15 +183,26 @@ export async function prepareOrganizationCreation(
  * any organization referenced by a default relation, not merely the
  * requesting account's default."
  *
- * STUB: the implementation branch joins `organization` to
- * `account_organization_defaults` on `organizationId` and rejects on
- * any match. For now, the call is a no-op so the wiring is in place
- * and the plugin can be configured.
+ * The `ON DELETE RESTRICT` foreign key on
+ * `account_organization_defaults.organizationId` is the last line of
+ * defense at the database level; this hook enforces the same rule at
+ * the application level so the plugin returns a 4xx rather than a
+ * raw constraint violation.
  */
 export async function assertOrganizationIsDeletable(
-	_organizationId: string,
+	organizationId: string,
 ): Promise<void> {
-	// Stub.
+	const rows = await db
+		.select({ userId: accountOrganizationDefaults.userId })
+		.from(accountOrganizationDefaults)
+		.where(eq(accountOrganizationDefaults.organizationId, organizationId))
+		.limit(1)
+	if (rows.length > 0) {
+		throw new APIError("FORBIDDEN", {
+			message:
+				"Organization is the default of at least one account and cannot be deleted.",
+		})
+	}
 }
 
 /**
@@ -108,33 +211,242 @@ export async function assertOrganizationIsDeletable(
  * plugin's leave/remove path. Pairs with the same constraint on
  * role demotion in `assertDefaultOwnerRoleIsRetained`.
  *
- * STUB: the implementation branch looks up the `userId` of the
- * matched `account_organization_defaults` row and rejects when
- * `member.userId === defaultUserId && member.role === "owner"`.
+ * RFC-001 §5: "Protect the creator's owner membership in that
+ * organization: it cannot be removed, left or demoted, even if
+ * another owner exists."
+ *
+ * The native `leaveOrganization` path does not call
+ * `beforeRemoveMember`; this helper is also called from a separate
+ * server hook for the leave path (the implementation branch adds
+ * the wiring). The membership removal hook + the database
+ * `ON DELETE RESTRICT` form a layered defense.
  */
 export async function assertDefaultOwnerMembershipIsRetained(
-	_member: Member,
+	member: Member,
 ): Promise<void> {
-	// Stub.
+	if (member.role !== "owner") return
+	const rows = await db
+		.select({ userId: accountOrganizationDefaults.userId })
+		.from(accountOrganizationDefaults)
+		.where(
+			and(
+				eq(
+					accountOrganizationDefaults.organizationId,
+					member.organizationId,
+				),
+				eq(accountOrganizationDefaults.userId, member.userId),
+			),
+		)
+		.limit(1)
+	if (rows.length > 0) {
+		throw new APIError("FORBIDDEN", {
+			message:
+				"The creator's owner membership in the default organization cannot be removed.",
+		})
+	}
 }
 
 /**
  * Block demotion of the creator's owner role in the account's
  * default organization. Throws `APIError` to abort the plugin's
  * update path.
- *
- * STUB: same pattern as `assertDefaultOwnerMembershipIsRetained`,
- * keyed on `member.role === "owner" && newRole !== "owner"`.
  */
 export async function assertDefaultOwnerRoleIsRetained(
-	_member: Member,
-	_newRole: string,
+	member: Member,
+	newRole: string,
 ): Promise<void> {
-	// Stub.
+	if (member.role !== "owner" || newRole === "owner") return
+	const rows = await db
+		.select({ userId: accountOrganizationDefaults.userId })
+		.from(accountOrganizationDefaults)
+		.where(
+			and(
+				eq(
+					accountOrganizationDefaults.organizationId,
+					member.organizationId,
+				),
+				eq(accountOrganizationDefaults.userId, member.userId),
+			),
+		)
+		.limit(1)
+	if (rows.length > 0) {
+		throw new APIError("FORBIDDEN", {
+			message:
+				"The creator's owner role in the default organization cannot be demoted.",
+		})
+	}
 }
 
-// Type re-exports for convenience in test files. The plugin's own
-// `Member` type carries the `organizationId`, `userId` and `role` we
-// need; `User` is reserved for the future when `prepareOrganizationCreation`
-// returns a richer payload tied to a session-bound `User`.
-export type { Member, Organization, User }
+/**
+ * Finalize a successful provisioning. Called by the
+ * `createFirstOrganization` Server Action after the native
+ * organization + owner membership are verified, in a short
+ * application transaction conditional on the current fencing token.
+ *
+ * Steps:
+ *   1. Conditional update on `account_organization_provisioning`:
+ *      `status = 'completed'`, `organizationId = <newId>`, fencing
+ *      token incremented, `WHERE fencingToken = <expected>`. If the
+ *      update affects 0 rows, the caller has lost the race and the
+ *      Server Action returns the existing default.
+ *   2. Insert into `account_organization_defaults`. The unique index
+ *      on `organizationId` ensures no other account already claims
+ *      this organization as its default. (In V1 each organization
+ *      is the default of exactly one account: its creator.)
+ *
+ * Returns the durable default on success. Throws `APIError` on
+ * fencing-token mismatch.
+ */
+export async function finalizeOrganizationProvisioning(input: {
+	userId: string
+	operationId: string
+	organizationId: string
+}): Promise<{ slug: string }> {
+	const provisioningRows = await db
+		.select({
+			fencingToken: accountOrganizationProvisioning.fencingToken,
+			finalSlug: accountOrganizationProvisioning.finalSlug,
+		})
+		.from(accountOrganizationProvisioning)
+		.where(eq(accountOrganizationProvisioning.userId, input.userId))
+		.limit(1)
+	if (provisioningRows.length === 0 || !provisioningRows[0]) {
+		throw new APIError("BAD_REQUEST", {
+			message: "No provisioning record for this account",
+		})
+	}
+	const { fencingToken, finalSlug } = provisioningRows[0]
+
+	// Step 1: conditional update. fencing_token = <expected> ensures
+	// a stale worker cannot overwrite a newer state. The update
+	// returns the row count; 0 means the caller has lost the race.
+	const updated = await db
+		.update(accountOrganizationProvisioning)
+		.set({
+			organizationId: input.organizationId,
+			status: "completed",
+			fencingToken: fencingToken + 1,
+			leaseUntil: Date.now() + LEASE_DURATION_MS,
+		})
+		.where(
+			and(
+				eq(accountOrganizationProvisioning.userId, input.userId),
+				eq(accountOrganizationProvisioning.fencingToken, fencingToken),
+			),
+		)
+		.returning({ operationId: accountOrganizationProvisioning.operationId })
+
+	if (updated.length === 0) {
+		throw new APIError("CONFLICT", {
+			message:
+				"Provisioning was advanced by a concurrent worker. Retry the create request.",
+		})
+	}
+
+	// Step 2: insert the default row. The unique index on
+	// `organizationId` guards against two accounts claiming the
+	// same default; the implementation branch treats a unique
+	// violation here as a hard error and surfaces a 500 (this
+	// should never happen in V1 since each organization is the
+	// default of exactly one account).
+	await db.insert(accountOrganizationDefaults).values({
+		userId: input.userId,
+		organizationId: input.organizationId,
+	})
+
+	return { slug: finalSlug }
+}
+
+/**
+ * Resolve the account's permanent default organization. Returns
+ * `null` when the account has not completed onboarding. The lookup
+ * joins `account_organization_defaults` to `organization` so the
+ * caller gets the slug alongside the id.
+ *
+ * The plugin's `activeOrganizationId` session field is a
+ * convenience, not a source of truth: a session may be cached with
+ * a stale selection. This lookup is the authoritative one.
+ */
+export async function getDefaultOrganization(
+	userId: string,
+): Promise<{ id: string; slug: string } | null> {
+	const rows = await db
+		.select({
+			id: organization.id,
+			slug: organization.slug,
+		})
+		.from(accountOrganizationDefaults)
+		.innerJoin(
+			organization,
+			eq(organization.id, accountOrganizationDefaults.organizationId),
+		)
+		.where(eq(accountOrganizationDefaults.userId, userId))
+		.limit(1)
+	return rows[0] ?? null
+}
+
+/**
+ * Resolve a membership row by `(organizationSlug, userId)`. Returns
+ * `null` when the user is not a member. Used by the
+ * `requireOrganizationAccess` helper in `apps/app/lib/organization-auth.ts`.
+ */
+export async function getMembership(
+	userId: string,
+	organizationSlug: string,
+): Promise<{ id: string; role: string; organizationId: string } | null> {
+	const rows = await db
+		.select({
+			id: sql<string>`${"member"}.id`.as("member_id"),
+			role: sql<string>`${"member"}.role`.as("member_role"),
+			organizationId: sql<string>`${"member"}.organization_id`.as(
+				"member_organization_id",
+			),
+		})
+		.from(sql`${"member"}`)
+		.innerJoin(organization, eq(organization.id, sql`${"member"}.organization_id`))
+		.where(
+			and(
+				eq(organization.slug, organizationSlug),
+				eq(sql`${"member"}.user_id`, userId),
+			),
+		)
+		.limit(1)
+	if (rows.length === 0 || !rows[0]) return null
+	return {
+		id: rows[0].id,
+		role: rows[0].role,
+		organizationId: rows[0].organizationId,
+	}
+}
+
+/**
+ * Persist the requested name and final slug on the provisioning
+ * row. Called by `createFirstOrganization` after the slug has been
+ * generated server-side and the native `createOrganization` is about
+ * to fire. The values are needed for retry consistency: a duplicate
+ * request replays the same final slug rather than regenerating a
+ * different one.
+ */
+export async function recordProvisioningRequest(input: {
+	userId: string
+	requestedName: string
+	finalSlug: string
+}): Promise<void> {
+	await db
+		.update(accountOrganizationProvisioning)
+		.set({
+			requestedName: input.requestedName,
+			finalSlug: input.finalSlug,
+			updatedAt: new Date(),
+		})
+		.where(eq(accountOrganizationProvisioning.userId, input.userId))
+}
+
+// Suppress unused-var warnings on imports that are reserved for the
+// implementation branch (the public surface evolves with the
+// schema; reserving the import here keeps the file's documented
+// shape stable).
+void isNull
+void Member
+void Organization
+void User

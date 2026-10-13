@@ -1,5 +1,13 @@
-import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, bigint, index } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  integer,
+  index,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -29,6 +37,7 @@ export const session = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    activeOrganizationId: text("active_organization_id"),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );
@@ -73,54 +82,96 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-// Device authorization (ADR-020): the persistent record backing the
-// device-code flow. The CLI calls /device/code, the user approves or
-// denies in the browser, the CLI polls /device/token. Each device-code
-// record carries the codes themselves, the optional user binding once
-// the code is claimed, and the lifecycle timestamps the plugin uses to
-// enforce `interval` and `slow_down` throttling.
-//
-// Fields mirror the Better Auth `deviceCode` table as documented in
-// the upstream plugin (better-auth@1.6.23). When the plugin is upgraded
-// past a schema change, regenerate this file via `pnpm auth:generate`
-// from `packages/auth/` and review the diff against this baseline.
-export const deviceCode = pgTable(
-  "deviceCode",
+export const deviceCode = pgTable("device_code", {
+  id: text("id").primaryKey(),
+  deviceCode: text("device_code").notNull(),
+  userCode: text("user_code").notNull(),
+  userId: text("user_id"),
+  expiresAt: timestamp("expires_at").notNull(),
+  status: text("status").notNull(),
+  lastPolledAt: timestamp("last_polled_at"),
+  pollingInterval: integer("polling_interval"),
+  clientId: text("client_id"),
+  scope: text("scope"),
+});
+
+export const organization = pgTable(
+  "organization",
   {
     id: text("id").primaryKey(),
-    deviceCode: text("device_code").notNull().unique(),
-    userCode: text("user_code").notNull().unique(),
-    userId: text("user_id").references(() => user.id, {
-      onDelete: "cascade",
-    }),
-    clientId: text("client_id"),
-    scope: text("scope"),
-    status: text("status").notNull().default("pending"),
-    expiresAt: timestamp("expires_at").notNull(),
-    lastPolledAt: timestamp("last_polled_at"),
-    // The plugin's Zod schema for deviceCode declares
-    // pollingInterval as z.number(); Drizzle's bigint with
-    // mode "number" maps to JS number (not bigint), which
-    // matches the plugin's expectation. Squawk's
-    // prefer-bigint-over-int rule is satisfied by bigint.
-    // Polling intervals are seconds (typically 5-60), so
-    // the 64-bit range is wildly more than enough.
-    pollingInterval: bigint("polling_interval", { mode: "number" }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    logo: text("logo"),
+    createdAt: timestamp("created_at").notNull(),
+    metadata: text("metadata"),
+    // RFC-001 §5: server-only, immutable, unique bootstrap
+    // marker. The plugin's `additionalFields.bootstrapOperationId`
+    // declaration in `packages/auth/src/auth.ts` is `input: false`,
+    // so this column is never written from caller input — only the
+    // `beforeCreateOrganization` hook sets it from
+    // `prepareOrganizationCreation`.
+    //
+    // This column is hand-added (the `auth:generate` command does
+    // not emit `input: false` additional fields). Future
+    // `auth:generate` runs will overwrite this file; the
+    // implementation branch adds a post-generate script that
+    // re-applies the hand-written lines.
+    bootstrapOperationId: text("bootstrap_operation_id"),
   },
   (table) => [
-    index("deviceCode_userId_idx").on(table.userId),
-    index("deviceCode_expiresAt_idx").on(table.expiresAt),
+    uniqueIndex("organization_slug_uidx").on(table.slug),
+    uniqueIndex("organization_bootstrapOperationId_uidx")
+      .on(table.bootstrapOperationId)
+      .where(sql`${table.bootstrapOperationId} IS NOT NULL`),
+  ],
+);
+
+export const member = pgTable(
+  "member",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: text("role").default("member").notNull(),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => [
+    index("member_organizationId_idx").on(table.organizationId),
+    index("member_userId_idx").on(table.userId),
+  ],
+);
+
+export const invitation = pgTable(
+  "invitation",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role"),
+    status: text("status").default("pending").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    inviterId: text("inviter_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("invitation_organizationId_idx").on(table.organizationId),
+    index("invitation_email_idx").on(table.email),
   ],
 );
 
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
+  members: many(member),
+  invitations: many(invitation),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -133,6 +184,33 @@ export const sessionRelations = relations(session, ({ one }) => ({
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
+    references: [user.id],
+  }),
+}));
+
+export const organizationRelations = relations(organization, ({ many }) => ({
+  members: many(member),
+  invitations: many(invitation),
+}));
+
+export const memberRelations = relations(member, ({ one }) => ({
+  organization: one(organization, {
+    fields: [member.organizationId],
+    references: [organization.id],
+  }),
+  user: one(user, {
+    fields: [member.userId],
+    references: [user.id],
+  }),
+}));
+
+export const invitationRelations = relations(invitation, ({ one }) => ({
+  organization: one(organization, {
+    fields: [invitation.organizationId],
+    references: [organization.id],
+  }),
+  user: one(user, {
+    fields: [invitation.inviterId],
     references: [user.id],
   }),
 }));

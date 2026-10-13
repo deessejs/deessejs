@@ -9,23 +9,21 @@
  * Layout checks alone are insufficient because layouts can persist
  * across navigation.
  *
- * STUB STATUS (2026-10-13): the application tables
- * `account_organization_defaults` and
- * `account_organization_provisioning` are not yet in the database
- * (the implementation branch will add them via Drizzle migrations).
- * The helpers below return permissive defaults for the scaffolding
- * step; the implementation branch replaces the stubs with real
- * queries against the database via `@workspace/database`.
- *
- * The signed-in account and email-verification checks are NOT stubs:
- * they call `auth.api.getSession` which is the existing native
- * Better Auth API. Only the organization-scoped checks are stubs.
+ * The signed-in account and email-verification checks call
+ * `auth.api.getSession` directly. The organization-scoped checks
+ * delegate to `packages/auth/src/organization-policy.ts` which owns
+ * the real Drizzle queries against `account_organization_defaults`,
+ * `account_organization_provisioning`, `organization`, and `member`.
  */
 
 import "server-only"
 import { redirect } from "next/navigation"
 import { headers } from "next/headers"
 import { auth } from "@workspace/auth"
+import {
+	getDefaultOrganization,
+	getMembership,
+} from "@workspace/auth/organization-policy"
 
 /**
  * The minimum shape `auth.api.getSession({ headers })` returns when a
@@ -50,10 +48,6 @@ export interface AccountSession {
 async function getAccountSession(): Promise<AccountSession | null> {
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session) return null
-	// The plugin augments the session payload with
-	// `activeOrganizationId` (nullable). Narrow the type without
-	// relying on the plugin's exported `Session` shape during the
-	// scaffolding step.
 	return session as unknown as AccountSession
 }
 
@@ -65,10 +59,6 @@ async function getAccountSession(): Promise<AccountSession | null> {
 export async function requireAccountSession(): Promise<AccountSession> {
 	const session = await getAccountSession()
 	if (!session) {
-		// The proxy already redirects unauthenticated requests away
-		// from protected routes; this redirect is the last-resort
-		// guard for Server Actions / Route Handlers invoked from
-		// non-protected surfaces.
 		redirect("/login")
 	}
 	return session
@@ -88,12 +78,8 @@ export async function requireCompletedOnboarding(): Promise<AccountSession> {
 	if (!session.user.emailVerified) {
 		redirect("/verify-email")
 	}
-	// STUB: the implementation branch queries
-	// `account_organization_defaults` by `userId`. A row exists
-	// after a successful provisioning; absent means onboarding
-	// is incomplete.
-	const hasDefault = await hasDefaultOrganizationRow(session.user.id)
-	if (!hasDefault) {
+	const defaultOrg = await getDefaultOrganization(session.user.id)
+	if (!defaultOrg) {
 		redirect("/onboarding/first-organization")
 	}
 	return session
@@ -104,8 +90,8 @@ export async function requireCompletedOnboarding(): Promise<AccountSession> {
  * `[organization_slug]` segment, and that the session user is
  * permitted to perform the given `action` (e.g. `read`, `write`,
  * `invite`, `delete`). Redirects to the account default home when
- * the user has no access; throws `APIError("FORBIDDEN")` when the
- * user is signed in but not a member.
+ * the user has no access; throws an `APIError("FORBIDDEN")` when
+ * the user is signed in but not a member.
  *
  * The plugin's default access rules (RFC-001 §7) drive the action
  * matrix; this helper is the place where the application layers
@@ -116,54 +102,37 @@ export async function requireOrganizationAccess(
 	action: "read" | "write" | "invite" | "delete",
 ): Promise<AccountSession> {
 	const session = await requireCompletedOnboarding()
-	// STUB: the implementation branch resolves the organization by
-	// slug, looks up the member row, and applies the action matrix.
-	// For now the call is a no-op so the wiring is in place; the
-	// implementation branch flips the boolean to a real check.
-	const isMember = await isMemberOfOrganization(session.user.id, slug, action)
-	if (!isMember) {
+	const membership = await getMembership(session.user.id, slug)
+	if (!membership) {
 		// Match the proxy's redirect pattern: send unauthorized
 		// requests to the default home rather than /login, because
 		// the user is signed in and verified; the issue is tenant
 		// access, not authentication.
-		const fallback = await getDefaultOrganizationSlug(session.user.id)
-		redirect(fallback ? `/${fallback}/home` : "/onboarding/first-organization")
+		const fallback = await getDefaultOrganization(session.user.id)
+		redirect(fallback ? `/${fallback.slug}/home` : "/onboarding/first-organization")
+	}
+	// Action-level authorization. The plugin's default rules apply
+	// at the data-access layer; this helper is the early gate.
+	if (action === "delete" && membership.role !== "owner") {
+		const fallback = await getDefaultOrganization(session.user.id)
+		redirect(fallback ? `/${fallback.slug}/home` : "/onboarding/first-organization")
+	}
+	if (action === "invite" && membership.role === "member") {
+		const fallback = await getDefaultOrganization(session.user.id)
+		redirect(fallback ? `/${fallback.slug}/home` : "/onboarding/first-organization")
 	}
 	return session
 }
 
 /**
- * STUB: returns `false` (onboarding incomplete) so the
- * `requireCompletedOnboarding` redirect fires for the scaffolding
- * step. The implementation branch replaces this with a real
- * `db.select().from(accountOrganizationDefaults)` query.
- */
-async function hasDefaultOrganizationRow(_userId: string): Promise<boolean> {
-	return false
-}
-
-/**
- * STUB: returns `false` so the `requireOrganizationAccess` redirect
- * fires for the scaffolding step. The implementation branch
- * replaces this with a real membership lookup keyed on
- * `(organization.slug, userId, action)`.
- */
-async function isMemberOfOrganization(
-	_userId: string,
-	_slug: string,
-	_action: "read" | "write" | "invite" | "delete",
-): Promise<boolean> {
-	return false
-}
-
-/**
- * STUB: returns `null` so the redirect lands on
- * `/onboarding/first-organization` when the user is not a member of
- * the requested organization. The implementation branch replaces
- * this with a real query against `account_organization_defaults`.
+ * Resolve the account's permanent default organization. The page
+ * redirect at `/` and the post-onboarding landing consume this to
+ * pick the destination. Returns `null` when the account has not
+ * completed onboarding.
  */
 export async function getDefaultOrganizationSlug(
-	_userId: string,
+	userId: string,
 ): Promise<string | null> {
-	return null
+	const org = await getDefaultOrganization(userId)
+	return org?.slug ?? null
 }

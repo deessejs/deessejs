@@ -21,6 +21,7 @@
     "complex:report": "node --experimental-strip-types scripts/complexity-report.ts"
   },
   "devDependencies": {
+    "@better-auth/cli": "catalog:",
     "@changesets/changelog-git": "catalog:",
     "@changesets/cli": "catalog:",
     "@workspace/eslint-config": "workspace:*",

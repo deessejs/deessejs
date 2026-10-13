@@ -273,6 +273,27 @@ export const auth = betterAuth({
       requireEmailVerificationOnInvitation: true,
       invitationExpiresIn: 60 * 60 * 48,
       disableOrganizationDeletion: false,
+      // `bootstrapOperationId` is the server-only, immutable, unique
+      // marker the application uses to correlate the plugin's
+      // organization row with the
+      // `account_organization_provisioning` row that owns it (RFC-001
+      // §5). `input: false` means a caller cannot provide it through
+      // the plugin's create or update endpoints; the value is set
+      // exclusively by the `beforeCreateOrganization` hook from the
+      // `prepareOrganizationCreation` claim. The marker is
+      // database-unique so a late worker that resumes after a
+      // completed create cannot mint a duplicate organization.
+      schema: {
+        organization: {
+          additionalFields: {
+            bootstrapOperationId: {
+              type: "string",
+              required: false,
+              input: false,
+            },
+          },
+        },
+      },
       organizationHooks: {
         beforeCreateOrganization: async ({ organization: input, user }) => {
           validateOrganizationSlug(input.slug)
