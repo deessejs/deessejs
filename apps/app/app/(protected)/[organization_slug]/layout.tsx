@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import { SidebarProvider } from "@workspace/ui/components/sidebar"
 import { AppSidebar } from "@/components/sidebars/app-sidebar"
 import {
 	requireCompletedOnboarding,
@@ -22,6 +23,15 @@ interface OrganizationLayoutProps {
  * operation must also invoke the appropriate helper. The layout
  * check exists to fail fast and to render the sidebar in the
  * correct organization context.
+ *
+ * The layout wraps the chrome in `SidebarProvider` (from the
+ * shadcn `Sidebar` component family) so the `Sidebar`,
+ * `SidebarHeader`, `SidebarContent`, and `SidebarFooter` inside
+ * `AppSidebar` share the same collapsible / mobile state.
+ * Without the provider the shadcn sidebar primitives throw on
+ * missing context. The provider is local to the org-scoped
+ * layout so the public / unauthenticated surfaces (login,
+ * signup, forgot-password) do not pay for the chrome.
  */
 export default async function OrganizationLayout({
 	children,
@@ -37,9 +47,11 @@ export default async function OrganizationLayout({
 	await requireOrganizationAccess(organization_slug, "read")
 
 	return (
-		<div className="flex min-h-dvh">
-			<AppSidebar organizationSlug={organization_slug} />
-			<main className="flex-1 p-6">{children}</main>
-		</div>
+		<SidebarProvider>
+			<div className="flex min-h-dvh">
+				<AppSidebar organizationSlug={organization_slug} />
+				<main className="flex-1 p-6">{children}</main>
+			</div>
+		</SidebarProvider>
 	)
 }
