@@ -1,0 +1,17 @@
+-- Rename the device authorization table to snake_case (ADR-020 follow-up).
+--
+-- Migration `0001_magenta_firebrand.sql` created the table as
+-- `public."deviceCode"` (PascalCase, matching the Better Auth plugin's
+-- exported model name). The Drizzle schema file still exports
+-- `deviceCode`; the *physical* SQL table is renamed here so it follows
+-- the project's snake_case convention and the regenerated Better Auth
+-- schema output is textually identical to the runtime schema.
+--
+-- `ALTER TABLE … RENAME` is a metadata-only operation in PostgreSQL:
+-- it renames the table and its dependent indexes, constraints, and
+-- foreign keys in lock-step without rewriting row data, so the
+-- existing `deviceCode_device_code_unique`, `deviceCode_user_code_unique`,
+-- `deviceCode_user_id_user_id_fk`, `deviceCode_userId_idx`, and
+-- `deviceCode_expiresAt_idx` objects survive intact and remain
+-- attached to the renamed table. No backfill is necessary.
+ALTER TABLE "deviceCode" RENAME TO "device_code";
