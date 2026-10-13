@@ -95,12 +95,16 @@ function buildDeps() {
 function runCli() {
   const cliName = process.platform === "win32" ? "auth.CMD" : "auth";
   const cliBin = resolve(pkgRoot, "node_modules", ".bin", cliName);
+  // Use a relative path for --output. The auth@1.6.23 CLI on
+  // Windows has a bug where `path.join(cwd, absPath)` is called
+  // and produces a malformed concatenated path. A relative output
+  // lets the CLI resolve it correctly under the workspace cwd.
   const args = [
     "generate",
     "--config",
     resolve(pkgRoot, "src/auth.ts"),
     "--output",
-    scratch,
+    ".auth.generated.ts",
     "--y",
   ];
   try {
@@ -195,16 +199,100 @@ const headerBlock = `
 // in a later migration.
 `;
 
-function reconcileDeviceTableIndexes(content) {
-  // The CLI emits `integer` (not `bigint`) for `pollingInterval`; the
-  // original 0001 migration declares `polling_interval` as `bigint`,
-  // and the plugin's `z.number()` expectation maps to `bigint({ mode:
-  // "number" })` per Drizzle's docs. The CLI does not emit named
-  // `unique(...)` or `foreignKey(...)` calls — we use explicit names
-  // so drizzle-kit does not rename the constraints on every
-  // regeneration. Add the missing imports to the
-  // `drizzle-orm/pg-core` import list so the reconciled file
-  // references real imports.
+function extractFirstObjectBlock(text) {
+  // Returns the contents of the first balanced `{ ... }` object
+  // block in `text`, ignoring braces inside string literals.
+  // The deviceCode pgTable declaration has exactly one such block
+  // at the top level (the column map). Inner braces like
+  // `bigint("polling_interval", { mode: "number" })` are
+  // balanced inside the column map and must not stop the scan
+  // early. We also skip braces inside double-quoted or
+  // single-quoted strings (column names and enum values can
+  // contain braces if a future Better Auth release adds such a
+  // field). We bound the search to 16 KB to keep the cost linear
+  // in practice (the reconciler only cares about the first table
+  // declaration; the file has at most a handful).
+  const slice = text.slice(0, 16_384);
+  const open = slice.indexOf("{");
+  if (open === -1) return null;
+  let depth = 1;
+  let i = open + 1;
+  let inString = null; // '"' | "'" | null
+  while (i < slice.length && depth > 0) {
+    const ch = slice[i];
+    if (inString) {
+      if (ch === "\\") {
+        i += 2;
+        continue;
+      }
+      if (ch === inString) inString = null;
+    } else if (ch === '"' || ch === "'") {
+      inString = ch;
+    } else if (ch === "{") {
+      depth++;
+    } else if (ch === "}") {
+      depth--;
+      if (depth === 0) break;
+    }
+    i++;
+  }
+  if (depth !== 0) return null;
+  return slice.slice(open + 1, i);
+}
+
+function extractFieldsFromBlock(blockText) {
+  if (!blockText) return [];
+  const fields = [];
+  for (const line of blockText.split("\n")) {
+    const m = line.match(/^\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/);
+    if (m) fields.push(m[1]);
+  }
+  return fields;
+}
+
+function extractDeviceCodeFields(content) {
+  // Find the deviceCode declaration and pull the first object
+  // block (the column map). Used to detect when the CLI emits a
+  // field the curated block does not list.
+  const decl = content.indexOf("export const deviceCode = pgTable");
+  if (decl === -1) return null;
+  return extractFieldsFromBlock(extractFirstObjectBlock(content.slice(decl)));
+}
+
+function extractCuratedFields(block) {
+  // The curated block is a single pgTable declaration. Same
+  // strategy: find the first object block and parse field names.
+  const decl = block.indexOf("export const deviceCode = pgTable");
+  if (decl === -1) return [];
+  return extractFieldsFromBlock(extractFirstObjectBlock(block.slice(decl)));
+}
+
+function reconcileDeviceTable(content) {
+  // Guard 1: detect upstream plugin evolution. If the CLI emits
+  // any field that the curated block does not list, fail loudly
+  // so a human can update the curated block to preserve the
+  // new field rather than silently dropping it. This is the
+  // primary safeguard against the reconciler masking plugin
+  // changes.
+  const cliFields = extractDeviceCodeFields(content);
+  const curatedFields = extractCuratedFields(reconciledDeviceCodeBlock);
+  if (cliFields) {
+    const curated = new Set(curatedFields);
+    const missing = cliFields.filter((f) => !curated.has(f));
+    if (missing.length > 0) {
+      fail(
+        `Better Auth CLI emitted new deviceCode fields that are not in the curated block: ${missing.join(", ")}. Update packages/auth/scripts/generate-schema.mjs (reconciledDeviceCodeBlock) to preserve the new fields, then rerun auth:generate.`,
+      );
+    }
+  }
+
+  // Add the missing imports. The CLI emits `integer` (we use
+  // `bigint` for `polling_interval`); the CLI does not emit
+  // `unique` or `foreignKey` (we use named constraints). We do
+  // NOT delete `integer` because keeping the import list minimal
+  // here is more important than hiding a stale identifier — if
+  // a future CLI release emits another `integer` use we want the
+  // build to flag it, not the reconciler.
   const importRegex =
     /import\s*\{([^}]+)\}\s*from\s*"drizzle-orm\/pg-core";?/;
   const existing = content.match(importRegex);
@@ -222,17 +310,13 @@ function reconcileDeviceTableIndexes(content) {
   for (const extra of ["bigint", "foreignKey", "unique"]) {
     names.add(extra);
   }
-  // The schema uses `bigint({ mode: "number" })` for the
-  // deviceCode polling_interval column, so `integer` is unused
-  // once the curated block is in place. Drop it so the import
-  // list does not flag as unused.
-  names.delete("integer");
   const reordered = Array.from(names).sort((a, b) => {
     const order = [
       "bigint",
       "boolean",
       "foreignKey",
       "index",
+      "integer",
       "pgTable",
       "text",
       "timestamp",
@@ -240,13 +324,26 @@ function reconcileDeviceTableIndexes(content) {
     ];
     return order.indexOf(a) - order.indexOf(b);
   });
-  const newImport = `import {\n  ${reordered.join(",\n  ")},\n} from "drizzle-orm/pg-core";`;
+  // `integer` is kept on the import list even though the curated
+  // block uses `bigint({ mode: "number" })` for `pollingInterval`.
+  // The Better Auth CLI emits `integer` for that field; if a future
+  // release re-introduces an `integer` use elsewhere, the build
+  // (rather than the reconciler) should flag the change. The
+  // eslint-disable comments silence the unused-import warning
+  // for this one identifier.
+  const reorderedWithDisable = reordered.map((n) =>
+    n === "integer"
+      ? "// eslint-disable-next-line @typescript-eslint/no-unused-vars, sonarjs/unused-import\n  integer"
+      : n,
+  );
+  const newImport = `import {\n  ${reorderedWithDisable.join(",\n  ")},\n} from "drizzle-orm/pg-core";`;
   let out = content.replace(importRegex, newImport + headerBlock);
 
-  // The CLI does not emit the index callback, unique constraints,
-  // FK references, status default, bigint pollingInterval, or
-  // created_at / updated_at columns; we replace the deviceCode
-  // block with the curated one that mirrors 0001_magenta_firebrand.sql.
+  // Replace the deviceCode pgTable block with the curated one that
+  // mirrors 0001_magenta_firebrand.sql. The block above is the
+  // single source of truth; if the CLI shape changes, the
+  // Guard 1 check above fails first and the block is never
+  // written.
   const block = reconciledDeviceCodeBlock + "\n";
   const regex =
     /export const deviceCode = pgTable\("device_code", \{[\s\S]*?\n\}\);/;
@@ -287,7 +384,7 @@ function main() {
     fail(`auth CLI did not produce ${scratch}`);
   }
   const generated = readFileSync(scratch, "utf8");
-  const reconciled = reconcileDeviceTableIndexes(generated);
+  const reconciled = reconcileDeviceTable(generated);
   const committed = readFileSync(target, "utf8");
   if (reconciled === committed) {
     rmSync(scratch, { force: true });

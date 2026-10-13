@@ -20,7 +20,7 @@ catalog:
 
   # Auth
   "@better-auth/drizzle-adapter": ^1.6.23
-  auth: ^1.6.23
+  auth: 1.6.23
   '@changesets/changelog-git': ^0.2.1
   '@changesets/cli': ^2.31.0
   '@content-collections/cli': ^0.1.9
@@ -134,3 +134,10 @@ overrides:
   # transitively; without this override the workspace ends up with both 4.12.27
   # and 4.12.28, causing duplicate-type errors and subtle runtime mismatches.
   hono: ^4.12.28
+  # Pin @better-auth/core to the same minor as the catalogued
+  # better-auth@^1.6.23 and @better-auth/drizzle-adapter@^1.6.23.
+  # The adapter's peer range accepts ^1.6.23, which lets pnpm
+  # resolve core@1.7.7 and surfaces a TS2883 inference error
+  # (the core dep graph changed shape in 1.7.0). Pinning to
+  # 1.6.23 keeps the catalog and the runtime aligned.
+  "@better-auth/core": 1.6.23

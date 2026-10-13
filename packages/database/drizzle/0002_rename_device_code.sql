@@ -1,3 +1,8 @@
+-- squawk-ignore-file renaming-table
+-- The renaming-table exemption is scoped to this file only (see
+-- the comment below). The global `renaming-table` rule stays
+-- active in .squawk.toml so future migrations still get flagged.
+--
 -- Rename the device authorization table to snake_case (ADR-020 follow-up).
 --
 -- Migration `0001_magenta_firebrand.sql` created the table as
@@ -14,4 +19,13 @@
 -- `deviceCode_user_id_user_id_fk`, `deviceCode_userId_idx`, and
 -- `deviceCode_expiresAt_idx` objects survive intact and remain
 -- attached to the renamed table. No backfill is necessary.
+--
+-- The rename is deployed as a coordinated cut-over: the API and CLI
+-- consumers are stopped before this migration is applied, so the
+-- window where the old name is unreachable is bounded by the
+-- restart latency, not by the migration duration. The device-code
+-- endpoints already retry on 5xx, so any in-flight query against
+-- the old name during the cut-over is retried by its caller once
+-- the new application code starts up. See PR #218's "Deployment
+-- sequence" for the full procedure.
 ALTER TABLE "deviceCode" RENAME TO "device_code";
