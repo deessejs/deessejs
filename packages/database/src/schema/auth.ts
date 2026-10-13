@@ -82,17 +82,26 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-export const deviceCode = pgTable("device_code", {
+/**
+ * deviceCode — hand-preserved (the better-auth generator emits
+ * the table as `device_code` in the schema but the on-disk table
+ * is `deviceCode` per the existing migration 0001). The
+ * implementation branch adds a post-generate script that
+ * re-applies these lines after every `auth:generate` run.
+ */
+export const deviceCode = pgTable("deviceCode", {
   id: text("id").primaryKey(),
   deviceCode: text("device_code").notNull(),
   userCode: text("user_code").notNull(),
   userId: text("user_id"),
-  expiresAt: timestamp("expires_at").notNull(),
-  status: text("status").notNull(),
-  lastPolledAt: timestamp("last_polled_at"),
-  pollingInterval: integer("polling_interval"),
   clientId: text("client_id"),
   scope: text("scope"),
+  status: text("status").default("pending").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  lastPolledAt: timestamp("last_polled_at"),
+  pollingInterval: bigint("polling_interval", { mode: "number" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const organization = pgTable(

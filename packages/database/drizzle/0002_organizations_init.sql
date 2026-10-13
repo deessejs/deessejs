@@ -3,6 +3,13 @@
 -- the plugin's organization row, the requested name and final
 -- slug for retry consistency, and the lease + fencing token used
 -- by the recovery protocol.
+--
+-- The migration 0000 created the original session table without
+-- active_organization_id. The organization plugin's session shape
+-- carries an active org id; add the column on this same migration
+-- to keep the schema consistent.
+ALTER TABLE "session" ADD COLUMN "active_organization_id" text;--> statement-breakpoint
+
 CREATE TABLE "account_organization_provisioning" (
 	"user_id" text PRIMARY KEY NOT NULL,
 	"operation_id" text NOT NULL,
@@ -114,4 +121,11 @@ ALTER TABLE "invitation" ADD CONSTRAINT "invitation_inviter_id_user_id_fk" FOREI
 CREATE UNIQUE INDEX "account_org_defaults_org_uidx" ON "account_organization_defaults" USING btree ("organization_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "account_org_provisioning_op_uidx" ON "account_organization_provisioning" USING btree ("operation_id");--> statement-breakpoint
 CREATE INDEX "account_org_provisioning_status_idx" ON "account_organization_provisioning" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "account_org_provisioning_lease_idx" ON "account_organization_provisioning" USING btree ("lease_until");
+CREATE INDEX "account_org_provisioning_lease_idx" ON "account_organization_provisioning" USING btree ("lease_until");--> statement-breakpoint
+
+-- RFC-001 §5 + §7: a single (organization, user) pair can have at
+-- most one membership row. The plugin enforces this through the
+-- invitation lifecycle; the database enforces it as a last-line
+-- defense. Without this index, two parallel invitation acceptances
+-- for the same user could race and create duplicate memberships.
+CREATE UNIQUE INDEX "member_organizationId_userId_uidx" ON "member" USING btree ("organization_id", "user_id");
