@@ -11,39 +11,52 @@ export type TemplateGridProps = {
 /**
  * Responsive grid: 1 col mobile, 2 col md, 3 col lg.
  *
- * Card surface treatment:
- * - `gap-0` so adjacent cards share a single border, no double-rule.
- * - `bg-background` and `rounded-none` (set on the Card itself) so
- *   the grid reads as one continuous table-like surface rather than
- *   a stack of floating tiles.
- * - Dividers are drawn per-card with `border-r border-b border-border`.
- *   The last card in each row drops its right border via
- *   `[&:nth-child(3n)]:border-r-0`; the last row drops its bottom
- *   border via `[&:nth-last-child(-n+3)]:border-b-0`. This avoids
- *   Tailwind's known `divide-*` issue (tailwindlabs/tailwindcss#18265)
- *   on grid containers, and stays portable across all browsers
- *   without depending on `row-rule` / `column-rule` (CSS Gap
- *   Decorations — not Baseline yet).
+ * Height strategy:
+ * - `auto-rows-fr` makes every row the same height (the height of the
+ *   tallest card in that row), so cards across rows align and the
+ *   `mt-auto` labels in `TemplateCard` pin consistently to the bottom.
+ * - `flex` on each `<li>` lets the child Card fill the cell height.
+ *   The Card itself is `h-full` (see `TemplateCard`).
+ *
+ * Border strategy (Pattern B — see `.claude/skills/tailwind-borders`):
+ * - Each cell carries `border-r border-b` always.
+ * - The inner `<ul>` shifts by `-mr-px -mb-px` so the last column's
+ *   right border and the last row's bottom border are clipped by the
+ *   wrapper's `overflow-hidden` instead of doubling against the page
+ *   frame. No `nth-child` selectors, no per-breakpoint toggle.
+ * - The wrapper does NOT carry its own `border` (unlike the blog
+ *   grid): the page already frames the catalogue (sidebar divider,
+ *   hero `border-b`, CTA `border-t`). Adding a wrapper border would
+ *   produce double rules against the surrounding chrome.
+ *
+ * Incomplete rows are correctly delimited: a card above an empty
+ * slot keeps its bottom edge (the cell still has `border-b`); the
+ * last card of an incomplete row keeps its right edge (the cell
+ * still has `border-r`). The clipping only removes the borders that
+ * touch the wrapper's outer edge.
  */
 export const TemplateGrid = ({ templates, className }: TemplateGridProps) => {
   return (
-    <ul
-      data-testid="templates-grid"
+    <div
       className={cn(
-        "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
-        "[&>li]:border-r [&>li]:border-b [&>li]:border-border",
-        "[&>li:nth-child(2n)]:md:border-r-0",
-        "[&>li:nth-child(3n)]:lg:border-r-0",
-        "[&>li:nth-last-child(-n+2)]:md:border-b-0",
-        "[&>li:nth-last-child(-n+3)]:lg:border-b-0",
+        "min-w-0 overflow-hidden rounded-none bg-background",
         className,
       )}
     >
-      {templates.map((template) => (
-        <li key={template.slug} data-testid="templates-card">
-          <TemplateCard template={template} />
-        </li>
-      ))}
-    </ul>
+      <ul
+        data-testid="templates-grid"
+        className="-mr-px -mb-px grid auto-rows-fr list-none grid-cols-1 gap-0 p-0 md:grid-cols-2 lg:grid-cols-3"
+      >
+        {templates.map((template) => (
+          <li
+            key={template.slug}
+            data-testid="templates-card"
+            className="flex min-w-0 border-r border-b border-border"
+          >
+            <TemplateCard template={template} />
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
