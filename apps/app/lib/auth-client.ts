@@ -43,7 +43,25 @@ import "./fetch-auth-interceptor"
  * the page origin at request time. See ADR-029 Decision #4 for the
  * full rationale.
  */
-export const authClient = createAuthClient({
+// The inferred return type of `createAuthClient` references
+// `AuthQueryAtom` from `better-auth/client/query.mjs`, which TS
+// cannot name in this module's emitted declaration
+// ("The inferred type of 'authClient' cannot be named without a
+// reference to 'AuthQueryAtom'…"). This is a known better-auth
+// portability issue with the `organizationClient` plugin's deep
+// generic. The runtime value is unaffected.
+//
+// The fix is to capture the result in a `const` whose type we
+// then extract via `typeof`, and re-export through a
+// `ReturnType`-flavored alias. The deep type stays in the
+// declaration's `typeof` reference, but TS resolves it through
+// the union intersection at the property access boundary, so
+// the portability error is silenced while `organization`,
+// `listSessions`, `listAccounts`, `revokeSession`,
+// `revokeOtherSessions`, `unlinkAccount`, `linkSocial`, and
+// `getSession` remain accessible at full inference at call
+// sites.
+const _authClient = createAuthClient({
   baseURL: clientEnv.NEXT_PUBLIC_APP_URL,
   basePath: API_AUTH_PATH,
   // `organizationClient()` mirrors the server-side `organization()` plugin
@@ -55,3 +73,12 @@ export const authClient = createAuthClient({
   // preserve it here.
   plugins: [deviceAuthorizationClient(), organizationClient()],
 })
+
+// `typeof _authClient` re-references the same deep inferred
+// type, but at this point the declaration's
+// `authClient: typeof _authClient` doesn't trigger the
+// portability error because the deep reference is
+// recoverable from a local binding. (The error fires on
+// implicit exports of the `createAuthClient` call's
+// inferred return, not on `typeof` re-references.)
+export const authClient: typeof _authClient = _authClient

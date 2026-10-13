@@ -91,43 +91,28 @@ function generateOperationId(): string {
  * hold a transaction across a native auth call.
  *
  * Behavior:
- *   1. Reject the call if the account already has a completed
- *      `account_organization_defaults` row. Native creation on a
- *      defaulted account must produce an additional organization,
- *      not a replacement.
- *   2. If a row exists in `account_organization_provisioning` for
- *      the user, return its `operationId`. Whether the row is
- *      `pending` or `completed`, the marker is the same. (A
- *      `completed` row implies a previous native create succeeded
- *      and the organization id is already linked; the caller will
- *      re-attach the existing organization on recovery.)
- *   3. Otherwise insert a new `pending` row with a fresh
- *      `operationId`, `fencingToken = 1`, and `leaseUntil =
- *      now() + 60_000`. The partial unique index on `userId` (the
- *      primary key) ensures the insert is atomic.
- *
- * The function never throws on concurrency; it returns the existing
- * operation id and the caller treats the create as idempotent.
+ *   1. If the account has no default yet, the provisioning row
+ *      is the durable first-org bootstrap record. Claim or
+ *      resume it; the marker correlates the plugin's
+ *      organization row with the `account_organization_provisioning`
+ *      row that owns it.
+ *   2. If the account already has a default, this is an additional
+ *      organization creation. The marker is still set on the
+ *      organization row (the partial unique index on
+ *      `bootstrap_operation_id` allows many organizations to carry
+ *      a marker, but the marker is only unique within a user's
+ *      provisioning history). The provisioning row is shared with
+ *      the first-org record, so we do NOT create a new one — we
+ *      reuse the existing one and let the partial unique index
+ *      govern the additional org's marker.
+ *   3. The function never throws on concurrency; it returns the
+ *      existing operation id and the caller treats the create as
+ *      idempotent.
  */
 export async function prepareOrganizationCreation(
 	userId: string,
 ): Promise<OrganizationBootstrapData> {
-	// 1. Reject if the account already has a default. Native
-	// `createOrganization` on a defaulted account is for additional
-	// orgs only; the onboarding path is closed.
-	const existingDefault = await db
-		.select({ organizationId: accountOrganizationDefaults.organizationId })
-		.from(accountOrganizationDefaults)
-		.where(eq(accountOrganizationDefaults.userId, userId))
-		.limit(1)
-	if (existingDefault.length > 0) {
-		throw new APIError("FORBIDDEN", {
-			message:
-				"Account already has a default organization. Use the additional-organization path.",
-		})
-	}
-
-	// 2. If a provisioning row already exists, return its operation id.
+	// 1. If a provisioning row already exists, return its operation id.
 	const existing = await db
 		.select({
 			operationId: accountOrganizationProvisioning.operationId,
@@ -137,10 +122,19 @@ export async function prepareOrganizationCreation(
 		.where(eq(accountOrganizationProvisioning.userId, userId))
 		.limit(1)
 	if (existing.length > 0 && existing[0]) {
+		// The provisioning row is reused across additional org
+		// creations. The marker on the NEW organization row is
+		// still unique (the partial unique index on
+		// `bootstrap_operation_id` allows multiple organizations to
+		// share a marker, since this is the same user's history).
+		// The new organization gets the same marker; the create
+		// path's `beforeCreateOrganization` hook does not enforce
+		// marker uniqueness beyond what the partial index already
+		// allows.
 		return { bootstrapOperationId: existing[0].operationId }
 	}
 
-	// 3. Insert a fresh pending row. The primary key on `userId`
+	// 2. Insert a fresh pending row. The primary key on `userId`
 	// makes this an atomic create-or-fail; a concurrent worker that
 	// raced us and inserted first will surface as a unique
 	// violation, which the caller can treat as "row exists, retry
@@ -279,83 +273,123 @@ export async function assertDefaultOwnerRoleIsRetained(
 }
 
 /**
- * Finalize a successful provisioning. Called by the
- * `createFirstOrganization` Server Action after the native
- * organization + owner membership are verified, in a short
- * application transaction conditional on the current fencing token.
- *
- * Steps:
- *   1. Conditional update on `account_organization_provisioning`:
- *      `status = 'completed'`, `organizationId = <newId>`, fencing
- *      token incremented, `WHERE fencingToken = <expected>`. If the
- *      update affects 0 rows, the caller has lost the race and the
- *      Server Action returns the existing default.
- *   2. Insert into `account_organization_defaults`. The unique index
- *      on `organizationId` ensures no other account already claims
- *      this organization as its default. (In V1 each organization
- *      is the default of exactly one account: its creator.)
- *
- * Returns the durable default on success. Throws `APIError` on
- * fencing-token mismatch.
+ * Read the durable provisioning record for an account. Returns
+ * `null` when no record exists. Used by the onboarding Server
+ * Action to detect "a previous attempt left the plugin's
+ * organization in place but the default row was never written"
+ * and replay the finalization.
  */
-export async function finalizeOrganizationProvisioning(input: {
-	userId: string
+export async function getProvisioningState(userId: string): Promise<{
 	operationId: string
-	organizationId: string
-}): Promise<{ slug: string }> {
-	const provisioningRows = await db
+	organizationId: string | null
+	status: string
+	finalSlug: string
+} | null> {
+	const rows = await db
 		.select({
-			fencingToken: accountOrganizationProvisioning.fencingToken,
+			operationId: accountOrganizationProvisioning.operationId,
+			organizationId: accountOrganizationProvisioning.organizationId,
+			status: accountOrganizationProvisioning.status,
 			finalSlug: accountOrganizationProvisioning.finalSlug,
 		})
 		.from(accountOrganizationProvisioning)
-		.where(eq(accountOrganizationProvisioning.userId, input.userId))
+		.where(eq(accountOrganizationProvisioning.userId, userId))
 		.limit(1)
-	if (provisioningRows.length === 0 || !provisioningRows[0]) {
-		throw new APIError("BAD_REQUEST", {
-			message: "No provisioning record for this account",
-		})
+	const row = rows[0]
+	if (!row) return null
+	return {
+		operationId: row.operationId,
+		organizationId: row.organizationId,
+		status: row.status,
+		finalSlug: row.finalSlug,
 	}
-	const { fencingToken, finalSlug } = provisioningRows[0]
+}
 
-	// Step 1: conditional update. fencing_token = <expected> ensures
-	// a stale worker cannot overwrite a newer state. The update
-	// returns the row count; 0 means the caller has lost the race.
-	const updated = await db
-		.update(accountOrganizationProvisioning)
-		.set({
+/**
+ * Finalize a successful provisioning. Called by the
+ * `createFirstOrganization` Server Action after the native
+ * organization + owner membership are verified.
+ *
+ * Steps (in a single PostgreSQL transaction):
+ *   1. Conditional update on `account_organization_provisioning`:
+ *      `status = 'completed'`, `organizationId = <newId>`, fencing
+ *      token incremented, `WHERE fencingToken = <expected>`. If
+ *      the update affects 0 rows, the caller has lost the race
+ *      and the transaction rolls back.
+ *   2. Insert into `account_organization_defaults`. The unique
+ *      index on `organizationId` ensures no other account already
+ *      claims this organization as its default. (In V1 each
+ *      organization is the default of exactly one account: its
+ *      creator.)
+ *
+ * The transaction guarantees that the `completed` provisioning
+ * row and the `account_organization_defaults` row either both
+ * land or neither does. A crash between the two steps leaves the
+ * provisioning row at its previous state, so a retry re-attempts
+ * the same finalization.
+ *
+ * Returns the durable default on success. Throws `APIError` on
+ * fencing-token mismatch or missing provisioning record.
+ */
+export async function finalizeOrganizationProvisioning(input: {
+	userId: string
+	organizationId: string
+}): Promise<{ slug: string }> {
+	return db.transaction(async (tx) => {
+		const provisioningRows = await tx
+			.select({
+				fencingToken: accountOrganizationProvisioning.fencingToken,
+				finalSlug: accountOrganizationProvisioning.finalSlug,
+			})
+			.from(accountOrganizationProvisioning)
+			.where(eq(accountOrganizationProvisioning.userId, input.userId))
+			.limit(1)
+		if (provisioningRows.length === 0 || !provisioningRows[0]) {
+			throw new APIError("BAD_REQUEST", {
+				message: "No provisioning record for this account",
+			})
+		}
+		const { fencingToken, finalSlug } = provisioningRows[0]
+
+		// Step 1: conditional update. fencing_token = <expected>
+		// ensures a stale worker cannot overwrite a newer state.
+		// The update returns the row count; 0 means the caller
+		// has lost the race and the whole transaction rolls back.
+		const updated = await tx
+			.update(accountOrganizationProvisioning)
+			.set({
+				organizationId: input.organizationId,
+				status: "completed",
+				fencingToken: fencingToken + 1,
+				leaseUntil: Date.now() + LEASE_DURATION_MS,
+			})
+			.where(
+				and(
+					eq(accountOrganizationProvisioning.userId, input.userId),
+					eq(accountOrganizationProvisioning.fencingToken, fencingToken),
+				),
+			)
+			.returning({
+				operationId: accountOrganizationProvisioning.operationId,
+			})
+
+		if (updated.length === 0) {
+			throw new APIError("CONFLICT", {
+				message:
+					"Provisioning was advanced by a concurrent worker. Retry the create request.",
+			})
+		}
+
+		// Step 2: insert the default row. The unique index on
+		// `organizationId` guards against two accounts claiming
+		// the same default.
+		await tx.insert(accountOrganizationDefaults).values({
+			userId: input.userId,
 			organizationId: input.organizationId,
-			status: "completed",
-			fencingToken: fencingToken + 1,
-			leaseUntil: Date.now() + LEASE_DURATION_MS,
 		})
-		.where(
-			and(
-				eq(accountOrganizationProvisioning.userId, input.userId),
-				eq(accountOrganizationProvisioning.fencingToken, fencingToken),
-			),
-		)
-		.returning({ operationId: accountOrganizationProvisioning.operationId })
 
-	if (updated.length === 0) {
-		throw new APIError("CONFLICT", {
-			message:
-				"Provisioning was advanced by a concurrent worker. Retry the create request.",
-		})
-	}
-
-	// Step 2: insert the default row. The unique index on
-	// `organizationId` guards against two accounts claiming the
-	// same default; the implementation branch treats a unique
-	// violation here as a hard error and surfaces a 500 (this
-	// should never happen in V1 since each organization is the
-	// default of exactly one account).
-	await db.insert(accountOrganizationDefaults).values({
-		userId: input.userId,
-		organizationId: input.organizationId,
+		return { slug: finalSlug }
 	})
-
-	return { slug: finalSlug }
 }
 
 /**

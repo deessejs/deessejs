@@ -1,11 +1,12 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  bigint,
+  boolean,
+  index,
+  integer,
   pgTable,
   text,
   timestamp,
-  boolean,
-  integer,
-  index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
