@@ -1,12 +1,20 @@
 import { betterAuth } from "better-auth"
+import { APIError } from "better-auth/api"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { nextCookies } from "better-auth/next-js"
-import { bearer, deviceAuthorization } from "better-auth/plugins"
+import { bearer, deviceAuthorization, organization } from "better-auth/plugins"
 import { db } from "@workspace/database"
 import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
 import { HOST_ALLOWLIST } from "./host-allowlist.js"
+import {
+  assertOrganizationIsDeletable,
+  assertDefaultOwnerMembershipIsRetained,
+  assertDefaultOwnerRoleIsRetained,
+  prepareOrganizationCreation,
+} from "./organization-policy.js"
+import { sendOrganizationInvitation } from "./organization-invitation.js"
 
 /**
  * Better Auth `basePath` — the URL prefix the handler claims.
@@ -58,6 +66,55 @@ function logEmailFailure(flow: string, userId: string, error: string): void {
 		`[auth] ${flow} email failed`,
 		JSON.stringify({ userId, flow, error }),
 	)
+}
+
+/**
+ * Organization slug validation policy (RFC-001 §6). Reserved names must
+ * be kept in sync with actual top-level application routes — see
+ * `apps/app/proxy.ts` for the same set used in the proxy classifier.
+ */
+const RESERVED_ORGANIZATION_SLUGS = new Set([
+	"deessejs",
+	"nesalia",
+	"account",
+	"admin",
+	"onboarding",
+	"accept-invitation",
+	"api",
+	"login",
+	"signup",
+	"forgot-password",
+	"reset-password",
+	"verify-email",
+	"device",
+	"settings",
+	"home",
+])
+
+/**
+ * Server-side slug format. Lowercase letters, digits, hyphen-separated
+ * segments; no leading/trailing hyphen, no consecutive hyphens. The
+ * 2–48 character range is application policy (RFC-001 Q11).
+ */
+const ORGANIZATION_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+/**
+ * Validate an organization slug. Throws `APIError("BAD_REQUEST")` on
+ * any violation so the plugin's hook chain returns a 4xx to the
+ * caller. The plugin will translate the input.slug into a 400 response.
+ */
+function validateOrganizationSlug(value: unknown): void {
+	if (
+		typeof value !== "string" ||
+		value.length < 2 ||
+		value.length > 48 ||
+		!ORGANIZATION_SLUG.test(value) ||
+		RESERVED_ORGANIZATION_SLUGS.has(value)
+	) {
+		throw new APIError("BAD_REQUEST", {
+			message: "Invalid or reserved organization slug",
+		})
+	}
 }
 
 export const auth = betterAuth({
@@ -196,6 +253,63 @@ export const auth = betterAuth({
     // schema change). Per Better Auth docs (docs/plugins/bearer) and the
     // device-authorization docs' "Example: CLI Application" callout.
     bearer(),
+    // Organization plugin (RFC-001): mandatory first-organization onboarding,
+    // additional organization creation, guarded deletion, profile editing,
+    // invitations, members, role changes, leaving eligible organizations.
+    // The plugin's default access rules are kept (no custom `ac`, `roles` or
+    // dynamic access control). The `beforeCreateOrganization` hook enforces
+    // the slug policy + claims the durable provisioning record (option B in
+    // RFC-001 §5); the `beforeDeleteOrganization` hook rejects any
+    // organization referenced by an `account_organization_defaults` row;
+    // the `beforeRemoveMember` and `beforeUpdateMemberRole` hooks protect
+    // the creator's owner membership in the default organization;
+    // `beforeUpdateOrganization` rejects any explicit slug change and any
+    // metadata edit. The `sendInvitationEmail` callback is wired to the
+    // `sendOrganizationInvitation` helper which uses `serverEnv.APP_URL`
+    // (RFC-001 §9) to build the acceptance URL.
+    organization({
+      allowUserToCreateOrganization: (user) => user.emailVerified === true,
+      creatorRole: "owner",
+      requireEmailVerificationOnInvitation: true,
+      invitationExpiresIn: 60 * 60 * 48,
+      disableOrganizationDeletion: false,
+      organizationHooks: {
+        beforeCreateOrganization: async ({ organization: input, user }) => {
+          validateOrganizationSlug(input.slug)
+          const bootstrapData = await prepareOrganizationCreation(user.id)
+          if (input.metadata != null) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Organization metadata is not editable",
+            })
+          }
+          return { data: { ...input, ...bootstrapData } }
+        },
+        beforeDeleteOrganization: async ({ organization: target }) => {
+          await assertOrganizationIsDeletable(target.id)
+        },
+        beforeRemoveMember: async ({ member }) => {
+          await assertDefaultOwnerMembershipIsRetained(member)
+        },
+        beforeUpdateMemberRole: async ({ member, newRole }) => {
+          await assertDefaultOwnerRoleIsRetained(member, newRole)
+        },
+        beforeUpdateOrganization: async ({ organization: updates }) => {
+          if (updates.slug !== undefined) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Organization slugs cannot be changed",
+            })
+          }
+          if (updates.metadata !== undefined) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Organization metadata is not editable",
+            })
+          }
+        },
+      },
+      sendInvitationEmail: async (data) => {
+        await sendOrganizationInvitation(data)
+      },
+    }),
     nextCookies(),
   ],
 })

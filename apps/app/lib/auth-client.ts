@@ -1,7 +1,10 @@
 "use client"
 
 import { createAuthClient } from "better-auth/react"
-import { deviceAuthorizationClient } from "better-auth/client/plugins"
+import {
+	deviceAuthorizationClient,
+	organizationClient,
+} from "better-auth/client/plugins"
 import { clientEnv } from "@workspace/env/client"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
@@ -43,5 +46,12 @@ import "./fetch-auth-interceptor"
 export const authClient = createAuthClient({
   baseURL: clientEnv.NEXT_PUBLIC_APP_URL,
   basePath: API_AUTH_PATH,
-  plugins: [deviceAuthorizationClient()],
+  // `organizationClient()` mirrors the server-side `organization()` plugin
+  // added in `packages/auth/src/auth.ts` (RFC-001). It exposes the
+  // `authClient.organization.create`, `setActive`, `inviteMember`,
+  // `acceptInvitation`, `list`, `update`, `delete` and member-management
+  // methods the onboarding wizard and the sidebar switcher consume.
+  // If the Admin RFC has already added `adminClient()` on this branch,
+  // preserve it here.
+  plugins: [deviceAuthorizationClient(), organizationClient()],
 })

@@ -2,106 +2,207 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
-const PROTECTED_PREFIXES = ["/home", "/settings"]
-const AUTH_PREFIXES = [
-  "/login",
-  "/signup",
-  "/forgot-password",
-  "/reset-password",
-  "/verify-email",
-  // /device is intentionally NOT here: an authenticated user
-  // landing on /device from the CLI's auth login must see the
-  // approve / deny view, not /home. Routing is owned by the
-  // page-level Server Component. See ADR-022 §"Bug B".
-]
+/**
+ * Reserved top-level route segments. Classified BEFORE the
+ * organization-slug segment in the proxy's JavaScript branch so an
+ * organization named `account`, `onboarding`, `admin` or `api` can
+ * never shadow a system route. Keep this set in sync with
+ * `RESERVED_ORGANIZATION_SLUGS` in `packages/auth/src/auth.ts` and
+ * `validateOrganizationSlug` (RFC-001 §6).
+ */
+const RESERVED_SEGMENTS = new Set([
+	"account",
+	"admin",
+	"onboarding",
+	"accept-invitation",
+	"api",
+	"login",
+	"signup",
+	"forgot-password",
+	"reset-password",
+	"verify-email",
+	"device",
+])
 
+/**
+ * Organization-scoped route prefixes. The first URL segment is the
+ * organization slug; the proxy does NOT treat it as a slug unless it
+ * passes the reserved-segment filter below. `/[organization_slug]/*`
+ * replaces the previous `/home` and `/settings` flat routes
+ * (RFC-001 §8).
+ */
+const ORG_SCOPED_PREFIXES = ["/home", "/settings"] as const
+
+/**
+ * Onboarding and account routes that bypass the organization-slug
+ * classification. `/onboarding/*` is the first-organization wizard
+ * (mandatory destination when the account has no default). The
+ * proxy short-circuits for it (no gate runs). `/account/*` is
+ * account-scoped settings that never require organization
+ * membership.
+ */
+const BYPASS_PREFIXES = ["/onboarding", "/accept-invitation"] as const
+
+/**
+ * Auth pages (unauthenticated surfaces). A signed-in user landing
+ * on one of these is redirected to their account default home.
+ */
+const AUTH_PREFIXES = [
+	"/login",
+	"/signup",
+	"/forgot-password",
+	"/reset-password",
+	"/verify-email",
+	// /device is intentionally NOT here: an authenticated user
+	// landing on /device from the CLI's auth login must see the
+	// approve / deny view, not /home. Routing is owned by the
+	// page-level Server Component. See ADR-022 §"Bug B".
+] as const
+
+/**
+ * Match every request the proxy might gate. The actual gate
+ * decision happens in the proxy body; the matcher is a coarse
+ * filter that skips static assets and framework internals.
+ */
 export const config = {
-  // Single matcher covering both directions of the auth gate.
-  matcher: [
-    "/home/:path*",
-    "/settings/:path*",
-    "/login",
-    "/signup",
-    "/forgot-password",
-    "/reset-password",
-    "/verify-email",
-    "/device",
-  ],
+	matcher: [
+		// Organization-scoped pages (the first segment is a slug).
+		"/:organization_slug/home/:path*",
+		"/:organization_slug/settings/:path*",
+		// Onboarding, account, accept-invitation.
+		"/onboarding/:path*",
+		"/account/:path*",
+		"/accept-invitation/:path*",
+		// Auth pages.
+		"/login",
+		"/signup",
+		"/forgot-password",
+		"/reset-password",
+		"/verify-email",
+		"/device",
+		// Legacy /home and /settings pages exist as redirect-only
+		// Server Components during the migration window. The proxy
+		// does not gate them (they are trivial redirects to
+		// /account/settings/profile and /, both of which have their
+		// own auth handling).
+		"/home",
+		"/home/:path*",
+		"/settings",
+		"/settings/:path*",
+	],
 }
 
-// The proxy uses a pure HTTP fetch to /api/auth/get-session
-// instead of importing better-auth directly. better-auth transitively
-// imports postgres via the @better-auth/drizzle adapter, which
-// Turbopack cannot bundle for any runtime (fs/net/os imports fail
-// at build time). The fetch path uses only Web APIs that work in
-// every runtime Next.js supports. The auth route handler at
-// /api/auth/get-session runs on the Node runtime in the api package,
-// where postgres works natively.
-//
-// Next.js 16 always runs proxy files on the Node.js runtime —
-// setting `export const runtime = "nodejs"` here is rejected at build
-// time ("Route segment config is not allowed in Proxy file").
-
+/**
+ * The proxy uses a pure HTTP fetch to /api/v1/auth/get-session
+ * instead of importing better-auth directly (see the original proxy
+ * for the rationale: Turbopack cannot bundle postgres for the
+ * Edge runtime).
+ */
 interface GetSessionResponse {
-  session?: { user?: { emailVerified?: boolean } }
+	session?: { user?: { id?: string; emailVerified?: boolean } }
 }
 
 export async function proxy(request: NextRequest) {
-  const pathname = request.nextUrl.pathname
-  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))
-  const isAuthPage = AUTH_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  )
+	const pathname = request.nextUrl.pathname
 
-  // Only call getSession when the route actually needs the gate decision.
-  // Avoids a roundtrip on every static asset or unrelated request.
-  if (!isProtected && !isAuthPage) {
-    return NextResponse.next()
-  }
+	// 1. Bypass routes short-circuit before any classification work.
+	// `/onboarding/*` and `/accept-invitation/*` are reachable
+	// without a gate; the page-level Server Component owns its own
+	// auth checks.
+	if (
+		BYPASS_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+	) {
+		return NextResponse.next()
+	}
 
-  // The proxy self-fetches `/api/v1/auth/get-session` instead of
-  // importing `better-auth` directly. The fetch must hit the
-  // *same* origin the request is being processed under — never a
-  // hardcoded `API_BASE_URL` env var. On Vercel previews the
-  // origin is the per-branch hostname
-  // (`deessejs-app-git-<branch>.vercel.app`); on prod it's
-  // `app.deessejs.com`; in dev it's `localhost:3001`. Reading the
-  // origin off the incoming `request.nextUrl` makes the proxy
-  // adapt automatically without per-environment env wiring, and
-  // it keeps the self-fetch in the same Function (no DNS hop,
-  // no port resolution).
-  //
-  // ADR-021 §"Decision" #4 originally composed the URL from
-  // `serverEnv.API_BASE_URL`. That works for the cross-app case
-  // (`apps/web` calling into `apps/app`) but breaks for the
-  // self-fetch here, because `API_BASE_URL` is not set on every
-  // preview deploy and falls back to `http://localhost:3001` —
-  // which is not listening on Vercel. See the dev-comment on
-  // `serverEnv.API_BASE_URL` for the same caveat.
-  const getSessionUrl = new URL(
-    `${API_AUTH_PATH}/get-session`,
-    request.nextUrl.origin,
-  )
-  const response = await fetch(getSessionUrl, {
-    headers: { cookie: request.headers.get("cookie") ?? "" },
-  })
-  const session = (response.ok
-    ? ((await response.json()) as GetSessionResponse | null)
-    : null)
+	// 2. Classify the first path segment. Reserved segments
+	// (`/account`, `/admin`, `/api`, `/login`, ...) must be
+	// classified before any organization-slug interpretation so an
+	// organization named `account` cannot shadow `/account/settings`.
+	const firstSegment = pathname.split("/")[1] ?? ""
+	const isReservedSegment = RESERVED_SEGMENTS.has(firstSegment)
 
-  if (isProtected && !session?.session) {
-    const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("redirect", pathname)
-    return NextResponse.redirect(loginUrl)
-  }
+	// 3. Auth pages: a signed-in user lands on `/login` (e.g. from
+	// a stale redirect) — bounce them to the post-onboarding
+	// destination. We can't read the active org here, so we send
+	// them to a placeholder that the page-level layout resolves to
+	// their default.
+	const isAuthPage = AUTH_PREFIXES.some(
+		(p) => pathname === p || pathname.startsWith(`${p}/`),
+	)
 
-  if (isProtected && session?.session?.user && !session.session.user.emailVerified) {
-    return NextResponse.redirect(new URL("/verify-email", request.url))
-  }
+	// 4. Organization-scoped routes. Two cases:
+	//   (a) the first segment is reserved → not an org route, treat
+	//       as an account / admin / auth page (handled below by the
+	//       session checks).
+	//   (b) the first segment is anything else → treat as
+	//       organization slug. The page-level layout and Server
+	//       Actions call `requireOrganizationAccess` for the real
+	//       authorization (RFC-001 §10 "Authoritative guard
+	//       placement"). The proxy only handles the login /
+	//       email-verification redirects.
+	const isOrgScoped =
+		!isReservedSegment &&
+		firstSegment !== "" &&
+		ORG_SCOPED_PREFIXES.some(
+			(p) => pathname === `/${firstSegment}${p}` || pathname.startsWith(`/${firstSegment}${p}/`),
+		)
 
-  if (isAuthPage && session?.session) {
-    return NextResponse.redirect(new URL("/home", request.url))
-  }
+	// 5. Account-scoped routes. The proxy treats `/account/*` like
+	// the legacy `/settings/*` did: requires sign-in and email
+	// verification, no organization membership check.
+	const isAccountScoped =
+		firstSegment === "account" && pathname.startsWith("/account/")
 
-  return NextResponse.next()
+	// 6. Decide whether the proxy needs to call getSession at all.
+	// Skip the roundtrip on static assets and unrelated requests.
+	const needsGate = isOrgScoped || isAccountScoped || isAuthPage
+	if (!needsGate) {
+		return NextResponse.next()
+	}
+
+	// 7. Self-fetch the session. Same-origin so Vercel previews and
+	// local dev both work without per-environment env wiring.
+	const getSessionUrl = new URL(
+		`${API_AUTH_PATH}/get-session`,
+		request.nextUrl.origin,
+	)
+	const response = await fetch(getSessionUrl, {
+		headers: { cookie: request.headers.get("cookie") ?? "" },
+	})
+	const session = (response.ok
+		? ((await response.json()) as GetSessionResponse | null)
+		: null)
+
+	// 8. Auth gate. Org-scoped and account-scoped routes both
+	// require a signed-in account. Email verification is checked
+	// for both surfaces; the organization-onboarding redirect
+	// lives in the page-level layout (the proxy does not query
+	// memberships or provisioning rows per RFC-001 §10 "Auth
+	// transport and proxy").
+	if ((isOrgScoped || isAccountScoped) && !session?.session) {
+		const loginUrl = new URL("/login", request.url)
+		loginUrl.searchParams.set("redirect", pathname)
+		return NextResponse.redirect(loginUrl)
+	}
+
+	if (
+		(isOrgScoped || isAccountScoped) &&
+		session?.session?.user &&
+		!session.session.user.emailVerified
+	) {
+		return NextResponse.redirect(new URL("/verify-email", request.url))
+	}
+
+	// 9. Auth pages: a signed-in user lands on `/login` — bounce
+	// them. We send them to `/onboarding/first-organization` if
+	// they have no default, otherwise the layout resolves their
+	// default. The proxy itself doesn't know the default, so the
+	// post-signin destination is `/`; the root page Server
+	// Component picks the right target.
+	if (isAuthPage && session?.session) {
+		return NextResponse.redirect(new URL("/", request.url))
+	}
+
+	return NextResponse.next()
 }
