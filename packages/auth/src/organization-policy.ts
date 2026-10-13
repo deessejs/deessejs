@@ -281,71 +281,17 @@ export async function prepareOrganizationCreation(
 		// guard; if a parallel worker raced us and bumped
 		// it first, the UPDATE affects 0 rows and we retry
 		// by re-reading.
-		const takeoverOperationId = operationId
-		let newFencingToken = fencingToken + 1
-		const newLeaseUntil = now + LEASE_DURATION_MS
-		for (let i = 0; i < 3; i++) {
-			const updated = await db
-				.update(accountOrganizationProvisioning)
-				.set({
-					fencingToken: newFencingToken,
-					leaseUntil: newLeaseUntil,
-					updatedAt: new Date(),
-				})
-				.where(
-					and(
-						eq(accountOrganizationProvisioning.userId, userId),
-						eq(
-							accountOrganizationProvisioning.fencingToken,
-							newFencingToken - 1,
-						),
-						lte(accountOrganizationProvisioning.leaseUntil, now),
-					),
-				)
-				.returning({ operationId: accountOrganizationProvisioning.operationId })
-			if (updated.length > 0) {
-				stashProvisioningClaim(userId, attemptId, {
-					operationId: takeoverOperationId,
-					fencingToken: newFencingToken,
-					leaseUntil: newLeaseUntil,
-				})
-				return { bootstrapOperationId: takeoverOperationId }
-			}
-			// Lost the race. Re-read and decide again.
-			const reread = await db
-				.select({
-					operationId: accountOrganizationProvisioning.operationId,
-					fencingToken: accountOrganizationProvisioning.fencingToken,
-					leaseUntil: accountOrganizationProvisioning.leaseUntil,
-				})
-				.from(accountOrganizationProvisioning)
-				.where(eq(accountOrganizationProvisioning.userId, userId))
-				.limit(1)
-			if (!reread[0]) {
-				throw new Error("Provisioning row disappeared during take-over")
-			}
-			if (reread[0].leaseUntil > now) {
-				// Another worker has a live claim. Resume
-				// with their state.
-				stashProvisioningClaim(userId, attemptId, {
-					operationId: reread[0].operationId,
-					fencingToken: reread[0].fencingToken,
-					leaseUntil: reread[0].leaseUntil,
-				})
-				return { bootstrapOperationId: reread[0].operationId }
-			}
-			// Still expired (rare). Loop with a fresh token
-			// based on the current value. The conditional
-			// UPDATE re-asserts the new token under the
-			// fencing-token guard; the next iteration of the
-			// loop repeats the read+update cycle. The
-			// operationId stays the same — never re-roll it.
-			newFencingToken = reread[0].fencingToken + 1
-		}
-		throw new APIError("CONFLICT", {
-			message:
-				"Could not take over expired provisioning after 3 attempts. Retry.",
+		const takeover = await takeOverExpiredProvisioning(
+			userId,
+			operationId,
+			fencingToken,
+		)
+		stashProvisioningClaim(userId, attemptId, {
+			operationId: takeover.operationId,
+			fencingToken: takeover.fencingToken,
+			leaseUntil: takeover.leaseUntil,
 		})
+		return { bootstrapOperationId: takeover.operationId }
 	}
 
 	// 3. Insert a fresh pending row. The primary key on `userId`
@@ -392,6 +338,104 @@ export async function prepareOrganizationCreation(
 		leaseUntil,
 	})
 	return { bootstrapOperationId: operationId }
+}
+
+/**
+ * Take over an expired provisioning lease. The caller passes the
+ * `operationId` (preserved from the existing row — see the comment
+ * on the takeover branch in `prepareOrganizationCreation`) and the
+ * current `fencingToken`; this function bumps the token, renews
+ * the lease, and returns the new state. The conditional UPDATE
+ * uses the previous fencing token as a guard; a parallel worker
+ * that raced us surfaces as 0 rows affected and the loop re-reads
+ * the row to decide again.
+ *
+ * The helper is exported because TWO call sites need the takeover:
+ *   - the hook in `prepareOrganizationCreation` (recovery during
+ *     a fresh create request, when the hook sees an expired lease
+ *     and bumps it before stashing the claim for the new attempt);
+ *   - the `replayFinalize` Server Action flow, which finds the
+ *     prior attempt's organization via the marker BEFORE any
+ *     hook runs and therefore cannot rely on the hook's takeover
+ *     to bump the lease. Without this, a recovery request that
+ *     finds the marker-bound org would call
+ *     `finalizeOrganizationProvisioning` with the original (now
+ *     expired) fencing token; the finalize WHERE clause would
+ *     fail (`leaseUntil > now` is false), the action would fall
+ *     through to a fresh create, and the unique index on
+ *     `bootstrap_operation_id` would reject it because the prior
+ *     org still carries the same marker.
+ */
+export async function takeOverExpiredProvisioning(
+	userId: string,
+	operationId: string,
+	oldFencingToken: number,
+): Promise<{
+	operationId: string
+	fencingToken: number
+	leaseUntil: number
+}> {
+	const now = Date.now()
+	let newFencingToken = oldFencingToken + 1
+	const newLeaseUntil = now + LEASE_DURATION_MS
+	for (let i = 0; i < 3; i++) {
+		const updated = await db
+			.update(accountOrganizationProvisioning)
+			.set({
+				fencingToken: newFencingToken,
+				leaseUntil: newLeaseUntil,
+				updatedAt: new Date(),
+			})
+			.where(
+				and(
+					eq(accountOrganizationProvisioning.userId, userId),
+					eq(
+						accountOrganizationProvisioning.fencingToken,
+						newFencingToken - 1,
+					),
+					lte(accountOrganizationProvisioning.leaseUntil, now),
+				),
+			)
+			.returning({
+				operationId: accountOrganizationProvisioning.operationId,
+			})
+		if (updated.length > 0) {
+			return {
+				operationId,
+				fencingToken: newFencingToken,
+				leaseUntil: newLeaseUntil,
+			}
+		}
+		// Lost the race. Re-read and decide again.
+		const reread = await db
+			.select({
+				operationId: accountOrganizationProvisioning.operationId,
+				fencingToken: accountOrganizationProvisioning.fencingToken,
+				leaseUntil: accountOrganizationProvisioning.leaseUntil,
+			})
+			.from(accountOrganizationProvisioning)
+			.where(eq(accountOrganizationProvisioning.userId, userId))
+			.limit(1)
+		if (!reread[0]) {
+			throw new Error("Provisioning row disappeared during take-over")
+		}
+		if (reread[0].leaseUntil > now) {
+			// Another worker has a live claim. Resume
+			// with their state. The caller can decide
+			// whether the live token is theirs to keep
+			// using or to fence off.
+			return {
+				operationId: reread[0].operationId,
+				fencingToken: reread[0].fencingToken,
+				leaseUntil: reread[0].leaseUntil,
+			}
+		}
+		newFencingToken = reread[0].fencingToken + 1
+	}
+	throw new APIError("CONFLICT", {
+		message:
+			"Could not take over expired provisioning after 3 attempts. Retry.",
+	})
 }
 
 /**

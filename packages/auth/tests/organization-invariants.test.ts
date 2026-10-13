@@ -106,12 +106,21 @@ async function createDefaultOrganization(
 				headers: user.headers,
 			}),
 	)) as { id: string; slug: string }
-	// Read the operation id the hook stashed.
-	const opRows = await db.execute(
+	// Read the operation id the hook stashed. The
+	// project's `drizzle-orm/postgres-js` driver returns
+	// `RowList<Row[]>` for raw `db.execute(sql\`…\`)`
+	// calls — the row iterator is the array itself, NOT
+	// `{ rows: [...] }` (that shape belongs to the
+	// node-postgres / pg-core / vercel-postgres drivers).
+	// Reading `.rows[0]` here would silently produce
+	// `undefined` and the next line would throw on
+	// `opRow.operation_id`. We narrow through an unknown
+	// cast for the column name (drizzle does not type
+	// raw `sql\`…\`` SELECTs).
+	const opRows = (await db.execute(
 		sql`SELECT "operation_id" FROM "account_organization_provisioning" WHERE "user_id" = ${user.userId} LIMIT 1`,
-	)
-	const opRow = (opRows as unknown as { rows: Array<{ operation_id: string }> })
-		.rows[0]
+	)) as unknown as Array<{ operation_id: string }>
+	const opRow = opRows[0]
 	if (!opRow) {
 		throw new Error("Hook did not write a provisioning row")
 	}

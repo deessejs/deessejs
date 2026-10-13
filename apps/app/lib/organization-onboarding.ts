@@ -12,6 +12,7 @@ import {
 	getDefaultOrganization,
 	getProvisioningState,
 	recordProvisioningRequest,
+	takeOverExpiredProvisioning,
 	withProvisioningAttempt,
 } from "@workspace/auth/organization-policy"
 import { requireAccountSession } from "@/lib/organization-auth"
@@ -130,13 +131,21 @@ export async function createFirstOrganization(
 	// find that organization: `account_organization_provisioning
 	// .organization_id` is null until the finalization
 	// transaction commits, so reading it from the provisioning
-	// row tells us nothing about a partial-attempt org.
+	// row tells us nothing about a partial-attempt org. We also
+	// pass the prior `leaseUntil` so the recovery path can
+	// take over the lease when it has expired (otherwise the
+	// finalization WHERE clause `fencingToken = <old> AND
+	// leaseUntil > now` would reject and we'd fall through to a
+	// fresh create — which the unique index on
+	// `bootstrap_operation_id` would then reject because the
+	// old org still carries the same marker).
 	const prior = await getProvisioningState(session.user.id)
 	if (prior) {
 		const replayed = await replayFinalize({
 			userId: session.user.id,
 			operationId: prior.operationId,
 			fencingToken: prior.fencingToken,
+			leaseUntil: prior.leaseUntil,
 		})
 		if (replayed.ok) return replayed
 	}
@@ -305,29 +314,40 @@ export async function createFirstOrganization(
 /**
  * Replay the finalize step on a previously-created organization.
  *
- * Two recovery scenarios, distinguished by what we find in the
+ * Three recovery scenarios, distinguished by what we find in the
  * database:
  *
  *   - **Default already exists** — a parallel caller won the
  *     race. Return the durable default immediately; no
  *     finalization needed.
  *
- *   - **No default yet** — the plugin's organization row + owner
- *     membership may be on disk from a partial previous attempt.
- *     Find the org by its `bootstrapOperationId` marker (the
- *     provisioning row's `organization_id` is still NULL because
- *     finalization never committed). If we find the org, repair
- *     the owner membership in case the previous attempt crashed
- *     AFTER creating the org but BEFORE the membership; then
- *     re-issue the finalization with the fencing token we read
- *     at the start of the request. A fencing-token mismatch means
- *     a parallel request advanced past us — fall back to the
+ *   - **No default yet, marker-bound org exists, lease is live** —
+ *     the plugin's organization row + owner membership are on
+ *     disk from a partial previous attempt. Repair the owner
+ *     membership in case the previous attempt crashed AFTER
+ *     creating the org but BEFORE the membership, then re-issue
+ *     the finalization with the fencing token we read at the
+ *     start of the request. A fencing-token mismatch means a
+ *     parallel request advanced past us — fall back to the
  *     durable default.
+ *
+ *   - **No default yet, marker-bound org exists, lease is
+ *     expired** — the previous attempt's worker died AFTER
+ *     creating the org + membership but before finalization,
+ *     and the lease timed out. The finalize's WHERE clause
+ *     requires `leaseUntil > now` so passing the old token
+ *     would fail; we must first call
+ *     `takeOverExpiredProvisioning` to bump the token and
+ *     renew the lease, then finalize with the NEW token. A
+ *     fresh create in this state would hit the unique index
+ *     on `bootstrap_operation_id` and reject (the old org
+ *     still carries the same marker).
  */
 async function replayFinalize(input: {
 	userId: string
 	operationId: string
 	fencingToken: number
+	leaseUntil: number
 }): Promise<{ ok: true; slug: string; organizationId: string } | { ok: false }> {
 	const existing = await getDefaultOrganization(input.userId)
 	if (existing) {
@@ -344,12 +364,27 @@ async function replayFinalize(input: {
 		// one.
 		return { ok: false }
 	}
+	// Take over the lease if it has expired. The helper
+	// bumps the fencing token and returns the new value;
+	// the finalize step below uses that new token. If the
+	// lease is already live, the helper returns the existing
+	// (unchanged) state — the finalize then matches the
+	// caller's input token, which is what the original
+	// "live-lease" branch did before.
+	const now = Date.now()
+	const lease = input.leaseUntil > now
+		? { operationId: input.operationId, fencingToken: input.fencingToken, leaseUntil: input.leaseUntil }
+		: await takeOverExpiredProvisioning(
+				input.userId,
+				input.operationId,
+				input.fencingToken,
+			)
 	await ensureOwnerMembership(input.userId, recovered.id)
 	try {
 		await finalizeOrganizationProvisioning({
 			userId: input.userId,
 			organizationId: recovered.id,
-			expectedFencingToken: input.fencingToken,
+			expectedFencingToken: lease.fencingToken,
 		})
 	} catch {
 		// Fencing-token mismatch: a parallel worker advanced
