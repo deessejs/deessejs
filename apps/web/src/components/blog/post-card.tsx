@@ -21,6 +21,13 @@ import { TagList } from "./tag-list"
  * with the wrapping `<Link>` and is redundant once the whole card
  * navigates.
  */
+// `featured` is kept in the public API for the four call-sites that
+// pass it (see `blog/page.tsx`, `blog/tag/[tag]/page.tsx`,
+// `blog-search.tsx`). The card chrome no longer varies on the flag —
+// the title size, the cover treatment, and the hover behaviour are
+// uniform across the catalog — so the prop is read by the type
+// signature only and intentionally not consumed here.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function PostCard({ post, featured }: { post: Post; featured?: boolean }) {
   const hasCover = Boolean(post.cover)
   const authors = post.authors?.length ? post.authors : post.author ? [post.author] : []
@@ -56,13 +63,7 @@ export function PostCard({ post, featured }: { post: Post; featured?: boolean })
             </>
           ) : null}
         </div>
-        <CardTitle
-          className={
-            featured
-              ? "mt-1 text-balance text-2xl tracking-tight"
-              : "mt-1 text-balance text-2xl tracking-tight"
-          }
-        >
+        <CardTitle className="mt-1 text-balance text-2xl tracking-tight">
           {post.title}
         </CardTitle>
         <CardDescription className="mt-2 line-clamp-3 text-sm text-muted-foreground">
