@@ -1,5 +1,14 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, bigint, index } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -29,6 +38,7 @@ export const session = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    activeOrganizationId: text("active_organization_id"),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );
@@ -73,54 +83,105 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-// Device authorization (ADR-020): the persistent record backing the
-// device-code flow. The CLI calls /device/code, the user approves or
-// denies in the browser, the CLI polls /device/token. Each device-code
-// record carries the codes themselves, the optional user binding once
-// the code is claimed, and the lifecycle timestamps the plugin uses to
-// enforce `interval` and `slow_down` throttling.
-//
-// Fields mirror the Better Auth `deviceCode` table as documented in
-// the upstream plugin (better-auth@1.6.23). When the plugin is upgraded
-// past a schema change, regenerate this file via `pnpm auth:generate`
-// from `packages/auth/` and review the diff against this baseline.
-export const deviceCode = pgTable(
-  "deviceCode",
+/**
+ * deviceCode — hand-preserved (the better-auth generator emits
+ * the table as `device_code` in the schema but the on-disk table
+ * is `deviceCode` per the existing migration 0001). The
+ * implementation branch adds a post-generate script that
+ * re-applies these lines after every `auth:generate` run.
+ */
+export const deviceCode = pgTable("deviceCode", {
+  id: text("id").primaryKey(),
+  deviceCode: text("device_code").notNull(),
+  userCode: text("user_code").notNull(),
+  userId: text("user_id"),
+  clientId: text("client_id"),
+  scope: text("scope"),
+  status: text("status").default("pending").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  lastPolledAt: timestamp("last_polled_at"),
+  pollingInterval: bigint("polling_interval", { mode: "number" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const organization = pgTable(
+  "organization",
   {
     id: text("id").primaryKey(),
-    deviceCode: text("device_code").notNull().unique(),
-    userCode: text("user_code").notNull().unique(),
-    userId: text("user_id").references(() => user.id, {
-      onDelete: "cascade",
-    }),
-    clientId: text("client_id"),
-    scope: text("scope"),
-    status: text("status").notNull().default("pending"),
-    expiresAt: timestamp("expires_at").notNull(),
-    lastPolledAt: timestamp("last_polled_at"),
-    // The plugin's Zod schema for deviceCode declares
-    // pollingInterval as z.number(); Drizzle's bigint with
-    // mode "number" maps to JS number (not bigint), which
-    // matches the plugin's expectation. Squawk's
-    // prefer-bigint-over-int rule is satisfied by bigint.
-    // Polling intervals are seconds (typically 5-60), so
-    // the 64-bit range is wildly more than enough.
-    pollingInterval: bigint("polling_interval", { mode: "number" }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    logo: text("logo"),
+    createdAt: timestamp("created_at").notNull(),
+    metadata: text("metadata"),
+    // RFC-001 §5: server-only, immutable correlation marker. The
+    // plugin's `additionalFields.bootstrapOperationId` declaration
+    // in `packages/auth/src/auth.ts` is `input: false`, so this
+    // column is never written from caller input — only the
+    // `beforeCreateOrganization` hook sets it from
+    // `prepareOrganizationCreation`.
+    //
+    // The marker is set ONLY on the first (default) organization
+    // a user creates. Additional organizations leave the column
+    // NULL. There is NO unique index on this column: the marker
+    // is a per-user correlation pointer, and uniqueness is
+    // already enforced by the primary key on
+    // `account_organization_provisioning.user_id`. A previous
+    // version of the migration added a partial UNIQUE index on
+    // this column; that index broke additional org creation
+    // (multiple non-NULL values for the same user) and has been
+    // removed.
+    bootstrapOperationId: text("bootstrap_operation_id"),
+  },
+  (table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
+);
+
+export const member = pgTable(
+  "member",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: text("role").default("member").notNull(),
+    createdAt: timestamp("created_at").notNull(),
   },
   (table) => [
-    index("deviceCode_userId_idx").on(table.userId),
-    index("deviceCode_expiresAt_idx").on(table.expiresAt),
+    index("member_organizationId_idx").on(table.organizationId),
+    index("member_userId_idx").on(table.userId),
+  ],
+);
+
+export const invitation = pgTable(
+  "invitation",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role"),
+    status: text("status").default("pending").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    inviterId: text("inviter_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("invitation_organizationId_idx").on(table.organizationId),
+    index("invitation_email_idx").on(table.email),
   ],
 );
 
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
+  members: many(member),
+  invitations: many(invitation),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -133,6 +194,33 @@ export const sessionRelations = relations(session, ({ one }) => ({
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
+    references: [user.id],
+  }),
+}));
+
+export const organizationRelations = relations(organization, ({ many }) => ({
+  members: many(member),
+  invitations: many(invitation),
+}));
+
+export const memberRelations = relations(member, ({ one }) => ({
+  organization: one(organization, {
+    fields: [member.organizationId],
+    references: [organization.id],
+  }),
+  user: one(user, {
+    fields: [member.userId],
+    references: [user.id],
+  }),
+}));
+
+export const invitationRelations = relations(invitation, ({ one }) => ({
+  organization: one(organization, {
+    fields: [invitation.organizationId],
+    references: [organization.id],
+  }),
+  user: one(user, {
+    fields: [invitation.inviterId],
     references: [user.id],
   }),
 }));

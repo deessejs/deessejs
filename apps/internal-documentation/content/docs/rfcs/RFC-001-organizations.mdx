@@ -1,0 +1,576 @@
+---
+title: 'Organizations system'
+description: 'Adopt the better-auth organization plugin in Vercel style, with mandatory first-organization onboarding, a permanent account default organization, additional organization creation, guarded deletion, profile editing, invitations, members, role changes, and leaving eligible organizations. PostgreSQL remains authoritative for membership. Teams, dynamic permissions, billing, SSO and template publication remain outside this increment.'
+---
+
+# RFC-001: Organizations system
+
+## Status
+
+Proposed (2026-10). Scopes the full product shape for the
+organizations feature: the better-auth `organization` plugin
+configuration, the data model, the two-role RBAC, the
+mandatory first-organization onboarding, the
+account-owned default organization invariant, additional
+organization creation, guarded deletion, profile editing,
+email-only invitations, members, role changes, leaving
+eligible organizations, and the apps/app chrome that
+renders the organizations menu and the per-user settings
+sections. Ships no code.
+
+## 1. Summary
+
+Introduce organizations through Better Auth's Organization plugin. Use its existing authentication transport and native client methods for organization management. PostgreSQL remains authoritative for membership.
+
+Every account must create its own first organization through /onboarding/first-organization before entering the workspace application. That organization becomes the account's permanent default organization. Users can subsequently create additional organizations, join other organizations and delete eligible additional organizations. Organization selection does not replace personal account settings.
+
+This first increment provides mandatory first-organization onboarding, creation of additional organizations, guarded deletion, listing, selection, profile editing, invitations, members, role changes and leaving eligible organizations. Keep the built-in roles. Teams, dynamic permissions, billing, SSO and template publication remain outside this increment.
+
+Mandatory onboarding, the exact /onboarding/first-organization route, additional creation/deletion and retention of the onboarding organization are user requirements. Other product policies below remain proposals.
+
+## 2. Evidence and compatibility
+
+Reviewed on 12 October 2026:
+
+| Evidence | Finding |
+|---|---|
+| Organization documentation | Current public API reference; the page advertises version 1.7.7. |
+| Workspace catalog and lockfile | Catalog specifies ^1.6.23; lockfile resolves Better Auth to 1.6.23. |
+| Auth configuration | Existing Drizzle adapter, verified password sign-in, GitHub, device flow, bearer and Next cookies. |
+| Auth client | Existing React client and preview fetch interception. |
+| Auth package | Existing auth:generate script. |
+| Database package | Existing Drizzle generation and migration scripts. |
+| Email package | sendAuthEmail returns an explicit success/failure result; invitation template is absent. |
+| Proxy | Current protected prefixes are /home and /settings; no organization prefix. |
+
+The source checks below target the tag matching the resolved dependency:
+- Organization options and hooks, v1.6.23.
+- Default access rules, v1.6.23.
+- Organization routes, v1.6.23.
+- Member routes, v1.6.23.
+- Invitation routes, v1.6.23.
+- Organization schema types, v1.6.23.
+
+These checks establish design compatibility, not a compiled patch or runtime verification. Reconfirm the resolved version and file paths on the implementation branch. No Better Auth upgrade is required by this RFC.
+
+## 3. Plugin assessment
+
+The documentation describes server installation through organization() and client installation through organizationClient(). The plugin supplies organization management, invitation and membership APIs, plus active-workspace selection. Its basic persistence includes organizations, members, invitations and a session selection field. Teams and dynamic access control are optional. Invitation delivery requires an application email callback and an application landing page. [Documentation](https://www.better-auth.com/docs/plugins/organization)
+
+DeesseJS should reuse this foundation. Its own responsibilities are namespace policy, navigation, delivery behavior and authorization for future business resources.
+
+Do not expose trusted server-only helpers such as direct member addition or creating an organization for an arbitrary user through a user-controlled wrapper. The reviewed member source defines direct addition as a server-only API. Joining someone else's organization uses invitations; first-organization onboarding creates the user's own organization. [Member routes](https://www.better-auth.com/docs/plugins/organization#member)
+
+## 4. Goals and boundaries
+
+### Selected first-release journey
+
+Start from an empty user base. There is no legacy customer migration or existing-organization adoption flow to design for this release.
+
+1. A newly registered, verified account opens /onboarding/first-organization, enters a name and submits. Slug generation is automatic.
+2. The organization is created with its owner and durable default relation. The user lands on /[organization_slug]/home.
+3. The dashboard initially contains only a simple home page. Organization/account settings are management screens; do not add product dashboards, placeholder analytics or business modules.
+4. A new shadcn Sidebar contains the organization switcher. Its menu lists accessible organizations and offers Create organization.
+5. Additional creation uses the same name-first dialog. Users can switch, rename organizations and delete eligible additional organizations. The onboarding organization remains protected as previously required.
+6. Owners/admins invite members by email. Recipients authenticate, verify their email and explicitly accept or reject. Members belong to an organization; no teams exist in V1.
+
+The purpose is to establish organization-level ownership and data scope. Existing and future business resources must use organization identity rather than treating one account as the sole tenant. Authentication and personal settings remain account-scoped.
+
+### Plans are deferred
+
+All verified users can create additional organizations for now, without a product-plan quota. Do not add subscription checks, upgrades, seat billing or paywalls. Later plans may restrict creation/member limits; centralize the policy boundary so those checks can be introduced without changing organization identity or routing. Technical safeguards and plugin implementation limits do not constitute an unlimited commercial promise.
+
+### Goals
+
+1. Require a verified user to create a permanent default organization during onboarding and become its owner.
+2. Let users list their organizations and select a workspace.
+3. Let authorized administrators edit its display profile and manage membership.
+4. Let recipients accept or decline emailed invitations after authentication.
+5. Establish stable organization identity for future community template ownership.
+6. Preserve existing personal, admin and CLI authentication flows.
+7. Allow additional organization creation and owner-authorized deletion while retaining each account's onboarding organization.
+
+### Non-goals
+
+Teams, nested organizations, custom roles, a permission editor, automatic organization creation, organization subscriptions, paid seat entitlements, SSO/SCIM, impersonation, global administration of customer organizations and community template publishing.
+
+Organization membership grants neither a paid license nor permission to publish publicly.
+
+## 5. Domain and data ownership
+
+Generate the plugin's complete schema with the installed tooling. This table is a conceptual map, not a replacement migration:
+
+| Concept | DeesseJS usage |
+|---|---|
+| Organization | Stable ID, editable display profile, unique permanent slug. |
+| Member | Relation between account and organization; role scoped to this relation. |
+| Invitation | Recipient email, intended role, inviter, lifecycle and expiration. |
+| Session selection | Active organization ID; nullable before onboarding or during session recovery. |
+| Account default organization | Application-owned relation from an account to the exact organization created in onboarding; independent of session selection. |
+
+Use the plugin's actual generated ID types in relations. Do not assume organization IDs are UUIDs because template IDs are UUIDs.
+
+Inspect generated indexes, foreign keys and deletion behavior. Require a unique organization slug and a unique member pair (organizationId, userId); if generation lacks the latter, add a compatible migration constraint after checking adapter behavior. Repeated invitation acceptance must not create duplicate memberships.
+
+Do not introduce a second organization or membership model in a business package. Do not use client-editable metadata for licensing, approval, namespace reservation or platform privilege. V1 exposes no arbitrary metadata editing.
+
+### Permanent default organization invariant
+
+Store an application-owned account_organization_defaults relation with userId as its primary key and organizationId as a non-null foreign key using ON DELETE RESTRICT. The organization ID is assigned by the server to the organization created during that account's onboarding. The account cannot edit, replace or clear it through profile/metadata APIs. This is one default per account, not a global default and not the currently selected organization.
+
+Protect the creator's owner membership in that organization: it cannot be removed, left or demoted, even if another owner exists. Other invited members can leave normally. Deletion checks must reject any organization referenced by a default relation, not merely the requesting account's default.
+
+The plugin does not require first-organization onboarding; this is a DeesseJS application invariant. Its nullable active selection cannot represent onboarding completion.
+
+### First-organization provisioning
+
+/onboarding/first-organization requires a signed-in, verified account. Collect only the organization name; automatically fill the slug from that name without requiring the user to choose it. Generate and validate the final slug server-side and create through the native Organization pipeline. Establish and verify the organization, creator owner membership and account default relation through the durable provisioning protocol below before marking onboarding complete. Serialize provisioning per account and return the existing result on retries. Never accept a browser-provided organization ID as proof of completed onboarding.
+
+**Selected implementation: durable provisioning record (option B).** Do not attempt to wrap auth.api.createOrganization in a Drizzle transaction and assume the plugin uses that transaction's connection. The reviewed creation route writes the organization and then the membership; a before hook does not enlist subsequent native writes in an application transaction.
+
+Create account_organization_provisioning with userId primary key, a unique server-generated operationId, nullable organizationId, status (pending, completed), leaseUntil, monotonically increasing fencingToken and timestamps. Persist the requested name and final slug for retry consistency. One account has one onboarding operation. Add a nullable, immutable, unique, server-only bootstrapOperationId plugin organization additional field, with input: false, to correlate native creation with this operation. It is internal provenance, never caller-controlled metadata.
+
+Provisioning runs in a server-only service in packages/auth/src/organization-onboarding.ts called by the onboarding Server Action. Claim or resume the row atomically, using a short PostgreSQL transaction and row lock/conditional update. Lease proposal: 60 seconds; renew only while the current token owns the claim. Do not hold a database transaction or connection lock across a native auth call or email delivery. No session flag is authoritative.
+
+On initial creation, propagate the trusted operation marker through a request-scoped server context into beforeCreateOrganization; the hook returns the server-owned marker as plugin additional data. The same policy applies to native HTTP create calls by incomplete accounts. A plain browser-supplied marker must never be trusted. All creation paths participate in the claim policy; do not provide an unrestricted alternate create path.
+
+Before calling native creation on a retry, look up the organization by the immutable operation marker. Database uniqueness on that marker prevents a second organization if an earlier worker resumes late. If the organization exists, recover it rather than creating another. Verify the stored operation's user and organization provenance before repairing a missing creator membership using the trusted server-only native add-member helper. Unique (organizationId, userId) handles duplicate recovery. Never assign an unrelated existing organization as the default.
+
+After the native organization and owner membership are verified, finalize the default relation plus completed state in one application transaction, conditional on the current fencing token. Repeated completion returns the same result. Native creation, application finalization and session selection are deliberately separate commits; an interrupted selection is repaired on the next request. Test interruption at every boundary, including organization-created/member-missing and member-created/default-missing.
+
+Deletion rejects any organization bearing an incomplete bootstrap marker; completed defaults are protected by their restrictive foreign key. Additional creation is blocked until the account's durable default exists. Competing onboarding requests receive a retryable in-progress result or recover the completed result. An expired lease allows recovery, not an unconditional new creation. This is one small application table, not a queue or background provisioning service.
+
+Native create requests from accounts lacking a default must participate in the same provisioning policy; they cannot bypass onboarding by calling HTTP directly. After default assignment, ordinary native creation produces additional organizations and never replaces the default. Restrict joins/invitations only as needed for workspace gating: accepting an invitation does not fulfill the requirement to create one's own onboarding organization.
+
+After success, set the new default active and navigate to the validated return target or /[default_organization_slug]/home. On later sessions, retain a valid active membership; otherwise select the account default. Do not turn account deletion into an implicit cascade that removes this invariant without a separately designed account-closure policy.
+
+## 6. Identity and namespace policy
+
+An organization has three distinct values:
+- id: permanent relational identity.
+- name: editable display label.
+- slug: permanent public namespace.
+
+**Slug generation is automatic** for first and additional organization creation. On collisions/reserved bases use a hyphen plus six lowercase hexadecimal characters from three cryptographically random bytes, truncating the base to 41 characters; retry at most five database collisions before returning a retryable error. The normal available base is unsuffixed. Generation steps: normalize the name into lowercase ASCII letters/digits and hyphen-separated segments; use a neutral fallback when normalization produces no usable base. Fit within 2–48 characters and append a six-character cryptographically random hexadecimal suffix for collisions or reserved names. The server decides the final available value; users do not need to resolve namespace errors manually. Generate the candidate before invoking native creation, so plugin uniqueness checks see the final slug. Database uniqueness arbitrates concurrent claims; retry collisions with a new candidate. Keep a successful onboarding operation idempotent. Native requests still validate the submitted final slug. Renaming changes the display name only, not the established slug or URLs.
+
+Reserve deessejs and nesalia. The first reservation is required by the templates RFC; the second is a proposed brand reservation. Also reserve top-level application segments: at least account, admin, onboarding, accept-invitation, api, login, signup, forgot-password, reset-password, verify-email and device. Maintain the set alongside actual static routes and reject framework/internal reserved prefixes such as _next. Apply the same policy to creation and availability feedback.
+
+A namespace claim is not proof of affiliation with a company. Do not display a verified-brand badge because someone created a matching slug.
+
+Slug changes are disabled in V1. Deletion is allowed for additional organizations, subject to owner authorization and default-organization protection, including through direct plugin HTTP calls. Display-name changes remain allowed. Before future public template publishing ships, add namespace retirement and dependent-resource deletion policies; deletion must never silently erase published templates.
+
+The existing template policy remains:
+
+| Template origin | Future address | Ownership |
+|---|---|---|
+| Official | @deessejs/&lt;name&gt; | Platform-controlled; no artificial DeesseJS organization. |
+| Community | @&lt;organization.slug&gt;/&lt;name&gt; | Real organization foreign key when community templates ship. |
+
+This RFC does not add community records, a template write API or additional orpc.templates procedures. List and get remain the consumer surface. Private ownership and approved public publication remain distinct.
+
+## 7. Roles and access
+
+Retain the plugin's default access rules; do not configure custom ac, roles or dynamic access control.
+
+| Action category | Owner | Organization admin | Member |
+|---|---|---|---|
+| Update organization | Allowed | Allowed | Denied |
+| Manage members and invitations | Allowed, subject to endpoint checks | Allowed, subject to endpoint checks | Denied |
+| Delete eligible additional organization | Allowed after server checks | Denied | Denied |
+| Delete an onboarding/default organization | Denied | Denied | Denied |
+
+The default access statements give organization admins update and membership/invitation management privileges; owners additionally have deletion permission. DeesseJS additionally protects onboarding organizations from deletion. [Default rules](https://www.better-auth.com/docs/plugins/organization#default-access-control)
+
+Owner promotion and modification have additional endpoint checks. The reviewed source restricts changes involving owner roles and prevents the sole owner from leaving, removing themselves or demoting themselves in normal sequential flows. Do not infer role-change authorization from the generic table alone. [Member routes](https://www.better-auth.com/docs/plugins/organization#member)
+
+An organization admin is member.role. A platform admin is the separate global role used by the Admin RFC. Neither grants the other role automatically. Platform admins do not bypass customer organization membership in V1.
+
+Show one built-in role per member in the initial UI. Do not introduce multiple-role editing. Authorization must still parse supported plugin role representations safely and deny unexpected values for application business operations.
+
+Every future organization-owned business query must authenticate the account, verify current membership in the requested organization, check the action and constrain the resource query by that organization ID. A browser-supplied ID, selected slug or cached session selection is not authorization.
+
+A removed member loses access on the next authorized request. Already rendered browser data cannot be retroactively erased by this guarantee.
+
+## 8. Active organization and navigation
+
+All workspace pages are scoped by the organization slug at the first URL segment. There is no organization listing page or /organizations route.
+
+| Route | Purpose |
+|---|---|
+| /onboarding/first-organization | Mandatory first organization creation before workspace access. |
+| /account/settings and its subroutes | Existing user/account settings, outside organization scope. |
+| /[organization_slug]/home | Organization workspace home. |
+| /[organization_slug]/settings | Settings within the selected organization context. |
+| /[organization_slug]/settings/organization | Organization profile and eligible deletion. |
+| /[organization_slug]/settings/members | Members and role controls. |
+| /[organization_slug]/settings/invitations | Invitation management. |
+| /accept-invitation/[id] | Recipient flow with authentication handoff. |
+
+The home and settings paths are requirements. The settings subpaths above are proposed screen organization. Existing user settings move to /account/settings and its corresponding subroutes. They are never nested under an organization slug. Organization settings exclusively manage organization-owned profile, members and invitations.
+
+Build a new application sidebar using the shadcn Sidebar, replacing the current workspace navigation rather than merely adding a switcher to it. Use the existing shared UI package and its installed primitive family; do not introduce a second UI stack. The documented composition provides SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter and SidebarTrigger.
+
+Put the organization switcher in the header, the home link and organization settings access in the content, and the account menu linking to /account/settings plus logout in the footer. Support collapsed desktop navigation and mobile navigation, keyboard access and visible pending/error states. The visible selected organization comes from the route. Do not display unavailable plan features or placeholder pages.
+
+Provide an organization switcher in this new sidebar. It lists native plugin memberships and offers a Create organization action opening a dialog. Creating an additional organization selects it and navigates to its scoped home; it does not replace the permanent default. No dedicated organization list/create page is introduced.
+
+The route slug determines the workspace being viewed. On selection, navigate to the chosen organization's equivalent supported route, falling back to its home when no equivalent exists. Construct links from the selected route's organization, not a mutable global session selection. Update active selection through an explicit user action rather than changing session state during Server Component rendering.
+
+/ is an authenticated routing entry: send incomplete accounts to onboarding and completed accounts to a valid selected organization's home, otherwise their default home. Post-login, onboarding completion and deletion fallback use scoped destinations. A bare /home or /settings is not a workspace screen; update existing links and redirects accordingly.
+
+Account routes under /account/*, authentication, onboarding, invitation handoff, native auth/API transport and the previously defined global /admin/* area remain reserved top-level routes outside the workspace slug. This preserves the separate Admin RFC; platform administration is not organization-owned.
+
+Use session selection as a convenience. Pass an explicit organization ID to operations from organization-specific screens. Resolve the route slug server-side and verify membership before loading protected content. An old tab must continue targeting its own route's organization even if another tab switches the session selection.
+
+After a successful selection, refresh organization-specific queries and Server Components. Include organization identity in client cache keys. Never place member or invitation responses in shared public caches.
+
+Missing default organization means onboarding is incomplete, even if the user already joined an organization by invitation. Redirect to /onboarding/first-organization before workspace access. A missing or inaccessible active selection after onboarding falls back to the permanent default for navigation; cancel pending writes instead of silently retargeting them.
+
+### Onboarding guard and eligible deletion
+
+The workspace server guard checks authentication, verification and the durable default relation, in that order. If missing, redirect to /onboarding/first-organization; on the onboarding route itself, show the creation form instead of redirecting back. If complete, revisiting the route redirects to the workspace. Apply this rule to workspace pages and organization-dependent business operations. Account settings use account/session authorization, not organization membership or the workspace-onboarding guard, so users can manage their account before onboarding completes. Keep login, verification, invitation handoff, logout and device authorization reachable without a redirect loop. The proxy alone is insufficient.
+
+Owners delete additional organizations from settings through the native deletion API after explicit confirmation naming the organization. Enforce protection in the plugin beforeDeleteOrganization hook and the restrictive database foreign key. Check dependent business resources before deletion; do not silently cascade customer data. Reject protected provisioning organizations too. After deleting the active organization, recover navigation to the account default and invalidate stale organization queries; requests from stale tabs must fail rather than mutate the default.
+
+Protect default ownership in membership removal and role-update hooks plus durable database enforcement. The reviewed native leaveOrganization path does not call beforeRemoveMember: it needs separate server enforcement through a native auth hook or the shared database invariant. A removal hook alone is therefore incomplete. Test direct leave HTTP calls and account deletion paths as well as the UI.
+
+## 9. Invitations and delivery
+
+Proposed behavior:
+
+1. An owner/admin supplies recipient email and a built-in role.
+2. The plugin creates the invitation; the application delivers its link.
+3. The landing page preserves its relative return path through login or signup.
+4. A verified recipient reviews the organization and intended role.
+5. Acceptance happens only after an explicit click.
+6. After successful acceptance, if the account lacks its default, preserve the invited organization return target and redirect to /onboarding/first-organization. Otherwise select the invited organization explicitly and navigate to /[organization_slug]/home. Onboarding completion validates that preserved target and membership before returning there.
+
+Configure requireEmailVerificationOnInvitation: true and a 48-hour expiration. Leave the default reinvitation behavior unchanged initially and provide the documented resend operation. Do not promise that resending always rotates the invitation ID.
+
+Do not accept an invitation on page GET or link preview. Wrong account, expired, canceled, rejected and already-processed invitations need explicit UI states without exposing unrelated membership data.
+
+Add an OrganizationInvitation React email template to packages/email and export it through the existing templates object. It should identify the organization and inviter and contain one acceptance link.
+
+Use the existing serverEnv.APP_URL from @workspace/env/server as the sole invitation origin, not BETTER_AUTH_URL, the browser mirror or request headers. Build `new URL("/accept-invitation/" + encodeURIComponent(data.id), serverEnv.APP_URL)`. Existing URL validation is insufficient for production origin safety: additionally require an origin-only URL without credentials, query or fragment, HTTPS outside localhost development, and deployment configuration matching the database/environment. Production sets APP_URL=https://app.deessejs.com; previews explicitly set their matching origin and use test delivery, otherwise invitation sending fails closed. Do not infer it from an unchecked forwarded host.
+
+Await sendAuthEmail, inspect result.ok, and report delivery failure. Do not reuse the current reset-password fire-and-forget pattern blindly. An email failure may follow a persisted invitation; never claim the invitation was rolled back. Offer resend and avoid logging invitation IDs, links or tokens.
+
+An idempotency key must distinguish intentional resend attempts if used. A permanent key based only on invitation ID can suppress subsequent resend emails.
+
+## 10. Integration proposal
+
+### Server configuration
+
+Add imports and the following plugin entry to packages/auth/src/auth.ts. Merge into the existing plugin list; retain device authorization, bearer and any Admin plugin added by its separate implementation. Keep nextCookies() last.
+
+The email and organization-policy helpers below are new implementation requirements, not existing exports. The configuration fragment alone does not implement durable provisioning/default assignment or the leave endpoint protection described below.
+
+```ts
+import { APIError } from "better-auth/api";
+import { organization } from "better-auth/plugins";
+import { sendOrganizationInvitation } from "./organization-invitation.js";
+import {
+  prepareOrganizationCreation,
+  assertOrganizationIsDeletable,
+  assertDefaultOwnerMembershipIsRetained,
+  assertDefaultOwnerRoleIsRetained,
+} from "./organization-policy.js";
+
+const RESERVED_ORGANIZATION_SLUGS = new Set([
+  "deessejs", "nesalia", "account", "admin", "onboarding", "accept-invitation",
+  "api", "login", "signup", "forgot-password", "reset-password",
+  "verify-email", "device", "settings", "home",
+]);
+const ORGANIZATION_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function validateOrganizationSlug(value: unknown): void {
+  if (
+    typeof value !== "string" ||
+    value.length < 2 ||
+    value.length > 48 ||
+    !ORGANIZATION_SLUG.test(value) ||
+    RESERVED_ORGANIZATION_SLUGS.has(value)
+  ) {
+    throw new APIError("BAD_REQUEST", {
+      message: "Invalid or reserved organization slug",
+    });
+  }
+}
+
+// Add before nextCookies() in the existing plugins array:
+organization({
+  allowUserToCreateOrganization: (user) => user.emailVerified === true,
+  creatorRole: "owner",
+  requireEmailVerificationOnInvitation: true,
+  invitationExpiresIn: 60 * 60 * 48,
+  disableOrganizationDeletion: false,
+  organizationHooks: {
+    beforeCreateOrganization: async ({ organization: input, user }) => {
+      validateOrganizationSlug(input.slug);
+      // New helper implements the mandatory claim/provenance protocol above.
+      const bootstrapData = await prepareOrganizationCreation(user.id);
+      if (input.metadata != null) {
+        throw new APIError("BAD_REQUEST", {
+          message: "Organization metadata is not editable",
+        });
+      }
+      return { data: { ...input, ...bootstrapData } };
+    },
+    beforeDeleteOrganization: async ({ organization: target }) => {
+      // New application helper; backed by the durable default relation.
+      await assertOrganizationIsDeletable(target.id);
+    },
+    beforeRemoveMember: async ({ member }) => {
+      await assertDefaultOwnerMembershipIsRetained(member);
+    },
+    beforeUpdateMemberRole: async ({ member, newRole }) => {
+      await assertDefaultOwnerRoleIsRetained(member, newRole);
+    },
+    beforeUpdateOrganization: async ({ organization: updates }) => {
+      // This hook receives proposed changes, not the existing stored profile.
+      if (updates.slug !== undefined) {
+        throw new APIError("BAD_REQUEST", {
+          message: "Organization slugs cannot be changed",
+        });
+      }
+      if (updates.metadata !== undefined) {
+        throw new APIError("BAD_REQUEST", {
+          message: "Organization metadata is not editable",
+        });
+      }
+    },
+  },
+  sendInvitationEmail: async (data) => {
+    await sendOrganizationInvitation(data);
+  },
+}),
+```
+
+The helper validates its configured origin, builds /accept-invitation/<encoded-id>, renders the new template and checks delivery failure. Type its input from the installed Organization plugin option rather than copying a third-party object shape. Add name length/whitespace and safe logo URL validation in the same server hooks before shipping; enforce the same rules in the UI for feedback.
+
+No teams, dynamic role tables or billing fields are required. Keep technical plugin limits as technical limits; they are not the Agency plan's five paid seats. Any product limits must be decided separately and tested under concurrent requests.
+
+### Client configuration
+
+In apps/app/lib/auth-client.ts, add the import and extend the existing array:
+
+```ts
+import {
+  deviceAuthorizationClient,
+  organizationClient,
+} from "better-auth/client/plugins";
+
+// Existing createAuthClient options remain:
+plugins: [deviceAuthorizationClient(), organizationClient()],
+```
+
+If the Admin RFC has already added adminClient(), preserve it too. Retain baseURL, basePath and the preview interceptor.
+
+Use native authClient.organization methods for lifecycle operations. Forward request headers for ordinary server auth.api calls. Do not drop authentication context or pass a caller-supplied user ID into trusted server-only helpers.
+
+### Auth transport and proxy
+
+Organization HTTP paths remain under the existing /api/v1/auth prefix. Do not create a second auth handler or mirror organization CRUD in oRPC.
+
+Replace the old bare workspace-prefix gate with route-aware matching for /:organization_slug/home/:path* and /:organization_slug/settings/:path*, and include /onboarding/:path* plus /account/settings/:path*. Classify /account/* before organization-scoped routes so /account/settings never triggers a membership lookup for an organization named account. Extend this set as scoped workspace sections ship. Reserved top-level routes must be classified before interpreting a segment as an organization slug; API paths, static assets and framework internals must never trigger workspace lookup. Do not introduce a /organizations matcher. Update both matcher configuration and gate logic together; changing matcher strings alone leaves the old /home and /settings checks ineffective. The invitation page owns its authentication handoff and must not be classified as an auth-only page that redirects signed-in users away.
+
+The proxy currently models the session response as session.user; Better Auth returns separate top-level user and session properties. Correct that shape and the verified-email routing loop as described in the Admin RFC. Preserve invitation query/path return targets through password and GitHub sign-in, using the existing safe-redirect policy. Verify resend verification receives the email context it needs.
+
+Proxy gating provides navigation behavior. Organization authorization belongs in each protected server data operation and native plugin endpoint.
+
+### Authoritative guard placement
+
+Create apps/app/lib/organization-auth.ts with server-only `requireAccountSession()`, `requireCompletedOnboarding()` and `requireOrganizationAccess(slug, action)` helpers. The scoped [organization_slug]/layout.tsx invokes them before mounting the sidebar. Every page loading protected data, Server Action, Route Handler and business data-access operation invokes the appropriate helper independently. Layout checks alone are insufficient because layouts can persist across navigation. Native plugin endpoints retain their own checks plus application invariant hooks. This follows Next.js authentication guidance.
+
+The proxy performs early login/verification redirects using the existing auth transport; it does not query memberships or provisioning rows and does not determine tenant authorization. In its JavaScript classifier, handle reserved account/onboarding/admin/auth/API segments before possible organization segments. Matcher order is not routing priority. Account settings require account/session checks, onboarding checks its own completion state, and global admin keeps its independent guard. Neither (protected) as a route-group name nor the current visual layout is an authorization mechanism.
+
+### Application schema ownership
+
+Add account_organization_defaults and account_organization_provisioning in new packages/database/src/schema/organization-state.ts; export it from packages/database/src/schema/index.ts and preserve the root barrel exports. Do not hand-add these application tables to generated schema/auth.ts. Configure the internal bootstrap marker as a plugin additional field, then regenerate the plugin schema. Add the application indexes, restrictive foreign keys and required membership/default database enforcement through reviewed Drizzle/SQL migrations.
+
+auth:generate only generates the plugin schema; db:generate diffs all exported schemas, including the manually authored application schema. These new application tables require migration regardless of whether an Admin plugin migration was applied previously. Inspect actual schema/migration history instead of assuming every generation must produce an Admin change.
+
+### Schema deployment
+
+Run the existing scripts from the repository root:
+
+```sh
+pnpm --filter @workspace/auth auth:generate
+pnpm --filter @workspace/database db:generate
+pnpm --filter @workspace/database db:check
+pnpm --filter @workspace/database db:migrate
+```
+
+Run migration only against the intended environment. Review generated changes before execution: preserve existing auth tables and exports, especially concurrent Admin plugin additions. Use Drizzle migrations rather than a built-in-adapter migration command.
+
+Deploy additive schema changes before code that reads them. Assume an empty user base for this release: no legacy account backfill or existing-customer compatibility rollout is required. New accounts enter mandatory onboarding; sessions recover a selected organization after it completes.
+
+## 11. Reliability and concurrency
+
+Application hooks are policy extension points, not proof of a transaction spanning the complete operation and external email delivery.
+
+The reviewed member routes count owners before separate writes. This suggests a concurrency risk: two owners could simultaneously leave or demote themselves after both observe another owner. Validate against the real PostgreSQL adapter; do not claim strict last-owner protection based on sequential tests.
+
+Before exposing ownership-changing operations, enforce the invariant transactionally in the database/native write path and prove it with real PostgreSQL concurrency tests in the implementation PR. Passing one race test without a reliable enforcement mechanism is not sufficient. A check in a before hook alone does not close the race. If the installed path cannot satisfy the invariant, disable the affected operations server-side until fixed; hiding buttons is insufficient.
+
+Similarly, test duplicate acceptance, simultaneous slug claims and configured capacity boundaries. Do not treat organization counts as payment-grade seat enforcement.
+
+Avoid after hooks for indispensable resource creation unless retry and compensation are designed. This increment creates the default organization relation as indispensable application state. Provision it through the selected durable recovery protocol in section 5; a fire-and-forget after hook is insufficient. No separate organization service or queue is required.
+
+## 12. Alternatives considered
+
+| Alternative | Decision |
+|---|---|
+| Custom organization CRUD and membership tables | Reject: duplicates the plugin's authority and increases lifecycle complexity. |
+| Optional first organization | Reject: DeesseJS requires explicit first-organization onboarding. |
+| Globally disabling organization deletion | Reject: additional organizations must be deletable while the onboarding organization is retained. |
+| Dynamic permissions or teams immediately | Defer: no demonstrated initial requirement. |
+| Session selection as the sole tenant selector | Reject for writes: cross-tab changes can target the wrong workspace. |
+| Mutable slug with aliases | Defer: requires reference compatibility, invalidation and reservation policy. |
+| Organization billing tied directly to membership | Defer: membership and commercial entitlement have different lifecycles. |
+
+## 13. Implementation sequence
+
+1. Reconfirm lockfile version; finalize the proposed route, namespace and deletion policies.
+2. Add server and client plugins, policy hooks and complete generated schema.
+3. Review and apply additive Drizzle migrations in development.
+4. Add invitation template/helper and the authenticated recipient flow.
+5. Move existing user settings pages to /account/settings with their current subroute suffixes; update account navigation, form success redirects, internal links and tests. No legacy-user URL compatibility layer is required for the empty-user launch. Replace internal links and redirects directly; remove the old workspace screens after migration.
+6. Add name-first onboarding with automatic slug generation, durable default assignment/recovery, creation dialog, the new shadcn Sidebar/switcher and the server-guarded scoped home page.
+7. Add profile, member, invitation and eligible-organization deletion controls using native methods plus application invariants.
+8. Resolve last-owner concurrency before enabling ownership-changing operations.
+9. Verify complete flows on PostgreSQL and a preview deployment, then deploy schema before dependent code.
+
+## 14. Acceptance criteria
+
+| Scenario | Required result |
+|---|---|
+| Onboarding name submission | Slug filled automatically; one default organization; arrival on scoped home. |
+| New sidebar | shadcn Sidebar, working organization switcher/create dialog and account menu; desktop/mobile usable. |
+| Rename an organization | Display name updates; slug, default relation and existing URLs remain stable. |
+| Additional creation before plans exist | No subscription requirement or product quota. |
+| Invite a member | Email delivered; explicit acceptance grants organization membership without teams. |
+| Verified account creates an organization | Organization plus owner membership; no global-role change. |
+| Unverified account calls creation directly | Rejected. |
+| Reserved, malformed or duplicate slug | Rejected server-side; simultaneous claims produce one organization. |
+| Direct slug update | Rejected, regardless of hidden UI. |
+| Delete default organization through any path | Rejected by durable protection. |
+| Owner deletes an additional organization | Succeeds after dependency checks; default remains. |
+| Leave/remove/demote default organization creator | Rejected, even when other owners exist. |
+| User belongs to A but supplies B's ID/member ID | No data disclosure or cross-organization mutation. |
+| Member attempts invite, profile or role mutation | Denied by the server. |
+| Organization admin opens /admin/home | Denied unless independently a platform admin. |
+| Platform admin accesses an unrelated organization | No implicit membership bypass. |
+| Invitation accepted by wrong/unverified account | Rejected. |
+| GET request/link preview on an invitation | No membership mutation. |
+| Expired/canceled/rejected invitation | Cannot grant membership. |
+| Repeated or concurrent acceptance | At most one membership. |
+| Delivery fails after invitation persistence | Observable failure and usable resend path. |
+| Last owner leaves/removes/demotes themselves | Rejected, including required concurrency cases. |
+| Membership removed in another session | Next protected organization request denied. |
+| Two tabs select different organizations | Explicit writes still target each screen's route organization. |
+| Workspace links and login/onboarding redirects | Scoped /[organization_slug]/home or settings destinations; no /organizations page. |
+| Account settings opened before or after workspace selection | /account/settings edits only the session account; no organization membership dependency. |
+| Existing code's settings navigation | Updated to /account/settings and corresponding moved subroutes. |
+| Reserved top-level slug submitted | Rejected; auth, API, onboarding and admin routes cannot be shadowed. |
+| Switch organization from settings | Navigate to the equivalent scoped settings route or the selected organization's home. |
+| Missing default relation, including an invited account | Mandatory first-organization onboarding. |
+| Stale active selection after onboarding/deletion | Navigation falls back to default; no accidental writes. |
+| Repeated or concurrent onboarding submissions | Exactly one durable default; retries recover the same organization. |
+| Onboarding complete but route revisited | Redirect to workspace; no second default created. |
+| Password, GitHub, bearer/device, preview auth | Existing behavior preserved. |
+| Organization created | No template publication, paid entitlement or new template RPC procedure. |
+
+Validate native HTTP calls in addition to UI behavior. Compile the proposed hooks against the resolved package; run relevant auth/database tests and browser flows. This document was reviewed as a design; those implementation checks have not yet run.
+
+## 15. Deferred decisions
+
+None of the following blocks this V1: future plan/seat/organization limits (one consolidated topic), community template permissions/publication, and mutable slug/namespace retirement. Namespace retirement means preventing reassignment of a deleted organization's old public prefix while published references still depend on it; no tombstone subsystem is required before publication exists. nesalia remains reserved by the selected policy. Account closure and owner succession must be designed before enabling account deletion that affects protected default ownership.
+
+## 16. Developer questions: final answers (Q1–Q23)
+
+Reviewed 13 October 2026 against this RFC version, repository main, Better Auth tag v1.6.23, the official Next.js/shadcn/PostgreSQL documentation and open Admin PR #214. Some quoted text in the questions comes from another/older document and is absent here.
+
+| Question | Decision / correction |
+|---|---|
+| Q1 — personalAccountEnabled | Do not set it. It is absent from the reviewed OrganizationOptions interface in v1.6.23. Use real plugin organizations plus the application default relation. No personal-workspace mechanism is needed. |
+| Q2 — pre-onboarding home | No personal slug or personal home. Workspace entry goes to /onboarding/first-organization; account settings, authentication and invitation handoff remain reachable. |
+| Q3 — slug collision | Option B: automatic suffix with no required slug-editing step. Automatic generation does not imply rejecting the user's name. Show the resulting URL normally, not a collision error the user must solve. |
+| Q4 — provisioning | Option B, the durable record and recovery protocol in section 5. A before hook plus native create does not prove one shared transaction. |
+| Q5 — blocking | Durable per-account provisioning row with atomic claim, lease and fencing token; unique operation marker and default relation. Neither a session flag nor a row lock held across native calls. |
+| Q6 — auth gate | Both early proxy navigation checks and authoritative server checks, with distinct responsibilities. The proxy is not the security boundary. |
+| Q7 — route priority | Option A for membership enforcement: scoped layout plus each page/data operation/action. Proxy classifier branches reserved segments first for redirects only. Matchers do not establish branch priority. |
+| Q8 — update slug validation | Intentionally reject any explicit slug update. Do not validate undefined as a slug or search other fields for hidden slugs. Validate each editable field according to its own contract. |
+| Q9 — metadata | The reviewed create route explicitly accepts metadata; it is also supported in organization updates. The check protects a real input, not a hypothetical future option. Reject application metadata edits; internal additional fields have input: false. |
+| Q10 — first org type | A genuine multi-member-capable plugin organization, initially containing one owner membership. Invitations work on it immediately; not a placeholder or separate personal account. |
+| Q11 — slug length | Keep 2–48 for final server-generated slugs. This is an application policy, not a plugin default. Uniqueness and automatic suffixing resolve short-name collisions. |
+| Q12 — suffix | Six lowercase hexadecimal characters from three cryptographically random bytes, e.g. acme-a19f02; truncate the base to at most 41 characters before appending the hyphen/suffix. Retry DB collisions with fresh random suffixes up to five times; return a retryable failure if exhausted. Normal available bases have no suffix. |
+| Q13 — ownership tests | The implementation author owns real PostgreSQL concurrency tests and invariant enforcement in the same PR. Merge/release gate for the operations shipped; no ownership-mutating UI with unprotected native HTTP endpoints. A layout/unit test does not satisfy it. |
+| Q14 — header placement | SidebarHeader inside the new sidebar, not the existing top-of-page header. |
+| Q15 — switcher shape | A DropdownMenu in SidebarHeader listing organizations plus Create organization; that action opens a Dialog. No organizations page. On mobile use the sidebar's normal mobile surface with accessible dropdown/dialog behavior. |
+| Q16 — invitation origin | Existing validated serverEnv.APP_URL with additional origin/HTTPS/environment checks, as specified in section 9. No arbitrary forwarded-host resolution. |
+| Q17 — schema ownership | New schema/organization-state.ts, exported by schema/index.ts; manual application schema plus Drizzle migrations. Generated plugin auth schema stays separate. |
+| Q18 — Admin RFC | It already exists: rfc-admin-dashboard.md, linked below. PR #214 targets staging and was open/unmerged at review; main still lacked admin(). No assumed merge dependency. Preserve whatever plugins exist on the actual implementation base and resolve overlap with #214. |
+| Q19 — Templates RFC | It already exists: rfc-templates-database.md plus rfc-registry-v2.md. The latest minimal catalog no longer requires implementing future namespace architecture. Reserve deessejs now as an organization/platform policy; no future ratification blocks V1. |
+| Q20 — GitHub paragraph | No secondary-rate-limit, graphql or code_search passage exists in this current Organization RFC. If the developer's local copy contains one, remove that unrelated material. Section 11 is exclusively organization lifecycle reliability. |
+| Q21 — pre-onboarding invite | Yes: permit authenticated/verified explicit acceptance, then complete creation of the user's own default before any workspace page. Preserve the invited org return target through onboarding; never treat invitation membership as the default. |
+| Q22 — duplicate open topics | Merge into one deferred limits/entitlements topic; V1 has no plan quota. Plugin technical defaults are separate implementation behavior. |
+| Q23 — namespace retirement | Deferred future-publication concern, explained in section 15. It introduces no table or work into V1. Stable slugs and reserved platform prefixes suffice now. |
+
+## Research references and repository evidence
+
+- Better Auth Organization documentation.
+- OrganizationOptions, v1.6.23: no personalAccountEnabled; supported hooks/options.
+- Native organization creation/update, v1.6.23: metadata input, proposed update hook payload and sequential creation writes.
+- Next.js authentication: authorization near data access; layout/proxy checks alone are insufficient.
+- PostgreSQL explicit locking: row locks last until transaction end; this does not extend a lock into unrelated plugin connections.
+- shadcn Sidebar: header/content/footer composition.
+- Current visual protected layout: existing header/SettingsRail shell; it performs no session or membership authorization.
+- Environment schema and server exposure: existing APP_URL, development default localhost:3001; additional production origin checks required.
+- Schema barrel: currently exports generated auth schema only.
+- Admin implementation PR #214: open at review, targets staging; preserve plugins, guard and updated redirect behavior when integrating.
+- Admin RFC.
+- Minimal Templates RFC.
+- Registry V2 RFC.
+
+These are reviewed design decisions. The new helpers, application state schema, marker, guards and recovery protocol do not yet exist in the repository. Compile and test them on the real implementation branch; do not mistake the illustrative config for a complete patch.
+
+## Where this rule came from
+
+- The better-auth `organization` plugin docs
+  (https://www.better-auth.com/docs/plugins/organization).
+  The plugin options, default access rules, member routes,
+  invitation routes, and schema types all come from this
+  page. The evidence in §2 lists the exact version
+  reviewed.
+- Vercel's product shape. The mandatory first-organization
+  onboarding, the per-organization chrome and the org lifecycle
+  permissions all reference Vercel.
+- `ADR-028` (GitHub OAuth sign-in via better-auth). The
+  OAuth App's `accessToken` is read from the `account`
+  row by the GitHub import flow in `RFC-003`; the
+  `account` table schema is owned by this ADR.
+- `ADR-011` (Hono for system routes). The new
+  organization and project routes ride the same Hono
+  catch-all in `apps/app/app/api/[[...route]]/route.ts`.
+- `ADR-015` (Drizzle migrations CI). The `auth:generate`
+  workflow and the migration commit pattern.
+
+## Related
+
+- [RFC-003: GitHub integration](./RFC-003-github-integration). Scopes
+  the V1 of "import a project from GitHub"
+  (list + select) and the V2 long-term reference
+  (webhooks, GitHub App, auto-deploy).
+- [ADR-028: GitHub OAuth sign-in via better-auth](../decisions/ADR-028-github-oauth-better-auth).
+  The OAuth App config that supplies the `accessToken` the
+  V1 import reads.
+- [ADR-011: Hono for system routes](../decisions/ADR-011-hono-for-system-routes).
+  The Hono catch-all mount.
+- [ADR-015: Drizzle migrations CI](../decisions/ADR-015-drizzle-migrations-ci).
+  The Drizzle migration pattern.
+- [Better Auth: Organization plugin](https://www.better-auth.com/docs/plugins/organization).
+  Upstream docs.
+- [Vercel: Teams and projects](https://vercel.com/docs/teams-and-projects/create-or-join-a-team).
+  Reference for the personal-accounts-plus-organizations
+  shape.

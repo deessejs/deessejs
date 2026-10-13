@@ -16,7 +16,7 @@ export default function AccountPage() {
             Update the email associated with your account.
           </p>
           <Link
-            href="/settings/account/email"
+            href="/account/settings/account/email"
             className="text-sm font-medium text-primary hover:underline"
           >
             Change
@@ -30,7 +30,7 @@ export default function AccountPage() {
       >
         <div className="flex justify-end">
           <Link
-            href="/settings/account/delete"
+            href="/account/settings/account/delete"
             className="text-sm font-medium text-destructive hover:underline"
           >
             Delete account

@@ -19,6 +19,7 @@ catalog:
   # Email (added 2026-07-07 — packages/email)
 
   # Auth
+  '@better-auth/cli': ^1.4.21
   "@better-auth/drizzle-adapter": ^1.6.23
   '@changesets/changelog-git': ^0.2.1
   '@changesets/cli': ^2.31.0

@@ -18,6 +18,16 @@
       "types": "./dist/types.d.ts",
       "import": "./dist/types.js",
       "default": "./dist/types.js"
+    },
+    "./organization-policy": {
+      "types": "./dist/organization-policy.d.ts",
+      "import": "./dist/organization-policy.js",
+      "default": "./dist/organization-policy.js"
+    },
+    "./organization-invitation": {
+      "types": "./dist/organization-invitation.d.ts",
+      "import": "./dist/organization-invitation.js",
+      "default": "./dist/organization-invitation.js"
     }
   },
   "types": "./dist/auth.d.ts",
