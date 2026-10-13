@@ -1,0 +1,300 @@
+---
+title: 'CLI senior testing pyramid'
+description: 'Draft (2026-09). Replace the current in-process Commander test pattern with a four-layer pyramid topped by a real-binary subprocess invocation, pin the oRPC wire with server-side client + HTTP fixture, and gate the matrix on StrykerJS mutation score.'
+---
+
+# ADR-031: CLI senior testing pyramid
+
+## Status
+
+Draft (2026-09). Awaiting review.
+
+## Context
+
+`apps/cli` is the only surface of the monorepo that end users actually run on their machine. The current test suite (`apps/cli/test/`) covers the in-process logic: error mapping, output formatting, polling-error mapping, package-manager detection, and a small set of integration tests against a fake Better Auth server (`test/integration/fakes/better-auth.ts`). The suite catches regressions the team has already seen (chmod 0o600 on the auth.json file, the missing Bearer header on `/get-session`, the `main`-then-`master` ref fallback). It does not cover four classes of bug the project has already shipped:
+
+1. **End-to-end against the published binary.** Every test under `apps/cli/test/integration/auth/` calls `loginCommand.parseAsync(...)` in-process. A regression that breaks the `index.ts` entry, the shebang banner, the `commander` registration order, or the `tsup` bundle would not surface until a user runs `npx @deessejs/cli`. The 1.1.0 release shipped a tarball that was missing the `dist/` directory because no test exercised the published artifact end-to-end (per `apps/cli/CHANGELOG.md`).
+2. **The wire shape between CLI and API.** The Server-Side Client pattern (`packages/api/tests/contract/templates-list.test.ts`) covers the procedure layer. The HTTP wire (the `RPCLink` retry plugins, the `Retry-After` honouring, the `new URL(path, base)` composition, the absolute-URL requirement for `RPCLink.url` in Node) is not exercised against a real server. The broken oRPC fetch-hook signature (`as unknown as ReturnType<typeof fetch>`) that landed in `9b003da` is the regression class the contract layer cannot see.
+3. **The failure modes users actually hit.** DNS failure mid-poll, GitHub 5xx cascading into a 502 on `templates.list`, the 30-minute device-code TTL expiring, an `ENOSPC` on `~/.deessejs/`, a `git clone` of a repo that exists but has neither `main` nor `master`. None of these are pinned.
+4. **The "tests pass" smell.** A test that asserts `expect(x).toBe(x)` passes with 100% line coverage. Mutation testing is the senior pattern for finding those.
+
+The test plan `docs/engineering/plans/cli-v1-testing.md` (V1 plan) shipped the in-process Commander pattern. It works for the bugs the team has named. It does not work for the bugs the team has not named yet. The user-facing goal is the same one the V1 plan targets: when CI is green, the user-visible behaviour of `deessejs <cmd>` matches what the test matrix pinned, against the contracts the suite exercises.
+
+The current pyramid has one layer. The senior pyramid has four.
+
+## Decision
+
+The CLI ships a four-layer test pyramid, top-down by seniority, gated on the senior layer (subprocess invocation of the real binary) and on a StrykerJS mutation score threshold.
+
+### The four layers
+
+The pyramid is **inverted in priority**: the most senior layer is at the top (most catches-per-test) and the fastest is at the bottom (fastest feedback).
+
+```
++---------------------------------------------------------------+
+|  L4  E2E subprocess  spawn dist/index.js, real shell         |
++---------------------------------------------------------------+
+|  L3  Integration     real HTTP fixture, real Commander        |
++---------------------------------------------------------------+
+|  L2  Contract        server-side client + oRPC wire fixtures  |
++---------------------------------------------------------------+
+|  L1  Unit            pure functions, isolated env, no I/O      |
++---------------------------------------------------------------+
+```
+
+A fault-injection helper (`test/helpers/fault-inject.ts`) is shared across L2 and L3. A StrykerJS job runs against `apps/cli/src/**` on every PR and gates the merge on a mutation score threshold.
+
+### Layer 4, subprocess end-to-end (`test/e2e/`)
+
+The senior layer. Every public command spawns the actual `dist/index.js` binary in a temp directory and asserts on stdout, stderr, and exit code. The build is the real bundle (no source-only run); the binary is exactly what `npx @deessejs/cli` would download.
+
+The helper (`test/helpers/run-cli.ts`):
+
+- Spawns `node apps/cli/dist/index.js <args>` with `NO_COLOR=1` in the env (defence in depth against `picocolors`).
+- Captures stdout, stderr, exit code as a `CliResult`.
+- Strips ANSI codes from both streams for stable assertions.
+- `mkdtemp` for the cwd, `rmSync({ recursive: true, force: true })` in `afterEach`. Orphan tmp dirs leak disk on the CI runner.
+- Spawns each command with a per-test timeout; kills the child on parent test failure (`SIGTERM`, then `SIGKILL` after 5s grace).
+
+The initial matrix (10 cases):
+
+| Command | What it pins |
+|---|---|
+| `deessejs --help` | Commander registration, exit 0, stdout lists every subcommand |
+| `deessejs --version` | Reads the build-injected version (`tsup define`) |
+| `deessejs list --json` against a fixture server | JSON shape matches `TemplatesListResponseV1` |
+| `deessejs info <slug> --json` | Same |
+| `deessejs init <slug> --no-install` against a fixture server + local git fixture | Clones, exits 0, JSON payload matches |
+| `deessejs init <slug> --no-install` with an existing target dir | Exits 1, stderr contains `target_exists` |
+| `deessejs init <slug> --no-install --force` with an existing target dir | Exits 0, dir is overwritten |
+| `deessejs auth status --json` with no auth.json | Exits 0, JSON `ok: false, reason: "no_session"` |
+| `deessejs auth logout --json` with no auth.json | Exits 0, JSON `ok: true, reason: "no_session"` |
+| `deessejs init <unknown-slug> --no-install` | Exits 1, JSON `ok: false, code: "not_found"`, hint lists available slugs |
+
+Snapshots use inline `toMatchInlineSnapshot` for the JSON paths (the payload is small and the diff is more useful co-located) and substring assertions for the human-readable paths. Snapshots strip ANSI, replace ISO timestamps with `<TIMESTAMP>`, replace absolute paths with `<HOME>`, replace the version with `<VERSION>`.
+
+### Layer 3, integration (`test/integration/`)
+
+This is the layer that already exists (`auth/login`, `auth/logout`, `auth/status`). The ADR extends it.
+
+The new helpers:
+
+- `test/helpers/git-fixture.ts`: a real bare repo in a tmp dir, returning `file://` URL for `git clone`. Defaults to `master` so the fallback path is exercised. Optional seed of `package.json` with `packageManager` field and a lockfile. Cleanup in `afterEach`.
+- `test/helpers/fake-api.ts`: a local HTTP server with controllable failure modes (status, body, delay, hang, drop-connection).
+- `test/helpers/stub-pm.ts`: replaces the package-manager binary on `PATH` for the duration of a test (writes a tiny shell script that exits with the requested code). Used by the install-failure case.
+
+The new cases (10 cases):
+
+| File | Cases |
+|---|---|
+| `list.test.ts` | Empty array, network error, slow first byte (timeout), retry-after honoured |
+| `info.test.ts` | Network error, 502 from upstream GitHub (cascaded as `TEMPLATES_FETCH_FAILED`) |
+| `init.test.ts` | `--ref develop` happy path, `--force`, `target_exists`, ref fallback, packageManager field detection, no packageManager field |
+| `init.test.ts` (cont) | Install failure (stub-pm exits non-zero), assert `install_failed` CliError and the spinner prints the failure |
+| `init.test.ts` (cont) | `git` not on `PATH`, assert `git_not_installed` |
+| `auth/login.test.ts` (cont) | Polling loop hits the 30-minute timeout boundary by passing a fake `expiresBy` < 1s in the future (mock `Date.now`) |
+| `auth/login.test.ts` (cont) | User denies, assert `cli_device_denied` and that auth.json is not written |
+| `auth/login.test.ts` (cont) | Slow first poll (200 ms delay on /device/token), exercises the polling interval |
+| `auth/status.test.ts` (cont) | Malformed auth.json, assert exit 0 and the "no session" message |
+| `auth/logout.test.ts` (cont) | Server returns 500, assert the file is cleared anyway (already covered per `apps/cli/test/integration/auth/logout.test.ts:115`) |
+
+### Layer 2, contract (`test/contract/`)
+
+The most important layer for "close your eyes", because it pins the wire shape between CLI and API, and between CLI and Better Auth.
+
+Two sub-layers.
+
+**2a, server-side client (procedures).** For every oRPC procedure the CLI consumes, exercise it via `call(appRouter.procedure, ...)` (per the [oRPC testing recipe](https://orpc.dev/docs/recipes/testing-and-mocking)). Tests live in `apps/cli/test/contract/` and mirror the server-side file names:
+
+```
+apps/cli/test/contract/
++-- templates-list.wire-shape.test.ts   mirrors packages/api/tests/contract/templates-list.test.ts
++-- templates-list.errors.test.ts       TEMPLATES_FETCH_FAILED, ORPCError mapping
++-- cli-error-codes.test.ts             the closed list from ADR-010, pin that nothing
+|                                       accidentally widens the public surface
++-- auth.device-flow.wire-shape.test.ts device/code, device/token, get-session response shapes
+```
+
+**2b, HTTP wire shape (RPCLink).** Pin the wire behaviour the server-side client cannot see:
+
+- `RPCLink.url` is absolute. A regression to the relative `API_RPC_PATH` raises `TypeError: Invalid URL` on every command. The pin constructs the link with the production `resolveBaseURL()` and asserts the URL is absolute.
+- `RetryAfterPlugin` honours `Retry-After: <seconds>`. A local HTTP fixture returns 429 + `Retry-After: 1`, then 200. The test asserts the call eventually succeeds with exactly one retry.
+- `ClientRetryPlugin` retries on `TypeError` (DNS failure). Stop the fixture mid-test, call `fetchTemplates`, assert it retries exactly 3 times then throws `network_error`.
+- The version probe (`maybeWarnAboutOutdatedCli`) is best-effort: a server returning 500 on `/version` does not throw and does not block the templates call.
+
+**No `vi.stubGlobal("fetch", ...)`.** The mock sits below RPCLink and bypasses it. It was the root cause of the broken-cast regression in `docs/engineering/plans/orpc-client-migration.md:46`. If a test needs to fake `fetch`, it does it inside `RPCLink`'s `fetch` option, never via global stub.
+
+### Layer 1, unit (`test/unit/`)
+
+Pure functions, mocked I/O. The current six files stay; the ADR extends them with 13 new cases:
+
+| File | Cases |
+|---|---|
+| `errors.test.ts` (cont) | The closed list of `CliErrorCode` is exhaustive (per ADR-010). Add `cli_device_denied` and `cli_device_expired`. |
+| `detect-pm.test.ts` (cont) | All four lockfile fallbacks (pnpm, bun, yarn, npm), unknown `packageManager` field value (e.g. `"@yarnpkg/sdks"`), corrupt `package.json`. |
+| `git.test.ts` (cont) | The git-not-installed probe runs only after both `main` and `master` failed (mock the spawn sequence and assert call order). |
+| `api.resolve-base-url.test.ts` (new) | `DEESSEJS_API_URL` with trailing slash, with `path` query, with `ftp:` protocol, with empty string. Each asserts the right throw or normalised result. |
+| `cli-self-version.test.ts` (cont) | Invalid semver (e.g. `"v1.2.3"`), the function still returns the injected string; the version probe (`compareSemver`) handles malformed input. |
+| `version-check.test.ts` (new) | `compareSemver` table: equal, less, greater, malformed on either side (returns 0), pre-release tag handling. |
+| `cache.test.ts` (cont) | Write-then-corrupt, write-then-rename-fail (Windows path), file in directory that does not exist (the `ensureCacheDir` path). |
+| `polling-errors.test.ts` (new) | `mapPollingError` for every Better Auth code (`authorization_pending`, `slow_down`, `expired_token`, `access_denied`, `invalid_grant`, `invalid_client`) plus an unknown code. |
+| `auth-store.test.ts` (new) | `readAuth` on missing file returns null, on malformed JSON returns null, on valid JSON returns parsed. `writeAuth` overwrites atomically (no torn writes). `clearAuth` on missing file is a no-op. |
+| `init.spawn.test.ts` (new) | The `spawn` wrapper never throws on non-zero exit by default; `reject: true` opts into throwing. |
+
+### Fault injection (`test/helpers/fault-inject.ts`)
+
+Per the user's brief, "test in real conditions." Real conditions include the server being down, the network being slow, and the user's filesystem being read-only. The helper exposes a `FaultProfile` shape:
+
+```
+type FaultProfile = {
+  dropConnections?: boolean
+  delayMs?: number
+  failFirst?: { status: number; count: number; body?: string }
+  malformedFirst?: { count: number }
+  hang?: boolean
+}
+```
+
+Profiles we use:
+
+- `delayMs: 10000` against the version probe. The templates call does not block on the probe.
+- `failFirst: { status: 502, count: 1 }` on templates. `RetryAfterPlugin` retries once, eventually succeeds.
+- `failFirst: { status: 500, count: 5 }` on templates. `ClientRetryPlugin` exhausts retries, surfaces `network_error` with the original error in `hint`.
+- `hang: true` on /device/token. The polling loop's `TOTAL_TIMEOUT_MS` boundary trips correctly.
+- `malformedFirst: { count: 1 }` on templates. The normaliser converts the parse failure into `parse_error`, not `network_error`.
+- Drop the connection mid-poll. The CLI sees `TypeError`, retries per the plugin config.
+
+### Mutation testing
+
+StrykerJS gates the merge on a mutation score threshold. The threshold is `mutationScoreThresholds.high: 80, low: 70, break: 60` (the ADR-009 default for the monorepo). StrykerJS runs on every PR that touches `apps/cli/src/**` only.
+
+Config sketch (`apps/cli/stryker.config.json`):
+
+```
+{
+  "$schema": "https://stryker-mutator.io/schema/stryker.config.json",
+  "packageManager": "pnpm",
+  "testRunner": "vitest",
+  "vitest": { "configFile": "vitest.config.ts" },
+  "mutate": ["src/**/*.ts", "!src/**/*.test.ts"],
+  "thresholds": { "high": 80, "low": 70, "break": 60 }
+}
+```
+
+The first run surfaces survivors. The expected survivors are `mapPollingError` returning `null` for an unmapped code (covered by the new `polling-errors.test.ts`), `normaliseError` returning `network_error` on a generic `Error`, `resolveBaseURL` accepting `ftp:`, the chmod path in `writeAuth` swallowing errors silently, and `cloneRepo`'s "all refs failed, git not installed" probe. The threshold is the ceiling, not the floor; the ADR commits to closing every survivor the first run surfaces.
+
+### CI matrix
+
+| Job | Runner | Trigger | Command | Gate |
+|---|---|---|---|---|
+| L1 to L3 (unit, integration, contract) | `ubuntu-latest`, Node 24 | every PR | `pnpm --filter @deessejs/cli test` | required |
+| L4 (subprocess e2e) | `ubuntu-latest`, Node 24 | every PR | `pnpm --filter @deessejs/cli test:e2e` | required |
+| Stryker mutation | `ubuntu-latest`, Node 24 | PRs touching `apps/cli/src/**` only | `pnpm exec stryker run` | threshold 80 high / 70 low |
+| Publish verify | `ubuntu-latest`, Node 24 | every PR | existing `cli-publish-verify.yml` | already required |
+| Cross-platform matrix | `windows-latest`, `macos-latest`, Node 24 | nightly and release branches | `pnpm test` (L1 to L3 only; e2e excluded on Windows for now) | soft |
+
+The cross-platform matrix is soft until PR F lands (Windows `git clone file://` regression, tracked separately). When PR F ships, cross-platform becomes required.
+
+### What this rule allows
+
+- **L1 to L3 from source via vitest's loader.** No build step required. The fast feedback loop runs from source.
+- **L4 from the bundled `dist/index.js`.** The `pretest` script (`pnpm --filter @deessejs/cli pretest` → `pnpm turbo build --filter=@deessejs/cli && tsup`) rebuilds before the e2e job.
+- **Per-layer `mkdtemp` and `rmSync` cleanup.** Every test that touches the filesystem creates its own tmp dir. Two tests in the same file do not share a tmp dir.
+- **`vi.stubEnv` everywhere.** The shared vitest config sets `unstubEnvs: true` (per ADR-011). Every test that sets `DEESSEJS_API_URL`, `HOME`, `USERPROFILE`, `NODE_ENV`, or `VERCEL_AUTOMATION_BYPASS_SECRET` uses `vi.stubEnv(...)` and never mutates `process.env` directly.
+- **`pool: "forks"`** for any test that calls `child_process.spawn`. The setting stays in `apps/cli/vitest.config.ts:22` and is documented as load-bearing (per `docs/engineering/plans/cli-v1-testing.md:198`).
+- **`NO_COLOR=1` in subprocess env.** Defence in depth against `picocolors`. Belt-and-braces with `strip-ansi` in helpers.
+
+### What this rule forbids
+
+- **`vi.stubGlobal("fetch", ...)`** to test RPCLink. The mock sits below RPCLink, bypasses it, and was the root cause of the cast regression. Use a local HTTP fixture instead.
+- **Snapshot tests of `process.stdout.write` byte-for-byte.** Strip ANSI, normalise paths, replace timestamps. The `output.test.ts` already follows this pattern (`apps/cli/test/unit/output.test.ts:22`); the rule extends it to L4.
+- **Coverage as a gate, alone.** Coverage < 80% is a smell; mutation score > 80% is the real signal. Coverage reports stay; mutation score is the gate.
+- **In-process Commander tests as the only layer.** Every existing `commands/*.test.ts` calls `command.parseAsync(...)` in-process. They stay (they catch logic regressions fast), but L4 subprocess tests are mandatory for the same code paths.
+- **Mocking `node:fs`.** The real-fs rule from ADR-011 §"What this rule forbids" applies here too. `mkdtempSync` plus cleanup is the pattern.
+- **A test that asserts `expect(err.code).toBe(1)` without asserting the stderr text.** Exit-code-only tests catch the wrong regressions. Always pair with a stderr or stdout substring assertion, or for JSON paths, an exact JSON parse.
+- **A test that depends on `Date.now()` without mocking it.** The device-flow TTL boundary (L3, `auth/login.test.ts`) is the only place this line crosses; mock `Date.now` or use `vi.useFakeTimers` for that one test.
+
+### Why not the alternatives
+
+Three patterns the team considered and rejected.
+
+1. **Extend the in-process Commander pattern.** Add more cases to `apps/cli/test/integration/auth/`, more `command.parseAsync(...)` calls. The pattern catches logic regressions; it cannot catch a broken bundle, a broken shebang, a broken registration, or a broken exit-code wiring. The pattern is the right floor; the ceiling is the four-layer pyramid.
+2. **Spin up the real API in CI.** The real API depends on Postgres and the GitHub REST API. Both add flakiness and a maintenance burden. The fixture server is the test surface; the real API is the production surface (ADR-014 §"Why not the alternatives" §2 documented the same conclusion for the V1 e2e suite).
+3. **Mutation testing without the subprocess layer.** Mutation finds meaningless assertions (`expect(x).toBe(x)`). It does not find "the bundle is broken" or "the binary exits with the wrong code." Mutation is the gate on the in-process tests; the subprocess layer is the gate on the user-visible behaviour.
+
+### What this rule does not change
+
+- **The current 12 in-process test files.** They stay. They run in L1 to L3.
+- **The `cli-publish-verify.yml` workflow.** It stays. The subprocess e2e job adds to it; it does not replace it.
+- **The current Vitest config (`apps/cli/vitest.config.ts`).** `pool: "forks"` and `testTimeout: 30_000` stay. The new jobs inherit them.
+- **The Better Auth fake server (`test/integration/fakes/better-auth.ts`).** It stays. The new contract tests at L2a add to it; they do not replace it.
+- **The current error code surface (`apps/cli/src/errors/`).** The closed list from ADR-010 stays. The new contract tests pin the list; they do not widen it.
+- **The CLI's public API.** No new commands, no new flags. The matrix tests what is there.
+
+## Migration roadmap
+
+Six PRs, each independently shippable and each leaving CI green. The plan file `docs/engineering/plans/cli-senior-testing.md` ships with PR A as the implementation reference.
+
+1. **PR A, helpers plus L1 extension.** Adds `runCli`, `makeSandbox`, `git-fixture`, `fake-api`, `stub-pm`, `fault-inject` helpers. Adds the new unit tests (`api.resolve-base-url.test.ts`, `version-check.test.ts`, `polling-errors.test.ts`, `auth-store.test.ts`, `init.spawn.test.ts`) and extends the existing ones. No behaviour change.
+2. **PR B, L2 contract tests.** `templates-list.errors.test.ts`, `cli-error-codes.test.ts`, `auth.device-flow.wire-shape.test.ts`, plus the RPCLink wire tests (URL absolute, `RetryAfterPlugin`, `ClientRetryPlugin`, version probe best-effort).
+3. **PR C, L3 integration extension.** The new `list.test.ts`, `info.test.ts`, `init.test.ts` cases (10 cases listed in §"Layer 3").
+4. **PR D, L4 e2e plus CI job.** Subprocess invocation of the real bundle. New `test:e2e` script and CI job.
+5. **PR E, StrykerJS plus CI job.** Add the config, the CI job, the threshold. First run surfaces survivors; the PR closes every survivor.
+6. **PR F, cross-platform matrix.** Tackle the `git clone file://` regression on Windows. Move cross-platform from "soft" to "required" in the matrix.
+
+Each PR lands behind the existing `cli-publish-verify.yml` and `ci.yml`. No new gate until PR D (the `test:e2e` job) and PR E (the Stryker job).
+
+## Consequences
+
+- **Every PR that touches `apps/cli/src/**` runs L1 to L4 plus the mutation gate.** A regression of any class (logic, wire, bundle, exit code, contract) blocks the PR.
+- **The published CLI's user-visible behaviour is pinned at PR time, not at release time.** The 1.1.0 missing-`dist/` regression and the 2.0.1 / 2.1.0 npm-404 regressions would have been caught by L4.
+- **The CLI test count rises from ~25 to ~80.** The pyramid is wider at the bottom (more unit cases) and shorter at the top (10 subprocess cases for the most important commands). The total runtime stays under 60 seconds for L1 to L3 and under 5 minutes for L4 plus Stryker.
+- **The test count is not the goal.** A test that asserts `expect(x).toBe(x)` is still a test, and StrykerJS is the senior pattern for finding it. The pyramid catches the regression class; StrykerJS catches the assertion class.
+- **`apps/cli/test/` becomes `apps/cli/tests/`** per ADR-009 §"Standardised test directory". The include glob updates. The CLI's `pool: "forks"` and `testTimeout: 30_000` stay per-package as explicit overrides.
+- **`@stryker-mutator/vitest-runner` is added to the workspace.** The package is small, Vercel-maintained for the Vercel side, and Stryker-maintained for the Vitest side. The PR pins the version.
+- **No new commands, no new flags, no new public surface.** The matrix tests what is there. The ADR scopes itself to confidence, not to surface area.
+- **Windows is "soft" until PR F.** The current `git clone file://` regression on Windows in subprocess contexts (per `docs/engineering/plans/cli-v1-testing.md:237`) keeps cross-platform at the nightly cadence. The ADR commits to fixing the regression in PR F.
+
+## Follow-ups
+
+Three concerns surfaced during review and are intentionally out of scope.
+
+1. **`mock-and-run.js` entry point.** Some teams add a parallel CLI entry that wires in mocks before the real entry. The ADR forbids it; the per-test fixtures (fake-api, fake-auth-server, stub-pm) cover the same surface with better isolation. A contributor who wants a parallel entry raises it in review.
+2. **Snapshot files vs. inline.** Inline (`toMatchInlineSnapshot`) is faster and keeps the assertion co-located; files make diffs larger but are easier to skim. The ADR picks inline for L4 (small payloads); files are introduced only when L4 grows past 30 cases.
+3. **Stryker threshold.** 80 high / 70 low is the ADR-009 default. The CLI is smaller and more linear than `packages/env`; 80 / 70 is achievable on the first run after PR E closes every survivor.
+
+## Open questions
+
+1. **`x-vercel-protection-bypass` and `x-e2e-force-fail` guard at the e2e layer.** The templates handler at `packages/api/src/orpc/routes/templates.ts:66` exposes a closed-by-default test guard. The CLI's L4 e2e suite could exercise the failure paths (`force: "1"` and `force: "2"`) through that guard instead of the fake-api fixture. The trade-off is "real server semantics" (via the guard) vs. "isolated fixture semantics" (current path). The ADR scopes itself to the fixture path. A future ADR scopes the guard path if the team wants it.
+2. **`cli-publish-verify.yml` overlap with L4.** The verify job already runs `npx @deessejs/cli --help` against a freshly packed tarball. L4 covers the same surface with more cases. The two jobs are complementary, not redundant. The verify job catches broken installs; L4 catches broken behaviour. The ADR documents the split but does not remove the verify job.
+
+## Where this rule came from
+
+- The user-facing brief: "I want to close my eyes when working on the CLI; the tests tell me it's OK." The pyramid is the senior pattern for that confidence.
+- The V1 test plan (`docs/engineering/plans/cli-v1-testing.md`). The V1 plan shipped the in-process Commander pattern. This ADR extends it with the three missing layers and the mutation gate.
+- The oRPC testing recipe (<https://orpc.dev/docs/recipes/testing-and-mocking>). The server-side client pattern is the canonical way to test oRPC consumers. The HTTP wire tests follow the same recipe with a local fixture.
+- The oRPC MSW integration (<https://orpc.dev/docs/integrations/msw>). MSW is the recommended path for browser tests; the ADR adopts it for the future `apps/web` matrix (per `docs/engineering/plans/orpc-client-migration.md:303`), not for the CLI (the CLI is Node, not browser, and `node:http` is the stdlib path).
+- The Better Auth device-authorization docs (<https://better-auth.com/docs/plugins/device-authorization>). The error code table and the polling pattern the contract tests pin.
+- The Smashing Magazine article "Testing The CLI The Way People Use It" (<https://www.smashingmagazine.com/2022/04/testing-cli-way-people-use-it/>). The subprocess-first philosophy and the golden-snapshot hygiene.
+- The StrykerJS docs (<https://stryker-mutator.io/docs/>). The mutation testing framework and the Vitest integration (`@stryker-mutator/vitest-runner`).
+- The Vitest pool docs (<https://vitest.dev/guide/advanced/pool.html>). The `forks` setting's isolation guarantees for `child_process.spawn`.
+- ADR-009 §"Test strategy" (<./ADR-009-test-strategy.md>). The shared Vitest config and the 80 / 75 coverage gate the mutation job mirrors.
+- ADR-010 §"What this rule forbids" (<./ADR-010-cli-public-surface.md>). The closed list of `CliErrorCode` the new `cli-error-codes.test.ts` pins.
+- ADR-011 §"What this rule allows" (<./ADR-011-env-testing-strategy.md>). The `vi.stubEnv` and `mkdtempSync` patterns the new helpers adopt.
+- ADR-014 §"Why not the alternatives" (<./ADR-014-cli-e2e-tests.md>). The "spin up the real API" alternative the ADR rejects for the same reason.
+- ADR-020 §"Device auth CLI" (<./ADR-020-device-auth-cli.md>). The device-flow contract the new `auth.device-flow.wire-shape.test.ts` pins.
+
+## Related
+
+- [ADR-009: Test strategy](./ADR-009-test-strategy.md). The monorepo-level rule: shared Vitest config, three tiers, coverage gate. This ADR is the CLI-level instantiation.
+- [ADR-010: CLI public surface](./ADR-010-cli-public-surface.md). The closed list of error codes the new `cli-error-codes.test.ts` pins.
+- [ADR-011: env package testing strategy](./ADR-011-env-testing-strategy.md). The `vi.stubEnv` and `mkdtempSync` patterns the new helpers adopt.
+- [ADR-014: CLI e2e tests](./ADR-014-cli-e2e-tests.md). The V1 e2e plan this ADR extends with the subprocess layer and the mutation gate.
+- [ADR-020: Device auth CLI](./ADR-020-device-auth-cli.md). The device-flow contract the new `auth.device-flow.wire-shape.test.ts` pins.
+- [`docs/engineering/plans/cli-senior-testing.md`](../../../../docs/engineering/plans/cli-senior-testing.md). The implementation reference. The PRs land this ADR as the test work progresses.
+- [oRPC testing recipe](https://orpc.dev/docs/recipes/testing-and-mocking). The server-side client pattern adopted in L2a.
+- [oRPC MSW integration](https://orpc.dev/docs/integrations/msw). The MSW path for the future web matrix, not adopted for the CLI.
+- [Better Auth device authorization](https://better-auth.com/docs/plugins/device-authorization). The error code table the contract tests pin.
+- [Smashing Magazine: Testing The CLI The Way People Use It](https://www.smashingmagazine.com/2022/04/testing-cli-way-people-use-it/). The subprocess-first philosophy.
+- [StrykerJS docs](https://stryker-mutator.io/docs/). The mutation testing framework the new CI job runs.
+- [Vitest pool docs](https://vitest.dev/guide/advanced/pool.html). The `forks` setting's isolation guarantees.
