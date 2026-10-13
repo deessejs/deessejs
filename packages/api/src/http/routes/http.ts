@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm"
 import { auth } from "@workspace/auth"
+import { isDefaultCreator } from "@workspace/auth/organization-policy"
 import { db } from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import type { Hono } from "hono"
@@ -54,5 +55,56 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
   })
 
   // Better Auth — login, signup, session, etc.
+  //
+  // Intercept `POST /api/v1/auth/organization/leave` BEFORE the
+  // plugin handler runs, because the better-auth organization
+  // plugin's `leaveOrganization` route does NOT call
+  // `beforeRemoveMember` (its source is `routes/crud-members.mjs`
+  // line ~390). The creator-must-stay-owner invariant (RFC-001 §5
+  // "Protect the creator's owner membership in that organization")
+  // would otherwise be unenforced for the leave path.
+  //
+  // A signed-in caller is identified by their session cookie; the
+  // body's `organizationId` is the org they intend to leave. We
+  // look up the user from the session via `auth.api.getSession`
+  // and call `isDefaultCreator` to detect the
+  // `(creator, default-org)` pair. A 403 is returned on match;
+  // otherwise the request falls through to the plugin handler.
+  api.post("/auth/organization/leave", async (c) => {
+    let organizationId: unknown
+    try {
+      const cloned = c.req.raw.clone()
+      const body = (await cloned.json()) as { organizationId?: unknown }
+      organizationId = body.organizationId
+    } catch {
+      // Body is not JSON or is empty; let the plugin reject it.
+      return auth.handler(c.req.raw)
+    }
+    if (typeof organizationId !== "string" || organizationId === "") {
+      return auth.handler(c.req.raw)
+    }
+    const session = await auth.api.getSession({
+      headers: c.req.raw.headers,
+    })
+    if (!session?.user) {
+      return auth.handler(c.req.raw)
+    }
+    const creator = await isDefaultCreator(session.user.id, organizationId)
+    if (creator) {
+      return c.json(
+        {
+          error: {
+            code: "FORBIDDEN",
+            message:
+              "The creator's owner membership in the default organization cannot be left.",
+          },
+        },
+        403,
+      )
+    }
+    return auth.handler(c.req.raw)
+  })
+
+  // Better Auth — everything else (login, signup, session, ...).
   api.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw))
 }

@@ -273,6 +273,47 @@ export async function assertDefaultOwnerRoleIsRetained(
 }
 
 /**
+ * Lightweight guard: is `(userId, organizationId)` the creator
+ * membership of an `account_organization_defaults` row?
+ *
+ * Used by the Hono middleware in
+ * `packages/api/src/http/routes/http.ts` that intercepts
+ * `POST /api/v1/auth/organization/leave` BEFORE the better-auth
+ * handler. The plugin does NOT fire `beforeRemoveMember` on the
+ * leave path (its source is `routes/crud-members.mjs` line ~390
+ * in `leaveOrganization`), so the only way to enforce
+ * "creator cannot leave their default org" is to intercept the
+ * route.
+ *
+ * Returns `true` if the user is the creator of the named
+ * default; `false` otherwise. The caller is responsible for
+ * translating `true` into a 4xx response.
+ *
+ * The database `ON DELETE RESTRICT` foreign key on
+ * `account_organization_defaults.organizationId` is the last
+ * line of defense if this middleware is bypassed (e.g. a
+ * future plugin upgrade that adds new removal paths), but the
+ * application-level check returns a clean 403 instead of a raw
+ * constraint violation.
+ */
+export async function isDefaultCreator(
+	userId: string,
+	organizationId: string,
+): Promise<boolean> {
+	const rows = await db
+		.select({ userId: accountOrganizationDefaults.userId })
+		.from(accountOrganizationDefaults)
+		.where(
+			and(
+				eq(accountOrganizationDefaults.userId, userId),
+				eq(accountOrganizationDefaults.organizationId, organizationId),
+			),
+		)
+		.limit(1)
+	return rows.length > 0
+}
+
+/**
  * Read the durable provisioning record for an account. Returns
  * `null` when no record exists. Used by the onboarding Server
  * Action to detect "a previous attempt left the plugin's
