@@ -1,5 +1,14 @@
 "use server"
 
+// Server Actions for organization provisioning + first-time
+// onboarding. See `apps/app/components/onboarding/wizard.tsx`
+// for the wizard flow that calls `createFirstOrganization`,
+// and `apps/app/components/sidebar/create-organization-dialog.tsx`
+// for the additional-org flow that calls
+// `createAdditionalOrganization`. Both go through the durable
+// `account_organization_provisioning` protocol in
+// `packages/auth/src/organization-policy.ts`.
+
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { randomBytes, createHash } from "node:crypto"
