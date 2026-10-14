@@ -4,8 +4,8 @@ name: Changesets check
 # This is the senior-pattern contribution gate: contributors add a changeset
 # if their PR changes the CLI surface, and CI enforces it.
 #
-# Per ADR-026, this check is a required status check on the branch
-# protection of staging and main. The path filter covers the same surface
+# This check is a required status check on the branch protection of
+# staging and main. The path filter covers the same surface
 # that triggers cli-preview.yml (apps/cli, packages/contracts, packages/api).
 
 on:

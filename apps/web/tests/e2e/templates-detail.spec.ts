@@ -1,7 +1,6 @@
 /**
  * P0 e2e suite for /templates/[template_slug].
  *
- * Per ADR-020:
  *   P0-4 — /templates/saas-starter renders the detail page.
  *   P0-5 — /templates/<unknown-slug> renders not-found.tsx.
  */

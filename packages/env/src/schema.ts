@@ -25,8 +25,8 @@ import { z } from "zod"
 
 /**
  * Canonical host URL (no trailing slash) used by the inter-app URL
- * configuration. Per ADR-021, every inter-app link is built as
- * `new URL(path, host)`; a trailing slash on the base URL would
+ * configuration. Every inter-app link is built as `new URL(path, host)`;
+ * a trailing slash on the base URL would
  * be silently neutralised by `new URL`'s resolution rules but
  * hides a contributor mistake behind a non-obvious normalisation.
  * The `.refine` rejects the value at parse time so the mistake
@@ -118,12 +118,12 @@ export const serverInputShape = {
   // (mirrors BETTER_AUTH_SECRET's optional treatment). The required
   // `user:email` scope is configured on the OAuth App side
   // (Permissions > Account Permissions > Email Addresses > Read-only),
-  // NOT here. See ADR-028.
+  // NOT here. See the GitHub-OAuth notes on Nuclino.
   GITHUB_CLIENT_ID: z.string().min(1).optional(),
   GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
 
-  // Inter-app URL configuration (ADR-021). Server-side mirrors of
-  // the NEXT_PUBLIC_* fields on clientSchema. Used by server-side
+  // Inter-app URL configuration. Server-side mirrors of the
+  // NEXT_PUBLIC_* fields on clientSchema. Used by server-side
   // fetchers (apps/app's proxy, apps/cli's RPCLink, RSC fetches in
   // apps/web when running on Node). Defaults are localhost ports
   // per the dev convention; production values are set on Vercel.
@@ -200,11 +200,10 @@ export const clientSchema = z.object({
     .string()
     .min(1)
     .default("SaaS application built with Next.js and shared UI components"),
-  // Inter-app URL configuration (ADR-021). Server-side mirrors
-  // live in serverInputShape below; the client variants carry
+  // Inter-app URL configuration. Server-side mirrors live in
+  // serverInputShape below; the client variants carry
   // NEXT_PUBLIC_* so the bundler inlines them into the browser
-  // bundle. Defaults are localhost ports per the dev convention
-  // documented in ADR-021 §1.
+  // bundle. Defaults are localhost ports per the dev convention.
   NEXT_PUBLIC_WEB_URL: canonicalUrl.default("http://localhost:3000"),
   NEXT_PUBLIC_APP_URL: canonicalUrl.default("http://localhost:3001"),
   NEXT_PUBLIC_DOCS_URL: canonicalUrl.default("http://localhost:3002"),

@@ -5,7 +5,7 @@
 "@deessejs/cli": patch
 ---
 
-Implements ADR-021: first-class inter-app URLs in `@workspace/env`,
+Implements first-class inter-app URLs in `@workspace/env`,
 removing the relative-path construction in three consumers.
 
 User-visible:
@@ -54,8 +54,9 @@ Vercel env (operational, no code change):
   Vercel project.
 - Production: `ALLOWED_ORIGINS` on `apps/app`'s Vercel project must
   include `https://deessejs.com` for the cross-origin
-  no-credentials fetch from the marketing site (cf. ADR-021 §
-  Cross-origin considerations).
+  no-credentials fetch from the marketing site (see the
+  Cross-origin considerations section of the inter-app URL
+  config).
 - Preview deployments: each Vercel preview defaults to
-  `https://app.deessejs.com` (the schema default). A future ADR
-  covers preview-vs-preview wiring.
+  `https://app.deessejs.com` (the schema default). A future
+  write-up covers preview-vs-preview wiring.

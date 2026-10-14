@@ -26,8 +26,9 @@ import { HOST_ALLOWLIST } from "./host-allowlist.js"
  * and avoids the cycle. If the basePath ever changes, this
  * constant and the Hono mount must change together.
  *
- * See ADR-015 for the full root-cause analysis and the prefix
- * alignment invariant.
+ * A Hono↔Better-Auth basePath misalignment caused every
+ * `/api/v1/auth/*` URL to 404 in production; the prefix invariant
+ * is load-bearing and must hold across both sides.
  */
 const AUTH_BASE_PATH = "/api/v1/auth"
 
@@ -40,12 +41,11 @@ const AUTH_BASE_PATH = "/api/v1/auth"
  * preview deployment without per-preview env configuration.
  *
  * The list is shared with the Hono CORS layer in
- * `packages/api/src/index.ts` via `packages/auth/src/host-allowlist.ts`
- * (ADR-029 Decision #2). Apex entries are load-bearing — see
- * `host-allowlist.ts` for the rationale.
+ * `packages/api/src/index.ts` via `packages/auth/src/host-allowlist.ts`.
+ * Apex entries are load-bearing — see `host-allowlist.ts` for the
+ * rationale.
  *
- * See https://better-auth.com/docs/guides/dynamic-base-url and
- * apps/internal-documentation/content/docs/decisions/ADR-029-preview-url-wiring.mdx.
+ * See https://better-auth.com/docs/guides/dynamic-base-url.
  */
 
 /**
@@ -228,28 +228,28 @@ const authConfig: BetterAuthOptions = {
   },
 
   plugins: [
-    // Device authorization (ADR-020): the device-code flow that lets the
-    // CLI obtain a session token without a password. The plugin adds
-    // /device/code, /device/token, /device, /device/approve, /device/deny
-    // under the existing /api/v1/auth mount. `verificationUri` is pinned to
-    // the relative path so the plugin can be configured independently of
-    // the deployment origin. The plugin must sit before `nextCookies()`
-    // because `nextCookies()` must remain the last entry (Next.js integration
-    // requirement).
+    // Device authorization: the device-code flow that lets the CLI obtain
+    // a session token without a password. The plugin adds /device/code,
+    // /device/token, /device, /device/approve, /device/deny under the
+    // existing /api/v1/auth mount. `verificationUri` is pinned to the
+    // relative path so the plugin can be configured independently of the
+    // deployment origin. The plugin must sit before `nextCookies()`
+    // because `nextCookies()` must remain the last entry (Next.js
+    // integration requirement).
     deviceAuthorization({
       verificationUri: "/device",
     }),
-    // Bearer plugin (ADR-022): lets `auth.api.getSession` (and
-    // `/api/v1/auth/get-session` from the typed client) resolve a session
-    // from an `Authorization: Bearer <token>` header instead of a session
-    // cookie. Required by the CLI's `fetchUserIdentity` follow-up after
-    // `/device/token` returns: the CLI is a stateless Node process with no
-    // cookie jar, so the only way to learn the user tied to the device-flow
-    // session token is to present it as a Bearer header. The default
-    // `requireSignature: false` accepts the raw unsigned session token
-    // returned by `/device/token` directly. The plugin is stateless (no
-    // schema change). Per Better Auth docs (docs/plugins/bearer) and the
-    // device-authorization docs' "Example: CLI Application" callout.
+    // Bearer plugin: lets `auth.api.getSession` (and `/api/v1/auth/get-session`
+    // from the typed client) resolve a session from an `Authorization: Bearer
+    // <token>` header instead of a session cookie. Required by the CLI's
+    // `fetchUserIdentity` follow-up after `/device/token` returns: the CLI
+    // is a stateless Node process with no cookie jar, so the only way to
+    // learn the user tied to the device-flow session token is to present it
+    // as a Bearer header. The default `requireSignature: false` accepts the
+    // raw unsigned session token returned by `/device/token` directly. The
+    // plugin is stateless (no schema change). Per Better Auth docs
+    // (docs/plugins/bearer) and the device-authorization docs' "Example:
+    // CLI Application" callout.
     bearer(),
     // Admin plugin (RFC: "DeesseJS Administration Routes — V1"): adds the
     // `role`, `banned`, `banReason`, and `banExpires` columns to the
@@ -297,7 +297,7 @@ export const auth = betterAuth(
 // `AuthSession` is the full `{ user, session }` envelope returned by
 // `auth.api.getSession` and the typed client. The legacy re-export
 // of `Session`/`User` from the `better-auth` package was unused in
-// production code (only ADR/markdown doc snippets referenced it), so
+// production code (only documentation snippets referenced it), so
 // swapping it for the inferred types does not break any real
 // consumer.
 export type AuthInstance = typeof auth

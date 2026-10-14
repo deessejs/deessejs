@@ -12,7 +12,9 @@ const AUTH_PREFIXES = [
   // /device is intentionally NOT here: an authenticated user
   // landing on /device from the CLI's auth login must see the
   // approve / deny view, not /home. Routing is owned by the
-  // page-level Server Component. See ADR-022 §"Bug B".
+  // page-level Server Component (the previous Bug B caused an
+  // authenticated user to be bounced from /device to /home
+  // before they could approve the CLI's login).
 ]
 
 export const config = {
@@ -93,8 +95,8 @@ export async function proxy(request: NextRequest) {
   // it keeps the self-fetch in the same Function (no DNS hop,
   // no port resolution).
   //
-  // ADR-021 §"Decision" #4 originally composed the URL from
-  // `serverEnv.API_BASE_URL`. That works for the cross-app case
+  // The inter-app URL config notes that composing the URL from
+  // `serverEnv.API_BASE_URL` works for the cross-app case
   // (`apps/web` calling into `apps/app`) but breaks for the
   // self-fetch here, because `API_BASE_URL` is not set on every
   // preview deploy and falls back to `http://localhost:3001` —

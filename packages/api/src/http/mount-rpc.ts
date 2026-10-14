@@ -30,7 +30,8 @@ import type { ApiEnv } from "./env.js"
  * basePath: `API_BASE_PATH + "/rpc"` (= `/api/v1/rpc`).
  * Passing only `/rpc` makes the oRPC `StandardHandler.handle`
  * check fail on every request — the path does not start with
- * `/rpc/`. ADR-015 documents the prefix-alignment invariant.
+ * `/rpc/`. The Hono↔Better-Auth basePath regression analysis
+ * documents this prefix-alignment invariant.
  *
  * The matched response is rewritten to carry the request ID
  * header, so clients can correlate even when oRPC constructs

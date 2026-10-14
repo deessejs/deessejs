@@ -4,9 +4,9 @@
 //
 // URL values come from `@workspace/env/client` via the ergonomic
 // helpers (`webURL()`, `appURL()`, `docsURL()`, `apiBaseURL()`) so the
-// role-to-env-var mapping is single-sourced. ADR-029 Decision #1
-// forbids aliasing these into the marketing canonical; the marketing
-// canonical IS `NEXT_PUBLIC_WEB_URL` (exposed via `webURL()`).
+// role-to-env-var mapping is single-sourced. Aliasing these into
+// the marketing canonical is forbidden; the marketing canonical
+// IS `NEXT_PUBLIC_WEB_URL` (exposed via `webURL()`).
 
 import { webURL } from "@workspace/env/client"
 

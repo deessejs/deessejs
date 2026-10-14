@@ -1,14 +1,16 @@
 import { cliDeviceExpired, cliDeviceDenied, CliError } from "../../../errors/index.js"
 
 /**
- * Polling-protocol error mapper (ADR-020).
+ * Polling-protocol error mapper.
  *
  * Translates Better Auth device-flow error codes (per the
  * plugin's `error-codes.mjs`) into the CLI's closed list of
- * public error codes (ADR-010 §2). The CLI surfaces the cause
- * instead of masking it with `not_found`.
+ * public error codes (the CLI surface is closed: only the
+ * codes documented in this repo are ever returned, and adding
+ * a new one counts as a breaking change). The CLI surfaces
+ * the cause instead of masking it with `not_found`.
  *
- * Mapping (per ADR-020):
+ * Mapping (per the device-flow plugin):
  *
  *   authorization_pending — not an error; the polling loop
  *     continues and ignores the return value
@@ -24,8 +26,8 @@ import { cliDeviceExpired, cliDeviceDenied, CliError } from "../../../errors/ind
  *
  * The function returns either `null` (continue polling) or
  * a `CliError` to surface. The caller decides whether the
- * CliError is a hard exit or just a log line; per ADR-010
- * §2 the closed-list codes are user-visible.
+ * CliError is a hard exit or just a log line; the closed-list
+ * codes are user-visible.
  */
 export type BetterAuthDeviceErrorCode =
   | "authorization_pending"

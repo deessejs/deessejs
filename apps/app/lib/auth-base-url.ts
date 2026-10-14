@@ -5,11 +5,11 @@ import { clientEnv } from "@workspace/env/client"
 /**
  * Runtime resolution of the auth backend origin in the browser.
  *
- * ADR-029 Decision #4 — `withRelatedProject` reads
- * `VERCEL_RELATED_PROJECTS`, which Vercel injects only at runtime
- * on the server. The browser bundle never sees it, so we can't
- * use `withRelatedProject` from a Client Component. The simplest
- * rule that works for every deployment shape:
+ * `withRelatedProject` reads `VERCEL_RELATED_PROJECTS`, which
+ * Vercel injects only at runtime on the server. The browser
+ * bundle never sees it, so we can't use `withRelatedProject`
+ * from a Client Component. The simplest rule that works for
+ * every deployment shape:
  *
  *   - If the page is served from a Vercel preview
  *     (`*.vercel.app` hostname), the auth backend lives on the

@@ -1,8 +1,8 @@
 /**
  * Contract test for the `templates.list` procedure.
  *
- * Per ADR-009 (Test strategy) and Pattern A in
- * rules/test-mocking.md, this is the contract layer:
+ * Per the test-strategy rule and the contract-layer pattern, this
+ * is the contract layer:
  *   - Fast (no network, no DB)
  *   - Exercises the procedure handler in isolation
  *   - Asserts the wire shape matches the declared contract

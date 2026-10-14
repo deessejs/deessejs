@@ -34,7 +34,7 @@ import { useAuthClient } from "./auth-client-provider"
 import { getAvatarUrl, getInitials } from "./user-menu-helpers"
 
 /**
- * Session-aware right-side header control (ADR-023).
+ * Session-aware right-side header control.
  *
  * Three render branches keyed off `authClient.useSession()`:
  *   - isPending: Skeleton placeholder (avoids the flash of an
@@ -57,7 +57,7 @@ function appUrl(path: string, baseUrl: string): string {
 }
 
 /**
- * ADR-029: `baseUrl` is resolved server-side by `<UserMenuServer>`
+ * `baseUrl` is resolved server-side by `<UserMenuServer>`
  * (a Server Component) because `withRelatedProject` reads
  * `process.env.VERCEL_RELATED_PROJECTS`, which Vercel only injects
  * at runtime on the server — not in the browser bundle. Passing the

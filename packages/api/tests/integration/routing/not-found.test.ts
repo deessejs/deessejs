@@ -1,7 +1,7 @@
 /**
  * Integration test for the Hono global notFound envelope.
  *
- * Per ADR-016, asserts the wire shape that
+ * Per the api CI integration tests, asserts the wire shape that
  * `packages/api/src/index.ts:33-47` returns for any URL Hono
  * does not match. The envelope is shaped to be parsable by
  * `@orpc/client` as a defined-false ORPCError, so a change to
@@ -9,9 +9,9 @@
  * and the apps/web fetch hook.
  *
  * This is the load-bearing assertion that would have caught
- * the ADR-015 regression: with the Hono `/rpc/*` pattern
- * matching one segment, a POST to `/api/v1/rpc/templates/list`
- * returns exactly this envelope with a 404 status.
+ * the Hono `/rpc/*` pattern regression: with a one-segment
+ * pattern, a POST to `/api/v1/rpc/templates/list` returns
+ * exactly this envelope with a 404 status.
  */
 import { describe, expect, it } from "vitest"
 

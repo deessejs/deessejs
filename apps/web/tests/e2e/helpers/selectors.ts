@@ -7,8 +7,8 @@
  * data-testid + role-based selectors that the e2e suite
  * relies on.
  *
- * See ADR-020 Decision #4 for the rationale on data-testid
- * placement.
+ * See the rationale on data-testid placement in the
+ * tests/e2e convention.
  */
 import { type Page } from "@playwright/test"
 
@@ -80,7 +80,7 @@ export const notFoundHeading = (page: Page) =>
 export const browseAllTemplatesLink = (page: Page) =>
   page.getByRole("link", { name: "Browse all templates" })
 
-// Session-aware header selectors (ADR-023).
+// Session-aware header selectors.
 // Root container for the right-side header control (always present).
 export const headerUserMenu = (page: Page) =>
   page.getByTestId("header-user-menu")

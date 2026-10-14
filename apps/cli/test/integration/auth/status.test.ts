@@ -9,7 +9,7 @@ import { cachePath } from "../../../src/cache/location.js"
 import { startFakeAuthServer, type FakeAuthServer } from "../fakes/better-auth.js"
 
 /**
- * Integration test for `deesse auth status` (ADR-020).
+ * Integration test for `deesse auth status`.
  *
  * Three terminal states:
  *   - No auth.json: prints yellow notice, exit 0.

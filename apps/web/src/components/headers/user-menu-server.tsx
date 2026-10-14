@@ -1,11 +1,11 @@
 // Server Component wrapper around `<UserMenu>` (Client Component).
 //
-// ADR-029 Decision #4 — `withRelatedProject` reads
-// `process.env.VERCEL_RELATED_PROJECTS` directly. Vercel injects
-// that env var at runtime on the server (Node.js / Edge Functions),
-// NOT in the browser bundle — so calling `withRelatedProject`
-// from a Client Component silently falls back to `defaultHost`
-// every time (the bundle never sees `VERCEL_RELATED_PROJECTS`).
+// `withRelatedProject` reads `process.env.VERCEL_RELATED_PROJECTS`
+// directly. Vercel injects that env var at runtime on the server
+// (Node.js / Edge Functions), NOT in the browser bundle — so
+// calling `withRelatedProject` from a Client Component silently
+// falls back to `defaultHost` every time (the bundle never sees
+// `VERCEL_RELATED_PROJECTS`).
 //
 // The fix is to resolve the preview URLs server-side and pass
 // them down as serializable props:

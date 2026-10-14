@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { authClient } from "@/lib/auth-client"
 
 /**
- * Device-flow hooks (ADR-020).
+ * Device-flow hooks.
  *
  * `useDeviceClaim` — read the current claim status of a user_code
  *   (useQuery against authClient.device) plus the two mutations

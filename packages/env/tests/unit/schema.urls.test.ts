@@ -1,13 +1,13 @@
 /**
- * Pin the contract of the inter-app URL fields introduced in
- * ADR-021. The fields appear on both `clientSchema` and
- * `serverInputShape`; the validation rules are shared via the
- * `canonicalUrl` helper in `packages/env/src/schema.ts`. This
- * file tests the schema directly (no env loader, no snapshot)
- * so each field's behaviour localises to a single case.
+ * Pin the contract of the inter-app URL fields. The fields appear
+ * on both `clientSchema` and `serverInputShape`; the validation
+ * rules are shared via the `canonicalUrl` helper in
+ * `packages/env/src/schema.ts`. This file tests the schema
+ * directly (no env loader, no snapshot) so each field's behaviour
+ * localises to a single case.
  *
- * Per ADR-011 §47, every test file fits one of the three tiers
- * and ties to one concept; this file pins the URL contract.
+ * Every test file fits one of the three tiers and ties to one
+ * concept; this file pins the URL contract.
  */
 import { describe, expect, it } from "vitest"
 
@@ -17,7 +17,7 @@ import {
   serverSchema,
 } from "../../src/schema.js"
 
-describe("inter-app URL fields (ADR-021)", () => {
+describe("inter-app URL fields", () => {
   describe("canonicalUrl helper", () => {
     it("accepts a valid URL without a trailing slash", () => {
       const result = canonicalUrl.safeParse("https://app.deessejs.com")

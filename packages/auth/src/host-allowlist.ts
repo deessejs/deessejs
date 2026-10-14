@@ -2,15 +2,14 @@
  * Host allowlist — single source of truth for "which hosts does this
  * deployment trust?".
  *
- * ADR-029 Decision #2 makes this the shared module between
+ * This module is the shared allowlist between
  * `packages/auth/src/auth.ts` (Better Auth `baseURL.allowedHosts`) and
  * `packages/api/src/index.ts` (Hono CORS `origin` function). The
  * apex+wildcards shape is load-bearing: Better Auth's `allowedHosts`
  * pattern table does NOT let `*.vercel.app` match the apex `vercel.app`
  * itself, so the apex entry is listed explicitly. Trimming the apex
  * reintroduces the "Fixed baseURL breaks Vercel preview deployments"
- * bug — see apps/internal-documentation/content/docs/decisions/ADR-029-preview-url-wiring.mdx
- * and https://better-auth.com/docs/guides/dynamic-base-url.
+ * bug — see https://better-auth.com/docs/guides/dynamic-base-url.
  *
  * Localhost entries are gated on `NODE_ENV === "development"` to keep
  * the prod allowlist minimal — matches the same hazard for

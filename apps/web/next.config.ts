@@ -11,8 +11,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "picsum.photos" },
-      // Vercel avatar endpoint (ADR-023). The session-aware header
-      // uses this for the user avatar — same universal fallback that
+      // Vercel avatar endpoint. The session-aware header uses this
+      // for the user avatar — same universal fallback that
       // apps/app/components/sidebars/nav-user.tsx uses. The avatar
       // endpoint serves a deterministic SVG for any email, so the
       // marketing site does not need to allowlist each OAuth

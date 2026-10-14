@@ -16,14 +16,12 @@ name: Release
 # npm Trusted Publishing allows only one trusted publisher per package,
 # keyed on this workflow file's path. Adding staging to the push triggers
 # does not require a second trusted publisher entry.
-# See ADR-021 §"Decision" and ADR-025 for the auto-canary trigger.
+# See the inter-app-URL config rationale and the auto-canary trigger
+# design for the chosen channel layout.
 #
 # First-ever publish of @deessejs/cli is manual from a maintainer's machine
-# (npm has no "pending publisher" feature). See
-# First-ever publish of @deessejs/cli is manual from a maintainer's machine
-# (npm has no "pending publisher" feature). See
-# apps/internal-documentation/content/docs/decisions/ADR-013-cli-publish-verify.mdx
-# for the equivalent setup walkthrough.
+# (npm has no "pending publisher" feature). See the
+# cli-publish-verify procedure on Nuclino for the equivalent setup walkthrough.
 
 on:
   push:
@@ -83,7 +81,7 @@ jobs:
       #     (manual on-demand run by a maintainer.)
       #   push to staging → canary/prerelease.
       #     (auto-trigger; the merge carries the changeset check via
-      #      changesets-check.yml on the feature PR, see ADR-026.)
+      #      changesets-check.yml on the feature PR.)
       #   push to main (commit message contains .changeset) → latest/stable.
       # Downstream steps condition their behavior on these outputs.
       - name: Determine release channel
@@ -189,8 +187,8 @@ jobs:
       #
       # Implication: between a @latest publish and the next promotion,
       # apps/cli/package.json#version on main may lag behind the
-      # published npm version. This is by design; see ADR-027 for the
-      # rationale and the follow-up plan.
+      # published npm version. This is by design; the version-bump-orphan
+      # behaviour is documented in the release process notes.
 
       # 1b. Build all packages that produce publishable artifacts.
       # Without this, `dist/` (the actual bundle) is missing from the

@@ -69,7 +69,7 @@ Read:
 - Files mentioned in the issue's acceptance criteria or description
 - Relevant config (turbo.json, tsconfig.json, eslint.config.mjs, etc.)
 - Existing patterns in the target packages (`apps/`, `packages/`)
-- Learning docs in the now-deleted `docs/internal/learnings/` if referenced (none survive — fall back to the ADRs in `apps/internal-documentation/content/docs/decisions/`)
+- Learning docs in the now-deleted `docs/internal/learnings/` if referenced (none survive — fall back to the engineering rationale pages in Nuclino)
 - Related issues with `gh search issues`
 
 Keep notes — they feed the spec.

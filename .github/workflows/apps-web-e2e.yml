@@ -8,7 +8,7 @@
 # See https://vercel.com/kb/guide/how-can-i-run-end-to-end-tests-after-my-vercel-preview-deployment
 # and https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#repository_dispatch
 #
-# Per ADR-020.
+# Per the device-flow e2e test plan.
 name: apps-web-e2e
 on:
   # `repository_dispatch` only fires when the workflow file

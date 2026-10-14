@@ -1,7 +1,6 @@
 /**
  * P1 e2e suite — sidebar filter + cross-page navigation.
  *
- * Per ADR-020:
  *   P1-7 — sidebar filter toggling changes URL + aria-current.
  *   P1-11 — /templates is reachable from header/footer links.
  */

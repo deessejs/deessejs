@@ -4,7 +4,7 @@ import { defineConfig } from "tsup"
 // Resolved at build time, inlined into the bundle as a string literal
 // by esbuild's `define`. The CLI's `process.env.CLI_PACKAGE_VERSION`
 // reference is replaced with the actual version from
-// apps/cli/package.json before the bundle ships. See ADR-019.
+// apps/cli/package.json before the bundle ships.
 //
 // We use createRequire instead of `import pkg from "./package.json"
 // with { type: "json" }` to keep the config compatible with every

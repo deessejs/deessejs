@@ -31,7 +31,7 @@ import "./fetch-auth-interceptor"
  * Turbopack cannot satisfy (node builtins `net`/`tls`/`perf_hooks`).
  *
  * The `deviceAuthorizationClient` plugin mirrors the server-side
- * `deviceAuthorization` plugin (ADR-020). It exposes the four
+ * `deviceAuthorization` plugin. It exposes the four
  * methods the device page consumes: `authClient.device(...)`,
  * `authClient.device.approve(...)`, `authClient.device.deny(...)`,
  * plus `authClient.device.code(...)` and `authClient.device.token(...)`
@@ -50,8 +50,8 @@ import "./fetch-auth-interceptor"
  * build-time env var. On Vercel previews this resolves to the
  * production apex (`app.deessejs.com`); the fetch interceptor
  * installed via the side-effect import above rewrites the URL to
- * the page origin at request time. See ADR-029 Decision #4 for the
- * full rationale.
+ * the page origin at request time. The same preview-rewriting
+ * rationale is documented on `auth-base-url.ts`.
  *
  * The `as ReturnType<typeof createAuthClient<typeof authClientOptions>>`
  * cast on the export below is the matching fix for the Better Auth
