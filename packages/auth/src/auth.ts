@@ -61,31 +61,36 @@ function logEmailFailure(flow: string, userId: string, error: string): void {
 	)
 }
 
-// The `authConfig` const + `as ReturnType<typeof betterAuth<typeof authConfig>>`
-// annotation works around the well-known Better Auth TS2883 "inferred
-// type cannot be named without a reference to @better-auth/core" error
-// that is triggered when `betterAuth({...})` is composed with multiple
-// plugins (admin, deviceAuthorization, bearer, …). Without the
-// annotation, `tsc --noEmit` fails to type the public `auth` export
-// even though the runtime is sound. The `$Infer` chain on the
-// instance (used by the Hono `c.var.user` / `c.var.session` typing in
-// `packages/api/src/http/env.ts`) is preserved exactly as before.
-// The explicit `BetterAuthOptions` annotation on the const below is
-// the only way to satisfy the TS2883 "inferred type cannot be named
-// without a reference to @better-auth/core" error that TypeScript
-// raises on the literal object expression itself (it cannot resolve
-// the deeply-nested plugin stack — admin, deviceAuthorization,
-// bearer, nextCookies — to a portable named type without going
-// through the `BetterAuthOptions` interface). The cast on the
-// `auth` export below (`as ReturnType<typeof betterAuth<typeof
-// authConfig>>`) is the matching fix for the same error on the
-// public export. The trade-off is that the public `User` and
-// `AuthSession` types do not include the admin plugin's `role`
-// field by default; we re-augment them below by intersecting with
-// the plugin-owned shape so consumers (the guard in
-// `apps/app/lib/admin-auth.ts`, the settings rail, …) keep
-// end-to-end type safety on `user.role`.
-// See https://github.com/better-auth/better-auth/issues/4250
+// `authConfig` is annotated with `BetterAuthOptions` *and* validated
+// with `satisfies BetterAuthOptions`. The annotation is load-bearing:
+// the `betterAuth({...})` signature infers the schema option from
+// Zod (`$ZodType` / `$ZodTypeInternals` / `$strip` from
+// `zod/v4/core`, plus `Issue` from `better-call`), and TypeScript
+// raises TS2883 on the unannotated literal because those types are
+// not portable across the workspace's `zod@4.4.3` (which the rest of
+// the monorepo resolves) and Better Auth's transitive
+// `zod@4.6.5`. Removing the annotation breaks `tsc --noEmit` — the
+// same root cause as the cast workaround below; only this error is
+// on the *const declaration* rather than the *export*.
+//
+// The trade-off: the annotation widens the literal type to the bare
+// `BetterAuthOptions` interface, which loses the plugin-augmented
+// shape in the inferred `$Infer` chain on the public `auth` export.
+// The public `User` / `AuthSession` types therefore do not see the
+// admin plugin's `role` / `banned` / `banReason` / `banExpires`
+// fields automatically; we re-augment them by hand below (matching
+// the project's previous design) so consumers
+// (`apps/app/lib/admin-auth.ts`, the settings rail,
+// `c.var.user` typing in `packages/api/src/http/env.ts`) keep
+// end-to-end type safety.
+//
+// Tracking the upstream fix:
+//   - https://github.com/better-auth/better-auth/issues/4250
+//     (TS2883 on multi-plugin `betterAuth({...})` — opened 1.6.x,
+//     verified still open as of 1.7.7 by removing the annotation
+//     and the cast and re-running `tsc --noEmit`.)
+// A follow-up PR can drop the annotation, the cast, and the manual
+// `User` augmentation when the upstream fix lands.
 const authConfig: BetterAuthOptions = {
   baseURL: {
     allowedHosts: [...HOST_ALLOWLIST],
@@ -274,14 +279,37 @@ const authConfig: BetterAuthOptions = {
   ],
 } satisfies BetterAuthOptions
 
-// The `ReturnType<typeof betterAuth<typeof authConfig>>` cast is the
-// documented fix for the TS2883 "inferred type cannot be named
-// without a reference to @better-auth/core" error that surfaces on
-// the public `auth` export when multiple plugins (admin,
-// deviceAuthorization, bearer, nextCookies) are composed. The
-// `$Infer` chain (used by `packages/api/src/http/env.ts`) and the
-// plugin-augmented shape are preserved through the cast.
-// See https://github.com/better-auth/better-auth/issues/4250
+// Public `auth` export. The `as ReturnType<typeof betterAuth<typeof
+// authConfig>>` cast is the documented fix for the TS2883 "inferred
+// type cannot be named without a reference to zod / better-call /
+// @better-auth/core" error that surfaces on the public `auth`
+// export when `betterAuth({...})` is composed with multiple plugins
+// (admin, deviceAuthorization, bearer, nextCookies). Better Auth
+// 1.7.7 re-introduces the same class of error on new Zod types
+// (`$ZodType`, `$ZodTypeInternals`, `$strip` from `zod/v4/core`)
+// and `better-call` — see the verified TS2883 emissions in this
+// file. The cast preserves the `$Infer` chain (used by
+// `packages/api/src/http/env.ts` for `c.var.user` /
+// `c.var.session`) and the plugin-augmented shape on the instance
+// type.
+//
+// The trade-off is that the public `User` / `AuthSession` types do
+// not transitively include the admin plugin's `role` field through
+// the public `User` type — the plugin-augmented shape is *on the
+// instance*, but TypeScript still can't see the plugin's field
+// additions through the unannotated $Infer chain at module-boundary
+// call sites. We re-augment the exported `User` type by hand below
+// (matching the project's previous design) so consumers
+// (`apps/app/lib/admin-auth.ts`, the settings rail) keep
+// end-to-end type safety on `user.role`.
+//
+// Tracking the upstream fix:
+//   - https://github.com/better-auth/better-auth/issues/4250
+//     (TS2883 on multi-plugin `betterAuth({...})`, opened 1.6.x,
+//     not yet closed as of 1.7.7 — verified by removing the cast
+//     and re-running `tsc --noEmit`.)
+// A follow-up PR can drop the cast and the manual `User`
+// augmentation when the upstream fix lands.
 export const auth = betterAuth(
   authConfig,
 ) as ReturnType<typeof betterAuth<typeof authConfig>>

@@ -58,7 +58,7 @@ catalog:
 
   # Agent runtime (apps/agent — Vercel eve + MiniMax provider)
   ai: ^7.0.106
-  better-auth: ^1.6.23
+  better-auth: ^1.7.7
   cmdk: ^1.1.1
   cross-spawn: ^7.0.6
 

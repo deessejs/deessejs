@@ -18,32 +18,83 @@ import {
 //   - `0002_admin_plugin_columns.sql` (admin-plugin columns on user
 //     and session, plus a `role = 'user'` backfill)
 //
-// Two non-obvious rules:
+// `auth:generate` (the Better Auth CLI in `packages/auth/package.json`)
+// writes the regenerated Drizzle schema to
+// `src/schema/.auth-gen-probe.ts` — a scratch file, gitignored by
+// `packages/database/.gitignore` so it never lands in a commit. The
+// canonical file (this one) is the merged form: the CLI's output
+// patched with the customisations the runtime needs. To regenerate:
 //
-//   1. The `deviceCode` table name is PascalCase ("deviceCode"), not
-//      snake_case. Migration `0001` created it that way and the
-//      production database has it as `public."deviceCode"`. The
-//      `auth` CLI versions tested here (1.4.22 and 1.6.23) both
-//      silently rename the table to `device_code` and drop the
-//      unique constraints, the user_id foreign key, the
-//      `created_at` / `updated_at` columns, the `status` default
-//      of `'pending'`, and the `bigint` type of `polling_interval`
-//      when they regenerate this file. They do not emit a matching
-//      `ALTER TABLE … RENAME` migration, so the schema and the
-//      production database drift apart and every device-flow
-//      endpoint breaks at runtime. Do not re-run `auth:generate`
-//      until the upstream CLI is fixed; if you must regenerate,
-//      restore the `deviceCode` block from `0001_magenta_firebrand.sql`
-//      and the unique constraints / FK / indexes below before
-//      committing.
+//   1. `./packages/auth/node_modules/.bin/auth generate --output
+//       packages/database/src/schema/.auth-gen-probe.ts -y`.
+//   2. `git diff packages/database/src/schema/.auth-gen-probe.ts` and
+//      read the diff in full.
+//   3. Apply the *runtime-required* patches below, then copy the
+//      patched result over this file.
 //
-//   2. The admin plugin owns the four columns on `user` and the
-//      `impersonated_by` column on `session`. They are nullable and
-//      `banned` defaults to `false`; `role` is backfilled to
-//      `'user'` in the `0002` migration. Do not add the plugin
-//      twice (e.g. as `additionalFields`) — the plugin already
-//      declares them in its server-side schema and a duplicate
-//      declaration breaks the inferred User type.
+// The customisations the runtime requires (re-apply on every
+// regeneration; the CLI does not emit them):
+//
+//   a. **Table name `deviceCode` (PascalCase), not `device_code`.**
+//      Migration `0001` created `public."deviceCode"`. Switching to
+//      snake_case would break the device flow on every existing
+//      deployment. The CLI emits `device_code` because the Better
+//      Auth plugin's internal Zod schema does not declare a table
+//      name; Drizzle's `pgTable("device_code", …)` uses the literal
+//      argument as the table name. Rename to `"deviceCode"` to keep
+//      the migration history in lock-step with the schema.
+//
+//   b. **Foreign key on `userId`.** The CLI emits
+//      `userId: text("user_id")` with no `.references(…)` — the
+//      plugin's Zod schema marks `userId` as `ZodOptional`, so the
+//      CLI does not infer an FK. The runtime contract requires the
+//      FK (deletes on `user` must cascade to device codes) — see
+//      `0001_magenta_firebrand.sql`. Add
+//      `userId: text("user_id").references(() => user.id, { onDelete: "cascade" })`.
+//
+//   c. **`deviceCodeRelations` export.** The CLI does not emit
+//      relations. We have `advanced.database.joins: true` enabled in
+//      `packages/auth/src/auth.ts`; the join plumbing requires
+//      `deviceCodeRelations` (and the matching
+//      `userRelations.deviceCodes` back-reference) so the Better
+//      Auth admin device queries resolve. Re-add both at the bottom
+//      of the file.
+//
+//   d. **Lookup indexes `deviceCode_userId_idx` and
+//      `deviceCode_expiresAt_idx`.** The CLI does not emit them. They
+//      back the device-flow admin endpoints and the pending-code
+//      expiry sweep, respectively. Re-add
+//      `index("deviceCode_userId_idx").on(table.userId)` and
+//      `index("deviceCode_expiresAt_idx").on(table.expiresAt)` in
+//      the table callback.
+//
+// Customisations we keep that the runtime does not strictly require
+// (re-apply if you regenerate, but they are not load-bearing — see
+// `0001_magenta_firebrand.sql` for the historical reasons):
+//
+//   - `status: text("status").default("pending").notNull()` (the
+//     `'pending'` default; the runtime works with `notNull` alone).
+//   - `pollingInterval: bigint("polling_interval", { mode: "number" })`
+//     (the CLI emits `integer`; the 1.7.7 runtime accepts either —
+//     the upgrade guide says polling interval is bounded — but we
+//     keep `bigint` for forward-compat with longer intervals).
+//   - `createdAt: timestamp("created_at").defaultNow().notNull()` and
+//     `updatedAt: timestamp("updated_at").defaultNow().$onUpdate(…).notNull()`
+//     (audit columns, consistent with the rest of the project's
+//     tables).
+//   - Inline `.unique()` on `device_code` / `user_code` columns
+//     instead of `uniqueIndex(…)` in the table callback (the CLI
+//     emits the latter; the constraint shape is identical, only
+//     the index name changes).
+//
+// The admin plugin owns the four columns on `user` (`role`,
+// `banned`, `banReason`, `banExpires`) and the `impersonated_by`
+// column on `session`. They are nullable; `banned` defaults to
+// `false`; `role` is backfilled to `'user'` in the `0002`
+// migration. Do not add the plugin twice (e.g. as
+// `additionalFields`) — the plugin already declares them in its
+// server-side schema and a duplicate declaration breaks the
+// inferred User type.
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -134,16 +185,14 @@ export const verification = pgTable(
  * the row is created when a CLI user calls `deesse auth login` and
  * is consumed when the user approves or denies on the web side.
  *
- * IMPORTANT: keep this table name PascalCase (`"deviceCode"`) and
- * preserve the unique constraints, foreign key, and indexes that
- * `0001_magenta_firebrand.sql` created. The current `auth` CLI
- * versions (1.4.22, 1.6.23) silently rename the table to
- * `device_code` and drop the constraints, the FK, the
- * `created_at` / `updated_at` columns, the `status` default of
- * `'pending'`, and the `bigint` type of `polling_interval` when
- * regenerating — see the long-form comment at the top of the
- * file. If you regenerate, restore this block from the migration
- * before committing.
+ * The block below preserves the table name (`"deviceCode"`), the
+ * `user_id` foreign key, the `created_at` / `updated_at` columns,
+ * the `status` default of `'pending'`, the `bigint` type of
+ * `polling_interval`, and the `deviceCode_userId_idx` /
+ * `deviceCode_expiresAt_idx` indexes that the `auth` CLI's
+ * regeneration does not emit (see the long-form comment at the top
+ * of this file). On regeneration, restore this block from the
+ * canonical before committing.
  */
 export const deviceCode = pgTable(
   "deviceCode",
