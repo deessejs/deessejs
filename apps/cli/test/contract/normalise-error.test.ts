@@ -10,10 +10,8 @@ import { normaliseError } from "../../src/api/index.js"
  * The normaliser is the only piece of logic in `api/index.ts` that does
  * not delegate to a tested helper (RPCLink, the official oRPC plugins,
  * Zod contract). Mocking the global `fetch` is the wrong layer for
- * RPCLink tests — see Phase 3 of
- * apps/internal-documentation/content/docs/decisions/ADR-005-api-consumer-agnostic.mdx
- * ("API is consumer-agnostic") — so we test the
- * normaliser directly here.
+ * RPCLink tests — see Phase 3 of ADR-005 ("API is consumer-agnostic")
+ * on Nuclino — so we test the normaliser directly here.
  *
  * The normaliser uses `toORPCError` from `@orpc/client` and the
  * `instanceof ORPCError` check it exposes (via Symbol.hasInstance for

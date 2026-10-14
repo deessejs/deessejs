@@ -13,8 +13,8 @@ pg_version = "16.0"
 #
 # The destructive- and renaming-shaped rules are kept active:
 # drizzle-kit generate emits these patterns correctly, and the
-# expand-and-contract gate in ADR-015 needs to catch them.
-# See ADR-015 in apps/internal-documentation for the rationale.
+# expand-and-contract gate (see the drizzle-migrations-ci ADR on Nuclino)
+# needs to catch them.
 excluded_rules = [
   # drizzle-kit wraps every migration in a single transaction,
   # and Postgres rejects CREATE INDEX CONCURRENTLY inside a

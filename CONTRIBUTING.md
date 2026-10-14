@@ -58,7 +58,7 @@ Or create `.changeset/<random-slug>.md` manually:
 Add `deessejs list --category <name>` flag for filtering templates by category
 ```
 
-CI verifies the changeset is present on PRs that touch `apps/cli/**`. For full format details, examples, and the lifecycle of a changeset, see [.changeset/README.md](.changeset/README.md). For the broader release process, see [apps/internal-documentation/content/docs/processes/release-engineering/latest-release.mdx](apps/internal-documentation/content/docs/processes/release-engineering/latest-release.mdx).
+CI verifies the changeset is present on PRs that touch `apps/cli/**`. For full format details, examples, and the lifecycle of a changeset, see [.changeset/README.md](.changeset/README.md). The broader release process is documented on Nuclino.
 
 ### Pull Requests
 

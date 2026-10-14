@@ -45,11 +45,8 @@ Pattern senior pour better-auth dans ce repo. La configuration vit dans **`packa
 |---|---|
 | [packages/auth/src/auth.ts](packages/auth/src/auth.ts) | Config canonique (`baseURL`, `account`, `emailVerification`, `plugins[]`). Le header du fichier documente chaque bloc. |
 | [packages/auth/src/host-allowlist.ts](packages/auth/src/host-allowlist.ts) | Allowlist des hosts (apex + wildcards, ADR-029 Decision #2). Single source of truth pour `isHostAllowed()`. |
-| [apps/internal-documentation/content/docs/knowledge-base/better-auth/hono-integration.mdx](apps/internal-documentation/content/docs/knowledge-base/better-auth/hono-integration.mdx) | Mount du handler dans Hono (le subtree `/api/v1/auth/*`). |
-| [apps/internal-documentation/content/docs/knowledge-base/better-auth/test-utils.mdx](apps/internal-documentation/content/docs/knowledge-base/better-auth/test-utils.mdx) | Test plugin pattern (utilisé dans les tests d'intégration). |
-| [apps/internal-documentation/content/docs/decisions/](apps/internal-documentation/content/docs/decisions/) | ADRs auth/CLI (ADR-020 device-auth, ADR-022 fixes, ADR-028 GitHub OAuth, ADR-029 preview-URL wiring, ADR-030 account-only page). |
 
-> **Note historique :** un guide complet `docs/guides/better-auth/` (8 fichiers) existait avant le commit `537aec8` mais a été supprimé. Les sujets qu'il couvrait (setup, hooks, organisation, email, session, client, pitfalls) sont aujourd'hui dispersés dans le code source et les ADRs ci-dessus. Pour les questions sur `databaseHooks`, l'organisation multi-tenant, ou `useActiveOrganization` : **ce repo est single-tenant — n'introduis pas ces patterns**.
+> **Note historique :** un guide complet `docs/guides/better-auth/` (8 fichiers) existait avant le commit `537aec8` mais a été supprimé. Les sujets qu'il couvrait (setup, hooks, organisation, email, session, client, pitfalls) sont aujourd'hui dispersés dans le code source et les ADRs (archivés sur Nuclino). Pour les questions sur `databaseHooks`, l'organisation multi-tenant, ou `useActiveOrganization` : **ce repo est single-tenant — n'introduis pas ces patterns**.
 
 ### Fresh CLI 
 

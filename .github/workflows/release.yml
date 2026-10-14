@@ -19,11 +19,8 @@ name: Release
 # See ADR-021 §"Decision" and ADR-025 for the auto-canary trigger.
 #
 # First-ever publish of @deessejs/cli is manual from a maintainer's machine
-# (npm has no "pending publisher" feature). See
-# First-ever publish of @deessejs/cli is manual from a maintainer's machine
-# (npm has no "pending publisher" feature). See
-# apps/internal-documentation/content/docs/decisions/ADR-013-cli-publish-verify.mdx
-# for the equivalent setup walkthrough.
+# (npm has no "pending publisher" feature). See the
+# cli-publish-verify procedure on Nuclino for the equivalent setup walkthrough.
 
 on:
   push:

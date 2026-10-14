@@ -44,8 +44,7 @@ const AUTH_BASE_PATH = "/api/v1/auth"
  * (ADR-029 Decision #2). Apex entries are load-bearing — see
  * `host-allowlist.ts` for the rationale.
  *
- * See https://better-auth.com/docs/guides/dynamic-base-url and
- * apps/internal-documentation/content/docs/decisions/ADR-029-preview-url-wiring.mdx.
+ * See https://better-auth.com/docs/guides/dynamic-base-url.
  */
 
 /**

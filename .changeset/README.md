@@ -1,6 +1,6 @@
 # Changesets
 
-This directory holds changesets for `@deessejs/cli` releases. See [the release-engineering process](../apps/internal-documentation/content/docs/processes/release-engineering/latest-release.mdx) for the full operational process.
+This directory holds changesets for `@deessejs/cli` releases. See the release-engineering process in Nuclino for the full operational procedure.
 
 ## What is a changeset?
 
@@ -22,7 +22,7 @@ Skip the changeset when your PR:
 - Only touches internal packages (`packages/*`), other apps, or `apps/cli/test/**`.
 - Only updates docs, comments, or formatting in `apps/cli/**`.
 - Bumps a catalog dependency without changing how the CLI is invoked (e.g. `commander` from `^12.1.0` to `^12.2.0` with no API change).
-- **Adds, updates, or removes a template entry** in `packages/api/src/templates.ts` (or any future database table backing the templates endpoint). Templates are content served by an API; the CLI is a client. The full reasoning and edge cases are documented inline in the bullets above and in `apps/internal-documentation/content/docs/decisions/`.
+- **Adds, updates, or removes a template entry** in `packages/api/src/templates.ts` (or any future database table backing the templates endpoint). Templates are content served by an API; the CLI is a client. The full reasoning and edge cases are documented inline in the bullets above.
 
 If unsure, look at recent merged PRs to `apps/cli/**` on GitHub — they should each carry a changeset.
 
@@ -99,11 +99,11 @@ The CLI walks you through selecting the package, bump type, and message. It writ
 
 1. You commit the changeset file with your code change.
 2. PR is reviewed and merged to `staging`. `changesets-check.yml` (required status check) confirms the changeset is present before merge is allowed.
-3. Pushing to `staging` triggers `release.yml` in `@canary` mode (per [ADR-025](../apps/internal-documentation/content/docs/decisions/ADR-025-auto-canary-on-staging.mdx)). The canary path bypasses `pnpm changeset version` entirely — your changesets stay intact.
+3. Pushing to `staging` triggers `release.yml` in `@canary` mode (see the release-engineering process in Nuclino). The canary path bypasses `pnpm changeset version` entirely — your changesets stay intact.
 4. Human promotes `staging` → `main` (per `AGENTS.md`).
 5. `.github/workflows/release.yml` runs on `main` in `@latest` mode:
    - `pnpm changeset version` reads all `.changeset/*.md` files, bumps `apps/cli/package.json#version` per the frontmatter, and regenerates `apps/cli/CHANGELOG.md`. The bump is committed locally on the runner with `commit: true` in `.changeset/config.json`.
-   - The changesets are now "consumed" on the runner. **The bump commit and the deletion of the `.changeset/*.md` files are not pushed to `origin/main`** — the ruleset `protect main` (id 20040100) refuses direct pushes from `github-actions[bot]` with GH013. See [ADR-027](../apps/internal-documentation/content/docs/decisions/ADR-027-version-bump-orphan.mdx) for the rationale.
+   - The changesets are now "consumed" on the runner. **The bump commit and the deletion of the `.changeset/*.md` files are not pushed to `origin/main`** — the ruleset `protect main` (id 20040100) refuses direct pushes from `github-actions[bot]` with GH013. See the version-bump-orphan rationale in Nuclino.
    - `pnpm changeset publish` publishes the new version to npmjs.org with provenance (via trusted publisher + OIDC). The published version on npm is the source of truth.
    - `git tag -f release/v{VERSION}` and `gh release create` provide the GitHub Release.
 6. The next `staging` → `main` promotion re-runs `pnpm changeset version` against the same changesets (still present on `staging`). This re-aligns `apps/cli/package.json#version` on `main` with the npm `@latest` version. See ADR-027 §"Consequences" for the orphan behavior and its mitigations.
@@ -119,5 +119,5 @@ The CLI walks you through selecting the package, bump type, and message. It writ
 
 ## See also
 
-- [the release-engineering process](../apps/internal-documentation/content/docs/processes/release-engineering/latest-release.mdx) — full operational process.
+- The release-engineering process (Nuclino) — full operational process.
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — contributor workflow.

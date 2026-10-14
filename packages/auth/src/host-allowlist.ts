@@ -9,8 +9,7 @@
  * pattern table does NOT let `*.vercel.app` match the apex `vercel.app`
  * itself, so the apex entry is listed explicitly. Trimming the apex
  * reintroduces the "Fixed baseURL breaks Vercel preview deployments"
- * bug — see apps/internal-documentation/content/docs/decisions/ADR-029-preview-url-wiring.mdx
- * and https://better-auth.com/docs/guides/dynamic-base-url.
+ * bug — see https://better-auth.com/docs/guides/dynamic-base-url.
  *
  * Localhost entries are gated on `NODE_ENV === "development"` to keep
  * the prod allowlist minimal — matches the same hazard for

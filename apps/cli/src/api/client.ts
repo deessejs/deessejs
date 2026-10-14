@@ -22,8 +22,7 @@ import { API_RPC_PATH } from "@workspace/api/base-path"
  * `globalThis.fetch` (the oRPC default). The plugins cover retry on
  * transient network errors and on 429 / 503 honouring `Retry-After`.
  *
- * See `apps/internal-documentation/content/docs/knowledge-base/orpc/client-plugins.mdx`
- * for the full coverage analysis.
+ *
  *
  * The previous custom `orpcFetch` hook (which injected the User-Agent
  * header and did bespoke retries) was removed in favour of the plugins.
