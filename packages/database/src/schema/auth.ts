@@ -25,12 +25,25 @@ import {
 // canonical file (this one) is the merged form: the CLI's output
 // patched with the customisations the runtime needs. To regenerate:
 //
-//   1. `./packages/auth/node_modules/.bin/auth generate --output
-//       packages/database/src/schema/.auth-gen-probe.ts -y`.
-//   2. `git diff packages/database/src/schema/.auth-gen-probe.ts` and
-//      read the diff in full.
-//   3. Apply the *runtime-required* patches below, then copy the
-//      patched result over this file.
+//   1. Run the script:
+//        pnpm --filter @workspace/auth auth:generate
+//      This writes the CLI's output to
+//      `packages/database/src/schema/.auth-gen-probe.ts`.
+//   2. Diff the probe against the canonical schema with an explicit
+//      two-file diff (a regular `git diff` is wrong here — the
+//      probe is gitignored and untracked, so `git diff` would
+//      compare it to nothing):
+//        git diff --no-index \
+//          packages/database/src/schema/auth.ts \
+//          packages/database/src/schema/.auth-gen-probe.ts
+//      The output lists every column the CLI regenerated, plus
+//      the four runtime-required customisations the CLI does not
+//      emit (see below).
+//   3. Apply the *runtime-required* patches below to the probe
+//      output, then copy the patched result over this file.
+//      The cosmetic customisations (audit timestamps, `bigint`
+//      polling interval, etc.) are also re-applied for
+//      consistency — see the second list below.
 //
 // The customisations the runtime requires (re-apply on every
 // regeneration; the CLI does not emit them):

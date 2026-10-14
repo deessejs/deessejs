@@ -293,23 +293,27 @@ const authConfig: BetterAuthOptions = {
 // `c.var.session`) and the plugin-augmented shape on the instance
 // type.
 //
-// The trade-off is that the public `User` / `AuthSession` types do
-// not transitively include the admin plugin's `role` field through
-// the public `User` type — the plugin-augmented shape is *on the
-// instance*, but TypeScript still can't see the plugin's field
-// additions through the unannotated $Infer chain at module-boundary
-// call sites. We re-augment the exported `User` type by hand below
-// (matching the project's previous design) so consumers
+// Design choice, not a regression. The cast is *narrow* — it only
+// affects the public type of the `auth` export. The plugin
+// augmentation (admin → `User.role`, etc.) is still on the
+// instance at runtime; only the static type-flow through `User`
+// is masked. We restore the static type-flow below with a manual
+// `User` re-augmentation that mirrors the plugin's server-side
+// fields (`role`, `banned`, `banReason`, `banExpires`). Consumers
 // (`apps/app/lib/admin-auth.ts`, the settings rail) keep
 // end-to-end type safety on `user.role`.
+//
+// The "plugin inference is lost" wording in the PR description
+// refers to this *type-flow*, not to runtime behaviour. There is
+// no runtime regression: every plugin endpoint still works.
 //
 // Tracking the upstream fix:
 //   - https://github.com/better-auth/better-auth/issues/4250
 //     (TS2883 on multi-plugin `betterAuth({...})`, opened 1.6.x,
 //     not yet closed as of 1.7.7 — verified by removing the cast
 //     and re-running `tsc --noEmit`.)
-// A follow-up PR can drop the cast and the manual `User`
-// augmentation when the upstream fix lands.
+// When the upstream fix lands, both the cast and the manual
+// `User` augmentation can be dropped in the same commit.
 export const auth = betterAuth(
   authConfig,
 ) as ReturnType<typeof betterAuth<typeof authConfig>>

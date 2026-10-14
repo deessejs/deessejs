@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/client"
+import type { BetterAuthClientOptions } from "better-auth/client"
 import { deviceAuthorizationClient } from "better-auth/client/plugins"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
@@ -82,16 +83,20 @@ export function resolveBaseURL(): string {
  * request so the `/settings/sessions` view can label CLI
  * sessions correctly.
  */
-export function createCliAuthClient() {
-	return createAuthClient({
-		baseURL: resolveBaseURL(),
-		basePath: API_AUTH_PATH,
-		plugins: [deviceAuthorizationClient()],
-		disableDefaultFetchPlugins: true,
-		fetchOptions: {
-			headers: {
-				"user-agent": `DeesseJS CLI/${readPackageVersion()}`,
-			},
+const cliAuthClientOptions = {
+	baseURL: resolveBaseURL(),
+	basePath: API_AUTH_PATH,
+	plugins: [deviceAuthorizationClient()],
+	disableDefaultFetchPlugins: true,
+	fetchOptions: {
+		headers: {
+			"user-agent": `DeesseJS CLI/${readPackageVersion()}`,
 		},
-	})
+	},
+} satisfies BetterAuthClientOptions
+
+export function createCliAuthClient() {
+	return createAuthClient(
+		cliAuthClientOptions,
+	) as ReturnType<typeof createAuthClient<typeof cliAuthClientOptions>>
 }
