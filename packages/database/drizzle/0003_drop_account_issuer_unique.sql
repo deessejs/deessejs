@@ -1,0 +1,46 @@
+-- Compatibility repair: drop the Better Auth 1.7.x issuer unique
+-- index and the `issuer` NOT NULL constraint on `public.account`.
+--
+-- Context: the production database contains a fourth migration
+-- (recorded in `drizzle.__drizzle_migrations` with a `when` greater
+-- than the largest in-repo migration, 1789996800000 of `0002`) that
+-- added `public.account.issuer text NOT NULL` and a unique index
+-- `account_issuer_accountId_uidx` on `(issuer, account_id)`. The
+-- repository's account schema does NOT declare `issuer` — the only
+-- code in this repository that touches the column is the Better
+-- Auth v1.6.23 signup path, which inserts into `account` without
+-- `issuer`. PostgreSQL therefore rejected every signup with
+-- `23502 not_null_violation` on `account.issuer`.
+--
+-- Better Auth 1.7.0–1.7.2 introduced this column and index; 1.7.3
+-- (the version pinned in the lockfile, transitively 1.6.23 here)
+-- does not write `issuer` on signup and does not require it. The
+-- production schema is therefore strictly stricter than the
+-- application needs.
+--
+-- This migration:
+--   1. Drops `account_issuer_accountId_uidx`. The (issuer,
+--      account_id) uniqueness constraint is moot: 1.6.23's
+--      credentialed signup writes `provider_id='credential'`
+--      (or the OAuth provider id) and a per-user random
+--      `account_id`, so the same `(provider_id, account_id)` pair
+--      can be re-inserted on password reset without colliding —
+--      the index that already enforces that is the original
+--      provider_id+account_id pair (see migration 0000). Removing
+--      this extra index does not change uniqueness for our use.
+--   2. Makes `issuer` NULL-able. Existing rows are preserved
+--      (including the pre-existing values for OAuth rows that did
+--      write `issuer`); new credentialed rows are free to insert
+--      without supplying a value.
+--
+-- We do NOT drop the `issuer` column itself. The values are useful
+-- for diagnostic / future-migration purposes, and dropping a
+-- column is a strictly larger change than required to unblock
+-- signup.
+--
+-- The migration sorts after every migration recorded in
+-- production: `when = 1793000000000` (greater than the maximum
+-- applied in-repo `when` of 1789996800000).
+--> statement-breakpoint
+DROP INDEX IF EXISTS "account_issuer_accountId_uidx";--> statement-breakpoint
+ALTER TABLE "public"."account" ALTER COLUMN "issuer" DROP NOT NULL;
