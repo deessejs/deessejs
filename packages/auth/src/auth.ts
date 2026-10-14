@@ -194,6 +194,14 @@ const authConfig: BetterAuthOptions = {
 
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production",
+    // 1.7 moved the joins flag out of `experimental`. Behaviour matches
+    // what `experimental.joins: true` did in 1.6.x — the ORM performs
+    // JOIN-based hydration instead of N+1 selects. Keep off for
+    // adapters that don't ship Drizzle relations, and verify the
+    // generated relations cover `deviceCode ↔ user` after regeneration.
+    database: {
+      joins: true,
+    },
     ...(serverEnv.PARENT_DOMAIN
       ? {
           crossSubDomainCookies: {
@@ -205,10 +213,6 @@ const authConfig: BetterAuthOptions = {
           },
         }
       : {}),
-  },
-
-  experimental: {
-    joins: true,
   },
 
   socialProviders: {
