@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config"
 import { vitestConfig } from "@workspace/vitest-config"
 
 // Unit tests for the marketing site live at `tests/unit/**/*.test.ts`
-// (plural root, per ADR-020). The shared preset default
+// (plural root). The shared preset default
 // `["tests/**/*.test.ts"]` (see `packages/vitest-config`) matches
 // this layout, so we do not override `include` here.
 //

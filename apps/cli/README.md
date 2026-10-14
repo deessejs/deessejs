@@ -8,7 +8,7 @@ CLI for the DeesseJS template registry.
 npx deessejs@latest <command>
 ```
 
-Other release channels (ADR-021):
+Other release channels:
 
 - `@canary` — on-demand pre-release of the current `staging` branch. Published by the `release.yml` workflow via `workflow_dispatch` with the `canary` input. `npx deessejs@canary <command>`.
 - Per-PR previews — every PR gets a SHA-keyed ephemeral preview via [pkg.pr.new](https://pkg.pr.new). The install URL is posted as a sticky comment on the PR by the `cli-preview.yml` workflow.

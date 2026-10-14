@@ -32,7 +32,7 @@ export default function DashboardLayout({
         </Link>
         <div className="flex items-center gap-2">
           {/* V1 placeholder: the real action (mailto: or external helpdesk
-              URL) ships in a follow-up ADR. See ADR-030 §5. */}
+              URL) ships in a follow-up change. */}
           <Button variant="outline" size="default" type="button" disabled>
             Contact us
           </Button>

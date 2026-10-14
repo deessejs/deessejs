@@ -32,7 +32,7 @@ import { logger } from "../../constants/logger.js"
  * Clients used to the documented 503 should treat any non-2xx
  * as retriable — the status code is informational.
  *
- * E2E test guard (ADR-020):
+ * E2E test guard:
  *
  * Playwright e2e suites exercise the failure / empty paths by
  * sending two request headers:

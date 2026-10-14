@@ -64,7 +64,7 @@ function activeHref(pathname: string, items: RailItem[]): string {
 
 /**
  * Custom left rail for the authenticated apps/app shell. Plain `<nav>` +
- * `<Link>` rows; no shadcn `Sidebar` component (see ADR-030). The rail
+ * `<Link>` rows; no shadcn `Sidebar` component. The rail
  * is ~240 px wide on desktop; on narrow viewports it tightens to icon-only
  * via the `sm:` breakpoint classes below.
  *

@@ -8,7 +8,7 @@ import { internal } from "../../errors/index.js"
 import { printJson } from "../../output/index.js"
 
 /**
- * deesse auth status (ADR-020).
+ * deesse auth status.
  *
  * Read-only command. Validates the stored session token
  * against the server's /get-session endpoint. The typed

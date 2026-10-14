@@ -1,8 +1,9 @@
 /**
  * Integration test for the version probe.
  *
- * Per ADR-016, exercises the real `api` Hono object via
- * `api.request()`. Pins the shape of `/api/v1/version` against
+ * Per the api CI integration tests, exercises the real `api`
+ * Hono object via `api.request()`. Pins the shape of
+ * `/api/v1/version` against
  * the constants in `packages/api/src/constants/version.ts`,
  * asserts the cache headers are set, and confirms the rate-limit
  * middleware runs on this route.

@@ -8,11 +8,11 @@ import { defineConfig } from "@playwright/test"
  * `${{ github.event.client_payload.url }}` (from the
  * `repository_dispatch` payload of `vercel.deployment.success`).
  *
- * Per ADR-020, the test runner authenticates past Vercel
- * Deployment Protection via `VERCEL_AUTOMATION_BYPASS_SECRET`,
- * which the Vercel platform exposes as a system env var on
- * the deployed runtime; the same secret is mirrored in CI as
- * a GitHub Actions repository secret named identically.
+ * The test runner authenticates past Vercel Deployment Protection
+ * via `VERCEL_AUTOMATION_BYPASS_SECRET`, which the Vercel platform
+ * exposes as a system env var on the deployed runtime; the same
+ * secret is mirrored in CI as a GitHub Actions repository secret
+ * named identically.
  *
  * See https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation
  */

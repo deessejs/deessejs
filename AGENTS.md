@@ -44,9 +44,9 @@ Pattern senior pour better-auth dans ce repo. La configuration vit dans **`packa
 | Source | Contenu |
 |---|---|
 | [packages/auth/src/auth.ts](packages/auth/src/auth.ts) | Config canonique (`baseURL`, `account`, `emailVerification`, `plugins[]`). Le header du fichier documente chaque bloc. |
-| [packages/auth/src/host-allowlist.ts](packages/auth/src/host-allowlist.ts) | Allowlist des hosts (apex + wildcards, ADR-029 Decision #2). Single source of truth pour `isHostAllowed()`. |
+| [packages/auth/src/host-allowlist.ts](packages/auth/src/host-allowlist.ts) | Allowlist des hosts (apex + wildcards). Single source of truth pour `isHostAllowed()`. |
 
-> **Note historique :** un guide complet `docs/guides/better-auth/` (8 fichiers) existait avant le commit `537aec8` mais a été supprimé. Les sujets qu'il couvrait (setup, hooks, organisation, email, session, client, pitfalls) sont aujourd'hui dispersés dans le code source et les ADRs (archivés sur Nuclino). Pour les questions sur `databaseHooks`, l'organisation multi-tenant, ou `useActiveOrganization` : **ce repo est single-tenant — n'introduis pas ces patterns**.
+> **Note historique :** un guide complet `docs/guides/better-auth/` (8 fichiers) existait avant le commit `537aec8` mais a été supprimé. Les sujets qu'il couvrait (setup, hooks, organisation, email, session, client, pitfalls) sont aujourd'hui dispersés dans le code source (archivé sur Nuclino). Pour les questions sur `databaseHooks`, l'organisation multi-tenant, ou `useActiveOrganization` : **ce repo est single-tenant — n'introduis pas ces patterns**.
 
 ### Fresh CLI 
 

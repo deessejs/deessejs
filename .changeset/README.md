@@ -106,7 +106,7 @@ The CLI walks you through selecting the package, bump type, and message. It writ
    - The changesets are now "consumed" on the runner. **The bump commit and the deletion of the `.changeset/*.md` files are not pushed to `origin/main`** — the ruleset `protect main` (id 20040100) refuses direct pushes from `github-actions[bot]` with GH013. See the version-bump-orphan rationale in Nuclino.
    - `pnpm changeset publish` publishes the new version to npmjs.org with provenance (via trusted publisher + OIDC). The published version on npm is the source of truth.
    - `git tag -f release/v{VERSION}` and `gh release create` provide the GitHub Release.
-6. The next `staging` → `main` promotion re-runs `pnpm changeset version` against the same changesets (still present on `staging`). This re-aligns `apps/cli/package.json#version` on `main` with the npm `@latest` version. See ADR-027 §"Consequences" for the orphan behavior and its mitigations.
+6. The next `staging` → `main` promotion re-runs `pnpm changeset version` against the same changesets (still present on `staging`). This re-aligns `apps/cli/package.json#version` on `main` with the npm `@latest` version. See the version-bump-orphan write-up for the orphan behavior and its mitigations.
 7. The new version of `@deessejs/cli` is live.
 
 ## Common mistakes

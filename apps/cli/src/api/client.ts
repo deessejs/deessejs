@@ -31,17 +31,16 @@ import { API_RPC_PATH } from "@workspace/api/base-path"
  * sends a User-Agent because it hits a Hono-direct endpoint, not an
  * oRPC procedure.
  *
- * Per ADR-021: the URL is composed via `new URL(path, base)` rather
- * than string concatenation; the leading-slash rule of `new URL`
- * collapses any trailing slash on the base. The trailing-slash guard
- * for the CLI is `resolveBaseURL()` below.
+ * The URL is composed via `new URL(path, base)` rather than string
+ * concatenation; the leading-slash rule of `new URL` collapses any
+ * trailing slash on the base. The trailing-slash guard for the CLI
+ * is `resolveBaseURL()` below.
  */
 /**
  * Production default for the CLI's `baseURL`. Mirrors
  * `apps/cli/src/lib/auth/store/better-auth-client.ts` so production
- * and tests share the same resolution (per ADR-015/016: canonical
- * prod API host is `app.deessejs.com`, NOT `deessejs.com` which is
- * the marketing apex).
+ * and tests share the same resolution (canonical prod API host is
+ * `app.deessejs.com`, NOT `deessejs.com` which is the marketing apex).
  */
 export const DEFAULT_API_URL = "https://app.deessejs.com"
 
@@ -54,7 +53,7 @@ export const DEFAULT_API_URL = "https://app.deessejs.com"
  *   2. The baked-in default above (production).
  *   3. A thrown validation error when source 1 is set but malformed.
  *
- * Per ADR-021: this is the CLI's analogue of the
+ * Per the inter-app URL config: this is the CLI's analogue of the
  * `apps/web/src/lib/orpc.ts` URL composition. The CLI cannot import
  * `@workspace/env/server` because the env package is private to the
  * monorepo (`packages/env/package.json: private: true`) and the CLI

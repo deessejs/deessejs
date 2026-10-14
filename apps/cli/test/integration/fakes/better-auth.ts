@@ -2,7 +2,7 @@ import http from "node:http"
 import type { AddressInfo } from "node:net"
 
 /**
- * Fake Better Auth server for CLI integration tests (ADR-020).
+ * Fake Better Auth server for CLI integration tests.
  *
  * Mirrors the 5 device-flow endpoints plus /get-session and
  * /sign-out, with controllable behaviour via a `behaviour`
@@ -62,9 +62,8 @@ type State = {
 	/**
 	 * Last Authorization header seen on /get-session, used by
 	 * the CLI login test to assert the CLI sent the Bearer
-	 * token it received from /device/token (ADR-022 §"Test
-	 * strategy / CLI side"). Null until the first /get-session
-	 * call arrives.
+	 * token it received from /device/token. Null until the
+	 * first /get-session call arrives.
 	 */
 	lastGetSessionAuthHeader: string | null
 }
@@ -225,7 +224,7 @@ export async function startFakeAuthServer(
 
 		// GET /api/v1/auth/get-session
 		//
-		// ADR-022: the real Better Auth `bearer()` plugin resolves
+		// The real Better Auth `bearer()` plugin resolves
 		// the session from an `Authorization: Bearer <token>` header
 		// (or a cookie). The fake used to accept any request that
 		// arrived after a /device/token success — which let the CLI

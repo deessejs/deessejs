@@ -5,18 +5,18 @@
  *
  * Integration test for the oRPC templates procedure.
  *
- * Per ADR-016, this is the load-bearing test. It exercises the
- * real `api` Hono object via `api.request()` against the URL
- * the `RPCLink` client actually sends: `/api/v1/rpc/templates/list`
- * (two segments after `/rpc/`).
+ * Per the api CI integration tests, this is the load-bearing test.
+ * It exercises the real `api` Hono object via `api.request()`
+ * against the URL the `RPCLink` client actually sends:
+ * `/api/v1/rpc/templates/list` (two segments after `/rpc/`).
  *
- * The test would have caught the bug documented in ADR-015: a
- * Hono `api.use("/rpc/*", ...)` pattern that matches one
- * segment cannot route a two-segment procedure path.
+ * The test would have caught the Hono `api.use("/rpc/*", ...)`
+ * pattern bug: a pattern that matches one segment cannot route
+ * a two-segment procedure path.
  *
- * Per ADR-017, this test hits the real GitHub REST API
- * through `packages/api/src/core/github/client.ts`. The
- * `enrich()` mock from earlier rounds is gone. The test is
+ * Per the real-network enrich contract, this test hits the real
+ * GitHub REST API through `packages/api/src/core/github/client.ts`.
+ * The `enrich()` mock from earlier rounds is gone. The test is
  * gated on `inject('github:ready')` and skips loudly when
  * the GitHub rate limit is below the threshold set by
  * `globalSetup.ts` (`GITHUB_RATE_LIMIT_THRESHOLD`).
@@ -100,7 +100,7 @@ describe("POST /api/v1/rpc/templates/list", () => {
     })
 
     it("routes the two-segment URL through the oRPC handler, not the notFound fallback", async () => {
-      // The assertion that matters for ADR-015: the URL Hono
+      // The assertion that matters for the Hono mount: the URL Hono
       // serves matches the URL the RPCLink client sends. A
       // regression that narrows the Hono mount to one segment
       // surfaces here as a 404 with the notFound envelope.
@@ -181,7 +181,7 @@ describeUnit("enrich() failure surface (issue #81 wire-code)", () => {
 })
 
 /**
- * E2E test guard contract (ADR-020).
+ * E2E test guard contract.
  *
  * Three unit-tier tests that pin the contract of the
  * x-vercel-protection-bypass + x-e2e-force-fail guard inside
@@ -194,7 +194,7 @@ describeUnit("enrich() failure surface (issue #81 wire-code)", () => {
  * assert the guard's behavior under three specific shapes
  * of the bypass header.
  */
-describeUnit("templates.list e2e guard (ADR-020)", () => {
+describeUnit("templates.list e2e guard", () => {
   const SECRET = "test-only-bypass-secret"
   const URL = "/api/v1/rpc/templates/list"
   const BODY = JSON.stringify({ data: null, path: ["templates", "list"] })

@@ -9,7 +9,7 @@ import { AUTH_PATH } from "../../../src/lib/auth/store/store.js"
 import { startFakeAuthServer, type FakeAuthServer } from "../fakes/better-auth.js"
 
 /**
- * Integration test for `deesse auth login` (ADR-020).
+ * Integration test for `deesse auth login`.
  *
  * Spawns a fake Better Auth server on a random port, sets
  * `DEESSEJS_API_URL` to point at it, and runs the real
@@ -89,11 +89,11 @@ describe("deesse auth login", () => {
 			expect(parsed.access_token).toBe(fake?.state.accessToken)
 			expect(parsed.user.email).toBe("[email protected]")
 			expect(parsed.user.id).toBe("user_test_1")
-			// ADR-022: the CLI now resolves the user by calling
+			// The CLI now resolves the user by calling
 			// /get-session with `Authorization: Bearer <access_token>`.
 			// The fake's /get-session handler captures the header on
 			// each request; we assert the most recent header matches
-			// the token the server issued. Before ADR-022, the CLI
+			// the token the server issued. Previously, the CLI
 			// called getSession() with no Authorization header at all
 			// and the fake silently returned the user anyway — this
 			// assertion would fail and catches the regression.

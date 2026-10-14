@@ -4,8 +4,8 @@ This runbook documents the **one-time Vercel + GitHub Actions
 configuration** required for the Playwright e2e suite to run
 against the deployed preview.
 
-The e2e suite lives at `apps/web/tests/e2e/` per
-`ADR-020`. The CI workflows are at
+The e2e suite lives at `apps/web/tests/e2e/`.
+The CI workflows are at
 `.github/workflows/apps-web-e2e.yml` and
 `apps-web-e2e-extended.yml`. This runbook covers the platform
 side that no automation can apply.

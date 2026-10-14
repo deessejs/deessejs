@@ -7,7 +7,7 @@ import { DeviceForm } from "@/components/auth/device-form"
 import { userCodeSchema } from "@/components/auth/schemas"
 
 /**
- * Device authorization verification page (ADR-020, ADR-022).
+ * Device authorization verification page.
  *
  * The CLI's `deesse auth login` opens the browser to this
  * page with the issued `user_code` in the query string. The
@@ -16,8 +16,8 @@ import { userCodeSchema } from "@/components/auth/schemas"
  * is itself a sign-in flow — the user lands here, signs in
  * via the existing flow, claims the code, approves or denies.
  *
- * ADR-022: a user who lands here while anonymous used to see
- * the Approve/Deny buttons immediately. Clicking Approve hit
+ * A user who lands here while anonymous used to see the
+ * Approve/Deny buttons immediately. Clicking Approve hit
  * Better Auth's `POST /device/approve` which requires a
  * session (HTTP 401 `unauthorized` otherwise). The CLI's
  * polling loop never knew — the device code stayed pending,
@@ -36,11 +36,11 @@ import { userCodeSchema } from "@/components/auth/schemas"
  *      legitimately-expired device-code record. There is no
  *      point telling an unauthenticated visitor that the URL
  *      was bad — they cannot act on the information.
- *   3. ADR-022: call `auth.api.getSession({ headers })`. If
- *      null, `redirect("/login?redirect=...")` so the user
- *      signs in first, then comes back with the `user_code`
- *      intact. The redirect is server-side so the Approve/
- *      Deny buttons never flash for an anonymous user.
+ *   3. Call `auth.api.getSession({ headers })`. If null,
+ *      `redirect("/login?redirect=...")` so the user signs in
+ *      first, then comes back with the `user_code` intact.
+ *      The redirect is server-side so the Approve/Deny
+ *      buttons never flash for an anonymous user.
  *   4. Render the DeviceForm component, which owns the
  *      4-state machine (TanStack Query: useQuery for the read
  *      of `authClient.device(...)`, useMutation for approve /
@@ -51,7 +51,7 @@ import { userCodeSchema } from "@/components/auth/schemas"
  * and verify-email. It inherits the centered single-column
  * `AuthContainer` layout from `(auth)/layout.tsx`.
  *
- * Per ADR-020, this page does NOT gate on `emailVerified`.
+ * This page does NOT gate on `emailVerified`.
  * The verification gate that protects `/home` and `/settings`
  * (`packages/auth/src/auth.ts` `emailVerification` block, where
  * `sendOnSignUp: true` and `sendOnSignIn: true` are both set
@@ -81,8 +81,8 @@ export default async function DevicePage({
 	// "Expired" panel and never hand a value to DeviceForm.
 	const userCode = parsed.success ? parsed.data : null
 
-	// ADR-022: gate on session. `auth.api.getSession` reads
-	// either the session cookie (from the web sign-in) or the
+	// Gate on session before rendering the form. `auth.api.getSession`
+	// reads either the session cookie (from the web sign-in) or the
 	// Bearer header (which `bearer()` plugin enables) — the
 	// CLI's `fetchUserIdentity` uses the latter path; this
 	// page uses the cookie path because the user is in a

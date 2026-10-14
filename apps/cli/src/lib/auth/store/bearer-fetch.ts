@@ -5,7 +5,7 @@ import { readPackageVersion } from "../../../api/self-version.js"
 import { resolveBaseURL } from "./better-auth-client.js"
 
 /**
- * Minimal bearer-token fetch for the CLI (ADR-020).
+ * Minimal bearer-token fetch for the CLI.
  *
  * Used only by auth status and auth logout, both of which
  * need to call Better Auth endpoints with a bearer token
@@ -15,9 +15,8 @@ import { resolveBaseURL } from "./better-auth-client.js"
  * cookie-based session, not a caller-supplied token.
  *
  * The helper injects two headers:
- *   - User-Agent: DeesseJS CLI/<version> (per ADR-020
- *     limitation 1 mitigation, the V1 label for the
- *     /settings/sessions view of CLI sessions)
+ *   - User-Agent: DeesseJS CLI/<version> (the V1 label
+ *     used by the /settings/sessions view of CLI sessions)
  *   - Authorization: Bearer <access_token> (caller-supplied)
  *
  * Path is appended to (baseURL + API_AUTH_PATH) so the

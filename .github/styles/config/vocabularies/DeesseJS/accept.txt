@@ -4,7 +4,6 @@ SaaS
 (?i)cli
 backstage
 [Mm]onorepos?
-ADR
 Hono
 oRPC
 ORPCError
@@ -198,7 +197,6 @@ OTPs
 User-Agent
 shiki
 rehype
-ADRs
 unindexed
 enum
 kbTopics

@@ -130,10 +130,9 @@ export const verification = pgTable(
 )
 
 /**
- * Device authorization (ADR-020). The CLI's device-code flow uses
- * this table; the row is created when a CLI user calls
- * `deesse auth login` and is consumed when the user approves or
- * denies on the web side.
+ * Device authorization. The CLI's device-code flow uses this table;
+ * the row is created when a CLI user calls `deesse auth login` and
+ * is consumed when the user approves or denies on the web side.
  *
  * IMPORTANT: keep this table name PascalCase (`"deviceCode"`) and
  * preserve the unique constraints, foreign key, and indexes that

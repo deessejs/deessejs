@@ -21,7 +21,7 @@ program.addCommand(listCommand)
 program.addCommand(infoCommand)
 program.addCommand(initCommand)
 
-// auth subcommand (ADR-020). Three children: login (request
+// auth subcommand (the device-authorization flow). Three children: login (request
 // device code, open browser, poll), status (print stored
 // user identity), logout (sign out + clear local token).
 const authCommand = new Command("auth").description(

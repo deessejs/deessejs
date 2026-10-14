@@ -19,12 +19,11 @@ import { APP_URL } from "@/lib/app-config"
 // Turbopack cannot satisfy.
 //
 // The link URL is absolute, composed from `APP_URL` (the apps/app host,
-// declared in `@workspace/env`) and `API_RPC_PATH`. ADR-021 documents the
-// convention for cross-app URLs; here we apply the same shape
-// (`new URL(path, base).toString()`) for the same-app, server-side case:
+// declared in `@workspace/env`) and `API_RPC_PATH`. The same convention
+// for cross-app URLs is applied here for the same-app, server-side case:
 // RSC fetch needs an absolute URL to resolve, while a relative path
 // (`url: API_RPC_PATH` alone) raises "Invalid URL" on the Node runtime.
-// The apps/app host is `appURL()` (per ADR-021's table).
+// The apps/app host is `appURL()` from `@workspace/env/client`.
 const link = new RPCLink({
   url: new URL(API_RPC_PATH, APP_URL).toString(),
 })

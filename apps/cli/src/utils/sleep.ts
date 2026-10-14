@@ -1,5 +1,5 @@
 /**
- * Promisified setTimeout (ADR-020).
+ * Promisified setTimeout.
  *
  * Used by the deesse auth login polling loop to wait between
  * polls of /device/token. The loop's total timeout (1800 seconds
@@ -11,8 +11,7 @@
  * a third-party timing lib for one helper. The Node API has
  * been stable since Node 15.
  *
- * Per ADR-002 Rule 2, helpers like this live in their own file
- * (no shared utils/ catch-all). One file, one function.
+ * One file, one function. Helpers stay scoped to their file.
  */
 import { setTimeout as nodeSetTimeout } from "node:timers/promises"
 

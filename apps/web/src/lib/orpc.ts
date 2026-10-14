@@ -106,9 +106,9 @@ export const buildFetchIsrInit = (
  * Turbopack cannot satisfy (node builtins `net`/`tls`/`perf_hooks`).
  */
 const link = new RPCLink({
-  // Per ADR-021: the oRPC endpoint URL is composed from the
-  // path constant (single source of truth for the API prefix) and
-  // the host constant (declared in @workspace/env, defaults to
+  // The oRPC endpoint URL is composed from the path constant
+  // (single source of truth for the API prefix) and the host
+  // constant (declared in @workspace/env, defaults to
   // localhost:3001 in dev, app.deessejs.com in prod). The previous
   // form `url: API_RPC_PATH` (a relative path) resolved against
   // the current domain and hit /api/v1 on deessejs.com, which
