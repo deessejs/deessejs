@@ -22,6 +22,13 @@
       "when": 1789996800000,
       "tag": "0002_admin_plugin_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793000000000,
+      "tag": "0003_drop_account_issuer_unique",
+      "breakpoints": true
     }
   ]
 }
