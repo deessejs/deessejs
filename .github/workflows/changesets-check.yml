@@ -33,7 +33,7 @@ jobs:
           HEAD=${{ github.event.pull_request.head.sha }}
           git fetch origin "$BASE" --depth=1
           TOUCHED=$(git diff --name-only "origin/$BASE...$HEAD" \
-            | grep -E '^(apps/cli/|packages/contracts/|packages/api/)/' \
+            | grep -E '^(apps/cli/|apps/create-deesse-app/|packages/contracts/|packages/api/)/' \
             || true)
           if [ -n "$TOUCHED" ]; then
             echo "touched=true" >> "$GITHUB_OUTPUT"
@@ -61,11 +61,16 @@ jobs:
       # Validate the frontmatter of every .changeset/*.md file. We only need
       # to catch the three failure modes the team has actually hit:
       #   - missing frontmatter (file starts with a non-`---` line)
-      #   - missing package entry (`"@deessejs/cli": <bump>` not present)
+      #   - missing package entry (`"<pkg>": <bump>` not present)
       #   - invalid bump type (anything other than patch | minor | major)
       # Catching these here means a malformed changeset fails the PR
       # instead of `pnpm changeset version` on `main`, which would block
       # the @latest publish.
+      #
+      # The list of public packages is derived from the repo at PR time by
+      # scanning every package.json under apps/ and packages/ for
+      # `private !== true`. This makes the validator zero-config for new
+      # public packages (issue #225 adds create-deesse-app).
       #
       # We deliberately do NOT add a YAML parser dependency: this stays
       # dependency-free and avoids touching pnpm-lock.yaml (which is a
@@ -77,11 +82,27 @@ jobs:
           node -e '
             const fs = require("node:fs");
             const path = require("node:path");
-            const PKG = "@deessejs/cli";
             const VALID = new Set(["patch", "minor", "major"]);
             const errors = [];
-            const files = fs.readdirSync(".changeset")
-              .filter(f => f.endsWith(".md"));
+
+            // Build the set of public package names by scanning every
+            // workspace member. Skip private ones.
+            const PUB_PKGS = new Set();
+            const scanDirs = ["apps", "packages"];
+            for (const dir of scanDirs) {
+              if (!fs.existsSync(dir)) continue;
+              for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                if (!entry.isDirectory()) continue;
+                const pkgPath = path.join(dir, entry.name, "package.json");
+                if (!fs.existsSync(pkgPath)) continue;
+                try {
+                  const p = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+                  if (p && p.name && p.private !== true) PUB_PKGS.add(p.name);
+                } catch {}
+              }
+            }
+
+            const files = fs.readdirSync(".changeset").filter(f => f.endsWith(".md"));
             for (const f of files) {
               const fp = path.join(".changeset", f);
               const body = fs.readFileSync(fp, "utf8");
@@ -91,13 +112,23 @@ jobs:
                 continue;
               }
               const [, front] = m;
-              // Match a top-level "<pkg>": <bump> entry. Tolerates trailing
-              // whitespace; does not tolerate a nested object (we never use one).
-              const re = new RegExp(`^${PKG.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*(patch|minor|major)\\s*$`, "m");
-              const hit = front.match(re);
-              if (!hit) {
-                errors.push(`${f}: frontmatter missing entry \`"${PKG}": patch|minor|major\``);
-                continue;
+              // Find any top-level "<pkg>": <bump> entry whose pkg is public.
+              // Use a per-line scan instead of a regex to avoid the YAML/heredoc
+              // escaping pitfalls that a constructed regex would introduce.
+              let matched = false;
+              for (const line of front.split(/\r?\n/)) {
+                const colonAt = line.indexOf(":");
+                if (colonAt < 0) continue;
+                const name = line.slice(0, colonAt).trim();
+                const bump = line.slice(colonAt + 1).trim();
+                if (PUB_PKGS.has(name) && VALID.has(bump)) {
+                  matched = true;
+                  break;
+                }
+              }
+              if (!matched) {
+                const list = [...PUB_PKGS].sort().join(", ");
+                errors.push(`${f}: frontmatter missing a valid \`<pkg>: patch|minor|major\` entry (public packages are: ${list})`);
               }
             }
             if (errors.length) {
@@ -106,5 +137,5 @@ jobs:
               console.error("::error::See .changeset/README.md for the format.");
               process.exit(1);
             }
-            console.log(`Validated ${files.length} changeset file(s).`);
+            console.log(`Validated ${files.length} changeset file(s) against [${[...PUB_PKGS].sort().join(", ")}].`);
           '

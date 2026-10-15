@@ -1,0 +1,61 @@
+{
+  "name": "create-deesse-app",
+  "version": "0.0.0",
+  "description": "Initialize a new DeesseJS project from the current main of deessejs/saas-template.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deessejs/deessejs.git"
+  },
+  "keywords": [
+    "create-app",
+    "cli",
+    "deessejs",
+    "scaffolding"
+  ],
+  "private": false,
+  "bin": {
+    "create-deesse-app": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    "../../LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "start": "node ./dist/index.js"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "cross-spawn": "catalog:",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@workspace/eslint-config": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "eslint": "^9",
+    "prettier": "^3.9.4",
+    "tar": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
