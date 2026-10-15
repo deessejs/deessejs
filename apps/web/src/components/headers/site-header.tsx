@@ -163,14 +163,15 @@ function StarterSiteHeader() {
             <path d="M94.877 71.0078H78.877L46.877 15.0078L54.877 1.00781L94.877 71.0078Z" fill="currentColor" />
           </svg>
           <span>DeesseJS</span>
-          <span className="hidden border-l border-border pl-2 font-mono text-xs font-normal text-muted-foreground sm:inline">SAAS STARTER</span>
         </Link>
         <nav aria-label="Main navigation" className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
           <Link href="https://docs.deessejs.com/getting-started" className="hover:text-foreground">Docs</Link>
           <Link href="/blog" className="hover:text-foreground">Blog</Link>
           <Link href="/changelog" className="hover:text-foreground">Changelog</Link>
           <Link href="https://github.com/deessejs/saas-template" target="_blank" rel="noreferrer" className="hover:text-foreground">GitHub</Link>
-          <Link href="https://docs.deessejs.com/getting-started" className="bg-foreground px-4 py-2 font-medium text-background hover:opacity-85">Get started</Link>
+          <Button asChild className="bg-foreground px-4 py-2 font-medium text-background hover:opacity-85">
+            <Link href="https://docs.deessejs.com/getting-started">Get started</Link>
+          </Button>
         </nav>
         <Sheet>
           <SheetTrigger asChild className="md:hidden">
