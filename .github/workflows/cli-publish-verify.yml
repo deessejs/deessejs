@@ -133,8 +133,28 @@ jobs:
           TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
-          npm init -y > /dev/null
-          npm install --dry-run "$GITHUB_WORKSPACE/$TARBALL"
+          # Split the two commands so a failure in `npm init` vs
+          # `npm install --dry-run` shows up as a distinct exit
+          # code in the CI log. Previously both ran on the same
+          # line and only the last exit code was reported, so a
+          # failure in `npm init` would surface as a dry-run
+          # failure and vice versa.
+          npm init -y
+          npm install --dry-run "$GITHUB_WORKSPACE/$TARBALL" || {
+            rc=$?
+            echo "::error::npm install --dry-run exited with code $rc"
+            # npm writes a full debug log next to its cache on
+            # every run; the path is in the error message. Dump
+            # it so the next iteration of this job can diagnose
+            # without re-running locally.
+            DEBUG_LOG=$(ls -t /home/runner/.npm/_logs/*-debug-0.log 2>/dev/null | head -1 || true)
+            if [ -n "$DEBUG_LOG" ]; then
+              echo "::group::npm debug log ($DEBUG_LOG)"
+              cat "$DEBUG_LOG"
+              echo "::endgroup::"
+            fi
+            exit $rc
+          }
           popd > /dev/null
           rm -rf "$SCRATCH"
 
@@ -147,8 +167,18 @@ jobs:
           TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
-          npm init -y > /dev/null
-          npm install "$GITHUB_WORKSPACE/$TARBALL"
+          npm init -y
+          npm install "$GITHUB_WORKSPACE/$TARBALL" || {
+            rc=$?
+            echo "::error::npm install exited with code $rc"
+            DEBUG_LOG=$(ls -t /home/runner/.npm/_logs/*-debug-0.log 2>/dev/null | head -1 || true)
+            if [ -n "$DEBUG_LOG" ]; then
+              echo "::group::npm debug log ($DEBUG_LOG)"
+              cat "$DEBUG_LOG"
+              echo "::endgroup::"
+            fi
+            exit $rc
+          }
           npx @deessejs/cli --help
           popd > /dev/null
           rm -rf "$SCRATCH"
