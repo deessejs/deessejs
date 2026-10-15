@@ -140,13 +140,31 @@ jobs:
           # failure in `npm init` would surface as a dry-run
           # failure and vice versa.
           npm init -y
-          npm install --dry-run "$GITHUB_WORKSPACE/$TARBALL" || {
-            rc=$?
+          # --loglevel=info surfaces the actual `npm error` block
+          # (peer-dep conflicts, lifecycle script warnings,
+          # unsupported-engine notices) that the default debug
+          # log keeps at "silly"/"verbose" and GitHub's log
+          # truncation can clip. --foreground-scripts runs
+          # install scripts in the foreground so a failing
+          # postinstall is not hidden behind a streamed tail.
+          # stdout and stderr are captured separately so the
+          # `npm error` block is not interleaved with the
+          # `added N packages in Ms` summary.
+          set +e
+          npm install --dry-run --loglevel=info --foreground-scripts \
+            "$GITHUB_WORKSPACE/$TARBALL" \
+            >/tmp/npm-stdout.log 2>/tmp/npm-stderr.log
+          rc=$?
+          set -e
+          cat /tmp/npm-stdout.log
+          echo "::group::npm stderr (rc=$rc)"
+          cat /tmp/npm-stderr.log
+          echo "::endgroup::"
+          # The debug log contains the full request/response
+          # trace at level silly. Dump it last so the human-
+          # readable summary above is read first.
+          if [ "$rc" -ne 0 ]; then
             echo "::error::npm install --dry-run exited with code $rc"
-            # npm writes a full debug log next to its cache on
-            # every run; the path is in the error message. Dump
-            # it so the next iteration of this job can diagnose
-            # without re-running locally.
             DEBUG_LOG=$(ls -t /home/runner/.npm/_logs/*-debug-0.log 2>/dev/null | head -1 || true)
             if [ -n "$DEBUG_LOG" ]; then
               echo "::group::npm debug log ($DEBUG_LOG)"
@@ -154,7 +172,7 @@ jobs:
               echo "::endgroup::"
             fi
             exit $rc
-          }
+          fi
           popd > /dev/null
           rm -rf "$SCRATCH"
 
