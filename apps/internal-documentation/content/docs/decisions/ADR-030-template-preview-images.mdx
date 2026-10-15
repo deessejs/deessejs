@@ -1,0 +1,595 @@
+---
+title: 'Template preview images on the DeesseJS registry'
+description: 'Lock the standard for the 16:9 preview slot on /templates and /templates/[slug] to a hand-captured screenshot of the running template, served from apps/web/public/templates/<slug>.webp. Reject mockup components, programmatic generation, and logo-only placeholders as the default.'
+---
+
+# ADR-030: Template preview images on the DeesseJS registry
+
+## Status
+
+Accepted (2026-09). Implementation deferred to a follow-up PR — this
+ADR is decision-only and ships no code.
+
+## Context
+
+The DeesseJS registry is the public surface at `/templates` (the index
+grid) and `/templates/[template_slug]` (the per-template detail
+view). Both pages render a 16:9 preview slot above the metadata block.
+
+`apps/web/src/components/templates/template-card.tsx:53-56` (the
+index card):
+
+```tsx
+<div
+  aria-hidden
+  className="h-40 w-full shrink-0 border-b border-border bg-muted/40"
+/>
+```
+
+`apps/web/src/components/templates/template-detail.tsx:95-98` (the
+detail hero):
+
+```tsx
+<div
+  aria-hidden
+  className="aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted/40"
+/>
+```
+
+Both are placeholders. The card component's source comment
+(`template-card.tsx:35`) is explicit: *"once real screenshots are wired
+in, swap this block for an `<Image />` from `next/image`."* The detail
+component has the same shape with no comment, but the same intent.
+
+The wire contract already supports an image. `TemplateV1`
+(`packages/contracts/src/v1/template.ts:29`) declares
+`image: z.string().optional()`. The CLI's `parse()` call accepts the
+field, and a missing field continues to parse without change (the
+field is optional and backward-compatible). The
+`packages/api/src/core/templates/enrich.ts` pipeline does not populate
+it today; the registry source `packages/api/src/templates.ts` does not
+declare it either. There is exactly one template in the registry
+(`saas-starter`, slug unique), and it ships without an image on both
+the index card and the detail view.
+
+The problem the placeholders create is twofold. First, the grid at
+`/templates` reads as a stack of empty boxes with text — visually flat,
+low contrast against the muted surface, and indistinguishable from a
+broken page. Second, the detail view's hero leaves a 16:9 grey slab
+between the title and the body, which is where a visitor expects a
+screenshot of the running app. The absence costs the registry the
+first impression a templates directory exists to make.
+
+The constraints that shape the decision are:
+
+- The templates in the registry are **scaffolds**, not finished apps.
+  `saas-template` is a Next.js + Better Auth + Postgres boilerplate
+  intended to be cloned and customised; its home page in a fresh
+  checkout is the default `create-next-app` screen. Unlike Vercel's
+  templates directory (which ships finished apps and screenshots
+  their deployed home), our registry has no "running app" to film by
+  default.
+- The team has no design capacity today. Any solution that requires a
+  designer to hand-craft per-template artwork is a non-starter for
+  the same reason the placeholders are empty in the first place: the
+  templates ship ahead of any visual identity.
+- The next templates to land in the registry (post-`saas-starter`)
+  will follow the same shape. The decision needs to be a default that
+  scales without per-template design work, while staying honest about
+  what the screenshot represents.
+
+### What the market does
+
+A scan of comparable registries (September 2026):
+
+| Source | Preview pattern |
+|---|---|
+| `vercel.com/templates` | Static screenshot of the deployed template hero, full-width on the detail page, thumbnails for related templates. Assets served from `images.ctfassets.net` (Contentful). |
+| `ui.shadcn.com/blocks` | Static screenshot of the rendered component, provided in both light and dark mode. |
+| `shadcntemplates.com` | Retina 2× screenshot of the running app served as WebP from a CDN, with a brand avatar stacked above. Naming convention `<name>-thumbnail-2x.webp`. |
+| `shipixen.com/templates` | Screenshot of the running template. |
+
+Every high-signal registry in the same category uses a real
+screenshot. None uses a programmatically generated mockup, an
+algorithmic composition, or a logo-only placeholder. The convention
+is consistent enough that the absence of a screenshot on a templates
+registry reads as unfinished, regardless of how polished the rest of
+the page is.
+
+### What the alternatives look like in our case
+
+Three alternatives surfaced in the pre-ADR discussion. Each was
+considered against the constraints above.
+
+**Mockup components.** Render a fake "screenshot" of the template
+using the workspace's own shadcn primitives — a synthetic top bar,
+sidebar, and content area composited from `<Card />`, `<Badge />`,
+and `<Button />`. Zero assets to manage, dark mode for free,
+responsive natively, and per-template palettes from the `labels`
+field. The blocker is honesty: the visitor sees what looks like the
+app, clicks through, and lands on a scaffold. The illusion is
+fragile (no real content, no real typography, no real data), and a
+visitor who notices it trusts the rest of the page less. The team's
+judgment is that the cost of a small lie outweighs the savings on
+asset management.
+
+**Programmatic generation (satori + resvg).** An endpoint at
+`/api/templates/[slug]/preview.webp` renders a React composition
+(title, description, labels, palette) and converts it to WebP at
+request time. The pattern is the same one `@vercel/og` uses for Open
+Graph images, and it is the most operationally clean option for a
+growing registry: zero per-template work, consistent visual grammar,
+edge-cacheable. The blocker is also honesty. The output identifies as
+generated within seconds (no real UI, no real data, no real
+information density), and it is noticeably below the Vercel /
+shadcn / shadcntemplates bar. It is the right answer for a registry
+where the asset's job is "signal that the template exists," but it is
+the wrong answer for a registry where the asset's job is "show the
+visitor what they will get."
+
+**Logo + palette identity.** Drop the 16:9 preview entirely and
+replace it with an identity block — framework icon, template name,
+palette derived from the `labels` field. The honest option for
+scaffolds that have no running surface to film, and the one that
+least resembles a "missing" image. The blocker is divergence from the
+market convention. A visitor arriving from a Vercel-shaped
+expectation sees a templates grid that does not look like a templates
+grid, and the cognitive cost of the divergence is real even if the
+design is internally coherent.
+
+## Decision
+
+### What this rule decides
+
+**Per-template hand-captured screenshots, served from
+`apps/web/public/templates/<slug>.webp`, rendered through `next/image`,
+with the existing `bg-muted/40` placeholder as the fallback when the
+asset is absent.**
+
+Four concrete decisions, all shipped together because the slot
+behaves coherently only when all four are wired.
+
+**1. The source of truth is a static asset on disk, not a generated
+image.** Every template ships one file at
+`apps/web/public/templates/<slug>.webp`, where `slug` matches the
+registry entry's `slug` field exactly. The file is a 1280×720
+screenshot of the template's most representative running surface,
+captured by the template's author at registration time, exported as
+WebP at quality 80. The asset is committed to the registry's repo
+(the `deessejs/deessejs` repo, where the `TEMPLATES` array in
+`packages/api/src/templates.ts` lives), not to each template's own
+repo. This keeps the registry's preview surface under the registry's
+own review.
+
+**2. The wire contract is `TemplateV1.image`, declared as a path
+relative to the `apps/web` origin.** Each `RegistryEntry` in
+`packages/api/src/templates.ts` gains an `image: "/templates/<slug>.webp"`
+field. `TemplateV1` already declares the field as
+`z.string().optional()` (`packages/contracts/src/v1/template.ts:29`),
+so no schema change is required. `enrich.ts` (`packages/api/src/core/templates/enrich.ts:75-89`)
+preserves the field on the wire shape (the spread `...entry` carries
+it through; the GitHub fetch is additive and does not overwrite it).
+The CLI sees a backward-compatible change: existing CLI versions
+ignore the field, new CLI versions read it.
+
+**3. The index card reads `template.image` and renders a
+`next/image`; the absence of the asset falls back to the existing
+placeholder.** `apps/web/src/components/templates/template-card.tsx:53-56`
+becomes a conditional render:
+
+- If `template.image` is present, render `<Image src={template.image} alt="" fill sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw" className="object-cover" />`.
+  The wrapper stays a `h-40 w-full` block so the grid's row heights
+  do not jump. The `alt=""` keeps the slot decorative; the
+  `TemplateCard`'s anchor carries the accessible name.
+- If `template.image` is absent (the file is missing, or the field
+  is undefined), render the existing `<div className="h-40 w-full shrink-0 border-b border-border bg-muted/40" />`.
+  The fallback is the placeholder the component ships with today; the
+  visual contract is "placeholder until an asset exists."
+
+The detail hero (`apps/web/src/components/templates/template-detail.tsx:95-98`)
+follows the same shape with `<Image fill sizes="(min-width: 1024px) 896px, 100vw" className="object-cover" />`. The 16:9 aspect ratio
+(`aspect-video`) is preserved.
+
+**4. The capture procedure lives in the template's `CONTRIBUTING.md`,
+not in the registry repo's runbook.** Each template's repo (e.g.
+`deessejs/saas-template`) gains a one-page `CONTRIBUTING.md` section
+"Registry preview image" that walks the author through:
+
+1. Run the template to the most representative surface (today: clone,
+   `pnpm install`, follow the README to seed the DB, navigate to the
+   dashboard).
+2. Set the viewport to 1280×720 (the card's 16:9 at the lg breakpoint
+   is 426×240 CSS pixels; the 1280×720 source gives a 2× retina source
+   for `next/image`'s responsive output).
+3. Take the screenshot, crop to 16:9, export as WebP at quality 80.
+4. Save as `apps/web/public/templates/<slug>.webp` in the registry
+   repo (not the template's own repo).
+5. Open a PR on `deessejs/deessejs` that adds the file and the
+   `image` field to the registry entry.
+
+The procedural location matters: the author who knows the template
+is the right person to pick the most representative surface, and the
+screenshot is honest only when the surface is one the visitor will
+actually see after `deessejs init <slug>`. Putting the procedure in
+the template's CONTRIBUTING (rather than in a registry-side runbook)
+keeps the responsibility with the author.
+
+### What this rule allows
+
+- A `/templates` grid where every card shows a real screenshot of the
+  template it represents, with a graceful placeholder for any
+  template that has not yet shipped an asset.
+- A `/templates/[slug]` detail page where the 16:9 hero is the same
+  asset, full-bleed, with the same fallback semantics.
+- A new template entering the registry ships a placeholder by default
+  and a screenshot the first time an author runs the capture
+  procedure. There is no second design pass, no asset CDN, no CI job,
+  no rate-limited Playwright run.
+- `apps/web/public/templates/` becomes a self-documenting directory:
+  `ls` shows one file per registered template, named by slug, and
+  the absence of a file is a registry-level todo visible in code
+  review.
+- The wire shape gains the `image` field on `TemplateV1` without a
+  breaking change for any installed CLI V1 client. Existing parsers
+  ignore the field.
+
+### What this rule forbids
+
+- **A generated mockup component** (shadcn primitives composed to
+  look like a screenshot) as the default. The visitor cannot tell
+  whether the surface they see is real or synthesised, and the
+  template's author cannot validate the result without running the
+  template. Mockup components remain acceptable as a documented
+  escape hatch for templates whose representative surface is a CLI
+  command or a database state that cannot be screenshotted cleanly;
+  such templates must opt in explicitly and the component must carry
+  a "Synthetic preview" badge.
+- **A `satori` / `resvg` programmatic generation endpoint** as the
+  default. The output is below the market bar and the implementation
+  cost (learning satori's CSS subset, shipping the resvg bundle)
+  does not pay back until the registry is large enough that the
+  per-template capture is the bottleneck — at which point the answer
+  is a CI job, not a runtime endpoint.
+- **A logo + palette identity block** as the default. The
+  convention-divergence cost is real and the honesty win is small (a
+  placeholder is also honest about the absence of an image).
+- **Reading `template.image` from anywhere outside
+  `apps/web/src/components/templates/`.** The asset is a registry-level
+  concern; consumers that need a template image import the field
+  through `TemplateV1` and the existing `orpc.templates.list` route,
+  not through a direct filesystem read.
+- **Hardcoding template asset paths in the components.** The
+  components take `template: TemplateV1` and read
+  `template.image`; the components do not know which templates
+  exist. A new template does not require a component change.
+
+### Why not the alternatives
+
+Three concrete patterns the team considered and rejected.
+
+1. **Mockup components per template.** A `<TemplatePreview slug={...} />`
+   component with a switch on the slug, returning a hand-composed
+   layout (top bar, sidebar, content area) styled to look like the
+   template. Pros: zero assets, perfectly consistent, dark mode for
+   free, responsive natively. Cons: a visitor who clicks through and
+   lands on a scaffold has been lied to; the trust cost is paid by
+   the rest of the page, not by the asset. The implementation cost
+   also grows linearly with the number of templates — a switch with
+   five cases today, fifty in a year, and every new case is a design
+   decision. Rejected because the honesty cost is load-bearing and
+   the scaling cost is real.
+
+2. **CI-captured Playwright screenshots.** A GitHub Action per
+   template that runs `pnpm install`, executes the seed script,
+   starts the dev server, navigates Playwright to the representative
+   surface, captures a 1280×720 screenshot, and uploads the asset
+   to the registry. Pros: always up to date, zero author work after
+   the first wiring, no manual drift. Cons: 2-5 minutes of CI per
+   template per push, rate-limit risk on the GitHub API, flakiness
+   on font loading and dev server startup, and — most importantly —
+   the templates in this registry are scaffolds, not running apps.
+   `saas-template` after `pnpm install && pnpm db:push && pnpm dev`
+   shows the default `create-next-app` home for as long as the
+   visitor has not navigated to a seeded route. The screenshot a CI
+   job captures is either the empty home (uninformative) or a
+   scripted journey to a seeded route (brittle). The honest answer
+   is to have the author pick the surface. Rejected because the
+   input the CI job would need (a stable seeded route reachable
+   without human navigation) is exactly the input the registry does
+   not have today, and building it is a larger project than this
+   ADR.
+
+3. **Satori / `@vercel/og` programmatic generation.** A Next.js route
+   handler that renders a React composition per template and returns
+   a WebP. Pros: zero assets, edge-cacheable, consistent visual
+   grammar across the registry, scales without per-template work.
+   Cons: the output identifies as generated (no real UI, no real
+   data density), it is visibly below the Vercel / shadcn /
+   shadcntemplates bar, and the implementation cost is real
+   (satori's CSS subset is non-trivial, the resvg bundle is large).
+   The pattern is the right answer for a different problem (Open
+   Graph images, where the asset's job is "signal that the page
+   exists") and the wrong answer for templates, where the asset's
+   job is "show the visitor what they will get." Rejected because
+   the visual ceiling is below the market convention.
+
+### What this rule does not change
+
+- **`TemplateV1`'s wire shape.** The schema gains no new field; the
+  `image` field is already declared as `z.string().optional()` and
+  this ADR populates it. Existing CLI V1 clients continue to parse
+  the response without change.
+- **The `enrich.ts` pipeline.** The pipeline's job is to add
+  GitHub-derived fields (name, description, license, labels,
+  updatedAt, stars, readme, cloneUrl) to the registry entry. The
+  `image` field is registry-static and is preserved through the
+  spread `...entry`; the pipeline does not need to know about it.
+  No code change in `enrich.ts`.
+- **The grid layout in `TemplateGrid`**
+  (`apps/web/src/components/templates/template-grid.tsx`). The
+  `rounded-none`, `border-r border-b border-border` surface
+  treatment and the responsive 1/2/3 column breakpoints are
+  orthogonal to the preview slot. The slot's aspect ratio
+  (`h-40` on the card) is unchanged.
+- **The `aria-hidden` on the slot.** The preview is decorative; the
+  accessible name is the anchor's `aria-label`
+  (`TemplateCard` already sets `aria-label="View ${template.name} template"`). The `<Image>` inside the slot keeps `alt=""`; a
+  meaningful alt would duplicate the anchor's name.
+- **The detail hero's "Preview image 16:9" comment in
+  `template-detail.tsx:35-37`.** The ASCII layout sketch in the
+  comment already calls for a "Preview image 16:9" block; this ADR
+  is what that block has been waiting for. The comment is unchanged
+  so the diff between this ADR and its implementation is local to
+  the slot.
+
+## Consequences
+
+- **`apps/web/public/templates/<slug>.webp` becomes a load-bearing
+  directory.** A new template entering the registry without an
+  asset ships the placeholder by default; a follow-up PR with the
+  asset removes the placeholder on the index grid and the detail
+  hero. The directory is the visible todo list for the registry's
+  visual surface.
+- **The capture procedure is the author's responsibility, not the
+  registry maintainer's.** Each template's `CONTRIBUTING.md` gains a
+  "Registry preview image" section. The registry repo's
+  `CONTRIBUTING.md` references those sections rather than duplicating
+  the procedure. A reviewer of a registry PR that adds a new
+  template checks both the `TEMPLATES` array entry and the
+  presence of the asset; the absence of one is a review comment, not
+  a CI failure.
+- **The wire shape gains the `image` field on every registry
+  response.** A CLI V1 client that does not know the field ignores
+  it (`z.string().optional()` is forward-compatible by design); a
+  CLI V2 client that does know the field can surface the preview
+  locally. The wire size grows by one string per template (a path
+  like `/templates/saas-starter.webp`, ~30 bytes).
+- **The `TemplateCard` and `TemplateDetail` components gain a
+  `next/image` dependency.** `next/image` is already used across
+  `apps/web` (the `apps/web/src/app/opengraph-image.tsx` and the
+  blog / changelog detail pages); the dependency is not new. The
+  `next.config.ts` already declares the necessary `images.remotePatterns`
+  for the local origin. No build configuration change.
+- **A template whose representative surface changes is expected to
+  re-capture the screenshot.** The procedure is documented in
+  `CONTRIBUTING.md`; the author re-runs it and opens a PR on
+  `deessejs/deessejs` with the updated asset. There is no
+  staleness detection; the convention is "if the template's
+  representative surface changed, the screenshot is out of date and
+  needs a re-capture." A future ADR could scope an automated
+  staleness check if drift becomes a problem in practice; this ADR
+  does not.
+- **The detail hero's slot no longer has a "16:9 grey slab" cost.**
+  A visitor landing on `/templates/saas-starter` from an external
+  link (e.g. a CLI command's web fallback) sees a real screenshot
+  at the top of the page, with the same image they would have seen
+  on the index grid. The first impression is consistent across the
+  two entry points.
+- **The index grid reads as a templates directory, not as a list of
+  empty boxes.** The visual contract becomes "screenshot, name,
+  description, labels" — the same shape Vercel, shadcn, and
+  shadcntemplates use. A visitor arriving from any of those sites
+  recognises the pattern immediately.
+
+## Cross-origin considerations
+
+None. The preview images are served from the same origin as the
+registry (`apps/web/public/templates/...` resolves to the deployed
+`apps/web` origin). There is no cross-origin fetch, no CDN
+configuration, no `next/image` `remotePatterns` change. The CORS
+shape wired in ADR-029 is unaffected.
+
+## Test strategy
+
+### Unit
+
+- `apps/web/tests/unit/template-card.test.tsx` (new) asserts the
+  conditional render: given a `template` with `image: "/templates/saas-starter.webp"`, the rendered output contains an `<img>` whose
+  `src` resolves to the asset; given a `template` without `image`,
+  the rendered output contains the placeholder `<div>` and no `<img>`.
+  The test mounts `<TemplateCard />` with React Testing Library and
+  does not need a real image file on disk.
+- `apps/web/tests/unit/template-detail.test.tsx` (new) mirrors the
+  same assertion for the detail hero: image present renders an
+  `<img>`, image absent renders the `<div>` placeholder.
+- The existing `apps/web/tests/e2e/templates-index.spec.ts` and
+  `apps/web/tests/e2e/templates-detail.spec.ts` continue to pass
+  without change (the testids `templates-grid`, `templates-card`,
+  and the detail page's structural tests are independent of the
+  preview slot's content).
+
+### Integration
+
+- The `next/image` `src` resolves to a real file on disk for the
+  `/templates/saas-starter` route in the integration environment.
+  The build process for the integration environment commits a
+  fixture asset at `apps/web/public/templates/saas-starter.webp`
+  (a 1280×720 WebP, ~10 KB) so the integration smoke asserts a
+  real image renders end-to-end.
+
+### Manual staging smoke
+
+- Visit `/templates` on the staging deploy. Confirm every card
+  shows a screenshot (or the placeholder for templates that have
+  not yet captured one). Confirm the grid's row heights are
+  uniform — the slot's `h-40` keeps the heights aligned even when
+  the asset aspect ratio varies.
+- Visit `/templates/saas-starter` on the staging deploy. Confirm
+  the 16:9 hero is the same screenshot as the card on the index
+  grid, full-bleed, with the rounded-xl border. Confirm the body
+  below the hero (About, README, Install, Source, Labels) is
+  unchanged.
+- Open DevTools' network tab. Confirm the `next/image` request
+  resolves to `/templates/saas-starter.webp` (or `/_next/image?url=...`
+  when the optimizer rewrites the path). Confirm no 404 on the
+  asset path; a 404 is a CI signal that the asset is missing for a
+  template that declares one.
+- Resize the viewport from 1280px down to 375px. Confirm the slot
+  does not jump height, the image `object-cover`s without
+  distortion, and the fallback placeholder is also responsive
+  (the `h-40` and `aspect-video` utilities do not change shape).
+
+## Known limitations in this version
+
+### Limitation 1: the first template ships without an asset
+
+This ADR is decision-only (status "Accepted (implementation
+deferred)"). The implementation PR — the one that actually populates
+`apps/web/public/templates/saas-starter.webp` and updates the two
+components — is a follow-up. Until that PR lands, the registry looks
+exactly as it does today: placeholders on the index grid and the
+detail hero. This is the intended scope: the decision is the
+load-bearing artefact, the asset is mechanical work downstream.
+
+### Limitation 2: the capture is a manual snapshot, not a live view
+
+A static WebP is a point-in-time capture. If the template's
+representative surface changes (a UI redesign, a renamed route, a
+new landing page), the asset is stale until the author re-captures
+it. There is no automated staleness check. The convention is
+"if the surface changed, re-capture" — documented in
+`CONTRIBUTING.md` but not enforced.
+
+A future ADR could scope an automated capture (a Playwright CI job,
+or a "preview-against-deploy" flow that screenshots the live
+deployment on each release). The trade-off is honest: automation
+adds CI cost, rate-limit risk, and flakiness, and the templates in
+this registry are scaffolds rather than running apps, which makes
+the live surface harder to script. This ADR scopes itself to the
+manual capture; automation is a follow-up if the staleness cost
+becomes visible.
+
+### Limitation 3: dark mode is not separately captured
+
+The `ui.shadcn.com/blocks` convention is to ship both light and dark
+screenshots. This ADR ships one. The cost of doubling the asset
+budget is real (one file per template becomes two, the `TemplateV1`
+schema needs a second field, the components need a `prefers-color-scheme`
+switch), and the templates in this registry today are scaffold-heavy
+— the dark surface is often the same neutral grey the light surface
+is, with a colour swap the screenshot would not capture usefully.
+The honest answer for a scaffold is one screenshot, not two. A
+future ADR scopes the dual capture if a template ships a visually
+distinct dark surface (a dashboard with dark mode contrast, a
+landing page with a dark hero).
+
+### Limitation 4: no automated check that `template.image` resolves
+
+The components read `template.image` and pass it to `next/image`.
+There is no runtime check that the file exists at the declared
+path. A typo in the registry entry (`/templates/saas-strater.webp`)
+silently produces a broken image on the page; `next/image` logs a
+warning to the browser console but does not throw. The mitigation is
+the staging smoke step (visit `/templates`, confirm no broken image
+icon) and the convention that the registry maintainer reviews every
+new asset in the same PR as the registry entry that references it.
+A future ADR could scope a build-time check (a script that walks
+the `TEMPLATES` array and asserts every `image` path resolves), but
+the current scale (one template, growing slowly) does not justify
+the script.
+
+### Limitation 5: the asset is committed to the registry repo, not
+the template's repo
+
+The screenshot lives at `apps/web/public/templates/<slug>.webp` in
+`deessejs/deessejs` (the registry repo), not in the template's own
+repo (e.g. `deessejs/saas-template`). The reasoning is that the
+asset is a registry-level concern — it is the asset the registry
+chooses to advertise, not an intrinsic property of the template. A
+template repo can be cloned and used without ever contributing a
+screenshot; the registry can decide on a different screenshot
+strategy without modifying the template.
+
+The trade-off is that the asset's review happens in the registry
+repo, not the template repo, which means a reviewer on a template
+PR does not see the screenshot. A contributor who is about to change
+a template's representative surface may not realise the screenshot
+is now stale until the next registry review. The mitigation is the
+capture procedure's "re-capture on surface change" convention; the
+enforcement is a future ADR if drift becomes visible.
+
+## Where this rule came from
+
+- `apps/web/src/components/templates/template-card.tsx:15-39` is the
+  primary source: the component's own source comment documents the
+  preview slot as a placeholder awaiting "real screenshots," and
+  describes the exact swap this ADR prescribes
+  ("once real screenshots are wired in, swap this block for an
+  `<Image />` from `next/image`"). The card component has been
+  carrying this comment since the grid was first committed; this
+  ADR closes the open question.
+- `apps/web/src/components/templates/template-detail.tsx:27-50` is
+  the matching source for the detail hero. The ASCII layout sketch
+  names the slot "Preview image 16:9"; the implementation has been
+  an empty `bg-muted/40` div since the file was first committed.
+- `packages/contracts/src/v1/template.ts:20-54` is the wire contract
+  this ADR relies on. `image: z.string().optional()` is declared;
+  no consumer reads it today. The decision to populate the field
+  is additive and backward-compatible.
+- `packages/api/src/templates.ts:30-43` is the registry source. The
+  `TEMPLATES` array has exactly one entry (`saas-starter`). The
+  decision adds the `image` field to that entry; new entries are
+  expected to follow the same shape.
+- `packages/api/src/core/templates/enrich.ts:75-89` is the enrichment
+  pipeline. The `...entry` spread carries the `image` field
+  through; the pipeline's GitHub fetch is additive and does not
+  overwrite it. The decision is compatible with the pipeline
+  unchanged.
+- The market scan in Context §"What the market does" is the
+  external evidence base. The four registries surveyed
+  (Vercel, shadcn blocks, shadcntemplates, shipixen) all use real
+  screenshots. The convention is consistent enough to treat as the
+  default.
+- The pre-ADR discussion (recorded as the decision log under this
+  ADR on the registry's planning channel) covered the three
+  rejected alternatives (mockup components, programmatic generation,
+  logo-only identity) and the trade-offs documented in
+  Decision §"Why not the alternatives."
+
+## Related
+
+- `apps/web/src/components/templates/template-card.tsx:53-56` — the
+  index card's preview slot that this ADR replaces.
+- `apps/web/src/components/templates/template-detail.tsx:95-98` —
+  the detail hero's preview slot that this ADR replaces.
+- `packages/contracts/src/v1/template.ts:29` — the wire field this
+  ADR populates. Already declared as `z.string().optional()`; no
+  schema change.
+- `packages/api/src/templates.ts:30-43` — the `TEMPLATES` array
+  that gains the `image` field per entry.
+- `packages/api/src/core/templates/enrich.ts:75-89` — the
+  enrichment pipeline that preserves the field unchanged.
+- ADR-029: Vercel preview URL wiring. Orthogonal: ADR-029 wires the
+  cross-app `NEXT_PUBLIC_*` URLs for previews; this ADR wires the
+  preview image asset. Both are about giving previews a
+  realistic surface, but they touch unrelated code paths.
+- `next/image` documentation. Source for the `fill` + `sizes` +
+  `object-cover` shape used in the components.
+- The convention from `ui.shadcn.com/blocks` (real component
+  screenshot, served from `/r/styles/...`) and
+  `shadcntemplates.com` (retina WebP named
+  `<slug>-thumbnail-2x.webp`) for the asset format and naming
+  convention this ADR adopts (with a path-based variant because
+  the registry is hosted on the same Next.js app).
+</content>
+</invoke>
