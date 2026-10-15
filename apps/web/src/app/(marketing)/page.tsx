@@ -1,40 +1,19 @@
-import { Home } from "@/components/pages/homepage"
+import type { Metadata } from "next"
+import { StarterHomepage } from "@/components/pages/starter/starter-homepage"
 
+export const metadata: Metadata = {
+  title: "SaaS Starter — DeesseJS",
+  description:
+    "Start your SaaS with an open source Next.js starter: authentication, PostgreSQL, and a monorepo you can make your own. Free until the DeesseJS platform launches.",
+  alternates: { canonical: "https://deessejs.com" },
+  openGraph: {
+    title: "Start your SaaS with the hard parts in place — DeesseJS",
+    description:
+      "An open source Next.js SaaS starter with authentication, PostgreSQL, and a monorepo you can make your own.",
+    url: "https://deessejs.com",
+  },
+}
 
 export default function HomePage() {
-  return (
-    <>
-      <Home.Hero />
-      <Home.TechStack />
-      <Home.Surfaces />
-      <Home.ForWho />
-      <Home.DiagonalStripDivider />
-      { /*<Home.Contracts /> */}
-      <Home.CliInAction />
-      <Home.Ecosystem />
-      {/* Hidden until real testimonials come in: the 12 quotes are
-          placeholder personas mapped to the for-who archetypes,
-          not real customers. The component, the TESTIMONIALS const,
-          and the export all stay in place — uncomment to reactivate
-          once we have verified customer quotes to ship. */}
-      {/* <Home.Testimonials /> */}
-      <Home.Integrations />
-      <Home.CodingAgents />
-      {/* Hidden until real traction: the strip showed "12K npm downloads"
-          and "3.2K GitHub stars" while the project isn't published in
-          any meaningful way. The component, the STATS const, and the
-          export all stay in place — uncomment to reactivate once the
-          numbers reflect actual registry + npm traffic. */}
-      {/* <Home.Stats /> */}
-      {/* Hidden until real testimonials come in: the 12 quotes are
-          placeholder personas mapped to the for-who archetypes,
-          not real customers. The component, the TESTIMONIALS const,
-          and the export all stay in place — uncomment to reactivate
-          once we have verified customer quotes to ship. */}
-      {/* <Home.Testimonials /> */}
-      <Home.LatestGuides />
-      <Home.FAQ />
-      <Home.FinalCta />
-    </>
-  )
+  return <StarterHomepage />
 }

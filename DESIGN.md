@@ -444,7 +444,7 @@ The DS that ships now includes:
 - **Tokens:** full color, typography, spacing, radius, shadow, easing.
 - **24 shadcn primitives** (installed via `pnpm dlx shadcn@latest add` on 2026-06-24, base-nova / Base UI style; `Avatar` and `Table` added 2026-06-26 to support `AuthorBadge` and the `/pricing` feature matrix; `Collapsible` and `ScrollArea` added subsequently; `Sidebar`, `Sheet`, and `Skeleton` added 2026-06-30 to support the Cloud v0 `(protected)` shell — `Sidebar` ships with its own mobile drawer via `Sheet` and a loading primitive via `Skeleton`): `Button`, `Input`, `Textarea`, `Field`, `Label`, `Card`, `Dialog`, `DropdownMenu`, `Popover`, `Tooltip`, `Sonner`, `Checkbox`, `Switch`, `Separator`, `Accordion`, `Badge`, `Select`, `Avatar`, `Table`, `Collapsible`, `ScrollArea`, `Sidebar`, `Sheet`, `Skeleton`.
   - **Note on `Form`:** Forms use `react-hook-form` + `Zod` as a pattern (§4.2) — there is no shadcn `Form` primitive in the CLI registry.
-- **1 custom component (still to ship, will live in `src/components/`, not in `src/components/ui/`):** `InteractiveFiletree` — the visual centerpiece of the v1 landing page. Built with Motion for hover/click animations. Renders the monorepo structure as a monospaced tree with paired code panels (the "supastarter pattern" from §6 of `landing-page.md`). Not a shadcn primitive — has its own docs entry.
+- **Marketing composition:** the homepage uses a project tree preview and `ProjectExplorer` in `apps/web/src/components/pages/starter/`. The explorer uses native buttons and a single selected-code panel; it does not add a UI primitive or animation dependency.
 
 **Deferred to v0.2** (each needs a use case in `apps/web` to justify shipping — "agentic SaaS template" is not "every component ever made"):
 
@@ -473,3 +473,13 @@ The modular contract applies:
 6. Update this document (Section 7 inventory).
 
 A buyer can run steps 1–4 to remove a primitive they don't need. The contract holds.
+
+## 10. SaaS starter homepage
+
+- Keep the existing neutral palette, semantic color tokens, thin borders, monospaced labels, and restrained grid layout.
+- Show the monorepo structure and representative repository code instead of an empty product dashboard or fabricated customer data.
+- Use one static tree preview in the hero and one keyboard-accessible project explorer with a single selected code panel below it.
+- Keep capability cards factual: show authentication, database, protected API, email, shared UI, and app surfaces without claiming product-specific workflows are complete.
+- Make illustrative extension examples visibly illustrative. Never describe them as included starter modules.
+- Direct the primary actions to the getting-started documentation and the public GitHub repository. Free access ends at platform launch with no date or download limit stated; users keep the version they download and later versions may be paid.
+- Prefer native disclosure and button controls. Keep content readable on narrow screens and respect reduced-motion preferences.

@@ -41,6 +41,10 @@ export function SiteHeader({
   const pathname = usePathname()
   const openSearch = useSearchDialogStore((s) => s.open)
 
+  if (pathname === "/") {
+    return <StarterSiteHeader />
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b bg-background">
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
@@ -142,6 +146,46 @@ export function SiteHeader({
             </SheetContent>
           </Sheet>
         </div>
+      </div>
+    </header>
+  )
+}
+
+function StarterSiteHeader() {
+  return (
+    <header className="sticky top-0 z-40 border-b border-border bg-background">
+      <div className="container mx-auto flex h-14 items-center justify-between px-4">
+        <Link href="/" className="flex items-center gap-2 font-semibold" aria-label="DeesseJS home">
+          <svg width="20" height="18" viewBox="0 0 109 95" fill="none" aria-hidden="true" className="text-foreground">
+            <path d="M36.377 61.0078L16.877 94.5078H0.876953L28.377 48.0078L36.377 61.0078Z" fill="currentColor" />
+            <path d="M43.877 94.0078H27.877L46.877 62.0078V61.0078L33.877 38.5078L41.377 25.0078L62.877 61.5078L43.877 94.0078Z" fill="currentColor" />
+            <path d="M107.877 94.0078H54.877L62.877 80.0078H99.877L107.877 94.0078Z" fill="currentColor" />
+            <path d="M94.877 71.0078H78.877L46.877 15.0078L54.877 1.00781L94.877 71.0078Z" fill="currentColor" />
+          </svg>
+          <span>DeesseJS</span>
+          <span className="hidden border-l border-border pl-2 font-mono text-xs font-normal text-muted-foreground sm:inline">SAAS STARTER</span>
+        </Link>
+        <nav aria-label="Main navigation" className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
+          <Link href="https://docs.deessejs.com/getting-started" className="hover:text-foreground">Docs</Link>
+          <Link href="/blog" className="hover:text-foreground">Blog</Link>
+          <Link href="/changelog" className="hover:text-foreground">Changelog</Link>
+          <Link href="https://github.com/deessejs/saas-template" target="_blank" rel="noreferrer" className="hover:text-foreground">GitHub</Link>
+          <Link href="https://docs.deessejs.com/getting-started" className="bg-foreground px-4 py-2 font-medium text-background hover:opacity-85">Get started</Link>
+        </nav>
+        <Sheet>
+          <SheetTrigger asChild className="md:hidden">
+            <Button variant="outline" size="icon" aria-label="Open navigation menu"><Menu className="size-4" /></Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="flex flex-col gap-6 bg-background p-6">
+            <Link href="/" className="font-semibold text-lg">DeesseJS</Link>
+            <nav aria-label="Main navigation" className="flex flex-col gap-4 text-sm">
+              <Link href="https://docs.deessejs.com/getting-started">Getting started</Link>
+              <Link href="/blog">Blog</Link>
+              <Link href="/changelog">Changelog</Link>
+              <Link href="https://github.com/deessejs/saas-template" target="_blank" rel="noreferrer">GitHub repository</Link>
+            </nav>
+          </SheetContent>
+        </Sheet>
       </div>
     </header>
   )
