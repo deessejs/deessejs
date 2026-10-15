@@ -1,21 +1,13 @@
-import Image from "next/image"
 import Link from "next/link"
 import { ArrowDown, ArrowRight, Check, GitBranch, Layers3, Terminal } from "lucide-react"
+
+import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
+import { STARTER_STACK } from "@/lib/marketing/home-data"
+
 import { ProjectExplorer, ProjectPreview } from "./project-explorer"
 
 const docsUrl = "https://docs.deessejs.com/getting-started"
 const repoUrl = "https://github.com/deessejs/saas-template"
-
-const technologies = [
-  { name: "Next.js", logo: "nextdotjs" },
-  { name: "React", logo: "react" },
-  { name: "TypeScript" },
-  { name: "Tailwind CSS", logo: "tailwindcss" },
-  { name: "Better Auth", logo: "betterauth" },
-  { name: "Drizzle", logo: "drizzle" },
-  { name: "PostgreSQL", logo: "postgresql" },
-  { name: "Hono", logo: "hono" },
-]
 
 const capabilities = [
   {
@@ -137,16 +129,11 @@ export function StarterHomepage() {
       </section>
 
       <section aria-labelledby="built-with-title" className="border-b border-border">
-        <div className="flex flex-col gap-4 px-6 py-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-10">
-          <h2 id="built-with-title" className="font-mono text-xs uppercase tracking-wide text-muted-foreground">A familiar, production-ready stack</h2>
-          <ul className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 lg:flex lg:flex-wrap lg:justify-end lg:gap-x-7">
-            {technologies.map((technology) => (
-              <li key={technology.name} className="flex items-center gap-2 text-xs text-muted-foreground">
-                {technology.logo ? <Image src={`/logos/${technology.logo}.svg`} alt="" width={16} height={16} className="size-4 opacity-70" /> : null}
-                {technology.name}
-              </li>
-            ))}
-          </ul>
+        <div className="flex flex-col divide-y divide-border">
+          <div className="px-6 py-6 sm:px-8 lg:px-10">
+            <h2 id="built-with-title" className="font-mono text-xs uppercase tracking-wide text-muted-foreground">A familiar, production-ready stack</h2>
+          </div>
+          <TechStackGrid techs={STARTER_STACK} />
         </div>
       </section>
 

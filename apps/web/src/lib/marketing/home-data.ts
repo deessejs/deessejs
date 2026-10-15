@@ -256,6 +256,25 @@ export const TECH_STACK: ReadonlyArray<{ name: string; logo: string }> = [
   { name: "OpenAI", logo: "openai" },
 ]
 
+/**
+ * Tech stack shown on the starter homepage. Distinct from `TECH_STACK`
+ * because the open-source starter ships with a different (and smaller)
+ * set than the Pro templates: framework, auth, ORM, and a monorepo
+ * runtime — no Stripe, Cloudflare, Resend, or OpenAI. Reusing the
+ * Pro stack here would falsely advertise features the downloadable
+ * starter does not include.
+ */
+export const STARTER_STACK: ReadonlyArray<{ name: string; logo: string }> = [
+  { name: "Next.js", logo: "nextdotjs" },
+  { name: "React", logo: "react" },
+  { name: "Tailwind CSS", logo: "tailwindcss" },
+  { name: "shadcn UI", logo: "shadcnui" },
+  { name: "Better Auth", logo: "betterauth" },
+  { name: "Drizzle", logo: "drizzle" },
+  { name: "PostgreSQL", logo: "postgresql" },
+  { name: "Hono", logo: "hono" },
+]
+
 // ---------------------------------------------------------------------------
 // Stats (Section 13)
 // ---------------------------------------------------------------------------
