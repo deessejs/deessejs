@@ -28,44 +28,22 @@ export default defineConfig({
   splitting: false,
   shims: false,
   treeshake: true,
-  // `dts` is *deliberately* disabled. tsup 8.5.1's dts
-  // worker re-evaluates the source for the .d.ts emit pass
-  // and runs an inferred-type-naming check on every exported
-  // const. With Better Auth 1.7.7, the literal type of
-  // `cliAuthClientOptions` in `better-auth-client.ts`
-  // transitively references `zod/v4/core` types (`$ZodType`,
-  // `$ZodTypeInternals`, `$strip`) and `better-call` types
-  // (`Issue`). The workspace pins `zod@4.4.3` while Better
-  // Auth's transitive `@better-auth/core` pulls `zod@4.6.5`;
-  // both versions coexist in the pnpm store, so TypeScript
-  // can't name the inferred return through the union, and
-  // the dts worker emits TS2883.
+  // `dts` is *deliberately* disabled. With Better Auth 1.7.7, the
+  // inferred return type of `createAuthClient({...})` in
+  // `better-auth-client.ts` transitively references types from
+  // `zod/v4/core` and `better-call` that do not unify across the
+  // workspace's two resolved zod versions. The tsup `.d.ts` worker
+  // emits TS2883 on those exports. The standalone `tsc
+  // --emitDeclarationOnly` pass hits the same wall, and tsup 8.5.1's
+  // `dts` config exposes no `noCheck` knob.
   //
-  // tsup 8.5.1's `dts` config has no `noCheck` option, and
-  // the standalone `tsc --emitDeclarationOnly` pass hits
-  // the same wall (TS2883 fires whenever `.d.ts` emission
-  // requires naming an inferred type). The only escape
-  // hatches are (a) deduplicating Zod in the workspace (out
-  // of scope for this PR — see AGENTS.md on staging-first
-  // scope discipline) and (b) skipping the dts pass entirely.
-  //
-  // We take (b). The CLI is a published binary, not a
-  // library: `grep` for `@deessejs/cli` shows zero internal
-  // `import { … } from "@deessejs/cli"` call sites (only
-  // markdown doc snippets reference the package by name).
-  // The `types` field is removed from `apps/cli/package.json`
-  // in the same commit; consumers should treat
-  // `@deessejs/cli` as a CLI entrypoint (`npx @deessejs/cli …`),
-  // not a library. Runtime type-checking is unchanged:
-  // `apps/cli#typecheck` (`tsc --noEmit`) runs in CI before
-  // this build and still validates every source file.
-  //
-  // Tracking the upstream fix:
-  //   https://github.com/better-auth/better-auth/issues/4250
-  // When that issue closes, this can be reverted and
-  // `dts: true` re-enabled with the same generic-typed cast
-  // pattern used on the server side (see
-  // `packages/auth/src/auth.ts`'s `auth` export).
+  // Decision: ship the CLI as an executable-only package. There
+  // are zero internal `import { … } from "@deessejs/cli"` call
+  // sites (only markdown doc snippets reference the package by
+  // name), so no consumer needs `.d.ts` for it. The `types` field
+  // is removed from `apps/cli/package.json`. Runtime type-checking
+  // is preserved: `apps/cli#typecheck` (`tsc --noEmit`) runs in CI
+  // before this build and validates every source file.
   dts: false,
   // Bundle workspace-only packages into the published tarball so that
   // `npm install @deessejs/cli@1.1.2` does not try to resolve them from

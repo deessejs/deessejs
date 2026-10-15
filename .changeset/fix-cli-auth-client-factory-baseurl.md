@@ -8,7 +8,7 @@ Root cause: the `cliAuthClientOptions` const in `apps/cli/src/lib/auth/store/bet
 
 Fix: move `baseURL: resolveBaseURL()` into the `createCliAuthClient` function body so each call reads the env var at call time. The factory was already documented as "the public surface (not a singleton)" and the rationale ("tests need to override `DEESSEJS_API_URL` before the client is built") was already in the surrounding comment — the code simply contradicted the documentation.
 
-The `as ReturnType<typeof createAuthClient<typeof cliAuthClientOptions>>` cast on the return is removed. The cast existed to work around a tsup `.d.ts` worker TS2883 (better-auth/better-auth#4250); tsup's dts emit has since been disabled for this package, and the workspace typecheck (`pnpm --filter @deessejs/cli exec tsc --noEmit`) still passes without it. The upstream tracking comment in the file is left untouched in this patch and will be cleaned up in a follow-up that also retires the now-stale "tsup dts worker" framing.
+The `as ReturnType<typeof createAuthClient<typeof cliAuthClientOptions>>` cast on the return is removed. The cast existed to work around a tsup `.d.ts` worker TS2883; tsup's dts emit has since been disabled for this package, and the workspace typecheck (`pnpm --filter @deessejs/cli exec tsc --noEmit`) still passes without it.
 
 Verified locally:
 

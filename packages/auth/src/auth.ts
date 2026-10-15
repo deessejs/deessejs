@@ -63,34 +63,22 @@ function logEmailFailure(flow: string, userId: string, error: string): void {
 
 // `authConfig` is annotated with `BetterAuthOptions` *and* validated
 // with `satisfies BetterAuthOptions`. The annotation is load-bearing:
-// the `betterAuth({...})` signature infers the schema option from
-// Zod (`$ZodType` / `$ZodTypeInternals` / `$strip` from
-// `zod/v4/core`, plus `Issue` from `better-call`), and TypeScript
-// raises TS2883 on the unannotated literal because those types are
-// not portable across the workspace's `zod@4.4.3` (which the rest of
-// the monorepo resolves) and Better Auth's transitive
-// `zod@4.6.5`. Removing the annotation breaks `tsc --noEmit` — the
-// same root cause as the cast workaround below; only this error is
-// on the *const declaration* rather than the *export*.
+// without it, `tsc --noEmit` raises TS2883 on the literal because
+// the inferred Better Auth schema type reaches into transitive
+// packages (zod / better-call / @better-auth/core) whose versions
+// do not unify in the workspace. Verified locally on 1.7.7 by
+// removing the annotation and re-running `tsc --noEmit`.
 //
-// The trade-off: the annotation widens the literal type to the bare
+// Trade-off: the annotation widens the literal type to the bare
 // `BetterAuthOptions` interface, which loses the plugin-augmented
 // shape in the inferred `$Infer` chain on the public `auth` export.
 // The public `User` / `AuthSession` types therefore do not see the
 // admin plugin's `role` / `banned` / `banReason` / `banExpires`
-// fields automatically; we re-augment them by hand below (matching
-// the project's previous design) so consumers
-// (`apps/app/lib/admin-auth.ts`, the settings rail,
+// fields automatically; we re-augment them by hand below so
+// consumers (`apps/app/lib/admin-auth.ts`, the settings rail,
 // `c.var.user` typing in `packages/api/src/http/env.ts`) keep
-// end-to-end type safety.
-//
-// Tracking the upstream fix:
-//   - https://github.com/better-auth/better-auth/issues/4250
-//     (TS2883 on multi-plugin `betterAuth({...})` — opened 1.6.x,
-//     verified still open as of 1.7.7 by removing the annotation
-//     and the cast and re-running `tsc --noEmit`.)
-// A follow-up PR can drop the annotation, the cast, and the manual
-// `User` augmentation when the upstream fix lands.
+// end-to-end type safety. The `as` cast on the `auth` export
+// below preserves the `$Infer` chain used by those consumers.
 const authConfig: BetterAuthOptions = {
   baseURL: {
     allowedHosts: [...HOST_ALLOWLIST],
@@ -284,36 +272,22 @@ const authConfig: BetterAuthOptions = {
 // type cannot be named without a reference to zod / better-call /
 // @better-auth/core" error that surfaces on the public `auth`
 // export when `betterAuth({...})` is composed with multiple plugins
-// (admin, deviceAuthorization, bearer, nextCookies). Better Auth
-// 1.7.7 re-introduces the same class of error on new Zod types
-// (`$ZodType`, `$ZodTypeInternals`, `$strip` from `zod/v4/core`)
-// and `better-call` — see the verified TS2883 emissions in this
-// file. The cast preserves the `$Infer` chain (used by
+// (admin, deviceAuthorization, bearer, nextCookies). Verified on
+// 1.7.7 by removing the cast and re-running `tsc --noEmit`. The
+// cast preserves the `$Infer` chain (used by
 // `packages/api/src/http/env.ts` for `c.var.user` /
 // `c.var.session`) and the plugin-augmented shape on the instance
 // type.
 //
-// Design choice, not a regression. The cast is *narrow* — it only
-// affects the public type of the `auth` export. The plugin
-// augmentation (admin → `User.role`, etc.) is still on the
-// instance at runtime; only the static type-flow through `User`
-// is masked. We restore the static type-flow below with a manual
-// `User` re-augmentation that mirrors the plugin's server-side
-// fields (`role`, `banned`, `banReason`, `banExpires`). Consumers
+// Design choice, not a runtime regression: every plugin endpoint
+// still works. The cast is *narrow* — it only affects the public
+// type of the `auth` export. The plugin augmentation (admin →
+// `User.role`, etc.) is still on the instance at runtime; only the
+// static type-flow through `User` is masked. The manual `User`
+// re-augmentation below mirrors the plugin's server-side fields
+// (`role`, `banned`, `banReason`, `banExpires`) so consumers
 // (`apps/app/lib/admin-auth.ts`, the settings rail) keep
 // end-to-end type safety on `user.role`.
-//
-// The "plugin inference is lost" wording in the PR description
-// refers to this *type-flow*, not to runtime behaviour. There is
-// no runtime regression: every plugin endpoint still works.
-//
-// Tracking the upstream fix:
-//   - https://github.com/better-auth/better-auth/issues/4250
-//     (TS2883 on multi-plugin `betterAuth({...})`, opened 1.6.x,
-//     not yet closed as of 1.7.7 — verified by removing the cast
-//     and re-running `tsc --noEmit`.)
-// When the upstream fix lands, both the cast and the manual
-// `User` augmentation can be dropped in the same commit.
 export const auth = betterAuth(
   authConfig,
 ) as ReturnType<typeof betterAuth<typeof authConfig>>
@@ -328,14 +302,12 @@ export const auth = betterAuth(
 // augmentation is the matching fix for the explicit
 // `BetterAuthOptions` annotation on `authConfig`, which widens the
 // inferred `$Infer` chain and drops the plugin-augmented shape —
-// see the comment block on `authConfig` and
-// https://github.com/better-auth/better-auth/issues/4250);
-// `AuthSession` is the full `{ user, session }` envelope returned by
-// `auth.api.getSession` and the typed client. The legacy re-export
-// of `Session`/`User` from the `better-auth` package was unused in
-// production code (only documentation snippets referenced it), so
-// swapping it for the inferred types does not break any real
-// consumer.
+// see the comment block on `authConfig`); `AuthSession` is the
+// full `{ user, session }` envelope returned by `auth.api.getSession`
+// and the typed client. The legacy re-export of `Session`/`User`
+// from the `better-auth` package was unused in production code
+// (only documentation snippets referenced it), so swapping it for
+// the inferred types does not break any real consumer.
 export type AuthInstance = typeof auth
 export type Session = typeof auth.$Infer.Session.session
 export type User = typeof auth.$Infer.Session.user & {
