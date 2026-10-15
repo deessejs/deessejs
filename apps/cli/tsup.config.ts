@@ -28,7 +28,23 @@ export default defineConfig({
   splitting: false,
   shims: false,
   treeshake: true,
-  dts: true,
+  // `dts` is *deliberately* disabled. With Better Auth 1.7.7, the
+  // inferred return type of `createAuthClient({...})` in
+  // `better-auth-client.ts` transitively references types from
+  // `zod/v4/core` and `better-call` that do not unify across the
+  // workspace's two resolved zod versions. The tsup `.d.ts` worker
+  // emits TS2883 on those exports. The standalone `tsc
+  // --emitDeclarationOnly` pass hits the same wall, and tsup 8.5.1's
+  // `dts` config exposes no `noCheck` knob.
+  //
+  // Decision: ship the CLI as an executable-only package. There
+  // are zero internal `import { … } from "@deessejs/cli"` call
+  // sites (only markdown doc snippets reference the package by
+  // name), so no consumer needs `.d.ts` for it. The `types` field
+  // is removed from `apps/cli/package.json`. Runtime type-checking
+  // is preserved: `apps/cli#typecheck` (`tsc --noEmit`) runs in CI
+  // before this build and validates every source file.
+  dts: false,
   // Bundle workspace-only packages into the published tarball so that
   // `npm install @deessejs/cli@1.1.2` does not try to resolve them from
   // the public npm registry (where they don't exist — 404 on install).

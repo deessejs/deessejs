@@ -54,14 +54,13 @@ import "./fetch-auth-interceptor"
  * rationale is documented on `auth-base-url.ts`.
  *
  * The `as ReturnType<typeof createAuthClient<typeof authClientOptions>>`
- * cast on the export below is the matching fix for the Better Auth
- * TS2883 inference issue documented at
- * https://github.com/better-auth/better-auth/issues/4250 — the same
- * workaround applied in `packages/auth/src/auth.ts`. The
- * `satisfies BetterAuthClientOptions` on the options object keeps
- * the literal types narrow so the cast narrows the public type to
- * the configured client (and the plugin-augmented `user.role`
- * surface flows through).
+ * cast on the export below is the matching fix for the TS2883
+ * inference issue that surfaces on `createAuthClient({...})` with
+ * multiple plugins — the same workaround applied in
+ * `packages/auth/src/auth.ts`. The `satisfies BetterAuthClientOptions`
+ * on the options object keeps the literal types narrow so the cast
+ * narrows the public type to the configured client (and the
+ * plugin-augmented `user.role` surface flows through).
  */
 const authClientOptions = {
   baseURL: clientEnv.NEXT_PUBLIC_APP_URL,

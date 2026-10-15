@@ -79,7 +79,6 @@ export function ConnectedAccountsList() {
 
 		const { error } = await authClient.unlinkAccount({
 			accountId: unlinkConfirm.id,
-			providerId: unlinkConfirm.provider,
 		})
 		setUnlinkingId(null)
 		setUnlinkConfirm(null)

@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/client"
+import type { BetterAuthClientOptions } from "better-auth/client"
 import { deviceAuthorizationClient } from "better-auth/client/plugins"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
@@ -82,16 +83,27 @@ export function resolveBaseURL(): string {
  * request so the `/settings/sessions` view can label CLI
  * sessions correctly.
  */
+const cliAuthClientOptions = {
+	// baseURL is read **inside** `createCliAuthClient`, not
+	// here, so tests can override `DEESSEJS_API_URL` in
+	// `beforeEach` and have the new value picked up. Reading
+	// it at module-load time freezes the value at import and
+	// tests (and any other runtime that mutates the env
+	// between import and call) silently hit the production
+	// API. See test/integration/auth/login.test.ts.
+	basePath: API_AUTH_PATH,
+	plugins: [deviceAuthorizationClient()],
+	disableDefaultFetchPlugins: true,
+	fetchOptions: {
+		headers: {
+			"user-agent": `DeesseJS CLI/${readPackageVersion()}`,
+		},
+	},
+} satisfies BetterAuthClientOptions
+
 export function createCliAuthClient() {
 	return createAuthClient({
+		...cliAuthClientOptions,
 		baseURL: resolveBaseURL(),
-		basePath: API_AUTH_PATH,
-		plugins: [deviceAuthorizationClient()],
-		disableDefaultFetchPlugins: true,
-		fetchOptions: {
-			headers: {
-				"user-agent": `DeesseJS CLI/${readPackageVersion()}`,
-			},
-		},
 	})
 }
