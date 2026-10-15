@@ -4,7 +4,7 @@ import { MotionConfig } from "motion/react"
 import "@workspace/ui/globals.css"
 import { APP_CONFIG } from "@/lib/app-config"
 import { AppProviders } from "@/components/providers"
-import { AppFooter } from "@/components/footers/app-footer"
+import { FooterRouter } from "@/components/footers/footer-router"
 import { SiteHeaderServer } from "@/components/headers/site-header-server"
 import { GlobalSearchDialog } from "@/components/search/global-search-dialog"
 import { GlobalSearchShortcut } from "@/components/search/global-search-shortcut"
@@ -85,7 +85,12 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", geist.variable)}
+      className={cn(
+        "antialiased",
+        fontMono.variable,
+        "font-sans",
+        geist.variable
+      )}
     >
       <body>
         <script
@@ -103,7 +108,7 @@ export default function RootLayout({
               <main className="flex-1">
                 <GlobalLayout>{children}</GlobalLayout>
               </main>
-              <AppFooter />
+              <FooterRouter />
               <CookieConsent />
               <Toaster />
             </div>

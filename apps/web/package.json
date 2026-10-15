@@ -20,6 +20,8 @@
     "@hookform/resolvers": "catalog:",
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
+    "@pierre/diffs": "catalog:",
+    "@pierre/trees": "catalog:",
     "@shadcn/react": "catalog:",
     "@vercel/related-projects": "catalog:",
     "@workspace/api": "workspace:*",

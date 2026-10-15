@@ -1,227 +1,403 @@
 import Link from "next/link"
-import { ArrowDown, ArrowRight, Check, GitBranch, Layers3, Terminal } from "lucide-react"
+import { ArrowRight, BookOpen, GitBranch } from "lucide-react"
 
+import { Button } from "@workspace/ui/components/button"
 import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import { STARTER_STACK } from "@/lib/marketing/home-data"
 
-import { ProjectExplorer, ProjectPreview } from "./project-explorer"
+import { ProjectExplorer } from "./project-explorer"
+import {
+  ApiIllustration,
+  AppSurfacesIllustration,
+  ArchitectureIllustration,
+  AuthenticationIllustration,
+  DatabaseIllustration,
+  EmailIllustration,
+  ExtensionIllustration,
+  UiIllustration,
+} from "./starter-illustrations"
 
 const docsUrl = "https://docs.deessejs.com/getting-started"
 const repoUrl = "https://github.com/deessejs/saas-template"
 
-const capabilities = [
+const foundations = [
   {
-    number: "01",
-    title: "Authentication flows",
-    description: "Email and password sign-in with email verification, password reset, and session management.",
-    code: "requireEmailVerification: true",
-    tag: "Better Auth",
+    title: "Authentication that is already connected",
+    description:
+      "Better Auth is configured with email verification, password reset, and sessions.",
+    technology: "Better Auth",
+    illustration: <AuthenticationIllustration />,
   },
   {
-    number: "02",
-    title: "A real database schema",
-    description: "PostgreSQL with Drizzle ORM gives your app a typed foundation you can extend.",
-    code: 'pgTable("user", { id, name, email })',
-    tag: "Drizzle ORM",
+    title: "A database schema you can extend",
+    description:
+      "PostgreSQL and Drizzle provide the typed schema behind users and sessions.",
+    technology: "Drizzle + PostgreSQL",
+    illustration: <DatabaseIllustration />,
   },
   {
-    number: "03",
-    title: "Protected API context",
-    description: "A protected profile endpoint demonstrates how authenticated context reaches your API.",
-    code: "protectedBase.handler(({ context }) => context.user)",
-    tag: "Hono · oRPC",
+    title: "A protected API boundary",
+    description:
+      "Hono and oRPC show how authenticated request context reaches a procedure.",
+    technology: "Hono + oRPC",
+    illustration: <ApiIllustration />,
   },
   {
-    number: "04",
-    title: "Email templates",
-    description: "Verification and password reset emails are built with React Email and sent through Resend.",
-    code: "VerifyEmail · ResetPassword",
-    tag: "React Email",
+    title: "Transactional email foundations",
+    description:
+      "Verification and password reset templates use React Email and Resend.",
+    technology: "React Email + Resend",
+    illustration: <EmailIllustration />,
   },
   {
-    number: "05",
-    title: "Shared UI package",
-    description: "Reusable components and tokens live in one package, ready for both app surfaces.",
-    code: "@workspace/ui/components/*",
-    tag: "Tailwind CSS",
+    title: "Shared interface building blocks",
+    description:
+      "A shared UI package keeps app surfaces on the same component and styling system.",
+    technology: "shadcn UI + Tailwind CSS",
+    illustration: <UiIllustration />,
   },
   {
-    number: "06",
-    title: "Two app surfaces",
-    description: "A product application and a public website sit side by side in the same monorepo.",
-    code: "apps/app · apps/web",
-    tag: "Turborepo",
+    title: "Separate product and marketing apps",
+    description:
+      "The product app and public website live together and share workspace packages.",
+    technology: "Turborepo monorepo",
+    illustration: <AppSurfacesIllustration />,
   },
 ]
 
 const questions = [
   {
     question: "How long will the starter be free?",
-    answer: "It is free until the DeesseJS platform launches. There is no launch date set today.",
+    answer:
+      "It is free until the DeesseJS platform launches. There is no launch date set today.",
   },
   {
     question: "Will I keep the version I download?",
-    answer: "Yes. Your downloaded copy remains yours. Later versions may be paid, and they are not included with an earlier free download.",
+    answer:
+      "Yes. Your downloaded copy remains yours to use. Later versions may be paid and are not included with an earlier download.",
   },
   {
-    question: "Do I need an account to get it?",
-    answer: "No account is required. You can access the repository directly on GitHub and follow the getting-started guide.",
+    question: "Do I need an account?",
+    answer:
+      "No account is required. You can access the repository directly on GitHub and follow the getting-started guide.",
   },
   {
     question: "Where can I get help?",
-    answer: "Open a GitHub issue or email support@deessejs.com. Support is available through those channels, with no response-time guarantee.",
+    answer:
+      "Open a GitHub issue or email support@deessejs.com. Support is available through those channels, with no response-time guarantee.",
   },
 ]
 
-function SectionTitle({
-  index,
-  eyebrow,
+function SectionHeading({
   title,
   description,
 }: {
-  index: string
-  eyebrow: string
   title: string
   description?: string
 }) {
   return (
-    <div className="grid gap-5 border-b border-border p-6 sm:p-8 lg:grid-cols-[150px_1fr] lg:p-10">
-      <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">{index} / {eyebrow}</p>
-      <div>
-        <h2 className="max-w-3xl text-2xl font-semibold tracking-tight text-balance sm:text-3xl">{title}</h2>
-        {description ? <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">{description}</p> : null}
-      </div>
+    <div className="max-w-3xl px-6 py-9 sm:px-8 sm:py-12 lg:px-10">
+      <h2 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+        {title}
+      </h2>
+      {description ? (
+        <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
+          {description}
+        </p>
+      ) : null}
     </div>
   )
 }
 
 export function StarterHomepage() {
   return (
-    <>
-      <section className="grid border-b border-border lg:grid-cols-[1.1fr_0.9fr]">
+    <div className="starter-homepage">
+      <section className="grid border-b border-border lg:min-h-[560px] lg:grid-cols-[1fr_1fr]">
         <div className="flex flex-col justify-center p-6 sm:p-10 lg:p-14">
-          <p className="mb-6 inline-flex w-fit items-center gap-2 border border-border px-3 py-1.5 font-mono text-xs text-muted-foreground">
-            <span className="size-1.5 rounded-full bg-foreground" aria-hidden />
-            FREE UNTIL THE PLATFORM LAUNCHES
+          <p className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-900 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-100">
+            <span
+              className="size-1.5 rounded-full bg-emerald-500"
+              aria-hidden
+            />
+            Free until the platform launches
           </p>
           <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-5xl lg:text-6xl">
-            Start your SaaS with the hard parts in place.
+            Start with the foundations. Build the product that is yours.
           </h1>
           <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-            An open source Next.js SaaS starter with authentication, a PostgreSQL data layer, and a monorepo you can make your own.
+            A practical Next.js SaaS starter with authentication, a typed
+            PostgreSQL layer, and a monorepo designed to grow with your product.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href={docsUrl} className="inline-flex min-h-11 items-center justify-center gap-2 bg-foreground px-5 text-sm font-medium text-background hover:opacity-85">
-              Read the getting-started guide <ArrowRight className="size-4" aria-hidden />
-            </Link>
-            <Link href={repoUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 border border-border px-5 text-sm font-medium hover:bg-muted">
-              <GitBranch className="size-4" aria-hidden /> View on GitHub
-            </Link>
+            <Button asChild size="lg">
+              <Link href={docsUrl}>
+                Read the getting-started guide{" "}
+                <ArrowRight className="size-4" aria-hidden />
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href={repoUrl} target="_blank" rel="noreferrer">
+                <GitBranch className="size-4" aria-hidden /> View the GitHub
+                repository
+              </Link>
+            </Button>
           </div>
-          <p className="mt-4 text-xs leading-5 text-muted-foreground">No account required. Keep the version you download; future versions may be paid.</p>
-          <a href="#inside-the-starter" className="mt-10 flex w-fit items-center gap-2 font-mono text-xs text-muted-foreground hover:text-foreground">
-            Explore the project <ArrowDown className="size-3.5" aria-hidden />
-          </a>
+          <p className="mt-4 text-xs leading-5 text-muted-foreground">
+            No account required. Keep the version you download. Later versions
+            may be paid.
+          </p>
         </div>
-        <div className="flex items-center border-t border-border bg-muted/20 p-5 sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
-          <ProjectPreview />
+        <div className="flex items-center border-t border-border bg-muted/20 p-5 sm:p-8 lg:border-t-0 lg:border-l lg:p-10">
+          <ArchitectureIllustration />
         </div>
       </section>
 
-      <section aria-labelledby="built-with-title" className="border-b border-border">
+      <section
+        aria-labelledby="built-with-title"
+        className="border-b border-border"
+      >
         <div className="flex flex-col divide-y divide-border">
-          <div className="px-6 py-6 sm:px-8 lg:px-10">
-            <h2 id="built-with-title" className="font-mono text-xs uppercase tracking-wide text-muted-foreground">A familiar, production-ready stack</h2>
+          <div className="px-6 py-5 sm:px-8 lg:px-10">
+            <h2
+              id="built-with-title"
+              className="text-sm font-medium text-muted-foreground"
+            >
+              The technologies in this starter
+            </h2>
           </div>
           <TechStackGrid techs={STARTER_STACK} />
         </div>
       </section>
 
-      <section id="inside-the-starter" className="border-b border-border">
-        <SectionTitle index="01" eyebrow="Explore the codebase" title="A monorepo you can understand before you change it." description="Select a project area to see how the starter is organized. The snippets come from the repository and show the seams where your product code begins." />
-        <div className="p-5 sm:p-8 lg:p-10"><ProjectExplorer /></div>
+      <section
+        id="inside-the-starter"
+        className="scroll-mt-20 border-b border-border"
+      >
+        <SectionHeading
+          title="See how the pieces fit before you change them."
+          description="Explore the actual monorepo and open representative files from its authentication, database, and API packages."
+        />
+        <div className="px-5 pb-8 sm:px-8 sm:pb-10 lg:px-10 lg:pb-12">
+          <ProjectExplorer />
+        </div>
       </section>
 
       <section className="border-b border-border">
-        <SectionTitle index="02" eyebrow="Already in place" title="Useful foundations, without pretending your product is built." description="The starter gives you working infrastructure and example surfaces. Your domain model, product workflows, and business rules are yours to add." />
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3">
-          {capabilities.map((item, index) => (
-            <article key={item.number} className={`min-w-0 border-border p-6 sm:p-8 ${index % 2 === 0 ? "sm:border-r" : ""} ${index < 4 ? "border-b" : ""} lg:border-r ${index % 3 !== 2 ? "lg:border-r" : "lg:border-r-0"} ${index >= 3 ? "lg:border-b-0" : ""}`}>
-              <div className="flex items-center justify-between font-mono text-xs text-muted-foreground">
-                <span>{item.number}</span><span>{item.tag}</span>
-              </div>
-              <h3 className="mt-7 text-lg font-semibold tracking-tight">{item.title}</h3>
-              <p className="mt-2 min-h-12 text-sm leading-6 text-muted-foreground">{item.description}</p>
-              <pre className="mt-5 overflow-x-auto border border-border bg-muted/40 p-3 text-xs leading-5"><code>{item.code}</code></pre>
+        <SectionHeading
+          title="Useful foundations, without pretending your product is built."
+          description="The starter connects common infrastructure and gives you clear examples. Your domain model, product workflows, and business rules are yours to add."
+        />
+        <div className="grid border-t border-border sm:grid-cols-2 lg:grid-cols-3">
+          {foundations.map((item, index) => (
+            <article
+              key={item.title}
+              className={`min-w-0 border-border p-5 sm:p-6 lg:p-7 ${index % 2 === 0 ? "sm:border-r" : ""} ${index < 4 ? "border-b" : ""} ${index % 3 !== 2 ? "lg:border-r" : "lg:border-r-0"} ${index >= 3 ? "lg:border-b-0" : ""}`}
+            >
+              {item.illustration}
+              <p className="mt-5 text-xs font-medium text-muted-foreground">
+                {item.technology}
+              </p>
+              <h3 className="mt-2 text-lg font-semibold tracking-tight">
+                {item.title}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {item.description}
+              </p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="grid border-b border-border lg:grid-cols-[0.85fr_1.15fr]">
-        <div className="border-b border-border p-6 sm:p-8 lg:border-b-0 lg:border-r lg:p-10">
-          <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">03 / Make it yours</p>
-          <h2 className="mt-6 max-w-lg text-2xl font-semibold tracking-tight text-balance sm:text-3xl">A starting point, not a finished product.</h2>
-          <p className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground">Use the shared packages to add the features your SaaS actually needs. This example shows where a workspace feature could fit; it is illustrative and is not included as a ready-made module.</p>
-          <Link href={repoUrl} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4">Browse the source <ArrowRight className="size-4" aria-hidden /></Link>
-        </div>
-        <div className="bg-muted/20 p-6 sm:p-8 lg:p-10">
-          <div className="border border-border bg-background">
-            <div className="flex items-center gap-2 border-b border-border px-4 py-3 font-mono text-xs text-muted-foreground"><Layers3 className="size-4" aria-hidden /> Example extension · illustrative</div>
-            <pre className="overflow-x-auto p-5 text-xs leading-6 sm:p-7 sm:text-sm"><code>{`// An example of a feature you could add\nexport const workspaces = pgTable("workspace", {\n  id: text("id").primaryKey(),\n  name: text("name").notNull(),\n  ownerId: text("owner_id")\n    .references(() => users.id),\n})`}</code></pre>
-          </div>
-          <p className="mt-3 text-xs text-muted-foreground">Illustrative code only. Workspaces are not part of the starter.</p>
-        </div>
-      </section>
-
-      <section className="grid border-b border-border lg:grid-cols-[150px_1fr]">
-        <div className="border-b border-border p-6 sm:p-8 lg:border-b-0 lg:border-r lg:p-10">
-          <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">04 / Get started</p>
-        </div>
-        <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[1fr_1fr] lg:p-10">
+      <section className="border-b border-border">
+        <div className="grid gap-8 px-6 py-10 sm:px-8 sm:py-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:px-10 lg:py-16">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Start from the repository.</h2>
-            <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">The getting-started guide walks through prerequisites, setup, and your first run. You can also clone the public repository directly.</p>
-            <Link href={docsUrl} className="mt-6 inline-flex min-h-11 items-center gap-2 bg-foreground px-5 text-sm font-medium text-background hover:opacity-85">Open the getting-started guide <ArrowRight className="size-4" aria-hidden /></Link>
+            <p className="text-sm font-medium text-violet-700 dark:text-violet-300">
+              Make it yours
+            </p>
+            <h2 className="mt-3 max-w-lg text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+              A starting point, not a finished product.
+            </h2>
+            <p className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground">
+              Keep the shared foundations that help you move faster, then shape
+              the product around your own customers and ideas.
+            </p>
           </div>
-          <div className="min-w-0 border border-border bg-muted/30 p-4 sm:p-5">
-            <div className="mb-3 flex items-center gap-2 font-mono text-xs text-muted-foreground"><Terminal className="size-4" aria-hidden /> Terminal</div>
-            <pre className="overflow-x-auto text-xs leading-6"><code>{`git clone ${repoUrl}.git my-saas-app\ncd my-saas-app\npnpm install`}</code></pre>
-            <Link href={repoUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-xs underline underline-offset-4">Open the GitHub repository <ArrowRight className="size-3" aria-hidden /></Link>
+          <div>
+            <ExtensionIllustration />
+            <p className="mt-3 text-xs text-muted-foreground">
+              Workspaces and billing are examples of features you could add.
+              They are not included in this starter.
+            </p>
           </div>
         </div>
       </section>
 
-      <section className="border-b border-border">
-        <SectionTitle index="05" eyebrow="Launch offer" title="Free to download until the platform launches." description="Get the current starter directly from GitHub while the DeesseJS platform is in development. No account, email signup, or limited download count." />
-        <div className="grid gap-px bg-border sm:grid-cols-3">
-          <div className="bg-background p-6 sm:p-8"><Check className="size-4" aria-hidden /><h3 className="mt-4 font-medium">Download now</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">Access the repository and getting-started guide without creating an account.</p></div>
-          <div className="bg-background p-6 sm:p-8"><Check className="size-4" aria-hidden /><h3 className="mt-4 font-medium">Keep your copy</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">The version you download remains yours to use after the offer ends.</p></div>
-          <div className="bg-background p-6 sm:p-8"><Check className="size-4" aria-hidden /><h3 className="mt-4 font-medium">Future versions may be paid</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">Later versions will be offered through the platform and are not included with this download.</p></div>
+      <section
+        aria-labelledby="get-started-title"
+        className="border-b border-border bg-sky-50/70 dark:bg-sky-950/20"
+      >
+        <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10 sm:px-8 sm:py-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:px-10 lg:py-16">
+          <div>
+            <p className="text-sm font-medium text-sky-800 dark:text-sky-200">
+              Start building
+            </p>
+            <h2
+              id="get-started-title"
+              className="mt-3 text-2xl font-semibold tracking-tight text-balance sm:text-3xl"
+            >
+              Choose your next step.
+            </h2>
+            <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
+              Follow the guide for setup, or inspect the source and decide how
+              you want to shape the codebase.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Link
+              href={docsUrl}
+              className="group rounded-xl border border-sky-200 bg-background p-5 shadow-sm transition-colors hover:border-sky-400 dark:border-sky-900 dark:hover:border-sky-700"
+            >
+              <span className="flex size-10 items-center justify-center rounded-lg bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200">
+                <BookOpen className="size-5" aria-hidden />
+              </span>
+              <span className="mt-4 block font-semibold">Read the guide</span>
+              <span className="mt-1 block text-sm leading-5 text-muted-foreground">
+                Setup steps and your first run.
+              </span>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-sky-800 dark:text-sky-200">
+                Get started{" "}
+                <ArrowRight
+                  className="size-4 transition-transform group-hover:translate-x-1"
+                  aria-hidden
+                />
+              </span>
+            </Link>
+            <Link
+              href={repoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="group rounded-xl border border-border bg-background p-5 shadow-sm transition-colors hover:border-violet-300 dark:hover:border-violet-800"
+            >
+              <span className="flex size-10 items-center justify-center rounded-lg bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200">
+                <GitBranch className="size-5" aria-hidden />
+              </span>
+              <span className="mt-4 block font-semibold">
+                Explore the source
+              </span>
+              <span className="mt-1 block text-sm leading-5 text-muted-foreground">
+                Browse the public GitHub repository.
+              </span>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-violet-800 dark:text-violet-200">
+                View repository{" "}
+                <ArrowRight
+                  className="size-4 transition-transform group-hover:translate-x-1"
+                  aria-hidden
+                />
+              </span>
+            </Link>
+          </div>
         </div>
-        <p className="border-t border-border px-6 py-4 text-xs leading-5 text-muted-foreground sm:px-8 lg:px-10">The free offer ends when the DeesseJS platform launches. No date has been set. The current version is included in the future Professional and Agency template plans.</p>
       </section>
 
-      <section className="border-b border-border">
-        <SectionTitle index="06" eyebrow="Questions & support" title="A few practical details." />
-        <div className="divide-y divide-border">
-          {questions.map((item) => (
-            <details key={item.question} className="group px-6 py-5 open:bg-muted/20 sm:px-8 lg:px-10">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-sm font-medium [&::-webkit-details-marker]:hidden">{item.question}<span className="font-mono text-muted-foreground transition-transform group-open:rotate-45" aria-hidden>+</span></summary>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{item.answer}</p>
-            </details>
-          ))}
+      <section
+        aria-labelledby="launch-offer-title"
+        className="border-b border-border px-5 py-10 sm:px-8 sm:py-14 lg:px-10 lg:py-20"
+      >
+        <div className="mx-auto max-w-6xl overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-rose-50 shadow-sm dark:border-amber-900/70 dark:from-amber-950/40 dark:via-background dark:to-rose-950/30">
+          <div className="grid gap-8 p-6 sm:p-9 lg:grid-cols-[1fr_0.9fr] lg:gap-12 lg:p-12">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+                <span
+                  className="size-1.5 rounded-full bg-emerald-500"
+                  aria-hidden
+                />{" "}
+                Available now
+              </span>
+              <h2
+                id="launch-offer-title"
+                className="mt-5 max-w-xl text-3xl font-semibold tracking-tight text-balance sm:text-4xl"
+              >
+                Download the starter while it is free.
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+                The free offer ends when the DeesseJS platform launches. There
+                is no launch date set today, and there is no download limit.
+              </p>
+              <Button asChild size="lg" className="mt-6">
+                <Link href={docsUrl}>
+                  Get the starter <ArrowRight className="size-4" aria-hidden />
+                </Link>
+              </Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              <div className="rounded-xl border border-amber-200/80 bg-white/80 p-4 dark:border-amber-900/70 dark:bg-card/80">
+                <p className="text-sm font-semibold">Download directly</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  No account, email signup, or waitlist.
+                </p>
+              </div>
+              <div className="rounded-xl border border-emerald-200/80 bg-white/80 p-4 dark:border-emerald-900/70 dark:bg-card/80">
+                <p className="text-sm font-semibold">Keep your copy</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  The version you download remains yours to use.
+                </p>
+              </div>
+              <div className="rounded-xl border border-violet-200/80 bg-white/80 p-4 dark:border-violet-900/70 dark:bg-card/80">
+                <p className="text-sm font-semibold">
+                  Future versions may be paid
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Later releases are not included with this download.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-amber-200/80 bg-white/50 px-6 py-4 text-xs leading-5 text-muted-foreground sm:px-9 lg:px-12 dark:border-amber-900/70 dark:bg-card/50">
+            The current version will remain available through the future
+            Professional and Agency template plans.
+          </div>
         </div>
       </section>
 
-      <section className="flex flex-col items-start justify-between gap-6 p-6 sm:p-8 md:flex-row md:items-center lg:p-10">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">Build on a clear foundation</p>
-          <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Your next SaaS starts here.</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Read the guide, explore the code, and shape the product you want to build.</p>
+      <section
+        aria-labelledby="questions-title"
+        className="border-b border-border"
+      >
+        <div className="grid gap-5 px-6 py-9 sm:px-8 sm:py-12 lg:grid-cols-[0.7fr_1.3fr] lg:px-10">
+          <div>
+            <h2
+              id="questions-title"
+              className="text-2xl font-semibold tracking-tight sm:text-3xl"
+            >
+              A few practical details.
+            </h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Still deciding? Here are the basics.
+            </p>
+          </div>
+          <div className="divide-y divide-border border-y border-border">
+            {questions.map((item) => (
+              <details
+                key={item.question}
+                className="group py-5 open:bg-muted/20"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                  {item.question}
+                  <span
+                    className="font-mono text-muted-foreground transition-transform group-open:rotate-45"
+                    aria-hidden
+                  >
+                    +
+                  </span>
+                </summary>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+                  {item.answer}
+                </p>
+              </details>
+            ))}
+          </div>
         </div>
-        <Link href={docsUrl} className="inline-flex min-h-11 shrink-0 items-center gap-2 bg-foreground px-5 text-sm font-medium text-background hover:opacity-85">Get started <ArrowRight className="size-4" aria-hidden /></Link>
       </section>
-    </>
+    </div>
   )
 }

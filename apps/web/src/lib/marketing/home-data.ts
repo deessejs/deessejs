@@ -184,14 +184,14 @@ export type Integration = {
  */
 export const INTEGRATIONS: ReadonlyArray<Integration> = [
   { name: "Next.js", logo: "nextdotjs", group: "frameworks" },
-  { name: "Astro",   logo: "astro",    group: "frameworks" },
-  { name: "Vue",     logo: "vuedotjs", group: "frameworks" },
-  { name: "React",   logo: "react",    group: "frameworks" },
-  { name: "Vercel",      logo: "vercel",     group: "providers" },
-  { name: "Supabase",    logo: "supabase",   group: "providers" },
-  { name: "Neon",        logo: "neon",       group: "providers" },
-  { name: "Cloudflare",  logo: "cloudflare", group: "providers" },
-  { name: "Stripe",      logo: "stripe",     group: "providers" },
+  { name: "Astro", logo: "astro", group: "frameworks" },
+  { name: "Vue", logo: "vuedotjs", group: "frameworks" },
+  { name: "React", logo: "react", group: "frameworks" },
+  { name: "Vercel", logo: "vercel", group: "providers" },
+  { name: "Supabase", logo: "supabase", group: "providers" },
+  { name: "Neon", logo: "neon", group: "providers" },
+  { name: "Cloudflare", logo: "cloudflare", group: "providers" },
+  { name: "Stripe", logo: "stripe", group: "providers" },
 ]
 
 /**
@@ -217,11 +217,11 @@ export type CodingAgent = {
 
 export const CODING_AGENTS: ReadonlyArray<CodingAgent> = [
   { name: "Claude Code", logo: "claudecode", docsSlug: "claude-code" },
-  { name: "Codex",       logo: "codex",      docsSlug: "codex" },
-  { name: "Pi",          logo: "pi",         docsSlug: "pi" },
-  { name: "Cursor",      logo: "cursor",     docsSlug: "cursor" },
-  { name: "Grok",        logo: "grok",       docsSlug: "grok" },
-  { name: "OpenCode",    logo: "opencode",   docsSlug: "opencode" },
+  { name: "Codex", logo: "codex", docsSlug: "codex" },
+  { name: "Pi", logo: "pi", docsSlug: "pi" },
+  { name: "Cursor", logo: "cursor", docsSlug: "cursor" },
+  { name: "Grok", logo: "grok", docsSlug: "grok" },
+  { name: "OpenCode", logo: "opencode", docsSlug: "opencode" },
 ]
 
 /**
@@ -258,11 +258,9 @@ export const TECH_STACK: ReadonlyArray<{ name: string; logo: string }> = [
 
 /**
  * Tech stack shown on the starter homepage. Distinct from `TECH_STACK`
- * because the open-source starter ships with a different (and smaller)
- * set than the Pro templates: framework, auth, ORM, and a monorepo
- * runtime — no Stripe, Cloudflare, Resend, or OpenAI. Reusing the
- * Pro stack here would falsely advertise features the downloadable
- * starter does not include.
+ * because the open-source starter ships with a different set than the
+ * Pro templates. It includes its own email foundation, but does not
+ * include the Pro template's Stripe or Cloudflare integrations.
  */
 export const STARTER_STACK: ReadonlyArray<{ name: string; logo: string }> = [
   { name: "Next.js", logo: "nextdotjs" },
@@ -273,6 +271,7 @@ export const STARTER_STACK: ReadonlyArray<{ name: string; logo: string }> = [
   { name: "Drizzle", logo: "drizzle" },
   { name: "PostgreSQL", logo: "postgresql" },
   { name: "Hono", logo: "hono" },
+  { name: "Resend", logo: "resend" },
 ]
 
 // ---------------------------------------------------------------------------

@@ -4,7 +4,11 @@ import Link from "next/link"
 import type { ReactNode } from "react"
 import { usePathname } from "next/navigation"
 import { Menu, Search } from "lucide-react"
-import { Sheet, SheetContent, SheetTrigger } from "@workspace/ui/components/sheet"
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@workspace/ui/components/sheet"
 import { Button } from "@workspace/ui/components/button"
 import { APP_NAME } from "@/lib/app-config"
 
@@ -51,7 +55,7 @@ export function SiteHeader({
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="flex items-center gap-2 font-semibold text-lg"
+            className="flex items-center gap-2 text-lg font-semibold"
             aria-label={`${APP_NAME} home`}
           >
             <svg
@@ -114,13 +118,11 @@ export function SiteHeader({
           >
             <Search className="size-4 text-muted-foreground" />
             <span className="text-muted-foreground">Search content</span>
-            <kbd className="ml-2 hidden text-[10px] font-mono text-muted-foreground/60 md:inline">
+            <kbd className="ml-2 hidden font-mono text-[10px] text-muted-foreground/60 md:inline">
               ⌘K
             </kbd>
           </Button>
-          <div className="hidden items-center gap-2 sm:flex">
-            {rightSlot}
-          </div>
+          <div className="hidden items-center gap-2 sm:flex">{rightSlot}</div>
           <Sheet>
             <SheetTrigger asChild className="sm:hidden">
               <Button
@@ -136,12 +138,10 @@ export function SiteHeader({
               className="flex flex-col gap-6 bg-background p-6"
               style={{ width: "100vw", maxWidth: "100vw" }}
             >
-              <Link href="/" className="font-semibold text-lg">
+              <Link href="/" className="text-lg font-semibold">
                 {APP_NAME}
               </Link>
-              <div className="flex flex-col gap-2">
-                {mobileMenuSlot}
-              </div>
+              <div className="flex flex-col gap-2">{mobileMenuSlot}</div>
               <NavSections pathname={pathname} variant="mobile" />
             </SheetContent>
           </Sheet>
@@ -155,35 +155,100 @@ function StarterSiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background">
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold" aria-label="DeesseJS home">
-          <svg width="20" height="18" viewBox="0 0 109 95" fill="none" aria-hidden="true" className="text-foreground">
-            <path d="M36.377 61.0078L16.877 94.5078H0.876953L28.377 48.0078L36.377 61.0078Z" fill="currentColor" />
-            <path d="M43.877 94.0078H27.877L46.877 62.0078V61.0078L33.877 38.5078L41.377 25.0078L62.877 61.5078L43.877 94.0078Z" fill="currentColor" />
-            <path d="M107.877 94.0078H54.877L62.877 80.0078H99.877L107.877 94.0078Z" fill="currentColor" />
-            <path d="M94.877 71.0078H78.877L46.877 15.0078L54.877 1.00781L94.877 71.0078Z" fill="currentColor" />
+        <Link
+          href="/"
+          className="flex items-center gap-2 font-semibold"
+          aria-label="DeesseJS home"
+        >
+          <svg
+            width="20"
+            height="18"
+            viewBox="0 0 109 95"
+            fill="none"
+            aria-hidden="true"
+            className="text-foreground"
+          >
+            <path
+              d="M36.377 61.0078L16.877 94.5078H0.876953L28.377 48.0078L36.377 61.0078Z"
+              fill="currentColor"
+            />
+            <path
+              d="M43.877 94.0078H27.877L46.877 62.0078V61.0078L33.877 38.5078L41.377 25.0078L62.877 61.5078L43.877 94.0078Z"
+              fill="currentColor"
+            />
+            <path
+              d="M107.877 94.0078H54.877L62.877 80.0078H99.877L107.877 94.0078Z"
+              fill="currentColor"
+            />
+            <path
+              d="M94.877 71.0078H78.877L46.877 15.0078L54.877 1.00781L94.877 71.0078Z"
+              fill="currentColor"
+            />
           </svg>
           <span>DeesseJS</span>
         </Link>
-        <nav aria-label="Main navigation" className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
-          <Link href="https://docs.deessejs.com/getting-started" className="hover:text-foreground">Docs</Link>
-          <Link href="/blog" className="hover:text-foreground">Blog</Link>
-          <Link href="/changelog" className="hover:text-foreground">Changelog</Link>
-          <Link href="https://github.com/deessejs/saas-template" target="_blank" rel="noreferrer" className="hover:text-foreground">GitHub</Link>
-          <Button asChild className="bg-foreground px-4 py-2 font-medium text-background hover:opacity-85">
-            <Link href="https://docs.deessejs.com/getting-started">Get started</Link>
+        <nav
+          aria-label="Main navigation"
+          className="hidden items-center gap-6 text-sm text-muted-foreground md:flex"
+        >
+          <Link href="/blog" className="hover:text-foreground">
+            Blog
+          </Link>
+          <Link href="/changelog" className="hover:text-foreground">
+            Changelog
+          </Link>
+          <Link
+            href="https://github.com/deessejs/saas-template"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground"
+          >
+            GitHub
+          </Link>
+          <Button
+            asChild
+            className="bg-foreground px-4 py-2 font-medium text-background hover:opacity-85"
+          >
+            <Link href="https://docs.deessejs.com/getting-started">
+              Get started
+            </Link>
           </Button>
         </nav>
         <Sheet>
           <SheetTrigger asChild className="md:hidden">
-            <Button variant="outline" size="icon" aria-label="Open navigation menu"><Menu className="size-4" /></Button>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="size-4" />
+            </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="flex flex-col gap-6 bg-background p-6">
-            <Link href="/" className="font-semibold text-lg">DeesseJS</Link>
-            <nav aria-label="Main navigation" className="flex flex-col gap-4 text-sm">
-              <Link href="https://docs.deessejs.com/getting-started">Getting started</Link>
+          <SheetContent
+            side="right"
+            className="flex flex-col gap-6 bg-background p-6"
+          >
+            <Link href="/" className="text-lg font-semibold">
+              DeesseJS
+            </Link>
+            <nav
+              aria-label="Main navigation"
+              className="flex flex-col gap-4 text-sm"
+            >
               <Link href="/blog">Blog</Link>
               <Link href="/changelog">Changelog</Link>
-              <Link href="https://github.com/deessejs/saas-template" target="_blank" rel="noreferrer">GitHub repository</Link>
+              <Link
+                href="https://github.com/deessejs/saas-template"
+                target="_blank"
+                rel="noreferrer"
+              >
+                GitHub repository
+              </Link>
+              <Button asChild className="mt-2">
+                <Link href="https://docs.deessejs.com/getting-started">
+                  Get started
+                </Link>
+              </Button>
             </nav>
           </SheetContent>
         </Sheet>
