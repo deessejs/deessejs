@@ -87,6 +87,14 @@ jobs:
       # exits non-zero. With pipefail, this would mask a successful
       # match as a failure. Instead we use a temp file and a simple
       # existence check.
+      #
+      # `package/dist/index.d.ts` is intentionally NOT in the required
+      # list. The CLI is published as a runnable binary, not a library
+      # (see `apps/cli/package.json` `bin` / `main` / `module` and the
+      # `dts: false` rationale in `apps/cli/tsup.config.ts`). Generating
+      # a stub `.d.ts` here would silently mask any future regression in
+      # the typecheck path; removing the requirement keeps the verify
+      # gate aligned with the actual contract (executable-only package).
       - name: Inspect tarball contents
         run: |
           set -eu
@@ -97,7 +105,6 @@ jobs:
           for required in \
             "package/package.json" \
             "package/dist/index.js" \
-            "package/dist/index.d.ts" \
             "package/README.md" \
           ; do
             if ! echo "$FILES" | grep -qxF "$required"; then
@@ -105,6 +112,17 @@ jobs:
               exit 1
             fi
           done
+          # Defensive: the published manifest must not declare a `types`
+          # field pointing at a file that does not exist in the tarball.
+          # If a future change reintroduces `dts: true` in tsup.config.ts
+          # the manifest will start claiming a `.d.ts` exists; this check
+          # catches the drift between manifest and tarball before
+          # consumers hit it on `npm install`.
+          TYPES_PATH=$(node -e "const p=require('./apps/cli/package.json'); process.stdout.write(p.types||'')")
+          if [ -n "$TYPES_PATH" ] && ! echo "$FILES" | grep -qxF "package/${TYPES_PATH#./}"; then
+            echo "::error::Manifest declares types: ${TYPES_PATH} but the tarball does not contain package/${TYPES_PATH#./}"
+            exit 1
+          fi
 
       # Step 3: dry-run install in a clean project. This catches the
       # 2.0.1 failure mode (workspace:* / catalog: in dependencies
