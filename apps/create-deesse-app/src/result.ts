@@ -32,6 +32,31 @@ export type CreateSuccess = {
   recovery: string | null
 }
 
+export type InstallOutput = {
+  code: number
+  stderr: string
+  stdout: string
+}
+
+export type CreateInstallFailure = {
+  ok: false
+  mode: ResultMode
+  projectCreated: true
+  /** Always false in this variant. The contract requires it. */
+  installed: false
+  source: ResultSourceMaybeSha
+  destination: string
+  error: {
+    code: "install_failed"
+    message: string
+    hint: string | undefined
+  }
+  /** Command the user can run to retry. */
+  recovery: string
+  /** Captured install output (already mirrored to stderr). */
+  installOutput: InstallOutput
+}
+
 export type CreateFailure = {
   ok: false
   mode: ResultMode
@@ -48,4 +73,4 @@ export type CreateFailure = {
   recovery?: string
 }
 
-export type CreateResult = CreateSuccess | CreateFailure
+export type CreateResult = CreateSuccess | CreateInstallFailure | CreateFailure
