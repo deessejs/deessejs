@@ -9,7 +9,6 @@ import { ProjectExplorer } from "./project-explorer"
 import {
   ApiIllustration,
   AppSurfacesIllustration,
-  ArchitectureIllustration,
   AuthenticationIllustration,
   DatabaseIllustration,
   EmailIllustration,
@@ -112,19 +111,15 @@ function SectionHeading({
 export function StarterHomepage() {
   return (
     <div className="starter-homepage">
-      <section className="grid border-b border-border lg:min-h-[560px] lg:grid-cols-[1fr_1fr]">
-        <div className="flex flex-col justify-center p-6 sm:p-10 lg:p-14">
-          <p className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-900 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-100">
-            <span
-              className="size-1.5 rounded-full bg-emerald-500"
-              aria-hidden
-            />
+      <section className="border-b border-border">
+        <div className="mx-auto flex max-w-6xl flex-col items-start px-6 py-12 sm:px-8 sm:py-16 lg:px-10 lg:py-20">
+          <p className="mb-6 inline-flex w-fit items-center rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground">
             Free until the platform launches
           </p>
-          <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-5xl lg:text-6xl">
+          <h1 className="max-w-5xl text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
             Start with the foundations. Build the product that is yours.
           </h1>
-          <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
+          <p className="mt-6 max-w-2xl text-copy-16 leading-7 text-muted-foreground sm:text-copy-18">
             A practical Next.js SaaS starter with authentication, a typed
             PostgreSQL layer, and a monorepo designed to grow with your product.
           </p>
@@ -146,9 +141,6 @@ export function StarterHomepage() {
             No account required. Keep the version you download. Later versions
             may be paid.
           </p>
-        </div>
-        <div className="flex items-center border-t border-border bg-muted/20 p-5 sm:p-8 lg:border-t-0 lg:border-l lg:p-10">
-          <ArchitectureIllustration />
         </div>
       </section>
 
@@ -211,7 +203,7 @@ export function StarterHomepage() {
       <section className="border-b border-border">
         <div className="grid gap-8 px-6 py-10 sm:px-8 sm:py-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:px-10 lg:py-16">
           <div>
-            <p className="text-sm font-medium text-violet-700 dark:text-violet-300">
+            <p className="text-sm font-medium text-muted-foreground">
               Make it yours
             </p>
             <h2 className="mt-3 max-w-lg text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
@@ -234,11 +226,11 @@ export function StarterHomepage() {
 
       <section
         aria-labelledby="get-started-title"
-        className="border-b border-border bg-sky-50/70 dark:bg-sky-950/20"
+        className="border-b border-border"
       >
         <div className="mx-auto grid max-w-6xl gap-8 px-6 py-10 sm:px-8 sm:py-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:px-10 lg:py-16">
           <div>
-            <p className="text-sm font-medium text-sky-800 dark:text-sky-200">
+            <p className="text-sm font-medium text-muted-foreground">
               Start building
             </p>
             <h2
@@ -255,16 +247,16 @@ export function StarterHomepage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <Link
               href={docsUrl}
-              className="group rounded-xl border border-sky-200 bg-background p-5 shadow-sm transition-colors hover:border-sky-400 dark:border-sky-900 dark:hover:border-sky-700"
+              className="group rounded-xl border border-border bg-background p-5 transition-colors hover:border-foreground"
             >
-              <span className="flex size-10 items-center justify-center rounded-lg bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200">
+              <span className="flex size-10 items-center justify-center rounded-lg border border-border text-foreground">
                 <BookOpen className="size-5" aria-hidden />
               </span>
               <span className="mt-4 block font-semibold">Read the guide</span>
               <span className="mt-1 block text-sm leading-5 text-muted-foreground">
                 Setup steps and your first run.
               </span>
-              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-sky-800 dark:text-sky-200">
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-foreground">
                 Get started{" "}
                 <ArrowRight
                   className="size-4 transition-transform group-hover:translate-x-1"
@@ -276,9 +268,9 @@ export function StarterHomepage() {
               href={repoUrl}
               target="_blank"
               rel="noreferrer"
-              className="group rounded-xl border border-border bg-background p-5 shadow-sm transition-colors hover:border-violet-300 dark:hover:border-violet-800"
+              className="group rounded-xl border border-border bg-background p-5 transition-colors hover:border-foreground"
             >
-              <span className="flex size-10 items-center justify-center rounded-lg bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200">
+              <span className="flex size-10 items-center justify-center rounded-lg border border-border text-foreground">
                 <GitBranch className="size-5" aria-hidden />
               </span>
               <span className="mt-4 block font-semibold">
@@ -287,7 +279,7 @@ export function StarterHomepage() {
               <span className="mt-1 block text-sm leading-5 text-muted-foreground">
                 Browse the public GitHub repository.
               </span>
-              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-violet-800 dark:text-violet-200">
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-foreground">
                 View repository{" "}
                 <ArrowRight
                   className="size-4 transition-transform group-hover:translate-x-1"
@@ -303,14 +295,10 @@ export function StarterHomepage() {
         aria-labelledby="launch-offer-title"
         className="border-b border-border px-5 py-10 sm:px-8 sm:py-14 lg:px-10 lg:py-20"
       >
-        <div className="mx-auto max-w-6xl overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-rose-50 shadow-sm dark:border-amber-900/70 dark:from-amber-950/40 dark:via-background dark:to-rose-950/30">
+        <div className="mx-auto max-w-6xl overflow-hidden rounded-2xl border border-border bg-background">
           <div className="grid gap-8 p-6 sm:p-9 lg:grid-cols-[1fr_0.9fr] lg:gap-12 lg:p-12">
             <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-950 dark:bg-amber-950 dark:text-amber-100">
-                <span
-                  className="size-1.5 rounded-full bg-emerald-500"
-                  aria-hidden
-                />{" "}
+              <span className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-foreground">
                 Available now
               </span>
               <h2
@@ -330,19 +318,19 @@ export function StarterHomepage() {
               </Button>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              <div className="rounded-xl border border-amber-200/80 bg-white/80 p-4 dark:border-amber-900/70 dark:bg-card/80">
+              <div className="rounded-xl border border-border bg-background p-4">
                 <p className="text-sm font-semibold">Download directly</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   No account, email signup, or waitlist.
                 </p>
               </div>
-              <div className="rounded-xl border border-emerald-200/80 bg-white/80 p-4 dark:border-emerald-900/70 dark:bg-card/80">
+              <div className="rounded-xl border border-border bg-background p-4">
                 <p className="text-sm font-semibold">Keep your copy</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   The version you download remains yours to use.
                 </p>
               </div>
-              <div className="rounded-xl border border-violet-200/80 bg-white/80 p-4 dark:border-violet-900/70 dark:bg-card/80">
+              <div className="rounded-xl border border-border bg-background p-4">
                 <p className="text-sm font-semibold">
                   Future versions may be paid
                 </p>
@@ -352,7 +340,7 @@ export function StarterHomepage() {
               </div>
             </div>
           </div>
-          <div className="border-t border-amber-200/80 bg-white/50 px-6 py-4 text-xs leading-5 text-muted-foreground sm:px-9 lg:px-12 dark:border-amber-900/70 dark:bg-card/50">
+          <div className="border-t border-border bg-background px-6 py-4 text-xs leading-5 text-muted-foreground sm:px-9 lg:px-12">
             The current version will remain available through the future
             Professional and Agency template plans.
           </div>
@@ -377,10 +365,7 @@ export function StarterHomepage() {
           </div>
           <div className="divide-y divide-border border-y border-border">
             {questions.map((item) => (
-              <details
-                key={item.question}
-                className="group py-5 open:bg-muted/20"
-              >
+              <details key={item.question} className="group py-5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-sm font-medium [&::-webkit-details-marker]:hidden">
                   {item.question}
                   <span

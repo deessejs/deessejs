@@ -89,7 +89,7 @@ export function ProjectExplorer() {
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-      <div className="flex flex-col border-b border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <div className="flex flex-col border-b border-border bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="flex items-center gap-2">
           <FileCode2 className="size-4 text-primary" aria-hidden />
           <p className="text-sm font-medium">Inside the starter</p>

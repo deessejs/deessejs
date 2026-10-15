@@ -271,7 +271,6 @@ export const STARTER_STACK: ReadonlyArray<{ name: string; logo: string }> = [
   { name: "Drizzle", logo: "drizzle" },
   { name: "PostgreSQL", logo: "postgresql" },
   { name: "Hono", logo: "hono" },
-  { name: "Resend", logo: "resend" },
 ]
 
 // ---------------------------------------------------------------------------
