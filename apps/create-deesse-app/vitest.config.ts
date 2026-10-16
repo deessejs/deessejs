@@ -16,6 +16,11 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["test/**/*.test.ts"],
+    // The e2e journey needs Docker (Testcontainers) and longer
+    // timeouts, and is run via `pnpm test:e2e` against a separate
+    // vitest config. Excluding it here keeps `pnpm test` fast and
+    // free of Docker requirements.
+    exclude: ["node_modules/**", "test/e2e/**"],
     testTimeout: 30_000,
     hookTimeout: 30_000,
     pool: "forks",

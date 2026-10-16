@@ -32,6 +32,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "vitest run --config test/e2e/vitest.e2e.config.ts",
     "test:watch": "vitest",
     "start": "node ./dist/index.js"
   },
@@ -41,12 +42,14 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
+    "@playwright/test": "catalog:",
     "@types/node": "catalog:",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9",
     "prettier": "^3.9.4",
     "tar": "catalog:",
+    "testcontainers": "^12.0.0",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
