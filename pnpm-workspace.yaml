@@ -115,6 +115,8 @@ catalog:
   vitest: ^4.1.10
   zod: ^4.4.3
   zustand: ^5.0.14
+  '@pierre/diffs': 1.5.2
+  '@pierre/trees': 1.0.0-beta.6
 
 # Strict mode: all dependencies MUST come from a catalog
 catalogMode: strict
