@@ -55,6 +55,8 @@ describe.skipIf(!dockerAvailable())(
         // generation flow.
         const versionResult = await consumer.installAndRun(
           archive.path,
+          archive.manifest.name,
+          archive.testVersion,
           ["--version"],
           60_000,
         )
@@ -75,6 +77,8 @@ describe.skipIf(!dockerAvailable())(
         // with a more elaborate consumer setup.
         const genResult = await consumer.installAndRun(
           archive.path,
+          archive.manifest.name,
+          archive.testVersion,
           ["smoke-project", "--no-install"],
           3 * 60_000,
         )

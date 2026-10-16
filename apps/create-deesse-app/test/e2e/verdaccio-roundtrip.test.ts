@@ -23,8 +23,8 @@ describe.skipIf(!dockerAvailable())(
   () => {
     let testVersion: string
     let archive: Awaited<ReturnType<typeof packCli>>
-    let stack: Awaited<ReturnType<typeof startNetwork>>
-    let consumer: Awaited<ReturnType<typeof startConsumerForArchive>>
+    let stack: Awaited<ReturnType<typeof startNetwork>> | null = null
+    let consumer: Awaited<ReturnType<typeof startConsumerForArchive>> | null = null
 
     beforeAll(async () => {
       testVersion = readTestVersion()
@@ -78,21 +78,26 @@ describe.skipIf(!dockerAvailable())(
       expect(publishResult.stdout).toContain(archive.manifest.name)
       expect(publishResult.stdout).toContain(testVersion)
 
-      // Now run the CLI via pnpm dlx from a clean working dir.
-      // This exercises the registry resolution + executable
-      // discovery — the same code path a real consumer would hit.
-      const execResult = await consumer.container.exec([
-        "sh",
-        "-c",
-        `cd /tmp && pnpm dlx ${readPackageName()}@${testVersion} --version`,
-      ])
-      expect(execResult.exitCode, execResult.output).toBe(0)
+      // Now run the CLI via pnpm dlx. This exercises the registry
+      // resolution + executable discovery — the same code path a
+      // real consumer would hit. We use installAndRun because it
+      // also writes the consumer's pnpm-workspace.yaml with the
+      // minimumReleaseAge exemption for the freshly-published
+      // artifact.
+      const execResult = await consumer.installAndRun(
+        archive.path,
+        archive.manifest.name,
+        archive.testVersion,
+        ["--version"],
+        60_000,
+      )
+      expect(execResult.exitCode, execResult.stdout).toBe(0)
       // The CLI prints the manifest version (the build-time
       // CREATE_DEESSE_APP_VERSION is from the original package.json,
       // so the banner here is the original version, not the test
       // version). We only assert non-empty for now; the test
       // version was already asserted via the manifest above.
-      expect(execResult.output.trim().length).toBeGreaterThan(0)
+      expect(execResult.stdout.trim().length).toBeGreaterThan(0)
     }, 10 * 60_000)
   },
 )

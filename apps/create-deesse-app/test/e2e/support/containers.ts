@@ -1,6 +1,6 @@
 import {
   GenericContainer,
-  network as testcontainersNetwork,
+  Network,
   type StartedNetwork,
   type StartedTestContainer,
   Wait,
@@ -137,7 +137,9 @@ const startServiceStack = async (
 }
 
 export const startNetwork = async (): Promise<NetworkHandles> => {
-  const network = await testcontainersNetwork.start()
+  // testcontainers v12 uses the Network class, not a singleton
+  // `network` export. `new Network().start()` is the documented API.
+  const network = await new Network().start()
   const { registryHostUrl } = await startServiceStack(network)
   const registryContainerUrl = `http://${VERDACCIO_ALIAS}:${VERDACCIO_PORT}`
   const postgresContainerUrl = `postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_ALIAS}:${POSTGRES_PORT}/${POSTGRES_DB}`

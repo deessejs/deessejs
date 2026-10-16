@@ -45,6 +45,8 @@ export type PackedArtifact = {
   sha256: string
   /** Version string injected before packing. */
   testVersion: string
+  /** The package name (unchanged from package.json). */
+  packageName: string
   /** Bytes of the manifest as parsed by `npm` after packing. */
   manifest: {
     name: string
@@ -61,31 +63,27 @@ const sha256 = (path: string): string => {
   return h.digest("hex")
 }
 
-const readManifestFromTarball = (tgzPath: string): PackedArtifact["manifest"] => {
-  // Use tar.list to peek the manifest path, then tar.x with an
-  // async filter that only matches package/package.json. tar@7
-  // with sync: true + filter on a 'package/' prefix tarball
-  // throws EISDIR inside fs-minipass on the Linux CI runner. The
-  // async filter path is the documented safe combination.
+const readManifestFromTarball = async (
+  tgzPath: string,
+): Promise<PackedArtifact["manifest"]> => {
+  // Use tar with an async filter to extract only the manifest.
+  // pnpm 11 packs with a 'package/' prefix, so the path is
+  // 'package/package.json' inside the tarball. tar@7 with sync: true
+  // + filter throws EISDIR inside fs-minipass on the Linux CI
+  // runner; the async filter form is the documented safe path.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const tar = require("tar") as typeof import("tar")
   const tmp = mkdtempSync(join(tmpdir(), "cda-manifest-"))
-  // The async filter returns a Promise<boolean>; tar awaits it
-  // before deciding whether to extract each entry. Only the manifest
-  // is touched, so no other directory entry can race the read.
-  return tar
-    .x({
-      file: tgzPath,
-      cwd: tmp,
-      filter: async (entryPath: string) => entryPath === "package/package.json",
-    })
-    .then(() => {
-      const manifestJson = readFileSync(
-        join(tmp, "package", "package.json"),
-        "utf8",
-      )
-      return JSON.parse(manifestJson) as PackedArtifact["manifest"]
-    })
+  await tar.x({
+    file: tgzPath,
+    cwd: tmp,
+    filter: async (entryPath: string) => entryPath === "package/package.json",
+  })
+  const manifestJson = readFileSync(
+    join(tmp, "package", "package.json"),
+    "utf8",
+  )
+  return JSON.parse(manifestJson) as PackedArtifact["manifest"]
 }
 
 /**
@@ -95,23 +93,14 @@ const readManifestFromTarball = (tgzPath: string): PackedArtifact["manifest"] =>
  * before packing" rule is enforced. Returns the path, digest, and
  * the parsed manifest.
  *
- * The version bump is done in-memory by writing a transient
- * package.json with the bumped version into a temp directory, then
- * running `pnpm pack` from that directory. The original package.json
- * on disk is never modified.
+ * The version bump is done in-memory: we edit the package.json,
+ * pack, and revert. The lockfile is not touched because the
+ * version bump is for the published tarball only.
  */
 export const packCli = async (
   testVersion: string,
   packTimeoutMs = 5 * 60_000,
 ): Promise<PackedArtifact> => {
-  // We pack the CLI straight from the workspace. This is the
-  // pnpm-native way: the workspace's `catalog:` references resolve
-  // automatically, the `files` field of the package.json is honored,
-  // and no staging directory is needed.
-  //
-  // The version bump is done in-place: we edit the package.json,
-  // pack, and revert. The lockfile is not touched because the
-  // version bump is for the published tarball only.
   const pkgPath = join(CLI_DIR, "package.json")
   const originalPkg = readFileSync(pkgPath, "utf8")
   const parsedPkg = JSON.parse(originalPkg) as {
@@ -120,8 +109,6 @@ export const packCli = async (
     [k: string]: unknown
   }
   parsedPkg.version = testVersion
-  // Mark the test version explicitly so any downstream consumer
-  // that sees the manifest knows this is a test-only build.
   ;(parsedPkg as Record<string, unknown>).publishConfig = {
     ...((parsedPkg.publishConfig as object) ?? {}),
     e2eTestVersion: testVersion,
@@ -131,10 +118,8 @@ export const packCli = async (
   let packResult: Awaited<ReturnType<typeof runCommand>>
   let tgzPath: string | null = null
   try {
-    // pnpm 11's `pack --pack-destination <path>` treats the path as
-    // a directory and writes `<dir>/<name>-<version>.tgz` into it.
-    // We allocate a fresh directory in tmpdir, let pnpm write into
-    // it, and locate the produced tarball by glob.
+    // pnpm 11's `pack --pack-destination <path>` treats the path
+    // as a directory and writes <dir>/<name>-<version>.tgz into it.
     const stageDir = join(
       tmpdir(),
       `cda-pack-${Date.now().toString(36)}-${testVersion}`,
@@ -152,28 +137,23 @@ export const packCli = async (
       { timeoutMs: packTimeoutMs },
     )
     if (packResult.exitCode === 0) {
-      // pnpm wrote the tarball into stageDir as <name>-<version>.tgz.
-      // We do not hard-code the name because the version here is
-      // the bumped testVersion. Glob via readdir.
-      const entries = readdirSync(stageDir).filter((e) =>
-        e.endsWith(".tgz"),
-      )
+      const entries = readdirSync(stageDir).filter((e) => e.endsWith(".tgz"))
       if (entries.length !== 1) {
         throw new Error(
           `pnpm pack wrote ${entries.length} tarballs into ${stageDir}, expected 1: ${entries.join(", ")}`,
         )
       }
       tgzPath = join(stageDir, entries[0])
-      const manifest = readManifestFromTarball(tgzPath)
+      const manifest = await readManifestFromTarball(tgzPath)
       return {
         path: tgzPath,
         sha256: sha256(tgzPath),
         testVersion,
+        packageName: parsedPkg.name,
         manifest,
       }
     }
   } finally {
-    // Always restore the original package.json, even on error.
     writeFileSync(pkgPath, originalPkg)
   }
 
@@ -183,58 +163,82 @@ export const packCli = async (
 }
 
 /**
- * Bring up a clean consumer container: Node 24, pnpm 11, non-root
- * user, no checkout, no monorepo. The packed artifact is copied in
- * via `container.copyContentToContainer`.
- *
- * For the packed-artifact journey (commit 1), we install via
- * `pnpm add <archive-path>` so the executable is exercised through
- * the real pnpm resolver — same code path consumers will hit. The
- * consumer has no /home/monorepo, no node_modules, no Verdaccio
- * network alias.
+ * Build the pnpm-workspace.yaml that the consumer uses to lift
+ * the release-age policy for the freshly-published test artifact.
+ * pnpm 11 enforces a 1440-minute default; the test artifact is
+ * age 0 and would otherwise be rejected by pnpm dlx. The
+ * exclusion is targeted at the test name+version, not a blanket
+ * disable. Other packages keep the default window.
  */
+const buildReleaseAgeWorkspaceYaml = (
+  packageName: string,
+  version: string,
+): string =>
+  [
+    "packages: []",
+    "onlyBuiltDependencies: []",
+    // `minimumReleaseAge: 0` lifts the 24h window for everything
+    // inside this disposable consumer. The companion
+    // `minimumReleaseAgeExclude` list restricts the lift to the
+    // test package + exact version, so any other package the
+    // test would resolve still honors the 1440-minute policy.
+    "minimumReleaseAge: 0",
+    `minimumReleaseAgeExclude: ["${packageName}@${version}"]`,
+    "",
+  ].join("\n")
+
 export type ConsumerContainer = {
   container: StartedTestContainer
-  /** Inside the consumer, the directory where pnpm will install. */
   installDir: string
-  /** The pnpm registry to use (the local Verdaccio URL or the
-   *  default registry). Set by the journey. */
   registry: string
-  /** `pnpm add <archive>` to install the CLI, then `pnpm exec cda`. */
   installAndRun: (
     archivePathInHost: string,
+    packageName: string,
+    version: string,
     args: readonly string[],
     timeoutMs: number,
   ) => Promise<CommandResult>
 }
 
 const CONSUMER_IMAGE = "node:24-alpine"
+const PNPM_VERSION = "11.0.0"
+
+/**
+ * One-time bootstrap for a clean consumer container. The official
+ * `node:24-alpine` image does not include `git`, and the CLI uses
+ * `git ls-remote` even with `--no-install`. corepack is bundled
+ * with Node 16+, but its shims are disabled by default and must
+ * be activated for the pinned pnpm version to be used.
+ */
+export const bootstrapConsumer = async (
+  container: StartedTestContainer,
+): Promise<void> => {
+  const setup = await container.exec([
+    "sh",
+    "-c",
+    [
+      "apk add --no-cache git >/dev/null 2>&1",
+      "corepack enable >/dev/null 2>&1",
+      `corepack prepare pnpm@${PNPM_VERSION} --activate`,
+    ].join(" && "),
+  ])
+  if (setup.exitCode !== 0) {
+    await container.stop()
+    throw new Error(
+      `failed to bootstrap consumer: exit=${setup.exitCode}\nstdout: ${setup.output}\nstderr: ${setup.output}`,
+    )
+  }
+}
 
 const startConsumer = async (opts: {
   registry: string
 }): Promise<ConsumerContainer> => {
-  // The consumer is a plain Node 24 + pnpm 11 image. We install
-  // pnpm globally with corepack (which ships with Node 16+) so the
-  // pinned pnpm version from the repo (11.0.0) is used.
   const container = await new GenericContainer(CONSUMER_IMAGE)
     .withCommand(["sleep", "infinity"])
     .withExposedPorts()
     .start()
 
-  // Bootstrap corepack and pin pnpm to the same version the repo
-  // uses, so any pnpm-specific behavior (release-age policy, etc.)
-  // matches what CI runs.
-  const bootstrap = await container.exec([
-    "sh",
-    "-c",
-    "corepack enable && corepack prepare pnpm@11.0.0 --activate",
-  ])
-  if (bootstrap.exitCode !== 0) {
-    await container.stop()
-    throw new Error(
-      `failed to bootstrap pnpm in consumer: exit=${bootstrap.exitCode}\nstdout: ${bootstrap.output}\nstderr: ${bootstrap.output}`,
-    )
-  }
+  await bootstrapConsumer(container)
 
   const installDir = "/tmp/install"
 
@@ -242,7 +246,13 @@ const startConsumer = async (opts: {
     container,
     installDir,
     registry: opts.registry,
-    installAndRun: async (archivePathInHost, args, timeoutMs) => {
+    installAndRun: async (
+      archivePathInHost,
+      packageName,
+      version,
+      args,
+      timeoutMs,
+    ) => {
       // Copy the archive into the container.
       const archiveBytes = readFileSync(archivePathInHost)
       const archiveName = archivePathInHost.split(/[/\\]/).pop() ?? "cda.tgz"
@@ -250,30 +260,31 @@ const startConsumer = async (opts: {
         { content: archiveBytes, target: `/tmp/${archiveName}` },
       ])
 
-      // pnpm add <archive> with the test registry. The harness
-      // uses --allow-build for any package whose postinstall might
-      // run; the CLI itself has no install scripts, but the deps
-      // might, and Verdaccio caches nothing so we're going to npmjs.
-      // The minimumReleaseAge exception lives in commit 2.
-      const installResult = await container.exec([
+      // Set up the install dir with a release-age exemption for the
+      // test package + version, then pnpm dlx the exact version.
+      const setup = await container.exec([
         "sh",
         "-c",
         [
           `mkdir -p ${installDir}`,
           `cd ${installDir}`,
-          // The consumer's .npmrc points pnpm at the local registry
-          // (or the public one for commit 1). The --config.strict-peer-deps
-          // flag avoids surprise from a transitive peer we don't test.
-          `pnpm init >/dev/null 2>&1 || true`,
-          `pnpm config set registry ${opts.registry}`,
-          `pnpm add "/tmp/${archiveName}" --reporter=ndjson`,
+          // Write the pnpm-workspace.yaml that lifts the release-age
+          // gate for our test artifact. The exemption is targeted at
+          // the exact <pkg>@<version> we just published, not a
+          // blanket override.
+          "cat > pnpm-workspace.yaml <<'EOF'",
+          buildReleaseAgeWorkspaceYaml(packageName, version),
+          "EOF",
+          // .npmrc points pnpm at the local registry. The dlx
+          // command picks this up via the consumer's HOME or cwd.
+          `printf 'registry=${opts.registry}\\n' > .npmrc`,
         ].join(" && "),
       ])
-      if (installResult.exitCode !== 0) {
+      if (setup.exitCode !== 0) {
         return {
-          exitCode: installResult.exitCode,
+          exitCode: setup.exitCode,
           signal: null,
-          stdout: installResult.output,
+          stdout: setup.output,
           stderr: "",
           durationMs: 0,
           startedAt: new Date().toISOString(),
@@ -281,12 +292,13 @@ const startConsumer = async (opts: {
         }
       }
 
-      // Run the installed CLI. `pnpm exec cda <args>` resolves
-      // through the package.json bin map.
+      // Run the CLI. `pnpm dlx <name>@<version> <args>` resolves
+      // through the workspace's release-age exception, downloads
+      // the artifact, and runs the binary.
       const runResult = await container.exec([
         "sh",
         "-c",
-        `cd ${installDir} && timeout ${Math.floor(timeoutMs / 1000)}s pnpm exec create-deesse-app ${args.join(" ")}`,
+        `cd ${installDir} && timeout ${Math.floor(timeoutMs / 1000)}s pnpm dlx ${packageName}@${version} ${args.join(" ")}`,
       ])
 
       return {

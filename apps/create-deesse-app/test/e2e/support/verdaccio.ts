@@ -49,9 +49,11 @@ export const publishToVerdaccio = async (opts: {
     { content: readFileSync(artifact.path), target: `/tmp/${archiveName}` },
   ])
 
-  // Extract the tarball into a staging dir, then run pnpm publish
-  // from there. `--no-git-checks` skips the git-tag requirement
-  // (this is a test publish, not a release).
+  // pnpm 11 pack produces a tarball whose top-level directory is
+  // 'package/'. The manifest sits at <stage>/package/package.json.
+  // `pnpm publish` reads the manifest from cwd, so we either cd
+  // into 'package/' or pass the package directory as a positional
+  // argument. The latter is cleaner and avoids a fragile cd.
   const result = await consumer.exec([
     "sh",
     "-c",
@@ -60,7 +62,11 @@ export const publishToVerdaccio = async (opts: {
       "mkdir -p /tmp/publish-staging",
       "cd /tmp/publish-staging",
       `tar -xzf /tmp/${archiveName}`,
-      `pnpm publish --registry ${registryUrl} --no-git-checks`,
+      // pnpm publish <dir> reads the manifest from <dir> and packs
+      // from there. The version in the manifest is the bumped
+      // testVersion, so registry consumers will resolve to that
+      // exact string.
+      `pnpm publish ./package --registry ${registryUrl} --no-git-checks`,
     ].join(" && "),
   ])
   const exitedAt = new Date().toISOString()

@@ -12,6 +12,7 @@ import {
   packCli,
   readPackageName,
   readTestVersion,
+  bootstrapConsumer,
 } from "./support/consumer-stack.js"
 import { publishToVerdaccio } from "./support/verdaccio.js"
 import {
@@ -47,7 +48,11 @@ describe.skipIf(!dockerAvailable())(
     let archive: Awaited<ReturnType<typeof packCli>>
     let network: Awaited<ReturnType<typeof startNetwork>>
     let consumer: StartedTestContainer
-    let stopStack: ReturnType<typeof makeStackStop>
+    // stopStack is null until beforeAll completes successfully.
+    // If beforeAll throws, afterAll must not call it (otherwise we
+    // get a cascade 'stopStack is not a function' error that hides
+    // the real failure).
+    let stopStack: ReturnType<typeof makeStackStop> | null = null
 
     beforeAll(async () => {
       testVersion = readTestVersion()
@@ -57,13 +62,16 @@ describe.skipIf(!dockerAvailable())(
       // the StartedNetwork directly. Pass it through to
       // makeStackStop which expects the same shape.
       consumer = await startNetworkedConsumer(network.network)
+      await bootstrapConsumer(consumer)
       stopStack = makeStackStop(
         network.network as Parameters<typeof makeStackStop>[0],
       )
     }, 15 * 60_000)
 
     afterAll(async () => {
-      await stopStack([consumer])
+      if (stopStack !== null) {
+        await stopStack([consumer])
+      }
     }, 60_000)
 
     it(
