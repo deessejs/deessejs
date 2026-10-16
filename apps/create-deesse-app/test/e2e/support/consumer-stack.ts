@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -84,112 +84,86 @@ const readManifestFromTarball = async (
 
 /**
  * Build the CLI and produce a pnpm pack tarball whose version is the
- * test version. The version bump happens in a temp staging
- * directory so the workspace's package.json is never mutated on
- * disk. The build is run before the bump so dist/ matches the
- * pre-bump source — we accept this trade-off because the CLI's
- * --version banner is the build-time value and the brief explicitly
- * accepts asserting on the manifest version instead.
+ * test version. The strategy here follows the pnpm docs and the
+ * brief: pack from inside the workspace (the package's parent
+ * directory) with a `--filter` so pnpm resolves the catalog and
+ * workspace protocols against the same pnpm-workspace.yaml the
+ * rest of the monorepo uses. Building a stage and copying
+ * pnpm-workspace.yaml into it does not work because pnpm
+ * recognizes a workspace member by its presence in the `packages:`
+ * list — a stage without that entry is not a workspace member and
+ * the catalog is not resolved.
+ *
+ * The version bump is applied in-place to the package's
+ * package.json, then restored in `finally` so a failed build
+ * leaves the workspace unchanged.
  */
 export const packCli = async (
   testVersion: string,
   packTimeoutMs = 5 * 60_000,
 ): Promise<PackedArtifact> => {
-  // Stage the package in a tmp directory that mirrors the monorepo's
-  // relevant files, so 'pnpm --filter <name> pack' resolves the
-  // workspace catalog.
-  const stage = mkdtempSync(join(tmpdir(), "cda-pack-"))
-  const cliStage = join(stage, "apps", "create-deesse-app")
-  mkdirSync(cliStage, { recursive: true })
-
-  // Copy the relevant source files. We do not include node_modules
-  // (not present anyway) or test/ (we only need the publishable
-  // source).
-  cpSync(join(CLI_DIR, "package.json"), join(cliStage, "package.json"))
-  cpSync(join(CLI_DIR, "tsup.config.ts"), join(cliStage, "tsup.config.ts"))
-  cpSync(join(CLI_DIR, "tsconfig.json"), join(cliStage, "tsconfig.json"))
-  cpSync(join(CLI_DIR, "src"), join(cliStage, "src"), { recursive: true })
-  cpSync(join(CLI_DIR, "dist"), join(cliStage, "dist"), { recursive: true })
-  cpSync(join(CLI_DIR, "README.md"), join(cliStage, "README.md"))
-  // Copy the monorepo's pnpm-workspace.yaml so the stage can
-  // resolve any 'catalog:' references in the package's
-  // dependencies / devDependencies. Without this file, pnpm 11
-  // refuses to pack the stage because the catalog is not
-  // discoverable.
-  cpSync(
-    join(CLI_DIR, "..", "..", "pnpm-workspace.yaml"),
-    join(stage, "pnpm-workspace.yaml"),
-  )
-  // License at the monorepo root.
-  const monorepoRoot = join(CLI_DIR, "..", "..")
-  const licenseSrc = join(monorepoRoot, "LICENSE")
-  if (existsSync(licenseSrc)) {
-    cpSync(licenseSrc, join(cliStage, "LICENSE"))
-  }
-
-  // Bump the version in the staged package.json. The catalog
-  // references are resolved by pnpm against the workspace file
-  // we just copied. The workspace-protocol devDependencies
-  // (@workspace/eslint-config, @workspace/typescript-config) are
-  // not present as installed packages, so we replace them with
-  // plain semver taken from the same catalog.
-  const stagedPkgPath = join(cliStage, "package.json")
-  const stagedPkg = JSON.parse(readFileSync(stagedPkgPath, "utf8")) as {
+  const pkgPath = join(CLI_DIR, "package.json")
+  const originalPkg = readFileSync(pkgPath, "utf8")
+  const parsedPkg = JSON.parse(originalPkg) as {
     name: string
     version: string
-    devDependencies?: Record<string, string>
     [k: string]: unknown
   }
-  stagedPkg.version = testVersion
-  if (stagedPkg.devDependencies) {
-    stagedPkg.devDependencies = Object.fromEntries(
-      Object.entries(stagedPkg.devDependencies).map(([k, v]) => [
-        k,
-        v === "workspace:*" ? "*" : v,
-      ]),
-    ) as Record<string, string>
-  }
-  writeFileSync(stagedPkgPath, JSON.stringify(stagedPkg, null, 2) + "\n")
+  parsedPkg.version = testVersion
+  writeFileSync(pkgPath, JSON.stringify(parsedPkg, null, 2) + "\n")
 
-  // pnpm pack writes into a destination directory. We use a fresh
-  // tmpdir and locate the produced tarball by glob. We run pnpm
-  // pack from the stage's package directory (not via --filter)
-  // because pnpm's --filter syntax doesn't reliably match a
-  // versioned spec in a non-workspace context.
-  const stageDir = mkdtempSync(join(tmpdir(), "cda-pack-out-"))
-  const packResult = await runCommand(
-    "pnpm",
-    ["pack", "--pack-destination", stageDir],
-    { cwd: cliStage, timeoutMs: packTimeoutMs },
-  )
-  if (packResult.exitCode !== 0) {
-    throw new Error(
-      `pnpm pack failed: exit=${packResult.exitCode}\nstdout: ${packResult.stdout}\nstderr: ${packResult.stderr}`,
+  let packResult: Awaited<ReturnType<typeof runCommand>>
+  let tgzPath: string | null = null
+  try {
+    const stageDir = mkdtempSync(join(tmpdir(), "cda-pack-out-"))
+    // Run pnpm pack from the monorepo root, filtered to our
+    // package. The filter resolves the catalog and workspace
+    // protocols in the bumped package.json. The pack runs
+    // against the same pnpm-workspace.yaml the rest of the
+    // monorepo uses.
+    packResult = await runCommand(
+      "pnpm",
+      [
+        "--filter",
+        `${parsedPkg.name}@${testVersion}`,
+        "pack",
+        "--pack-destination",
+        stageDir,
+      ],
+      { cwd: join(CLI_DIR, "..", ".."), timeoutMs: packTimeoutMs },
     )
+    if (packResult.exitCode !== 0) {
+      throw new Error(
+        `pnpm pack failed: exit=${packResult.exitCode}\nstdout: ${packResult.stdout}\nstderr: ${packResult.stderr}`,
+      )
+    }
+
+    const entries = readdirSync(stageDir).filter((e) => e.endsWith(".tgz"))
+    if (entries.length !== 1) {
+      throw new Error(
+        `pnpm pack wrote ${entries.length} tarballs into ${stageDir}, expected 1: ${entries.join(", ")}`,
+      )
+    }
+    const tgzName = entries[0] as string
+    tgzPath = join(stageDir, tgzName)
+  } finally {
+    // Always restore the original package.json, even on error.
+    writeFileSync(pkgPath, originalPkg)
   }
 
-  const entries = readdirSync(stageDir).filter((e) => e.endsWith(".tgz"))
-  if (entries.length !== 1) {
-    throw new Error(
-      `pnpm pack wrote ${entries.length} tarballs into ${stageDir}, expected 1: ${entries.join(", ")}`,
-    )
-  }
-  const tgzName = entries[0] as string
-  const tgzPath = join(stageDir, tgzName)
-  const manifest = await readManifestFromTarball(tgzPath)
+  const manifest = await readManifestFromTarball(tgzPath as string)
 
   return {
-    path: tgzPath,
-    sha256: sha256(tgzPath),
+    path: tgzPath as string,
+    sha256: sha256(tgzPath as string),
     testVersion,
-    packageName: stagedPkg.name,
+    packageName: parsedPkg.name,
     manifest,
   }
 }
 
 // Re-export the node:fs helpers used above so the import block at
 // the top stays grouped.
-import { cpSync, existsSync } from "node:fs"
 
 /**
  * Bring up a clean consumer container attached to the test network.
