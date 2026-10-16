@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto"
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -123,15 +129,17 @@ export const packCli = async (
   writeFileSync(pkgPath, JSON.stringify(parsedPkg, null, 2) + "\n")
 
   let packResult: Awaited<ReturnType<typeof runCommand>>
+  let tgzPath: string | null = null
   try {
-    // `pnpm --filter <pkg> pack --pack-destination <file>` packs the
-    // package from the workspace and writes the tarball to a
-    // specific path. The catalog references are resolved by pnpm
-    // using the workspace's pnpm-workspace.yaml.
-    const tgzPath = join(
+    // pnpm 11's `pack --pack-destination <path>` treats the path as
+    // a directory and writes `<dir>/<name>-<version>.tgz` into it.
+    // We allocate a fresh directory in tmpdir, let pnpm write into
+    // it, and locate the produced tarball by glob.
+    const stageDir = join(
       tmpdir(),
-      `cda-pack-${Date.now().toString(36)}-${testVersion}.tgz`,
+      `cda-pack-${Date.now().toString(36)}-${testVersion}`,
     )
+    mkdirSync(stageDir)
     packResult = await runCommand(
       "pnpm",
       [
@@ -139,12 +147,23 @@ export const packCli = async (
         parsedPkg.name,
         "pack",
         "--pack-destination",
-        tgzPath,
+        stageDir,
       ],
       { timeoutMs: packTimeoutMs },
     )
     if (packResult.exitCode === 0) {
-      // Move the manifest out of the way; the success path returns below.
+      // pnpm wrote the tarball into stageDir as <name>-<version>.tgz.
+      // We do not hard-code the name because the version here is
+      // the bumped testVersion. Glob via readdir.
+      const entries = readdirSync(stageDir).filter((e) =>
+        e.endsWith(".tgz"),
+      )
+      if (entries.length !== 1) {
+        throw new Error(
+          `pnpm pack wrote ${entries.length} tarballs into ${stageDir}, expected 1: ${entries.join(", ")}`,
+        )
+      }
+      tgzPath = join(stageDir, entries[0])
       const manifest = readManifestFromTarball(tgzPath)
       return {
         path: tgzPath,
