@@ -118,14 +118,43 @@ export const packCli = async (
     cpSync(licenseSrc, join(cliStage, "LICENSE"))
   }
 
-  // Bump the version in the staged package.json.
+  // Bump the version in the staged package.json, and inline the
+  // catalog: references into plain semver so the stage is a
+  // standalone package (no pnpm-workspace.yaml needed). The catalog
+  // lives in the monorepo's pnpm-workspace.yaml, which is not
+  // copied into the stage.
   const stagedPkgPath = join(cliStage, "package.json")
   const stagedPkg = JSON.parse(readFileSync(stagedPkgPath, "utf8")) as {
     name: string
     version: string
+    dependencies?: Record<string, string>
+    devDependencies?: Record<string, string>
     [k: string]: unknown
   }
   stagedPkg.version = testVersion
+  // The catalog versions used by create-deesse-app at the time
+  // of this commit. We keep them in sync with the monorepo's
+  // pnpm-workspace.yaml; if a future PR changes those, the
+  // build that follows this test's typecheck will surface a
+  // version drift and the test author should update this
+  // object literal.
+  const catalogInline: Record<string, string> = {
+    "cross-spawn": "7.0.6",
+  }
+  const inlineCatalog = (
+    deps: Record<string, string> | undefined,
+  ): Record<string, string> | undefined => {
+    if (!deps) return undefined
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(deps)) {
+      out[k] = v === "catalog:" && k in catalogInline ? catalogInline[k]! : v
+    }
+    return out
+  }
+  const inlinedDeps = inlineCatalog(stagedPkg.dependencies)
+  if (inlinedDeps) stagedPkg.dependencies = inlinedDeps
+  const inlinedDevDeps = inlineCatalog(stagedPkg.devDependencies)
+  if (inlinedDevDeps) stagedPkg.devDependencies = inlinedDevDeps
   writeFileSync(stagedPkgPath, JSON.stringify(stagedPkg, null, 2) + "\n")
 
   // pnpm pack writes into a destination directory. We use a fresh
