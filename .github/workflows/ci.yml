@@ -172,3 +172,85 @@ jobs:
 
       - name: Run integration tests
         run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api
+
+  # create-deesse-app native smoke. Runs the bundled CLI directly on
+  # each supported OS so we catch any platform-specific regression in
+  # the JSON-on-stdout contract, the destination guard, the npm guard,
+  # and --version / --help. No Docker, no GitHub network.
+  create-deesse-app-smoke:
+    name: create-deesse-app native smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Build the bundled CLI once; the smoke test runs it as a
+      # subprocess. Force the build so a previous cached result
+      # does not mask a real source change.
+      - name: Build the CLI
+        run: pnpm --filter create-deesse-app build --force
+
+      - name: Run native smoke
+        run: pnpm --filter create-deesse-app exec vitest run --config test/e2e/smoke/vitest.smoke.config.ts
+        env:
+          # Each runner ships its own temp dir convention; the
+          # smoke tests use os.tmpdir(), which is already correct on
+          # every platform. No override needed.
+
+  # create-deesse-app consumer-level e2e. Runs only on Linux because
+  # the Testcontainers journey (Verdaccio + PostgreSQL + a consumer
+  # container) requires a Docker daemon, which the macOS and Windows
+  # GitHub-hosted runners do not expose. Linux is the supported
+  # production target today. The brief calls this a separate required
+  # job so the longer consumer journey does not blur the unit /
+  # integration results.
+  create-deesse-app-e2e:
+    name: create-deesse-app consumer e2e (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build the CLI
+        run: pnpm --filter create-deesse-app build
+
+      - name: Run consumer e2e (Testcontainers)
+        # The e2e journey starts a disposable Verdaccio + a clean
+        # Node 24 consumer, publishes the packed CLI to the registry,
+        # then runs pnpm dlx on it. The job uploads evidence under
+        # test-results/ on both success and failure.
+        run: pnpm --filter create-deesse-app test:e2e
+
+      - name: Upload consumer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: create-deesse-app-e2e-${{ github.run_id }}-${{ github.run_attempt }}
+          path: apps/create-deesse-app/test-results/
+          if-no-files-found: warn
+          retention-days: 14
