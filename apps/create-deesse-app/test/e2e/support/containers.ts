@@ -61,24 +61,6 @@ const waitForHttp2xx = async (
   )
 }
 
-const waitForPostgresLog = async (
-  container: StartedTestContainer,
-  timeoutMs: number,
-): Promise<void> => {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    const logs = await container.getLogs()
-    const text = `${logs.stdout}\n${logs.stderr}`
-    if (/database system is ready to accept connections/.test(text)) {
-      return
-    }
-    await new Promise((r) => setTimeout(r, 250))
-  }
-  throw new Error(
-    `PostgreSQL did not emit readiness line within ${timeoutMs} ms`,
-  )
-}
-
 export type NetworkHandles = {
   /** Unique testcontainers network that bridges the registry, the
    *  database, and the consumer container. */
@@ -99,8 +81,11 @@ const startServiceStack = async (
 ): Promise<{
   registryHostUrl: string
 }> => {
-  // Start PostgreSQL first; it has the longest cold-start.
-  const postgres = await new GenericContainer(POSTGRES_IMAGE)
+  // Start PostgreSQL first; it has the longest cold-start. We
+  // intentionally do not hold a reference to the started container
+  // here: callers reach it via the network alias (POSTGRES_ALIAS)
+  // and only need the URL string.
+  await new GenericContainer(POSTGRES_IMAGE)
     .withEnvironment({
       POSTGRES_USER,
       POSTGRES_PASSWORD,
@@ -133,9 +118,8 @@ const startServiceStack = async (
   // wait explicitly so the consumer container can resolve packages
   // immediately.
   await waitForHttp2xx(`${registryHostUrl}/verdaccio/`, 15_000)
-  // Belt-and-braces: also wait on the PostgreSQL log line in case the
-  // wait strategy missed it (defensive — most days it does not).
-  await waitForPostgresLog(postgres, 5_000)
+  // The PostgreSQL wait strategy above is sufficient; no extra poll
+  // is needed.
 
   return { registryHostUrl }
 }

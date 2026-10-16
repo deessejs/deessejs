@@ -270,6 +270,12 @@ const startConsumer = async (opts: {
         packageName,
         version,
       )
+      // Use '\n' between statements (not ' && ') so the heredoc
+      // terminator E2E_WS is followed by a real newline before
+      // the next command. With ' && ' the terminator and the next
+      // command end up on the same line and the heredoc body
+      // would absorb the leading ' && ' as YAML, breaking the
+      // document.
       const setup = await container.exec([
         "sh",
         "-c",
@@ -281,13 +287,11 @@ const startConsumer = async (opts: {
           // ('E2E_WS') prevents shell expansion of any backticks /
           // dollars inside the body. The exemption is targeted at
           // the exact <pkg>@<version> we just published, not a
-          // blanket override. The newline after E2E_WS is required
-          // so the next && segment is on a fresh line and not
-          // glued to the heredoc terminator.
-          `cat > pnpm-workspace.yaml <<'E2E_WS'\n${workspaceBody}\nE2E_WS\n`,
+          // blanket override.
+          `cat > pnpm-workspace.yaml <<'E2E_WS'\n${workspaceBody}\nE2E_WS`,
           // .npmrc points pnpm at the local registry.
           `printf 'registry=${opts.registry}\\n' > .npmrc`,
-        ].join(" && "),
+        ].join("\n"),
       ])
       if (setup.exitCode !== 0) {
         return {
