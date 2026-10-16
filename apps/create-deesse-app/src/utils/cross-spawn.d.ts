@@ -1,3 +1,11 @@
+// Type declarations for the `cross-spawn` package.
+//
+// Why this file exists: cross-spawn@7.0.6 (the version we depend on) does
+// not ship its own `.d.ts`, and `@types/cross-spawn` is not on the public
+// registry. Until upstream adds types, we declare just enough surface for
+// the two callers in this package (install/run.ts and utils/spawn.ts).
+// Keep this declaration minimal — if a new caller needs more fields, add
+// them here rather than at the call site so the boundary stays narrow.
 declare module "cross-spawn" {
   import { ChildProcess, StdioOptions } from "node:child_process"
   export interface SpawnOptions {

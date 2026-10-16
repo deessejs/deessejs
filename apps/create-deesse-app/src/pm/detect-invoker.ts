@@ -16,19 +16,20 @@ import { unsupportedManager } from "../errors/index.js"
  * increment refuses to proceed. Tested against real `npx` and `npm exec`
  * invocations (see test/unit/detect-invoker.test.ts).
  */
+const isNpmUserAgent = (value: string | undefined): boolean =>
+  typeof value === "string" && value.startsWith("npm/")
+
+const isSetAndNonEmpty = (value: string | undefined): boolean =>
+  typeof value === "string" && value.length > 0
+
 export const assertNotNpmInvocation = (
   env: NodeJS.ProcessEnv = process.env,
 ): void => {
-  const userAgent = env.npm_config_user_agent
-  if (typeof userAgent === "string" && userAgent.startsWith("npm/")) {
-    throw unsupportedManager("npm")
-  }
-
-  if (env.npm_lifecycle_event && env.npm_lifecycle_event.length > 0) {
-    throw unsupportedManager("npm")
-  }
-
-  if (env.npm_node_execpath && env.npm_node_execpath.length > 0) {
+  if (
+    isNpmUserAgent(env.npm_config_user_agent) ||
+    isSetAndNonEmpty(env.npm_lifecycle_event) ||
+    isSetAndNonEmpty(env.npm_node_execpath)
+  ) {
     throw unsupportedManager("npm")
   }
 }
