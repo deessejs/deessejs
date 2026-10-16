@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -56,15 +56,27 @@ const sha256 = (path: string): string => {
 }
 
 const readManifestFromTarball = (tgzPath: string): PackedArtifact["manifest"] => {
-  // We extract package.json out of the gzipped tar via the same `tar`
-  // package that the unit tests already use, so we don't add a new
-  // dependency. pnpm@11 packs with a 'package/' prefix; the manifest
-  // is at <tmp>/package/package.json after extract.
+  // Extract only the manifest. pnpm@11 packs with a 'package/'
+  // prefix, so the path is 'package/package.json' inside the
+  // tarball. We use a filter so tar does not try to materialize
+  // every entry (which can fail on tar@7 with EISDIR on some
+  // platforms for nested entries).
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const tar = require("tar") as typeof import("tar")
   const tmp = mkdtempSync(join(tmpdir(), "cda-manifest-"))
-  tar.x({ file: tgzPath, cwd: tmp, sync: true })
-  const manifestJson = readFileSync(join(tmp, "package", "package.json"), "utf8")
+  // Pre-create the package/ dir so tar's mkdir doesn't trip on a
+  // race with the filter's "entry is a directory" check.
+  mkdirSync(join(tmp, "package"), { recursive: true })
+  tar.x({
+    file: tgzPath,
+    cwd: tmp,
+    sync: true,
+    filter: (entryPath: string) => entryPath === "package/package.json",
+  })
+  const manifestJson = readFileSync(
+    join(tmp, "package", "package.json"),
+    "utf8",
+  )
   return JSON.parse(manifestJson) as PackedArtifact["manifest"]
 }
 
