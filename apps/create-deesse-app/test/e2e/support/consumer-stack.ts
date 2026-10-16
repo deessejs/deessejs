@@ -1,15 +1,5 @@
 import { createHash } from "node:crypto"
-import {
-  copyFileSync,
-  cpSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  unlinkSync,
-  writeFileSync,
-} from "node:fs"
+import { readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -94,91 +84,69 @@ export const packCli = async (
   testVersion: string,
   packTimeoutMs = 5 * 60_000,
 ): Promise<PackedArtifact> => {
-  // pnpm pack only allows one tarball per invocation, and the
-  // version is read from the package.json on disk. We copy the
-  // entire package to a temp directory so the build artifacts (dist/)
-  // and LICENSE file are present, then bump version, then pack.
-  const stage = mkdtempSync(join(tmpdir(), "cda-pack-"))
-  // Mirror the source files. We exclude node_modules and dev-only
-  // test scaffolding to keep the archive small.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const tar = require("tar") as typeof import("tar")
-  tar.c(
-    {
-      gzip: false,
-      file: join(stage, "src-tree.tar"),
-      cwd: CLI_DIR,
-      // Sync avoids an unhandled-rejection race during cleanup.
-      sync: true,
-      filter: (p: string) =>
-        !p.includes("node_modules/") &&
-        !p.includes(".turbo/") &&
-        !p.includes("test-results/") &&
-        !p.includes(".e2e-build/") &&
-        !p.startsWith("dist/"),
-    },
-    ["package.json", "tsup.config.ts", "tsconfig.json", "src", "README.md"],
-  )
-  tar.x({ file: join(stage, "src-tree.tar"), cwd: stage, sync: true })
-  rmSync(join(stage, "src-tree.tar"))
-
-  // Copy the built dist/ + the LICENSE file from the monorepo root.
-  cpSync(join(CLI_DIR, "dist"), join(stage, "dist"), { recursive: true })
-  // The package.json `files` list references ../../LICENSE. Resolve
-  // it relative to the package, which is one level up from this
-  // monorepo root.
-  const monorepoRoot = join(CLI_DIR, "..", "..")
-  const licenseSrc = join(monorepoRoot, "LICENSE")
-  if (existsSync(licenseSrc)) {
-    copyFileSync(licenseSrc, join(stage, "LICENSE"))
-  }
-
-  // Bump the version in the staged package.json.
-  const stagedPkgPath = join(stage, "package.json")
-  const stagedPkg = JSON.parse(readFileSync(stagedPkgPath, "utf8")) as {
+  // We pack the CLI straight from the workspace. This is the
+  // pnpm-native way: the workspace's `catalog:` references resolve
+  // automatically, the `files` field of the package.json is honored,
+  // and no staging directory is needed.
+  //
+  // The version bump is done in-place: we edit the package.json,
+  // pack, and revert. The lockfile is not touched because the
+  // version bump is for the published tarball only.
+  const pkgPath = join(CLI_DIR, "package.json")
+  const originalPkg = readFileSync(pkgPath, "utf8")
+  const parsedPkg = JSON.parse(originalPkg) as {
     name: string
     version: string
     [k: string]: unknown
   }
-  stagedPkg.version = testVersion
-  // Mark the test version explicitly so any downstream consumer that
-  // sees the manifest knows this is a test-only build.
-  ;(stagedPkg as Record<string, unknown>).publishConfig = {
-    ...((stagedPkg.publishConfig as object) ?? {}),
+  parsedPkg.version = testVersion
+  // Mark the test version explicitly so any downstream consumer
+  // that sees the manifest knows this is a test-only build.
+  ;(parsedPkg as Record<string, unknown>).publishConfig = {
+    ...((parsedPkg.publishConfig as object) ?? {}),
     e2eTestVersion: testVersion,
   }
-  writeFileSync(stagedPkgPath, JSON.stringify(stagedPkg, null, 2) + "\n")
+  writeFileSync(pkgPath, JSON.stringify(parsedPkg, null, 2) + "\n")
 
-  // pnpm pack writes the tarball to cwd and prints its name.
-  const packResult = await runCommand("pnpm", ["pack"], {
-    cwd: stage,
-    timeoutMs: packTimeoutMs,
-  })
-  if (packResult.exitCode !== 0) {
-    throw new Error(
-      `pnpm pack failed: exit=${packResult.exitCode}\nstdout: ${packResult.stdout}\nstderr: ${packResult.stderr}`,
+  let packResult: Awaited<ReturnType<typeof runCommand>>
+  try {
+    // `pnpm --filter <pkg> pack --pack-destination <file>` packs the
+    // package from the workspace and writes the tarball to a
+    // specific path. The catalog references are resolved by pnpm
+    // using the workspace's pnpm-workspace.yaml.
+    const tgzPath = join(
+      tmpdir(),
+      `cda-pack-${Date.now().toString(36)}-${testVersion}.tgz`,
     )
-  }
-  // The tarball's name is the last non-empty line of stdout.
-  const tgzName = packResult.stdout
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.endsWith(".tgz"))
-    .pop()
-  if (!tgzName) {
-    throw new Error(
-      `pnpm pack did not print a .tgz name: ${packResult.stdout}`,
+    packResult = await runCommand(
+      "pnpm",
+      [
+        "--filter",
+        parsedPkg.name,
+        "pack",
+        "--pack-destination",
+        tgzPath,
+      ],
+      { timeoutMs: packTimeoutMs },
     )
+    if (packResult.exitCode === 0) {
+      // Move the manifest out of the way; the success path returns below.
+      const manifest = readManifestFromTarball(tgzPath)
+      return {
+        path: tgzPath,
+        sha256: sha256(tgzPath),
+        testVersion,
+        manifest,
+      }
+    }
+  } finally {
+    // Always restore the original package.json, even on error.
+    writeFileSync(pkgPath, originalPkg)
   }
-  const tgzPath = join(stage, tgzName)
-  const manifest = readManifestFromTarball(tgzPath)
 
-  return {
-    path: tgzPath,
-    sha256: sha256(tgzPath),
-    testVersion,
-    manifest,
-  }
+  throw new Error(
+    `pnpm pack failed: exit=${packResult!.exitCode}\nstdout: ${packResult!.stdout}\nstderr: ${packResult!.stderr}`,
+  )
 }
 
 /**

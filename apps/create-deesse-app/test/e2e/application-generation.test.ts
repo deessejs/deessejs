@@ -53,8 +53,13 @@ describe.skipIf(!dockerAvailable())(
       testVersion = readTestVersion()
       archive = await packCli(testVersion)
       network = await startNetwork()
+      // startNetwork() returns { network, ... } where `network` is
+      // the StartedNetwork directly. Pass it through to
+      // makeStackStop which expects the same shape.
       consumer = await startNetworkedConsumer(network.network)
-      stopStack = makeStackStop(network.network)
+      stopStack = makeStackStop(
+        network.network as Parameters<typeof makeStackStop>[0],
+      )
     }, 15 * 60_000)
 
     afterAll(async () => {

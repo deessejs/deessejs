@@ -198,10 +198,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # Build the bundled CLI once; the smoke test runs it as a
-      # subprocess. Force the build so a previous cached result
-      # does not mask a real source change.
+      # subprocess. tsup does its own incremental work; no force
+      # flag is needed (and the flag does not exist on tsup).
       - name: Build the CLI
-        run: pnpm --filter create-deesse-app build --force
+        run: pnpm --filter create-deesse-app build
 
       - name: Run native smoke
         run: pnpm --filter create-deesse-app exec vitest run --config test/e2e/smoke/vitest.smoke.config.ts
