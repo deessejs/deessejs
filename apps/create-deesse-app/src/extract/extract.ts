@@ -1,7 +1,7 @@
 import * as tar from "tar"
 
 import { unsafeArchive } from "../errors/index.js"
-import { validateEntry, type Entry } from "./validate-entry.js"
+import { validateEntry } from "./validate-entry.js"
 
 /* eslint-disable sonarjs/no-unsafe-unzip -- safety is enforced by the two-pass
    pipeline (validate-entries.ts runs tar.t() read-only first and rejects any
@@ -40,19 +40,18 @@ export const extractTarball = async (args: ExtractTarballArgs): Promise<void> =>
     cwd: tempDir,
     strip: 1,
     onReadEntry: (entry) => {
-      const e = entry as unknown as Entry
       // Confirm the archive is the one we asked for — every entry must
       // start with the expected prefix. If not, abort.
-      if (!e.path.startsWith(expectedPrefix)) {
+      if (!entry.path.startsWith(expectedPrefix)) {
         failures.push({
-          path: e.path,
+          path: entry.path,
           reason: `entry does not start with expected prefix "${expectedPrefix}"`,
         })
         return
       }
       // Strip the prefix, then run the same per-entry safety check.
-      const stripped = e.path.slice(expectedPrefix.length)
-      const result = validateEntry({ ...e, path: stripped })
+      const stripped = entry.path.slice(expectedPrefix.length)
+      const result = validateEntry({ ...entry, path: stripped })
       if (!result.ok) {
         failures.push(...result.failures)
       }

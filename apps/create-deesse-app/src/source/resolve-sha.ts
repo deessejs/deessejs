@@ -1,6 +1,5 @@
 import { execFile } from "node:child_process"
 
-import { spawn } from "../utils/spawn.js"
 import { gitNotInstalled, sourceFailed } from "../errors/index.js"
 
 const SHA_REGEX = /^[0-9a-f]{40}$/
@@ -10,6 +9,30 @@ export type ResolveTemplateShaArgs = {
   repo: string
   ref: string
 }
+
+// `git ls-remote` prints one line per ref: "<sha>\t<ref>\n". We query
+// exactly one ref (`refs/heads/<ref>`) and parse the first matching
+// non-empty line. The format is documented and stable across git
+// versions, so a single line split is enough — no library required.
+const parseLsRemoteFirstLine = (stdout: string): string | null => {
+  for (const line of stdout.split("\n")) {
+    if (line.trim().length === 0) continue
+    const [sha] = line.split("\t")
+    return sha ?? null
+  }
+  return null
+}
+
+const execFileP = (cmd: string, args: string[]): Promise<string> =>
+  new Promise<string>((resolveFn, rejectFn) => {
+    // execFile resolves the command via PATH, which is the documented
+    // behaviour we rely on. We pass shell:false so no shell interpolation
+    // of args can occur.
+    execFile(cmd, args, { shell: false, windowsHide: true }, (err, out) => {
+      if (err) rejectFn(err)
+      else resolveFn(out)
+    })
+  })
 
 /**
  * Resolve the current commit SHA for `<owner>/<repo>#<ref>` via `git ls-remote`.
@@ -23,38 +46,21 @@ export const resolveTemplateSha = async (
   const { owner, repo, ref } = args
   const url = `https://github.com/${owner}/${repo}`
 
-  const stdout = await new Promise<string>((resolve, reject) => {
-    execFile(
-      // We deliberately let execFile look up `git` on PATH rather than
-      // pinning an absolute path (git installs vary per platform). False
-      // positive for sonarjs/no-os-command-from-path.
-      // eslint-disable-next-line sonarjs/no-os-command-from-path
-      "git",
-      ["ls-remote", url, ref],
-      { shell: false, windowsHide: true },
-      (err, out) => {
-        if (err) reject(err)
-        else resolve(out)
-      },
-    )
-  })
+  const stdout = await execFileP("git", ["ls-remote", url, ref])
 
-  // First matching line: "<sha>\t<ref>". The ref column is informational; we
-  // validate only the SHA.
-  const firstLine = stdout.split("\n").find((line) => line.trim().length > 0)
-  if (!firstLine) {
+  const sha = parseLsRemoteFirstLine(stdout)
+  if (sha === null) {
     // Probe git presence to give a useful error.
-    const probe = await spawn("git", ["--version"], {
-      stdio: "ignore",
-      reject: false,
-    })
-    if (probe !== 0) throw gitNotInstalled()
+    try {
+      await execFileP("git", ["--version"])
+    } catch {
+      throw gitNotInstalled()
+    }
     throw sourceFailed(
       `git ls-remote returned no lines for ${url} ${ref}`,
     )
   }
 
-  const sha = firstLine.split(/\s+/)[0] ?? ""
   if (!SHA_REGEX.test(sha)) {
     throw sourceFailed(
       `git ls-remote returned a malformed SHA for ${url} ${ref}: ${sha}`,

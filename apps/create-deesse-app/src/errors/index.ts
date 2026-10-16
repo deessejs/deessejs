@@ -63,7 +63,11 @@ export const networkError = (detail: string): CliError =>
   new CliError("network_error", "network request failed", detail)
 
 export const sourceFailed = (detail: string): CliError =>
-  new CliError("source_failed", "could not resolve template source", detail)
+  new CliError(
+    "source_failed",
+    `could not resolve template source: ${detail}`,
+    "check the network and that the repo URL is correct",
+  )
 
 export const gitNotInstalled = (): CliError =>
   new CliError(
