@@ -274,9 +274,13 @@ const startConsumer = async (opts: {
           // dollars inside the body. The exemption is targeted at
           // the exact <pkg>@<version> we just published, not a
           // blanket override.
-          "cat > pnpm-workspace.yaml <<'E2E_WS'",
-          buildReleaseAgeWorkspaceYaml(packageName, version),
-          "E2E_WS",
+          //
+          // We pipe the workspace body through stdin (not via
+          // shell argv) so the body never reaches the shell
+          // tokenizer — a body like 'packages: []' would
+          // otherwise be split into a 'packages:' command and
+          // cause 'sh: packages:: not found'.
+          `cat > pnpm-workspace.yaml <<'E2E_WS'\n${buildReleaseAgeWorkspaceYaml(packageName, version)}\nE2E_WS`,
           // .npmrc points pnpm at the local registry.
           `printf 'registry=${opts.registry}\\n' > .npmrc`,
         ].join(" && "),

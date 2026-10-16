@@ -108,7 +108,7 @@ const startServiceStack = async (
     })
     .withExposedPorts(POSTGRES_PORT)
     .withNetwork(network)
-    .withNetworkAliases([POSTGRES_ALIAS])
+    .withNetworkAliases(POSTGRES_ALIAS)
     .withWaitStrategy(Wait.forLogMessage(/database system is ready/))
     .start()
 
@@ -119,7 +119,7 @@ const startServiceStack = async (
   const registry = await new GenericContainer(VERDACCIO_IMAGE)
     .withExposedPorts(VERDACCIO_PORT)
     .withNetwork(network)
-    .withNetworkAliases([VERDACCIO_ALIAS])
+    .withNetworkAliases(VERDACCIO_ALIAS)
     .withWaitStrategy(Wait.forLogMessage(/http address:/))
     .start()
 
