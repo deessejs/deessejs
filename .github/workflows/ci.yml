@@ -205,10 +205,6 @@ jobs:
 
       - name: Run native smoke
         run: pnpm --filter create-deesse-app exec vitest run --config test/e2e/smoke/vitest.smoke.config.ts
-        env:
-          # Each runner ships its own temp dir convention; the
-          # smoke tests use os.tmpdir(), which is already correct on
-          # every platform. No override needed.
 
   # create-deesse-app consumer-level e2e. Runs only on Linux because
   # the Testcontainers journey (Verdaccio + PostgreSQL + a consumer
