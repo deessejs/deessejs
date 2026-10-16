@@ -140,6 +140,7 @@ export const packCli = async (
   // object literal.
   const catalogInline: Record<string, string> = {
     "cross-spawn": "7.0.6",
+    "@playwright/test": "1.62.1",
   }
   const inlineCatalog = (
     deps: Record<string, string> | undefined,
