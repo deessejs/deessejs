@@ -250,7 +250,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: create-deesse-app-e2e-${{ github.run_id }}-${{ github.run_attempt }}
+          name: create-deesse-app-e2e-evidence
           path: apps/create-deesse-app/test-results/
           if-no-files-found: warn
           retention-days: 14
