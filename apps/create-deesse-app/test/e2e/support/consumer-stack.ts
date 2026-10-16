@@ -129,18 +129,15 @@ export const packCli = async (
   writeFileSync(stagedPkgPath, JSON.stringify(stagedPkg, null, 2) + "\n")
 
   // pnpm pack writes into a destination directory. We use a fresh
-  // tmpdir and locate the produced tarball by glob.
+  // tmpdir and locate the produced tarball by glob. We run pnpm
+  // pack from the stage's package directory (not via --filter)
+  // because pnpm's --filter syntax doesn't reliably match a
+  // versioned spec in a non-workspace context.
   const stageDir = mkdtempSync(join(tmpdir(), "cda-pack-out-"))
   const packResult = await runCommand(
     "pnpm",
-    [
-      "--filter",
-      `${stagedPkg.name}@${testVersion}`,
-      "pack",
-      "--pack-destination",
-      stageDir,
-    ],
-    { cwd: stage, timeoutMs: packTimeoutMs },
+    ["pack", "--pack-destination", stageDir],
+    { cwd: cliStage, timeoutMs: packTimeoutMs },
   )
   if (packResult.exitCode !== 0) {
     throw new Error(
