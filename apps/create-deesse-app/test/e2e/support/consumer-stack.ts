@@ -129,14 +129,26 @@ export const packCli = async (
 
   // Bump the version in the staged package.json. The catalog
   // references are resolved by pnpm against the workspace file
-  // we just copied.
+  // we just copied. The workspace-protocol devDependencies
+  // (@workspace/eslint-config, @workspace/typescript-config) are
+  // not present as installed packages, so we replace them with
+  // plain semver taken from the same catalog.
   const stagedPkgPath = join(cliStage, "package.json")
   const stagedPkg = JSON.parse(readFileSync(stagedPkgPath, "utf8")) as {
     name: string
     version: string
+    devDependencies?: Record<string, string>
     [k: string]: unknown
   }
   stagedPkg.version = testVersion
+  if (stagedPkg.devDependencies) {
+    stagedPkg.devDependencies = Object.fromEntries(
+      Object.entries(stagedPkg.devDependencies).map(([k, v]) => [
+        k,
+        v === "workspace:*" ? "*" : v,
+      ]),
+    ) as Record<string, string>
+  }
   writeFileSync(stagedPkgPath, JSON.stringify(stagedPkg, null, 2) + "\n")
 
   // pnpm pack writes into a destination directory. We use a fresh
