@@ -115,6 +115,22 @@ export const packCli = async (
   let packResult: Awaited<ReturnType<typeof runCommand>>
   let tgzPath: string | null = null
   try {
+    // Build the CLI so dist/ exists. The package.json's `files`
+    // field is ["dist", ...] which means a pack without a fresh
+    // dist/ would produce a tarball that contains no source. The
+    // build is part of the original monorepo's pre-publish flow
+    // and is what pnpm publishes users would see in production.
+    const buildResult = await runCommand(
+      "pnpm",
+      ["--filter", `${parsedPkg.name}@${testVersion}`, "run", "build"],
+      { cwd: join(CLI_DIR, "..", ".."), timeoutMs: packTimeoutMs },
+    )
+    if (buildResult.exitCode !== 0) {
+      throw new Error(
+        `build failed before pack: exit=${buildResult.exitCode}\nstdout: ${buildResult.stdout}\nstderr: ${buildResult.stderr}`,
+      )
+    }
+
     const stageDir = mkdtempSync(join(tmpdir(), "cda-pack-out-"))
     // Run pnpm pack from the monorepo root, filtered to our
     // package. The filter resolves the catalog and workspace
