@@ -4,12 +4,12 @@ import { StarterHomepage } from "@/components/pages/starter/starter-homepage"
 export const metadata: Metadata = {
   title: "SaaS Starter · DeesseJS",
   description:
-    "Start your SaaS with an open source Next.js starter: authentication, PostgreSQL, and a monorepo you can make your own. Free until the DeesseJS platform launches.",
+    "Create a SaaS project with create-deesse-app. Start from a Next.js monorepo with authentication, PostgreSQL, and a typed API. Free until the DeesseJS platform launches.",
   alternates: { canonical: "https://deessejs.com" },
   openGraph: {
-    title: "Start your SaaS with the hard parts in place · DeesseJS",
+    title: "Start your SaaS with create-deesse-app · DeesseJS",
     description:
-      "An open source Next.js SaaS starter with authentication, PostgreSQL, and a monorepo you can make your own.",
+      "Create a SaaS project from a Next.js monorepo with authentication, PostgreSQL, and a typed API.",
     url: "https://deessejs.com",
   },
 }

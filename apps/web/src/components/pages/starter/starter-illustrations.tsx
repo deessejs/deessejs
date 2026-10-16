@@ -1,7 +1,6 @@
 import {
   ArrowRight,
   Check,
-  Database,
   Folder,
   Mail,
   PanelsTopLeft,
@@ -42,7 +41,7 @@ export function AuthenticationIllustration() {
       <div className="w-full max-w-[270px] rounded-lg border border-border bg-background p-3 shadow-sm">
         <div className="mb-3 flex items-center justify-between gap-3">
           <TechnologyLogo name="Better Auth" logo="betterauth" />
-          <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 px-2 py-1 text-[10px] text-emerald-700 dark:text-emerald-400">
             <Check className="size-3" aria-hidden /> Verified
           </span>
         </div>
@@ -72,9 +71,9 @@ export function DatabaseIllustration() {
           <span>verified</span>
         </div>
         <div className="grid grid-cols-3 px-3 py-2 text-[10px] text-muted-foreground">
-          <span>id</span>
-          <span>text</span>
-          <span>boolean</span>
+          <span>user_01</span>
+          <span>ada@site.dev</span>
+          <span className="text-emerald-700 dark:text-emerald-400">true</span>
         </div>
       </div>
     </IllustrationFrame>
@@ -95,7 +94,8 @@ export function ApiIllustration() {
         <div className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2">
           <TechnologyLogo name="Hono + oRPC" logo="hono" />
           <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-            <ShieldCheck className="size-3.5" aria-hidden /> Protected context
+            <ShieldCheck className="size-3.5 text-foreground" aria-hidden />
+            Protected context
           </span>
         </div>
       </div>
@@ -174,36 +174,5 @@ export function AppSurfacesIllustration() {
         </div>
       </div>
     </IllustrationFrame>
-  )
-}
-
-export function ExtensionIllustration() {
-  return (
-    <div className="grid gap-3 rounded-xl border border-border bg-background p-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:p-5">
-      <div className="rounded-lg border border-border bg-background p-4">
-        <p className="text-xs font-semibold">Starter foundations</p>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <ShieldCheck className="size-3.5" aria-hidden /> Authentication
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Database className="size-3.5" aria-hidden /> Database
-          </span>
-        </div>
-      </div>
-      <ArrowRight
-        className="mx-auto size-4 text-muted-foreground sm:mx-0"
-        aria-hidden
-      />
-      <div className="rounded-lg border border-border bg-background p-4">
-        <p className="text-xs font-semibold">Your product features</p>
-        <p className="mt-2 text-xs leading-5 text-muted-foreground">
-          Add the workflows and business rules your product needs.
-        </p>
-        <p className="mt-2 text-[10px] text-muted-foreground">
-          Workspaces and billing are examples, not included features.
-        </p>
-      </div>
-    </div>
   )
 }
