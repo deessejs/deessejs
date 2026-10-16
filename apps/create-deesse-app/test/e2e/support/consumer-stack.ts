@@ -58,13 +58,13 @@ const sha256 = (path: string): string => {
 const readManifestFromTarball = (tgzPath: string): PackedArtifact["manifest"] => {
   // We extract package.json out of the gzipped tar via the same `tar`
   // package that the unit tests already use, so we don't add a new
-  // dependency. The package.json sits at <stage>/package.json after
-  // a strip-1 extract.
+  // dependency. pnpm@11 packs with a 'package/' prefix; the manifest
+  // is at <tmp>/package/package.json after extract.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const tar = require("tar") as typeof import("tar")
   const tmp = mkdtempSync(join(tmpdir(), "cda-manifest-"))
-  tar.x({ file: tgzPath, cwd: tmp, strip: 1, sync: true })
-  const manifestJson = readFileSync(join(tmp, "package.json"), "utf8")
+  tar.x({ file: tgzPath, cwd: tmp, sync: true })
+  const manifestJson = readFileSync(join(tmp, "package", "package.json"), "utf8")
   return JSON.parse(manifestJson) as PackedArtifact["manifest"]
 }
 
