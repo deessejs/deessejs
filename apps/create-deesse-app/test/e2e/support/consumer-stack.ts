@@ -272,7 +272,3 @@ const startConsumer = async (opts: {
 export const startConsumerForArchive = (opts: {
   registry: string
 }): Promise<ConsumerContainer> => startConsumer(opts)
-
-// Re-export the explicit fs helpers we used above so other modules
-// do not need to import from `node:fs` directly.
-export const _fs = { mkdirSync, unlinkSync }
