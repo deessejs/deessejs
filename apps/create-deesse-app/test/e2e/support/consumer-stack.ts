@@ -269,14 +269,15 @@ const startConsumer = async (opts: {
           `mkdir -p ${installDir}`,
           `cd ${installDir}`,
           // Write the pnpm-workspace.yaml that lifts the release-age
-          // gate for our test artifact. The exemption is targeted at
+          // gate for our test artifact. The quoted heredoc tag
+          // ('E2E_WS') prevents shell expansion of any backticks /
+          // dollars inside the body. The exemption is targeted at
           // the exact <pkg>@<version> we just published, not a
           // blanket override.
-          "cat > pnpm-workspace.yaml <<'EOF'",
+          "cat > pnpm-workspace.yaml <<'E2E_WS'",
           buildReleaseAgeWorkspaceYaml(packageName, version),
-          "EOF",
-          // .npmrc points pnpm at the local registry. The dlx
-          // command picks this up via the consumer's HOME or cwd.
+          "E2E_WS",
+          // .npmrc points pnpm at the local registry.
           `printf 'registry=${opts.registry}\\n' > .npmrc`,
         ].join(" && "),
       ])

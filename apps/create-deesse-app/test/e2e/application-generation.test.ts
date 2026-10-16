@@ -37,7 +37,7 @@ const startNetworkedConsumer = async (
   return await new GenericContainer("node:24-alpine")
     .withCommand(["sleep", "infinity"])
     .withNetwork(network)
-    .withNetworkAliases(["cda-consumer"])
+    .withNetworkAliases("cda-consumer")
     .start()
 }
 
