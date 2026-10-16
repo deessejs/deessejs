@@ -115,12 +115,16 @@ const startServiceStack = async (
   // Start Verdaccio with the same default config that ships in the
   // public image. No custom plugin config — we only need a writeable
   // registry that proxies uncached packages through to the public npm
-  // registry.
+  // registry. Verdaccio 6 changed its startup log format and no
+  // longer emits the 'http address:' line on every platform, so we
+  // wait on the /verdaccio/ HTTP endpoint instead.
   const registry = await new GenericContainer(VERDACCIO_IMAGE)
     .withExposedPorts(VERDACCIO_PORT)
     .withNetwork(network)
     .withNetworkAliases(VERDACCIO_ALIAS)
-    .withWaitStrategy(Wait.forLogMessage(/http address:/))
+    .withWaitStrategy(
+      Wait.forHttp("/verdaccio/", VERDACCIO_PORT).forStatusCode(200),
+    )
     .start()
 
   const registryHostPort = registry.getMappedPort(VERDACCIO_PORT)

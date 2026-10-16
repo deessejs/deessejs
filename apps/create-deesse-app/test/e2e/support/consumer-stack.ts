@@ -262,6 +262,14 @@ const startConsumer = async (opts: {
 
       // Set up the install dir with a release-age exemption for the
       // test package + version, then pnpm dlx the exact version.
+      // The heredoc body is the workspace YAML; the 'E2E_WS' tag is
+      // a single line that ends the heredoc cleanly. We join with
+      // '\n' rather than ' ' so the heredoc body has real newlines
+      // (the shell collapses a one-line string with no separator).
+      const workspaceBody = buildReleaseAgeWorkspaceYaml(
+        packageName,
+        version,
+      )
       const setup = await container.exec([
         "sh",
         "-c",
@@ -273,14 +281,10 @@ const startConsumer = async (opts: {
           // ('E2E_WS') prevents shell expansion of any backticks /
           // dollars inside the body. The exemption is targeted at
           // the exact <pkg>@<version> we just published, not a
-          // blanket override.
-          //
-          // We pipe the workspace body through stdin (not via
-          // shell argv) so the body never reaches the shell
-          // tokenizer — a body like 'packages: []' would
-          // otherwise be split into a 'packages:' command and
-          // cause 'sh: packages:: not found'.
-          `cat > pnpm-workspace.yaml <<'E2E_WS'\n${buildReleaseAgeWorkspaceYaml(packageName, version)}\nE2E_WS`,
+          // blanket override. The newline after E2E_WS is required
+          // so the next && segment is on a fresh line and not
+          // glued to the heredoc terminator.
+          `cat > pnpm-workspace.yaml <<'E2E_WS'\n${workspaceBody}\nE2E_WS\n`,
           // .npmrc points pnpm at the local registry.
           `printf 'registry=${opts.registry}\\n' > .npmrc`,
         ].join(" && "),
