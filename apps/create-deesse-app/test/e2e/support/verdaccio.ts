@@ -1,79 +1,71 @@
-import { readFileSync } from "node:fs"
-
-import type { StartedTestContainer } from "testcontainers"
+import type { ExecOptions, StartedTestContainer } from "testcontainers"
 
 import type { CommandResult } from "./process.js"
 import type { PackedArtifact } from "./consumer-stack.js"
 
-const commandResultFromExec = (
-  exitCode: number,
-  output: string,
-  startedAt: string,
-  exitedAt: string,
-): CommandResult => ({
-  exitCode,
-  signal: null,
-  stdout: output,
-  stderr: "",
-  durationMs: 0,
-  startedAt,
-  exitedAt,
-})
-
 /**
- * Publish a packed CLI artifact to a running Verdaccio instance.
- * Runs entirely inside the consumer container so the registry URL
- * matches the network alias (`http://registry:4873`).
+ * Publish the packed CLI tarball to Verdaccio. The tarball is the
+ * pre-built artifact produced by packCli; we do NOT extract it
+ * before publishing (that path is what broke the round-trip test in
+ * the previous design).
  *
- * The artifact is copied in, extracted, and `pnpm publish` runs
- * against the local Verdaccio URL. The consumer's pnpm is pinned
- * to 11.0.0 by the consumer-stack helper.
- *
- * The default Verdaccio image accepts anonymous publishes. If a
- * private registry is later wired in, an auth token would be set
- * via the per-registry `//registry:4873/:_authToken` env var.
+ * The consumer's .npmrc has the auth token for the e2e user
+ * already; we pass the same token here so the host-side pnpm
+ * publish succeeds.
  */
 export const publishToVerdaccio = async (opts: {
   consumer: StartedTestContainer
-  /** Verdaccio URL from inside the consumer network, e.g.
-   *  http://registry:4873. */
   registryUrl: string
+  registryToken: string
+  registryUser: string
   artifact: PackedArtifact
 }): Promise<CommandResult> => {
-  const { consumer, registryUrl, artifact } = opts
-  const archiveName = artifact.path.split(/[/\\]/).pop() ?? "cda.tgz"
-  const startedAt = new Date().toISOString()
+  const { consumer, registryUrl, registryToken, registryUser, artifact } =
+    opts
 
-  // Copy the tarball into the consumer.
-  await consumer.copyContentToContainer([
-    { content: readFileSync(artifact.path), target: `/tmp/${archiveName}` },
-  ])
+  // We use the consumer's pnpm (already pinned) so the toolchain
+  // is identical to the install path. The token is passed via
+  // .npmrc-like env, with the per-registry slot key expected by
+  // npm/pnpm.
+  const execOpts: ExecOptions = {
+    // Testcontainers v12 types ExecOptions as non-optional
+    // (workingDir + user) even though Partial<> should allow
+    // omission. We provide both, defaulting to "root" in the
+    // consumer (which is what node:24-alpine uses as the default
+    // user). cwd is irrelevant for a single-command invocation
+    // but the type demands it.
+    workingDir: "/tmp",
+    user: "root",
+    env: {
+      // Force pnpm to authenticate to the local Verdaccio.
+      npm_config_registry: registryUrl,
+      // Per-registry auth-token slot. pnpm picks the entry whose
+      // key matches the resolved registry URL.
+      [`npm_config__//${registryUrl.replace(/^https?:\/\//, "")}___authToken`]:
+        registryToken,
+      // Belt-and-braces: also export the user, in case the
+      // registry demands basic auth.
+      npm_config_username: registryUser,
+      npm_config_user_email: `${registryUser}@example.invalid`,
+      npm_config_always_auth: "true",
+    },
+  }
 
-  // pnpm 11 pack produces a tarball whose top-level directory is
-  // 'package/'. The manifest sits at <stage>/package/package.json.
-  // `pnpm publish` reads the manifest from cwd, so we either cd
-  // into 'package/' or pass the package directory as a positional
-  // argument. The latter is cleaner and avoids a fragile cd.
-  const result = await consumer.exec([
-    "sh",
-    "-c",
+  const result = await consumer.exec(
     [
-      "set -e",
-      "mkdir -p /tmp/publish-staging",
-      "cd /tmp/publish-staging",
-      `tar -xzf /tmp/${archiveName}`,
-      // pnpm publish <dir> reads the manifest from <dir> and packs
-      // from there. The version in the manifest is the bumped
-      // testVersion, so registry consumers will resolve to that
-      // exact string.
-      `pnpm publish ./package --registry ${registryUrl} --no-git-checks`,
-    ].join(" && "),
-  ])
-  const exitedAt = new Date().toISOString()
-  return commandResultFromExec(
-    result.exitCode,
-    result.output,
-    startedAt,
-    exitedAt,
+      "sh",
+      "-c",
+      `pnpm publish ${artifact.path} --registry ${registryUrl} --no-git-checks`,
+    ],
+    execOpts,
   )
+  return {
+    exitCode: result.exitCode,
+    signal: null,
+    stdout: result.output,
+    stderr: "",
+    durationMs: 0,
+    startedAt: new Date().toISOString(),
+    exitedAt: new Date().toISOString(),
+  }
 }

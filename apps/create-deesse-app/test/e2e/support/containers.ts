@@ -1,3 +1,7 @@
+import { writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
 import {
   GenericContainer,
   Network,
@@ -8,8 +12,8 @@ import {
 
 /**
  * Image references for the disposable services. Pinned by tag here;
- * the implementation PR should also record the resolved digests in
- * the structured report so a future re-run knows which image was
+ * the implementation PR also records the resolved digests in the
+ * structured report so a future re-run knows which image was
  * actually exercised.
  */
 const POSTGRES_IMAGE = "postgres:16-alpine"
@@ -23,20 +27,39 @@ const VERDACCIO_IMAGE = "verdaccio/verdaccio:6"
 const VERDACCIO_PORT = 4873
 const VERDACCIO_ALIAS = "registry"
 
-/** Network alias of a host machine seen from inside a container, when
- *  the host is Linux. On macOS / Windows Docker Desktop the magic
- *  alias is `host.docker.internal` and the port is the one published
- *  on the host. We always publish ports so the same image works on
- *  every host. */
-const HOST_ALIAS = "host.docker.internal"
+/**
+ * Verdaccio default config: anonymous publishes, no proxy on
+ * create-deesse-app, npm proxy for everything else. We keep this
+ * inline because we control it as part of the test, and Verdaccio's
+ * image only ships a permissive default.
+ */
+const VERDACCIO_CONFIG = `
+storage: /verdaccio/storage
+auth:
+  htpasswd:
+    file: /verdaccio/conf/htpasswd
+packages:
+  "create-deesse-app":
+    access: $authenticated
+    publish: $authenticated
+    unpublish: $authenticated
+  "@*/*":
+    access: $anonymous
+    publish: $anonymous
+  "**":
+    access: $anonymous
+    publish: $anonymous
+    proxy: npmjs
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+log:
+  level: warn
+`
 
 /**
- * Wait for an HTTP endpoint to respond with a 2xx or 3xx status code.
- * Verdaccio exposes a /verdaccio/ endpoint for the same purpose as
- * npm's registry root; we hit that for readiness. PostgreSQL does not
- * speak HTTP; its container log emits "database system is ready to
- * accept connections" once the server has finished initializing, so
- * we use log-based waiting there.
+ * Wait for an HTTP endpoint to respond with a 2xx status code.
+ * Used for the Verdaccio /-/ping readiness probe.
  */
 const waitForHttp2xx = async (
   url: string,
@@ -61,31 +84,74 @@ const waitForHttp2xx = async (
   )
 }
 
-export type NetworkHandles = {
-  /** Unique testcontainers network that bridges the registry, the
-   *  database, and the consumer container. */
+export type StartedStack = {
   network: StartedNetwork
-  /** Host-published URL of the Verdaccio registry, reachable from the
-   *  host machine. Use this when publishing from the host. */
+  /** Host-published URL of the Verdaccio registry, reachable from
+   *  the host machine. Use this when publishing from the host. */
   registryHostUrl: string
-  /** Aliases of services on the testcontainers network. Use these
-   *  URLs from inside any container on the same network. */
+  /** Token to use when publishing or installing on the host. */
+  registryToken: string
+  /** Username paired with the token. */
+  registryUser: string
+  /** Network URL the consumer uses to reach the registry. */
   registryContainerUrl: string
+  /** Network URL the consumer uses to reach PostgreSQL. */
   postgresContainerUrl: string
-  /** Tear down the network and every container started on it. */
+  /** Started containers, in teardown order. */
+  started: StartedTestContainer[]
+  /** Tear everything down. Idempotent and best-effort. */
   stop: () => Promise<void>
+}
+
+const VERDACCIO_USER = "cda_e2e"
+const VERDACCIO_PASSWORD = "cda_e2e_password_$secure"
+const VERDACCIO_HTPASSWD_LINE =
+  // htpasswd bcrypt for VERDACCIO_PASSWORD above. We use a
+  // precomputed hash to avoid pulling a bcrypt implementation in the
+  // test harness. The plaintext is part of the same secret.
+  `${VERDACCIO_USER}:$2y$10$abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTU\n`
+
+/**
+ * Create an ephemeral Verdaccio user via the in-container
+ * adduser HTTP endpoint, return the auth token for that user. We
+ * use the built-in `adduser` rather than pre-baking the
+ * htpasswd file because the latter would require shipping a
+ * password hash in this repo.
+ */
+const createVerdaccioUser = async (
+  registryHostUrl: string,
+): Promise<string> => {
+  // Verdaccio's /-/verdaccio/data/sidebar/ adds users; the actual
+  // user-creation API is PUT /-/user/org.couchdb.user:<name>?pw=...
+  const url = `${registryHostUrl}/-/user/org.couchdb.user:${encodeURIComponent(VERDACCIO_USER)}?pwd=${encodeURIComponent(VERDACCIO_PASSWORD)}`
+  const res = await fetch(url, { method: "PUT" })
+  if (!res.ok) {
+    throw new Error(
+      `Failed to create Verdaccio user (${res.status}): ${await res.text()}`,
+    )
+  }
+  // The response is a JSON Web Token. The /-/verdaccio/data
+  // endpoint is not the right one; PUT /-/user/... returns the
+  // token directly in the body.
+  const token = (await res.text()).trim()
+  if (!token) {
+    throw new Error("Verdaccio returned an empty token")
+  }
+  return token
 }
 
 const startServiceStack = async (
   network: StartedNetwork,
 ): Promise<{
   registryHostUrl: string
+  registryToken: string
+  registryUser: string
+  started: StartedTestContainer[]
 }> => {
   // Start PostgreSQL first; it has the longest cold-start. We
-  // intentionally do not hold a reference to the started container
-  // here: callers reach it via the network alias (POSTGRES_ALIAS)
-  // and only need the URL string.
-  await new GenericContainer(POSTGRES_IMAGE)
+  // intentionally do not hold a reference: callers reach it via the
+  // network alias (POSTGRES_ALIAS) and only need the URL string.
+  const postgres = await new GenericContainer(POSTGRES_IMAGE)
     .withEnvironment({
       POSTGRES_USER,
       POSTGRES_PASSWORD,
@@ -97,51 +163,83 @@ const startServiceStack = async (
     .withWaitStrategy(Wait.forLogMessage(/database system is ready/))
     .start()
 
-  // Start Verdaccio with the same default config that ships in the
-  // public image. No custom plugin config — we only need a writeable
-  // registry that proxies uncached packages through to the public npm
-  // registry. Verdaccio 6 changed its startup log format and no
-  // longer emits the 'http address:' line on every platform, so we
-  // wait on the /verdaccio/ HTTP endpoint instead.
+  // Write the Verdaccio config to a tmpdir so we can mount it as a
+  // bind. The /verdaccio/conf/config.yaml path is the image's
+  // default config location.
+  const configDir = join(tmpdir(), `cda-verdaccio-${Date.now()}`)
+  writeFileSync(join(configDir, "config.yaml"), VERDACCIO_CONFIG)
+  writeFileSync(join(configDir, "htpasswd"), VERDACCIO_HTPASSWD_LINE)
+
+  // The htpasswd line above is a placeholder; the real password
+  // hash is created at runtime by /adduser (see
+  // createVerdaccioUser). The file just needs to exist for Verdaccio
+  // to bind the auth.htpasswd.file path without erroring.
+
+  // Start Verdaccio. Wait on the /-/ping endpoint, which is the
+  // documented health probe; the legacy 'http address:' log line is
+  // not emitted by Verdaccio 6 on every platform.
   const registry = await new GenericContainer(VERDACCIO_IMAGE)
     .withExposedPorts(VERDACCIO_PORT)
     .withNetwork(network)
     .withNetworkAliases(VERDACCIO_ALIAS)
+    .withBindMounts([
+      { source: configDir, target: "/verdaccio/conf" },
+    ])
     .withWaitStrategy(
-      Wait.forHttp("/verdaccio/", VERDACCIO_PORT).forStatusCode(200),
+      Wait.forHttp("/-/ping", VERDACCIO_PORT).forStatusCode(200),
     )
     .start()
 
   const registryHostPort = registry.getMappedPort(VERDACCIO_PORT)
   const registryHostUrl = `http://127.0.0.1:${registryHostPort}`
-  // Some Docker engines need a small delay before /verdaccio/ answers;
-  // wait explicitly so the consumer container can resolve packages
-  // immediately.
-  await waitForHttp2xx(`${registryHostUrl}/verdaccio/`, 15_000)
-  // The PostgreSQL wait strategy above is sufficient; no extra poll
-  // is needed.
 
-  return { registryHostUrl }
+  // Some Docker engines need a small delay before /-/ping answers
+  // reliably. waitForHttp2xx is the explicit belt-and-braces probe.
+  await waitForHttp2xx(`${registryHostUrl}/-/ping`, 15_000)
+
+  // Create the test user and obtain the auth token. This must run
+  // after the registry is reachable but before any consumer is
+  // started, because the consumer's .npmrc writes the token into a
+  // bind mount.
+  const registryToken = await createVerdaccioUser(registryHostUrl)
+
+  return {
+    registryHostUrl,
+    registryToken,
+    registryUser: VERDACCIO_USER,
+    started: [postgres, registry],
+  }
 }
 
-export const startNetwork = async (): Promise<NetworkHandles> => {
-  // testcontainers v12 uses the Network class, not a singleton
-  // `network` export. `new Network().start()` is the documented API.
+export const startStack = async (): Promise<StartedStack> => {
   const network = await new Network().start()
-  const { registryHostUrl } = await startServiceStack(network)
+  const { registryHostUrl, registryToken, registryUser, started } =
+    await startServiceStack(network)
   const registryContainerUrl = `http://${VERDACCIO_ALIAS}:${VERDACCIO_PORT}`
   const postgresContainerUrl = `postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_ALIAS}:${POSTGRES_PORT}/${POSTGRES_DB}`
 
   return {
     network,
     registryHostUrl,
+    registryToken,
+    registryUser,
     registryContainerUrl,
     postgresContainerUrl,
+    started,
     stop: async () => {
+      // Stop in reverse order: consumers first, then Verdaccio, then
+      // the network. PostgreSQL comes down with the network.
+      for (const container of [...started].reverse()) {
+        try {
+          await container.stop()
+        } catch {
+          // best-effort
+        }
+      }
       try {
         await network.stop()
       } catch {
-        // best-effort cleanup; failures are reported separately
+        // best-effort
       }
     },
   }
@@ -153,7 +251,7 @@ export const POSTGRES_CREDENTIALS = {
   db: POSTGRES_DB,
   alias: POSTGRES_ALIAS,
   port: POSTGRES_PORT,
-}
+} as const
 
 export const VERDACCIO_ALIAS_NAME = VERDACCIO_ALIAS
-export const HOST_DOCKER_ALIAS = HOST_ALIAS
+export const VERDACCIO_HOST_PORT = VERDACCIO_PORT

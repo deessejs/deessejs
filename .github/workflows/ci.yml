@@ -56,6 +56,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo build --filter=web --force
       - run: pnpm turbo typecheck --force
+      - name: Typecheck create-deesse-app e2e harness
+        # The e2e harness has its own tsconfig (tsconfig.e2e.json)
+        # that includes test/e2e/**/*.ts. The main typecheck above
+        # covers only src/; the e2e harness is verified here, with
+        # no Docker required.
+        run: pnpm --filter create-deesse-app typecheck:e2e
 
   build:
     name: Build
