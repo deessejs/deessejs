@@ -96,7 +96,8 @@ export const publishOrRollback = async (
     // Step 3: the actual publish. If a competing process created the
     // destination in the (vanishingly small) window between Step 2 and
     // here, the rename will fail. The error code is platform-dependent:
-    //   - POSIX: EEXIST or ENOTEMPTY
+    //   - POSIX: EEXIST (empty dir, or symlink), ENOTEMPTY (non-empty
+    //     dir), or ENOTDIR (symlink whose target path resolves weirdly)
     //   - Windows: EPERM (when the existing entry is a directory — even
     //     an empty one) or EACCES
     // We map all of these to destination_exists.
@@ -107,6 +108,7 @@ export const publishOrRollback = async (
       if (
         code === "EEXIST" ||
         code === "ENOTEMPTY" ||
+        code === "ENOTDIR" ||
         code === "EACCES" ||
         code === "EPERM"
       ) {
