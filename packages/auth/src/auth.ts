@@ -8,6 +8,7 @@ import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
 import { HOST_ALLOWLIST } from "./host-allowlist.js"
+import { organizationPlugin } from "./organization-plugin.js"
 
 /**
  * Better Auth `basePath` — the URL prefix the handler claims.
@@ -263,6 +264,13 @@ const authConfig: BetterAuthOptions = {
       defaultRole: "user",
       adminRoles: ["admin"],
     }),
+    // Organization plugin (PR-1 of Organizations V1, epic #223): full
+    // configuration lives in `./organization-plugin.ts`; see that file
+    // for the `bootstrapOperationId` field shape, the 5 hooks, and the
+    // rationale for keeping every organization concern in one place.
+    // Plugin must sit before `nextCookies()` (Next.js integration
+    // requirement).
+    organizationPlugin,
     nextCookies(),
   ],
 } satisfies BetterAuthOptions
