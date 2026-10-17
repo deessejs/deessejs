@@ -47,6 +47,7 @@ export type PackedArtifact = {
     bin: Record<string, string>
     files: string[]
     engines?: { node?: string }
+    dependencies?: Record<string, string>
   }
 }
 
@@ -231,6 +232,87 @@ export const verifyPackageShape = async (
     Object.keys(artifact.manifest.bin).length === 0
   ) {
     throw new Error(`manifest has no bin entry: ${JSON.stringify(artifact.manifest)}`)
+  }
+  // The dependency map must contain only concrete version
+  // ranges, never workspace: or catalog: protocols. pnpm
+  // pack is supposed to rewrite these to real versions; this
+  // check catches a regression where a transitive dep is
+  // re-introduced as a workspace ref after pnpm pack (which
+  // would make the published tarball unresolvable by an
+  // external user).
+  for (const [name, range] of Object.entries(
+    artifact.manifest.dependencies ?? {},
+  )) {
+    if (typeof range !== "string") {
+      throw new Error(
+        `dependency ${name} is not a string range: ${JSON.stringify(range)}`,
+      )
+    }
+    if (range.startsWith("workspace:")) {
+      throw new Error(
+        `dependency ${name} leaked workspace: protocol: ${range}`,
+      )
+    }
+    if (range.startsWith("catalog:")) {
+      throw new Error(
+        `dependency ${name} leaked catalog: protocol: ${range}`,
+      )
+    }
+  }
+
+  // Inspect the actual tarball, not just the manifest. Issue
+  // #229 requires the packed executable to include its
+  // bin target (with shebang), its license, and a resolved
+  // runtime dependency closure. The manifest checks above
+  // cover the dep closure; here we cover bin and license.
+  //
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const tar = require("tar") as typeof import("tar")
+  const entryPaths: string[] = []
+  await tar.t({
+    file: artifact.path,
+    onentry: (entry) => entryPaths.push(entry.path),
+  })
+  // pnpm pack prefixes every entry with 'package/'. We
+  // match on the basename, so a 'package/LICENSE' file
+  // counts.
+  const licenseEntry = entryPaths.find((p) => /\/LICENSE$/.test(p))
+  if (!licenseEntry) {
+    throw new Error(
+      `LICENSE missing from tarball; entries: [${entryPaths.join(", ")}]`,
+    )
+  }
+  // Pick the first bin target declared in the manifest and
+  // confirm its shebang. For create-deesse-app this is
+  // "./dist/index.js" -> "index.js" in the tarball.
+  const firstBinRel = Object.values(artifact.manifest.bin)[0] as
+    | string
+    | undefined
+  if (!firstBinRel) {
+    throw new Error("manifest has no bin target to inspect")
+  }
+  const binBasename = firstBinRel.split("/").pop() as string
+  const binEntry = entryPaths.find((p) => p.endsWith(`/${binBasename}`))
+  if (!binEntry) {
+    throw new Error(
+      `bin entry ${binBasename} missing from tarball; entries: [${entryPaths.join(", ")}]`,
+    )
+  }
+  // Extract just the bin file (cheap; one file) and read
+  // its first line. We don't dump the rest of the
+  // archive.
+  const binProbeDir = mkdtempSync(join(tmpdir(), "cda-bin-probe-"))
+  await tar.x({
+    file: artifact.path,
+    cwd: binProbeDir,
+    filter: (p: string) => p === binEntry,
+  })
+  const binPath = join(binProbeDir, binEntry)
+  const firstLine = readFileSync(binPath, "utf8").split("\n", 1)[0] as string
+  if (!firstLine.startsWith("#!")) {
+    throw new Error(
+      `bin entry ${binBasename} missing shebang: ${JSON.stringify(firstLine)}`,
+    )
   }
 }
 
