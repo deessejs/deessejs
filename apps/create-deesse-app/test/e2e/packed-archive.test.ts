@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs"
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { describe } from "vitest"
 
-import { startStack, type StartedStack } from "./support/containers.js"
+import { test, expect } from "./support/fixtures.js"
 import {
   packCli,
   readPackageName,
@@ -22,50 +22,30 @@ const dockerAvailable = (): boolean => {
 describe.skipIf(!dockerAvailable())(
   "create-deesse-app: packed-archive journey",
   () => {
-    let stack: StartedStack | null = null
-    let consumer: Consumer | null = null
-    let testVersion = ""
-    let packageName = ""
-    let archivePath = ""
-    let manifestVersion = ""
-
-    beforeAll(async () => {
-      testVersion = readTestVersion()
-      packageName = readPackageName()
+    test("manifest reports the bumped test version and an installable bin", async ({ stack }) => {
+      const testVersion = readTestVersion()
+      const packageName = readPackageName()
       const archive = await packCli(testVersion)
-      archivePath = archive.path
-      manifestVersion = archive.manifest.version
-      stack = await startStack()
-      consumer = await startConsumerForStack(stack)
-    }, 10 * 60_000)
+      // Start the consumer so the second test below has it; the
+      // fixture tears it down on exit.
+      await startConsumerForStack(stack)
 
-    afterAll(async () => {
-      try {
-        await consumer?.container.stop()
-      } catch (err) {
-        console.warn(`[cda] cleanup: consumer.container.stop() failed:`, err)
-      }
-      try {
-        await stack?.stop()
-      } catch (err) {
-        console.warn(`[cda] cleanup: stack.stop() failed:`, err)
-      }
-    }, 60_000)
-
-    it("manifest reports the bumped test version and an installable bin", () => {
       // The manifest comes from packCli (already parsed from the
       // tarball). We re-assert its fields here so the test is
       // self-contained and reads as a single spec.
       expect(packageName).toMatch(/^@?[a-z0-9][a-z0-9._-]*$/)
-      expect(manifestVersion).toBe(testVersion)
+      expect(archive.manifest.version).toBe(testVersion)
     })
 
-    it("installs the archive in the consumer and --version returns the bumped test version", async () => {
-      if (!consumer) throw new Error("consumer not started")
-      const archiveName = archivePath.split(/[/\\]/).pop() ?? "cda.tgz"
+    test("installs the archive in the consumer and --version returns the bumped test version", async ({ stack }) => {
+      const testVersion = readTestVersion()
+      const archive = await packCli(testVersion)
+      const consumer: Consumer = await startConsumerForStack(stack)
+
+      const archiveName = archive.path.split(/[/\\]/).pop() ?? "cda.tgz"
       await consumer.container.copyContentToContainer([
         {
-          content: readFileSync(archivePath),
+          content: readFileSync(archive.path),
           target: `/tmp/${archiveName}`,
         },
       ])
@@ -86,7 +66,7 @@ describe.skipIf(!dockerAvailable())(
       // CREATE_DEESSE_APP_VERSION env var carries the test
       // version into the bundle. The --version banner must
       // therefore match the bumped version exactly.
-      expect(versionResult.output.trim()).toBe(testVersion)
+      expect(versionResult.stdout.trim()).toBe(testVersion)
     }, 10 * 60_000)
   },
 )
