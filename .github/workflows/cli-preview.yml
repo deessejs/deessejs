@@ -74,6 +74,7 @@ jobs:
       #                  on the PR is independent of --comment and stays.
       #   --json output.json
       #                  machine-readable output for the comment step below
+      - name: Publish CLI preview to pkg.pr.new
         run: pnpm exec pkg-pr-new publish ./apps/cli --pnpm --compact --bin --comment=off --json output.json
 
       # Post or update the sticky PR comment. Mirrors the sanity-io/next-sanity
