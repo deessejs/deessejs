@@ -401,12 +401,13 @@ export const startConsumerForStack = async (
         exitedAt: new Date().toISOString(),
       }
     },
-    runViaDlx: async (packageName, version, args, timeoutMs) => {
+    runViaDlx: async (packageName, version, args, _timeoutMs) => {
       // Write a per-invocation workspace file that exempts this
       // exact (package, version) from the release-age policy.
       // The workspace file is dropped into the installDir so
       // pnpm picks it up from cwd — no --workspace-root flag
       // (which does not allow a custom path).
+      void _timeoutMs
       const wsHostPath = join(
         tmpdir(),
         `cda-ws-${Date.now().toString(36)}.yaml`,

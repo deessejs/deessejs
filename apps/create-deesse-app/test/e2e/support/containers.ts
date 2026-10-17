@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -167,6 +167,7 @@ const startServiceStack = async (
   // bind. The /verdaccio/conf/config.yaml path is the image's
   // default config location.
   const configDir = join(tmpdir(), `cda-verdaccio-${Date.now()}`)
+  mkdirSync(configDir, { recursive: true })
   writeFileSync(join(configDir, "config.yaml"), VERDACCIO_CONFIG)
   writeFileSync(join(configDir, "htpasswd"), VERDACCIO_HTPASSWD_LINE)
 
