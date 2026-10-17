@@ -48,6 +48,7 @@ export const publishToVerdaccio = async (opts: {
     env: {},
   }
 
+  const t0 = Date.now()
   const result = await consumer.exec(
     [
       "sh",
@@ -59,10 +60,14 @@ export const publishToVerdaccio = async (opts: {
   return {
     exitCode: result.exitCode,
     signal: null,
-    stdout: result.output,
-    stderr: "",
-    durationMs: 0,
-    startedAt: new Date().toISOString(),
+    // Testcontainers 12.x demultiplexes the Docker exec stream
+    // since PR #874 — stdout and stderr are separate. Use them
+    // directly; do not pretend the combined `output` field is
+    // stdout with an empty stderr.
+    stdout: result.stdout,
+    stderr: result.stderr,
+    durationMs: Date.now() - t0,
+    startedAt: new Date(t0).toISOString(),
     exitedAt: new Date().toISOString(),
   }
 }
