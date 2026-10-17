@@ -22,6 +22,7 @@ on:
     branches: [staging, main]
     paths:
       - "apps/cli/**"
+      - "apps/create-deesse-app/**"
       - "packages/contracts/**"
       - "packages/api/**"
       - ".github/workflows/cli-preview.yml"
@@ -60,7 +61,7 @@ jobs:
       # run tests or lint — those are covered by ci.yml and the publish
       # path runs cli-publish-verify.yml separately on PRs.
       - name: Build CLI and workspace deps
-        run: pnpm turbo build --filter=@deessejs/cli
+        run: pnpm turbo build --filter=@deessejs/cli --filter=create-deesse-app
 
       # Upload the tarball to pkg.pr.new. Flags rationale:
       #   --pnpm         required for pnpm catalogs (see pnpm-workspace.yaml)
@@ -74,12 +75,139 @@ jobs:
       #                  on the PR is independent of --comment and stays.
       #   --json output.json
       #                  machine-readable output for the comment step below
-        run: pnpm exec pkg-pr-new publish ./apps/cli --pnpm --compact --bin --comment=off --json output.json
+      - name: Publish CLI previews to pkg.pr.new
+        # --no-compact forces explicit long-form URLs
+        # (https://pkg.pr.new/<owner>/<repo>/<package>@<sha>) for
+        # both packages. The first npm release for
+        # create-deesse-app does not exist yet, so the default
+        # compact-mode resolution against npm metadata would fall
+        # back to long form anyway; we use --no-compact to make
+        # the intent explicit and not depend on that fallback.
+        run: |
+          pnpm exec pkg-pr-new publish \
+            ./apps/cli \
+            ./apps/create-deesse-app \
+            --pnpm --no-compact --bin --comment=off --json output.json
+
+      # Smoke test the published create-deesse-app preview.
+      #
+      # We read the package URL out of output.json (which the
+      # publish step just wrote) instead of rebuilding it, so a
+      # publishing bug surfaces as a smoke failure too. We test
+      # two launchers: npx (the comment's default for npm
+      # users) and pnpm dlx (the default for pnpm users and
+      # the launcher rendered open in the PR comment). For
+      # each we run --version (a one-line check that the
+      # binary starts and reports the right version) and
+      # --help (a few lines of output, enough to confirm
+      # commander parsed the flags).
+      #
+      # The smoke runs in a throwaway mktemp directory so the
+      # workspace's root package.json (catalog: strict,
+      # workspace:* devdeps) does not pollute the install.
+      # npx and pnpm dlx both reach out to pkg.pr.new; the
+      # runner has network access. The 60s timeout is a
+      # belt-and-braces guard against a hung install.
+      - name: Smoke test create-deesse-app preview
+        env:
+          # The version of create-deesse-app at the time of
+          # this PR is 0.0.0. The tsup build inlines
+          # process.env.CREATE_DEESSE_APP_VERSION into the
+          # bundle, so the --version banner reports exactly
+          # this string. When the package gets a real
+          # release, this expectation will need to follow
+          # the published version.
+          EXPECTED_VERSION: "0.0.0"
+        run: |
+          set -euo pipefail
+          URL=$(node -e '
+            const fs = require("node:fs");
+            const o = JSON.parse(fs.readFileSync("output.json", "utf8"));
+            const p = o.packages.find(x => x.name === "create-deesse-app");
+            if (!p) { console.error("create-deesse-app missing from output.json packages:", o.packages.map(x => x.name)); process.exit(1); }
+            process.stdout.write(p.url);
+          ')
+          echo "create-deesse-app preview URL: $URL"
+          WORK=$(mktemp -d)
+          cd "$WORK"
+
+          # For each launcher, capture --version output and
+          # assert it equals the expected value. The expected
+          # value is set via EXPECTED_VERSION below; today it
+          # is the manifest version (0.0.0) because the
+          # package has not been released to npm yet. When
+          # the package gets a real release, follow the
+          # published version here.
+          assert_version() {
+            local label="$1"; shift
+            local out
+            out=$(timeout 60 "$@" --version 2>&1) || {
+              echo "FAIL [$label]: --version exited non-zero"
+              echo "$out"
+              exit 1
+            }
+            # --version may print trailing whitespace or a
+            # final newline; trim both. Commander also prints
+            # its own usage banner on --version error; we
+            # only get a clean version string on success.
+            local trimmed
+            trimmed=$(printf '%s' "$out" | tr -d '\r\n[:space:]' | sed 's/[[:space:]]*$//')
+            if [ "$trimmed" != "$EXPECTED_VERSION" ]; then
+              echo "FAIL [$label]: --version output was $(printf '%q' "$trimmed"), expected $(printf '%q' "$EXPECTED_VERSION")"
+              exit 1
+            fi
+            echo "OK   [$label]: --version = $trimmed"
+          }
+
+          assert_help() {
+            local label="$1"; shift
+            local out
+            out=$(timeout 60 "$@" --help 2>&1) || {
+              echo "FAIL [$label]: --help exited non-zero"
+              echo "$out"
+              exit 1
+            }
+            # --help should produce at least 5 non-empty
+            # lines (the brief lists usage + 3 description
+            # lines + options header in practice).
+            local nlines
+            nlines=$(printf '%s\n' "$out" | grep -c '[[:alnum:]]' || true)
+            if [ "$nlines" -lt 5 ]; then
+              echo "FAIL [$label]: --help produced only $nlines non-empty lines"
+              printf '%s\n' "$out"
+              exit 1
+            fi
+            echo "OK   [$label]: --help produced $nlines non-empty lines"
+          }
+
+          echo "--- npx ---"
+          assert_version npx npx --yes "$URL"
+          assert_help npx npx --yes "$URL"
+
+          echo "--- pnpm dlx ---"
+          assert_version pnpm-dlx pnpm dlx --silent "$URL"
+          assert_help pnpm-dlx pnpm dlx --silent "$URL"
+
+          rm -rf "$WORK"
+        shell: bash
 
       # Post or update the sticky PR comment. Mirrors the sanity-io/next-sanity
       # pattern: find any existing comment with the marker, edit it if found,
       # create it otherwise. The marker `<!-- pkg-pr.new -->` is stable so
       # future workflow changes can detect prior comments.
+      #
+      # FORK NOTE: a PR from a fork typically runs with a
+      # read-only GITHUB_TOKEN (the default permission for
+      # fork workflows). In that case the API call to
+      # createComment or updateComment returns 403 Resource
+      # not accessible by integration. We catch that
+      # explicitly and exit 0 — the comment is best-effort,
+      # the smoke test (which runs with the same token) is
+      # the real signal. The pkg.pr.new app's own
+      # "Continuous Releases" check-run is unaffected
+      # because the pkg.pr.new GitHub App authenticates
+      # separately. The 403 message is logged so the run
+      # report shows why the comment was skipped.
       - name: Post or update PR comment
         uses: actions/github-script@v7
         with:
@@ -127,26 +255,55 @@ jobs:
               return comments.data.find((comment) => comment.body.includes(BOT_COMMENT_IDENTIFIER))
             }
 
+            function isReadOnlyTokenError(err) {
+              // GitHub returns 403 with status '403 Resource
+              // not accessible by integration' when the
+              // workflow token has read-only scope (the
+              // default for fork PRs). Some error shapes
+              // nest the status under err.response.status.
+              const status = err?.status ?? err?.response?.status
+              const message = String(err?.message ?? '')
+              if (status === 403) return true
+              if (status === 401) return true
+              return /Resource not accessible by integration/i.test(message)
+            }
+
             async function createOrUpdateComment(issueNumber) {
               if (!issueNumber) {
                 console.log('No issue number provided. Cannot post or update comment.')
                 return
               }
               const existingComment = await findBotComment(issueNumber)
-              if (existingComment) {
-                await github.rest.issues.updateComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: existingComment.id,
-                  body,
-                })
-              } else {
-                await github.rest.issues.createComment({
-                  issue_number: issueNumber,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  body,
-                })
+              try {
+                if (existingComment) {
+                  await github.rest.issues.updateComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    comment_id: existingComment.id,
+                    body,
+                  })
+                  console.log('Updated existing pkg.pr.new preview comment.')
+                } else {
+                  await github.rest.issues.createComment({
+                    issue_number: issueNumber,
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    body,
+                  })
+                  console.log('Posted new pkg.pr.new preview comment.')
+                }
+              } catch (err) {
+                if (isReadOnlyTokenError(err)) {
+                  console.log(
+                    'Skipping comment: GITHUB_TOKEN is read-only ' +
+                    '(typical for PRs from forks). The pkg.pr.new ' +
+                    'app still posts its own "Continuous Releases" ' +
+                    'check-run; this step is best-effort and the ' +
+                    'smoke test above is the real signal.',
+                  )
+                  return
+                }
+                throw err
               }
             }
 
