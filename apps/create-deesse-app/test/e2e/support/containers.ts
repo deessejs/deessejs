@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -126,6 +126,7 @@ const startServiceStack = async (
   // default config location. We only write config.yaml; the image
   // will fall back to its built-in config for everything else.
   const configDir = join(tmpdir(), `cda-verdaccio-${Date.now()}`)
+  mkdirSync(configDir, { recursive: true })
   writeFileSync(join(configDir, "config.yaml"), VERDACCIO_CONFIG)
 
   // Start Verdaccio. Wait on the /-/ping endpoint, which is the
