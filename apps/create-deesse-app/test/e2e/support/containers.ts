@@ -149,6 +149,14 @@ const startServiceStack = async (
 
   // Some Docker engines need a small delay before /-/ping answers
   // reliably. waitForHttp2xx is the explicit belt-and-braces probe.
+  //
+  // registryHostUrl is for HOST-side checks only (this probe). It
+  // uses 127.0.0.1 because the host can reach the container's
+  // published port. From inside any container on the same Docker
+  // network, 127.0.0.1 would point at THAT container, not the
+  // registry — so the consumer uses registryContainerUrl (the
+  // 'registry' alias) instead. See startConsumerForStack in
+  // consumer-stack.ts.
   await waitForHttp2xx(`${registryHostUrl}/-/ping`, 15_000)
 
   return {

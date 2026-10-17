@@ -246,6 +246,14 @@ export const verifyPackageShape = async (
 const startConsumer = async (opts: {
   network: StartedNetwork
 }): Promise<StartedTestContainer> => {
+  // The consumer MUST be attached to the same Testcontainers
+  // Network as the Verdaccio and PostgreSQL containers. The
+  // consumer's .npmrc writes \`registry=http://registry:4873/\`
+  // — the \`registry\` host name only resolves from inside that
+  // network, via the alias set by withNetworkAliases in
+  // containers.ts. Without withNetwork(opts.network) here, the
+  // pnpm dlx would have no route to Verdaccio and every
+  // install/publish would fail with ENETUNREACH.
   const container = await new GenericContainer(CONSUMER_IMAGE)
     .withCommand(["sleep", "infinity"])
     .withNetwork(opts.network)
