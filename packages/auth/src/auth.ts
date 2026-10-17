@@ -2,12 +2,21 @@ import { betterAuth } from "better-auth"
 import type { BetterAuthOptions } from "better-auth"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { nextCookies } from "better-auth/next-js"
-import { admin, bearer, deviceAuthorization } from "better-auth/plugins"
+import { admin, bearer, deviceAuthorization, organization } from "better-auth/plugins"
+import { APIError } from "better-auth/api"
 import { db } from "@workspace/database"
 import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
 import { HOST_ALLOWLIST } from "./host-allowlist.js"
+import { sendOrganizationInvitation } from "./organization-invitation.js"
+import {
+  assertOrganizationIsDeletable,
+  assertDefaultOwnerMembershipIsRetained,
+  assertDefaultOwnerRoleIsRetained,
+  assertOrganizationSlug,
+  prepareOrganizationCreation,
+} from "./organization-policy.js"
 
 /**
  * Better Auth `basePath` — the URL prefix the handler claims.
@@ -262,6 +271,113 @@ const authConfig: BetterAuthOptions = {
     admin({
       defaultRole: "user",
       adminRoles: ["admin"],
+    }),
+    // Organization plugin (RFC: "Organizations V1"): adds the
+    // `organization`, `member`, `invitation` tables plus an
+    // `activeOrganizationId` column on the `session` table. The
+    // `bootstrapOperationId` additional field is server-owned
+    // (`input: false` prevents the create route from accepting a
+    // caller-supplied value via the body Zod schema; `returned: false`
+    // prevents the adapter from exposing the stored value in response
+    // bodies via `filterOutputFields`).
+    //
+    // The five `organizationHooks` call typed helpers from
+    // `./organization-policy.js`. In PR-1, four of those helpers are
+    // stubs that raise `CONFLICT / not_implemented` and one
+    // (`assertOrganizationSlug`) is real. The smoke test in
+    // `docs/specs/organizations-v1-pr1.md` §5 gate 10 asserts the
+    // contract. PR-2 replaces the stub bodies with the real policy.
+    //
+    // The plugin must sit before `nextCookies()` (Next.js integration
+    // requirement).
+    organization({
+      allowUserToCreateOrganization: (user) => user.emailVerified === true,
+      creatorRole: "owner",
+      requireEmailVerificationOnInvitation: true,
+      invitationExpiresIn: 60 * 60 * 48,
+      disableOrganizationDeletion: false,
+      schema: {
+        organization: {
+          additionalFields: {
+            bootstrapOperationId: {
+              type: "string",
+              required: false,
+              unique: true,
+              input: false,
+              returned: false,
+            },
+          },
+        },
+      },
+      organizationHooks: {
+        beforeCreateOrganization: async ({ organization: input, user }) => {
+          // The Better Auth hook type marks `name` and `slug` optional
+          // even though the native create endpoint parses both as
+          // required strings. Narrow before passing to the helper.
+          if (typeof input.name !== "string" || typeof input.slug !== "string") {
+            throw new APIError("BAD_REQUEST", {
+              message: "Invalid organization name or slug",
+            })
+          }
+          assertOrganizationSlug(input.slug)
+          if (user.emailVerified !== true) {
+            throw new APIError("FORBIDDEN", {
+              message: "Email verification is required",
+            })
+          }
+          const bootstrapData = await prepareOrganizationCreation({
+            userId: user.id,
+            name: input.name,
+            slug: input.slug,
+          })
+          if (input.metadata != null) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Organization metadata is not editable",
+            })
+          }
+          return { data: { ...input, ...(bootstrapData ?? {}) } }
+        },
+        beforeDeleteOrganization: async ({ organization: target }) => {
+          await assertOrganizationIsDeletable(target.id)
+        },
+        beforeRemoveMember: async ({ member }) => {
+          await assertDefaultOwnerMembershipIsRetained({
+            userId: member.userId,
+            organizationId: member.organizationId,
+            role: member.role,
+          })
+        },
+        beforeUpdateMemberRole: async ({ member, newRole }) => {
+          await assertDefaultOwnerRoleIsRetained(
+            {
+              userId: member.userId,
+              organizationId: member.organizationId,
+              role: member.role,
+            },
+            newRole,
+          )
+        },
+        beforeUpdateOrganization: async ({ organization: updates }) => {
+          if (updates.slug !== undefined) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Organization slugs cannot be changed",
+            })
+          }
+          if (updates.metadata !== undefined) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Organization metadata is not editable",
+            })
+          }
+          if ("bootstrapOperationId" in updates) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Provisioning provenance cannot be changed",
+            })
+          }
+        },
+      },
+      sendInvitationEmail: async (data) => {
+        await sendOrganizationInvitation(data)
+      },
     }),
     nextCookies(),
   ],
