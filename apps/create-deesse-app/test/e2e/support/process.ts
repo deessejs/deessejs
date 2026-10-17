@@ -41,11 +41,18 @@ export const runCommand = async (
   options: RunCommandOptions,
 ): Promise<CommandResult> => {
   const startedAt = new Date()
+  // On Windows, .cmd / .bat shims (e.g. pnpm.cmd) cannot be spawned
+  // directly with shell:false — Node refuses with EINVAL. Use the
+  // shell to dispatch the shim on Windows; elsewhere keep
+  // shell:false so a stray shell never hides argument syntax
+  // errors. The args are all author-controlled (paths and pnpm
+  // flags) so the shell-expansion risk is bounded.
+  const useShell = process.platform === "win32"
   const child = spawn(command, args, {
     cwd: options.cwd,
     env: options.env ?? process.env,
     stdio: ["ignore", "pipe", "pipe"],
-    shell: false,
+    shell: useShell,
     windowsHide: true,
   })
 

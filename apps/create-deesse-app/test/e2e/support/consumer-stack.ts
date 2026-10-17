@@ -120,9 +120,26 @@ export const packCli = async (
     // dist/ would produce a tarball that contains no source. The
     // build is part of the original monorepo's pre-publish flow
     // and is what pnpm publishes users would see in production.
+    //
+    // The filter matches by name, NOT by version, because the
+    // workspace manifest pnpm reads has not yet re-read the
+    // bumped version. Filtering by the bumped version would
+    // silently select zero projects; --fail-if-no-match turns
+    // that into an explicit error.
+    // pnpm is 'pnpm.cmd' on Windows (a .cmd shim) and 'pnpm'
+    // on POSIX. The platform-specific name keeps the call
+    // portable.
+    const pnpmCmd = process.platform === "win32" ? "pnpm.cmd" : "pnpm"
+
     const buildResult = await runCommand(
-      "pnpm",
-      ["--filter", `${parsedPkg.name}@${testVersion}`, "run", "build"],
+      pnpmCmd,
+      [
+        "--filter",
+        parsedPkg.name,
+        "--fail-if-no-match",
+        "run",
+        "build",
+      ],
       { cwd: join(CLI_DIR, "..", ".."), timeoutMs: packTimeoutMs },
     )
     if (buildResult.exitCode !== 0) {
@@ -132,16 +149,12 @@ export const packCli = async (
     }
 
     const stageDir = mkdtempSync(join(tmpdir(), "cda-pack-out-"))
-    // Run pnpm pack from the monorepo root, filtered to our
-    // package. The filter resolves the catalog and workspace
-    // protocols in the bumped package.json. The pack runs
-    // against the same pnpm-workspace.yaml the rest of the
-    // monorepo uses.
     packResult = await runCommand(
-      "pnpm",
+      pnpmCmd,
       [
         "--filter",
-        `${parsedPkg.name}@${testVersion}`,
+        parsedPkg.name,
+        "--fail-if-no-match",
         "pack",
         "--pack-destination",
         stageDir,
@@ -149,15 +162,29 @@ export const packCli = async (
       { cwd: join(CLI_DIR, "..", ".."), timeoutMs: packTimeoutMs },
     )
     if (packResult.exitCode !== 0) {
+      // The pnpm output is the only way to know why pack failed;
+      // throw a richer error so the test report carries the
+      // command, the cwd, and the full output.
       throw new Error(
-        `pnpm pack failed: exit=${packResult.exitCode}\nstdout: ${packResult.stdout}\nstderr: ${packResult.stderr}`,
+        [
+          `pnpm pack failed (exit=${packResult.exitCode}).`,
+          `cwd: ${join(CLI_DIR, "..", "..")}`,
+          `command: pnpm --filter ${parsedPkg.name} --fail-if-no-match pack --pack-destination ${stageDir}`,
+          `stdout: ${packResult.stdout}`,
+          `stderr: ${packResult.stderr}`,
+        ].join("\n"),
       )
     }
 
     const entries = readdirSync(stageDir).filter((e) => e.endsWith(".tgz"))
     if (entries.length !== 1) {
       throw new Error(
-        `pnpm pack wrote ${entries.length} tarballs into ${stageDir}, expected 1: ${entries.join(", ")}`,
+        [
+          `pnpm pack wrote ${entries.length} tarballs into ${stageDir}, expected 1.`,
+          `entries: [${entries.join(", ")}]`,
+          `cwd: ${join(CLI_DIR, "..", "..")}`,
+          `command: pnpm --filter ${parsedPkg.name} --fail-if-no-match pack --pack-destination ${stageDir}`,
+        ].join("\n"),
       )
     }
     const tgzName = entries[0] as string
@@ -175,6 +202,35 @@ export const packCli = async (
     testVersion,
     packageName: parsedPkg.name,
     manifest,
+  }
+}
+
+/**
+ * Self-test for the packaging path that does not need Docker.
+ * Verifies that the catalog / workspace-protocol resolution
+ * works end-to-end on the developer's machine, with the same
+ * pnpm 11 that the CI image uses. Runs as a plain Vitest unit
+ * test so it is fast (under a second) and runs in `pnpm test`
+ * without any harness orchestration.
+ */
+export const verifyPackageShape = async (
+  artifact: PackedArtifact,
+): Promise<void> => {
+  // The manifest version is the bumped one and matches what
+  // pnpm pack wrote into the tarball.
+  if (artifact.manifest.version !== artifact.testVersion) {
+    throw new Error(
+      `manifest version mismatch: expected ${artifact.testVersion}, got ${artifact.manifest.version}`,
+    )
+  }
+  // The bin map must contain at least one executable so the
+  // published tarball is consumable. The CLI's bin name is
+  // 'create-deesse-app'.
+  if (
+    !artifact.manifest.bin ||
+    Object.keys(artifact.manifest.bin).length === 0
+  ) {
+    throw new Error(`manifest has no bin entry: ${JSON.stringify(artifact.manifest)}`)
   }
 }
 
@@ -260,11 +316,6 @@ const buildConsumerNpmrc = (token: string): string =>
     // The auth-token slot key is the URL-encoded form of the
     // registry URL. Trailing slash is required.
     `//${VERDACCIO_ALIAS_NAME}:4873/:_authToken=${token}`,
-    // Even if the test pins minimumReleaseAge to a sane default in
-    // pnpm-workspace.yaml, be explicit at the .npmrc level so a
-    // future test that forgets the workspace exemption still works
-    // for the freshly-published artifact.
-    "minimum-release-age=0",
     "",
   ].join("\n")
 
@@ -353,9 +404,9 @@ export const startConsumerForStack = async (
     runViaDlx: async (packageName, version, args, timeoutMs) => {
       // Write a per-invocation workspace file that exempts this
       // exact (package, version) from the release-age policy.
-      // pnpm-workspace.yaml is a sibling of the install dir so the
-      // generated app's installation (in a different dir) does not
-      // inherit the test's exemption.
+      // The workspace file is dropped into the installDir so
+      // pnpm picks it up from cwd — no --workspace-root flag
+      // (which does not allow a custom path).
       const wsHostPath = join(
         tmpdir(),
         `cda-ws-${Date.now().toString(36)}.yaml`,
@@ -364,23 +415,24 @@ export const startConsumerForStack = async (
         wsHostPath,
         buildConsumerWorkspaceYaml(packageName, version),
       )
-      const wsContainerPath = `/tmp/cda-ws-${Date.now().toString(36)}.yaml`
+      const wsContainerPath = join(installDir, "pnpm-workspace.yaml")
       await writeFileToContainer(container, wsHostPath, wsContainerPath)
 
-      return container.exec([
-        "sh",
-        "-c",
-        [
-          `cd ${installDir}`,
-          // pnpm dlx reads the registry from .npmrc (already
-          // written). The pnpm-workspace.yaml is in cwd because
-          // pnpm's dlx-config inheritance only sees files in the
-          // invocation directory or a parent. We pass the workspace
-          // path via --workspace-root so pnpm picks it up without
-          // polluting the install dir.
-          `timeout ${Math.floor(timeoutMs / 1000)}s pnpm dlx --workspace-root ${wsContainerPath} ${packageName}@${version} ${args.join(" ")}`,
-        ].join(" && "),
-      ]).then((r) => ({
+      // pnpm dlx reads the registry from .npmrc (already
+      // written to installDir) and the workspace file from
+      // cwd (which is installDir). The package + version is
+      // the freshly-published artifact; the release-age exemption
+      // matches it exactly.
+      const dlxArgs = [
+        "dlx",
+        "--silent",
+        `${packageName}@${version}`,
+        ...args,
+      ]
+      return container.exec(dlxArgs, {
+        workingDir: installDir,
+        user: "root",
+      }).then((r) => ({
         exitCode: r.exitCode,
         signal: null,
         stdout: r.output,

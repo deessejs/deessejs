@@ -62,6 +62,13 @@ jobs:
         # covers only src/; the e2e harness is verified here, with
         # no Docker required.
         run: pnpm --filter create-deesse-app typecheck:e2e
+      - name: Typecheck create-deesse-app unit + helpers
+        # The unit tsconfig (tsconfig.unit.json) covers both
+        # test/unit/** and test/e2e/support/**. The harness
+        # helpers (e.g. packCli) are imported by the Docker-free
+        # pack-cli test and need to typecheck there. The unit
+        # test itself runs in the existing 'Test (Unit)' job.
+        run: pnpm --filter create-deesse-app typecheck:unit
 
   build:
     name: Build

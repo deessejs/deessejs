@@ -60,7 +60,7 @@ describe.skipIf(!dockerAvailable())(
       expect(manifestVersion).toBe(testVersion)
     })
 
-    it("installs the archive in the consumer and --version produces a non-empty banner", async () => {
+    it("installs the archive in the consumer and --version returns the bumped test version", async () => {
       if (!consumer) throw new Error("consumer not started")
       const archiveName = archivePath.split(/[/\\]/).pop() ?? "cda.tgz"
       await consumer.container.copyContentToContainer([
@@ -80,12 +80,13 @@ describe.skipIf(!dockerAvailable())(
         `cd /tmp/install && pnpm exec create-deesse-app --version`,
       ])
       expect(versionResult.exitCode, versionResult.output).toBe(0)
-      // The banner is the build-time version (0.0.0), not the
-      // test version, because tsup inlined it at build time. The
-      // manifest.version assertion above proves the test version
-      // reached the package; this is a smoke that the binary
-      // actually runs.
-      expect(versionResult.output.trim().length).toBeGreaterThan(0)
+      // Now that packCli runs the build against the bumped
+      // package.json (the build step happens after the version
+      // bump, before the pack), the tsup-inlined
+      // CREATE_DEESSE_APP_VERSION env var carries the test
+      // version into the bundle. The --version banner must
+      // therefore match the bumped version exactly.
+      expect(versionResult.output.trim()).toBe(testVersion)
     }, 10 * 60_000)
   },
 )

@@ -1,61 +1,58 @@
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+
 import type { ExecOptions, StartedTestContainer } from "testcontainers"
 
 import type { CommandResult } from "./process.js"
 import type { PackedArtifact } from "./consumer-stack.js"
 
 /**
- * Publish the packed CLI tarball to Verdaccio. The tarball is the
- * pre-built artifact produced by packCli; we do NOT extract it
- * before publishing (that path is what broke the round-trip test in
- * the previous design).
+ * Publish the packed CLI tarball to Verdaccio.
  *
- * The consumer's .npmrc has the auth token for the e2e user
- * already; we pass the same token here so the host-side pnpm
- * publish succeeds.
+ * The flow is:
+ *   1. Copy the host-built tarball into the consumer container
+ *      (host paths are not visible inside the container).
+ *   2. cd into the consumer's installDir where the .npmrc is
+ *      already configured with the auth token.
+ *   3. Run `pnpm publish <file>` from that directory; pnpm picks
+ *      up the auth token from .npmrc automatically.
+ *
+ * No env-based auth overrides: the per-registry auth-token slot
+ * is set up by startConsumerForStack() in .npmrc, and publishing
+ * from inside the installDir lets pnpm read it.
  */
 export const publishToVerdaccio = async (opts: {
   consumer: StartedTestContainer
+  installDir: string
   registryUrl: string
-  registryToken: string
-  registryUser: string
   artifact: PackedArtifact
 }): Promise<CommandResult> => {
-  const { consumer, registryUrl, registryToken, registryUser, artifact } =
-    opts
+  const { consumer, installDir, registryUrl, artifact } = opts
 
-  // We use the consumer's pnpm (already pinned) so the toolchain
-  // is identical to the install path. The token is passed via
-  // .npmrc-like env, with the per-registry slot key expected by
-  // npm/pnpm.
+  // Copy the host-built tarball into the consumer's installDir
+  // so pnpm publish sees a real file path.
+  const archiveBytes = readFileSync(artifact.path)
+  const archiveName = artifact.path.split(/[/\\]/).pop() ?? "cda.tgz"
+  const containerArchivePath = join(installDir, archiveName)
+  await consumer.copyContentToContainer([
+    { content: archiveBytes, target: containerArchivePath },
+  ])
+
   const execOpts: ExecOptions = {
-    // Testcontainers v12 types ExecOptions as non-optional
-    // (workingDir + user) even though Partial<> should allow
-    // omission. We provide both, defaulting to "root" in the
-    // consumer (which is what node:24-alpine uses as the default
-    // user). cwd is irrelevant for a single-command invocation
-    // but the type demands it.
-    workingDir: "/tmp",
+    // Testcontainers v12 types ExecOptions with non-optional
+    // workingDir + user. We provide both; the user is the
+    // consumer's default (root) and workingDir is the install
+    // directory where .npmrc is configured.
+    workingDir: installDir,
     user: "root",
-    env: {
-      // Force pnpm to authenticate to the local Verdaccio.
-      npm_config_registry: registryUrl,
-      // Per-registry auth-token slot. pnpm picks the entry whose
-      // key matches the resolved registry URL.
-      [`npm_config__//${registryUrl.replace(/^https?:\/\//, "")}___authToken`]:
-        registryToken,
-      // Belt-and-braces: also export the user, in case the
-      // registry demands basic auth.
-      npm_config_username: registryUser,
-      npm_config_user_email: `${registryUser}@example.invalid`,
-      npm_config_always_auth: "true",
-    },
+    env: {},
   }
 
   const result = await consumer.exec(
     [
       "sh",
       "-c",
-      `pnpm publish ${artifact.path} --registry ${registryUrl} --no-git-checks`,
+      `pnpm publish ${containerArchivePath} --registry ${registryUrl} --no-git-checks`,
     ],
     execOpts,
   )

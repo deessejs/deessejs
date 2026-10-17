@@ -9,6 +9,7 @@ import {
   readTestVersion,
   startConsumerForStack,
   type Consumer,
+  type PackedArtifact,
 } from "./support/consumer-stack.js"
 import { publishToVerdaccio } from "./support/verdaccio.js"
 
@@ -22,13 +23,12 @@ describe.skipIf(!dockerAvailable())(
     let consumer: Consumer | null = null
     let testVersion = ""
     let packageName = ""
-    let archivePath = ""
+    let archive: PackedArtifact | null = null
 
     beforeAll(async () => {
       testVersion = readTestVersion()
       packageName = readPackageName()
-      const archive = await packCli(testVersion)
-      archivePath = archive.path
+      archive = await packCli(testVersion)
       stack = await startStack()
       consumer = await startConsumerForStack(stack)
     }, 10 * 60_000)
@@ -47,24 +47,27 @@ describe.skipIf(!dockerAvailable())(
     }, 60_000)
 
     it("publishes the packed CLI and pnpm dlx runs the exact version", async () => {
-      if (!stack || !consumer) throw new Error("stack/consumer not started")
+      if (!stack || !consumer || !archive) {
+        throw new Error("stack/consumer/archive not started")
+      }
 
-      // Publish from the consumer so the registry URL is the
-      // network alias (registry:4873) rather than the host.
-      // The token is the one created by startStack.
+      // Publish to Verdaccio. The artifact is the real
+      // PackedArtifact (no 'as never' cast), with manifest
+      // version, bin, and sha256 already populated.
       const publishResult = await publishToVerdaccio({
         consumer: consumer.container,
+        installDir: consumer.installDir,
         registryUrl: stack.registryContainerUrl,
-        registryToken: stack.registryToken,
-        registryUser: stack.registryUser,
-        artifact: { path: archivePath } as never,
+        artifact: archive,
       })
       expect(publishResult.exitCode, publishResult.stdout).toBe(0)
       expect(publishResult.stdout).toContain(packageName)
       expect(publishResult.stdout).toContain(testVersion)
 
       // pnpm dlx from the consumer with the release-age
-      // exemption set up by startConsumerForStack.
+      // exemption set up by startConsumerForStack. The output
+      // dir is a sibling of installDir so the workspace
+      // exemption does not leak into the project being generated.
       const execResult = await consumer.runViaDlx(
         packageName,
         testVersion,
@@ -72,7 +75,12 @@ describe.skipIf(!dockerAvailable())(
         60_000,
       )
       expect(execResult.exitCode, execResult.stdout).toBe(0)
-      expect(execResult.stdout.trim().length).toBeGreaterThan(0)
+      // --version banner is the tsup-inlined
+      // CREATE_DEESSE_APP_VERSION, which is set from the bumped
+      // package.json at build time. The build happens after the
+      // version bump in packCli, so the banner matches the
+      // bumped test version.
+      expect(execResult.stdout.trim()).toBe(testVersion)
     }, 10 * 60_000)
   },
 )
