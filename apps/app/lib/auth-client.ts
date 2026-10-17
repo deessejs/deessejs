@@ -48,10 +48,9 @@ import "./fetch-auth-interceptor"
  * touching the client config again.
  *
  * The `organizationClient` plugin mirrors the server-side
- * `organization` plugin (PR-1 of Organizations V1, epic #223). The
- * first call site is the workspace shell sidebar switcher in PR-4b;
- * wiring the plugin here keeps the typed `authClient.organization.*`
- * surface coherent from PR-1 onwards.
+ * `organization` plugin. The first call site is the workspace
+ * shell sidebar switcher; wiring the plugin here keeps the typed
+ * `authClient.organization.*` surface coherent from the start.
  *
  * The `baseURL` here uses `clientEnv.NEXT_PUBLIC_APP_URL`, the
  * build-time env var. On Vercel previews this resolves to the
