@@ -374,7 +374,6 @@ export const startConsumerForStack = async (
       // with runViaDlx (callers pass the same budget), but
       // Testcontainers' exec is unbounded by default.
       void _timeoutMs
-      const t0 = Date.now()
       const r = await container.exec([
         "sh",
         "-c",
@@ -387,14 +386,10 @@ export const startConsumerForStack = async (
       return {
         exitCode: r.exitCode,
         signal: null,
-        // Testcontainers 12.x demultiplexes the Docker exec stream
-        // since PR #874 — stdout and stderr are separate. Use
-        // them directly; do not pretend the combined `output`
-        // field is stdout with an empty stderr.
-        stdout: r.stdout,
-        stderr: r.stderr,
-        durationMs: Date.now() - t0,
-        startedAt: new Date(t0).toISOString(),
+        stdout: r.output,
+        stderr: "",
+        durationMs: 0,
+        startedAt: new Date().toISOString(),
         exitedAt: new Date().toISOString(),
       }
     },
@@ -436,7 +431,6 @@ export const startConsumerForStack = async (
         `${packageName}@${version}`,
         ...args,
       ].join(" ")
-      const t0 = Date.now()
       return container
         .exec(["sh", "-c", dlxCmd], {
           workingDir: installDir,
@@ -445,10 +439,10 @@ export const startConsumerForStack = async (
         .then((r) => ({
           exitCode: r.exitCode,
           signal: null,
-          stdout: r.stdout,
-          stderr: r.stderr,
-          durationMs: Date.now() - t0,
-          startedAt: new Date(t0).toISOString(),
+          stdout: r.output,
+          stderr: "",
+          durationMs: 0,
+          startedAt: new Date().toISOString(),
           exitedAt: new Date().toISOString(),
         })) as unknown as Promise<CommandResult>
     },
