@@ -304,20 +304,12 @@ export type Consumer = {
 }
 
 /**
- * Build the consumer's .npmrc from the host-side registry URL and
- * auth token. The .npmrc file points pnpm at the consumer's
- * network alias for the registry, with the auth token written in
- * the per-registry slot so pnpm never falls back to the wrong
- * credential.
+ * Build the consumer's .npmrc. The registry is anonymous, so the
+ * .npmrc only needs to point pnpm at the in-network Verdaccio
+ * alias. No auth, no token, nothing to leak.
  */
-const buildConsumerNpmrc = (token: string): string =>
-  [
-    `registry=http://${VERDACCIO_ALIAS_NAME}:4873/`,
-    // The auth-token slot key is the URL-encoded form of the
-    // registry URL. Trailing slash is required.
-    `//${VERDACCIO_ALIAS_NAME}:4873/:_authToken=${token}`,
-    "",
-  ].join("\n")
+const buildConsumerNpmrc = (): string =>
+  [`registry=http://${VERDACCIO_ALIAS_NAME}:4873/`, ""].join("\n")
 
 /**
  * Build a minimal pnpm-workspace.yaml that lifts the release-age
@@ -362,11 +354,11 @@ export const startConsumerForStack = async (
   const installDir = "/tmp/install"
 
   // Prepare host-side files that get copied into the consumer. The
-  // .npmrc is constant (depends only on the registry token); the
-  // pnpm-workspace.yaml is per-test because it pins a specific
-  // package@version.
+  // .npmrc is a one-liner that points pnpm at the in-network
+  // Verdaccio; the pnpm-workspace.yaml is per-test because it
+  // pins a specific package@version.
   const npmrcHostPath = join(tmpdir(), `cda-npmrc-${Date.now()}`)
-  writeFileSync(npmrcHostPath, buildConsumerNpmrc(stack.registryToken))
+  writeFileSync(npmrcHostPath, buildConsumerNpmrc())
 
   await writeFileToContainer(container, npmrcHostPath, `${installDir}/.npmrc`)
 

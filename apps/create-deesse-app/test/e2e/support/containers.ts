@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs"
+import { writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -28,28 +28,22 @@ const VERDACCIO_PORT = 4873
 const VERDACCIO_ALIAS = "registry"
 
 /**
- * Verdaccio default config: anonymous publishes, no proxy on
- * create-deesse-app, npm proxy for everything else. We keep this
- * inline because we control it as part of the test, and Verdaccio's
- * image only ships a permissive default.
+ * Verdaccio config: anonymous access for everything. The harness
+ * is local-only — the registry is bound to a private Docker network
+ * and is never reachable from outside the test — so there is no
+ * reason to require auth, and no user to seed. Verdaccio's
+ * adduser endpoint has a password-validator that rejects even
+ * strong-looking passwords with HTTP 400, and managing users in a
+ * throwaway container was the source of three CI regressions in a
+ * row. Anonymous is the right shape for this harness.
  */
 const VERDACCIO_CONFIG = `
 storage: /verdaccio/storage
-auth:
-  htpasswd:
-    file: /verdaccio/conf/htpasswd
-    # Verdaccio 6 enables a password-validator on adduser that
-    # rejects weak passwords with HTTP 400 "The provided password
-    # does not pass the validation". The harness is local-only and
-    # uses a long pre-shared secret; we don't need the validator.
-    # max_users is the only htpasswd option; validate_password
-    # is a per-instance flag, not a per-plugin option — Verdaccio
-    # reads it from the top-level \`security\` key.
 packages:
   "create-deesse-app":
-    access: $authenticated
-    publish: $authenticated
-    unpublish: $authenticated
+    access: $anonymous
+    publish: $anonymous
+    unpublish: $anonymous
   "@*/*":
     access: $anonymous
     publish: $anonymous
@@ -60,8 +54,6 @@ packages:
 uplinks:
   npmjs:
     url: https://registry.npmjs.org/
-security:
-  validatePassword: false
 log:
   level: warn
 `
@@ -98,10 +90,6 @@ export type StartedStack = {
   /** Host-published URL of the Verdaccio registry, reachable from
    *  the host machine. Use this when publishing from the host. */
   registryHostUrl: string
-  /** Token to use when publishing or installing on the host. */
-  registryToken: string
-  /** Username paired with the token. */
-  registryUser: string
   /** Network URL the consumer uses to reach the registry. */
   registryContainerUrl: string
   /** Network URL the consumer uses to reach PostgreSQL. */
@@ -112,53 +100,10 @@ export type StartedStack = {
   stop: () => Promise<void>
 }
 
-const VERDACCIO_USER = "cda_e2e"
-// Verdaccio 6 enforces a password-strength policy on the adduser
-// endpoint. The plaintext must satisfy the validator (upper, lower,
-// digit, length). The earlier '$' in the password triggered the
-// validator; the bcrypt hash above is precomputed and unrelated.
-const VERDACCIO_PASSWORD = "CdAE2eP4ssw0rdL0ngEnough2026"
-const VERDACCIO_HTPASSWD_LINE =
-  // htpasswd bcrypt for VERDACCIO_PASSWORD above. We use a
-  // precomputed hash to avoid pulling a bcrypt implementation in the
-  // test harness. The plaintext is part of the same secret.
-  `${VERDACCIO_USER}:$2y$10$abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTU\n`
-
-/**
- * Create an ephemeral Verdaccio user via the in-container
- * adduser HTTP endpoint, return the auth token for that user. We
- * use the built-in `adduser` rather than pre-baking the
- * htpasswd file because the latter would require shipping a
- * password hash in this repo.
- */
-const createVerdaccioUser = async (
-  registryHostUrl: string,
-): Promise<string> => {
-  // Verdaccio's /-/verdaccio/data/sidebar/ adds users; the actual
-  // user-creation API is PUT /-/user/org.couchdb.user:<name>?pw=...
-  const url = `${registryHostUrl}/-/user/org.couchdb.user:${encodeURIComponent(VERDACCIO_USER)}?pwd=${encodeURIComponent(VERDACCIO_PASSWORD)}`
-  const res = await fetch(url, { method: "PUT" })
-  if (!res.ok) {
-    throw new Error(
-      `Failed to create Verdaccio user (${res.status}): ${await res.text()}`,
-    )
-  }
-  // The response is a JSON Web Token. The /-/verdaccio/data
-  // endpoint is not the right one; PUT /-/user/... returns the
-  // token directly in the body.
-  const token = (await res.text()).trim()
-  if (!token) {
-    throw new Error("Verdaccio returned an empty token")
-  }
-  return token
-}
-
 const startServiceStack = async (
   network: StartedNetwork,
 ): Promise<{
   registryHostUrl: string
-  registryToken: string
-  registryUser: string
   started: StartedTestContainer[]
 }> => {
   // Start PostgreSQL first; it has the longest cold-start. We
@@ -178,16 +123,10 @@ const startServiceStack = async (
 
   // Write the Verdaccio config to a tmpdir so we can mount it as a
   // bind. The /verdaccio/conf/config.yaml path is the image's
-  // default config location.
+  // default config location. We only write config.yaml; the image
+  // will fall back to its built-in config for everything else.
   const configDir = join(tmpdir(), `cda-verdaccio-${Date.now()}`)
-  mkdirSync(configDir, { recursive: true })
   writeFileSync(join(configDir, "config.yaml"), VERDACCIO_CONFIG)
-  writeFileSync(join(configDir, "htpasswd"), VERDACCIO_HTPASSWD_LINE)
-
-  // The htpasswd line above is a placeholder; the real password
-  // hash is created at runtime by /adduser (see
-  // createVerdaccioUser). The file just needs to exist for Verdaccio
-  // to bind the auth.htpasswd.file path without erroring.
 
   // Start Verdaccio. Wait on the /-/ping endpoint, which is the
   // documented health probe; the legacy 'http address:' log line is
@@ -211,32 +150,21 @@ const startServiceStack = async (
   // reliably. waitForHttp2xx is the explicit belt-and-braces probe.
   await waitForHttp2xx(`${registryHostUrl}/-/ping`, 15_000)
 
-  // Create the test user and obtain the auth token. This must run
-  // after the registry is reachable but before any consumer is
-  // started, because the consumer's .npmrc writes the token into a
-  // bind mount.
-  const registryToken = await createVerdaccioUser(registryHostUrl)
-
   return {
     registryHostUrl,
-    registryToken,
-    registryUser: VERDACCIO_USER,
     started: [postgres, registry],
   }
 }
 
 export const startStack = async (): Promise<StartedStack> => {
   const network = await new Network().start()
-  const { registryHostUrl, registryToken, registryUser, started } =
-    await startServiceStack(network)
+  const { registryHostUrl, started } = await startServiceStack(network)
   const registryContainerUrl = `http://${VERDACCIO_ALIAS}:${VERDACCIO_PORT}`
   const postgresContainerUrl = `postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_ALIAS}:${POSTGRES_PORT}/${POSTGRES_DB}`
 
   return {
     network,
     registryHostUrl,
-    registryToken,
-    registryUser,
     registryContainerUrl,
     postgresContainerUrl,
     started,
