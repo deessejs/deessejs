@@ -89,10 +89,72 @@ jobs:
             ./apps/create-deesse-app \
             --pnpm --no-compact --bin --comment=off --json output.json
 
+      # Smoke test the published create-deesse-app preview.
+      #
+      # We read the package URL out of output.json (which the
+      # publish step just wrote) instead of rebuilding it, so a
+      # publishing bug surfaces as a smoke failure too. We test
+      # two launchers: npx (the comment's default for npm
+      # users) and pnpm dlx (the default for pnpm users and
+      # the launcher rendered open in the PR comment). For
+      # each we run --version (a one-line check that the
+      # binary starts and reports the right version) and
+      # --help (a few lines of output, enough to confirm
+      # commander parsed the flags).
+      #
+      # The smoke runs in a throwaway mktemp directory so the
+      # workspace's root package.json (catalog: strict,
+      # workspace:* devdeps) does not pollute the install.
+      # npx and pnpm dlx both reach out to pkg.pr.new; the
+      # runner has network access. The 60s timeout is a
+      # belt-and-braces guard against a hung install.
+      - name: Smoke test create-deesse-app preview
+        env:
+          # The version of create-deesse-app at the time of
+          # this PR is 0.0.0. The tsup build inlines
+          # process.env.CREATE_DEESSE_APP_VERSION into the
+          # bundle, so the --version banner reports exactly
+          # this string. When the package gets a real
+          # release, this expectation will need to follow
+          # the published version.
+          EXPECTED_VERSION: "0.0.0"
+        run: |
+          set -euo pipefail
+          URL=$(node -e '
+            const fs = require("node:fs");
+            const o = JSON.parse(fs.readFileSync("output.json", "utf8"));
+            const p = o.packages.find(x => x.name === "create-deesse-app");
+            if (!p) { console.error("create-deesse-app missing from output.json packages:", o.packages.map(x => x.name)); process.exit(1); }
+            process.stdout.write(p.url);
+          ')
+          echo "create-deesse-app preview URL: $URL"
+          WORK=$(mktemp -d)
+          cd "$WORK"
+          echo "--- npx --version ---"
+          timeout 60 npx --yes "$URL" --version
+          echo "--- npx --help (first 5 lines) ---"
+          timeout 60 npx --yes "$URL" --help | head -5
+          echo "--- pnpm dlx --version ---"
+          timeout 60 pnpm dlx --silent "$URL" --version
+          echo "--- pnpm dlx --help (first 5 lines) ---"
+          timeout 60 pnpm dlx --silent "$URL" --help | head -5
+          rm -rf "$WORK"
+        shell: bash
+
       # Post or update the sticky PR comment. Mirrors the sanity-io/next-sanity
       # pattern: find any existing comment with the marker, edit it if found,
       # create it otherwise. The marker `<!-- pkg-pr.new -->` is stable so
       # future workflow changes can detect prior comments.
+      #
+      # FORK NOTE: a PR from a fork runs with a read-only
+      # GITHUB_TOKEN and may not have permission to write
+      # comments. pkg.pr.new's own comment (the
+      # "Continuous Releases" check-run) is unaffected
+      # because the pkg.pr.new GitHub App authenticates
+      # separately. A maintainer must approve the fork
+      # workflow run (Settings > Actions > Fork pull
+      # request workflows > Require approval for first-time
+      # contributors) for this step to land.
       - name: Post or update PR comment
         uses: actions/github-script@v7
         with:
