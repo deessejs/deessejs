@@ -108,6 +108,18 @@ import {
 // `additionalFields`) — the plugin already declares them in its
 // server-side schema and a duplicate declaration breaks the
 // inferred User type.
+//
+// The organization plugin (Better Auth) owns the `organization`,
+// `member`, and `invitation` tables, the `active_organization_id`
+// column on `session`, and the `bootstrap_operation_id` server-
+// owned additional field on `organization`. The plugin's
+// `additionalFields` declaration in `packages/auth/src/auth.ts`
+// is `input: false, returned: false`; the column here is plain
+// `text` (nullable) because the plugin's server-side schema
+// marks the field nullable. The composite `(organization_id,
+// user_id)` unique index on `member` is emitted by the CLI's
+// regeneration; preserve its name (`member_organization_id_user_id_uidx`)
+// when re-applying the regeneration patch.
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -149,8 +161,23 @@ export const session = pgTable(
     // user (V1 does not build the impersonation UI, but the
     // plugin-owned column is left in place for future use).
     impersonatedBy: text("impersonated_by"),
+    // Organization plugin (Better Auth) — current active organization
+    // for the session. Nullable: every existing session in production
+    // has no active organization, and the migration does not write
+    // this column on existing rows. The `0003_organizations.sql`
+    // migration adds the column and a `session_active_organization_id_idx`
+    // index. The session selection is *not* the source of authorization
+    // truth; it is a navigation convenience. The protected-default
+    // membership lives in `accountOrganizationDefaults`.
+    activeOrganizationId: text("active_organization_id"),
   },
-  (table) => [index("session_userId_idx").on(table.userId)],
+  (table) => [
+    index("session_userId_idx").on(table.userId),
+    // Organization plugin index. The CLI's regeneration emits this
+    // index; preserve its name when re-applying the regeneration
+    // patch.
+    index("session_active_organization_id_idx").on(table.activeOrganizationId),
+  ],
 )
 
 export const account = pgTable(
@@ -258,5 +285,102 @@ export const deviceCodeRelations = relations(deviceCode, ({ one }) => ({
   user: one(user, {
     fields: [deviceCode.userId],
     references: [user.id],
+  }),
+}))
+
+/**
+ * Organization plugin tables (Better Auth). The plugin owns these
+ * tables; `auth:generate` regenerates them on every CLI run. The
+ * columns below match the CLI output verbatim. The composite
+ * `(organization_id, user_id)` unique index on `member`, the
+ * `organization.slug` unique index, and the
+ * `session_active_organization_id_idx` index above are emitted by
+ * the CLI; preserve their names when re-applying the regeneration
+ * patch. The application-side organization-state tables
+ * (`accountOrganizationDefaults`, `accountOrganizationProvisioning`)
+ * live in `./organization-state.ts`; they are not part of the
+ * plugin schema and are exported separately from `./index.ts`.
+ */
+export const organization = pgTable(
+  "organization",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    logo: text("logo"),
+    createdAt: timestamp("created_at").notNull(),
+    metadata: text("metadata"),
+    // Server-owned additional field (`input: false, returned: false`).
+    // The CLI emits this as a plain `text` column with a UNIQUE
+    // constraint. Nullable because non-onboarding organizations leave
+    // it NULL; PostgreSQL's ordinary UNIQUE semantics allow multiple
+    // NULLs.
+    bootstrapOperationId: text("bootstrap_operation_id").unique(),
+  },
+)
+
+export const member = pgTable(
+  "member",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => [
+    // Composite unique on (organization_id, user_id) — emits a unique
+    // index named `member_organization_id_user_id_uidx` in the
+    // generated migration. The composite key is also the referenced
+    // key for the protected onboarding-owner relation enforced by
+    // the `accountOrganizationDefaults` FK in PR-3.
+    index("member_organization_id_user_id_idx").on(
+      table.organizationId,
+      table.userId,
+    ),
+  ],
+)
+
+export const invitation = pgTable(
+  "invitation",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role"),
+    status: text("status").notNull().default("pending"),
+    expiresAt: timestamp("expires_at").notNull(),
+    inviterId: text("inviter_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+)
+
+export const organizationRelations = relations(organization, ({ many }) => ({
+  members: many(member),
+  invitations: many(invitation),
+}))
+
+export const memberRelations = relations(member, ({ one }) => ({
+  organization: one(organization, {
+    fields: [member.organizationId],
+    references: [organization.id],
+  }),
+  user: one(user, {
+    fields: [member.userId],
+    references: [user.id],
+  }),
+}))
+
+export const invitationRelations = relations(invitation, ({ one }) => ({
+  organization: one(organization, {
+    fields: [invitation.organizationId],
+    references: [organization.id],
   }),
 }))
