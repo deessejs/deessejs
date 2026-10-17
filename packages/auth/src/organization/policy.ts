@@ -3,16 +3,17 @@ import { APIError } from "better-auth/api"
 /**
  * Organization policy helpers.
  *
- * In PR-1 of Organizations V1 (epic #223):
  * - `assertOrganizationSlug` is real and rejects malformed or reserved
  *   slugs with `APIError('BAD_REQUEST', { code: 'invalid_slug' })`.
- * - The four other helpers are stubs that throw
- *   `APIError('CONFLICT', { code: 'not_implemented' })` and are
- *   filled in by PR-2 (policy + onboarding service).
+ * - The four other helpers throw
+ *   `APIError('CONFLICT', { code: 'not_implemented' })`. They are
+ *   call-site stubs that surface a typed error during plugin
+ *   integration; the implementation is filled in by a downstream
+ *   iteration (policy + onboarding service).
  *
  * The module is reachable from Better Auth's runtime and does
- * **not** import `server-only`; PR-2 keeps it that way so the
- * helpers can be unit-tested in isolation.
+ * **not** import `server-only`, so the helpers can be unit-tested
+ * in isolation.
  */
 
 const RESERVED_SLUGS = new Set<string>([
@@ -35,14 +36,14 @@ const RESERVED_SLUGS = new Set<string>([
 
 // 2–38 lowercase ASCII characters, must start and end with a letter
 // or digit. The trailing character class is **not** optional, so
-// single-character slugs are rejected. The full RFC §6 reserved-name
-// and collision-suffix logic lands in PR-2.
+// single-character slugs are rejected. The reserved-name and
+// collision-suffix logic lives in a downstream iteration.
 const SLUG_FORMAT = /^[a-z0-9](?:[a-z0-9-]{0,36}[a-z0-9])$/
 
 function notImplemented(name: string): never {
   throw new APIError("CONFLICT", {
     code: "not_implemented",
-    message: `${name} is not implemented in this increment; ships in a later PR.`,
+    message: `${name} is not implemented yet.`,
   })
 }
 

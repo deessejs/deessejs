@@ -1,13 +1,13 @@
 import { APIError } from "better-auth/api"
 import { organization } from "better-auth/plugins"
-import { sendOrganizationInvitation } from "./organization-invitation.js"
+import { sendOrganizationInvitation } from "./invitation.js"
 import {
   assertDefaultOwnerMembershipIsRetained,
   assertDefaultOwnerRoleIsRetained,
   assertOrganizationIsDeletable,
   assertOrganizationSlug,
   prepareOrganizationCreation,
-} from "./organization-policy.js"
+} from "./policy.js"
 
 /**
  * Better Auth `organization` plugin configuration.
@@ -16,10 +16,8 @@ import {
  * `auth.ts` only references `organizationPlugin` as a one-liner
  * entry in the plugin array.
  *
- * The configuration follows the Organizations V1 spec
- * (see `docs/specs/organizations-v1.md` §3 and PR-1's slice in
- * `docs/specs/organizations-v1-pr1.md` §3.1). The `bootstrapOperationId`
- * additional field is server-owned end-to-end:
+ * The `bootstrapOperationId` additional field is server-owned
+ * end-to-end:
  *
  * - `input: false` prevents the create route's
  *   `toZodSchema({ isClientSide: true })` from accepting a

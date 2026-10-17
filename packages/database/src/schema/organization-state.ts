@@ -7,10 +7,9 @@ import {
 } from "drizzle-orm/pg-core"
 
 /**
- * Application-owned Organizations V1 state.
+ * Application-owned organization state.
  *
- * Two tables back the mandatory first-organization onboarding flow
- * (epic #223, PR-1):
+ * Two tables back the mandatory first-organization onboarding flow:
  *
  * - `accountOrganizationDefaults` — permanent, immutable relation
  *   between an account and the organization created during that
@@ -20,23 +19,23 @@ import {
  * - `accountOrganizationProvisioning` — durable provisioning record
  *   for the onboarding operation: lease, fencing token, and
  *   state-machine progression. One row per account. Cleared by
- *   the provisioning service in PR-2 once the default row exists
- *   and the organization is durable.
+ *   the provisioning service once the default row exists and the
+ *   organization is durable.
  *
- * Declarations only in PR-1. Foreign keys to the Better Auth plugin
- * tables (`user.id`, `organization.id`, the composite `member` pair)
- * land in PR-3 alongside the last-owner trigger design — the trigger
- * and the application state share a single migration that PR-1 must
- * not split.
+ * Declarations only. Foreign keys to the Better Auth plugin tables
+ * (`user.id`, `organization.id`, the composite `member` pair) live
+ * alongside the last-owner trigger design — the trigger and the
+ * application state share a single migration so a destructive
+ * cascade cannot split them.
  *
  * The `not null` / `default` defaults on `status` and `fencingToken`
  * are deliberate: the application state machine is the source of
  * truth and the schema only needs to store the value. `status` is
  * plain `text` rather than a Drizzle pgEnum because the state-machine
  * set (`pending`, `organization_created`, `membership_verified`,
- * `completed`) is owned by the application boundary in PR-2; coupling
- * the schema to the enum here would force a destructive migration
- * when the set later grows.
+ * `completed`) is owned by the application boundary; coupling the
+ * schema to the enum here would force a destructive migration when
+ * the set later grows.
  */
 
 export const accountOrganizationDefaults = pgTable(
