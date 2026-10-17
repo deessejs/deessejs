@@ -289,16 +289,11 @@ export type Consumer = {
     timeoutMs: number,
   ) => Promise<CommandResult>
   /**
-   * Publish the artifact to Verdaccio, then run the package via
-   * `pnpm dlx` inside the consumer. This is the path used by the
-   * "verdaccio-roundtrip" and "application-generation" tests,
-   * which together prove the publish + dlx round-trip works
-   * against a registry the consumer can resolve. The release-age
-   * exemption is set up by the test, not by this helper.
-   *
-   * Pre-condition: the artifact has already been published via
-   * `publishToVerdaccio` in the same installDir. This helper only
-   * does the dlx half; the test owns the publish.
+   * Run the package via `pnpm dlx`. This is the path used by the
+   * "verdaccio-roundtrip" test, which proves the publish + dlx
+   * round-trip works against a registry the consumer can resolve.
+   * The release-age exemption is set up by the test, not by this
+   * helper.
    */
   runViaDlx: (
     packageName: string,
