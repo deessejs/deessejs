@@ -8,7 +8,7 @@ import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
 import { HOST_ALLOWLIST } from "./host-allowlist.js"
-import { organizationPlugin } from "./organization-plugin.js"
+import { organizationPlugin } from "./organization/plugin.js"
 
 /**
  * Better Auth `basePath` — the URL prefix the handler claims.
