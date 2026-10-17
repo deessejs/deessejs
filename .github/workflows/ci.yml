@@ -253,7 +253,46 @@ jobs:
         # Node 24 consumer, publishes the packed CLI to the registry,
         # then runs pnpm dlx on it. The job uploads evidence under
         # test-results/ on both success and failure.
-        run: pnpm --filter create-deesse-app test:e2e
+        #
+        # The JSON reporter is used so we can fail the job if the
+        # suite silently skipped every test (e.g. Docker not
+        # available on the runner). The describe.skipIf() guard in
+        # the test files means a missing /var/run/docker.sock would
+        # produce a "0 tests ran, 0 failures" run that Vitest
+        # otherwise marks as success with --passWithNoTests. We
+        # don't want that outcome masquerading as a green job.
+        run: |
+          pnpm --filter create-deesse-app exec vitest run \
+            --config test/e2e/vitest.e2e.config.ts \
+            --reporter=json --outputFile=test-results/vitest-e2e.json || EXIT=$?
+          set +e
+          node -e '
+            const fs = require("node:fs");
+            const path = "apps/create-deesse-app/test-results/vitest-e2e.json";
+            if (!fs.existsSync(path)) {
+              console.error("[cda-ci] e2e vitest did not write a JSON report; cannot assert it actually ran.");
+              process.exit(1);
+            }
+            const r = JSON.parse(fs.readFileSync(path, "utf8"));
+            const numTotalTests = r.numTotalTests ?? 0;
+            const numPassedTests = r.numPassedTests ?? 0;
+            const numFailedTests = r.numFailedTests ?? 0;
+            const numSkipped = r.numSkippedTests ?? r.numPendingTests ?? 0;
+            console.log(`[cda-ci] e2e suite: total=${numTotalTests} passed=${numPassedTests} failed=${numFailedTests} skipped=${numSkipped}`);
+            if (numTotalTests === 0) {
+              console.error("[cda-ci] e2e suite ran 0 tests. Docker may be missing from the runner, or all tests were filtered out. Failing.");
+              process.exit(1);
+            }
+            if (numFailedTests > 0) {
+              console.error(`[cda-ci] e2e suite had ${numFailedTests} failing test(s). Failing.`);
+              process.exit(1);
+            }
+            if (numPassedTests === 0) {
+              console.error("[cda-ci] e2e suite ran tests but none passed (all skipped or all failed). Failing.");
+              process.exit(1);
+            }
+          '
+          exit ${EXIT:-0}
 
       - name: Upload consumer evidence
         if: always()
