@@ -38,6 +38,13 @@ storage: /verdaccio/storage
 auth:
   htpasswd:
     file: /verdaccio/conf/htpasswd
+    # Verdaccio 6 enables a password-validator on adduser that
+    # rejects weak passwords with HTTP 400 "The provided password
+    # does not pass the validation". The harness is local-only and
+    # uses a long pre-shared secret; we don't need the validator.
+    # max_users is the only htpasswd option; validate_password
+    # is a per-instance flag, not a per-plugin option — Verdaccio
+    # reads it from the top-level \`security\` key.
 packages:
   "create-deesse-app":
     access: $authenticated
@@ -53,6 +60,8 @@ packages:
 uplinks:
   npmjs:
     url: https://registry.npmjs.org/
+security:
+  validatePassword: false
 log:
   level: warn
 `
