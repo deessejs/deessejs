@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Unit test config (covers test/unit/** and test/e2e/support/**)",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "test/unit/**/*.ts",
+    "test/e2e/support/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "test/e2e/*.test.ts",
+    "test/unit/print-install-log.test.ts",
+    "test/unit/output.test.ts",
+    "test/unit/pipeline-install-failure.test.ts",
+    "test/unit/cli-version-flag.test.ts"
+  ]
+}

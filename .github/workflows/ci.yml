@@ -56,6 +56,19 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo build --filter=web --force
       - run: pnpm turbo typecheck --force
+      - name: Typecheck create-deesse-app e2e harness
+        # The e2e harness has its own tsconfig (tsconfig.e2e.json)
+        # that includes test/e2e/**/*.ts. The main typecheck above
+        # covers only src/; the e2e harness is verified here, with
+        # no Docker required.
+        run: pnpm --filter create-deesse-app typecheck:e2e
+      - name: Typecheck create-deesse-app unit + helpers
+        # The unit tsconfig (tsconfig.unit.json) covers both
+        # test/unit/** and test/e2e/support/**. The harness
+        # helpers (e.g. packCli) are imported by the Docker-free
+        # pack-cli test and need to typecheck there. The unit
+        # test itself runs in the existing 'Test (Unit)' job.
+        run: pnpm --filter create-deesse-app typecheck:unit
 
   build:
     name: Build
@@ -172,3 +185,81 @@ jobs:
 
       - name: Run integration tests
         run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api
+
+  # create-deesse-app native smoke. Runs the bundled CLI directly on
+  # each supported OS so we catch any platform-specific regression in
+  # the JSON-on-stdout contract, the destination guard, the npm guard,
+  # and --version / --help. No Docker, no GitHub network.
+  create-deesse-app-smoke:
+    name: create-deesse-app native smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Build the bundled CLI once; the smoke test runs it as a
+      # subprocess. tsup does its own incremental work; no force
+      # flag is needed (and the flag does not exist on tsup).
+      - name: Build the CLI
+        run: pnpm --filter create-deesse-app build
+
+      - name: Run native smoke
+        run: pnpm --filter create-deesse-app exec vitest run --config test/e2e/smoke/vitest.smoke.config.ts
+
+  # create-deesse-app consumer-level e2e. Runs only on Linux because
+  # the Testcontainers journey (Verdaccio + PostgreSQL + a consumer
+  # container) requires a Docker daemon, which the macOS and Windows
+  # GitHub-hosted runners do not expose. Linux is the supported
+  # production target today. The brief calls this a separate required
+  # job so the longer consumer journey does not blur the unit /
+  # integration results.
+  create-deesse-app-e2e:
+    name: create-deesse-app consumer e2e (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build the CLI
+        run: pnpm --filter create-deesse-app build
+
+      - name: Run consumer e2e (Testcontainers)
+        # The e2e journey starts a disposable Verdaccio + a clean
+        # Node 24 consumer, publishes the packed CLI to the registry,
+        # then runs pnpm dlx on it. The job uploads evidence under
+        # test-results/ on both success and failure.
+        run: pnpm --filter create-deesse-app test:e2e
+
+      - name: Upload consumer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: create-deesse-app-e2e-evidence
+          path: apps/create-deesse-app/test-results/
+          if-no-files-found: warn
+          retention-days: 14

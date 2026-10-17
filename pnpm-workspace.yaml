@@ -7,9 +7,12 @@ allowBuilds:
   '@mongodb-js/zstd': true
   '@prisma/client': true
   better-sqlite3: true
+  cpu-features: true
   esbuild: true
   node-liblzma: true
+  protobufjs: true
   sharp: true
+  ssh2: true
   unrs-resolver: true
 
 # Shared dependency versions — update here, propagate everywhere
@@ -20,7 +23,6 @@ catalog:
 
   # Auth
   "@better-auth/drizzle-adapter": ^1.7.7
-  auth: ^1.7.7
   '@changesets/changelog-git': ^0.2.1
   '@changesets/cli': ^2.31.0
   '@content-collections/cli': ^0.1.9
@@ -58,6 +60,7 @@ catalog:
 
   # Agent runtime (apps/agent — Vercel eve + MiniMax provider)
   ai: ^7.0.106
+  auth: ^1.7.7
   better-auth: ^1.7.7
   cmdk: ^1.1.1
   cross-spawn: ^7.0.6
@@ -107,6 +110,8 @@ catalog:
   shiki: ^4.3.1
   sonner: ^2.0.7
   tailwind-merge: ^3.6.0
+  tar: ^7.5.22
+  tsup: ^8.3.5
   typescript: ^6.0.3
   unist-util-visit: ^5.1.0
   'vercel-minimax-ai-provider': ^0.0.2
