@@ -172,23 +172,17 @@ export const startStack = async (): Promise<StartedStack> => {
     stop: async () => {
       // Stop in reverse order: consumers first, then Verdaccio, then
       // the network. PostgreSQL comes down with the network.
-      //
-      // Cleanup errors are not silent: a leak that survives a
-      // passing test is a real problem, and the next CI report
-      // should show it. We log the error but do not rethrow —
-      // masking a passing test's outcome with a teardown
-      // failure would be worse than logging.
       for (const container of [...started].reverse()) {
         try {
           await container.stop()
-        } catch (err) {
-          console.warn(`[cda] cleanup: container.stop() failed:`, err)
+        } catch {
+          // best-effort
         }
       }
       try {
         await network.stop()
-      } catch (err) {
-        console.warn(`[cda] cleanup: network.stop() failed:`, err)
+      } catch {
+        // best-effort
       }
     },
   }

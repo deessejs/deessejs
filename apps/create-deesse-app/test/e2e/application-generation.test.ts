@@ -45,13 +45,13 @@ describe.skipIf(!dockerAvailable())(
     afterAll(async () => {
       try {
         await consumer?.container.stop()
-      } catch (err) {
-        console.warn(`[cda] cleanup: consumer.container.stop() failed:`, err)
+      } catch {
+        // best-effort
       }
       try {
         await stack?.stop()
-      } catch (err) {
-        console.warn(`[cda] cleanup: stack.stop() failed:`, err)
+      } catch {
+        // best-effort
       }
     }, 60_000)
 
