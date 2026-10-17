@@ -5,7 +5,17 @@ the design spec. Two test suites live here:
 
 ## Native smoke (`smoke/`)
 
-Runs the bundled CLI directly on the host OS, no Docker, no network.
+Runs the bundled CLI directly on the host OS, no Docker. Two
+files, separated by network dependency:
+
+- `native-cli.test.ts` — pure CLI checks. **No network.** Runs
+  on every platform. Covers `--version`, `--help`, unknown
+  flag, and the npm-invocation guard.
+- `native-generation.test.ts` — `--no-install` generation
+  flow. **Network-dependent** (downloads the saas-template
+  tarball via `git ls-remote` against github.com). Will
+  fail in any environment without github.com access; that
+  is expected.
 
 ```sh
 pnpm --filter create-deesse-app build
@@ -13,17 +23,10 @@ pnpm --filter create-deesse-app exec vitest run \
   --config test/e2e/smoke/vitest.smoke.config.ts
 ```
 
-Exercises:
-
-- `--version` returns a non-empty string
-- `--no-install` generates a project and prints a single JSON object on
-  stdout
-- existing destination is rejected with `destination_exists` and exit 1
-- npm invocation is rejected with `unsupported_manager` and exit 1
-
-This is the only suite that runs on the Windows and macOS CI jobs.
-It is the OS-level contract that the brief calls out as the lower
-bound of "supported compatibility matrix".
+The pure-CLI file is the OS-level contract that the brief
+calls out as the lower bound of "supported compatibility
+matrix"; the generation file is an additional check that the
+template path is reachable on every supported platform.
 
 ## Consumer e2e (`packed-archive.test.ts`, `verdaccio-roundtrip.test.ts`, `application-generation.test.ts`)
 
