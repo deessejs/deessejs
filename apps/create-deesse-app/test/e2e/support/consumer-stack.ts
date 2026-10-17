@@ -416,24 +416,35 @@ export const startConsumerForStack = async (
       // cwd (which is installDir). The package + version is
       // the freshly-published artifact; the release-age exemption
       // matches it exactly.
-      const dlxArgs = [
+      //
+      // Testcontainers v12's `exec` does not run the command via
+      // a shell and does not resolve bare command names against
+      // $PATH — `["dlx", ...]` would fail with "executable file
+      // not found in $PATH" because `dlx` is not a binary on the
+      // consumer image, only `pnpm` is. We dispatch through `sh
+      // -c` so the shell performs the lookup, mirroring how
+      // installFromArchive and publishToVerdaccio work.
+      const dlxCmd = [
+        "pnpm",
         "dlx",
         "--silent",
         `${packageName}@${version}`,
         ...args,
-      ]
-      return container.exec(dlxArgs, {
-        workingDir: installDir,
-        user: "root",
-      }).then((r) => ({
-        exitCode: r.exitCode,
-        signal: null,
-        stdout: r.output,
-        stderr: "",
-        durationMs: 0,
-        startedAt: new Date().toISOString(),
-        exitedAt: new Date().toISOString(),
-      })) as unknown as Promise<CommandResult>
+      ].join(" ")
+      return container
+        .exec(["sh", "-c", dlxCmd], {
+          workingDir: installDir,
+          user: "root",
+        })
+        .then((r) => ({
+          exitCode: r.exitCode,
+          signal: null,
+          stdout: r.output,
+          stderr: "",
+          durationMs: 0,
+          startedAt: new Date().toISOString(),
+          exitedAt: new Date().toISOString(),
+        })) as unknown as Promise<CommandResult>
     },
   }
 }
