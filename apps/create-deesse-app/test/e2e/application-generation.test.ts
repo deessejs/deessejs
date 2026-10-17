@@ -101,11 +101,13 @@ describe.skipIf(!dockerAvailable())(
       expect(parsed.source.repo).toBe("deessejs/saas-template")
       expect(parsed.source.sha).toMatch(/^[0-9a-f]{40}$/)
 
-      // The generated project is a real Turborepo.
+      // The generated project is a real Turborepo. The CLI's
+      // --dir <path> is the FINAL destination, not a parent; the
+      // project is created at <dir> directly, not <dir>/<name>.
       const lsResult = await consumer.container.exec([
         "sh",
         "-c",
-        `cd ${projectDir}/smoke-project && ls pnpm-workspace.yaml apps/app/package.json`,
+        `cd ${projectDir} && ls pnpm-workspace.yaml apps/app/package.json`,
       ])
       expect(lsResult.exitCode, lsResult.output).toBe(0)
       expect(lsResult.output).toContain("pnpm-workspace.yaml")
