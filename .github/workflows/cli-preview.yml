@@ -22,6 +22,7 @@ on:
     branches: [staging, main]
     paths:
       - "apps/cli/**"
+      - "apps/create-deesse-app/**"
       - "packages/contracts/**"
       - "packages/api/**"
       - ".github/workflows/cli-preview.yml"
@@ -60,7 +61,7 @@ jobs:
       # run tests or lint — those are covered by ci.yml and the publish
       # path runs cli-publish-verify.yml separately on PRs.
       - name: Build CLI and workspace deps
-        run: pnpm turbo build --filter=@deessejs/cli
+        run: pnpm turbo build --filter=@deessejs/cli --filter=create-deesse-app
 
       # Upload the tarball to pkg.pr.new. Flags rationale:
       #   --pnpm         required for pnpm catalogs (see pnpm-workspace.yaml)
@@ -74,8 +75,19 @@ jobs:
       #                  on the PR is independent of --comment and stays.
       #   --json output.json
       #                  machine-readable output for the comment step below
-      - name: Publish CLI preview to pkg.pr.new
-        run: pnpm exec pkg-pr-new publish ./apps/cli --pnpm --compact --bin --comment=off --json output.json
+      - name: Publish CLI previews to pkg.pr.new
+        # --no-compact forces explicit long-form URLs
+        # (https://pkg.pr.new/<owner>/<repo>/<package>@<sha>) for
+        # both packages. The first npm release for
+        # create-deesse-app does not exist yet, so the default
+        # compact-mode resolution against npm metadata would fall
+        # back to long form anyway; we use --no-compact to make
+        # the intent explicit and not depend on that fallback.
+        run: |
+          pnpm exec pkg-pr-new publish \
+            ./apps/cli \
+            ./apps/create-deesse-app \
+            --pnpm --no-compact --bin --comment=off --json output.json
 
       # Post or update the sticky PR comment. Mirrors the sanity-io/next-sanity
       # pattern: find any existing comment with the marker, edit it if found,
