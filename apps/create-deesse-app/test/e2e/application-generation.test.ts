@@ -1,13 +1,14 @@
 import { existsSync } from "node:fs"
 
-import { describe } from "vitest"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
-import { startConsumerForStack, type Consumer } from "./support/consumer-stack.js"
-import { test, expect } from "./support/fixtures.js"
+import { startStack, type StartedStack } from "./support/containers.js"
 import {
   packCli,
   readPackageName,
   readTestVersion,
+  startConsumerForStack,
+  type Consumer,
   type PackedArtifact,
 } from "./support/consumer-stack.js"
 import { publishToVerdaccio } from "./support/verdaccio.js"
@@ -25,15 +26,44 @@ const dockerAvailable = (): boolean =>
 describe.skipIf(!dockerAvailable())(
   "create-deesse-app: application generation + structure",
   () => {
-    test("CLI runs pnpm dlx, generates a real Turborepo, and authenticates to PostgreSQL", async ({ stack }) => {
-      const testVersion = readTestVersion()
-      const packageName = readPackageName()
-      const archive: PackedArtifact = await packCli(testVersion)
-      const consumer: Consumer = await startConsumerForStack(stack)
+    let stack: StartedStack | null = null
+    let consumer: Consumer | null = null
+    let testVersion = ""
+    let packageName = ""
+    let archive: PackedArtifact | null = null
+    let projectDir = ""
+
+    beforeAll(async () => {
+      testVersion = readTestVersion()
+      packageName = readPackageName()
+      const packed = await packCli(testVersion)
+      archive = packed
+      stack = await startStack()
+      consumer = await startConsumerForStack(stack)
+    }, 15 * 60_000)
+
+    afterAll(async () => {
+      try {
+        await consumer?.container.stop()
+      } catch (err) {
+        console.warn(`[cda] cleanup: consumer.container.stop() failed:`, err)
+      }
+      try {
+        await stack?.stop()
+      } catch (err) {
+        console.warn(`[cda] cleanup: stack.stop() failed:`, err)
+      }
+    }, 60_000)
+
+    it("CLI runs pnpm dlx, generates a real Turborepo, and authenticates to PostgreSQL", async () => {
+      if (!stack || !consumer || !archive) {
+        throw new Error("stack/consumer/archive not started")
+      }
 
       // Publish to Verdaccio. The host-built archive is copied
       // into the consumer's installDir by publishToVerdaccio,
-      // which is where .npmrc lives.
+      // which is where .npmrc lives and where pnpm publish
+      // resolves the auth token.
       const publishResult = await publishToVerdaccio({
         consumer: consumer.container,
         installDir: consumer.installDir,
@@ -50,7 +80,7 @@ describe.skipIf(!dockerAvailable())(
       // pnpm-workspace.yaml (with the test's release-age
       // exemption) does not leak into the project being
       // generated.
-      const projectDir = "/tmp/smoke-project"
+      projectDir = "/tmp/smoke-project"
       const workResult = await consumer.runViaDlx(
         packageName,
         testVersion,
@@ -80,7 +110,10 @@ describe.skipIf(!dockerAvailable())(
       // project is created at <dir> directly, not <dir>/<name>.
       // Assert the structural contract the CLI promises: the
       // three apps (web/app/docs), the workspace file, and the
-      // root package.json renamed to the project name.
+      // root package.json renamed to the project name. Checking
+      // only that two files exist is not enough — a misnamed
+      // rename or a missing app directory would pass that
+      // gate and still produce an invalid project.
       const lsResult = await consumer.container.exec([
         "sh",
         "-c",

@@ -1,14 +1,15 @@
 import { existsSync } from "node:fs"
 
-import { describe } from "vitest"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
-import { test, expect } from "./support/fixtures.js"
+import { startStack, type StartedStack } from "./support/containers.js"
 import {
   packCli,
   readPackageName,
   readTestVersion,
   startConsumerForStack,
   type Consumer,
+  type PackedArtifact,
 } from "./support/consumer-stack.js"
 import { publishToVerdaccio } from "./support/verdaccio.js"
 
@@ -18,11 +19,37 @@ const dockerAvailable = (): boolean =>
 describe.skipIf(!dockerAvailable())(
   "create-deesse-app: verdaccio round-trip",
   () => {
-    test("publishes the packed CLI and pnpm dlx runs the exact version", async ({ stack }) => {
-      const testVersion = readTestVersion()
-      const packageName = readPackageName()
-      const archive = await packCli(testVersion)
-      const consumer: Consumer = await startConsumerForStack(stack)
+    let stack: StartedStack | null = null
+    let consumer: Consumer | null = null
+    let testVersion = ""
+    let packageName = ""
+    let archive: PackedArtifact | null = null
+
+    beforeAll(async () => {
+      testVersion = readTestVersion()
+      packageName = readPackageName()
+      archive = await packCli(testVersion)
+      stack = await startStack()
+      consumer = await startConsumerForStack(stack)
+    }, 10 * 60_000)
+
+    afterAll(async () => {
+      try {
+        await consumer?.container.stop()
+      } catch (err) {
+        console.warn(`[cda] cleanup: consumer.container.stop() failed:`, err)
+      }
+      try {
+        await stack?.stop()
+      } catch (err) {
+        console.warn(`[cda] cleanup: stack.stop() failed:`, err)
+      }
+    }, 60_000)
+
+    it("publishes the packed CLI and pnpm dlx runs the exact version", async () => {
+      if (!stack || !consumer || !archive) {
+        throw new Error("stack/consumer/archive not started")
+      }
 
       // Publish to Verdaccio. The artifact is the real
       // PackedArtifact (no 'as never' cast), with manifest
