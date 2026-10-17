@@ -104,7 +104,11 @@ export type StartedStack = {
 }
 
 const VERDACCIO_USER = "cda_e2e"
-const VERDACCIO_PASSWORD = "cda_e2e_password_$secure"
+// Verdaccio 6 enforces a password-strength policy on the adduser
+// endpoint. The plaintext must satisfy the validator (upper, lower,
+// digit, length). The earlier '$' in the password triggered the
+// validator; the bcrypt hash above is precomputed and unrelated.
+const VERDACCIO_PASSWORD = "CdAE2eP4ssw0rdL0ngEnough2026"
 const VERDACCIO_HTPASSWD_LINE =
   // htpasswd bcrypt for VERDACCIO_PASSWORD above. We use a
   // precomputed hash to avoid pulling a bcrypt implementation in the
