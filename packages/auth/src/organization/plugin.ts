@@ -1,32 +1,24 @@
 import { APIError } from "better-auth/api"
 import { organization } from "better-auth/plugins"
-import { sendOrganizationInvitation } from "./invitation.js"
-import {
-  assertDefaultOwnerMembershipIsRetained,
-  assertDefaultOwnerRoleIsRetained,
-  assertOrganizationIsDeletable,
-  assertOrganizationSlug,
-  prepareOrganizationCreation,
-} from "./policy.js"
+import { assertOrganizationSlug } from "./policy.js"
 
 /**
  * Better Auth `organization` plugin configuration.
  *
- * All organization-specific wiring lives here so the top-level
- * `auth.ts` only references `organizationPlugin` as a one-liner
- * entry in the plugin array.
+ * Only the `beforeCreateOrganization` hook is wired, and it does
+ * two things:
+ * - rejects malformed or reserved slugs via `assertOrganizationSlug`,
+ * - rejects unverified accounts (Better Auth's own
+ *   `allowUserToCreateOrganization` already enforces this, but the
+ *   hook runs after that gate; the explicit check is belt and
+ *   suspenders and produces a clearer error).
  *
- * The `bootstrapOperationId` additional field is server-owned
- * end-to-end:
- *
- * - `input: false` prevents the create route's
- *   `toZodSchema({ isClientSide: true })` from accepting a
- *   caller-supplied value.
- * - `returned: false` prevents the adapter from including the stored
- *   value in response bodies via `filterOutputFields`.
- *
- * `input: false` alone is not sufficient: the default `returned: true`
- * would expose the server-owned marker to the client.
+ * The other native hooks (delete, remove-member, update-role,
+ * update-organization) are left to Better Auth's defaults — the
+ * plugin's built-in access rules and the user.role field are
+ * sufficient. The application has no DeesseJS-specific invariant
+ * on top of the plugin (no "first organization is permanent",
+ * no "last owner cannot leave") in this iteration.
  */
 export const organizationPlugin = organization({
   allowUserToCreateOrganization: (user) => user.emailVerified === true,
@@ -34,19 +26,6 @@ export const organizationPlugin = organization({
   requireEmailVerificationOnInvitation: true,
   invitationExpiresIn: 60 * 60 * 48,
   disableOrganizationDeletion: false,
-  schema: {
-    organization: {
-      additionalFields: {
-        bootstrapOperationId: {
-          type: "string",
-          required: false,
-          unique: true,
-          input: false,
-          returned: false,
-        },
-      },
-    },
-  },
   organizationHooks: {
     beforeCreateOrganization: async ({ organization: input, user }) => {
       // The Better Auth hook type marks `name` and `slug` optional
@@ -63,57 +42,19 @@ export const organizationPlugin = organization({
           message: "Email verification is required",
         })
       }
-      const bootstrapData = await prepareOrganizationCreation({
-        userId: user.id,
-        name: input.name,
-        slug: input.slug,
-      })
       if (input.metadata != null) {
         throw new APIError("BAD_REQUEST", {
           message: "Organization metadata is not editable",
         })
       }
-      return { data: { ...input, ...(bootstrapData ?? {}) } }
-    },
-    beforeDeleteOrganization: async ({ organization: target }) => {
-      await assertOrganizationIsDeletable(target.id)
-    },
-    beforeRemoveMember: async ({ member }) => {
-      await assertDefaultOwnerMembershipIsRetained({
-        userId: member.userId,
-        organizationId: member.organizationId,
-        role: member.role,
-      })
-    },
-    beforeUpdateMemberRole: async ({ member, newRole }) => {
-      await assertDefaultOwnerRoleIsRetained(
-        {
-          userId: member.userId,
-          organizationId: member.organizationId,
-          role: member.role,
-        },
-        newRole,
-      )
-    },
-    beforeUpdateOrganization: async ({ organization: updates }) => {
-      if (updates.slug !== undefined) {
-        throw new APIError("BAD_REQUEST", {
-          message: "Organization slugs cannot be changed",
-        })
-      }
-      if (updates.metadata !== undefined) {
-        throw new APIError("BAD_REQUEST", {
-          message: "Organization metadata is not editable",
-        })
-      }
-      if ("bootstrapOperationId" in updates) {
-        throw new APIError("BAD_REQUEST", {
-          message: "Provisioning provenance cannot be changed",
-        })
-      }
     },
   },
-  sendInvitationEmail: async (data) => {
-    await sendOrganizationInvitation(data)
+  // The plugin's sendInvitationEmail callback is mandatory in the
+  // type. We leave it as a no-op for this iteration: invitation
+  // delivery is wired in a downstream change that owns the
+  // APP_URL origin validation and the React Email template.
+  sendInvitationEmail: async () => {
+    // no-op: invitation email delivery is owned by a separate
+    // iteration (APP_URL validation + React Email template).
   },
 })

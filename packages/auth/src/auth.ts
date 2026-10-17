@@ -264,12 +264,9 @@ const authConfig: BetterAuthOptions = {
       defaultRole: "user",
       adminRoles: ["admin"],
     }),
-    // Organization plugin (PR-1 of Organizations V1, epic #223): full
-    // configuration lives in `./organization-plugin.ts`; see that file
-    // for the `bootstrapOperationId` field shape, the 5 hooks, and the
-    // rationale for keeping every organization concern in one place.
-    // Plugin must sit before `nextCookies()` (Next.js integration
-    // requirement).
+    // Organization plugin: full configuration lives in
+    // `./organization/plugin.ts`; this entry is a one-liner. Plugin
+    // must sit before `nextCookies()` (Next.js integration requirement).
     organizationPlugin,
     nextCookies(),
   ],

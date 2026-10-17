@@ -3,17 +3,14 @@ import { APIError } from "better-auth/api"
 /**
  * Organization policy helpers.
  *
- * - `assertOrganizationSlug` is real and rejects malformed or reserved
- *   slugs with `APIError('BAD_REQUEST', { code: 'invalid_slug' })`.
- * - The four other helpers throw
- *   `APIError('CONFLICT', { code: 'not_implemented' })`. They are
- *   call-site stubs that surface a typed error during plugin
- *   integration; the implementation is filled in by a downstream
- *   iteration (policy + onboarding service).
+ * Only `assertOrganizationSlug` is exposed. It rejects malformed or
+ * reserved slugs with `APIError('BAD_REQUEST', { code: 'invalid_slug' })`.
+ * The reserved set covers the application's top-level route segments
+ * (so an organization can never shadow `/account`, `/admin`, etc.)
+ * and a few product-level namespaces reserved by templates.
  *
  * The module is reachable from Better Auth's runtime and does
- * **not** import `server-only`, so the helpers can be unit-tested
- * in isolation.
+ * **not** import `server-only`, so it can be unit-tested in isolation.
  */
 
 const RESERVED_SLUGS = new Set<string>([
@@ -36,16 +33,8 @@ const RESERVED_SLUGS = new Set<string>([
 
 // 2–38 lowercase ASCII characters, must start and end with a letter
 // or digit. The trailing character class is **not** optional, so
-// single-character slugs are rejected. The reserved-name and
-// collision-suffix logic lives in a downstream iteration.
+// single-character slugs are rejected.
 const SLUG_FORMAT = /^[a-z0-9](?:[a-z0-9-]{0,36}[a-z0-9])$/
-
-function notImplemented(name: string): never {
-  throw new APIError("CONFLICT", {
-    code: "not_implemented",
-    message: `${name} is not implemented yet.`,
-  })
-}
 
 export function assertOrganizationSlug(slug: string): void {
   if (typeof slug !== "string" || !SLUG_FORMAT.test(slug)) {
@@ -62,32 +51,3 @@ export function assertOrganizationSlug(slug: string): void {
     })
   }
 }
-
-/* eslint-disable @typescript-eslint/no-unused-vars */
-export async function prepareOrganizationCreation(_input: {
-  userId: string
-  name: string
-  slug: string
-}): Promise<{ bootstrapOperationId: string } | undefined> {
-  notImplemented("prepareOrganizationCreation")
-}
-
-export async function assertOrganizationIsDeletable(
-  _orgId: string,
-): Promise<void> {
-  notImplemented("assertOrganizationIsDeletable")
-}
-
-export async function assertDefaultOwnerMembershipIsRetained(
-  _member: { userId: string; organizationId: string; role: string },
-): Promise<void> {
-  notImplemented("assertDefaultOwnerMembershipIsRetained")
-}
-
-export async function assertDefaultOwnerRoleIsRetained(
-  _member: { userId: string; organizationId: string; role: string },
-  _newRole: string,
-): Promise<void> {
-  notImplemented("assertDefaultOwnerRoleIsRetained")
-}
-/* eslint-enable @typescript-eslint/no-unused-vars */
