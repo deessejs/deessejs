@@ -5,6 +5,7 @@ import type { BetterAuthClientOptions } from "better-auth/client"
 import {
   adminClient,
   deviceAuthorizationClient,
+  organizationClient,
 } from "better-auth/client/plugins"
 import { clientEnv } from "@workspace/env/client"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
@@ -46,6 +47,14 @@ import "./fetch-auth-interceptor"
  * (list/ban/impersonate) can call the native endpoints without
  * touching the client config again.
  *
+ * The `organizationClient` plugin mirrors the server-side
+ * `organization` plugin added in PR-1 of the Organizations V1
+ * stack (epic #223). The first call site arrives in PR-4b
+ * (`authClient.organization.list` from the sidebar switcher);
+ * wiring the plugin here keeps the typed `authClient.organization.*`
+ * surface coherent from PR-1 onwards and avoids a noisy cross-PR
+ * refactor when downstream PRs begin importing the typed client.
+ *
  * The `baseURL` here uses `clientEnv.NEXT_PUBLIC_APP_URL`, the
  * build-time env var. On Vercel previews this resolves to the
  * production apex (`app.deessejs.com`); the fetch interceptor
@@ -65,7 +74,11 @@ import "./fetch-auth-interceptor"
 const authClientOptions = {
   baseURL: clientEnv.NEXT_PUBLIC_APP_URL,
   basePath: API_AUTH_PATH,
-  plugins: [deviceAuthorizationClient(), adminClient()],
+  plugins: [
+    deviceAuthorizationClient(),
+    adminClient(),
+    organizationClient(),
+  ],
 } satisfies BetterAuthClientOptions
 
 export const authClient = createAuthClient(
