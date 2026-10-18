@@ -32,9 +32,39 @@ describe("readGeneratedPnpmVersion", () => {
     expect(readGeneratedPnpmVersion(dir)).toBe("11.0.0-rc.1")
   })
 
+  it("accepts a version with a prerelease tag like alpha.1", () => {
+    writePackageJson({ packageManager: "pnpm@11.0.0-alpha.1" })
+    expect(readGeneratedPnpmVersion(dir)).toBe("11.0.0-alpha.1")
+  })
+
   it("accepts a version with a build-metadata suffix", () => {
     writePackageJson({ packageManager: "pnpm@11.0.0+sha.abc123" })
     expect(readGeneratedPnpmVersion(dir)).toBe("11.0.0+sha.abc123")
+  })
+
+  it("accepts a version with both prerelease and build-metadata", () => {
+    writePackageJson({ packageManager: "pnpm@11.0.0-rc.1+build.7" })
+    expect(readGeneratedPnpmVersion(dir)).toBe("11.0.0-rc.1+build.7")
+  })
+
+  it("ignores any trailing shell metacharacters and parses only the version segment", () => {
+    // The semver regex is anchored at the start and accepts
+    // only the version core plus valid semver suffixes. Any
+    // characters after the semver shape (including shell
+    // metacharacters) are ignored — they are not part of the
+    // version we read. The security boundary for the recovery
+    // command is the quoting helper, not the parser: the
+    // parser extracts the version, and the recovery command
+    // routes that version through `quoteForShell` /
+    // `quoteForCmd` so a malicious version cannot inject a
+    // shell command.
+    //
+    // This test pins the parser's contract: it returns just
+    // the valid version, even when the field carries
+    // metacharacters after it. The recovery quoting is
+    // covered in `recovery.test.ts`.
+    writePackageJson({ packageManager: "pnpm@11.0.0; rm -rf /" })
+    expect(readGeneratedPnpmVersion(dir)).toBe("11.0.0")
   })
 
   it("ignores other fields and reads only packageManager", () => {

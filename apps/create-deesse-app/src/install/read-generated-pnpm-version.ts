@@ -33,10 +33,23 @@ export const readGeneratedPnpmVersion = (
       "generated project's package.json has no packageManager field",
     )
   }
-  // Accept "pnpm@<version>" with an optional "+sha" or "-rc" suffix
-  // and any optional " <hash>" appended. pnpm itself is permissive
-  // about the suffix; we only need the version segment.
-  const m = /^pnpm@(\d+\.\d+\.\d+(?:[-+][^\s]+)?)/.exec(field)
+  // Accept "pnpm@<version>" with the standard semver core
+  // (major.minor.patch) and any combination of prerelease and
+  // build-metadata segments, each composed of the characters
+  // pnpm's own semver parser accepts: alphanumerics, dot, and
+  // hyphen. We do not allow spaces, shell metacharacters, or
+  // anything that could inject a shell command once the version
+  // is interpolated into a recovery string. The boundary
+  // character set is the one pnpm 11 documents in its semver
+  // module; tighter than npm's, which is good — it narrows the
+  // surface and matches what users actually have in their
+  // `packageManager` field.
+  //
+  // A semver suffix is a dot-separated sequence of identifiers
+  // each prefixed by `-` (prerelease) or `+` (build-metadata).
+  // Examples: `-rc.1`, `-alpha.1.beta+sha.abc123`. Each segment
+  // is alphanumeric with dots and hyphens inside.
+  const m = /^pnpm@(\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)*)/.exec(field)
   if (!m || m[1] === undefined) {
     throw sourceFailed(
       `generated project's packageManager field is "${field}"; expected "pnpm@<version>"`,

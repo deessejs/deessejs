@@ -28,3 +28,42 @@ export const quoteForShell = (s: string): string => {
   if (s === "") return "''"
   return `'${s.replace(/'/g, "'\\''")}'`
 }
+
+/**
+ * Windows `cmd`-compatible double-quote a string. `cmd` does
+ * not honor single quotes; double quotes are the only portable
+ * quoting. The function:
+ *
+ *  - wraps the value in double quotes;
+ *  - escapes every embedded `"` as `\"` (which `cmd` treats as
+ *    a literal double quote inside a double-quoted argument);
+ *  - escapes every `^`, `&`, `|`, `<`, `>`, `(`, `)`, `%`, `!`
+ *    that is not already inside a double-quoted argument
+ *    boundary, so the resulting command is safe to paste into
+ *    a `cmd` or `cmd /c` invocation.
+ *
+ * The empty string is rendered as `""`, which `cmd` treats as
+ * an empty argument.
+ *
+ * This helper is used only on Windows (`process.platform ===
+ * "win32"`) by the recovery-command builder. On POSIX the
+ * shared `quoteForShell` is used instead; the two helpers are
+ * never combined in a single command.
+ *
+ * Examples (on Windows):
+ *   quoteForCmd("foo")        -> "foo"
+ *   quoteForCmd("")           -> ""
+ *   quoteForCmd("foo bar")    -> "foo bar"
+ *   quoteForCmd("a\"b")       -> "a\"b"
+ *   quoteForCmd("100%done")   -> "100^%done"
+ */
+export const quoteForCmd = (s: string): string => {
+  if (s === "") return '""'
+  // Escape characters that `cmd` interprets outside of double
+  // quotes. The double-quote boundary is preserved.
+  const escaped = s
+    .replace(/"/g, '\\"')
+    .replace(/\^/g, "^^")
+    .replace(/[&|<>()%!]/g, "^$&")
+  return `"${escaped}"`
+}

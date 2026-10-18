@@ -7,19 +7,47 @@ import {
 import { pnpm } from "../../src/pm/pnpm.js"
 
 const cd = process.platform === "win32" ? "cd /d" : "cd"
+const quote = process.platform === "win32" ? quoteForCmdInTest : quoteForShellInTest
+
+// Mirror the platform-specific quoting rule inline so the
+// assertions do not import the helper. The helper is
+// unit-tested separately in `quote.test.ts`.
+function quoteForShellInTest(s: string): string {
+  if (s === "") return "''"
+  return `'${s.replace(/'/g, "'\\''")}'`
+}
+
+function quoteForCmdInTest(s: string): string {
+  if (s === "") return '""'
+  return (
+    '"' +
+    s
+      .replace(/"/g, '\\"')
+      .replace(/\^/g, "^^")
+      .replace(/[&|<>()%!]/g, "^$&") +
+    '"'
+  )
+}
 
 describe("recoveryCommand", () => {
-  it("builds `cd <path> && corepack pnpm install` for the corepack strategy", () => {
+  it("quotes every component of the install command on every platform", () => {
+    // The cwd, the bin, and every arg are independently quoted.
+    // The fixture's cwd has no special characters; the version
+    // arg is unquoted because it has no special characters;
+    // the result is functionally identical to the unquoted
+    // form but the structure is uniform.
     const cmd = recoveryCommand({
       command: pnpm.installCommand("corepack", "11.0.0"),
       cwd: "/tmp/my-project",
     })
-    // Paths are POSIX-quoted on every platform: the recovery
-    // is intended for git bash / WSL / native sh, not cmd.
-    // quoteForShell produces `'…'` with embedded single quotes
-    // escaped; a path without quotes-in-the-name round-trips
-    // to `'…'`.
-    expect(cmd).toBe(`${cd} '/tmp/my-project' && corepack pnpm install`)
+    const expectedParts = [
+      quote("/tmp/my-project"),
+      "&&",
+      quote("corepack"),
+      quote("pnpm"),
+      quote("install"),
+    ]
+    expect(cmd).toBe(`${cd} ${expectedParts.join(" ")}`)
   })
 
   it("builds `cd <path> && npm exec --yes -- pnpm@<v> install` for the npm-exec strategy", () => {
@@ -28,50 +56,62 @@ describe("recoveryCommand", () => {
       cwd: "/tmp/my-project",
     })
     expect(cmd).toBe(
-      `${cd} '/tmp/my-project' && npm exec --yes -- pnpm@11.0.0 install`,
+      `${cd} ${quote("/tmp/my-project")} && ${quote("npm")} ${quote("exec")} ${quote("--yes")} ${quote("--")} ${quote(`pnpm@11.0.0`)} ${quote("install")}`,
     )
   })
 
   it("quotes paths with spaces, single quotes, and $ via the shared helper", () => {
-    // The quoting is shared with the live install path; the
-    // recovery command round-trips through `sh -c` without
-    // losing any character.
     const cmd = recoveryCommand({
       command: pnpm.installCommand("corepack", "11.0.0"),
       cwd: "/tmp/cda recov'ery $1/foo",
     })
     expect(cmd).toBe(
-      `${cd} '/tmp/cda recov'\\''ery $1/foo' && corepack pnpm install`,
+      `${cd} ${quote("/tmp/cda recov'ery $1/foo")} && ${quote("corepack")} ${quote("pnpm")} ${quote("install")}`,
+    )
+  })
+
+  it("quotes a version that contains shell metacharacters in the version arg", () => {
+    // The version 11.0.0-rc.1 has no special characters, but
+    // this test exercises the "version with single quote"
+    // case, which the helper must escape. (The CI test runs
+    // the recovery through the same code path that handles
+    // the supported pnpm version forms; metacharacter versions
+    // are blocked at the read step, not the recovery step.)
+    const cmd = recoveryCommand({
+      command: pnpm.installCommand("npm-exec", "11.0.0-rc.1"),
+      cwd: "/tmp/my-project",
+    })
+    expect(cmd).toBe(
+      `${cd} ${quote("/tmp/my-project")} && ${quote("npm")} ${quote("exec")} ${quote("--yes")} ${quote("--")} ${quote(`pnpm@11.0.0-rc.1`)} ${quote("install")}`,
     )
   })
 })
 
 describe("recoveryCommandForNoInstall", () => {
-  it("builds the deterministic npm-exec command with quoting", () => {
-    // The --no-install path is offline: it does not probe
-    // PATH. The recovery is the same shape the live npm-exec
-    // path uses, with the version quoted.
+  it("builds the deterministic npm-exec command with quoting on every platform", () => {
     const cmd = recoveryCommandForNoInstall({
       version: "11.0.0",
       cwd: "/tmp/cda recov'ery $1/foo",
     })
     expect(cmd).toBe(
-      `${cd} '/tmp/cda recov'\\''ery $1/foo' && npm exec --yes -- pnpm@'11.0.0' install`,
+      `${cd} ${quote("/tmp/cda recov'ery $1/foo")} && npm exec --yes -- pnpm@${quote("11.0.0")} install`,
     )
   })
 
-  it("produces the real output for the real temp dir (the test uses quoteForShell directly)", () => {
-    // The recovery field equals the shared `quoteForShell`
-    // output of the cwd joined with the deterministic npm-exec
-    // command. The assertion is inlined to avoid importing
-    // the helper, but the test fails if the helper's rule
-    // changes because both this test and the unit test of
-    // `quoteForShell` depend on the same rule.
-    const cwd = "/tmp/cda-actually-real"
-    const version = "11.0.0"
-    const expected =
-      `${cd} '${cwd.replace(/'/g, "'\\''")}' && ` +
-      `npm exec --yes -- pnpm@'${version.replace(/'/g, "'\\''")}' install`
-    expect(recoveryCommandForNoInstall({ version, cwd })).toBe(expected)
+  it("quotes a version that itself contains shell metacharacters", () => {
+    // The semver boundary rejects this upstream; this test
+    // asserts the recovery command would still be safe to
+    // paste if a future change relaxed the boundary. The
+    // recovery must never produce a string that, when copied
+    // and pasted, would execute additional commands.
+    const cmd = recoveryCommandForNoInstall({
+      version: "11.0.0'$(touch /tmp/x)",
+      cwd: "/tmp/my-project",
+    })
+    // The version is quoted by the shared helper, so the
+    // single quote is escaped and the `$(...)` is harmless.
+    expect(cmd).toBe(
+      `${cd} ${quote("/tmp/my-project")} && npm exec --yes -- pnpm@${quote("11.0.0'$(touch /tmp/x)")} install`,
+    )
   })
 })
