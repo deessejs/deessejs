@@ -94,10 +94,10 @@ describe("run() — install failure contract", () => {
     // depends on what the probe saw in PATH at runtime.
     expect(result.recovery).toMatch(
       // The literal "cd /d" on Windows is two words; "cd" on
-      // POSIX is one word. The optional "/d" covers both.
-      // The path is single-quoted and contains no single
-      // quotes (the helper escapes them).
-      /^cd (?:\/d)? '[^']+' && (?:corepack pnpm install|npm exec --yes -- pnpm@11\.0\.0 install|pnpm install)$/,
+      // POSIX is one word. The optional " /d" (with a leading
+      // space) covers both. The path is single-quoted and
+      // contains no single quotes (the helper escapes them).
+      /^cd(?: \/d)? '[^']+' && (?:corepack pnpm install|npm exec --yes -- pnpm@11\.0\.0 install|pnpm install)$/,
     )
     if (result.error.code === "install_failed") {
       expect(result.installOutput.code).toBe(1)
