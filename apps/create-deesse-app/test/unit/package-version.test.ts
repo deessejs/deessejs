@@ -17,6 +17,10 @@ describe("readPackageVersion", () => {
     // tsup and vitest both inject this env var from package.json at
     // build/test time. If this assertion ever fails, the injection
     // configuration in tsup.config.ts or vitest.config.ts has regressed.
+    // This test is safe under vitest's default file-level
+    // parallelism because the project config sets
+    // `fileParallelism: false`: pack-cli.test.ts (the only file
+    // that mutates the package.json) runs serially with this one.
     expect(readPackageVersion()).toBe(pkg.version)
   })
 

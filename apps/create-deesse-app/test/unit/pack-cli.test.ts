@@ -34,9 +34,10 @@ describe("packCli (no Docker)", () => {
   afterAll(() => {
     // Final safety net: restore the original package.json
     // verbatim. packCli's own `finally` already restores it,
-    // but this guarantees the invariant even if a future
-    // change to packCli drops its restore, or if the test
-    // process exits before packCli's finally runs.
+    // and vitest.config.ts sets fileParallelism: false so
+    // package-version.test.ts does not race. This afterAll is
+    // belt-and-suspenders: if a future change drops either
+    // invariant, the test still cleans up.
     if (originalPkg) {
       writeFileSync(PKG_PATH, originalPkg)
     }
