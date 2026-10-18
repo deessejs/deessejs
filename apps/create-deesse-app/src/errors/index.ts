@@ -11,6 +11,7 @@ export type CreateAppErrorCode =
   | "network_error"
   | "source_failed"
   | "install_failed"
+  | "unsupported_node"
   | "internal"
 
 export class CliError extends Error {
@@ -85,3 +86,14 @@ export const installFailed = (pm: string, code: number | null): CliError =>
 
 export const internal = (detail: string): CliError =>
   new CliError("internal", `unexpected internal error: ${detail}`, detail)
+
+// Hard floor for the supported Node runtime. pnpm 11 requires
+// Node 22.13.0 or later; anything below that cannot run the
+// install. The factory's message links to pnpm's compatibility
+// page so the user has a direct next step.
+export const unsupportedNode = (version: string, required: string): CliError =>
+  new CliError(
+    "unsupported_node",
+    `Node ${version} is not supported; create-deesse-app requires Node ${required} or later (pnpm 11 requires Node 22.13+; see https://pnpm.io/installation#compatibility)`,
+    `install Node ${required} LTS or later from https://nodejs.org and re-run`,
+  )

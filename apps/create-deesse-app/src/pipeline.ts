@@ -2,17 +2,21 @@ import { randomUUID } from "node:crypto"
 import { existsSync, mkdirSync, rmSync } from "node:fs"
 import { resolve } from "node:path"
 
+import { assertSupportedNode } from "./check-node.js"
 import { validateDestination } from "./destination/validate.js"
 import { renameRootPackage } from "./destination/rename-package.js"
 import { extractTarball } from "./extract/extract.js"
 import { publishOrRollback } from "./extract/publish-or-rollback.js"
 import { validateEntries } from "./extract/validate-entries.js"
 import { CliError, internal } from "./errors/index.js"
-import { recoveryCommand } from "./install/recovery.js"
+import { readGeneratedPnpmVersion } from "./install/read-generated-pnpm-version.js"
+import { recoveryCommand, recoveryCommandForNoInstall } from "./install/recovery.js"
 import { runInstall } from "./install/run.js"
+import { warnInstallBootstrap } from "./install/warn-install-bootstrap.js"
 import { validateProjectName } from "./name/validate.js"
+import { pickInstallStrategy, type InstallStrategy } from "./pm/install-strategy.js"
 import { pnpm } from "./pm/pnpm.js"
-import { assertNotNpmInvocation } from "./pm/detect-invoker.js"
+import { probeInstallPrereqs } from "./pm/probe-paths.js"
 import type {
   CreateFailure,
   CreateInstallFailure,
@@ -52,6 +56,14 @@ type RunState = {
   tarballPath?: string
   tempDir?: string
   packageName?: { previous: string; current: string }
+  // Resolved after publishProject. Used to build the install
+  // command and the recovery. Populated by `resolvePrereqs` in
+  // step 4.5 so the live install and the no-install recovery
+  // share the same source of truth.
+  prereqs?: { corepack: boolean; npm: boolean; pnpm: boolean }
+  strategy?: InstallStrategy
+  installCommand?: { bin: string; args: string[] }
+  pnpmVersion?: string
 }
 
 const cleanupState = (state: RunState): void => {
@@ -67,7 +79,7 @@ const cleanupState = (state: RunState): void => {
 
 // 1. Cheap checks that must run before any FS or network work.
 const guardInvocationAndArgs = (input: RunInput): void => {
-  assertNotNpmInvocation()
+  assertSupportedNode(process.versions.node)
   validateProjectName(input.projectName)
   validateDestination(input.dir)
 }
@@ -137,10 +149,67 @@ const publishProject = async (state: RunState): Promise<void> => {
   delete state.tempDir
 }
 
+// 4.5. Resolve install prereqs and strategy. The probe runs only
+// when the user did not pass `--no-install`. The strategy and
+// install command are stashed on state for the live install
+// path (5b) and the no-install path (5a) to share. If the
+// generated project's `packageManager` field is missing or
+// malformed, the `readGeneratedPnpmVersion` helper throws
+// `source_failed`; the catch arm at the top translates that
+// into the right JSON shape.
+const resolvePrereqs = (state: RunState): void => {
+  if (!state.input.install) {
+    // --no-install is offline: no probe, no strategy, no
+    // warning. The recovery command is built from
+    // readGeneratedPnpmVersion + recoveryCommandForNoInstall.
+    return
+  }
+  state.prereqs = probeInstallPrereqs()
+  state.pnpmVersion = readGeneratedPnpmVersionSafe(state)
+  state.strategy = pickInstallStrategy({
+    corepackAvailable: state.prereqs.corepack,
+    npmAvailable: state.prereqs.npm,
+    pnpmAvailable: state.prereqs.pnpm,
+  })
+  state.installCommand = pnpm.installCommand(
+    state.strategy,
+    state.pnpmVersion,
+  )
+  warnInstallBootstrap(state.strategy)
+}
+
+// Same as readGeneratedPnpmVersion, but translates
+// source_failed into the right shape for the pipeline. The
+// catch arm at the top of `run` handles the throw.
+const readGeneratedPnpmVersionSafe = (state: RunState): string => {
+  if (!state.sha) {
+    throw internal("resolvePrereqs called before publishProject")
+  }
+  return readGeneratedPnpmVersion(state.input.dir)
+}
+
 // 5a. Skip-install path.
 const buildNoInstallResult = (state: RunState): CreateResult => {
   if (!state.sha || !state.packageName) {
     throw internal("publishProject did not populate sha/packageName")
+  }
+  // The recovery command is deterministic and offline: it
+  // does not depend on what is on PATH. We read the
+  // generated project's `packageManager` field, which is
+  // present after publishProject.
+  let recovery: string | null
+  try {
+    const version = readGeneratedPnpmVersion(state.input.dir)
+    recovery = recoveryCommandForNoInstall({
+      version,
+      cwd: state.input.dir,
+    })
+  } catch (err) {
+    if (err instanceof CliError && err.code === "source_failed") {
+      recovery = null
+    } else {
+      throw err
+    }
   }
   return {
     ok: true,
@@ -151,7 +220,7 @@ const buildNoInstallResult = (state: RunState): CreateResult => {
     destination: state.input.dir,
     packageName: state.packageName,
     packageManager: "pnpm",
-    recovery: recoveryCommand({ manager: pnpm, cwd: state.input.dir }),
+    recovery,
   }
 }
 
@@ -159,11 +228,17 @@ const buildNoInstallResult = (state: RunState): CreateResult => {
 const runInstallAndBuildResult = async (
   state: RunState,
 ): Promise<CreateResult> => {
-  if (!state.sha || !state.packageName) {
-    throw internal("publishProject did not populate sha/packageName")
+  if (
+    !state.sha ||
+    !state.packageName ||
+    !state.installCommand ||
+    !state.strategy
+  ) {
+    throw internal("resolvePrereqs did not populate install metadata")
   }
   const installResult = await runInstall({
-    manager: pnpm,
+    command: state.installCommand,
+    managerId: "pnpm",
     cwd: state.input.dir,
   })
 
@@ -177,7 +252,10 @@ const runInstallAndBuildResult = async (
       destination: state.input.dir,
       packageName: state.packageName,
       packageManager: "pnpm",
-      recovery: null,
+      recovery: recoveryCommand({
+        command: state.installCommand,
+        cwd: state.input.dir,
+      }),
     }
   }
 
@@ -196,7 +274,10 @@ const runInstallAndBuildResult = async (
       message: `pnpm install exited with code ${installResult.code}`,
       hint: "inspect the install log on stderr, then run the recovery command below",
     },
-    recovery: recoveryCommand({ manager: pnpm, cwd: state.input.dir }),
+    recovery: recoveryCommand({
+      command: state.installCommand,
+      cwd: state.input.dir,
+    }),
     installOutput: {
       code: installResult.code,
       stderr: installResult.stderr,
@@ -216,6 +297,7 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
     await fetchSource(state)
     await validateAndStage(state)
     await publishProject(state)
+    resolvePrereqs(state)
 
     if (!input.install) {
       return buildNoInstallResult(state)
@@ -225,6 +307,12 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
     cleanupState(state)
 
     if (err instanceof CliError) {
+      // The source_failed cases (missing or malformed
+      // `packageManager`) are routed here by the catch arm
+      // because readGeneratedPnpmVersion throws them from
+      // inside resolvePrereqs. The user sees a structured
+      // failure with the same error code the template-extraction
+      // step throws for a missing `package.json`.
       const failure: CreateFailure = {
         ok: false,
         mode: "create",
