@@ -139,14 +139,18 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
         // quoted form.
         expect(parsed.recovery).toMatch(
           // The recovery is the deterministic npm-exec fallback.
-          // On POSIX the version is single-quoted; on Windows it
-          // is double-quoted. We assert the structural pieces
-          // (the command, the version, the closing `install`)
-          // without depending on the exact quoting between the
-          // version and the next argument. The full quoting
-          // rules are covered in `quote.test.ts` and
+          // The recovery command uses POSIX quoting on every
+          // platform (git bash / WSL / native sh) because
+          // cmd's argument parser has historical quirks that
+          // make a single-quoted form awkward to use. The
+          // recovery field is exactly the deterministic
+          // `cd '<path>' && npm exec --yes -- pnpm@<v> install`
+          // form, with `<v>` the parsed semver from the
+          // generated project's `packageManager` field. The
+          // test only asserts the structural pieces; the full
+          // quoting rules are covered in `quote.test.ts` and
           // `recovery.test.ts`.
-          /npm exec --yes -- pnpm@\S*11\.0\.0\S* install$/,
+          /^cd '[^']+' && npm exec --yes -- pnpm@'11\.0\.0' install$/,
         )
       } else {
         // On a Node <22.13 runner, the CLI rejects with

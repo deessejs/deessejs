@@ -32,15 +32,21 @@ export const quoteForShell = (s: string): string => {
 /**
  * Windows `cmd`-compatible double-quote a string. `cmd` does
  * not honor single quotes; double quotes are the only portable
- * quoting. The function:
+ * quoting.
  *
- *  - wraps the value in double quotes;
- *  - escapes every embedded `"` as `\"` (which `cmd` treats as
- *    a literal double quote inside a double-quoted argument);
- *  - escapes every `^`, `&`, `|`, `<`, `>`, `(`, `)`, `%`, `!`
- *    that is not already inside a double-quoted argument
- *    boundary, so the resulting command is safe to paste into
- *    a `cmd` or `cmd /c` invocation.
+ * The escaping rules below are the ones Microsoft documents
+ * for `cmd` and that the round-trip test in `quote.test.ts`
+ * exercises:
+ *
+ *  - inside a double-quoted argument, `cmd` treats `& | < > ( )`
+ *    as literal — they need no escape. So we do not prefix
+ *    them with `^`.
+ *  - `^` itself, `%`, and `!` are still special inside double
+ *    quotes. We escape them so a path containing them round-trips
+ *    verbatim.
+ *  - a literal double quote is escaped as `\"` (the
+ *    documented way to embed a quote inside a double-quoted
+ *    `cmd` argument).
  *
  * The empty string is rendered as `""`, which `cmd` treats as
  * an empty argument.
@@ -55,15 +61,22 @@ export const quoteForShell = (s: string): string => {
  *   quoteForCmd("")           -> ""
  *   quoteForCmd("foo bar")    -> "foo bar"
  *   quoteForCmd("a\"b")       -> "a\"b"
- *   quoteForCmd("100%done")   -> "100^%done"
+ *   quoteForCmd("100%done")   -> "100%%done"
+ *   quoteForCmd("a&b")        -> "a&b"   (literal inside double quotes)
+ *   quoteForCmd("a^b")        -> "a^^b"
+ *   quoteForCmd("a!b")        -> "a^^!b"
  */
 export const quoteForCmd = (s: string): string => {
   if (s === "") return '""'
-  // Escape characters that `cmd` interprets outside of double
-  // quotes. The double-quote boundary is preserved.
+  // The order matters: backslash first (literal "), then
+  // carets for the still-special chars, then `%` (which
+  // is escaped by doubling inside a `cmd` batch file).
+  // `& | < > ( )` are not special inside double quotes on
+  // modern `cmd`; the round-trip test verifies this.
   const escaped = s
     .replace(/"/g, '\\"')
     .replace(/\^/g, "^^")
-    .replace(/[&|<>()%!]/g, "^$&")
+    .replace(/!/g, "^^!")
+    .replace(/%/g, "%%")
   return `"${escaped}"`
 }

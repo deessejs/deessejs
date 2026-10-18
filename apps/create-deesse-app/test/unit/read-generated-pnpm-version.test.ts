@@ -47,24 +47,26 @@ describe("readGeneratedPnpmVersion", () => {
     expect(readGeneratedPnpmVersion(dir)).toBe("11.0.0-rc.1+build.7")
   })
 
-  it("ignores any trailing shell metacharacters and parses only the version segment", () => {
-    // The semver regex is anchored at the start and accepts
-    // only the version core plus valid semver suffixes. Any
-    // characters after the semver shape (including shell
-    // metacharacters) are ignored — they are not part of the
-    // version we read. The security boundary for the recovery
-    // command is the quoting helper, not the parser: the
-    // parser extracts the version, and the recovery command
-    // routes that version through `quoteForShell` /
-    // `quoteForCmd` so a malicious version cannot inject a
-    // shell command.
-    //
-    // This test pins the parser's contract: it returns just
-    // the valid version, even when the field carries
-    // metacharacters after it. The recovery quoting is
-    // covered in `recovery.test.ts`.
-    writePackageJson({ packageManager: "pnpm@11.0.0; rm -rf /" })
-    expect(readGeneratedPnpmVersion(dir)).toBe("11.0.0")
+  it("rejects trailing junk after the version", () => {
+    // The regex is anchored at both ends. A `packageManager`
+    // like `pnpm@11.0.0garbage` would have produced `11.0.0`
+    // under the old loose match, and a CLI downstream
+    // (corepack, `npm exec`) would have resolved a different
+    // version than the one we extract here. The trailing `$`
+    // rejects the field outright. The version we extract is
+    // exactly the version the install command will resolve.
+    for (const bad of [
+      "pnpm@11.0.0garbage",
+      "pnpm@11.0.0; rm -rf /",
+      "pnpm@11.0.0\nrm -rf /",
+      "pnpm@11.0.0 rm -rf /",
+    ]) {
+      writePackageJson({ packageManager: bad })
+      expect(
+        () => readGeneratedPnpmVersion(dir),
+        `expected reject for ${JSON.stringify(bad)}`,
+      ).toThrow(/expected "pnpm@<version>"/)
+    }
   })
 
   it("ignores other fields and reads only packageManager", () => {

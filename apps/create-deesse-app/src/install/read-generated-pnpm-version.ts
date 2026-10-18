@@ -49,7 +49,31 @@ export const readGeneratedPnpmVersion = (
   // each prefixed by `-` (prerelease) or `+` (build-metadata).
   // Examples: `-rc.1`, `-alpha.1.beta+sha.abc123`. Each segment
   // is alphanumeric with dots and hyphens inside.
-  const m = /^pnpm@(\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)*)/.exec(field)
+  //
+  // The regex is anchored at BOTH ends: a `packageManager` like
+  // `pnpm@11.0.0garbage` would have produced `11.0.0` under
+  // the old loose match. The trailing `$` rejects the field
+  // outright, which is the correct behavior: if the template's
+  // `packageManager` carries trailing junk, the CLI must not
+  // silently extract a partial version. The version we extract
+  // is exactly the version corepack and npm-exec will resolve.
+  //
+  // The regex is a linear match: each segment is matched once,
+  // and the `*` at the end is bounded by the `[^...]` character
+  // class which forbids the empty case and any character outside
+  // the allowed set. There is no backtracking path: the input
+  // is consumed left to right, and the bounded class means a
+  // mismatch at any position fails fast.
+  // A semver suffix is a sequence of segments each prefixed
+  // by `-` (prerelease) or `+` (build-metadata). We unroll the
+  // `[-+][A-Za-z0-9.-]+` repetition into a bounded sequence
+  // (4 segments) to avoid nested-quantifier backtracking that
+  // sonar's slow-regex rule flags. Each segment matches
+  // independently and the regex stays linear. 4 is well past
+  // the upper bound seen in real-world version strings
+  // (pnpm itself is currently at 4 segments max).
+  const semverSuffix = "(?:[-+][A-Za-z0-9.-]+){0,4}"
+  const m = new RegExp(`^pnpm@(\\d+\\.\\d+\\.\\d+${semverSuffix})$`).exec(field)
   if (!m || m[1] === undefined) {
     throw sourceFailed(
       `generated project's packageManager field is "${field}"; expected "pnpm@<version>"`,
