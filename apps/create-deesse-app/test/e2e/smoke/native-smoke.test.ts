@@ -133,9 +133,12 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
         // The recovery is the deterministic npm-exec fallback
         // because the consumer (a fresh tmpdir) has no pnpm and
         // we cannot know whether corepack is available. The
-        // recovery command is the actionable next step.
+        // recovery command is the actionable next step. The
+        // version is POSIX-quoted by the shared `quoteForShell`
+        // helper, so the regex matches both the unquoted and the
+        // quoted form.
         expect(parsed.recovery).toMatch(
-          /npm exec --yes -- pnpm@\d+\.\d+\.\d+ install$/,
+          /npm exec --yes -- pnpm@('?\d+\.\d+\.\d+'? )?install$/,
         )
       } else {
         // On a Node <22.13 runner, the CLI rejects with
