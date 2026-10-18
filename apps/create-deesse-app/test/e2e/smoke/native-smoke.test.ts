@@ -138,7 +138,15 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
         // helper, so the regex matches both the unquoted and the
         // quoted form.
         expect(parsed.recovery).toMatch(
-          /npm exec --yes -- pnpm@('?\d+\.\d+\.\d+'? )?install$/,
+          // The recovery is the deterministic npm-exec fallback.
+          // On POSIX the version is single-quoted; on Windows it
+          // is double-quoted. We assert the structural pieces
+          // (the command, the version, the closing `install`)
+          // without depending on the exact quoting between the
+          // version and the next argument. The full quoting
+          // rules are covered in `quote.test.ts` and
+          // `recovery.test.ts`.
+          /npm exec --yes -- pnpm@\S*11\.0\.0\S* install$/,
         )
       } else {
         // On a Node <22.13 runner, the CLI rejects with
