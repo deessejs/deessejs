@@ -14,11 +14,6 @@ CREATE TABLE "account" (
 	"updated_at" timestamp NOT NULL
 );
 --> statement-breakpoint
--- squawk-ignore prefer-bigint-over-int
--- Rationale: Better Auth 1.7.7 emits `integer` for `pollingInterval`
--- (no per-field type override in the plugin schema API). Runtime
--- value range fits in `integer`; Squawk's rule is a style/safety
--- guard. Tracked as follow-up.
 CREATE TABLE "device_code" (
 	"id" text PRIMARY KEY NOT NULL,
 	"device_code" text NOT NULL,
