@@ -263,4 +263,77 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
       rmSync(work, { recursive: true, force: true })
     }
   })
+
+  it("--verbose emits narration on stderr but does not change the JSON shape", async () => {
+    // The --verbose flag is opt-in. It writes one
+    // human-readable line per pipeline step to stderr; the
+    // JSON on stdout is unchanged. This test exercises the
+    // integration: stderr contains at least one
+    // `create-deesse-app:` line and stdout parses as the
+    // expected dry-run JSON.
+    const work = mkdtempSync(join(tmpdir(), "cda-smoke-verbose-"))
+    const dest = join(work, "smoke-project")
+    try {
+      const result = await runCommand(
+        "node",
+        [cliPath, "smoke-project", "--dry-run", "--verbose", "--dir", dest],
+        { timeoutMs: 60_000 },
+      )
+      // The dry-run path on a supported Node always exits
+      // 0; the unsupported_node branch is the same as
+      // the other dry-run cases.
+      if (result.exitCode === 0) {
+        // JSON is unchanged.
+        const parsed = JSON.parse(result.stdout.trim()) as {
+          ok: boolean
+          mode: string
+        }
+        expect(parsed.ok).toBe(true)
+        expect(parsed.mode).toBe("dry-run")
+
+        // stderr contains at least one narration line.
+        // The prefix is `create-deesse-app:` (possibly
+        // wrapped in dim ANSI escapes on color-capable
+        // terminals).
+        expect(result.stderr).toContain("create-deesse-app:")
+        // Spot-check: a step that runs in both --verbose
+        // and non-verbose paths (the SHA resolution) must
+        // appear.
+        expect(result.stderr).toContain("resolved source SHA")
+      } else {
+        const parsed = JSON.parse(result.stdout.trim()) as {
+          ok: boolean
+          error: { code: string }
+        }
+        expect(parsed.ok).toBe(false)
+        expect(parsed.error.code).toBe("unsupported_node")
+      }
+    } finally {
+      rmSync(work, { recursive: true, force: true })
+    }
+  })
+
+  it("without --verbose, the CLI writes no narration lines to stderr", async () => {
+    // The default behavior is silent. The CLI may still
+    // write the install-bootstrap warning to stderr when
+    // install runs, but under --dry-run there is no
+    // bootstrap warning and no narration. The flag is
+    // opt-in: omitting it must not produce a single
+    // `create-deesse-app:` line.
+    const work = mkdtempSync(join(tmpdir(), "cda-smoke-silent-"))
+    const dest = join(work, "smoke-project")
+    try {
+      const result = await runCommand(
+        "node",
+        [cliPath, "smoke-project", "--dry-run", "--no-install", "--dir", dest],
+        { timeoutMs: 60_000 },
+      )
+      if (result.exitCode === 0) {
+        // No narration prefix should appear on stderr.
+        expect(result.stderr).not.toContain("create-deesse-app:")
+      }
+    } finally {
+      rmSync(work, { recursive: true, force: true })
+    }
+  })
 })

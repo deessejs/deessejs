@@ -12,6 +12,7 @@ export type CreateAppErrorCode =
   | "source_failed"
   | "install_failed"
   | "unsupported_node"
+  | "aborted"
   | "internal"
 
 export class CliError extends Error {
@@ -86,6 +87,13 @@ export const installFailed = (pm: string, code: number | null): CliError =>
 
 export const internal = (detail: string): CliError =>
   new CliError("internal", `unexpected internal error: ${detail}`, detail)
+
+export const aborted = (): CliError =>
+  new CliError(
+    "aborted",
+    "create-deesse-app was cancelled before completion",
+    "re-run the command to retry; the staging tempdir has been cleaned",
+  )
 
 // Hard floor for the supported Node runtime. pnpm 11 requires
 // Node 22.13.0 or later; anything below that cannot run the
