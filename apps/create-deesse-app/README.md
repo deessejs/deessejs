@@ -13,6 +13,8 @@ npx create-deesse-app@latest my-project
 npx create-deesse-app@latest my-project --no-install
 npx create-deesse-app@latest my-project --dry-run
 npx create-deesse-app@latest my-project --dry-run --no-install
+pnpm dlx create-deesse-app@latest my-project --verbose
+pnpm dlx create-deesse-app@latest my-project --dry-run --verbose
 ```
 
 `npx` and `pnpm dlx` are both supported. The initializer resolves the current commit of `deessejs/saas-template` on every invocation, downloads the tarball by SHA, extracts it safely, renames the root `package.json`, and runs `pnpm install`.
@@ -92,6 +94,38 @@ npx create-deesse-app@latest my-project --dry-run --no-install
 ```
 
 `recovery` is always `null` in dry-run mode: the dry-run did not attempt anything that could fail, so there is nothing to retry. The `source.sha` is the SHA that a real create would have used at the moment the dry-run ran — a later invocation may fetch a different SHA, by design.
+
+## Verbose output
+
+`--verbose` is an opt-in flag that streams human-readable progress to stderr. The JSON on stdout is unchanged, the exit code is unchanged, and the flag never opens a prompt or changes interactive behavior. Default mode is silent.
+
+```bash
+pnpm dlx create-deesse-app@latest my-project --verbose
+pnpm dlx create-deesse-app@latest my-project --dry-run --verbose
+```
+
+Sample stderr with `--verbose`:
+
+```
+create-deesse-app: starting create project=my-project dir=./my-project install=true
+create-deesse-app: resolving source SHA
+create-deesse-app: resolved source SHA sha=6d0cf3f...
+create-deesse-app: downloaded archive
+create-deesse-app: validating archive entries
+create-deesse-app: validated entries count=550
+create-deesse-app: staged template path=my-project
+create-deesse-app: published project destination=./my-project
+create-deesse-app: probing install prereqs
+create-deesse-app: install strategy chosen strategy=corepack
+create-deesse-app: running install cwd=./my-project
+create-deesse-app: install completed
+```
+
+The `--verbose` and `--dry-run` flags compose: a `--verbose --dry-run` invocation prints the planning narration up to and including `dry-run plan ready`, then the JSON. It never prints `running install` (the dry-run does not run install) and never prints `published project` (the dry-run does not publish).
+
+`-v` and `--version` take priority over `--verbose` (the pre-parse in `src/index.ts` short-circuits on the version flag before Commander sees argv). If you want the version, ask for it explicitly; if you want narration, pass `--verbose`.
+
+The cancel path (`error.code: "aborted"`) is the same in `--verbose` and the default mode: SIGINT aborts in-flight IO, the staging tempdir is removed, the destination is left untouched, and the result includes a `recovery` field with the platform-shaped `cd <dir> && pnpm dlx create-deesse-app@latest <name>` re-run command.
 
 ## Getting started
 

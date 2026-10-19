@@ -39,12 +39,21 @@ program
     "--dry-run",
     "plan the create without writing files, running install, or executing template code",
   )
+  .option(
+    "--verbose",
+    "print human-readable progress to stderr (does not change JSON or exit semantics)",
+  )
   .version(readPackageVersion())
   .allowExcessArguments(false)
   .action(
     async (
       projectName: string,
-      opts: { dir?: string; install: boolean; dryRun: boolean },
+      opts: {
+        dir?: string
+        install: boolean
+        dryRun: boolean
+        verbose: boolean
+      },
     ) => {
       try {
         const dir = resolve(process.cwd(), opts.dir ?? `./${projectName}`)
@@ -53,6 +62,7 @@ program
           dir,
           install: opts.install,
           dryRun: opts.dryRun,
+          verbose: opts.verbose,
         })
 
         // Mirror the human message to stderr BEFORE the JSON result.

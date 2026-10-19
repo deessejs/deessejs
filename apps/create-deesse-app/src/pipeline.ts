@@ -9,16 +9,21 @@ import { extractTarball } from "./extract/extract.js"
 import { publishOrRollback } from "./extract/publish-or-rollback.js"
 import { validateEntries } from "./extract/validate-entries.js"
 import { buildDryRunResult } from "./dry-run/build-dry-run-result.js"
-import { aborted } from "./errors/abort.js"
-import { CliError, internal } from "./errors/index.js"
+import { aborted, CliError, internal } from "./errors/index.js"
 import { readGeneratedPnpmVersion } from "./install/read-generated-pnpm-version.js"
-import { recoveryCommand, recoveryCommandForNoInstall } from "./install/recovery.js"
+import {
+  recoveryCommand,
+  recoveryCommandForNoInstall,
+  recoveryCommandForReRun,
+} from "./install/recovery.js"
 import { runInstall } from "./install/run.js"
 import { warnInstallBootstrap } from "./install/warn-install-bootstrap.js"
 import { validateProjectName } from "./name/validate.js"
 import { pickInstallStrategy, type InstallStrategy } from "./pm/install-strategy.js"
 import { pnpm } from "./pm/pnpm.js"
 import { probeInstallPrereqs } from "./pm/probe-paths.js"
+import type { Logger } from "./output/logger.js"
+import { nullLogger, stderrLogger } from "./output/logger.js"
 import type {
   CreateFailure,
   CreateInstallFailure,
@@ -51,6 +56,14 @@ export type RunInput = {
    * is returned.
    */
   dryRun: boolean
+  /**
+   * When true, emit a one-line-per-step human narration of
+   * pipeline progress to stderr via the `Logger` seam. The
+   * JSON on stdout is unchanged either way; the narration
+   * is informational and never writes to stdout. Default
+   * is false (silent).
+   */
+  verbose: boolean
 }
 
 // State carried across the pipeline. Each step below takes the previous
@@ -64,6 +77,7 @@ export type RunInput = {
 type RunState = {
   input: RunInput
   signal: AbortSignal
+  logger: Logger
   sha?: string
   tarballPath?: string
   tempDir?: string
@@ -99,12 +113,14 @@ const guardInvocationAndArgs = (input: RunInput): void => {
 
 // 2. Resolve the immutable SHA and download the tarball for it.
 const fetchSource = async (state: RunState): Promise<void> => {
+  state.logger.info("resolving source SHA")
   state.sha = await resolveTemplateSha({
     owner: REPO_OWNER,
     repo: REPO_NAME,
     ref: REPO_REF,
     signal: state.signal,
   })
+  state.logger.info("resolved source SHA", { sha: state.sha })
   const tarball = await downloadTarball({
     owner: REPO_OWNER,
     repo: REPO_NAME,
@@ -112,6 +128,7 @@ const fetchSource = async (state: RunState): Promise<void> => {
     signal: state.signal,
   })
   state.tarballPath = tarball.path
+  state.logger.info("downloaded archive")
 }
 
 // 3. Validate then extract into a fresh staging directory. The
@@ -123,6 +140,7 @@ const validateAndStage = async (state: RunState): Promise<void> => {
   if (!state.sha || !state.tarballPath) {
     throw internal("fetchSource did not populate sha/tarballPath")
   }
+  state.logger.info("validating archive entries")
   const validated = await validateEntries({
     tarballPath: state.tarballPath,
     sha: state.sha,
@@ -130,6 +148,7 @@ const validateAndStage = async (state: RunState): Promise<void> => {
     signal: state.signal,
   })
   state.validatedEntries = validated.entries
+  state.logger.info("validated entries", { count: validated.entries.length })
 
   const tempDir = resolve(state.input.dir + ".staging." + randomUUID())
   if (existsSync(tempDir)) {
@@ -156,6 +175,7 @@ const validateAndStage = async (state: RunState): Promise<void> => {
     tempDir: state.tempDir,
     newName: state.input.projectName,
   })
+  state.logger.info("staged template", { path: state.input.projectName })
 }
 
 // 4. Publish the staged directory atomically. After this step
@@ -176,6 +196,7 @@ const publishProject = async (state: RunState): Promise<void> => {
   })
   // ownership transferred — clear so cleanupState doesn't rm a live dir
   delete state.tempDir
+  state.logger.info("published project", { destination: state.input.dir })
 }
 
 // 4.5. Resolve install prereqs and strategy. The probe runs only
@@ -199,6 +220,7 @@ const resolvePrereqs = (state: RunState): void => {
     // readGeneratedPnpmVersion + recoveryCommandForNoInstall.
     return
   }
+  state.logger.info("probing install prereqs")
   state.prereqs = probeInstallPrereqs()
   state.pnpmVersion = readGeneratedPnpmVersionSafe(state)
   state.strategy = pickInstallStrategy({
@@ -210,6 +232,7 @@ const resolvePrereqs = (state: RunState): void => {
     state.strategy,
     state.pnpmVersion,
   )
+  state.logger.info("install strategy chosen", { strategy: state.strategy })
   warnInstallBootstrap(state.strategy, state.input.dryRun ? "dry-run" : "create")
 }
 
@@ -279,6 +302,7 @@ const runInstallAndBuildResult = async (
   ) {
     throw internal("resolvePrereqs did not populate install metadata")
   }
+  state.logger.info("running install", { cwd: state.input.dir })
   const installResult = await runInstall({
     command: state.installCommand,
     managerId: "pnpm",
@@ -286,6 +310,7 @@ const runInstallAndBuildResult = async (
   })
 
   if (installResult.ok) {
+    state.logger.info("install completed")
     return {
       ok: true,
       mode: "create",
@@ -302,6 +327,7 @@ const runInstallAndBuildResult = async (
     }
   }
 
+  state.logger.error("install failed", { code: installResult.code })
   // Install failed. Project is on disk; surface as install-failure. The
   // install log is mirrored to stderr in src/index.ts and the captured
   // output is included in the JSON for scripts.
@@ -334,7 +360,21 @@ const runInstallAndBuildResult = async (
 
 export const run = async (input: RunInput): Promise<CreateResult> => {
   const abortController = new AbortController()
-  const state: RunState = { input, signal: abortController.signal }
+  // The default logger is `nullLogger`; we pick
+  // `stderrLogger` when `input.verbose` is true. Tests that
+  // need to observe narration should pass `verbose: true`
+  // and provide a writer through the module (not through
+  // public API) — or override `state.logger` before
+  // `guardInvocationAndArgs` is awaited.
+  const state: RunState = {
+    input,
+    signal: abortController.signal,
+    logger: input.verbose ? stderrLogger() : nullLogger,
+  }
+  state.logger.info(
+    input.dryRun ? "starting dry-run" : "starting create",
+    { project: input.projectName, dir: input.dir, install: input.install },
+  )
 
   // The first SIGINT aborts in-flight IO and triggers the
   // cleanup path. The second SIGINT (the user's "I really
@@ -386,6 +426,7 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
         pnpmVersion: state.pnpmVersion,
       })
       cleanupState(state)
+      state.logger.info("dry-run plan ready", { files: result.plannedFiles.length })
       return result
     }
 
@@ -393,6 +434,7 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
     resolvePrereqs(state)
 
     if (!input.install) {
+      state.logger.info("install skipped")
       return buildNoInstallResult(state)
     }
     return await runInstallAndBuildResult(state)
@@ -405,14 +447,21 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
     // bucket the rest of the catch falls into. The mode
     // reflects what the user asked for: a dry-run
     // cancellation reports `mode: "dry-run"`, a real-create
-    // cancellation reports `mode: "create"`.
+    // cancellation reports `mode: "create"`. The recovery
+    // command is the re-run form: the user can simply
+    // re-invoke the same CLI to retry.
     if (isAbortError(err)) {
+      state.logger.error("cancelled")
       const failure: CreateFailure = {
         ok: false,
         mode: state.input.dryRun ? "dry-run" : "create",
         projectCreated: false,
         source: buildSource(state.sha),
         error: aborted(),
+        recovery: recoveryCommandForReRun({
+          cwd: state.input.dir,
+          projectName: state.input.projectName,
+        }),
       }
       return failure
     }
@@ -426,6 +475,7 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
       // step throws for a missing `package.json`. As with
       // the cancel path, the mode reflects the requested
       // operation, not the realized one.
+      state.logger.error("error", { code: err.code, message: err.message })
       const failure: CreateFailure = {
         ok: false,
         mode: state.input.dryRun ? "dry-run" : "create",

@@ -86,3 +86,29 @@ export const recoveryCommandForNoInstall = (args: {
   }
   return `cd ${quoteForShell(cwd)} && npm exec --yes -- pnpm@${quoteForShell(version)} install`
 }
+
+/**
+ * The recovery command for the user-triggered cancel path
+ * (`error.code: "aborted"`). The user re-runs the same CLI
+ * command, so the shape is `cd <dir> && pnpm dlx
+ * create-deesse-app@latest <name>`. The `@latest` tag is
+ * intentional: the original install was interrupted before
+ * any state mutated, and re-running against the original
+ * version pin would require the user to remember which
+ * version they had. The CLI is at most a few minutes old at
+ * this point (the user just installed it), so `@latest` is
+ * the simplest re-entry point.
+ *
+ * The shape matches `recoveryCommand` for the host platform:
+ * POSIX on non-Windows, `cmd` on Windows.
+ */
+export const recoveryCommandForReRun = (args: {
+  cwd: string
+  projectName: string
+}): string => {
+  const { cwd, projectName } = args
+  if (isWindows()) {
+    return `cd /d ${quoteForCmd(cwd)} && pnpm dlx create-deesse-app@latest ${quoteForCmd(projectName)}`
+  }
+  return `cd ${quoteForShell(cwd)} && pnpm dlx create-deesse-app@latest ${quoteForShell(projectName)}`
+}
