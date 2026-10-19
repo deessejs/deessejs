@@ -19,7 +19,6 @@ collection of parts"). Today the composite is page-local.
 | `hero.tsx` | Two-column hero — H1 + lead + form on the left, cover mockup on the right |
 | `problem.tsx` | Why agent-generated code ages poorly |
 | `what-you-get.tsx` | Chapter takeaways in reading order |
-| `preview.tsx` | TOC card (proof of level) |
 | `who-its-for.tsx` | Concrete audience description, no personas |
 | `form.tsx` | `"use client"` — RHF + Zod + orpc signup |
 | `final-cta.tsx` | Closing 2-col block, mirrors the shared `FinalCtaShell` recipe, hosts the form on the right |

@@ -20,7 +20,7 @@ import { Playbook } from "@/components/pages/playbook"
  * Authoritative copy lives in:
  *   - `components/pages/playbook/hero.tsx` — H1, lead, CTA
  *   - `components/pages/playbook/content/toc.ts` — chapter takeaways
- *     (used by `WhatYouGet` and `Preview`)
+ *     (used by `WhatYouGet`)
  *
  * Metadata pattern mirrors `apps/web/src/app/(marketing)/pricing/page.tsx`:
  * the page exports a `metadata` object with `title`, `description`,
@@ -67,7 +67,6 @@ export default function PlaybookPage() {
       <Playbook.Hero />
       <Playbook.Problem />
       <Playbook.WhatYouGet />
-      <Playbook.Preview />
       <Playbook.WhoItsFor />
       <Playbook.FinalCta />
     </>

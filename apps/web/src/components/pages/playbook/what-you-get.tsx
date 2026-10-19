@@ -3,11 +3,10 @@ import { PLAYBOOK_TOC } from "./content/toc"
 /**
  * /playbook "What you'll find" section.
  *
- * Lays out the chapter takeaways as a numbered list — same data as the
- * table of contents in the preview card, but in reading order so
- * scrollers can decide quickly whether the playbook addresses what
- * they need. Each item is a verb-first capability phrased against the
- * concrete situation the reader is in.
+ * Lays out the chapter takeaways as a numbered list in reading
+ * order so scrollers can decide quickly whether the playbook
+ * addresses what they need. Each item is a verb-first capability
+ * phrased against the concrete situation the reader is in.
  *
  * Heading recipe: `text-heading-32 tracking-tight`. List recipe:
  * `text-copy-16 leading-7 text-foreground` with `list-decimal`

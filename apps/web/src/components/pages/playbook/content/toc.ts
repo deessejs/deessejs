@@ -2,10 +2,9 @@
  * Playbook table of contents.
  *
  * Single source for the chapter list shown in the "What you'll find"
- * and "Preview" sections. Each entry is intentionally short —
- * a one-line takeaway rather than a chapter title, so the visible
- * copy stays scannable while the PDF itself carries the full
- * chapter titles.
+ * section. Each entry is intentionally short — a one-line takeaway
+ * rather than a chapter title, so the visible copy stays scannable
+ * while the PDF itself carries the full chapter titles.
  *
  * TODO(v0.2): before the PR moves out of draft, replace the
  * placeholder copy with chapter titles drawn from the real TOC and

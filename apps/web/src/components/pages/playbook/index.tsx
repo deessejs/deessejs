@@ -10,14 +10,12 @@
  *   - Hero           — H1 + lead + form, two-column with cover mockup
  *   - Problem        — why agent-generated code ages poorly
  *   - WhatYouGet     — chapter takeaways in reading order
- *   - Preview        — TOC card (proof of level)
  *   - WhoItsFor      — concrete audience description, no personas
  *   - FinalCta       — closing 2-col block with form, mirrors the
  *                       shared `FinalCtaShell` recipe
  */
 import { FinalCta } from "./final-cta"
 import { Hero } from "./hero"
-import { Preview } from "./preview"
 import { Problem } from "./problem"
 import { WhatYouGet } from "./what-you-get"
 import { WhoItsFor } from "./who-its-for"
@@ -26,7 +24,6 @@ export const Playbook = {
   Hero,
   Problem,
   WhatYouGet,
-  Preview,
   WhoItsFor,
   FinalCta,
 } as const
@@ -36,7 +33,6 @@ export const Playbook = {
 export {
   FinalCta,
   Hero,
-  Preview,
   Problem,
   WhatYouGet,
   WhoItsFor,

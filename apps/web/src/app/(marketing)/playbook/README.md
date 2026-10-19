@@ -9,9 +9,8 @@ assets listed below are merged on top of the structural code:
 ## Assets still needed
 
 1. **`apps/web/public/playbook/cover.{png|svg}`** — the cover
-   thumbnail. Replace the "Cover — TODO" placeholder blocks in:
+   thumbnail. Replace the "Cover — TODO" placeholder block in:
    - `apps/web/src/components/pages/playbook/hero.tsx`
-   - `apps/web/src/components/pages/playbook/preview.tsx`
 
 2. **`apps/web/public/playbook/playbook.pdf`** — the actual PDF
    deliverable. Linked from the PlaybookDownload React Email
@@ -34,9 +33,8 @@ assets listed below are merged on top of the structural code:
    left; cover thumbnail on the right
 2. Problem (`Playbook.Problem`)
 3. What you'll find (`Playbook.WhatYouGet`)
-4. Preview (`Playbook.Preview`) — TOC card with chapter takeaways
-5. Who it's for (`Playbook.WhoItsFor`)
-6. Final CTA (`Playbook.FinalCta`) — closing 2-col block, mirrors
+4. Who it's for (`Playbook.WhoItsFor`)
+5. Final CTA (`Playbook.FinalCta`) — closing 2-col block, mirrors
    the shared `FinalCtaShell` recipe used by /pricing and /about
 
 ## Pipeline (one-line reminders)
