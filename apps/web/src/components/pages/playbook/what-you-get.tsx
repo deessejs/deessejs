@@ -1,42 +1,50 @@
+import { Section } from "@/components/marketing/section"
+import { SectionHeader } from "@/components/marketing/section-header"
+import { Card } from "@workspace/ui/components/card"
+
 import { PLAYBOOK_TOC } from "./content/toc"
 
 /**
  * /playbook "What you'll find" section.
  *
- * Lays out the chapter takeaways as a numbered list in reading
- * order so scrollers can decide quickly whether the playbook
- * addresses what they need. Each item is a verb-first capability
- * phrased against the concrete situation the reader is in.
+ * Six-chapter card grid. Mirrors the shared-border pattern used
+ * across the marketing surface (`/`, `/principles`, `/enterprise`):
+ * `<Section>` wrapper provides the bottom divider, `<SectionHeader>`
+ * renders the eyebrow + title + subtitle, then a 1/2/3-column
+ * grid of `<Card>`s.
  *
- * Heading recipe: `text-heading-32 tracking-tight`. List recipe:
- * `text-copy-16 leading-7 text-foreground` with `list-decimal`
- * markers and `pl-7` indent.
+ * Each card carries the chapter number (mono label so the eye
+ * anchors on the count first) and the takeaway (verb-first
+ * outcome). `bordered={false}` on the header avoids a double
+ * border — the parent `<Section>` already provides one.
+ *
+ * The TOC is the same source of truth that the deleted Preview
+ * section used (`./content/toc.ts`), so the page-local grid
+ * remains the single visible instance of the chapter list.
  */
 export function WhatYouGet() {
   return (
-    <section
-      aria-labelledby="playbook-what-heading"
-      className="border-b border-border px-6 py-16 md:py-20 lg:py-24"
-    >
-      <div className="mx-auto flex max-w-5xl flex-col gap-8">
-        <h2
-          id="playbook-what-heading"
-          className="text-heading-32 tracking-tight"
-        >
-          What you&apos;ll find in the guide
-        </h2>
-        <ol className="flex flex-col gap-4 pl-7 text-copy-16 leading-7 text-foreground [&:not(:first-child)]:mt-0 [counter-reset:playbook]">
-          {PLAYBOOK_TOC.map((entry) => (
-            <li
-              key={entry.id}
-              className="list-decimal"
-              value={Number(entry.id)}
-            >
-              {entry.takeaway}
-            </li>
-          ))}
-        </ol>
-      </div>
-    </section>
+    <Section>
+      <SectionHeader
+        eyebrow="What's inside"
+        title="Six chapters from prompt to production"
+        subtitle="Each chapter opens with a moment you'd recognise and closes with what to do about it."
+        bordered={false}
+      />
+      <ol className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2 md:p-8 lg:grid-cols-3 lg:p-10 [&:not(:first-child)]:mt-0">
+        {PLAYBOOK_TOC.map((entry) => (
+          <li key={entry.id} className="list-none">
+            <Card className="flex h-full flex-col p-6">
+              <span className="text-label-13 font-mono text-muted-foreground">
+                {entry.id}
+              </span>
+              <p className="text-copy-16 text-foreground leading-7">
+                {entry.takeaway}
+              </p>
+            </Card>
+          </li>
+        ))}
+      </ol>
+    </Section>
   )
 }
