@@ -2,7 +2,7 @@
 
 import { ORPCError } from "@orpc/client"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useState, type FormEvent } from "react"
+import { useRef, type FormEvent } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -76,8 +76,12 @@ export function Form() {
   // success toast twice if the user clicks Submit again within the
   // 60s dedup window. Server returns 409 either way; we treat
   // both occurrences as success because the first one already
-  // delivered the email.
-  const [delivered, setDelivered] = useState(false)
+  // delivered the email. Used only inside the submit handlers
+  // (set + read both happen there), so useRef rather than
+  // useState — there is no UI that needs to re-render when it
+  // flips. Triggers the `rerender-state-only-in-handlers`
+  // React Doctor lint if it stays as state.
+  const deliveredRef = useRef(false)
 
   const onSubmit = async (data: PlaybookInput) => {
     try {
@@ -86,7 +90,7 @@ export function Form() {
         consentMarketing: data.consentMarketing,
       })
       if (ok) {
-        setDelivered(true)
+        deliveredRef.current = true
         toast.success("Check your inbox — the PDF is on the way.")
       }
     } catch (err) {
@@ -94,8 +98,8 @@ export function Form() {
         if (err.code === "DUPLICATE_SIGNUP") {
           // Same outcome as success: the email was already sent.
           // Show the same green toast; no need for a destructive one.
-          if (!delivered) {
-            setDelivered(true)
+          if (!deliveredRef.current) {
+            deliveredRef.current = true
             toast.success("Check your inbox — the PDF is on the way.")
           }
           return
