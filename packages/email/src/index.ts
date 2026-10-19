@@ -1,9 +1,17 @@
 import { mailer } from "./transport.js"
 import { VerifyEmail } from "./templates/verify-email.js"
 import { ResetPassword } from "./templates/reset-password.js"
+import { PlaybookDownload } from "./templates/playbook.js"
+import { addToAudience, type AddToAudienceResult } from "./contacts.js"
 import type { MailerTransport, SendArgs } from "./types.js"
 
-export { mailer, type MailerTransport, type SendArgs }
+export {
+  mailer,
+  addToAudience,
+  type MailerTransport,
+  type SendArgs,
+  type AddToAudienceResult,
+}
 
 /**
  * Result of `sendAuthEmail` — discriminated union so callers can branch on
@@ -60,4 +68,5 @@ export async function sendAuthEmail(opts: {
 export const templates = {
 	VerifyEmail,
 	ResetPassword,
+	PlaybookDownload,
 }
