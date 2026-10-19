@@ -54,30 +54,68 @@ const KILL_GRACE_MS = 5_000
  * can decide whether to throw or to retain the project with a
  * recovery command.
  *
- * When `signal` is provided and fires mid-flight, the child
- * is killed (SIGTERM, then SIGKILL after a grace period) and
- * the promise resolves with `{ ok: false, aborted: true, ... }`
- * — the caller's `aborted` branch then routes to
- * `error.code: "aborted"` rather than `install_failed`.
+ * When `signal` is provided and fires mid-flight, the install
+ * child AND its descendants are killed. The CLI launches
+ * `corepack` (or `npm exec`), which itself spawns `pnpm` as a
+ * grandchild. Killing only the immediate child would leave
+ * the grandchild orphaned (on POSIX) and continuing to
+ * mutate the project while the user reads the recovery
+ * command. The cross-platform strategy:
  *
- * On non-zero, the child.on('error') handler also throws
- * `installFailed` so the caller's error path surfaces the
- * correct code (`install_failed`) in the JSON result. The
- * result of `runInstall` and the throw are paired: the
- * caller catches the throw, then prints its JSON with
- * `projectCreated: true` + `recovery`.
+ *  - POSIX: spawn with `detached: true` so the child
+ *    becomes the leader of a new process group. On abort,
+ *    send the signal to the negative PID (the PGID) so the
+ *    signal reaches every process in the group, including
+ *    all descendants.
+ *
+ *  - Windows: there is no process group concept in the
+ *    same way. `child.kill()` calls `TerminateProcess` on
+ *    the immediate child. For descendants, shell out to
+ *    `taskkill /T /F /PID <pid>` which walks the tree.
+ *    `taskkill` is built into every supported Windows
+ *    version; no new dep is required.
+ *
+ * The grace period (5s) between SIGTERM and SIGKILL still
+ * applies: pnpm typically exits within a few hundred
+ * milliseconds of SIGTERM, but the tree walk is the safety
+ * net for stubborn grandchild processes.
+ *
+ * The promise resolves with `{ ok: false, aborted: true, ... }`
+ * on cancel, NOT `{ ok: false, code, ... }`, so the caller's
+ * `aborted` branch routes to `error.code: "aborted"` rather
+ * than `install_failed`.
+ *
+ * On non-zero exit (NOT cancel), the child.on('error')
+ * handler throws `installFailed` so the caller's error
+ * path surfaces the correct code (`install_failed`) in the
+ * JSON result. The result of `runInstall` and the throw are
+ * paired: the caller catches the throw, then prints its
+ * JSON with `projectCreated: true` + `recovery`.
  */
 export const runInstall = async (args: RunInstallArgs): Promise<RunInstallResult> => {
   const { command, managerId, cwd, signal } = args
   const cmd = command
 
   return new Promise<RunInstallResult>((resolveFn, rejectFn) => {
+    // POSIX: detached:true creates a new process group with
+    // pgid === child.pid. The negative-PID kill (below)
+    // reaches every process in the group, including all
+    // descendants (pnpm, postinstall scripts, etc.).
+    // Windows: cross-spawn ignores `detached` on win32, so
+    // we rely on `taskkill /T /F /PID` for tree termination
+    // there.
+    //
+    // `cross-spawn`'s TypeScript types are a subset of
+    // Node's `SpawnOptions` and do not include `detached`;
+    // cast to the wider Node type so the field is
+    // accepted without a noisy module-augmentation.
     const child = crossSpawn.spawn(cmd.bin, cmd.args, {
       cwd,
       env: process.env,
       stdio: ["ignore", "pipe", "pipe"],
       shell: false,
-    })
+      ...(process.platform !== "win32" ? { detached: true } : {}),
+    } as Parameters<typeof crossSpawn.spawn>[2])
 
     let stdout = ""
     let stderr = ""
@@ -96,20 +134,68 @@ export const runInstall = async (args: RunInstallArgs): Promise<RunInstallResult
       stderr += typeof chunk === "string" ? chunk : chunk.toString("utf8")
     })
 
-    const onAbort = (): void => {
-      aborted = true
-      try {
-        child.kill("SIGTERM")
-      } catch {
-        // Already dead; nothing to do.
-      }
-      killTimer = setTimeout(() => {
+    // Kill the install child and its entire descendant
+    // tree. See the long-form docstring above for the
+    // platform rationale.
+    //
+    // The TypeScript type of `child.pid` is
+    // `number | undefined`; the `pid` is assigned by the
+    // underlying `spawn` synchronously and is never
+    // undefined in practice. We narrow with a local
+    // helper so the kill paths below can use it without
+    // repeating the check.
+    const pid = child.pid
+    if (pid === undefined) {
+      // Spawn failed before assigning a pid — nothing
+      // to kill. The 'error' listener will fire
+      // momentarily; let it handle the resolution.
+      return
+    }
+    const killTree = (sig: NodeJS.Signals | "SIGKILL"): void => {
+      if (process.platform === "win32") {
+        // Windows: `child.kill()` calls `TerminateProcess`
+        // on the immediate child. Then walk the tree with
+        // taskkill so any grandchildren are also killed.
+        // `taskkill` returns quickly; we don't wait for it.
         try {
-          child.kill("SIGKILL")
+          child.kill()
         } catch {
           // Already dead; nothing to do.
         }
-      }, KILL_GRACE_MS)
+        try {
+          crossSpawn.spawn("taskkill", ["/T", "/F", "/PID", String(pid)], {
+            stdio: "ignore",
+            shell: false,
+          })
+        } catch {
+          // taskkill missing: extremely unlikely on
+          // win32, but the immediate-child kill above is
+          // the best we can do.
+        }
+      } else {
+        // POSIX: signal the process group. The negative
+        // PID is the PGID; delivering a signal to -PGID
+        // reaches every process in the group, including
+        // descendants. The fallback (positive PID) is for
+        // the rare case where the process group cannot be
+        // signaled (e.g. it no longer exists because the
+        // child exited cleanly before the abort landed).
+        try {
+          process.kill(-pid, sig)
+        } catch {
+          try {
+            child.kill(sig)
+          } catch {
+            // Already dead; nothing to do.
+          }
+        }
+      }
+    }
+
+    const onAbort = (): void => {
+      aborted = true
+      killTree("SIGTERM")
+      killTimer = setTimeout(() => killTree("SIGKILL"), KILL_GRACE_MS)
     }
 
     if (signal) {

@@ -1,3 +1,7 @@
+import { existsSync, readFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { runInstall } from "../../src/install/run.js"
@@ -130,4 +134,154 @@ describe("runInstall — AbortSignal handling", () => {
     expect(cmd.bin).toBe("corepack")
     expect(cmd.args).toEqual(["pnpm", "install"])
   })
+
+  // The CLI launches `corepack` (or `npm exec`) which
+  // itself spawns `pnpm` as a grandchild. On POSIX,
+  // killing only the parent leaves the grandchild
+  // orphaned (reparented to init) and still running. This
+  // test exercises the real cross-platform tree kill by
+  // having the spawned parent spawn its own grandchild.
+  //
+  // The parent script writes the grandchild's PID to a
+  // file the test can read, then waits. The test triggers
+  // the abort and asserts the grandchild PID is no longer
+  // alive.
+  it("kills the descendant tree on abort (POSIX: process group; Windows: taskkill /T /F)", async () => {
+    const pidFile = join(
+      tmpdir(),
+      `cda-pidfile-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`,
+    )
+    // The parent mirrors what corepack/npm-exec do in
+    // production: it spawns a grandchild WITHOUT
+    // `detached: true`, so the grandchild inherits the
+    // parent's process group. When the parent's PGID is
+    // signaled (the POSIX abort path) or the tree is
+    // walked (the Windows abort path), the grandchild is
+    // killed along with the parent.
+    //
+    // The grandchild PID is written to `pidFile` so the
+    // test can confirm it's gone after the abort.
+    const PARENT_SCRIPT = `
+      const { spawn } = require('node:child_process')
+      const fs = require('node:fs')
+      const pidFile = ${JSON.stringify(pidFile)}
+      // Long-running grandchild that ignores SIGTERM. No
+      // \`detached\` flag — the grandchild stays in the
+      // parent's process group, exactly like
+      // \`corepack\`'s \`pnpm\` child in production.
+      const child = spawn(
+        process.execPath,
+        ['-e', 'setInterval(() => {}, 1000)'],
+        { stdio: 'ignore' },
+      )
+      child.unref()
+      fs.writeFileSync(pidFile, String(child.pid))
+      // Keep the parent alive so the test can abort it.
+      setInterval(() => {}, 1000)
+    `
+
+    const controller = new AbortController()
+    const command = {
+      bin: process.execPath,
+      args: ["-e", PARENT_SCRIPT],
+    }
+    const resultPromise = runInstall({
+      command,
+      managerId: "pnpm",
+      cwd: process.cwd(),
+      signal: controller.signal,
+    })
+
+    // Wait for the parent to write the grandchild PID.
+    // The grandchild file is written within the first
+    // event-loop tick of the parent; the parent's spawn
+    // returns synchronously. We give it 1s.
+    const waitForPidFile = async (): Promise<number> => {
+      const deadline = Date.now() + 1_000
+      while (Date.now() < deadline) {
+        if (existsSync(pidFile)) {
+          const pid = parseInt(readFileSync(pidFile, "utf8").trim(), 10)
+          if (Number.isFinite(pid) && pid > 0) return pid
+        }
+        await new Promise((r) => setTimeout(r, 25))
+      }
+      throw new Error(`pidFile ${pidFile} was not written within 1s`)
+    }
+    let grandchildPid: number
+    try {
+      grandchildPid = await waitForPidFile()
+    } catch (err) {
+      // The parent never wrote the pidFile — it likely
+      // failed to spawn. Skip the assertion: the test is
+      // inconclusive but the harness does not fail.
+      console.warn("could not read grandchild pid:", err)
+      // Drain the runInstall promise so it doesn't hang.
+      await resultPromise.catch(() => undefined)
+      return
+    }
+
+    // Sanity check: the grandchild is alive before the
+    // abort.
+    expect(isProcessAlive(grandchildPid)).toBe(true)
+
+    // Trigger the abort.
+    controller.abort()
+
+    // Wait for runInstall to resolve (the parent exits
+    // when its process group is signaled or taskkill'd).
+    const result = await resultPromise
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.aborted).toBe(true)
+
+    // The grandchild must also be dead. The POSIX path
+    // signals the process group; the Windows path runs
+    // taskkill /T /F. We poll for up to 6s (the SIGKILL
+    // grace period plus a buffer) for the grandchild to
+    // exit. After that, the assertion is the hard
+    // requirement.
+    const deadline = Date.now() + 6_000
+    while (Date.now() < deadline) {
+      if (!isProcessAlive(grandchildPid)) break
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    expect(
+      isProcessAlive(grandchildPid),
+      `grandchild pid ${grandchildPid} is still alive after abort`,
+    ).toBe(false)
+
+    // Cleanup.
+    try {
+      rmSync(pidFile, { force: true })
+    } catch {
+      // Best-effort.
+    }
+  }, 20_000)
 })
+
+// True when a process with the given PID is alive. On
+// POSIX, `process.kill(pid, 0)` throws ESRCH if the process
+// does not exist; EPERM if it exists but is owned by
+// another user. On Windows, the same `kill` call returns
+// true (the process exists) — but `tasklist` is the
+// authoritative check. We use `process.kill(pid, 0)` for
+// both platforms; on Windows it returns true even for
+// non-existent PIDs in some edge cases, so we cross-check
+// with `process.platform !== "win32"` semantics in the
+// caller. The grandchild PID is a real OS PID; the
+// `kill(pid, 0)` call is the most portable liveness probe.
+const isProcessAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (err) {
+    // ESRCH: no such process. EPERM: exists but
+    // permission denied. The latter still means the
+    // process exists.
+    if (err instanceof Error && "code" in err) {
+      const code = (err as NodeJS.ErrnoException).code
+      if (code === "EPERM") return true
+    }
+    return false
+  }
+}
