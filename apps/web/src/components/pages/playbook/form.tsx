@@ -53,7 +53,7 @@ import { orpc } from "@/lib/orpc"
  */
 const playbookSchema = z.object({
   email: z.string().email("Use a valid email address."),
-  consentMarketing: z.boolean().default(false),
+  consentMarketing: z.boolean(),
 })
 
 type PlaybookInput = z.infer<typeof playbookSchema>
