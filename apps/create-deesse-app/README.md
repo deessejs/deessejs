@@ -129,7 +129,7 @@ The cancel path (`error.code: "aborted"`) is the same in `--verbose` and the def
 
 ### Cancel during install
 
-`SIGINT` during `pnpm install` (after the project has been published to disk) is forwarded to the install child: `runInstall` registers an `abort` listener on the `AbortSignal`, kills the child with `SIGTERM` (then `SIGKILL` after a 5-second grace), and resolves with `RunInstallResult.aborted: true`. The pipeline routes this to `error.code: "aborted"` with `projectCreated: true` (the project IS on disk) and the **install** recovery command — `cd <dir> && <install command>`, not the create-deesse-app re-run form. The user re-runs only the install after killing any remaining child process; the create-deesse-app create is already done.
+`SIGINT` during `pnpm install` (after the project has been published to disk) is forwarded to the install child AND its descendants. `runInstall` spawns the install command with `detached: true` on POSIX (so it becomes the leader of a new process group); on `abort`, the signal is sent to the negative PID (the PGID) so it reaches the immediate child (`corepack`, `npm exec`, etc.) and every descendant (`pnpm`, postinstall scripts, etc.) in one shot. On Windows, `child.kill()` calls `TerminateProcess` on the immediate child and `taskkill /T /F /PID` walks the tree. After a 5-second grace, the same pattern with `SIGKILL` is the final safety net. The pipeline resolves with `RunInstallResult.aborted: true` and routes to `error.code: "aborted"` with `projectCreated: true` and the **install** recovery command — `cd <dir> && <install command>`, not the create-deesse-app re-run form. The user can re-run the install without first killing any leftover process.
 
 ## Getting started
 
