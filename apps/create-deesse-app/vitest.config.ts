@@ -24,5 +24,14 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 30_000,
     pool: "forks",
+    // pack-cli.test.ts mutates the CLI's package.json (the
+    // `version` field) and restores it in afterAll. The
+    // package-version.test.ts drift-guard reads the same file.
+    // Under default file-level parallelism the two can run
+    // concurrently in separate forks, and package-version can
+    // read the bumped version mid-mutation. Serializing the
+    // suite keeps the drift-guard reliable; the unit suite is
+    // fast (~10 s) so the cost is negligible.
+    fileParallelism: false,
   },
 })

@@ -28,12 +28,6 @@ vi.mock("../../src/install/run.js", () => ({
   runInstall: vi.fn(),
 }))
 
-// Suppress the npm-invocation guard. The test environment is plain
-// vitest, not an `npm create` invocation.
-vi.mock("../../src/pm/detect-invoker.js", () => ({
-  assertNotNpmInvocation: () => undefined,
-}))
-
 import { downloadTarball } from "../../src/source/download-tarball.js"
 import { runInstall } from "../../src/install/run.js"
 import { run } from "../../src/pipeline.js"
@@ -43,7 +37,15 @@ const buildFixtureTarball = (): { tarPath: string; stageDir: string } => {
   const inner = join(stageDir, PREFIX_DIR)
   mkdirSync(inner, { recursive: true })
   writeFileSync(join(inner, "LICENSE"), "MIT")
-  writeFileSync(join(inner, "package.json"), '{"name":"next-monorepo"}')
+  // The generated project's `packageManager` field is read
+  // by the pipeline in this increment (#226). Without it,
+  // the pipeline throws `source_failed` before install runs,
+  // which would mask the install-failure contract we are
+  // testing here.
+  writeFileSync(
+    join(inner, "package.json"),
+    '{"name":"next-monorepo","packageManager":"pnpm@11.0.0"}',
+  )
   const tarPath = join(stageDir, "fixture.tgz")
   tar.c({ gzip: true, file: tarPath, cwd: stageDir, sync: true }, [PREFIX_DIR])
   return { tarPath, stageDir }
@@ -86,7 +88,19 @@ describe("run() — install failure contract", () => {
     expect(result.projectCreated).toBe(true)
     expect(result.installed).toBe(false)
     expect(result.error.code).toBe("install_failed")
-    expect(result.recovery).toMatch(/^cd "?[^"]+"? && pnpm install$/)
+    // The recovery command is the live-install form, with
+    // the chosen strategy and the version quoted. We assert
+    // the structure: the prefix depends on the host platform
+    // (POSIX uses `cd '`, Windows uses `cd /d "`), and the
+    // tail is the install command. The strategy itself is
+    // not asserted here because it depends on what the probe
+    // saw in PATH at runtime; the full quoting rule is
+    // covered in `quote.test.ts` and `recovery.test.ts`.
+    if (process.platform === "win32") {
+      expect(result.recovery).toMatch(/^cd \/d "/)
+    } else {
+      expect(result.recovery).toMatch(/^cd '[^']+' && /)
+    }
     if (result.error.code === "install_failed") {
       expect(result.installOutput.code).toBe(1)
       expect(result.installOutput.stderr).toContain("ERR_PNPM_PEER_DEP_ISSUES")

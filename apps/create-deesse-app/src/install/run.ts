@@ -1,32 +1,37 @@
 import * as crossSpawn from "cross-spawn"
 
 import { installFailed } from "../errors/index.js"
-import type { PackageManager } from "../pm/manager.js"
+import type { InstallCommand } from "../pm/manager.js"
 
 export type RunInstallResult =
   | { ok: true }
   | { ok: false; code: number; stderr: string; stdout: string }
 
 export type RunInstallArgs = {
-  manager: PackageManager
+  /** The install command to run, produced by the strategy factory. */
+  command: InstallCommand
+  /** A short label for the install command, used in error messages. */
+  managerId: string
   cwd: string
 }
 
 /**
- * Run the package manager's install command in `cwd`. Captures stdout and
- * stderr separately so install log noise never leaks into our JSON-on-stdout
- * contract. Never throws on non-zero exit — returns `{ ok: false, code,
- * stderr, stdout }` so the caller can decide whether to throw or to retain
- * the project with a recovery command.
+ * Run the install command in `cwd`. Captures stdout and stderr
+ * separately so install log noise never leaks into our
+ * JSON-on-stdout contract. Never throws on non-zero exit —
+ * returns `{ ok: false, code, stderr, stdout }` so the caller
+ * can decide whether to throw or to retain the project with a
+ * recovery command.
  *
- * On non-zero, also throws `installFailed` so the caller's error path
- * surfaces the correct code (`install_failed`) in the JSON result. The
- * result of `runInstall` and the throw are paired: the caller catches the
- * throw, then prints its JSON with `projectCreated: true` + `recovery`.
+ * On non-zero, also throws `installFailed` so the caller's
+ * error path surfaces the correct code (`install_failed`) in
+ * the JSON result. The result of `runInstall` and the throw
+ * are paired: the caller catches the throw, then prints its
+ * JSON with `projectCreated: true` + `recovery`.
  */
 export const runInstall = async (args: RunInstallArgs): Promise<RunInstallResult> => {
-  const { manager, cwd } = args
-  const cmd = manager.installCommand()
+  const { command, managerId, cwd } = args
+  const cmd = command
 
   return new Promise<RunInstallResult>((resolve, rejectFn) => {
     const child = crossSpawn.spawn(cmd.bin, cmd.args, {
@@ -48,7 +53,7 @@ export const runInstall = async (args: RunInstallArgs): Promise<RunInstallResult
 
     child.on("error", () => {
       // ENOENT etc. — the binary isn't installed. Treat as install failure.
-      rejectFn(installFailed(manager.id, null))
+      rejectFn(installFailed(managerId, null))
     })
     child.on("exit", (code) => {
       const exit = code ?? 1
