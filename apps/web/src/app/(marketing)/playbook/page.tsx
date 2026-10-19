@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 
-import { RelatedLinks } from "@/components/pages/_shared/related-links"
 import { Playbook } from "@/components/pages/playbook"
 
 /**
@@ -11,14 +10,12 @@ import { Playbook } from "@/components/pages/playbook"
  *   the cover thumbnail are not in the repo yet — visible
  *   placeholders + the `apps/web/public/playbook/README.md` list
  *   the missing assets. The PR moves out of draft once the PDF
- *   link is tested live and the author bio is finalised.
+ *   link is tested live and the cover thumbnail is finalised.
  *
  * Layout:
- *   - Hybrid, same recipe as /about and /pricing: each section
- *     component owns its own `border-b border-border` and padding;
- *     the page wrapper renders them in reading order. There is no
- *     max-w-5xl column wrapper here because every section is
- *     already centred via its own inner `mx-auto max-w-X` column.
+ *   Hybrid, same recipe as /about and /pricing: each section
+ *   component owns its own `border-b border-border` and padding;
+ *   the page wrapper renders them in reading order.
  *
  * Authoritative copy lives in:
  *   - `components/pages/playbook/hero.tsx` — H1, lead, CTA
@@ -72,30 +69,7 @@ export default function PlaybookPage() {
       <Playbook.WhatYouGet />
       <Playbook.Preview />
       <Playbook.WhoItsFor />
-      <Playbook.AboutTheAuthor />
       <Playbook.FinalCta />
-
-      <div className="mx-auto max-w-5xl px-6 py-16 md:py-20">
-        <RelatedLinks
-          links={[
-            {
-              label: "Stack",
-              href: "/stack",
-              body: "The providers that ship with every DeesseJS app.",
-            },
-            {
-              label: "Pricing",
-              href: "/pricing",
-              body: "How DeesseJS licensing works.",
-            },
-            {
-              label: "Customers",
-              href: "/customers",
-              body: "Customer stories — once we have real ones to publish.",
-            },
-          ]}
-        />
-      </div>
     </>
   )
 }

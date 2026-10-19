@@ -16,14 +16,13 @@ collection of parts"). Today the composite is page-local.
 
 | Section | Purpose |
 |---|---|
-| `hero.tsx` | H1 + lead + cover placeholder + form |
+| `hero.tsx` | Two-column hero — H1 + lead + form on the left, cover mockup on the right |
 | `problem.tsx` | Why agent-generated code ages poorly |
 | `what-you-get.tsx` | Chapter takeaways in reading order |
-| `preview.tsx` | Cover thumbnail + TOC card (proof of level) |
+| `preview.tsx` | TOC card (proof of level) |
 | `who-its-for.tsx` | Concrete audience description, no personas |
-| `about-the-author.tsx` | First-person working paragraph (TODO) |
 | `form.tsx` | `"use client"` — RHF + Zod + orpc signup |
-| `final-cta.tsx` | Repeated form + expectations copy |
+| `final-cta.tsx` | Closing 2-col block, mirrors the shared `FinalCtaShell` recipe, hosts the form on the right |
 | `content/toc.ts` | Table-of-contents source (single-sourced into the chapter list views) |
 
 The `index.tsx` aggregates them under the `Playbook` namespace.

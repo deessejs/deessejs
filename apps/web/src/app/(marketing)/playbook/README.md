@@ -4,7 +4,7 @@
 
 This directory holds the `/playbook` route. The page is intentionally
 shipped **as a draft PR**. It must not move out of draft until the
-assets and copy listed below are merged on top of the structural code:
+assets listed below are merged on top of the structural code:
 
 ## Assets still needed
 
@@ -18,11 +18,6 @@ assets and copy listed below are merged on top of the structural code:
    template (`packages/email/src/templates/playbook.tsx`) via
    `WEB_URL/playbook.pdf`.
 
-3. **Author bio** — `apps/web/src/components/pages/playbook/about-the-author.tsx`
-   has a `[Author bio — TODO]` placeholder that needs to be replaced
-   with the real first-person paragraph (target: three short
-   sentences).
-
 ## Why the page is still draft
 
 - The static PDF URL inside the email is `/playbook.pdf`. Until the
@@ -32,19 +27,17 @@ assets and copy listed below are merged on top of the structural code:
 - The cover thumbnail on the page is a labelled placeholder so
   readers can see what's coming without us pretending the asset
   exists.
-- The author bio is the smallest piece but most personal — kept
-  honest until the working paragraph is finalised.
 
 ## Reading order on the page
 
-1. Hero (`Playbook.Hero`) — H1, lead, cover, form
+1. Hero (`Playbook.Hero`) — two-column: title, lead, form on the
+   left; cover thumbnail on the right
 2. Problem (`Playbook.Problem`)
 3. What you'll find (`Playbook.WhatYouGet`)
-4. Preview (`Playbook.Preview`) — cover + TOC card
+4. Preview (`Playbook.Preview`) — TOC card with chapter takeaways
 5. Who it's for (`Playbook.WhoItsFor`)
-6. Why I wrote it (`Playbook.AboutTheAuthor`)
-7. Final CTA (`Playbook.FinalCta`) — repeated form + expectations
-8. Read next (`RelatedLinks`) — `/stack`, `/pricing`, `/customers`
+6. Final CTA (`Playbook.FinalCta`) — closing 2-col block, mirrors
+   the shared `FinalCtaShell` recipe used by /pricing and /about
 
 ## Pipeline (one-line reminders)
 
@@ -59,9 +52,9 @@ assets and copy listed below are merged on top of the structural code:
 
 ## Toggling off the draft banner
 
-Once the PDF + cover + author bio land:
+Once the PDF + cover land:
 
-1. Remove the `Draft` notice at the top of this file.
+1. Update the `Draft` notice at the top of this file.
 2. Update the `metadata.description` in `page.tsx` if the real
    TOC surfaces a sharper two-line summary.
 3. Re-run `pnpm --filter web test:e2e:local` against the preview

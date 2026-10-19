@@ -7,15 +7,14 @@
  * table of contents.
  *
  * Sections, top to bottom:
- *   - Hero           — H1 + lead + cover placeholder + form
+ *   - Hero           — H1 + lead + form, two-column with cover mockup
  *   - Problem        — why agent-generated code ages poorly
  *   - WhatYouGet     — chapter takeaways in reading order
- *   - Preview        — cover thumbnail + TOC card (proof of level)
+ *   - Preview        — TOC card (proof of level)
  *   - WhoItsFor      — concrete audience description, no personas
- *   - AboutTheAuthor — first-person working paragraph (TODO)
- *   - FinalCta       — repeated form + expectations copy
+ *   - FinalCta       — closing 2-col block with form, mirrors the
+ *                       shared `FinalCtaShell` recipe
  */
-import { AboutTheAuthor } from "./about-the-author"
 import { FinalCta } from "./final-cta"
 import { Hero } from "./hero"
 import { Preview } from "./preview"
@@ -29,14 +28,12 @@ export const Playbook = {
   WhatYouGet,
   Preview,
   WhoItsFor,
-  AboutTheAuthor,
   FinalCta,
 } as const
 
 // Named re-exports for consumers that want a single component
 // without going through the namespace (e.g. tests).
 export {
-  AboutTheAuthor,
   FinalCta,
   Hero,
   Preview,

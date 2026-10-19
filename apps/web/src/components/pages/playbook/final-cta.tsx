@@ -1,39 +1,43 @@
 import { Form } from "./form"
 
 /**
- * /playbook FinalCta — repeats the email form, sets expectations
- * about what arrives in the inbox, and points at the privacy page.
+ * /playbook FinalCta — the page-closing block.
  *
- * Mirrors the `FinalCta` slot used by /pricing and /enterprise: a
- * full-width band at the foot of the page. Same `border-t border-b
- * border-border` separation as elsewhere on the page so the rhythm
- * matches.
+ * Visually mirrors the shared `FinalCtaShell` recipe used by
+ * /pricing, /about, /enterprise (2-col grid, eyebrow + H2 +
+ * supporting body on the left, action area on the right,
+ * bordered top and bottom). Modified for this page: the right
+ * cell holds the email `<Form />` rather than a button list —
+ * the closing message and the conversion CTA share the same
+ * visual moment.
  *
- * The expectations copy is the same wording that gets used after a
- * successful submission, so the page reads consistently before and
- * after the form fires.
+ * The shared shell (`apps/web/src/components/pages/_shared/final-cta.tsx`)
+ * renders a `actions: FinalCtaAction[]` slot; we deliberately do
+ * NOT use it here because the playbook CTA is a form, not a list
+ * of buttons. Promoting `<Form />` into a generic shape that the
+ * shell accepts would couple a shared primitive to a single
+ * caller's contract — not worth it for one page.
  */
 export function FinalCta() {
   return (
-    <section
-      aria-labelledby="playbook-final-cta-heading"
-      className="border-t border-border px-6 py-16 text-center md:py-20 lg:py-24"
-    >
-      <div className="mx-auto flex max-w-3xl flex-col items-center gap-6">
-        <h2
-          id="playbook-final-cta-heading"
-          className="text-heading-32 tracking-tight text-balance"
-        >
+    <div className="grid grid-cols-1 border-y border-border lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x">
+      <div className="flex flex-col gap-4 p-6 lg:p-10">
+        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          Playbook
+        </p>
+        <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
           Get the playbook
         </h2>
-        <p className="text-muted-foreground text-copy-18 leading-7 max-w-2xl text-balance [&:not(:first-child)]:mt-0">
-          You&apos;ll get one email with the PDF. If you opt in to updates,
-          you may also receive occasional messages about DeesseJS.
-          Unsubscribe any time from the link at the bottom of any
-          email we send.
+        <p className="text-copy-16 text-muted-foreground leading-7 max-w-md text-balance [&:not(:first-child)]:mt-0">
+          You&apos;ll get one email with the PDF. If you opt in to
+          updates, you may also receive occasional messages about
+          DeesseJS. Unsubscribe any time from the link at the
+          bottom of any email we send.
         </p>
+      </div>
+      <div className="flex flex-col items-stretch justify-center gap-4 p-6 lg:p-10">
         <Form />
       </div>
-    </section>
+    </div>
   )
 }
