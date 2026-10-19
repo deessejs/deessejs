@@ -2,7 +2,7 @@
 
 import { ORPCError } from "@orpc/client"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useRef, type FormEvent } from "react"
+import { useId, useRef, type FormEvent } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -58,7 +58,29 @@ const playbookSchema = z.object({
 
 type PlaybookInput = z.infer<typeof playbookSchema>
 
-export function Form() {
+interface FormProps {
+  /**
+   * When `true`, the form's `max-w-md` is dropped so the form
+   * fills its parent column. Use in the page-closing FinalCta
+   * where the column is already narrower than a `max-w-md` would
+   * feel right; keep the default in the hero so the email input
+   * and button don't span the full 70% column.
+   */
+  fullWidth?: boolean
+}
+
+export function Form({ fullWidth = false }: FormProps) {
+  // The form is rendered twice on the page (hero + FinalCta).
+  // Without unique ids, both instances share `playbook-email`
+  // and `playbook-consent`, so the second instance's
+  // <label htmlFor> activates the first instance's checkbox —
+  // the browser scrolls back to the hero and the second
+  // checkbox never changes state. `useId` gives each render
+  // a stable, SSR-safe unique prefix.
+  const idPrefix = useId()
+  const emailId = `${idPrefix}-email`
+  const consentId = `${idPrefix}-consent`
+
   const {
     register,
     control,
@@ -71,6 +93,10 @@ export function Form() {
       consentMarketing: false,
     },
   })
+
+  const formClassName = fullWidth
+    ? "flex w-full flex-col gap-5"
+    : "flex w-full max-w-md flex-col gap-5"
 
   // Tracks an already-shown "duplicate" so we don't fire the same
   // success toast twice if the user clicks Submit again within the
@@ -136,13 +162,13 @@ export function Form() {
     <form
       onSubmit={onSubmitEvent}
       noValidate
-      className="flex w-full max-w-md flex-col gap-5"
+      className={formClassName}
       aria-label="Playbook signup"
     >
       <Field>
-        <FieldLabel htmlFor="playbook-email">Email address</FieldLabel>
+        <FieldLabel htmlFor={emailId}>Email address</FieldLabel>
         <Input
-          id="playbook-email"
+          id={emailId}
           type="email"
           autoComplete="email"
           placeholder="you@example.com"
@@ -159,7 +185,7 @@ export function Form() {
             name="consentMarketing"
             render={({ field }) => (
               <Checkbox
-                id="playbook-consent"
+                id={consentId}
                 aria-invalid={!!errors.consentMarketing}
                 checked={field.value === true}
                 onCheckedChange={(value) =>
@@ -170,7 +196,7 @@ export function Form() {
             )}
           />
           <FieldLabel
-            htmlFor="playbook-consent"
+            htmlFor={consentId}
             className="cursor-pointer text-copy-14 font-normal leading-6 text-foreground"
           >
             I want occasional updates about DeesseJS and offers
@@ -178,14 +204,11 @@ export function Form() {
           </FieldLabel>
         </div>
         <FieldDescription>
-          We use your email to send the playbook. If you opt in to
-          updates, your contact is added to our Resend Audience, where
-          you can update your preferences or unsubscribe at any time.
-          We don&apos;t share your address with third parties. Read our{" "}
+          We use your email to send the playbook. See our{" "}
           <Link href="/privacy" className="underline underline-offset-4">
             privacy policy
-          </Link>{" "}
-          for retention and contact details.
+          </Link>
+          .
         </FieldDescription>
         <FieldError errors={[errors.consentMarketing]} />
       </Field>
