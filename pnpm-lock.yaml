@@ -604,6 +604,9 @@ importers:
       shiki:
         specifier: 'catalog:'
         version: 4.3.1
+      sonner:
+        specifier: 'catalog:'
+        version: 2.0.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       zustand:
         specifier: 'catalog:'
         version: 5.0.14(@types/react@19.2.17)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
@@ -692,6 +695,9 @@ importers:
       '@workspace/database':
         specifier: workspace:*
         version: link:../database
+      '@workspace/email':
+        specifier: workspace:*
+        version: link:../email
       '@workspace/env':
         specifier: workspace:*
         version: link:../env
