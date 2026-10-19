@@ -37,7 +37,7 @@ export function Hero() {
               {PLAYBOOK_LEAD}
             </p>
           </div>
-          <Form />
+          <Form inlineSubmit />
         </div>
         <div className="flex items-center justify-center p-6 lg:py-20 lg:pl-12">
           {/* TODO(v0.2): replace this placeholder with the real cover

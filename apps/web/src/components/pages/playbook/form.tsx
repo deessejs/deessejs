@@ -67,9 +67,21 @@ interface FormProps {
    * and button don't span the full 70% column.
    */
   fullWidth?: boolean
+  /**
+   * When `true`, the submit button sits to the right of the
+   * email input on `sm+` (stacked on mobile, where the row
+   * would be too tight for both). Use in the hero where the
+   * 70% left column has room for an inline submit. Keep the
+   * default in the FinalCta, where the form fills the right
+   * column and a stacked CTA is the more familiar pattern.
+   */
+  inlineSubmit?: boolean
 }
 
-export function Form({ fullWidth = false }: FormProps) {
+export function Form({
+  fullWidth = false,
+  inlineSubmit = false,
+}: FormProps) {
   // The form is rendered twice on the page (hero + FinalCta).
   // Without unique ids, both instances share `playbook-email`
   // and `playbook-consent`, so the second instance's
@@ -167,14 +179,33 @@ export function Form({ fullWidth = false }: FormProps) {
     >
       <Field>
         <FieldLabel htmlFor={emailId}>Email address</FieldLabel>
-        <Input
-          id={emailId}
-          type="email"
-          autoComplete="email"
-          placeholder="you@example.com"
-          aria-invalid={!!errors.email}
-          {...register("email")}
-        />
+        <div
+          className={
+            inlineSubmit
+              ? "flex flex-col gap-2 sm:flex-row"
+              : undefined
+          }
+        >
+          <Input
+            id={emailId}
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            aria-invalid={!!errors.email}
+            className={inlineSubmit ? "flex-1" : undefined}
+            {...register("email")}
+          />
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            size={inlineSubmit ? "default" : "lg"}
+            className={
+              inlineSubmit ? "shrink-0 whitespace-nowrap" : undefined
+            }
+          >
+            {isSubmitting ? "Sending…" : "Get the free playbook"}
+          </Button>
+        </div>
         <FieldError errors={[errors.email]} />
       </Field>
 
@@ -212,10 +243,6 @@ export function Form({ fullWidth = false }: FormProps) {
         </FieldDescription>
         <FieldError errors={[errors.consentMarketing]} />
       </Field>
-
-      <Button type="submit" disabled={isSubmitting} size="lg">
-        {isSubmitting ? "Sending…" : "Get the free playbook"}
-      </Button>
     </form>
   )
 }
