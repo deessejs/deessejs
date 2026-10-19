@@ -1,4 +1,4 @@
-# `components/pages/playbook` — page composite
+# `components/pages/playbook`: page composite
 
 Section-component namespace for the `/playbook` page. Mirrors the
 shape established by `@/components/pages/about` and
@@ -16,11 +16,11 @@ collection of parts"). Today the composite is page-local.
 
 | Section | Purpose |
 |---|---|
-| `hero.tsx` | Two-column hero — H1 + lead + form on the left, cover mockup on the right |
+| `hero.tsx` | Two-column hero: H1 + lead + form on the left, cover mockup on the right |
 | `problem.tsx` | Why agent-generated code ages poorly |
-| `what-you-get.tsx` | Chapter takeaways in reading order |
+| `what-you-get.tsx` | Chapter takeaways in reading order (Card grid) |
 | `who-its-for.tsx` | Concrete audience description, no personas |
-| `form.tsx` | `"use client"` — RHF + Zod + orpc signup |
+| `form.tsx` | `"use client"`: RHF + Zod + orpc signup |
 | `final-cta.tsx` | Closing 2-col block, mirrors the shared `FinalCtaShell` recipe, hosts the form on the right |
 | `content/toc.ts` | Table-of-contents source (single-sourced into the chapter list views) |
 

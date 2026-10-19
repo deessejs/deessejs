@@ -2,7 +2,7 @@ import { Form } from "./form"
 import { PLAYBOOK_LEAD } from "./content/toc"
 
 /**
- * /playbook hero — first screen, two-column layout.
+ * /playbook hero. First screen, two-column layout.
  *
  * Layout:
  *   ┌─ Left column ─────────────────┬─ Right column ────────────┐
@@ -17,7 +17,7 @@ import { PLAYBOOK_LEAD } from "./content/toc"
  * centrally. On mobile the cover stacks below the form.
  *
  * Title and lead copy, the email field, button, and the optional
- * consent checkbox all live in the left column — the form repeats
+ * consent checkbox all live in the left column. The form repeats
  * on this page only (it does not duplicate in the FinalCta that
  * closes the page). The cover mockup in the right column is a
  * labelled placeholder until the real PDF lands at
@@ -41,14 +41,14 @@ export function Hero() {
         </div>
         <div className="flex items-center justify-center p-6 lg:py-20 lg:pl-12">
           {/* TODO(v0.2): replace this placeholder with the real cover
-              image — `apps/web/public/playbook/cover.png` linked via
-              next/image. Sized to match the column (~288px) and the
+              image (`apps/web/public/playbook/cover.png` linked via
+              next/image). Sized to match the column (~288px) and the
               PDF aspect ratio (~3:4). */}
           <div
-            aria-label="Playbook cover — placeholder until the real PDF lands"
+            aria-label="Playbook cover, placeholder until the real PDF lands"
             className="flex h-[420px] w-72 items-center justify-center rounded-md border border-dashed border-border bg-muted/40 text-center text-label-13 text-muted-foreground"
           >
-            Cover — TODO
+            Cover TODO
           </div>
         </div>
       </div>

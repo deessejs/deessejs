@@ -34,7 +34,7 @@ import { orpc } from "@/lib/orpc"
  *     holds that asking for unnecessary fields reduces conversion.
  *   - The consent checkbox is unchecked by default. EU GDPR/CNIL
  *     requires explicit, specific, freely-revocable opt-in for
- *     promotional emails — a pre-checked box would invert the
+ *     promotional emails. A pre-checked box would invert the
  *     consent polarity and defeat the audit trail downstream
  *     (Resend Audiences).
  *   - The privacy text block sits directly under the checkbox so
@@ -73,8 +73,8 @@ export function Form({ fullWidth = false }: FormProps) {
   // The form is rendered twice on the page (hero + FinalCta).
   // Without unique ids, both instances share `playbook-email`
   // and `playbook-consent`, so the second instance's
-  // <label htmlFor> activates the first instance's checkbox —
-  // the browser scrolls back to the hero and the second
+  // <label htmlFor> activates the first instance's checkbox.
+  // The browser scrolls back to the hero and the second
   // checkbox never changes state. `useId` gives each render
   // a stable, SSR-safe unique prefix.
   const idPrefix = useId()
@@ -104,7 +104,7 @@ export function Form({ fullWidth = false }: FormProps) {
   // both occurrences as success because the first one already
   // delivered the email. Used only inside the submit handlers
   // (set + read both happen there), so useRef rather than
-  // useState — there is no UI that needs to re-render when it
+  // useState. There is no UI that needs to re-render when it
   // flips. Triggers the `rerender-state-only-in-handlers`
   // React Doctor lint if it stays as state.
   const deliveredRef = useRef(false)
@@ -117,7 +117,7 @@ export function Form({ fullWidth = false }: FormProps) {
       })
       if (ok) {
         deliveredRef.current = true
-        toast.success("Check your inbox — the PDF is on the way.")
+        toast.success("Check your inbox. The PDF is on the way.")
       }
     } catch (err) {
       if (err instanceof ORPCError) {
@@ -126,7 +126,7 @@ export function Form({ fullWidth = false }: FormProps) {
           // Show the same green toast; no need for a destructive one.
           if (!deliveredRef.current) {
             deliveredRef.current = true
-            toast.success("Check your inbox — the PDF is on the way.")
+            toast.success("Check your inbox. The PDF is on the way.")
           }
           return
         }
@@ -143,7 +143,7 @@ export function Form({ fullWidth = false }: FormProps) {
           return
         }
         if (err.code === "BAD_REQUEST" || err.code === "INVALID_EMAIL") {
-          toast.error("That email looks off — please double-check it.")
+          toast.error("That email looks off. Please double-check it.")
           return
         }
       }

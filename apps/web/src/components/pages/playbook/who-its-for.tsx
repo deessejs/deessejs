@@ -23,7 +23,7 @@ export function WhoItsFor() {
         </h2>
         <p className="text-copy-16 leading-7 text-foreground [&:not(:first-child)]:mt-0">
           The playbook is for developers who already build with AI coding
-          agents — Claude Code, Codex, Cursor, open-source equivalents —
+          agents (Claude Code, Codex, Cursor, open-source equivalents)
           and want the software they ship to stay readable, testable,
           and maintainable after the first commit.
         </p>

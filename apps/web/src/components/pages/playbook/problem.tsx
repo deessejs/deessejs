@@ -1,7 +1,7 @@
 /**
  * /playbook "The problem" section.
  *
- * Names the central pain without making it universal — agent-generated
+ * Names the central pain without making it universal: agent-generated
  * code that works at the moment of write, but harder to understand,
  * verify, or evolve a few days later. The copy is restrained on
  * purpose: no villain framing, no doom language. The page is a
@@ -29,7 +29,7 @@ export function Problem() {
           A coding agent can produce code that runs the first time. A few
           days later, the same project is harder to read, harder to test,
           and harder to change without breaking something adjacent. Most
-          of that friction does not come from the agent — it comes from
+          of that friction does not come from the agent. It comes from
           decisions the task description did not spell out and the agent
           could not guess.
         </p>

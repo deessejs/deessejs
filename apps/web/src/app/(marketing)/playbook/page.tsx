@@ -7,7 +7,7 @@ import { Playbook } from "@/components/pages/playbook"
  *
  * Draft status:
  *   This PR ships the page in **draft** state. The real PDF and
- *   the cover thumbnail are not in the repo yet — visible
+ *   the cover thumbnail are not in the repo yet. Visible
  *   placeholders + the `apps/web/public/playbook/README.md` list
  *   the missing assets. The PR moves out of draft once the PDF
  *   link is tested live and the cover thumbnail is finalised.
@@ -18,8 +18,8 @@ import { Playbook } from "@/components/pages/playbook"
  *   the page wrapper renders them in reading order.
  *
  * Authoritative copy lives in:
- *   - `components/pages/playbook/hero.tsx` — H1, lead, CTA
- *   - `components/pages/playbook/content/toc.ts` — chapter takeaways
+ *   - `components/pages/playbook/hero.tsx`: H1, lead, CTA
+ *   - `components/pages/playbook/content/toc.ts`: chapter takeaways
  *     (used by `WhatYouGet`)
  *
  * Metadata pattern mirrors `apps/web/src/app/(marketing)/pricing/page.tsx`:
@@ -32,14 +32,14 @@ import { Playbook } from "@/components/pages/playbook"
  * to the `staticPages` block.
  */
 export const metadata: Metadata = {
-  title: "Playbook — from AI-generated code to production software",
+  title: "Playbook: from AI-generated code to production software",
   description:
     "A working guide for developers who ship with coding agents. Free PDF download from DeesseJS.",
   alternates: {
     canonical: "/playbook",
   },
   openGraph: {
-    title: "Playbook — from AI-generated code to production software",
+    title: "Playbook: from AI-generated code to production software",
     description:
       "A working guide for developers who ship with coding agents. Free PDF download from DeesseJS.",
     siteName: "DeesseJS",
@@ -48,12 +48,12 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Playbook — from AI-generated code to production software",
+    title: "Playbook: from AI-generated code to production software",
     description:
       "A working guide for developers who ship with coding agents. Free PDF download from DeesseJS.",
   },
   // The PDF and the cover image are placeholders for now. Until
-  // they land, no `openGraph.images` entry is set — the global
+  // they land, no `openGraph.images` entry is set. The global
   // OG fallback in `apps/web/src/app/layout.tsx` carries the page.
   robots: {
     index: true,

@@ -2,7 +2,7 @@
  * Playbook table of contents.
  *
  * Single source for the chapter list shown in the "What you'll find"
- * section. Each entry is intentionally short — a one-line takeaway
+ * section. Each entry is intentionally short: a one-line takeaway
  * rather than a chapter title, so the visible copy stays scannable
  * while the PDF itself carries the full chapter titles.
  *
@@ -26,7 +26,7 @@ export const PLAYBOOK_TOC: ReadonlyArray<TocEntry> = [
   {
     id: "02",
     takeaway:
-      "Shape a task before you send it — what to fix, what to leave alone",
+      "Shape a task before you send it: what to fix, what to leave alone",
   },
   {
     id: "03",
@@ -41,7 +41,7 @@ export const PLAYBOOK_TOC: ReadonlyArray<TocEntry> = [
   {
     id: "05",
     takeaway:
-      "Verify the work — beyond a green CI, beyond 'it ran'",
+      "Verify the work, beyond a green CI, beyond 'it ran'",
   },
   {
     id: "06",

@@ -1,14 +1,14 @@
 import { Form } from "./form"
 
 /**
- * /playbook FinalCta — the page-closing block.
+ * /playbook FinalCta. The page-closing block.
  *
  * Visually mirrors the shared `FinalCtaShell` recipe used by
  * /pricing, /about, /enterprise (2-col grid, eyebrow + H2 +
  * supporting body on the left, action area on the right,
  * bordered top and bottom). Modified for this page: the right
- * cell holds the email `<Form />` rather than a button list —
- * the closing message and the conversion CTA share the same
+ * cell holds the email `<Form />` rather than a button list.
+ * The closing message and the conversion CTA share the same
  * visual moment.
  *
  * The shared shell (`apps/web/src/components/pages/_shared/final-cta.tsx`)
@@ -16,7 +16,7 @@ import { Form } from "./form"
  * NOT use it here because the playbook CTA is a form, not a list
  * of buttons. Promoting `<Form />` into a generic shape that the
  * shell accepts would couple a shared primitive to a single
- * caller's contract — not worth it for one page.
+ * caller's contract. Not worth it for one page.
  */
 export function FinalCta() {
   return (

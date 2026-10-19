@@ -16,7 +16,7 @@ import { PLAYBOOK_TOC } from "./content/toc"
  * Each card carries the chapter number (mono label so the eye
  * anchors on the count first) and the takeaway (verb-first
  * outcome). `bordered={false}` on the header avoids a double
- * border — the parent `<Section>` already provides one.
+ * border. The parent `<Section>` already provides one.
  *
  * The TOC is the same source of truth that the deleted Preview
  * section used (`./content/toc.ts`), so the page-local grid

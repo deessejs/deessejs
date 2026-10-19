@@ -1,5 +1,5 @@
 /**
- * /playbook page namespace — single import surface for every section.
+ * /playbook page namespace. Single import surface for every section.
  *
  * Mirrors the pattern established by `@/components/pages/about` and
  * `@/components/pages/pricing`: the route file imports `Playbook`
@@ -7,12 +7,12 @@
  * table of contents.
  *
  * Sections, top to bottom:
- *   - Hero           — H1 + lead + form, two-column with cover mockup
- *   - Problem        — why agent-generated code ages poorly
- *   - WhatYouGet     — chapter takeaways in reading order
- *   - WhoItsFor      — concrete audience description, no personas
- *   - FinalCta       — closing 2-col block with form, mirrors the
- *                       shared `FinalCtaShell` recipe
+ *   - Hero: H1 + lead + form, two-column with cover mockup
+ *   - Problem: why agent-generated code ages poorly
+ *   - WhatYouGet: chapter takeaways in reading order
+ *   - WhoItsFor: concrete audience description, no personas
+ *   - FinalCta: closing 2-col block with form, mirrors the
+ *     shared `FinalCtaShell` recipe
  */
 import { FinalCta } from "./final-cta"
 import { Hero } from "./hero"

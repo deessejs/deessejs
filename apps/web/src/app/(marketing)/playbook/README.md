@@ -1,4 +1,4 @@
-# `/playbook` — lead-magnet landing page
+# `/playbook`: lead-magnet landing page
 
 > **Status: draft until the real PDF lands.**
 
@@ -8,11 +8,11 @@ assets listed below are merged on top of the structural code:
 
 ## Assets still needed
 
-1. **`apps/web/public/playbook/cover.{png|svg}`** — the cover
-   thumbnail. Replace the "Cover — TODO" placeholder block in:
+1. **`apps/web/public/playbook/cover.{png|svg}`**: the cover
+   thumbnail. Replace the "Cover TODO" placeholder block in:
    - `apps/web/src/components/pages/playbook/hero.tsx`
 
-2. **`apps/web/public/playbook/playbook.pdf`** — the actual PDF
+2. **`apps/web/public/playbook/playbook.pdf`**: the actual PDF
    deliverable. Linked from the PlaybookDownload React Email
    template (`packages/email/src/templates/playbook.tsx`) via
    `WEB_URL/playbook.pdf`.
@@ -21,7 +21,7 @@ assets listed below are merged on top of the structural code:
 
 - The static PDF URL inside the email is `/playbook.pdf`. Until the
   file lands at that path, every transactional email delivers a
-  404 link. We chose "wait for the real PDF" over "ship a stub" —
+  404 link. We chose "wait for the real PDF" over "ship a stub":
   the email promise and the email content must match.
 - The cover thumbnail on the page is a labelled placeholder so
   readers can see what's coming without us pretending the asset
@@ -29,12 +29,12 @@ assets listed below are merged on top of the structural code:
 
 ## Reading order on the page
 
-1. Hero (`Playbook.Hero`) — two-column: title, lead, form on the
+1. Hero (`Playbook.Hero`): two-column: title, lead, form on the
    left; cover thumbnail on the right
 2. Problem (`Playbook.Problem`)
 3. What you'll find (`Playbook.WhatYouGet`)
 4. Who it's for (`Playbook.WhoItsFor`)
-5. Final CTA (`Playbook.FinalCta`) — closing 2-col block, mirrors
+5. Final CTA (`Playbook.FinalCta`): closing 2-col block, mirrors
    the shared `FinalCtaShell` recipe used by /pricing and /about
 
 ## Pipeline (one-line reminders)
