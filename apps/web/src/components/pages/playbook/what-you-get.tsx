@@ -49,12 +49,12 @@ export function WhatYouGet() {
           key={entry.id}
           className="flex flex-col transition-colors hover:bg-accent/40"
         >
-          <p className="text-label-13 font-mono text-muted-foreground p-6 pb-0">
+          <p className="text-label-13 text-muted-foreground p-6 pb-0">
             {entry.id}
           </p>
-          <p className="text-copy-14 text-foreground leading-6 px-6 pt-2 flex-1 [&:not(:first-child)]:mt-0 pb-6">
+          <h3 className="text-heading-20 tracking-tight text-foreground !m-0 px-6 pt-2 pb-6">
             {entry.takeaway}
-          </p>
+          </h3>
         </div>
       ))}
     </Section>
