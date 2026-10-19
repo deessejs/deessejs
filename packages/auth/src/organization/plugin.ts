@@ -1,60 +1,120 @@
 import { APIError } from "better-auth/api"
 import { organization } from "better-auth/plugins"
-import { assertOrganizationSlug } from "./policy.js"
+import { serverEnv } from "@workspace/env/server"
+import { assertOrganizationName, assertOrganizationSlug } from "./policy.js"
+import { sendInvitationEmail } from "./invitation.js"
+
+/**
+ * Resolve and validate the `requireEmailVerificationOnInvitation`
+ * value at module load. The schema applies the default ("true")
+ * when the env var is absent, so this is never undefined. The
+ * guard refuses to start the process when the value is "false" AND
+ * `NODE_ENV === "production"`, with no exception clause — the
+ * contract is "production is true", full stop. There is no opt-in
+ * variable: any value other than the literal strings "true" and
+ * "false" is rejected.
+ *
+ * Exported as a function (rather than evaluated at module load) so
+ * tests can exercise each branch without having to reload the
+ * module. The plugin still calls it eagerly at module load.
+ */
+export function resolveRequireEmailVerification(
+  raw: string,
+  nodeEnv: string | undefined,
+): boolean {
+  if (raw !== "true" && raw !== "false") {
+    // Defense in depth: the schema should have already caught this.
+    throw new Error(
+      `[auth] REQUIRE_EMAIL_VERIFICATION_ON_INVITATION must be "true" or "false" (got ${JSON.stringify(raw)}). Refusing to start.`,
+    )
+  }
+  if (raw === "false" && nodeEnv === "production") {
+    throw new Error(
+      `[auth] REQUIRE_EMAIL_VERIFICATION_ON_INVITATION=false is not allowed in production. ` +
+        `This is a test-only override. Refusing to start.`,
+    )
+  }
+  return raw === "true"
+}
+
+const requireEmailVerificationOnInvitation = resolveRequireEmailVerification(
+  serverEnv.REQUIRE_EMAIL_VERIFICATION_ON_INVITATION,
+  process.env.NODE_ENV,
+)
+
+/**
+ * The `beforeCreateOrganization` hook, exported for direct unit
+ * testing. The plugin wires this same function into the
+ * `organizationHooks` block.
+ *
+ * The hook operates on the **raw** `input.name` — it does not trim
+ * before validation, and it does not mutate the value in place.
+ * On success, it returns `{ data: { name: input.name } }` so the
+ * persisted record carries the validated name. The override is a
+ * no-op: the helper has already established that
+ * `input.name === input.name.trim()` and that `input.name` contains
+ * no control characters, so the value we return is identical to
+ * what was passed in.
+ */
+export const beforeCreateOrganizationHook = async ({
+  organization: input,
+  user,
+}: {
+  organization: { name?: string; slug?: string; metadata?: unknown }
+  user: { emailVerified?: boolean }
+}) => {
+  if (typeof input.name !== "string") {
+    throw new APIError("BAD_REQUEST", {
+      message: "Invalid organization name",
+    })
+  }
+  if (typeof input.slug !== "string") {
+    throw new APIError("BAD_REQUEST", {
+      message: "Invalid organization slug",
+    })
+  }
+  assertOrganizationName(input.name)
+  assertOrganizationSlug(input.slug)
+  if (user.emailVerified !== true) {
+    throw new APIError("FORBIDDEN", {
+      message: "Email verification is required",
+    })
+  }
+  if (input.metadata != null) {
+    throw new APIError("BAD_REQUEST", {
+      message: "Organization metadata is not editable",
+    })
+  }
+  return { data: { name: input.name } }
+}
 
 /**
  * Better Auth `organization` plugin configuration.
  *
- * Only the `beforeCreateOrganization` hook is wired, and it does
- * two things:
- * - rejects malformed or reserved slugs via `assertOrganizationSlug`,
- * - rejects unverified accounts (Better Auth's own
- *   `allowUserToCreateOrganization` already enforces this, but the
- *   hook runs after that gate; the explicit check is belt and
- *   suspenders and produces a clearer error).
+ * The `beforeCreateOrganization` hook is wired to:
+ * - reject malformed or reserved slugs via `assertOrganizationSlug`,
+ * - reject malformed or untrimmed names via `assertOrganizationName`,
+ * - reject unverified accounts (the hook runs after Better Auth's
+ *   own `allowUserToCreateOrganization` gate; the explicit check is
+ *   belt and suspenders and produces a clearer error).
  *
  * The other native hooks (delete, remove-member, update-role,
- * update-organization) are left to Better Auth's defaults — the
- * plugin's built-in access rules and the user.role field are
- * sufficient. The application has no DeesseJS-specific invariant
- * on top of the plugin (no "first organization is permanent",
- * no "last owner cannot leave") in this iteration.
+ * update-organization) are left to Better Auth's defaults.
  */
 export const organizationPlugin = organization({
   allowUserToCreateOrganization: (user) => user.emailVerified === true,
   creatorRole: "owner",
-  requireEmailVerificationOnInvitation: true,
+  requireEmailVerificationOnInvitation,
   invitationExpiresIn: 60 * 60 * 48,
   disableOrganizationDeletion: false,
   organizationHooks: {
-    beforeCreateOrganization: async ({ organization: input, user }) => {
-      // The Better Auth hook type marks `name` and `slug` optional
-      // even though the native create endpoint parses both as
-      // required strings. Narrow before passing to the helper.
-      if (typeof input.name !== "string" || typeof input.slug !== "string") {
-        throw new APIError("BAD_REQUEST", {
-          message: "Invalid organization name or slug",
-        })
-      }
-      assertOrganizationSlug(input.slug)
-      if (user.emailVerified !== true) {
-        throw new APIError("FORBIDDEN", {
-          message: "Email verification is required",
-        })
-      }
-      if (input.metadata != null) {
-        throw new APIError("BAD_REQUEST", {
-          message: "Organization metadata is not editable",
-        })
-      }
-    },
+    beforeCreateOrganization: beforeCreateOrganizationHook,
   },
-  // The plugin's sendInvitationEmail callback is mandatory in the
-  // type. We leave it as a no-op for this iteration: invitation
-  // delivery is wired in a downstream change that owns the
-  // APP_URL origin validation and the React Email template.
-  sendInvitationEmail: async () => {
-    // no-op: invitation email delivery is owned by a separate
-    // iteration (APP_URL validation + React Email template).
-  },
+  // The invitation delivery callback. `sendInvitationEmail` is
+  // the Better Auth callback (single point of structured logging,
+  // fire-and-forget dispatch with uniform .catch). It is imported
+  // from `./invitation.js`; PR-6 will replace the placeholder
+  // React body with the React Email template.
+  sendInvitationEmail,
 })
+

@@ -291,6 +291,9 @@ importers:
       '@workspace/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@workspace/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@workspace/env':
         specifier: workspace:*
         version: link:../../packages/env
@@ -303,6 +306,9 @@ importers:
       better-auth:
         specifier: 'catalog:'
         version: 1.7.7(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@types/pg@8.20.0)(kysely@0.29.2)(pg@8.22.0)(postgres@3.4.9))(next@16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(pg@8.22.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vitest@4.1.10)
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@types/pg@8.20.0)(kysely@0.29.2)(pg@8.22.0)(postgres@3.4.9)
       hono:
         specifier: ^4.12.28
         version: 4.12.28
@@ -759,6 +765,9 @@ importers:
       postgres:
         specifier: 'catalog:'
         version: 3.4.9
+      react:
+        specifier: 'catalog:'
+        version: 19.2.7
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -766,6 +775,9 @@ importers:
       '@types/pg':
         specifier: 'catalog:'
         version: 8.20.0
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
       '@workspace/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
