@@ -134,24 +134,21 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
         // because the consumer (a fresh tmpdir) has no pnpm and
         // we cannot know whether corepack is available. The
         // recovery command is the actionable next step. The
-        // version is POSIX-quoted by the shared `quoteForShell`
-        // helper, so the regex matches both the unquoted and the
-        // quoted form.
-        expect(parsed.recovery).toMatch(
-          // The recovery is the deterministic npm-exec fallback.
-          // The recovery command uses POSIX quoting on every
-          // platform (git bash / WSL / native sh) because
-          // cmd's argument parser has historical quirks that
-          // make a single-quoted form awkward to use. The
-          // recovery field is exactly the deterministic
-          // `cd '<path>' && npm exec --yes -- pnpm@<v> install`
-          // form, with `<v>` the parsed semver from the
-          // generated project's `packageManager` field. The
-          // test only asserts the structural pieces; the full
-          // quoting rules are covered in `quote.test.ts` and
-          // `recovery.test.ts`.
-          /^cd '[^']+' && npm exec --yes -- pnpm@'11\.0\.0' install$/,
-        )
+        // shape depends on the host shell: POSIX hosts get the
+        // `cd '<path>' && npm exec --yes -- pnpm@'<v>' install`
+        // form; Windows hosts get the cmd-shaped
+        // `cd /d "<path>" && npm exec --yes -- pnpm@"<v>" install`
+        // form. The full quoting rules are covered in
+        // `quote.test.ts` and `recovery.test.ts`.
+        if (process.platform === "win32") {
+          expect(parsed.recovery).toMatch(
+            /^cd \/d "[^"]+" && npm exec --yes -- pnpm@"11\.0\.0" install$/,
+          )
+        } else {
+          expect(parsed.recovery).toMatch(
+            /^cd '[^']+' && npm exec --yes -- pnpm@'11\.0\.0' install$/,
+          )
+        }
       } else {
         // On a Node <22.13 runner, the CLI rejects with
         // `unsupported_node` instead. We assert that, because

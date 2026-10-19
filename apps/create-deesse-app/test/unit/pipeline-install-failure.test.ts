@@ -88,22 +88,19 @@ describe("run() — install failure contract", () => {
     expect(result.projectCreated).toBe(true)
     expect(result.installed).toBe(false)
     expect(result.error.code).toBe("install_failed")
-    // The recovery command is the live-install form, with the
-    // chosen strategy and the version quoted. We assert the
-    // shape, not the literal string, because the strategy
-    // depends on what the probe saw in PATH at runtime.
-    expect(result.recovery).toMatch(
-      // The recovery command is the live-install form. We
-      // assert the structure (cd, quoted path, &&, install
-      // command, one of three strategy forms). The full quoting
-      // rule is covered in `quote.test.ts` and `recovery.test.ts`.
-      // The regex is loose on purpose: any quoted token is
-      // accepted between `&&` and the install command, and the
-      // strategy form is matched at the end. A simpler regex
-      // keeps sonarjs's complexity check happy without losing
-      // structural coverage.
-      /^cd(?: \/d)? ['"]/,
-    )
+    // The recovery command is the live-install form, with
+    // the chosen strategy and the version quoted. We assert
+    // the structure: the prefix depends on the host platform
+    // (POSIX uses `cd '`, Windows uses `cd /d "`), and the
+    // tail is the install command. The strategy itself is
+    // not asserted here because it depends on what the probe
+    // saw in PATH at runtime; the full quoting rule is
+    // covered in `quote.test.ts` and `recovery.test.ts`.
+    if (process.platform === "win32") {
+      expect(result.recovery).toMatch(/^cd \/d "/)
+    } else {
+      expect(result.recovery).toMatch(/^cd '[^']+' && /)
+    }
     if (result.error.code === "install_failed") {
       expect(result.installOutput.code).toBe(1)
       expect(result.installOutput.stderr).toContain("ERR_PNPM_PEER_DEP_ISSUES")

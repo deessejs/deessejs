@@ -51,7 +51,7 @@ On install failure the project is kept on disk and the result is:
 }
 ```
 
-The `recovery` field is a copy-pasteable command that retries the install with the same bootstrap the CLI chose. The shape depends on the host: `cd '<path>' && ...` on POSIX (git bash, WSL, native sh), `cd /d "<path>" && ...` on Windows `cmd`. The CLI never interpolates a user-controlled string into the recovery without going through a quoting helper, so the command is safe to paste even if a future template revision includes shell metacharacters in the version.
+The `recovery` field is a copy-pasteable command that retries the install with the same bootstrap the CLI chose. The shape depends on the host shell: `cd '<path>' && ...` on POSIX hosts (Linux, macOS, git bash on Windows), `cd /d "<path>" && ...` on Windows `cmd` (the default PowerShell host and the legacy cmd.exe). WSL is not directly supported because the recovery carries the Windows path as-is (e.g. `C:\Users\...`), which WSL cannot resolve — run the recovery in `cmd` or in git bash on Windows instead, or convert the path to the WSL form (`/mnt/c/...`) by hand. The CLI never interpolates a user-controlled string into the recovery without going through a quoting helper, so the command is safe to paste even if a future template revision includes shell metacharacters in the version.
 
 The process exit code is `0` only when `ok: true`.
 

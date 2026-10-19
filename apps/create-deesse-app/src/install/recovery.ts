@@ -1,39 +1,59 @@
-import { quoteForShell } from "./quote.js"
+import { quoteForCmd, quoteForShell } from "./quote.js"
 import type { InstallCommand } from "../pm/manager.js"
 
 /**
+ * True when the CLI is running on a Windows host. The
+ * recovery-command builder uses this to choose between the
+ * `cmd`-shaped form (Windows) and the POSIX-shaped form
+ * (everywhere else). The choice is about the shell the user
+ * will paste into on that host, not about Node's runtime.
+ *
+ * `process.platform` is a frozen string literal at module
+ * load time; the check is a constant in the bundled CLI but
+ * remains `process.platform`-driven in the unit tests so the
+ * same test file exercises both branches via mocking.
+ */
+const isWindows = (): boolean => process.platform === "win32"
+
+/**
  * Build the recovery command the user can paste to retry the
- * install. The shape is the same on every platform:
+ * install. The shape depends on the host shell:
  *
- *   cd '<path>' && '<bin>' '<arg1>' '<arg2>' ...
+ *  - POSIX (Linux, macOS, git bash on Windows): the
+ *    `cd '<path>' && '<bin>' '<arg1>' '<arg2>' ...` form,
+ *    quoted with `quoteForShell`. Every argument is
+ *    independently single-quoted, including the pnpm version
+ *    read from the generated project's `packageManager` field,
+ *    so a future template revision with shell metacharacters
+ *    in the version cannot inject commands.
  *
- * The path and every install-command argument are routed
- * through the shared `quoteForShell` helper, which produces
- * POSIX-compliant single-quote escaping. The recovery is
- * intended for git bash, WSL, or native sh on Windows. Users
- * on native `cmd` (PowerShell, the legacy cmd.exe) should
- * also use git bash or WSL because the cmd parser has
- * historical quirks that make a single-quoted form awkward to
- * use. The README documents this.
+ *  - Windows `cmd` (the default PowerShell host, the legacy
+ *    cmd.exe): the `cd /d "<path>" && "<bin>" "<arg1>" "<arg2>" ...`
+ *    form, quoted with `quoteForCmd`. `cd /d` switches drives
+ *    and directories in one command. Each argument is
+ *    double-quoted with cmd's documented escapes for `^`,
+ *    `!`, and `%`; `& | < > ( )` stay literal because they
+ *    are not special inside double quotes on modern `cmd`.
  *
- * We deliberately do NOT emit a `cmd` shape (e.g.
- * `cd /d "<path>" && ...`) because `cmd`'s argument parser
- * has known edge cases that defeat robust quoting (for
- * example, `cmd /c 'cd /d "C:\path with spaces"'` does not
- * work reliably on every `cmd` version). POSIX quoting is
- * portable across bash, zsh, fish, dash, and most
- * Unix-like shells; `cmd` quoting is not.
- *
- * The shell-injection vector is closed by the
- * `quoteForShell` helper: every component the user pastes
- * is independently quoted, including the pnpm version read
- * from the generated project's `packageManager` field.
+ * Why platform-aware and not one-shape-fits-all: a Windows
+ * user running the CLI on Node Windows gets a destination
+ * path like `C:\Users\foo\my-project`. Pasted into WSL that
+ * path is unreachable as-is (WSL accesses the C drive via
+ * `/mnt/c/...`, not via the `C:\...` form). Pasted into git
+ * bash the POSIX form is fine, but git bash is not the
+ * default terminal on Windows. So the recovery command
+ * matches the shell the user is most likely on, and the
+ * README points at the supported shells for each.
  */
 export const recoveryCommand = (args: {
   command: InstallCommand
   cwd: string
 }): string => {
   const { command, cwd } = args
+  if (isWindows()) {
+    const cmdStr = [command.bin, ...command.args].map(quoteForCmd).join(" ")
+    return `cd /d ${quoteForCmd(cwd)} && ${cmdStr}`
+  }
   const cmdStr = [command.bin, ...command.args].map(quoteForShell).join(" ")
   return `cd ${quoteForShell(cwd)} && ${cmdStr}`
 }
@@ -53,14 +73,16 @@ export const recoveryCommand = (args: {
  * field. Callers in the pipeline pass
  * `readGeneratedPnpmVersion(state.input.dir)` as the value.
  *
- * The recovery uses the same POSIX-shaped `cd '<path>' && ...`
- * form as the live install recovery; the rationale is the
- * same (cmd quoting is unreliable; POSIX quoting is portable).
+ * The shape matches `recoveryCommand` for the host platform:
+ * POSIX on non-Windows, `cmd` on Windows.
  */
 export const recoveryCommandForNoInstall = (args: {
   version: string
   cwd: string
 }): string => {
   const { version, cwd } = args
+  if (isWindows()) {
+    return `cd /d ${quoteForCmd(cwd)} && npm exec --yes -- pnpm@${quoteForCmd(version)} install`
+  }
   return `cd ${quoteForShell(cwd)} && npm exec --yes -- pnpm@${quoteForShell(version)} install`
 }
