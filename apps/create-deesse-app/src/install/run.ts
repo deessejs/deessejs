@@ -125,7 +125,18 @@ export const runInstall = async (args: RunInstallArgs): Promise<RunInstallResult
     // signal is sent, so even if the child exits between
     // the kill and the exit event, we route to `aborted`.
     let aborted = false
+    // The SIGKILL grace timer. Kept alive AFTER the
+    // immediate child exits, when the abort is in flight,
+    // so a descendant that ignores SIGTERM is still
+    // killed by the escalation. Cleared only when the
+    // tree is verified empty (POSIX) or after a final
+    // post-exit settle period (Windows).
     let killTimer: ReturnType<typeof setTimeout> | null = null
+    // The post-exit poll: on POSIX, we wait until
+    // `kill(-pgid, 0)` reports the group empty before
+    // resolving. On Windows, we wait a short settle
+    // period for descendants to die after taskkill.
+    let pollTimer: ReturnType<typeof setTimeout> | null = null
 
     child.stdout?.on("data", (chunk: Buffer | string) => {
       stdout += typeof chunk === "string" ? chunk : chunk.toString("utf8")
@@ -192,9 +203,59 @@ export const runInstall = async (args: RunInstallArgs): Promise<RunInstallResult
       }
     }
 
+    // True when the process group is empty (POSIX). The
+    // check is `kill(-pgid, 0)`: returns 0 if any process
+    // in the group is alive, throws ESRCH if the group
+    // has no living members. We use this to decide when
+    // the post-exit polling loop can stop and let
+    // `runInstall` resolve.
+    const isGroupEmpty = (): boolean => {
+      if (process.platform === "win32") return true
+      try {
+        process.kill(-pid, 0)
+      } catch (err) {
+        // ESRCH = group empty. EPERM or anything else
+        // = assume non-empty so we keep waiting. Better
+        // to wait too long than to resolve with a live
+        // grandchild.
+        if (
+          err instanceof Error &&
+          "code" in err &&
+          (err as NodeJS.ErrnoException).code === "ESRCH"
+        ) {
+          return true
+        }
+      }
+      return false
+    }
+
+    const clearKillTimer = (): void => {
+      if (killTimer) {
+        clearTimeout(killTimer)
+        killTimer = null
+      }
+    }
+    const clearPollTimer = (): void => {
+      if (pollTimer) {
+        clearTimeout(pollTimer)
+        pollTimer = null
+      }
+    }
+
     const onAbort = (): void => {
       aborted = true
       killTree("SIGTERM")
+      // The SIGKILL grace timer. We do NOT clear this
+      // when the immediate child exits: a descendant
+      // that ignores SIGTERM must still be killed by the
+      // escalation. The timer is cleared only when the
+      // group is verified empty (POSIX) or the post-exit
+      // settle period ends (Windows). The timer is
+      // idempotent: if `onAbort` fires more than once
+      // (e.g. the user pressed Ctrl+C twice), the second
+      // call resets the timer to a fresh grace period
+      // rather than leaving the first timer in place.
+      clearKillTimer()
       killTimer = setTimeout(() => killTree("SIGKILL"), KILL_GRACE_MS)
     }
 
@@ -209,22 +270,82 @@ export const runInstall = async (args: RunInstallArgs): Promise<RunInstallResult
     child.on("error", () => {
       // ENOENT etc. — the binary isn't installed. Treat as install failure.
       if (signal) signal.removeEventListener("abort", onAbort)
-      if (killTimer) clearTimeout(killTimer)
+      clearKillTimer()
+      clearPollTimer()
       rejectFn(installFailed(managerId, null))
     })
+
+    // The post-exit poll: only used on the abort path.
+    // After the immediate child exits, we keep waiting
+    // for the descendant tree to die (POSIX) or for a
+    // short settle period to elapse (Windows). The
+    // SIGKILL grace timer is NOT cleared here — the
+    // escalation continues independently.
+    const startPostExitPoll = (): void => {
+      if (process.platform === "win32") {
+        // Windows: we cannot cheaply enumerate the
+        // process tree. Wait a short settle period (the
+        // taskkill we already spawned in killTree is
+        // async). 1 second is generous for descendants
+        // to honor TerminateProcess / taskkill.
+        pollTimer = setTimeout(() => {
+          clearPollTimer()
+          clearKillTimer()
+          resolveFn({
+            ok: false,
+            aborted: true,
+            code: null,
+            stderr,
+            stdout,
+          })
+        }, 1_000)
+      } else {
+        // POSIX: poll the process group. When it's
+        // empty, resolve. The poll interval is 100ms —
+        // fast enough that the user does not notice a
+        // long resolve after a stubborn grandchild.
+        const poll = (): void => {
+          if (isGroupEmpty()) {
+            clearPollTimer()
+            clearKillTimer()
+            resolveFn({
+              ok: false,
+              aborted: true,
+              code: null,
+              stderr,
+              stdout,
+            })
+            return
+          }
+          // Re-signal: a process that was just created
+          // (e.g. a child of a postinstall hook) or one
+          // that was uninterruptible at the SIGTERM tick
+          // is now reachable. The repeated signal is the
+          // safety net.
+          killTree("SIGTERM")
+          pollTimer = setTimeout(poll, 100)
+        }
+        poll()
+      }
+    }
+
     child.on("exit", (code) => {
       if (signal) signal.removeEventListener("abort", onAbort)
-      if (killTimer) clearTimeout(killTimer)
       if (aborted) {
-        resolveFn({
-          ok: false,
-          aborted: true,
-          code: code ?? null,
-          stderr,
-          stdout,
-        })
+        // The immediate child is gone. The descendants
+        // may not be. Start the post-exit poll: it
+        // keeps the SIGKILL grace timer alive and
+        // re-signals until the group is empty, then
+        // resolves. We deliberately do NOT clear
+        // `killTimer` here — see the long-form note
+        // above. We also do NOT resolve yet.
+        startPostExitPoll()
         return
       }
+      // Non-aborted exit: clear timers, resolve
+      // immediately with the standard shape.
+      clearKillTimer()
+      clearPollTimer()
       const exit = code ?? 1
       if (exit === 0) {
         resolveFn({ ok: true })

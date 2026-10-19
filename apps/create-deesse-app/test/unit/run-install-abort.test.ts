@@ -160,18 +160,29 @@ describe("runInstall — AbortSignal handling", () => {
     // killed along with the parent.
     //
     // The grandchild PID is written to `pidFile` so the
-    // test can confirm it's gone after the abort.
+    // test can confirm it's gone after the abort. The
+    // grandchild installs a NO-OP `SIGTERM` handler and
+    // a NO-OP `SIGHUP` handler, mirroring a real
+    // postinstall script that traps signals and keeps
+    // running. Only SIGKILL (which the runtime sends as
+    // the escalation) can stop it. This is the case the
+    // SIGKILL grace timer is meant to cover.
     const PARENT_SCRIPT = `
       const { spawn } = require('node:child_process')
       const fs = require('node:fs')
       const pidFile = ${JSON.stringify(pidFile)}
+      const GRANDCHILD = \`
+        process.on('SIGTERM', () => { /* ignore, force SIGKILL */ });
+        process.on('SIGHUP', () => { /* ignore */ });
+        setInterval(() => {}, 1000);
+      \`
       // Long-running grandchild that ignores SIGTERM. No
       // \`detached\` flag — the grandchild stays in the
       // parent's process group, exactly like
       // \`corepack\`'s \`pnpm\` child in production.
       const child = spawn(
         process.execPath,
-        ['-e', 'setInterval(() => {}, 1000)'],
+        ['-e', GRANDCHILD],
         { stdio: 'ignore' },
       )
       child.unref()
