@@ -73,6 +73,7 @@ describe("run() — install failure contract", () => {
   it("returns ok:false with installed:false, the recovery command, and the captured install output", async () => {
     vi.mocked(runInstall).mockResolvedValue({
       ok: false,
+      aborted: false,
       code: 1,
       stderr: "ERR_PNPM_PEER_DEP_ISSUES  Unmet peer dependencies\n",
       stdout: "Lockfile is up to date, resolution step is skipped\n",
@@ -116,6 +117,7 @@ describe("run() — install failure contract", () => {
   it("the JSON path is one valid object parseable by scripts", async () => {
     vi.mocked(runInstall).mockResolvedValue({
       ok: false,
+      aborted: false,
       code: 2,
       stderr: "boom",
       stdout: "",
@@ -135,6 +137,7 @@ describe("run() — install failure contract", () => {
   it("does NOT delete the project when install fails", async () => {
     vi.mocked(runInstall).mockResolvedValue({
       ok: false,
+      aborted: false,
       code: 1,
       stderr: "boom",
       stdout: "",

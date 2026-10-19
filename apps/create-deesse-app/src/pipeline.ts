@@ -307,6 +307,7 @@ const runInstallAndBuildResult = async (
     command: state.installCommand,
     managerId: "pnpm",
     cwd: state.input.dir,
+    signal: state.signal,
   })
 
   if (installResult.ok) {
@@ -327,6 +328,39 @@ const runInstallAndBuildResult = async (
     }
   }
 
+  // Aborted mid-install: the child was killed by the
+  // AbortSignal. The project is on disk; the user can
+  // re-run the install (the recovery is the install
+  // command, NOT the create-deesse-app re-run form).
+  // The `aborted` field is the discriminator: the
+  // non-aborted failure variant sets `aborted: false`
+  // and has `code: number`; the aborted variant sets
+  // `aborted: true` and has `code: number | null`.
+  if (installResult.aborted) {
+    // The `code` may be `null` when the child was killed
+    // by SIGTERM/SIGKILL and never exited on its own.
+    // Surface the killed status as a string the human
+    // reader can act on; downstream tooling reads
+    // `error.code: "aborted"` and ignores the field.
+    const codeLabel = installResult.code === null ? "killed" : installResult.code
+    state.logger.error("cancelled", { code: codeLabel })
+    const failure: CreateFailure = {
+      ok: false,
+      mode: "create",
+      projectCreated: true,
+      source: buildSource(state.sha),
+      destination: state.input.dir,
+      error: aborted(),
+      recovery: recoveryCommand({
+        command: state.installCommand,
+        cwd: state.input.dir,
+      }),
+    }
+    return failure
+  }
+
+  // Non-aborted failure: TypeScript narrows away the
+  // `aborted: true` variant, so `code` is `number` here.
   state.logger.error("install failed", { code: installResult.code })
   // Install failed. Project is on disk; surface as install-failure. The
   // install log is mirrored to stderr in src/index.ts and the captured
@@ -440,50 +474,11 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
     return await runInstallAndBuildResult(state)
   } catch (err) {
     cleanupState(state)
-
-    // An AbortError from any of the awaited steps is the
-    // signal-driven cancel path. Surface it as a structured
-    // `aborted` failure rather than the generic `internal`
-    // bucket the rest of the catch falls into. The mode
-    // reflects what the user asked for: a dry-run
-    // cancellation reports `mode: "dry-run"`, a real-create
-    // cancellation reports `mode: "create"`. The recovery
-    // command is the re-run form: the user can simply
-    // re-invoke the same CLI to retry.
     if (isAbortError(err)) {
-      state.logger.error("cancelled")
-      const failure: CreateFailure = {
-        ok: false,
-        mode: state.input.dryRun ? "dry-run" : "create",
-        projectCreated: false,
-        source: buildSource(state.sha),
-        error: aborted(),
-        recovery: recoveryCommandForReRun({
-          cwd: state.input.dir,
-          projectName: state.input.projectName,
-        }),
-      }
-      return failure
+      return buildAbortFailure(state)
     }
-
     if (err instanceof CliError) {
-      // The source_failed cases (missing or malformed
-      // `packageManager`) are routed here by the catch arm
-      // because readGeneratedPnpmVersion throws them from
-      // inside resolvePrereqs. The user sees a structured
-      // failure with the same error code the template-extraction
-      // step throws for a missing `package.json`. As with
-      // the cancel path, the mode reflects the requested
-      // operation, not the realized one.
-      state.logger.error("error", { code: err.code, message: err.message })
-      const failure: CreateFailure = {
-        ok: false,
-        mode: state.input.dryRun ? "dry-run" : "create",
-        projectCreated: false,
-        source: buildSource(state.sha),
-        error: { code: err.code, message: err.message, hint: err.hint },
-      }
-      return failure
+      return buildCliErrorFailure(state, err)
     }
     throw internal(err instanceof Error ? err.message : String(err))
   } finally {
@@ -502,3 +497,107 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
 // exceptions all do too.
 const isAbortError = (err: unknown): boolean =>
   err instanceof Error && err.name === "AbortError"
+
+// Build the `CreateFailure` for the abort (cancel) path.
+// The recovery depends on whether the project landed on
+// disk: if `publishProject` ran, the user can re-run
+// just the install (the install command is on state);
+// otherwise, the user re-invokes the CLI from scratch.
+const buildAbortFailure = (state: RunState): CreateFailure => {
+  state.logger.error("cancelled")
+  const published = isProjectPublished(state)
+  const failure: CreateFailure = {
+    ok: false,
+    mode: state.input.dryRun ? "dry-run" : "create",
+    projectCreated: published,
+    source: buildSource(state.sha),
+    error: aborted(),
+    ...(published ? { destination: state.input.dir } : {}),
+  }
+  if (published && state.installCommand) {
+    failure.recovery = recoveryCommand({
+      command: state.installCommand,
+      cwd: state.input.dir,
+    })
+  } else {
+    failure.recovery = recoveryCommandForReRun({
+      projectName: state.input.projectName,
+      dir: state.input.dir,
+      install: state.input.install,
+      defaultDir: defaultDir(state.input),
+    })
+  }
+  return failure
+}
+
+// Build the `CreateFailure` for the `CliError` path
+// (source_failed, unsupported_manager, etc.). When the
+// project is on disk, the failure reports
+// `projectCreated: true` and attaches the no-install
+// recovery; otherwise, the JSON tells the truth and the
+// user gets no recovery (no command would help).
+const buildCliErrorFailure = (
+  state: RunState,
+  err: CliError,
+): CreateFailure => {
+  const published = isProjectPublished(state)
+  state.logger.error("error", { code: err.code, message: err.message })
+  const failure: CreateFailure = {
+    ok: false,
+    mode: state.input.dryRun ? "dry-run" : "create",
+    projectCreated: published,
+    source: buildSource(state.sha),
+    error: { code: err.code, message: err.message, hint: err.hint },
+    ...(published ? { destination: state.input.dir } : {}),
+  }
+  if (!published) return failure
+  // Attach the no-install recovery. The version is
+  // read from the published project's `packageManager`;
+  // a missing or malformed field leaves the recovery
+  // absent (the JSON shape is still valid: `recovery`
+  // is optional on `CreateFailure`).
+  try {
+    const version = readGeneratedPnpmVersion(state.input.dir)
+    failure.recovery = recoveryCommandForNoInstall({
+      version,
+      cwd: state.input.dir,
+    })
+  } catch (readErr) {
+    if (
+      readErr instanceof CliError &&
+      readErr.code === "source_failed"
+    ) {
+      return failure
+    }
+    throw readErr
+  }
+  return failure
+}
+
+// True iff the project files are on disk at the
+// destination. Single source of truth for the catch arm
+// (and any future failure path that needs to know).
+//
+// `state.tempDir` is `delete`d inside `publishProject` on
+// success, so a missing `tempDir` after a real-create
+// pass means the project is on disk. The dry-run path
+// never calls `publishProject`, so the helper returns
+// false for dry-run regardless. The `--no-install` path
+// calls `publishProject` and then `resolvePrereqs`; if
+// the prereq probe succeeds, the helper is irrelevant
+// (we go on to `buildNoInstallResult`); if it throws,
+// the project IS on disk and the helper returns true.
+const isProjectPublished = (state: RunState): boolean =>
+  !state.input.dryRun && state.tempDir === undefined
+
+// The default destination path the user would have if
+// they had not passed `--dir`. Mirrors the
+// `resolve(process.cwd(), \`./${projectName}\`)` rule in
+// `src/index.ts`. We pass it to the re-run recovery
+// helper so the helper knows whether the user's `--dir`
+// was a custom path or the default. The cwd is
+// captured at call time, which is fine because the
+// failure is happening in the same process the user
+// started in.
+const defaultDir = (input: RunInput): string =>
+  resolve(process.cwd(), `./${input.projectName}`)

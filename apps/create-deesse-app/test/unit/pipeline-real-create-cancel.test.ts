@@ -114,18 +114,24 @@ describe("run() — real-create cancel handling", () => {
     )
     expect(stagingLeftover, "staging tempdir must be cleaned on cancel").toBeUndefined()
 
-    // The recovery command is the re-run form: a `cd` plus
-    // `pnpm dlx create-deesse-app@latest <name>`. The
-    // platform branch is exercised here, but the structure
-    // is stable across hosts.
+    // The recovery command is the re-run form: a
+    // launcher-agnostic `create-deesse-app@latest
+    // <name> [--dir <path>] [--no-install]` shape. The
+    // test uses a custom `--dir` (the workRoot + a name),
+    // so `--dir` is preserved. The launcher prefix is
+    // not in the field — the user adds `pnpm dlx` /
+    // `npx` / `npm exec` themselves.
     expect(result.recovery).toBeDefined()
     if (!result.recovery) return
-    if (process.platform === "win32") {
-      expect(result.recovery).toMatch(/^cd \/d "/)
-      expect(result.recovery).toContain("pnpm dlx create-deesse-app@latest")
-    } else {
-      expect(result.recovery).toMatch(/^cd '[^']+' && /)
-      expect(result.recovery).toContain("pnpm dlx create-deesse-app@latest")
-    }
+    expect(result.recovery).toMatch(
+      /^create-deesse-app@latest my-app-real-cancel --dir /,
+    )
+    // The recovery must NOT contain a `cd` prefix (the
+    // destination may not exist yet on this path) and
+    // must NOT contain a launcher prefix (the user adds
+    // their own).
+    expect(result.recovery).not.toMatch(/^cd /)
+    expect(result.recovery).not.toContain("pnpm dlx")
+    expect(result.recovery).not.toContain("npx ")
   })
 })

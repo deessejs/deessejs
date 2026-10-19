@@ -90,25 +90,69 @@ export const recoveryCommandForNoInstall = (args: {
 /**
  * The recovery command for the user-triggered cancel path
  * (`error.code: "aborted"`). The user re-runs the same CLI
- * command, so the shape is `cd <dir> && pnpm dlx
- * create-deesse-app@latest <name>`. The `@latest` tag is
- * intentional: the original install was interrupted before
- * any state mutated, and re-running against the original
- * version pin would require the user to remember which
- * version they had. The CLI is at most a few minutes old at
- * this point (the user just installed it), so `@latest` is
- * the simplest re-entry point.
+ * command, so the shape preserves the project name and the
+ * flags that affect the run (custom `--dir`, `--no-install`).
  *
- * The shape matches `recoveryCommand` for the host platform:
- * POSIX on non-Windows, `cmd` on Windows.
+ * Three design choices:
+ *
+ *  - The command is **launcher-agnostic**. The original
+ *    run may have been `pnpm dlx create-deesse-app@latest`
+ *    or `npx create-deesse-app@latest` or `npm exec
+ *    --yes -- create-deesse-app@latest` (all three are
+ *    supported). We don't know which, so we don't prefix
+ *    one. The user adds the launcher they used the first
+ *    time. The README documents the three forms.
+ *
+ *  - There is **no `cd` prefix**. The cancel may have
+ *    happened before `publishProject` ran, in which case
+ *    the destination directory does not exist yet and a
+ *    `cd <dir>` would fail before reaching the CLI. The
+ *    user runs the recovery from the same cwd they used
+ *    the first time. The CLI defaults `--dir` to
+ *    `./<projectName>` (relative to cwd) when the flag is
+ *    absent, so the canonical paste form works without
+ *    any path prefix.
+ *
+ *  - The shape is **platform-agnostic**. The original
+ *    round-1 helper did POSIX-vs-cmd quoting, but the
+ *    only "argument" we emit is the project name (no
+ *    spaces, no shell metacharacters) plus a `--dir <path>`
+ *    flag when the user passed a custom path. The
+ *    project name is `lowercase-dash-separated` per the
+ *    `validateProjectName` rule and never contains
+ *    characters that would require quoting. A custom
+ *    `--dir` is passed verbatim: the user knows their
+ *    shell, and the recovery field is a hint, not a
+ *    guaranteed-runnable command for every shell on every
+ *    platform.
+ *
+ * The `@latest` tag is intentional: the original install
+ * was interrupted before any state mutated, and re-running
+ * against the original version pin would require the user
+ * to remember which version they had. The CLI is at most
+ * a few minutes old at this point (the user just installed
+ * it), so `@latest` is the simplest re-entry point.
  */
-export const recoveryCommandForReRun = (args: {
-  cwd: string
+export const recoveryCommandForReRun = (input: {
   projectName: string
+  dir: string
+  install: boolean
+  defaultDir: string
 }): string => {
-  const { cwd, projectName } = args
-  if (isWindows()) {
-    return `cd /d ${quoteForCmd(cwd)} && pnpm dlx create-deesse-app@latest ${quoteForCmd(projectName)}`
+  const parts: string[] = ["create-deesse-app@latest", input.projectName]
+  // Preserve a custom --dir; drop the flag when the user
+  // accepted the default (`./<projectName>`) so the
+  // recovery matches what they typed the first time.
+  if (input.dir !== input.defaultDir) {
+    parts.push("--dir", input.dir)
   }
-  return `cd ${quoteForShell(cwd)} && pnpm dlx create-deesse-app@latest ${quoteForShell(projectName)}`
+  // Preserve --no-install; drop the flag when the user
+  // accepted the default (install runs).
+  if (!input.install) {
+    parts.push("--no-install")
+  }
+  // Deliberately drop --verbose. The recovery is the
+  // minimum command that reproduces the original intent;
+  // the user can re-add --verbose if they want narration.
+  return parts.join(" ")
 }

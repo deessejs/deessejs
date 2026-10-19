@@ -237,6 +237,7 @@ describe("run() — --verbose narration", () => {
   it("verbose:true on install failure emits 'install failed' with the exit code", async () => {
     vi.mocked(runInstall).mockResolvedValue({
       ok: false,
+      aborted: false,
       code: 1,
       stderr: "boom",
       stdout: "",

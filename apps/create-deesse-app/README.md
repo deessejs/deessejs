@@ -125,7 +125,11 @@ The `--verbose` and `--dry-run` flags compose: a `--verbose --dry-run` invocatio
 
 `-v` and `--version` take priority over `--verbose` (the pre-parse in `src/index.ts` short-circuits on the version flag before Commander sees argv). If you want the version, ask for it explicitly; if you want narration, pass `--verbose`.
 
-The cancel path (`error.code: "aborted"`) is the same in `--verbose` and the default mode: SIGINT aborts in-flight IO, the staging tempdir is removed, the destination is left untouched, and the result includes a `recovery` field with the platform-shaped `cd <dir> && pnpm dlx create-deesse-app@latest <name>` re-run command.
+The cancel path (`error.code: "aborted"`) is the same in `--verbose` and the default mode: SIGINT aborts in-flight IO, the staging tempdir is removed, the destination is left untouched, and the result includes a `recovery` field with the launcher-agnostic `create-deesse-app@latest <name> [--dir <path>] [--no-install]` re-run command. The user adds their launcher (`pnpm dlx`, `npx`, or `npm exec`) and runs the command from the same directory they used the first time.
+
+### Cancel during install
+
+`SIGINT` during `pnpm install` (after the project has been published to disk) is forwarded to the install child: `runInstall` registers an `abort` listener on the `AbortSignal`, kills the child with `SIGTERM` (then `SIGKILL` after a 5-second grace), and resolves with `RunInstallResult.aborted: true`. The pipeline routes this to `error.code: "aborted"` with `projectCreated: true` (the project IS on disk) and the **install** recovery command — `cd <dir> && <install command>`, not the create-deesse-app re-run form. The user re-runs only the install after killing any remaining child process; the create-deesse-app create is already done.
 
 ## Getting started
 
