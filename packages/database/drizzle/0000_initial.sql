@@ -15,15 +15,10 @@ CREATE TABLE "account" (
 );
 --> statement-breakpoint
 -- squawk-ignore prefer-bigint-over-int
--- Better Auth 1.7.7 maps `pollingInterval` (number) to `integer` in the
--- generated Drizzle schema. The CLI's plugin schema API does not expose
--- a per-field type override (the `schema` option on `deviceAuthorization`
--- is typed `string | undefined` and is used for column renames, not
--- types), so the field is locked to `integer` at the generator level
--- until a Better Auth upgrade adds a supported extension point. The
--- runtime value range fits in `integer`; Squawk's rule is a
--- style/safety guard for monotonic counters, not a correctness
--- requirement. Tracked as follow-up.
+-- Rationale: Better Auth 1.7.7 emits `integer` for `pollingInterval`
+-- (no per-field type override in the plugin schema API). Runtime
+-- value range fits in `integer`; Squawk's rule is a style/safety
+-- guard. Tracked as follow-up.
 CREATE TABLE "device_code" (
 	"id" text PRIMARY KEY NOT NULL,
 	"device_code" text NOT NULL,
