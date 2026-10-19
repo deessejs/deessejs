@@ -21,11 +21,18 @@ type PkgJson = { packageManager?: string }
  * that names the expected field. There is no fallback to a
  * hardcoded version: a missing or malformed field is a real
  * problem with the template, and the user should know.
+ *
+ * The first argument is named `packageJsonDir` rather than
+ * `destinationDir` because both the real-create path (where
+ * the renamed `package.json` is at the destination) and the
+ * dry-run path (where the renamed `package.json` is in the
+ * staging tempdir) call this helper. The contract is the
+ * same: a directory containing the renamed `package.json`.
  */
 export const readGeneratedPnpmVersion = (
-  destinationDir: string,
+  packageJsonDir: string,
 ): string => {
-  const raw = readFileSync(join(destinationDir, "package.json"), "utf8")
+  const raw = readFileSync(join(packageJsonDir, "package.json"), "utf8")
   const parsed = JSON.parse(raw) as PkgJson
   const field = parsed.packageManager
   if (typeof field !== "string" || field.length === 0) {

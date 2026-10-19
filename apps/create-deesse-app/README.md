@@ -11,6 +11,8 @@ pnpm dlx create-deesse-app@latest my-project
 pnpm dlx create-deesse-app@latest my-project --no-install
 npx create-deesse-app@latest my-project
 npx create-deesse-app@latest my-project --no-install
+npx create-deesse-app@latest my-project --dry-run
+npx create-deesse-app@latest my-project --dry-run --no-install
 ```
 
 `npx` and `pnpm dlx` are both supported. The initializer resolves the current commit of `deessejs/saas-template` on every invocation, downloads the tarball by SHA, extracts it safely, renames the root `package.json`, and runs `pnpm install`.
@@ -54,6 +56,42 @@ On install failure the project is kept on disk and the result is:
 The `recovery` field is a copy-pasteable command that retries the install with the same bootstrap the CLI chose. The shape depends on the host shell: `cd '<path>' && ...` on POSIX hosts (Linux, macOS, git bash on Windows), `cd /d "<path>" && ...` on Windows `cmd` (the default PowerShell host and the legacy cmd.exe). WSL is not directly supported because the recovery carries the Windows path as-is (e.g. `C:\Users\...`), which WSL cannot resolve — run the recovery in `cmd` or in git bash on Windows instead, or convert the path to the WSL form (`/mnt/c/...`) by hand. The CLI never interpolates a user-controlled string into the recovery without going through a quoting helper, so the command is safe to paste even if a future template revision includes shell metacharacters in the version.
 
 The process exit code is `0` only when `ok: true`.
+
+## Dry-run
+
+`--dry-run` plans the create without writing files, running install, or executing template code. The CLI performs the same argument validation, source resolution (downloading and validating the archive), and (unless `--no-install` is also passed) the same install prereq probe as a real create. The destination directory is never created and the staging tempdir is cleaned before the result is returned. Combine with `--no-install` to also skip the prereq probe:
+
+```bash
+npx create-deesse-app@latest my-project --dry-run
+npx create-deesse-app@latest my-project --dry-run --no-install
+```
+
+```json
+{
+  "ok": true,
+  "mode": "dry-run",
+  "projectCreated": false,
+  "installed": false,
+  "source": { "repo": "deessejs/saas-template", "ref": "main", "sha": "..." },
+  "destination": "./my-project",
+  "packageName": { "previous": "next-monorepo", "current": "my-project" },
+  "packageManager": "pnpm",
+  "install": {
+    "skipped": false,
+    "strategy": "corepack",
+    "command": { "bin": "corepack", "args": ["pnpm", "install"] },
+    "prereqs": { "corepack": true, "npm": true, "pnpm": false }
+  },
+  "plannedFiles": [
+    { "path": "LICENSE", "size": 42, "mode": 420 },
+    { "path": "package.json", "size": 512, "mode": 420 }
+  ],
+  "documentation": "https://docs.deessejs.com/getting-started",
+  "recovery": null
+}
+```
+
+`recovery` is always `null` in dry-run mode: the dry-run did not attempt anything that could fail, so there is nothing to retry. The `source.sha` is the SHA that a real create would have used at the moment the dry-run ran — a later invocation may fetch a different SHA, by design.
 
 ## Getting started
 

@@ -31,6 +31,10 @@ export type Entry = {
   path: string
   type?: EntryType
   mode?: number
+  /** Size in bytes from the tar header. Optional because
+   * older tar producers may omit it; readers should fall
+   * back to 0 in that case. */
+  size?: number
 }
 
 export type ValidationFailure = {

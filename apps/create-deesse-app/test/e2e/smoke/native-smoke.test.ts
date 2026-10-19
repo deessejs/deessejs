@@ -164,4 +164,103 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
       rmSync(work, { recursive: true, force: true })
     }
   })
+
+  it("--dry-run plans without creating the destination or running install", async () => {
+    // The dry-run contract: same argument validation and
+    // source resolution as a real create, but the destination
+    // is never created and no install subprocess is spawned.
+    // We assert both the JSON contract and the filesystem
+    // boundary.
+    const work = mkdtempSync(join(tmpdir(), "cda-smoke-dry-"))
+    const dest = join(work, "smoke-project")
+    try {
+      const result = await runCommand(
+        "node",
+        [cliPath, "smoke-project", "--dry-run", "--dir", dest],
+        { timeoutMs: 60_000 },
+      )
+      // The dry-run always exits 0 on the supported Node
+      // range. On a Node <22.13 runner it returns the same
+      // `unsupported_node` failure as the real-create path.
+      if (result.exitCode === 0) {
+        const parsed = JSON.parse(result.stdout.trim()) as {
+          ok: boolean
+          mode: string
+          projectCreated: boolean
+          installed: boolean
+          source: { sha: string }
+          destination: string
+          install: { skipped: boolean }
+          plannedFiles: { path: string }[]
+          documentation: string
+          recovery: string | null
+        }
+        expect(parsed.ok).toBe(true)
+        expect(parsed.mode).toBe("dry-run")
+        expect(parsed.projectCreated).toBe(false)
+        expect(parsed.installed).toBe(false)
+        expect(typeof parsed.source.sha).toBe("string")
+        expect(parsed.source.sha.length).toBe(40)
+        expect(parsed.destination).toBe(dest)
+        expect(parsed.install.skipped).toBe(false)
+        expect(parsed.plannedFiles.length).toBeGreaterThan(0)
+        expect(parsed.documentation).toBe(
+          "https://docs.deessejs.com/getting-started",
+        )
+        expect(parsed.recovery).toBeNull()
+
+        // BOUNDARY: the destination must NOT exist on disk.
+        const fs = await import("node:fs")
+        expect(fs.existsSync(dest), "destination must not be created").toBe(
+          false,
+        )
+      } else {
+        const parsed = JSON.parse(result.stdout.trim()) as {
+          ok: boolean
+          error: { code: string }
+        }
+        expect(parsed.ok).toBe(false)
+        expect(parsed.error.code).toBe("unsupported_node")
+      }
+    } finally {
+      rmSync(work, { recursive: true, force: true })
+    }
+  })
+
+  it("--dry-run --no-install plans without probing install prereqs", async () => {
+    const work = mkdtempSync(join(tmpdir(), "cda-smoke-dry-ni-"))
+    const dest = join(work, "smoke-project")
+    try {
+      const result = await runCommand(
+        "node",
+        [cliPath, "smoke-project", "--dry-run", "--no-install", "--dir", dest],
+        { timeoutMs: 60_000 },
+      )
+      if (result.exitCode === 0) {
+        const parsed = JSON.parse(result.stdout.trim()) as {
+          ok: boolean
+          mode: string
+          install: { skipped: boolean }
+        }
+        expect(parsed.ok).toBe(true)
+        expect(parsed.mode).toBe("dry-run")
+        expect(parsed.install.skipped).toBe(true)
+
+        // BOUNDARY: destination not on disk.
+        const fs = await import("node:fs")
+        expect(fs.existsSync(dest), "destination must not be created").toBe(
+          false,
+        )
+      } else {
+        const parsed = JSON.parse(result.stdout.trim()) as {
+          ok: boolean
+          error: { code: string }
+        }
+        expect(parsed.ok).toBe(false)
+        expect(parsed.error.code).toBe("unsupported_node")
+      }
+    } finally {
+      rmSync(work, { recursive: true, force: true })
+    }
+  })
 })
