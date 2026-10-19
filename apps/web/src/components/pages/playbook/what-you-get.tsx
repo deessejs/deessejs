@@ -9,21 +9,26 @@ import { PLAYBOOK_TOC } from "./content/toc"
  * the Section is the grid container (so `divide-y` / `divide-x`
  * apply directly to the cells), the header spans all three
  * columns with its own `border-b`, and the cells are plain divs
- * with ForWho's label + body typography. No Card primitive, no
- * rounded corners, transparent background, no per-cell "Learn
- * more" link (the cells aren't clickable).
+ * with ForWho's label + h3 + body typography. No Card primitive,
+ * no rounded corners, transparent background, no per-cell
+ * "Learn more" link (the cells aren't clickable).
  *
- * The header adds a description paragraph on top of ForWho's
- * eyebrow + h2, since this section benefits from a one-line
- * subtitle. The header is otherwise ForWho verbatim.
+ * Each cell carries three slots that match ForWho exactly:
+ *   - eyebrow (text-label-13, muted): the chapter descriptor,
+ *     not a number. Replaces the old `id` rendering.
+ *   - h3 (text-heading-20, foreground): the verb-first takeaway
+ *   - body (text-copy-14, muted): a one-paragraph description
+ *
+ * The body carries `pb-6` to provide the bottom padding that
+ * ForWo gets from its "Learn more" link. Without it, the cell
+ * flushes against the section's outer `border-b`. With it, the
+ * cell matches ForWho's bottom rhythm.
  *
  * The 3-col layout on `md+` means two rows of three. `divide-y`
  * / `divide-x` operate in document order rather than visual
  * grid order, so the second-row cells get a redundant left
  * border against the section's left edge (1px against 1px, not
- * visually different). The vertical dividers between cells in
- * each row and the section's outer `border-b` still close the
- * layout cleanly.
+ * visually different).
  *
  * The TOC is the same source of truth that the deleted Preview
  * section used (`./content/toc.ts`), so the page-local grid
@@ -50,11 +55,14 @@ export function WhatYouGet() {
           className="flex flex-col transition-colors hover:bg-accent/40"
         >
           <p className="text-label-13 text-muted-foreground p-6 pb-0">
-            {entry.id}
+            {entry.eyebrow}
           </p>
-          <h3 className="text-heading-20 tracking-tight text-foreground !m-0 px-6 pt-2 pb-6">
+          <h3 className="text-heading-20 tracking-tight text-foreground !m-0 px-6 pt-2">
             {entry.takeaway}
           </h3>
+          <p className="text-copy-14 text-muted-foreground leading-6 px-6 pt-2 flex-1 pb-6 [&:not(:first-child)]:mt-0">
+            {entry.body}
+          </p>
         </div>
       ))}
     </Section>
