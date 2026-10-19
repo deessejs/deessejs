@@ -18,6 +18,7 @@
     "test/unit/print-install-log.test.ts",
     "test/unit/output.test.ts",
     "test/unit/pipeline-install-failure.test.ts",
-    "test/unit/cli-version-flag.test.ts"
+    "test/unit/cli-version-flag.test.ts",
+    "test/unit/logger.test.ts"
   ]
 }

@@ -79,6 +79,7 @@ describe("run() — --dry-run --no-install", () => {
       dir,
       install: false,
       dryRun: true,
+      verbose: false,
     })
 
     expect(result.ok).toBe(true)

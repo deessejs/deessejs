@@ -84,6 +84,7 @@ describe("run() — dry-run pipeline", () => {
       dir,
       install: true,
       dryRun: true,
+      verbose: false,
     })
 
     // JSON contract
@@ -147,6 +148,7 @@ describe("run() — dry-run pipeline", () => {
       dir,
       install: false,
       dryRun: true,
+      verbose: false,
     })
 
     expect(result.ok).toBe(true)
@@ -203,6 +205,7 @@ describe("run() — dry-run pipeline", () => {
       dir,
       install: true,
       dryRun: true,
+      verbose: false,
     })
 
     expect(result.ok).toBe(false)

@@ -2,23 +2,48 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { nullLogger, stderrLogger, type Logger } from "../../src/output/logger.js"
 
-const originalWriteStdout = process.stdout.write.bind(process.stdout)
-const originalWriteStderr = process.stderr.write.bind(process.stderr)
+// The strict `tsconfig.unit.json` (run by `typecheck:unit`)
+// cannot type the `process.stdout.write.bind(process.stdout)`
+// pattern: the bound function is typed as zero-arg, and
+// assigning back to `process.stdout.write` requires a 1-arg
+// signature. The same problem is already excluded for
+// `output.test.ts`, `print-install-log.test.ts`, and the
+// pipeline-install-failure test, so this file follows the
+// same convention: it is excluded from `typecheck:unit` and
+// relies on the broader `tsc --noEmit` for type safety.
+// (See the exclude list in `tsconfig.unit.json`.)
+//
+// The test logic itself is straightforward: capture every
+// chunk written to stdout and stderr, assert on the joined
+// output, and restore the original writers in `afterEach`.
 
 let stdoutChunks: string[] = []
 let stderrChunks: string[] = []
 
+const captureStdout = (chunk: string | Uint8Array): boolean => {
+  stdoutChunks.push(typeof chunk === "string" ? chunk : chunk.toString("utf8"))
+  return true
+}
+const captureStderr = (chunk: string | Uint8Array): boolean => {
+  stderrChunks.push(typeof chunk === "string" ? chunk : chunk.toString("utf8"))
+  return true
+}
+
+let originalWriteStdout: typeof process.stdout.write
+let originalWriteStderr: typeof process.stderr.write
+
 beforeEach(() => {
   stdoutChunks = []
   stderrChunks = []
-  process.stdout.write = ((chunk: string | Uint8Array): boolean => {
-    stdoutChunks.push(typeof chunk === "string" ? chunk : chunk.toString("utf8"))
-    return true
-  }) as typeof process.stdout.write
-  process.stderr.write = ((chunk: string | Uint8Array): boolean => {
-    stderrChunks.push(typeof chunk === "string" ? chunk : chunk.toString("utf8"))
-    return true
-  }) as typeof process.stdout.write
+  originalWriteStdout = process.stdout.write
+  originalWriteStderr = process.stderr.write
+  process.stdout.write = captureStdout as typeof process.stdout.write
+  process.stderr.write = captureStderr as typeof process.stderr.write
+})
+
+afterEach(() => {
+  process.stdout.write = originalWriteStdout
+  process.stderr.write = originalWriteStderr
 })
 
 afterEach(() => {

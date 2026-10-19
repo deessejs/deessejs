@@ -87,6 +87,7 @@ describe("run() — dry-run cancel handling", () => {
       dir,
       install: true,
       dryRun: true,
+      verbose: false,
     })
 
     // The pipeline catches the AbortError and routes it
