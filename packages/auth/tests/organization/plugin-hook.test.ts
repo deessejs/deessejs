@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest"
 import { APIError } from "better-auth/api"
 import { beforeCreateOrganizationHook } from "../../src/organization/plugin.js"
 
-const baseUser = { emailVerified: true }
 const verifiedUser = { emailVerified: true }
 const unverifiedUser = { emailVerified: false }
 

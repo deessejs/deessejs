@@ -1,4 +1,3 @@
-import { APIError } from "better-auth/api"
 import type { OrganizationOptions } from "better-auth/plugins/organization"
 import * as React from "react"
 import { serverEnv } from "@workspace/env/server"
