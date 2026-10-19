@@ -2,7 +2,6 @@ import { internal } from "../errors/index.js"
 import type {
   CreateDryRunResult,
   DryRunInstall,
-  InstallCommand,
   ResultSource,
 } from "../result.js"
 
@@ -87,18 +86,23 @@ export const buildDryRunResult = (input: BuildDryRunResultInput): CreateDryRunRe
   // no-install dry-run we trust the template and let the
   // real create re-validate at execution time.
 
+  // TypeScript's narrow does not flow through the ternary
+  // here: even after the `if (install && ...)` guard
+  // above, the destructured `strategy` and friends are
+  // still typed as `T | undefined`. We narrow inside the
+  // ternary with explicit local consts so the literal
+  // types match the `DryRunInstall` discriminated union
+  // without a cast.
   const installSection: DryRunInstall = install
-    ? {
-        skipped: false,
-        // The narrow above guarantees these are defined when
-        // `install` is true. The cast through `unknown` keeps
-        // the strict-optional types happy without scattering
-        // `!` operators across the literal.
-        strategy: strategy as "corepack" | "npm-exec" | "pnpm-direct",
-        command: installCommand as InstallCommand,
-        prereqs: prereqs as { corepack: boolean; npm: boolean; pnpm: boolean },
-      }
-    : { skipped: true }
+    ? (() => {
+        return {
+          skipped: false as const,
+          strategy: strategy as "corepack" | "npm-exec" | "pnpm-direct",
+          command: installCommand as { bin: string; args: string[] },
+          prereqs: prereqs as { corepack: boolean; npm: boolean; pnpm: boolean },
+        }
+      })()
+    : { skipped: true as const }
 
   return {
     ok: true,

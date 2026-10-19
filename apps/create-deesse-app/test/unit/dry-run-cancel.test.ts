@@ -97,6 +97,10 @@ describe("run() — dry-run cancel handling", () => {
     if (result.ok) return
     expect(result.error.message.toLowerCase()).toContain("cancel")
     expect(result.projectCreated).toBe(false)
+    // The mode reflects what the user asked for, not what
+    // the pipeline produced: a cancelled dry-run reports
+    // `mode: "dry-run"`, never `mode: "create"`.
+    expect(result.mode).toBe("dry-run")
 
     // BOUNDARY: the destination is not on disk.
     expect(

@@ -5,7 +5,7 @@ import { warnInstallBootstrap } from "../../src/install/warn-install-bootstrap.j
 describe("warnInstallBootstrap", () => {
   it("writes the corepack line for the corepack strategy", () => {
     const captured: string[] = []
-    warnInstallBootstrap("corepack", (s) => captured.push(s))
+    warnInstallBootstrap("corepack", "create", (s) => captured.push(s))
     expect(captured).toHaveLength(1)
     expect(captured[0]).toContain("installing dependencies via corepack")
     expect(captured[0]).toContain("packageManager field")
@@ -13,7 +13,7 @@ describe("warnInstallBootstrap", () => {
 
   it("writes the npm-exec line for the npm-exec strategy", () => {
     const captured: string[] = []
-    warnInstallBootstrap("npm-exec", (s) => captured.push(s))
+    warnInstallBootstrap("npm-exec", "create", (s) => captured.push(s))
     expect(captured).toHaveLength(1)
     expect(captured[0]).toContain("corepack not found")
     expect(captured[0]).toContain("npm")
@@ -24,7 +24,7 @@ describe("warnInstallBootstrap", () => {
 
   it("writes the pnpm-direct line for the pnpm-direct strategy", () => {
     const captured: string[] = []
-    warnInstallBootstrap("pnpm-direct", (s) => captured.push(s))
+    warnInstallBootstrap("pnpm-direct", "create", (s) => captured.push(s))
     expect(captured).toHaveLength(1)
     expect(captured[0]).toContain("corepack and npm not found")
     // The wording does not claim the version matches the project.
@@ -38,24 +38,50 @@ describe("warnInstallBootstrap", () => {
     // look for it anywhere in the line, which is robust to
     // color escape codes and the suffix.
     const captured: string[] = []
-    warnInstallBootstrap("corepack", (s) => captured.push(s))
-    warnInstallBootstrap("npm-exec", (s) => captured.push(s))
-    warnInstallBootstrap("pnpm-direct", (s) => captured.push(s))
+    warnInstallBootstrap("corepack", "create", (s) => captured.push(s))
+    warnInstallBootstrap("npm-exec", "create", (s) => captured.push(s))
+    warnInstallBootstrap("pnpm-direct", "create", (s) => captured.push(s))
     expect(captured.every((s) => s.includes("create-deesse-app:"))).toBe(true)
   })
 
   it("ends every line with a single newline", () => {
     const captured: string[] = []
-    warnInstallBootstrap("corepack", (s) => captured.push(s))
-    warnInstallBootstrap("npm-exec", (s) => captured.push(s))
-    warnInstallBootstrap("pnpm-direct", (s) => captured.push(s))
+    warnInstallBootstrap("corepack", "create", (s) => captured.push(s))
+    warnInstallBootstrap("npm-exec", "create", (s) => captured.push(s))
+    warnInstallBootstrap("pnpm-direct", "create", (s) => captured.push(s))
     expect(captured.every((s) => s.endsWith("\n"))).toBe(true)
     expect(captured.every((s) => s.endsWith("\n\n"))).toBe(false)
   })
 
   it("calls the writer exactly once per call", () => {
     const captured: string[] = []
-    warnInstallBootstrap("corepack", (s) => captured.push(s))
+    warnInstallBootstrap("corepack", "create", (s) => captured.push(s))
     expect(captured).toHaveLength(1)
+  })
+
+  it("in dry-run mode, the corepack line says 'would use' and never 'installing dependencies'", () => {
+    // The dry-run line must not claim an install is starting
+    // — the user is reading a plan, not watching pnpm run.
+    const captured: string[] = []
+    warnInstallBootstrap("corepack", "dry-run", (s) => captured.push(s))
+    expect(captured[0]).toContain("would use corepack")
+    expect(captured[0]).not.toContain("installing dependencies")
+    expect(captured[0]).toContain("dry-run")
+  })
+
+  it("in dry-run mode, the npm-exec line says 'would fall back to npm'", () => {
+    const captured: string[] = []
+    warnInstallBootstrap("npm-exec", "dry-run", (s) => captured.push(s))
+    expect(captured[0]).toContain("dry-run")
+    expect(captured[0]).toContain("would fall back to npm")
+    expect(captured[0]).not.toContain("installing dependencies")
+  })
+
+  it("in dry-run mode, the pnpm-direct line says 'would use pnpm from PATH'", () => {
+    const captured: string[] = []
+    warnInstallBootstrap("pnpm-direct", "dry-run", (s) => captured.push(s))
+    expect(captured[0]).toContain("dry-run")
+    expect(captured[0]).toContain("would use pnpm from PATH")
+    expect(captured[0]).not.toContain("installing dependencies")
   })
 })

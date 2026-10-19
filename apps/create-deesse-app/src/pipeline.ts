@@ -210,7 +210,7 @@ const resolvePrereqs = (state: RunState): void => {
     state.strategy,
     state.pnpmVersion,
   )
-  warnInstallBootstrap(state.strategy)
+  warnInstallBootstrap(state.strategy, state.input.dryRun ? "dry-run" : "create")
 }
 
 // Same as readGeneratedPnpmVersion, but translates
@@ -402,11 +402,14 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
     // An AbortError from any of the awaited steps is the
     // signal-driven cancel path. Surface it as a structured
     // `aborted` failure rather than the generic `internal`
-    // bucket the rest of the catch falls into.
+    // bucket the rest of the catch falls into. The mode
+    // reflects what the user asked for: a dry-run
+    // cancellation reports `mode: "dry-run"`, a real-create
+    // cancellation reports `mode: "create"`.
     if (isAbortError(err)) {
       const failure: CreateFailure = {
         ok: false,
-        mode: "create",
+        mode: state.input.dryRun ? "dry-run" : "create",
         projectCreated: false,
         source: buildSource(state.sha),
         error: aborted(),
@@ -420,10 +423,12 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
       // because readGeneratedPnpmVersion throws them from
       // inside resolvePrereqs. The user sees a structured
       // failure with the same error code the template-extraction
-      // step throws for a missing `package.json`.
+      // step throws for a missing `package.json`. As with
+      // the cancel path, the mode reflects the requested
+      // operation, not the realized one.
       const failure: CreateFailure = {
         ok: false,
-        mode: "create",
+        mode: state.input.dryRun ? "dry-run" : "create",
         projectCreated: false,
         source: buildSource(state.sha),
         error: { code: err.code, message: err.message, hint: err.hint },
