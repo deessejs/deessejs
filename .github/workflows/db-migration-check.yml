@@ -1,0 +1,111 @@
+name: DB migration check
+
+# PR gate for the Drizzle migration chain.
+#
+# Spins up a disposable PostgreSQL 18 service (the same major
+# version as the Neon targets), applies the committed migration
+# chain via `drizzle-kit migrate`, and asserts the resulting
+# schema matches the canonical table set + key constraints.
+#
+# Companion to drizzle-check.yml:
+#   - drizzle-check.yml/squawk lints the SQL for unsafe patterns.
+#   - drizzle-check.yml/drift ensures no uncommitted migrations.
+#   - this job ensures the committed chain actually applies to a
+#     real PostgreSQL, not just parses (pg-mem tests are
+#     permissive in ways Postgres is not).
+#
+# This job only validates local artifacts. It does NOT touch any
+# shared staging or production database. Applying the baseline to
+# a persistent Neon target is a separate post-merge action that
+# requires an explicit empty-DB preflight.
+
+on:
+  pull_request:
+    branches: [main, staging]
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    name: Apply to disposable PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+
+      - run: pnpm install --frozen-lockfile
+
+      # Build the dependency chain so drizzle-kit can resolve
+      # @workspace/env/server for the database URL.
+      - name: Build dependencies
+        run: pnpm turbo build --filter=@workspace/database --force
+
+      # Apply every committed migration in the chain. Drizzle Kit
+      # tracks applied migrations in `drizzle.__drizzle_migrations`
+      # and refuses to re-apply; this is a clean DB so all
+      # migrations run.
+      - name: Apply migrations
+        run: pnpm --filter @workspace/database db:migrate
+
+      # Canonical table check: count must be 8 and the names must
+      # match the Better Auth + organization plugin output
+      # (device_code is snake_case in the regenerated schema — see
+      # PR #239 for the rationale).
+      - name: Verify table set
+        run: |
+          set -euo pipefail
+          EXPECTED='account|device_code|invitation|member|organization|session|user|verification'
+          ACTUAL=$(psql "$DATABASE_URL" -tA -c "SELECT string_agg(table_name, '|' ORDER BY table_name) FROM information_schema.tables WHERE table_schema = 'public'")
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "Expected: $EXPECTED"
+            echo "Actual:   $ACTUAL"
+            exit 1
+          fi
+          echo "Table set matches: $ACTUAL"
+
+      # Schema spot-checks: every table the regeneration pins must
+      # exist with its canonical column shape. Drift here means the
+      # schema and the migration are out of sync and a follow-up
+      # `db:generate` would have written more SQL.
+      - name: Verify device_code shape
+        run: |
+          set -euo pipefail
+          COLS=$(psql "$DATABASE_URL" -tA -c "SELECT string_agg(column_name, ',' ORDER BY column_name) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'device_code'")
+          echo "device_code columns: $COLS"
+          for required in id device_code user_code user_id expires_at status polling_interval; do
+            if ! echo "$COLS" | grep -q "$required"; then
+              echo "Missing column: $required"
+              exit 1
+            fi
+          done
+
+      - name: Verify FK cascade from session.user_id
+        run: |
+          set -euo pipefail
+          FK=$(psql "$DATABASE_URL" -tA -c "SELECT delete_rule FROM information_schema.referential_constraints WHERE constraint_name = 'session_user_id_user_id_fk'")
+          if [ "$FK" != "CASCADE" ]; then
+            echo "Expected CASCADE delete on session_user_id_user_id_fk, got: $FK"
+            exit 1
+          fi
+          echo "session.user_id -> user.id: ON DELETE CASCADE"
