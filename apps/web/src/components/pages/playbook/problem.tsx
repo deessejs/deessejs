@@ -49,56 +49,42 @@ const FRICTIONS: ReadonlyArray<FrictionEntry> = [
  *
  * The friction points are pulled out of the original P1 (which
  * said "harder to read, harder to test, harder to change" in a
- * single sentence) and made explicit as three cells. The
- * original P2 ("The playbook collects the questions worth
- * answering...") becomes a small footer below the section, in
- * muted-foreground copy, so the page keeps its bottom border
- * before the next section.
+ * single sentence) and made explicit as three cells.
  */
 export function Problem() {
   return (
-    <>
-      <Section className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border">
-        <div className="flex flex-col col-span-1 md:col-span-3 border-0">
-          <div className="flex flex-col gap-2 p-6 border-b border-border">
-            <p className="text-label-13 text-muted-foreground">
-              The problem
-            </p>
-            <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-              Code that works, code that holds up
-            </h2>
-            <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-              A coding agent can produce code that runs the first
-              time. A few days later, the same project is harder to
-              read, harder to test, and harder to change.
-            </p>
-          </div>
+    <Section className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border">
+      <div className="flex flex-col col-span-1 md:col-span-3 border-0">
+        <div className="flex flex-col gap-2 p-6 border-b border-border">
+          <p className="text-label-13 text-muted-foreground">
+            The problem
+          </p>
+          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+            Code that works, code that holds up
+          </h2>
+          <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
+            A coding agent can produce code that runs the first
+            time. A few days later, the same project is harder to
+            read, harder to test, and harder to change.
+          </p>
         </div>
-        {FRICTIONS.map((entry) => (
-          <div
-            key={entry.id}
-            className="flex flex-col transition-colors hover:bg-accent/40"
-          >
-            <p className="text-label-13 text-muted-foreground p-6 pb-0">
-              {entry.eyebrow}
-            </p>
-            <h3 className="text-heading-20 tracking-tight text-foreground !m-0 px-6 pt-2">
-              {entry.takeaway}
-            </h3>
-            <p className="text-copy-14 text-muted-foreground leading-6 px-6 pt-2 flex-1 pb-6 [&:not(:first-child)]:mt-0">
-              {entry.body}
-            </p>
-          </div>
-        ))}
-      </Section>
-      <div className="border-b border-border px-6 py-10 md:py-12">
-        <p className="mx-auto max-w-5xl text-copy-16 leading-7 text-foreground [&:not(:first-child)]:mt-0">
-          The playbook collects the questions worth answering before
-          you hand work to an agent, the foundations worth laying
-          once, and the boundaries worth drawing so the code stays
-          your software.
-        </p>
       </div>
-    </>
+      {FRICTIONS.map((entry) => (
+        <div
+          key={entry.id}
+          className="flex flex-col transition-colors hover:bg-accent/40"
+        >
+          <p className="text-label-13 text-muted-foreground p-6 pb-0">
+            {entry.eyebrow}
+          </p>
+          <h3 className="text-heading-20 tracking-tight text-foreground !m-0 px-6 pt-2">
+            {entry.takeaway}
+          </h3>
+          <p className="text-copy-14 text-muted-foreground leading-6 px-6 pt-2 flex-1 pb-6 [&:not(:first-child)]:mt-0">
+            {entry.body}
+          </p>
+        </div>
+      ))}
+    </Section>
   )
 }

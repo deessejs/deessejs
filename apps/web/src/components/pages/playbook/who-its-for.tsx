@@ -48,59 +48,45 @@ const AUDIENCE: ReadonlyArray<AudienceEntry> = [
  * label + h3 + body typography. No Card primitive, no rounded
  * corners, transparent background, no per-cell "Learn more" link.
  *
- * The intro paragraph becomes the header description, the three
- * bullets become three cells (one per profile), and the closing
- * "out of scope" note sits in a small footer below the section
- * so the page rhythm keeps its bottom border before the FinalCta.
- *
  * The body carries `pb-6` to provide the bottom padding that
  * ForWho gets from its "Learn more" link, which is intentionally
  * absent here.
  */
 export function WhoItsFor() {
   return (
-    <>
-      <Section className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border">
-        <div className="flex flex-col col-span-1 md:col-span-3 border-0">
-          <div className="flex flex-col gap-2 p-6 border-b border-border">
-            <p className="text-label-13 text-muted-foreground">
-              Who it&apos;s for
-            </p>
-            <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-              You build with agents today
-            </h2>
-            <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-              You already use Claude Code, Codex, Cursor, or an
-              open-source equivalent, and you want the software you
-              ship to stay readable, testable, and maintainable after
-              the first commit.
-            </p>
-          </div>
+    <Section className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border">
+      <div className="flex flex-col col-span-1 md:col-span-3 border-0">
+        <div className="flex flex-col gap-2 p-6 border-b border-border">
+          <p className="text-label-13 text-muted-foreground">
+            Who it&apos;s for
+          </p>
+          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+            You build with agents today
+          </h2>
+          <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
+            You already use Claude Code, Codex, Cursor, or an
+            open-source equivalent, and you want the software you
+            ship to stay readable, testable, and maintainable after
+            the first commit.
+          </p>
         </div>
-        {AUDIENCE.map((entry) => (
-          <div
-            key={entry.id}
-            className="flex flex-col transition-colors hover:bg-accent/40"
-          >
-            <p className="text-label-13 text-muted-foreground p-6 pb-0">
-              {entry.eyebrow}
-            </p>
-            <h3 className="text-heading-20 tracking-tight text-foreground !m-0 px-6 pt-2">
-              {entry.takeaway}
-            </h3>
-            <p className="text-copy-14 text-muted-foreground leading-6 px-6 pt-2 flex-1 pb-6 [&:not(:first-child)]:mt-0">
-              {entry.body}
-            </p>
-          </div>
-        ))}
-      </Section>
-      <div className="border-b border-border px-6 py-10 md:py-12">
-        <p className="mx-auto max-w-5xl text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
-          Not in scope: prompting theory, model comparison, provider
-          swaps. The premise is that you already use an agent, and the
-          friction is in the project shape it leaves behind.
-        </p>
       </div>
-    </>
+      {AUDIENCE.map((entry) => (
+        <div
+          key={entry.id}
+          className="flex flex-col transition-colors hover:bg-accent/40"
+        >
+          <p className="text-label-13 text-muted-foreground p-6 pb-0">
+            {entry.eyebrow}
+          </p>
+          <h3 className="text-heading-20 tracking-tight text-foreground !m-0 px-6 pt-2">
+            {entry.takeaway}
+          </h3>
+          <p className="text-copy-14 text-muted-foreground leading-6 px-6 pt-2 flex-1 pb-6 [&:not(:first-child)]:mt-0">
+            {entry.body}
+          </p>
+        </div>
+      ))}
+    </Section>
   )
 }
