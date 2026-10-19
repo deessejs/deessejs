@@ -1,4 +1,4 @@
-export type ResultMode = "create"
+export type ResultMode = "create" | "dry-run"
 
 export type ResultSource = {
   repo: "deessejs/saas-template"
@@ -18,6 +18,47 @@ export type ResultPackageName = {
 }
 
 export type ResultPackageManager = "pnpm"
+
+/**
+ * One entry from the validated tarball. The path is normalized
+ * (post-strip, post-normalize) so a script that joins the
+ * destination with `path` gets the same byte path the real
+ * extraction would have written.
+ */
+export type PlannedEntry = {
+  /** Normalized relative path inside the project (e.g. "src/index.ts"). */
+  path: string
+  /** Size in bytes from the tarball entry header. */
+  size: number
+  /** Entry mode, decimal (e.g. 0o644 = 420). */
+  mode: number
+}
+
+export type InstallCommand = {
+  bin: string
+  args: string[]
+}
+
+export type DryRunPrereqs = {
+  corepack: boolean
+  npm: boolean
+  pnpm: boolean
+}
+
+/**
+ * The install section of a dry-run plan. `skipped: true` means
+ * the dry-run was invoked with `--no-install`; the strategy,
+ * command, and prereqs are absent in that case (the dry-run
+ * does not probe or plan an install it would not run).
+ */
+export type DryRunInstall =
+  | {
+      skipped: false
+      strategy: "corepack" | "npm-exec" | "pnpm-direct"
+      command: InstallCommand
+      prereqs: DryRunPrereqs
+    }
+  | { skipped: true }
 
 export type CreateSuccess = {
   ok: true
@@ -57,6 +98,24 @@ export type CreateInstallFailure = {
   installOutput: InstallOutput
 }
 
+export type CreateDryRunResult = {
+  ok: true
+  mode: "dry-run"
+  /** Always false: the dry-run does not create the destination. */
+  projectCreated: false
+  /** Always false: the dry-run does not run install. */
+  installed: false
+  source: ResultSource
+  destination: string
+  packageName: ResultPackageName
+  packageManager: ResultPackageManager
+  install: DryRunInstall
+  plannedFiles: PlannedEntry[]
+  documentation: string
+  /** Always null: the dry-run did not attempt anything that could fail. */
+  recovery: null
+}
+
 export type CreateFailure = {
   ok: false
   mode: ResultMode
@@ -73,4 +132,8 @@ export type CreateFailure = {
   recovery?: string
 }
 
-export type CreateResult = CreateSuccess | CreateInstallFailure | CreateFailure
+export type CreateResult =
+  | CreateSuccess
+  | CreateInstallFailure
+  | CreateDryRunResult
+  | CreateFailure

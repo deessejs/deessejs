@@ -9,6 +9,14 @@ export type DownloadTarballArgs = {
   owner: string
   repo: string
   sha: string
+  /**
+   * Optional signal forwarded to the underlying `fetch`. When
+   * the signal aborts, the in-flight request is cancelled and
+   * the returned promise rejects with the abort reason. The
+   * pipeline translates that to a `CreateFailure` with
+   * `error.code === "aborted"`.
+   */
+  signal?: AbortSignal
 }
 
 /**
@@ -24,12 +32,17 @@ export type DownloadTarballArgs = {
 export const downloadTarball = async (
   args: DownloadTarballArgs,
 ): Promise<{ path: string; sha: string }> => {
-  const { owner, repo, sha } = args
+  const { owner, repo, sha, signal } = args
   const url = `https://codeload.github.com/${owner}/${repo}/tar.gz/${sha}`
 
-  const response = await fetch(url, { redirect: "follow" }).catch(
+  const response = await fetch(url, {
+    redirect: "follow",
+    ...(signal !== undefined ? { signal } : {}),
+  }).catch(
     (err: unknown) => {
-      throw networkError(`fetch failed: ${err instanceof Error ? err.message : String(err)}`)
+      throw networkError(
+        `fetch failed: ${err instanceof Error ? err.message : String(err)}`,
+      )
     },
   )
 

@@ -1,6 +1,7 @@
 import * as tar from "tar"
 
 import { unsafeArchive } from "../errors/index.js"
+import type { PlannedEntry } from "../result.js"
 import { validateEntry, type Entry } from "./validate-entry.js"
 
 export type ValidateEntriesArgs = {
@@ -9,6 +10,26 @@ export type ValidateEntriesArgs = {
   sha: string
   /** Repo name (e.g. "saas-template"). */
   repo: string
+  /**
+   * Optional signal forwarded to `tar.t`. When the signal
+   * aborts, the in-flight read is interrupted and the
+   * returned promise rejects. The pipeline translates that
+   * to a `CreateFailure` with `error.code === "aborted"`.
+   */
+  signal?: AbortSignal
+}
+
+export type ValidateEntriesResult = {
+  /**
+   * The normalized, prefix-stripped entry list — one entry per
+   * file the real extraction would have written to the
+   * destination. Directory entries (mode indicating a directory
+   * in tar's `typeflag` field) are NOT included: directories
+   * are an extraction-side artifact and the dry-run plan
+   * describes files the user will see, not intermediate
+   * directory nodes.
+   */
+  entries: PlannedEntry[]
 }
 
 /**
@@ -24,16 +45,25 @@ export type ValidateEntriesArgs = {
  * `tar.t()` is read-only by design — it iterates entries without writing.
  * `tar.x()` writes; we keep the read pass separate so a malformed archive
  * cannot leave the destination in a half-written state.
+ *
+ * On success, returns the normalized entry list. The dry-run
+ * pipeline consumes this list to build its `plannedFiles`
+ * field; the real-create pipeline ignores it (the same
+ * information is reconstructed on disk by `extractTarball`).
  */
-export const validateEntries = async (args: ValidateEntriesArgs): Promise<void> => {
-  const { tarballPath, sha, repo } = args
+export const validateEntries = async (
+  args: ValidateEntriesArgs,
+): Promise<ValidateEntriesResult> => {
+  const { tarballPath, sha, repo, signal } = args
   const expectedPrefix = `${repo}-${sha}/`
 
   const failures: { path: string; reason: string }[] = []
   const seenNormalized = new Set<string>()
+  const entries: PlannedEntry[] = []
 
   await tar.t({
     file: tarballPath,
+    ...(signal !== undefined ? { signal } : {}),
     onentry: (entry) => {
       const e = entry as unknown as Entry
       // Prefix deviation.
@@ -60,13 +90,42 @@ export const validateEntries = async (args: ValidateEntriesArgs): Promise<void> 
           path: e.path,
           reason: `normalized path collision with another entry (${normalized})`,
         })
-      } else {
-        seenNormalized.add(normalized)
+        return
       }
+      seenNormalized.add(normalized)
+
+      // The top-level prefix entry has an empty path after
+      // stripping. tar's read pass iterates that entry too;
+      // it has no file content and would inflate
+      // `plannedFiles` with a meaningless "" row.
+      if (normalized.length === 0) {
+        return
+      }
+
+      // tar entries for directories use typeflag "5" (or
+      // mode bits 0o040000). The dry-run plan describes
+      // files, not intermediate directories: real
+      // extraction creates the parents implicitly, and a
+      // directory entry in the plan would inflate the
+      // `plannedFiles` count without telling the user
+      // anything actionable.
+      const isDirectory =
+        (e as { typeflag?: string }).typeflag === "5" ||
+        ((e.mode ?? 0) & 0o170000) === 0o040000
+      if (isDirectory) {
+        return
+      }
+
+      entries.push({
+        path: normalized,
+        size: typeof e.size === "number" ? e.size : 0,
+        mode: typeof e.mode === "number" ? e.mode : 0,
+      })
     },
   })
 
   if (failures.length > 0) {
     throw unsafeArchive(failures.map((f) => `${f.path}: ${f.reason}`))
   }
+  return { entries }
 }

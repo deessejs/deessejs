@@ -8,6 +8,8 @@ import { renameRootPackage } from "./destination/rename-package.js"
 import { extractTarball } from "./extract/extract.js"
 import { publishOrRollback } from "./extract/publish-or-rollback.js"
 import { validateEntries } from "./extract/validate-entries.js"
+import { buildDryRunResult } from "./dry-run/build-dry-run-result.js"
+import { aborted } from "./errors/abort.js"
 import { CliError, internal } from "./errors/index.js"
 import { readGeneratedPnpmVersion } from "./install/read-generated-pnpm-version.js"
 import { recoveryCommand, recoveryCommandForNoInstall } from "./install/recovery.js"
@@ -40,6 +42,15 @@ export type RunInput = {
   projectName: string
   dir: string
   install: boolean
+  /**
+   * Plan the create without writing files, running install, or
+   * executing template code. The pipeline still resolves the
+   * source SHA, validates the archive, and (unless `--no-install`
+   * is also set) probes install prereqs. The destination is never
+   * created and the staging tempdir is cleaned before the result
+   * is returned.
+   */
+  dryRun: boolean
 }
 
 // State carried across the pipeline. Each step below takes the previous
@@ -52,9 +63,11 @@ export type RunInput = {
 // and clear keys by deleting the property — never by assigning undefined.
 type RunState = {
   input: RunInput
+  signal: AbortSignal
   sha?: string
   tarballPath?: string
   tempDir?: string
+  validatedEntries?: { path: string; size: number; mode: number }[]
   packageName?: { previous: string; current: string }
   // Resolved after publishProject. Used to build the install
   // command and the recovery. Populated by `resolvePrereqs` in
@@ -90,25 +103,33 @@ const fetchSource = async (state: RunState): Promise<void> => {
     owner: REPO_OWNER,
     repo: REPO_NAME,
     ref: REPO_REF,
+    signal: state.signal,
   })
   const tarball = await downloadTarball({
     owner: REPO_OWNER,
     repo: REPO_NAME,
     sha: state.sha,
+    signal: state.signal,
   })
   state.tarballPath = tarball.path
 }
 
-// 3. Validate then extract into a fresh staging directory.
+// 3. Validate then extract into a fresh staging directory. The
+//    root `package.json` is renamed INSIDE the staging tempdir so
+//    both the real-create path (which renames immediately before
+//    publishing) and the dry-run path (which renames before
+//    building the plan) see the same `state.packageName` value.
 const validateAndStage = async (state: RunState): Promise<void> => {
   if (!state.sha || !state.tarballPath) {
     throw internal("fetchSource did not populate sha/tarballPath")
   }
-  await validateEntries({
+  const validated = await validateEntries({
     tarballPath: state.tarballPath,
     sha: state.sha,
     repo: REPO_NAME,
+    signal: state.signal,
   })
+  state.validatedEntries = validated.entries
 
   const tempDir = resolve(state.input.dir + ".staging." + randomUUID())
   if (existsSync(tempDir)) {
@@ -116,26 +137,34 @@ const validateAndStage = async (state: RunState): Promise<void> => {
     rmSync(tempDir, { recursive: true, force: true })
   }
   mkdirSync(tempDir, { recursive: true })
+  // Stash the tempdir on state BEFORE the extract so the
+  // catch arm can clean it up if extract throws (e.g. an
+  // AbortError mid-tarball). Without this assignment the
+  // catch arm sees `state.tempDir === undefined` and
+  // leaks the directory.
+  state.tempDir = tempDir
 
   await extractTarball({
     tarballPath: state.tarballPath,
     tempDir,
     sha: state.sha,
     repo: REPO_NAME,
+    signal: state.signal,
   })
-  state.tempDir = tempDir
-}
 
-// 4. Rename the staged package.json in place, then publish the directory
-// atomically. After this step the project is on disk at `dir`.
-const publishProject = async (state: RunState): Promise<void> => {
-  if (!state.tempDir || !state.sha) {
-    throw internal("validateAndStage did not populate tempDir/sha")
-  }
   state.packageName = renameRootPackage({
     tempDir: state.tempDir,
     newName: state.input.projectName,
   })
+}
+
+// 4. Publish the staged directory atomically. After this step
+//    the project is on disk at `dir`. Skipped entirely under
+//    `--dry-run`: the dry-run branch fires before this step.
+const publishProject = async (state: RunState): Promise<void> => {
+  if (!state.tempDir || !state.sha) {
+    throw internal("validateAndStage did not populate tempDir/sha")
+  }
   // exactOptionalPropertyTypes: pass the optional `tarballPath` only when
   // present. The keys-not-undefined convention this codebase uses.
   await publishOrRollback({
@@ -157,6 +186,12 @@ const publishProject = async (state: RunState): Promise<void> => {
 // malformed, the `readGeneratedPnpmVersion` helper throws
 // `source_failed`; the catch arm at the top translates that
 // into the right JSON shape.
+//
+// Under `--dry-run` the probe and strategy are still
+// computed when the user did not pass `--no-install`: the
+// plan describes what install WOULD run. The caller (the
+// dry-run branch in `run`) is responsible for invoking
+// `resolvePrereqs` at the right point.
 const resolvePrereqs = (state: RunState): void => {
   if (!state.input.install) {
     // --no-install is offline: no probe, no strategy, no
@@ -185,7 +220,15 @@ const readGeneratedPnpmVersionSafe = (state: RunState): string => {
   if (!state.sha) {
     throw internal("resolvePrereqs called before publishProject")
   }
-  return readGeneratedPnpmVersion(state.input.dir)
+  // Under --dry-run the destination does not exist; the
+  // renamed package.json lives in the staging tempdir.
+  // Under real-create, `state.tempDir` was deleted by
+  // publishProject's `delete state.tempDir`; the function
+  // uses the destination path in that case.
+  const packageJsonDir = state.input.dryRun
+    ? (state.tempDir ?? state.input.dir)
+    : state.input.dir
+  return readGeneratedPnpmVersion(packageJsonDir)
 }
 
 // 5a. Skip-install path.
@@ -290,12 +333,62 @@ const runInstallAndBuildResult = async (
 // ─── Orchestration ──────────────────────────────────────────────────────
 
 export const run = async (input: RunInput): Promise<CreateResult> => {
-  const state: RunState = { input }
+  const abortController = new AbortController()
+  const state: RunState = { input, signal: abortController.signal }
+
+  // The first SIGINT aborts in-flight IO and triggers the
+  // cleanup path. The second SIGINT (the user's "I really
+  // mean it") is left to fall through to Node's default
+  // SIGINT handler (kill the process). `process.once` is
+  // critical: with `process.on`, a second Ctrl+C would still
+  // hit our handler and never kill the runner.
+  const onSigint = (): void => {
+    abortController.abort()
+  }
+  process.once("SIGINT", onSigint)
 
   try {
     guardInvocationAndArgs(input)
     await fetchSource(state)
     await validateAndStage(state)
+
+    if (input.dryRun) {
+      // Dry-run short-circuits before publishProject: the
+      // destination is never created, no install is run, and
+      // the staging tempdir is cleaned before we return.
+      // `resolvePrereqs` runs here (not before) so the probe
+      // sees the same PATH a real create would see, and so
+      // the warning about the bootstrap is emitted in the
+      // same place.
+      resolvePrereqs(state)
+      // The dry-run fires AFTER validateAndStage, which
+      // always populates sha, tempDir, packageName, and
+      // validatedEntries. The narrow below makes the
+      // strict-optional types accept the call without
+      // requiring the `!` non-null assertion.
+      if (
+        state.sha === undefined ||
+        state.tempDir === undefined ||
+        state.packageName === undefined ||
+        state.validatedEntries === undefined
+      ) {
+        throw internal("validateAndStage did not populate dry-run state")
+      }
+      const result = buildDryRunResult({
+        sha: state.sha,
+        destination: state.input.dir,
+        packageName: state.packageName,
+        entries: state.validatedEntries,
+        install: state.input.install,
+        prereqs: state.prereqs,
+        strategy: state.strategy,
+        installCommand: state.installCommand,
+        pnpmVersion: state.pnpmVersion,
+      })
+      cleanupState(state)
+      return result
+    }
+
     await publishProject(state)
     resolvePrereqs(state)
 
@@ -305,6 +398,21 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
     return await runInstallAndBuildResult(state)
   } catch (err) {
     cleanupState(state)
+
+    // An AbortError from any of the awaited steps is the
+    // signal-driven cancel path. Surface it as a structured
+    // `aborted` failure rather than the generic `internal`
+    // bucket the rest of the catch falls into.
+    if (isAbortError(err)) {
+      const failure: CreateFailure = {
+        ok: false,
+        mode: "create",
+        projectCreated: false,
+        source: buildSource(state.sha),
+        error: aborted(),
+      }
+      return failure
+    }
 
     if (err instanceof CliError) {
       // The source_failed cases (missing or malformed
@@ -323,5 +431,19 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
       return failure
     }
     throw internal(err instanceof Error ? err.message : String(err))
+  } finally {
+    // Remove the SIGINT listener so it does not leak into
+    // other code paths or accumulate across invocations in
+    // test contexts.
+    process.off("SIGINT", onSigint)
   }
 }
+
+// We accept any error whose name is "AbortError" (the
+// `fetch`/`tar`/`AbortController` convention) as the cancel
+// signal. The custom `AbortError` class we use in
+// `resolveTemplateSha` declares this name; the built-in
+// `DOMException("AbortError")` and `tar`'s own abort
+// exceptions all do too.
+const isAbortError = (err: unknown): boolean =>
+  err instanceof Error && err.name === "AbortError"

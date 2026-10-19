@@ -8,6 +8,14 @@ export type ResolveTemplateShaArgs = {
   owner: string
   repo: string
   ref: string
+  /**
+   * Optional signal forwarded to the spawned `git` process.
+   * When the signal aborts, the in-flight `ls-remote` is
+   * killed and the returned promise rejects with an
+   * `AbortError`. The pipeline translates that to a
+   * `CreateFailure` with `error.code === "aborted"`.
+   */
+  signal?: AbortSignal
 }
 
 // `git ls-remote` prints one line per ref: "<sha>\t<ref>\n". We query
@@ -23,15 +31,39 @@ const parseLsRemoteFirstLine = (stdout: string): string | null => {
   return null
 }
 
-const execFileP = (cmd: string, args: string[]): Promise<string> =>
+class AbortError extends Error {
+  public readonly name = "AbortError"
+}
+
+const execFileP = (
+  cmd: string,
+  args: string[],
+  signal?: AbortSignal,
+): Promise<string> =>
   new Promise<string>((resolveFn, rejectFn) => {
     // execFile resolves the command via PATH, which is the documented
     // behaviour we rely on. We pass shell:false so no shell interpolation
     // of args can occur.
-    execFile(cmd, args, { shell: false, windowsHide: true }, (err, out) => {
-      if (err) rejectFn(err)
-      else resolveFn(out)
-    })
+    const child = execFile(
+      cmd,
+      args,
+      { shell: false, windowsHide: true },
+      (err, out) => {
+        if (err) rejectFn(err)
+        else resolveFn(out)
+      },
+    )
+    if (signal !== undefined) {
+      const onAbort = (): void => {
+        child.kill("SIGTERM")
+        rejectFn(new AbortError("resolveTemplateSha aborted"))
+      }
+      if (signal.aborted) {
+        onAbort()
+        return
+      }
+      signal.addEventListener("abort", onAbort, { once: true })
+    }
   })
 
 /**
@@ -43,10 +75,10 @@ const execFileP = (cmd: string, args: string[]): Promise<string> =>
 export const resolveTemplateSha = async (
   args: ResolveTemplateShaArgs,
 ): Promise<string> => {
-  const { owner, repo, ref } = args
+  const { owner, repo, ref, signal } = args
   const url = `https://github.com/${owner}/${repo}`
 
-  const stdout = await execFileP("git", ["ls-remote", url, ref])
+  const stdout = await execFileP("git", ["ls-remote", url, ref], signal)
 
   const sha = parseLsRemoteFirstLine(stdout)
   if (sha === null) {
