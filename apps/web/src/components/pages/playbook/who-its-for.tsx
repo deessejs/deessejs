@@ -1,52 +1,106 @@
+import { Section } from "@/components/marketing/section"
+
+interface AudienceEntry {
+  /** Stable key for React; matches the order in the source list. */
+  id: string
+  /** Short descriptor above the takeaway. */
+  eyebrow: string
+  /** Verb-first takeaway, phrased as a statement about the reader. */
+  takeaway: string
+  /** One-paragraph description of what the trait looks like. */
+  body: string
+}
+
+/**
+ * Three reader profiles, in the same data shape as
+ * `content/toc.ts` (eyebrow + takeaway + body). Placeholder
+ * copy pending real audience research.
+ */
+const AUDIENCE: ReadonlyArray<AudienceEntry> = [
+  {
+    id: "a",
+    eyebrow: "Still in the code",
+    takeaway: "You write code today; you expect to keep doing so.",
+    body: "You ship the work, not just review it. The playbook assumes you read the diff and you own the result.",
+  },
+  {
+    id: "b",
+    eyebrow: "Briefs, not magic",
+    takeaway:
+      "You treat agents as a fast junior who needs clear briefs.",
+    body: "The agent is a collaborator who needs a clear task description, not a replacement for engineering judgement. You write the brief and the agent does the typing.",
+  },
+  {
+    id: "c",
+    eyebrow: "Software that ages",
+    takeaway: "You care about what the codebase looks like next month.",
+    body: "You optimise for the codebase you will read next month, not just the demo that runs today. Testability, readability, and clean seams are part of the deliverable.",
+  },
+] as const
+
 /**
  * /playbook "Who it's for" section.
  *
- * Names the audience concretely, without inventing personas or
- * reaching for marketing superlatives. The audience is dev-tool
- * native: developers who already use AI coding agents and want
- * their software to age well.
+ * Same recipe as the homepage's ForWho and the playbook's own
+ * "What you'll find" section: `<Section>` is the grid container,
+ * the header spans all three columns with eyebrow + h2 +
+ * description, the three cells are plain divs with ForWho's
+ * label + h3 + body typography. No Card primitive, no rounded
+ * corners, transparent background, no per-cell "Learn more" link.
  *
- * Restrained copy: bullets, no banner icons, no badges.
+ * The intro paragraph becomes the header description, the three
+ * bullets become three cells (one per profile), and the closing
+ * "out of scope" note sits in a small footer below the section
+ * so the page rhythm keeps its bottom border before the FinalCta.
+ *
+ * The body carries `pb-6` to provide the bottom padding that
+ * ForWho gets from its "Learn more" link, which is intentionally
+ * absent here.
  */
 export function WhoItsFor() {
   return (
-    <section
-      aria-labelledby="playbook-who-heading"
-      className="border-b border-border px-6 py-16 md:py-20 lg:py-24"
-    >
-      <div className="mx-auto flex max-w-5xl flex-col gap-6">
-        <h2
-          id="playbook-who-heading"
-          className="text-heading-32 tracking-tight"
-        >
-          Who it&apos;s for
-        </h2>
-        <p className="text-copy-16 leading-7 text-foreground [&:not(:first-child)]:mt-0">
-          The playbook is for developers who already build with AI coding
-          agents (Claude Code, Codex, Cursor, open-source equivalents)
-          and want the software they ship to stay readable, testable,
-          and maintainable after the first commit.
-        </p>
-        <ul className="flex flex-col gap-2 pl-4 text-copy-16 leading-7 text-muted-foreground">
-          <li className="list-disc">
-            You write code today; you expect to keep doing so.
-          </li>
-          <li className="list-disc">
-            You treat agents as a fast junior who needs clear briefs, not
-            as a replacement for engineering judgement.
-          </li>
-          <li className="list-disc">
-            You care about what the codebase looks like next month, not
-            just what runs today.
-          </li>
-        </ul>
-        <p className="text-copy-16 leading-7 text-foreground [&:not(:first-child)]:mt-0">
-          The guide does not cover prompting theory, model comparison, or
-          how to swap providers. The premise is that you already use an
-          agent, and the friction is in the project shape it leaves
-          behind.
+    <>
+      <Section className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border">
+        <div className="flex flex-col col-span-1 md:col-span-3 border-0">
+          <div className="flex flex-col gap-2 p-6 border-b border-border">
+            <p className="text-label-13 text-muted-foreground">
+              Who it&apos;s for
+            </p>
+            <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+              You build with agents today
+            </h2>
+            <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
+              You already use Claude Code, Codex, Cursor, or an
+              open-source equivalent, and you want the software you
+              ship to stay readable, testable, and maintainable after
+              the first commit.
+            </p>
+          </div>
+        </div>
+        {AUDIENCE.map((entry) => (
+          <div
+            key={entry.id}
+            className="flex flex-col transition-colors hover:bg-accent/40"
+          >
+            <p className="text-label-13 text-muted-foreground p-6 pb-0">
+              {entry.eyebrow}
+            </p>
+            <h3 className="text-heading-20 tracking-tight text-foreground !m-0 px-6 pt-2">
+              {entry.takeaway}
+            </h3>
+            <p className="text-copy-14 text-muted-foreground leading-6 px-6 pt-2 flex-1 pb-6 [&:not(:first-child)]:mt-0">
+              {entry.body}
+            </p>
+          </div>
+        ))}
+      </Section>
+      <div className="border-b border-border px-6 py-10 md:py-12">
+        <p className="mx-auto max-w-5xl text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+          Not in scope: prompting theory, model comparison, provider
+          swaps. The premise is that you already use an agent, and the
+          friction is in the project shape it leaves behind.
         </p>
       </div>
-    </section>
+    </>
   )
 }
