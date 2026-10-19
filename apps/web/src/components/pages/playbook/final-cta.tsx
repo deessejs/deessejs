@@ -27,7 +27,7 @@ export function FinalCta() {
           Get the playbook
         </h2>
         <p className="text-muted-foreground text-copy-18 leading-7 max-w-2xl text-balance [&:not(:first-child)]:mt-0">
-          You'll get one email with the PDF. If you opt in to updates,
+          You&apos;ll get one email with the PDF. If you opt in to updates,
           you may also receive occasional messages about DeesseJS.
           Unsubscribe any time from the link at the bottom of any
           email we send.

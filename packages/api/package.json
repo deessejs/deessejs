@@ -41,6 +41,7 @@
     "@workspace/auth": "workspace:*",
     "@workspace/contracts": "workspace:*",
     "@workspace/database": "workspace:*",
+    "@workspace/email": "workspace:*",
     "@workspace/env": "workspace:*",
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",

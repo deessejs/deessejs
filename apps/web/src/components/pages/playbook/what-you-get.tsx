@@ -24,7 +24,7 @@ export function WhatYouGet() {
           id="playbook-what-heading"
           className="text-heading-32 tracking-tight"
         >
-          What you'll find in the guide
+          What you&apos;ll find in the guide
         </h2>
         <ol className="flex flex-col gap-4 pl-7 text-copy-16 leading-7 text-foreground [&:not(:first-child)]:mt-0 [counter-reset:playbook]">
           {PLAYBOOK_TOC.map((entry) => (

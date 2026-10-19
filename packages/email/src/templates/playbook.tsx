@@ -44,7 +44,7 @@ export function PlaybookDownload({
         </Button>
       </Section>
       <Text className="text-sm text-gray-600">
-        If the button doesn't work, copy this link into your browser:
+        If the button doesn&apos;t work, copy this link into your browser:
         <br />
         <a href={pdfUrl} className="text-brand underline">
           {pdfUrl}

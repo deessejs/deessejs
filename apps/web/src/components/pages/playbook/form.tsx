@@ -177,7 +177,7 @@ export function Form() {
           We use your email to send the playbook. If you opt in to
           updates, your contact is added to our Resend Audience, where
           you can update your preferences or unsubscribe at any time.
-          We don't share your address with third parties. Read our{" "}
+          We don&apos;t share your address with third parties. Read our{" "}
           <Link href="/privacy" className="underline underline-offset-4">
             privacy policy
           </Link>{" "}

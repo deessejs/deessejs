@@ -19,7 +19,7 @@ export function WhoItsFor() {
           id="playbook-who-heading"
           className="text-heading-32 tracking-tight"
         >
-          Who it's for
+          Who it&apos;s for
         </h2>
         <p className="text-copy-16 leading-7 text-foreground [&:not(:first-child)]:mt-0">
           The playbook is for developers who already build with AI coding
