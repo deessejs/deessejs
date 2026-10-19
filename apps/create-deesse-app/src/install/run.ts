@@ -137,6 +137,47 @@ export const runInstall = async (args: RunInstallArgs): Promise<RunInstallResult
     // resolving. On Windows, we wait a short settle
     // period for descendants to die after taskkill.
     let pollTimer: ReturnType<typeof setTimeout> | null = null
+    // Set to true once the promise has been resolved or
+    // rejected. Prevents a late `error` event from
+    // triggering a second resolution. The spawn-failure
+    // case fires `error` without ever firing `exit`, so
+    // we route the failure through `installFailed` and
+    // short-circuit any other listener.
+    let settled = false
+
+    // The TypeScript type of `child.pid` is
+    // `number | undefined`. Node assigns the pid
+    // synchronously; on spawn failure (ENOENT etc.) the
+    // pid is undefined and the `error` event fires
+    // asynchronously. We narrow to a local const, but
+    // the kill paths below guard on `pid !== undefined`
+    // so a synchronous-spawn-failure does not throw a
+    // `TypeError` before the `error` listener has a
+    // chance to reject the promise.
+    const pid = child.pid
+
+    // The `error` listener MUST be attached before any
+    // other code that may resolve the promise. If
+    // `crossSpawn.spawn` fails synchronously (ENOENT,
+    // EACCES, etc.), Node emits an `error` event on the
+    // next tick; without a listener, the event becomes
+    // an unhandled error and Node terminates the
+    // process. We register the listener FIRST so the
+    // failure is converted to an `install_failed`
+    // rejection regardless of what other code paths
+    // run after the spawn.
+    child.on("error", () => {
+      // ENOENT etc. — the binary isn't installed. Treat
+      // as install failure. The `settled` flag prevents
+      // a late `error` from clobbering a real `exit`-
+      // driven resolution.
+      if (settled) return
+      settled = true
+      if (signal) signal.removeEventListener("abort", onAbort)
+      clearKillTimer()
+      clearPollTimer()
+      rejectFn(installFailed(managerId, null))
+    })
 
     child.stdout?.on("data", (chunk: Buffer | string) => {
       stdout += typeof chunk === "string" ? chunk : chunk.toString("utf8")
@@ -148,21 +189,13 @@ export const runInstall = async (args: RunInstallArgs): Promise<RunInstallResult
     // Kill the install child and its entire descendant
     // tree. See the long-form docstring above for the
     // platform rationale.
-    //
-    // The TypeScript type of `child.pid` is
-    // `number | undefined`; the `pid` is assigned by the
-    // underlying `spawn` synchronously and is never
-    // undefined in practice. We narrow with a local
-    // helper so the kill paths below can use it without
-    // repeating the check.
-    const pid = child.pid
-    if (pid === undefined) {
-      // Spawn failed before assigning a pid — nothing
-      // to kill. The 'error' listener will fire
-      // momentarily; let it handle the resolution.
-      return
-    }
     const killTree = (sig: NodeJS.Signals | "SIGKILL"): void => {
+      if (pid === undefined) {
+        // Spawn failed; no tree to kill. The `error`
+        // listener (registered below) will fire and
+        // route the failure.
+        return
+      }
       if (process.platform === "win32") {
         // Windows: `child.kill()` calls `TerminateProcess`
         // on the immediate child. Then walk the tree with
@@ -211,6 +244,7 @@ export const runInstall = async (args: RunInstallArgs): Promise<RunInstallResult
     // `runInstall` resolve.
     const isGroupEmpty = (): boolean => {
       if (process.platform === "win32") return true
+      if (pid === undefined) return true // spawn never produced a pid
       try {
         process.kill(-pid, 0)
       } catch (err) {
@@ -266,14 +300,6 @@ export const runInstall = async (args: RunInstallArgs): Promise<RunInstallResult
         signal.addEventListener("abort", onAbort, { once: true })
       }
     }
-
-    child.on("error", () => {
-      // ENOENT etc. — the binary isn't installed. Treat as install failure.
-      if (signal) signal.removeEventListener("abort", onAbort)
-      clearKillTimer()
-      clearPollTimer()
-      rejectFn(installFailed(managerId, null))
-    })
 
     // The post-exit poll: only used on the abort path.
     // After the immediate child exits, we keep waiting

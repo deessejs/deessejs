@@ -4,6 +4,7 @@ import { join } from "node:path"
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { installFailed } from "../../src/errors/index.js"
 import { runInstall } from "../../src/install/run.js"
 import { pnpm } from "../../src/pm/pnpm.js"
 
@@ -268,6 +269,55 @@ describe("runInstall — AbortSignal handling", () => {
       // Best-effort.
     }
   }, 20_000)
+
+  // When the spawn itself fails (ENOENT, EACCES, etc.),
+  // Node emits an `error` event on the ChildProcess.
+  // Without a listener, the event becomes an unhandled
+  // error and the process is terminated. The CLI's
+  // `runInstall` MUST convert the failure into a
+  // rejected promise carrying `installFailed`, so the
+  // pipeline can render the JSON result.
+  //
+  // We trigger a spawn failure by pointing `bin` at a
+  // path that does not exist. `crossSpawn.spawn`
+  // synchronously creates the ChildProcess with
+  // `pid === undefined`, then emits `error` on the next
+  // tick. The `error` listener registered at the top of
+  // `runInstall` catches the event and rejects.
+  it("rejects with installFailed when the spawn itself fails (ENOENT)", async () => {
+    // A clearly-nonexistent path. Use a randomized
+    // segment so the test is robust against the (very
+    // unlikely) case where a real file with this name
+    // exists on the runner.
+    const ghostPath = join(
+      tmpdir(),
+      `cda-ghost-bin-${Date.now()}-${Math.random().toString(36).slice(2)}.cmd`,
+    )
+    const command = {
+      bin: ghostPath,
+      args: [],
+    }
+    let rejection: unknown
+    try {
+      await runInstall({
+        command,
+        managerId: "pnpm",
+        cwd: process.cwd(),
+      })
+    } catch (err) {
+      rejection = err
+    }
+    expect(rejection).toBeDefined()
+    // The rejection is a `CliError` with code
+    // "install_failed", produced by the `installFailed`
+    // factory. The pipeline catches this and renders
+    // the JSON.
+    expect(rejection).toBeInstanceOf(Error)
+    const cliErr = rejection as { code?: string; message?: string }
+    expect(cliErr.code).toBe("install_failed")
+    // Sanity: the factory produces the same shape.
+    expect(installFailed("pnpm", null).code).toBe("install_failed")
+  })
 })
 
 // True when a process with the given PID is alive. On
