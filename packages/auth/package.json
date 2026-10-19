@@ -28,7 +28,7 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "auth:generate": "auth generate --output ../../packages/database/src/schema/.auth-gen-probe.ts"
+    "auth:generate": "auth generate --config src/auth.ts --adapter drizzle --dialect postgresql --output ../../packages/database/src/schema/auth.ts --yes"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "catalog:",
