@@ -31,11 +31,13 @@ The cover thumbnail has landed at
 1. Hero (`Playbook.Hero`): two columns: H1, lead, and the signup
    form on the left; the cover mockup on the right
 2. Reading (`Playbook.Reading`): the three most recent blog posts
+3. Final CTA (`Playbook.FinalCta`): the shared closing block, the
+   same copy and actions as the homepage
 
-The Problem, What you'll find, Who it's for, and Final CTA were
-deleted along with `content/toc.ts`, the chapter list that fed the
-third of them. Their copy is intact in git history and the
-components README records what each one contained.
+The Problem, What you'll find, and Who it's for were deleted along
+with `content/toc.ts`, the chapter list that fed the third of them.
+Their copy is intact in git history and the components README
+records what each one contained.
 
 With the FinalCta gone the page carries a single form, so the two
 instances that shared hardcoded ids (the second checkbox scrolled

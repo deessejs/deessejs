@@ -18,13 +18,14 @@ collection of parts"). Today the composite is page-local.
 |---|---|
 | `hero.tsx` | Two-column hero: H1, lead, and form on the left, cover mockup on the right |
 | `reading.tsx` | The three most recent blog posts: ForWho section chrome wrapping `PostCard` |
+| `final-cta.tsx` | Closing 2-col block via the shared `FinalCtaShell`, same copy as the homepage |
 | `form.tsx` | `"use client"`: RHF + Zod + orpc signup |
 
 The `index.tsx` aggregates them under the `Playbook` namespace.
 
 ## Removed sections
 
-The page previously carried four more sections, all following the
+The page previously carried three more sections, all following the
 homepage `ForWho` grid recipe. They were deleted, not just
 unrendered, along with the content that fed them:
 
@@ -33,7 +34,6 @@ unrendered, along with the content that fed them:
 | `problem.tsx` | Three inline frictions: read, test, change |
 | `what-you-get.tsx` | `content/toc.ts` `PLAYBOOK_TOC` |
 | `who-its-for.tsx` | Three inline audience profiles |
-| `final-cta.tsx` | A second mount of `Form` |
 | `content/toc.ts` | Six chapter takeaways plus `PLAYBOOK_LEAD` |
 
 `PLAYBOOK_LEAD` was not lost with the file: it now lives in

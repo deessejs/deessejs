@@ -13,10 +13,10 @@ import { Playbook } from "@/components/pages/playbook"
  *   live.
  *
  * Layout:
- *   Two sections, full-bleed like every other marketing page:
+ *   Three sections, full-bleed like every other marketing page:
  *   the two-column hero carrying the H1, the lead, the signup form,
- *   and the cover, then a closing block of the three most recent
- *   blog posts. The Problem, WhatYouGet, WhoItsFor, and FinalCta
+ *   and the cover; then the three most recent blog posts; then the
+ *   shared Final CTA. The Problem, WhatYouGet, and WhoItsFor
  *   sections were removed; see the page README for what was
  *   removed and how to bring it back.
  *
@@ -68,6 +68,7 @@ export default function PlaybookPage() {
     <>
       <Playbook.Hero />
       <Playbook.Reading />
+      <Playbook.FinalCta />
     </>
   )
 }
