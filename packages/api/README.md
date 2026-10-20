@@ -69,6 +69,7 @@ pnpm lint
 - This is the server-side composition boundary for applications. App code calls its typed procedures through clients; it does not import runtime authentication or database implementations directly. The API mounts auth endpoints and coordinates database-backed operations.
 - The registry rows are static, the registry data is live: the license, the stars, the README and the last push come from GitHub at request time. A row without a matching public repository makes the endpoint fail loudly with a 503.
 - The Better Auth mount has to stay aligned with `AUTH_BASE_PATH` in `@workspace/auth`. A mismatch makes every auth URL return 404 in production.
+- If an API feature needs to send email, delegate delivery and templates to [`@workspace/email`](../email/README.md). Do not add a provider client or template to the API; the API guide describes the ownership boundary.
 
 ## Related
 
