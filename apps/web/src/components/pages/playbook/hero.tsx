@@ -37,6 +37,13 @@ const LEAD =
  * visually and the mockup needs no light plate to stay legible in
  * the dark theme. Re-measure with an alpha scan if the cover is
  * re-exported at different bounds.
+ *
+ * `sizes` below therefore has to name the width of the *image
+ * element*, which the 188.21% scale makes larger than the wrapper
+ * it is cropped inside: 380px of artwork renders as a 715px-wide
+ * image. Declaring the wrapper's width makes the browser under-
+ * fetch by that same ratio, and it scales the raster up by 1.73x
+ * on a 2x display. Each entry is the wrapper width times 1.8821.
  */
 const COVER = {
   src: "/playbook/cover.png",
@@ -102,7 +109,7 @@ export function Hero() {
               alt={COVER.alt}
               width={COVER.frame.width}
               height={COVER.frame.height}
-              sizes="(max-width: 640px) 300px, (max-width: 1024px) 340px, 380px"
+              sizes="(max-width: 640px) 565px, (max-width: 1024px) 640px, 715px"
               className="absolute max-w-none"
               style={COVER.crop}
               priority
