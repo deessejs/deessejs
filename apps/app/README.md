@@ -30,7 +30,7 @@ The route guard is `proxy.ts`. It resolves the session through the API and appli
 - `lib/settings-paths.ts` owns the account settings route constants.
 - `lib/admin-auth.ts` owns the role check used by the administration area.
 
-Use `lib/auth-client.ts` for browser authentication and `lib/orpc.ts` for API operations. App code must not import the auth singleton or database package. Server-side auth reads should go through an app-owned HTTP client that forwards the request headers to the exposed auth endpoint. Business operations use the typed API client; database access and server-side domain rules stay behind the server packages.
+Use `lib/auth-client.ts` for browser authentication and `lib/orpc.ts` for API operations. The target boundary is that app code does not import the auth singleton or database package. `lib/admin-auth.ts` and the device page still contain legacy direct session reads, and the sessions table imports branded token helpers from `@workspace/auth/types`; these are migration targets, not patterns to extend. New server-side auth reads should go through an app-owned HTTP client that forwards request headers to the exposed auth endpoint. Business operations use the typed API client; database access and server-side domain rules stay behind the server packages.
 
 ## Commands
 
