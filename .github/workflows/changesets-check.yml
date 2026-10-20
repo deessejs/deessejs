@@ -1,12 +1,32 @@
 name: Changesets check
 
 # Verify that any PR touching CLI-relevant paths also includes a changeset.
-# This is the senior-pattern contribution gate: contributors add a changeset
-# if their PR changes the CLI surface, and CI enforces it.
+# This is the contribution gate: contributors add a changeset if their PR
+# changes a published package, and CI enforces it.
 #
 # This check is a required status check on the branch protection of
-# staging and main. The path filter covers the same surface
-# that triggers cli-preview.yml (apps/cli, packages/contracts, packages/api).
+# staging and main. The path filter covers the same surface that triggers
+# cli-preview.yml (apps/cli, apps/create-deesse-app, packages/contracts,
+# packages/api).
+#
+# History worth knowing before changing anything here: this job reported
+# success for every pull request since it was added, without ever running a
+# validation step. Three defects, all fixed in this revision.
+#
+#   1. `git fetch origin "$BASE" --depth=1` made the base ref shallow, so the
+#      three-dot diff could not find a merge base. `git diff` exited non-zero,
+#      `|| true` swallowed it, and the step concluded "no files changed".
+#   2. The frontmatter matcher compared a quoted package name against a set of
+#      unquoted ones, so it matched nothing. Every changeset written in the
+#      documented format was reported invalid.
+#   3. It required *every* changeset to name a *published* package. A changeset
+#      for a private workspace package such as `web` or `@workspace/api` is
+#      perfectly valid, so repairing 1 and 2 alone would have blocked every
+#      future PR with an unrelated pre-existing changeset.
+#
+# Syntax and coverage are therefore two separate questions here: syntax applies
+# to every changeset this PR adds or modifies, and coverage requires that at
+# least one of them names a package that is actually published.
 
 on:
   pull_request:
@@ -20,76 +40,178 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        # Full history is required: both the path diff and the exemption
+        # content checks run `git diff <base-sha>...<head-sha>`.
         with: { fetch-depth: 0 }
 
       - name: Detect changes to CLI-relevant paths
         id: changed
         run: |
-          # Compare PR head against the merge base. If any diff touched the
-          # CLI-relevant paths (apps/cli/**, packages/contracts/**,
-          # packages/api/**), a changeset is required. This matches the
-          # surface that cli-preview.yml triggers on.
-          BASE=${{ github.event.pull_request.base.ref }}
-          HEAD=${{ github.event.pull_request.head.sha }}
-          git fetch origin "$BASE" --depth=1
-          TOUCHED=$(git diff --name-only "origin/$BASE...$HEAD" \
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          # The checkout above fetched the full history, so both commits are
+          # already local. Diffing against the base sha supplied by the event
+          # needs no remote ref and no fetch, so there is no merge base to
+          # lose. The previous revision fetched the base branch at depth 1
+          # immediately before the diff, which is what broke it.
+          if ! CHANGED=$(git diff --name-only "$BASE_SHA...$HEAD_SHA"); then
+            echo "::error::Could not diff $BASE_SHA...$HEAD_SHA."
+            echo "::error::Refusing to report 'no files changed' when the diff itself failed."
+            exit 1
+          fi
+
+          printf '%s\n' "$CHANGED" > "$RUNNER_TEMP/changed-files.txt"
+
+          # Changesets this PR adds or modifies. Scope is deliberate: the
+          # .changeset directory accumulates across many PRs and is only
+          # emptied at release time, so validating the whole directory would
+          # let one malformed file block every future PR forever.
+          git diff --diff-filter=ACMR --name-only "$BASE_SHA...$HEAD_SHA" \
+            -- '.changeset/*.md' \
+            | grep -v '^.changeset/README\.md$' \
+            > "$RUNNER_TEMP/pr-changesets.txt" || true
+
+          TOUCHED=$(printf '%s\n' "$CHANGED" \
             | grep -E '^(apps/cli/|apps/create-deesse-app/|packages/contracts/|packages/api/)/' \
             || true)
+
           if [ -n "$TOUCHED" ]; then
             echo "touched=true" >> "$GITHUB_OUTPUT"
             echo "Files changed under CLI-relevant paths:"
             echo "$TOUCHED"
           else
             echo "touched=false" >> "$GITHUB_OUTPUT"
-            echo "No files changed under CLI-relevant paths — changeset not required."
+            echo "No files changed under CLI-relevant paths. Changeset not required."
           fi
 
-      - name: Verify changeset is present
-        if: steps.changed.outputs.touched == 'true'
-        run: |
-          COUNT=$(ls .changeset/*.md 2>/dev/null | wc -l)
-          if [ "$COUNT" -le 1 ]; then
-            # Only config.json is always present; otherwise there should be
-            # at least one *.md changeset file.
-            echo "::error::CLI-relevant paths were modified but no changeset file was added."
-            echo "::error::Add a changeset under .changeset/ describing the bump type."
-            echo "::error::See .changeset/README.md for the format."
-            exit 1
+          echo "Changesets added or modified by this PR:"
+          if [ -s "$RUNNER_TEMP/pr-changesets.txt" ]; then
+            cat "$RUNNER_TEMP/pr-changesets.txt"
+          else
+            echo "(none)"
           fi
-          echo "Found $COUNT file(s) under .changeset/ — changeset present."
 
-      # Validate the frontmatter of every .changeset/*.md file. We only need
-      # to catch the three failure modes the team has actually hit:
-      #   - missing frontmatter (file starts with a non-`---` line)
-      #   - missing package entry (`"<pkg>": <bump>` not present)
-      #   - invalid bump type (anything other than patch | minor | major)
-      # Catching these here means a malformed changeset fails the PR
-      # instead of `pnpm changeset version` on `main`, which would block
-      # the @latest publish.
-      #
-      # The list of public packages is derived from the repo at PR time by
-      # scanning every package.json under apps/ and packages/ for
-      # `private !== true`. This makes the validator zero-config for new
-      # public packages (issue #225 adds create-deesse-app).
-      #
-      # We deliberately do NOT add a YAML parser dependency: this stays
-      # dependency-free and avoids touching pnpm-lock.yaml (which is a
-      # path trigger on cli-preview.yml and cli-publish-verify.yml).
-      - name: Validate changeset frontmatter
-        if: steps.changed.outputs.touched == 'true'
+      # The auto-generated Version Packages pull request is exempt: it touches
+      # both manifests and it consumes the changesets it was built from, so it
+      # can never satisfy the checks below. The exemption is decided on the
+      # pull request author and on the content of the diff, never on a branch
+      # name or a title, because both of those are chosen by whoever opens the
+      # pull request.
+      - name: Detect the auto-generated Version Packages pull request
+        id: versionpr
         run: |
-          set -eu
+          set -euo pipefail
+          if bash .github/scripts/is-version-package-pr.sh \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}" \
+            "${{ github.event.pull_request.head.repo.full_name }}" \
+            "${{ github.repository }}" \
+            "${{ github.event.pull_request.user.login }}" \
+            "${{ vars.VERSION_PACKAGES_BOT_LOGIN }}" \
+            "${{ github.event.pull_request.head.ref }}"; then
+            echo "exempt=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exempt=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Coverage: this PR touches a published package's paths, so this PR must
+      # itself name that package in one of its changesets. Pre-existing
+      # changesets left in the directory by earlier PRs do not count, and a
+      # changeset for a private package does not satisfy this gate.
+      - name: Verify changeset coverage
+        if: steps.changed.outputs.touched == 'true' && steps.versionpr.outputs.exempt != 'true'
+        env:
+          PR_CHANGESETS: ${{ runner.temp }}/pr-changesets.txt
+          CHANGED_FILES: ${{ runner.temp }}/changed-files.txt
+        run: |
+          set -euo pipefail
           node -e '
             const fs = require("node:fs");
             const path = require("node:path");
-            const VALID = new Set(["patch", "minor", "major"]);
-            const errors = [];
+            const readList = (file) =>
+              fs.existsSync(file) ? fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean) : [];
 
-            // Build the set of public package names by scanning every
-            // workspace member. Skip private ones.
-            const PUB_PKGS = new Set();
-            const scanDirs = ["apps", "packages"];
-            for (const dir of scanDirs) {
+            const changed = readList(process.env.CHANGED_FILES);
+            const changesets = readList(process.env.PR_CHANGESETS);
+
+            // Every public package this PR actually touched.
+            const touched = [];
+            for (const dir of ["apps", "packages"]) {
+              if (!fs.existsSync(dir)) continue;
+              for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                if (!entry.isDirectory()) continue;
+                const relDir = dir + "/" + entry.name;
+                const pkgPath = path.join(dir, entry.name, "package.json");
+                if (!fs.existsSync(pkgPath)) continue;
+                try {
+                  const p = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+                  if (!p || !p.name || p.private === true) continue;
+                  if (changed.some((f) => f === relDir + "/package.json" || f.startsWith(relDir + "/"))) {
+                    touched.push(p.name);
+                  }
+                } catch {}
+              }
+            }
+
+            if (touched.length === 0) {
+              console.log("No published package was modified by this PR.");
+              process.exit(0);
+            }
+            if (changesets.length === 0) {
+              console.error("::error::This PR modifies " + touched.join(", ") + " but adds no changeset.");
+              console.error("::error::Add a changeset under .changeset/ describing the bump type.");
+              console.error("::error::See .changeset/README.md for the format.");
+              process.exit(1);
+            }
+
+            const unquote = (s) => s.replace(/^["\x27]|["\x27]$/g, "").trim();
+            const named = new Set();
+            for (const file of changesets) {
+              const body = fs.readFileSync(file, "utf8");
+              const m = body.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+              if (!m) continue;
+              for (const line of m[1].split(/\r?\n/)) {
+                const colonAt = line.indexOf(":");
+                if (colonAt < 0) continue;
+                named.add(unquote(line.slice(0, colonAt)));
+              }
+            }
+
+            const uncovered = touched.filter((name) => !named.has(name));
+            if (uncovered.length) {
+              console.error("::error::This PR modifies " + uncovered.join(", ") + " with no changeset naming it.");
+              console.error("::error::A changeset for a private package does not satisfy this gate.");
+              process.exit(1);
+            }
+            console.log("Changeset coverage ok for: " + touched.join(", "));
+          '
+
+      # Syntax: every changeset this PR adds or modifies must have frontmatter
+      # and at least one `<known-package>: patch|minor|major` entry. A private
+      # workspace package is a valid target here; an unknown package name is
+      # almost always a typo and is reported.
+      #
+      # We deliberately do NOT add a YAML parser dependency: this stays
+      # dependency-free and avoids touching pnpm-lock.yaml.
+      - name: Validate changeset frontmatter
+        if: steps.changed.outputs.touched == 'true' && steps.versionpr.outputs.exempt != 'true'
+        env:
+          PR_CHANGESETS: ${{ runner.temp }}/pr-changesets.txt
+        run: |
+          set -euo pipefail
+          PR_CHANGESETS="$RUNNER_TEMP/pr-changesets.txt" node -e '
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const VALID = new Set(["patch", "minor", "major"]);
+            const listFile = process.env.PR_CHANGESETS;
+            const files = fs.existsSync(listFile)
+              ? fs.readFileSync(listFile, "utf8").split(/\r?\n/).filter(Boolean)
+              : [];
+
+            const KNOWN = new Set();
+            for (const dir of ["apps", "packages"]) {
               if (!fs.existsSync(dir)) continue;
               for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
                 if (!entry.isDirectory()) continue;
@@ -97,45 +219,61 @@ jobs:
                 if (!fs.existsSync(pkgPath)) continue;
                 try {
                   const p = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-                  if (p && p.name && p.private !== true) PUB_PKGS.add(p.name);
+                  if (p && p.name) KNOWN.add(p.name);
                 } catch {}
               }
             }
 
-            const files = fs.readdirSync(".changeset").filter(f => f.endsWith(".md"));
-            for (const f of files) {
-              const fp = path.join(".changeset", f);
-              const body = fs.readFileSync(fp, "utf8");
+            const unquote = (s) => s.replace(/^["\x27]|["\x27]$/g, "").trim();
+            const errors = [];
+            const warnings = [];
+
+            for (const file of files) {
+              const base = path.basename(file);
+              const body = fs.readFileSync(file, "utf8");
               const m = body.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
               if (!m) {
-                errors.push(`${f}: missing or malformed frontmatter (must start with --- and end with ---)`);
+                errors.push(`${base}: missing or malformed frontmatter (must start and end with ---)`);
                 continue;
               }
-              const [, front] = m;
-              // Find any top-level "<pkg>": <bump> entry whose pkg is public.
-              // Use a per-line scan instead of a regex to avoid the YAML/heredoc
-              // escaping pitfalls that a constructed regex would introduce.
-              let matched = false;
-              for (const line of front.split(/\r?\n/)) {
+              // Per-line scan rather than a constructed regex: a built pattern
+              // collides with shell and heredoc escaping here.
+              let ok = false;
+              const unknown = [];
+              const badBump = [];
+              for (const line of m[1].split(/\r?\n/)) {
                 const colonAt = line.indexOf(":");
                 if (colonAt < 0) continue;
-                const name = line.slice(0, colonAt).trim();
-                const bump = line.slice(colonAt + 1).trim();
-                if (PUB_PKGS.has(name) && VALID.has(bump)) {
-                  matched = true;
-                  break;
+                const name = unquote(line.slice(0, colonAt));
+                const bump = unquote(line.slice(colonAt + 1));
+                if (!KNOWN.has(name)) {
+                  unknown.push(name);
+                  continue;
                 }
+                if (!VALID.has(bump)) {
+                  badBump.push(`${name}: ${bump}`);
+                  continue;
+                }
+                ok = true;
               }
-              if (!matched) {
-                const list = [...PUB_PKGS].sort().join(", ");
-                errors.push(`${f}: frontmatter missing a valid \`<pkg>: patch|minor|major\` entry (public packages are: ${list})`);
+              if (!ok) {
+                const detail = [];
+                if (badBump.length) detail.push(`invalid bump type (${badBump.join(", ")})`);
+                if (unknown.length) detail.push(`unknown package name(s) (${[...new Set(unknown)].join(", ")})`);
+                errors.push(
+                  `${base}: frontmatter has no \`<known-package>: patch|minor|major\` entry` +
+                    (detail.length ? `; found ${detail.join("; ")}` : "")
+                );
+              } else if (unknown.length) {
+                warnings.push(`${base}: ignored unknown package name(s) ${[...new Set(unknown)].join(", ")}`);
               }
             }
+
+            for (const w of warnings) console.log("::warning::" + w);
             if (errors.length) {
-              console.error("::error::Changeset frontmatter validation failed:");
-              for (const e of errors) console.error(`::error::  - ${e}`);
+              for (const e of errors) console.error("::error::" + e);
               console.error("::error::See .changeset/README.md for the format.");
               process.exit(1);
             }
-            console.log(`Validated ${files.length} changeset file(s) against [${[...PUB_PKGS].sort().join(", ")}].`);
+            console.log(`Validated ${files.length} changeset file(s) against ${KNOWN.size} workspace package(s).`);
           '

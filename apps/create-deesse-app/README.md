@@ -19,6 +19,8 @@ pnpm dlx create-deesse-app@latest my-project --dry-run --verbose
 
 `npx` and `pnpm dlx` are both supported. The initializer resolves the current commit of `deessejs/saas-template` on every invocation, downloads the tarball by SHA, extracts it safely, renames the root `package.json`, and runs `pnpm install`.
 
+A published initializer version does not pin the starter. Because the template SHA is resolved at run time, a change on the template's `main` is picked up by the next `npx create-deesse-app@latest` without republishing this package.
+
 The CLI requires Node `>=22.13` because that is the floor pnpm 11 enforces. Earlier Node versions (including 22.0–22.12) are rejected at startup with a clear `unsupported_node` error pointing at the pnpm compatibility page.
 
 If `pnpm` is not on the user's `PATH` (the common case on Node 25+, where corepack is unbundled), the CLI runs the install via `npm exec --yes -- pnpm@<version> install` instead. The version comes from the generated project's `packageManager` field, so it is version-pinned even on stripped installs.

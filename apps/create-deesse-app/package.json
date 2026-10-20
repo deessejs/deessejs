@@ -1,6 +1,6 @@
 {
   "name": "create-deesse-app",
-  "version": "0.0.0",
+  "version": "0.5.7",
   "description": "Initialize a new DeesseJS project from the current main of deessejs/saas-template.",
   "type": "module",
   "license": "MIT",

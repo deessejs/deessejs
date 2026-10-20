@@ -1,0 +1,101 @@
+name: Publish verify
+
+# Catches publish-path regressions at pull request time, not at release time.
+#
+# Replaces cli-publish-verify.yml, which covered the CLI on ubuntu only. The
+# initializer was never verified at all, which is how `create-deesse-app`
+# came to declare `cross-spawn: "catalog:"` as a runtime dependency: a plain
+# `npm publish` ships that literally and the consumer's install fails with
+# EUNSUPPORTEDPROTOCOL.
+#
+# The initializer is what every user runs, on their own machine, after `npx`
+# downloads a tarball. So the matrix covers every operating system we support
+# and brackets the declared `engines.node: ">=22.13.0"`. Six combinations, each
+# exercising both packages.
+#
+# The properties proven here are the ones the release depends on, and they run
+# through the same scripts release.yml calls:
+#
+#   1. pnpm pack, then assert the tarball contains LICENSE, package.json,
+#      README and every declared bin target.
+#   2. Assert the packaged manifest carries no `catalog:` / `workspace:`
+#      specifier.
+#   3. npm install the tarball into a clean project. For real, not
+#      `--dry-run`: a dry run installs nothing, so the `--help` after it would
+#      exercise nothing.
+#   4. Run the installed binary.
+#
+# Permissions: contents: read ONLY. No id-token, no npm token. The job never
+# publishes; it only installs a tarball the build step produced locally.
+# Trusted Publishing stays exclusively in release.yml.
+
+on:
+  pull_request:
+    branches: [main, staging]
+    paths:
+      - "apps/cli/**"
+      - "apps/create-deesse-app/**"
+      - "packages/contracts/**"
+      - "packages/api/**"
+      - ".github/scripts/**"
+      - ".github/workflows/publish-verify.yml"
+      - ".github/workflows/release.yml"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish-verify:
+    name: ${{ matrix.os }} / node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        # bash on every runner, so the scripts in .github/scripts are the same
+        # code on Windows as everywhere else and do not depend on a committed
+        # executable bit.
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Turbo builds transitive workspace deps in topological order via
+      # `dependsOn: ^build`. A plain pnpm --filter would not follow them, and
+      # tsup would fail to resolve a subpath export whose dist/ does not exist
+      # yet.
+      - name: Build both packages and their workspace deps
+        run: pnpm turbo build --filter="@deessejs/cli" --filter=create-deesse-app --force
+
+      - name: Pack, verify, install and run both packages
+        run: |
+          set -euo pipefail
+          for DIR in apps/cli apps/create-deesse-app; do
+            echo "::group::$DIR"
+            TARBALL=$(bash .github/scripts/verify-packed-package.sh "$DIR" | tail -1)
+            bash .github/scripts/smoke-test-tarball.sh "$DIR" "$TARBALL"
+            echo "::endgroup::"
+          done
+
+      # The npm debug log carries the full request/response trace at debug
+      # level, which GitHub's in-log viewer truncates. Uploading it keeps an
+      # install failure diagnosable after the fact.
+      - name: Upload npm debug logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-debug-logs-${{ matrix.os }}-node${{ matrix.node }}
+          path: npm-debug-*.log
+          if-no-files-found: ignore
