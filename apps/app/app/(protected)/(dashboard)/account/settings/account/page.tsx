@@ -1,6 +1,8 @@
 import Link from "next/link"
 import { DangerZone, SettingsCard, SettingsPage } from "@/components/settings"
 
+import { SETTINGS_PATHS } from "@/lib/settings-routes"
+
 export default function AccountPage() {
   return (
     <SettingsPage
@@ -15,8 +17,12 @@ export default function AccountPage() {
           <p className="text-sm text-muted-foreground">
             Update the email associated with your account.
           </p>
+          {/* The email form lives on the Profile tab (it was
+              consolidated there in 271f8c9). This link used to point
+              at a `/settings/account/email` page that was deleted in
+              the same commit, and it has been a 404 since. */}
           <Link
-            href="/settings/account/email"
+            href={SETTINGS_PATHS.profile}
             className="text-sm font-medium text-primary hover:underline"
           >
             Change
@@ -30,7 +36,7 @@ export default function AccountPage() {
       >
         <div className="flex justify-end">
           <Link
-            href="/settings/account/delete"
+            href={SETTINGS_PATHS.accountDelete}
             className="text-sm font-medium text-destructive hover:underline"
           >
             Delete account

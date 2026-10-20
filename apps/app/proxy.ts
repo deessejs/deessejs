@@ -2,7 +2,21 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
-const PROTECTED_PREFIXES = ["/home", "/settings", "/admin"]
+import {
+  LEGACY_SETTINGS_PREFIX,
+  SETTINGS_PREFIX,
+  legacySettingsDestination,
+} from "@/lib/settings-routes"
+
+const PROTECTED_PREFIXES = [
+  "/home",
+  // The account settings. `/settings` is the legacy prefix: it stays
+  // protected for the duration of the cutover, and the redirect below
+  // moves it to `/account/settings/*`.
+  SETTINGS_PREFIX,
+  LEGACY_SETTINGS_PREFIX,
+  "/admin",
+]
 const AUTH_PREFIXES = [
   "/login",
   "/signup",
@@ -21,6 +35,9 @@ export const config = {
   // Single matcher covering both directions of the auth gate.
   matcher: [
     "/home/:path*",
+    "/account/settings/:path*",
+    // The legacy settings paths stay matched for the duration of the
+    // cutover: the proxy redirects them to their new destination.
     "/settings/:path*",
     "/admin/:path*",
     "/login",
@@ -140,6 +157,27 @@ export async function proxy(request: NextRequest) {
 
   if (isAuthPage && session?.session && !needsEmailVerification) {
     return NextResponse.redirect(new URL("/home", request.url))
+  }
+
+  // The account settings moved from `/settings/*` to
+  // `/account/settings/*`. The legacy paths stay reachable for the
+  // duration of the cutover and are redirected to their new
+  // destination here.
+  //
+  // The redirect sits *after* the auth checks on purpose. An
+  // unauthenticated visitor on `/settings/profile` is sent to
+  // `/login?redirect=/settings/profile`, and the legacy path is
+  // resolved to its new destination once they are signed in. Moving
+  // the redirect above the checks would rewrite the URL the login
+  // page returns the user to, and would hide the legacy path from
+  // the gate that is supposed to protect it.
+  const legacyDestination = legacySettingsDestination(pathname)
+  if (legacyDestination) {
+    const target = new URL(legacyDestination, request.url)
+    // Carry the query string across: a deep link to a legacy settings
+    // leaf with a tab or a filter selected must not lose it.
+    target.search = request.nextUrl.search
+    return NextResponse.redirect(target)
   }
 
   return NextResponse.next()
