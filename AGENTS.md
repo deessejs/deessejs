@@ -166,6 +166,31 @@ Reading the graph:
 - **`apps/create-deesse-app` and `apps/agent` stand alone.** The scaffolder fetches a template by commit and runs no workspace code; the bot is a GitHub webhook handler with no shared runtime.
 - **Not every link goes through the package manager.** The applications that consume `@workspace/ui` also alias it to the source with a `paths` entry in their `tsconfig.json`. `apps/web` resolves `@workspace/cookies` that way, and that dependency is not declared in its `package.json`. When you add a workspace dependency to an application, declare it in `package.json` too, or the turbo task graph does not know about the edge.
 
+### The guide for each workspace
+
+Every workspace has its own guide. Read the one that matches what you are changing, before you change it. These guides carry the conventions of their own workspace; this file carries the rules that cut across all of them.
+
+| Workspace | Guide | Read it when |
+|---|---|---|
+| `apps/web` | [apps/web/AGENTS.md](apps/web/AGENTS.md) | Marketing pages, the catalogue, the knowledge base, the registry routes. |
+| `apps/app` | [apps/app/AGENTS.md](apps/app/AGENTS.md) | The dashboard, the account settings, the administration area, the route guard. |
+| `apps/docs` | [apps/docs/AGENTS.md](apps/docs/AGENTS.md) | The documentation site, the MDX content, the machine-readable exports. |
+| `apps/cli` | [apps/cli/AGENTS.md](apps/cli/AGENTS.md) | The `deessejs` binary, the device flow, the published package. |
+| `apps/create-deesse-app` | [apps/create-deesse-app/AGENTS.md](apps/create-deesse-app/AGENTS.md) | The scaffolder, the extraction, the install and its recovery. |
+| `apps/agent` | [apps/agent/AGENTS.md](apps/agent/AGENTS.md) | The GitHub bot, its prompt, its channel. |
+| `packages/api` | [packages/api/AGENTS.md](packages/api/AGENTS.md) | The Hono server, the oRPC router, the registry endpoint. |
+| `packages/auth` | [packages/auth/AGENTS.md](packages/auth/AGENTS.md) | The Better Auth configuration, the plugins, the organization rules. |
+| `packages/database` | [packages/database/AGENTS.md](packages/database/AGENTS.md) | The schema, the migrations, the pg-mem test harness. |
+| `packages/contracts` | [packages/contracts/AGENTS.md](packages/contracts/AGENTS.md) | The wire format, the versioned contracts. |
+| `packages/ui` | [packages/ui/AGENTS.md](packages/ui/AGENTS.md) | The primitives, the tokens, the shared stylesheet. |
+| `packages/email` | [packages/email/AGENTS.md](packages/email/AGENTS.md) | The transports, the templates, the invitation message. |
+| `packages/env` | [packages/env/AGENTS.md](packages/env/AGENTS.md) | The environment variables and their validation. |
+| `packages/cookies` | [packages/cookies/AGENTS.md](packages/cookies/AGENTS.md) | The consent banner, the stored decision, the policy. |
+| `packages/utils` | [packages/utils/AGENTS.md](packages/utils/AGENTS.md) | The redirect guard. |
+| `packages/eslint-config` | [packages/eslint-config/AGENTS.md](packages/eslint-config/AGENTS.md) | The shared lint rules, the complexity threshold. |
+| `packages/typescript-config` | [packages/typescript-config/AGENTS.md](packages/typescript-config/AGENTS.md) | The compiler presets. |
+| `packages/vitest-config` | [packages/vitest-config/AGENTS.md](packages/vitest-config/AGENTS.md) | The shared test setup, the environment rule. |
+
 ## Where the truth lives
 
 | Question | Read this first |
