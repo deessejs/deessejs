@@ -22,7 +22,7 @@ The schema is also passed whole to the Drizzle adapter:
 
 ```ts
 import { db } from "@workspace/database"
-import * as schema from "@workspace/database"
+import * as schema from "@workspace/database/schema"
 
 drizzleAdapter(db, { provider: "pg", schema })
 ```
