@@ -30,7 +30,7 @@ The route guard is `proxy.ts`. It resolves the session through the API and appli
 - `lib/settings-paths.ts` owns the account settings route constants.
 - `lib/admin-auth.ts` owns the role check used by the administration area.
 
-Business operations should go through the API client. Keep database access and server-side domain rules in their owning packages.
+Use `lib/auth-client.ts` for browser authentication and `lib/orpc.ts` for API operations. App code must not import the auth singleton or database package. Server-side auth reads should go through an app-owned HTTP client that forwards the request headers to the exposed auth endpoint. Business operations use the typed API client; database access and server-side domain rules stay behind the server packages.
 
 ## Commands
 
