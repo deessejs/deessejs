@@ -39,7 +39,7 @@ pnpm build
 
 ## Notes
 
-- **Do not read `process.env` in the Vitest configuration.** The config is loaded after Turbo has already stripped the variables that are not in the `test` task allowlist of `turbo.json`, so a value read at that point is already `undefined`. A `test.env` entry has the same problem: it runs at config-load time, which is too late. The fix is to add the variable to the allowlist of the `test` task in `turbo.json`, and to read it at run time.
+- **Turbo filters shell variables before it starts Vitest.** If the Vitest config reads a variable that is not in the `test` task `env` allowlist in `turbo.json`, it sees `undefined`. Add shell-provided variables to that allowlist, then read them in the test runtime. Vitest's `test.env` option can set explicit values for test processes; it cannot recover a shell value that Turbo removed before config loading.
 - A workspace overrides the defaults, it does not redefine them. If a suite needs another pool or another timeout, pass it through `defineConfig`.
 - The suite files live in `tests/` and are named `*.test.ts`. The `include` default assumes that layout.
 - The package builds with `tsc`, so `dist/` has to exist before a workspace can import it. Running a single workspace in isolation may need `pnpm --filter @workspace/vitest-config build` first.
