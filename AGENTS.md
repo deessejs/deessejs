@@ -135,6 +135,7 @@ Reading the graph:
 - **`packages/env` is the foundation.** Five packages depend on it and it depends on none.
 - **`apps/cli` carries the registry client inside its bundle.** `packages/api` and `packages/contracts` are devDependencies that tsup inlines, so the published CLI resolves nothing at run time.
 - **`apps/create-deesse-app` and `apps/agent` stand alone.** The scaffolder fetches a template by commit and runs no workspace code; the bot is a GitHub webhook handler with no shared runtime.
+- **The current `apps/app` to `packages/auth` edge is legacy code, not a pattern to extend.** The device page calls `auth.api.getSession()`, and the sessions table imports branded token helpers from the auth package. Both cross the new client boundary described below and are migration targets.
 - **Not every link goes through the package manager.** The applications that consume `@workspace/ui` also alias it to the source with a `paths` entry in their `tsconfig.json`. `apps/web` resolves `@workspace/cookies` that way, and that dependency is not declared in its `package.json`. When you add a workspace dependency to an application, declare it in `package.json` too, or the turbo task graph does not know about the edge.
 
 ## Where the truth lives
@@ -173,6 +174,8 @@ Each of these has already cost a production bug. Breaking one is not a style que
 7. **The host allowlist is shared, not duplicated.** `packages/auth/src/host-allowlist.ts` exports `isHostAllowed()`, consumed both by the Better Auth `allowedHosts` and by the CORS middleware in `packages/api/src/index.ts`. The `*.vercel.app` wildcard covers every preview deployment without per-preview configuration.
 
 8. **Plugin order and callback semantics in the auth config are deliberate.** `nextCookies()` stays last. The email callbacks are fire-and-forget: they never throw, and they report failures through `logEmailFailure`. The `customSyntheticUser` callback exists so that a synthetic sign-up response has exactly the same shape as a real one, which is what keeps the anti-enumeration guarantee intact.
+
+9. **Applications use clients for stateful backend capabilities.** `apps/*` must not call runtime APIs from `@workspace/auth` or `@workspace/database`. Browser authentication goes through the app's Better Auth client; server-side auth requests go through an app-owned HTTP client that calls the exposed endpoint and forwards request headers. Reads and writes go through typed API clients and the wire contracts. Future stateful services such as cache, queue or storage follow the same boundary: apps call a client, and the client talks to the service through its defined contract. Backend packages remain behind server-side composition. Share client-safe wire types through `packages/contracts`; a direct type-only import from a service package requires a concrete reason and must not pull in runtime code.
 
 ## Conventions
 
