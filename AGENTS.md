@@ -18,6 +18,55 @@ This repo is the **main app of the deessejs organization**: the monorepo that bu
 - **You deliver something a human can merge.** Conventions respected, no dead code, no commented-out blocks, no leftover debug statements.
 - **You report what you did and what you did not verify.** A step you skipped is written down as skipped.
 
+## Where your facts come from
+
+**You never work from what you remember.** Your training data predates this stack: Next.js 16, Better Auth 1.7, Tailwind v4, oRPC, Drizzle. An answer written from memory is a guess, and a guess written into code is a bug. Every fact you state comes from a source you actually opened.
+
+Three sources, in this order.
+
+### 1. The code in this repository
+
+It is the ground truth for what this project does today. When the code and a document about the code disagree, the code wins, and the gap is a finding to report.
+
+### 2. Nuclino, for the decisions behind the code
+
+The architecture decisions, the RFCs, the ADRs and the technical designs live outside the repository, in the Nuclino workspace **DeesseJS** of the team **Nesalia Inc**. Several documents were moved there on purpose when the internal documentation folders were removed from the repo, which is why some of them have no counterpart in the tree.
+
+Use the Nuclino MCP tools:
+
+| Tool | Use it for |
+|---|---|
+| `list_workspaces`, `list_items` | Browsing the workspace and its collections |
+| `search_items` | Finding a document by topic |
+| `get_item` | Reading one document, comments included |
+
+The collections that answer most questions:
+
+- **RFCs**: the proposals behind the organizations work, the registry, the administration routes, the template catalog, the schema delivery pipeline, the analytics package.
+- **ADRs**: the decisions that were taken and the reasoning behind them. Read them before changing a foundation.
+- **Technical Designs**: the designs behind the deterministic Better Auth schema generation and the end-to-end testing of the scaffolder.
+- **Engineering Conventions**, **Development Workflow**, **Testing and Database Delivery**, **Architecture Overview**: the standing rules of the project.
+- **Playbook: From AI-Generated Code to Production Software**: the method this project expects an agent to follow. Its first chapter is titled "What Your Agents Have to Guess", which is the failure this file exists to prevent.
+
+### 3. The web, for everything else
+
+Framework documentation, library APIs, version behaviour, breaking changes. The Exa MCP server is the normal path:
+
+- `web_search_exa` finds the right page. Describe the page you want rather than listing keywords.
+- `web_fetch_exa` reads a URL you already know.
+- `agent_run` handles a multi-step research task that needs several searches and cross-checking.
+
+**If the Exa MCP tools are not exposed in your session, use your native web tools instead** (`WebSearch`, `WebFetch`). Never skip the research because a tool is missing: check what you have, use the equivalent, and say in your report which one you used.
+
+The `fresh` CLI is the same Exa backend in shell form (`fresh search`, `fresh fetch`, `fresh auth login`). Reach for it when a shell command fits the job better, for example to keep a large result set out of the conversation.
+
+### How you use a source
+
+- Cite the source of any claim that is not obvious from the code you just read.
+- When two sources disagree, say so, then follow the one that matches the code in this repository.
+- Never state a version number, an API signature or a configuration key that you did not read in the current documentation.
+- When a document and the code disagree, report the gap instead of quietly picking one.
+
 ## Repository map
 
 ### Applications
@@ -298,10 +347,7 @@ feature/fix branch  ─PR─▶  staging  ─merge (manual, human)─▶  main  
 
 - **Skills** live in `.claude/skills/`: `spec`, `implement`, `create-pr`, `review-pr`, `create-issue`, `triage`, `product-design` and `use-shadcn`. Read the `SKILL.md` before running one.
 - **Subagents** live in `.claude/agents/`. Several of them were inherited from the template repo and still point at paths this repo does not have. Check that a subagent's target paths exist before trusting its guidance.
-- **Web research** goes through the `fresh` CLI, which is backed by Exa.ai:
-  - `fresh search -q "<query>"` for a search, with `-l` to cap the result count and `-t` to pick the depth.
-  - `fresh fetch <url> -p "<prompt>"` to read a known page, with an optional prompt steering the extraction.
-  - `fresh auth status` to check the token. If it reports an expired token, run `fresh auth login` (add `--no-open` on a headless machine). Do not attempt to authenticate on the user's behalf.
+- **Web research** follows the protocol in "Where your facts come from". The `fresh` CLI is the shell form of the same Exa backend: `fresh search -q "<query>"` for a search, `fresh fetch <url> -p "<prompt>"` to read a known page, and `fresh auth login` when `fresh auth status` reports an expired token. Do not attempt to authenticate on the user's behalf.
 
 ## Where the documentation lives
 
@@ -310,5 +356,6 @@ feature/fix branch  ─PR─▶  staging  ─merge (manual, human)─▶  main  
 | Design system rules, tokens, motion, accessibility | `DESIGN.md` at the repo root |
 | Product documentation | `apps/docs/content/` |
 | Knowledge base | `apps/web/content/knowledge-base/` |
+| Internal decisions, RFCs, ADRs, technical designs | The Nuclino workspace **DeesseJS**, described in "Where your facts come from" |
 | Setup and usage notes | `apps/*/README.md`, and `packages/*/README.md` where one exists |
 | Release history | The `CHANGELOG.md` of each workspace that publishes, generated by changesets |
