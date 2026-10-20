@@ -66,7 +66,7 @@ pnpm lint
 
 ## Notes
 
-- This is the only package that knows both `@workspace/auth` and `@workspace/database`. It mounts the auth handler and reaches the database, so nothing above it may import the database directly.
+- This is the server-side composition boundary for applications. App code calls its typed procedures through clients; it does not import runtime authentication or database implementations directly. The API mounts auth endpoints and coordinates database-backed operations.
 - The registry rows are static, the registry data is live: the license, the stars, the README and the last push come from GitHub at request time. A row without a matching public repository makes the endpoint fail loudly with a 503.
 - The Better Auth mount has to stay aligned with `AUTH_BASE_PATH` in `@workspace/auth`. A mismatch makes every auth URL return 404 in production.
 
