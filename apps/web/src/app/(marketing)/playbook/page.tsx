@@ -36,14 +36,14 @@ import { Playbook } from "@/components/pages/playbook"
 export const metadata: Metadata = {
   title: "Playbook: from AI-generated code to production software",
   description:
-    "A working guide for developers who ship with coding agents. Free PDF download from DeesseJS.",
+    "A practical playbook for building maintainable software with coding agents. Free PDF download from DeesseJS.",
   alternates: {
     canonical: "/playbook",
   },
   openGraph: {
     title: "Playbook: from AI-generated code to production software",
     description:
-      "A working guide for developers who ship with coding agents. Free PDF download from DeesseJS.",
+      "A practical playbook for building maintainable software with coding agents. Free PDF download from DeesseJS.",
     siteName: "DeesseJS",
     locale: "en_US",
     url: "/playbook",
@@ -52,12 +52,16 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Playbook: from AI-generated code to production software",
     description:
-      "A working guide for developers who ship with coding agents. Free PDF download from DeesseJS.",
+      "A practical playbook for building maintainable software with coding agents. Free PDF download from DeesseJS.",
   },
-  // No `openGraph.images` entry yet. The cover mockup has landed,
-  // but the page stays draft until the PDF does, and the global
-  // OG fallback in `apps/web/src/app/layout.tsx` carries it until
-  // then. Revisit when the PR moves out of draft.
+  // No `openGraph.images` entry. The cover mockup is the only image
+  // the page has, and it is a poor social card: 1500x1383 on a
+  // transparent background, while a social card is cropped to about
+  // 1.91:1, which would slice through the book. No other page in the
+  // repo sets one either, and the global fallback in
+  // `apps/web/src/app/layout.tsx` has none, so this is a repo-wide
+  // gap rather than a playbook one. Composing a 1200x630 card is a
+  // separate piece of design work.
   robots: {
     index: true,
     follow: true,

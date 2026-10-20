@@ -1,28 +1,29 @@
 # `/playbook`: lead-magnet landing page
 
-> **Status: draft until the real PDF lands.**
+> **Status: the PDF has landed. The page can leave draft.**
 
-This directory holds the `/playbook` route. The page is intentionally
-shipped **as a draft PR**. It must not move out of draft until the
-assets listed below are merged on top of the structural code:
+This directory holds the `/playbook` route. The page was shipped
+**as a draft PR** until the real PDF deliverable was in the repo, so
+that the email promise and the email content would match: a signup
+never delivered a 404 link.
 
-## Assets still needed
+## Assets
 
-1. **`apps/web/public/playbook/playbook.pdf`**: the actual PDF
-   deliverable. Linked from the PlaybookDownload React Email
-   template (`packages/email/src/templates/playbook.tsx`) via
+1. **`apps/web/public/playbook.pdf`**: the actual PDF deliverable.
+   Linked from the PlaybookDownload React Email template
+   (`packages/email/src/templates/playbook.tsx`) via
    `WEB_URL/playbook.pdf`.
 
-The cover thumbnail has landed at
-`apps/web/public/playbook/cover.png` and is rendered by
-`next/image` in `apps/web/src/components/pages/playbook/hero.tsx`.
+   The file sits at the root of `public/`, not inside
+   `public/playbook/`, because Next serves `public/` at the root.
+   A file at `public/playbook/playbook.pdf` is served from
+   `/playbook/playbook.pdf`, while the email points at
+   `/playbook.pdf`. The two are different URLs, and the email is the
+   one that has to be stable.
 
-## Why the page is still draft
-
-- The static PDF URL inside the email is `/playbook.pdf`. Until the
-  file lands at that path, every transactional email delivers a
-  404 link. We chose "wait for the real PDF" over "ship a stub":
-  the email promise and the email content must match.
+2. **`apps/web/public/playbook/cover.png`**: the cover thumbnail.
+   Rendered by `next/image` in
+   `apps/web/src/components/pages/playbook/hero.tsx`.
 
 ## Reading order on the page
 
@@ -85,9 +86,10 @@ Resend-managed footer. The email copy points there, not at itself.
 
 ## Toggling off the draft banner
 
-Once the PDF lands:
+The PDF has landed, so the gate is open. What is left before the PR
+leaves draft:
 
-1. Update the `Draft` notice at the top of this file.
+1. Set `RESEND_PLAYBOOK_TOPIC_ID` in production (see above).
 2. Update the `metadata.description` in `page.tsx` if the real
    cover copy suggests a sharper two-line summary.
 3. Re-run `pnpm --filter web test:e2e:local` against the preview
