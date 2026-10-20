@@ -67,31 +67,35 @@ Framework documentation, library APIs, version behaviour, breaking changes. The 
 
 ## Repository map
 
+Every workspace has its own guide, linked in the tables below. Read the one that matches what you are changing, before you change it: it carries the conventions of that workspace, while this file carries the rules that cut across all of them.
+
 ### Applications
 
-| Path | What it is |
-|---|---|
-| `apps/web` | Marketing site: home, pricing, templates catalogue, blog, changelog, knowledge base. Also serves the component registry at `/r/registry.json`. |
-| `apps/app` | The authenticated product. Next.js 16 `proxy.ts` guard, dashboard, `/account/settings`, `/admin`. |
-| `apps/docs` | Documentation site (Fumadocs, MDX). |
-| `apps/cli` | `@deessejs/cli`: a typed client of the template registry with a scaffolder (`list`, `info`, `init`, `auth login`). |
-| `apps/create-deesse-app` | Standalone `create-*` scaffolder. Fetches `deessejs/saas-template` at a pinned commit. |
-| `apps/agent` | `@deessejs-agent`: a mentionable GitHub bot built on Vercel eve. |
+| Path | Guide | What it is |
+|---|---|---|
+| `apps/web` | [AGENTS.md](apps/web/AGENTS.md) | Marketing site: home, pricing, templates catalogue, blog, changelog, knowledge base. Also serves the component registry at `/r/registry.json`. |
+| `apps/app` | [AGENTS.md](apps/app/AGENTS.md) | The authenticated product. Next.js 16 `proxy.ts` guard, dashboard, `/account/settings`, `/admin`. |
+| `apps/docs` | [AGENTS.md](apps/docs/AGENTS.md) | Documentation site (Fumadocs, MDX). |
+| `apps/cli` | [AGENTS.md](apps/cli/AGENTS.md) | `@deessejs/cli`: a typed client of the template registry with a scaffolder (`list`, `info`, `init`, `auth login`). |
+| `apps/create-deesse-app` | [AGENTS.md](apps/create-deesse-app/AGENTS.md) | Standalone `create-*` scaffolder. Fetches `deessejs/saas-template` at a pinned commit. |
+| `apps/agent` | [AGENTS.md](apps/agent/AGENTS.md) | `@deessejs-agent`: a mentionable GitHub bot built on Vercel eve. |
 
 ### Packages
 
-| Path | Owns |
-|---|---|
-| `packages/auth` | The Better Auth configuration and every plugin. Source of truth for authentication. |
-| `packages/database` | Drizzle ORM, the Postgres schema, migrations, and the pg-mem test harness. |
-| `packages/api` | The Hono server and the oRPC router. |
-| `packages/contracts` | Versioned Zod wire contracts shared by the API, the CLI and the web app. |
-| `packages/email` | Email transports (console in dev, Resend in production) and React Email templates. |
-| `packages/ui` | shadcn primitives, design tokens and the shared stylesheet. |
-| `packages/env` | Zod-validated environment variables, server and client. |
-| `packages/cookies` | Cookie consent UI. |
-| `packages/utils` | Shared helpers. |
-| `packages/eslint-config`, `packages/typescript-config`, `packages/vitest-config` | Shared tooling configuration. |
+| Path | Guide | Owns |
+|---|---|---|
+| `packages/auth` | [AGENTS.md](packages/auth/AGENTS.md) | The Better Auth configuration and every plugin. Source of truth for authentication. |
+| `packages/database` | [AGENTS.md](packages/database/AGENTS.md) | Drizzle ORM, the Postgres schema, migrations, and the pg-mem test harness. |
+| `packages/api` | [AGENTS.md](packages/api/AGENTS.md) | The Hono server and the oRPC router. |
+| `packages/contracts` | [AGENTS.md](packages/contracts/AGENTS.md) | Versioned Zod wire contracts shared by the API, the CLI and the web app. |
+| `packages/email` | [AGENTS.md](packages/email/AGENTS.md) | Email transports (console in dev, Resend in production) and React Email templates. |
+| `packages/ui` | [AGENTS.md](packages/ui/AGENTS.md) | shadcn primitives, design tokens and the shared stylesheet. |
+| `packages/env` | [AGENTS.md](packages/env/AGENTS.md) | Zod-validated environment variables, server and client. |
+| `packages/cookies` | [AGENTS.md](packages/cookies/AGENTS.md) | Cookie consent UI. |
+| `packages/utils` | [AGENTS.md](packages/utils/AGENTS.md) | Shared helpers. |
+| `packages/eslint-config` | [AGENTS.md](packages/eslint-config/AGENTS.md) | Shared ESLint configuration. |
+| `packages/typescript-config` | [AGENTS.md](packages/typescript-config/AGENTS.md) | Shared TypeScript presets. |
+| `packages/vitest-config` | [AGENTS.md](packages/vitest-config/AGENTS.md) | Shared Vitest configuration. |
 
 ### How the workspaces depend on each other
 
@@ -165,31 +169,6 @@ Reading the graph:
 - **`apps/cli` bundles `packages/api` and `packages/contracts` at build time** rather than depending on them at runtime: both are declared as devDependencies and inlined by tsup, so the published CLI carries the registry client with it.
 - **`apps/create-deesse-app` and `apps/agent` stand alone.** The scaffolder fetches a template by commit and runs no workspace code; the bot is a GitHub webhook handler with no shared runtime.
 - **Not every link goes through the package manager.** The applications that consume `@workspace/ui` also alias it to the source with a `paths` entry in their `tsconfig.json`. `apps/web` resolves `@workspace/cookies` that way, and that dependency is not declared in its `package.json`. When you add a workspace dependency to an application, declare it in `package.json` too, or the turbo task graph does not know about the edge.
-
-### The guide for each workspace
-
-Every workspace has its own guide. Read the one that matches what you are changing, before you change it. These guides carry the conventions of their own workspace; this file carries the rules that cut across all of them.
-
-| Workspace | Guide | Read it when |
-|---|---|---|
-| `apps/web` | [apps/web/AGENTS.md](apps/web/AGENTS.md) | Marketing pages, the catalogue, the knowledge base, the registry routes. |
-| `apps/app` | [apps/app/AGENTS.md](apps/app/AGENTS.md) | The dashboard, the account settings, the administration area, the route guard. |
-| `apps/docs` | [apps/docs/AGENTS.md](apps/docs/AGENTS.md) | The documentation site, the MDX content, the machine-readable exports. |
-| `apps/cli` | [apps/cli/AGENTS.md](apps/cli/AGENTS.md) | The `deessejs` binary, the device flow, the published package. |
-| `apps/create-deesse-app` | [apps/create-deesse-app/AGENTS.md](apps/create-deesse-app/AGENTS.md) | The scaffolder, the extraction, the install and its recovery. |
-| `apps/agent` | [apps/agent/AGENTS.md](apps/agent/AGENTS.md) | The GitHub bot, its prompt, its channel. |
-| `packages/api` | [packages/api/AGENTS.md](packages/api/AGENTS.md) | The Hono server, the oRPC router, the registry endpoint. |
-| `packages/auth` | [packages/auth/AGENTS.md](packages/auth/AGENTS.md) | The Better Auth configuration, the plugins, the organization rules. |
-| `packages/database` | [packages/database/AGENTS.md](packages/database/AGENTS.md) | The schema, the migrations, the pg-mem test harness. |
-| `packages/contracts` | [packages/contracts/AGENTS.md](packages/contracts/AGENTS.md) | The wire format, the versioned contracts. |
-| `packages/ui` | [packages/ui/AGENTS.md](packages/ui/AGENTS.md) | The primitives, the tokens, the shared stylesheet. |
-| `packages/email` | [packages/email/AGENTS.md](packages/email/AGENTS.md) | The transports, the templates, the invitation message. |
-| `packages/env` | [packages/env/AGENTS.md](packages/env/AGENTS.md) | The environment variables and their validation. |
-| `packages/cookies` | [packages/cookies/AGENTS.md](packages/cookies/AGENTS.md) | The consent banner, the stored decision, the policy. |
-| `packages/utils` | [packages/utils/AGENTS.md](packages/utils/AGENTS.md) | The redirect guard. |
-| `packages/eslint-config` | [packages/eslint-config/AGENTS.md](packages/eslint-config/AGENTS.md) | The shared lint rules, the complexity threshold. |
-| `packages/typescript-config` | [packages/typescript-config/AGENTS.md](packages/typescript-config/AGENTS.md) | The compiler presets. |
-| `packages/vitest-config` | [packages/vitest-config/AGENTS.md](packages/vitest-config/AGENTS.md) | The shared test setup, the environment rule. |
 
 ## Where the truth lives
 
