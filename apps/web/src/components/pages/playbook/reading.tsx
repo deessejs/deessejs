@@ -15,9 +15,15 @@ import { getAllPosts } from "@/lib/blog/posts"
  *
  * The card content is the blog's own `<PostCard>`, so the cells
  * carry the real post title, description, date, tags, author, and
- * reading time, with the card's hover treatment. The cards are
- * direct grid children; the `divide-x` borders fall between them
- * and the header (which spans full width) supplies the bottom rule.
+ * reading time, with the card's hover treatment.
+ *
+ * Each `PostCard` is wrapped in a neutral `flex flex-col` cell. The
+ * grid's `divide-x` targets direct children, and `PostCard` is a
+ * `Card` carrying `border-0 ring-0` to strip the shadcn border in
+ * the blog's own grid. Those zeroed borders can win against the
+ * `divide-x` rule, leaving the cards with no divider between them.
+ * A plain wrapper owns the divider instead, so each card reliably
+ * gets one, exactly like every ForWho cell.
  *
  * Server Component: `getAllPosts()` reads the content collection at
  * build time and already sorts newest-first, so the three shown are
@@ -43,7 +49,9 @@ export function Reading() {
         </div>
       </div>
       {posts.map((post) => (
-        <PostCard key={post.slug} post={post} />
+        <div key={post.slug} className="flex flex-col">
+          <PostCard post={post} />
+        </div>
       ))}
     </Section>
   )
