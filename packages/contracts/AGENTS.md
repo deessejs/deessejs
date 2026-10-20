@@ -15,9 +15,16 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 
 ## The rule that matters
 
-**Adding a required field to a published contract is a breaking change.** The CLI clients already installed in the world parse the payload with these schemas, and a Zod parse of an unknown required field throws. The failure surfaces to the user as a `parse_error` on a command that worked yesterday.
+**The schemas use the default Zod object mode, which strips unknown keys.** A client that validates a response against them is not broken by a new field, whether that field is optional or required.
 
-So a new field is optional, or it lands in a new version.
+What breaks a client is a change to a field it already knows: removing it, renaming it, changing its type, narrowing the set of accepted values, or adding a constraint the existing values do not satisfy.
+
+Two consequences for how you work:
+
+- **Adding a field is backward compatible.** Make it optional when the value can be absent, required when the server always sends it.
+- **The mode of the schema is part of the rule.** A switch to `.strict()` rejects the unknown keys the default mode strips, and would make every new field breaking for the clients that validate with it. Changing the mode is a breaking change in itself.
+
+Keep in mind what the guarantee is today: the oRPC procedure types its response with `TemplatesListResponseV1` rather than attaching it as a runtime output schema, so the contract is enforced at compile time on both sides. The CLI reserves a `parse_error` code for a response that does not match the contract.
 
 ## How the versions work
 
@@ -49,7 +56,7 @@ The test file is `tests/template.test.ts`.
 | Consumer | What it takes |
 |---|---|
 | `packages/api` | Builds the response from the curated rows and the live enrichment. |
-| `apps/cli` | Parses the registry response and fails with `parse_error` on an unknown shape. |
+| `apps/cli` | Types what it reads from the endpoint with the shared contract. |
 | `apps/web` | Renders the catalogue pages from the same contract. |
 | `apps/app` | Reads the contract for the types it displays. |
 

@@ -1,6 +1,6 @@
 # apps/create-deesse-app
 
-You own the standalone scaffolder, published to npm as `create-deesse-app`. It creates a new project from the current main of `deessejs/saas-template`. It does not go through the registry: it fetches a pinned commit directly, which is what makes the result reproducible.
+You own the standalone scaffolder, published to npm as `create-deesse-app`. It creates a new project from `deessejs/saas-template`. It does not go through the registry: it resolves the `main` branch at run time and downloads the tarball of the commit it resolves, so a given download is immutable even though `main` keeps moving.
 
 The [root guide](../../AGENTS.md) holds the rules that cut across every workspace: the API path, the auth base path, the wire contracts, the research protocol and the git workflow. Read it when your change touches one of them, not before every edit.
 
@@ -9,7 +9,7 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 `src/pipeline.ts` runs the steps in order:
 
 1. **Cheap checks first.** Node version, project name, destination directory. Fail before anything is downloaded.
-2. **Resolve the source.** `src/source/resolve-sha.ts` resolves the commit, `src/source/download-tarball.ts` downloads the tarball by SHA.
+2. **Resolve the source.** `src/source/resolve-sha.ts` resolves `main` to a commit SHA with `git ls-remote`, and `src/source/download-tarball.ts` downloads the tarball of that SHA. The resolution happens at run time, so two runs can land on different commits; the download is immutable, because it is the tarball of the commit that was resolved.
 3. **Validate and extract** into a staging directory, with the `package.json` renamed inside the staging area so the project keeps its own name.
 4. **Publish atomically.** `src/extract/publish-or-rollback.ts` moves the staging directory into place and rolls back if anything fails.
 5. **Install.** The package manager is probed, then the install runs. `src/install/recovery.ts` owns the recovery when the install is interrupted.
@@ -66,7 +66,7 @@ The unit tests live in `test/unit/`, the end-to-end tests in `test/e2e/`, includ
 ## Gotchas
 
 - The unit and the e2e suites have separate typecheck projects. A change that touches only the e2e code still has to keep `pnpm typecheck:e2e` green.
-- The source commit is pinned by SHA, never by branch name, so two runs on the same day produce the same project.
+- The ref is resolved at run time, so two runs on the same day can produce two different projects as `main` moves. What is immutable is the download: the tarball of the resolved SHA.
 
 ## Related guides
 

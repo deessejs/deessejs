@@ -36,7 +36,7 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 - **Every command catches `CliError` and exits with the matching code.** The handler at the bottom of `src/index.ts` is the last resort for an uncaught bug, not the normal path.
 - **The version comes from the bundle, not from the file system.** `readPackageVersion` reads a literal injected by tsup at build time from `package.json`. Do not resolve the version at runtime.
 - **The cache holds the body and the ETag.** The server decides freshness: a cache entry is valid when the server answers 304, or in offline mode when any previous response beats nothing. A malformed cache file is a cache miss, never an overwrite.
-- **The registry responses are validated against `@workspace/contracts`.** The CLI fails with `parse_error` rather than consuming a shape it does not know.
+- **The registry response is typed with `@workspace/contracts`.** The CLI imports the contract and types what it reads with it, so a change to the shape is a compile error here. The CLI reserves a `parse_error` code for a response that does not match the contract.
 - **Relative imports carry the `.js` extension,** and the package is ESM.
 
 ## Gotchas

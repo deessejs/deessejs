@@ -43,7 +43,7 @@ Every workspace has its own guide, linked in the tables below. Read the one that
 | `apps/app` | [AGENTS.md](apps/app/AGENTS.md) | The authenticated product. Next.js 16 `proxy.ts` guard, dashboard, `/account/settings`, `/admin`. |
 | `apps/docs` | [AGENTS.md](apps/docs/AGENTS.md) | Documentation site (Fumadocs, MDX). |
 | `apps/cli` | [AGENTS.md](apps/cli/AGENTS.md) | `@deessejs/cli`: a typed client of the template registry with a scaffolder (`list`, `info`, `init`, `auth login`). |
-| `apps/create-deesse-app` | [AGENTS.md](apps/create-deesse-app/AGENTS.md) | Standalone `create-*` scaffolder. Fetches `deessejs/saas-template` at a pinned commit. |
+| `apps/create-deesse-app` | [AGENTS.md](apps/create-deesse-app/AGENTS.md) | Standalone `create-*` scaffolder. Resolves `main` on `deessejs/saas-template` and downloads the tarball of the commit it finds. |
 | `apps/agent` | [AGENTS.md](apps/agent/AGENTS.md) | `@deessejs-agent`: a mentionable GitHub bot built on Vercel eve. |
 
 ### Packages
@@ -131,7 +131,7 @@ Reading the graph:
 - **`packages/api` is the only package that knows both `packages/auth` and `packages/database`.** It mounts the Better Auth handler and the oRPC router, so it is the place where a request becomes an authenticated database call.
 - **`packages/auth` owns the identity rules**, and it reaches the database through `packages/database` and the mailer through `packages/email`. It never imports `packages/api`, which is what keeps the dependency direction clean.
 - **`packages/contracts` is a leaf.** It depends on nothing inside the workspace, so it can be imported by the server, the CLI and the web app without creating a cycle.
-- **`packages/env` is the foundation.** Four packages depend on it and it depends on none.
+- **`packages/env` is the foundation.** Five packages depend on it and it depends on none.
 - **`apps/cli` carries the registry client inside its bundle.** `packages/api` and `packages/contracts` are devDependencies that tsup inlines, so the published CLI resolves nothing at run time.
 - **`apps/create-deesse-app` and `apps/agent` stand alone.** The scaffolder fetches a template by commit and runs no workspace code; the bot is a GitHub webhook handler with no shared runtime.
 - **Not every link goes through the package manager.** The applications that consume `@workspace/ui` also alias it to the source with a `paths` entry in their `tsconfig.json`. `apps/web` resolves `@workspace/cookies` that way, and that dependency is not declared in its `package.json`. When you add a workspace dependency to an application, declare it in `package.json` too, or the turbo task graph does not know about the edge.
@@ -163,7 +163,7 @@ Each of these has already cost a production bug. Breaking one is not a style que
 
 3. **The auth schema belongs to the Better Auth CLI.** `packages/database/src/schema/auth.ts` is generated. Regenerate it with `pnpm auth:generate`. Never hand-edit it. The migrations in `packages/database/drizzle/` are generated the same way, by `pnpm db:generate`.
 
-4. **Adding a required field to a wire contract is a breaking change.** The shapes in `packages/contracts/src/v1/` define the payload of `GET /api/v1/templates`. CLI clients already installed parse that payload with Zod and fail on an unknown required field. Add new fields as optional, or publish a new contract version and keep serving the previous one.
+4. **Know what breaks a client on a wire contract.** The shapes in `packages/contracts/src/v1/` define the payload of `GET /api/v1/templates`. They use the default Zod object mode, which strips unknown keys, so adding a field does not break a client, optional or required. What breaks a client is removing or renaming a field it knows, changing its type, narrowing the accepted values, or adding a constraint the existing values do not satisfy. Switching the schemas to `.strict()` would make every new field breaking, so the mode is part of the rule.
 
 5. **Organization slugs have a reserved set.** `packages/auth/src/organization/policy.ts` rejects slugs that would shadow a top-level route (`account`, `admin`, `api`, `login`, and so on) plus a few product namespaces. Extend that list there, never in a route handler.
 
@@ -196,7 +196,7 @@ Type-only imports use `import type`, because the compiler runs with `verbatimMod
 
 ### Zod at the boundaries
 
-Environment variables, wire payloads and form inputs are validated with Zod. `packages/env` validates the environment, `packages/contracts` validates what crosses the wire, and the CLI parses the registry response against the shared contract so a shape change fails loudly on the client too.
+Environment variables, wire payloads and form inputs are validated with Zod. `packages/env` validates the environment, and `packages/contracts` holds the shape of what crosses the wire. The server and the clients import the same contract, so a change to the shape is a compile error on both sides.
 
 ### One package per concern
 
@@ -242,7 +242,7 @@ Gotchas that are not visible in the code:
 
 ## Git workflow
 
-This repo is staging-first: start from `staging`, work on a branch named `impl/{n}-{slug}`, `chore/{slug}` or `fix/{slug}`, and open the pull request against `staging`. Never push to `main`, never merge into it, never bypass the branch protection, and never open a `staging` to `main` promotion PR: the accepted release policy propagates the reviewed work once the required checks and the review have passed, a push to `staging` publishes the canary channel and a push to `main` publishes the latest one. A change that touches the published surface of a package needs a `.changeset/*.md` file, and the `/spec`, `/implement`, `/create-pr` and `/review-pr` skills all follow this flow. The full guide, with the intent behind each rule and the files that implement it, is on Nuclino in the workspace **DeesseJS**, under the name **Git Workflow and Releases**.
+This repo is staging-first: start from `staging`, work on a branch named `impl/{n}-{slug}`, `chore/{slug}` or `fix/{slug}`, and open the pull request against `staging`. Never push to `main`, never merge into it, and never bypass the branch protection. The progression from `staging` to `main` is a release action rather than a development one, and an agent never performs it: today the release workflow documents it as a human-driven promotion, and the decision to automate it once the required checks and the review have passed is recorded on Nuclino. A push to `staging` publishes the canary channel and a push to `main` publishes the latest one. A change that touches the published surface of a package needs a `.changeset/*.md` file, and the `/spec`, `/implement`, `/create-pr` and `/review-pr` skills all follow this flow. The full guide, with the intent behind each rule and the files that implement it, is on Nuclino in the workspace **DeesseJS**, under the name **Git Workflow and Releases**.
 
 ## Agent tooling
 
