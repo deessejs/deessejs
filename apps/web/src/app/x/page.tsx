@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
+import { permanentRedirect } from "next/navigation"
 
 /**
  * `/x` — X (Twitter) funnel alias.
@@ -21,5 +21,5 @@ export const metadata: Metadata = {
 }
 
 export default function XPage() {
-  redirect("/playbook")
+  permanentRedirect("/playbook")
 }

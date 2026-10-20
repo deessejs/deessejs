@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
+import { permanentRedirect } from "next/navigation"
 
 /**
  * `/in` — LinkedIn funnel alias.
@@ -21,5 +21,5 @@ export const metadata: Metadata = {
 }
 
 export default function InPage() {
-  redirect("/playbook")
+  permanentRedirect("/playbook")
 }
