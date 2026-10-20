@@ -34,7 +34,7 @@ The Hono routes are written relative to the base path, so `/health` in the code 
 
 ## Invariants
 
-- **This is the only package that knows both `packages/auth` and `packages/database`.** It mounts the auth handler and talks to the database. Nothing above it may import the database directly.
+- **This is the server-side composition boundary for applications.** It mounts auth endpoints and exposes typed API procedures. Applications call those through clients; they never import runtime auth or database implementations. The API and auth packages may import those implementations on the server, with `packages/auth` using the database for its adapter.
 - **The Better Auth mount is `/auth/*`,** relative to the base path, and it has to stay aligned with `AUTH_BASE_PATH` in `packages/auth`. See [packages/auth](../auth/AGENTS.md).
 - **The CORS allowlist echoes the origin only when the host is permitted.** The credentials mode forbids the wildcard `Access-Control-Allow-Origin`, so the origin function returns the origin or `null`, never `*`.
 - **The registry rows are static, the registry data is live.** `src/templates.ts` holds the curated rows, `src/core/templates/enrich.ts` fetches the license, the stars, the README and the last push from GitHub at request time. A row without a matching public repository makes the endpoint fail loudly with a 503.
