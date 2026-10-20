@@ -13,6 +13,10 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | `src/v1/index.ts` | The V1 barrel. |
 | `src/index.ts` | The root barrel, exposing the versions as namespaces. |
 
+## Application boundary
+
+Applications consume backend capabilities through typed clients. These contracts define the client-visible shapes; they do not authorize an application to import `@workspace/auth`, `@workspace/database` or another service implementation directly. Add or extend a client/API contract when an application needs a backend operation.
+
 ## The rule that matters
 
 **The schemas use the default Zod object mode, which strips unknown keys.** A client that validates a response against them is not broken by a new field, whether that field is optional or required.
