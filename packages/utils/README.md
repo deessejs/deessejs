@@ -49,4 +49,8 @@ There is no build script: the package is consumed as source.
 - A helper moves into a domain package as soon as a domain owns it. A redirect helper specific to the authentication flow belongs in `@workspace/auth`.
 - Every helper documents its threat model. A security helper that does not say what it blocks, and what it does not block, is a helper nobody can review.
 
+## Related
+
+- **Used by**: [`apps/app`](../../apps/app/README.md)
+
 The conventions of this package are in [AGENTS.md](AGENTS.md).

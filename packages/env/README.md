@@ -74,4 +74,8 @@ From the root, `pnpm env:check` validates that the required variables are presen
 - The client entry never imports the loader. The loader reads `node:fs`, which Turbopack cannot bundle into a client chunk.
 - Validation fires at module load. A missing required variable stops the process instead of failing later at the first use.
 
+## Related
+
+- **Used by**: [`@workspace/api`](../api/README.md), [`@workspace/auth`](../auth/README.md), [`@workspace/database`](../database/README.md), [`@workspace/email`](../email/README.md), [`@workspace/ui`](../ui/README.md), [`apps/app`](../../apps/app/README.md), [`apps/web`](../../apps/web/README.md)
+
 The conventions of this package are in [AGENTS.md](AGENTS.md).

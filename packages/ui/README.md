@@ -65,4 +65,9 @@ There is no test script: the primitives are exercised through the applications t
 - To add a primitive, follow the contract in `DESIGN.md` and update its inventory there. To remove one, delete the file, remove its imports, and keep the typecheck and the build green.
 - The tokens are the runtime source of truth. `DESIGN.md` is the specification they implement.
 
+## Related
+
+- **Uses**: [`@workspace/env`](../env/README.md)
+- **Used by**: [`@workspace/cookies`](../cookies/README.md), [`apps/app`](../../apps/app/README.md), [`apps/docs`](../../apps/docs/README.md), [`apps/web`](../../apps/web/README.md)
+
 The conventions of this package are in [AGENTS.md](AGENTS.md).

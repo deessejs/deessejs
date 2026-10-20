@@ -44,4 +44,8 @@ pnpm build
 - The suite files live in `tests/` and are named `*.test.ts`. The `include` default assumes that layout.
 - The package builds with `tsc`, so `dist/` has to exist before a workspace can import it. Running a single workspace in isolation may need `pnpm --filter @workspace/vitest-config build` first.
 
+## Related
+
+- **Used by**: [`@workspace/api`](../api/README.md), [`@workspace/auth`](../auth/README.md), [`@workspace/contracts`](../contracts/README.md), [`@workspace/database`](../database/README.md), [`@workspace/email`](../email/README.md), [`@workspace/env`](../env/README.md), [`@workspace/utils`](../utils/README.md), [`apps/app`](../../apps/app/README.md), [`apps/web`](../../apps/web/README.md)
+
 The conventions of this package are in [AGENTS.md](AGENTS.md).

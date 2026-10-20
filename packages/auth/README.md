@@ -78,4 +78,9 @@ pnpm lint
 - A synthetic sign-up response carries the admin fields, so the presence of `role` on a response does not become an account-enumeration signal.
 - The schema in `packages/database/src/schema/auth.ts` is generated. Never edit it by hand.
 
+## Related
+
+- **Uses**: [`@workspace/database`](../database/README.md), [`@workspace/email`](../email/README.md), [`@workspace/env`](../env/README.md)
+- **Used by**: [`@workspace/api`](../api/README.md), [`apps/app`](../../apps/app/README.md)
+
 The conventions of this package are in [AGENTS.md](AGENTS.md).

@@ -58,4 +58,8 @@ pnpm lint
 - The response is a wrapper object, not a bare array, so that `meta` or `pagination` can be added later without changing the contract.
 - The enforcement today is a compile-time one: the oRPC procedure types its response with the schema rather than attaching it as a runtime output schema.
 
+## Related
+
+- **Used by**: [`@workspace/api`](../api/README.md), [`apps/app`](../../apps/app/README.md), [`apps/cli`](../../apps/cli/README.md), [`apps/web`](../../apps/web/README.md)
+
 The conventions of this package are in [AGENTS.md](AGENTS.md).

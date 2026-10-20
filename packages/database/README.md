@@ -57,4 +57,10 @@ pnpm lint
 - The pool is created lazily, on the first access to `db`, so a missing `DATABASE_URL` surfaces at that moment rather than at import time.
 - The migrations are linted by Squawk, configured in `.squawk.toml` at the root. A waived rule needs a `squawk-ignore` directive next to the statement it applies to.
 
+## Related
+
+- **Uses**: [`@workspace/env`](../env/README.md)
+- **Used by**: [`@workspace/auth`](../auth/README.md), [`@workspace/api`](../api/README.md)
+- **Hosts**: the generated authentication schema, owned by [`@workspace/auth`](../auth/README.md)
+
 The conventions of this package are in [AGENTS.md](AGENTS.md).

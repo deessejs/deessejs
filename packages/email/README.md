@@ -76,4 +76,9 @@ pnpm lint
 - A template never imports from the application packages. A template that imports an application type cannot be rendered from a package that does not know the application.
 - This package depends only on `@workspace/env`. Keeping it that way is what lets `@workspace/auth` import it without a cycle.
 
+## Related
+
+- **Uses**: [`@workspace/env`](../env/README.md)
+- **Used by**: [`@workspace/auth`](../auth/README.md)
+
 The conventions of this package are in [AGENTS.md](AGENTS.md).

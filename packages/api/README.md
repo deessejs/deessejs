@@ -70,4 +70,9 @@ pnpm lint
 - The registry rows are static, the registry data is live: the license, the stars, the README and the last push come from GitHub at request time. A row without a matching public repository makes the endpoint fail loudly with a 503.
 - The Better Auth mount has to stay aligned with `AUTH_BASE_PATH` in `@workspace/auth`. A mismatch makes every auth URL return 404 in production.
 
+## Related
+
+- **Uses**: [`@workspace/auth`](../auth/README.md), [`@workspace/contracts`](../contracts/README.md), [`@workspace/database`](../database/README.md), [`@workspace/env`](../env/README.md)
+- **Used by**: [`apps/app`](../../apps/app/README.md), [`apps/cli`](../../apps/cli/README.md), [`apps/web`](../../apps/web/README.md)
+
 The conventions of this package are in [AGENTS.md](AGENTS.md).
