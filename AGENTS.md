@@ -177,6 +177,7 @@ This repo is staging-first: start from `staging`, work on a branch named `impl/{
 | Content | Location |
 |---|---|
 | Design system rules, tokens, motion, accessibility | `DESIGN.md` at the repo root |
+| Cross-workspace dependency graph and canonical file map | `WORKSPACES.md` at the repo root |
 | Product documentation | `apps/docs/content/` |
 | Knowledge base | `apps/web/content/knowledge-base/` |
 | Internal decisions, RFCs, ADRs, technical designs | The Nuclino workspace **DeesseJS**, described in "Where your facts come from" |
