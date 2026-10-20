@@ -23,7 +23,7 @@ This is server-side persistence infrastructure. Application workspaces must not 
 
 ## Invariants
 
-- **`src/schema/auth.ts` is generated.** `pnpm auth:generate` rewrites it from the Better Auth configuration in `packages/auth`. A hand edit disappears at the next generation. If a field is missing, change the plugin configuration and regenerate.
+- **`src/schema/auth.ts` is generated and read-only for contributors.** `pnpm auth:generate` rewrites it from the Better Auth configuration and plugins in `packages/auth`. Never edit it manually, even to add comments or fields. If an auth field is missing, change the Better Auth configuration or plugin, regenerate, then create and review the migration with `pnpm db:generate`. See the [Better Auth guide to extending the core schema](https://better-auth.com/docs/concepts/database#extending-core-schema) and the [auth workspace guide](../auth/AGENTS.md).
 - **The application tables live in `src/tables/`,** not in the auth schema. The barrel in `src/tables/index.ts` is where a new table is exported.
 - **The schema barrel is passed whole to the adapter.** `packages/auth` imports `* as schema from "@workspace/database"`, so a table that is not exported from the barrel does not exist for the adapter.
 - **The migrations are generated, never written by hand.** `pnpm db:generate` diffs the schema against the last migration and writes the SQL. `pnpm db:push` syncs the schema directly and is a development-only shortcut.
