@@ -2,19 +2,22 @@ import { mailer } from "./transport.js"
 import { VerifyEmail } from "./templates/verify-email.js"
 import { ResetPassword } from "./templates/reset-password.js"
 import { PlaybookDownload } from "./templates/playbook.js"
-import { addToAudience, type AddToAudienceResult } from "./contacts.js"
+import {
+  subscribeToPlaybookUpdates,
+  type SubscribeToPlaybookUpdatesResult,
+} from "./contacts.js"
 import type { MailerTransport, SendArgs } from "./types.js"
 
 export {
   mailer,
-  addToAudience,
+  subscribeToPlaybookUpdates,
   type MailerTransport,
   type SendArgs,
-  type AddToAudienceResult,
+  type SubscribeToPlaybookUpdatesResult,
 }
 
 /**
- * Result of `sendAuthEmail` — discriminated union so callers can branch on
+ * Result of `sendAuthEmail`: discriminated union so callers can branch on
  * success vs failure without inspecting the underlying transport's shape.
  */
 export type SendEmailResult = { ok: true } | { ok: false; error: string }
@@ -23,7 +26,7 @@ export type SendEmailResult = { ok: true } | { ok: false; error: string }
  * Send a transactional email. Returns a discriminated union instead of
  * `Promise<void>` so the caller can react to failures (Better Auth's
  * "Avoid awaiting the email sending to prevent timing attacks" guidance
- * applies to the response latency, not to error observability — the
+ * applies to the response latency, not to error observability. The
  * caller can `void sendAuthEmail(...).then(result => ...)`).
  *
  * The DEBUG log is dropped in production to avoid leaking user PII
@@ -37,7 +40,7 @@ export async function sendAuthEmail(opts: {
 	idempotencyKey?: string
 }): Promise<SendEmailResult> {
 	if (process.env.NODE_ENV !== "production") {
-		console.log("[DEBUG] sendAuthEmail() called — subject:", opts.subject)
+		console.log("[DEBUG] sendAuthEmail() called, subject:", opts.subject)
 	}
 	try {
 		const result = await mailer.send({

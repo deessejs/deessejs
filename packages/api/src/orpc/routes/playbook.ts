@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server"
 import { z } from "zod"
 import { serverEnv } from "@workspace/env/server"
-import { addToAudience, mailer, templates } from "@workspace/email"
+import { mailer, subscribeToPlaybookUpdates, templates } from "@workspace/email"
 import { base } from "../base.js"
 import { logger } from "../../constants/logger.js"
 import {
@@ -23,8 +23,9 @@ const signupInput = z.object({
  *   1. Zod validate                   { email, consentMarketing }
  *   2. IP rate limit                  (5 per 60s, per Vercel instance)
  *   3. Email dedup                    (1 per 60s, accidental double-submits)
- *   4. If consentMarketing            POST contact to Resend Audience
- *      (audience add failure is soft-skipped: the PDF still goes out)
+ *   4. If consentMarketing            subscribe the contact to the
+ *      Resend Topic (subscription failure is soft-skipped: the PDF
+ *      still goes out)
  *   5. Send PDF email via mailer
  *   6. Return { ok: true }
  *
@@ -40,16 +41,17 @@ const signupInput = z.object({
  *     delivery is the requested service. Withholding it for
  *     non-consent would conflate two distinct purposes and break
  *     the brief's exchange-of-value contract.
- *   - Future marketing emails go only to contacts added to the
- *     Resend Audience, which gives every broadcast a Resend-managed
- *     List-Unsubscribe header. The audience contact drop is
+ *   - Future marketing emails go only to contacts subscribed to the
+ *     Resend Topic, which gives every broadcast a Resend-managed
+ *     List-Unsubscribe header. The topic subscription is
  *     best-effort: a network blip does not block the PDF send, only
  *     the marketing opt-in record. Fail-open for the lead-magnet
  *     experience.
- *   - "Audit trail" for consent is delegated to Resend (audience
- *     contact with `unsubscribed: false` is the canonical record).
- *     The DB has no copy of the email in v0.1, deliberate scope
- *     cut. A future `playbook_signups` table is the v0.2 upgrade.
+ *   - "Audit trail" for consent is delegated to Resend (the contact's
+ *     topic subscription with `subscription: "opt_in"` is the
+ *     canonical record). The DB has no copy of the email in v0.1,
+ *     deliberate scope cut. A future `playbook_signups` table is the
+ *     v0.2 upgrade.
  */
 export const signup = base
   .input(signupInput)
@@ -95,21 +97,21 @@ export const signup = base
       throw new ORPCError("DUPLICATE_SIGNUP", { status: 409 })
     }
 
-    // 4. Audience add: best-effort, never blocks the PDF.
+    // 4. Topic subscription: best-effort, never blocks the PDF.
     if (input.consentMarketing) {
-      const audienceResult = await addToAudience({
+      const topicResult = await subscribeToPlaybookUpdates({
         email: input.email,
         source: "playbook-page",
       })
-      if (!audienceResult.ok) {
+      if (!topicResult.ok) {
         // Soft-skip: log and continue. The user still gets the
         // PDF; they simply will not receive future marketing
         // emails until they sign up again (or the team
         // backfills from Resend's audit trail).
-        logger.warn("playbook_audience_add_skipped", {
+        logger.warn("playbook_topic_subscribe_skipped", {
           requestId,
-          reason: audienceResult.reason,
-          detail: audienceResult.error,
+          reason: topicResult.reason,
+          detail: topicResult.error,
         })
       }
     }

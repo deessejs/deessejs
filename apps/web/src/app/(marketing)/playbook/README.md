@@ -54,7 +54,7 @@ still derives its ids from `useId` so a second mount stays safe.
   field (`apps/web/src/components/pages/playbook/form.tsx`).
 - Rate limit primitive lives at
   `packages/api/src/orpc/middleware/rate-limit.ts`.
-- Audience contact add (when consent is true) lives at
+- Topic subscription (when consent is true) lives at
   `packages/email/src/contacts.ts`.
 
 ## Toggling off the draft banner

@@ -2,33 +2,39 @@ import { Resend } from "resend"
 import { serverEnv } from "@workspace/env/server"
 
 /**
- * Result of `addToAudience`: discriminated union so callers can branch on
- * success vs failure without throwing. Same shape the mailer returns.
+ * Result of `subscribeToPlaybookUpdates`: discriminated union so callers
+ * can branch on success vs failure without throwing. Same shape the mailer
+ * returns.
  *
- * `ok: true` covers both "added for the first time" and "already a
- * contact". Resend's `contacts.create` is idempotent per `(audience, email)`
- * and we do not need to distinguish those two states at the call site.
+ * `ok: true` covers both "subscribed for the first time" and "already
+ * subscribed". Resend's `contacts.create` is idempotent per contact and we
+ * do not need to distinguish those two states at the call site.
  *
  * `ok: false` covers three failure modes the call site may want to handle
  * differently:
- *   - `not_configured`: RESEND_PLAYBOOK_AUDIENCE_ID is unset; skip
+ *   - `not_configured`: RESEND_PLAYBOOK_TOPIC_ID is unset; skip
  *   - `api_error`: Resend returned an error; the signup procedure
- *     falls back to sending the PDF email without audience
- *     membership
+ *     falls back to sending the PDF email without the topic
+ *     subscription
  *   - `unexpected`: thrown exception, e.g. network blip
  */
-export type AddToAudienceResult =
+export type SubscribeToPlaybookUpdatesResult =
   | { ok: true }
   | { ok: false; reason: "not_configured" | "api_error" | "unexpected"; error: string }
 
 /**
- * Add a contact to the Resend Audience that holds the marketing-opt-in
- * list for the playbook page.
+ * Subscribe a contact to the Resend Topic that carries the playbook
+ * marketing opt-in list.
  *
- * When the audience ID env var is unset, this returns `not_configured`
- * instead of throwing: the playbook signup flow treats audience
- * enrollment as best-effort (the PDF email still goes out either way;
- * the contact simply will not receive future marketing emails).
+ * A Topic models a subscription preference, which is what the checkbox on
+ * the playbook page actually expresses: "send me occasional updates about
+ * DeesseJS". A Segment is for internal ranking and a contact can belong to
+ * both, so the Segment is deliberately not touched here.
+ *
+ * When the topic ID env var is unset, this returns `not_configured` instead
+ * of throwing: the playbook signup flow treats the subscription as
+ * best-effort (the PDF email still goes out either way; the contact simply
+ * will not receive future marketing emails).
  *
  * Implementation notes:
  *   - The Resend SDK is instantiated lazily so that test runs that
@@ -37,31 +43,34 @@ export type AddToAudienceResult =
  *   - The SDK is created per call rather than held as a module-level
  *     singleton; this matches the existing `ResendTransport` pattern
  *     and makes the function straightforward to mock in tests.
- *   - Resend's `contacts.create` requires an unsubscribed=false on
- *     first add (default behavior). Future emails sent through this
- *     audience carry the auto-generated `List-Unsubscribe` header,
- *     satisfying CNIL's "consent must be revocable" requirement.
- *   - When the SDK supports a richer `metadata` field on contacts,
- *     `source` will land as a first-class metadata tag. For now, the
- *     source is dropped because no public SDK API binds custom
- *     metadata to a contact (Resend contact fields are fixed
- *     `firstName`/`lastName`/`unsubscribed`). A TODO flags this gap;
- *     see the v0.2 milestone.
+ *   - `topics` and `audienceId` are mutually exclusive in the Resend
+ *     contacts API, so the payload carries the topic subscription and no
+ *     audience. The SDK still exposes `audienceId` as a deprecated
+ *     overload; using it here would opt the contact into the old
+ *     audience model and drop the per-topic preference.
+ *   - `unsubscribed` is left unset on purpose. It is the contact's global
+ *     state, distinct from the per-topic subscription: sending
+ *     `unsubscribed: false` would override a global unsubscribe for a
+ *     contact who had already opted out of every broadcast. Opting into
+ *     one topic does not need to re-subscribe them to everything.
+ *   - `properties` carries the signup source. It is the SDK's supported
+ *     way to attach custom key/value data to a contact, so the source
+ *     lands as a first-class field instead of being dropped.
  */
-export async function addToAudience(opts: {
+export async function subscribeToPlaybookUpdates(opts: {
   email: string
   source: string
-}): Promise<AddToAudienceResult> {
-  const audienceId = serverEnv.RESEND_PLAYBOOK_AUDIENCE_ID
-  if (!audienceId) {
-    // Fail-soft: the playbook signup flow logs and continues
-    // without audience enrollment. The contact will not receive
-    // future marketing emails until they sign up again.
+}): Promise<SubscribeToPlaybookUpdatesResult> {
+  const topicId = serverEnv.RESEND_PLAYBOOK_TOPIC_ID
+  if (!topicId) {
+    // Fail-soft: the playbook signup flow logs and continues without
+    // the topic subscription. The contact will not receive future
+    // marketing emails until they sign up again.
     return {
       ok: false,
       reason: "not_configured",
       error:
-        "RESEND_PLAYBOOK_AUDIENCE_ID is not set; contact add was skipped " +
+        "RESEND_PLAYBOOK_TOPIC_ID is not set; the topic subscription was skipped. " +
         "The PDF will still be sent but the contact will not receive " +
         "future marketing emails.",
     }
@@ -71,8 +80,8 @@ export async function addToAudience(opts: {
     const client = new Resend(serverEnv.RESEND_API_KEY ?? "")
     const { error } = await client.contacts.create({
       email: opts.email,
-      audienceId,
-      unsubscribed: false,
+      properties: { source: opts.source },
+      topics: [{ id: topicId, subscription: "opt_in" }],
     })
     if (error) {
       return { ok: false, reason: "api_error", error: error.message }

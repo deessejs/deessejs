@@ -36,7 +36,7 @@ import { orpc } from "@/lib/orpc"
  *     requires explicit, specific, freely-revocable opt-in for
  *     promotional emails. A pre-checked box would invert the
  *     consent polarity and defeat the audit trail downstream
- *     (Resend Audiences).
+ *     (the Resend Topic subscription).
  *   - The privacy text block sits directly under the checkbox so
  *     the reader sees what data collection happens before they
  *     check it.

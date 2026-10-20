@@ -8,8 +8,8 @@ import { BaseLayout } from "./layout.js"
  * Carries the PDF download URL in both a primary button and a plain
  * fallback link, so the email works in clients that strip buttons or
  * images. When `consentMarketing` is true, a short paragraph
- * acknowledges the opt-in and points at the unsubscribe link the
- * Resend Audience adds to every future email automatically.
+ * acknowledges the opt-in and points at the unsubscribe link Resend
+ * adds to every future email automatically.
  *
  * The `pdfUrl` is a fully-qualified public URL, the same one the
  * `/playbook.pdf` static asset resolves to. Until the real PDF lands
