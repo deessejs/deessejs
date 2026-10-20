@@ -53,13 +53,17 @@ export type SubscribeToPlaybookUpdatesResult =
  *     `unsubscribed: false` would override a global unsubscribe for a
  *     contact who had already opted out of every broadcast. Opting into
  *     one topic does not need to re-subscribe them to everything.
- *   - `properties` carries the signup source. It is the SDK's supported
- *     way to attach custom key/value data to a contact, so the source
- *     lands as a first-class field instead of being dropped.
+ *   - No custom contact properties are sent. Resend only accepts a
+ *     value for a property that was declared in the account first, and
+ *     a payload naming an undeclared property fails the whole call.
+ *     The signup handler treats a failure as best-effort, so the
+ *     symptom would be a consent checkbox that reports success while
+ *     recording nothing. The Topic subscription already records where
+ *     the opt-in came from, since it is the only surface that
+ *     subscribes to it. A second signup surface gets its own Topic.
  */
 export async function subscribeToPlaybookUpdates(opts: {
   email: string
-  source: string
 }): Promise<SubscribeToPlaybookUpdatesResult> {
   const topicId = serverEnv.RESEND_PLAYBOOK_TOPIC_ID
   if (!topicId) {
@@ -80,7 +84,6 @@ export async function subscribeToPlaybookUpdates(opts: {
     const client = new Resend(serverEnv.RESEND_API_KEY ?? "")
     const { error } = await client.contacts.create({
       email: opts.email,
-      properties: { source: opts.source },
       topics: [{ id: topicId, subscription: "opt_in" }],
     })
     if (error) {

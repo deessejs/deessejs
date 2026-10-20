@@ -5,15 +5,16 @@ import { subscribeToPlaybookUpdates } from "../src/contacts.js"
 /**
  * The payload shape this suite asserts against. It mirrors the
  * Resend contacts API, where the interesting part is what is
- * absent: `audienceId` and `unsubscribed` must both be missing.
+ * absent: `audienceId`, `unsubscribed` and `properties` must all be
+ * missing.
  */
 type ContactPayload = {
   email: string
-  properties?: Record<string, string | number | null>
   topics?: { id: string; subscription: "opt_in" | "opt_out" }[]
   unsubscribed?: boolean
   audienceId?: string
   audience_id?: string
+  properties?: Record<string, string | number | null>
 }
 
 type ContactResponse = {
@@ -57,7 +58,6 @@ describe("subscribeToPlaybookUpdates", () => {
   it("subscribes the contact to the configured topic with an opt_in", async () => {
     const result = await subscribeToPlaybookUpdates({
       email: "reader@example.com",
-      source: "playbook-page",
     })
 
     expect(result).toEqual({ ok: true })
@@ -71,7 +71,6 @@ describe("subscribeToPlaybookUpdates", () => {
   it("never sends an audience id alongside the topic", async () => {
     await subscribeToPlaybookUpdates({
       email: "reader@example.com",
-      source: "playbook-page",
     })
 
     // Resend rejects a payload that mixes the two, so the deprecated
@@ -85,7 +84,6 @@ describe("subscribeToPlaybookUpdates", () => {
   it("leaves the contact's global unsubscribed flag alone", async () => {
     await subscribeToPlaybookUpdates({
       email: "reader@example.com",
-      source: "playbook-page",
     })
 
     // The global state is separate from the per-topic subscription.
@@ -94,13 +92,17 @@ describe("subscribeToPlaybookUpdates", () => {
     expect(payloadOf()).not.toHaveProperty("unsubscribed")
   })
 
-  it("records the signup source as a contact property", async () => {
+  it("sends no custom contact properties", async () => {
     await subscribeToPlaybookUpdates({
       email: "reader@example.com",
-      source: "playbook-page",
     })
 
-    expect(payloadOf().properties).toEqual({ source: "playbook-page" })
+    // Resend only accepts a value for a property that was declared in
+    // the account first, and an undeclared property fails the whole
+    // call. The signup handler treats that as best-effort, so the
+    // symptom would be a consent checkbox reporting success while
+    // recording nothing.
+    expect(payloadOf()).not.toHaveProperty("properties")
   })
 
   it("returns not_configured and skips Resend when the topic id is missing", async () => {
@@ -108,7 +110,6 @@ describe("subscribeToPlaybookUpdates", () => {
 
     const result = await subscribeToPlaybookUpdates({
       email: "reader@example.com",
-      source: "playbook-page",
     })
 
     expect(result).toMatchObject({ ok: false, reason: "not_configured" })
@@ -124,7 +125,6 @@ describe("subscribeToPlaybookUpdates", () => {
 
     const result = await subscribeToPlaybookUpdates({
       email: "reader@example.com",
-      source: "playbook-page",
     })
 
     expect(result).toEqual({
@@ -139,7 +139,6 @@ describe("subscribeToPlaybookUpdates", () => {
 
     const result = await subscribeToPlaybookUpdates({
       email: "reader@example.com",
-      source: "playbook-page",
     })
 
     expect(result).toEqual({

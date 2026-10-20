@@ -101,7 +101,6 @@ export const signup = base
     if (input.consentMarketing) {
       const topicResult = await subscribeToPlaybookUpdates({
         email: input.email,
-        source: "playbook-page",
       })
       if (!topicResult.ok) {
         // Soft-skip: log and continue. The user still gets the

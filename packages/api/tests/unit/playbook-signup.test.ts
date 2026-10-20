@@ -84,7 +84,6 @@ describe("playbook signup: consent and delivery are independent", () => {
     expect(subscribeToPlaybookUpdates).toHaveBeenCalledTimes(1)
     expect(subscribeToPlaybookUpdates).toHaveBeenCalledWith({
       email: "consent@example.com",
-      source: "playbook-page",
     })
   })
 

@@ -57,6 +57,32 @@ still derives its ids from `useId` so a second mount stays safe.
 - Topic subscription (when consent is true) lives at
   `packages/email/src/contacts.ts`.
 
+## Resend setup (production)
+
+Two things exist in the Resend account, and one of them does not.
+
+1. **A Topic**, e.g. "DeesseJS updates". Create it in the dashboard
+   under Audience, Topics, then set its id in
+   `RESEND_PLAYBOOK_TOPIC_ID`. The env var is **required in
+   production**: the schema rejects a missing value at startup, so
+   the consent checkbox cannot look functional while recording
+   nothing. In dev it is optional and the subscription is skipped with
+   a warning.
+
+2. **No contact property.** The signup sends no `properties` in the
+   Resend payload, and none has to be created. Resend only accepts a
+   value for a property that was declared in the account first, and
+   an undeclared property fails the whole call. The signup handler
+   treats a failure as best-effort, so the symptom would be a consent
+   checkbox reporting success while recording nothing. The Topic
+   subscription already records where the opt-in came from. A second
+   signup surface gets its own Topic.
+
+The PDF email is sent through the transactional API, where Resend does
+not manage subscriptions. The unsubscribe link lives in the marketing
+emails, which go out as Broadcasts or Automations and carry the
+Resend-managed footer. The email copy points there, not at itself.
+
 ## Toggling off the draft banner
 
 Once the PDF lands:
