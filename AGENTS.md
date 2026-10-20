@@ -242,43 +242,7 @@ Gotchas that are not visible in the code:
 
 ## Git workflow
 
-This repo uses a **staging-first** workflow. All development happens against `staging`, never against `main`.
-
-```
-feature/fix branch  ─PR─▶  staging  ─▶  main  ─▶  release
-```
-
-**Rules:**
-
-- **Base new work on `staging`**: `git checkout staging && git pull && git checkout -b my-branch`
-- **PRs always target `staging`**: `gh pr create --base staging`
-- **Never push directly to `main`**, not even for a hotfix. Branch from `staging` and open a PR there.
-- **Never bypass the branch protection**, and never merge a PR into `main` yourself.
-- **Do not open a `staging` to `main` promotion PR** as part of the normal flow. The accepted release policy propagates the reviewed work once the required checks and the review have passed.
-
-**Why `staging` exists:**
-
-- It is the integration branch. Several PRs land there, get tested together and surface interaction bugs.
-- Decoupling incoming work from the release surface prevents a broken `main` from blocking every deploy.
-
-**The release channels:**
-
-| Channel | Trigger | Version |
-|---|---|---|
-| `@canary` | A push to `staging` | A synthetic version built from the date and the commit. |
-| `@latest` | A push to `main` | The changesets-driven version bump. |
-
-A change that touches the published surface of a package needs a `.changeset/*.md` file. The release workflow depends on it.
-
-**Skills assume this flow.** `/spec`, `/implement`, `/create-pr` and `/review-pr` all reset to `staging` first and open PRs against `staging`. A skill that references `main` as a base or as a PR target is a bug: fix it.
-
-**Branch naming:**
-
-- `impl/{n}-{slug}` for issue-driven work, for example `impl/18-fix-ready-endpoint-db-ping`
-- `chore/{slug}` for chores, refactors and infrastructure
-- `fix/{slug}` for unsolicited bug fixes
-
-**The full guide is on Nuclino**, in the workspace **DeesseJS**, under the name **Git Workflow and Releases**. It records the intent of the workflow and points to the repository files that implement it: the release workflow, the changesets guide, and the accepted decisions behind the two channels.
+This repo is staging-first: start from `staging`, work on a branch named `impl/{n}-{slug}`, `chore/{slug}` or `fix/{slug}`, and open the pull request against `staging`. Never push to `main`, never merge into it, never bypass the branch protection, and never open a `staging` to `main` promotion PR: the accepted release policy propagates the reviewed work once the required checks and the review have passed, a push to `staging` publishes the canary channel and a push to `main` publishes the latest one. A change that touches the published surface of a package needs a `.changeset/*.md` file, and the `/spec`, `/implement`, `/create-pr` and `/review-pr` skills all follow this flow. The full guide, with the intent behind each rule and the files that implement it, is on Nuclino in the workspace **DeesseJS**, under the name **Git Workflow and Releases**.
 
 ## Agent tooling
 
