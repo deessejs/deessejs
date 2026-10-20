@@ -4,11 +4,11 @@ import { Form } from "./form"
 import { PLAYBOOK_LEAD } from "./content/toc"
 
 /**
- * The playbook cover mockup. The file is 1500x1383 (a near-square
- * 1.085 ratio), so the wrapper below pairs `aspect-[1500/1383]`
- * with `fill` to reserve the exact height before the image loads.
- * The PNG's background is fully transparent, which is why it needs
- * no light plate to stay legible in the dark theme.
+ * The playbook cover mockup. The shipped file is cropped tight to
+ * the book at 829x1118 (a 0.742 portrait ratio), so the wrapper
+ * below pairs `aspect-[829/1118]` with `fill` to reserve the exact
+ * height before the image loads. Its background is transparent, so
+ * it needs no light plate to stay legible in the dark theme.
  */
 const COVER = {
   src: "/playbook/cover.png",
@@ -56,12 +56,12 @@ export function Hero() {
           <Form inlineSubmit />
         </div>
         <div className="flex items-center justify-center p-6 lg:py-20 lg:pl-12">
-          <div className="relative aspect-[1500/1383] w-full max-w-[300px] sm:max-w-[340px]">
+          <div className="relative aspect-[829/1118] w-full max-w-[300px] sm:max-w-[340px] lg:max-w-[380px]">
             <Image
               src={COVER.src}
               alt={COVER.alt}
               fill
-              sizes="(max-width: 1024px) 300px, 340px"
+              sizes="(max-width: 640px) 300px, (max-width: 1024px) 340px, 380px"
               className="object-contain"
               priority
             />

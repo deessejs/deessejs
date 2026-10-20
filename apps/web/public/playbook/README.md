@@ -13,8 +13,13 @@ page. The page is **draft** until the PDF lands:
    URL `<WEB_URL>/playbook.pdf`.
 
 2. **`cover.png`** — the cover thumbnail. Landed, and rendered by
-   `next/image` in `hero.tsx`. 1500x1383, transparent background,
-   near-square 1.085 ratio.
+   `next/image` in `hero.tsx`. Cropped tight to the book at
+   829x1118 (0.742 portrait), transparent background. **Re-export
+   it cropped to the artwork**: the original arrived in a 1500x1383
+   frame whose transparent margin filled 47% of the width, which
+   rendered the book at roughly half the size you asked for on
+   screen. `hero.tsx` hardcodes `aspect-[829/1118]`; a new export
+   with different bounds needs that ratio updated to match.
 
 ## Optional
 
