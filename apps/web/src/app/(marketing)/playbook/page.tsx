@@ -13,11 +13,12 @@ import { Playbook } from "@/components/pages/playbook"
  *   live.
  *
  * Layout:
- *   Hero-only. The page is a single section: the two-column hero
- *   carrying the H1, the lead, the signup form, and the cover.
- *   The Problem, WhatYouGet, WhoItsFor, and FinalCta sections were
- *   removed; the route renders just `Playbook.Hero`. See the page
- *   README for what was removed and how to bring it back.
+ *   Two sections, full-bleed like every other marketing page:
+ *   the two-column hero carrying the H1, the lead, the signup form,
+ *   and the cover, then a closing block of the three most recent
+ *   blog posts. The Problem, WhatYouGet, WhoItsFor, and FinalCta
+ *   sections were removed; see the page README for what was
+ *   removed and how to bring it back.
  *
  * Authoritative copy lives in
  * `components/pages/playbook/hero.tsx`: H1, lead, and the cover.
@@ -63,5 +64,10 @@ export const metadata: Metadata = {
 }
 
 export default function PlaybookPage() {
-  return <Playbook.Hero />
+  return (
+    <>
+      <Playbook.Hero />
+      <Playbook.Reading />
+    </>
+  )
 }
