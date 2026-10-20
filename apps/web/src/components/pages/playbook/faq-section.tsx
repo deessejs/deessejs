@@ -1,7 +1,7 @@
 import { PlaybookFaq } from "./faq"
 
 /**
- * FAQ section — 2-col layout, same design as the enterprise page's
+ * FAQ section: 2-col layout, same design as the enterprise page's
  * FAQSection: eyebrow + heading on the left (14rem fixed on md+),
  * Accordion on the right. The FAQ items live in
  * `@/lib/playbook/faq`; the visible accordion component lives in

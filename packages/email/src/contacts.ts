@@ -2,20 +2,20 @@ import { Resend } from "resend"
 import { serverEnv } from "@workspace/env/server"
 
 /**
- * Result of `addToAudience` — discriminated union so callers can branch on
+ * Result of `addToAudience`: discriminated union so callers can branch on
  * success vs failure without throwing. Same shape the mailer returns.
  *
  * `ok: true` covers both "added for the first time" and "already a
- * contact" — Resend's `contacts.create` is idempotent per `(audience, email)`
+ * contact". Resend's `contacts.create` is idempotent per `(audience, email)`
  * and we do not need to distinguish those two states at the call site.
  *
  * `ok: false` covers three failure modes the call site may want to handle
  * differently:
- *   - `not_configured` — RESEND_PLAYBOOK_AUDIENCE_ID is unset; skip
- *   - `api_error`      — Resend returned an error; the playbook signup
- *                        procedure falls back to sending the PDF email
- *                        without audience membership
- *   - `unexpected`     — thrown exception, e.g. network blip
+ *   - `not_configured`: RESEND_PLAYBOOK_AUDIENCE_ID is unset; skip
+ *   - `api_error`: Resend returned an error; the signup procedure
+ *     falls back to sending the PDF email without audience
+ *     membership
+ *   - `unexpected`: thrown exception, e.g. network blip
  */
 export type AddToAudienceResult =
   | { ok: true }
@@ -26,7 +26,7 @@ export type AddToAudienceResult =
  * list for the playbook page.
  *
  * When the audience ID env var is unset, this returns `not_configured`
- * instead of throwing — the playbook signup flow treats audience
+ * instead of throwing: the playbook signup flow treats audience
  * enrollment as best-effort (the PDF email still goes out either way;
  * the contact simply will not receive future marketing emails).
  *
@@ -62,7 +62,7 @@ export async function addToAudience(opts: {
       reason: "not_configured",
       error:
         "RESEND_PLAYBOOK_AUDIENCE_ID is not set; contact add was skipped " +
-        "— the PDF will still be sent but the contact will not receive " +
+        "The PDF will still be sent but the contact will not receive " +
         "future marketing emails.",
     }
   }

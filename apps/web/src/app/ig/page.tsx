@@ -2,12 +2,12 @@ import type { Metadata } from "next"
 import { permanentRedirect } from "next/navigation"
 
 /**
- * `/ig` — Instagram funnel alias.
+ * `/ig`: Instagram funnel alias.
  *
  * Internal-redirect page that lands visitors on `/playbook`. The
  * URL is for sharing from the brand's Instagram profile (and
  * anywhere else short, brand-clean URLs are needed). It is a
- * single-purpose capture surface — never intended to link out to
+ * single-purpose capture surface, never intended to link out to
  * instagram.com.
  *
  * Implementation notes:
@@ -37,7 +37,7 @@ export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "Playbook",
-  description: "DeesseJS playbook — free PDF.",
+  description: "DeesseJS playbook: free PDF.",
   robots: {
     index: false,
     follow: false,

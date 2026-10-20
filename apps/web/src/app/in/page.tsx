@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { permanentRedirect } from "next/navigation"
 
 /**
- * `/in` — LinkedIn funnel alias.
+ * `/in`: LinkedIn funnel alias.
  *
  * See `/ig/page.tsx` for the full rationale. Three aliases exist
  * (`/ig`, `/x`, `/in`) so each social-media URL can be short,
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "Playbook",
-  description: "DeesseJS playbook — free PDF.",
+  description: "DeesseJS playbook: free PDF.",
   robots: {
     index: false,
     follow: false,

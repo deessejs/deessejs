@@ -104,7 +104,7 @@ export const serverInputShape = {
   // Optional in dev (signups skip audience enrollment with a
   // console warning); required in production for the playbook
   // signup flow to record future-marketing consent. The signup
-  // handler treats this as best-effort — a missing ID does NOT
+  // handler treats this as best-effort: a missing ID does NOT
   // block the PDF email, only the audience contact add.
   RESEND_PLAYBOOK_AUDIENCE_ID: z
     .string()

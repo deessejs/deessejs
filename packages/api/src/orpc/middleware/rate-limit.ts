@@ -3,10 +3,11 @@ import { createHash } from "node:crypto"
 /**
  * Per-IP and per-email rate-limit primitives for oRPC procedures.
  *
- * Mirrors the pattern of `packages/api/src/http/middleware/rate-limit.ts`
- * — same fixed-window, same in-memory `Map`, same opportunistic
- * cleanup — but shaped for the oRPC handler signature (`Headers` in,
- * `{ allowed }` verdict out, never throws).
+ * Mirrors the Hono middleware at
+ * `packages/api/src/http/middleware/rate-limit.ts`: same fixed-window,
+ * same in-memory `Map`, same opportunistic cleanup, but shaped for
+ * the oRPC handler signature (`Headers` in, `{ allowed }` verdict out,
+ * never throws).
  *
  * V1 trade-offs (intentional, documented):
  *
@@ -16,7 +17,7 @@ import { createHash } from "node:crypto"
  *     (sliding window on Upstash Redis / Vercel KV) when volume
  *     justifies the extra dependency, secret, and one-network-hop
  *     latency. Same TODO that already lives on
- *     `packages/api/src/http/middleware/rate-limit.ts` — both
+ *     `packages/api/src/http/middleware/rate-limit.ts`, both
  *     locations upgrade in one follow-up PR.
  *   - Fixed window: a client can burst at the boundary (e.g. 2 * limit
  *     in 2 seconds if they straddle a window). Sliding windows are
@@ -27,7 +28,7 @@ import { createHash } from "node:crypto"
  *     the rightmost trusted hop instead of trusting the leftmost
  *     field.
  *
- * Never throws — returns a `{ allowed, ... }` discriminant.
+ * Never throws: returns a `{ allowed, ... }` discriminant.
  */
 
 type Bucket = { count: number; resetAt: number }
@@ -39,7 +40,7 @@ let totalRequests = 0
 /**
  * Extract the first client IP from `X-Forwarded-For` (set by Vercel
  * at the edge). Falls back to `X-Real-IP`, then to the literal
- * "unknown" so a missing header never throws — it just buckets
+ * "unknown" so a missing header never throws, it just buckets
  * every request together (worse than tracking per-IP, but better
  * than crashing).
  */
@@ -97,7 +98,7 @@ export const checkIpLimit = (
   const remaining = Math.max(0, limit - bucket.count)
   const resetSeconds = Math.max(0, Math.ceil((bucket.resetAt - now) / 1000))
 
-  // Same opportunistic cleanup cadence as the Hono middleware —
+  // Same opportunistic cleanup cadence as the Hono middleware,
   // every 256 requests, evict expired buckets so the map stays
   // bounded under sustained traffic.
   if (totalRequests % 256 === 0) {
@@ -115,7 +116,7 @@ export const checkIpLimit = (
 
 /**
  * Per-email single-shot dedup. The contact can re-submit after the
- * window passes (default: 60s). Tighter than the IP limit — designed
+ * window passes (default: 60s). Tighter than the IP limit, designed
  * to absorb accidental double-clicks and impatient retries without
  * blocking legitimate use.
  */

@@ -2,7 +2,7 @@ import { Button, Heading, Section, Text } from "@react-email/components"
 import { BaseLayout } from "./layout.js"
 
 /**
- * Playbook download email — sent after a successful signup on
+ * Playbook download email, sent after a successful signup on
  * `/playbook`.
  *
  * Carries the PDF download URL in both a primary button and a plain
@@ -11,7 +11,7 @@ import { BaseLayout } from "./layout.js"
  * acknowledges the opt-in and points at the unsubscribe link the
  * Resend Audience adds to every future email automatically.
  *
- * The `pdfUrl` is a fully-qualified public URL — the same one the
+ * The `pdfUrl` is a fully-qualified public URL, the same one the
  * `/playbook.pdf` static asset resolves to. Until the real PDF lands
  * in `apps/web/public/playbook/`, this URL 404s; the playbook page
  * itself stays in draft, so no production signup ever resolves to
@@ -27,7 +27,7 @@ export function PlaybookDownload({
   consentMarketing,
 }: PlaybookDownloadProps) {
   return (
-    <BaseLayout preview="The PDF is one click away — here's the direct link.">
+    <BaseLayout preview="The PDF is one click away: here's the direct link.">
       <Heading className="text-xl font-semibold text-gray-900">
         Your playbook is ready
       </Heading>

@@ -3,7 +3,7 @@ import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import { TECH_STACK } from "@/lib/marketing/home-data"
 
 /**
- * Built with — the rotating logo wall, matching the homepage's
+ * Built with: the rotating logo wall, matching the homepage's
  * TechStack section.
  *
  * Reuses the shared `TechStackGrid` and the same `TECH_STACK` data,

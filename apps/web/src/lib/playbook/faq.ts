@@ -1,7 +1,7 @@
 /**
  * Playbook FAQ.
  *
- * Single source of truth — the visible Accordion consumes this array,
+ * Single source of truth: the visible Accordion consumes this array,
  * so the rendered questions and answers cannot drift from anything
  * else that references them.
  *

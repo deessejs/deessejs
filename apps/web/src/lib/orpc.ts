@@ -9,7 +9,7 @@ import type { RouterClient } from "@orpc/server"
 // `node:crypto` in the rate-limit primitive) out of the
 // marketing-site client bundle. The previous value-level import worked
 // for the existing routes because those routes pulled nothing
-// node-only — the new `playbook` route does (it imports
+// node-only: the new `playbook` route does (it imports
 // `@workspace/email`, which uses `node:crypto`-backed modules), so
 // the import is now tightened to type-only.
 import type { appRouter } from "@workspace/api/router"
