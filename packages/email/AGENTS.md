@@ -26,6 +26,10 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | `organization-invitation.tsx` | The invitation to join an organization. |
 | `layout.tsx` | The shell every template renders in. |
 
+## Ownership boundary
+
+`packages/email` is the only workspace that owns email delivery transports, provider clients and message templates. Other workspaces may have domain-specific adapters, such as auth callbacks, but those adapters must delegate sending here. Do not duplicate provider setup or templates in `packages/api` or `packages/auth`, and do not treat their domain-specific adapters as interchangeable. Keep the public interface here focused on sending and rendering email.
+
 ## Conventions
 
 - **The transport is chosen by `MAIL_TRANSPORT`.** `console` is the default and logs to stdout, `resend` is the production path. The factory runs once at module load and exports a singleton.
@@ -54,4 +58,5 @@ pnpm lint
 
 - [Root guide](../../AGENTS.md)
 - [packages/auth](../auth/AGENTS.md)
+- [packages/api](../api/AGENTS.md)
 - [packages/env](../env/AGENTS.md)
