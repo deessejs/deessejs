@@ -39,6 +39,8 @@ Two route groups, and the difference matters:
 - **The settings paths live in `settings-paths.ts`,** never in the proxy matcher. The proxy imports `SETTINGS_PREFIX` from there.
 - **The proxy reads the session on every request,** with `cache: "no-store"`. A cached session turns the gate into a stale decision.
 - **The session payload shape is `{ session, user }` at the top level.** An earlier revision assumed `session.user`, which silently disabled the email-verification check on every protected route because the property was always undefined.
+- **App code talks to auth and data through clients.** Browser auth uses `lib/auth-client.ts`; app data uses `lib/orpc.ts` and `@workspace/api`. Never import runtime `auth` from `@workspace/auth` or `db` / tables from `@workspace/database` in an application. A server component that needs auth state must call the HTTP endpoint through an app-owned server client and forward the request headers. Put client-safe shared types in `@workspace/contracts`; direct type-only service imports require a concrete reason and must not import runtime code.
+- The current direct `auth.api.getSession()` call in the device page and the session-token helpers imported from `@workspace/auth/types` are migration targets. Do not copy those patterns.
 
 ## Commands
 
