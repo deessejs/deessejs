@@ -36,7 +36,7 @@ export function FinalCta() {
         </p>
       </div>
       <div className="flex flex-col items-stretch justify-center gap-4 p-6 lg:p-10">
-        <Form fullWidth />
+        <Form fullWidth inlineSubmit />
       </div>
     </div>
   )

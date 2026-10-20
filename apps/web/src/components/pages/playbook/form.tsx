@@ -61,19 +61,19 @@ type PlaybookInput = z.infer<typeof playbookSchema>
 interface FormProps {
   /**
    * When `true`, the form's `max-w-md` is dropped so the form
-   * fills its parent column. Use in the page-closing FinalCta
+   * fills its parent column. Set in the page-closing FinalCta,
    * where the column is already narrower than a `max-w-md` would
-   * feel right; keep the default in the hero so the email input
-   * and button don't span the full 70% column.
+   * feel right; the hero keeps the default so the inline email
+   * row doesn't span its full left column.
    */
   fullWidth?: boolean
   /**
    * When `true`, the submit button sits to the right of the
    * email input on `sm+` (stacked on mobile, where the row
-   * would be too tight for both). Use in the hero where the
-   * 70% left column has room for an inline submit. Keep the
-   * default in the FinalCta, where the form fills the right
-   * column and a stacked CTA is the more familiar pattern.
+   * would be too tight for both). Both call sites on the page
+   * want this: the hero's left column and the FinalCta's right
+   * column each have room for the input and the button on one
+   * line.
    */
   inlineSubmit?: boolean
 }
