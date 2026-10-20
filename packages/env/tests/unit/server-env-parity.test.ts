@@ -34,11 +34,15 @@ describe("serverEnv key parity", () => {
     expect(missing).toEqual([])
   })
 
-  it("resolves every renamed key to the value of its target", () => {
+  it("exposes a renamed key under its canonical name, not the alias", () => {
+    const exposed = new Set(Object.keys(serverEnv))
+
     for (const [alias, target] of Object.entries(RENAMED)) {
-      expect(serverEnv[alias as keyof typeof serverEnv]).toBe(
-        serverEnv[target as keyof typeof serverEnv],
-      )
+      // The alias is a schema-level spelling. It is resolved into the
+      // canonical key at materialisation, and it is not exposed under
+      // its own name, so reading it yields undefined on purpose.
+      expect(exposed.has(alias)).toBe(false)
+      expect(exposed.has(target)).toBe(true)
     }
   })
 

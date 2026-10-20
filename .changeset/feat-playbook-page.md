@@ -1,8 +1,8 @@
 ---
 "web": minor
-"email": minor
-"api": minor
-"env": minor
+"@workspace/email": minor
+"@workspace/api": minor
+"@workspace/env": minor
 ---
 
 Add the `/playbook` lead-magnet landing page: single email field +
@@ -19,8 +19,19 @@ and is not used. `RESEND_PLAYBOOK_TOPIC_ID` names the Topic and is
 required in production, so the checkbox cannot look like it works
 while recording nothing.
 
-The page is **draft** until the real PDF is added to
-`apps/web/public/playbook/playbook.pdf`; the email link to the PDF
-will 404 until then. The three funnel pages are force-dynamic and
-noindex so they never resolve to a stale redirect and search
-engines skip them.
+The PDF deliverable is at `apps/web/public/playbook.pdf`, and the
+signup email links it at `<WEB_URL>/playbook.pdf`. The three funnel
+pages are force-dynamic and noindex so they never resolve to a stale
+redirect and search engines skip them.
+
+## Operational prerequisites
+
+- `RESEND_PLAYBOOK_TOPIC_ID` must be set in every environment that
+  serves production traffic. It is the id of a Resend Topic, created
+  in the dashboard under Audience, Topics. The env schema rejects a
+  missing value at startup in production, so this is a startup
+  failure rather than a silent no-op.
+- The marketing emails go out as Broadcasts or Automations, which
+  carry the Resend-managed unsubscribe footer. The PDF email points
+  there, since a transactional send carries no unsubscribe link of
+  its own.
