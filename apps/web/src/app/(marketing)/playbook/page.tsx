@@ -52,9 +52,10 @@ export const metadata: Metadata = {
     description:
       "A working guide for developers who ship with coding agents. Free PDF download from DeesseJS.",
   },
-  // The PDF and the cover image are placeholders for now. Until
-  // they land, no `openGraph.images` entry is set. The global
-  // OG fallback in `apps/web/src/app/layout.tsx` carries the page.
+  // No `openGraph.images` entry yet. The cover mockup has landed,
+  // but the page stays draft until the PDF does, and the global
+  // OG fallback in `apps/web/src/app/layout.tsx` carries it until
+  // then. Revisit when the PR moves out of draft.
   robots: {
     index: true,
     follow: true,

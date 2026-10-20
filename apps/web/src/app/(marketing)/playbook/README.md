@@ -8,14 +8,14 @@ assets listed below are merged on top of the structural code:
 
 ## Assets still needed
 
-1. **`apps/web/public/playbook/cover.{png|svg}`**: the cover
-   thumbnail. Replace the "Cover TODO" placeholder block in:
-   - `apps/web/src/components/pages/playbook/hero.tsx`
-
-2. **`apps/web/public/playbook/playbook.pdf`**: the actual PDF
+1. **`apps/web/public/playbook/playbook.pdf`**: the actual PDF
    deliverable. Linked from the PlaybookDownload React Email
    template (`packages/email/src/templates/playbook.tsx`) via
    `WEB_URL/playbook.pdf`.
+
+The cover thumbnail has landed at
+`apps/web/public/playbook/cover.png` and is rendered by
+`next/image` in `apps/web/src/components/pages/playbook/hero.tsx`.
 
 ## Why the page is still draft
 
@@ -23,9 +23,6 @@ assets listed below are merged on top of the structural code:
   file lands at that path, every transactional email delivers a
   404 link. We chose "wait for the real PDF" over "ship a stub":
   the email promise and the email content must match.
-- The cover thumbnail on the page is a labelled placeholder so
-  readers can see what's coming without us pretending the asset
-  exists.
 
 ## Reading order on the page
 
