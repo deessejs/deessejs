@@ -17,7 +17,7 @@ collection of parts"). Today the composite is page-local.
 | Section | Purpose |
 |---|---|
 | `hero.tsx` | Two-column hero: H1, lead, and form on the left, cover mockup on the right |
-| `reading.tsx` | The three most recent blog posts, via the shared `PostCardGrid` |
+| `reading.tsx` | The three most recent blog posts: ForWho section chrome wrapping `PostCard` |
 | `form.tsx` | `"use client"`: RHF + Zod + orpc signup |
 
 The `index.tsx` aggregates them under the `Playbook` namespace.
