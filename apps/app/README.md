@@ -1,39 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# apps/app
 
-## Getting Started
+The authenticated DeesseJS product: dashboard, account settings, administration and authentication screens. This is the application users reach after signing in.
 
-First, run the development server:
+## Run locally
+
+From the repository root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm --filter app dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The development server uses port 3000 by default. The root `pnpm dev` command starts all configured applications and packages through Turbo.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Routes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `(protected)` contains `/home`, `/account/settings` and `/admin`.
+- `(unprotected)` contains login, signup, password recovery, email verification and `/device`.
+- `/device` is the approval screen for the CLI device authorization flow.
 
-## Learn More
+The route guard is `proxy.ts`. It resolves the session through the API and applies the email verification check to protected routes.
 
-To learn more about Next.js, take a look at the following resources:
+## Architecture
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `app/api/[[...route]]/route.ts` exposes the shared Hono API from `@workspace/api`.
+- `lib/orpc.ts` creates the typed client for API procedures.
+- `lib/auth-client.ts` configures the browser Better Auth client and its plugins.
+- `lib/fetch-auth-interceptor.ts` handles auth requests on Vercel preview deployments.
+- `lib/settings-paths.ts` owns the account settings route constants.
+- `lib/admin-auth.ts` owns the role check used by the administration area.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Business operations should go through the API client. Keep database access and server-side domain rules in their owning packages.
 
-## Deploy on Vercel
+## Commands
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm dev
+pnpm test
+pnpm test:run
+pnpm typecheck
+pnpm lint
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The tests live in `tests/`; they cover the route guard and settings path constants.
 
 ## Related
 
