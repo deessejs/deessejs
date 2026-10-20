@@ -134,6 +134,22 @@ describe("proxy: the gate still covers the legacy paths", () => {
     expect(response.status).toBe(307)
     expect(locationOf(response).pathname).toBe("/verify-email")
   })
+
+  it("treats a failed session lookup as signed out", async () => {
+    // The legacy redirect only fires for a signed-in visitor. When the
+    // session endpoint itself fails, the proxy has no session to act
+    // on and must fall back to the gate, not to the redirect.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, json: async () => null }),
+    )
+    const response = await proxy(request("/settings/profile"))
+
+    expect(response.status).toBe(307)
+    const target = locationOf(response)
+    expect(target.pathname).toBe("/login")
+    expect(target.searchParams.get("redirect")).toBe("/settings/profile")
+  })
 })
 
 describe("proxy: the matcher", () => {
