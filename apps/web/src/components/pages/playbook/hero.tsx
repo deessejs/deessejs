@@ -106,7 +106,12 @@ export function Hero() {
             <h1 className="text-heading-32 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance">
               From AI-Generated Code to Production Software
             </h1>
-            <p className="text-muted-foreground text-copy-18 sm:text-copy-20 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
+            {/* Steps with the H1 below `sm`. `leading-6` comes down alongside
+                the size on purpose: `leading-7` is a fixed 28px, so at
+                16px it would open the lead to a 1.75 ratio and the
+                body copy would read looser than the H1 above it.
+                `leading-6` puts both on 1.5. */}
+            <p className="text-muted-foreground text-copy-16 leading-6 sm:text-copy-20 sm:leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
               {LEAD}
             </p>
           </div>
