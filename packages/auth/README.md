@@ -39,13 +39,16 @@ import { auth } from "@workspace/auth"
 const session = await auth.api.getSession({ headers })
 ```
 
-Build the browser client in the application:
+Build the browser client in the application. The base path must match the Hono mount; use the shared constant instead of Better Auth's default path:
 
 ```ts
 import { createAuthClient } from "better-auth/react"
+import { clientEnv } from "@workspace/env/client"
+import { API_AUTH_PATH } from "@workspace/api/base-path"
 
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL,
+  baseURL: clientEnv.NEXT_PUBLIC_APP_URL,
+  basePath: API_AUTH_PATH,
 })
 ```
 
