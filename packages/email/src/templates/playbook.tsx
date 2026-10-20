@@ -8,8 +8,16 @@ import { BaseLayout } from "./layout.js"
  * Carries the PDF download URL in both a primary button and a plain
  * fallback link, so the email works in clients that strip buttons or
  * images. When `consentMarketing` is true, a short paragraph
- * acknowledges the opt-in and points at the unsubscribe link Resend
- * adds to every future email automatically.
+ * acknowledges the opt-in.
+ *
+ * That paragraph points the reader at the unsubscribe link in the
+ * marketing emails, not in this one, and the distinction is load
+ * bearing. This email goes out through the transactional send API,
+ * where Resend does not manage subscriptions: the unsubscribe footer
+ * and the `{{{RESEND_UNSUBSCRIBE_URL}}}` placeholder apply to
+ * Broadcasts and Automations, which is where the marketing sends
+ * happen. Promising a link at the bottom of "any email we send"
+ * would be false here, since this email has none.
  *
  * The `pdfUrl` is a fully-qualified public URL, the same one the
  * `/playbook.pdf` static asset resolves to. Until the real PDF lands
@@ -53,8 +61,7 @@ export function PlaybookDownload({
       {consentMarketing ? (
         <Text className="text-sm text-gray-600">
           You also opted in to occasional updates about DeesseJS.
-          Unsubscribe any time from the link at the bottom of any
-          email we send.
+          Unsubscribe any time from the link in our marketing emails.
         </Text>
       ) : null}
     </BaseLayout>
