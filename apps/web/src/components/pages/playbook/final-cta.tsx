@@ -28,7 +28,7 @@ export function FinalCta() {
         <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
           Get the playbook
         </h2>
-        <p className="text-copy-16 text-muted-foreground leading-7 max-w-md text-balance [&:not(:first-child)]:mt-0">
+        <p className="text-copy-16 text-muted-foreground leading-7 text-balance [&:not(:first-child)]:mt-0">
           You&apos;ll get one email with the PDF. If you opt in to
           updates, you may also receive occasional messages about
           DeesseJS. Unsubscribe any time from the link at the
