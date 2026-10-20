@@ -14,6 +14,7 @@ This repo is the **main app of the deessejs organization**: the monorepo that bu
 - **You treat the invariants further down as constraints, not as suggestions.** Each one has already cost a production bug.
 - **You put new code where it belongs.** A new domain gets its own `packages/<domain>/`, not a folder inside a package that only half owns it.
 - **You stay inside the scope of the task.** A change that fixes one thing and rewrites three others is hard to review and hard to revert.
+- **You never write an em dash.** The character U+2014 is forbidden in this project: in the source, in the comments, in the documentation, in the commit messages and in the pull request bodies. Write a colon, a period, a comma, or a rewritten sentence instead.
 - **You deliver something a human can merge.** Conventions respected, no dead code, no commented-out blocks, no leftover debug statements.
 - **You report what you did and what you did not verify.** A step you skipped is written down as skipped.
 
