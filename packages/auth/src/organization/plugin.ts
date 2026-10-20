@@ -112,8 +112,8 @@ export function createOrganizationPlugin(
       beforeCreateOrganization: beforeCreateOrganizationHook,
     },
     // The invitation delivery callback. `sendInvitationEmail` is
-    // the Better Auth callback (single point of structured logging,
-    // non-blocking dispatch through the post-response scheduler).
+    // the Better Auth callback: it awaits the transport and is the
+    // single point of structured logging.
     sendInvitationEmail,
     ...overrides,
   })

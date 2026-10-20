@@ -1,17 +1,18 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
 
-// Artifact A of the Organizations V1 PR-2 probe. Exercises the
-// production `invitation.ts` module through the deep path with a
-// `vi.mock` of `@workspace/email`. The test pins:
+// Artifact A of the invitation probe. Exercises the production
+// `invitation.ts` module through the deep path with a `vi.mock` of
+// `@workspace/email`. The test pins:
 //
 // - the `error_reason` taxonomy: `config_invalid`, `smtp_threw`,
 //   `dispatch_rejected`
 // - the "exactly one log per failed invitation" property
-// - the non-blocking contract by construction (deliberately-pending
-//   SMTP promise that the test never resolves)
+// - that the callback awaits the transport, and that it still
+//   resolves (never rejects) when the transport fails
 //
-// The test does NOT toggle `requireEmailVerificationOnInvitation` —
-// that is measured by Artifact B, not here.
+// The test does NOT toggle `requireEmailVerificationOnInvitation`:
+// that is measured at the endpoint level, in
+// `invitation-contract.test.ts`.
 
 const sendAuthEmail = vi.hoisted(() => {
   let resolveSmtp!: () => void
@@ -47,7 +48,6 @@ describe("Artifact A: callback-level probe (Vitest)", () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
-    delete process.env.VERCEL
   })
 
   // C1: SMTP success
@@ -85,15 +85,24 @@ describe("Artifact A: callback-level probe (Vitest)", () => {
     expect(consoleError).not.toHaveBeenCalled()
   })
 
-  // C5: slow SMTP (pending forever); the test never resolves the
-  // promise. The callback must resolve anyway.
-  it("C5 — non-blocking: callback resolves while SMTP promise stays pending", async () => {
+  // C5: the callback awaits the transport. The SMTP promise is held
+  // pending by this test, so the callback can only settle once the
+  // test releases it.
+  it("C5 — the callback stays pending while the SMTP promise is pending", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
 
-    // Mock returns the deliberately-pending promise (default).
-    const result = sendInvitationEmail(buildData())
-    await result
+    let settled = false
+    const result = sendInvitationEmail(buildData()).then(() => {
+      settled = true
+    })
+
+    for (let i = 0; i < 5; i++) await Promise.resolve()
     expect(sendAuthEmail.fn).toHaveBeenCalledTimes(1)
+    expect(settled).toBe(false)
+
+    sendAuthEmail.resolveSmtp({ ok: true })
+    await result
+    expect(settled).toBe(true)
     expect(consoleError).not.toHaveBeenCalled()
   })
 
@@ -105,10 +114,7 @@ describe("Artifact A: callback-level probe (Vitest)", () => {
     process.on("unhandledRejection", onUnhandled)
 
     sendAuthEmail.fn.mockRejectedValueOnce(new Error("smtp exploded"))
-    const result = sendInvitationEmail(buildData())
-    await result
-    await Promise.resolve()
-    await Promise.resolve()
+    await sendInvitationEmail(buildData())
 
     expect(consoleError).toHaveBeenCalledTimes(1)
     const payload = JSON.parse((consoleError.mock.calls[0]?.[1] as string) ?? "{}")
@@ -123,12 +129,6 @@ describe("Artifact A: callback-level probe (Vitest)", () => {
   // was produced, because "at most one log per failed invitation"
   // is a separate claim from "the right bucket was chosen".
   describe("error_reason taxonomy through the callback", () => {
-    /** Let the scheduled task's `.catch` run. */
-    const settle = async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-    }
-
     const readLog = (consoleError: ReturnType<typeof vi.spyOn>) => {
       expect(consoleError).toHaveBeenCalledTimes(1)
       const [, payload] = consoleError.mock.calls[0] as [string, string]
@@ -145,7 +145,6 @@ describe("Artifact A: callback-level probe (Vitest)", () => {
       const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
 
       await sendInvitationEmail({ ...buildData(), id: "" })
-      await settle()
 
       const payload = readLog(consoleError)
       expect(payload.error_reason).toBe("config_invalid")
@@ -160,7 +159,6 @@ describe("Artifact A: callback-level probe (Vitest)", () => {
       sendAuthEmail.fn.mockRejectedValueOnce(new Error("smtp exploded"))
 
       await sendInvitationEmail(buildData())
-      await settle()
 
       expect(readLog(consoleError).error_reason).toBe("smtp_threw")
       expect(sendAuthEmail.fn).toHaveBeenCalledTimes(1)
@@ -177,7 +175,6 @@ describe("Artifact A: callback-level probe (Vitest)", () => {
         ...buildData(),
         organization: null,
       } as unknown as Parameters<typeof sendInvitationEmail>[0])
-      await settle()
 
       expect(readLog(consoleError).error_reason).toBe("dispatch_rejected")
       expect(sendAuthEmail.fn).not.toHaveBeenCalled()
@@ -188,7 +185,6 @@ describe("Artifact A: callback-level probe (Vitest)", () => {
       sendAuthEmail.fn.mockResolvedValueOnce({ ok: true })
 
       await sendInvitationEmail(buildData())
-      await settle()
 
       expect(consoleError).not.toHaveBeenCalled()
     })
@@ -198,7 +194,6 @@ describe("Artifact A: callback-level probe (Vitest)", () => {
       sendAuthEmail.fn.mockResolvedValueOnce({ ok: false, error: "smtp_unavailable" })
 
       await sendInvitationEmail(buildData())
-      await settle()
 
       expect(consoleError).not.toHaveBeenCalled()
     })

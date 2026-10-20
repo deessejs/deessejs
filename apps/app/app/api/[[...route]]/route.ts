@@ -1,6 +1,5 @@
 import { handle } from "hono/vercel"
 import { api } from "@workspace/api"
-import { installNextPostResponseScheduler } from "@/lib/organization-post-response"
 
 // Without this, Next.js attempts build-time page-data collection which fails
 // because the route module imports @workspace/database → reads DATABASE_URL
@@ -15,20 +14,6 @@ import { installNextPostResponseScheduler } from "@/lib/organization-post-respon
 // an explicit <Suspense> boundary (or `use cache`) around runtime access.
 // Track for removal as part of cacheComponents migration.
 export const dynamic = "force-dynamic"
-
-// The `/auth/*` subtree of this catch-all is the only path by which an
-// invitation is ever dispatched, and the dispatch is deliberately not
-// awaited: awaiting SMTP would put the transport round trip on the
-// latency of the invitation request. On Vercel a promise the response
-// does not wait for can be reclaimed before it settles, which loses
-// the email with no signal. `after()` is what tells the runtime the
-// request is not finished yet.
-//
-// Installed at module load, before any request is handled. It has to
-// live in `apps/app` rather than in `@workspace/auth`: `after()` is a
-// Next.js API, and the CLI (the only other consumer of that package)
-// does not depend on Next at all.
-installNextPostResponseScheduler()
 
 // Catch-all → Hono (per https://hono.dev/docs/getting-started/nextjs).
 // `handle(api)` from hono/vercel replaces the previous manual dispatch on

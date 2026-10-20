@@ -24,11 +24,6 @@
       "import": "./dist/organization/invitation.js",
       "default": "./dist/organization/invitation.js"
     },
-    "./organization/lifecycle": {
-      "types": "./dist/organization/lifecycle.d.ts",
-      "import": "./dist/organization/lifecycle.js",
-      "default": "./dist/organization/lifecycle.js"
-    },
     "./organization/queries": {
       "types": "./dist/organization/queries.d.ts",
       "import": "./dist/organization/queries.js",

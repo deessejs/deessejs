@@ -2,7 +2,6 @@ import type { OrganizationOptions } from "better-auth/plugins/organization"
 import * as React from "react"
 import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail } from "@workspace/email"
-import { schedulePostResponse } from "./lifecycle.js"
 
 type SendInvitationData = Parameters<
   NonNullable<OrganizationOptions["sendInvitationEmail"]>
@@ -35,10 +34,9 @@ export class InvitationError extends Error {
  * Internal implementation of the invitation dispatch. Resolves
  * when the SMTP call settles (success or `ok: false`), or throws a
  * typed `InvitationError` on configuration or transport errors.
- * The Better Auth callback (`sendInvitationEmail`) hands this
- * function to the post-response scheduler with a `.catch` already
- * attached. Tests and the probe `await` the returned Promise
- * directly to make assertions deterministic.
+ * The Better Auth callback (`sendInvitationEmail`) awaits it and
+ * absorbs the failure. Tests await it directly to make assertions
+ * deterministic.
  *
  * `dispatchInvitationEmail` does **not** call `console.error`; the
  * single point of structured logging is `sendInvitationEmail`. This
@@ -199,52 +197,53 @@ function logField(read: () => unknown): string {
 
 /**
  * The Better Auth callback. Signature is fixed by the plugin:
- * `Promise<void>`. Resolves immediately after handing the work to
- * the post-response scheduler.
+ * `Promise<void>`.
  *
- * The dispatch is wrapped in a `.catch` **before** it is scheduled,
- * so no rejection can ever produce an unhandled-rejection event. The
- * `.catch` inspects `error.kind` to choose the `error_reason`; for
- * any other unexpected runtime error, the bucket is
+ * It awaits the dispatch. That puts the SMTP round trip on the
+ * latency of the invitation request, which is the trade this version
+ * makes deliberately: the alternative, a detached promise, needs a
+ * post-response scheduler to survive a serverless freeze, and that
+ * machinery is more complexity than the latency is worth at this
+ * stage. If the latency ever shows up in the numbers, the fix is to
+ * reintroduce the scheduler behind this same signature, which stays
+ * `Promise<void>` either way.
+ *
+ * Nothing propagates to the caller. Every failure is caught here,
+ * logged once, and turned into a resolved promise, so a transport
+ * problem can never fail the request that created the invitation.
+ * The `.catch` inspects `error.kind` to choose the `error_reason`;
+ * for any other unexpected runtime error, the bucket is
  * `dispatch_rejected`.
- *
- * Scheduling goes through `schedulePostResponse` rather than a bare
- * `void`ed promise: on a serverless platform a detached promise can
- * be reclaimed the moment the response is flushed, which loses the
- * invitation email without any signal. The host installs a scheduler
- * that keeps the runtime alive until the task settles
- * (`apps/app/lib/organization-post-response.ts`). The default
- * scheduler is a plain detached promise, correct for a long-lived
- * Node process.
  *
  * This callback is the **single point of structured logging** for
  * the invitation flow: at most one log per failed invitation, with
  * the `error_reason` chosen from a three-value taxonomy
  * (`config_invalid`, `smtp_threw`, `dispatch_rejected`).
  */
-export function sendInvitationEmail(data: SendInvitationData): Promise<void> {
-  schedulePostResponse(() =>
-    dispatchInvitationEmail(data).catch((error: unknown) => {
-      let errorReason: "config_invalid" | "smtp_threw" | "dispatch_rejected"
-      let errorMessage: string
-      if (error instanceof InvitationError) {
-        errorReason = error.kind
-        errorMessage = error.message
-      } else {
-        errorReason = "dispatch_rejected"
-        errorMessage = error instanceof Error ? error.message : String(error)
-      }
-      console.error(
-        "[auth] organization-invitation failed",
-        JSON.stringify({
-          recipient_email: logField(() => data.email),
-          inviter_user_id: logField(() => data.inviter.user.id),
-          organization_id: logField(() => data.organization.id),
-          error_reason: errorReason,
-          error: errorMessage,
-        }),
-      )
-    }),
-  )
-  return Promise.resolve()
+export async function sendInvitationEmail(
+  data: SendInvitationData,
+): Promise<void> {
+  try {
+    await dispatchInvitationEmail(data)
+  } catch (error: unknown) {
+    let errorReason: "config_invalid" | "smtp_threw" | "dispatch_rejected"
+    let errorMessage: string
+    if (error instanceof InvitationError) {
+      errorReason = error.kind
+      errorMessage = error.message
+    } else {
+      errorReason = "dispatch_rejected"
+      errorMessage = error instanceof Error ? error.message : String(error)
+    }
+    console.error(
+      "[auth] organization-invitation failed",
+      JSON.stringify({
+        recipient_email: logField(() => data.email),
+        inviter_user_id: logField(() => data.inviter.user.id),
+        organization_id: logField(() => data.organization.id),
+        error_reason: errorReason,
+        error: errorMessage,
+      }),
+    )
+  }
 }

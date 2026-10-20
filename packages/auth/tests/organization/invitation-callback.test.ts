@@ -69,7 +69,12 @@ describe("dispatchInvitationEmail", () => {
   })
 })
 
-describe("sendInvitationEmail — non-blocking dispatch by construction", () => {
+/** Drain the microtask queue so pending continuations run. */
+const flush = async () => {
+  for (let i = 0; i < 5; i++) await Promise.resolve()
+}
+
+describe("sendInvitationEmail — the callback awaits the transport", () => {
   beforeEach(() => {
     sendAuthEmail.fn.mockReset()
     sendAuthEmail.fn.mockImplementation(() => sendAuthEmail.smtpPromise)
@@ -77,35 +82,41 @@ describe("sendInvitationEmail — non-blocking dispatch by construction", () => 
 
   afterEach(() => {
     vi.restoreAllMocks()
-    delete process.env.VERCEL
   })
 
-  it("resolves without waiting for SMTP (deliberately-pending promise)", async () => {
-    // The test holds the resolver and never calls it. If
-    // sendInvitationEmail awaited the SMTP promise, the
-    // `await sendInvitationEmail(...)` would hang (the resolver
-    // is in this test's hand, untouched). The fact that the
-    // returned promise resolves proves the callback did not wait.
+  it("stays pending while the transport is pending, then resolves", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
 
-    const result = sendInvitationEmail(buildData())
-    await result
+    // The resolver for the SMTP promise is held by this test, so the
+    // callback can only settle once the test releases it. That is the
+    // whole assertion: a fire-and-forget callback would resolve during
+    // the flush below and the test would fail.
+    let settled = false
+    const result = sendInvitationEmail(buildData()).then(() => {
+      settled = true
+    })
+
+    await flush()
     expect(sendAuthEmail.fn).toHaveBeenCalledTimes(1)
+    expect(settled).toBe(false)
+    expect(consoleError).not.toHaveBeenCalled()
+
+    sendAuthEmail.resolveSmtp({ ok: true })
+    await result
+    expect(settled).toBe(true)
     expect(consoleError).not.toHaveBeenCalled()
   })
 
-  it("emits exactly one log on smtp_threw, no unhandled rejection", async () => {
+  it("emits exactly one log on smtp_threw, and still resolves", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
     const onUnhandled = vi.fn()
     process.on("unhandledRejection", onUnhandled)
 
     sendAuthEmail.fn.mockRejectedValueOnce(new Error("smtp exploded"))
-    const result = sendInvitationEmail(buildData())
-    await result
 
-    // Wait one microtask cycle for the .catch to fire.
-    await Promise.resolve()
-    await Promise.resolve()
+    // A transport failure must never fail the request that created
+    // the invitation, so the callback resolves rather than rejecting.
+    await expect(sendInvitationEmail(buildData())).resolves.toBeUndefined()
 
     expect(consoleError).toHaveBeenCalledTimes(1)
     const payload = JSON.parse((consoleError.mock.calls[0]?.[1] as string) ?? "{}")
