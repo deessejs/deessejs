@@ -80,6 +80,7 @@ function getServerEnv(): Readonly<ServerEnv> {
     RESEND_FROM_EMAIL: env.RESEND_FROM_EMAIL,
     RESEND_FROM_NAME: env.RESEND_FROM_NAME,
     MAIL_TRANSPORT: env.MAIL_TRANSPORT,
+    RESEND_PLAYBOOK_TOPIC_ID: env.RESEND_PLAYBOOK_TOPIC_ID,
     RATE_LIMIT_PER_MINUTE: env.RATE_LIMIT_PER_MINUTE,
     GITHUB_TOKEN: env.GITHUB_TOKEN,
     GITHUB_CLIENT_ID: env.GITHUB_CLIENT_ID,
@@ -146,7 +147,15 @@ export const serverEnv: Readonly<ServerEnv> = new Proxy(
     getOwnPropertyDescriptor(_target, prop) {
       const env = getServerEnv() as unknown as Record<string, unknown>
       if (typeof prop === "symbol") return undefined
-      return Object.getOwnPropertyDescriptor(env, prop)
+      const descriptor = Object.getOwnPropertyDescriptor(env, prop)
+      if (!descriptor) return undefined
+      // The proxy target is an empty, extensible object, so the
+      // invariant requires reporting `configurable: true` for every
+      // key the target does not own. The materialised object is
+      // frozen, so its own descriptors say `configurable: false`;
+      // passing them through makes `Object.keys(serverEnv)` throw a
+      // TypeError.
+      return { ...descriptor, configurable: true }
     },
   }
 )
