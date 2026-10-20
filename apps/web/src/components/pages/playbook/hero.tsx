@@ -89,7 +89,13 @@ export function Hero() {
     <section className="border-b border-border">
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr]">
         <div className="flex flex-col gap-8 p-6 lg:gap-10 lg:px-12 lg:py-20">
-          <div className="flex flex-col gap-4">
+          {/* Centre the heading block while the hero stacks: the cover
+              below it is already centred, so left-aligned text over a
+              centred mockup reads as unbalanced on a phone. From `lg`
+              the two columns sit side by side and the text goes back
+              to the left edge. The form is left out of it on purpose,
+              a field and a checkbox still want a left edge. */}
+          <div className="flex flex-col gap-4 text-center lg:text-left">
             <h1 className="text-heading-40 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance">
               From AI-Generated Code to Production Software
             </h1>
