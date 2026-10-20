@@ -24,11 +24,6 @@
       "import": "./dist/organization/invitation.js",
       "default": "./dist/organization/invitation.js"
     },
-    "./organization/queries": {
-      "types": "./dist/organization/queries.d.ts",
-      "import": "./dist/organization/queries.js",
-      "default": "./dist/organization/queries.js"
-    },
     "./types": {
       "types": "./dist/types.d.ts",
       "import": "./dist/types.js",
