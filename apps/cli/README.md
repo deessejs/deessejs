@@ -2,24 +2,24 @@
 
 CLI for the DeesseJS template registry.
 
-## Install (V1)
+## Install
+
+The package is published as `@deessejs/cli` and exposes the `deessejs` executable:
 
 ```bash
-npx deessejs@latest <command>
+npx @deessejs/cli@latest <command>
 ```
 
 Other release channels:
 
-- `@canary`: on-demand pre-release of the current `staging` branch. Published by the `release.yml` workflow via `workflow_dispatch` with the `canary` input. `npx deessejs@canary <command>`.
+- `@canary`: on-demand pre-release of the current `staging` branch. Published by the `release.yml` workflow via `workflow_dispatch` with the `canary` input. Install with `npx @deessejs/cli@canary <command>`.
 - Per-PR previews: every PR gets a SHA-keyed ephemeral preview via [pkg.pr.new](https://pkg.pr.new). The install URL is posted as a sticky comment on the PR by the `cli-preview.yml` workflow.
-
-Future (V1.1+, when pro templates need auth): `npm i -g @deessejs/cli`.
 
 ## Commands
 
 | Command | Role |
 |---|---|
-| `deessejs init <slug>` | Clone a template repo + install dependencies |
+| `deessejs init <slug>` | Clone a template repo and install dependencies |
 | `deessejs list` | List available templates |
 | `deessejs info <slug>` | Show details for one template |
 
@@ -40,9 +40,9 @@ deessejs init saas-starter --ref develop --no-install
 
 ## License
 
-UNLICENSED for V1 (private). License TBD before npm publish.
+MIT.
 
 ## Related
 
-- **Uses**: [`@workspace/api`](../../packages/api/README.md), [`@workspace/contracts`](../../packages/contracts/README.md)
+- **Uses**: [`@workspace/api`](https://github.com/deessejs/deessejs/blob/staging/packages/api/README.md), [`@workspace/contracts`](https://github.com/deessejs/deessejs/blob/staging/packages/contracts/README.md)
 - **Bundles**: the two dependencies into the published package at build time, so nothing is resolved at run time
