@@ -26,7 +26,8 @@ const COVER = {
  *   │ Consent checkbox + privacy    │                          │
  *   └─────────────────────────────────┴──────────────────────────┘
  *
- * On `lg+` the two columns share a vertical divider and align
+ * On `lg+` the two columns sit side by side with no divider
+ * between them, separated only by their own gutters, and align
  * centrally. On mobile the cover stacks below the form.
  *
  * Title and lead copy, the email field, the inline submit, and the
@@ -43,7 +44,7 @@ const COVER = {
 export function Hero() {
   return (
     <section className="border-b border-border">
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] lg:divide-x lg:divide-border">
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr]">
         <div className="flex flex-col gap-8 p-6 lg:gap-10 lg:px-12 lg:py-20">
           <div className="flex flex-col gap-4">
             <h1 className="text-heading-40 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance">
