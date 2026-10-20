@@ -32,7 +32,8 @@ The cover thumbnail has landed at
    form on the left; the cover mockup on the right
 2. TechStack (`Playbook.TechStack`): the rotating logo wall
 3. Reading (`Playbook.Reading`): the three most recent blog posts
-4. Final CTA (`Playbook.FinalCta`): the shared closing block, the
+4. FAQ (`Playbook.FAQ`): accordion, enterprise 2-col layout
+5. Final CTA (`Playbook.FinalCta`): the shared closing block, the
    same copy and actions as the homepage
 
 The Problem, What you'll find, and Who it's for were deleted along

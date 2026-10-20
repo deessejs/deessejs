@@ -10,12 +10,14 @@
  *   - Hero: H1 + lead + form, two-column with the cover mockup
  *   - TechStack: the rotating logo wall, same as the homepage
  *   - Reading: the three most recent blog posts
+ *   - FAQ: accordion in the enterprise 2-col layout
  *   - FinalCta: the shared closing block, same copy as the homepage
  *
  * The Problem, WhatYouGet, and WhoItsFor sections were removed
  * along with the content that fed them; see the page README for
  * what is gone and how to bring it back.
  */
+import { FAQSection } from "./faq-section"
 import { FinalCta } from "./final-cta"
 import { Hero } from "./hero"
 import { Reading } from "./reading"
@@ -25,9 +27,10 @@ export const Playbook = {
   Hero,
   TechStack,
   Reading,
+  FAQ: FAQSection,
   FinalCta,
 } as const
 
 // Named re-exports for consumers that want a single component
 // without going through the namespace (e.g. tests).
-export { FinalCta, Hero, Reading, TechStack }
+export { FAQSection, FinalCta, Hero, Reading, TechStack }
