@@ -27,6 +27,9 @@ Five entries, and the order matters:
 
 ## Invariants
 
+- **The auth instance is a server implementation, not an application client.** Expose its operations through the Better Auth endpoints mounted by `packages/api`. Applications use their configured Better Auth clients and must not import `auth` or call `auth.api.*` directly.
+- Keep client-safe request and response shapes in `packages/contracts` when they are project-owned wire contracts. Do not expose database adapter details through an application-facing export.
+
 - **`AUTH_BASE_PATH` is `/api/v1/auth` and it must match the Hono mount** in `packages/api`, which serves `/auth/*` under the same prefix. The value is duplicated on purpose: `@workspace/api` depends on `@workspace/auth`, so importing it back would create a cycle. Change both sides together. A mismatch makes every auth URL return 404 in production while the middleware still runs.
 - **The schema is generated.** `pnpm auth:generate` rewrites `packages/database/src/schema/auth.ts`. Never edit that file by hand.
 - **The email callbacks never throw.** `sendResetPassword` and `sendVerificationEmail` are fire-and-forget: they dispatch the mail and report a failure through `logEmailFailure`. The forgot-password flow has to keep its always-succeed behaviour.
