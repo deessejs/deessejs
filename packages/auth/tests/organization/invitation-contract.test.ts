@@ -8,7 +8,7 @@ import { memoryAdapter } from "better-auth/adapters/memory"
 // SMTP out of the measurement and is irrelevant to the decision under
 // test.
 vi.mock("@workspace/email", () => ({
-  sendAuthEmail: vi.fn(async () => ({ ok: true })),
+  sendOrganizationInvitationEmail: vi.fn(async () => ({ ok: true })),
 }))
 
 const { createOrganizationPlugin, organizationPlugin } = await import(
@@ -40,6 +40,9 @@ const { createOrganizationPlugin, organizationPlugin } = await import(
  *
  * **Storage.** The memory adapter replaces Drizzle and Postgres. The
  * question is what the endpoint decides, not how rows are stored.
+ *
+ * **The mailer.** `@workspace/email` is mocked to accept immediately,
+ * so no SMTP is involved and the awaited callback settles at once.
  *
  * **`emailAndPassword.requireEmailVerification: false`.** This is a
  * deliberate deviation from production and it is load-bearing. Shipped

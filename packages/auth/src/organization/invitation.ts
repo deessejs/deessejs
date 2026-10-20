@@ -1,7 +1,6 @@
 import type { OrganizationOptions } from "better-auth/plugins/organization"
-import * as React from "react"
 import { serverEnv } from "@workspace/env/server"
-import { sendAuthEmail } from "@workspace/email"
+import { sendOrganizationInvitationEmail } from "@workspace/email"
 
 type SendInvitationData = Parameters<
   NonNullable<OrganizationOptions["sendInvitationEmail"]>
@@ -12,13 +11,26 @@ type SendInvitationData = Parameters<
  * specific failure category to the Better Auth callback
  * (`sendInvitationEmail`). The `kind` field carries the
  * `error_reason` taxonomy, and the callback is the only place that
- * emits structured logs — this guarantees at most one log per
- * invitation. The `cause` field preserves the underlying error for
- * debugging.
+ * emits structured logs. The `cause` field preserves the underlying
+ * error for debugging.
+ *
+ * The taxonomy has one value per thing that can go wrong:
+ *
+ * - `config_invalid`: the invitation id or `APP_URL` is unusable. A
+ *   deployment mistake, so it should page someone rather than be
+ *   retried.
+ * - `smtp_failed`: the transport accepted the message and reported a
+ *   failure. This is the path a real outage takes, because
+ *   `sendAuthEmail` converts every transport error, thrown or
+ *   returned, into `{ ok: false }` rather than rejecting.
+ *
+ * Anything else reaches the callback untyped and is filed under
+ * `dispatch_rejected`: an unexpected runtime error in code that is not
+ * supposed to fail.
  */
 export class InvitationError extends Error {
   constructor(
-    public readonly kind: "config_invalid" | "smtp_threw",
+    public readonly kind: "config_invalid" | "smtp_failed",
     message: string,
     options?: { cause?: unknown },
   ) {
@@ -31,18 +43,25 @@ export class InvitationError extends Error {
 }
 
 /**
- * Internal implementation of the invitation dispatch. Resolves
- * when the SMTP call settles (success or `ok: false`), or throws a
- * typed `InvitationError` on configuration or transport errors.
- * The Better Auth callback (`sendInvitationEmail`) awaits it and
- * absorbs the failure. Tests await it directly to make assertions
+ * Internal implementation of the invitation dispatch. Resolves when
+ * the message is accepted by the transport, or throws a typed
+ * `InvitationError` on a configuration or transport failure. The
+ * Better Auth callback (`sendInvitationEmail`) awaits it and absorbs
+ * the failure; tests await it directly to make assertions
  * deterministic.
+ *
+ * This layer owns only what is specific to a Better Auth
+ * invitation: the opaque id, the origin policy on `APP_URL`, and the
+ * link it builds. The message itself — subject line, React tree,
+ * provider tags — is composed by `sendOrganizationInvitationEmail` in
+ * `@workspace/email`, which is where every other transactional email
+ * is built too.
  *
  * `dispatchInvitationEmail` does **not** call `console.error`; the
  * single point of structured logging is `sendInvitationEmail`. This
- * avoids the double-log problem (one log from the dispatch path,
- * one from the catch-all in the callback) that would otherwise
- * contradict the "at most one log per invitation" contract.
+ * avoids the double-log problem (one log from the dispatch path, one
+ * from the catch-all in the callback) that would otherwise contradict
+ * the "at most one log per invitation" contract.
  */
 export async function dispatchInvitationEmail(
   data: SendInvitationData,
@@ -110,70 +129,32 @@ export async function dispatchInvitationEmail(
     throw new InvitationError("config_invalid", "APP_URL is not a valid URL")
   }
 
-  // 3. Build the URL on the validated origin.
+  // 3. Build the link on the validated origin.
   const origin = `${parsed.protocol}//${parsed.host}`
   const link = new URL(
     "/accept-invitation/" + encodeURIComponent(data.id),
     origin,
   ).toString()
 
-  // 4. Build the payload, then send. The payload is assembled
-  //    **outside** the transport `try`/`catch` on purpose: the
-  //    `smtp_threw` bucket means "the transport failed", so a
-  //    programming error while reading `data` must not be filed
-  //    under it. Letting it escape untyped is what routes it to
-  //    `dispatch_rejected`, which is the bucket that means exactly
-  //    that.
-  //
-  //    The placeholder React body is replaced by a call to
-  //    `templates.OrganizationInvitation(...)` in a downstream
-  //    increment, which owns the React Email template. The
-  //    structured log fields and the `error_reason` taxonomy stay
-  //    identical.
-  const payload = {
+  // 4. Send. `sendAuthEmail` never rejects: it reports every
+  //    transport failure as `{ ok: false, error }`. A rejection from
+  //    here therefore means something other than the transport went
+  //    wrong, so it is deliberately left untyped and surfaces as
+  //    `dispatch_rejected` in the callback.
+  const result = await sendOrganizationInvitationEmail({
     to: data.email,
-    subject: `Invitation to join ${data.organization.name}`,
-    react: React.createElement(
-      "div",
-      null,
-      React.createElement(
-        "p",
-        null,
-        `You have been invited to join ${data.organization.name} on DeesseJS.`,
-      ),
-      React.createElement(
-        "p",
-        null,
-        React.createElement("a", { href: link }, "Accept the invitation"),
-      ),
-      React.createElement(
-        "p",
-        null,
-        `This invitation expires on ${data.invitation.expiresAt.toISOString()}.`,
-      ),
-    ),
-    tags: [{ name: "flow", value: "organization-invitation" }],
-  }
+    url: link,
+    organizationName: data.organization.name,
+    // Better Auth's `user.name` is nullable, and the template has to
+    // render something. An account with no display name still
+    // produced a deliberate invitation, so the email is not dropped
+    // for want of a name.
+    inviterName: data.inviter.user.name ?? "Someone",
+    expiresAt: data.invitation.expiresAt,
+  })
 
-  let result: { ok: true } | { ok: false; error: string }
-  try {
-    result = await sendAuthEmail(payload)
-  } catch (error) {
-    throw new InvitationError(
-      "smtp_threw",
-      error instanceof Error ? error.message : String(error),
-      { cause: error },
-    )
-  }
-
-  // 5. Resolved transport: `ok: false` is an SMTP-level failure.
-  //    We resolve (no throw, no log here): the callback does not see
-  //    a rejection on this path, and the mailer has its own logs. A
-  //    later increment that wants `ok: false` in the platform's logs
-  //    can throw a typed error from here; the callback's catch picks
-  //    up any `InvitationError` without changing.
   if (!result.ok) {
-    return
+    throw new InvitationError("smtp_failed", result.error)
   }
 }
 
@@ -200,25 +181,22 @@ function logField(read: () => unknown): string {
  * `Promise<void>`.
  *
  * It awaits the dispatch. That puts the SMTP round trip on the
- * latency of the invitation request, which is the trade this version
- * makes deliberately: the alternative, a detached promise, needs a
- * post-response scheduler to survive a serverless freeze, and that
- * machinery is more complexity than the latency is worth at this
- * stage. If the latency ever shows up in the numbers, the fix is to
- * reintroduce the scheduler behind this same signature, which stays
- * `Promise<void>` either way.
+ * latency of the invitation request, which is also what Better Auth
+ * does by default: `runInBackgroundOrAwait` awaits the callback
+ * unless `advanced.backgroundTasks.handler` is configured. If the
+ * latency ever shows up in the numbers, that handler (a `waitUntil`
+ * on Vercel) is the switch, and it needs no change here.
  *
  * Nothing propagates to the caller. Every failure is caught here,
  * logged once, and turned into a resolved promise, so a transport
  * problem can never fail the request that created the invitation.
- * The `.catch` inspects `error.kind` to choose the `error_reason`;
- * for any other unexpected runtime error, the bucket is
- * `dispatch_rejected`.
+ * The `catch` inspects `error.kind` to choose the `error_reason`;
+ * any other error is filed under `dispatch_rejected`.
  *
  * This callback is the **single point of structured logging** for
  * the invitation flow: at most one log per failed invitation, with
  * the `error_reason` chosen from a three-value taxonomy
- * (`config_invalid`, `smtp_threw`, `dispatch_rejected`).
+ * (`config_invalid`, `smtp_failed`, `dispatch_rejected`).
  */
 export async function sendInvitationEmail(
   data: SendInvitationData,
@@ -226,7 +204,7 @@ export async function sendInvitationEmail(
   try {
     await dispatchInvitationEmail(data)
   } catch (error: unknown) {
-    let errorReason: "config_invalid" | "smtp_threw" | "dispatch_rejected"
+    let errorReason: "config_invalid" | "smtp_failed" | "dispatch_rejected"
     let errorMessage: string
     if (error instanceof InvitationError) {
       errorReason = error.kind
