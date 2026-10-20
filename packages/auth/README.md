@@ -1,0 +1,81 @@
+# `@workspace/auth`
+
+The authentication layer of DeesseJS: one Better Auth instance, five plugins, and the rules that decide who may do what.
+
+## What's included
+
+- **`auth`**: the configured Better Auth instance, the single source of truth for authentication
+- **Five plugins**: device authorization, bearer, admin, organization, and the Next.js cookie integration
+- **`isHostAllowed`**: the host allowlist, shared with the CORS layer of the API
+- **The organization policy**: the name and slug validation, and the reserved slug set
+- **The invitation delivery**: delegated to `@workspace/email`
+- **Branded session types**: `SessionId` and `SessionToken`, so the two are not interchangeable at compile time
+
+## The plugins
+
+| Plugin | What it adds |
+|---|---|
+| `deviceAuthorization` | The device code flow the CLI uses to log in a machine |
+| `bearer` | Session resolution from an `Authorization: Bearer` header, for a stateless client |
+| `admin` | The `role`, `banned`, `banReason` and `banExpires` columns, and the `/admin` gate |
+| `organization` | Organizations, members and invitations, configured in `src/organization/plugin.ts` |
+| `nextCookies` | The Next.js cookie integration, always last in the list |
+
+## Usage
+
+Serve the handler from the API:
+
+```ts
+import { auth } from "@workspace/auth"
+
+api.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw))
+```
+
+Read the current session on the server:
+
+```ts
+import { auth } from "@workspace/auth"
+
+const session = await auth.api.getSession({ headers })
+```
+
+Build the browser client in the application:
+
+```ts
+import { createAuthClient } from "better-auth/react"
+
+export const authClient = createAuthClient({
+  baseURL: process.env.NEXT_PUBLIC_APP_URL,
+})
+```
+
+## Exports
+
+| Export | Import path | Contents |
+|---|---|---|
+| `.` | `@workspace/auth` | The `auth` instance, and the `User`, `Session` and `AuthSession` types |
+| `./host-allowlist` | `@workspace/auth/host-allowlist` | `HOST_ALLOWLIST`, `isHostAllowed()` |
+| `./organization/policy` | `@workspace/auth/organization/policy` | The name and slug validation |
+| `./organization/invitation` | `@workspace/auth/organization/invitation` | The invitation delivery |
+| `./types` | `@workspace/auth/types` | The branded session identifiers |
+
+## Commands
+
+```bash
+pnpm auth:generate   # regenerate the Drizzle schema in packages/database
+pnpm test            # email flows, providers, session, organization
+pnpm test:run
+pnpm test:coverage
+pnpm build
+pnpm typecheck
+pnpm lint
+```
+
+## Notes
+
+- The base path is `/api/v1/auth`, and it has to match the mount of `@workspace/api`. The value is duplicated on purpose, because the API depends on this package and importing it back would create a cycle. Change both sides together.
+- The email callbacks never throw. They dispatch the mail and report a failure through `logEmailFailure`, so a mail transport outage never breaks the request that triggered it.
+- A synthetic sign-up response carries the admin fields, so the presence of `role` on a response does not become an account-enumeration signal.
+- The schema in `packages/database/src/schema/auth.ts` is generated. Never edit it by hand.
+
+The conventions of this package are in [AGENTS.md](AGENTS.md).
