@@ -4,6 +4,10 @@ You own the schema: the Drizzle tables, the migrations and the database client. 
 
 The [root guide](../../AGENTS.md) holds the rules that cut across every workspace: the API path, the auth base path, the wire contracts, the research protocol and the git workflow. Read it when your change touches one of them, not before every edit.
 
+## Service boundary
+
+This is server-side persistence infrastructure. Application workspaces must not import `db`, Drizzle tables or database helpers to perform product operations. Expose those operations through typed API procedures and clients. `packages/api` and `packages/auth` may use this package inside the server boundary. New stateful infrastructure, including cache, follows the same client boundary for applications.
+
 ## Key files
 
 | Path | Owns |
