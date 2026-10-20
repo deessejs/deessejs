@@ -30,8 +30,9 @@ The cover thumbnail has landed at
 
 1. Hero (`Playbook.Hero`): two columns: H1, lead, and the signup
    form on the left; the cover mockup on the right
-2. Reading (`Playbook.Reading`): the three most recent blog posts
-3. Final CTA (`Playbook.FinalCta`): the shared closing block, the
+2. TechStack (`Playbook.TechStack`): the rotating logo wall
+3. Reading (`Playbook.Reading`): the three most recent blog posts
+4. Final CTA (`Playbook.FinalCta`): the shared closing block, the
    same copy and actions as the homepage
 
 The Problem, What you'll find, and Who it's for were deleted along

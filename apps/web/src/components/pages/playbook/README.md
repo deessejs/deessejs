@@ -17,6 +17,7 @@ collection of parts"). Today the composite is page-local.
 | Section | Purpose |
 |---|---|
 | `hero.tsx` | Two-column hero: H1, lead, and form on the left, cover mockup on the right |
+| `tech-stack.tsx` | Rotating logo wall via the shared `TechStackGrid`, same as the homepage |
 | `reading.tsx` | The three most recent blog posts: ForWho section chrome wrapping `PostCard` |
 | `final-cta.tsx` | Closing 2-col block via the shared `FinalCtaShell`, same copy as the homepage |
 | `form.tsx` | `"use client"`: RHF + Zod + orpc signup |

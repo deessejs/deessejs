@@ -8,6 +8,7 @@
  *
  * Sections, top to bottom:
  *   - Hero: H1 + lead + form, two-column with the cover mockup
+ *   - TechStack: the rotating logo wall, same as the homepage
  *   - Reading: the three most recent blog posts
  *   - FinalCta: the shared closing block, same copy as the homepage
  *
@@ -18,13 +19,15 @@
 import { FinalCta } from "./final-cta"
 import { Hero } from "./hero"
 import { Reading } from "./reading"
+import { TechStack } from "./tech-stack"
 
 export const Playbook = {
   Hero,
+  TechStack,
   Reading,
   FinalCta,
 } as const
 
 // Named re-exports for consumers that want a single component
 // without going through the namespace (e.g. tests).
-export { FinalCta, Hero, Reading }
+export { FinalCta, Hero, Reading, TechStack }

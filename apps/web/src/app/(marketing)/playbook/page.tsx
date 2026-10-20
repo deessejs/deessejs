@@ -13,12 +13,12 @@ import { Playbook } from "@/components/pages/playbook"
  *   live.
  *
  * Layout:
- *   Three sections, full-bleed like every other marketing page:
+ *   Four sections, full-bleed like every other marketing page:
  *   the two-column hero carrying the H1, the lead, the signup form,
- *   and the cover; then the three most recent blog posts; then the
- *   shared Final CTA. The Problem, WhatYouGet, and WhoItsFor
- *   sections were removed; see the page README for what was
- *   removed and how to bring it back.
+ *   and the cover; the rotating tech-stack logo wall; the three
+ *   most recent blog posts; then the shared Final CTA. The Problem,
+ *   WhatYouGet, and WhoItsFor sections were removed; see the page
+ *   README for what was removed and how to bring it back.
  *
  * Authoritative copy lives in
  * `components/pages/playbook/hero.tsx`: H1, lead, and the cover.
@@ -67,6 +67,7 @@ export default function PlaybookPage() {
   return (
     <>
       <Playbook.Hero />
+      <Playbook.TechStack />
       <Playbook.Reading />
       <Playbook.FinalCta />
     </>
