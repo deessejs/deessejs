@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 
 import { APP_CONFIG } from "@/lib/app-config"
+import { SETTINGS_PATHS } from "@/lib/settings-paths"
 import { authClient } from "@/lib/auth-client"
 
 type RailItem = {
@@ -29,23 +30,23 @@ type RailItem = {
  */
 const ACCOUNT_RAIL: RailItem[] = [
   { label: "Home", href: APP_CONFIG.links.home, icon: HomeIcon },
-  { label: "Profile", href: "/settings/profile", icon: UserIcon },
-  { label: "Sessions", href: "/settings/sessions", icon: SmartphoneIcon },
+  { label: "Profile", href: SETTINGS_PATHS.profile, icon: UserIcon },
+  { label: "Sessions", href: SETTINGS_PATHS.sessions, icon: SmartphoneIcon },
   {
     label: "Connections",
-    href: "/settings/connections",
+    href: SETTINGS_PATHS.connections,
     icon: LinkIcon,
   },
-  { label: "Account", href: "/settings/account", icon: BadgeCheckIcon },
+  { label: "Account", href: SETTINGS_PATHS.account, icon: BadgeCheckIcon },
 ]
 
 /**
  * Returns the href of the active rail entry for the given pathname
  * from a per-render list. The active entry is the one whose href is
- * the longest prefix of `pathname` — `/settings/security/password`
- * highlights Security (not Profile, even though `/settings/...` is a
- * prefix of Profile too). Accepting the list as a parameter lets the
- * caller pass a render-scoped array (e.g. with the Administration
+ * the longest prefix of `pathname` — `/account/settings/account/delete`
+ * highlights Account (not Profile, even though `/account/settings/...`
+ * is a prefix of Profile too). Accepting the list as a parameter lets
+ * the caller pass a render-scoped array (e.g. with the Administration
  * link included) without the helper needing to know about
  * conditional entries.
  */

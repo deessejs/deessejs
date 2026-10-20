@@ -6,7 +6,7 @@ import { NavUser } from "@/components/sidebars/nav-user"
 import { SettingsRail } from "@/components/nav/settings-rail"
 
 /**
- * Chrome for the `/home` and `/settings/*` route area.
+ * Chrome for the `/home` and `/account/settings/*` route area.
  *
  * The dashboard header (APP_NAME back-link, the disabled "Contact us"
  * placeholder, NavUser) and the left `SettingsRail` live here. The admin

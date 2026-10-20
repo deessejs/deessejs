@@ -2,7 +2,9 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
-const PROTECTED_PREFIXES = ["/home", "/settings", "/admin"]
+import { SETTINGS_PREFIX } from "@/lib/settings-paths"
+
+const PROTECTED_PREFIXES = ["/home", SETTINGS_PREFIX, "/admin"]
 const AUTH_PREFIXES = [
   "/login",
   "/signup",
@@ -21,7 +23,7 @@ export const config = {
   // Single matcher covering both directions of the auth gate.
   matcher: [
     "/home/:path*",
-    "/settings/:path*",
+    "/account/settings/:path*",
     "/admin/:path*",
     "/login",
     "/signup",
@@ -66,7 +68,7 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   // Segment-aware prefix match. The previous `startsWith(prefix)` form
   // would also match unrelated paths that happen to share a prefix
-  // (e.g. `/settings-something`), which is fine for the existing
+  // (e.g. `/administer`), which is fine for the existing
   // protected prefixes but not future-proof. Equality OR a trailing
   // slash is the correct gate; it also aligns the auth-prefix check
   // (which already used this shape).
