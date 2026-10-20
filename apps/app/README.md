@@ -46,4 +46,5 @@ The tests live in `tests/`; they cover the route guard and settings path constan
 
 ## Related
 
-- **Uses**: [`@workspace/api`](../../packages/api/README.md), [`@workspace/auth`](../../packages/auth/README.md), [`@workspace/contracts`](../../packages/contracts/README.md), [`@workspace/env`](../../packages/env/README.md), [`@workspace/ui`](../../packages/ui/README.md), [`@workspace/utils`](../../packages/utils/README.md)
+- **Uses**: [`@workspace/api`](../../packages/api/README.md), [`@workspace/contracts`](../../packages/contracts/README.md), [`@workspace/env`](../../packages/env/README.md), [`@workspace/ui`](../../packages/ui/README.md), [`@workspace/utils`](../../packages/utils/README.md)
+- **Authentication**: the app-side client calls the endpoints served by [`@workspace/auth`](../../packages/auth/README.md) through `@workspace/api`.
