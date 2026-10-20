@@ -91,7 +91,7 @@ Do not swap them. `gray-*` = text/fill. `gray-alpha-*` = borders/overlays. (Per 
 
 ### 2.3 oklch contrast rules
 
-oklch makes contrast predictable: lightness (L) controls contrast, chroma (C) and hue (H) don't affect it. Fix contrast by adjusting L only.
+oklch keeps the lightness value readable as the perceptual lightness, which makes it a good first lever: L tracks how light or dark a color looks. It is not the contrast ratio. WCAG computes the contrast from the relative luminance, which is derived from the RGB components, so the chroma and the hue do move it. Tune L first, then measure the pair you ship with a contrast checker.
 
 **APCA thresholds (perceptual, recommended for internal use):**
 

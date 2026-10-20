@@ -2,7 +2,7 @@
 
 You own every message the product sends: the transports that deliver them and the React Email templates that shape them. A mailer that lives in a feature package is a mailer that will drift.
 
-Read [the root guide](../../AGENTS.md) first. It holds the invariants that apply everywhere.
+The [root guide](../../AGENTS.md) holds the rules that cut across every workspace: the API path, the auth base path, the wire contracts, the research protocol and the git workflow. Read it when your change touches one of them, not before every edit.
 
 ## Key files
 

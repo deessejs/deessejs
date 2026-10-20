@@ -2,7 +2,7 @@
 
 You own the standalone scaffolder, published to npm as `create-deesse-app`. It creates a new project from the current main of `deessejs/saas-template`. It does not go through the registry: it fetches a pinned commit directly, which is what makes the result reproducible.
 
-Read [the root guide](../../AGENTS.md) first. It holds the invariants that apply everywhere.
+The [root guide](../../AGENTS.md) holds the rules that cut across every workspace: the API path, the auth base path, the wire contracts, the research protocol and the git workflow. Read it when your change touches one of them, not before every edit.
 
 ## The flow
 

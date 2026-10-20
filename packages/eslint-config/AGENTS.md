@@ -2,7 +2,7 @@
 
 You own the lint rules that every workspace inherits. A rule you change here changes the codebase, so the blast radius is the whole monorepo.
 
-Read [the root guide](../../AGENTS.md) first. It holds the invariants that apply everywhere.
+The [root guide](../../AGENTS.md) holds the rules that cut across every workspace: the API path, the auth base path, the wire contracts, the research protocol and the git workflow. Read it when your change touches one of them, not before every edit.
 
 ## The exports
 

@@ -2,7 +2,7 @@
 
 You own the authentication layer: the Better Auth configuration, every plugin, and the rules that decide who may do what. When a question comes back about sessions, roles, invitations or email verification, the answer is in this package.
 
-Read [the root guide](../../AGENTS.md) first. It holds the invariants that apply everywhere.
+The [root guide](../../AGENTS.md) holds the rules that cut across every workspace: the API path, the auth base path, the wire contracts, the research protocol and the git workflow. Read it when your change touches one of them, not before every edit.
 
 ## Key files
 

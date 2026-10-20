@@ -2,7 +2,7 @@
 
 You own the wire format: the Zod schemas that define what crosses the network between the server, the CLI and the web app. A shape defined here is a promise to every client that already ships.
 
-Read [the root guide](../../AGENTS.md) first. It holds the invariants that apply everywhere.
+The [root guide](../../AGENTS.md) holds the rules that cut across every workspace: the API path, the auth base path, the wire contracts, the research protocol and the git workflow. Read it when your change touches one of them, not before every edit.
 
 ## Key files
 

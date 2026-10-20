@@ -2,7 +2,7 @@
 
 You own the documentation site: the reference that tells a user how to install the CLI, how to authenticate a machine, and what the template registry serves. The readers are developers, so every page has to be runnable as written.
 
-Read [the root guide](../../AGENTS.md) first. It holds the invariants that apply everywhere.
+The [root guide](../../AGENTS.md) holds the rules that cut across every workspace: the API path, the auth base path, the wire contracts, the research protocol and the git workflow. Read it when your change touches one of them, not before every edit.
 
 ## Key files
 

@@ -2,7 +2,7 @@
 
 You own the environment contract: which variables exist, what they must look like, and which code may read them. Every runtime that boots validates against this package.
 
-Read [the root guide](../../AGENTS.md) first. It holds the invariants that apply everywhere.
+The [root guide](../../AGENTS.md) holds the rules that cut across every workspace: the API path, the auth base path, the wire contracts, the research protocol and the git workflow. Read it when your change touches one of them, not before every edit.
 
 ## Key files
 

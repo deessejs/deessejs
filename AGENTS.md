@@ -13,61 +13,27 @@ This repo is the **main app of the deessejs organization**: the monorepo that bu
 - **You read the file that owns a decision before you change it.** The map below tells you which file that is.
 - **You treat the invariants further down as constraints, not as suggestions.** Each one has already cost a production bug.
 - **You put new code where it belongs.** A new domain gets its own `packages/<domain>/`, not a folder inside a package that only half owns it.
-- **You keep generated things generated.** The auth schema belongs to the Better Auth CLI.
 - **You stay inside the scope of the task.** A change that fixes one thing and rewrites three others is hard to review and hard to revert.
 - **You deliver something a human can merge.** Conventions respected, no dead code, no commented-out blocks, no leftover debug statements.
 - **You report what you did and what you did not verify.** A step you skipped is written down as skipped.
 
 ## Where your facts come from
 
-**You never work from what you remember.** Your training data predates this stack: Next.js 16, Better Auth 1.7, Tailwind v4, oRPC, Drizzle. An answer written from memory is a guess, and a guess written into code is a bug. Every fact you state comes from a source you actually opened.
+Your training data predates this stack: Next.js 16, Better Auth 1.7, Tailwind v4, oRPC, Drizzle. When an answer depends on a fact from outside this repository, look it up rather than recalling it. A local refactor needs the code in front of you, not a web search.
 
-Three sources, in this order.
+Three sources, and when each one applies.
 
-### 1. The code in this repository
+**The code in this repository.** For anything about what this project does today. It is the ground truth, and when it disagrees with a document about it, the code wins and the gap is a finding to report.
 
-It is the ground truth for what this project does today. When the code and a document about the code disagree, the code wins, and the gap is a finding to report.
+**Nuclino, for the decisions behind the code.** The RFCs, the ADRs, the technical designs and the standing conventions live outside the repository, in the Nuclino workspace **DeesseJS** of the team **Nesalia Inc**. They were moved there on purpose when the internal documentation folders were removed from the tree. Reach for them when the reason behind a choice matters, or when a decision was taken that the code does not explain. The tools: `list_workspaces` and `list_items` to browse, `search_items` to find by topic, `get_item` to read. The collections that answer most questions: **RFCs**, **ADRs**, **Technical Designs**, **Engineering Conventions**, **Development Workflow**, **Testing and Database Delivery**, **Architecture Overview**, and the **Playbook: From AI-Generated Code to Production Software** chapters.
 
-### 2. Nuclino, for the decisions behind the code
+**The web, for everything else.** Library APIs, version behaviour, upstream breaking changes. The Exa MCP server is the normal path: `web_search_exa` to find a page, `web_fetch_exa` to read a known URL, `agent_run` for a research task that needs several searches. If the Exa MCP tools are not exposed in your session, use your native web tools instead (`WebSearch`, `WebFetch`), and say in your report which one you used. Never skip the research because a tool is missing.
 
-The architecture decisions, the RFCs, the ADRs and the technical designs live outside the repository, in the Nuclino workspace **DeesseJS** of the team **Nesalia Inc**. Several documents were moved there on purpose when the internal documentation folders were removed from the repo, which is why some of them have no counterpart in the tree.
-
-Use the Nuclino MCP tools:
-
-| Tool | Use it for |
-|---|---|
-| `list_workspaces`, `list_items` | Browsing the workspace and its collections |
-| `search_items` | Finding a document by topic |
-| `get_item` | Reading one document, comments included |
-
-The collections that answer most questions:
-
-- **RFCs**: the proposals behind the organizations work, the registry, the administration routes, the template catalog, the schema delivery pipeline, the analytics package.
-- **ADRs**: the decisions that were taken and the reasoning behind them. Read them before changing a foundation.
-- **Technical Designs**: the designs behind the deterministic Better Auth schema generation and the end-to-end testing of the scaffolder.
-- **Engineering Conventions**, **Development Workflow**, **Testing and Database Delivery**, **Architecture Overview**: the standing rules of the project.
-- **Playbook: From AI-Generated Code to Production Software**: the method this project expects an agent to follow. Its first chapter is titled "What Your Agents Have to Guess", which is the failure this file exists to prevent.
-
-### 3. The web, for everything else
-
-Framework documentation, library APIs, version behaviour, breaking changes. The Exa MCP server is the normal path:
-
-- `web_search_exa` finds the right page. Describe the page you want rather than listing keywords.
-- `web_fetch_exa` reads a URL you already know.
-- `agent_run` handles a multi-step research task that needs several searches and cross-checking.
-
-**If the Exa MCP tools are not exposed in your session, use your native web tools instead** (`WebSearch`, `WebFetch`). Never skip the research because a tool is missing: check what you have, use the equivalent, and say in your report which one you used.
-
-### How you use a source
-
-- Cite the source of any claim that is not obvious from the code you just read.
-- When two sources disagree, say so, then follow the one that matches the code in this repository.
-- Never state a version number, an API signature or a configuration key that you did not read in the current documentation.
-- When a document and the code disagree, report the gap instead of quietly picking one.
+**Using a source.** Cite the source of any claim that is not obvious from the code you just read. When two sources disagree, say so and follow the one that matches the code. Never state a version number, an API signature or a configuration key you did not read in the current documentation.
 
 ## Repository map
 
-Every workspace has its own guide, linked in the tables below. Read the one that matches what you are changing, before you change it: it carries the conventions of that workspace, while this file carries the rules that cut across all of them.
+Every workspace has its own guide, linked in the tables below. Read the one that matches what you are changing, when you change it: it carries the conventions of that workspace, while this file carries the rules that cut across all of them.
 
 ### Applications
 
@@ -99,7 +65,7 @@ Every workspace has its own guide, linked in the tables below. Read the one that
 
 ### How the workspaces depend on each other
 
-Every arrow below is a real runtime import. The graph is acyclic: `packages/env` and `packages/contracts` sit at the bottom, the applications sit at the top, and nothing points back up.
+Two kinds of arrow. A solid arrow is a runtime import: the workspace imports the package while it runs. A dotted arrow is a build-time dependency: the package is a devDependency that the bundler inlines, so nothing is resolved at run time. The graph is acyclic: `packages/env` and `packages/contracts` sit at the bottom, the applications sit at the top, and nothing points back up.
 
 ```mermaid
 graph TD
@@ -139,8 +105,8 @@ graph TD
 
   DOCS --> UI
 
-  CLI --> API
-  CLI --> CONTRACTS
+  CLI -. "bundled at build time" .-> API
+  CLI -. "bundled at build time" .-> CONTRACTS
 
   API --> AUTH
   API --> CONTRACTS
@@ -166,7 +132,7 @@ Reading the graph:
 - **`packages/auth` owns the identity rules**, and it reaches the database through `packages/database` and the mailer through `packages/email`. It never imports `packages/api`, which is what keeps the dependency direction clean.
 - **`packages/contracts` is a leaf.** It depends on nothing inside the workspace, so it can be imported by the server, the CLI and the web app without creating a cycle.
 - **`packages/env` is the foundation.** Four packages depend on it and it depends on none.
-- **`apps/cli` bundles `packages/api` and `packages/contracts` at build time** rather than depending on them at runtime: both are declared as devDependencies and inlined by tsup, so the published CLI carries the registry client with it.
+- **`apps/cli` carries the registry client inside its bundle.** `packages/api` and `packages/contracts` are devDependencies that tsup inlines, so the published CLI resolves nothing at run time.
 - **`apps/create-deesse-app` and `apps/agent` stand alone.** The scaffolder fetches a template by commit and runs no workspace code; the bot is a GitHub webhook handler with no shared runtime.
 - **Not every link goes through the package manager.** The applications that consume `@workspace/ui` also alias it to the source with a `paths` entry in their `tsconfig.json`. `apps/web` resolves `@workspace/cookies` that way, and that dependency is not declared in its `package.json`. When you add a workspace dependency to an application, declare it in `package.json` too, or the turbo task graph does not know about the edge.
 
@@ -195,7 +161,7 @@ Each of these has already cost a production bug. Breaking one is not a style que
 
 2. **The Better Auth base path must match the Hono mount.** `AUTH_BASE_PATH` in `packages/auth/src/auth.ts` is `/api/v1/auth`, and the server side mounts `api.on(["POST", "GET"], "/auth/*", ...)` under the same prefix. The value is duplicated on purpose: `@workspace/api` depends on `@workspace/auth`, so importing it back would create a cycle. Change both sides together. A mismatch makes every `/api/v1/auth/*` URL return 404 in production while the middleware still runs.
 
-3. **The auth schema belongs to the Better Auth CLI.** `packages/database/src/schema/auth.ts` is generated. Regenerate it with `pnpm auth:generate`. Never hand-edit it.
+3. **The auth schema belongs to the Better Auth CLI.** `packages/database/src/schema/auth.ts` is generated. Regenerate it with `pnpm auth:generate`. Never hand-edit it. The migrations in `packages/database/drizzle/` are generated the same way, by `pnpm db:generate`.
 
 4. **Adding a required field to a wire contract is a breaking change.** The shapes in `packages/contracts/src/v1/` define the payload of `GET /api/v1/templates`. CLI clients already installed parse that payload with Zod and fail on an unknown required field. Add new fields as optional, or publish a new contract version and keep serving the previous one.
 
@@ -236,48 +202,12 @@ Environment variables, wire payloads and form inputs are validated with Zod. `pa
 
 Each domain owns its `packages/<domain>/` workspace with its own dependency tree. When a feature spans several domains (mailing, billing, file uploads, analytics), propose a new package rather than co-locating the code inside a package that only partly owns it. Co-locate only when the code is genuinely a sub-domain of that package.
 
-### Generated code
-
-`packages/database/src/schema/auth.ts` is generated by the Better Auth CLI. Regenerate it with `pnpm auth:generate`; never hand-edit it. The same applies to the migrations in `packages/database/drizzle/`, which are generated by `pnpm db:generate`.
-
 ## Architecture
 
-### `apps/app`, the authenticated product
+Each workspace guide describes the architecture of its own workspace. Read it before changing that workspace. Two things cut across all of them:
 
-- The guard is `proxy.ts`, not `middleware.ts`. Next.js 16 renamed it, and a proxy file cannot declare a route segment runtime.
-- The proxy resolves the session over HTTP through `/api/auth/get-session` instead of importing better-auth. The drizzle adapter pulls in `postgres`, which Turbopack cannot bundle for any runtime.
-- Route groups split the surface: `(protected)` holds `/home`, `/account/settings` and `/admin`; `(unprotected)` holds the auth screens, including `/device`, the approval view used by the CLI device flow.
-- `apps/app/lib/settings-paths.ts` owns the settings routes and exports `SETTINGS_PREFIX`, which the proxy imports. Change the paths there, not in the matcher.
-
-### `packages/api`, the server
-
-A Hono app mounted at `API_BASE_PATH`, with middlewares for request id, secure headers, CORS, logging and session, an oRPC router at `/rpc`, a health and readiness pair, and the Better Auth handler at `/auth/*`.
-
-### `packages/auth`, authentication
-
-Better Auth on the Drizzle adapter, with email verification enforced, GitHub social sign-in, and four plugins: `deviceAuthorization` for the CLI login, `bearer` so a stateless CLI can present a session token, `admin` for the `role` column that gates `/admin`, and `organization`.
-
-### Organizations, the current line of work
-
-The plugin is enabled and the tables exist (`organization`, `member`, `invitation`, plus `active_organization_id` on the user). What ships today: slug and name validation, the email-verification gate on creation, the invitation delivery owned by `packages/email`, and the invitation expiry policy. What does not exist yet: the member-management UI. The organization access rule lives in `packages/auth`, not in `apps/app`.
-
-This repo started single-tenant and moved to organizations. Do not reintroduce a single-tenant assumption, and do not remove the organization plugin as if it were dead weight.
-
-### `packages/contracts`, the wire format
-
-Contracts live under `packages/contracts/src/vN/`, and the HTTP prefix mirrors the version (`/api/v1`). When a V2 appears, keep V1 served for the CLI clients already installed in the wild.
-
-### `apps/cli`, the registry client
-
-A Node ESM CLI. It builds a typed oRPC client from `@workspace/api/router`, validates responses against `packages/contracts`, and `init` clones the template repository, detects the package manager and runs the install. `auth login` runs the device-authorization flow against the server, so the CLI needs the `deviceAuthorization` and `bearer` plugins on the server side.
-
-### `apps/create-deesse-app`, the standalone scaffolder
-
-It does not use the registry. It resolves the current commit of `deessejs/saas-template`, downloads the tarball by SHA, validates and extracts it into a staging directory, then publishes atomically with a rollback path. `--dry-run` produces the plan without writing anything or executing any template code. Human messages go to stderr, structured output to stdout.
-
-### `apps/agent`, the GitHub bot
-
-A mentionable bot: it runs a turn only when a comment contains `@deessejs-agent`. The system prompt lives in `apps/agent/agent/instructions.md` and the GitHub channel configuration in `apps/agent/agent/channels/github.ts`.
+- **The request path.** A request enters `apps/app` through the catch-all route, reaches the Hono app at `/api/v1`, and the session middleware resolves the caller before the oRPC router or the Better Auth handler answers. The proxy in `apps/app` resolves the session over HTTP instead of importing better-auth, because the drizzle adapter pulls in `postgres`, which Turbopack cannot bundle for any runtime.
+- **The organizations work.** The plugin is enabled and the tables exist (`organization`, `member`, `invitation`, plus `active_organization_id` on the user). What ships today: slug and name validation, the email-verification gate on creation, the invitation delivery owned by `packages/email`, and the invitation expiry policy. What does not exist yet: the member-management UI. The organization access rule lives in `packages/auth`, not in `apps/app`. This repo started single-tenant and moved to organizations, so do not reintroduce a single-tenant assumption.
 
 ## Commands
 
@@ -294,8 +224,6 @@ A mentionable bot: it runs a turn only when a comment contains `@deessejs-agent`
 | `pnpm db:studio` | Open Drizzle Studio. |
 | `pnpm auth:generate` | Regenerate the Better Auth schema in `packages/database/src/schema/auth.ts`. |
 | `pnpm env:check` | Validate that the required environment variables are present. |
-| `pnpm dedupe:check` | Detect duplicated dependencies. |
-| `pnpm complex:report` | Report the tracked complexity metrics. |
 
 Each Next application runs `next dev` on port 3000 and takes the next free port when 3000 is busy.
 
@@ -314,26 +242,33 @@ Gotchas that are not visible in the code:
 
 ## Git workflow
 
-This repo uses a **staging-first** workflow. All development happens against `staging`, never directly against `main`.
+This repo uses a **staging-first** workflow. All development happens against `staging`, never against `main`.
 
 ```
-feature/fix branch  ─PR─▶  staging  ─merge (manual, human)─▶  main  ─▶  release
+feature/fix branch  ─PR─▶  staging  ─▶  main  ─▶  release
 ```
 
 **Rules:**
 
 - **Base new work on `staging`**: `git checkout staging && git pull && git checkout -b my-branch`
 - **PRs always target `staging`**: `gh pr create --base staging`
-- **`staging` to `main` is the release path**, done manually by a human once CI is green and the review is approved.
 - **Never push directly to `main`**, not even for a hotfix. Branch from `staging` and open a PR there.
-- **Never merge a PR into `main` from the agent**. `main` belongs to the human release process.
+- **Never bypass the branch protection**, and never merge a PR into `main` yourself.
+- **Do not open a `staging` to `main` promotion PR** as part of the normal flow. The accepted release policy propagates the reviewed work once the required checks and the review have passed.
 
-**Why this exists:**
+**Why `staging` exists:**
 
-- `staging` is the integration branch. Several PRs land there, get tested together and surface interaction bugs.
-- `main` reflects release-ready state and only moves through a deliberate promotion.
-- The release workflow (changesets, version bump, publish) triggers on a push to `main`.
+- It is the integration branch. Several PRs land there, get tested together and surface interaction bugs.
 - Decoupling incoming work from the release surface prevents a broken `main` from blocking every deploy.
+
+**The release channels:**
+
+| Channel | Trigger | Version |
+|---|---|---|
+| `@canary` | A push to `staging` | A synthetic version built from the date and the commit. |
+| `@latest` | A push to `main` | The changesets-driven version bump. |
+
+A change that touches the published surface of a package needs a `.changeset/*.md` file. The release workflow depends on it.
 
 **Skills assume this flow.** `/spec`, `/implement`, `/create-pr` and `/review-pr` all reset to `staging` first and open PRs against `staging`. A skill that references `main` as a base or as a PR target is a bug: fix it.
 
@@ -343,7 +278,7 @@ feature/fix branch  ─PR─▶  staging  ─merge (manual, human)─▶  main  
 - `chore/{slug}` for chores, refactors and infrastructure
 - `fix/{slug}` for unsolicited bug fixes
 
-**Changesets.** Any change that ships a published package needs a `.changeset/*.md` file. The release workflow depends on it.
+**The full guide is on Nuclino**, in the workspace **DeesseJS**, under the name **Git Workflow and Releases**. It records the intent of the workflow and points to the repository files that implement it: the release workflow, the changesets guide, and the accepted decisions behind the two channels.
 
 ## Agent tooling
 

@@ -2,7 +2,7 @@
 
 You own the command line that reaches the registry: the `deessejs` binary, published to npm as `@deessejs/cli`. Whatever a user can do from a terminal goes through this workspace.
 
-Read [the root guide](../../AGENTS.md) first. It holds the invariants that apply everywhere.
+The [root guide](../../AGENTS.md) holds the rules that cut across every workspace: the API path, the auth base path, the wire contracts, the research protocol and the git workflow. Read it when your change touches one of them, not before every edit.
 
 ## Commands
 

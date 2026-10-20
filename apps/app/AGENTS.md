@@ -8,7 +8,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 You own the authenticated product: the dashboard, the account settings, the administration area and every screen behind the login. This is the surface a signed-in user touches, so a change here is a change to the product itself.
 
-Read [the root guide](../../AGENTS.md) first. It holds the invariants that apply everywhere.
+The [root guide](../../AGENTS.md) holds the rules that cut across every workspace: the API path, the auth base path, the wire contracts, the research protocol and the git workflow. Read it when your change touches one of them, not before every edit.
 
 ## Key files
 
