@@ -13,7 +13,7 @@ import {
 } from "lucide-react"
 
 import { APP_CONFIG } from "@/lib/app-config"
-import { SETTINGS_PATHS } from "@/lib/settings-routes"
+import { SETTINGS_PATHS } from "@/lib/settings-paths"
 import { authClient } from "@/lib/auth-client"
 
 type RailItem = {

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { SETTINGS_PATHS, SETTINGS_PREFIX } from "../lib/settings-paths"
 import { config, proxy } from "../proxy"
 
 const ORIGIN = "https://app.deessejs.com"
@@ -47,122 +48,71 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe("proxy: the legacy settings paths", () => {
-  it("redirects a signed-in visitor to the new path", async () => {
-    stubSession()
-    const response = await proxy(request("/settings/profile"))
-
-    expect(response.status).toBe(307)
-    expect(locationOf(response).pathname).toBe("/account/settings/profile")
-  })
-
-  it("redirects the legacy hub to the profile leaf", async () => {
-    stubSession()
-    const response = await proxy(request("/settings"))
-
-    expect(response.status).toBe(307)
-    expect(locationOf(response).pathname).toBe("/account/settings/profile")
-  })
-
-  it("preserves every segment of a nested legacy path", async () => {
-    stubSession()
-    const response = await proxy(request("/settings/account/delete"))
-
-    expect(response.status).toBe(307)
-    expect(locationOf(response).pathname).toBe(
-      "/account/settings/account/delete",
-    )
-  })
-
-  it("carries the query string across the redirect", async () => {
-    stubSession()
-    const response = await proxy(request("/settings/profile?tab=security"))
-
-    expect(response.status).toBe(307)
-    const target = locationOf(response)
-    expect(target.pathname).toBe("/account/settings/profile")
-    expect(target.search).toBe("?tab=security")
-  })
-
-  it("leaves a path that only shares the prefix alone", async () => {
-    stubSession()
-    const response = await proxy(request("/settings-something"))
-
-    expect(response.status).toBe(200)
-    expect(response.headers.get("location")).toBeNull()
-  })
-
-  it("does not redirect the new paths", async () => {
-    stubSession()
-    const response = await proxy(request("/account/settings/profile"))
-
-    expect(response.status).toBe(200)
-    expect(response.headers.get("location")).toBeNull()
-  })
-})
-
-describe("proxy: the gate still covers the legacy paths", () => {
-  it("bounces a signed-out visitor to login, keeping the legacy path as the return target", async () => {
+describe("proxy: the account settings are protected", () => {
+  it("bounces a signed-out visitor to login", async () => {
     stubSession({ signedIn: false })
-    const response = await proxy(request("/settings/profile"))
+    const response = await proxy(request(SETTINGS_PATHS.profile))
 
     expect(response.status).toBe(307)
     const target = locationOf(response)
     expect(target.pathname).toBe("/login")
-    // The return target is the path the visitor actually asked for.
-    // The legacy redirect runs after the gate, so the path survives
-    // until they are signed in.
-    expect(target.searchParams.get("redirect")).toBe("/settings/profile")
+    expect(target.searchParams.get("redirect")).toBe(SETTINGS_PATHS.profile)
   })
 
-  it("bounces a signed-out visitor to login on the new path too", async () => {
+  it("protects the prefix itself, not only its leaves", async () => {
     stubSession({ signedIn: false })
-    const response = await proxy(request("/account/settings/profile"))
+    const response = await proxy(request(SETTINGS_PREFIX))
 
     expect(response.status).toBe(307)
     const target = locationOf(response)
     expect(target.pathname).toBe("/login")
-    expect(target.searchParams.get("redirect")).toBe(
-      "/account/settings/profile",
-    )
+    expect(target.searchParams.get("redirect")).toBe(SETTINGS_PREFIX)
   })
 
-  it("sends an unverified visitor to verify-email, not to the new path", async () => {
+  it("sends an unverified visitor to verify-email", async () => {
     stubSession({ emailVerified: false })
-    const response = await proxy(request("/settings/profile"))
+    const response = await proxy(request(SETTINGS_PATHS.profile))
 
     expect(response.status).toBe(307)
     expect(locationOf(response).pathname).toBe("/verify-email")
   })
 
+  it("lets a signed-in, verified visitor through", async () => {
+    stubSession()
+    const response = await proxy(request(SETTINGS_PATHS.profile))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+  })
+
   it("treats a failed session lookup as signed out", async () => {
-    // The legacy redirect only fires for a signed-in visitor. When the
-    // session endpoint itself fails, the proxy has no session to act
-    // on and must fall back to the gate, not to the redirect.
+    // The session endpoint is the proxy's only source of truth for
+    // who the caller is. When it fails, there is no session to act on
+    // and the gate has to hold.
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({ ok: false, json: async () => null }),
     )
-    const response = await proxy(request("/settings/profile"))
+    const response = await proxy(request(SETTINGS_PATHS.profile))
 
     expect(response.status).toBe(307)
     const target = locationOf(response)
     expect(target.pathname).toBe("/login")
-    expect(target.searchParams.get("redirect")).toBe("/settings/profile")
+    expect(target.searchParams.get("redirect")).toBe(SETTINGS_PATHS.profile)
   })
 })
 
 describe("proxy: the matcher", () => {
-  it("covers the new account settings paths", () => {
-    expect(config.matcher).toContain("/account/settings/:path*")
+  it("covers the account settings", () => {
+    expect(config.matcher).toContain(`${SETTINGS_PREFIX}/:path*`)
   })
 
-  it("keeps covering the legacy settings paths", () => {
-    // There is no `/settings/*` page in the filesystem any more. If
-    // the legacy prefix fell out of the matcher, the proxy would not
-    // run for those paths and they would 404 instead of redirecting.
-    // No behaviour test above would catch it, because the proxy is
-    // what the request never reaches.
-    expect(config.matcher).toContain("/settings/:path*")
+  it("does not cover a prefix that no longer exists", () => {
+    // The settings used to live at `/settings/*`. No page sits under
+    // that prefix any more, and the app has no user whose bookmark
+    // would land there, so the matcher must not claim it.
+    expect(
+      config.matcher.some((entry) => entry.startsWith("/settings")),
+    ).toBe(false)
   })
 })

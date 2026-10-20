@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { DangerZone, SettingsCard, SettingsPage } from "@/components/settings"
 
-import { SETTINGS_PATHS } from "@/lib/settings-routes"
+import { SETTINGS_PATHS } from "@/lib/settings-paths"
 
 export default function AccountPage() {
   return (

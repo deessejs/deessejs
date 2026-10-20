@@ -16,9 +16,8 @@ export const APP_CONFIG = {
   appURL: appURL(),
   webURL: webURL(),
   // Dashboard nav links (relative paths under the apps/app host).
-  // The hub page at /account/settings was removed; it server-redirects
-  // to /account/settings/profile. Consumers link directly to a settings
-  // leaf (e.g. /account/settings/account/delete).
+  // There is no settings hub page: consumers link directly to a
+  // settings leaf (e.g. /account/settings/account/delete).
   links: {
     home: "/home",
     login: "/login",
