@@ -35,7 +35,7 @@ Two route groups, and the difference matters:
 ## Invariants
 
 - **The guard is `proxy.ts`, not `middleware.ts`.** Next.js 16 renamed it, and a proxy file cannot declare a route segment runtime.
-- **The proxy never imports better-auth.** It resolves the session over HTTP through `/api/auth/get-session`, because the drizzle adapter pulls in `postgres`, which Turbopack cannot bundle for any runtime.
+- **The proxy never imports Better Auth.** It resolves the session over HTTP through `API_AUTH_PATH/get-session`, using `API_AUTH_PATH` from `@workspace/api/base-path` so the route follows the server mount. The current value is `/api/v1/auth`. This avoids loading the Drizzle adapter and `postgres` into the Next.js proxy bundle.
 - **The settings paths live in `settings-paths.ts`,** never in the proxy matcher. The proxy imports `SETTINGS_PREFIX` from there.
 - **The proxy reads the session on every request,** with `cache: "no-store"`. A cached session turns the gate into a stale decision.
 - **The session payload shape is `{ session, user }` at the top level.** An earlier revision assumed `session.user`, which silently disabled the email-verification check on every protected route because the property was always undefined.
