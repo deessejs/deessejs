@@ -36,9 +36,7 @@ export default defineConfig({
 
 ## The environment rule
 
-**Do not read `process.env` in the Vitest configuration.** The config is loaded after Turbo has already stripped the variables that are not in the `test` task allowlist of `turbo.json`, so a value read at that point is already `undefined`. A `test.env` entry in the configuration has the same problem: it runs at config-load time, which is too late.
-
-The fix is to add the variable to the `env` allowlist of the `test` task in `turbo.json`, and to read it at run time rather than at load time.
+**Turbo filters shell variables before it starts Vitest.** If the Vitest config reads a variable that is not in the `test` task `env` allowlist in `turbo.json`, it sees `undefined`. Add shell-provided variables to that allowlist, then read them in the test runtime. Vitest's `test.env` option can set explicit values for test processes; it cannot recover a shell value that Turbo removed before config loading.
 
 ## Conventions
 
