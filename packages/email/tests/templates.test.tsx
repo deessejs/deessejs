@@ -2,6 +2,7 @@ import { render } from "@react-email/components"
 import { describe, expect, it } from "vitest"
 import { VerifyEmail } from "../src/templates/verify-email.jsx"
 import { ResetPassword } from "../src/templates/reset-password.jsx"
+import { OrganizationInvitation } from "../src/templates/organization-invitation.jsx"
 
 describe("templates", () => {
   it("VerifyEmail renders without crashing and contains the URL", async () => {
@@ -16,5 +17,34 @@ describe("templates", () => {
     const html = await render(<ResetPassword url={url} userEmail="u@x.com" />)
     expect(html).toContain(url)
     expect(html).toContain("Reset")
+  })
+
+  it("OrganizationInvitation renders the link, the organization, and the inviter", async () => {
+    const url = "https://app.example.com/accept-invitation/inv_123"
+    const html = await render(
+      <OrganizationInvitation
+        url={url}
+        organizationName="Acme"
+        inviterName="Ada"
+        expiresAt={new Date("2026-10-22T12:00:00.000Z")}
+      />,
+    )
+    expect(html).toContain(url)
+    expect(html).toContain("Acme")
+    expect(html).toContain("Ada")
+  })
+
+  it("OrganizationInvitation states the expiry as an absolute UTC date", async () => {
+    // A locale-formatted date would make the rendered output depend on
+    // the host timezone, so the ISO day is pinned here.
+    const html = await render(
+      <OrganizationInvitation
+        url="https://app.example.com/accept-invitation/inv_123"
+        organizationName="Acme"
+        inviterName="Ada"
+        expiresAt={new Date("2026-10-22T23:30:00.000Z")}
+      />,
+    )
+    expect(html).toContain("2026-10-22")
   })
 })
