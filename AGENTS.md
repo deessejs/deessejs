@@ -58,8 +58,6 @@ Framework documentation, library APIs, version behaviour, breaking changes. The 
 
 **If the Exa MCP tools are not exposed in your session, use your native web tools instead** (`WebSearch`, `WebFetch`). Never skip the research because a tool is missing: check what you have, use the equivalent, and say in your report which one you used.
 
-The `fresh` CLI is the same Exa backend in shell form (`fresh search`, `fresh fetch`, `fresh auth login`). Reach for it when a shell command fits the job better, for example to keep a large result set out of the conversation.
-
 ### How you use a source
 
 - Cite the source of any claim that is not obvious from the code you just read.
@@ -347,7 +345,7 @@ feature/fix branch  ─PR─▶  staging  ─merge (manual, human)─▶  main  
 
 - **Skills** live in `.claude/skills/`: `spec`, `implement`, `create-pr`, `review-pr`, `create-issue`, `triage`, `product-design` and `use-shadcn`. Read the `SKILL.md` before running one.
 - **Subagents** live in `.claude/agents/`. Several of them were inherited from the template repo and still point at paths this repo does not have. Check that a subagent's target paths exist before trusting its guidance.
-- **Web research** follows the protocol in "Where your facts come from". The `fresh` CLI is the shell form of the same Exa backend: `fresh search -q "<query>"` for a search, `fresh fetch <url> -p "<prompt>"` to read a known page, and `fresh auth login` when `fresh auth status` reports an expired token. Do not attempt to authenticate on the user's behalf.
+- **Web research** follows the protocol in "Where your facts come from".
 
 ## Where the documentation lives
 
