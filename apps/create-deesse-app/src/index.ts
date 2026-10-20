@@ -35,16 +35,35 @@ program
   .argument("<project-name>", "project name (lowercase, dash-separated)")
   .option("--dir <path>", "target directory (default: ./<project-name>)")
   .option("--no-install", "skip the install step")
+  .option(
+    "--dry-run",
+    "plan the create without writing files, running install, or executing template code",
+  )
+  .option(
+    "--verbose",
+    "print human-readable progress to stderr (does not change JSON or exit semantics)",
+  )
   .version(readPackageVersion())
   .allowExcessArguments(false)
   .action(
     async (
       projectName: string,
-      opts: { dir?: string; install: boolean },
+      opts: {
+        dir?: string
+        install: boolean
+        dryRun: boolean
+        verbose: boolean
+      },
     ) => {
       try {
         const dir = resolve(process.cwd(), opts.dir ?? `./${projectName}`)
-        const result = await run({ projectName, dir, install: opts.install })
+        const result = await run({
+          projectName,
+          dir,
+          install: opts.install,
+          dryRun: opts.dryRun,
+          verbose: opts.verbose,
+        })
 
         // Mirror the human message to stderr BEFORE the JSON result.
         // For success this is a no-op. For install-failure, the
@@ -91,7 +110,7 @@ program
           e instanceof CliError ? e.code : sourceFailed(e.message).code
         const failure: CreateResult = {
           ok: false,
-          mode: "create",
+          mode: opts.dryRun ? "dry-run" : "create",
           projectCreated: false,
           error: {
             code,
@@ -112,10 +131,18 @@ program
 program.parseAsync(process.argv).catch((err) => {
   // Top-level safety net for anything commander didn't route.
   const e = err instanceof Error ? err : new Error(String(err))
+  // Commander rejected argv before the action ran, so we do
+  // not have the user's `--dry-run` flag here. The default
+  // ("create") matches what a real `commander` parse error
+  // would have produced pre-dry-run; if the user passed
+  // `--dry-run` AND a malformed flag, the failure is a
+  // commander error, not a pipeline one, and `mode: "create"`
+  // is the right shape.
+  const dryRunFromArgv = process.argv.includes("--dry-run")
   printError(e instanceof CliError ? e : internal(e.message))
   printResult({
     ok: false,
-    mode: "create",
+    mode: dryRunFromArgv ? "dry-run" : "create",
     projectCreated: false,
     error: { code: "internal", message: e.message, hint: undefined },
   } satisfies CreateResult)

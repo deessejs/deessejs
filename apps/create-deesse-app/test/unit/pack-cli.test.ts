@@ -1,3 +1,6 @@
+import { readFileSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
 import {
@@ -6,18 +9,38 @@ import {
   verifyPackageShape,
 } from "../e2e/support/consumer-stack.js"
 
+// packCli mutates the CLI's package.json (the `version` field)
+// and restores it in its own `finally` block. To make this
+// unit test safe under vitest's default file-level parallelism
+// (where another test file might read the same package.json
+// mid-execution), we capture the original content in beforeAll
+// and restore it again in afterAll as a final safety net. This
+// guarantees that the file is back to its original state by the
+// time the test process exits, regardless of whether packCli's
+// own restore ran.
+const CLI_DIR = join(import.meta.dirname, "..", "..")
+const PKG_PATH = join(CLI_DIR, "package.json")
+let originalPkg = ""
+
 describe("packCli (no Docker)", () => {
   let firstVersion = ""
   let firstSha = ""
 
   beforeAll(() => {
+    originalPkg = readFileSync(PKG_PATH, "utf8")
     firstVersion = readTestVersion()
   })
 
   afterAll(() => {
-    // packCli restores the manifest in `finally`, so no cleanup
-    // is needed. This block is here so the test suite documents
-    // the intent.
+    // Final safety net: restore the original package.json
+    // verbatim. packCli's own `finally` already restores it,
+    // and vitest.config.ts sets fileParallelism: false so
+    // package-version.test.ts does not race. This afterAll is
+    // belt-and-suspenders: if a future change drops either
+    // invariant, the test still cleans up.
+    if (originalPkg) {
+      writeFileSync(PKG_PATH, originalPkg)
+    }
   })
 
   it("packs a tarball whose manifest version matches the bumped test version", async () => {

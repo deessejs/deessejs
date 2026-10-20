@@ -46,14 +46,24 @@ const cleanup = (stageDir: string) =>
   rmSync(stageDir, { recursive: true, force: true })
 
 describe("validateEntries (pass 1)", () => {
-  it("accepts a well-formed archive", async () => {
+  it("accepts a well-formed archive and returns the normalized entry list", async () => {
     const { tarPath, stageDir } = buildFixtureTarball([
       { name: "LICENSE", content: "MIT" },
       { name: "package.json", content: '{"name":"x"}' },
     ])
-    await expect(
-      validateEntries({ tarballPath: tarPath, sha: SHA, repo: REPO }),
-    ).resolves.toBeUndefined()
+    const result = await validateEntries({
+      tarballPath: tarPath,
+      sha: SHA,
+      repo: REPO,
+    })
+    // The dry-run plan consumes the entry list, so the
+    // return shape changed from `void` to `{ entries }`.
+    // The two file entries are present; the empty top-level
+    // prefix entry is filtered out.
+    expect(result.entries.map((e) => e.path).sort()).toEqual([
+      "LICENSE",
+      "package.json",
+    ])
     cleanup(stageDir)
   })
 

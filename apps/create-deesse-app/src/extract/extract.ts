@@ -3,10 +3,10 @@ import * as tar from "tar"
 import { unsafeArchive } from "../errors/index.js"
 import { validateEntry } from "./validate-entry.js"
 
-/* eslint-disable sonarjs/no-unsafe-unzip -- safety is enforced by the two-pass
-   pipeline (validate-entries.ts runs tar.t() read-only first and rejects any
-   unsafe entry before this code path is reached; onReadEntry re-runs the same
-   per-entry guard as defense-in-depth). */
+// Safety is enforced by the two-pass pipeline: validate-entries.ts
+// runs tar.t() read-only first and rejects any unsafe entry before
+// this code path is reached; onReadEntry re-runs the same per-entry
+// guard as defense-in-depth.
 
 export type ExtractTarballArgs = {
   tarballPath: string
@@ -16,6 +16,13 @@ export type ExtractTarballArgs = {
   sha: string
   /** Repo name (e.g. "saas-template"). */
   repo: string
+  /**
+   * Optional signal forwarded to `tar.x`. When the signal
+   * aborts, the in-flight extraction is interrupted and the
+   * returned promise rejects. The pipeline translates that
+   * to a `CreateFailure` with `error.code === "aborted"`.
+   */
+  signal?: AbortSignal
 }
 
 /**
@@ -29,8 +36,10 @@ export type ExtractTarballArgs = {
  * On any throw, `tempDir` is left for the caller's rollback to clean up.
  * The function does NOT call `fs.rmSync` itself.
  */
-export const extractTarball = async (args: ExtractTarballArgs): Promise<void> => {
-  const { tarballPath, tempDir, sha, repo } = args
+export const extractTarball = async (
+  args: ExtractTarballArgs,
+): Promise<void> => {
+  const { tarballPath, tempDir, sha, repo, signal } = args
   const expectedPrefix = `${repo}-${sha}/`
 
   const failures: { path: string; reason: string }[] = []
@@ -39,6 +48,7 @@ export const extractTarball = async (args: ExtractTarballArgs): Promise<void> =>
     file: tarballPath,
     cwd: tempDir,
     strip: 1,
+    ...(signal !== undefined ? { signal } : {}),
     onReadEntry: (entry) => {
       // Confirm the archive is the one we asked for — every entry must
       // start with the expected prefix. If not, abort.

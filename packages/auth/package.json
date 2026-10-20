@@ -14,6 +14,16 @@
       "import": "./dist/host-allowlist.js",
       "default": "./dist/host-allowlist.js"
     },
+    "./organization/policy": {
+      "types": "./dist/organization/policy.d.ts",
+      "import": "./dist/organization/policy.js",
+      "default": "./dist/organization/policy.js"
+    },
+    "./organization/invitation": {
+      "types": "./dist/organization/invitation.d.ts",
+      "import": "./dist/organization/invitation.js",
+      "default": "./dist/organization/invitation.js"
+    },
     "./types": {
       "types": "./dist/types.d.ts",
       "import": "./dist/types.js",
@@ -28,7 +38,7 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "auth:generate": "auth generate --output ../../packages/database/src/schema/.auth-gen-probe.ts"
+    "auth:generate": "auth generate --config src/auth.ts --adapter drizzle --dialect postgresql --output ../../packages/database/src/schema/auth.ts --yes"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "catalog:",

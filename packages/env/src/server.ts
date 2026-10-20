@@ -93,6 +93,11 @@ function getServerEnv(): Readonly<ServerEnv> {
     DOCS_URL: env.DOCS_URL,
     API_BASE_URL: env.API_BASE_URL,
     PARENT_DOMAIN: env.PARENT_DOMAIN,
+    // Test-only override for the email-verification-on-invitation
+    // contract. See `schema.ts` for the rationale. The default
+    // ("true") is applied by the schema when the env var is absent.
+    REQUIRE_EMAIL_VERIFICATION_ON_INVITATION:
+      env.REQUIRE_EMAIL_VERIFICATION_ON_INVITATION,
   } as ServerEnv) as Readonly<ServerEnv>
 
   // Runtime assertion: no NEXT_PUBLIC_* may leak through the server face.

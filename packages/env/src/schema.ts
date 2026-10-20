@@ -146,6 +146,23 @@ export const serverInputShape = {
   API_BASE_URL: canonicalUrl.default("http://localhost:3001"),
 
   PARENT_DOMAIN: z.string().min(1).optional(),
+
+  // Test-only override for the email-verification-on-invitation
+  // contract. The default is "true"; the production startup guard in
+  // `packages/auth/src/organization/plugin.ts` refuses to start the
+  // process when this is "false" AND `NODE_ENV === "production"`.
+  // There is no opt-in variable: the contract is "production is true",
+  // full stop. The probe (see `packages/auth/scripts/run-invitation-probe.ts`)
+  // uses this var to measure the Better Auth 1.7.7 invitation
+  // contract on the locked version; it is not part of the runtime
+  // contract. No Vercel production environment entry.
+  //
+  // Schema is strict: `z.enum(["true", "false"])` (NOT
+  // `z.coerce.boolean()`, which would coerce the string "false" to
+  // `true` because any non-empty string is truthy in JS).
+  REQUIRE_EMAIL_VERIFICATION_ON_INVITATION: z
+    .enum(["true", "false"])
+    .default("true"),
 }
 
 export const serverSchema = z.object(serverInputShape).superRefine(

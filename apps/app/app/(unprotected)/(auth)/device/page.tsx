@@ -52,7 +52,7 @@ import { userCodeSchema } from "@/components/auth/schemas"
  * `AuthContainer` layout from `(auth)/layout.tsx`.
  *
  * This page does NOT gate on `emailVerified`.
- * The verification gate that protects `/home` and `/settings`
+ * The verification gate that protects `/home` and `/account/settings`
  * (`packages/auth/src/auth.ts` `emailVerification` block, where
  * `sendOnSignUp: true` and `sendOnSignIn: true` are both set
  * explicitly) is unchanged; the
