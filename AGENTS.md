@@ -46,6 +46,79 @@ This repo is the **main app of the deessejs organization**: the monorepo that bu
 | `packages/utils` | Shared helpers. |
 | `packages/eslint-config`, `packages/typescript-config`, `packages/vitest-config` | Shared tooling configuration. |
 
+### How the workspaces depend on each other
+
+Every arrow below is a real runtime import. The graph is acyclic: `packages/env` and `packages/contracts` sit at the bottom, the applications sit at the top, and nothing points back up.
+
+```mermaid
+graph TD
+  subgraph APP["Applications"]
+    WEB["apps/web<br/>marketing, catalogue, knowledge base"]
+    APPAPP["apps/app<br/>authenticated product"]
+    DOCS["apps/docs<br/>documentation site"]
+    CLI["apps/cli<br/>@deessejs/cli"]
+    CDA["apps/create-deesse-app<br/>standalone scaffolder"]
+    AGENT["apps/agent<br/>GitHub bot"]
+  end
+
+  subgraph PKG["Packages"]
+    API["packages/api<br/>Hono server, oRPC router"]
+    AUTH["packages/auth<br/>Better Auth config and plugins"]
+    DB["packages/database<br/>Drizzle schema, migrations"]
+    CONTRACTS["packages/contracts<br/>Zod wire contracts"]
+    EMAIL["packages/email<br/>transports, React Email"]
+    UI["packages/ui<br/>primitives, design tokens"]
+    ENV["packages/env<br/>validated environment"]
+    COOKIES["packages/cookies<br/>cookie consent"]
+    UTILS["packages/utils<br/>helpers"]
+  end
+
+  WEB --> API
+  WEB --> CONTRACTS
+  WEB --> ENV
+  WEB --> UI
+  WEB --> COOKIES
+
+  APPAPP --> API
+  APPAPP --> AUTH
+  APPAPP --> CONTRACTS
+  APPAPP --> ENV
+  APPAPP --> UI
+  APPAPP --> UTILS
+
+  DOCS --> UI
+
+  CLI --> API
+  CLI --> CONTRACTS
+
+  API --> AUTH
+  API --> CONTRACTS
+  API --> DB
+  API --> ENV
+
+  AUTH --> DB
+  AUTH --> EMAIL
+  AUTH --> ENV
+
+  DB --> ENV
+  EMAIL --> ENV
+  UI --> ENV
+  COOKIES --> UI
+
+  classDef standalone fill:none,stroke-dasharray:4 3,stroke-width:1px,color:#888
+  class CDA,AGENT standalone
+```
+
+Reading the graph:
+
+- **`packages/api` is the only package that knows both `packages/auth` and `packages/database`.** It mounts the Better Auth handler and the oRPC router, so it is the place where a request becomes an authenticated database call.
+- **`packages/auth` owns the identity rules**, and it reaches the database through `packages/database` and the mailer through `packages/email`. It never imports `packages/api`, which is what keeps the dependency direction clean.
+- **`packages/contracts` is a leaf.** It depends on nothing inside the workspace, so it can be imported by the server, the CLI and the web app without creating a cycle.
+- **`packages/env` is the foundation.** Four packages depend on it and it depends on none.
+- **`apps/cli` bundles `packages/api` and `packages/contracts` at build time** rather than depending on them at runtime: both are declared as devDependencies and inlined by tsup, so the published CLI carries the registry client with it.
+- **`apps/create-deesse-app` and `apps/agent` stand alone.** The scaffolder fetches a template by commit and runs no workspace code; the bot is a GitHub webhook handler with no shared runtime.
+- **Not every link goes through the package manager.** The applications that consume `@workspace/ui` also alias it to the source with a `paths` entry in their `tsconfig.json`. `apps/web` resolves `@workspace/cookies` that way, and that dependency is not declared in its `package.json`. When you add a workspace dependency to an application, declare it in `package.json` too, or the turbo task graph does not know about the edge.
+
 ## Where the truth lives
 
 | Question | Read this first |
