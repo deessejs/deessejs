@@ -118,6 +118,92 @@ describe("Artifact A: callback-level probe (Vitest)", () => {
     process.off("unhandledRejection", onUnhandled)
   })
 
+  // The full taxonomy, observed through the callback. Each case
+  // asserts both the `error_reason` bucket and that exactly one log
+  // was produced, because "at most one log per failed invitation"
+  // is a separate claim from "the right bucket was chosen".
+  describe("error_reason taxonomy through the callback", () => {
+    /** Let the scheduled task's `.catch` run. */
+    const settle = async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    }
+
+    const readLog = (consoleError: ReturnType<typeof vi.spyOn>) => {
+      expect(consoleError).toHaveBeenCalledTimes(1)
+      const [, payload] = consoleError.mock.calls[0] as [string, string]
+      return JSON.parse(payload) as {
+        recipient_email: string
+        inviter_user_id: string
+        organization_id: string
+        error_reason: string
+        error: string
+      }
+    }
+
+    it("config_invalid: a configuration failure never reaches SMTP", async () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+
+      await sendInvitationEmail({ ...buildData(), id: "" })
+      await settle()
+
+      const payload = readLog(consoleError)
+      expect(payload.error_reason).toBe("config_invalid")
+      expect(payload.recipient_email).toBe("invitee@example.com")
+      expect(payload.inviter_user_id).toBe("user-1")
+      expect(payload.organization_id).toBe("org-1")
+      expect(sendAuthEmail.fn).not.toHaveBeenCalled()
+    })
+
+    it("smtp_threw: a transport rejection is filed under the transport bucket", async () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+      sendAuthEmail.fn.mockRejectedValueOnce(new Error("smtp exploded"))
+
+      await sendInvitationEmail(buildData())
+      await settle()
+
+      expect(readLog(consoleError).error_reason).toBe("smtp_threw")
+      expect(sendAuthEmail.fn).toHaveBeenCalledTimes(1)
+    })
+
+    it("dispatch_rejected: an untyped failure is not mislabelled as an SMTP failure", async () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+
+      // `organization` is null, so reading `.name` while building the
+      // subject throws a TypeError. The payload is assembled outside
+      // the transport try/catch precisely so this surfaces untyped
+      // and lands in `dispatch_rejected` rather than `smtp_threw`.
+      await sendInvitationEmail({
+        ...buildData(),
+        organization: null,
+      } as unknown as Parameters<typeof sendInvitationEmail>[0])
+      await settle()
+
+      expect(readLog(consoleError).error_reason).toBe("dispatch_rejected")
+      expect(sendAuthEmail.fn).not.toHaveBeenCalled()
+    })
+
+    it("a successful send produces no log at all", async () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+      sendAuthEmail.fn.mockResolvedValueOnce({ ok: true })
+
+      await sendInvitationEmail(buildData())
+      await settle()
+
+      expect(consoleError).not.toHaveBeenCalled()
+    })
+
+    it("a resolved-but-failed transport produces no log either", async () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+      sendAuthEmail.fn.mockResolvedValueOnce({ ok: false, error: "smtp_unavailable" })
+
+      await sendInvitationEmail(buildData())
+      await settle()
+
+      expect(consoleError).not.toHaveBeenCalled()
+    })
+  })
+
   it("config_invalid via empty id: throws InvitationError config_invalid", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
     let caught: unknown

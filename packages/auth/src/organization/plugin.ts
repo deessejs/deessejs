@@ -89,6 +89,37 @@ export const beforeCreateOrganizationHook = async ({
 }
 
 /**
+ * Build the organization plugin.
+ *
+ * Exported as a factory so the invitation-contract probe can hold
+ * every option at its shipped value except the one under test. A
+ * probe that rebuilt the option list by hand would drift from
+ * production the first time an option was added here, and the whole
+ * point of the probe is that it measures what ships.
+ */
+export function createOrganizationPlugin(
+  overrides: {
+    requireEmailVerificationOnInvitation?: boolean
+  } = {},
+) {
+  return organization({
+    allowUserToCreateOrganization: (user) => user.emailVerified === true,
+    creatorRole: "owner",
+    requireEmailVerificationOnInvitation,
+    invitationExpiresIn: 60 * 60 * 48,
+    disableOrganizationDeletion: false,
+    organizationHooks: {
+      beforeCreateOrganization: beforeCreateOrganizationHook,
+    },
+    // The invitation delivery callback. `sendInvitationEmail` is
+    // the Better Auth callback (single point of structured logging,
+    // non-blocking dispatch through the post-response scheduler).
+    sendInvitationEmail,
+    ...overrides,
+  })
+}
+
+/**
  * Better Auth `organization` plugin configuration.
  *
  * The `beforeCreateOrganization` hook is wired to:
@@ -101,20 +132,5 @@ export const beforeCreateOrganizationHook = async ({
  * The other native hooks (delete, remove-member, update-role,
  * update-organization) are left to Better Auth's defaults.
  */
-export const organizationPlugin = organization({
-  allowUserToCreateOrganization: (user) => user.emailVerified === true,
-  creatorRole: "owner",
-  requireEmailVerificationOnInvitation,
-  invitationExpiresIn: 60 * 60 * 48,
-  disableOrganizationDeletion: false,
-  organizationHooks: {
-    beforeCreateOrganization: beforeCreateOrganizationHook,
-  },
-  // The invitation delivery callback. `sendInvitationEmail` is
-  // the Better Auth callback (single point of structured logging,
-  // fire-and-forget dispatch with uniform .catch). It is imported
-  // from `./invitation.js`; PR-6 will replace the placeholder
-  // React body with the React Email template.
-  sendInvitationEmail,
-})
+export const organizationPlugin = createOrganizationPlugin()
 

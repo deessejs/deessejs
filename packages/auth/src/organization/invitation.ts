@@ -2,6 +2,7 @@ import type { OrganizationOptions } from "better-auth/plugins/organization"
 import * as React from "react"
 import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail } from "@workspace/email"
+import { schedulePostResponse } from "./lifecycle.js"
 
 type SendInvitationData = Parameters<
   NonNullable<OrganizationOptions["sendInvitationEmail"]>
@@ -34,10 +35,10 @@ export class InvitationError extends Error {
  * Internal implementation of the invitation dispatch. Resolves
  * when the SMTP call settles (success or `ok: false`), or throws a
  * typed `InvitationError` on configuration or transport errors.
- * The Better Auth callback (`sendInvitationEmail`) wraps this
- * function with `waitUntil` on Vercel or a `.catch`'d detached
- * Promise elsewhere. Tests and the probe `await` the returned
- * Promise directly to make assertions deterministic.
+ * The Better Auth callback (`sendInvitationEmail`) hands this
+ * function to the post-response scheduler with a `.catch` already
+ * attached. Tests and the probe `await` the returned Promise
+ * directly to make assertions deterministic.
  *
  * `dispatchInvitationEmail` does **not** call `console.error`; the
  * single point of structured logging is `sendInvitationEmail`. This
@@ -118,40 +119,47 @@ export async function dispatchInvitationEmail(
     origin,
   ).toString()
 
-  // 4. Send the email. The placeholder React body is replaced by
-  //    a call to `templates.OrganizationInvitation(...)` in a
-  //    downstream PR (PR-6, which owns the React Email template).
-  //    The structured log fields and the `error_reason` taxonomy
-  //    stay identical.
+  // 4. Build the payload, then send. The payload is assembled
+  //    **outside** the transport `try`/`catch` on purpose: the
+  //    `smtp_threw` bucket means "the transport failed", so a
+  //    programming error while reading `data` must not be filed
+  //    under it. Letting it escape untyped is what routes it to
+  //    `dispatch_rejected`, which is the bucket that means exactly
+  //    that.
   //
-  // TODO(PR-6): replace this placeholder body with the React Email
-  // template `templates.OrganizationInvitation({ url: link, ... })`.
+  //    The placeholder React body is replaced by a call to
+  //    `templates.OrganizationInvitation(...)` in a downstream
+  //    increment, which owns the React Email template. The
+  //    structured log fields and the `error_reason` taxonomy stay
+  //    identical.
+  const payload = {
+    to: data.email,
+    subject: `Invitation to join ${data.organization.name}`,
+    react: React.createElement(
+      "div",
+      null,
+      React.createElement(
+        "p",
+        null,
+        `You have been invited to join ${data.organization.name} on DeesseJS.`,
+      ),
+      React.createElement(
+        "p",
+        null,
+        React.createElement("a", { href: link }, "Accept the invitation"),
+      ),
+      React.createElement(
+        "p",
+        null,
+        `This invitation expires on ${data.invitation.expiresAt.toISOString()}.`,
+      ),
+    ),
+    tags: [{ name: "flow", value: "organization-invitation" }],
+  }
+
   let result: { ok: true } | { ok: false; error: string }
   try {
-    result = await sendAuthEmail({
-      to: data.email,
-      subject: `Invitation to join ${data.organization.name}`,
-      react: React.createElement(
-        "div",
-        null,
-        React.createElement(
-          "p",
-          null,
-          `You have been invited to join ${data.organization.name} on DeesseJS.`,
-        ),
-        React.createElement(
-          "p",
-          null,
-          React.createElement("a", { href: link }, "Accept the invitation"),
-        ),
-        React.createElement(
-          "p",
-          null,
-          `This invitation expires on ${data.invitation.expiresAt.toISOString()}.`,
-        ),
-      ),
-      tags: [{ name: "flow", value: "organization-invitation" }],
-    })
+    result = await sendAuthEmail(payload)
   } catch (error) {
     throw new InvitationError(
       "smtp_threw",
@@ -161,40 +169,62 @@ export async function dispatchInvitationEmail(
   }
 
   // 5. Resolved transport: `ok: false` is an SMTP-level failure.
-  //    We resolve (no throw, no log here) — the callback does not
-  //    see a rejection on this path. PR-2 deliberately does not add
-  //    a fourth log line for this case; the mailer has its own
-  //    logs. A future increment that wants to surface `ok: false`
-  //    in the platform's logs can throw
-  //    `InvitationError("smtp_failed", ...)` from here without
-  //    changing the catch in `sendInvitationEmail`.
+  //    We resolve (no throw, no log here): the callback does not see
+  //    a rejection on this path, and the mailer has its own logs. A
+  //    later increment that wants `ok: false` in the platform's logs
+  //    can throw a typed error from here; the callback's catch picks
+  //    up any `InvitationError` without changing.
   if (!result.ok) {
     return
   }
 }
 
 /**
+ * Read a field for the structured log without ever throwing.
+ *
+ * The log is the last line of defence for this flow: if the failure
+ * handler itself throws, the promise rejects with nothing observing
+ * it and the invitation disappears with no trace. Some of the fields
+ * are read off a value the handler has already proven to be
+ * malformed, so the read cannot be trusted.
+ */
+function logField(read: () => unknown): string {
+  try {
+    const value = read()
+    return typeof value === "string" ? value : "unknown"
+  } catch {
+    return "unknown"
+  }
+}
+
+/**
  * The Better Auth callback. Signature is fixed by the plugin:
- * `Promise<void>`. Resolves immediately after dispatching the
- * work. The internal dispatch is wrapped in `safeDispatch` whose
- * `.catch` is attached before the Promise is detached, so no
- * rejection ever produces an unhandled-rejection event. The
+ * `Promise<void>`. Resolves immediately after handing the work to
+ * the post-response scheduler.
+ *
+ * The dispatch is wrapped in a `.catch` **before** it is scheduled,
+ * so no rejection can ever produce an unhandled-rejection event. The
  * `.catch` inspects `error.kind` to choose the `error_reason`; for
  * any other unexpected runtime error, the bucket is
  * `dispatch_rejected`.
  *
+ * Scheduling goes through `schedulePostResponse` rather than a bare
+ * `void`ed promise: on a serverless platform a detached promise can
+ * be reclaimed the moment the response is flushed, which loses the
+ * invitation email without any signal. The host installs a scheduler
+ * that keeps the runtime alive until the task settles
+ * (`apps/app/lib/organization-post-response.ts`). The default
+ * scheduler is a plain detached promise, correct for a long-lived
+ * Node process.
+ *
  * This callback is the **single point of structured logging** for
  * the invitation flow: at most one log per failed invitation, with
  * the `error_reason` chosen from a three-value taxonomy
- * (`config_invalid`, `smtp_threw`, `dispatch_rejected`). A future
- * Vercel deployment can wrap the detached Promise in
- * `waitUntil` from `@vercel/functions` to keep the serverless
- * function alive; the contract here is the long-lived-Node
- * baseline (detached Promise with explicit `.catch`).
+ * (`config_invalid`, `smtp_threw`, `dispatch_rejected`).
  */
 export function sendInvitationEmail(data: SendInvitationData): Promise<void> {
-  const safeDispatch = dispatchInvitationEmail(data).catch(
-    (error: unknown) => {
+  schedulePostResponse(() =>
+    dispatchInvitationEmail(data).catch((error: unknown) => {
       let errorReason: "config_invalid" | "smtp_threw" | "dispatch_rejected"
       let errorMessage: string
       if (error instanceof InvitationError) {
@@ -207,15 +237,14 @@ export function sendInvitationEmail(data: SendInvitationData): Promise<void> {
       console.error(
         "[auth] organization-invitation failed",
         JSON.stringify({
-          recipient_email: data.email,
-          inviter_user_id: data.inviter.user.id,
-          organization_id: data.organization.id,
+          recipient_email: logField(() => data.email),
+          inviter_user_id: logField(() => data.inviter.user.id),
+          organization_id: logField(() => data.organization.id),
           error_reason: errorReason,
           error: errorMessage,
         }),
       )
-    },
+    }),
   )
-  void safeDispatch
   return Promise.resolve()
 }

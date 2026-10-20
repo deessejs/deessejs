@@ -3,14 +3,13 @@ import "server-only"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { APIError } from "better-auth/api"
-import { auth, type AuthSession } from "@workspace/auth"
+import { auth } from "@workspace/auth"
+import { fetchFullOrganization } from "@workspace/auth/organization/queries"
 
 export type AccountSession = { userId: string; emailVerified: boolean }
 
 export async function requireAccountSession(): Promise<AccountSession> {
-  const data = (await auth.api.getSession({
-    headers: await headers(),
-  })) as AuthSession | null
+  const data = await auth.api.getSession({ headers: await headers() })
   if (!data?.session || !data.user) redirect("/login")
   return {
     userId: data.user.id,
@@ -18,13 +17,19 @@ export async function requireAccountSession(): Promise<AccountSession> {
   }
 }
 
-// Better Auth's default built-in roles. The member table column is
-// `text` (verified against better-auth 1.7.7: `role: z.string()`), so
-// the application must validate at runtime — a value outside this
-// set is treated as "no membership sufficient for any protected
-// action".
+/**
+ * Better Auth's default built-in roles. The member table column is
+ * `text` (verified against better-auth 1.7.7: `role: z.string()`),
+ * so the application must validate at runtime: a value outside this
+ * set is treated as "no membership sufficient for any protected
+ * action".
+ */
 const KNOWN_ROLES = ["owner", "admin", "member"] as const
 type OrgRole = (typeof KNOWN_ROLES)[number]
+
+// Declared as `Set<string>` rather than `Set<OrgRole>` so `.has` takes
+// the unknown value being tested instead of demanding a narrower one.
+const KNOWN_ROLE_SET: ReadonlySet<string> = new Set(KNOWN_ROLES)
 
 const ROLE_RANK: Record<OrgRole, number> = {
   member: 1,
@@ -33,7 +38,7 @@ const ROLE_RANK: Record<OrgRole, number> = {
 }
 
 function isOrgRole(value: string): value is OrgRole {
-  return (KNOWN_ROLES as readonly string[]).includes(value)
+  return KNOWN_ROLE_SET.has(value)
 }
 
 export type OrgAccessAction =
@@ -43,16 +48,16 @@ export type OrgAccessAction =
   | "manage-settings"
   | "delete-organization"
 
-const KNOWN_ACTIONS: readonly OrgAccessAction[] = [
+const KNOWN_ACTION_SET: ReadonlySet<string> = new Set<OrgAccessAction>([
   "view",
   "view-members",
   "manage-invitations",
   "manage-settings",
   "delete-organization",
-]
+])
 
 function isOrgAccessAction(value: string): value is OrgAccessAction {
-  return (KNOWN_ACTIONS as readonly string[]).includes(value)
+  return KNOWN_ACTION_SET.has(value)
 }
 
 const ACTION_MIN_RANK: Record<OrgAccessAction, number> = {
@@ -80,6 +85,38 @@ export type OrgAccess = {
 const ORG_ERROR_NOT_FOUND = "ORGANIZATION_NOT_FOUND"
 const ORG_ERROR_NOT_A_MEMBER = "USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION"
 
+/**
+ * Read the `code` discriminator off an `APIError` body.
+ *
+ * `error.body` is typed `unknown`, and Better Auth's error bodies are
+ * not uniform: some carry `code`, some carry only `message`. Narrow
+ * the value rather than asserting a shape, so a body that changes
+ * shape upstream degrades to "unknown code" (and therefore to the
+ * rethrow path) instead of silently reading `undefined`.
+ */
+function readApiErrorCode(error: APIError): string | undefined {
+  const body: unknown = error.body
+  if (typeof body !== "object" || body === null) return undefined
+  if (!("code" in body)) return undefined
+  const code = body.code
+  return typeof code === "string" ? code : undefined
+}
+
+/**
+ * Server-only authorization guard for organization-scoped routes.
+ *
+ * `apps/app` reads organization state through Better Auth's API, never
+ * through `@workspace/database`: the database package is the storage
+ * layer, and the application talks to an API. `fetchFullOrganization`
+ * wraps Better Auth's own `getFullOrganization` endpoint, which joins
+ * the organization to its members and enforces membership server-side
+ * before returning.
+ *
+ * That endpoint's own errors are what let this function distinguish
+ * "the organization does not exist" from "you are not a member of it",
+ * which are different user-facing outcomes and must not collapse into
+ * a single redirect.
+ */
 export async function requireOrganizationAccess(
   slug: string,
   action: string,
@@ -94,53 +131,15 @@ export async function requireOrganizationAccess(
 
   const session = await requireAccountSession()
 
-  // Better Auth's `getFullOrganization` returns the org joined to its
-  // members and invitations. The session middleware (orgSessionMiddleware)
-  // validates the user is signed in; the handler then enforces
-  // membership against the org adapter, throwing
-  // USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION otherwise. We never query
-  // the database directly from this layer — the only way to read org
-  // state from `apps/app` is through the auth API surface, which is
-  // what `auth.api.getFullOrganization` provides.
-  //
-  // The `as AuthApi` cast mirrors the pattern in `admin-auth.ts`: the
-  // TS2883 workaround on `packages/auth/src/auth.ts` widens the
-  // inferred `$Infer` chain via the `authConfig: BetterAuthOptions`
-  // annotation, and the `as ReturnType<typeof betterAuth<...>>` cast
-  // on the public `auth` export narrows the static type-flow
-  // through `User` and the plugin-augmented shape. The same narrowing
-  // applies to `auth.api.*` member access — the static shape on
-  // `auth.api` resolves to the narrowest possible call surface, and
-  // organization-plugin endpoints are not visible without an explicit
-  // cast. We cast the `api` object once at the call site rather than
-  // augmenting the public `auth` type; the runtime shape is the
-  // canonical Better Auth 1.7.7 `getFullOrganization` response, which
-  // is verified against the lockfile.
-  type AuthApi = {
-    getFullOrganization: (args: {
-      headers: Headers
-      query: { organizationSlug: string }
-    }) => Promise<{
-      id: string
-      slug: string
-      members: Array<{ userId: string; role: string }>
-    } | null>
-  }
-  const api = auth.api as unknown as AuthApi
-
-  let full: {
-    id: string
-    slug: string
-    members: Array<{ userId: string; role: string }>
-  } | null = null
+  let full
   try {
-    full = await api.getFullOrganization({
+    full = await fetchFullOrganization({
       headers: await headers(),
       query: { organizationSlug: slug },
     })
   } catch (error) {
     if (error instanceof APIError) {
-      const code = (error.body as { code?: string } | undefined)?.code
+      const code = readApiErrorCode(error)
       if (code === ORG_ERROR_NOT_FOUND) redirect("/no-organization")
       if (code === ORG_ERROR_NOT_A_MEMBER) redirect(`/${slug}/forbidden`)
     }
@@ -151,7 +150,7 @@ export async function requireOrganizationAccess(
 
   const membership = full.members.find((m) => m.userId === session.userId)
   if (!membership) {
-    // Defensive: the handler should have thrown USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION
+    // Defensive: the endpoint throws USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION
     // before this branch is reached. If we land here, the membership
     // table is out of sync with the session.
     redirect(`/${slug}/forbidden`)
@@ -160,7 +159,11 @@ export async function requireOrganizationAccess(
   if (!isOrgRole(membership.role)) {
     console.error(
       "[organization-auth] unknown role",
-      JSON.stringify({ role: membership.role, organizationId: full.id, userId: session.userId }),
+      JSON.stringify({
+        role: membership.role,
+        organizationId: full.id,
+        userId: session.userId,
+      }),
     )
     redirect(`/${slug}/forbidden`)
   }
@@ -169,5 +172,10 @@ export async function requireOrganizationAccess(
     redirect(`/${slug}/forbidden`)
   }
 
-  return { userId: session.userId, organizationId: full.id, slug: full.slug, role: membership.role }
+  return {
+    userId: session.userId,
+    organizationId: full.id,
+    slug: full.slug,
+    role: membership.role,
+  }
 }
