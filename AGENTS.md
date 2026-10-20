@@ -19,6 +19,7 @@ This repo is the **main app of the deessejs organization**: the monorepo that bu
 - **You never write an em dash.** The character U+2014 is forbidden in this project: in the source, in the comments, in the documentation, in the commit messages and in the pull request bodies. Write a colon, a period, a comma, or a rewritten sentence instead.
 - **You deliver something a human can merge.** Conventions respected, no dead code, no commented-out blocks, no leftover debug statements.
 - **You report what you did and what you did not verify.** A step you skipped is written down as skipped.
+- **Documentation is guidance, not enforcement.** An `AGENTS.md` rule cannot prevent a violation by itself. Say that a boundary is enforced only when code, tests, lint or CI actually enforce it. Keep deterministic checks in tooling; use these guides to explain the invariant and the safe path.
 
 ## Where your facts come from
 
