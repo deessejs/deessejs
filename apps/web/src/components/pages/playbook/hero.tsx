@@ -96,7 +96,14 @@ export function Hero() {
               to the left edge. The form is left out of it on purpose,
               a field and a checkbox still want a left edge. */}
           <div className="flex flex-col gap-4 text-center lg:text-left">
-            <h1 className="text-heading-40 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance">
+            {/* The H1 steps below the repo's usual text-heading-40 base. Every
+                other marketing hero starts at 40, but this title is 46
+                characters long where the rest are short enough to hold
+                two lines. At 40 in a 308px phone column it broke to four
+                and read as packed; at 32 it holds three and the cover
+                plus the form come back above the fold. `sm` still
+                starts at 48, so the jump only shows below 640px. */}
+            <h1 className="text-heading-32 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance">
               From AI-Generated Code to Production Software
             </h1>
             <p className="text-muted-foreground text-copy-18 sm:text-copy-20 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
