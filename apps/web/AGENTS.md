@@ -4,6 +4,10 @@ You own the public face of the product: the marketing site, the pricing page, th
 
 The [root guide](../../AGENTS.md) holds the rules that cut across every workspace: the API path, the auth base path, the wire contracts, the research protocol and the git workflow. Read it when your change touches one of them, not before every edit.
 
+## Service boundary
+
+Use `src/lib/auth-client.ts` for browser authentication and `src/lib/orpc.ts` for API data. Application code must not import runtime APIs from `@workspace/auth` or `@workspace/database`; the browser clients call the server endpoints and the API owns database access. Keep client-visible shapes in `@workspace/contracts`. Product showcase snippets should follow this boundary or clearly label a different server-side template architecture.
+
 ## Key files
 
 | Path | Owns |
