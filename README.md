@@ -54,7 +54,7 @@
 
 ## Why this stack
 
-- **Current stack.** Next.js 16, Tailwind v4, React 19 and TypeScript 6. Shared dependency versions are recorded in `pnpm-workspace.yaml` and `pnpm-lock.yaml.
+- **Current stack.** Next.js 16, Tailwind v4, React 19 and TypeScript 6. Shared dependency versions are recorded in `pnpm-workspace.yaml` and `pnpm-lock.yaml`.
 - **Lockfile-clean pnpm catalogs.** All shared versions live in `pnpm-workspace.yaml` with `catalogMode: strict`. No drift between apps.
 - **Real auth flow.** Email verification is enforced in the proxy. No "demo" auth.
 - **Real database.** Postgres locally (Docker) or in the cloud. Schema is generated, not hand-written.
