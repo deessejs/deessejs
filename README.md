@@ -45,12 +45,12 @@
 | Layer | What you get | Why it matters |
 |---|---|---|
 | **Apps** | `apps/web` (marketing), `apps/app` (authenticated product), `apps/docs` (Fumadocs) | Three deployable surfaces, each with its own purpose. |
-| **Auth** | `packages/auth` ( Better Auth + Drizzle adapter, email verification, password reset | Real auth, not a demo. Production gating in `apps/app/proxy.ts`. |
+| **Auth** | `packages/auth` (server-side Better Auth configuration and plugins), accessed by applications through configured auth clients and API endpoints | Production auth flows with email verification and password reset. |
 | **API** | `packages/api` ( Hono + oRPC, end-to-end typed routes | Type-safe RPC without GraphQL. |
 | **Database** | `packages/database` ( Drizzle ORM, Postgres, in-memory test runner (pg-mem) | Single source of truth for schema; tests run without a DB. |
 | **UI** | `packages/ui` ( shadcn/ui + Tailwind v4, centralized design tokens | One component library, every app reuses it. |
 | **Tooling** | pnpm 11 workspaces, Turbo v2, strict catalogs, shared ESLint + TS configs | One command rebuilds, lints, types, tests the whole monorepo. |
-| **Single-tenant** | No organization plugin, no org schema, no org client | One user = one workspace. Multi-tenant is opt-in. |
+| **Organizations** | Better Auth organization plugin, organization/member/invitation schema and invitation delivery | Organization support is wired in; the member-management UI is not shipped yet. |
 
 ## Why this stack
 
@@ -165,23 +165,16 @@ Click the **Deploy with Vercel** button at the top. The monorepo is detected aut
 | `apps/app` | `https://app.yourdomain.com` |
 | `apps/docs` | `https://docs.yourdomain.com` |
 
-## Customization
+## Organizations
 
-DeesseJS is **single-tenant by design**. The lock-ins live in the code:
-
-- No `organization(...)` plugin in `packages/auth/src/auth.ts`.
-- No `databaseHooks.session.create.before` for org auto-create.
-- No `organizationClient()` on the client.
-- Email verification is enforced in `apps/app/proxy.ts` (unverified users redirect to `/verify-email`).
-
-If you need multi-tenant, start from Better Auth's `organizationPlugin` separately. DeesseJS will not graft it in cleanly.
+Organization support is enabled in `packages/auth` and persisted through the generated schema in `packages/database`. The current product includes organization creation and invitations. The member-management UI is not shipped yet. Application code uses auth and API clients; it does not call the auth or database implementation packages directly.
 
 ## Architecture notes
 
 - **Proxy, not middleware.** Next.js 16 renamed `middleware.ts` to `proxy.ts`. The auth guard lives at `apps/app/proxy.ts`.
 - **Catalogs, not manual pins.** All shared versions are centralized in `pnpm-workspace.yaml` with `catalogMode: strict`.
 - **Schema ownership.** `packages/database/src/schema/auth.ts` is owned by the Better Auth CLI. Never hand-edit.
-- **Single source of truth for auth config.** Everything lives in `packages/auth/src/auth.ts`; routes and components import from `@workspace/auth`.
+- **Service clients define the application boundary.** `packages/auth` owns the server implementation; applications use their configured auth clients and the endpoints mounted by `packages/api`. App code never imports runtime auth or database APIs directly. Typed API clients and `packages/contracts` define the application-facing data boundary.
 
 ## Contributing
 
