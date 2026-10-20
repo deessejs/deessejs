@@ -31,13 +31,15 @@ import { auth } from "@workspace/auth"
 api.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw))
 ```
 
-Read the current session on the server:
+Resolve a session inside server-side code in `packages/api`:
 
 ```ts
 import { auth } from "@workspace/auth"
 
 const session = await auth.api.getSession({ headers })
 ```
+
+Application workspaces must not import the runtime `auth` instance or call `auth.api.*`; use the app-owned auth client or an HTTP request to the endpoint exposed by `packages/api`. This server example is for the server boundary, not application code.
 
 Build the browser client in the application. The base path must match the Hono mount; use the shared constant instead of Better Auth's default path:
 
