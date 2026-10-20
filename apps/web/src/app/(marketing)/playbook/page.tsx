@@ -6,21 +6,21 @@ import { Playbook } from "@/components/pages/playbook"
  * Playbook lead-magnet landing page at `/playbook`.
  *
  * Draft status:
- *   This PR ships the page in **draft** state. The real PDF and
- *   the cover thumbnail are not in the repo yet. Visible
- *   placeholders + the `apps/web/public/playbook/README.md` list
- *   the missing assets. The PR moves out of draft once the PDF
- *   link is tested live and the cover thumbnail is finalised.
+ *   This PR ships the page in **draft** state. The real PDF is not
+ *   in the repo yet, so the email the form triggers would deliver a
+ *   404. `apps/web/public/playbook/README.md` tracks the missing
+ *   asset. The PR moves out of draft once the PDF link is tested
+ *   live.
  *
  * Layout:
- *   Hybrid, same recipe as /about and /pricing: each section
- *   component owns its own `border-b border-border` and padding;
- *   the page wrapper renders them in reading order.
+ *   Hero-only. The page is a single section: the two-column hero
+ *   carrying the H1, the lead, the signup form, and the cover.
+ *   The Problem, WhatYouGet, WhoItsFor, and FinalCta sections were
+ *   removed; the route renders just `Playbook.Hero`. See the page
+ *   README for what was removed and how to bring it back.
  *
- * Authoritative copy lives in:
- *   - `components/pages/playbook/hero.tsx`: H1, lead, CTA
- *   - `components/pages/playbook/content/toc.ts`: chapter takeaways
- *     (used by `WhatYouGet`)
+ * Authoritative copy lives in
+ * `components/pages/playbook/hero.tsx`: H1, lead, and the cover.
  *
  * Metadata pattern mirrors `apps/web/src/app/(marketing)/pricing/page.tsx`:
  * the page exports a `metadata` object with `title`, `description`,
@@ -63,13 +63,5 @@ export const metadata: Metadata = {
 }
 
 export default function PlaybookPage() {
-  return (
-    <>
-      <Playbook.Hero />
-      <Playbook.Problem />
-      <Playbook.WhatYouGet />
-      <Playbook.WhoItsFor />
-      <Playbook.FinalCta />
-    </>
-  )
+  return <Playbook.Hero />
 }

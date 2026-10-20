@@ -16,12 +16,27 @@ collection of parts"). Today the composite is page-local.
 
 | Section | Purpose |
 |---|---|
-| `hero.tsx` | Two-column hero: H1 + lead + form on the left, cover mockup on the right |
-| `problem.tsx` | Why agent-generated code ages poorly |
-| `what-you-get.tsx` | Chapter takeaways in reading order (Card grid) |
-| `who-its-for.tsx` | Concrete audience description, no personas |
+| `hero.tsx` | The whole page: H1, lead, form, and the cover mockup |
 | `form.tsx` | `"use client"`: RHF + Zod + orpc signup |
-| `final-cta.tsx` | Closing 2-col block, mirrors the shared `FinalCtaShell` recipe, hosts the form on the right |
-| `content/toc.ts` | Table-of-contents source (single-sourced into the chapter list views) |
 
 The `index.tsx` aggregates them under the `Playbook` namespace.
+
+## Removed sections
+
+The page previously carried four more sections, all following the
+homepage `ForWho` grid recipe. They were deleted, not just
+unrendered, along with the content that fed them:
+
+| Removed | Fed by |
+|---|---|
+| `problem.tsx` | Three inline frictions: read, test, change |
+| `what-you-get.tsx` | `content/toc.ts` `PLAYBOOK_TOC` |
+| `who-its-for.tsx` | Three inline audience profiles |
+| `final-cta.tsx` | A second mount of `Form` |
+| `content/toc.ts` | Six chapter takeaways plus `PLAYBOOK_LEAD` |
+
+`PLAYBOOK_LEAD` was not lost with the file: it now lives in
+`hero.tsx` as the local `LEAD` const, its only consumer.
+
+To bring any of them back, recover the files from git and re-export
+them in `index.tsx`. The copy is intact in history, not rewritten.

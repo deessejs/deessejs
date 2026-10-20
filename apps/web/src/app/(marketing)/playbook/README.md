@@ -26,13 +26,21 @@ The cover thumbnail has landed at
 
 ## Reading order on the page
 
-1. Hero (`Playbook.Hero`): two-column: title, lead, form on the
-   left; cover thumbnail on the right
-2. Problem (`Playbook.Problem`)
-3. What you'll find (`Playbook.WhatYouGet`)
-4. Who it's for (`Playbook.WhoItsFor`)
-5. Final CTA (`Playbook.FinalCta`): closing 2-col block, mirrors
-   the shared `FinalCtaShell` recipe used by /pricing and /about
+## Reading order on the page
+
+1. Hero (`Playbook.Hero`): the entire page. Two columns: H1, lead,
+   and the signup form on the left; the cover mockup on the right.
+
+Nothing renders below the hero. The Problem, What you'll find, Who
+it's for, and Final CTA sections were deleted along with
+`content/toc.ts`, the chapter list that fed the third of them. Their
+copy is intact in git history and the components README records what
+each one contained.
+
+With the FinalCta gone the page carries a single form, so the two
+instances that shared hardcoded ids (the second checkbox scrolled
+the visitor back to the first) are no longer possible. `form.tsx`
+still derives its ids from `useId` so a second mount stays safe.
 
 ## Pipeline (one-line reminders)
 
@@ -47,11 +55,11 @@ The cover thumbnail has landed at
 
 ## Toggling off the draft banner
 
-Once the PDF + cover land:
+Once the PDF lands:
 
 1. Update the `Draft` notice at the top of this file.
 2. Update the `metadata.description` in `page.tsx` if the real
-   TOC surfaces a sharper two-line summary.
+   cover copy suggests a sharper two-line summary.
 3. Re-run `pnpm --filter web test:e2e:local` against the preview
    deploy.
 4. Convert the PR from draft to ready for review.

@@ -1,7 +1,15 @@
 import Image from "next/image"
 
 import { Form } from "./form"
-import { PLAYBOOK_LEAD } from "./content/toc"
+
+/**
+ * The H1's supporting line. It frames who the guide is for and the
+ * scope of what it covers, which is deliberately not a restatement
+ * of the H1: the title frames the transformation, this frames the
+ * reader.
+ */
+const LEAD =
+  "A working guide for developers who ship with coding agents and want their software to stay readable, testable, and maintainable."
 
 /**
  * The playbook cover mockup.
@@ -43,7 +51,7 @@ const COVER = {
 } as const
 
 /**
- * /playbook hero. First screen, two-column layout.
+ * /playbook hero, and the whole page.
  *
  * Layout:
  *   ┌─ Left column ──────────────────┬─ Right column ───────────┐
@@ -59,8 +67,8 @@ const COVER = {
  *
  * Title and lead copy, the email field, the inline submit, and the
  * optional consent checkbox all live in the left column. The form
- * repeats on this page only (it does not duplicate in the FinalCta
- * that closes the page).
+ * appears once on the page; the section it used to also occupy,
+ * the closing FinalCta, has been removed.
  *
  * The right column holds the real cover mockup, cropped to the
  * artwork in CSS (see `COVER`). Its background is transparent, so
@@ -79,10 +87,10 @@ export function Hero() {
               From AI-Generated Code to Production Software
             </h1>
             <p className="text-muted-foreground text-copy-18 sm:text-copy-20 leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
-              {PLAYBOOK_LEAD}
+              {LEAD}
             </p>
           </div>
-          <Form inlineSubmit />
+          <Form />
         </div>
         <div className="flex items-center justify-center p-6 lg:py-20 lg:pl-12">
           <div

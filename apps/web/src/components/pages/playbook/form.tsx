@@ -58,37 +58,14 @@ const playbookSchema = z.object({
 
 type PlaybookInput = z.infer<typeof playbookSchema>
 
-interface FormProps {
-  /**
-   * When `true`, the form's `max-w-md` is dropped so the form
-   * fills its parent column. Set in the page-closing FinalCta,
-   * where the column is already narrower than a `max-w-md` would
-   * feel right; the hero keeps the default so the inline email
-   * row doesn't span its full left column.
-   */
-  fullWidth?: boolean
-  /**
-   * When `true`, the submit button sits to the right of the
-   * email input on `sm+` (stacked on mobile, where the row
-   * would be too tight for both). Both call sites on the page
-   * want this: the hero's left column and the FinalCta's right
-   * column each have room for the input and the button on one
-   * line.
-   */
-  inlineSubmit?: boolean
-}
-
-export function Form({
-  fullWidth = false,
-  inlineSubmit = false,
-}: FormProps) {
-  // The form is rendered twice on the page (hero + FinalCta).
-  // Without unique ids, both instances share `playbook-email`
-  // and `playbook-consent`, so the second instance's
-  // <label htmlFor> activates the first instance's checkbox.
-  // The browser scrolls back to the hero and the second
-  // checkbox never changes state. `useId` gives each render
-  // a stable, SSR-safe unique prefix.
+export function Form() {
+  // The form is rendered once on the page today. The ids stay
+  // derived from `useId` rather than hardcoded: the form was
+  // mounted twice until the closing FinalCta was removed, and two
+  // instances sharing a literal id meant the second one's
+  // <label htmlFor> activated the first one's checkbox, scrolling
+  // the visitor back to the hero. `useId` keeps that impossible
+  // if the form is ever mounted a second time.
   const idPrefix = useId()
   const emailId = `${idPrefix}-email`
   const consentId = `${idPrefix}-consent`
@@ -106,9 +83,10 @@ export function Form({
     },
   })
 
-  const formClassName = fullWidth
-    ? "flex w-full flex-col gap-5"
-    : "flex w-full max-w-md flex-col gap-5"
+  // `max-w-md` keeps the inline email row from spanning the hero's
+  // full left column. Drop it if the form ever moves into a column
+  // that is already narrower than that.
+  const formClassName = "flex w-full max-w-md flex-col gap-5"
 
   // Tracks an already-shown "duplicate" so we don't fire the same
   // success toast twice if the user clicks Submit again within the
@@ -179,29 +157,24 @@ export function Form({
     >
       <Field>
         <FieldLabel htmlFor={emailId}>Email address</FieldLabel>
-        <div
-          className={
-            inlineSubmit
-              ? "flex flex-col gap-2 sm:flex-row"
-              : undefined
-          }
-        >
+        {/* The submit sits beside the input on sm+ and stacks below
+            it on mobile, where the two cannot share a phone-width
+            line. */}
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             id={emailId}
             type="email"
             autoComplete="email"
             placeholder="you@example.com"
             aria-invalid={!!errors.email}
-            className={inlineSubmit ? "flex-1" : undefined}
+            className="flex-1"
             {...register("email")}
           />
           <Button
             type="submit"
             disabled={isSubmitting}
-            size={inlineSubmit ? "default" : "lg"}
-            className={
-              inlineSubmit ? "shrink-0 whitespace-nowrap" : undefined
-            }
+            size="default"
+            className="shrink-0 whitespace-nowrap"
           >
             {isSubmitting ? "Sending…" : "Get the free playbook"}
           </Button>
