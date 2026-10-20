@@ -73,7 +73,7 @@ Reading the graph:
 - **`packages/env` is the foundation.** Five packages depend on it and it depends on none.
 - **`apps/cli` carries the registry client inside its bundle.** `packages/api` and `packages/contracts` are devDependencies that tsup inlines, so the published CLI resolves nothing at run time.
 - **`apps/create-deesse-app` and `apps/agent` stand alone.** The scaffolder fetches a template by commit and runs no workspace code; the bot is a GitHub webhook handler with no shared runtime.
-- **The current `apps/app` to `packages/auth` edge is legacy code, not a pattern to extend.** The device page calls `auth.api.getSession()`, and the sessions table imports branded token helpers from the auth package. Both cross the new client boundary described below and are migration targets.
+- **The current `apps/app` to `packages/auth` edge is legacy code, not a pattern to extend. `lib/admin-auth.ts` and the device page call `auth.api.getSession()`, and the sessions table imports branded token helpers from the auth package. These cross the client boundary and are migration targets.
 - **Not every link goes through the package manager.** The applications that consume `@workspace/ui` also alias it to the source with a `paths` entry in their `tsconfig.json`. `apps/web` resolves `@workspace/cookies` that way, and that dependency is not declared in its `package.json`. When you add a workspace dependency to an application, declare it in `package.json` too, or the turbo task graph does not know about the edge.
 
 ## Where the truth lives
