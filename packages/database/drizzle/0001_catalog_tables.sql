@@ -11,7 +11,8 @@ CREATE TABLE "template_repository_snapshots" (
 	"stars" integer,
 	"fetched_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "template_repository_snapshots_stars_nonnegative" CHECK ("template_repository_snapshots"."stars" >= 0),
-	CONSTRAINT "template_repository_snapshots_repository_name_nonempty" CHECK (length(btrim("template_repository_snapshots"."repository_name")) > 0)
+	CONSTRAINT "template_repository_snapshots_repository_name_nonempty" CHECK (length(btrim("template_repository_snapshots"."repository_name")) > 0),
+	CONSTRAINT "template_repository_snapshots_canonical_url_nonempty" CHECK (length(btrim("template_repository_snapshots"."canonical_url")) > 0)
 );
 --> statement-breakpoint
 CREATE TABLE "templates" (

@@ -1,5 +1,5 @@
 {
-  "id": "6968eeff-fb0e-4758-952a-cad4ff027108",
+  "id": "7507f80c-6950-4bd6-898c-85a3ebfab776",
   "prevId": "41e47b9a-87f0-40d8-b699-1202ccacc1f8",
   "version": "7",
   "dialect": "postgresql",
@@ -874,6 +874,10 @@
         "template_repository_snapshots_repository_name_nonempty": {
           "name": "template_repository_snapshots_repository_name_nonempty",
           "value": "length(btrim(\"template_repository_snapshots\".\"repository_name\")) > 0"
+        },
+        "template_repository_snapshots_canonical_url_nonempty": {
+          "name": "template_repository_snapshots_canonical_url_nonempty",
+          "value": "length(btrim(\"template_repository_snapshots\".\"canonical_url\")) > 0"
         }
       },
       "isRLSEnabled": false

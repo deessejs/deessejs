@@ -117,6 +117,12 @@ export const templateRepositorySnapshots = pgTable(
       "template_repository_snapshots_repository_name_nonempty",
       sql`length(btrim(${table.repositoryName})) > 0`
     ),
+    // The canonical URL is what projects to the public clone URL. An
+    // empty one would produce an unroutable clone target.
+    check(
+      "template_repository_snapshots_canonical_url_nonempty",
+      sql`length(btrim(${table.canonicalUrl})) > 0`
+    ),
   ]
 )
 

@@ -141,6 +141,15 @@ describe.skipIf(!serverEnv.TEST_DATABASE_URL)("template catalog tables", () => {
     )
   })
 
+  it("rejects a blank canonical URL", async () => {
+    const id = await insertTemplate()
+
+    await expectViolation(
+      insertSnapshot(id, { canonicalUrl: "   " }),
+      /template_repository_snapshots_canonical_url_nonempty/
+    )
+  })
+
   it("rejects an access value outside the enum", async () => {
     await expectViolation(
       insertTemplate({ access: "premium" }),

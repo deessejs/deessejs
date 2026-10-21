@@ -12,8 +12,8 @@
     {
       "idx": 1,
       "version": "7",
-      "when": 1792570641281,
-      "tag": "0001_brave_payback",
+      "when": 1792573782659,
+      "tag": "0001_catalog_tables",
       "breakpoints": true
     }
   ]
