@@ -7,3 +7,9 @@ B-VIOLATIONS.txt
 .github/styles/Microsoft/
 .github/styles/write-good/
 .github/styles/proselint/
+
+# Playwright artifacts. The e2e suite writes traces, screenshots and
+# the HTML report here on every run (apps/web/tests/e2e/test-results),
+# and the CI preset writes the HTML report to its own path.
+apps/web/tests/e2e/test-results/
+apps/web/playwright-report/

@@ -2,7 +2,17 @@ import { createORPCClient } from "@orpc/client"
 import { RPCLink } from "@orpc/client/fetch"
 import type { RouterClient } from "@orpc/server"
 
-import { appRouter } from "@workspace/api/router"
+// Type-only import: `appRouter` is referenced exclusively as `typeof
+// appRouter` in the typed-client shape below. Tree-shaking the runtime
+// value out keeps node-only modules transitively pulled by the API
+// router (resend SDK, @workspace/env/server via dotenv loader,
+// `node:crypto` in the rate-limit primitive) out of the
+// marketing-site client bundle. The previous value-level import worked
+// for the existing routes because those routes pulled nothing
+// node-only: the new `playbook` route does (it imports
+// `@workspace/email`, which uses `node:crypto`-backed modules), so
+// the import is now tightened to type-only.
+import type { appRouter } from "@workspace/api/router"
 import { API_RPC_PATH } from "@workspace/api/base-path"
 
 import { apiBaseUrl } from "./preview-urls"
