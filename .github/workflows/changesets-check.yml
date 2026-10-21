@@ -1,7 +1,32 @@
 name: Changesets check
 
-# Verify that PRs touching public CLI surfaces include valid changesets.
-# This check is required on staging and main.
+# Verify that any PR touching CLI-relevant paths also includes a changeset.
+# This is the contribution gate: contributors add a changeset if their PR
+# changes a published package, and CI enforces it.
+#
+# This check is a required status check on the branch protection of
+# staging and main. The path filter covers the same surface that triggers
+# cli-preview.yml (apps/cli, apps/create-deesse-app, packages/contracts,
+# packages/api).
+#
+# History worth knowing before changing anything here: this job reported
+# success for every pull request since it was added, without ever running a
+# validation step. Three defects, all fixed in this revision.
+#
+#   1. `git fetch origin "$BASE" --depth=1` made the base ref shallow, so the
+#      three-dot diff could not find a merge base. `git diff` exited non-zero,
+#      `|| true` swallowed it, and the step concluded "no files changed".
+#   2. The frontmatter matcher compared a quoted package name against a set of
+#      unquoted ones, so it matched nothing. Every changeset written in the
+#      documented format was reported invalid.
+#   3. It required *every* changeset to name a *published* package. A changeset
+#      for a private workspace package such as `web` or `@workspace/api` is
+#      perfectly valid, so repairing 1 and 2 alone would have blocked every
+#      future PR with an unrelated pre-existing changeset.
+#
+# Syntax and coverage are therefore two separate questions here: syntax applies
+# to every changeset this PR adds or modifies, and coverage requires that at
+# least one of them names a package that is actually published.
 
 on:
   pull_request:
@@ -15,23 +40,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        # Full history is required: both the path diff and the exemption
+        # content checks run `git diff <base-sha>...<head-sha>`.
         with: { fetch-depth: 0 }
 
       - name: Detect changes to CLI-relevant paths
         id: changed
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          git fetch origin "$BASE_REF" --depth=1
-          if git merge-base "origin/$BASE_REF" "$HEAD_SHA" >/dev/null 2>&1; then
-            DIFF_ARGS=("origin/$BASE_REF...$HEAD_SHA")
-          else
-            echo "::notice::No merge base exists. Comparing the base and head snapshots."
-            DIFF_ARGS=("origin/$BASE_REF" "$HEAD_SHA")
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          # The checkout above fetched the full history, so both commits are
+          # already local. Diffing against the base sha supplied by the event
+          # needs no remote ref and no fetch, so there is no merge base to
+          # lose. The previous revision fetched the base branch at depth 1
+          # immediately before the diff, which is what broke it.
+          if ! CHANGED=$(git diff --name-only "$BASE_SHA...$HEAD_SHA"); then
+            echo "::error::Could not diff $BASE_SHA...$HEAD_SHA."
+            echo "::error::Refusing to report 'no files changed' when the diff itself failed."
+            exit 1
           fi
-          TOUCHED=$(git diff --name-only "${DIFF_ARGS[@]}" -- \
-            apps/cli apps/create-deesse-app packages/contracts packages/api)
+
+          printf '%s\n' "$CHANGED" > "$RUNNER_TEMP/changed-files.txt"
+
+          # Changesets this PR adds or modifies. Scope is deliberate: the
+          # .changeset directory accumulates across many PRs and is only
+          # emptied at release time, so validating the whole directory would
+          # let one malformed file block every future PR forever.
+          git diff --diff-filter=ACMR --name-only "$BASE_SHA...$HEAD_SHA" \
+            -- '.changeset/*.md' \
+            | grep -v '^.changeset/README\.md$' \
+            > "$RUNNER_TEMP/pr-changesets.txt" || true
+
+          TOUCHED=$(printf '%s\n' "$CHANGED" \
+            | grep -E '^(apps/cli|apps/create-deesse-app|packages/contracts|packages/api)(/|$)' \
+            || true)
+
           if [ -n "$TOUCHED" ]; then
             echo "touched=true" >> "$GITHUB_OUTPUT"
             echo "Files changed under CLI-relevant paths:"
@@ -41,28 +86,132 @@ jobs:
             echo "No files changed under CLI-relevant paths. Changeset not required."
           fi
 
+          echo "Changesets added or modified by this PR:"
+          if [ -s "$RUNNER_TEMP/pr-changesets.txt" ]; then
+            cat "$RUNNER_TEMP/pr-changesets.txt"
+          else
+            echo "(none)"
+          fi
+
+      # The auto-generated Version Packages pull request is exempt: it touches
+      # both manifests and it consumes the changesets it was built from, so it
+      # can never satisfy the checks below. The exemption is decided on the
+      # pull request author and on the content of the diff, never on a branch
+      # name or a title, because both of those are chosen by whoever opens the
+      # pull request.
+      - name: Detect the auto-generated Version Packages pull request
+        id: versionpr
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPOSITORY: ${{ github.repository }}
+          AUTHOR_LOGIN: ${{ github.event.pull_request.user.login }}
+          EXPECTED_BOT_LOGIN: ${{ vars.VERSION_PACKAGES_BOT_LOGIN }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          if bash .github/scripts/is-version-package-pr.sh \
+            "$BASE_SHA" \
+            "$HEAD_SHA" \
+            "$HEAD_REPO" \
+            "$REPOSITORY" \
+            "$AUTHOR_LOGIN" \
+            "$EXPECTED_BOT_LOGIN" \
+            "$HEAD_REF"; then
+            echo "exempt=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exempt=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Coverage: this PR touches a published package's paths, so this PR must
+      # itself name that package in one of its changesets. Pre-existing
+      # changesets left in the directory by earlier PRs do not count, and a
+      # changeset for a private package does not satisfy this gate.
+      - name: Verify changeset coverage
+        if: steps.changed.outputs.touched == 'true' && steps.versionpr.outputs.exempt != 'true'
+        env:
+          PR_CHANGESETS: ${{ runner.temp }}/pr-changesets.txt
+          CHANGED_FILES: ${{ runner.temp }}/changed-files.txt
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const readList = (file) =>
+              fs.existsSync(file) ? fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean) : [];
+
+            const changed = readList(process.env.CHANGED_FILES);
+            const changesets = readList(process.env.PR_CHANGESETS);
+
+            // Every public package this PR actually touched.
+            const touched = [];
+            for (const dir of ["apps", "packages"]) {
+              if (!fs.existsSync(dir)) continue;
+              for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                if (!entry.isDirectory()) continue;
+                const relDir = dir + "/" + entry.name;
+                const pkgPath = path.join(dir, entry.name, "package.json");
+                if (!fs.existsSync(pkgPath)) continue;
+                try {
+                  const p = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+                  if (!p || !p.name || p.private === true) continue;
+                  if (changed.some((f) => f === relDir + "/package.json" || f.startsWith(relDir + "/"))) {
+                    touched.push(p.name);
+                  }
+                } catch {}
+              }
+            }
+
+            if (touched.length === 0) {
+              console.log("No published package was modified by this PR.");
+              process.exit(0);
+            }
+            if (changesets.length === 0) {
+              console.error("::error::This PR modifies " + touched.join(", ") + " but adds no changeset.");
+              console.error("::error::Add a changeset under .changeset/ describing the bump type.");
+              console.error("::error::See .changeset/README.md for the format.");
+              process.exit(1);
+            }
+
+            const unquote = (s) => s.replace(/^["\x27]|["\x27]$/g, "").trim();
+            const named = new Set();
+            for (const file of changesets) {
+              const body = fs.readFileSync(file, "utf8");
+              const m = body.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+              if (!m) continue;
+              for (const line of m[1].split(/\r?\n/)) {
+                const colonAt = line.indexOf(":");
+                if (colonAt < 0) continue;
+                named.add(unquote(line.slice(0, colonAt)));
+              }
+            }
+
+            const uncovered = touched.filter((name) => !named.has(name));
+            if (uncovered.length) {
+              console.error("::error::This PR modifies " + uncovered.join(", ") + " with no changeset naming it.");
+              console.error("::error::A changeset for a private package does not satisfy this gate.");
+              process.exit(1);
+            }
+            console.log("Changeset coverage ok for: " + touched.join(", "));
+          '
+
       - name: Test changeset validator
         run: node --test scripts/validate-changesets.test.mjs
 
-      - name: Validate changed changesets
-        if: steps.changed.outputs.touched == 'true'
+      # Syntax: validate only changesets added or modified by this PR. The
+      # shared validator also accepts private workspace packages and rejects
+      # malformed YAML keys, duplicate entries, unknown packages, and invalid
+      # bump types.
+      - name: Validate changeset frontmatter
+        if: steps.changed.outputs.touched == 'true' && steps.versionpr.outputs.exempt != 'true'
         env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_CHANGESETS: ${{ runner.temp }}/pr-changesets.txt
         run: |
-          if git merge-base "origin/$BASE_REF" "$HEAD_SHA" >/dev/null 2>&1; then
-            DIFF_ARGS=("origin/$BASE_REF...$HEAD_SHA")
-          else
-            echo "::notice::No merge base exists. Comparing the base and head snapshots."
-            DIFF_ARGS=("origin/$BASE_REF" "$HEAD_SHA")
-          fi
-          CHANGED=$(git diff --name-only --diff-filter=ACMR "${DIFF_ARGS[@]}" -- .changeset | \
-            grep -E '^\.changeset/[^/]+\.md$' | grep -v '^\.changeset/README\.md$' || true)
-          if [ -z "$CHANGED" ]; then
-            echo "::error::CLI-relevant paths were modified but no changeset file was added or updated."
-            echo "::error::Add a changeset under .changeset/ describing the bump type."
+          set -euo pipefail
+          mapfile -t changed_changesets < "$PR_CHANGESETS"
+          if [ "${#changed_changesets[@]}" -eq 0 ]; then
+            echo "::error::No changesets were added or modified by this PR."
             exit 1
           fi
-          echo "Validating changed changeset files:"
-          echo "$CHANGED"
-          node scripts/validate-changesets.mjs $CHANGED
+          node scripts/validate-changesets.mjs "${changed_changesets[@]}"

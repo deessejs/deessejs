@@ -109,17 +109,17 @@ jobs:
       # runner has network access. The 60s timeout is a
       # belt-and-braces guard against a hung install.
       - name: Smoke test create-deesse-app preview
-        env:
-          # The version of create-deesse-app at the time of
-          # this PR is 0.0.0. The tsup build inlines
-          # process.env.CREATE_DEESSE_APP_VERSION into the
-          # bundle, so the --version banner reports exactly
-          # this string. When the package gets a real
-          # release, this expectation will need to follow
-          # the published version.
-          EXPECTED_VERSION: "0.0.0"
         run: |
           set -euo pipefail
+          # Read the expectation from the manifest rather than pinning it
+          # here. The tsup build inlines
+          # process.env.CREATE_DEESSE_APP_VERSION into the bundle from the
+          # same field, so the two track each other automatically. A pinned
+          # literal breaks on the first version bump, which is exactly what
+          # happened when create-deesse-app moved from 0.0.0 to a real
+          # published version.
+          EXPECTED_VERSION=$(node -e "process.stdout.write(String(require('./apps/create-deesse-app/package.json').version))")
+          echo "Expected create-deesse-app version: $EXPECTED_VERSION"
           URL=$(node -e '
             const fs = require("node:fs");
             const o = JSON.parse(fs.readFileSync("output.json", "utf8"));
@@ -132,12 +132,9 @@ jobs:
           cd "$WORK"
 
           # For each launcher, capture --version output and
-          # assert it equals the expected value. The expected
-          # value is set via EXPECTED_VERSION below; today it
-          # is the manifest version (0.0.0) because the
-          # package has not been released to npm yet. When
-          # the package gets a real release, follow the
-          # published version here.
+          # assert it equals the expected value, read from the
+          # manifest above so it follows every bump without an
+          # edit here.
           assert_version() {
             local label="$1"; shift
             local out

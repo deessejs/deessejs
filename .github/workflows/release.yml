@@ -1,27 +1,37 @@
 name: Release
 
-# Senior release pattern: single workflow does version bump + npm publish +
-# tag + GitHub Release in one job. Triggered by push to main or staging, or
-# by manual workflow_dispatch.
+# One publish path for every public package, two dist-tags.
 #
-# Two publish channels, both handled by this single workflow:
-#   - @latest: push to main (Tier 3). Changesets-driven version bump;
-#     pnpm changeset publish; stable GitHub Release. Auto-publishes
-#     when the commit message contains '.changeset'.
-#   - @canary: push to staging (Tier 2), or on-demand workflow_dispatch
-#     with `canary: true`. Synthetic version string (date+SHA);
-#     npm publish --tag canary; GitHub Release marked as prerelease.
+# Both channels do the same thing: build, pack, verify, publish. Only the
+# version source and the dist-tag differ.
 #
-# Both channels share the same npm trusted publisher entry (release.yml);
-# npm Trusted Publishing allows only one trusted publisher per package,
-# keyed on this workflow file's path. Adding staging to the push triggers
-# does not require a second trusted publisher entry.
-# See the inter-app-URL config rationale and the auto-canary trigger
-# design for the chosen channel layout.
+#   @canary  push to staging (or workflow_dispatch with canary: true).
+#            Synthetic version `<committed base>-canary.<UTC ts>.<short sha>`,
+#            written into the manifest before packing and restored afterwards.
+#            Publishes on every run and never moves `latest`.
 #
-# First-ever publish of @deessejs/cli is manual from a maintainer's machine
-# (npm has no "pending publisher" feature). See the
-# cli-publish-verify procedure on Nuclino for the equivalent setup walkthrough.
+#   @latest  push to main. Version is whatever the checked-out manifest says,
+#            published only when it is strictly ahead of what npm serves.
+#            One GitHub Release per published version.
+#
+# Three deliberate departures from the workflow this replaces:
+#
+#   1. The stable channel is not gated on a commit message. It was gated on
+#      `contains(head_commit.message, ".changeset")`, which a staging-to-main
+#      merge commit does not satisfy, so stable releases silently never ran.
+#      It is now gated on a comparison against the npm registry.
+#   2. The version is no longer bumped on the runner and thrown away. The bump
+#      is persisted by the Version Packages pull request (version-packages.yml)
+#      before it gets here, so a run publishes what the repository says rather
+#      than recomputing it.
+#   3. Canary does not re-pin `latest` after publishing. `--tag canary` does not
+#      move `latest`, so there was nothing to repair, and with concurrency
+#      grouped per ref a slow canary finishing after a stable publish could
+#      re-pin `latest` to an older version. Removing the re-pin removes that
+#      failure mode instead of mitigating it.
+#
+# Trusted Publishing: id-token: write is scoped here and nowhere else. The
+# publish-verify workflow holds contents: read only and never publishes.
 
 on:
   push:
@@ -37,27 +47,73 @@ on:
 concurrency:
   group: release-${{ github.ref }}
   # cancel-in-progress: false is load-bearing. We never cancel an in-flight
-  # release: a partially-published canary on npm is worse than a serialized
-  # wait. cli-preview.yml uses cancel-in-progress: true because pkg.pr.new
-  # builds are stateless and ephemeral; this workflow mutates npm state and
-  # must run to completion. Two rapid pushes to the same branch serialize;
-  # pushes to different refs (staging vs main, or different PRs against
-  # the same ref via workflow_dispatch) run in parallel because the group
-  # key includes github.ref.
+  # release: a partially published package on npm is worse than a serialized
+  # wait. Two rapid pushes to the same branch serialize. Pushes to different
+  # refs (staging vs main) run in parallel because the group key includes
+  # github.ref, which is now safe precisely because the canary path never
+  # touches the `latest` dist-tag.
   cancel-in-progress: false
 
 permissions:
   contents: write
   pull-requests: write
-  id-token: write   # OIDC for npm trusted publisher
+  id-token: write   # OIDC for npm trusted publishing
 
 jobs:
-  release:
-    runs-on: ubuntu-latest      # GitHub-hosted only — trusted publishers don't support self-hosted
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      github.ref == 'refs/heads/staging' ||
-      contains(github.event.head_commit.message, '.changeset')
+  # GitHub evaluates strategy.matrix at job start, so the package list cannot be
+  # produced by a step inside the job that iterates it. This job exposes it as
+  # an output; the publish job consumes it with fromJSON. Keeping discovery in
+  # its own job is also what makes a third public package a zero-config change.
+  discover:
+    name: Discover publishable packages
+    runs-on: ubuntu-latest      # GitHub-hosted only; trusted publishers do not support self-hosted
+    outputs:
+      packages: ${{ steps.scan.outputs.packages }}
+      count: ${{ steps.scan.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Scan for public packages
+        id: scan
+        run: |
+          node -e '
+            const fs = require("node:fs")
+            const path = require("node:path")
+            const include = []
+            for (const dir of ["apps", "packages"]) {
+              if (!fs.existsSync(dir)) continue
+              for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                if (!entry.isDirectory()) continue
+                const pkgPath = path.join(dir, entry.name, "package.json")
+                if (!fs.existsSync(pkgPath)) continue
+                try {
+                  const p = JSON.parse(fs.readFileSync(pkgPath, "utf8"))
+                  if (!p || !p.name || p.private === true) continue
+                  include.push({ dir: dir + "/" + entry.name, name: p.name })
+                } catch {}
+              }
+            }
+            include.sort((a, b) => a.name.localeCompare(b.name))
+            console.log("Publishable packages: " + (include.map((e) => e.name).join(", ") || "(none)"))
+            fs.appendFileSync(
+              process.env.GITHUB_OUTPUT,
+              "packages=" + JSON.stringify({ include }) + "\n" +
+              "count=" + include.length + "\n"
+            )
+          '
+
+  publish:
+    name: Publish ${{ matrix.name }}
+    needs: discover
+    if: needs.discover.outputs.count != '0'
+    runs-on: ubuntu-latest
+    strategy:
+      # A package that cannot be packed must not cancel the other package's
+      # publish. The run summary then shows which one failed, and the registry
+      # gate on the next run picks up the one still missing.
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.packages) }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -68,297 +124,254 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      # Install before the manifest is rewritten for canary. pnpm's lockfile
+      # does not record workspace package versions, so either order works, but
+      # installing against the committed manifest is the state we know is good.
       - run: pnpm install --frozen-lockfile
 
-      # 0. Configure git (changesets will commit on our behalf via `commit: true`)
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # 0b. Determine release channel.
-      #   workflow_dispatch with canary=true → canary/prerelease.
-      #     (manual on-demand run by a maintainer.)
-      #   push to staging → canary/prerelease.
-      #     (auto-trigger; the merge carries the changeset check via
-      #      changesets-check.yml on the feature PR.)
-      #   push to main (commit message contains .changeset) → latest/stable.
-      # Downstream steps condition their behavior on these outputs.
       - name: Determine release channel
         id: channel
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CANARY_INPUT: ${{ inputs.canary }}
+          REF_NAME: ${{ github.ref }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.canary }}" = "true" ]; then
-            echo "dist_tag=canary"          >> "$GITHUB_OUTPUT"
-            echo "release_type=prerelease"  >> "$GITHUB_OUTPUT"
-            echo "version_source=synthetic" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
-            echo "dist_tag=canary"          >> "$GITHUB_OUTPUT"
-            echo "release_type=prerelease"  >> "$GITHUB_OUTPUT"
-            echo "version_source=synthetic" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$CANARY_INPUT" = "true" ]; then
+            echo "dist_tag=canary" >> "$GITHUB_OUTPUT"
+            echo "release_type=prerelease" >> "$GITHUB_OUTPUT"
+          elif [ "$REF_NAME" = "refs/heads/staging" ]; then
+            echo "dist_tag=canary" >> "$GITHUB_OUTPUT"
+            echo "release_type=prerelease" >> "$GITHUB_OUTPUT"
+          elif [ "$REF_NAME" = "refs/heads/main" ]; then
+            echo "dist_tag=latest" >> "$GITHUB_OUTPUT"
+            echo "release_type=stable" >> "$GITHUB_OUTPUT"
           else
-            echo "dist_tag=latest"        >> "$GITHUB_OUTPUT"
-            echo "release_type=stable"    >> "$GITHUB_OUTPUT"
-            echo "version_source=changeset" >> "$GITHUB_OUTPUT"
-          fi
-
-      # Tier 2 — @canary version computation (synthetic, no changesets).
-      # We deliberately do NOT run `pnpm changeset version` on the canary
-      # path: it would consume changesets before the eventual @latest run
-      # on main, dirty the working tree, and produce a `0.0.0-<date>` snapshot
-      # version that does not match our `2.1.0-canary.<date>.<sha>` naming.
-      # Instead we rewrite apps/cli/package.json#version in place via jq.
-      #
-      # Two guards surround the canary publish:
-      #
-      #   - Validate base version (pre-publish). The canary string is built
-      #     by appending `-canary.<UTC-timestamp>.<short-sha>` to whatever
-      #     apps/cli/package.json#version currently reads. If a previous
-      #     run left a polluted value (e.g. `2.1.0-canary.x.y.z`), the next
-      #     run would compute `2.1.0-canary.x.y.z-canary.a.b.c`. The
-      #     validation step fails the job when the base is not a strict
-      #     X.Y.Z. The validation reads from the committed version
-      #     (`git show HEAD:apps/cli/package.json`), not from the working
-      #     tree, so a previous dirty run cannot poison this check.
-      #
-      #   - Restore apps/cli version (post-publish). The canary rewrite
-      #     leaves apps/cli/package.json dirty (set to the synthetic
-      #     version). Without restoration, the next canary run sees the
-      #     polluted value and computes a longer suffix chain. After the
-      #     publish succeeds, this step rewrites the file back to the
-      #     committed version. The published tarball is already on npm
-      #     by the time the restore runs, so npm does not see the
-      #     reset; only the next canary run sees the clean base.
-      - name: Validate base version (canary)
-        if: steps.channel.outputs.version_source == 'synthetic'
-        run: |
-          BASE=$(git show HEAD:apps/cli/package.json | jq -r '.version')
-          if ! echo "$BASE" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::apps/cli/package.json#version is '$BASE', expected X.Y.Z."
-            echo "::error::The committed version must be a clean semver release."
-            echo "::error::If a previous canary run left the working tree dirty,"
-            echo "::error::the post-publish restore step did not run; investigate."
+            echo "::error::Refusing to publish from unsupported ref '$REF_NAME'. Stable releases require main; use canary=true for an explicit preview."
             exit 1
           fi
-          echo "Base version validated: $BASE"
+          echo "Channel: ${{ steps.channel.outputs.dist_tag }} for ${{ matrix.name }}"
 
-      - name: Compute canary version
-        if: steps.channel.outputs.version_source == 'synthetic'
-        id: canary-version
-        run: |
-          BASE=$(node -e "console.log(require('./apps/cli/package.json').version)")
-          TS=$(date -u +%Y%m%d%H%M%S)
-          SHA="${GITHUB_SHA::7}"
-          CANARY="${BASE}-canary.${TS}.${SHA}"
-          echo "canary_version=${CANARY}" >> "$GITHUB_OUTPUT"
-          echo "Computed canary version: ${CANARY}"
-
-      - name: Rewrite apps/cli version for canary
-        if: steps.channel.outputs.version_source == 'synthetic'
-        run: |
-          jq --arg v "${{ steps.canary-version.outputs.canary_version }}" \
-            '.version = $v' \
-            apps/cli/package.json > apps/cli/package.json.tmp
-          mv apps/cli/package.json.tmp apps/cli/package.json
-          # Lockfile drift is acceptable for canary (not a reproducible tier);
-          # the in-place bump leaves the tree dirty, which `--no-git-checks`
-          # on the publish step below handles.
-
-      # Tier 3 — @latest version bump (changesets-driven).
-      # Consumes changesets, bumps apps/cli/package.json, regenerates CHANGELOG.
-      # Runs only when the channel is `latest`. The canary branch skips this
-      # so changesets on staging stay available for the eventual main publish.
-      - name: Bump versions
-        if: steps.channel.outputs.version_source == 'changeset'
-        run: pnpm changeset version
-      - name: Refresh lockfile after bump
-        if: steps.channel.outputs.version_source == 'changeset'
-        run: pnpm install --frozen-lockfile
-
-      # 1a. Note: pnpm changeset version creates the version-bump commit
-      # locally (commit: true in .changeset/config.json). That commit is
-      # intentionally NOT pushed to origin/main in this workflow — the
-      # ruleset 'protect main' (ruleset id 20040100) requires changes to
-      # reach main through a pull request, and a direct push from
-      # github-actions[bot] is refused with GH013. The bump commit
-      # therefore sits only on the runner; the consumed .changeset/*.md
-      # files are also lost. main is advanced by the next human-driven
-      # staging -> main promotion, which re-runs changeset version
-      # against the same changesets that were consumed here.
-      #
-      # Implication: between a @latest publish and the next promotion,
-      # apps/cli/package.json#version on main may lag behind the
-      # published npm version. This is by design; the version-bump-orphan
-      # behaviour is documented in the release process notes.
-
-      # 1b. Build all packages that produce publishable artifacts.
-      # Without this, `dist/` (the actual bundle) is missing from the
-      # published tarball — see incident on 2026-08-03 where @deessejs/cli@1.1.0
-      # shipped without its compiled bundle and `npx` couldn't find the bin.
-      # Use Turbo so transitive workspace deps (@workspace/api, @workspace/auth,
-      # @workspace/database, @workspace/env, ...) get built in topological
-      # order before @deessejs/cli. pnpm --filter does not follow transitive
-      # workspace deps; plain `--filter` would surface as a build failure when
-      # tsup tries to resolve a subpath export like @workspace/api/base-path
-      # whose dist/ does not exist yet.
-      - name: Build publishable packages
-        run: pnpm turbo build --filter="@deessejs/cli" --force
-
-      # 2. Publish to npm.
-      #
-      # Tier 3 (@latest): `pnpm changeset publish` defaults to the `latest`
-      # dist-tag with provenance triple-belt (publishConfig.provenance + env
-      # var + --provenance if supported).
-      #
-      # Tier 2 (@canary): pack a tarball locally with `pnpm pack` (which
-      # resolves pnpm-only protocol specifiers like `catalog:` and
-      # `workspace:` into concrete version ranges), verify the packaged
-      # manifest contains no pnpm-only specifiers, then publish the
-      # SAME tarball with `npm publish <tarball> --tag canary --provenance
-      # --no-git-checks`. The manifest scan is the same one
-      # `cli-publish-verify.yml` runs at PR time; doing it here too means
-      # a canary release cannot ship a manifest that would fail with
-      # EUNSUPPORTEDPROTOCOL on a consumer's `npm install`.
-      #
-      # Why pack-then-publish, not `npm publish` directly: `npm publish`
-      # packs internally using npm's resolver, which does not understand
-      # `catalog:` or `workspace:` and ships them literally. The CLI's
-      # `apps/cli/package.json` declares `cross-spawn: "catalog:"` and
-      # several `workspace:*` devDeps, so a plain `npm publish` would
-      # produce a tarball that consumers (running plain npm) cannot
-      # install. `pnpm pack` resolves these before packing, matching
-      # what the verify gate proves is installable.
-      #
-      # Three flags on the publish step are load-bearing:
-      #   --tag canary     without it, npm moves the `latest` tag to the new
-      #                    version and silently un-`latest`s the previous stable.
-      #   --provenance     belt-and-suspenders alongside `publishConfig.provenance: true`.
-      #   --no-git-checks  suppresses npm's "dirty working tree" error caused
-      #                    by the synthetic version bump above.
-      - name: Publish to npm (latest)
+      # Stable only. Compared against the registry rather than derived from a
+      # commit message, which makes the job idempotent and self-healing: a
+      # re-run, a partial failure, or a promotion that carried no bump all
+      # resolve with nobody deciding anything.
+      - name: Compare against the npm registry
+        id: decision
         if: steps.channel.outputs.dist_tag == 'latest'
         env:
-          NPM_CONFIG_PROVENANCE: true
-        run: pnpm changeset publish
-
-      - name: Pack CLI canary tarball
-        if: steps.channel.outputs.dist_tag == 'canary'
-        run: pnpm --dir apps/cli pack
-
-      # Same manifest scan as cli-publish-verify.yml: the packaged
-      # `package.json` must not contain pnpm-only specifiers
-      # (`catalog:`, `workspace:`). Failing here, before any upload,
-      # turns a "consumer can't install the canary" failure mode into
-      # a red CI step the release owner can act on.
-      - name: Verify canary tarball manifest
-        if: steps.channel.outputs.dist_tag == 'canary'
+          PKG_NAME: ${{ matrix.name }}
+          PKG_DIR: ${{ matrix.dir }}
         run: |
-          set -eu
-          TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
-          echo "Inspecting canary tarball: $TARBALL"
-          tar -xzOf "$TARBALL" package/package.json | node -e '
-            const pkg = JSON.parse(require("fs").readFileSync(0, "utf8"))
-            const offenders = []
-            const scan = (obj) => {
-              if (!obj) return
-              for (const [name, value] of Object.entries(obj)) {
-                if (typeof value === "string" && (value === "catalog:" || value.startsWith("workspace:"))) {
-                  offenders.push(`${name} = ${JSON.stringify(value)}`)
-                }
-                if (typeof value === "object") scan(value)
-              }
-            }
-            scan(pkg.dependencies)
-            scan(pkg.devDependencies)
-            scan(pkg.peerDependencies)
-            if (offenders.length) {
-              console.error("::error::Canary manifest contains pnpm-only specifiers:")
-              for (const o of offenders) console.error("  - " + o)
-              process.exit(1)
-            }
-          '
+          set -euo pipefail
+          LOCAL=$(node -e "process.stdout.write(String(require('./$PKG_DIR/package.json').version))")
+          LATEST=$(npm view "$PKG_NAME" dist-tags.latest 2>/dev/null || true)
+          VERSIONS=$(npm view "$PKG_NAME" versions --json 2>/dev/null || echo "null")
 
-      - name: Publish to npm (canary)
-        if: steps.channel.outputs.dist_tag == 'canary'
-        env:
-          NPM_CONFIG_PROVENANCE: true
-        run: |
-          TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
-          npm publish "$TARBALL" \
-            --tag canary \
-            --provenance \
-            --no-git-checks
-          # Defensive: guarantee `latest` did not move.
-          # Read the previous latest from the registry (not from the local
-          # package.json, which now holds the synthetic canary version).
-          PREVIOUS=$(npm view @deessejs/cli@latest version 2>/dev/null || echo "")
-          if [ -n "$PREVIOUS" ] && [ "$PREVIOUS" != "${{ steps.canary-version.outputs.canary_version }}" ]; then
-            npm dist-tag add @deessejs/cli@${PREVIOUS} latest
-            echo "Re-pinned @latest to ${PREVIOUS} as belt-and-suspenders."
+          PUBLISH=false
+          REASON=""
+          if [ -z "$LATEST" ]; then
+            PUBLISH=true
+            REASON="no version published yet"
           else
-            echo "@latest unchanged; no defensive re-pin needed."
+            OUTCOME=$(LOCAL="$LOCAL" LATEST="$LATEST" VERSIONS="$VERSIONS" node -e '
+              const strip = (v) => String(v).split("-")[0]
+              const cmp = (a, b) => {
+                const pa = strip(a).split(".").map(Number)
+                const pb = strip(b).split(".").map(Number)
+                for (let i = 0; i < 3; i++) {
+                  if (pa[i] !== pb[i]) return pa[i] < pb[i] ? -1 : 1
+                }
+                return 0
+              }
+              const local = process.env.LOCAL
+              const latest = process.env.LATEST
+              let list = []
+              try {
+                const parsed = JSON.parse(process.env.VERSIONS || "null")
+                list = Array.isArray(parsed) ? parsed : parsed ? [String(parsed)] : []
+              } catch {}
+              if (list.includes(local)) {
+                console.log("skip: " + local + " is already published")
+              } else if (cmp(local, latest) < 0) {
+                // Anomalous: the repository is behind the registry. Publishing
+                // would move `latest` backwards, so stop and make it visible.
+                console.log("skip: would move latest backwards from " + latest + " to " + local)
+              } else {
+                console.log("publish: " + local + " is ahead of " + latest)
+              }
+            ')
+            case "$OUTCOME" in
+              skip:*) PUBLISH=false; REASON="${OUTCOME#skip: }" ;;
+              publish:*) PUBLISH=true; REASON="${OUTCOME#publish: }" ;;
+            esac
           fi
 
-      # Post-publish restore. The canary rewrite (step above) leaves
-      # apps/cli/package.json dirty (set to the synthetic canary version).
-      # Without this step, the next canary run would compute
-      # `<synthetic>-canary.<new-timestamp>.<new-sha>`, producing a
-      # suffix chain that grows without bound. After the publish
-      # succeeds, this step rewrites the file back to the committed
-      # version (X.Y.Z). The published tarball is already on npm; only
-      # the next canary run sees the clean base.
-      - name: Restore apps/cli version after canary publish
-        if: steps.channel.outputs.dist_tag == 'canary'
-        working-directory: apps/cli
+          echo "local_version=$LOCAL" >> "$GITHUB_OUTPUT"
+          echo "registry_latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+          echo "$PKG_NAME: publish=$PUBLISH ($REASON)"
+
+      - name: Report a version that would move latest backwards
+        if: steps.channel.outputs.dist_tag == 'latest' && startsWith(steps.decision.outputs.reason, 'would move latest backwards')
         run: |
-          BASE=$(git show HEAD:apps/cli/package.json | jq -r '.version')
-          CURRENT=$(node -e "console.log(require('./package.json').version)")
+          echo "::error::${{ matrix.name }} is at ${{ steps.decision.outputs.local_version }} but npm serves ${{ steps.decision.outputs.registry_latest }}."
+          echo "::error::Publishing would move the latest dist-tag backwards. Align the manifest first."
+
+      - name: Compute the canary version
+        id: canary
+        if: steps.channel.outputs.dist_tag == 'canary'
+        env:
+          PKG_DIR: ${{ matrix.dir }}
+        run: |
+          set -euo pipefail
+          # Read the base from the committed manifest, not the working tree,
+          # so a dirty runner cannot poison it. Without this validation a run
+          # that left the tree dirty would compute
+          # `0.5.7-canary.a.b-canary.c.d` on the next execution.
+          BASE=$(git show "HEAD:$PKG_DIR/package.json" \
+            | node -e "let d='';process.stdin.on('data',(c)=>{d+=c}).on('end',()=>process.stdout.write(String(JSON.parse(d).version)))")
+          if ! printf '%s' "$BASE" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::$PKG_DIR/package.json#version is '$BASE', expected strict X.Y.Z."
+            echo "::error::A previous canary run may not have restored the manifest."
+            exit 1
+          fi
+          TS=$(date -u +%Y%m%d%H%M%S)
+          SHA="${GITHUB_SHA::7}"
+          echo "version=${BASE}-canary.${TS}.${SHA}" >> "$GITHUB_OUTPUT"
+          echo "base=${BASE}" >> "$GITHUB_OUTPUT"
+          echo "Canary version for $PKG_DIR: ${BASE}-canary.${TS}.${SHA}"
+
+      - name: Rewrite the manifest version for canary
+        if: steps.channel.outputs.dist_tag == 'canary'
+        env:
+          PKG_DIR: ${{ matrix.dir }}
+          VERSION: ${{ steps.canary.outputs.version }}
+        run: |
+          set -euo pipefail
+          PKG_JSON="$PKG_DIR/package.json"
+          jq --arg v "$VERSION" '.version = $v' "$PKG_JSON" > "$PKG_JSON.tmp"
+          mv "$PKG_JSON.tmp" "$PKG_JSON"
+
+      - name: Build ${{ matrix.name }}
+        if: steps.decision.outputs.publish != 'false' || steps.channel.outputs.dist_tag == 'canary'
+        run: pnpm turbo build --filter="${{ matrix.name }}" --force
+
+      - name: Pack and verify ${{ matrix.name }}
+        id: pack
+        if: steps.decision.outputs.publish != 'false' || steps.channel.outputs.dist_tag == 'canary'
+        run: |
+          set -euo pipefail
+          TARBALL=$(bash .github/scripts/verify-packed-package.sh "${{ matrix.dir }}" | tail -1)
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          echo "Packed: $TARBALL"
+
+      - name: Publish ${{ matrix.name }}
+        id: publish
+        if: steps.decision.outputs.publish != 'false' || steps.channel.outputs.dist_tag == 'canary'
+        env:
+          NPM_CONFIG_PROVENANCE: true
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+          DIST_TAG: ${{ steps.channel.outputs.dist_tag }}
+        run: |
+          set -euo pipefail
+          # --access public is explicit even though both manifests declare it
+          # through publishConfig, because the repository-level changesets
+          # access default is not the same thing as a per-package setting.
+          # --tag is load-bearing: without it npm moves `latest` to the new
+          # version and silently un-lasts the previous stable.
+          npm publish "$TARBALL" \
+            --tag "$DIST_TAG" \
+            --access public \
+            --provenance \
+            --no-git-checks
+          echo "version=$(node -e "process.stdout.write(String(require('./${{ matrix.dir }}/package.json').version)))")" >> "$GITHUB_OUTPUT"
+
+      # Runs whether or not anything was published, so a skipped release leaves
+      # a trace. A release that fails silently is the failure mode this step
+      # exists to remove.
+      - name: Summary
+        if: always()
+        env:
+          PKG_NAME: ${{ matrix.name }}
+          DIST_TAG: ${{ steps.channel.outputs.dist_tag }}
+          DECISION_PUBLISH: ${{ steps.decision.outputs.publish }}
+          DECISION_REASON: ${{ steps.decision.outputs.reason }}
+          LOCAL_VERSION: ${{ steps.decision.outputs.local_version }}
+          CANARY_VERSION: ${{ steps.canary.outputs.version }}
+          REGISTRY_LATEST: ${{ steps.decision.outputs.registry_latest }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+          PUBLISHED_VERSION: ${{ steps.publish.outputs.version }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### $PKG_NAME"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Channel | \`$DIST_TAG\` |"
+            echo "| Version considered | \`${CANARY_VERSION:-$LOCAL_VERSION}\` |"
+            echo "| Version on npm (\`latest\`) | \`${REGISTRY_LATEST:-none}\` |"
+            echo "| Outcome | $DECISION_REASON |"
+            echo "| Tarball | \`${TARBALL:-not packed}\` |"
+            echo "| Published version | \`${PUBLISHED_VERSION:-none}\` |"
+            echo ""
+            echo "This table is the evidence issue #230 asks to be recorded: published version,"
+            echo "source commit, registry retrieval and validation, attached to the merge that produced them."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The published tarball is already on npm by the time this runs, so npm
+      # never sees the reset. Only the next run can observe the restored value.
+      - name: Restore the manifest version after a canary publish
+        if: always() && steps.channel.outputs.dist_tag == 'canary'
+        env:
+          PKG_DIR: ${{ matrix.dir }}
+        run: |
+          set -euo pipefail
+          BASE=$(git show "HEAD:$PKG_DIR/package.json" \
+            | node -e "let d='';process.stdin.on('data',(c)=>{d+=c}).on('end',()=>process.stdout.write(String(JSON.parse(d).version)))")
+          PKG_JSON="$PKG_DIR/package.json"
+          CURRENT=$(node -e "process.stdout.write(String(require('./$PKG_JSON').version))")
           if [ "$CURRENT" = "$BASE" ]; then
             echo "Version already at base ($BASE); no restore needed."
             exit 0
           fi
-          echo "Restoring apps/cli/package.json#version from $CURRENT to $BASE"
-          jq --arg v "$BASE" '.version = $v' package.json > package.json.tmp
-          mv package.json.tmp package.json
+          echo "Restoring $PKG_JSON#version from $CURRENT to $BASE"
+          jq --arg v "$BASE" '.version = $v' "$PKG_JSON" > "$PKG_JSON.tmp"
+          mv "$PKG_JSON.tmp" "$PKG_JSON"
 
-      # 3. Read the new CLI version.
-      # On the @canary path, the post-publish restore step has reset
-      # apps/cli/package.json#version to the base value, so reading the
-      # file would yield the base instead of the synthetic canary
-      # version. We use steps.canary-version.outputs.canary_version when
-      # available, falling back to the file read on the @latest path.
-      - name: Read new version
-        id: version
+      # Stable only. Canary publishes to npm and stops: several merges to
+      # staging a week would bury the stable entries in the Releases feed.
+      #
+      # Namespaced per package so two packages can never overwrite each
+      # other's tag. `git tag -f` is kept for idempotency.
+      - name: Tag the release
+        id: tag
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.publish.outputs.version != ''
+        env:
+          PKG_NAME: ${{ matrix.name }}
+          VERSION: ${{ steps.publish.outputs.version }}
         run: |
-          if [ -n "${{ steps.canary-version.outputs.canary_version }}" ]; then
-            VERSION="${{ steps.canary-version.outputs.canary_version }}"
-          else
-            VERSION=$(node -e "console.log(require('./apps/cli/package.json').version)")
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          SAFE_NAME=$(printf '%s' "$PKG_NAME" | sed -e 's|/|-|g' -e 's|^@||')
+          TAG="release/${SAFE_NAME}/v${VERSION}"
+          echo "Tagging $TAG"
+          git tag -f "$TAG"
+          git push --force origin "$TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      # 4. Tag + push tag (force-update for idempotency).
-      # Tier 2 canary tags look like `release/v2.1.0-canary.20260821143022.a832a55`
-      # — same convention as Tier 3, with the synthetic suffix. Tags are visible
-      # in the GitHub Releases feed marked as prereleases via the
-      # `prerelease` flag on the action below.
-      - name: Tag release
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -f "release/v${{ steps.version.outputs.version }}"
-          git push --force origin "release/v${{ steps.version.outputs.version }}"
-
-      # 5. GitHub Release.
-      # `prerelease` is set from `steps.channel.outputs.release_type`, so
-      # @canary releases are marked as prereleases in the Releases feed
-      # (visually distinct from @latest stable releases). The tag and title
-      # follow the same convention for both channels.
-      - name: GitHub Release
+      - name: Publish the GitHub Release
+        if: steps.publish.outputs.version != ''
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: release/v${{ steps.version.outputs.version }}
-          name: "Release v${{ steps.version.outputs.version }}"
-          prerelease: ${{ steps.channel.outputs.release_type == 'prerelease' }}
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Release ${{ matrix.name }} ${{ steps.publish.outputs.version }}
+          prerelease: false
           generate_notes: true
           fail_on_unmatched_files: true
-
