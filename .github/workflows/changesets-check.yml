@@ -101,16 +101,24 @@ jobs:
       # pull request.
       - name: Detect the auto-generated Version Packages pull request
         id: versionpr
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPOSITORY: ${{ github.repository }}
+          AUTHOR_LOGIN: ${{ github.event.pull_request.user.login }}
+          EXPECTED_BOT_LOGIN: ${{ vars.VERSION_PACKAGES_BOT_LOGIN }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
           if bash .github/scripts/is-version-package-pr.sh \
-            "${{ github.event.pull_request.base.sha }}" \
-            "${{ github.event.pull_request.head.sha }}" \
-            "${{ github.event.pull_request.head.repo.full_name }}" \
-            "${{ github.repository }}" \
-            "${{ github.event.pull_request.user.login }}" \
-            "${{ vars.VERSION_PACKAGES_BOT_LOGIN }}" \
-            "${{ github.event.pull_request.head.ref }}"; then
+            "$BASE_SHA" \
+            "$HEAD_SHA" \
+            "$HEAD_REPO" \
+            "$REPOSITORY" \
+            "$AUTHOR_LOGIN" \
+            "$EXPECTED_BOT_LOGIN" \
+            "$HEAD_REF"; then
             echo "exempt=true" >> "$GITHUB_OUTPUT"
           else
             echo "exempt=false" >> "$GITHUB_OUTPUT"

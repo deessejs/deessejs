@@ -148,9 +148,12 @@ jobs:
           elif [ "$REF_NAME" = "refs/heads/staging" ]; then
             echo "dist_tag=canary" >> "$GITHUB_OUTPUT"
             echo "release_type=prerelease" >> "$GITHUB_OUTPUT"
-          else
+          elif [ "$REF_NAME" = "refs/heads/main" ]; then
             echo "dist_tag=latest" >> "$GITHUB_OUTPUT"
             echo "release_type=stable" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Refusing to publish from unsupported ref '$REF_NAME'. Stable releases require main; use canary=true for an explicit preview."
+            exit 1
           fi
           echo "Channel: ${{ steps.channel.outputs.dist_tag }} for ${{ matrix.name }}"
 
@@ -350,7 +353,7 @@ jobs:
       # other's tag. `git tag -f` is kept for idempotency.
       - name: Tag the release
         id: tag
-        if: steps.publish.outputs.version != ''
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.publish.outputs.version != ''
         env:
           PKG_NAME: ${{ matrix.name }}
           VERSION: ${{ steps.publish.outputs.version }}
