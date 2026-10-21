@@ -87,7 +87,7 @@ Each of these has already cost a production bug. Breaking one is not a style que
 
 6. **Every registry entry needs a live public GitHub repository.** `packages/api/src/templates.ts` holds the registry rows, and the live fields (license, stars, README, last push) are fetched from GitHub at request time. An entry without a matching repository makes the endpoint fail loudly with a 503.
 
-7. **The host allowlist is shared, not duplicated.** `packages/auth/src/host-allowlist.ts` exports `isHostAllowed()`, consumed both by the Better Auth `allowedHosts` and by the CORS middleware in `packages/api/src/index.ts`. The `*.vercel.app` wildcard covers every preview deployment without per-preview configuration.
+7. **The host allowlist is shared, not duplicated.** `packages/auth/src/host-allowlist.ts` exports `isHostAllowed()`, consumed both by the Better Auth `allowedHosts` and by the CORS middleware in `packages/api/src/index.ts`. Vercel preview access is restricted to the app, web, docs and agent projects in the `aliiibenns-projects` team.
 
 8. **Plugin order and callback semantics in the auth config are deliberate.** `nextCookies()` stays last. The email callbacks are fire-and-forget: they never throw, and they report failures through `logEmailFailure`. The `customSyntheticUser` callback exists so that a synthetic sign-up response has exactly the same shape as a real one, which is what keeps the anti-enumeration guarantee intact.
 

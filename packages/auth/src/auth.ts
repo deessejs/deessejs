@@ -38,8 +38,9 @@ const AUTH_BASE_PATH = "/api/v1/auth"
  * resolves the per-request origin from `x-forwarded-host` → `host`
  * → request URL, validates it against this list, and auto-adds
  * each entry to `trustedOrigins` (with both `http` and `https`
- * for localhost). The wildcard `*.vercel.app` covers every Vercel
- * preview deployment without per-preview env configuration.
+ * for localhost). Vercel preview hosts are scoped to the app, web, docs
+ * and agent projects in our Vercel team. See `host-allowlist.ts` for the
+ * enforced patterns.
  *
  * The list is shared with the Hono CORS layer in
  * `packages/api/src/index.ts` via `packages/auth/src/host-allowlist.ts`.
