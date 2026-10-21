@@ -7,6 +7,9 @@ on:
     branches: [main, staging]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
@@ -90,6 +93,11 @@ jobs:
       # gate passes; the real value is set on Vercel per the
       # changeset operational prerequisites.
       PARENT_DOMAIN: ci.example.com
+      # The production superRefine gate requires the Resend Topic id
+      # that the playbook consent checkbox subscribes a contact to.
+      # Stubbed in CI so the gate passes; the real value is set on
+      # Vercel per the changeset operational prerequisites.
+      RESEND_PLAYBOOK_TOPIC_ID: ci-test-topic-id
     steps:
       - uses: actions/checkout@v4
         with:
@@ -102,7 +110,7 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      # Env validation — fails fast if production invariants are violated
+      # Env validation: fail fast if production invariants are violated
       # (DATABASE_URL required, BETTER_AUTH_SECRET >= 32 chars, etc.)
       - name: Validate env
         run: pnpm env:check
@@ -184,7 +192,11 @@ jobs:
         run: pnpm db:migrate
 
       - name: Run integration tests
-        run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api
+        # @workspace/database is included so the template catalog
+        # constraint tests run against this real PostgreSQL service.
+        # The package's own suite is a no-op without a database, so the
+        # unit job stays green.
+        run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api --filter=@workspace/database
 
   # create-deesse-app native smoke. Runs the bundled CLI directly on
   # each supported OS so we catch any platform-specific regression in

@@ -40,8 +40,8 @@ export const canonicalUrl = z
   .url()
   .refine((v) => !v.endsWith("/"), {
     message:
-      "Inter-app URL must not end with a trailing slash — " +
-      "call sites use new URL(path, base) which already normalises.",
+      "Inter-app URL must not end with a trailing slash. " +
+      "Call sites use new URL(path, base) which already normalises.",
   })
 
 const csv = z.string().transform((s) =>
@@ -90,15 +90,28 @@ export const serverInputShape = {
   AUTH_SECRET: z.string().min(32).optional(),
   ALLOWED_ORIGINS: csv.default([]),
 
-  // Mailer — Resend (prod)
+  // Mailer: Resend (prod)
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().email().default("onboarding@resend.dev"),
   RESEND_FROM_NAME: z.string().min(1).default("DeesseJS"),
 
-  // Mailer — transport selector
+  // Mailer: transport selector
   //   "console" (default) → logs to stdout, zero infrastructure
   //   "resend"            → production, uses RESEND_API_KEY
   MAIL_TRANSPORT: z.enum(["console", "resend"]).default("console"),
+
+  // Resend Topic ID for the playbook marketing opt-in list.
+  // A Topic is a subscription preference ("DeesseJS updates"),
+  // which is the right primitive here: a Segment is for internal
+  // ranking, and a contact can belong to both.
+  // Optional in dev (signups skip the topic subscription with a
+  // warning); required in production. The signup handler treats
+  // the Resend call as best-effort: a Resend failure does NOT
+  // block the PDF email, only the topic subscription.
+  RESEND_PLAYBOOK_TOPIC_ID: z
+    .string()
+    .min(1)
+    .optional(),
 
   // Per-IP rate limit on /api/v1/templates and /api/v1/version.
   // In-memory fixed window per Vercel instance; see the rate-limit
@@ -133,6 +146,23 @@ export const serverInputShape = {
   API_BASE_URL: canonicalUrl.default("http://localhost:3001"),
 
   PARENT_DOMAIN: z.string().min(1).optional(),
+
+  // Test-only override for the email-verification-on-invitation
+  // contract. The default is "true"; the production startup guard in
+  // `packages/auth/src/organization/plugin.ts` refuses to start the
+  // process when this is "false" AND `NODE_ENV === "production"`.
+  // There is no opt-in variable: the contract is "production is true",
+  // full stop. The probe (see `packages/auth/scripts/run-invitation-probe.ts`)
+  // uses this var to measure the Better Auth 1.7.7 invitation
+  // contract on the locked version; it is not part of the runtime
+  // contract. No Vercel production environment entry.
+  //
+  // Schema is strict: `z.enum(["true", "false"])` (NOT
+  // `z.coerce.boolean()`, which would coerce the string "false" to
+  // `true` because any non-empty string is truthy in JS).
+  REQUIRE_EMAIL_VERIFICATION_ON_INVITATION: z
+    .enum(["true", "false"])
+    .default("true"),
 }
 
 export const serverSchema = z.object(serverInputShape).superRefine(
@@ -153,7 +183,7 @@ export const serverSchema = z.object(serverInputShape).superRefine(
     }
 
     // Either BETTER_AUTH_SECRET or AUTH_SECRET must hold the production
-    // invariant — both names are valid. The gate looks at both, so the
+    // invariant: both names are valid. The gate looks at both, so the
     // alias works at parse time, not via a post-hoc transform.
     const secret = data.BETTER_AUTH_SECRET ?? data.AUTH_SECRET
     if (!secret || secret.length < 32) {
@@ -180,6 +210,19 @@ export const serverSchema = z.object(serverInputShape).superRefine(
         message:
           "PARENT_DOMAIN is required in production for cross-subdomain cookie sharing. Set to the bare hostname (e.g. deessejs.com).",
         path: ["PARENT_DOMAIN"],
+      })
+    }
+
+    // Required, not optional, in production. The playbook form shows
+    // a consent checkbox, and a missing topic ID would let that
+    // checkbox appear to work while recording nothing. Failing at
+    // startup is louder than losing marketing opt-ins silently.
+    if (!data.RESEND_PLAYBOOK_TOPIC_ID) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "RESEND_PLAYBOOK_TOPIC_ID is required in production. Without it the consent checkbox records nothing. Create the Topic in the Resend dashboard (Audience, Topics) and set its id here.",
+        path: ["RESEND_PLAYBOOK_TOPIC_ID"],
       })
     }
   }

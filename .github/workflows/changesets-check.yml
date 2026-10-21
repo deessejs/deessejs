@@ -74,7 +74,7 @@ jobs:
             > "$RUNNER_TEMP/pr-changesets.txt" || true
 
           TOUCHED=$(printf '%s\n' "$CHANGED" \
-            | grep -E '^(apps/cli/|apps/create-deesse-app/|packages/contracts/|packages/api/)/' \
+            | grep -E '^(apps/cli|apps/create-deesse-app|packages/contracts|packages/api)(/|$)' \
             || true)
 
           if [ -n "$TOUCHED" ]; then
@@ -196,92 +196,22 @@ jobs:
             console.log("Changeset coverage ok for: " + touched.join(", "));
           '
 
-      # Syntax: every changeset this PR adds or modifies must have frontmatter
-      # and at least one `<known-package>: patch|minor|major` entry. A private
-      # workspace package is a valid target here; an unknown package name is
-      # almost always a typo and is reported.
-      #
-      # We deliberately do NOT add a YAML parser dependency: this stays
-      # dependency-free and avoids touching pnpm-lock.yaml.
+      - name: Test changeset validator
+        run: node --test scripts/validate-changesets.test.mjs
+
+      # Syntax: validate only changesets added or modified by this PR. The
+      # shared validator also accepts private workspace packages and rejects
+      # malformed YAML keys, duplicate entries, unknown packages, and invalid
+      # bump types.
       - name: Validate changeset frontmatter
         if: steps.changed.outputs.touched == 'true' && steps.versionpr.outputs.exempt != 'true'
         env:
           PR_CHANGESETS: ${{ runner.temp }}/pr-changesets.txt
         run: |
           set -euo pipefail
-          PR_CHANGESETS="$RUNNER_TEMP/pr-changesets.txt" node -e '
-            const fs = require("node:fs");
-            const path = require("node:path");
-            const VALID = new Set(["patch", "minor", "major"]);
-            const listFile = process.env.PR_CHANGESETS;
-            const files = fs.existsSync(listFile)
-              ? fs.readFileSync(listFile, "utf8").split(/\r?\n/).filter(Boolean)
-              : [];
-
-            const KNOWN = new Set();
-            for (const dir of ["apps", "packages"]) {
-              if (!fs.existsSync(dir)) continue;
-              for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-                if (!entry.isDirectory()) continue;
-                const pkgPath = path.join(dir, entry.name, "package.json");
-                if (!fs.existsSync(pkgPath)) continue;
-                try {
-                  const p = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-                  if (p && p.name) KNOWN.add(p.name);
-                } catch {}
-              }
-            }
-
-            const unquote = (s) => s.replace(/^["\x27]|["\x27]$/g, "").trim();
-            const errors = [];
-            const warnings = [];
-
-            for (const file of files) {
-              const base = path.basename(file);
-              const body = fs.readFileSync(file, "utf8");
-              const m = body.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
-              if (!m) {
-                errors.push(`${base}: missing or malformed frontmatter (must start and end with ---)`);
-                continue;
-              }
-              // Per-line scan rather than a constructed regex: a built pattern
-              // collides with shell and heredoc escaping here.
-              let ok = false;
-              const unknown = [];
-              const badBump = [];
-              for (const line of m[1].split(/\r?\n/)) {
-                const colonAt = line.indexOf(":");
-                if (colonAt < 0) continue;
-                const name = unquote(line.slice(0, colonAt));
-                const bump = unquote(line.slice(colonAt + 1));
-                if (!KNOWN.has(name)) {
-                  unknown.push(name);
-                  continue;
-                }
-                if (!VALID.has(bump)) {
-                  badBump.push(`${name}: ${bump}`);
-                  continue;
-                }
-                ok = true;
-              }
-              if (!ok) {
-                const detail = [];
-                if (badBump.length) detail.push(`invalid bump type (${badBump.join(", ")})`);
-                if (unknown.length) detail.push(`unknown package name(s) (${[...new Set(unknown)].join(", ")})`);
-                errors.push(
-                  `${base}: frontmatter has no \`<known-package>: patch|minor|major\` entry` +
-                    (detail.length ? `; found ${detail.join("; ")}` : "")
-                );
-              } else if (unknown.length) {
-                warnings.push(`${base}: ignored unknown package name(s) ${[...new Set(unknown)].join(", ")}`);
-              }
-            }
-
-            for (const w of warnings) console.log("::warning::" + w);
-            if (errors.length) {
-              for (const e of errors) console.error("::error::" + e);
-              console.error("::error::See .changeset/README.md for the format.");
-              process.exit(1);
-            }
-            console.log(`Validated ${files.length} changeset file(s) against ${KNOWN.size} workspace package(s).`);
-          '
+          mapfile -t changed_changesets < "$PR_CHANGESETS"
+          if [ "${#changed_changesets[@]}" -eq 0 ]; then
+            echo "::error::No changesets were added or modified by this PR."
+            exit 1
+          fi
+          node scripts/validate-changesets.mjs "${changed_changesets[@]}"

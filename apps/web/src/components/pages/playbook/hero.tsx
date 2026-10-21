@@ -1,0 +1,140 @@
+import Image from "next/image"
+
+import { Form } from "./form"
+
+/**
+ * The H1's supporting line. It frames who the guide is for and the
+ * scope of what it covers, which is deliberately not a restatement
+ * of the H1: the title frames the transformation, this frames the
+ * reader.
+ */
+const LEAD =
+  "A working guide for developers who ship with coding agents and want their software to stay readable, testable, and maintainable."
+
+/**
+ * The playbook cover mockup.
+ *
+ * `cover.png` is a 1500x1383 frame whose transparent margin holds
+ * 47% of its width. The artwork (book plus drop shadow) occupies a
+ * 797x1086 region starting at (346,134), read off the file's alpha
+ * channel. Rendered whole, the book draws at roughly half the size
+ * the layout asks for.
+ *
+ * The frame is cropped to that region in CSS rather than by
+ * rewriting the asset, so `cover.png` stays byte-identical to what
+ * was exported. The wrapper below is the artwork's own box; the
+ * image is scaled so the artwork's width fills it, then slid so the
+ * artwork's top-left corner sits at the wrapper's origin. Each
+ * number falls out of those two measurements:
+ *
+ *   wrapper ratio   797/1086   the artwork's own proportions
+ *   width  188.21%  = 1500/797 the frame is that much wider
+ *   left   -43.41%  = -346/797 the artwork starts that far in
+ *   top    -12.34%  = -(134/1383) of the frame's height, which
+ *                    resolves against the wrapper's height
+ *
+ * The remaining margin is transparent, so the crop costs nothing
+ * visually and the mockup needs no light plate to stay legible in
+ * the dark theme. Re-measure with an alpha scan if the cover is
+ * re-exported at different bounds.
+ *
+ * `sizes` below therefore has to name the width of the *image
+ * element*, which the 188.21% scale makes larger than the wrapper
+ * it is cropped inside: 380px of artwork renders as a 715px-wide
+ * image. Declaring the wrapper's width makes the browser under-
+ * fetch by that same ratio, and it scales the raster up by 1.73x
+ * on a 2x display. Each entry is the wrapper width times 1.8821.
+ */
+const COVER = {
+  src: "/playbook/cover.png",
+  alt: "Playbook cover: From AI-Generated Code to Production Software",
+  frame: { width: 1500, height: 1383 },
+  crop: {
+    width: "188.21%",
+    height: "auto",
+    left: "-43.41%",
+    top: "-12.34%",
+  },
+} as const
+
+/**
+ * /playbook hero, and the whole page.
+ *
+ * Layout:
+ *   ┌─ Left column ──────────────────┬─ Right column ───────────┐
+ *   │ H1                             │                          │
+ *   │ Lead                           │   Cover (mockup)         │
+ *   │ Email input + submit button    │                          │
+ *   │ Consent checkbox + privacy    │                          │
+ *   └─────────────────────────────────┴──────────────────────────┘
+ *
+ * On `lg+` the two columns sit side by side with no divider
+ * between them, separated only by their own gutters, and align
+ * centrally. On mobile the cover stacks below the form.
+ *
+ * Title and lead copy, the email field, the inline submit, and the
+ * optional consent checkbox all live in the left column. The form
+ * appears once on the page; the section it used to also occupy,
+ * the closing FinalCta, has been removed.
+ *
+ * The right column holds the real cover mockup, cropped to the
+ * artwork in CSS (see `COVER`). Its background is transparent, so
+ * it needs no light plate and reads correctly under both themes,
+ * including the dark one (`html.dark`, set by next-themes). The
+ * asset lives at `apps/web/public/playbook/cover.png` and is
+ * served exactly as exported.
+ */
+export function Hero() {
+  return (
+    <section className="border-b border-border">
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr]">
+        <div className="flex flex-col gap-8 p-6 lg:gap-10 lg:px-12 lg:py-20">
+          {/* Centre the heading block while the hero stacks: the cover
+              below it is already centred, so left-aligned text over a
+              centred mockup reads as unbalanced on a phone. From `lg`
+              the two columns sit side by side and the text goes back
+              to the left edge. The form is left out of it on purpose,
+              a field and a checkbox still want a left edge. */}
+          <div className="flex flex-col gap-4 text-center lg:text-left">
+            {/* The H1 steps below the repo's usual text-heading-40 base. Every
+                other marketing hero starts at 40, but this title is 46
+                characters long where the rest are short enough to hold
+                two lines. At 40 in a 308px phone column it broke to four
+                and read as packed; at 32 it holds three and the cover
+                plus the form come back above the fold. `sm` still
+                starts at 48, so the jump only shows below 640px. */}
+            <h1 className="text-heading-32 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance">
+              From AI-Generated Code to Production Software
+            </h1>
+            {/* Steps with the H1 below `sm`. `leading-6` comes down alongside
+                the size on purpose: `leading-7` is a fixed 28px, so at
+                16px it would open the lead to a 1.75 ratio and the
+                body copy would read looser than the H1 above it.
+                `leading-6` puts both on 1.5. */}
+            <p className="text-muted-foreground text-copy-16 leading-6 sm:text-copy-20 sm:leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
+              {LEAD}
+            </p>
+          </div>
+          <Form />
+        </div>
+        <div className="flex items-center justify-center p-6 lg:py-20 lg:pl-12">
+          <div
+            className="relative w-full overflow-hidden max-w-[300px] sm:max-w-[340px] lg:max-w-[380px]"
+            style={{ aspectRatio: "797 / 1086" }}
+          >
+            <Image
+              src={COVER.src}
+              alt={COVER.alt}
+              width={COVER.frame.width}
+              height={COVER.frame.height}
+              sizes="(max-width: 640px) 565px, (max-width: 1024px) 640px, 715px"
+              className="absolute max-w-none"
+              style={COVER.crop}
+              priority
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
