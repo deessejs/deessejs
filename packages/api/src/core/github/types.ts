@@ -13,3 +13,9 @@ export type GitHubReadme = {
   content: string
   encoding: "base64"
 }
+
+export type GitHubContent = {
+  type: "file" | "dir" | "symlink" | "submodule"
+  encoding: "base64" | "none"
+  content?: string
+}

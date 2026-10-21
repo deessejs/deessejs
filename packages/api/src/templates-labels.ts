@@ -5,8 +5,8 @@
  * the categories and frameworks axes. Both apps/web (filter sidebar,
  * index page validation, marketing copy) and apps/cli (when present)
  * import from this module — keeping the human labels here means a new
- * template slug added in `templates.ts` shows up in the registry UI
- * without manual sync across files.
+ * template slug added to the catalogue, in `templates.ts`, shows up in the
+ * registry UI without manual sync across files.
  *
  * Pure data module. No runtime imports beyond types. Importing this
  * file from a client component MUST NOT transitively drag
@@ -16,8 +16,8 @@
  *
  * Adding a new category or framework:
  *   1. Add the slug as a key below.
- *   2. Reference the slug from at least one entry in
- *      `./templates.ts` (`category` for categories, `labels` for frameworks).
+ *   2. Reference the slug from at least one template manifest
+ *      (`product.category` for categories, `product.labels` for frameworks).
  *   3. The filter sidebar hides frameworks that no template carries, so
  *      adding a key without a matching label entry will surface in the
  *      sidebar only after a template ships.
@@ -29,7 +29,7 @@ export type FrameworkSlug = keyof typeof FRAMEWORK_LABELS
  * Categories — coarse surface grouping used by the registry index page
  * to filter templates (e.g. "SaaS starters", "AI", "Landing pages").
  *
- * The key is the slug written into `RegistryEntry.category`. The value
+ * The key is the slug written into the manifest `product.category`. The value
  * is the human-readable label rendered in the sidebar and metadata.
  */
 export const CATEGORY_LABELS = {
@@ -40,7 +40,7 @@ export const CATEGORY_LABELS = {
 
 /**
  * Frameworks — technical labels surfaced in the registry sidebar as
- * filter chips. The key is the slug that appears in `RegistryEntry.labels`.
+ * filter chips. The key is the slug that appears in the manifest `product.labels`.
  *
  * Themes like "auth" or "marketing" intentionally stay out of this map
  * — those are not frameworks. Adding one requires a slug reference in

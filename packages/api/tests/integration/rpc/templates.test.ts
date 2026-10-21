@@ -60,11 +60,18 @@ describe("POST /api/v1/rpc/templates/list", () => {
       // (https://orpc.dev/docs/advanced/rpc-protocol).
       const templates = body.json.templates as Array<Record<string, unknown>>
       expect(Array.isArray(templates)).toBe(true)
-      // Pin the full registry by slug. Asserting on `length` would
+      // Pin the catalogue by slug. Asserting on `length` would
       // force this test to be touched every time a template is
       // added; pinning slugs keeps the test resilient to a
       // growing catalog and still fails loudly if any entry is
       // missing or duplicated.
+      //
+      // The slugs come from the template manifests, so this test
+      // only passes once every template repository carries a
+      // manifest with a slug and a product category. That is the
+      // merge order of the standard rollout: the child template
+      // pull requests land first, the catalogue pull request
+      // second.
       expect(templates.map((t) => t.slug).sort()).toEqual([
         "blog-starter",
         "docs-starter",
@@ -73,14 +80,12 @@ describe("POST /api/v1/rpc/templates/list", () => {
         "landing-starter",
         "package-starter",
         "saas-starter",
-        "saas-starter-multi-tenant",
       ])
 
       const bySlug = new Map(templates.map((t) => [t.slug, t]))
       const template = bySlug.get("saas-starter")!
-      // Pin the editorial fields from `packages/api/src/templates.ts`.
-      // These are the values `enrich()` does not overwrite (or
-      // overwrites with the same value).
+      // Pin the product fields, which now come from the template
+      // manifest of `deessejs/saas-template`.
       expect(template.owner).toBe("deessejs")
       expect(template.repo).toBe("saas-template")
       expect(template.category).toBe("saas")
@@ -147,16 +152,15 @@ describe("POST /api/v1/rpc/templates/list", () => {
  * block — when real GitHub is rate-limited this is the only
  * place the wire-code is exercised end-to-end).
  */
-import type { TemplateV1 } from "@workspace/contracts/v1"
-
 import { describe as describeUnit, expect as expectUnit, it as itUnit } from "vitest"
 
 import { ORPCError } from "@orpc/server"
 
 import { enrich } from "../../../src/core/templates/enrich.js"
+import type { TemplatePointer } from "../../../src/core/templates/manifest.js"
 import { TEMPLATES } from "../../../src/templates.js"
 
-const brokenRegistry: ReadonlyArray<TemplateV1> = [
+const brokenRegistry: ReadonlyArray<TemplatePointer> = [
   {
     ...TEMPLATES[0],
     repo: "this-repo-must-not-exist-xyz-12345",
