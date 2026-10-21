@@ -192,7 +192,11 @@ jobs:
         run: pnpm db:migrate
 
       - name: Run integration tests
-        run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api
+        # @workspace/database is included so the template catalog
+        # constraint tests run against this real PostgreSQL service.
+        # The package's own suite is a no-op without a database, so the
+        # unit job stays green.
+        run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api --filter=@workspace/database
 
   # create-deesse-app native smoke. Runs the bundled CLI directly on
   # each supported OS so we catch any platform-specific regression in
