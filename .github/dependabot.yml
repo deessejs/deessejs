@@ -1,0 +1,41 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directories:
+      - "/"
+      - "/packages/*"
+      - "/apps/*"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      npm-prod:
+        dependency-type: "production"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      npm-dev:
+        dependency-type: "development"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    versioning-strategy: increase
+    ignore:
+      # Major bumps are handled by hand. The Next.js major removes the
+      # global LayoutProps, PageProps and RouteContext types, and the
+      # application code still relies on them, so an automatic major
+      # pull request breaks the build.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
+      include: "scope"

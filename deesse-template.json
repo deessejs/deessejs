@@ -1,0 +1,51 @@
+{
+  "$schema": "https://raw.githubusercontent.com/deessejs/deessejs/main/templates/schema/template-v2.json",
+  "name": "deessejs",
+  "title": "DeesseJS",
+  "description": "The parent template of the deessejs organisation, carrying the shared standards and the reference stack every other template conforms to.",
+  "version": "0.0.1",
+  "type": "template:parent",
+  "author": "DeesseJS <hello@deessejs.com>",
+  "license": "MIT",
+  "source": {
+    "repo": "deessejs/deessejs",
+    "ref": "main"
+  },
+  "requires": {
+    "runtime": "node",
+    "node": ">=22.0.0",
+    "packageManager": "pnpm@11.0.0"
+  },
+  "includes": ["**"],
+  "excludes": [
+    ".changeset/*.md",
+    ".claude/settings.local.json",
+    ".claude/agent-memory/**",
+    ".claude/plans/**",
+    ".claude/worktrees/**",
+    ".claude/pr-body-*.md",
+    ".github/ISSUE_TEMPLATE/**",
+    ".github/CODEOWNERS",
+    ".github/FUNDING.yml",
+    ".github/PULL_REQUEST_TEMPLATE.md",
+    "CHANGELOG.md",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.next/**",
+    "**/.turbo/**",
+    "**/coverage/**",
+    "**/.DS_Store",
+    "**/.env",
+    "**/.env.*"
+  ],
+  "fileTypes": {
+    "README.md": "doc",
+    "LICENSE": "doc",
+    "CONTRIBUTING.md": "doc",
+    "AGENTS.md": "doc",
+    "CLAUDE.md": "doc",
+    ".changeset/config.json": "config",
+    ".github/workflows/ci.yml": "ci",
+    ".github/workflows/release.yml": "ci"
+  }
+}
