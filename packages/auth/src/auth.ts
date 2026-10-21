@@ -226,6 +226,23 @@ const authConfig: BetterAuthOptions = {
     },
   },
 
+  // The two endpoints that read an organization by slug are disabled.
+  //
+  // They answer a question about an arbitrary organization, and when
+  // the caller is not a member of it, they clear the session's active
+  // organization before refusing. That is a state change performed by a
+  // GET, and the origin check does not cover GET, so a third-party page
+  // can cause a signed-in user's active organization to be cleared by
+  // navigating to one of them. HTTP requires a GET to be safe.
+  //
+  // The application's own organization procedures answer the same
+  // question, for the same slug, with the caller's membership and role
+  // checked and with no effect on the session.
+  disabledPaths: [
+    "/organization/get-organization",
+    "/organization/get-full-organization",
+  ],
+
   plugins: [
     // Device authorization: the device-code flow that lets the CLI obtain
     // a session token without a password. The plugin adds /device/code,
@@ -315,7 +332,20 @@ export const auth = betterAuth(
 // (only documentation snippets referenced it), so swapping it for
 // the inferred types does not break any real consumer.
 export type AuthInstance = typeof auth
-export type Session = typeof auth.$Infer.Session.session
+export type Session = typeof auth.$Infer.Session.session & {
+  /**
+   * The organization the session currently points at.
+   *
+   * The plugin declares this as a session field
+   * (`organization.mjs`, `schema.session.fields.activeOrganizationId`) and
+   * reads it off the session itself, so the runtime object carries it.
+   * The `BetterAuthOptions` annotation on `authConfig` drops the
+   * plugin-augmented `$Infer` chain, so the type does not. This is the
+   * same hand-augmentation `User` below already carries for the admin
+   * plugin's fields.
+   */
+  activeOrganizationId?: string | null
+}
 export type User = typeof auth.$Infer.Session.user & {
   role: string | null
   banned: boolean | null
