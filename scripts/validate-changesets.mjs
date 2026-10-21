@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url"
 const VALID_BUMPS = new Set(["patch", "minor", "major"])
 
 function workspacePackages(rootDir) {
-  const packages = new Map()
+  const packages = new Set()
 
   for (const workspaceDir of ["apps", "packages"]) {
     const parent = join(rootDir, workspaceDir)
@@ -30,7 +30,7 @@ function workspacePackages(rootDir) {
       }
 
       if (typeof packageJson.name === "string") {
-        packages.set(packageJson.name, true)
+        packages.add(packageJson.name)
       }
     }
   }
@@ -100,9 +100,7 @@ function parseFrontmatter(body, filename, knownPackages, errors) {
       errors.push(`${filename}:${index + 1}: invalid bump for ${packageName}; expected patch, minor, or major`)
       continue
     }
-
   }
-
 }
 
 export function validateChangesets(rootDir = process.cwd(), changedFiles) {
@@ -140,7 +138,10 @@ export function validateChangesets(rootDir = process.cwd(), changedFiles) {
 
 function main() {
   const changedFiles = process.argv.slice(2)
-  const { errors, files } = validateChangesets(process.cwd(), changedFiles.length ? changedFiles : undefined)
+  const { errors, files } = validateChangesets(
+    process.cwd(),
+    changedFiles.length ? changedFiles : undefined,
+  )
   if (errors.length > 0) {
     console.error("Changeset validation failed:")
     for (const error of errors) console.error(`- ${error}`)
