@@ -1,4 +1,4 @@
-import type { AuthInstance } from "@workspace/auth"
+import type { Session, User } from "@workspace/auth"
 
 /**
  * Hono environment shared by the API app.
@@ -11,11 +11,12 @@ import type { AuthInstance } from "@workspace/auth"
  *   - `middleware/request-id.ts` (requestId)
  *   - `middleware/session.ts`   (user, session)
  *
- * `user` and `session` use the official better-auth pattern
- * `AuthInstance["$Infer"]["Session"]["user"]` — see
- * https://better-auth.com/docs/integrations/hono. The shape is
- * derived from the auth instance config, so a change in the
- * session schema flows through without a manual edit here.
+ * `user` and `session` use the types exported by `@workspace/auth`,
+ * which are inferred from the configured auth instance so a change in
+ * the session schema flows through without a manual edit here. The
+ * exported `Session` also carries the organization plugin's
+ * `activeOrganizationId` field, which the organization procedures read
+ * to report the caller's active organization.
  *
  * Do not augment Hono's `ContextVariableMap` globally. The
  * per-app `Variables` generic is enough; global augmentation
@@ -25,7 +26,7 @@ import type { AuthInstance } from "@workspace/auth"
 export type ApiEnv = {
   Variables: {
     requestId: string
-    user: AuthInstance["$Infer"]["Session"]["user"] | null
-    session: AuthInstance["$Infer"]["Session"]["session"] | null
+    user: User | null
+    session: Session | null
   }
 }

@@ -189,15 +189,29 @@ describeUnit("enrich() failure surface (issue #81 wire-code)", () => {
  * Playwright e2e suite drive the failure / empty paths
  * without a real upstream outage.
  *
- * These tests do NOT hit the network — they run on every PR
- * regardless of the GitHub rate limit. They only need to
- * assert the guard's behavior under three specific shapes
- * of the bypass header.
+ * The guard is closed in all three, so the request reaches
+ * `enrich()`, and that call reaches GitHub. A genuine upstream
+ * failure answers 502 as well, so the status cannot say whether the
+ * guard fired. What separates the two is the message: the guard
+ * throws the error code without a message of its own, while a
+ * genuine failure carries the upstream's message.
  */
 describeUnit("templates.list e2e guard", () => {
   const SECRET = "test-only-bypass-secret"
   const URL = "/api/v1/rpc/templates/list"
   const BODY = JSON.stringify({ data: null, path: ["templates", "list"] })
+
+  /**
+   * Whether the response is the failure the guard forces.
+   *
+   * The guard throws `TEMPLATES_FETCH_FAILED` with no message, so
+   * the message is the code. A success carries no message, and a
+   * genuine upstream failure carries the upstream's message.
+   */
+  const isForcedFailure = async (res: Response): Promise<boolean> => {
+    const body = (await res.json()) as { json?: { message?: string } }
+    return body.json?.message === "TEMPLATES_FETCH_FAILED"
+  }
 
   const call = (headers: Record<string, string> = {}) =>
     api.request(URL, {
@@ -216,11 +230,11 @@ describeUnit("templates.list e2e guard", () => {
       try {
         // No headers — guard should be closed.
         const res = await call({ "x-e2e-force-fail": "1" })
-        // The guard is closed, so we hit `enrich()` (which
-        // requires GitHub in real network but here we are in
-        // CI with mocked network — see globalSetup). The test
-        // pins that the response is NOT the wire-code 502.
-        expect(res.status).not.toBe(502)
+        // The guard is closed, so the request reaches `enrich()`.
+        // That call may fail on its own when GitHub is
+        // unreachable; a genuine failure is not what this test is
+        // about, so the assertion is on the forced failure.
+        expect(await isForcedFailure(res)).toBe(false)
       } finally {
         if (saved !== undefined) process.env.VERCEL_AUTOMATION_BYPASS_SECRET = saved
       }
@@ -242,7 +256,7 @@ describeUnit("templates.list e2e guard", () => {
           "x-vercel-protection-bypass": SECRET,
           "x-e2e-force-fail": "1",
         })
-        expect(res.status).not.toBe(502)
+        expect(await isForcedFailure(res)).toBe(false)
       } finally {
         process.env.VERCEL_AUTOMATION_BYPASS_SECRET = savedSecret
         process.env.NODE_ENV = savedNodeEnv
@@ -263,7 +277,7 @@ describeUnit("templates.list e2e guard", () => {
           "x-vercel-protection-bypass": "wrong-secret",
           "x-e2e-force-fail": "1",
         })
-        expect(res.status).not.toBe(502)
+        expect(await isForcedFailure(res)).toBe(false)
       } finally {
         process.env.VERCEL_AUTOMATION_BYPASS_SECRET = savedSecret
         process.env.NODE_ENV = savedNodeEnv

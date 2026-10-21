@@ -69,7 +69,21 @@ export const mountRpc = (api: Hono<ApiEnv>): void => {
       // Refuse any caching of upstream RPC results at the
       // transport edge. See the JSDoc above.
       headers.set("Cache-Control", "no-store")
-      return c.newResponse(response.body, { ...response, headers })
+      // The status is read from the response rather than spread from
+      // it. `response` is a `Response`, and `status` is a prototype
+      // getter, so spreading it copies nothing and the status falls
+      // back to 200.
+      //
+      // That fallback is not cosmetic: the oRPC client decides
+      // whether a response is an error from the HTTP status, so an
+      // error that arrives as a 200 is read by the client as a
+      // result, and the caller receives the error object as if it
+      // were the payload.
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      })
     }
 
     await next()
