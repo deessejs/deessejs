@@ -3,10 +3,15 @@ import { sendAuthEmail, type SendEmailResult } from "./send-auth-email.js"
 import { VerifyEmail } from "./templates/verify-email.js"
 import { ResetPassword } from "./templates/reset-password.js"
 import { OrganizationInvitation } from "./templates/organization-invitation.js"
+import { PlaybookDownload } from "./templates/playbook.js"
 import {
   sendOrganizationInvitationEmail,
   type OrganizationInvitationEmail,
 } from "./invitation.js"
+import {
+  subscribeToPlaybookUpdates,
+  type SubscribeToPlaybookUpdatesResult,
+} from "./contacts.js"
 import type { MailerTransport, SendArgs } from "./types.js"
 
 export { mailer, type MailerTransport, type SendArgs }
@@ -14,6 +19,10 @@ export { sendAuthEmail, type SendEmailResult }
 export {
   sendOrganizationInvitationEmail,
   type OrganizationInvitationEmail,
+}
+export {
+  subscribeToPlaybookUpdates,
+  type SubscribeToPlaybookUpdatesResult,
 }
 
 /**
@@ -31,4 +40,5 @@ export const templates = {
 	VerifyEmail,
 	ResetPassword,
 	OrganizationInvitation,
+	PlaybookDownload,
 }

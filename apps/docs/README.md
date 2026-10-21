@@ -1,6 +1,6 @@
 # @workspace/docs
 
-Documentation site for DeesseJS — the main app of the deessejs organization. Built with [Fumadocs](https://fumadocs.dev) on Next.js.
+Documentation site for DeesseJS, the main app of the deessejs organization. Built with [Fumadocs](https://fumadocs.dev) on Next.js.
 
 ## Role in the monorepo
 
@@ -42,6 +42,10 @@ content/docs/
 
 ## Conventions
 
-- All shared dependencies (`next`, `react`, `react-dom`, `tailwindcss`, `@types/*`) come from the workspace `catalog:` — update `pnpm-workspace.yaml` rather than this file.
+- All shared dependencies (`next`, `react`, `react-dom`, `tailwindcss`, `@types/*`) come from the workspace `catalog:`: update `pnpm-workspace.yaml` rather than this file.
 - PostCSS config is re-exported from `@workspace/ui/postcss.config` to stay in sync with the other apps.
-- This app uses the Next.js **App Router** — `pages/` is intentionally not used.
+- This app uses the Next.js **App Router**. `pages/` is intentionally not used.
+
+## Related
+
+- **Uses**: [`@workspace/ui`](../../packages/ui/README.md)

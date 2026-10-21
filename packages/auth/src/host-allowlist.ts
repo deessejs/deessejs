@@ -1,25 +1,19 @@
 /**
- * Host allowlist — single source of truth for "which hosts does this
- * deployment trust?".
+ * Shared host allowlist for Better Auth dynamic base URLs and the API's
+ * credentialed CORS middleware. Better Auth adds every allowed host to
+ * trusted origins, so Vercel preview hosts are limited to project aliases
+ * in our Vercel team. Do not replace these patterns with *.vercel.app.
  *
- * This module is the shared allowlist between
- * `packages/auth/src/auth.ts` (Better Auth `baseURL.allowedHosts`) and
- * `packages/api/src/index.ts` (Hono CORS `origin` function). The
- * apex+wildcards shape is load-bearing: Better Auth's `allowedHosts`
- * pattern table does NOT let `*.vercel.app` match the apex `vercel.app`
- * itself, so the apex entry is listed explicitly. Trimming the apex
- * reintroduces the "Fixed baseURL breaks Vercel preview deployments"
- * bug — see https://better-auth.com/docs/guides/dynamic-base-url.
- *
- * Localhost entries are gated on `NODE_ENV === "development"` to keep
- * the prod allowlist minimal — matches the same hazard for
- * `trustedOrigins` in `packages/auth/src/auth.ts`.
+ * Localhost entries are available only in development.
  */
 
 const PRODUCTION_HOSTS = [
   "deessejs.com",
   "*.deessejs.com",
-  "*.vercel.app",
+  "deessejs-app-*-aliiibenns-projects.vercel.app",
+  "deessejs-web-*-aliiibenns-projects.vercel.app",
+  "deessejs-docs-*-aliiibenns-projects.vercel.app",
+  "deessejs-agent-*-aliiibenns-projects.vercel.app",
 ] as const
 
 const DEV_HOSTS = [

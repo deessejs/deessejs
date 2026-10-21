@@ -4,11 +4,11 @@ Cookie consent system for DeesseJS.
 
 ## What's included
 
-- **Zustand store** — framework-agnostic, handles persistence, hydration, and consent versioning
-- **`CookieConsent`** — banner + preferences modal (React component)
-- **`CookiePreferencesButton`** — opens preferences modal from anywhere (footer, settings page)
-- **`ConsentScript`** — wraps `next/script`, only loads scripts when consent is given
-- **`CookiePolicy`** — default cookie policy page content (can be used as-is or replaced)
+- **Zustand store**: framework-agnostic, handles persistence, hydration, and consent versioning
+- **`CookieConsent`**: banner + preferences modal (React component)
+- **`CookiePreferencesButton`**: opens preferences modal from anywhere (footer, settings page)
+- **`ConsentScript`**: wraps `next/script`, only loads scripts when consent is given
+- **`CookiePolicy`**: default cookie policy page content (can be used as-is or replaced)
 
 ## Usage
 
@@ -81,10 +81,15 @@ export default function CookiesPage() {
 ## GDPR compliance
 
 - Consent is opt-in (non-essential categories default to off)
-- Consent is versioned — changing categories re-prompts users
+- Consent is versioned: changing categories re-prompts users
 - Users can withdraw consent at any time via the preferences button
 - `ConsentScript` prevents non-essential scripts from loading without consent
 
 ## Architecture
 
-The Zustand store is framework-agnostic — no Next.js imports. Only `ConsentScript` depends on `next/script`. All other exports work in any React environment.
+The Zustand store is framework-agnostic and has no Next.js imports. Only `ConsentScript` depends on `next/script`. All other exports work in any React environment.
+
+## Related
+
+- **Uses**: [`@workspace/ui`](../ui/README.md)
+- **Used by**: [`apps/web`](../../apps/web/README.md)

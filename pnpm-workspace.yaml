@@ -15,11 +15,11 @@ allowBuilds:
   ssh2: true
   unrs-resolver: true
 
-# Shared dependency versions — update here, propagate everywhere
+# Shared dependency versions: update here, propagate everywhere
 catalog:
   # Core
 
-  # Email (added 2026-07-07 — packages/email)
+  # Email (added 2026-07-07, packages/email)
 
   # Auth
   "@better-auth/drizzle-adapter": ^1.7.7
@@ -58,7 +58,7 @@ catalog:
   "@vercel/related-projects": ^1.1.1
   "@vitest/coverage-v8": ^4.1.10
 
-  # Agent runtime (apps/agent — Vercel eve + MiniMax provider)
+  # Agent runtime (apps/agent, Vercel eve + MiniMax provider)
   ai: ^7.0.106
   auth: ^1.7.7
   better-auth: ^1.7.7
@@ -84,7 +84,7 @@ catalog:
   # Icons
   lucide-react: ^1.23.0
 
-  # Motion (apps/web — homepage contract cell animations)
+  # Motion (apps/web, homepage contract cell animations)
   motion: ^13.1.1
   "next": ^16.2.10
   open: ^11.0.1
@@ -97,16 +97,16 @@ catalog:
   react: 19.2.7
   react-dom: 19.2.7
 
-  # Forms (apps/web — /enterprise inquiry form, react-hook-form + Zod)
+  # Forms (apps/web, /enterprise inquiry form, react-hook-form + Zod)
   react-hook-form: ^7.62.0
 
-  # Markdown rendering (apps/web — untrusted GitHub READMEs on /templates/[slug])
+  # Markdown rendering (apps/web, untrusted GitHub READMEs on /templates/[slug])
   react-markdown: ^10.1.0
   reading-time: ^1.5.0
   rehype-pretty-code: ^0.14.5
   rehype-sanitize: ^6.0.0
   remark-gfm: ^4.0.1
-  resend: ^6.17.1
+  resend: ^6.33.0
   shiki: ^4.3.1
   sonner: ^2.0.7
   tailwind-merge: ^3.6.0

@@ -5,17 +5,26 @@ import { z } from "zod"
  *
  * Consumed by:
  *   - packages/api  (server, builds the response from the hand-curated list)
- *   - apps/cli      (validates `/api/v1/templates` responses)
+ *   - apps/cli      (types what it reads from `/api/v1/templates`)
  *   - apps/web      (renders /templates and /templates/[template_slug])
  *
- * Wire format is the JSON shape returned by GET /api/v1/templates. Adding a
- * required field here is a breaking change for any installed CLI V1 client
- * that has not been updated to read the new version. The CLI's `parse()`
- * call will throw on the new shape, surfacing as a `parse_error` to the user.
+ * Wire format is the JSON shape returned by GET /api/v1/templates.
  *
- * Optional fields (e.g. `image`, `cloneUrl`) keep the response shape backward
- * compatible: existing clients that don't know about them continue to parse
- * the response without change.
+ * These schemas use the default Zod object mode, which strips unknown keys
+ * instead of rejecting them. A client that validates a response against
+ * them therefore keeps working when a new field appears, whether that field
+ * is optional or required.
+ *
+ * What breaks a client is a change to a field it already knows: removing or
+ * renaming one, changing its type, narrowing the set of accepted values, or
+ * adding a constraint the existing values do not satisfy. That reasoning
+ * depends on the mode of the schema: switching to `.strict()` rejects the
+ * unknown keys the default mode strips, and would make every new field
+ * breaking for the clients that validate with it.
+ *
+ * Note the current state of the enforcement: the oRPC procedure types its
+ * response with this schema rather than attaching it as a runtime output
+ * schema, so the guarantee today is a compile-time one on both sides.
  */
 export const TemplateV1 = z.object({
   slug: z.string().min(1),

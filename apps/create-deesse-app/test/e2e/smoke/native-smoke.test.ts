@@ -134,19 +134,23 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
         // because the consumer (a fresh tmpdir) has no pnpm and
         // we cannot know whether corepack is available. The
         // recovery command is the actionable next step. The
-        // shape depends on the host shell: POSIX hosts get the
-        // `cd '<path>' && npm exec --yes -- pnpm@'<v>' install`
-        // form; Windows hosts get the cmd-shaped
-        // `cd /d "<path>" && npm exec --yes -- pnpm@"<v>" install`
-        // form. The full quoting rules are covered in
-        // `quote.test.ts` and `recovery.test.ts`.
+        // shape depends on the host shell: POSIX hosts get a
+        // quoted POSIX command; Windows hosts get a PowerShell
+        // command with literal arguments. The full quoting rules
+        // are covered in `quote.test.ts` and `recovery.test.ts`.
         if (process.platform === "win32") {
-          expect(parsed.recovery).toMatch(
-            /^cd \/d "[^"]+" && npm exec --yes -- pnpm@"11\.0\.0" install$/,
+          expect(parsed.recovery).toBe(
+            [
+              `Set-Location -LiteralPath '${dest}'; &`,
+              "'npm' 'exec' '--yes' '--' 'pnpm@11.0.0' 'install'",
+            ].join(" "),
           )
         } else {
-          expect(parsed.recovery).toMatch(
-            /^cd '[^']+' && npm exec --yes -- pnpm@'11\.0\.0' install$/,
+          expect(parsed.recovery).toBe(
+            [
+              `cd '${dest}' &&`,
+              "'npm' 'exec' '--yes' '--' 'pnpm@11.0.0' 'install'",
+            ].join(" "),
           )
         }
       } else {
