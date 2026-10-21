@@ -1,0 +1,35 @@
+name: Manifest
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: manifest-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate the template manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Fetch the published schema
+        run: |
+          curl --fail --silent --show-error --location \
+            https://raw.githubusercontent.com/deessejs/deessejs/main/templates/schema/template-v2.json \
+            --output "$RUNNER_TEMP/template-v2.json"
+
+      - name: Validate deesse-template.json against the published schema
+        run: npx --yes ajv-cli@5.0.0 validate -s "$RUNNER_TEMP/template-v2.json" -d deesse-template.json
