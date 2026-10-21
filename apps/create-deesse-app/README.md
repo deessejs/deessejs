@@ -55,7 +55,7 @@ On install failure the project is kept on disk and the result is:
 }
 ```
 
-The `recovery` field is a copy-pasteable command that retries the install with the same bootstrap the CLI chose. The shape depends on the host shell: `cd '<path>' && ...` on POSIX hosts (Linux, macOS, git bash on Windows), `cd /d "<path>" && ...` on Windows `cmd` (the default PowerShell host and the legacy cmd.exe). WSL is not directly supported because the recovery carries the Windows path as-is (e.g. `C:\Users\...`), which WSL cannot resolve — run the recovery in `cmd` or in git bash on Windows instead, or convert the path to the WSL form (`/mnt/c/...`) by hand. The CLI never interpolates a user-controlled string into the recovery without going through a quoting helper, so the command is safe to paste even if a future template revision includes shell metacharacters in the version.
+The `recovery` field is a copy-pasteable command that retries the install with the same bootstrap the CLI chose. The shape depends on the host shell: `cd '<path>' && ...` on POSIX hosts (Linux, macOS, git bash on Windows), `cd /d "<path>" && ...` on Windows `cmd` (the default PowerShell host and the legacy cmd.exe). WSL is not directly supported because the recovery carries the Windows path as-is (e.g. `C:\Users\...`), which WSL cannot resolve. Run the recovery in `cmd` or in git bash on Windows instead, or convert the path to the WSL form (`/mnt/c/...`) by hand. The CLI never interpolates a user-controlled string into the recovery without going through a quoting helper, so the command is safe to paste even if a future template revision includes shell metacharacters in the version.
 
 The process exit code is `0` only when `ok: true`.
 
@@ -93,7 +93,7 @@ npx create-deesse-app@latest my-project --dry-run --no-install
 }
 ```
 
-`recovery` is always `null` in dry-run mode: the dry-run did not attempt anything that could fail, so there is nothing to retry. The `source.sha` is the SHA that a real create would have used at the moment the dry-run ran — a later invocation may fetch a different SHA, by design.
+`recovery` is always `null` in dry-run mode: the dry-run did not attempt anything that could fail, so there is nothing to retry. The `source.sha` is the SHA that a real create would have used at the moment the dry-run ran. A later invocation may fetch a different SHA, by design.
 
 ## Verbose output
 
@@ -129,7 +129,7 @@ The cancel path (`error.code: "aborted"`) is the same in `--verbose` and the def
 
 ### Cancel during install
 
-`SIGINT` during `pnpm install` (after the project has been published to disk) is forwarded to the install child AND its descendants. `runInstall` spawns the install command with `detached: true` on POSIX (so it becomes the leader of a new process group); on `abort`, the signal is sent to the negative PID (the PGID) so it reaches the immediate child (`corepack`, `npm exec`, etc.) and every descendant (`pnpm`, postinstall scripts, etc.) in one shot. On Windows, `child.kill()` calls `TerminateProcess` on the immediate child and `taskkill /T /F /PID` walks the tree. After a 5-second grace, the same pattern with `SIGKILL` is the final safety net. The pipeline resolves with `RunInstallResult.aborted: true` and routes to `error.code: "aborted"` with `projectCreated: true` and the **install** recovery command — `cd <dir> && <install command>`, not the create-deesse-app re-run form. The user can re-run the install without first killing any leftover process.
+`SIGINT` during `pnpm install` (after the project has been published to disk) is forwarded to the install child AND its descendants. `runInstall` spawns the install command with `detached: true` on POSIX (so it becomes the leader of a new process group); on `abort`, the signal is sent to the negative PID (the PGID) so it reaches the immediate child (`corepack`, `npm exec`, etc.) and every descendant (`pnpm`, postinstall scripts, etc.) in one shot. On Windows, `child.kill()` calls `TerminateProcess` on the immediate child and `taskkill /T /F /PID` walks the tree. After a 5-second grace, the same pattern with `SIGKILL` is the final safety net. The pipeline resolves with `RunInstallResult.aborted: true` and routes to `error.code: "aborted"` with `projectCreated: true` and the **install** recovery command, `cd <dir> && <install command>`, not the create-deesse-app re-run form. The user can re-run the install without first killing any leftover process.
 
 ## Getting started
 
@@ -138,3 +138,7 @@ See <https://docs.deessejs.com/getting-started> for the full guide.
 ## License
 
 MIT
+
+## Related
+
+- **Shares no code**: it fetches a template from GitHub and runs it

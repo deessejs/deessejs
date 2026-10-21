@@ -1,9 +1,9 @@
-# `apps/agent` — `@deessejs-agent`
+# `apps/agent`: `@deessejs-agent`
 
 A minimal mentionable GitHub agent for the DeesseJS monorepo, built on
 [Vercel eve](https://eve.dev). v1 scope: a single agent that replies when
 mentioned in a GitHub comment. No tools, no sandbox, no skills, no
-schedules — just the mention loop.
+schedules, just the mention loop.
 
 ## Scope (v1)
 
@@ -23,7 +23,7 @@ schedules — just the mention loop.
 - Sandbox (no bash, no checkout beyond what the GitHub channel injects).
 - Skills (no `SKILL.md`).
 - Schedules and subagents.
-- Auto-review or auto-triage on PR open / issue open — the bot only
+- Auto-review or auto-triage on PR open / issue open: the bot only
   replies when explicitly mentioned.
 - Vercel Connect. v1 uses bring-your-own GitHub App credentials so the
   agent runs on plain env vars.
@@ -69,7 +69,7 @@ pnpm install
 8. Click **Create GitHub App**.
 9. On the App's settings page, note the **App ID** (top of "General")
    and generate a **private key** (bottom of "General"). Download the
-   `.pem` file — you'll paste its contents into `GITHUB_APP_PRIVATE_KEY`.
+   `.pem` file: you'll paste its contents into `GITHUB_APP_PRIVATE_KEY`.
 
 ### 3. Configure environment variables
 
@@ -86,7 +86,7 @@ Notes:
 - `GITHUB_APP_PRIVATE_KEY` is a multi-line PEM. Preserve the newlines
   (`\n` works in `.env` files) or use a single-line base64-encoded form.
 - All four values are required for the bot to start. Missing values
-  fail loud at boot — the agent does not run in a degraded mode.
+  fail loud at boot: the agent does not run in a degraded mode.
 
 ### 4. Deploy to Vercel
 
@@ -113,7 +113,7 @@ Go back to the App's settings page and set **Webhook URL** to
 ### 6. Install the GitHub App on a repo
 
 1. On the App's settings page, click **Install App** in the sidebar.
-2. For v1, install it on **only one repo** — `deessejs/deessejs` is the
+2. For v1, install it on **only one repo**: `deessejs/deessejs` is the
    default. Choose "Only select repositories" and pick that one.
 3. Confirm.
 
@@ -134,7 +134,7 @@ From `apps/agent`:
 pnpm dev
 ```
 
-This starts `eve dev` — an interactive TUI you can chat with locally.
+This starts `eve dev`, an interactive TUI you can chat with locally.
 GitHub webhook delivery still requires a public URL; for end-to-end
 testing, use a tunnel (e.g. `cloudflared tunnel` or `ngrok`) and point
 the GitHub App's webhook URL at the tunnel.
@@ -159,7 +159,7 @@ apps/agent/
 ## Architecture notes
 
 - **No sandbox by default.** The eve framework provides one if you opt
-  in via `agent/sandbox/sandbox.ts`, but v1 deliberately does not — the
+  in via `agent/sandbox/sandbox.ts`, but v1 deliberately does not. The
   bot only needs to read context, not run code.
 - **Default dispatch, no custom hooks.** The `githubChannel` config keeps
   eve's default invocation-token gate. The bot ignores `issues`,
@@ -184,3 +184,7 @@ apps/agent/
   `pnpm test`, and Vale against the PR diff in the sandbox.
 - Add an `onPullRequest` hook so the bot auto-reviews new PRs without
   being mentioned.
+
+## Related
+
+- **Shares no code**: it runs on Vercel eve and talks to the GitHub API

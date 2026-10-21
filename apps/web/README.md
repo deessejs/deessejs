@@ -1,10 +1,10 @@
 # `apps/web`
 
-Public marketing site for DeesseJS — the main app of the deessejs organization.
+Public marketing site for DeesseJS, the main app of the deessejs organization.
 
 ## Purpose
 
-`apps/web` is the public-facing entry point — what anonymous visitors see before they sign up. It includes the landing page, blog, changelog, cookie policy, privacy, and terms pages.
+`apps/web` is the public-facing entry point: what anonymous visitors see before they sign up. It includes the landing page, blog, changelog, cookie policy, privacy, and terms pages.
 
 ## Stack
 
@@ -15,7 +15,7 @@ Public marketing site for DeesseJS — the main app of the deessejs organization
 - **Zustand** for client-side state (cookie consent)
 - **Fuse.js** for client-side search
 - **next-themes** for dark mode
-- Shared config from `@/lib/app-config` (`APP_NAME`, `APP_CONFIG`) — local to `apps/web`; the `@workspace/ui` package hosts UI primitives only.
+- Shared config from `@/lib/app-config` (`APP_NAME`, `APP_CONFIG`), local to `apps/web`; the `@workspace/ui` package hosts UI primitives only.
 
 ## Setup
 
@@ -116,7 +116,7 @@ Release content with Keep-a-Changelog format.
 ## Key conventions
 
 - **`@/*` path alias** maps to `src/*` (configured in `tsconfig.json`).
-- **Cookie consent** uses Zustand with `skipHydration` — rehydrate once via `useEffect` in `CookieConsent`.
+- **Cookie consent** uses Zustand with `skipHydration`: rehydrate once via `useEffect` in `CookieConsent`.
 - **Images** use `next/image` with `remotePatterns` configured for Unsplash. Add your image host to `next.config.ts`.
 - **RSS feeds** at `/blog/feed.xml` and `/changelog/feed.xml`.
 
@@ -124,11 +124,15 @@ Release content with Keep-a-Changelog format.
 
 This app is one of three in the monorepo, each deployed independently:
 
-- **`apps/web`** (this app) — public, anonymous. Marketing, blog, changelog, legal pages.
-- **`apps/app`** — authenticated app. `/login`, `/signup`, dashboard, settings. Has its own `(protected)` / `(unprotected)` route groups for auth.
-- **`apps/docs`** — Fumadocs-based documentation site, served at `/docs`.
+- **`apps/web`** (this app): public, anonymous. Marketing, blog, changelog, legal pages.
+- **`apps/app`**: authenticated app. `/login`, `/signup`, dashboard, settings. Has its own `(protected)` / `(unprotected)` route groups for auth.
+- **`apps/docs`**: Fumadocs-based documentation site, served at `/docs`.
 
 Links to `/login`, `/signup` in the header point to `apps/app`. Links to `/docs` point to `apps/docs`. Both are intentional cross-app navigation, not broken links.
 
 All three share `@workspace/ui` for components and styling. App-specific config (`APP_CONFIG`, `APP_NAME`, `WEB_URL`, `APP_URL`, etc.) lives at `@/lib/app-config` in each app and reads from `@workspace/env/client` via the `webURL()` / `appURL()` / `docsURL()` / `apiBaseURL()` helpers.
 
+## Related
+
+- **Uses**: [`@workspace/api`](../../packages/api/README.md), [`@workspace/contracts`](../../packages/contracts/README.md), [`@workspace/env`](../../packages/env/README.md), [`@workspace/ui`](../../packages/ui/README.md), [`@workspace/cookies`](../../packages/cookies/README.md)
+- **Authenticates against**: [`@workspace/auth`](../../packages/auth/README.md), whose endpoints the API exposes under `/api/v1/auth`
