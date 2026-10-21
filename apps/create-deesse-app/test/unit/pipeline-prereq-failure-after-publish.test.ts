@@ -120,13 +120,13 @@ describe("run() — prereq failure after publish", () => {
     expect(result.recovery).toBeDefined()
     if (!result.recovery) return
     if (process.platform === "win32") {
-      expect(result.recovery).toMatch(/^cd \/d "/)
-      expect(result.recovery).toContain("npm exec --yes -- pnpm@")
-      expect(result.recovery).toMatch(/install$/)
+      expect(result.recovery).toMatch(/^Set-Location -LiteralPath '/)
+      expect(result.recovery).toContain("'npm' 'exec' '--yes' '--' 'pnpm@")
+      expect(result.recovery).toMatch(/'install'$/)
     } else {
       expect(result.recovery).toMatch(/^cd '[^']+' && /)
-      expect(result.recovery).toContain("npm exec --yes -- pnpm@")
-      expect(result.recovery).toMatch(/install$/)
+      expect(result.recovery).toContain("'npm' 'exec' '--yes' '--' 'pnpm@")
+      expect(result.recovery).toMatch(/'install'$/)
     }
 
     // BOUNDARY: the project is on disk.
