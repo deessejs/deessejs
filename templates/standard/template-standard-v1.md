@@ -88,7 +88,7 @@ A conforming template carries these workflows, named as stated.
 
 **Rule 6, every CI job declares concurrency** with the workflow and branch as the group, and cancels in progress. **Rule 7, every job installs with a frozen lockfile** and uses the pnpm cache. **Rule 8, the Node matrix runs 22 and 24** on build and type check.
 
-**Rule 9, action versions.** `actions/checkout` and `actions/setup-node` are at version 5 or above in every workflow. Versions below 5 are deprecated on the current runners.
+**Rule 9, action versions.** `actions/checkout` and `actions/setup-node` are at version 5 or above in every workflow. Versions below 5 are deprecated on the current runners. The reference target is version 7, the current major of both actions, and it is adopted once the publish pipelines are verified against it, because version 7 of `setup-node` changes the behaviour of `NODE_AUTH_TOKEN` and the publish path of the library templates depends on it.
 
 **Rule 10, the lint job runs the format check** as a separate named step, so a formatting failure is reported as a formatting failure.
 
