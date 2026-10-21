@@ -49,10 +49,10 @@ jobs:
     name: Verify CLI publish artifact
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: pnpm
@@ -75,8 +75,21 @@ jobs:
         run: pnpm turbo build --filter=@deessejs/cli
 
       # Step 1: pack the tarball that would be published.
+      #
+      # Use `pnpm pack`, not `pnpm --filter ... exec npm pack`. The
+      # CLI's `apps/cli/package.json` references `catalog:` and
+      # `workspace:*` entries (pnpm-specific protocol) for deps
+      # like `cross-spawn` and `@workspace/*`. `pnpm pack` resolves
+      # those into concrete version ranges before packing;
+      # `npm pack` does not, and ships a manifest that consumers
+      # (using plain npm) cannot install: npm fails with
+      # EUNSUPPORTEDPROTOCOL "Unsupported URL Type 'catalog:'".
+      # A previous revision of this step ran `npm pack`; that
+      # produced a publishable tarball from pnpm's perspective but
+      # unpublishable from a downstream consumer's. `pnpm pack`
+      # matches what the actual release path needs to ship.
       - name: Pack CLI tarball
-        run: pnpm --filter @deessejs/cli exec npm pack
+        run: pnpm --dir apps/cli pack
 
       # Step 2: inspect the contents. A successful pack is not enough;
       # the tarball must contain the compiled bundle and the expected

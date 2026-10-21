@@ -1,0 +1,224 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/deessejs/deessejs/main/templates/schema/template-v2.json",
+  "title": "DeesseJS template manifest",
+  "description": "Manifest carried at the root of every DeesseJS template repository. It is the technical contract of the template and the product contract published to the catalogue.",
+  "type": "object",
+  "required": [
+    "name",
+    "title",
+    "description",
+    "version",
+    "type",
+    "author",
+    "license",
+    "source",
+    "requires",
+    "includes",
+    "excludes"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "URL of the manifest schema that validates this file.",
+      "pattern": "^https://"
+    },
+    "name": {
+      "type": "string",
+      "description": "Repository name. Identifies the template inside the organisation.",
+      "examples": [
+        "saas-template",
+        "package-template"
+      ]
+    },
+    "slug": {
+      "type": "string",
+      "description": "Catalogue slug. The key under which the template is published and installed. Required for a starter, optional for a parent template.",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "examples": [
+        "saas-starter",
+        "package-starter"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "description": "Human readable template name, shown to the user.",
+      "examples": [
+        "SaaS Starter",
+        "Package Starter"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "description": "One sentence. The promise to the user.",
+      "minLength": 20
+    },
+    "version": {
+      "type": "string",
+      "description": "Template version, published by the maintainer release flow.",
+      "examples": [
+        "1.0.0"
+      ]
+    },
+    "type": {
+      "type": "string",
+      "description": "template:parent is the organisation parent template. template:starter is a template distributed to end users.",
+      "enum": [
+        "template:parent",
+        "template:starter"
+      ]
+    },
+    "author": {
+      "type": "string",
+      "examples": [
+        "DeesseJS <hello@deessejs.com>"
+      ]
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX identifier of the licence shipped in the repository.",
+      "examples": [
+        "MIT"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "repo",
+        "ref"
+      ],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "Origin repository, in owner/repo form.",
+          "examples": [
+            "deessejs/saas-template"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "description": "Branch or tag the template is generated from.",
+          "examples": [
+            "main"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "requires": {
+      "type": "object",
+      "required": [
+        "runtime",
+        "node",
+        "packageManager"
+      ],
+      "properties": {
+        "runtime": {
+          "type": "string",
+          "examples": [
+            "node"
+          ]
+        },
+        "node": {
+          "type": "string",
+          "description": "Supported Node floor, as a range expression.",
+          "examples": [
+            ">=22"
+          ]
+        },
+        "packageManager": {
+          "type": "string",
+          "description": "Pinned package manager and version.",
+          "examples": [
+            "pnpm@11"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "product": {
+      "type": "object",
+      "description": "Commercial fields consumed by the catalogue. Owned by the Chief Product Officer. Absent on a template that is not listed.",
+      "required": [
+        "layer",
+        "category",
+        "labels",
+        "image"
+      ],
+      "properties": {
+        "layer": {
+          "type": "string",
+          "enum": [
+            "open-community",
+            "pro",
+            "enterprise"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "examples": [
+            "saas",
+            "library",
+            "ai-agent",
+            "docs",
+            "content",
+            "marketing",
+            "desktop"
+          ]
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "image": {
+          "type": "string",
+          "description": "Site asset path for the template card."
+        }
+      },
+      "additionalProperties": false
+    },
+    "includes": {
+      "type": "array",
+      "description": "Glob patterns included in the distributed template.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "excludes": {
+      "type": "array",
+      "description": "Glob patterns excluded from the distributed template. Must cover the machine specific paths and every local artefact.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "fileTypes": {
+      "type": "object",
+      "description": "Classification of the notable files of the template.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "template:starter"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "required": [
+          "slug"
+        ]
+      }
+    }
+  ]
+}

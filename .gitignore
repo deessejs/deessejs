@@ -7,3 +7,15 @@ B-VIOLATIONS.txt
 .github/styles/Microsoft/
 .github/styles/write-good/
 .github/styles/proselint/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+.turbo/
+build/
+out/
+coverage/
+*.tsbuildinfo
