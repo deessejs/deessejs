@@ -14,6 +14,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  COREPACK_ENABLE_STRICT: '0'
+
 jobs:
   validate:
     name: Validate the template manifest
@@ -24,12 +27,18 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+          package-manager-cache: false
 
+      # The schema is the one of the parent template. It is on the main branch
+      # once the standard pull request lands, and on the standard branch before
+      # that, so the fetch tries the main branch first and falls back.
       - name: Fetch the published schema
+        env:
+          SCHEMA_ON_MAIN: https://raw.githubusercontent.com/deessejs/deessejs/main/templates/schema/template-v2.json
+          SCHEMA_ON_THE_STANDARD_BRANCH: https://raw.githubusercontent.com/deessejs/deessejs/chore/template-standard-v1/templates/schema/template-v2.json
         run: |
-          curl --fail --silent --show-error --location \
-            https://raw.githubusercontent.com/deessejs/deessejs/main/templates/schema/template-v2.json \
-            --output "$RUNNER_TEMP/template-v2.json"
+          curl --fail --silent --show-error --location "$SCHEMA_ON_MAIN" --output "$RUNNER_TEMP/template-v2.json" \
+            || curl --fail --silent --show-error --location "$SCHEMA_ON_THE_STANDARD_BRANCH" --output "$RUNNER_TEMP/template-v2.json"
 
       - name: Validate deesse-template.json against the published schema
         run: npx --yes ajv-cli@5.0.0 validate -s "$RUNNER_TEMP/template-v2.json" -d deesse-template.json
