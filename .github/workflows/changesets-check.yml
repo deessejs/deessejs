@@ -24,7 +24,13 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           git fetch origin "$BASE_REF" --depth=1
-          TOUCHED=$(git diff --name-only "origin/$BASE_REF...$HEAD_SHA" -- \
+          if git merge-base "origin/$BASE_REF" "$HEAD_SHA" >/dev/null 2>&1; then
+            DIFF_ARGS=("origin/$BASE_REF...$HEAD_SHA")
+          else
+            echo "::notice::No merge base exists. Comparing the base and head snapshots."
+            DIFF_ARGS=("origin/$BASE_REF" "$HEAD_SHA")
+          fi
+          TOUCHED=$(git diff --name-only "${DIFF_ARGS[@]}" -- \
             apps/cli apps/create-deesse-app packages/contracts packages/api)
           if [ -n "$TOUCHED" ]; then
             echo "touched=true" >> "$GITHUB_OUTPUT"
@@ -44,7 +50,13 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          CHANGED=$(git diff --name-only "origin/$BASE_REF...$HEAD_SHA" -- .changeset | \
+          if git merge-base "origin/$BASE_REF" "$HEAD_SHA" >/dev/null 2>&1; then
+            DIFF_ARGS=("origin/$BASE_REF...$HEAD_SHA")
+          else
+            echo "::notice::No merge base exists. Comparing the base and head snapshots."
+            DIFF_ARGS=("origin/$BASE_REF" "$HEAD_SHA")
+          fi
+          CHANGED=$(git diff --name-only --diff-filter=ACMR "${DIFF_ARGS[@]}" -- .changeset | \
             grep -E '^\.changeset/[^/]+\.md$' | grep -v '^\.changeset/README\.md$' || true)
           if [ -z "$CHANGED" ]; then
             echo "::error::CLI-relevant paths were modified but no changeset file was added or updated."
