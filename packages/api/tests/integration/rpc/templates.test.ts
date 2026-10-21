@@ -65,6 +65,12 @@ describe("POST /api/v1/rpc/templates/list", () => {
       // added; pinning slugs keeps the test resilient to a
       // growing catalog and still fails loudly if any entry is
       // missing or duplicated.
+      //
+      // The multi tenant template is not in the list. It carries
+      // a manifest without a product block, so the catalogue has
+      // no product fields to publish for it, and the product line
+      // defers it to a later quarter. The list grows when the
+      // product line gives it a product block.
       expect(templates.map((t) => t.slug).sort()).toEqual([
         "blog-starter",
         "docs-starter",
@@ -73,7 +79,6 @@ describe("POST /api/v1/rpc/templates/list", () => {
         "landing-starter",
         "package-starter",
         "saas-starter",
-        "saas-starter-multi-tenant",
       ])
 
       const bySlug = new Map(templates.map((t) => [t.slug, t]))
