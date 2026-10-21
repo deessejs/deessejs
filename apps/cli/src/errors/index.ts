@@ -1,14 +1,13 @@
 import { EXIT_ERROR } from "../constants/exit.js"
 
-// Public surface (per ADR-010 §2): the closed list of error codes
-// that downstream tooling may pattern-match against. Adding a code
-// here is a breaking change.
+// Public surface: the closed list of error codes that downstream
+// tooling may pattern-match against. Adding a code here is a
+// breaking change.
 //
 // The two device-flow codes (cli_device_denied,
 // cli_device_expired) are an amendment to the closed list, added
-// in lockstep with ADR-020 (device authorization). They are not
-// a precedent for further openings; see ADR-010 §2 "What this
-// rule forbids".
+// in lockstep with the device-authorization plugin. They are not
+// a precedent for further openings; the closed list stays closed.
 export type CliErrorCode =
   | "not_found"
   | "network_error"
@@ -50,8 +49,8 @@ export { cliDeviceDenied } from "./device-denied.js"
 export { cliDeviceExpired } from "./device-expired.js"
 
 // Internal factories, kept in this file because they are not part of
-// the public surface (ADR-010 §2 "What this rule allows": internal
-// error codes are not surfaced to the user).
+// the public surface: internal error codes are not surfaced to the
+// user.
 export const gitNotInstalled = (): CliError =>
   new CliError(
     "git_not_installed",

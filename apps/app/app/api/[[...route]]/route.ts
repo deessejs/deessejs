@@ -24,8 +24,8 @@ export const dynamic = "force-dynamic"
 // delegates to the Better Auth handler. Since
 // `packages/auth/src/auth.ts` now configures `baseURL` as a dynamic
 // `{ allowedHosts, protocol, fallback }` form (the apex + wildcards
-// allowlist lives in `packages/auth/src/host-allowlist.ts`,
-// ADR-029 Decision #2), so per-request origin resolution
+// allowlist lives in `packages/auth/src/host-allowlist.ts`, the shared
+// allowlist with Hono CORS), so per-request origin resolution
 // is handled inside the auth handler itself — no changes needed in this
 // catch-all.
 export const GET = handle(api)

@@ -2,7 +2,9 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
-const PROTECTED_PREFIXES = ["/home", "/settings"]
+import { SETTINGS_PREFIX } from "@/lib/settings-paths"
+
+const PROTECTED_PREFIXES = ["/home", SETTINGS_PREFIX, "/admin"]
 const AUTH_PREFIXES = [
   "/login",
   "/signup",
@@ -12,14 +14,17 @@ const AUTH_PREFIXES = [
   // /device is intentionally NOT here: an authenticated user
   // landing on /device from the CLI's auth login must see the
   // approve / deny view, not /home. Routing is owned by the
-  // page-level Server Component. See ADR-022 §"Bug B".
+  // page-level Server Component (the previous Bug B caused an
+  // authenticated user to be bounced from /device to /home
+  // before they could approve the CLI's login).
 ]
 
 export const config = {
   // Single matcher covering both directions of the auth gate.
   matcher: [
     "/home/:path*",
-    "/settings/:path*",
+    "/account/settings/:path*",
+    "/admin/:path*",
     "/login",
     "/signup",
     "/forgot-password",
@@ -41,14 +46,35 @@ export const config = {
 // Next.js 16 always runs proxy files on the Node.js runtime —
 // setting `export const runtime = "nodejs"` here is rejected at build
 // time ("Route segment config is not allowed in Proxy file").
+//
+// `cache: "no-store"` makes the request-specific behaviour explicit:
+// the proxy must always read the current session cookie and never a
+// cached response. Added in the V1 admin RFC (§6.4) alongside the
+// `/admin` prefix to keep the gate decision per-request.
 
 interface GetSessionResponse {
-  session?: { user?: { emailVerified?: boolean } }
+  // Better Auth's `/get-session` returns either `null` or
+  // `{ session, user }` at the top level. Earlier revisions of this
+  // proxy assumed a nested `session.user` shape, which silently
+  // disabled the email-verification check on every protected route
+  // (the property was always undefined). The corrected shape lines
+  // up with `packages/api/src/http/middleware/session.ts`, which
+  // also reads `data.user` and `data.session` as siblings.
+  session?: { id: string }
+  user?: { emailVerified?: boolean; role?: string | null }
 }
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
-  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))
+  // Segment-aware prefix match. The previous `startsWith(prefix)` form
+  // would also match unrelated paths that happen to share a prefix
+  // (e.g. `/administer`), which is fine for the existing
+  // protected prefixes but not future-proof. Equality OR a trailing
+  // slash is the correct gate; it also aligns the auth-prefix check
+  // (which already used this shape).
+  const isProtected = PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )
   const isAuthPage = AUTH_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   )
@@ -71,8 +97,8 @@ export async function proxy(request: NextRequest) {
   // it keeps the self-fetch in the same Function (no DNS hop,
   // no port resolution).
   //
-  // ADR-021 §"Decision" #4 originally composed the URL from
-  // `serverEnv.API_BASE_URL`. That works for the cross-app case
+  // The inter-app URL config notes that composing the URL from
+  // `serverEnv.API_BASE_URL` works for the cross-app case
   // (`apps/web` calling into `apps/app`) but breaks for the
   // self-fetch here, because `API_BASE_URL` is not set on every
   // preview deploy and falls back to `http://localhost:3001` —
@@ -84,6 +110,7 @@ export async function proxy(request: NextRequest) {
   )
   const response = await fetch(getSessionUrl, {
     headers: { cookie: request.headers.get("cookie") ?? "" },
+    cache: "no-store",
   })
   const session = (response.ok
     ? ((await response.json()) as GetSessionResponse | null)
@@ -95,11 +122,25 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  if (isProtected && session?.session?.user && !session.session.user.emailVerified) {
+  if (isProtected && session?.user && !session.user.emailVerified) {
     return NextResponse.redirect(new URL("/verify-email", request.url))
   }
 
-  if (isAuthPage && session?.session) {
+  // Verified-email bounce fix (RFC "DeesseJS Administration Routes —
+  // V1" §6.4). Without this carve-out, an unverified user who lands
+  // on `/verify-email` (the destination of the protected-route
+  // redirect above) is matched as `isAuthPage` AND as
+  // `session.session` exists, so the next branch would bounce them
+  // straight back to `/home`, which itself redirects to
+  // `/verify-email`, looping. The user is stuck until they verify
+  // their email. Excluding the verification page from the bounce
+  // while the email is still unverified breaks the loop. Once the
+  // email is verified the page is no longer in the bounce set and
+  // the normal `/home` flow takes over.
+  const needsEmailVerification =
+    pathname === "/verify-email" && session?.user?.emailVerified === false
+
+  if (isAuthPage && session?.session && !needsEmailVerification) {
     return NextResponse.redirect(new URL("/home", request.url))
   }
 

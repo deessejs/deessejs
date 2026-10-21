@@ -28,9 +28,10 @@ function getAvatarUrl(email: string, image?: string | null): string {
 }
 
 /**
- * Combined "Public profile" card on /settings/profile: avatar (with a
- * disabled Change avatar button as V1 placeholder) and name form. The
- * email is read-only here; the Email card below handles changes.
+ * Combined "Public profile" card on /account/settings/profile: avatar
+ * (with a disabled Change avatar button as V1 placeholder) and name
+ * form. The email is read-only here; the Email card below handles
+ * changes.
  */
 export function ProfileHeaderCard() {
 	// eslint-disable-next-line no-restricted-syntax

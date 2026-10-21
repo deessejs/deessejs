@@ -33,7 +33,7 @@ jobs:
         uses: vale-cli/vale-action@v3
         with:
           version: 3.19.0
-          files: '["docs", "apps/internal-documentation/content/docs"]'
+          files: '["docs"]'
           config: .vale.ini
           sync: ${{ steps.styles.outputs.cache-hit != 'true' }}
           reporter: github-pr-check

@@ -13,7 +13,10 @@ import {
 
 /**
  * Client-only cadence toggle rendered in the hero. Reads and writes
- * the shared cadence so the Pro card below stays in sync.
+ * the shared cadence so the Pro and Agency cards below stay in sync.
+ *
+ * The cadence is the only dimension the buyer controls on the
+ * pricing page: monthly or annual, same catalog either way.
  */
 export function PricingHeroTabs() {
   const { cadence, setCadence } = usePricingCadence()
@@ -25,8 +28,8 @@ export function PricingHeroTabs() {
       className="mt-1"
     >
       <TabsList variant="line" className="inline-flex">
-        <TabsTrigger value="lifetime">Lifetime</TabsTrigger>
-        <TabsTrigger value="subscription">Subscription</TabsTrigger>
+        <TabsTrigger value="monthly">Monthly</TabsTrigger>
+        <TabsTrigger value="annual">Annual</TabsTrigger>
       </TabsList>
     </Tabs>
   )

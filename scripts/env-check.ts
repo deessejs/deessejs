@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Real env validation — runs the server + client Zod schemas and reports
+ * Real env validation: runs the server + client Zod schemas and reports
  * any issues. Replaces the previous `pnpm env:check` (which was just
  * `tsc --noEmit` and validated zero env vars).
  *
@@ -9,9 +9,9 @@
  *   NODE_ENV=production pnpm env:check
  *
  * Production invariants (DATABASE_URL required, BETTER_AUTH_SECRET >= 32,
- * RESEND_API_KEY conditional on MAIL_TRANSPORT) live in
- * `packages/env/src/schema.ts` as a `superRefine` — they only fire when
- * `NODE_ENV === "production"`, so dev and test run without a full .env.
+ * RESEND_API_KEY conditional on MAIL_TRANSPORT, RESEND_PLAYBOOK_TOPIC_ID)
+ * live in `packages/env/src/schema.ts` as a `superRefine`. They only fire
+ * when `NODE_ENV === "production"`, so dev and test run without a full .env.
  *
  * This script additionally checks the client-side invariant
  * (NEXT_PUBLIC_APP_URL != "http://localhost:3000" in production) because
@@ -24,7 +24,7 @@ import { serverSchema, clientSchema } from "../packages/env/src/schema.ts"
 const NODE_ENV = process.env.NODE_ENV ?? "development"
 const errors: string[] = []
 
-// Server env — superRefines handle production-only checks automatically.
+// Server env: superRefines handle production-only checks automatically.
 const serverParsed = serverSchema.safeParse(process.env)
 if (!serverParsed.success) {
   for (const issue of serverParsed.error.issues) {
@@ -44,9 +44,9 @@ if (!clientParsed.success) {
 
 // Client-side production invariant: every NEXT_PUBLIC_* URL gets inlined
 // at build time. The schema accepts the localhost defaults for dev, but in
-// production we want the real per-Vercel-environment URL. ADR-028
-// Decision #5 parameterises this check across all four URL vars so CI
-// catches a missing override before deploy does.
+// production we want the real per-Vercel-environment URL. This check
+// parameterises across all four URL vars so CI catches a missing override
+// before deploy does.
 if (NODE_ENV === "production") {
   const SCHEMA_DEFAULTS = {
     NEXT_PUBLIC_APP_URL: "http://localhost:3001",

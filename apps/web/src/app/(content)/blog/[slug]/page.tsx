@@ -205,7 +205,7 @@ export default async function PostPage(
           <h2 className="mb-6 text-2xl font-semibold tracking-tight">
             Related reading
           </h2>
-          <PostCardGrid posts={related} gridCols="1-2-3" />
+          <PostCardGrid posts={related} />
         </section>
       )}
     </article>

@@ -33,7 +33,7 @@ export const resetPasswordSchema = z
 	})
 
 /**
- * Device-flow user code (ADR-020). The Better Auth device
+ * Device-flow user code. The Better Auth device
  * authorization plugin issues 8-character codes drawn from a
  * 32-symbol base32 alphabet that excludes I, O, 0, 1 to avoid
  * visual ambiguity (RFC 4648 base32 sans ambiguities). The

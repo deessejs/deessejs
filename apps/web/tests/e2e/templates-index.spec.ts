@@ -1,7 +1,6 @@
 /**
  * P0 e2e suite for the /templates index page.
  *
- * Per ADR-020:
  *   P0-1 — populated catalog renders the templates grid.
  *   P0-2 — empty catalog renders the documented empty state.
  *

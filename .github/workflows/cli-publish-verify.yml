@@ -20,15 +20,15 @@ name: CLI publish verify
 # tarball the build step produced locally. Trusted Publishing stays
 # exclusively in release.yml.
 #
-# Note (ADR-021): release.yml now publishes BOTH @latest (Tier 3, on
-# push to main) AND @canary (Tier 2, on workflow_dispatch with the
-# `canary` input). The verify job packs and tests without publishing,
-# so the multi-dist-tag change does not affect this workflow. The
-# tarball shape is identical for both channels; what differs is the
-# `--tag` flag on the publish step in release.yml, which is not
-# exercised here.
+# Note: release.yml now publishes BOTH @latest (Tier 3, on push to
+# main) AND @canary (Tier 2, on workflow_dispatch with the `canary`
+# input). The verify job packs and tests without publishing, so the
+# multi-dist-tag change does not affect this workflow. The tarball
+# shape is identical for both channels; what differs is the `--tag`
+# flag on the publish step in release.yml, which is not exercised
+# here.
 #
-# Implements ADR-013.
+# Implements the cli-publish-verify gate (Trusted Publisher setup).
 
 on:
   pull_request:
@@ -75,8 +75,21 @@ jobs:
         run: pnpm turbo build --filter=@deessejs/cli
 
       # Step 1: pack the tarball that would be published.
+      #
+      # Use `pnpm pack`, not `pnpm --filter ... exec npm pack`. The
+      # CLI's `apps/cli/package.json` references `catalog:` and
+      # `workspace:*` entries (pnpm-specific protocol) for deps
+      # like `cross-spawn` and `@workspace/*`. `pnpm pack` resolves
+      # those into concrete version ranges before packing;
+      # `npm pack` does not, and ships a manifest that consumers
+      # (using plain npm) cannot install: npm fails with
+      # EUNSUPPORTEDPROTOCOL "Unsupported URL Type 'catalog:'".
+      # A previous revision of this step ran `npm pack`; that
+      # produced a publishable tarball from pnpm's perspective but
+      # unpublishable from a downstream consumer's. `pnpm pack`
+      # matches what the actual release path needs to ship.
       - name: Pack CLI tarball
-        run: pnpm --filter @deessejs/cli exec npm pack
+        run: pnpm --dir apps/cli pack
 
       # Step 2: inspect the contents. A successful pack is not enough;
       # the tarball must contain the compiled bundle and the expected
@@ -87,6 +100,14 @@ jobs:
       # exits non-zero. With pipefail, this would mask a successful
       # match as a failure. Instead we use a temp file and a simple
       # existence check.
+      #
+      # `package/dist/index.d.ts` is intentionally NOT in the required
+      # list. The CLI is published as a runnable binary, not a library
+      # (see `apps/cli/package.json` `bin` / `main` / `module` and the
+      # `dts: false` rationale in `apps/cli/tsup.config.ts`). Generating
+      # a stub `.d.ts` here would silently mask any future regression in
+      # the typecheck path; removing the requirement keeps the verify
+      # gate aligned with the actual contract (executable-only package).
       - name: Inspect tarball contents
         run: |
           set -eu
@@ -97,7 +118,6 @@ jobs:
           for required in \
             "package/package.json" \
             "package/dist/index.js" \
-            "package/dist/index.d.ts" \
             "package/README.md" \
           ; do
             if ! echo "$FILES" | grep -qxF "$required"; then
@@ -105,6 +125,51 @@ jobs:
               exit 1
             fi
           done
+          # Defensive: the published manifest must not declare a `types`
+          # field pointing at a file that does not exist in the tarball.
+          # If a future change reintroduces `dts: true` in tsup.config.ts
+          # the manifest will start claiming a `.d.ts` exists; this check
+          # catches the drift between manifest and tarball before
+          # consumers hit it on `npm install`.
+          TYPES_PATH=$(node -e "const p=require('./apps/cli/package.json'); process.stdout.write(p.types||'')")
+          if [ -n "$TYPES_PATH" ] && ! echo "$FILES" | grep -qxF "package/${TYPES_PATH#./}"; then
+            echo "::error::Manifest declares types: ${TYPES_PATH} but the tarball does not contain package/${TYPES_PATH#./}"
+            exit 1
+          fi
+          # The packaged manifest must not contain pnpm-only
+          # protocol specifiers (`catalog:` and `workspace:`).
+          # The pack step uses `pnpm pack` to substitute these
+          # into concrete version ranges; if a future change
+          # switches the pack command back to `npm pack`, this
+          # check catches the regression before consumers hit
+          # EUNSUPPORTEDPROTOCOL on `npm install`. `devDependencies`
+          # is included in the scan because some pack tools
+          # (notably pnpm with the default `files` field) do ship
+          # them inside `package/package.json`; a leaked
+          # `workspace:` reference there would still be a
+          # publish-time defect even if the consumer never
+          # installs it.
+          tar -xzOf "$TARBALL" package/package.json | node -e '
+            const pkg = JSON.parse(require("fs").readFileSync(0, "utf8"))
+            const offenders = []
+            const scan = (obj) => {
+              if (!obj) return
+              for (const [name, value] of Object.entries(obj)) {
+                if (typeof value === "string" && (value === "catalog:" || value.startsWith("workspace:"))) {
+                  offenders.push(`${name} = ${JSON.stringify(value)}`)
+                }
+                if (typeof value === "object") scan(value)
+              }
+            }
+            scan(pkg.dependencies)
+            scan(pkg.devDependencies)
+            scan(pkg.peerDependencies)
+            if (offenders.length) {
+              console.error("::error::Packaged manifest contains pnpm-only specifiers:")
+              for (const o of offenders) console.error("  - " + o)
+              process.exit(1)
+            }
+          '
 
       # Step 3: dry-run install in a clean project. This catches the
       # 2.0.1 failure mode (workspace:* / catalog: in dependencies
@@ -115,8 +180,51 @@ jobs:
           TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
-          npm init -y > /dev/null
-          npm install --dry-run "$GITHUB_WORKSPACE/$TARBALL"
+          # Split the two commands so a failure in `npm init` vs
+          # `npm install --dry-run` shows up as a distinct exit
+          # code in the CI log. Previously both ran on the same
+          # line and only the last exit code was reported, so a
+          # failure in `npm init` would surface as a dry-run
+          # failure and vice versa.
+          npm init -y
+          # --loglevel=info surfaces the actual `npm error` block
+          # (peer-dep conflicts, lifecycle script warnings,
+          # unsupported-engine notices) that the default debug
+          # log keeps at "silly"/"verbose" and GitHub's log
+          # truncation can clip. --foreground-scripts runs
+          # install scripts in the foreground so a failing
+          # postinstall is not hidden behind a streamed tail.
+          # stdout and stderr are captured separately so the
+          # `npm error` block is not interleaved with the
+          # `added N packages in Ms` summary.
+          set +e
+          npm install --dry-run --loglevel=info --foreground-scripts \
+            "$GITHUB_WORKSPACE/$TARBALL" \
+            >/tmp/npm-stdout.log 2>/tmp/npm-stderr.log
+          rc=$?
+          set -e
+          cat /tmp/npm-stdout.log
+          echo "::group::npm stderr (rc=$rc)"
+          cat /tmp/npm-stderr.log
+          echo "::endgroup::"
+          # The debug log contains the full request/response
+          # trace at level silly. Dump it last so the human-
+          # readable summary above is read first, and copy it
+          # into $GITHUB_WORKSPACE so the upload-artifact step
+          # below retains it for offline inspection — the
+          # in-log `cat` only is not enough when the error is
+          # itself clipped by GitHub's log truncation.
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::npm install --dry-run exited with code $rc"
+            DEBUG_LOG=$(ls -t /home/runner/.npm/_logs/*-debug-0.log 2>/dev/null | head -1 || true)
+            if [ -n "$DEBUG_LOG" ]; then
+              echo "::group::npm debug log ($DEBUG_LOG)"
+              cat "$DEBUG_LOG"
+              echo "::endgroup::"
+              cp "$DEBUG_LOG" "$GITHUB_WORKSPACE/npm-dry-run-debug.log" || true
+            fi
+            exit $rc
+          fi
           popd > /dev/null
           rm -rf "$SCRATCH"
 
@@ -129,8 +237,30 @@ jobs:
           TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
           SCRATCH=$(mktemp -d)
           pushd "$SCRATCH" > /dev/null
-          npm init -y > /dev/null
-          npm install "$GITHUB_WORKSPACE/$TARBALL"
+          npm init -y
+          npm install "$GITHUB_WORKSPACE/$TARBALL" || {
+            rc=$?
+            echo "::error::npm install exited with code $rc"
+            DEBUG_LOG=$(ls -t /home/runner/.npm/_logs/*-debug-0.log 2>/dev/null | head -1 || true)
+            if [ -n "$DEBUG_LOG" ]; then
+              echo "::group::npm debug log ($DEBUG_LOG)"
+              cat "$DEBUG_LOG"
+              echo "::endgroup::"
+            fi
+            exit $rc
+          }
           npx @deessejs/cli --help
           popd > /dev/null
           rm -rf "$SCRATCH"
+
+      # Upload the npm debug log even when the dry-run step
+      # fails, so the full request/response trace (which can be
+      # clipped by GitHub's in-log viewer) is recoverable from
+      # the run artifacts.
+      - name: Upload npm debug log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-debug-log
+          path: npm-dry-run-debug.log
+          if-no-files-found: ignore

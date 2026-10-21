@@ -1,9 +1,10 @@
 /**
  * Integration tests for the Hono system health routes.
  *
- * Per ADR-016, exercises the real `api` Hono object via
- * `api.request()`. The readiness test reads the `postgres:ready`
- * flag from `globalSetup` and skips loudly when false.
+ * Per the api CI integration tests, exercises the real `api`
+ * Hono object via `api.request()`. The readiness test reads the
+ * `postgres:ready` flag from `globalSetup` and skips loudly when
+ * false.
  *
  * Routes tested:
  *   - GET /api/v1/health  (liveness, no DB)
@@ -44,7 +45,8 @@ describe("GET /api/v1/ready", () => {
       // catch returns 503 with `{ status: "not ready" }`. With
       // Postgres reachable, the proxy in
       // `packages/database/src/client.ts` succeeds and the route
-      // returns 200. See ADR-016 for the integration test harness.
+      // returns 200. See the integration test harness notes for the
+      // schema behind the readiness route.
       const res = await api.request("/api/v1/ready")
       expect(res.status).toBe(200)
       const body = await res.json()

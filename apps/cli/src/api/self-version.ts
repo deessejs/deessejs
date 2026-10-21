@@ -18,6 +18,6 @@ declare const process: {
  * Single source of truth: apps/cli/package.json. Changesets owns
  * the field; tsup reads it; the bundle carries it.
  *
- * See ADR-019.
+ * See the CLI version / build injection plan.
  */
 export const readPackageVersion = (): string => process.env.CLI_PACKAGE_VERSION

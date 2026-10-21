@@ -8,8 +8,6 @@
  * (and eventually sourced from content-collections or an external CMS)
  * without dragging React into the test surface.
  *
- * Copy authority lives in
- * `apps/internal-documentation/content/docs/(root)/home-positioning-strategy.mdx`.
  * Numbers in `STATS` are internal estimates, not fetched from npm/GitHub
  * APIs yet (see the TODO on STATS).
  */

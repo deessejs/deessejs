@@ -30,7 +30,7 @@ What changed in the fork:
 - **Identity**: copy, README wording, and the brand surface. The SaaS Template name disappears from DeesseJS-flavoured repos.
 - **Contracts package layout**: auth, database, and email publish as workspace packages and version independently.
 - **API surface**: Hono + oRPC mount at `/api/v1/`, with versioned Zod contracts in `@workspace/contracts/v1`. The original used ad-hoc route handlers.
-- **Device-flow auth**: added (ADR-020) so the CLI can authenticate against the web app without copying cookies.
+- **Device-flow auth**: added so the CLI can authenticate against the web app without copying cookies.
 - **CLI**: `@deessejs/cli` publishes to npm. The original had no CLI; everything was a fork-and-edit workflow.
 
 What stayed the same:

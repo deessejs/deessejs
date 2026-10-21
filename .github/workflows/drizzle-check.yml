@@ -10,7 +10,7 @@ name: Drizzle check
 #     against the destructive-SQL rules kept active in
 #     .squawk.toml.
 #
-# Implemented per ADR-015.
+# Implemented per the drizzle-migrations CI plan.
 
 on:
   pull_request:

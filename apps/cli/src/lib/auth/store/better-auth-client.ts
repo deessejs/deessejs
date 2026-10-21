@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/client"
+import type { BetterAuthClientOptions } from "better-auth/client"
 import { deviceAuthorizationClient } from "better-auth/client/plugins"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
@@ -15,27 +16,25 @@ import { readPackageVersion } from "../../../api/self-version.js"
  * out of the box.
  *
  * The host `app.deessejs.com` is the production API host
- * per ADR-015 and ADR-016 (which both reproduce / test
- * against `app.deessejs.com/api/v1/...`). The `basePath` of
- * `/api/v1/auth` is appended by the Better Auth client, so
- * the device-flow endpoints live at
+ * (both the Hono↔Better-Auth basePath fix and the API CI
+ * suite exercise `app.deessejs.com/api/v1/...`). The
+ * `basePath` of `/api/v1/auth` is appended by the Better Auth
+ * client, so the device-flow endpoints live at
  * `${baseURL}${API_AUTH_PATH}/device/*` =
  * `https://app.deessejs.com/api/v1/auth/device/*`.
  *
  * (Note: an earlier draft of this comment cited
- * `deessejs.com` from ADR-014, which is the marketing
- * apex. ADR-014 was wrong about which host serves the
- * API. The canonical prod API host is `app.deessejs.com`,
- * confirmed by ADR-015 §"Root cause" and ADR-016
- * §"API CI". ADR-014 should be updated to match.)
+ * `deessejs.com`, which is the marketing apex. That host
+ * does not serve the API. The canonical prod API host is
+ * `app.deessejs.com`, confirmed by the basePath regression
+ * analysis and the API CI integration tests.)
  *
  * Three sources, in priority order:
  *   1. `DEESSEJS_API_URL` env var (CI / dev override;
  *      never set by end users in practice).
  *   2. The baked-in default below (production).
  *   3. A thrown validation error when source 1 is set but
- *      malformed (per ADR-014 §"Malformed values fail
- *      loudly").
+ *      malformed (malformed values fail loudly).
  */
 export const DEFAULT_API_URL = "https://app.deessejs.com"
 
@@ -59,7 +58,7 @@ export function resolveBaseURL(): string {
 }
 
 /**
- * Better Auth client factory for the CLI (ADR-020).
+ * Better Auth client factory for the CLI.
  *
  * The factory is the public surface (not a singleton).
  * Two reasons:
@@ -81,18 +80,30 @@ export function resolveBaseURL(): string {
  * Node.
  *
  * `fetchOptions.headers` injects the CLI User-Agent on every
- * request (ADR-020 limitation 1 mitigation).
+ * request so the `/settings/sessions` view can label CLI
+ * sessions correctly.
  */
+const cliAuthClientOptions = {
+	// baseURL is read **inside** `createCliAuthClient`, not
+	// here, so tests can override `DEESSEJS_API_URL` in
+	// `beforeEach` and have the new value picked up. Reading
+	// it at module-load time freezes the value at import and
+	// tests (and any other runtime that mutates the env
+	// between import and call) silently hit the production
+	// API. See test/integration/auth/login.test.ts.
+	basePath: API_AUTH_PATH,
+	plugins: [deviceAuthorizationClient()],
+	disableDefaultFetchPlugins: true,
+	fetchOptions: {
+		headers: {
+			"user-agent": `DeesseJS CLI/${readPackageVersion()}`,
+		},
+	},
+} satisfies BetterAuthClientOptions
+
 export function createCliAuthClient() {
 	return createAuthClient({
+		...cliAuthClientOptions,
 		baseURL: resolveBaseURL(),
-		basePath: API_AUTH_PATH,
-		plugins: [deviceAuthorizationClient()],
-		disableDefaultFetchPlugins: true,
-		fetchOptions: {
-			headers: {
-				"user-agent": `DeesseJS CLI/${readPackageVersion()}`,
-			},
-		},
 	})
 }

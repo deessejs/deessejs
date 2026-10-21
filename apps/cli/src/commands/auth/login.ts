@@ -13,7 +13,7 @@ import { type CliError } from "../../errors/index.js"
 import { printError, printJson } from "../../output/index.js"
 
 /**
- * deesse auth login (ADR-020, ADR-022).
+ * deesse auth login.
  *
  * Commander wrapper around the device-flow orchestration in
  * apps/cli/src/lib/auth/flow/. This file owns the command
@@ -27,13 +27,14 @@ import { printError, printJson } from "../../output/index.js"
  *   1. requestDeviceCode: POST /device/code
  *   2. openVerificationUrl: spawn the OS browser
  *   3. pollForToken: poll /device/token until approved
- *   4. fetchUserIdentity (ADR-022): GET /get-session with
+ *   4. fetchUserIdentity: GET /get-session with
  *      `Authorization: Bearer <access_token>` to resolve
  *      the user. Throws cli_device_expired if the server
  *      rejects the token or returns no user — a soft
  *      `?? { id: "" }` fallback would write a fake user to
  *      ~/.deessejs/auth.json and surface as "logged in as
- *      unknown user" downstream (Bug A).
+ *      unknown user" downstream (the first regression caught
+ *      in production after the device-flow launch).
  *   5. writeAuth: persist ~/.deessejs/auth.json with mode 0600
  */
 export const loginCommand = new Command("login")

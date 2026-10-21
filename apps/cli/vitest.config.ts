@@ -6,7 +6,6 @@ import { defineConfig } from "vitest/config"
 // would see `process.env.CLI_PACKAGE_VERSION` as `undefined` (Node's
 // real process.env does not carry the field — it is a build-time
 // substitution) and `readPackageVersion()` would return undefined.
-// See ADR-019.
 const require = createRequire(import.meta.url)
 const pkg = require("./package.json") as { version: string }
 

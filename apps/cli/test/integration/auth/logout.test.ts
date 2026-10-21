@@ -8,7 +8,7 @@ import { logoutCommand } from "../../../src/commands/auth/logout.js"
 import { startFakeAuthServer, type FakeAuthServer } from "../fakes/better-auth.js"
 
 /**
- * Integration test for `deesse auth logout` (ADR-020).
+ * Integration test for `deesse auth logout`.
  *
  * Sequence:
  *   1. POST /api/v1/auth/sign-out with the stored token.

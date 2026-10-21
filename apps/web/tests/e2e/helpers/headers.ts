@@ -6,7 +6,7 @@
  * playwright.config.ts (they're needed to authenticate past
  * Vercel Deployment Protection on every request).
  *
- * Header values are an enum per ADR-020:
+ * Header values are an enum:
  *
  *   "1" -> force ORPCError("TEMPLATES_FETCH_FAILED", status 502)
  *   "2" -> return { templates: [] } (empty catalog)

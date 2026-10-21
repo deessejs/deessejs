@@ -37,7 +37,7 @@ The script chunks, embeds, and upserts into the
 ## 4. Stream a query
 
 ```ts
-const answer = await rag.stream("What does ADR-013 say about topic tags?")
+const answer = await rag.stream("What does the knowledge-base guide say about topic tags?")
 for await (const chunk of answer) {
   process.stdout.write(chunk.text)
 }

@@ -196,7 +196,7 @@ Exit codes: always `0`. A non-2xx from the server's sign-out endpoint logs but d
 
 ## Error codes reference
 
-The CLI's error surface forms a closed list (per ADR-010 §2). Adding a public code counts as a breaking change. Pattern-match on these in your scripts:
+The CLI's error surface forms a closed list: only the codes documented below are ever returned, and adding a new one counts as a breaking change. Pattern-match on these in your scripts:
 
 | Code | Meaning | Remediation |
 | --- | --- | --- |

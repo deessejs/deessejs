@@ -15,8 +15,6 @@ import playwrightConfig from "./playwright.config.js"
  *    that depend on the bypass header (P0-3, P0-6, forced-cache-poison)
  *    are expected to skip or fail under this preset; they
  *    only run against the Vercel preview CI preset.
- *
- * Per ADR-020.
  */
 export default defineConfig({
   ...playwrightConfig,
