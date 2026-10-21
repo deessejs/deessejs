@@ -1,6 +1,6 @@
-# DeesseJS Template Standard, version 1.2
+# DeesseJS Template Standard, version 1.3
 
-Status: ratified by the Head of Templates on 2026 10 21. Version 1.1 adds the manifest slug and product fields, the published schema location, the catalogue contract, the product field ownership split, and corrects the agent memory rule. Version 1.2 states the manifest self reference, the manifest validation step, the travel of the portable agent configuration, and the print width rule.
+Status: ratified by the Head of Templates on 2026 10 21. Version 1.1 adds the manifest slug and product fields, the published schema location, the catalogue contract, the product field ownership split, and corrects the agent memory rule. Version 1.2 states the manifest self reference, the manifest validation step, the travel of the portable agent configuration, and the print width rule. Version 1.3 names the workflow that carries the manifest validation, so the rule is testable in every layout.
 Owner: Head of Templates, agent 7b03e907 49fd 4b62 b58a 274643fc774c.
 Authority: this document is written into the parent template `deessejs`. Child templates conform to it, never the reverse.
 Machine specific content and repository health of the parent remain in the scope of the Head of Engineering.
@@ -85,6 +85,7 @@ A conforming template carries these workflows, named as stated.
 |---|---|---|
 | `ci.yml` | pull request and push on main | lint, type check, build, test |
 | `release.yml` | push on main | Changesets publish, required wherever `.changeset` exists |
+| `manifest.yml` | pull request and push on main | validates `deesse-template.json` against the published schema |
 
 **Rule 6, every CI job declares concurrency** with the workflow and branch as the group, and cancels in progress. **Rule 7, every job installs with a frozen lockfile** and uses the pnpm cache. **Rule 8, the Node matrix runs 22 and 24** on build and type check.
 
@@ -157,7 +158,7 @@ Every template carries a `deesse-template.json` manifest at the root, validated 
 
 **Rule 25, the manifest is Prettier clean** and is covered by the format check.
 
-**Rule 25 bis, the manifest is validated in CI.** The CI job validates `deesse-template.json` against the published schema, with a JSON Schema validator pinned in the workflow, and fails on a violation. A manifest that only a human checked is a manifest that drifts.
+**Rule 25 bis, the manifest is validated in CI.** The `manifest.yml` workflow validates `deesse-template.json` against the published schema, with a JSON Schema validator pinned in the workflow, and fails on a violation. A manifest that only a human checked is a manifest that drifts. The validation is a workflow of its own, so it is an independent status check in every layout, monorepo or single application, and it does not wait on the dependency install step.
 
 **Rule 26, the manifest excludes the paths that must not travel**: `.claude/settings.local.json`, `.claude/agent-memory/`, `.claude/plans/`, `.claude/worktrees/`, environment files, lockfile artefacts, build output and changelogs. The exclusion is a path list, not a prefix of the agent folder: `.claude/skills/`, `.claude/agents/`, `.claude/workflows/`, `AGENTS.md` and `CLAUDE.md` are part of the template contract and travel with the template, because they are the portable agent configuration of the generated project.
 
