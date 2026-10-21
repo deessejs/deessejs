@@ -68,15 +68,20 @@ jobs:
       - name: Apply migrations
         run: pnpm --filter @workspace/database db:migrate
 
-      # Canonical table check: count must be 8 and the names must
-      # match the Better Auth + organization plugin output
-      # (device_code is snake_case in the regenerated schema — see
-      # PR #239 for the rationale).
+      # Canonical table check: count must be 10 and the names must
+      # match the Better Auth + organization plugin output plus the
+      # two template catalog tables (device_code is snake_case in the
+      # regenerated schema — see PR #239 for the rationale).
+      #
+      # The ORDER BY pins COLLATE "C" so the expected string is byte
+      # order and does not depend on the collation the server was
+      # initialised with. Under "C", '_' (0x5F) sorts before 's'
+      # (0x73), so template_repository_snapshots precedes templates.
       - name: Verify table set
         run: |
           set -euo pipefail
-          EXPECTED='account|device_code|invitation|member|organization|session|user|verification'
-          ACTUAL=$(psql "$DATABASE_URL" -tA -c "SELECT string_agg(table_name, '|' ORDER BY table_name) FROM information_schema.tables WHERE table_schema = 'public'")
+          EXPECTED='account|device_code|invitation|member|organization|session|template_repository_snapshots|templates|user|verification'
+          ACTUAL=$(psql "$DATABASE_URL" -tA -c "SELECT string_agg(table_name, '|' ORDER BY table_name COLLATE \"C\") FROM information_schema.tables WHERE table_schema = 'public'")
           if [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "Expected: $EXPECTED"
             echo "Actual:   $ACTUAL"
@@ -109,3 +114,31 @@ jobs:
             exit 1
           fi
           echo "session.user_id -> user.id: ON DELETE CASCADE"
+
+      # The template catalog: the snapshot's primary key is also its
+      # foreign key, so there is at most one current snapshot per
+      # template, and ON DELETE restrict keeps a snapshot from
+      # outliving the editorial row it describes.
+      - name: Verify template_repository_snapshots shape
+        run: |
+          set -euo pipefail
+          COLS=$(psql "$DATABASE_URL" -tA -c "SELECT string_agg(column_name, ',' ORDER BY column_name) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'template_repository_snapshots'")
+          echo "template_repository_snapshots columns: $COLS"
+          # Pad with commas so a column is matched whole and not as a
+          # substring of a longer name.
+          for required in template_id repository_name repository_description canonical_url license topics readme repository_updated_at stars fetched_at; do
+            if ! echo ",$COLS," | grep -q ",$required,"; then
+              echo "Missing column: $required"
+              exit 1
+            fi
+          done
+
+      - name: Verify FK restrict from template_repository_snapshots.template_id
+        run: |
+          set -euo pipefail
+          FK=$(psql "$DATABASE_URL" -tA -c "SELECT delete_rule FROM information_schema.referential_constraints WHERE constraint_name = 'template_repository_snapshots_template_id_templates_id_fk'")
+          if [ "$FK" != "RESTRICT" ]; then
+            echo "Expected RESTRICT delete on template_repository_snapshots_template_id_templates_id_fk, got: $FK"
+            exit 1
+          fi
+          echo "template_repository_snapshots.template_id -> templates.id: ON DELETE RESTRICT"
