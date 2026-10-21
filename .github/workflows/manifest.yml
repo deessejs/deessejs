@@ -2,7 +2,7 @@ name: Manifest
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, staging]
   push:
     branches: [main]
   workflow_dispatch:
