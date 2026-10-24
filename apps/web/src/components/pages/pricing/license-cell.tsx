@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link"
 
 import { Badge } from "@workspace/ui/components/badge"
@@ -11,12 +13,20 @@ import type { LicenseType } from "@/lib/pricing"
 import { Cell } from "./_shared/cell"
 import { LICENSE_KICKER } from "./license-kicker"
 import { PriceBlock } from "./price-block"
+import { usePricingCadence } from "@/components/marketing/pricing-cadence-context"
 
 /**
  * License card — kicker + name + tagline + price + bullets + CTA.
  *
  * The `recommended` flag triggers the elevated visual treatment
  * (negative margin + shadow + ring) used for the Pro tier.
+ *
+ * The price rendering path is keyed on `price.kind`, not on the
+ * `recommended` flag: subscription plans go through `TierCardPricing`
+ * (which reads the cadence from the context); free and custom plans
+ * go through `PriceBlock` directly. This way, any plan with a
+ * subscription price gets the cadence toggle, regardless of its
+ * position in the grid.
  */
 export function LicenseCell({
   license,
@@ -26,6 +36,7 @@ export function LicenseCell({
   isLast?: boolean
 }) {
   const isRecommended = license.recommended === true
+  const isSubscription = license.price.kind === "subscription"
   return (
     <div
       className={cn(
@@ -59,8 +70,7 @@ export function LicenseCell({
             {license.name}
           </h3>
           <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
-            {license.id === "professional" ||
-            license.id === "agency" ? (
+            {isSubscription ? (
               <TierTagline tier={license.id === "professional" ? "professional" : "agency"} />
             ) : (
               license.tagline
@@ -68,56 +78,59 @@ export function LicenseCell({
           </p>
         </header>
 
-        {isRecommended ||
-        (license.id === "agency") ? (
+        {isSubscription ? (
           <TierCardPricing license={license} />
         ) : (
-          <>
-            <PriceBlock price={license.price} />
-
-            <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
-              {license.forWho}
-            </p>
-
-            <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
-              {license.positioning}
-            </p>
-
-            <ul className="flex flex-col gap-2 text-copy-14 text-muted-foreground">
-              {license.ships.map((line) => (
-                <li key={line} className="flex gap-2">
-                  <span aria-hidden="true" className="select-none">
-                    •
-                  </span>
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-auto pt-2">
-              {license.cta.external ? (
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="w-full"
-                >
-                  <a href={license.cta.href}>{license.cta.label}</a>
-                </Button>
-              ) : (
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Link href={license.cta.href}>{license.cta.label}</Link>
-                </Button>
-              )}
-            </div>
-          </>
+          <NonSubscriptionLicenseBody license={license} />
         )}
       </Cell>
     </div>
   )
 }
+
+/**
+ * Body of a non-subscription license card (Community, Enterprise).
+ * Lives in a sub-component so the parent component stays readable
+ * and the hook order stays predictable (usePricingCadence is only
+ * called when the subscription path is taken).
+ */
+function NonSubscriptionLicenseBody({ license }: { license: LicenseType }) {
+  const { cadence } = usePricingCadence()
+  return (
+    <>
+      <PriceBlock price={license.price} cadence={cadence} />
+
+      <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
+        {license.forWho}
+      </p>
+
+      <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
+        {license.positioning}
+      </p>
+
+      <ul className="flex flex-col gap-2 text-copy-14 text-muted-foreground">
+        {license.ships.map((line) => (
+          <li key={line} className="flex gap-2">
+            <span aria-hidden="true" className="select-none">
+              •
+            </span>
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-auto pt-2">
+        {license.cta.external ? (
+          <Button asChild size="lg" variant="outline" className="w-full">
+            <a href={license.cta.href}>{license.cta.label}</a>
+          </Button>
+        ) : (
+          <Button asChild size="lg" variant="outline" className="w-full">
+            <Link href={license.cta.href}>{license.cta.label}</Link>
+          </Button>
+        )}
+      </div>
+    </>
+  )
+}
+

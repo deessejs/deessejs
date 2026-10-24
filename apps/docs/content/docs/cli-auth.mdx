@@ -115,7 +115,7 @@ The CLI tries `fs.open(path, O_WRONLY | O_CREAT, 0o600)` on POSIX. If the file a
 
 ### "Logged in as unknown user"
 
-The CLI never falls back to a synthetic identity when the server rejects the bearer token (per ADR-022, "Bug A"). If you see this, it means `auth.json` got hand-edited or copied from another machine. Delete the file and re-login.
+The CLI never falls back to a synthetic identity when the server rejects the bearer token. If you see this, it means `auth.json` got hand-edited or copied from another machine. Delete the file and re-login.
 
 ### Network errors during polling
 

@@ -80,18 +80,24 @@ function getServerEnv(): Readonly<ServerEnv> {
     RESEND_FROM_EMAIL: env.RESEND_FROM_EMAIL,
     RESEND_FROM_NAME: env.RESEND_FROM_NAME,
     MAIL_TRANSPORT: env.MAIL_TRANSPORT,
+    RESEND_PLAYBOOK_TOPIC_ID: env.RESEND_PLAYBOOK_TOPIC_ID,
     RATE_LIMIT_PER_MINUTE: env.RATE_LIMIT_PER_MINUTE,
     GITHUB_TOKEN: env.GITHUB_TOKEN,
     GITHUB_CLIENT_ID: env.GITHUB_CLIENT_ID,
     GITHUB_CLIENT_SECRET: env.GITHUB_CLIENT_SECRET,
-    // Inter-app URL configuration (ADR-021). Read from serverEnv
-    // by apps/app's proxy and apps/cli's RPCLink; apps/web reads
-    // the NEXT_PUBLIC_* mirror via clientEnv for browser-side code.
+    // Inter-app URL configuration. Read from serverEnv by
+    // apps/app's proxy and apps/cli's RPCLink; apps/web reads the
+    // NEXT_PUBLIC_* mirror via clientEnv for browser-side code.
     WEB_URL: env.WEB_URL,
     APP_URL: env.APP_URL,
     DOCS_URL: env.DOCS_URL,
     API_BASE_URL: env.API_BASE_URL,
     PARENT_DOMAIN: env.PARENT_DOMAIN,
+    // Test-only override for the email-verification-on-invitation
+    // contract. See `schema.ts` for the rationale. The default
+    // ("true") is applied by the schema when the env var is absent.
+    REQUIRE_EMAIL_VERIFICATION_ON_INVITATION:
+      env.REQUIRE_EMAIL_VERIFICATION_ON_INVITATION,
   } as ServerEnv) as Readonly<ServerEnv>
 
   // Runtime assertion: no NEXT_PUBLIC_* may leak through the server face.
@@ -146,7 +152,15 @@ export const serverEnv: Readonly<ServerEnv> = new Proxy(
     getOwnPropertyDescriptor(_target, prop) {
       const env = getServerEnv() as unknown as Record<string, unknown>
       if (typeof prop === "symbol") return undefined
-      return Object.getOwnPropertyDescriptor(env, prop)
+      const descriptor = Object.getOwnPropertyDescriptor(env, prop)
+      if (!descriptor) return undefined
+      // The proxy target is an empty, extensible object, so the
+      // invariant requires reporting `configurable: true` for every
+      // key the target does not own. The materialised object is
+      // frozen, so its own descriptors say `configurable: false`;
+      // passing them through makes `Object.keys(serverEnv)` throw a
+      // TypeError.
+      return { ...descriptor, configurable: true }
     },
   }
 )

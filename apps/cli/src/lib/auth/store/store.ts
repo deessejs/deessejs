@@ -4,14 +4,14 @@ import { dirname } from "node:path"
 import { cachePath } from "../../../cache/location.js"
 
 /**
- * CLI session-token store (ADR-020).
+ * CLI session-token store.
  *
  * Holds the Better Auth session token returned by
  * /device/token after the user approves the device flow in
  * the browser. The file lives at `~/.deessejs/auth.json`,
  * the same directory as the templates cache.
  *
- * File format (ADR-020 opaque-cache rule, ADR-010 §4):
+ * File format (the store is opaque to outside readers):
  *   {
  *     "access_token": "<session.token>",
  *     "user": { "id": "...", "email": "...", "name": "..." },

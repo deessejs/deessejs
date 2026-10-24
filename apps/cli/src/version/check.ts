@@ -27,8 +27,8 @@ const compareSemver = (a: string, b: string): number => {
 /**
  * Non-blocking version probe.
  *
- * Calls `${API_BASE_PATH}/version` (a system route per ADR-011, served
- * by Hono direct, not through oRPC). If the local CLI version is
+ * Calls `${API_BASE_PATH}/version` (a system route served by Hono
+ * direct, not through oRPC). If the local CLI version is
  * strictly below minSupported, prints a warning to stderr. The caller
  * does NOT abort; the user might have a workflow that depends on the
  * old version. The warning is loud but not authoritative.
@@ -36,8 +36,9 @@ const compareSemver = (a: string, b: string): number => {
  * Failures (network, parse, server error) are swallowed silently: the
  * version check is best-effort, never the reason a command fails.
  *
- * Per ADR-021: the URL is composed via `new URL(path, base)`. The
- * host is read from `DEESSEJS_API_URL` (the canonical CLI override)
+ * Per the inter-app URL config: the URL is composed via
+ * `new URL(path, base)`. The host is read from `DEESSEJS_API_URL`
+ * (the canonical CLI override)
  * with fallback to `DEFAULT_API_URL = "https://app.deessejs.com"`.
  * The shared `resolveBaseURL()` lives in `apps/cli/src/api/client.ts`;
  * this file duplicates the resolution (a one-line `new URL(raw)`)

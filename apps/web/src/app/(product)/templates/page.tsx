@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, ChevronRight } from "lucide-react"
 
 import type { TemplateV1 } from "@workspace/contracts/v1"
 import {
@@ -209,9 +209,13 @@ const TemplatesIndexPage = async ({
 
       {/* Body — shared-border 2-col: filters left, grid right. The
           sidebar carries `p-6 md:p-8 lg:p-10` to match the canonical
-          cell padding used by the homepage and pricing surfaces. */}
+          cell padding used by the homepage and pricing surfaces.
+          The body is single-column below `lg`: putting the sidebar
+          and the grid side-by-side at `md` cramped the cards
+          (the catalogue was split into 2 narrow columns at the same
+          width as the sidebar was supposed to occupy). */}
       <div className="border-b border-border">
-        <div className="grid grid-cols-2 divide-y divide-border border-border lg:grid-cols-[18rem_minmax(0,1fr)] lg:divide-x lg:divide-y-0">
+        <div className="grid grid-cols-1 divide-y divide-border border-border lg:grid-cols-[18rem_minmax(0,1fr)] lg:divide-x lg:divide-y-0">
           <aside className="p-6 md:p-8 lg:p-10">
             <CategorySidebar
               templates={templates}
@@ -247,7 +251,8 @@ const TemplatesIndexPage = async ({
                     </span>
                   </div>
                   <span className="text-label-14 text-foreground underline-offset-4 whitespace-nowrap group-hover:underline">
-                    Submit your template →
+                    Submit your template
+                    <ChevronRight className="ml-1 inline-block size-3" aria-hidden />
                   </span>
                 </a>
               </>

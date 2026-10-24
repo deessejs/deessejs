@@ -4,7 +4,7 @@
 # than the PR-blocking workflow. Failures post a GitHub issue
 # with the captured output.
 #
-# Per ADR-020.
+# Per the device-flow e2e test plan.
 name: apps-web-e2e-nightly
 on:
   schedule:

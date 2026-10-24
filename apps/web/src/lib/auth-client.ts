@@ -4,7 +4,7 @@ import { createAuthClient } from "better-auth/react"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
 /**
- * Better Auth client factory for the marketing site (ADR-023).
+ * Better Auth client factory for the marketing site.
  *
  * Returns a fresh `authClient` instance with a runtime-resolved
  * `baseURL`. The previous shape was a top-level
@@ -39,7 +39,7 @@ import { API_AUTH_PATH } from "@workspace/api/base-path"
  * resolves its `baseURL` per request from `x-forwarded-host` /
  * `host` via the dynamic `{ allowedHosts }` form. The host allowlist
  * (apex + wildcards) lives in `packages/auth/src/host-allowlist.ts`
- * (single source of truth, ADR-029 Decision #2).
+ * (single source of truth; the shared allowlist with Hono CORS).
  */
 export function createAuthClientFor(apiBaseUrl: string) {
   return createAuthClient({

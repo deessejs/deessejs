@@ -8,9 +8,9 @@ import { Separator } from "@workspace/ui/components/separator"
 import { ShieldCheckIcon, ShieldXIcon } from "lucide-react"
 
 /**
- * Device-flow presentation component (ADR-020).
+ * Device-flow presentation component.
  *
- * The four states defined in the ADR are rendered here:
+ * The four device-flow states are rendered here:
  *   - not signed in / invalid user_code → ExpiredPanel
  *   - approved → ApprovedPanel
  *   - claimed, pending → approve / deny buttons

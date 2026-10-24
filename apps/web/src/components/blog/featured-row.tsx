@@ -5,16 +5,11 @@ import { PostCard } from "./post-card"
 /**
  * Featured hero row rendered above the main grid in `PostCardGrid`.
  *
- * Layout: 1 column on mobile, 2 columns on `lg+`. No `border-b` on the
- * cells — the first row of the main grid supplies the visual divider,
- * so we avoid the 2-px double rule that the previous inline implementation
- * produced. The last cell only carries its right border at `lg+` (where
- * the 2-column grid kicks in); at `sm` the row is single-column and a
- * right border would point at nothing. The outer wrapper's
- * `overflow-hidden` in `PostCardGrid` clips the right edge at `lg+`.
- *
- * `index === featured.length - 1` (not `=== 0`) so the layout scales past
- * 2 cards without silently dropping separators.
+ * Layout: 1 column on mobile, 2 columns on `lg+`. Same border
+ * strategy as the main grid: each cell carries `border-r border-b`;
+ * the `<ul>` shifts by `-mr-px -mb-px` so the wrapper's
+ * `overflow-hidden` clips the rightmost and last borders against
+ * the outer frame.
  */
 export function FeaturedRow({
   featured,
@@ -24,16 +19,12 @@ export function FeaturedRow({
   return (
     <ul
       aria-label="Featured posts"
-      className="grid list-none grid-cols-1 p-0 lg:grid-cols-2"
+      className="-mr-px -mb-px grid list-none grid-cols-1 p-0 lg:grid-cols-2"
     >
-      {featured.map((post, index) => (
+      {featured.map((post) => (
         <li
           key={post.slug}
-          className={
-            index === featured.length - 1
-              ? "border-b-0 border-border lg:border-r"
-              : "border-b-0 border-r border-border"
-          }
+          className="min-w-0 border-r border-b border-border"
         >
           <PostCard post={post} featured />
         </li>

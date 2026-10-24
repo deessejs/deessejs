@@ -7,7 +7,7 @@ import { createCliAuthClient } from "../store/better-auth-client.js"
 import { mapPollingError } from "./polling-errors.js"
 
 /**
- * Device-flow orchestration (ADR-020, ADR-022).
+ * Device-flow orchestration.
  *
  * Three pure functions that the `login` command composes:
  *
@@ -20,21 +20,22 @@ import { mapPollingError } from "./polling-errors.js"
  *    Auth error codes say "approved" (returns the token)
  *    or one of the closed-list terminal codes says "no".
  *    Honors slow_down by bumping the local interval by 5
- *    seconds. Per ADR-020, silent on authorization_pending
- *    and slow_down; surfaces cli_device_expired /
- *    cli_device_denied per the polling-errors mapper.
+ *    seconds. Silent on authorization_pending and slow_down;
+ *    surfaces cli_device_expired / cli_device_denied per
+ *    the polling-errors mapper.
  *
- *  - fetchUserIdentity (ADR-022): resolves the user tied
- *    to the device-flow access token by calling
- *    /get-session with `Authorization: Bearer <token>`.
- *    Uses `bearerFetch` (raw fetch) instead of the typed
- *    Better Auth client because the typed client is
- *    cookie-based and the CLI has no cookie jar. Throws
- *    `cliDeviceExpired` (not a soft null) when the server
- *    rejects the token or returns no user — a token
- *    without a resolvable identity is a server-side or
- *    wire-protocol regression, not a normal state. See
- *    ADR-022 §"Decision / 1. CLI side".
+ *  - fetchUserIdentity: resolves the user tied to the
+ *    device-flow access token by calling /get-session with
+ *    `Authorization: Bearer <token>`. Uses `bearerFetch`
+ *    (raw fetch) instead of the typed Better Auth client
+ *    because the typed client is cookie-based and the CLI
+ *    has no cookie jar. Throws `cliDeviceExpired` (not a
+ *    soft null) when the server rejects the token or
+ *    returns no user — a token without a resolvable
+ *    identity is a server-side or wire-protocol regression,
+ *    not a normal state. The fix landed in the CLI side
+ *    via `bearerFetch` and the strict throw replacing the
+ *    previous `?? { id: "" }` fallback.
  *
  * Polling interval constants live here, not in login.ts,
  * because they are part of the device-flow protocol, not
@@ -121,7 +122,7 @@ export const pollForToken = async (
 			throw mapped
 		}
 		// slow_down: bump the local interval for the next poll.
-		// Per ADR-020, slow_down and pending are silent.
+		// slow_down and authorization_pending stay silent.
 		interval = POLL_INTERVAL_WITH_BACKOFF_MS
 	}
 }

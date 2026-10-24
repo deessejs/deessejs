@@ -4,7 +4,7 @@
 "@workspace/env": patch
 ---
 
-Implements ADR-023: session-aware header for `apps/web`.
+Implements the session-aware header for `apps/web`.
 
 Anonymous visitors on the marketing site now see `Log in` and `Sign up` buttons in the header (linking cross-app to `apps/app`'s auth pages).
 Authenticated visitors see an avatar dropdown with `Dashboard` and `Sign out` (with a confirmation dialog).
@@ -34,4 +34,4 @@ Vercel env (operational, no code change):
 
 - Set `PARENT_DOMAIN=deessejs.com` on `apps/app`'s Vercel project for production.
   Without it, the env schema gate fails at startup and the auth client never resolves a session on `apps/web`.
-- Confirm `ALLOWED_ORIGINS` on `apps/app`'s Vercel project already includes `https://deessejs.com` (mandated by ADR-021 for the templates fetch; the same value now also covers the credentialed auth-client `get-session` fetch).
+- Confirm `ALLOWED_ORIGINS` on `apps/app`'s Vercel project already includes `https://deessejs.com` (mandated by the inter-app-URL config for the templates fetch; the same value now also covers the credentialed auth-client `get-session` fetch).

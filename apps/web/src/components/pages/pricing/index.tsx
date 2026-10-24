@@ -9,7 +9,7 @@
  * Sections:
  *   - JsonLd          — FAQPage schema for SEO (mounted early)
  *   - Hero            — proposition centrée
- *   - CadenceTabs     — strip 16px (lifetime vs subscription)
+ *   - CadenceTabs     — strip 16px (monthly vs annual)
  *   - LicenseTypes    — 3-card grid (Community / Professional / Agency)
  *   - TechStack       — "Built with" strip
  *   - Comparison      — side-by-side comparison table (3 columns)

@@ -4,7 +4,7 @@ import * as React from "react"
 import { QueryClient, QueryClientProvider as TanstackQueryClientProvider } from "@tanstack/react-query"
 
 /**
- * App-wide React Query provider (ADR-020).
+ * App-wide React Query provider.
  *
  * The QueryClient is created once per browser context (the
  * lazy initializer passed to `useState`) so a re-render of

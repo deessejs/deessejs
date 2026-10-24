@@ -10,8 +10,10 @@ import { ComparisonStatusIcon } from "./comparison-status-icon"
 
 /**
  * One comparison group: a heading row spanning the table + N data
- * rows (one per attribute). Each data row highlights the Per-project
- * column to make the visual anchor when comparing.
+ * rows (one per attribute). The Professional column is highlighted
+ * to give the comparison table a visual anchor; the highlight is a
+ * visual choice, not a vocabulary of "per-project" tiers (the
+ * vocabulary now is monthly or annual subscriptions).
  */
 export function ComparisonGroup({
   group,
@@ -50,13 +52,13 @@ export function ComparisonGroup({
           </th>
           {COMPARISON_LAYERS.map((layer) => {
             const status = row.status?.[layer.id] ?? "yes"
-            const isPerProject = layer.id === "professional"
+            const isRecommended = layer.id === "professional"
             return (
               <td
                 key={`${row.attribute}-${layer.id}`}
                 className={cn(
                   "py-3 px-4 align-top text-muted-foreground",
-                  isPerProject && "bg-muted/30",
+                  isRecommended && "bg-muted/30",
                 )}
               >
                 <span className="flex items-start gap-2">

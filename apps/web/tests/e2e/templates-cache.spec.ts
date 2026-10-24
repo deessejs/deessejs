@@ -1,7 +1,6 @@
 /**
  * P0 e2e suite — error boundary + issue #81 regression guard.
  *
- * Per ADR-020:
  *   P0-3 — error.tsx renders on a forced oRPC failure;
  *          "Try again" recovers to the populated state.
  *   P0-6 — issue #81 cache-poisoning regression guard:

@@ -21,6 +21,21 @@ import { cn } from "@workspace/ui/lib/utils"
  * When a slot's timer expires, it swaps with a random other slot instead
  * of picking a random free technology. This is the cheapest way to keep
  * the invariant without coordinating across timers.
+ *
+ * Layout:
+ *  - Rules come from `gap-px` over a `bg-border` grid, not `divide-x`.
+ *    A grid that wraps needs a rule on both axes, and `divide-x` only
+ *    ever puts a border on every child but the last, so a two-row
+ *    layout gets no horizontal rule at all plus a stray vertical one
+ *    on the right edge of the first row only. A gap derives both axes
+ *    from the same 1px and stays correct at any column count.
+ *  - The column count is chosen so the widest label fits. Cloudflare
+ *    measures 91px, plus a 20px logo, an 8px gap and `px-4` on both
+ *    sides: 123px minimum per cell. The section is the viewport minus
+ *    50px, so 8 columns need 1113px of viewport and 4 need 581px.
+ *    `md` starts at 768px, which is why 8 columns only kick in at `xl`.
+ *    Below `sm` two columns are the only count that fits: four would
+ *    leave 89px per cell and clip both the logo and the label.
  */
 
 type Tech = { name: string; logo: string }
@@ -127,7 +142,7 @@ export function TechStackGrid({
   return (
     <div
       className={cn(
-        "grid grid-cols-4 md:grid-cols-8 divide-x divide-border border-border",
+        "grid grid-cols-2 gap-px bg-border sm:grid-cols-4 xl:grid-cols-8",
         className,
       )}
     >
@@ -136,7 +151,7 @@ export function TechStackGrid({
         return (
           <div
             key={slotIdx}
-            className="group relative flex h-20 items-center justify-center gap-2 px-4 py-6 text-copy-13 text-muted-foreground transition-colors hover:bg-accent/40 overflow-hidden"
+            className="group relative flex h-20 items-center justify-center gap-2 bg-background px-4 py-6 text-copy-13 text-muted-foreground transition-colors hover:bg-accent/40 overflow-hidden"
           >
             <AnimatePresence mode="wait" initial={false}>
               <motion.div

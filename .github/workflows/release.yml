@@ -16,14 +16,12 @@ name: Release
 # npm Trusted Publishing allows only one trusted publisher per package,
 # keyed on this workflow file's path. Adding staging to the push triggers
 # does not require a second trusted publisher entry.
-# See ADR-021 §"Decision" and ADR-025 for the auto-canary trigger.
+# See the inter-app-URL config rationale and the auto-canary trigger
+# design for the chosen channel layout.
 #
 # First-ever publish of @deessejs/cli is manual from a maintainer's machine
-# (npm has no "pending publisher" feature). See
-# First-ever publish of @deessejs/cli is manual from a maintainer's machine
-# (npm has no "pending publisher" feature). See
-# apps/internal-documentation/content/docs/decisions/ADR-013-cli-publish-verify.mdx
-# for the equivalent setup walkthrough.
+# (npm has no "pending publisher" feature). See the
+# cli-publish-verify procedure on Nuclino for the equivalent setup walkthrough.
 
 on:
   push:
@@ -83,7 +81,7 @@ jobs:
       #     (manual on-demand run by a maintainer.)
       #   push to staging → canary/prerelease.
       #     (auto-trigger; the merge carries the changeset check via
-      #      changesets-check.yml on the feature PR, see ADR-026.)
+      #      changesets-check.yml on the feature PR.)
       #   push to main (commit message contains .changeset) → latest/stable.
       # Downstream steps condition their behavior on these outputs.
       - name: Determine release channel
@@ -189,8 +187,8 @@ jobs:
       #
       # Implication: between a @latest publish and the next promotion,
       # apps/cli/package.json#version on main may lag behind the
-      # published npm version. This is by design; see ADR-027 for the
-      # rationale and the follow-up plan.
+      # published npm version. This is by design; the version-bump-orphan
+      # behaviour is documented in the release process notes.
 
       # 1b. Build all packages that produce publishable artifacts.
       # Without this, `dist/` (the actual bundle) is missing from the
@@ -211,30 +209,81 @@ jobs:
       # dist-tag with provenance triple-belt (publishConfig.provenance + env
       # var + --provenance if supported).
       #
-      # Tier 2 (@canary): `npm publish --tag canary --provenance --no-git-checks`.
-      # Three flags are load-bearing:
+      # Tier 2 (@canary): pack a tarball locally with `pnpm pack` (which
+      # resolves pnpm-only protocol specifiers like `catalog:` and
+      # `workspace:` into concrete version ranges), verify the packaged
+      # manifest contains no pnpm-only specifiers, then publish the
+      # SAME tarball with `npm publish <tarball> --tag canary --provenance
+      # --no-git-checks`. The manifest scan is the same one
+      # `cli-publish-verify.yml` runs at PR time; doing it here too means
+      # a canary release cannot ship a manifest that would fail with
+      # EUNSUPPORTEDPROTOCOL on a consumer's `npm install`.
+      #
+      # Why pack-then-publish, not `npm publish` directly: `npm publish`
+      # packs internally using npm's resolver, which does not understand
+      # `catalog:` or `workspace:` and ships them literally. The CLI's
+      # `apps/cli/package.json` declares `cross-spawn: "catalog:"` and
+      # several `workspace:*` devDeps, so a plain `npm publish` would
+      # produce a tarball that consumers (running plain npm) cannot
+      # install. `pnpm pack` resolves these before packing, matching
+      # what the verify gate proves is installable.
+      #
+      # Three flags on the publish step are load-bearing:
       #   --tag canary     without it, npm moves the `latest` tag to the new
       #                    version and silently un-`latest`s the previous stable.
       #   --provenance     belt-and-suspenders alongside `publishConfig.provenance: true`.
       #   --no-git-checks  suppresses npm's "dirty working tree" error caused
       #                    by the synthetic version bump above.
-      # We deliberately bypass `pnpm changeset publish` on the canary path —
-      # outside changesets pre-release mode it publishes to `latest` regardless
-      # of any --tag flag and refuses packages whose version was not bumped
-      # via `changeset version`.
       - name: Publish to npm (latest)
         if: steps.channel.outputs.dist_tag == 'latest'
         env:
           NPM_CONFIG_PROVENANCE: true
         run: pnpm changeset publish
 
+      - name: Pack CLI canary tarball
+        if: steps.channel.outputs.dist_tag == 'canary'
+        run: pnpm --dir apps/cli pack
+
+      # Same manifest scan as cli-publish-verify.yml: the packaged
+      # `package.json` must not contain pnpm-only specifiers
+      # (`catalog:`, `workspace:`). Failing here, before any upload,
+      # turns a "consumer can't install the canary" failure mode into
+      # a red CI step the release owner can act on.
+      - name: Verify canary tarball manifest
+        if: steps.channel.outputs.dist_tag == 'canary'
+        run: |
+          set -eu
+          TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
+          echo "Inspecting canary tarball: $TARBALL"
+          tar -xzOf "$TARBALL" package/package.json | node -e '
+            const pkg = JSON.parse(require("fs").readFileSync(0, "utf8"))
+            const offenders = []
+            const scan = (obj) => {
+              if (!obj) return
+              for (const [name, value] of Object.entries(obj)) {
+                if (typeof value === "string" && (value === "catalog:" || value.startsWith("workspace:"))) {
+                  offenders.push(`${name} = ${JSON.stringify(value)}`)
+                }
+                if (typeof value === "object") scan(value)
+              }
+            }
+            scan(pkg.dependencies)
+            scan(pkg.devDependencies)
+            scan(pkg.peerDependencies)
+            if (offenders.length) {
+              console.error("::error::Canary manifest contains pnpm-only specifiers:")
+              for (const o of offenders) console.error("  - " + o)
+              process.exit(1)
+            }
+          '
+
       - name: Publish to npm (canary)
         if: steps.channel.outputs.dist_tag == 'canary'
         env:
           NPM_CONFIG_PROVENANCE: true
-        working-directory: apps/cli
         run: |
-          npm publish \
+          TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
+          npm publish "$TARBALL" \
             --tag canary \
             --provenance \
             --no-git-checks

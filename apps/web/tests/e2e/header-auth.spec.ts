@@ -1,5 +1,5 @@
 /**
- * P-N session-aware header e2e suite (ADR-023).
+ * P-N session-aware header e2e suite.
  *
  * What this covers:
  *   - Anonymous visitors see the Log in / Get started buttons in
@@ -13,7 +13,7 @@
  *     either a real sign-up roundtrip through apps/app or a
  *     fabricated session cookie, both of which are out of
  *     scope for this PR. Manual staging smoke per Vercel
- *     preview (documented in the ADR) covers that path.
+ *     preview covers that path.
  *
  * The local preset (e2e.config.ts) starts a `pnpm dev`
  * webServer and the same header behavior is expected. Under
@@ -28,7 +28,7 @@ import {
   headerUserMenu,
 } from "./helpers/selectors.js"
 
-test.describe("Session-aware header (ADR-023)", () => {
+test.describe("Session-aware header", () => {
   test("anonymous visitor on / sees Log in and Get started", async ({ page }) => {
     await page.goto("/")
 

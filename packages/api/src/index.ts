@@ -25,7 +25,8 @@ api.use("*", secureHeaders())
 // `@workspace/auth/host-allowlist`. The function form echoes the
 // requesting `Origin` header when the host is permitted (required
 // because `credentials: true` forbids the wildcard
-// `Access-Control-Allow-Origin: *` response — see ADR-029 Context §8).
+// `Access-Control-Allow-Origin: *` response — see the preview-URL
+// wiring notes for the credentials-true / wildcard-origin conflict).
 // `ALLOWED_ORIGINS` adds ad-hoc staging / partner origins on top.
 api.use(
   "*",

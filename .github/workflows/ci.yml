@@ -7,6 +7,9 @@ on:
     branches: [main, staging]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
@@ -37,7 +40,7 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
       NEXT_PUBLIC_APP_URL: https://ci.example.com
-      # ADR-023: production superRefine gate requires PARENT_DOMAIN
+      # The production superRefine gate requires PARENT_DOMAIN
       # for cross-subdomain cookie sharing. Stubbed in CI so the
       # gate passes; the real value is set on Vercel per the
       # changeset operational prerequisites.
@@ -56,6 +59,19 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo build --filter=web --force
       - run: pnpm turbo typecheck --force
+      - name: Typecheck create-deesse-app e2e harness
+        # The e2e harness has its own tsconfig (tsconfig.e2e.json)
+        # that includes test/e2e/**/*.ts. The main typecheck above
+        # covers only src/; the e2e harness is verified here, with
+        # no Docker required.
+        run: pnpm --filter create-deesse-app typecheck:e2e
+      - name: Typecheck create-deesse-app unit + helpers
+        # The unit tsconfig (tsconfig.unit.json) covers both
+        # test/unit/** and test/e2e/support/**. The harness
+        # helpers (e.g. packCli) are imported by the Docker-free
+        # pack-cli test and need to typecheck there. The unit
+        # test itself runs in the existing 'Test (Unit)' job.
+        run: pnpm --filter create-deesse-app typecheck:unit
 
   build:
     name: Build
@@ -65,18 +81,23 @@ jobs:
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
       NEXT_PUBLIC_APP_URL: https://ci.example.com
-      # ADR-028: every NEXT_PUBLIC_* URL var is checked against its schema
-      # default by `scripts/env-check.ts` (Decision #5). CI stubs all
-      # four so the production-mode gate passes; real values are set
-      # on Vercel per `.env.example`.
+      # Every NEXT_PUBLIC_* URL var is checked against its schema
+      # default by `scripts/env-check.ts`. CI stubs all four so the
+      # production-mode gate passes; real values are set on Vercel
+      # per `.env.example`.
       NEXT_PUBLIC_WEB_URL: https://ci.example.com
       NEXT_PUBLIC_DOCS_URL: https://ci-docs.example.com
       NEXT_PUBLIC_API_BASE_URL: https://ci-api.example.com
-      # ADR-023: production superRefine gate requires PARENT_DOMAIN
+      # The production superRefine gate requires PARENT_DOMAIN
       # for cross-subdomain cookie sharing. Stubbed in CI so the
       # gate passes; the real value is set on Vercel per the
       # changeset operational prerequisites.
       PARENT_DOMAIN: ci.example.com
+      # The production superRefine gate requires the Resend Topic id
+      # that the playbook consent checkbox subscribes a contact to.
+      # Stubbed in CI so the gate passes; the real value is set on
+      # Vercel per the changeset operational prerequisites.
+      RESEND_PLAYBOOK_TOPIC_ID: ci-test-topic-id
     steps:
       - uses: actions/checkout@v4
         with:
@@ -89,7 +110,7 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      # Env validation — fails fast if production invariants are violated
+      # Env validation: fail fast if production invariants are violated
       # (DATABASE_URL required, BETTER_AUTH_SECRET >= 32 chars, etc.)
       - name: Validate env
         run: pnpm env:check
@@ -140,13 +161,13 @@ jobs:
       # injected via ${{ secrets.* }} in deploy workflows.
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
-      # ADR-017: the templates integration test hits the real
-      # GitHub REST API. The standard `secrets.GITHUB_TOKEN`
-      # grants 1000 req/min on the workflow run; without it, the
-      # anonymous 60 req/h budget is exhausted in minutes. The
-      # probe in `packages/api/tests/globalSetup.ts` reads the
-      # rate limit and skips the test loudly when remaining
-      # quota is below the threshold.
+      # The templates integration test hits the real GitHub REST
+      # API. The standard `secrets.GITHUB_TOKEN` grants 1000 req/min
+      # on the workflow run; without it, the anonymous 60 req/h
+      # budget is exhausted in minutes. The probe in
+      # `packages/api/tests/globalSetup.ts` reads the rate limit and
+      # skips the test loudly when remaining quota is below the
+      # threshold.
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
@@ -171,4 +192,86 @@ jobs:
         run: pnpm db:migrate
 
       - name: Run integration tests
-        run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api
+        # @workspace/database is included so the template catalog
+        # constraint tests run against this real PostgreSQL service.
+        # The package's own suite is a no-op without a database, so the
+        # unit job stays green.
+        run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api --filter=@workspace/database
+
+  # create-deesse-app native smoke. Runs the bundled CLI directly on
+  # each supported OS so we catch any platform-specific regression in
+  # the JSON-on-stdout contract, the destination guard, the npm guard,
+  # and --version / --help. No Docker, no GitHub network.
+  create-deesse-app-smoke:
+    name: create-deesse-app native smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Build the bundled CLI once; the smoke test runs it as a
+      # subprocess. tsup does its own incremental work; no force
+      # flag is needed (and the flag does not exist on tsup).
+      - name: Build the CLI
+        run: pnpm --filter create-deesse-app build
+
+      - name: Run native smoke
+        run: pnpm --filter create-deesse-app exec vitest run --config test/e2e/smoke/vitest.smoke.config.ts
+
+  # create-deesse-app consumer-level e2e. Runs only on Linux because
+  # the Testcontainers journey (Verdaccio + PostgreSQL + a consumer
+  # container) requires a Docker daemon, which the macOS and Windows
+  # GitHub-hosted runners do not expose. Linux is the supported
+  # production target today. The brief calls this a separate required
+  # job so the longer consumer journey does not blur the unit /
+  # integration results.
+  create-deesse-app-e2e:
+    name: create-deesse-app consumer e2e (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build the CLI
+        run: pnpm --filter create-deesse-app build
+
+      - name: Run consumer e2e (Testcontainers)
+        # The e2e journey starts a disposable Verdaccio + a clean
+        # Node 24 consumer, publishes the packed CLI to the registry,
+        # then runs pnpm dlx on it. The job uploads evidence under
+        # test-results/ on both success and failure.
+        run: pnpm --filter create-deesse-app test:e2e
+
+      - name: Upload consumer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: create-deesse-app-e2e-evidence
+          path: apps/create-deesse-app/test-results/
+          if-no-files-found: warn
+          retention-days: 14

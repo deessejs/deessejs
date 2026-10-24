@@ -1,12 +1,7 @@
 name: Changesets check
 
-# Verify that any PR touching CLI-relevant paths also includes a changeset.
-# This is the senior-pattern contribution gate: contributors add a changeset
-# if their PR changes the CLI surface, and CI enforces it.
-#
-# Per ADR-026, this check is a required status check on the branch
-# protection of staging and main. The path filter covers the same surface
-# that triggers cli-preview.yml (apps/cli, packages/contracts, packages/api).
+# Verify that PRs touching public CLI surfaces include valid changesets.
+# This check is required on staging and main.
 
 on:
   pull_request:
@@ -24,87 +19,50 @@ jobs:
 
       - name: Detect changes to CLI-relevant paths
         id: changed
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # Compare PR head against the merge base. If any diff touched the
-          # CLI-relevant paths (apps/cli/**, packages/contracts/**,
-          # packages/api/**), a changeset is required. This matches the
-          # surface that cli-preview.yml triggers on.
-          BASE=${{ github.event.pull_request.base.ref }}
-          HEAD=${{ github.event.pull_request.head.sha }}
-          git fetch origin "$BASE" --depth=1
-          TOUCHED=$(git diff --name-only "origin/$BASE...$HEAD" \
-            | grep -E '^(apps/cli/|packages/contracts/|packages/api/)/' \
-            || true)
+          git fetch origin "$BASE_REF" --depth=1
+          if git merge-base "origin/$BASE_REF" "$HEAD_SHA" >/dev/null 2>&1; then
+            DIFF_ARGS=("origin/$BASE_REF...$HEAD_SHA")
+          else
+            echo "::notice::No merge base exists. Comparing the base and head snapshots."
+            DIFF_ARGS=("origin/$BASE_REF" "$HEAD_SHA")
+          fi
+          TOUCHED=$(git diff --name-only "${DIFF_ARGS[@]}" -- \
+            apps/cli apps/create-deesse-app packages/contracts packages/api)
           if [ -n "$TOUCHED" ]; then
             echo "touched=true" >> "$GITHUB_OUTPUT"
             echo "Files changed under CLI-relevant paths:"
             echo "$TOUCHED"
           else
             echo "touched=false" >> "$GITHUB_OUTPUT"
-            echo "No files changed under CLI-relevant paths — changeset not required."
+            echo "No files changed under CLI-relevant paths. Changeset not required."
           fi
 
-      - name: Verify changeset is present
+      - name: Test changeset validator
+        run: node --test scripts/validate-changesets.test.mjs
+
+      - name: Validate changed changesets
         if: steps.changed.outputs.touched == 'true'
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          COUNT=$(ls .changeset/*.md 2>/dev/null | wc -l)
-          if [ "$COUNT" -le 1 ]; then
-            # Only config.json is always present; otherwise there should be
-            # at least one *.md changeset file.
-            echo "::error::CLI-relevant paths were modified but no changeset file was added."
+          if git merge-base "origin/$BASE_REF" "$HEAD_SHA" >/dev/null 2>&1; then
+            DIFF_ARGS=("origin/$BASE_REF...$HEAD_SHA")
+          else
+            echo "::notice::No merge base exists. Comparing the base and head snapshots."
+            DIFF_ARGS=("origin/$BASE_REF" "$HEAD_SHA")
+          fi
+          CHANGED=$(git diff --name-only --diff-filter=ACMR "${DIFF_ARGS[@]}" -- .changeset | \
+            grep -E '^\.changeset/[^/]+\.md$' | grep -v '^\.changeset/README\.md$' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "::error::CLI-relevant paths were modified but no changeset file was added or updated."
             echo "::error::Add a changeset under .changeset/ describing the bump type."
-            echo "::error::See .changeset/README.md for the format."
             exit 1
           fi
-          echo "Found $COUNT file(s) under .changeset/ — changeset present."
-
-      # Validate the frontmatter of every .changeset/*.md file. We only need
-      # to catch the three failure modes the team has actually hit:
-      #   - missing frontmatter (file starts with a non-`---` line)
-      #   - missing package entry (`"@deessejs/cli": <bump>` not present)
-      #   - invalid bump type (anything other than patch | minor | major)
-      # Catching these here means a malformed changeset fails the PR
-      # instead of `pnpm changeset version` on `main`, which would block
-      # the @latest publish.
-      #
-      # We deliberately do NOT add a YAML parser dependency: this stays
-      # dependency-free and avoids touching pnpm-lock.yaml (which is a
-      # path trigger on cli-preview.yml and cli-publish-verify.yml).
-      - name: Validate changeset frontmatter
-        if: steps.changed.outputs.touched == 'true'
-        run: |
-          set -eu
-          node -e '
-            const fs = require("node:fs");
-            const path = require("node:path");
-            const PKG = "@deessejs/cli";
-            const VALID = new Set(["patch", "minor", "major"]);
-            const errors = [];
-            const files = fs.readdirSync(".changeset")
-              .filter(f => f.endsWith(".md"));
-            for (const f of files) {
-              const fp = path.join(".changeset", f);
-              const body = fs.readFileSync(fp, "utf8");
-              const m = body.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
-              if (!m) {
-                errors.push(`${f}: missing or malformed frontmatter (must start with --- and end with ---)`);
-                continue;
-              }
-              const [, front] = m;
-              // Match a top-level "<pkg>": <bump> entry. Tolerates trailing
-              // whitespace; does not tolerate a nested object (we never use one).
-              const re = new RegExp(`^${PKG.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*(patch|minor|major)\\s*$`, "m");
-              const hit = front.match(re);
-              if (!hit) {
-                errors.push(`${f}: frontmatter missing entry \`"${PKG}": patch|minor|major\``);
-                continue;
-              }
-            }
-            if (errors.length) {
-              console.error("::error::Changeset frontmatter validation failed:");
-              for (const e of errors) console.error(`::error::  - ${e}`);
-              console.error("::error::See .changeset/README.md for the format.");
-              process.exit(1);
-            }
-            console.log(`Validated ${files.length} changeset file(s).`);
-          '
+          echo "Validating changed changeset files:"
+          echo "$CHANGED"
+          node scripts/validate-changesets.mjs $CHANGED

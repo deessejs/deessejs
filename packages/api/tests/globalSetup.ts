@@ -5,7 +5,7 @@
  * `postgres:ready` and `github:ready`, via `project.provide(...)`.
  * Tests read them via `inject('...')` and skip loudly when false.
  *
- * Per ADR-016 (round 4 — warm the pool):
+ * Per the api CI integration tests (round 4 — warm the pool):
  *   - The Postgres check is a real `SELECT 1` against the CI
  *     Postgres service, not `pg_isready`. `pg_isready` only
  *     checks TCP reachability and skips auth, TLS, and
@@ -21,7 +21,7 @@
  *     pool on first access; we just want to confirm the
  *     connection works.
  *
- * Per ADR-017 (real-network enrich):
+ * Per the real-network enrich contract:
  *   - The GitHub check probes `GET https://api.github.com/rate_limit`
  *     with the `GITHUB_TOKEN` injected from the CI env (the
  *     same secret the workflow uses for release and changesets).

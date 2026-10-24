@@ -1,7 +1,12 @@
 "use client"
 
 import { createAuthClient } from "better-auth/react"
-import { deviceAuthorizationClient } from "better-auth/client/plugins"
+import type { BetterAuthClientOptions } from "better-auth/client"
+import {
+  adminClient,
+  deviceAuthorizationClient,
+  organizationClient,
+} from "better-auth/client/plugins"
 import { clientEnv } from "@workspace/env/client"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
@@ -27,21 +32,52 @@ import "./fetch-auth-interceptor"
  * Turbopack cannot satisfy (node builtins `net`/`tls`/`perf_hooks`).
  *
  * The `deviceAuthorizationClient` plugin mirrors the server-side
- * `deviceAuthorization` plugin (ADR-020). It exposes the four
+ * `deviceAuthorization` plugin. It exposes the four
  * methods the device page consumes: `authClient.device(...)`,
  * `authClient.device.approve(...)`, `authClient.device.deny(...)`,
  * plus `authClient.device.code(...)` and `authClient.device.token(...)`
  * for the CLI consumer.
  *
+ * The `adminClient` plugin mirrors the server-side `admin` plugin
+ * (RFC: "DeesseJS Administration Routes — V1"). V1 only consumes
+ * the inferred `data.user.role` from `useSession()` to decide
+ * whether to show the Administration nav link; the plugin's
+ * full client surface (`authClient.admin.*`) is left untyped
+ * from the call sites of V1 but is wired so future admin UI
+ * (list/ban/impersonate) can call the native endpoints without
+ * touching the client config again.
+ *
+ * The `organizationClient` plugin mirrors the server-side
+ * `organization` plugin. The first call site is the workspace
+ * shell sidebar switcher; wiring the plugin here keeps the typed
+ * `authClient.organization.*` surface coherent from the start.
+ *
  * The `baseURL` here uses `clientEnv.NEXT_PUBLIC_APP_URL`, the
  * build-time env var. On Vercel previews this resolves to the
  * production apex (`app.deessejs.com`); the fetch interceptor
  * installed via the side-effect import above rewrites the URL to
- * the page origin at request time. See ADR-029 Decision #4 for the
- * full rationale.
+ * the page origin at request time. The same preview-rewriting
+ * rationale is documented on `auth-base-url.ts`.
+ *
+ * The `as ReturnType<typeof createAuthClient<typeof authClientOptions>>`
+ * cast on the export below is the matching fix for the TS2883
+ * inference issue that surfaces on `createAuthClient({...})` with
+ * multiple plugins — the same workaround applied in
+ * `packages/auth/src/auth.ts`. The `satisfies BetterAuthClientOptions`
+ * on the options object keeps the literal types narrow so the cast
+ * narrows the public type to the configured client (and the
+ * plugin-augmented `user.role` surface flows through).
  */
-export const authClient = createAuthClient({
+const authClientOptions = {
   baseURL: clientEnv.NEXT_PUBLIC_APP_URL,
   basePath: API_AUTH_PATH,
-  plugins: [deviceAuthorizationClient()],
-})
+  plugins: [
+    deviceAuthorizationClient(),
+    adminClient(),
+    organizationClient(),
+  ],
+} satisfies BetterAuthClientOptions
+
+export const authClient = createAuthClient(
+  authClientOptions,
+) as ReturnType<typeof createAuthClient<typeof authClientOptions>>

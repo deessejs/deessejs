@@ -38,13 +38,12 @@ export const HOME_FAQ: ReadonlyArray<FaqItem> = [
           Full breakdown on /pricing
         </Link>
         . In short: the Community templates and the CLI are MIT-licensed and
-        free. The Professional tier unlocks the full Pro catalog for $299
-        one-shot, lifetime, every project you ship. The Agency &amp; Team
-        tier covers 5 seats and adds a Commercial Extended License that lets
-        you re-sell to your clients without attribution. The Subscription
-        tier is Pro paid monthly ($23) for teams that prefer ongoing over
-        upfront. The delivery service (we ship it with you) is a separate
-        engagement scoped per project.
+        free. The Professional plan unlocks the full Pro catalog for $29 / month
+        or $299 / year, every project you ship while subscribed. The Agency
+        &amp; Team plan covers 5 seats and adds a Commercial Extended License
+        that lets you re-sell to your clients without attribution. The
+        delivery service (we ship it with you) is a separate engagement
+        scoped per project.
       </>
     ),
   },

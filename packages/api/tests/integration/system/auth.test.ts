@@ -1,8 +1,8 @@
 /**
  * Integration smoke test for the Better Auth mount.
  *
- * Per ADR-016, this asserts the Hono↔Better Auth boundary in
- * real conditions: the Hono mount catches the URL, the
+ * This asserts the Hono↔Better Auth boundary in real
+ * conditions: the Hono mount catches the URL, the
  * handler returns the documented envelope. Better Auth's
  * own behaviour is tested in `packages/auth`.
  *
@@ -52,7 +52,7 @@ describe("GET /api/v1/auth/get-session", () => {
 })
 
 /**
- * Device authorization flow (ADR-020). The Better Auth
+ * Device authorization flow. The Better Auth
  * `deviceAuthorization` plugin adds five endpoints under the
  * existing /api/v1/auth mount. The CLI consumes /device/code
  * and /device/token; the web page consumes /device, /device/approve,
@@ -160,7 +160,8 @@ describe("POST /api/v1/auth/device/token", () => {
       // Better Auth returns the OAuth-style error envelope with HTTP 400
       // and a body like { error: "invalid_grant", error_description: "..." }.
       // The CLI's mapPollingError handles this on the client side; the
-      // envelope shape is the wire contract (ADR-020).
+      // envelope shape is the wire contract (the device-flow
+      // polling protocol).
       expect(res.status).toBe(400)
       const body = (await res.json()) as { error?: string }
       expect(body.error).toBe("invalid_grant")

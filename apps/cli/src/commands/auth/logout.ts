@@ -8,7 +8,7 @@ import { internal } from "../../errors/index.js"
 import { printJson } from "../../output/index.js"
 
 /**
- * deesse auth logout (ADR-020).
+ * deesse auth logout.
  *
  * Sequence:
  *   1. POST /api/v1/auth/sign-out with the stored token to

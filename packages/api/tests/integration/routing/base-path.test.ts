@@ -1,7 +1,8 @@
 /**
  * Integration test for the Hono basePath decision.
  *
- * Per ADR-016 and ADR-011, the API is built with
+ * Per the api CI integration tests and the env-testing strategy,
+ * the API is built with
  * `new Hono<ApiEnv>().basePath("/api/v1")`. This test pins that
  * decision: hitting any known route without the prefix returns
  * 404, hitting it with the prefix returns 200.
