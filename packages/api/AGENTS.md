@@ -14,6 +14,7 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | `src/http/middleware/` | request id, secure headers, session, rate limit, etag, bucket, error handler. |
 | `src/http/mount-rpc.ts` | The oRPC mount. |
 | `src/orpc/routes/` | The typed procedures: the templates, organization and playbook routes, and the app router that mounts them. |
+| `src/core/organization/` | The membership read, and the provisioning flow that owns a creation. |
 | `src/core/templates/` | The GitHub client and the enrichment of the registry rows. |
 | `src/templates.ts` | The registry rows themselves. |
 | `src/http/env.ts` | The typed environment of the Hono context. |

@@ -11,7 +11,10 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | `src/auth.ts` | The canonical configuration. The only place the auth instance is built. |
 | `src/host-allowlist.ts` | `HOST_ALLOWLIST` and `isHostAllowed()`, shared with the CORS layer of the API. |
 | `src/organization/plugin.ts` | The organization plugin and its hooks. |
-| `src/organization/policy.ts` | The slug and name validation. |
+| `src/organization/policy.ts` | The slug and name validation, and the slug generation. |
+| `src/organization/reserved-slugs.ts` | The reserved slug set, on its own so the request guard can read it. |
+| `src/organization/provisioning.ts` | The creation markers, the provisioning hooks, and the operation row's access. |
+| `src/organization/create.ts` | The typed calls to the plugin's creation and set-active endpoints. |
 | `src/organization/invitation.ts` | The invitation delivery, delegated to `packages/email`. |
 | `src/types.ts` | The public type surface. |
 
@@ -42,8 +45,10 @@ Five entries, and the order matters:
 - `allowUserToCreateOrganization` requires a verified email.
 - The creator becomes the `owner`.
 - Invitations expire after 48 hours.
-- The `beforeCreateOrganization` hook validates the name and the slug, rejects unverified accounts, and rejects any metadata, because the metadata is not editable at creation.
-- **Reserved slugs live in `src/organization/policy.ts`.** They cover the top-level route segments, so an organization can never shadow `/account` or `/admin`, plus a few product namespaces. Extend that set there, never in a route.
+- The `beforeCreateOrganization` hook validates the name and the slug, rejects unverified accounts, and stores the provisioning marker in the organization's metadata.
+- **Reserved slugs live in `src/organization/reserved-slugs.ts`.** They cover the top-level route segments, so an organization can never shadow `/account` or `/admin`, plus a few product namespaces. The set is in a module of its own because the request guard reads it to tell an application route from an organization slug, and the guard must not pull Better Auth into the browser bundle. Extend that set there, never in a route.
+- **The native `/organization/create` endpoint is disabled.** The slug is the server's, and the endpoint takes it from the body. `disabledPaths` is applied by the request router, so the server-side call the procedure makes is not affected.
+- **The creation carries a marker.** The `beforeCreateOrganization` hook refuses a creation whose metadata is not the marker of a pending provisioning operation, and the `beforeUpdateOrganization` hook refuses an update that would change or remove that marker. The organization metadata belongs to the application.
 
 ## Commands
 

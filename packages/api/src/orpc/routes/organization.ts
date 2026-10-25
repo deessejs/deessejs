@@ -1,6 +1,7 @@
 import type { ORPCError } from "@orpc/server"
 import { z } from "zod"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
+import { assertOrganizationName } from "@workspace/auth/organization/policy"
 
 import { base } from "../base.js"
 import { authGuard } from "../auth-middleware.js"
@@ -8,6 +9,10 @@ import {
   findOrganizationForMember,
   findOrganizationForMemberById,
 } from "../../core/organization/membership.js"
+import {
+  OrganizationProvisioningError,
+  provisionOrganization,
+} from "../../core/organization/provisioning.js"
 
 const organizationSummary = z.object({
   id: z.string(),
@@ -174,8 +179,106 @@ export const active = base
   )
   .handler(async ({ context }) => context.activeState)
 
+/**
+ * The refusals the creation produces.
+ *
+ * They are declared here, so the client reads a stable code instead
+ * of the plugin's own errors, and so the status of each refusal is
+ * the one the product means: a name the policy rejects is a bad
+ * request, an account that has not verified its email is a refusal
+ * to act, an attempt that is already running is a conflict, and
+ * everything else is a failure of the server.
+ */
+const createErrors = {
+  ORGANIZATION_NAME_INVALID: {
+    status: 400,
+    message: "That organization name cannot be used.",
+  },
+  ORGANIZATION_EMAIL_VERIFICATION_REQUIRED: {
+    status: 403,
+    message: "Verify your email before creating an organization.",
+  },
+  ORGANIZATION_CREATE_IN_PROGRESS: {
+    status: 409,
+    message: "An organization is already being created for this account.",
+  },
+  ORGANIZATION_CREATE_FAILED: {
+    status: 500,
+    message: "The organization could not be created.",
+  },
+}
+
+/**
+ * Creates an organization for the caller.
+ *
+ * The caller gives a name and nothing else. The slug is the
+ * server's: the input schema has no slug field, and Zod drops the
+ * unknown key, so a slug that arrives in the body is discarded before
+ * the handler sees it. The creation itself belongs to the
+ * provisioning flow, which owns the operation row, the retry against
+ * the database, the compensation and the recovery.
+ *
+ * The procedure's own job is the error contract. It refuses what it
+ * can refuse, and it turns the flow's failures into the declared
+ * ones.
+ */
+export const create = base
+  .input(z.object({ name: z.string() }))
+  .errors(createErrors)
+  .use(authGuard)
+  .use(async (options, input) => {
+    // An account that has not verified its email cannot create an
+    // organization. The plugin refuses one too, but its refusal
+    // carries no code of ours and would be reported as a server
+    // failure, which is the wrong shape for a refusal.
+    if (options.context.user.emailVerified !== true) {
+      throw options.errors.ORGANIZATION_EMAIL_VERIFICATION_REQUIRED()
+    }
+
+    // The name has to be one the policy accepts. The policy's own
+    // refusal is turned into the declared one, so the client reads
+    // the same code whatever refused it.
+    try {
+      assertOrganizationName(input.name)
+    } catch {
+      throw options.errors.ORGANIZATION_NAME_INVALID()
+    }
+
+    let created
+    try {
+      created = await provisionOrganization({
+        userId: options.context.user.id,
+        name: input.name,
+        headers: options.context.headers,
+      })
+    } catch (error) {
+      if (error instanceof OrganizationProvisioningError) {
+        if (error.code === "ORGANIZATION_NAME_INVALID") {
+          throw options.errors.ORGANIZATION_NAME_INVALID()
+        }
+        if (error.code === "ORGANIZATION_CREATE_IN_PROGRESS") {
+          throw options.errors.ORGANIZATION_CREATE_IN_PROGRESS()
+        }
+        throw options.errors.ORGANIZATION_CREATE_FAILED()
+      }
+      throw error
+    }
+
+    return options.next({
+      context: { ...options.context, organization: created },
+    })
+  })
+  .output(organizationSummary)
+  .handler(async ({ context }) => ({
+    id: context.organization.id,
+    slug: context.organization.slug,
+    name: context.organization.name,
+    role: context.organization.role,
+  }))
+
 export const organizationRouter = {
   bySlug,
   settings,
   active,
+  create,
 }

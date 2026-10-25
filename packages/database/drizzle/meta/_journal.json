@@ -15,6 +15,20 @@
       "when": 1792573782659,
       "tag": "0001_catalog_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792968529741,
+      "tag": "0002_organization_provisioning",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792968541921,
+      "tag": "0003_organization_provisioning_guard",
+      "breakpoints": true
     }
   ]
 }

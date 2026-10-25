@@ -2,6 +2,7 @@ import { NextRequest } from "next/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { SETTINGS_PATHS, SETTINGS_PREFIX } from "../lib/settings-paths"
+import { NO_ORGANIZATION_PATH } from "../lib/workspace-paths"
 import { config, proxy } from "../proxy"
 
 const ORIGIN = "https://app.deessejs.com"
@@ -102,9 +103,95 @@ describe("proxy: the account settings are protected", () => {
   })
 })
 
+describe("proxy: the workspace is protected", () => {
+  it("bounces a signed-out visitor away from a workspace path", async () => {
+    // A first segment the application does not own is an organization
+    // slug, and the organization tree needs a session.
+    stubSession({ signedIn: false })
+    const response = await proxy(request("/acme/home"))
+
+    expect(response.status).toBe(307)
+    const target = locationOf(response)
+    expect(target.pathname).toBe("/login")
+    expect(target.searchParams.get("redirect")).toBe("/acme/home")
+  })
+
+  it("protects the empty state", async () => {
+    stubSession({ signedIn: false })
+    const response = await proxy(request(NO_ORGANIZATION_PATH))
+
+    expect(response.status).toBe(307)
+    expect(locationOf(response).pathname).toBe("/login")
+  })
+
+  it("lets a signed-in visitor into the workspace", async () => {
+    stubSession()
+    const response = await proxy(request("/acme/home"))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+  })
+
+  it("sends an unverified visitor to verify-email", async () => {
+    stubSession({ emailVerified: false })
+    const response = await proxy(request("/acme/home"))
+
+    expect(response.status).toBe(307)
+    expect(locationOf(response).pathname).toBe("/verify-email")
+  })
+})
+
+describe("proxy: the classification", () => {
+  it("does not gate a path the application owns but does not serve", async () => {
+    // The segment is reserved, so it is an application route, and
+    // the per-prefix rules say it is not one of ours. The proxy does
+    // not even ask for a session.
+    const fetchMock = stubSession()
+    const response = await proxy(request("/onboarding"))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("does not gate a file", async () => {
+    // A segment with an extension is a file, whatever its first
+    // segment is.
+    const fetchMock = stubSession()
+    const response = await proxy(request("/favicon.ico"))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("does not gate a nested asset", async () => {
+    const fetchMock = stubSession()
+    const response = await proxy(request("/logos/anthropic.svg"))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("does not gate the API mount", async () => {
+    const fetchMock = stubSession()
+    const response = await proxy(request("/api/v1/rpc/organization/create"))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
 describe("proxy: the matcher", () => {
-  it("covers the account settings", () => {
-    expect(config.matcher).toContain(`${SETTINGS_PREFIX}/:path*`)
+  it("covers the workspace tree, whose first segment is not known in advance", () => {
+    // A literal list cannot express it, so the matcher is a regular
+    // expression, and it leaves the API mount and the framework's own
+    // files out.
+    expect(config.matcher).toContain(
+      "/((?!api(?:/|$)|_next(?:/|$))[^/]+(?:/.*)?)",
+    )
   })
 
   it("does not cover a prefix that no longer exists", () => {

@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
+import { RESERVED_SLUGS } from "@workspace/auth/organization/reserved-slugs"
 
 import { SETTINGS_PREFIX } from "@/lib/settings-paths"
+import { NO_ORGANIZATION_PATH } from "@/lib/workspace-paths"
 
-const PROTECTED_PREFIXES = ["/home", SETTINGS_PREFIX, "/admin"]
+const PROTECTED_PREFIXES = [
+  "/home",
+  SETTINGS_PREFIX,
+  "/admin",
+  NO_ORGANIZATION_PATH,
+]
 const AUTH_PREFIXES = [
   "/login",
   "/signup",
@@ -20,18 +27,51 @@ const AUTH_PREFIXES = [
 ]
 
 export const config = {
-  // Single matcher covering both directions of the auth gate.
-  matcher: [
-    "/home/:path*",
-    "/account/settings/:path*",
-    "/admin/:path*",
-    "/login",
-    "/signup",
-    "/forgot-password",
-    "/reset-password",
-    "/verify-email",
-    "/device",
-  ],
+  // The workspace tree is `/[organization_slug]/*`, whose first
+  // segment is not known in advance, so a literal list cannot express
+  // it. The matcher is a regular expression that covers every path
+  // whose first segment is neither the API mount nor the framework's
+  // own files. The classification of what to do with a path is the
+  // function's job, below.
+  matcher: ["/((?!api(?:/|$)|_next(?:/|$))[^/]+(?:/.*)?)"],
+}
+
+/**
+ * Whether the path names a file rather than a route.
+ *
+ * Next's file-based routing means a route segment never carries an
+ * extension, and the public folder is served as it is on disk. Any
+ * segment carrying an extension makes the path a file, whatever its
+ * first segment is, and a file is never gated.
+ */
+const isFilePath = (pathname: string): boolean =>
+  pathname.split("/").some((segment) => segment.includes("."))
+
+/** The first segment of the path. */
+const firstSegment = (pathname: string): string => {
+  const segments = pathname.split("/").filter((segment) => segment !== "")
+  return segments[0] ?? ""
+}
+
+/**
+ * Whether the path is protected.
+ *
+ * A path whose first segment the application owns is an application
+ * route, and the per-prefix rules decide it. Any other first segment
+ * is an organization slug, and the organization tree is protected:
+ * the workspace pages need a session, and the API refuses a caller
+ * who does not belong to the organization they named.
+ */
+const isProtectedPath = (pathname: string): boolean => {
+  if (isFilePath(pathname)) return false
+  const first = firstSegment(pathname)
+  if (first === "") return false
+  if (RESERVED_SLUGS.has(first)) {
+    return PROTECTED_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    )
+  }
+  return true
 }
 
 // The proxy uses a pure HTTP fetch to /api/auth/get-session
@@ -72,9 +112,7 @@ export async function proxy(request: NextRequest) {
   // protected prefixes but not future-proof. Equality OR a trailing
   // slash is the correct gate; it also aligns the auth-prefix check
   // (which already used this shape).
-  const isProtected = PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  )
+  const isProtected = isProtectedPath(pathname)
   const isAuthPage = AUTH_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   )
