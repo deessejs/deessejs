@@ -93,6 +93,8 @@ Each of these has already cost a production bug. Breaking one is not a style que
 
 9. **Applications use clients for stateful backend capabilities.** `apps/*` must not call runtime APIs from `@workspace/auth` or `@workspace/database`. Browser authentication goes through the app's Better Auth client; server-side auth requests go through an app-owned HTTP client that calls the exposed endpoint and forwards request headers. Reads and writes go through typed API clients and the wire contracts. Future stateful services such as cache, queue or storage follow the same boundary: apps call a client, and the client talks to the service through its defined contract. Backend packages remain behind server-side composition. Share client-safe wire types through `packages/contracts`; a direct type-only import from a service package requires a concrete reason and must not pull in runtime code.
 
+10. **The API catch-all must export OPTIONS.** Next.js auto-implements OPTIONS for a route handler that does not export one, and it answers the preflight with a bare 204 that carries no CORS headers, before the request reaches the Hono app. The browser then blocks every cross-origin call to the API that carries a non-simple content type. `apps/app/app/api/[[...route]]/route.ts` exports `OPTIONS` so the preflight reaches the CORS middleware in `packages/api/src/index.ts`.
+
 ## Conventions
 
 ### Next.js 16
