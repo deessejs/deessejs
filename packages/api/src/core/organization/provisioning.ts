@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto"
 import { eq } from "drizzle-orm"
 import { db } from "@workspace/database"
-import { organization } from "@workspace/database/schema"
+import {
+  organization,
+  ORGANIZATION_PROVISIONING_STATUS,
+} from "@workspace/database/schema"
 import {
   createOrganization as createOrganizationWithPlugin,
   setActiveOrganization,
@@ -17,7 +20,6 @@ import {
 } from "@workspace/auth/organization/provisioning"
 import type { ProvisioningOperation } from "@workspace/auth/organization/provisioning"
 import { organizationSlugCandidates } from "@workspace/auth/organization/policy"
-import { ORGANIZATION_PROVISIONING_STATUS } from "@workspace/database/schema"
 
 /**
  * The provisioning of an organization.
