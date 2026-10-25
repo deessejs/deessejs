@@ -58,14 +58,22 @@ import { logger } from "../../constants/logger.js"
  * guard is closed-by-default, production-impervious, and
  * header-mismatch. See packages/api/tests/integration/rpc/templates.test.ts.
  *
- * The guard is gated on NODE_ENV !== "production" so a future
- * contributor cannot accidentally fire the test path from
+ * The guard is closed in production, whatever the headers say, so a
+ * future contributor cannot accidentally fire the test path from
  * production traffic. The env check is the floor; the secret
  * comparison is the ceiling.
+ *
+ * The decision is a function of the request headers, and it is
+ * exported so its contract can be pinned without a request. Testing
+ * it through the handler costs a catalog enrichment, which is
+ * fourteen requests to GitHub, and the request's answer would then
+ * depend on the upstream being reachable. See
+ * `packages/api/tests/integration/rpc/templates.test.ts`.
  */
-const e2eForceFail = (
+export const e2eForceFail = (
   requestHeaders: Headers,
 ): TemplatesListResponseV1 | null => {
+  if (process.env.NODE_ENV === "production") return null
   const bypass = requestHeaders.get("x-vercel-protection-bypass")
   const expected = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
   // Closed by default: missing secret OR missing/non-matching
@@ -92,13 +100,10 @@ export const list = base
     },
   })
   .handler(async ({ context }): Promise<TemplatesListResponseV1> => {
-    // E2E guard runs in EVERY environment except production.
-    // In production the guard is a no-op (closed-by-default + the
-    // NODE_ENV check on the import below).
-    if (process.env.NODE_ENV !== "production") {
-      const forced = e2eForceFail(context.headers)
-      if (forced !== null) return forced
-    }
+    // The guard answers without reaching the upstream when it fires.
+    // In production it never fires: the decision is closed there.
+    const forced = e2eForceFail(context.headers)
+    if (forced !== null) return forced
 
     try {
       const templates = await enrich(TEMPLATES)

@@ -24,6 +24,11 @@
       "import": "./dist/organization/invitation.js",
       "default": "./dist/organization/invitation.js"
     },
+    "./organization/roles": {
+      "types": "./dist/organization/roles.d.ts",
+      "import": "./dist/organization/roles.js",
+      "default": "./dist/organization/roles.js"
+    },
     "./types": {
       "types": "./dist/types.d.ts",
       "import": "./dist/types.js",
