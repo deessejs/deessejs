@@ -98,35 +98,57 @@ describe("POST /api/v1/rpc/templates/list", () => {
       expect(typeof template.updatedAt).toBe("string")
       expect(typeof template.stars).toBe("number")
     })
+  }
 
-    it("routes the two-segment URL through the oRPC handler, not the notFound fallback", async () => {
-      // The assertion that matters for the Hono mount: the URL Hono
-      // serves matches the URL the RPCLink client sends. A
-      // regression that narrows the Hono mount to one segment
-      // surfaces here as a 404 with the notFound envelope.
-      // With the real network behind it, this also confirms
-      // that a non-mocked `enrich()` does not affect routing.
+  // The routing contract, and it does not depend on GitHub: the URL
+  // Hono serves has to be the URL the RPCLink client sends, whatever
+  // the upstream answers. It sits outside the GitHub gate for that
+  // reason, so it runs in every environment.
+  it("routes the two-segment URL through the oRPC handler, not the notFound fallback", async () => {
+    // The assertion that matters for the Hono mount: the URL Hono
+    // serves matches the URL the RPCLink client sends. A
+    // regression that narrows the Hono mount to one segment
+    // surfaces here as a 404 with the notFound envelope.
+    //
+    // The call goes through the e2e guard, which answers without
+    // reaching GitHub. The procedure enriches the whole catalog on
+    // every call, fourteen requests to GitHub, and the anonymous
+    // rate limit is small enough that paying it twice is what
+    // pushes this suite past it. The first test above already
+    // covers the real network behind the mount.
+    const secret = "test-only-bypass-secret"
+    const saved = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    process.env.VERCEL_AUTOMATION_BYPASS_SECRET = secret
+    try {
       const res = await api.request("/api/v1/rpc/templates/list", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "x-vercel-protection-bypass": secret,
+          "x-e2e-force-fail": "1",
+        },
         body: JSON.stringify({ data: null, path: ["templates", "list"] }),
       })
 
-      if (res.status === 404) {
-        const body = await res.json()
-        // If the Hono mount missed, the notFound handler
-        // returns this exact shape. The assertion below
-        // documents the regression mode as a failure of THIS
-        // test.
-        expect(body).not.toMatchObject({
-          defined: false,
-          code: "NOT_FOUND",
-        })
+      const body = await res.json()
+      // The oRPC handler answered: its answer is in the oRPC
+      // envelope, and the notFound fallback's is not. The
+      // fallback answers at the top level with `defined` and
+      // `code`, and carries no `json` at all.
+      expect(body).toHaveProperty("json")
+      expect(body).not.toMatchObject({
+        defined: false,
+        code: "NOT_FOUND",
+      })
+      expect(res.status).not.toBe(404)
+    } finally {
+      if (saved === undefined) {
+        delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      } else {
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET = saved
       }
-
-      expect(res.status).toBe(200)
-    })
-  }
+    }
+  })
 })
 
 /**
