@@ -22,8 +22,8 @@
  * only thing that has to exist for the caller to be a caller.
  */
 import { createHmac, randomUUID } from "node:crypto"
-import { and, eq } from "drizzle-orm"
-import { describe, expect, it } from "vitest"
+import { and, eq, inArray } from "drizzle-orm"
+import { afterEach, describe, expect, it } from "vitest"
 import { inject } from "vitest"
 
 import { auth } from "@workspace/auth"
@@ -40,6 +40,28 @@ let counter = 0
 
 const uniqueId = (prefix: string): string =>
   `${prefix}-${randomUUID().slice(0, 8)}-${counter++}`
+
+/**
+ * The rows this file creates, so they can be removed afterwards.
+ *
+ * The database is not necessarily disposable: a local container
+ * outlives the run, and repeated runs accumulate. The references
+ * cascade, so removing the users and the organizations removes the
+ * sessions and the members with them.
+ */
+const createdUsers: string[] = []
+const createdOrganizations: string[] = []
+
+afterEach(async () => {
+  const users = createdUsers.splice(0)
+  const organizations = createdOrganizations.splice(0)
+  if (users.length > 0) {
+    await db.delete(user).where(inArray(user.id, users))
+  }
+  if (organizations.length > 0) {
+    await db.delete(organization).where(inArray(organization.id, organizations))
+  }
+})
 
 /**
  * The secret the server signs its cookies with.
@@ -85,6 +107,7 @@ const createActor = async (activeOrganizationId?: string): Promise<Actor> => {
     email,
     emailVerified: true,
   })
+  createdUsers.push(id)
   const token = uniqueId("token")
   await db.insert(session).values({
     id: uniqueId("session"),
@@ -108,6 +131,7 @@ const createOrganization = async (name = "Acme"): Promise<CreatedOrganization> =
     slug,
     createdAt: new Date(),
   })
+  createdOrganizations.push(id)
   return { id, slug }
 }
 
