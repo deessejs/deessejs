@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url"
+
 import { defineConfig } from "vitest/config"
 import { vitestConfig } from "@workspace/vitest-config"
 
@@ -18,6 +20,23 @@ const shared = vitestConfig()
 
 export default defineConfig({
   ...shared,
+  resolve: {
+    alias: {
+      // The `@/*` alias is declared in `tsconfig.json`. Vite does not
+      // read tsconfig paths on its own, so it is declared here, the
+      // same way `apps/app` does it.
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // `server-only` is a marker, not a path alias. Next.js
+      // implements it at the compiler level and the package itself is
+      // not a dependency of this workspace, so a plain Node test
+      // runner cannot resolve the import. It has no runtime
+      // behaviour outside a React Server Component graph, so the
+      // tests point it at an empty module. Same as `apps/app`.
+      "server-only": fileURLToPath(
+        new URL("./tests/stubs/server-only.ts", import.meta.url),
+      ),
+    },
+  },
   test: {
     ...(shared.test ?? {}),
     // The fetch wrapper translation has no env/server-side

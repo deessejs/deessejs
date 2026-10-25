@@ -6,6 +6,15 @@ describe("isHostAllowed", () => {
   it("allows first-party hosts and previews belonging to our Vercel projects", () => {
     expect(isHostAllowed("deessejs.com")).toBe(true)
     expect(isHostAllowed("app.deessejs.com")).toBe(true)
+    // The team scope the organisation uses today.
+    expect(
+      isHostAllowed("deessejs-app-git-staging-deessejs.vercel.app"),
+    ).toBe(true)
+    expect(
+      isHostAllowed("deessejs-web-git-feature-branch-deessejs.vercel.app"),
+    ).toBe(true)
+    // The scope the organisation used before the rename. A preview
+    // branch that predates it keeps the old suffix.
     expect(
       isHostAllowed("deessejs-app-git-staging-aliiibenns-projects.vercel.app"),
     ).toBe(true)
@@ -24,6 +33,9 @@ describe("isHostAllowed", () => {
     ).toBe(false)
     expect(
       isHostAllowed("attacker-git-staging-aliiibenns-projects.vercel.app"),
+    ).toBe(false)
+    expect(
+      isHostAllowed("attacker-git-staging-deessejs.vercel.app"),
     ).toBe(false)
   })
 })
