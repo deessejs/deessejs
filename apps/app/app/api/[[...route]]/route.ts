@@ -25,8 +25,20 @@ export const dynamic = "force-dynamic"
 // `packages/auth/src/auth.ts` now configures `baseURL` as a dynamic
 // `{ allowedHosts, protocol, fallback }` form (the apex + wildcards
 // allowlist lives in `packages/auth/src/host-allowlist.ts`, the shared
-// allowlist with Hono CORS), so per-request origin resolution
-// is handled inside the auth handler itself — no changes needed in this
+// allowlist with Hono CORS). Per-request origin resolution is handled
+// inside the auth handler itself, so no changes are needed in this
 // catch-all.
 export const GET = handle(api)
 export const POST = handle(api)
+
+// Next.js auto-implements OPTIONS for a route handler that does not
+// export one. The auto-implementation answers 204 with an `Allow`
+// header and no CORS headers, and it runs before the request reaches
+// the Hono app, so the CORS middleware never sees the preflight. The
+// browser then blocks every cross-origin request with a
+// non-simple content type, and the POST never leaves the page.
+//
+// Exporting OPTIONS hands the preflight to Hono, whose CORS
+// middleware answers it with `Access-Control-Allow-Origin` and the
+// requested headers.
+export const OPTIONS = handle(api)

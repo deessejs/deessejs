@@ -52,7 +52,7 @@ pnpm typecheck
 pnpm lint
 ```
 
-The tests live in `tests/`: `proxy.test.ts` covers the guard, `settings-paths.test.ts` covers the route constants.
+The tests live in `tests/`: `proxy.test.ts` covers the guard, `settings-paths.test.ts` covers the route constants, `cors-preflight.test.ts` covers the preflight the catch-all has to answer.
 
 ## Conventions
 
