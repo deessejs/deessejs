@@ -26,9 +26,9 @@ import { and, eq } from "drizzle-orm"
 import { describe, expect, it } from "vitest"
 import { inject } from "vitest"
 
+import { auth } from "@workspace/auth"
 import { db } from "@workspace/database"
 import { member, organization, session, user } from "@workspace/database/schema"
-import { serverEnv } from "@workspace/env/server"
 
 import { api } from "../../../src/index.js"
 
@@ -42,14 +42,28 @@ const uniqueId = (prefix: string): string =>
   `${prefix}-${randomUUID().slice(0, 8)}-${counter++}`
 
 /**
+ * The secret the server signs its cookies with.
+ *
+ * Better Auth resolves the secret from the configuration and falls back
+ * to a default of its own when none is set, so the test reads the
+ * resolved value off the auth instance rather than off the
+ * environment. A test that signed with a different secret would produce
+ * a cookie the server rejects, which is a confusing way to fail.
+ */
+const authSecret = async (): Promise<string> => {
+  const context = await auth.$context
+  return context.options.secret
+}
+
+/**
  * The session cookie, signed the way Better Auth signs it.
  *
  * The value is the session token, a dot, and the base64 HMAC-SHA256 of
  * the token under the auth secret. Better Auth verifies the signature
  * and then looks the token up in the `session` table.
  */
-const sessionCookie = (token: string): string => {
-  const signature = createHmac("sha256", serverEnv.BETTER_AUTH_SECRET)
+const sessionCookie = async (token: string): Promise<string> => {
+  const signature = createHmac("sha256", await authSecret())
     .update(token)
     .digest("base64")
   return `${SESSION_COOKIE_NAME}=${encodeURIComponent(`${token}.${signature}`)}`
@@ -79,7 +93,7 @@ const createActor = async (activeOrganizationId?: string): Promise<Actor> => {
     expiresAt: new Date(Date.now() + 60 * 60 * 1000),
     activeOrganizationId: activeOrganizationId ?? null,
   })
-  return { id, email, cookie: sessionCookie(token) }
+  return { id, email, cookie: await sessionCookie(token) }
 }
 
 type CreatedOrganization = { id: string; slug: string }
