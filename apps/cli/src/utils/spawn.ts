@@ -18,7 +18,7 @@ export type SpawnOptions = {
 export const spawn = (
   command: string,
   args: string[],
-  options: SpawnOptions = {},
+  options: SpawnOptions = {}
 ): Promise<number> => {
   const { cwd, env, stdio = "inherit", reject = false } = options
   return new Promise((resolve, rejectFn) => {
@@ -27,9 +27,13 @@ export const spawn = (
     const child = crossSpawn.spawn(command, args, {
       cwd,
       env: env ?? process.env,
-      stdio,
+      stdio: stdio === "pipe" ? ["ignore", "pipe", "pipe"] : stdio,
       shell: false,
     })
+    if (stdio === "pipe") {
+      child.stdout?.pipe(process.stderr)
+      child.stderr?.pipe(process.stderr)
+    }
     child.on("error", (err) => rejectFn(err))
     child.on("exit", (code) => {
       const exit = code ?? 1
