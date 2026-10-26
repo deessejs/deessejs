@@ -147,6 +147,22 @@ export const serverInputShape = {
 
   PARENT_DOMAIN: z.string().min(1).optional(),
 
+  // Vercel's "Bypass for Automation" secret of the `deessejs-app`
+  // project, set on the `deessejs-web` project so the server-side
+  // proxy can reach a protected preview deployment.
+  //
+  // Vercel protects a preview deployment with an SSO redirect, and a
+  // CORS preflight cannot follow one: the browser answers the
+  // preflight with a failure and never sends the POST. A server-side
+  // call carries this header instead, and the deployment answers.
+  //
+  // The value is a credential for another project, so it stays out of
+  // the browser bundle by construction: only the server route handler
+  // reads it, and it is not a `NEXT_PUBLIC_*` variable. Set it in the
+  // Preview scope of the marketing project; production calls the
+  // API on its custom domain, which is not protected.
+  API_PROTECTION_BYPASS_SECRET: z.string().optional(),
+
   // Test-only override for the email-verification-on-invitation
   // contract. The default is "true"; the production startup guard in
   // `packages/auth/src/organization/plugin.ts` refuses to start the

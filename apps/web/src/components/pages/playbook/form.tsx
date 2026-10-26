@@ -1,6 +1,5 @@
 "use client"
 
-import { ORPCError } from "@orpc/client"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useId, useRef, type FormEvent } from "react"
 import { Controller, useForm } from "react-hook-form"
@@ -17,7 +16,6 @@ import {
 } from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
 import Link from "next/link"
-import { orpc } from "@/lib/orpc"
 
 /**
  * /playbook signup form.
@@ -58,6 +56,16 @@ const playbookSchema = z.object({
 
 type PlaybookInput = z.infer<typeof playbookSchema>
 
+/**
+ * The signup form posts to a same-origin route, not to the API.
+ *
+ * The API deployment is protected by Vercel in preview, and a browser
+ * CORS preflight cannot get past that protection: Vercel answers the
+ * preflight with a redirect to its sign-in page, the browser refuses
+ * the response, and the POST never leaves the page. The route handler
+ * on the same origin calls the API server-side, where the deployment
+ * protection can be answered.
+ */
 export function Form() {
   // The form is rendered once on the page today. The ids stay
   // derived from `useId` rather than hardcoded: the form was
@@ -100,43 +108,67 @@ export function Form() {
   const deliveredRef = useRef(false)
 
   const onSubmit = async (data: PlaybookInput) => {
+    const showFailure = (code?: string) => {
+      // The route forwards the wire code the API returned, so the
+      // branches below match the ones the API documents.
+      if (code === "DUPLICATE_SIGNUP") {
+        // Same outcome as success: the email was already sent.
+        // Show the same green toast; no need for a destructive one.
+        if (!deliveredRef.current) {
+          deliveredRef.current = true
+          toast.success("Check your inbox. The PDF is on the way.")
+        }
+        return
+      }
+      if (code === "RATE_LIMITED") {
+        toast.error(
+          "You've sent a few signups recently. Please wait a minute and try again.",
+        )
+        return
+      }
+      if (code === "EMAIL_SEND_FAILED") {
+        toast.error(
+          "Couldn't send the email right now. Try again in a few minutes or email support@deessejs.com.",
+        )
+        return
+      }
+      if (code === "BAD_REQUEST" || code === "INVALID_EMAIL") {
+        toast.error("That email looks off. Please double-check it.")
+        return
+      }
+      toast.error(
+        "Something went wrong. Try again, or email support@deessejs.com.",
+      )
+    }
+
     try {
-      const { ok } = await orpc.playbook.signup({
-        email: data.email,
-        consentMarketing: data.consentMarketing,
+      const response = await fetch("/api/playbook/signup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: data.email,
+          consentMarketing: data.consentMarketing,
+        }),
       })
-      if (ok) {
+
+      // The status is read before the body. A failed request answers
+      // with a JSON body too, and the code in it decides the toast.
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as {
+          code?: string
+        }
+        showFailure(payload.code)
+        return
+      }
+
+      const payload = (await response.json()) as { ok?: boolean }
+      if (payload.ok) {
         deliveredRef.current = true
         toast.success("Check your inbox. The PDF is on the way.")
+        return
       }
-    } catch (err) {
-      if (err instanceof ORPCError) {
-        if (err.code === "DUPLICATE_SIGNUP") {
-          // Same outcome as success: the email was already sent.
-          // Show the same green toast; no need for a destructive one.
-          if (!deliveredRef.current) {
-            deliveredRef.current = true
-            toast.success("Check your inbox. The PDF is on the way.")
-          }
-          return
-        }
-        if (err.code === "RATE_LIMITED") {
-          toast.error(
-            "You've sent a few signups recently. Please wait a minute and try again.",
-          )
-          return
-        }
-        if (err.code === "EMAIL_SEND_FAILED") {
-          toast.error(
-            "Couldn't send the email right now. Try again in a few minutes or email support@deessejs.com.",
-          )
-          return
-        }
-        if (err.code === "BAD_REQUEST" || err.code === "INVALID_EMAIL") {
-          toast.error("That email looks off. Please double-check it.")
-          return
-        }
-      }
+      showFailure()
+    } catch {
       toast.error(
         "Something went wrong. Try again, or email support@deessejs.com.",
       )

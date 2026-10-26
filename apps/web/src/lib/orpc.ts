@@ -1,3 +1,5 @@
+import "server-only"
+
 import { createORPCClient } from "@orpc/client"
 import { RPCLink } from "@orpc/client/fetch"
 import type { RouterClient } from "@orpc/server"
@@ -7,7 +9,7 @@ import type { RouterClient } from "@orpc/server"
 // value out keeps node-only modules transitively pulled by the API
 // router (resend SDK, @workspace/env/server via dotenv loader,
 // `node:crypto` in the rate-limit primitive) out of the
-// marketing-site client bundle. The previous value-level import worked
+// marketing-site bundle. The previous value-level import worked
 // for the existing routes because those routes pulled nothing
 // node-only: the new `playbook` route does (it imports
 // `@workspace/email`, which uses `node:crypto`-backed modules), so
@@ -64,12 +66,19 @@ export const buildFetchIsrInit = (
 /**
  * Typed oRPC client for the marketing site.
  *
+ * The module is server-only. A browser cannot call the API directly:
+ * a preview deployment of the API is protected by Vercel, and Vercel
+ * answers a CORS preflight with a redirect the browser cannot follow,
+ * so the preflight fails and the POST never leaves the page. The
+ * browser talks to a route handler on its own origin, and that
+ * handler calls the API from the server. The `server-only` marker
+ * makes the boundary a build error rather than a convention.
+ *
  * `API_RPC_PATH` is the path part of the oRPC endpoint URL (defined
  * in @workspace/api/base-path, source
- * packages/api/src/constants/base-path.ts). The host part is
- * `clientEnv.NEXT_PUBLIC_API_BASE_URL` (declared in @workspace/env);
- * together they form the full oRPC endpoint URL via
- * `new URL(API_RPC_PATH, clientEnv.NEXT_PUBLIC_API_BASE_URL)`.
+ * packages/api/src/constants/base-path.ts). The host part is the API
+ * origin; together they form the full oRPC endpoint URL via
+ * `new URL(API_RPC_PATH, origin)`.
  * The same path constant is read by apps/app's lib/orpc.ts and by
  * Hono's `basePath(API_BASE_PATH)` server-side. Renaming the API
  * prefix means editing the constant, updating the env var on Vercel,
@@ -114,34 +123,84 @@ export const buildFetchIsrInit = (
  * Importing from `@workspace/api` would also drag `@workspace/auth` →
  * `@workspace/database` → `postgres` into the client bundle, which
  * Turbopack cannot satisfy (node builtins `net`/`tls`/`perf_hooks`).
- */
-const link = new RPCLink({
-  // The oRPC endpoint URL is composed from the path constant
-  // (single source of truth for the API prefix) and the host
-  // constant (declared in @workspace/env, defaults to
-  // localhost:3001 in dev, app.deessejs.com in prod). The previous
-  // form `url: API_RPC_PATH` (a relative path) resolved against
-  // the current domain and hit /api/v1 on deessejs.com, which
-  // does not host the backend. `new URL(path, base)` is robust
-  // to a trailing slash on either side: the leading slash on the
-  // path erases the trailing slash on the base. The schema's
-  // `.refine` rejects trailing slashes at parse time as a second
-  // layer of defence.
-  url: new URL(API_RPC_PATH, apiBaseUrl).toString(),
-  fetch: (request, init, options) => {
-    const isrInit = buildFetchIsrInit(init, options?.context?.cache)
-    return globalThis.fetch(request, isrInit)
-  },
-})
-
-/**
- * Typed oRPC client. We re-type the inferred context with
- * `FetchCacheOptions` so the per-call `cache` shape is accepted by
- * TypeScript while server-side context fields remain available.
+ *
+ * We re-type the inferred context with `FetchCacheOptions` so the
+ * per-call `cache` shape is accepted by TypeScript while server-side
+ * context fields remain available.
  */
 export type ORPCClient = RouterClient<typeof appRouter, FetchCacheOptions>
 
-export const orpc: ORPCClient = createORPCClient(link)
+/**
+ * Build an oRPC client for one API origin.
+ *
+ * The origin is a parameter because the caller decides which
+ * deployment it talks to: the default client below resolves the
+ * preview origin of the `deessejs-app` project, and the signup proxy
+ * resolves the same origin plus the headers Vercel's deployment
+ * protection expects.
+ */
+export const createOrpcClient = (
+  origin: string,
+  config?: { headers?: Record<string, string> },
+): ORPCClient => {
+  const link = new RPCLink({
+    // The oRPC endpoint URL is composed from the path constant
+    // (single source of truth for the API prefix) and the host
+    // constant (declared in @workspace/env, defaults to
+    // localhost:3001 in dev, app.deessejs.com in prod). The previous
+    // form `url: API_RPC_PATH` (a relative path) resolved against
+    // the current domain and hit /api/v1 on deessejs.com, which
+    // does not host the backend. `new URL(path, base)` is robust
+    // to a trailing slash on either side: the leading slash on the
+    // path erases the trailing slash on the base. The schema's
+    // `.refine` rejects trailing slashes at parse time as a second
+    // layer of defence.
+    url: new URL(API_RPC_PATH, origin).toString(),
+    fetch: (request, init, options) => {
+      const isrInit = buildFetchIsrInit(init, options?.context?.cache)
+      return globalThis.fetch(
+        request,
+        withExtraHeaders(request, isrInit, config?.headers),
+      )
+    },
+  })
+
+  return createORPCClient(link)
+}
+
+/**
+ * Merge extra headers into a `fetch` init.
+ *
+ * The headers of the `Request` object and of the init are merged
+ * first: `fetch` replaces the headers of the request with the ones in
+ * the init, so passing only the extra headers would drop the content
+ * type the oRPC client set on the request.
+ */
+const withExtraHeaders = (
+  request: Request,
+  init: RequestInit,
+  extra: Record<string, string> | undefined,
+): RequestInit => {
+  if (!extra || Object.keys(extra).length === 0) return init
+
+  const headers = new Headers(request.headers)
+  for (const [name, value] of new Headers(init.headers).entries()) {
+    headers.set(name, value)
+  }
+  for (const [name, value] of Object.entries(extra)) {
+    headers.set(name, value)
+  }
+  return { ...init, headers }
+}
+
+/**
+ * The client the server components use.
+ *
+ * Its origin is resolved at module load from the Vercel env vars, so
+ * it points at the preview deployment of the API on a preview
+ * deployment of the marketing site.
+ */
+export const orpc: ORPCClient = createOrpcClient(apiBaseUrl)
 
 /**
  * Tag a call as "live runtime, do not poison the cache on failure".

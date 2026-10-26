@@ -22,9 +22,9 @@
  * No network, no I/O, no env. The function is a pure shape
  * transformer over `RequestInit`.
  */
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { buildFetchIsrInit } from "../../src/lib/orpc.js"
+import { buildFetchIsrInit, createOrpcClient } from "../../src/lib/orpc.js"
 
 describe("buildFetchIsrInit (issue #81 contract)", () => {
   it("falls back to the site-wide default when no directive is supplied", () => {
@@ -119,5 +119,71 @@ describe("buildFetchIsrInit (issue #81 contract)", () => {
     // itself; in practice it is always defined, but the public
     // helper signature accepts `undefined` and must not crash.
     expect(() => buildFetchIsrInit(undefined, undefined)).not.toThrow()
+  })
+})
+
+/**
+ * The client has to target the origin it is given.
+ *
+ * The default client resolves the preview origin of the API project
+ * from the Vercel env vars, and the signup proxy resolves the same
+ * origin with the headers the deployment protection expects. The
+ * origin is a parameter, so a caller decides which deployment it
+ * talks to.
+ */
+describe("createOrpcClient", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("targets the origin it was given", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ json: { ok: true } }), {
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const client = createOrpcClient(
+      "https://deessejs-app-git-fix-playbook-origin.vercel.app",
+    )
+    await client.playbook.signup({
+      email: "reader@example.com",
+      consentMarketing: false,
+    })
+
+    const request = fetchMock.mock.calls[0]?.[0] as Request
+    expect(request.url).toBe(
+      "https://deessejs-app-git-fix-playbook-origin.vercel.app/api/v1/rpc/playbook/signup",
+    )
+  })
+
+  it("keeps two clients on their own origin", async () => {
+    // A fresh Response per call: a body can only be read once.
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(JSON.stringify({ json: { ok: true } }), {
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const preview = createOrpcClient("https://app-preview.example.test")
+    const production = createOrpcClient("https://app-production.example.test")
+    await preview.playbook.signup({
+      email: "reader@example.com",
+      consentMarketing: false,
+    })
+    await production.playbook.signup({
+      email: "reader@example.com",
+      consentMarketing: false,
+    })
+
+    const urls = fetchMock.mock.calls.map(
+      (call) => (call[0] as Request).url,
+    )
+    // A client that ignored the origin it was given would send both
+    // requests to the same host.
+    expect(urls[0]).toContain("https://app-preview.example.test/")
+    expect(urls[1]).toContain("https://app-production.example.test/")
   })
 })

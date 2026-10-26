@@ -4,12 +4,24 @@
  * trusted origins, so Vercel preview hosts are limited to project aliases
  * in our Vercel team. Do not replace these patterns with *.vercel.app.
  *
+ * The team scope appears twice because the organisation was renamed. A
+ * preview deployed today ends in `-deessejs.vercel.app`; the ones
+ * deployed before the rename still end in
+ * `-aliiibenns-projects.vercel.app`, and a long-lived preview branch
+ * keeps the old suffix. Both are listed, scoped per project so that no
+ * other Vercel deployment can make a credentialed cross-origin call to
+ * the API.
+ *
  * Localhost entries are available only in development.
  */
 
 const PRODUCTION_HOSTS = [
   "deessejs.com",
   "*.deessejs.com",
+  "deessejs-app-*-deessejs.vercel.app",
+  "deessejs-web-*-deessejs.vercel.app",
+  "deessejs-docs-*-deessejs.vercel.app",
+  "deessejs-agent-*-deessejs.vercel.app",
   "deessejs-app-*-aliiibenns-projects.vercel.app",
   "deessejs-web-*-aliiibenns-projects.vercel.app",
   "deessejs-docs-*-aliiibenns-projects.vercel.app",
