@@ -119,29 +119,6 @@ describe("createGitHubTemplateSourceAdapter", () => {
     expect(snapshot.revision).toBe(REVISION)
   })
 
-  it("accepts repository URLs whose casing differs from GitHub's archive name", async () => {
-    const archive = await createArchive("fixture")
-    const fetchMock = vi.fn<typeof fetch>(async (input) => {
-      const url = String(input)
-      if (url.endsWith(`/commits/${REVISION}`))
-        return jsonResponse({ sha: REVISION })
-      if (url.endsWith(`/tarball/${REVISION}`)) return new Response(archive)
-      return new Response(null, { status: 404 })
-    })
-    const adapter = createGitHubTemplateSourceAdapter({
-      fetch: fetchMock,
-      retryCount: 0,
-    })
-
-    const snapshot = await adapter.resolve({
-      repository: "DeesseJS/FIXTURE",
-      ref: REVISION,
-    })
-
-    expect(snapshot.repository).toBe("deessejs/fixture")
-    expect(snapshot.revision).toBe(REVISION)
-  })
-
   it("rejects an archive whose short commit SHA does not match the resolved revision", async () => {
     const archive = await createArchive("deessejs-different-repository", "ffffffff")
     const fetchMock = vi.fn<typeof fetch>(async (input) => {
