@@ -298,6 +298,43 @@ describe.skipIf(process.platform !== "linux")(
           "PACKAGE_MANAGER_"
         )
 
+        const noInstallVerboseDirectory = join(
+          consumerDirectory,
+          "no-install-verbose-project"
+        )
+        const noInstallVerboseResult = await runCommand(
+          cliExecutable,
+          [
+            "init",
+            "init-regression-fixture",
+            "--dir",
+            noInstallVerboseDirectory,
+            "--no-install",
+            "--verbose",
+          ],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        const noInstallVerboseOutput = `${noInstallVerboseResult.stdout}\n${noInstallVerboseResult.stderr}`
+        expect(noInstallVerboseResult.exitCode).toBe(0)
+        expect(noInstallVerboseOutput).toContain("[verbose] Template source:")
+        expect(noInstallVerboseOutput).toContain(
+          "[verbose] Source repository: https://github.com/"
+        )
+        expect(noInstallVerboseOutput).toContain(
+          "[verbose] Requested ref: default branch"
+        )
+        expect(noInstallVerboseOutput).toContain(
+          `[verbose] Target directory: ${noInstallVerboseDirectory}`
+        )
+        expect(noInstallVerboseOutput).toContain("[verbose] Resolved commit:")
+        expect(noInstallVerboseOutput).toContain(
+          "[verbose] Files selected by deesse-template.json:"
+        )
+        expect(noInstallVerboseOutput).toContain(
+          "[verbose] Dependency installation skipped (--no-install)"
+        )
+        expect(noInstallVerboseOutput).not.toContain("PACKAGE_MANAGER_")
+
         const verboseProjectDirectory = join(
           consumerDirectory,
           "verbose-output-project"
@@ -438,14 +475,14 @@ describe.skipIf(process.platform !== "linux")(
         ).toBe(false)
         expect(
           requests.filter((request) => request.includes("/tarball/")).length
-        ).toBe(8)
+        ).toBe(9)
         expect(
           requests.filter((request) =>
             request.includes(
               "POST https://app.deessejs.com/api/v1/rpc/templates/list"
             )
           ).length
-        ).toBe(6)
+        ).toBe(7)
         expect(requests).toContain(
           `GET https://api.github.com/repos/deessejs/legacy-template/tarball/${missingDescriptorRevision}`
         )
