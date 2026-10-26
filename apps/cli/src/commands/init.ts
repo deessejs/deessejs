@@ -37,6 +37,10 @@ type ResolvedTemplate = {
   directRepository: ReturnType<typeof parseGitHubRepositoryUrl>
 }
 
+function logVerbose(enabled: boolean, message: string): void {
+  if (enabled) process.stderr.write(`${pc.dim("[verbose]")} ${message}\\n`)
+}
+
 async function resolveTemplateSource(
   slugOrUrl: string
 ): Promise<ResolvedTemplate> {
@@ -159,9 +163,13 @@ async function createTemplateProject(
   dir: string,
   ref: string | undefined,
   force: boolean,
-  showProgress: boolean
+  showProgress: boolean,
+  verbose: boolean
 ): Promise<string> {
   const repository = `${template.owner}/${template.repo}`
+  logVerbose(verbose, `Source repository: https://github.com/${repository}`)
+  logVerbose(verbose, `Requested ref: ${ref ?? "default branch"}`)
+  logVerbose(verbose, `Target directory: ${dir}`)
   const downloadSpinner = showProgress
     ? ora(`Downloading template from ${pc.cyan(repository)}…`).start()
     : undefined
@@ -178,6 +186,11 @@ async function createTemplateProject(
 
   if (planResult.success) {
     downloadSpinner?.succeed("Template downloaded")
+    logVerbose(verbose, `Resolved commit: ${planResult.plan.source.revision}`)
+    logVerbose(
+      verbose,
+      `Files selected by deesse-template.json: ${planResult.plan.files.length}`
+    )
     if (showProgress) {
       console.log(
         pc.dim(
@@ -250,7 +263,10 @@ export const initCommand = new Command("init")
   )
   .option("--no-install", "skip the install step")
   .option("--force", "allow an existing empty target directory")
-  .option("--verbose", "show package manager output during installation")
+  .option(
+    "--verbose",
+    "show initialization details and package manager output"
+  )
   .option("--json", "JSON output for scripting")
   .action(
     async (
@@ -276,17 +292,26 @@ export const initCommand = new Command("init")
           console.log(pc.bold(`Initializing ${projectName}`))
           console.log()
         }
+        logVerbose(
+          opts.verbose ?? false,
+          `Template source: ${directRepository ? "GitHub URL" : "catalog slug"}`
+        )
         const revision = await createTemplateProject(
           template,
           dir,
           opts.ref,
           opts.force ?? false,
-          !opts.json
+          !opts.json,
+          opts.verbose ?? false
         )
 
         const pmInfo = resolvePackageManager(opts.pm, dir)
 
         if (!opts.install) {
+          logVerbose(
+            opts.verbose ?? false,
+            "Dependency installation skipped (--no-install)"
+          )
           if (opts.json) {
             printJson({
               ok: true,
