@@ -38,7 +38,7 @@ type ResolvedTemplate = {
 }
 
 function logVerbose(enabled: boolean, message: string): void {
-  if (enabled) process.stderr.write(`${pc.dim("[verbose]")} ${message}\\n`)
+  if (enabled) process.stderr.write(`${pc.dim("[verbose]")} ${message}\n`)
 }
 
 async function resolveTemplateSource(
