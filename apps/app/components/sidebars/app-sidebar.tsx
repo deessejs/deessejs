@@ -20,11 +20,8 @@ import { WorkspaceNav } from "@/components/sidebars/workspace-nav"
  *
  * The header is the height of the page's own header, and it carries
  * the same separator, so the two read as one line across the window.
- *
- * The content is centred on the vertical axis, with auto margins
- * rather than `justify-center`: the margins collapse when the
- * navigation is taller than the space it has, and a centred flex
- * container would push the first entry out of reach instead.
+ * The footer carries its own, so the account menu is separated from
+ * the navigation the same way.
  *
  * The rail is collapsible off-canvas: it slides out of the way and
  * keeps its full width when it is open, which is what a switcher with
@@ -38,11 +35,9 @@ export function AppSidebar() {
         <OrganizationSwitcher />
       </SidebarHeader>
       <SidebarContent className="bg-background">
-        <div className="my-auto">
-          <WorkspaceNav />
-        </div>
+        <WorkspaceNav />
       </SidebarContent>
-      <SidebarFooter className="bg-background">
+      <SidebarFooter className="border-t bg-background">
         <NavUser />
       </SidebarFooter>
     </Sidebar>

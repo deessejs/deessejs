@@ -16,7 +16,7 @@ A switch the server refuses, and a switch that never reaches the server, are sho
 
 The rail's open state survives a reload. The sidebar writes it in a cookie and never read it back, so the layout reads the cookie and hands the value to the sidebar, and the preference applies from the first paint.
 
-The rail's header is the height of the page's own header and carries the same separator, so the two read as one line across the window. The navigation is centred on the vertical axis, and the three parts of the rail carry the page's background, so the rail reads as part of the page rather than as a surface of its own.
+The rail's header is the height of the page's own header and carries the same separator, so the two read as one line across the window. The footer carries its own, and the three parts of the rail carry the page's background, so the rail reads as part of the page rather than as a surface of its own.
 
 `packages/ui` gains the cookie's name in a module of its own, without the `"use client"` directive, and declares it in the package's exports map. A server component cannot read a constant out of a client module: the React server runtime answers every named export with a proxy around a function that throws when it is called, so the lookup would silently find nothing and the preference would never apply.
 
