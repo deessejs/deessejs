@@ -1,4 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises"
+import { argv } from "node:process"
+import { URL } from "node:url"
 import { z } from "zod"
 import {
   TEMPLATE_DESCRIPTOR_SCHEMA_URL,
@@ -70,7 +72,7 @@ function findDifference(expected, actual, path = "$") {
   return { path, expected, actual }
 }
 
-if (process.argv.includes("--check")) {
+if (argv.includes("--check")) {
   const existing = JSON.parse(await readFile(outputPath, "utf8"))
   const difference = findDifference(existing, schema)
   if (difference) {
