@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
 	Avatar,
@@ -24,6 +25,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import { LogOutIcon } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
+import { SETTINGS_PATHS } from "@/lib/settings-paths"
 
 const VERCEL_AVATAR_BASE = "https://vercel.com/api/www/avatar"
 
@@ -93,6 +95,9 @@ export function NavUser() {
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent className="w-56" align="end" sideOffset={4}>
+					<DropdownMenuItem asChild>
+						<Link href={SETTINGS_PATHS.profile}>Account settings</Link>
+					</DropdownMenuItem>
 					<DropdownMenuItem
 						onClick={() => setLogoutDialogOpen(true)}
 						disabled={loggingOut}

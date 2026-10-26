@@ -7,8 +7,11 @@ import { RESERVED_SLUGS } from "@workspace/auth/organization/reserved-slugs"
 
 import {
   NO_ORGANIZATION_PATH,
+  organizationSlugFromPathname,
   workspaceHomePath,
+  workspaceOrganizationSettingsPath,
   workspacePath,
+  workspaceSettingsPath,
 } from "../lib/workspace-paths"
 
 /**
@@ -56,6 +59,26 @@ describe("the workspace paths", () => {
     expect(workspacePath("acme")).toBe("/acme")
     expect(workspaceHomePath("acme")).toBe("/acme/home")
   })
+
+  it("builds the organization's settings", () => {
+    expect(workspaceSettingsPath("acme")).toBe("/acme/settings")
+    expect(workspaceOrganizationSettingsPath("acme")).toBe(
+      "/acme/settings/organization",
+    )
+  })
+})
+
+describe("the slug in a pathname", () => {
+  it("reads the first segment of a workspace path", () => {
+    expect(organizationSlugFromPathname("/acme/home")).toBe("acme")
+    expect(organizationSlugFromPathname("/acme/settings/organization")).toBe(
+      "acme",
+    )
+  })
+
+  it("reads nothing from a path without a segment", () => {
+    expect(organizationSlugFromPathname("/")).toBeNull()
+  })
 })
 
 describe("the reserved slug set", () => {
@@ -98,5 +121,17 @@ describe("the application route tree", () => {
       new URL("../app/(protected)/account/settings/profile/page.tsx", import.meta.url),
     )
     expect(existsSync(settings)).toBe(true)
+  })
+
+  it("serves the organization's general page under its slug", () => {
+    // The organization's settings live under the organization they
+    // belong to, and the shell's navigation links to that one page.
+    const page = fileURLToPath(
+      new URL(
+        "../app/(protected)/(workspace)/[organization_slug]/settings/organization/page.tsx",
+        import.meta.url,
+      ),
+    )
+    expect(existsSync(page)).toBe(true)
   })
 })

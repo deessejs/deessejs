@@ -11,6 +11,7 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | `src/styles/globals.css` | The tokens: colors, typography, spacing, radius, shadows, easing, and the Tailwind theme mapping. |
 | `src/components/` | The shadcn primitives, one file per component. |
 | `src/lib/utils.ts` | `cn`, the class name merger. |
+| `src/lib/sidebar.ts` | The name of the cookie the sidebar's open state is written in. |
 | `src/hooks/use-mobile.ts` | The viewport hook. |
 | `postcss.config.mjs` | The shared PostCSS configuration. |
 
@@ -23,6 +24,7 @@ There is no build step. The applications resolve this package as source, through
 | `./globals.css` | `src/styles/globals.css` |
 | `./postcss.config` | `postcss.config.mjs` |
 | `./lib/utils` | `src/lib/utils.ts` |
+| `./lib/sidebar` | `src/lib/sidebar.ts` |
 | `./components/*` | `src/components/*.tsx` |
 | `./hooks/*` | `src/hooks/*.ts` |
 

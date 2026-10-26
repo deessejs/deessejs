@@ -42,6 +42,7 @@
     "./postcss.config": "./postcss.config.mjs",
     "./lib/utils": "./src/lib/utils.ts",
     "./lib/config": "./src/lib/config.ts",
+    "./lib/sidebar": "./src/lib/sidebar.ts",
     "./components/*": "./src/components/*.tsx",
     "./hooks/*": "./src/hooks/*.ts"
   }

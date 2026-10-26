@@ -368,18 +368,63 @@ const codeOfError = (error: unknown): string | null => {
   return null
 }
 
+/**
+ * The origin the native calls carry.
+ *
+ * Better Auth refuses a request that carries a cookie and whose origin
+ * is missing or untrusted. A browser always sends one on a POST, and
+ * the one it sends is the application's own origin, which the host
+ * allowlist covers. A call without it never reaches the endpoint, so a
+ * test that asserted a refusal could be asserting the refusal of the
+ * origin check instead.
+ */
+const TEST_ORIGIN = "https://app.deessejs.com"
+
+/**
+ * The body of a response, parsed when it is JSON.
+ *
+ * A path the router does not serve answers a plain "Not Found", which
+ * is not JSON. A helper that parsed it unconditionally would fail on
+ * the very response the test is about.
+ */
+const readBody = async (res: Response): Promise<unknown> => {
+  const text = await res.text()
+  if (text.length === 0) return null
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
 /** Calls one of the native auth endpoints. */
 const native = async (
   path: string,
   body: unknown,
   cookie: string,
-): Promise<{ status: number }> => {
+): Promise<{ status: number; body: unknown }> => {
   const res = await api.request(`/api/v1/auth${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json", cookie },
+    headers: {
+      "content-type": "application/json",
+      origin: TEST_ORIGIN,
+      cookie,
+    },
     body: JSON.stringify(body),
   })
-  return { status: res.status }
+  return { status: res.status, body: await readBody(res) }
+}
+
+/** Reads one of the native auth endpoints. */
+const nativeRead = async (
+  path: string,
+  cookie: string,
+): Promise<{ status: number; body: unknown }> => {
+  const res = await api.request(`/api/v1/auth${path}`, {
+    method: "GET",
+    headers: { origin: TEST_ORIGIN, cookie },
+  })
+  return { status: res.status, body: await readBody(res) }
 }
 
 describe("organization procedures", () => {
@@ -595,6 +640,78 @@ describe("organization procedures", () => {
         // origin check does not cover.
         expect(await activeOrganizationIdOf(actor.id)).toBe(org.id)
       }
+    })
+  }
+})
+
+describe("the organization's own endpoints", () => {
+  if (!POSTGRES_READY) {
+    it.skip("[skip-postgres] the organization's endpoints need a reachable Postgres", () => {
+      // Loud skip, as above.
+    })
+  } else {
+    it("answers the list with the caller's own organizations", async () => {
+      const mine = await createOrganization("Acme")
+      const theirs = await createOrganization("Beta")
+      const actor = await createActor()
+      await addMember(mine.id, actor.id, "owner")
+
+      const res = await nativeRead("/organization/list", actor.cookie)
+
+      expect(res.status).toBe(200)
+      const list = res.body as { id: string; slug: string }[]
+      const ids = list.map((organization) => organization.id)
+      // The list is the switcher's only source, so a leak in it would
+      // disclose the existence of an organization the caller does not
+      // belong to.
+      expect(ids).toContain(mine.id)
+      expect(ids).not.toContain(theirs.id)
+    })
+
+    it("writes the session's selection", async () => {
+      const org = await createOrganization()
+      const actor = await createActor()
+      await addMember(org.id, actor.id, "owner")
+
+      const res = await native(
+        "/organization/set-active",
+        { organizationId: org.id },
+        actor.cookie,
+      )
+
+      expect(res.status).toBe(200)
+      expect(await activeOrganizationIdOf(actor.id)).toBe(org.id)
+
+      // And the procedure that reads the selection agrees, with the
+      // caller's role.
+      const active = await rpc(["organization", "active"], null, actor.cookie)
+      expect(active.body.json).toEqual({
+        status: "active",
+        organization: { id: org.id, slug: org.slug, name: "Acme" },
+        role: "owner",
+      })
+    })
+
+    it("refuses a switch to an organization the caller does not belong to", async () => {
+      const mine = await createOrganization("Acme")
+      const theirs = await createOrganization("Beta")
+      const actor = await createActor(mine.id)
+      await addMember(mine.id, actor.id, "owner")
+
+      const res = await native(
+        "/organization/set-active",
+        { organizationId: theirs.id },
+        actor.cookie,
+      )
+
+      expect(res.status).toBe(403)
+      expect((res.body as { code: string }).code).toBe(
+        "USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION",
+      )
+      // The plugin clears the selection before it refuses, so the
+      // caller's next entry point lands on the empty state. This is
+      // the refusal the switcher shows in the rail.
+      expect(await activeOrganizationIdOf(actor.id)).toBeNull()
     })
   }
 })

@@ -1,0 +1,20 @@
+---
+"app": minor
+"@workspace/ui": minor
+---
+
+Adds the workspace shell: the rail, the organization switcher, the organization's navigation and the account menu.
+
+The workspace is navigable now. The rail names the organization the page belongs to, lists the organization's own pages under it, and carries the account menu at the bottom. The switcher lists the organizations the caller belongs to, marks the one the page is on, and choosing another one writes the session's active selection and lands the caller in that organization's workspace.
+
+The selection stays the caller's choice. Nothing in a page view writes it, so opening another organization's page directly shows that organization while the session keeps pointing at the first one, until the caller switches explicitly through the rail. `/home` resolves to the session's selection, so the two can disagree, and the rail is the only thing that settles it.
+
+The switcher creates an organization too, through the same dialog the empty state uses. The list refreshes itself after a creation, because the creation goes through the API and not through the plugin's own endpoint, so the plugin's invalidation never fires.
+
+A switch the server refuses, and a switch that never reaches the server, are shown with the same words: the organization could not be selected. The browser cannot tell them apart, and a rail that blamed the caller for the server's absence would be lying.
+
+The rail's open state survives a reload. The sidebar writes it in a cookie and never read it back, so the layout reads the cookie and hands the value to the sidebar, and the preference applies from the first paint.
+
+`packages/ui` gains the cookie's name in a module of its own, without the `"use client"` directive, and declares it in the package's exports map. A server component cannot read a constant out of a client module: the React server runtime answers every named export with a proxy around a function that throws when it is called, so the lookup would silently find nothing and the preference would never apply.
+
+The account settings keep their own rail. The two navigations cover two scopes, on two surfaces, and the workspace's navigation stays organization-scoped.

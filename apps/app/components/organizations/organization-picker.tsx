@@ -30,29 +30,34 @@ import { CreateOrganizationDialog } from "./create-organization-dialog"
  */
 export function OrganizationPicker({ stale }: { stale: boolean }) {
   const router = useRouter()
-  const {
-    data: organizations,
-    isPending,
-    error,
-  } = authClient.useListOrganizations()
+  const organizations = authClient.useListOrganizations()
   const [failure, setFailure] = useState<string | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   async function choose(organizationId: string, slug: string) {
-    const { error: refusal } = await authClient.organization.setActive({
-      organizationId,
-    })
-    if (refusal) {
-      setFailure(refusal.message ?? "The organization could not be selected.")
+    setFailure(null)
+    try {
+      const { error: refusal } = await authClient.organization.setActive({
+        organizationId,
+      })
+      if (refusal) {
+        setFailure(refusal.message ?? "The organization could not be selected.")
+        return
+      }
+    } catch {
+      // The call never came back. The browser cannot tell that apart
+      // from a refusal, and neither can the caller.
+      setFailure("The organization could not be selected.")
       return
     }
     router.push(workspaceHomePath(slug))
   }
 
-  if (isPending) {
+  if (organizations.isPending) {
     return <p className="text-sm text-muted-foreground">Loading…</p>
   }
 
-  if (error) {
+  if (organizations.error) {
     return (
       <p className="text-sm text-destructive" role="alert">
         Your organizations could not be loaded.
@@ -60,7 +65,7 @@ export function OrganizationPicker({ stale }: { stale: boolean }) {
     )
   }
 
-  const list = organizations ?? []
+  const list = organizations.data ?? []
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -105,8 +110,21 @@ export function OrganizationPicker({ stale }: { stale: boolean }) {
           ))}
         </ul>
       ) : (
-        <CreateOrganizationDialog />
+        <Button onClick={() => setDialogOpen(true)}>
+          Create an organization
+        </Button>
       )}
+
+      <CreateOrganizationDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onCreated={() => {
+          // The creation goes through the API and not through the
+          // plugin's own endpoint, so the plugin's listener never
+          // fires and the list has to be refreshed by hand.
+          void organizations.refetch()
+        }}
+      />
     </div>
   )
 }
