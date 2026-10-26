@@ -1,6 +1,6 @@
 {
-  "id": "092ab1be-d93e-49a9-bdd3-e6370910b304",
-  "prevId": "b41b2c64-f2bf-48b2-841a-c78cdcbc454c",
+  "id": "4f7e8ea0-ead3-4c86-b2c1-cf336da0686f",
+  "prevId": "2bd33783-72a8-498d-80ee-11111c328319",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -829,8 +829,8 @@
         }
       },
       "indexes": {
-        "organization_provisioning_pending_user_uidx": {
-          "name": "organization_provisioning_pending_user_uidx",
+        "organization_provisioning_in_flight_user_uidx": {
+          "name": "organization_provisioning_in_flight_user_uidx",
           "columns": [
             {
               "expression": "user_id",
@@ -842,7 +842,7 @@
           "isUnique": true,
           "with": {},
           "method": "btree",
-          "where": "\"organization_provisioning\".\"status\" = 'pending'",
+          "where": "\"organization_provisioning\".\"status\" IN ('pending', 'superseded')",
           "concurrently": false
         },
         "organization_provisioning_user_idx": {

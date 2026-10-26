@@ -45,17 +45,36 @@ const POSTGRES_READY = inject("postgres:ready") === true
 const SESSION_COOKIE_NAME = "better-auth.session_token"
 
 /**
- * How the creation behaves when the test needs it to fail.
+ * How the creation behaves when the test needs it to fail, or to
+ * wait.
  *
  * The plugin's create writes the organization, then its membership,
  * then the active selection, and there is no way to make the
  * membership insertion fail from the outside. The compensation and
  * the reconciliation are the code under test, so the test replaces
  * the wrapper and drives the failure it needs.
+ *
+ * The active selection can also be held, so the test can observe the
+ * account while a recovery is running.
  */
-const wrapper = vi.hoisted(() => ({
-  mode: "real" as "real" | "fail-before" | "fail-after",
-}))
+const wrapper = vi.hoisted(() => {
+  let markEntered: () => void = () => {}
+  let release: () => void = () => {}
+  const entered = new Promise<void>((resolve) => {
+    markEntered = resolve
+  })
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  return {
+    mode: "real" as "real" | "fail-before" | "fail-after",
+    setActive: "real" as "real" | "hold" | "fail",
+    markEntered,
+    release,
+    entered,
+    gate,
+  }
+})
 
 vi.mock("@workspace/auth/organization/create", async (importOriginal) => {
   const original =
@@ -89,6 +108,19 @@ vi.mock("@workspace/auth/organization/create", async (importOriginal) => {
       }
       return original.createOrganization(input)
     },
+    setActiveOrganization: async (input: {
+      organizationId: string
+      headers: Headers
+    }) => {
+      if (wrapper.setActive === "fail") {
+        throw new Error("The active selection could not be restored.")
+      }
+      if (wrapper.setActive === "hold") {
+        wrapper.markEntered()
+        await wrapper.gate
+      }
+      return original.setActiveOrganization(input)
+    },
   }
 })
 
@@ -110,6 +142,8 @@ const createdOrganizations: string[] = []
 
 afterEach(async () => {
   wrapper.mode = "real"
+  wrapper.setActive = "real"
+  wrapper.release()
   const users = createdUsers.splice(0)
   const organizations = createdOrganizations.splice(0)
   if (users.length > 0) {
@@ -1106,6 +1140,138 @@ describe("organization creation", () => {
 
       expect(res.status).toBe(403)
       expect(await markerOf(org.id)).toBe(operationId)
+    })
+
+    it("refuses a second creation while a recovery is running", async () => {
+      const actor = await createActor()
+      const operationId = uniqueId("op")
+      await createOperation({
+        id: operationId,
+        userId: actor.id,
+        name: "Acme",
+        slug: "acme",
+        ageMs: 10 * 60 * 1000,
+      })
+      const orphan = await createMarkedOrganization({
+        name: "Acme",
+        slug: "acme",
+        marker: operationId,
+      })
+      await addMember(orphan.id, actor.id, "owner")
+
+      // The recovery restores the active selection, and the write is
+      // held, so the test can look at the account while the recovery
+      // is running.
+      wrapper.setActive = "hold"
+      const first = rpc(["organization", "create"], { name: "Acme" }, actor.cookie)
+      await wrapper.entered
+
+      // The operation is superseded, and the account's unique index
+      // still covers it, so the second attempt does not start.
+      const second = await rpc(
+        ["organization", "create"],
+        { name: "Acme" },
+        actor.cookie,
+      )
+      expect(second.status).toBe(409)
+      expect(errorOf(second.body).code).toBe("ORGANIZATION_CREATE_IN_PROGRESS")
+
+      wrapper.release()
+      const firstResult = await first
+      expect(firstResult.status).toBe(200)
+      expect((firstResult.body.json as { id: string }).id).toBe(orphan.id)
+
+      // And the account holds one organization, not two.
+      const rows = await db
+        .select({ id: organization.id })
+        .from(organization)
+        .where(eq(organization.name, "Acme"))
+      expect(rows).toHaveLength(1)
+    })
+
+    it("takes over a recovery that was left behind", async () => {
+      const actor = await createActor()
+      const operationId = uniqueId("op")
+      await createOperation({
+        id: operationId,
+        userId: actor.id,
+        name: "Acme",
+        slug: "acme",
+        ageMs: 10 * 60 * 1000,
+      })
+      const orphan = await createMarkedOrganization({
+        name: "Acme",
+        slug: "acme",
+        marker: operationId,
+      })
+      await addMember(orphan.id, actor.id, "owner")
+      // The attempt was fenced out and its recovery died before it
+      // finished. The operation still holds the account, so the next
+      // attempt has to claim it before it can start its own.
+      await db
+        .update(organizationProvisioning)
+        .set({ status: "superseded" })
+        .where(eq(organizationProvisioning.id, operationId))
+
+      const res = await rpc(
+        ["organization", "create"],
+        { name: "Acme" },
+        actor.cookie,
+      )
+
+      expect(res.status).toBe(200)
+      expect((res.body.json as { id: string }).id).toBe(orphan.id)
+
+      const rows = await db
+        .select({ id: organization.id })
+        .from(organization)
+        .where(eq(organization.name, "Acme"))
+      expect(rows).toHaveLength(1)
+    })
+
+    it("adopts the same organization again after a failed adoption", async () => {
+      const actor = await createActor()
+      const operationId = uniqueId("op")
+      await createOperation({
+        id: operationId,
+        userId: actor.id,
+        name: "Acme",
+        slug: "acme",
+        ageMs: 10 * 60 * 1000,
+      })
+      const orphan = await createMarkedOrganization({
+        name: "Acme",
+        slug: "acme",
+        marker: operationId,
+      })
+      await addMember(orphan.id, actor.id, "owner")
+
+      // The active selection cannot be restored.
+      wrapper.setActive = "fail"
+      const failed = await rpc(
+        ["organization", "create"],
+        { name: "Acme" },
+        actor.cookie,
+      )
+      expect(failed.status).toBe(500)
+
+      // The operation was not finalized, so the next attempt
+      // reconciles it again and adopts the same organization.
+      wrapper.setActive = "real"
+      const retried = await rpc(
+        ["organization", "create"],
+        { name: "Acme" },
+        actor.cookie,
+      )
+      expect(retried.status).toBe(200)
+      expect((retried.body.json as { id: string }).id).toBe(orphan.id)
+
+      // And the account holds one organization, not two.
+      const rows = await db
+        .select({ id: organization.id })
+        .from(organization)
+        .where(eq(organization.name, "Acme"))
+      expect(rows).toHaveLength(1)
     })
   }
 })

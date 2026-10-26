@@ -30,12 +30,17 @@ import { user } from "./auth.js"
 /**
  * The states an operation goes through.
  *
- * `pending` is the only state that blocks the next attempt: the
- * partial unique index below covers it and nothing else, so a finished
- * operation never stands in the way of the next creation.
+ * `pending` is the state of an attempt that is in flight and may
+ * still create an organization.
  *
- * `superseded` means another attempt took the operation over. The
- * attempt that lost still holds its own row until it notices.
+ * `superseded` is the state of an attempt that has been taken over.
+ * Its leftovers are being reconciled, and the reconciliation holds the
+ * account, so the state is covered by the partial unique index below
+ * exactly like `pending` is.
+ *
+ * `completed` and `failed` are terminal, and the index covers neither
+ * of them: a finished operation never stands in the way of the next
+ * creation.
  */
 export type OrganizationProvisioningStatus =
   | "pending"
@@ -61,7 +66,6 @@ export const isOrganizationProvisioningStatus = (
   value === ORGANIZATION_PROVISIONING_STATUS.failed ||
   value === ORGANIZATION_PROVISIONING_STATUS.superseded
 
-
 export const organizationProvisioning = pgTable(
   "organization_provisioning",
   {
@@ -81,12 +85,13 @@ export const organizationProvisioning = pgTable(
     updatedAt: timestamp("updated_at").notNull(),
   },
   (table) => [
-    // One pending operation per account. The index is the
+    // One in-flight operation per account. The index is the
     // serialization: a second attempt for the same account cannot
-    // insert one.
-    uniqueIndex("organization_provisioning_pending_user_uidx")
+    // insert one while an attempt is running or while the leftovers
+    // of a taken-over attempt are being reconciled.
+    uniqueIndex("organization_provisioning_in_flight_user_uidx")
       .on(table.userId)
-      .where(sql`${table.status} = 'pending'`),
+      .where(sql`${table.status} IN ('pending', 'superseded')`),
     index("organization_provisioning_user_idx").on(table.userId),
   ],
 )

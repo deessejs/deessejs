@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto"
-import { eq } from "drizzle-orm"
+import { and, eq, exists } from "drizzle-orm"
 import { db } from "@workspace/database"
 import {
   organization,
+  organizationProvisioning,
   ORGANIZATION_PROVISIONING_STATUS,
 } from "@workspace/database/schema"
 import {
@@ -12,9 +13,12 @@ import {
 import type { CreatedOrganization } from "@workspace/auth/organization/create"
 import {
   beginOperation,
+  claimStaleRecovery,
+  fenceStalePendingOperation,
+  findInFlightOperationForUser,
   findMembership,
-  findPendingOperationForUser,
   readOrganizationMarker,
+  releaseRecovery,
   touchOperation,
   transitionOperation,
 } from "@workspace/auth/organization/provisioning"
@@ -155,7 +159,31 @@ const compensate = async (
   if (org === null) return
   const marker = await readOrganizationMarker(org.id)
   if (marker !== operationId) return
-  await db.delete(organization).where(eq(organization.id, org.id))
+  // The delete is conditional on this attempt still holding the
+  // operation. An attempt that has been taken over does not own the
+  // organization anymore, and the attempt that took it over may have
+  // adopted it, so the two must not race over the same row.
+  await db
+    .delete(organization)
+    .where(
+      and(
+        eq(organization.id, org.id),
+        exists(
+          db
+            .select({ id: organizationProvisioning.id })
+            .from(organizationProvisioning)
+            .where(
+              and(
+                eq(organizationProvisioning.id, operationId),
+                eq(
+                  organizationProvisioning.status,
+                  ORGANIZATION_PROVISIONING_STATUS.pending,
+                ),
+              ),
+            ),
+        ),
+      ),
+    )
 }
 
 /**
@@ -210,12 +238,22 @@ const reconcile = async (
   // The attempt completed. The organization is adopted, and the
   // session of the request being answered is pointed at it, because
   // the attempt may have died before the plugin wrote the selection.
+  //
+  // The session is pointed at the organization BEFORE the operation is
+  // finalized. A failure here leaves the operation in flight, so the
+  // next attempt reconciles it again and adopts the same
+  // organization, instead of creating a second one.
+  try {
+    await setActiveOrganization({ organizationId: org.id, headers })
+  } catch (error) {
+    await releaseRecovery(operation.id, operation.updatedAt)
+    throw error
+  }
   await transitionOperation(
     operation.id,
     ORGANIZATION_PROVISIONING_STATUS.superseded,
     ORGANIZATION_PROVISIONING_STATUS.completed,
   )
-  await setActiveOrganization({ organizationId: org.id, headers })
   return {
     id: org.id,
     name: org.name,
@@ -236,32 +274,47 @@ const takeOver = async (
   userId: string,
   headers: Headers,
 ): Promise<CreatedOrganization | null> => {
-  const pending = await findPendingOperationForUser(userId)
-  if (pending === null) return null
+  const inFlight = await findInFlightOperationForUser(userId)
+  if (inFlight === null) return null
 
-  const age = Date.now() - pending.updatedAt.getTime()
-  if (age < PROVISIONING_LEASE_MS) {
+  const staleBefore = new Date(Date.now() - PROVISIONING_LEASE_MS)
+  if (inFlight.updatedAt.getTime() >= staleBefore.getTime()) {
+    // The attempt is running, or its recovery is running.
     throw new OrganizationProvisioningError(
       "ORGANIZATION_CREATE_IN_PROGRESS",
       "An organization is already being created for this account.",
     )
   }
 
-  // The attempt is fenced out before anything is reconciled, so it
-  // cannot create anything while its leftovers are inspected.
-  const fenced = await transitionOperation(
-    pending.id,
-    ORGANIZATION_PROVISIONING_STATUS.pending,
-    ORGANIZATION_PROVISIONING_STATUS.superseded,
-  )
-  if (!fenced) {
-    throw new OrganizationProvisioningError(
-      "ORGANIZATION_CREATE_IN_PROGRESS",
-      "An organization is already being created for this account.",
+  if (inFlight.status === ORGANIZATION_PROVISIONING_STATUS.pending) {
+    // The attempt is fenced out before anything is reconciled, so it
+    // cannot create anything while its leftovers are inspected. The
+    // operation stays covered by the account's unique index, so no
+    // other attempt starts while the reconciliation runs.
+    const fenced = await fenceStalePendingOperation(
+      inFlight.id,
+      staleBefore,
     )
+    if (!fenced) {
+      throw new OrganizationProvisioningError(
+        "ORGANIZATION_CREATE_IN_PROGRESS",
+        "An organization is already being created for this account.",
+      )
+    }
+  } else {
+    // The operation was fenced out already and its recovery is stale.
+    // The claim is conditional on the staleness, so only one attempt
+    // holds the recovery at a time.
+    const claimed = await claimStaleRecovery(inFlight.id, staleBefore)
+    if (!claimed) {
+      throw new OrganizationProvisioningError(
+        "ORGANIZATION_CREATE_IN_PROGRESS",
+        "An organization is already being created for this account.",
+      )
+    }
   }
 
-  return reconcile(pending, headers)
+  return reconcile(inFlight, headers)
 }
 
 /**

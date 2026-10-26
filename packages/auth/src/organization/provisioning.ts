@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm"
+import { and, eq, inArray, lt } from "drizzle-orm"
 import { APIError } from "better-auth/api"
 import { db } from "@workspace/database"
 import {
@@ -112,8 +112,16 @@ export const findOperationById = async (
   return rows[0] ? toOperation(rows[0]) : null
 }
 
-/** The account's pending operation, if it has one. */
-export const findPendingOperationForUser = async (
+/**
+ * The account's in-flight operation, if it has one.
+ *
+ * An operation is in flight while it is pending, that is while its
+ * attempt may still create an organization, and while it is
+ * superseded, that is while the leftovers of a taken-over attempt are
+ * being reconciled. The partial unique index covers both states, so
+ * there is at most one of them per account.
+ */
+export const findInFlightOperationForUser = async (
   userId: string,
 ): Promise<ProvisioningOperation | null> => {
   const rows = await db
@@ -122,10 +130,10 @@ export const findPendingOperationForUser = async (
     .where(
       and(
         eq(organizationProvisioning.userId, userId),
-        eq(
-          organizationProvisioning.status,
+        inArray(organizationProvisioning.status, [
           ORGANIZATION_PROVISIONING_STATUS.pending,
-        ),
+          ORGANIZATION_PROVISIONING_STATUS.superseded,
+        ]),
       ),
     )
     .limit(1)
@@ -219,6 +227,96 @@ export const touchOperation = async (
         ),
       ),
     )
+}
+
+/**
+ * Fences a stale pending operation out.
+ *
+ * The write moves the operation from `pending` to `superseded`, so
+ * the attempt that held it cannot create anything anymore, and it is
+ * conditional on the operation still being pending and still being
+ * stale. The staleness is part of the condition, so an attempt that
+ * made progress between the read and the write is not fenced out.
+ */
+export const fenceStalePendingOperation = async (
+  id: string,
+  staleBefore: Date,
+): Promise<boolean> => {
+  const rows = await db
+    .update(organizationProvisioning)
+    .set({
+      status: ORGANIZATION_PROVISIONING_STATUS.superseded,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(organizationProvisioning.id, id),
+        eq(
+          organizationProvisioning.status,
+          ORGANIZATION_PROVISIONING_STATUS.pending,
+        ),
+        lt(organizationProvisioning.updatedAt, staleBefore),
+      ),
+    )
+    .returning({ id: organizationProvisioning.id })
+  return rows.length > 0
+}
+
+/**
+ * Claims a stale recovery.
+ *
+ * The operation is already fenced out, so its attempt cannot create
+ * anything and the reconciliation is safe to run again. The claim
+ * refreshes the heartbeat and is conditional on the operation still
+ * being stale, so only one attempt holds the recovery at a time.
+ */
+export const claimStaleRecovery = async (
+  id: string,
+  staleBefore: Date,
+): Promise<boolean> => {
+  const rows = await db
+    .update(organizationProvisioning)
+    .set({ updatedAt: new Date() })
+    .where(
+      and(
+        eq(organizationProvisioning.id, id),
+        eq(
+          organizationProvisioning.status,
+          ORGANIZATION_PROVISIONING_STATUS.superseded,
+        ),
+        lt(organizationProvisioning.updatedAt, staleBefore),
+      ),
+    )
+    .returning({ id: organizationProvisioning.id })
+  return rows.length > 0
+}
+
+/**
+ * Releases a recovery that failed.
+ *
+ * The heartbeat goes back to the one the operation had before the
+ * recovery took it over, which is older than the lease. The operation
+ * is therefore available for another attempt straight away, instead of
+ * making the caller wait for the lease to expire.
+ */
+export const releaseRecovery = async (
+  id: string,
+  heartbeat: Date,
+): Promise<boolean> => {
+  const rows = await db
+    .update(organizationProvisioning)
+    .set({ updatedAt: heartbeat })
+    .where(
+      and(
+        eq(organizationProvisioning.id, id),
+        eq(
+          organizationProvisioning.status,
+          ORGANIZATION_PROVISIONING_STATUS.superseded,
+        ),
+      ),
+    )
+    .returning({ id: organizationProvisioning.id })
+  return rows.length > 0
 }
 
 /**
