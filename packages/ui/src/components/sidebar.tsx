@@ -43,8 +43,20 @@ type SidebarContextProps = {
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
 
+/**
+ * The sidebar's context, or null when there is none.
+ *
+ * A component that can be mounted outside a rail reads the context
+ * through this and falls back to the defaults. `useSidebar` throws
+ * instead, because a component that reads the open state has nothing
+ * to fall back to: outside a rail there is no open state.
+ */
+function useSidebarContext(): SidebarContextProps | null {
+  return React.useContext(SidebarContext)
+}
+
 function useSidebar() {
-  const context = React.useContext(SidebarContext)
+  const context = useSidebarContext()
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.")
   }
@@ -501,7 +513,12 @@ function SidebarMenuButton({
   tooltip?: string | React.ComponentProps<typeof TooltipContent>
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot.Root : "button"
-  const { isMobile, state } = useSidebar()
+  // The button is mounted outside a rail too, in the header of the
+  // surfaces that have no rail, so the context is read safely and the
+  // defaults stand in when there is none.
+  const sidebar = useSidebarContext()
+  const isMobile = sidebar?.isMobile ?? false
+  const state = sidebar?.state ?? "expanded"
 
   const button = (
     <Comp

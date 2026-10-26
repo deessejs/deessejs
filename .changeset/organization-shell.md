@@ -18,3 +18,5 @@ The rail's open state survives a reload. The sidebar writes it in a cookie and n
 `packages/ui` gains the cookie's name in a module of its own, without the `"use client"` directive, and declares it in the package's exports map. A server component cannot read a constant out of a client module: the React server runtime answers every named export with a proxy around a function that throws when it is called, so the lookup would silently find nothing and the preference would never apply.
 
 The account settings keep their own rail. The two navigations cover two scopes, on two surfaces, and the workspace's navigation stays organization-scoped.
+
+The account menu names the account. Its trigger shows the avatar, the name and the email, and the menu repeats the identity at its head before the entries. The menu is mounted in the rail's footer and in the header of the surfaces that have no rail, so the identity is hidden on a narrow viewport, where the header has no room for it. The menu itself always names the account.

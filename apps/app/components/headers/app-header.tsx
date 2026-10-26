@@ -35,12 +35,12 @@ export function AppHeader({
         <Link
           href={WEB_URL}
           aria-label={`${APP_NAME}: back to home`}
-          className="text-xl font-semibold tracking-tight hover:opacity-80"
+          className="min-w-0 truncate text-xl font-semibold tracking-tight hover:opacity-80"
         >
           {APP_NAME}
         </Link>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         {/* V1 placeholder: the real action (mailto: or external helpdesk
             URL) ships in a follow-up change. */}
         <Button variant="outline" size="default" type="button" disabled>
