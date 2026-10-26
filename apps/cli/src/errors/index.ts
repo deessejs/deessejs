@@ -21,6 +21,10 @@ export type CliErrorCode =
 export type InternalCliErrorCode =
   | "git_not_installed"
   | "target_exists"
+  | "target_not_empty"
+  | "invalid_target"
+  | "template_invalid"
+  | "materialize_failed"
   | "install_failed"
   | "internal"
 
@@ -55,24 +59,49 @@ export const gitNotInstalled = (): CliError =>
   new CliError(
     "git_not_installed",
     "`git` is not installed or not on PATH",
-    "install git from https://git-scm.com and try again",
+    "install git from https://git-scm.com and try again"
   )
 
 export const targetExists = (dir: string): CliError =>
   new CliError(
     "target_exists",
     `target directory "${dir}" already exists`,
-    "remove the directory or pass --force to overwrite",
+    "choose an unused directory, or pass --force if the target already exists and is empty"
   )
 
-export const installFailed = (
-  pm: string,
-  code: number | null,
-): CliError =>
+export const targetNotEmpty = (dir: string): CliError =>
+  new CliError(
+    "target_not_empty",
+    `target directory "${dir}" is not empty`,
+    "choose an empty directory; --force only allows an existing empty directory"
+  )
+
+export const invalidTarget = (dir: string, detail: string): CliError =>
+  new CliError(
+    "invalid_target",
+    `target path "${dir}" cannot be used safely`,
+    detail
+  )
+
+export const templateInvalid = (repository: string, detail: string): CliError =>
+  new CliError(
+    "template_invalid",
+    `template source "${repository}" cannot be installed`,
+    detail
+  )
+
+export const materializeFailed = (dir: string, detail: string): CliError =>
+  new CliError(
+    "materialize_failed",
+    `failed to create the project in "${dir}"`,
+    detail
+  )
+
+export const installFailed = (pm: string, code: number | null): CliError =>
   new CliError(
     "install_failed",
     `${pm} install exited with code ${code ?? "unknown"}`,
-    "check the output above, then run the install command manually inside the cloned directory",
+    "check the output above, then run the install command manually inside the created directory"
   )
 
 export const internal = (detail: string): CliError =>
