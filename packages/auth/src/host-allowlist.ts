@@ -20,8 +20,20 @@ const DEV_HOSTS = [
   "localhost:*",
 ] as const
 
+// Vercel exposes both the unique deployment URL and the stable branch
+// alias at runtime. Allow those exact hosts only on Preview deployments so
+// Better Auth and the CORS layer accept either URL without trusting other
+// Vercel projects or aliases.
+const VERCEL_PREVIEW_HOSTS =
+  process.env.VERCEL_ENV === "preview"
+    ? [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL].filter(
+        (host): host is string => typeof host === "string" && host.length > 0,
+      )
+    : []
+
 export const HOST_ALLOWLIST = [
   ...PRODUCTION_HOSTS,
+  ...VERCEL_PREVIEW_HOSTS,
   ...(process.env.NODE_ENV === "development" ? DEV_HOSTS : []),
 ] as const
 
