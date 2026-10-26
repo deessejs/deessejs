@@ -18,9 +18,15 @@
  *   1. Add the slug as a key below.
  *   2. Reference the slug from at least one entry in
  *      `./templates.ts` (`category` for categories, `labels` for frameworks).
- *   3. The filter sidebar hides frameworks that no template carries, so
- *      adding a key without a matching label entry will surface in the
- *      sidebar only after a template ships.
+ *   3. The two axes differ in when a key becomes visible. A category
+ *      appears in the Type filter as soon as the key exists, counting
+ *      the templates that carry it, so a key no template uses sits at
+ *      zero. A framework stays hidden until a template carries its
+ *      label.
+ *
+ * `packages/api/tests/unit/category-maps.test.ts` pins the category half
+ * of that contract: every category a template uses has a label, and the
+ * keys no template uses are listed.
  */
 export type CategorySlug = keyof typeof CATEGORY_LABELS
 export type FrameworkSlug = keyof typeof FRAMEWORK_LABELS
@@ -31,11 +37,21 @@ export type FrameworkSlug = keyof typeof FRAMEWORK_LABELS
  *
  * The key is the slug written into `RegistryEntry.category`. The value
  * is the human-readable label rendered in the sidebar and metadata.
+ *
+ * `ai` and `landing` are keys no template currently uses. They are kept
+ * because they are the public slugs of the type filters, and removing
+ * them would change what the sidebar renders for no other reason.
  */
 export const CATEGORY_LABELS = {
   saas: "SaaS starters",
   ai: "AI",
   landing: "Landing pages",
+  desktop: "Desktop apps",
+  docs: "Documentation",
+  marketing: "Marketing",
+  content: "Content",
+  library: "Libraries",
+  "ai-agent": "AI agents",
 } as const
 
 /**

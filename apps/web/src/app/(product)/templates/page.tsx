@@ -4,16 +4,11 @@ import Link from "next/link"
 import { ArrowRight, ChevronRight } from "lucide-react"
 
 import type { TemplateV1 } from "@workspace/contracts/v1"
-import {
-  CATEGORY_LABELS,
-  FRAMEWORK_LABELS,
-  type CategorySlug,
-  type FrameworkSlug,
-} from "@workspace/api/templates-labels"
 import { Button } from "@workspace/ui/components/button"
 
 import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 import { liveCache, orpc } from "@/lib/orpc"
+import { filterTemplates, resolveTemplateFilter } from "@/lib/template-filters"
 import { SUBMIT_TEMPLATE_URL } from "@/lib/templates/urls"
 import { CategorySidebar } from "@/components/templates/category-sidebar"
 import { SearchableTemplateGrid } from "@/components/templates/search-bar"
@@ -55,27 +50,9 @@ export const metadata: Metadata = {
  *
  * Category and framework slug lists are derived from the canonical
  * `CATEGORY_LABELS` / `FRAMEWORK_LABELS` maps in `@workspace/api/templates-labels`
- * — single source of truth shared with `CategorySidebar`.
+ * — single source of truth shared with `CategorySidebar`. The filter
+ * itself lives in `@/lib/template-filters` so it can be tested directly.
  */
-
-const KNOWN_TYPES = Object.keys(CATEGORY_LABELS) as CategorySlug[]
-const KNOWN_FRAMEWORKS = Object.keys(FRAMEWORK_LABELS) as FrameworkSlug[]
-
-type FilterValue<T extends ReadonlyArray<string>> = T[number]
-
-const dedupe = <T extends string>(
-  values: ReadonlyArray<string>,
-  allowed: ReadonlyArray<T>,
-): Array<T> => {
-  const set = new Set<T>(allowed)
-  const out: Array<T> = []
-  for (const v of values) {
-    if (set.has(v as T)) {
-      out.push(v as T)
-    }
-  }
-  return Array.from(new Set(out))
-}
 
 const TemplatesIndexPage = async ({
   searchParams,
@@ -157,28 +134,11 @@ const TemplatesIndexPage = async ({
   }
 
   const params = await searchParams
-  const rawType = params.type
-  const rawFramework = params.framework
-  const rawTypes = Array.isArray(rawType) ? rawType : rawType ? [rawType] : []
-  const rawFrameworks = Array.isArray(rawFramework)
-    ? rawFramework
-    : rawFramework
-      ? [rawFramework]
-      : []
-
-  const activeTypes = dedupe(rawTypes, KNOWN_TYPES)
-  const activeFrameworks = dedupe(rawFrameworks, KNOWN_FRAMEWORKS)
-
-  const activeTypeSet = new Set<FilterValue<typeof KNOWN_TYPES>>(activeTypes)
-  const visibleTemplates = templates.filter((template) => {
-    const matchesType =
-      activeTypes.length === 0 ||
-      activeTypeSet.has(template.category as FilterValue<typeof KNOWN_TYPES>)
-    const matchesFramework =
-      activeFrameworks.length === 0 ||
-      activeFrameworks.some((framework) => template.labels.includes(framework))
-    return matchesType && matchesFramework
+  const filter = resolveTemplateFilter({
+    type: params.type,
+    framework: params.framework,
   })
+  const visibleTemplates = filterTemplates(templates, filter)
 
   return (
     <>
@@ -219,8 +179,8 @@ const TemplatesIndexPage = async ({
           <aside className="p-6 md:p-8 lg:p-10">
             <CategorySidebar
               templates={templates}
-              activeTypes={activeTypes}
-              activeFrameworks={activeFrameworks}
+              activeTypes={filter.activeTypes}
+              activeFrameworks={filter.activeFrameworks}
             />
           </aside>
           <div className="flex min-w-0 flex-col">

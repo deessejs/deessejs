@@ -1,8 +1,10 @@
-import { APIError } from "better-auth/api"
 import { organization } from "better-auth/plugins"
 import { serverEnv } from "@workspace/env/server"
-import { assertOrganizationName, assertOrganizationSlug } from "./policy.js"
 import { sendInvitationEmail } from "./invitation.js"
+import {
+  beforeCreateOrganizationWithMarker,
+  beforeUpdateOrganizationProtectingMarker,
+} from "./provisioning.js"
 
 /**
  * Resolve and validate the `requireEmailVerificationOnInvitation`
@@ -43,52 +45,6 @@ const requireEmailVerificationOnInvitation = resolveRequireEmailVerification(
 )
 
 /**
- * The `beforeCreateOrganization` hook, exported for direct unit
- * testing. The plugin wires this same function into the
- * `organizationHooks` block.
- *
- * The hook operates on the **raw** `input.name` — it does not trim
- * before validation, and it does not mutate the value in place.
- * On success, it returns `{ data: { name: input.name } }` so the
- * persisted record carries the validated name. The override is a
- * no-op: the helper has already established that
- * `input.name === input.name.trim()` and that `input.name` contains
- * no control characters, so the value we return is identical to
- * what was passed in.
- */
-export const beforeCreateOrganizationHook = async ({
-  organization: input,
-  user,
-}: {
-  organization: { name?: string; slug?: string; metadata?: unknown }
-  user: { emailVerified?: boolean }
-}) => {
-  if (typeof input.name !== "string") {
-    throw new APIError("BAD_REQUEST", {
-      message: "Invalid organization name",
-    })
-  }
-  if (typeof input.slug !== "string") {
-    throw new APIError("BAD_REQUEST", {
-      message: "Invalid organization slug",
-    })
-  }
-  assertOrganizationName(input.name)
-  assertOrganizationSlug(input.slug)
-  if (user.emailVerified !== true) {
-    throw new APIError("FORBIDDEN", {
-      message: "Email verification is required",
-    })
-  }
-  if (input.metadata != null) {
-    throw new APIError("BAD_REQUEST", {
-      message: "Organization metadata is not editable",
-    })
-  }
-  return { data: { name: input.name } }
-}
-
-/**
  * Build the organization plugin.
  *
  * Exported as a factory so the invitation-contract probe can hold
@@ -109,10 +65,11 @@ export function createOrganizationPlugin(
     invitationExpiresIn: 60 * 60 * 48,
     disableOrganizationDeletion: false,
     organizationHooks: {
-      beforeCreateOrganization: beforeCreateOrganizationHook,
+      beforeCreateOrganization: beforeCreateOrganizationWithMarker,
+      beforeUpdateOrganization: beforeUpdateOrganizationProtectingMarker,
     },
-    // The invitation delivery callback. `sendInvitationEmail` is
-    // the Better Auth callback: it awaits the transport and is the
+    // The invitation delivery callback. `sendInvitationEmail` is the
+    // Better Auth callback: it awaits the transport and is the
     // single point of structured logging.
     sendInvitationEmail,
     ...overrides,
@@ -122,15 +79,12 @@ export function createOrganizationPlugin(
 /**
  * Better Auth `organization` plugin configuration.
  *
- * The `beforeCreateOrganization` hook is wired to:
- * - reject malformed or reserved slugs via `assertOrganizationSlug`,
- * - reject malformed or untrimmed names via `assertOrganizationName`,
- * - reject unverified accounts (the hook runs after Better Auth's
- *   own `allowUserToCreateOrganization` gate; the explicit check is
- *   belt and suspenders and produces a clearer error).
+ * The `beforeCreateOrganization` hook validates the creation and
+ * stores the marker that proves which attempt made the organization.
+ * The `beforeUpdateOrganization` hook protects that marker from the
+ * update endpoint, which accepts a metadata of its own.
  *
- * The other native hooks (delete, remove-member, update-role,
- * update-organization) are left to Better Auth's defaults.
+ * The other native hooks (delete, remove-member, update-role) are
+ * left to Better Auth's defaults.
  */
 export const organizationPlugin = createOrganizationPlugin()
-

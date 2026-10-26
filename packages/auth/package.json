@@ -24,6 +24,26 @@
       "import": "./dist/organization/invitation.js",
       "default": "./dist/organization/invitation.js"
     },
+    "./organization/roles": {
+      "types": "./dist/organization/roles.d.ts",
+      "import": "./dist/organization/roles.js",
+      "default": "./dist/organization/roles.js"
+    },
+    "./organization/reserved-slugs": {
+      "types": "./dist/organization/reserved-slugs.d.ts",
+      "import": "./dist/organization/reserved-slugs.js",
+      "default": "./dist/organization/reserved-slugs.js"
+    },
+    "./organization/provisioning": {
+      "types": "./dist/organization/provisioning.d.ts",
+      "import": "./dist/organization/provisioning.js",
+      "default": "./dist/organization/provisioning.js"
+    },
+    "./organization/create": {
+      "types": "./dist/organization/create.d.ts",
+      "import": "./dist/organization/create.js",
+      "default": "./dist/organization/create.js"
+    },
     "./types": {
       "types": "./dist/types.d.ts",
       "import": "./dist/types.js",

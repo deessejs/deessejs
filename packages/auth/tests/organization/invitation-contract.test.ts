@@ -11,6 +11,32 @@ vi.mock("@workspace/email", () => ({
   sendOrganizationInvitationEmail: vi.fn(async () => ({ ok: true })),
 }))
 
+// The create hook reads the provisioning operation table, because a
+// creation carries the operation it belongs to. The probe's accounts
+// live in the memory adapter, so the operation read is substituted as
+// well: the probe measures the invitation contract, and the storage
+// behind it is not what it measures.
+const { probeDb } = vi.hoisted(() => {
+  const operation = {
+    id: "probe-attempt",
+    userId: "probe-owner",
+    name: "Probe Org",
+    slug: "probe-org",
+    status: "pending",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+  const where = () => ({ limit: async () => [operation] })
+  const from = () => ({ where })
+  const select = () => ({ from })
+  return { probeDb: { select } }
+})
+
+vi.mock("@workspace/database", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@workspace/database")>()),
+  db: probeDb,
+}))
+
 const { createOrganizationPlugin, organizationPlugin } = await import(
   "../../src/organization/plugin.js"
 )
@@ -224,7 +250,13 @@ async function observe(options: {
 
   const created = await call(probe.auth, ownerJar, "/organization/create", {
     method: "POST",
-    body: { name: "Probe Org", slug: "probe-org" },
+    // The marker is the operation the creation belongs to, and the
+    // create hook refuses a creation that carries none.
+    body: {
+      name: "Probe Org",
+      slug: "probe-org",
+      metadata: { provisioningAttempt: "probe-attempt" },
+    },
   })
   if (created.status !== 200) {
     throw new Error(`probe "${options.label}": create organization failed (${created.status})`)

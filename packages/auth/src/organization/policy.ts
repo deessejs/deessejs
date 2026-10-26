@@ -1,40 +1,35 @@
+import { createHash } from "node:crypto"
 import { APIError } from "better-auth/api"
+
+import { RESERVED_SLUGS } from "./reserved-slugs.js"
 
 /**
  * Organization policy helpers.
  *
- * Only `assertOrganizationSlug` is exposed. It rejects malformed or
- * reserved slugs with `APIError('BAD_REQUEST', { code: 'invalid_slug' })`.
- * The reserved set covers the application's top-level route segments
- * (so an organization can never shadow `/account`, `/admin`, etc.)
- * and a few product-level namespaces reserved by templates.
+ * The module owns the two rules of a slug: the format it has to
+ * satisfy, and the set of slugs the application reserves for itself.
+ * It also owns the generation of the slug a name proposes, because
+ * the generation is pure and belongs next to the validation that
+ * decides whether what it produced is acceptable.
+ *
+ * The reserved set itself lives in `./reserved-slugs.ts`, in a module
+ * of its own: the request guard needs to read it, and the guard must
+ * not pull Better Auth into the browser bundle.
  *
  * The module is reachable from Better Auth's runtime and does
  * **not** import `server-only`, so it can be unit-tested in isolation.
  */
 
-const RESERVED_SLUGS = new Set<string>([
-  // Top-level application segments
-  "account",
-  "admin",
-  "onboarding",
-  "accept-invitation",
-  "api",
-  "login",
-  "signup",
-  "forgot-password",
-  "reset-password",
-  "verify-email",
-  "device",
-  // Reserved by product / templates
-  "deessejs",
-  "nesalia",
-])
-
 // 2–38 lowercase ASCII characters, must start and end with a letter
 // or digit. The trailing character class is **not** optional, so
 // single-character slugs are rejected.
 const SLUG_FORMAT = /^[a-z0-9](?:[a-z0-9-]{0,36}[a-z0-9])$/
+
+/** The longest slug the format accepts. */
+const SLUG_MAX_LENGTH = 38
+
+/** How many candidates a name proposes, at most. */
+export const ORGANIZATION_SLUG_CANDIDATE_LIMIT = 10
 
 export function assertOrganizationSlug(slug: string): void {
   if (typeof slug !== "string" || !SLUG_FORMAT.test(slug)) {
@@ -106,4 +101,90 @@ export function assertOrganizationName(name: unknown): asserts name is string {
       message: "Organization name must be 1–100 code points",
     })
   }
+}
+
+/**
+ * The token a name falls back to when it normalizes to nothing
+ * usable.
+ *
+ * The token is derived from the name with a hash, so it is
+ * deterministic: the same name always proposes the same first
+ * candidate, and a second account with the same name gets the
+ * suffixed form rather than a different base.
+ */
+const fallbackSlug = (name: string): string => {
+  const digest = createHash("sha256").update(name).digest("hex").slice(0, 8)
+  return `org-${digest}`
+}
+
+/**
+ * The value without the separator a cut can leave behind.
+ *
+ * The truncation happens on the joined runs, so it can land right
+ * after a separator. A slug cannot end with one.
+ */
+const withoutTrailingHyphen = (value: string): string =>
+  value.endsWith("-") ? value.slice(0, -1) : value
+
+/**
+ * The base slug a name proposes.
+ *
+ * The name is normalized to what the slug format accepts: lowercase
+ * ASCII letters, digits and hyphens, starting and ending with an
+ * alphanumeric. The result is at most the format's maximum length.
+ *
+ * A name that normalizes to nothing usable, or to a single character
+ * the format would reject, falls back to a token derived from the
+ * name, so the same name always proposes the same base.
+ *
+ * The function is pure. Whether a slug is taken is a database
+ * question, and it is asked by the caller.
+ */
+export function slugifyOrganizationName(name: string): string {
+  // The name is cut into the runs of letters and digits it holds, and
+  // the runs are joined with a hyphen. A name with no run at all
+  // normalizes to nothing, and a name with a single character
+  // normalizes to a character the format would reject.
+  const runs = name
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/\p{M}/gu, "")
+    .split(/[^a-z0-9]+/)
+    .filter((run) => run !== "")
+
+  const truncated = runs.join("-").slice(0, SLUG_MAX_LENGTH)
+  const base = withoutTrailingHyphen(truncated)
+
+  if (base.length >= 2) return base
+  return fallbackSlug(name)
+}
+
+/**
+ * The candidates a name proposes, in the order they are tried.
+ *
+ * The sequence is the base, then the base with a numeric suffix. A
+ * candidate that does not satisfy the format, or that the
+ * application reserves, is skipped: an organization whose name
+ * normalizes to a reserved segment still gets one, under the next
+ * free form.
+ *
+ * The sequence is bounded, and the bound is the whole of the retry
+ * budget. A name whose candidates are all taken is a failure the
+ * caller reports, not an unbounded search.
+ */
+export function organizationSlugCandidates(name: string): string[] {
+  const base = slugifyOrganizationName(name)
+  const candidates: string[] = []
+
+  for (let attempt = 1; attempt <= ORGANIZATION_SLUG_CANDIDATE_LIMIT; attempt++) {
+    const suffix = attempt === 1 ? "" : `-${attempt}`
+    const candidate = suffix
+      ? `${withoutTrailingHyphen(base.slice(0, SLUG_MAX_LENGTH - suffix.length))}${suffix}`
+      : base
+    if (!SLUG_FORMAT.test(candidate)) continue
+    if (RESERVED_SLUGS.has(candidate)) continue
+    candidates.push(candidate)
+  }
+
+  return candidates
 }

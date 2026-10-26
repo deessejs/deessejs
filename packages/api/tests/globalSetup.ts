@@ -27,8 +27,13 @@
  *     same secret the workflow uses for release and changesets).
  *     The probe reads the `core.remaining` field and exposes
  *     `github:ready=true` when the remaining quota is at or
- *     above the threshold (10 by default). Below the threshold,
+ *     above the threshold (20 by default). Below the threshold,
  *     or on any network/protocol failure, `github:ready=false`.
+ *   - The threshold has to cover what the gated test spends. The
+ *     catalog enrichment asks GitHub for every repository and its
+ *     readme, fourteen requests, so a quota below that would let
+ *     the test start a call it cannot finish. The gate skips
+ *     instead, loudly.
  *   - The probe costs 1 GitHub request per CI run. With a
  *     `GITHUB_TOKEN`, the budget is 5000 req/h — the probe is
  *     a rounding error.
@@ -45,7 +50,7 @@ import postgres from "postgres"
 
 const DEFAULT_TIMEOUT_MS = 5_000
 const GITHUB_PROBE_TIMEOUT_MS = 3_000
-const GITHUB_RATE_LIMIT_THRESHOLD = 10
+const GITHUB_RATE_LIMIT_THRESHOLD = 20
 const BASELINE_DATABASE_URL =
   "postgresql://test:test@localhost:5432/test"
 const GITHUB_API = "https://api.github.com"

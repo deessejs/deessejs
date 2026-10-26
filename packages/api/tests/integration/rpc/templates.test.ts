@@ -34,6 +34,7 @@ import { describe, expect, it } from "vitest"
 import { inject } from "vitest"
 
 import { api } from "../../../src/index.js"
+import { e2eForceFail } from "../../../src/orpc/routes/templates.js"
 
 const GITHUB_READY = inject("github:ready") === true
 
@@ -98,35 +99,88 @@ describe("POST /api/v1/rpc/templates/list", () => {
       expect(typeof template.updatedAt).toBe("string")
       expect(typeof template.stars).toBe("number")
     })
+  }
 
-    it("routes the two-segment URL through the oRPC handler, not the notFound fallback", async () => {
-      // The assertion that matters for the Hono mount: the URL Hono
-      // serves matches the URL the RPCLink client sends. A
-      // regression that narrows the Hono mount to one segment
-      // surfaces here as a 404 with the notFound envelope.
-      // With the real network behind it, this also confirms
-      // that a non-mocked `enrich()` does not affect routing.
+  // The routing contract, and it does not depend on GitHub: the URL
+  // Hono serves has to be the URL the RPCLink client sends, whatever
+  // the upstream answers. It sits outside the GitHub gate for that
+  // reason, so it runs in every environment.
+  it("routes the two-segment URL through the oRPC handler, not the notFound fallback", async () => {
+    // The assertion that matters for the Hono mount: the URL Hono
+    // serves matches the URL the RPCLink client sends. A
+    // regression that narrows the Hono mount to one segment
+    // surfaces here as a 404 with the notFound envelope.
+    //
+    // The call goes through the e2e guard, which answers without
+    // reaching GitHub. The procedure enriches the whole catalog on
+    // every call, fourteen requests to GitHub, and the anonymous
+    // rate limit is small enough that paying it twice is what
+    // pushes this suite past it. The first test above already
+    // covers the real network behind the mount.
+    const secret = "test-only-bypass-secret"
+    const saved = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    process.env.VERCEL_AUTOMATION_BYPASS_SECRET = secret
+    try {
       const res = await api.request("/api/v1/rpc/templates/list", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "x-vercel-protection-bypass": secret,
+          "x-e2e-force-fail": "1",
+        },
         body: JSON.stringify({ data: null, path: ["templates", "list"] }),
       })
 
-      if (res.status === 404) {
-        const body = await res.json()
-        // If the Hono mount missed, the notFound handler
-        // returns this exact shape. The assertion below
-        // documents the regression mode as a failure of THIS
-        // test.
-        expect(body).not.toMatchObject({
-          defined: false,
-          code: "NOT_FOUND",
-        })
+      const body = await res.json()
+      // The oRPC handler answered: its answer is in the oRPC
+      // envelope, and the notFound fallback's is not. The
+      // fallback answers at the top level with `defined` and
+      // `code`, and carries no `json` at all.
+      expect(body).toHaveProperty("json")
+      expect(body).not.toMatchObject({
+        defined: false,
+        code: "NOT_FOUND",
+      })
+      expect(res.status).not.toBe(404)
+    } finally {
+      if (saved === undefined) {
+        delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      } else {
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET = saved
       }
+    }
+  })
+
+  it("serves the empty catalog when the guard forces it, without reaching the upstream", async () => {
+    // The wiring the guard tests above cannot see: the handler
+    // consults the guard, and the guard's answer is what reaches the
+    // client. The empty catalog is the guard's own, so GitHub was
+    // never asked.
+    const secret = "test-only-bypass-secret"
+    const saved = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    process.env.VERCEL_AUTOMATION_BYPASS_SECRET = secret
+    try {
+      const res = await api.request("/api/v1/rpc/templates/list", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-vercel-protection-bypass": secret,
+          "x-e2e-force-fail": "2",
+        },
+        body: JSON.stringify({ data: null, path: ["templates", "list"] }),
+      })
 
       expect(res.status).toBe(200)
-    })
-  }
+      const body = await res.json()
+      expect(body.json.templates).toEqual([])
+    } finally {
+      if (saved === undefined) {
+        delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      } else {
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET = saved
+      }
+    }
+  })
 })
 
 /**
@@ -183,91 +237,102 @@ describeUnit("enrich() failure surface (issue #81 wire-code)", () => {
 /**
  * E2E test guard contract.
  *
- * Three unit-tier tests that pin the contract of the
- * x-vercel-protection-bypass + x-e2e-force-fail guard inside
- * the templates handler. The guard is the seam that lets the
- * Playwright e2e suite drive the failure / empty paths
- * without a real upstream outage.
+ * The guard is the seam that lets the Playwright e2e suite drive the
+ * failure / empty paths without a real upstream outage. Its decision
+ * is a pure function of the request headers, and it is pinned as one.
  *
- * These tests do NOT hit the network — they run on every PR
- * regardless of the GitHub rate limit. They only need to
- * assert the guard's behavior under three specific shapes
- * of the bypass header.
+ * The decision used to be pinned through the handler, with the guard
+ * closed in every case. That made each case reach `enrich()`, and
+ * `enrich()` asks GitHub for the whole catalog: two requests per
+ * template, fourteen in all. Three cases, forty-two requests, spent
+ * outside the quota gate that guards the network test, and the answer
+ * then depended on the upstream being reachable. The decision does
+ * not need a request to be pinned.
  */
 describeUnit("templates.list e2e guard", () => {
   const SECRET = "test-only-bypass-secret"
-  const URL = "/api/v1/rpc/templates/list"
-  const BODY = JSON.stringify({ data: null, path: ["templates", "list"] })
 
-  const call = (headers: Record<string, string> = {}) =>
-    api.request(URL, {
-      method: "POST",
-      headers: { "content-type": "application/json", ...headers },
-      body: BODY,
+  /**
+   * Runs a case with the given environment, and restores it after.
+   *
+   * A variable that was absent is deleted again, rather than restored
+   * as the string "undefined".
+   */
+  const withEnv = (
+    values: Record<string, string | undefined>,
+    run: () => void,
+  ): void => {
+    const saved = new Map<string, string | undefined>()
+    for (const [key, value] of Object.entries(values)) {
+      saved.set(key, process.env[key])
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+    try {
+      run()
+    } finally {
+      for (const [key, value] of saved) {
+        if (value === undefined) delete process.env[key]
+        else process.env[key] = value
+      }
+    }
+  }
+
+  const headersFor = (overrides: Record<string, string> = {}): Headers =>
+    new Headers({
+      "x-vercel-protection-bypass": SECRET,
+      "x-e2e-force-fail": "1",
+      ...overrides,
     })
 
   itUnit(
-    "closed by default: missing secret OR missing/non-matching bypass header means the guard is a no-op",
-    async () => {
-      // Save the real env value (if any) and ensure it is empty
-      // so the guard closes by default.
-      const saved = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-      delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-      try {
-        // No headers — guard should be closed.
-        const res = await call({ "x-e2e-force-fail": "1" })
-        // The guard is closed, so we hit `enrich()` (which
-        // requires GitHub in real network but here we are in
-        // CI with mocked network — see globalSetup). The test
-        // pins that the response is NOT the wire-code 502.
-        expect(res.status).not.toBe(502)
-      } finally {
-        if (saved !== undefined) process.env.VERCEL_AUTOMATION_BYPASS_SECRET = saved
-      }
+    "closed by default: a missing secret means the guard is a no-op",
+    () => {
+      withEnv({ VERCEL_AUTOMATION_BYPASS_SECRET: undefined }, () => {
+        expect(e2eForceFail(headersFor())).toBeNull()
+      })
     },
   )
 
   itUnit(
-    "production-impervious: guard is a no-op when NODE_ENV is 'production'",
-    async () => {
-      const savedSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-      const savedNodeEnv = process.env.NODE_ENV
-      process.env.VERCEL_AUTOMATION_BYPASS_SECRET = SECRET
-      process.env.NODE_ENV = "production"
-      try {
-        // Even with a valid secret AND a matching bypass header
-        // AND the force-fail value, production cannot reach
-        // the test path.
-        const res = await call({
-          "x-vercel-protection-bypass": SECRET,
-          "x-e2e-force-fail": "1",
-        })
-        expect(res.status).not.toBe(502)
-      } finally {
-        process.env.VERCEL_AUTOMATION_BYPASS_SECRET = savedSecret
-        process.env.NODE_ENV = savedNodeEnv
-      }
+    "production-impervious: the guard is a no-op when NODE_ENV is 'production'",
+    () => {
+      withEnv(
+        { VERCEL_AUTOMATION_BYPASS_SECRET: SECRET, NODE_ENV: "production" },
+        () => {
+          expect(e2eForceFail(headersFor())).toBeNull()
+        },
+      )
     },
   )
 
   itUnit(
     "header-mismatch: a non-matching bypass value does not enable the guard",
-    async () => {
-      const savedSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-      const savedNodeEnv = process.env.NODE_ENV
-      process.env.VERCEL_AUTOMATION_BYPASS_SECRET = SECRET
-      process.env.NODE_ENV = "test"
-      try {
-        // Bypass header does NOT match the server-side secret.
-        const res = await call({
-          "x-vercel-protection-bypass": "wrong-secret",
-          "x-e2e-force-fail": "1",
-        })
-        expect(res.status).not.toBe(502)
-      } finally {
-        process.env.VERCEL_AUTOMATION_BYPASS_SECRET = savedSecret
-        process.env.NODE_ENV = savedNodeEnv
-      }
+    () => {
+      withEnv(
+        { VERCEL_AUTOMATION_BYPASS_SECRET: SECRET, NODE_ENV: "test" },
+        () => {
+          expect(
+            e2eForceFail(
+              headersFor({ "x-vercel-protection-bypass": "wrong-secret" }),
+            ),
+          ).toBeNull()
+        },
+      )
     },
   )
+
+  itUnit("fires the failure when the secret matches and it is forced", () => {
+    withEnv({ VERCEL_AUTOMATION_BYPASS_SECRET: SECRET }, () => {
+      expect(() => e2eForceFail(headersFor())).toThrow(ORPCError)
+    })
+  })
+
+  itUnit("returns an empty catalog when the empty path is forced", () => {
+    withEnv({ VERCEL_AUTOMATION_BYPASS_SECRET: SECRET }, () => {
+      expect(
+        e2eForceFail(headersFor({ "x-e2e-force-fail": "2" })),
+      ).toEqual({ templates: [] })
+    })
+  })
 })
