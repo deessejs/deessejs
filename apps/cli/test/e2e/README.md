@@ -4,10 +4,10 @@ This suite packs `@deessejs/cli`, installs the tarball into a temporary
 consumer, and runs the installed CLI against fixed repository fixtures. The
 catalog and GitHub commit archive responses are provided by a test-only Node
 preload; unexpected `fetch` requests fail the command. It covers both catalog
-slugs and direct GitHub repository URLs, including the required descriptor
-error for an unsupported direct repository. The install fixture has no
-third-party dependencies, so `pnpm install` is exercised without reaching an
-external package registry.
+slugs and direct GitHub repository URLs. A repository without the required
+descriptor is rejected the same way for both input forms. The install fixture
+has no third-party dependencies, so `pnpm install` is exercised without
+reaching an external package registry.
 
 Build the CLI workspace dependencies, then run:
 
