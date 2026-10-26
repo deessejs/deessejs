@@ -1,0 +1,14 @@
+{
+  "$schema": "https://app.deessejs.com/schema/template/v1.json",
+  "formatVersion": 1,
+  "name": "CLI init regression fixture",
+  "title": "CLI init regression fixture",
+  "description": "A small fixed template used by the CLI end-to-end regression test.",
+  "type": "template:app",
+  "version": "1.0.0",
+  "source": {
+    "repo": "deessejs/init-regression-fixture"
+  },
+  "includes": ["**/*"],
+  "excludes": ["deesse-template.json", "private/**"]
+}

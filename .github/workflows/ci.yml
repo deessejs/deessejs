@@ -139,6 +139,33 @@ jobs:
       - run: pnpm turbo build
       - run: pnpm turbo test
 
+  cli-init-e2e:
+    name: CLI init consumer E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck CLI E2E harness
+        run: pnpm --filter @deessejs/cli typecheck:e2e
+
+      - name: Build CLI and workspace dependencies
+        run: pnpm turbo build --filter=@deessejs/cli --force
+
+      - name: Run packed CLI init regression test
+        run: pnpm --filter @deessejs/cli test:e2e
+
   test-integration:
     name: Test (Integration)
     runs-on: ubuntu-latest

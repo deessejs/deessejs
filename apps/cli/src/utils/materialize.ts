@@ -203,6 +203,19 @@ async function trackDirectory(
   createdDirectories.push({ path, dev: details.dev, ino: details.ino })
 }
 
+function isTrackedDirectory(
+  path: string,
+  details: Awaited<ReturnType<typeof lstat>>,
+  createdDirectories: TrackedPath[]
+): boolean {
+  return createdDirectories.some(
+    (directory) =>
+      directory.path === path &&
+      directory.dev === details.dev &&
+      directory.ino === details.ino
+  )
+}
+
 async function ensureDirectoryHierarchy(
   directory: string,
   target: string,
@@ -226,8 +239,6 @@ async function ensureDirectoryHierarchy(
         continue
       } catch (mkdirError) {
         if (!isExistsPathError(mkdirError)) throw mkdirError
-        if (current === target && !targetState.existed)
-          throw targetExists(target)
         details = await lstat(current)
       }
     }
@@ -238,7 +249,13 @@ async function ensureDirectoryHierarchy(
         `path component "${current}" is not a regular directory`
       )
     }
-    if (current === target && !targetState.existed) throw targetExists(target)
+    if (
+      current === target &&
+      !targetState.existed &&
+      !isTrackedDirectory(current, details, createdDirectories)
+    ) {
+      throw targetExists(target)
+    }
   }
 }
 
