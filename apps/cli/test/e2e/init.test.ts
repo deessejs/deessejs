@@ -123,6 +123,10 @@ describe.skipIf(process.platform !== "linux")(
         join(fixtureBinDirectory, "git"),
         "#!/bin/sh\necho 'git must not run for a valid descriptor' >&2\nexit 97\n"
       )
+      writeExecutable(
+        join(fixtureBinDirectory, "npm"),
+        "#!/bin/sh\necho 'PACKAGE_MANAGER_STDOUT_SENTINEL'\necho 'PACKAGE_MANAGER_STDERR_SENTINEL' >&2\nexit 0\n"
+      )
 
       const packResult = await runCommand(
         "pnpm",
@@ -262,10 +266,82 @@ describe.skipIf(process.platform !== "linux")(
           installResult.exitCode,
           `${installResult.stdout}\n${installResult.stderr}`
         ).toBe(0)
-        expect(installResult.stdout).toContain("Template ready")
+        const installOutput = `${installResult.stdout}\n${installResult.stderr}`
+        expect(installOutput).toContain("Initializing init-regression-fixture")
+        expect(installOutput).toContain("Template downloaded")
+        expect(installOutput).toContain("Project files created")
+        expect(installOutput).toContain("Dependencies installed")
+        expect(installOutput).toContain("Next steps")
+        expect(installOutput).not.toContain("PACKAGE_MANAGER_")
         expect(
           existsSync(join(installedProjectDirectory, "pnpm-lock.yaml"))
         ).toBe(true)
+
+        const quietProjectDirectory = join(
+          consumerDirectory,
+          "quiet-output-project"
+        )
+        const quietResult = await runCommand(
+          cliExecutable,
+          [
+            "init",
+            "init-regression-fixture",
+            "--dir",
+            quietProjectDirectory,
+            "--pm",
+            "npm",
+          ],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(quietResult.exitCode).toBe(0)
+        expect(`${quietResult.stdout}\n${quietResult.stderr}`).not.toContain(
+          "PACKAGE_MANAGER_"
+        )
+
+        const verboseProjectDirectory = join(
+          consumerDirectory,
+          "verbose-output-project"
+        )
+        const verboseResult = await runCommand(
+          cliExecutable,
+          [
+            "init",
+            "init-regression-fixture",
+            "--dir",
+            verboseProjectDirectory,
+            "--pm",
+            "npm",
+            "--verbose",
+          ],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        const verboseOutput = `${verboseResult.stdout}\n${verboseResult.stderr}`
+        expect(verboseResult.exitCode).toBe(0)
+        expect(verboseOutput).toContain("PACKAGE_MANAGER_STDOUT_SENTINEL")
+        expect(verboseOutput).toContain("PACKAGE_MANAGER_STDERR_SENTINEL")
+
+        const verboseJsonProjectDirectory = join(
+          consumerDirectory,
+          "verbose-json-output-project"
+        )
+        const verboseJsonResult = await runCommand(
+          cliExecutable,
+          [
+            "init",
+            "init-regression-fixture",
+            "--dir",
+            verboseJsonProjectDirectory,
+            "--pm",
+            "npm",
+            "--verbose",
+            "--json",
+          ],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(verboseJsonResult.exitCode).toBe(0)
+        expect(JSON.parse(verboseJsonResult.stdout)).toMatchObject({ ok: true })
+        expect(verboseJsonResult.stdout).not.toContain("PACKAGE_MANAGER_")
+        expect(verboseJsonResult.stderr).toContain("PACKAGE_MANAGER_")
 
         const directProjectDirectory = join(
           consumerDirectory,
@@ -362,14 +438,14 @@ describe.skipIf(process.platform !== "linux")(
         ).toBe(false)
         expect(
           requests.filter((request) => request.includes("/tarball/")).length
-        ).toBe(5)
+        ).toBe(8)
         expect(
           requests.filter((request) =>
             request.includes(
               "POST https://app.deessejs.com/api/v1/rpc/templates/list"
             )
           ).length
-        ).toBe(3)
+        ).toBe(6)
         expect(requests).toContain(
           `GET https://api.github.com/repos/deessejs/legacy-template/tarball/${missingDescriptorRevision}`
         )
