@@ -238,9 +238,22 @@ const authConfig: BetterAuthOptions = {
   // The application's own organization procedures answer the same
   // question, for the same slug, with the caller's membership and role
   // checked and with no effect on the session.
+  //
+  // The create endpoint is disabled for a different reason: it takes
+  // the slug from the body, and the slug is the server's. A caller
+  // that reaches it directly would choose the slug, and the guarantee
+  // that the slug is generated would hold for the callers that happen
+  // to go through the procedure and for nobody else. The application's
+  // own procedure generates it, retries a collision against the
+  // database, and refuses a name it cannot turn into a usable slug.
+  //
+  // The server-side call the procedure makes is not affected:
+  // `disabledPaths` is applied by the request router, and the call
+  // reaches the endpoint's function directly.
   disabledPaths: [
     "/organization/get-organization",
     "/organization/get-full-organization",
+    "/organization/create",
   ],
 
   plugins: [

@@ -1,6 +1,7 @@
 import type { TemplateV1 } from "@workspace/contracts/v1"
 
 import { orpc } from "@/lib/orpc"
+import { readWorkspaceOrganization } from "@/lib/workspace-organization"
 import {
   Card,
   CardContent,
@@ -9,7 +10,22 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card"
 
-export default async function HomePage() {
+/**
+ * The workspace home.
+ *
+ * The page belongs to the organization in its URL, and it says so:
+ * the organization's name is the heading. The catalogue stays what it
+ * was, because a workspace with no content of its own is not a
+ * workspace.
+ */
+export default async function WorkspaceHomePage({
+  params,
+}: {
+  params: Promise<{ organization_slug: string }>
+}) {
+  const { organization_slug } = await params
+  const organization = await readWorkspaceOrganization(organization_slug)
+
   let templates: TemplateV1[] = []
   let fetchError: string | null = null
   try {
@@ -23,7 +39,9 @@ export default async function HomePage() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Templates</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {organization.name}
+        </h1>
         <p className="text-sm text-muted-foreground">
           All templates you have access to. Pick one to install with{" "}
           <code className="rounded bg-muted px-1 py-0.5 text-xs">

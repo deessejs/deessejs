@@ -1,53 +1,104 @@
 import { describe, expect, it } from "vitest"
 import { APIError } from "better-auth/api"
-import { beforeCreateOrganizationHook } from "../../src/organization/plugin.js"
 
-const verifiedUser = { emailVerified: true }
-const unverifiedUser = { emailVerified: false }
+import {
+  assertCreatableOrganization,
+  beforeCreateOrganizationWithMarker,
+} from "../../src/organization/provisioning.js"
 
-const callHook = (input: { name?: string; slug?: string; metadata?: unknown }, user = verifiedUser) =>
-  beforeCreateOrganizationHook({ organization: input, user })
+const verifiedUser = { id: "user-1", emailVerified: true }
+const unverifiedUser = { id: "user-1", emailVerified: false }
 
-describe("beforeCreateOrganizationHook", () => {
-  it("rejects control characters in the raw name (no trim)", async () => {
-    await expect(callHook({ name: "\nAcme\n", slug: "acme" })).rejects.toThrow(APIError)
+const callValidator = (
+  input: { name?: string; slug?: string; metadata?: unknown },
+  user = verifiedUser,
+) => assertCreatableOrganization(input, user)
+
+const callHook = (
+  input: { name?: string; slug?: string; metadata?: unknown },
+  user = verifiedUser,
+) => beforeCreateOrganizationWithMarker({ organization: input, user })
+
+describe("assertCreatableOrganization", () => {
+  it("rejects control characters in the raw name (no trim)", () => {
+    expect(() =>
+      callValidator({ name: "\nAcme\n", slug: "acme" }),
+    ).toThrow(APIError)
   })
 
-  it("rejects surrounding whitespace in the raw name (no trim)", async () => {
-    await expect(callHook({ name: " Acme ", slug: "acme" })).rejects.toThrow(APIError)
+  it("rejects surrounding whitespace in the raw name (no trim)", () => {
+    expect(() => callValidator({ name: " Acme ", slug: "acme" })).toThrow(
+      APIError,
+    )
   })
 
-  it("accepts a valid name and slug and returns the no-op override", async () => {
-    const result = await callHook({ name: "Acme", slug: "acme" })
-    expect(result).toEqual({ data: { name: "Acme" } })
+  it("rejects a control character mid-string", () => {
+    expect(() =>
+      callValidator({ name: "A\u0000cme", slug: "acme" }),
+    ).toThrow(APIError)
   })
 
-  it("rejects a control character mid-string", async () => {
-    await expect(callHook({ name: "A\u0000cme", slug: "acme" })).rejects.toThrow(APIError)
+  it("rejects when the name is missing", () => {
+    expect(() => callValidator({ slug: "acme" })).toThrow(APIError)
   })
 
-  it("rejects when input.name is missing", async () => {
-    await expect(callHook({ slug: "acme" })).rejects.toThrow(APIError)
+  it("rejects when the slug is missing", () => {
+    expect(() => callValidator({ name: "Acme" })).toThrow(APIError)
   })
 
-  it("rejects when input.slug is missing", async () => {
-    await expect(callHook({ name: "Acme" })).rejects.toThrow(APIError)
+  it("rejects an unverified account", () => {
+    expect(() =>
+      callValidator({ name: "Acme", slug: "acme" }, unverifiedUser),
+    ).toThrow(APIError)
   })
 
-  it("rejects unverified users with FORBIDDEN", async () => {
-    await expect(callHook({ name: "Acme", slug: "acme" }, unverifiedUser)).rejects.toThrow(APIError)
+  it("rejects reserved slugs", () => {
+    expect(() => callValidator({ name: "Acme", slug: "admin" })).toThrow(
+      APIError,
+    )
   })
 
-  it("rejects when metadata is not null", async () => {
-    await expect(callHook({ name: "Acme", slug: "acme", metadata: {} })).rejects.toThrow(APIError)
+  it("accepts a valid name and slug", () => {
+    expect(() =>
+      callValidator({ name: "Acme", slug: "acme" }),
+    ).not.toThrow()
+  })
+})
+
+describe("beforeCreateOrganizationWithMarker", () => {
+  it("rejects a metadata that is not a marker", async () => {
+    // The metadata is the application's, and the only thing it
+    // accepts is a marker. The refusal happens before anything is
+    // read, so it needs no database.
+    await expect(
+      callHook({ name: "Acme", slug: "acme", metadata: {} }),
+    ).rejects.toThrow(APIError)
   })
 
-  it("accepts metadata: null (default)", async () => {
-    const result = await callHook({ name: "Acme", slug: "acme", metadata: null })
-    expect(result).toEqual({ data: { name: "Acme" } })
+  it("rejects a metadata of null", async () => {
+    await expect(
+      callHook({ name: "Acme", slug: "acme", metadata: null }),
+    ).rejects.toThrow(APIError)
   })
 
-  it("rejects reserved slugs", async () => {
-    await expect(callHook({ name: "Acme", slug: "admin" })).rejects.toThrow(APIError)
+  it("rejects a metadata whose marker is not a string", async () => {
+    await expect(
+      callHook({ name: "Acme", slug: "acme", metadata: { provisioningAttempt: 7 } }),
+    ).rejects.toThrow(APIError)
+  })
+
+  it("rejects a name the policy rejects", async () => {
+    await expect(
+      callHook({ name: " Acme ", slug: "acme", metadata: { provisioningAttempt: "op-1" } }),
+    ).rejects.toThrow(APIError)
+  })
+
+  it("rejects an unverified account", async () => {
+    await expect(
+      callHook(
+        { name: "Acme", slug: "acme", metadata: { provisioningAttempt: "op-1" } },
+        unverifiedUser,
+      ),
+    ).rejects.toThrow(APIError)
   })
 })
