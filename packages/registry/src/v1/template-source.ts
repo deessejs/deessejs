@@ -266,7 +266,7 @@ async function readArchiveSnapshot(
         )
         return
       }
-      if (currentRoot !== expectedArchiveRoot) {
+      if (currentRoot.toLowerCase() !== expectedArchiveRoot.toLowerCase()) {
         failInventory(
           createTemplateSourceError(
             "source.invalid_response",
