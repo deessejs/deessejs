@@ -103,7 +103,7 @@ deessejs init https://github.com/owner/repository
 | `--ref <branch>` | Git ref to use. Default: the repository's default branch. |
 | `--no-install` | Skip the install step. Useful for CI or pre-baked Docker images. |
 | `--force` | Allow an existing empty target directory. Existing files are never removed. |
-| `--verbose` | Show the package manager's full output during installation. |
+| `--verbose` | Show template resolution details and the package manager's full output during installation. |
 | `--json` | Emit `{ ok, slug, dir, ref, installed }` on success or `{ ok: false, code, message, hint }` on failure. |
 
 ### Package manager detection
@@ -122,7 +122,7 @@ If neither matches, the CLI aborts with `internal` and asks you to pass `--pm` e
 3. Require and validate `deesse-template.json`, then use its include and exclude patterns to select project files. Both input forms follow this same path; there is no clone fallback.
 4. Compute the target directory (`./<slug>` for catalog entries, or `./<repository>` for direct URLs, unless `--dir` was passed).
 5. Materialize the selected files. If the directory exists and `--force` wasn't passed, abort with `target_exists`.
-6. Detect the package manager and run the install command (`pnpm install`, `npm install`, `yarn install`, `bun install`). Its output is hidden by default and can be shown with `--verbose`. Skipped if `--no-install`.
+6. Detect the package manager and run the install command (`pnpm install`, `npm install`, `yarn install`, `bun install`). Its output is hidden by default and can be shown with `--verbose`. `--verbose` also reports the resolved source, ref, target directory, commit, and number of selected files, including when installation is skipped with `--no-install`.
 
 ### Exit codes
 
