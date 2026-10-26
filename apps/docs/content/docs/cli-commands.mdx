@@ -19,10 +19,10 @@ deessejs list
 
 ### Flags
 
-| Flag                | Effect                                                                              |
-| ------------------- | ----------------------------------------------------------------------------------- |
+| Flag | Effect |
+| --- | --- |
 | `--category <name>` | Filter to a single category. Unknown categories yield an empty list (not an error). |
-| `--json`            | Emit `{ templates: TemplateV1[] }` instead of a table.                              |
+| `--json` | Emit `{ templates: TemplateV1[] }` instead of a table. |
 
 ### Output
 
@@ -53,14 +53,14 @@ deessejs info next-app-starter
 
 ### Arguments
 
-| Argument | Description                                               |
-| -------- | --------------------------------------------------------- |
-| `<slug>` | Template identifier. Must match a `slug` in the registry. |
+| Argument | Description |
+| --- | --- |
+| `<slug-or-github-url>` | Catalog template identifier, or HTTPS URL to a GitHub repository root. |
 
 ### Flags
 
-| Flag     | Effect                                                         |
-| -------- | -------------------------------------------------------------- |
+| Flag | Effect |
+| --- | --- |
 | `--json` | Emit `{ template: TemplateV1 }` instead of the formatted view. |
 
 ### Output
@@ -69,6 +69,7 @@ A formatted block with the template's fields (slug, owner, repo, optional `image
 
 ```
 Install: deessejs init next-app-starter
+deessejs init https://github.com/owner/repository
 ```
 
 ### Exit codes
@@ -89,20 +90,20 @@ deessejs init https://github.com/owner/repository
 
 ### Arguments
 
-| Argument               | Description                                                            |
-| ---------------------- | ---------------------------------------------------------------------- |
+| Argument | Description |
+| --- | --- |
 | `<slug-or-github-url>` | Catalog template identifier, or HTTPS URL to a GitHub repository root. |
 
 ### Flags
 
-| Flag             | Effect                                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------------- |
-| `--pm <name>`    | Override detected package manager. One of `pnpm`, `npm`, `yarn`, `bun`.                                 |
-| `--dir <path>`   | Target directory. Resolves relative to the current working directory. Default: `./<slug>`.              |
-| `--ref <branch>` | Git ref to use. Default: the repository's default branch.                                               |
-| `--no-install`   | Skip the install step. Useful for CI or pre-baked Docker images.                                        |
-| `--force`        | Allow an existing empty target directory. Existing files are never removed.                             |
-| `--json`         | Emit `{ ok, slug, dir, ref, installed }` on success or `{ ok: false, code, message, hint }` on failure. |
+| Flag | Effect |
+| --- | --- |
+| `--pm <name>` | Override detected package manager. One of `pnpm`, `npm`, `yarn`, `bun`. |
+| `--dir <path>` | Target directory. Resolves relative to the current working directory. Default: `./<slug>`. |
+| `--ref <branch>` | Git ref to use. Default: the repository's default branch. |
+| `--no-install` | Skip the install step. Useful for CI or pre-baked Docker images. |
+| `--force` | Allow an existing empty target directory. Existing files are never removed. |
+| `--json` | Emit `{ ok, slug, dir, ref, installed }` on success or `{ ok: false, code, message, hint }` on failure. |
 
 ### Package manager detection
 
@@ -140,7 +141,7 @@ deessejs init next-app-starter --dir ./apps/web
 # Force pnpm even if the template ships yarn.lock
 deessejs init next-app-starter --pm pnpm
 
-# Clone a feature branch without installing
+# Use a feature branch without installing
 deessejs init next-app-starter --ref feat/new-thing --no-install
 
 # CI usage
@@ -161,8 +162,8 @@ Browser-based device-flow sign-in. Writes `~/.deessejs/auth.json` on success.
 deessejs auth login
 ```
 
-| Flag     | Effect                                                                                 |
-| -------- | -------------------------------------------------------------------------------------- |
+| Flag | Effect |
+| --- | --- |
 | `--json` | Emit `{ ok: true, user }` on success, `{ ok: false, code, message, hint }` on failure. |
 
 Exit codes: `0` on success, `1` on any failure (`network_error`, `cli_device_denied`, `cli_device_expired`, `internal`).
@@ -175,8 +176,8 @@ read-only diagnostic. Validates the cached bearer against the server and prints 
 deessejs auth status
 ```
 
-| Flag     | Effect                                                                                                                          |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Flag | Effect |
+| --- | --- |
 | `--json` | Emit `{ ok, user?, fetchedAt? }`, `{ ok: false, reason: "no_session" }`, or `{ ok: false, reason: "session_invalid", stored }`. |
 
 ### `deessejs auth logout`
@@ -187,8 +188,8 @@ Invalidate the server-side session and delete the local token file. The CLI alwa
 deessejs auth logout
 ```
 
-| Flag     | Effect                                                                                             |
-| -------- | -------------------------------------------------------------------------------------------------- |
+| Flag | Effect |
+| --- | --- |
 | `--json` | Emit `{ ok: true }` on success, `{ ok: true, reason: "no_session" }` if nothing existed to revoke. |
 
 Exit codes: always `0`. A non-2xx from the server's sign-out endpoint logs but doesn't change the exit code. Local cleanup remains the user-facing outcome.
@@ -199,14 +200,14 @@ Exit codes: always `0`. A non-2xx from the server's sign-out endpoint logs but d
 
 The CLI's error surface forms a closed list: only the codes documented below are ever returned, and adding a new one counts as a breaking change. Pattern-match on these in your scripts:
 
-| Code                 | Meaning                                                       | Remediation                                                            |
-| -------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `not_found`          | A slug, template, or other identifier doesn't exist           | Check spelling, or run `deessejs list` to see available identifiers    |
-| `network_error`      | Network request failed after retries                          | Check connectivity, then retry; the CLI already retried 3x with jitter |
-| `parse_error`        | Server response didn't match the v1 contract                  | Likely a server-side regression. Open an issue.                        |
-| `cli_outdated`       | CLI version sits below the server's minimum supported version | `npm install -g @deessejs@latest`                                      |
-| `cli_device_denied`  | You denied the device-flow request in the browser             | Re-run `deessejs auth login` and select Approve                        |
-| `cli_device_expired` | The 30-minute device-code window elapsed                      | Re-run `deessejs auth login`                                           |
+| Code | Meaning | Remediation |
+| --- | --- | --- |
+| `not_found` | A slug, template, or other identifier doesn't exist | Check spelling, or run `deessejs list` to see available identifiers |
+| `network_error` | Network request failed after retries | Check connectivity, then retry; the CLI already retried 3x with jitter |
+| `parse_error` | Server response didn't match the v1 contract | Likely a server-side regression. Open an issue. |
+| `cli_outdated` | CLI version sits below the server's minimum supported version | `npm install -g @deessejs@latest` |
+| `cli_device_denied` | You denied the device-flow request in the browser | Re-run `deessejs auth login` and select Approve |
+| `cli_device_expired` | The 30-minute device-code window elapsed | Re-run `deessejs auth login` |
 
 Internal codes (`template_invalid`, `invalid_target`, `target_exists`, `target_not_empty`, `install_failed`, `internal`) may also appear under `code` when you pass `--json`, but they aren't part of the public surface and may change without notice.
 
