@@ -569,7 +569,7 @@ export function createGitHubTemplateSourceAdapter(
           tempDirectory,
           canonical,
           revision,
-          `${name}-`,
+          `${owner}-${name}-`,
           maxInventoryEntries
         )
       } finally {
