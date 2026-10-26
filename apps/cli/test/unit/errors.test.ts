@@ -45,7 +45,10 @@ describe("error factories", () => {
 
   it("each factory returns the expected code", () => {
     expect(networkError("x").code).toBe("network_error")
-    expect(installFailed("pnpm", 1).code).toBe("install_failed")
+    expect(installFailed("pnpm", 1, "project").code).toBe("install_failed")
+    expect(installFailed("pnpm", 1, "project").hint).toContain(
+      'Run "pnpm install" from "project"'
+    )
     expect(parseError("x").code).toBe("parse_error")
     expect(internal("x").code).toBe("internal")
   })
