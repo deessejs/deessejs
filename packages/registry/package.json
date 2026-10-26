@@ -22,16 +22,22 @@
     "build": "tsc",
     "schema:generate": "node --experimental-strip-types scripts/generate-template-schema.mjs",
     "schema:check": "node --experimental-strip-types scripts/generate-template-schema.mjs --check",
+    "test": "vitest",
+    "test:run": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "picomatch": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/picomatch": "catalog:",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "catalog:",
+    "vitest": "catalog:",
+    "@workspace/vitest-config": "workspace:*",
     "typescript": "catalog:"
   }
 }

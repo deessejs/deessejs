@@ -52,6 +52,7 @@ catalog:
 
   # Types
   "@types/node": ^24
+  "@types/picomatch": ^4.0.3
   "@types/pg": ^8.20.0
   "@types/react": ^19.2.17
   "@types/react-dom": ^19.2.3
@@ -89,6 +90,7 @@ catalog:
   "next": ^16.2.10
   open: ^11.0.1
   pg: ^8.22.0
+  picomatch: ^4.0.7
 
   # CI tooling
   pkg-pr-new: ^0.0.88
