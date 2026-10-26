@@ -314,7 +314,10 @@ describe.skipIf(process.platform !== "linux")(
           ],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
-        const noInstallVerboseOutput = `${noInstallVerboseResult.stdout}\n${noInstallVerboseResult.stderr}`
+        const noInstallVerboseOutput = `${noInstallVerboseResult.stdout}\n${noInstallVerboseResult.stderr}`.replace(
+          /\u001B\[[0-9;]*m/g,
+          ""
+        )
         expect(noInstallVerboseResult.exitCode).toBe(0)
         expect(noInstallVerboseOutput).toContain("[verbose] Template source:")
         expect(noInstallVerboseOutput).toContain(
