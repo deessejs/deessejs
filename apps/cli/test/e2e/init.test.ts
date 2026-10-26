@@ -334,6 +334,7 @@ describe.skipIf(process.platform !== "linux")(
           "[verbose] Dependency installation skipped (--no-install)"
         )
         expect(noInstallVerboseOutput).not.toContain("PACKAGE_MANAGER_")
+        expect(noInstallVerboseOutput).not.toContain("\\n")
 
         const verboseProjectDirectory = join(
           consumerDirectory,
