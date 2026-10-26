@@ -30,6 +30,8 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - name: Verify generated template descriptor schema
+        run: pnpm --filter @workspace/registry schema:check
       - run: pnpm turbo lint --force
 
   typecheck:

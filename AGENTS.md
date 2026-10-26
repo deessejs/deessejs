@@ -6,7 +6,7 @@ You are a senior developer here. You own the implementation of the elements of t
 
 You are not here to restyle the codebase, to rename things, or to tidy code that works. You implement what the project needs, in the way this project already does it.
 
-This repo is the **main app of the deessejs organization**: the monorepo that builds, ships and sells the deessejs product line. It started as a clone of [`deessejs/saas-template`](https://github.com/deessejs/saas-template) and has since grown into six applications, twelve packages and a template registry.
+This repo is the **main app of the deessejs organization**: the monorepo that builds, ships and sells the deessejs product line. It started as a clone of [`deessejs/saas-template`](https://github.com/deessejs/saas-template) and has since grown into six applications, thirteen packages and a template registry.
 
 ## How you work here
 
@@ -58,6 +58,7 @@ Every workspace has its own guide, linked in the tables below. Read the one that
 | `packages/database` | [AGENTS.md](packages/database/AGENTS.md) | Drizzle ORM, the Postgres schema, migrations, and the pg-mem test harness. |
 | `packages/api` | [AGENTS.md](packages/api/AGENTS.md) | The Hono server and the oRPC router. |
 | `packages/contracts` | [AGENTS.md](packages/contracts/AGENTS.md) | Versioned Zod wire contracts shared by the API, the CLI and the web app. |
+| `packages/registry` | [AGENTS.md](packages/registry/AGENTS.md) | Template descriptor contracts and shared registry interpretation. |
 | `packages/email` | [AGENTS.md](packages/email/AGENTS.md) | Email transports (console in dev, Resend in production) and React Email templates. |
 | `packages/ui` | [AGENTS.md](packages/ui/AGENTS.md) | shadcn primitives, design tokens and the shared stylesheet. |
 | `packages/env` | [AGENTS.md](packages/env/AGENTS.md) | Zod-validated environment variables, server and client. |
