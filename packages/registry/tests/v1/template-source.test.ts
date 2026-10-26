@@ -10,7 +10,7 @@ const REVISION = "0123456789abcdef0123456789abcdef01234567"
 const temporaryDirectories: string[] = []
 
 async function createArchive(
-  archiveName = "fixture",
+  archiveName = "deessejs-fixture",
   archiveRevision = REVISION.slice(0, 7)
 ): Promise<Buffer> {
   const root = await mkdtemp(join(tmpdir(), "registry-source-test-"))
@@ -97,7 +97,7 @@ describe("createGitHubTemplateSourceAdapter", () => {
   })
 
   it("accepts repository URLs whose casing differs from GitHub's archive name", async () => {
-    const archive = await createArchive("fixture")
+    const archive = await createArchive("deessejs-fixture")
     const fetchMock = vi.fn<typeof fetch>(async (input) => {
       const url = String(input)
       if (url.endsWith(`/commits/${REVISION}`))
@@ -143,7 +143,7 @@ describe("createGitHubTemplateSourceAdapter", () => {
   })
 
   it("rejects an archive whose short commit SHA does not match the resolved revision", async () => {
-    const archive = await createArchive("different-repository", "ffffffff")
+    const archive = await createArchive("deessejs-different-repository", "ffffffff")
     const fetchMock = vi.fn<typeof fetch>(async (input) => {
       const url = String(input)
       if (url.endsWith("/commits/main"))
