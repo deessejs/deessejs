@@ -11,14 +11,14 @@
 // hardcode one.
 
 /**
- * The path of the empty state.
+ * The path of the organizations page.
  *
- * A caller with no organization, or with a selection that is no
- * longer valid, lands here. It is a top-level segment, so the
- * reserved slug set holds it: an organization cannot take it and
- * shadow the page.
+ * The page lists the organizations the caller belongs to. A caller
+ * with no organization, or with a selection that is no longer valid,
+ * lands here. It is a top-level segment, so the reserved slug set
+ * holds it: an organization cannot take it and shadow the page.
  */
-export const NO_ORGANIZATION_PATH = "/no-organization"
+export const ORGANIZATIONS_PATH = "/organizations"
 
 /** The root of the workspace, for the organization with this slug. */
 export const workspacePath = (slug: string): string => `/${slug}`

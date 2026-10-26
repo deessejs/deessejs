@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import { RESERVED_SLUGS } from "@workspace/auth/organization/reserved-slugs"
 
 import {
-  NO_ORGANIZATION_PATH,
+  ORGANIZATIONS_PATH,
   organizationSlugFromPathname,
   workspaceHomePath,
   workspaceOrganizationSettingsPath,
@@ -51,8 +51,8 @@ const applicationSegments = (): string[] => {
 }
 
 describe("the workspace paths", () => {
-  it("names the empty state", () => {
-    expect(NO_ORGANIZATION_PATH).toBe("/no-organization")
+  it("names the organizations page", () => {
+    expect(ORGANIZATIONS_PATH).toBe("/organizations")
   })
 
   it("builds the workspace of an organization", () => {
@@ -92,7 +92,7 @@ describe("the reserved slug set", () => {
 
   it("holds the segments the workspace introduced", () => {
     expect(RESERVED_SLUGS.has("home")).toBe(true)
-    expect(RESERVED_SLUGS.has("no-organization")).toBe(true)
+    expect(RESERVED_SLUGS.has("organizations")).toBe(true)
   })
 
   it("holds the segments the application already owned", () => {

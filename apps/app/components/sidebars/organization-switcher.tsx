@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   DropdownMenu,
@@ -18,6 +19,7 @@ import {
 } from "@workspace/ui/components/sidebar"
 import {
   Building2Icon,
+  BoxesIcon,
   CheckIcon,
   ChevronsUpDownIcon,
   PlusIcon,
@@ -25,6 +27,7 @@ import {
 
 import { authClient } from "@/lib/auth-client"
 import {
+  ORGANIZATIONS_PATH,
   organizationSlugFromPathname,
   workspaceHomePath,
 } from "@/lib/workspace-paths"
@@ -148,6 +151,12 @@ export function OrganizationSwitcher() {
                   )
                 })}
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href={ORGANIZATIONS_PATH}>
+                  <BoxesIcon aria-hidden />
+                  All organizations
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => {
                   // The sheet closes first: on a narrow viewport the

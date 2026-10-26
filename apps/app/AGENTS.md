@@ -20,7 +20,7 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | `lib/fetch-auth-interceptor.ts` | Attaches the session to the outgoing calls. |
 | `lib/orpc.ts` | The typed oRPC client pointed at the API base path. A server module. |
 | `lib/orpc-browser.ts` | The same client for the browser, for the client components. |
-| `lib/workspace-paths.ts` | The workspace paths, and the empty state's path. |
+| `lib/workspace-paths.ts` | The workspace paths, and the organizations page's path. |
 | `lib/workspace-organization.ts` | The organization a workspace page belongs to, read once per request. |
 | `lib/admin-auth.ts` | The `role` check behind the `/admin` area. |
 | `app/api/[[...route]]/route.ts` | The catch-all that exposes the API under the active base path. |
@@ -30,12 +30,12 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 
 Two route groups, and the difference matters:
 
-- `(protected)` holds the workspace, `/home`, `/no-organization`, `/account/settings` and `/admin`.
+- `(protected)` holds the workspace, `/home`, `/organizations`, `/account/settings` and `/admin`.
 - `(unprotected)` holds the auth screens: login, signup, forgot password, reset password, verify email, and `/device`.
 
 Inside `(protected)`, the workspace is a group of its own: `(workspace)/[organization_slug]/*` owns the organization tree, and the group's layout is the chrome the workspace pages share. The other surfaces own a URL segment of their own, because a route group is transparent: a group named `(account)` would have moved the account settings to `/settings/*`.
 
-`/home` is the entry point. It resolves to the caller's active organization, or to `/no-organization`, and it carries the query string across the hop. The empty state never repairs the caller's selection by itself: the caller picks, and the pick calls the endpoint that owns that write.
+`/home` is the entry point. It resolves to the caller's active organization, or to `/organizations`, and it carries the query string across the hop. The organizations page never repairs the caller's selection by itself: the caller picks, and the pick calls the endpoint that owns that write.
 
 `/device` is the approval view used by the CLI device flow. It is deliberately absent from the auth prefixes in the proxy, so an authenticated user landing there from the CLI sees the approve and deny actions instead of being bounced to `/home`.
 

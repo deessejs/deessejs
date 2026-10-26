@@ -1,6 +1,7 @@
 ---
 "app": minor
 "@workspace/ui": minor
+"@workspace/auth": minor
 ---
 
 Adds the workspace shell: the rail, the organization switcher, the organization's navigation and the account menu.
@@ -18,5 +19,7 @@ The rail's open state survives a reload. The sidebar writes it in a cookie and n
 `packages/ui` gains the cookie's name in a module of its own, without the `"use client"` directive, and declares it in the package's exports map. A server component cannot read a constant out of a client module: the React server runtime answers every named export with a proxy around a function that throws when it is called, so the lookup would silently find nothing and the preference would never apply.
 
 The account settings keep their own rail. The two navigations cover two scopes, on two surfaces, and the workspace's navigation stays organization-scoped.
+
+The empty state becomes an organizations page. `/organizations` lists every organization the caller belongs to, with a search field, a create action and a grid of cards, and the caller picks one from it. It replaces `/no-organization`, which named what the page was for rather than what it shows. The reserved slug set moves with it: `organizations` is the application's own segment now, and the application owns the URL.
 
 The account menu names the account. Its trigger shows the avatar, the name and the email, and the menu repeats the identity at its head before the entries. The menu is mounted in the rail's footer and in the header of the surfaces that have no rail, so the identity is hidden on a narrow viewport, where the header has no room for it. The menu itself always names the account.
