@@ -85,13 +85,18 @@ export function parseTemplateDescriptor(
   const result = TemplateDescriptorV1Schema.safeParse(input)
 
   if (!result.success) {
-    const diagnostics = result.error.issues.flatMap((issue) => {
+    const diagnostics: TemplateDescriptorDiagnostic[] = []
+
+    for (const issue of result.error.issues) {
       if (issue.code === "unrecognized_keys") {
-        return issue.keys.map((key) => ({
-          code: "descriptor.unknown_field" as const,
-          message: `Unknown field "${key}".`,
-          path: [...issue.path.map(String), key],
-        }))
+        diagnostics.push(
+          ...issue.keys.map((key) => ({
+            code: "descriptor.unknown_field" as const,
+            message: `Unknown field "${key}".`,
+            path: [...issue.path.map(String), key],
+          })),
+        )
+        continue
       }
 
       const isUnsupportedFormatVersion =
@@ -101,16 +106,14 @@ export function parseTemplateDescriptor(
         typeof input.formatVersion === "number" &&
         input.formatVersion !== 1
 
-      return [
-        {
-          code: isUnsupportedFormatVersion
-            ? ("descriptor.unsupported_format_version" as const)
-            : ("descriptor.invalid_field" as const),
-          message: issue.message,
-          path: issue.path.map(String),
-        },
-      ]
-    })
+      diagnostics.push({
+        code: isUnsupportedFormatVersion
+          ? "descriptor.unsupported_format_version"
+          : "descriptor.invalid_field",
+        message: issue.message,
+        path: issue.path.map(String),
+      })
+    }
 
     return { success: false, diagnostics }
   }
