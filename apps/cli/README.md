@@ -32,9 +32,12 @@ deessejs info saas-starter --json
 deessejs init saas-starter
 deessejs init saas-starter --ref develop --no-install
 deessejs init https://github.com/owner/repository
+deessejs init saas-starter --verbose
 ```
 
 `init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. Both forms use the repository's root `deesse-template.json` to select the files to create. The descriptor must be present and valid; there is no Git clone fallback. `--ref` selects a branch or other Git ref. `--force` allows an existing empty target directory; it never removes existing files.
+
+By default, `init` hides package manager logs and shows a concise progress summary. Pass `--verbose` to display the full package manager output.
 
 ## Global flags
 
