@@ -1,0 +1,105 @@
+name: Version packages
+
+# Persist the changeset-driven version bump as a pull request.
+#
+# Why this exists at all: release.yml used to run `changeset version` on the
+# runner and never pushed the resulting commit, because the ruleset on `main`
+# refuses direct pushes from `github-actions[bot]` with GH013. The version was
+# therefore never persisted, the repository sat at 2.1.0 while npm served
+# 2.2.0, and every canary computed its synthetic version from a stale base.
+#
+# A pull request satisfies the ruleset and puts the bump in branch history.
+# Combined with the registry comparison in release.yml, the stable channel then
+# publishes what the repository says rather than recomputing it.
+#
+# Staging only. `main` receives the bump through the normal promotion, which
+# avoids two version pull requests racing for the same files.
+#
+# This workflow depends on a GitHub App (see the guard below). It is configured
+# once, outside the repository, and is the reason auto-merge needs no human.
+
+on:
+  push:
+    branches: [staging]
+
+# Needed for `gh pr merge --auto`. The App token carries its own scopes; these
+# are for anything the workflow does with the default token.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  version-packages:
+    name: Version packages
+    runs-on: ubuntu-latest
+    steps:
+      # Minted before checkout, and handed to checkout as well as to the action
+      # below. `changesets/action` pushes the version branch through a plain
+      # `git push`, which reads whatever credential `actions/checkout`
+      # persisted. Passing the token only to the action would leave the push
+      # authenticated as GITHUB_TOKEN and fail on permissions, with no obvious
+      # connection to the cause.
+      - name: Mint the GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.VERSION_PACKAGES_APP_ID }}
+          private-key: ${{ secrets.VERSION_PACKAGES_APP_PRIVATE_KEY }}
+
+      - name: Fail clearly when the App is not configured
+        if: steps.app-token.outputs.token == ''
+        run: |
+          echo "::error::Could not mint a GitHub App token."
+          echo "::error::Set the VERSION_PACKAGES_APP_ID variable and the VERSION_PACKAGES_APP_PRIVATE_KEY secret."
+          echo "::error::The App needs contents: write and pull-requests: write on this repository."
+          echo "::error::Without it the version pull request cannot be created by an actor the changeset gate trusts."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # `branch` is the pull request BASE. run.ts derives the head as
+      # `changeset-release/${branch}`, so `staging` here produces head
+      # `changeset-release/staging` with base `staging`. Passing the head name
+      # would produce `changeset-release/changeset-release/staging` and target a
+      # base that does not exist.
+      #
+      # The token input is named `github-token`. There is no `token` input, and
+      # there is no `autoMerge` input, which is why the next step exists.
+      - name: Create or update the Version Packages pull request
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          branch: staging
+          commit: Version Packages
+          title: Version Packages
+
+      # Separate step because the action cannot do it. The App token rather
+      # than GITHUB_TOKEN: a pull request created with the default token has
+      # the workflow runs it triggers held pending manual approval, so the
+      # auto-merge enabled here would wait forever with no visible failure.
+      #
+      # The action's own `pullRequestNumber` output targets the exact pull
+      # request without a lookup. `hasChangesets` is false when there was
+      # nothing to version and no pull request exists.
+      - name: Enable auto-merge
+        if: steps.changesets.outputs.hasChangesets == 'true' && steps.changesets.outputs.pullRequestNumber != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          gh pr merge "${{ steps.changesets.outputs.pullRequestNumber }}" --auto --squash
+
+      - name: Report when there was nothing to version
+        if: steps.changesets.outputs.hasChangesets != 'true'
+        run: echo "No pending changesets on staging. Nothing to version."
