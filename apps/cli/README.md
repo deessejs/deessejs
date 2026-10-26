@@ -19,7 +19,7 @@ Other release channels:
 
 | Command                | Role                                                      |
 | ---------------------- | --------------------------------------------------------- |
-| `deessejs init <slug>` | Create a project from a template and install dependencies |
+| `deessejs init <slug-or-github-url>` | Create a project from a catalog template or a GitHub repository |
 | `deessejs list`        | List available templates                                  |
 | `deessejs info <slug>` | Show details for one template                             |
 
@@ -31,9 +31,10 @@ deessejs list --category saas --json
 deessejs info saas-starter --json
 deessejs init saas-starter
 deessejs init saas-starter --ref develop --no-install
+deessejs init https://github.com/owner/repository
 ```
 
-Templates with a valid `deesse-template.json` are created from the files selected by that descriptor. Templates without a descriptor continue to use the Git clone flow. A descriptor that is present but invalid stops initialization with a diagnostic. `--force` allows an existing empty target directory; it never removes existing files.
+`init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. A direct GitHub repository must contain a valid `deesse-template.json`; otherwise initialization reports that the repository is not supported. Catalog templates with no descriptor retain the Git clone fallback. A present invalid descriptor stops initialization with a diagnostic. `--ref` selects a branch or other Git ref. `--force` allows an existing empty target directory; it never removes existing files.
 
 ## Global flags
 

@@ -10,12 +10,12 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | ---------------------- | ---------------------------------------------------------------- |
 | `deessejs list`        | Lists the registry templates. Accepts `--category`, `--json`.    |
 | `deessejs info <slug>` | The detail of one template.                                      |
-| `deessejs init <slug>` | Creates a project from a template and installs its dependencies. |
+| `deessejs init <slug-or-github-url>` | Creates a project from a catalog template or a GitHub repository. |
 | `deessejs auth login`  | Runs the device-authorization flow against the server.           |
 | `deessejs auth status` | Prints the identity stored on this machine.                      |
 | `deessejs auth logout` | Signs out and clears the stored token.                           |
 
-`init` uses `deesse-template.json` when present and falls back to Git cloning only when the descriptor is absent. A present invalid descriptor is an error. `--force` permits an existing empty target directory and never deletes existing files.
+`init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. Direct repository URLs require a valid `deesse-template.json`; they never fall back to Git cloning. Catalog templates continue to use the Git clone fallback only when the descriptor is absent. A present invalid descriptor is an error. `--force` permits an existing empty target directory and never deletes existing files.
 
 `init` options: `--pm`, `--dir`, `--ref`, `--no-install`, `--force`, `--json`.
 

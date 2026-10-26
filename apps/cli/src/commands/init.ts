@@ -26,15 +26,22 @@ import {
 import { spawn } from "../utils/spawn.js"
 import { materializeTemplatePlan } from "../utils/materialize.js"
 import {
+  looksLikeUrl,
+  parseGitHubRepositoryUrl,
+} from "../utils/github-repository.js"
+import {
   createGitHubTemplateSourceAdapter,
   createTemplateInstallationPlan,
 } from "@workspace/registry/v1"
 
+type TemplateSource = Pick<Template, "slug" | "owner" | "repo" | "cloneUrl">
+
 async function createTemplateProject(
-  template: Template,
+  template: TemplateSource,
   dir: string,
   ref: string | undefined,
-  force: boolean
+  force: boolean,
+  descriptorRequired = false
 ): Promise<string> {
   const repository = `${template.owner}/${template.repo}`
   const planResult = await createTemplateInstallationPlan(
@@ -82,6 +89,13 @@ async function createTemplateProject(
     throw templateInvalid(repository, detail)
   }
 
+  if (descriptorRequired) {
+    throw templateInvalid(
+      repository,
+      'this GitHub repository does not contain a "deesse-template.json" file at its root'
+    )
+  }
+
   if (existsSync(dir)) {
     let details
     try {
@@ -118,12 +132,15 @@ async function createTemplateProject(
 
 export const initCommand = new Command("init")
   .description("Create a project from a template and install dependencies")
-  .argument("<slug>", "template slug (use `deessejs list` to see options)")
+  .argument(
+    "<slug-or-github-url>",
+    "template slug or HTTPS URL to a GitHub repository"
+  )
   .option(
     "--pm <name>",
     "override detected package manager (pnpm|npm|yarn|bun)"
   )
-  .option("--dir <path>", "target directory (default: ./<slug>)")
+  .option("--dir <path>", "target directory (default: ./<template-name>)")
   .option(
     "--ref <branch>",
     "git ref to use (default: the repository's default branch)"
@@ -133,7 +150,7 @@ export const initCommand = new Command("init")
   .option("--json", "JSON output for scripting")
   .action(
     async (
-      slug: string,
+      slugOrUrl: string,
       opts: {
         pm?: string
         dir?: string
@@ -144,21 +161,42 @@ export const initCommand = new Command("init")
       }
     ) => {
       try {
-        const templates = await fetchTemplates()
-        const template = templates.find((t) => t.slug === slug)
-        if (!template) {
-          throw notFound(
-            slug,
-            templates.map((t) => t.slug)
+        const directRepository = parseGitHubRepositoryUrl(slugOrUrl)
+        if (looksLikeUrl(slugOrUrl) && !directRepository) {
+          throw templateInvalid(
+            slugOrUrl,
+            "expected an HTTPS URL to a GitHub repository root, such as https://github.com/owner/repository"
           )
         }
 
-        const dir = resolve(process.cwd(), opts.dir ?? `./${slug}`)
+        let template: TemplateSource
+        if (directRepository) {
+          template = {
+            slug: directRepository.repo,
+            owner: directRepository.owner,
+            repo: directRepository.repo,
+            cloneUrl: `https://github.com/${directRepository.fullName}`,
+          }
+        } else {
+          const templates = await fetchTemplates()
+          const catalogTemplate = templates.find((t) => t.slug === slugOrUrl)
+          if (!catalogTemplate) {
+            throw notFound(
+              slugOrUrl,
+              templates.map((t) => t.slug)
+            )
+          }
+          template = catalogTemplate
+        }
+
+        const projectName = directRepository?.repo ?? template.slug
+        const dir = resolve(process.cwd(), opts.dir ?? `./${projectName}`)
         const revision = await createTemplateProject(
           template,
           dir,
           opts.ref,
-          opts.force ?? false
+          opts.force ?? false,
+          directRepository !== null
         )
 
         if (!opts.install) {

@@ -30,6 +30,7 @@ const mockFetchPath = join(
   "mock-runtime-fetch.mjs"
 )
 const expectedRevision = "0123456789abcdef0123456789abcdef01234567"
+const missingDescriptorRevision = "9876543210abcdef9876543210abcdef98765432"
 
 type CommandResult = {
   exitCode: number
@@ -80,6 +81,7 @@ describe.skipIf(process.platform !== "linux")(
     let cliExecutable = ""
     let tarballPath = ""
     let templateArchivePath = ""
+    let missingDescriptorArchivePath = ""
     let fetchTracePath = ""
 
     beforeAll(async () => {
@@ -89,6 +91,10 @@ describe.skipIf(process.platform !== "linux")(
       fixtureBinDirectory = join(workDirectory, "bin")
       fetchTracePath = join(workDirectory, "fetch-trace.log")
       templateArchivePath = join(workDirectory, "template-fixture.tar.gz")
+      missingDescriptorArchivePath = join(
+        workDirectory,
+        "missing-descriptor-fixture.tar.gz"
+      )
       mkdirSync(consumerDirectory, { recursive: true })
       mkdirSync(installDirectory, { recursive: true })
       mkdirSync(fixtureBinDirectory, { recursive: true })
@@ -100,6 +106,15 @@ describe.skipIf(process.platform !== "linux")(
           prefix: `init-regression-fixture-${expectedRevision}`,
         },
         [".gitignore", "deesse-template.json", "package.json", "private", "src"]
+      )
+      await tar.c(
+        {
+          cwd: templateFixtureDirectory,
+          file: missingDescriptorArchivePath,
+          gzip: true,
+          prefix: `legacy-template-${missingDescriptorRevision}`,
+        },
+        [".gitignore", "package.json", "private", "src"]
       )
 
       // If the descriptor path regresses into the Git clone fallback,
@@ -172,6 +187,8 @@ describe.skipIf(process.platform !== "linux")(
         const env = {
           ...process.env,
           DEESSEJS_INIT_FIXTURE_ARCHIVE: templateArchivePath,
+          DEESSEJS_INIT_MISSING_DESCRIPTOR_ARCHIVE:
+            missingDescriptorArchivePath,
           DEESSEJS_INIT_FETCH_TRACE: fetchTracePath,
           NODE_OPTIONS: [
             process.env.NODE_OPTIONS,
@@ -250,6 +267,51 @@ describe.skipIf(process.platform !== "linux")(
           existsSync(join(installedProjectDirectory, "pnpm-lock.yaml"))
         ).toBe(true)
 
+        const directProjectDirectory = join(
+          consumerDirectory,
+          "direct-github-project"
+        )
+        const directResult = await runCommand(
+          cliExecutable,
+          [
+            "init",
+            "https://github.com/deessejs/init-regression-fixture",
+            "--dir",
+            directProjectDirectory,
+            "--no-install",
+            "--json",
+          ],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(
+          directResult.exitCode,
+          `${directResult.stdout}\n${directResult.stderr}`
+        ).toBe(0)
+        expect(JSON.parse(directResult.stdout)).toMatchObject({
+          ok: true,
+          slug: "init-regression-fixture",
+          dir: directProjectDirectory,
+          ref: expectedRevision,
+          installed: false,
+        })
+        expect(
+          readFileSync(join(directProjectDirectory, "src", "index.js"), "utf8")
+        ).toBe('export const generatedProject = "created by deessejs init"\n')
+
+        const unsupportedResult = await runCommand(
+          cliExecutable,
+          [
+            "init",
+            "https://github.com/deessejs/legacy-template",
+            "--dir",
+            join(consumerDirectory, "unsupported-project"),
+            "--no-install",
+          ],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(unsupportedResult.exitCode).not.toBe(0)
+        expect(unsupportedResult.stderr).toContain("deesse-template.json")
+
         const requests = readFileSync(fetchTracePath, "utf8").trim().split("\n")
         expect(requests).toContain(
           "GET https://app.deessejs.com/api/v1/version"
@@ -274,7 +336,17 @@ describe.skipIf(process.platform !== "linux")(
         ).toBe(false)
         expect(
           requests.filter((request) => request.includes("/tarball/")).length
+        ).toBe(4)
+        expect(
+          requests.filter((request) =>
+            request.includes(
+              "POST https://app.deessejs.com/api/v1/rpc/templates/list"
+            )
+          ).length
         ).toBe(2)
+        expect(requests).toContain(
+          `GET https://api.github.com/repos/deessejs/legacy-template/tarball/${missingDescriptorRevision}`
+        )
       },
       3 * 60_000
     )
