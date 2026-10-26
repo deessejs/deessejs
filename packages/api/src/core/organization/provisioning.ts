@@ -50,8 +50,8 @@ const PROVISIONING_LEASE_MS = 5 * 60 * 1000
 /** The name of the constraint that holds the organization's slug. */
 const SLUG_CONSTRAINT = "organization_slug_unique"
 
-/** The name of the constraint that serializes the account. */
-const PENDING_OPERATION_CONSTRAINT = "organization_provisioning_pending_user_uidx"
+/** The name of the index that serializes the account. */
+const IN_FLIGHT_OPERATION_INDEX = "organization_provisioning_in_flight_user_uidx"
 
 /** The SQLSTATE the database raises when the guard refuses an insert. */
 const SUPERSEDED_SQLSTATE = "D0001"
@@ -353,7 +353,7 @@ export async function provisionOrganization(input: {
   } catch (error) {
     // The partial unique index refused the insert: another attempt
     // for the same account is running.
-    if (codeOf(error) === "23505" && constraintOf(error) === PENDING_OPERATION_CONSTRAINT) {
+    if (codeOf(error) === "23505" && constraintOf(error) === IN_FLIGHT_OPERATION_INDEX) {
       throw new OrganizationProvisioningError(
         "ORGANIZATION_CREATE_IN_PROGRESS",
         "An organization is already being created for this account.",
