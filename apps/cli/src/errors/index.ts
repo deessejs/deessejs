@@ -89,11 +89,15 @@ export const materializeFailed = (dir: string, detail: string): CliError =>
     detail
   )
 
-export const installFailed = (pm: string, code: number | null): CliError =>
+export const installFailed = (
+  pm: string,
+  code: number | null,
+  dir: string
+): CliError =>
   new CliError(
     "install_failed",
     `${pm} install exited with code ${code ?? "unknown"}`,
-    "check the output above, then run the install command manually inside the created directory"
+    `Run "${pm} install" from "${dir}" to retry after fixing the installation issue.`
   )
 
 export const internal = (detail: string): CliError =>
