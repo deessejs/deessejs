@@ -33,6 +33,14 @@ const template = {
   labels: [],
   layer: "open-community",
 }
+const legacyCatalogTemplate = {
+  ...template,
+  slug: "legacy-starter",
+  name: "Legacy template without a descriptor",
+  owner: "deessejs",
+  repo: "legacy-template",
+  cloneUrl: "https://github.com/deessejs/legacy-template",
+}
 
 const githubRepositories = new Map([
   ["deessejs/init-regression-fixture", { revision, archive }],
@@ -87,7 +95,9 @@ globalThis.fetch = async (input, init) => {
     requestUrl.pathname === "/api/v1/rpc/templates/list" &&
     method === "POST"
   ) {
-    return jsonResponse({ json: { templates: [template] } })
+    return jsonResponse({
+      json: { templates: [template, legacyCatalogTemplate] },
+    })
   }
 
   if (requestUrl.hostname === "api.github.com") {

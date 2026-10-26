@@ -117,8 +117,8 @@ describe.skipIf(process.platform !== "linux")(
         [".gitignore", "package.json", "private", "src"]
       )
 
-      // If the descriptor path regresses into the Git clone fallback,
-      // make the test fail without allowing a real GitHub network call.
+      // If any descriptor-backed init regresses into Git cloning, make the
+      // test fail without allowing a real GitHub network call.
       writeExecutable(
         join(fixtureBinDirectory, "git"),
         "#!/bin/sh\necho 'git must not run for a valid descriptor' >&2\nexit 97\n"
@@ -298,19 +298,45 @@ describe.skipIf(process.platform !== "linux")(
           readFileSync(join(directProjectDirectory, "src", "index.js"), "utf8")
         ).toBe('export const generatedProject = "created by deessejs init"\n')
 
-        const unsupportedResult = await runCommand(
+        const unsupportedCatalogResult = await runCommand(
+          cliExecutable,
+          [
+            "init",
+            "legacy-starter",
+            "--dir",
+            join(consumerDirectory, "unsupported-catalog-project"),
+            "--no-install",
+            "--json",
+          ],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(unsupportedCatalogResult.exitCode).not.toBe(0)
+        expect(JSON.parse(unsupportedCatalogResult.stdout)).toMatchObject({
+          ok: false,
+          code: "template_invalid",
+        })
+        expect(unsupportedCatalogResult.stdout).toContain(
+          "deesse-template.json"
+        )
+
+        const unsupportedUrlResult = await runCommand(
           cliExecutable,
           [
             "init",
             "https://github.com/deessejs/legacy-template",
             "--dir",
-            join(consumerDirectory, "unsupported-project"),
+            join(consumerDirectory, "unsupported-url-project"),
             "--no-install",
+            "--json",
           ],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
-        expect(unsupportedResult.exitCode).not.toBe(0)
-        expect(unsupportedResult.stderr).toContain("deesse-template.json")
+        expect(unsupportedUrlResult.exitCode).not.toBe(0)
+        expect(JSON.parse(unsupportedUrlResult.stdout)).toMatchObject({
+          ok: false,
+          code: "template_invalid",
+        })
+        expect(unsupportedUrlResult.stdout).toContain("deesse-template.json")
 
         const requests = readFileSync(fetchTracePath, "utf8").trim().split("\n")
         expect(requests).toContain(
@@ -336,17 +362,24 @@ describe.skipIf(process.platform !== "linux")(
         ).toBe(false)
         expect(
           requests.filter((request) => request.includes("/tarball/")).length
-        ).toBe(4)
+        ).toBe(5)
         expect(
           requests.filter((request) =>
             request.includes(
               "POST https://app.deessejs.com/api/v1/rpc/templates/list"
             )
           ).length
-        ).toBe(2)
+        ).toBe(3)
         expect(requests).toContain(
           `GET https://api.github.com/repos/deessejs/legacy-template/tarball/${missingDescriptorRevision}`
         )
+        expect(
+          requests.filter((request) =>
+            request.includes(
+              `GET https://api.github.com/repos/deessejs/legacy-template/tarball/${missingDescriptorRevision}`
+            )
+          )
+        ).toHaveLength(2)
       },
       3 * 60_000
     )

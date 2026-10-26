@@ -19,7 +19,6 @@ export type CliErrorCode =
 // Internal codes, used only inside the CLI. Not surfaced as a public
 // pattern-match surface. Adding a code here is non-breaking.
 export type InternalCliErrorCode =
-  | "git_not_installed"
   | "target_exists"
   | "target_not_empty"
   | "invalid_target"
@@ -55,13 +54,6 @@ export { cliDeviceExpired } from "./device-expired.js"
 // Internal factories, kept in this file because they are not part of
 // the public surface: internal error codes are not surfaced to the
 // user.
-export const gitNotInstalled = (): CliError =>
-  new CliError(
-    "git_not_installed",
-    "`git` is not installed or not on PATH",
-    "install git from https://git-scm.com and try again"
-  )
-
 export const targetExists = (dir: string): CliError =>
   new CliError(
     "target_exists",

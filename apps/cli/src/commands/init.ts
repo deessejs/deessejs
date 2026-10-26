@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs"
-import { lstat, readdir } from "node:fs/promises"
 import { resolve } from "node:path"
 import { Command } from "commander"
 import ora from "ora"
@@ -9,15 +7,11 @@ import type { Template } from "../api/index.js"
 import {
   installFailed,
   internal,
-  invalidTarget,
   notFound,
   networkError,
   templateInvalid,
-  targetExists,
-  targetNotEmpty,
 } from "../errors/index.js"
 import { printError, printJson } from "../output/index.js"
-import { cloneRepo } from "../utils/git.js"
 import {
   detectPackageManager,
   getInstallCommand,
@@ -34,14 +28,13 @@ import {
   createTemplateInstallationPlan,
 } from "@workspace/registry/v1"
 
-type TemplateSource = Pick<Template, "slug" | "owner" | "repo" | "cloneUrl">
+type TemplateSource = Pick<Template, "slug" | "owner" | "repo">
 
 async function createTemplateProject(
   template: TemplateSource,
   dir: string,
   ref: string | undefined,
-  force: boolean,
-  descriptorRequired = false
+  force: boolean
 ): Promise<string> {
   const repository = `${template.owner}/${template.repo}`
   const planResult = await createTemplateInstallationPlan(
@@ -67,67 +60,32 @@ async function createTemplateProject(
   const isMissingDescriptor =
     planResult.diagnostics.length === 1 &&
     planResult.diagnostics[0]?.code === "descriptor.missing"
-  if (!isMissingDescriptor) {
-    const detail = planResult.diagnostics
-      .map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`)
-      .join("\n")
-    const networkCodes = [
-      "source.unavailable",
-      "source.invalid_response",
-      "source.incomplete_inventory",
-      "source.inventory_limit_exceeded",
-      "source.file_not_found",
-      "source.file_read_failed",
-    ]
-    if (
-      planResult.diagnostics.some((diagnostic) =>
-        networkCodes.includes(diagnostic.code)
-      )
-    ) {
-      throw networkError(detail)
-    }
-    throw templateInvalid(repository, detail)
-  }
-
-  if (descriptorRequired) {
+  if (isMissingDescriptor) {
     throw templateInvalid(
       repository,
       'this GitHub repository does not contain a "deesse-template.json" file at its root'
     )
   }
 
-  if (existsSync(dir)) {
-    let details
-    try {
-      details = await lstat(dir)
-    } catch {
-      details = undefined
-    }
-    if (!details)
-      throw invalidTarget(
-        dir,
-        "the target path changed while it was being checked"
-      )
-    if (details.isSymbolicLink() || !details.isDirectory()) {
-      throw invalidTarget(
-        dir,
-        "the target must be a regular directory, not a file or symbolic link"
-      )
-    }
-    if (!force) throw targetExists(dir)
-    if ((await readdir(dir)).length > 0) throw targetNotEmpty(dir)
+  const detail = planResult.diagnostics
+    .map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`)
+    .join("\n")
+  const networkCodes = [
+    "source.unavailable",
+    "source.invalid_response",
+    "source.incomplete_inventory",
+    "source.inventory_limit_exceeded",
+    "source.file_not_found",
+    "source.file_read_failed",
+  ]
+  if (
+    planResult.diagnostics.some((diagnostic) =>
+      networkCodes.includes(diagnostic.code)
+    )
+  ) {
+    throw networkError(detail)
   }
-
-  const repoUrl = template.cloneUrl ?? `https://github.com/${repository}`
-  const spinner = ora(`Cloning ${pc.cyan(repository)}...`).start()
-  try {
-    const result = await cloneRepo(repoUrl, dir, ref)
-    spinner.succeed(`Cloned into ${pc.cyan(dir)} (ref: ${result.ref})`)
-    return result.ref
-  } catch (error) {
-    spinner.fail("Clone failed")
-    throw error
-  }
+  throw templateInvalid(repository, detail)
 }
 
 export const initCommand = new Command("init")
@@ -175,7 +133,6 @@ export const initCommand = new Command("init")
             slug: directRepository.repo,
             owner: directRepository.owner,
             repo: directRepository.repo,
-            cloneUrl: `https://github.com/${directRepository.fullName}`,
           }
         } else {
           const templates = await fetchTemplates()
@@ -195,8 +152,7 @@ export const initCommand = new Command("init")
           template,
           dir,
           opts.ref,
-          opts.force ?? false,
-          directRepository !== null
+          opts.force ?? false
         )
 
         if (!opts.install) {

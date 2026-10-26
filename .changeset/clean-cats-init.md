@@ -2,4 +2,4 @@
 "@deessejs/cli": minor
 ---
 
-Allow `deessejs init` to create projects directly from descriptor-backed GitHub repository URLs.
+Require every `deessejs init` source, whether selected by catalog slug or GitHub URL, to use a valid `deesse-template.json` descriptor.
