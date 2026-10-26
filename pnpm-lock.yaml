@@ -75,6 +75,9 @@ catalogs:
     '@types/pg':
       specifier: ^8.20.0
       version: 8.20.0
+    '@types/picomatch':
+      specifier: ^4.0.3
+      version: 4.0.3
     '@vercel/related-projects':
       specifier: ^1.1.1
       version: 1.1.1
@@ -129,6 +132,9 @@ catalogs:
     pg:
       specifier: ^8.22.0
       version: 8.22.0
+    picomatch:
+      specifier: ^4.0.7
+      version: 4.0.7
     pkg-pr-new:
       specifier: ^0.0.88
       version: 0.0.88
@@ -1020,6 +1026,9 @@ importers:
 
   packages/registry:
     dependencies:
+      picomatch:
+        specifier: 'catalog:'
+        version: 4.0.7
       zod:
         specifier: 'catalog:'
         version: 4.4.3
@@ -1027,18 +1036,27 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
+      '@types/picomatch':
+        specifier: 'catalog:'
+        version: 4.0.3
       '@workspace/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
       '@workspace/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@workspace/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
       eslint:
         specifier: 'catalog:'
         version: 9.39.4(jiti@2.7.0)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@24.13.2)(@vitest/coverage-v8@4.1.10)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/typescript-config: {}
 
@@ -5142,6 +5160,9 @@ packages:
 
   '@types/pg@8.20.0':
     resolution: {integrity: sha512-bEPFOaMAHTEP1EzpvHTbmwR8UsFyHSKsRisLIHVMXnpNefSbGA1bD6CVy+qKjGSqmZqNqBDV2azOBo8TgkcVow==}
+
+  '@types/picomatch@4.0.3':
+    resolution: {integrity: sha512-iG0T6+nYJ9FAPmx9SsUlnwcq1ZVRuCXcVEvWnntoPlrOpwtSTKNDC9uVAxTsC3PUvJ+99n4RpAcNgBbHX3JSnQ==}
 
   '@types/react-dom@19.2.3':
     resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==}
@@ -13361,6 +13382,8 @@ snapshots:
       '@types/node': 24.13.2
       pg-protocol: 1.15.0
       pg-types: 2.2.0
+
+  '@types/picomatch@4.0.3': {}
 
   '@types/react-dom@19.2.3(@types/react@19.2.17)':
     dependencies:
