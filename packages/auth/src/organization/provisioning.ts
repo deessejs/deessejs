@@ -95,7 +95,9 @@ const toOperation = (row: OrganizationProvisioningRow): ProvisioningOperation =>
   userId: row.userId,
   name: row.name,
   slug: row.slug,
-  status: isOrganizationProvisioningStatus(row.status) ? row.status : "failed",
+  status: isOrganizationProvisioningStatus(row.status)
+    ? row.status
+    : ORGANIZATION_PROVISIONING_STATUS.failed,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 })
@@ -480,7 +482,9 @@ export const beforeUpdateOrganizationProtectingMarker = async ({
   }
 
   const operation = await findOperationById(storedMarker)
-  const finished = operation !== null && operation.status === "completed"
+  const finished =
+    operation !== null &&
+    operation.status === ORGANIZATION_PROVISIONING_STATUS.completed
 
   if (!finished) {
     // The operation is still in flight. The marker is the proof that
