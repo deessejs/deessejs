@@ -103,7 +103,7 @@ describe.skipIf(process.platform !== "linux")(
           cwd: templateFixtureDirectory,
           file: templateArchivePath,
           gzip: true,
-          prefix: `init-regression-fixture-${expectedRevision}`,
+          prefix: `deessejs-init-regression-fixture-${expectedRevision.slice(0, 7)}`,
         },
         [".gitignore", "deesse-template.json", "package.json", "private", "src"]
       )
@@ -112,7 +112,7 @@ describe.skipIf(process.platform !== "linux")(
           cwd: templateFixtureDirectory,
           file: missingDescriptorArchivePath,
           gzip: true,
-          prefix: `legacy-template-${missingDescriptorRevision}`,
+          prefix: `deessejs-legacy-template-${missingDescriptorRevision.slice(0, 7)}`,
         },
         [".gitignore", "package.json", "private", "src"]
       )
