@@ -1,44 +1,16 @@
-import { appendFileSync, readFileSync, readdirSync, statSync } from "node:fs"
-import { join, relative, sep } from "node:path"
+import { appendFileSync, readFileSync } from "node:fs"
 import process from "node:process"
 import { URL } from "node:url"
 
 const repository = "deessejs/init-regression-fixture"
 const revision = "0123456789abcdef0123456789abcdef01234567"
-const fixtureDirectory = process.env.DEESSEJS_INIT_FIXTURE_DIRECTORY
+const archivePath = process.env.DEESSEJS_INIT_FIXTURE_ARCHIVE
 const tracePath = process.env.DEESSEJS_INIT_FETCH_TRACE
 
-if (!fixtureDirectory || !tracePath) {
+if (!archivePath || !tracePath) {
   throw new Error("init E2E fixture environment is incomplete")
 }
-
-const collectFiles = (directory) => {
-  const files = []
-  for (const entry of readdirSync(directory)) {
-    const absolutePath = join(directory, entry)
-    const details = statSync(absolutePath)
-    if (details.isDirectory()) {
-      files.push(...collectFiles(absolutePath))
-    } else {
-      files.push({
-        path: relative(fixtureDirectory, absolutePath).split(sep).join("/"),
-        contents: readFileSync(absolutePath),
-      })
-    }
-  }
-  return files
-}
-
-const files = collectFiles(fixtureDirectory)
-const blobShaByPath = new Map(
-  files.map((file, index) => [
-    file.path,
-    `${String(index + 1).padStart(40, "0")}`,
-  ])
-)
-const filesBySha = new Map(
-  files.map((file) => [blobShaByPath.get(file.path), file])
-)
+const archive = readFileSync(archivePath)
 
 const jsonResponse = (body) =>
   new globalThis.Response(JSON.stringify(body), {
@@ -99,29 +71,11 @@ globalThis.fetch = async (input, init) => {
 
   if (
     requestUrl.hostname === "api.github.com" &&
-    githubPath === `/repos/${repository}/git/trees/${revision}` &&
-    requestUrl.searchParams.get("recursive") === "1"
+    githubPath === `/repos/${repository}/tarball/${revision}`
   ) {
-    return jsonResponse({
-      truncated: false,
-      tree: files.map((file) => ({
-        path: file.path,
-        mode: "100644",
-        type: "blob",
-        sha: blobShaByPath.get(file.path),
-        size: file.contents.byteLength,
-      })),
-    })
-  }
-
-  const blobMatch = new RegExp(
-    `^/repos/${repository}/git/blobs/([0-9a-f]{40})$`
-  ).exec(githubPath)
-  const blob = blobMatch?.[1] ? filesBySha.get(blobMatch[1]) : undefined
-  if (blob) {
-    return jsonResponse({
-      encoding: "base64",
-      content: blob.contents.toString("base64"),
+    return new globalThis.Response(archive, {
+      status: 200,
+      headers: { "content-type": "application/gzip" },
     })
   }
 

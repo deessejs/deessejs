@@ -13,6 +13,7 @@ import {
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
+import * as tar from "tar"
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
@@ -78,6 +79,7 @@ describe.skipIf(process.platform !== "linux")(
     let fixtureBinDirectory = ""
     let cliExecutable = ""
     let tarballPath = ""
+    let templateArchivePath = ""
     let fetchTracePath = ""
 
     beforeAll(async () => {
@@ -86,9 +88,19 @@ describe.skipIf(process.platform !== "linux")(
       installDirectory = join(workDirectory, "install")
       fixtureBinDirectory = join(workDirectory, "bin")
       fetchTracePath = join(workDirectory, "fetch-trace.log")
+      templateArchivePath = join(workDirectory, "template-fixture.tar.gz")
       mkdirSync(consumerDirectory, { recursive: true })
       mkdirSync(installDirectory, { recursive: true })
       mkdirSync(fixtureBinDirectory, { recursive: true })
+      await tar.c(
+        {
+          cwd: templateFixtureDirectory,
+          file: templateArchivePath,
+          gzip: true,
+          prefix: `init-regression-fixture-${expectedRevision}`,
+        },
+        [".gitignore", "deesse-template.json", "package.json", "private", "src"]
+      )
 
       // If the descriptor path regresses into the Git clone fallback,
       // make the test fail without allowing a real GitHub network call.
@@ -159,7 +171,7 @@ describe.skipIf(process.platform !== "linux")(
         ).toBe(false)
         const env = {
           ...process.env,
-          DEESSEJS_INIT_FIXTURE_DIRECTORY: templateFixtureDirectory,
+          DEESSEJS_INIT_FIXTURE_ARCHIVE: templateArchivePath,
           DEESSEJS_INIT_FETCH_TRACE: fetchTracePath,
           NODE_OPTIONS: [
             process.env.NODE_OPTIONS,
@@ -252,9 +264,17 @@ describe.skipIf(process.platform !== "linux")(
           `GET https://api.github.com/repos/deessejs/init-regression-fixture/commits/main`
         )
         expect(requests).toContain(
-          `GET https://api.github.com/repos/deessejs/init-regression-fixture/git/trees/${expectedRevision}?recursive=1`
+          `GET https://api.github.com/repos/deessejs/init-regression-fixture/tarball/${expectedRevision}`
         )
-        expect(requests).toHaveLength(18)
+        expect(
+          requests.some(
+            (request) =>
+              request.includes("/git/trees/") || request.includes("/git/blobs/")
+          )
+        ).toBe(false)
+        expect(
+          requests.filter((request) => request.includes("/tarball/")).length
+        ).toBe(2)
       },
       3 * 60_000
     )

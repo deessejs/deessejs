@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "picomatch": "catalog:",
+    "tar": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

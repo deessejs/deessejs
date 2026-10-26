@@ -52,7 +52,7 @@ export default defineConfig({
   // private packages that are unavailable from the public npm registry.
   // The registry's runtime dependencies are bundled for the same reason:
   // they are reached through its source and are not CLI runtime dependencies.
-  noExternal: [/^@workspace\//, /^picomatch$/, /^zod$/],
+  noExternal: [/^@workspace\//, /^picomatch$/, /^tar$/, /^zod$/],
   define: {
     "process.env.CLI_PACKAGE_VERSION": JSON.stringify(pkg.version),
   },

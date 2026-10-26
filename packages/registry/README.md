@@ -15,7 +15,7 @@ import {
 
 const result = await createTemplateInstallationPlan(
   { repository: "deessejs/saas-template", ref: "main" },
-  createGitHubTemplateSourceAdapter(),
+  createGitHubTemplateSourceAdapter()
 )
 
 if (!result.success) {
@@ -28,10 +28,11 @@ if (!result.success) {
 }
 ```
 
-The selected source is resolved to a commit before the descriptor, file
-inventory, and file bytes are read. The descriptor's optional `source` fields
-are checked against that selected source; they cannot redirect it. GitHub's
-recursive tree endpoint is rejected when it reports a truncated inventory.
+The selected source is resolved to a commit before its archive is downloaded.
+The archive is unpacked in a temporary directory, then the descriptor's local
+include and exclude patterns determine which files enter the installation
+plan. The descriptor's optional `source` fields are checked against the
+selected source; they cannot redirect it.
 
 ## V1 selection behavior
 
@@ -44,9 +45,11 @@ recursive tree endpoint is rejected when it reports a truncated inventory.
   generated project.
 - Empty selections, invalid patterns, unsafe paths, selected symlinks, and
   source or descriptor errors return structured diagnostics.
-- GitHub reads are limited to 10,000 inventory entries, 10 MiB per file, and
-  50 MiB total selected bytes. Requests time out and retry transient failures.
+- GitHub reads are limited to a 100 MiB archive download, 200 MiB expanded
+  archive, 10,000 inventory entries, 10 MiB per selected file, and 50 MiB total
+  selected bytes. Requests time out, and API requests retry transient failures.
 
-The GitHub adapter reads public repositories through the GitHub REST API. A
-different provider can implement `TemplateSourceAdapter` and return the same
+The GitHub adapter resolves revisions through the REST API and downloads the
+public commit archive in one request, avoiding one REST blob request per file.
+A different provider can implement `TemplateSourceAdapter` and return the same
 immutable snapshot contract.
