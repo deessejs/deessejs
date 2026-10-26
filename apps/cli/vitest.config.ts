@@ -16,6 +16,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["test/**/*.test.ts"],
+    exclude: ["node_modules/**", "test/e2e/**"],
     testTimeout: 30_000,
     hookTimeout: 30_000,
     pool: "forks",

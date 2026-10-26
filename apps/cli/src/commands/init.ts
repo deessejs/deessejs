@@ -1,14 +1,20 @@
 import { existsSync } from "node:fs"
+import { lstat, readdir } from "node:fs/promises"
 import { resolve } from "node:path"
 import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
 import { fetchTemplates } from "../api/index.js"
+import type { Template } from "../api/index.js"
 import {
   installFailed,
   internal,
+  invalidTarget,
   notFound,
+  networkError,
+  templateInvalid,
   targetExists,
+  targetNotEmpty,
 } from "../errors/index.js"
 import { printError, printJson } from "../output/index.js"
 import { cloneRepo } from "../utils/git.js"
@@ -18,15 +24,112 @@ import {
   type PackageManagerInfo,
 } from "../utils/detect-pm.js"
 import { spawn } from "../utils/spawn.js"
+import { materializeTemplatePlan } from "../utils/materialize.js"
+import {
+  createGitHubTemplateSourceAdapter,
+  createTemplateInstallationPlan,
+} from "@workspace/registry/v1"
+
+async function createTemplateProject(
+  template: Template,
+  dir: string,
+  ref: string | undefined,
+  force: boolean
+): Promise<string> {
+  const repository = `${template.owner}/${template.repo}`
+  const planResult = await createTemplateInstallationPlan(
+    { repository, ...(ref ? { ref } : {}) },
+    createGitHubTemplateSourceAdapter()
+  )
+
+  if (planResult.success) {
+    const spinner = ora(
+      `Creating project from ${pc.cyan(repository)}...`
+    ).start()
+    try {
+      await materializeTemplatePlan(planResult.plan, dir, { force })
+      const revision = planResult.plan.source.revision
+      spinner.succeed(`Created in ${pc.cyan(dir)} (revision: ${revision})`)
+      return revision
+    } catch (error) {
+      spinner.fail("Project creation failed")
+      throw error
+    }
+  }
+
+  const isMissingDescriptor =
+    planResult.diagnostics.length === 1 &&
+    planResult.diagnostics[0]?.code === "descriptor.missing"
+  if (!isMissingDescriptor) {
+    const detail = planResult.diagnostics
+      .map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`)
+      .join("\n")
+    const networkCodes = [
+      "source.unavailable",
+      "source.invalid_response",
+      "source.incomplete_inventory",
+      "source.inventory_limit_exceeded",
+      "source.file_not_found",
+      "source.file_read_failed",
+    ]
+    if (
+      planResult.diagnostics.some((diagnostic) =>
+        networkCodes.includes(diagnostic.code)
+      )
+    ) {
+      throw networkError(detail)
+    }
+    throw templateInvalid(repository, detail)
+  }
+
+  if (existsSync(dir)) {
+    let details
+    try {
+      details = await lstat(dir)
+    } catch {
+      details = undefined
+    }
+    if (!details)
+      throw invalidTarget(
+        dir,
+        "the target path changed while it was being checked"
+      )
+    if (details.isSymbolicLink() || !details.isDirectory()) {
+      throw invalidTarget(
+        dir,
+        "the target must be a regular directory, not a file or symbolic link"
+      )
+    }
+    if (!force) throw targetExists(dir)
+    if ((await readdir(dir)).length > 0) throw targetNotEmpty(dir)
+  }
+
+  const repoUrl = template.cloneUrl ?? `https://github.com/${repository}`
+  const spinner = ora(`Cloning ${pc.cyan(repository)}...`).start()
+  try {
+    const result = await cloneRepo(repoUrl, dir, ref)
+    spinner.succeed(`Cloned into ${pc.cyan(dir)} (ref: ${result.ref})`)
+    return result.ref
+  } catch (error) {
+    spinner.fail("Clone failed")
+    throw error
+  }
+}
 
 export const initCommand = new Command("init")
-  .description("Clone a template repo + install dependencies")
+  .description("Create a project from a template and install dependencies")
   .argument("<slug>", "template slug (use `deessejs list` to see options)")
-  .option("--pm <name>", "override detected package manager (pnpm|npm|yarn|bun)")
+  .option(
+    "--pm <name>",
+    "override detected package manager (pnpm|npm|yarn|bun)"
+  )
   .option("--dir <path>", "target directory (default: ./<slug>)")
-  .option("--ref <branch>", "git ref to clone (default: tries main, falls back to master)")
+  .option(
+    "--ref <branch>",
+    "git ref to use (default: the repository's default branch)"
+  )
   .option("--no-install", "skip the install step")
-  .option("--force", "overwrite target directory if it exists")
+  .option("--force", "allow an existing empty target directory")
   .option("--json", "JSON output for scripting")
   .action(
     async (
@@ -38,7 +141,7 @@ export const initCommand = new Command("init")
         install: boolean
         force?: boolean
         json?: boolean
-      },
+      }
     ) => {
       try {
         const templates = await fetchTemplates()
@@ -46,27 +149,17 @@ export const initCommand = new Command("init")
         if (!template) {
           throw notFound(
             slug,
-            templates.map((t) => t.slug),
+            templates.map((t) => t.slug)
           )
         }
 
         const dir = resolve(process.cwd(), opts.dir ?? `./${slug}`)
-        if (existsSync(dir) && !opts.force) {
-          throw targetExists(dir)
-        }
-
-        const repoUrl =
-          template.cloneUrl ?? `https://github.com/${template.owner}/${template.repo}`
-
-        const cloneSpinner = ora(`Cloning ${pc.cyan(template.owner + "/" + template.repo)}...`).start()
-        let cloneResult
-        try {
-          cloneResult = await cloneRepo(repoUrl, dir, opts.ref)
-          cloneSpinner.succeed(`Cloned into ${pc.cyan(dir)} (ref: ${cloneResult.ref})`)
-        } catch (err) {
-          cloneSpinner.fail("Clone failed")
-          throw err
-        }
+        const revision = await createTemplateProject(
+          template,
+          dir,
+          opts.ref,
+          opts.force ?? false
+        )
 
         if (!opts.install) {
           if (opts.json) {
@@ -74,11 +167,13 @@ export const initCommand = new Command("init")
               ok: true,
               slug: template.slug,
               dir,
-              ref: cloneResult.ref,
+              ref: revision,
               installed: false,
             })
           } else {
-            console.log(pc.dim(`\nNext: cd ${dir} && <your package manager> install\n`))
+            console.log(
+              pc.dim(`\nNext: cd ${dir} && <your package manager> install\n`)
+            )
           }
           return
         }
@@ -93,21 +188,27 @@ export const initCommand = new Command("init")
         if (!pmInfo) {
           console.log(
             pc.yellow(
-              "\nNo package manager detected (no packageManager field, no lockfile).",
-            ),
+              "\nNo package manager detected (no packageManager field, no lockfile)."
+            )
           )
           console.log(
-            pc.dim("Skipping install. Run your install command manually inside the directory.\n"),
+            pc.dim(
+              "Skipping install. Run your install command manually inside the directory.\n"
+            )
           )
         } else {
           const installSpinner = ora(
-            `Installing dependencies via ${pc.cyan(pmInfo.pm)}...`,
+            `Installing dependencies via ${pc.cyan(pmInfo.pm)}...`
           ).start()
           const cmd = getInstallCommand(pmInfo)
           const cmdParts = cmd.split(" ")
           const bin = cmdParts[0] ?? "npm"
           const args = cmdParts.slice(1)
-          const code = await spawn(bin, args, { cwd: dir, stdio: "inherit", reject: false })
+          const code = await spawn(bin, args, {
+            cwd: dir,
+            stdio: "inherit",
+            reject: false,
+          })
           if (code !== 0) {
             installSpinner.fail(`${pmInfo.pm} install failed`)
             throw installFailed(pmInfo.pm, code)
@@ -120,7 +221,7 @@ export const initCommand = new Command("init")
             ok: true,
             slug: template.slug,
             dir,
-            ref: cloneResult.ref,
+            ref: revision,
             installed: pmInfo !== null,
             packageManager: pmInfo?.pm ?? null,
           })
@@ -132,8 +233,8 @@ export const initCommand = new Command("init")
             pc.dim(
               pmInfo
                 ? `  ${getInstallCommand(pmInfo).split(" ")[0]} dev`
-                : `  install deps, then start`,
-            ),
+                : `  install deps, then start`
+            )
           )
           console.log()
         }
@@ -153,5 +254,5 @@ export const initCommand = new Command("init")
         }
         throw internal(err instanceof Error ? err.message : String(err))
       }
-    },
+    }
   )

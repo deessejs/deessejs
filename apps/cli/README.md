@@ -17,11 +17,11 @@ Other release channels:
 
 ## Commands
 
-| Command | Role |
-|---|---|
-| `deessejs init <slug>` | Clone a template repo and install dependencies |
-| `deessejs list` | List available templates |
-| `deessejs info <slug>` | Show details for one template |
+| Command                | Role                                                      |
+| ---------------------- | --------------------------------------------------------- |
+| `deessejs init <slug>` | Create a project from a template and install dependencies |
+| `deessejs list`        | List available templates                                  |
+| `deessejs info <slug>` | Show details for one template                             |
 
 ## Examples
 
@@ -32,6 +32,8 @@ deessejs info saas-starter --json
 deessejs init saas-starter
 deessejs init saas-starter --ref develop --no-install
 ```
+
+Templates with a valid `deesse-template.json` are created from the files selected by that descriptor. Templates without a descriptor continue to use the Git clone flow. A descriptor that is present but invalid stops initialization with a diagnostic. `--force` allows an existing empty target directory; it never removes existing files.
 
 ## Global flags
 
@@ -45,4 +47,4 @@ MIT.
 ## Related
 
 - **Uses**: [`@workspace/api`](https://github.com/deessejs/deessejs/blob/staging/packages/api/README.md), [`@workspace/contracts`](https://github.com/deessejs/deessejs/blob/staging/packages/contracts/README.md)
-- **Bundles**: the two dependencies into the published package at build time, so nothing is resolved at run time
+- **Bundles**: the workspace dependencies into the published package at build time, so nothing is resolved at run time

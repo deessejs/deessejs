@@ -25,8 +25,9 @@ Materialization remains the responsibility of the CLI.
   invalid.
 - Structural validation does not inspect a repository or execute template
   instructions. Plan construction uses the source adapter and never writes files.
-- Resolve descriptor, inventory and file bytes from one immutable commit. Reject
-  truncated GitHub inventories and selected symlinks or unsafe paths.
+- Resolve descriptor, inventory and file bytes from one immutable commit
+  archive. Enforce archive size and entry limits, and reject selected symlinks
+  or unsafe paths before a plan can be materialized.
 - Apply includes before excludes, match dotfiles case-sensitively with
   Picomatch, deduplicate and sort source paths, and reject an empty selection.
 - Keep the generated schema aligned by running `schema:check` in CI.
