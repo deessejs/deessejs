@@ -53,6 +53,7 @@ export const BlockDescriptorV1Schema = z.strictObject({
     packages: z.array(PackageOutputV1Schema).min(1),
     files: z.array(BlockFileV1Schema).min(1),
     environment: z.array(EnvironmentVariableV1Schema).optional(),
+    manualSteps: z.array(z.string().min(1)).optional(),
   }),
 })
 
