@@ -137,6 +137,13 @@
             ],
             "additionalProperties": false
           }
+        },
+        "manualSteps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       },
       "required": [
