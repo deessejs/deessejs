@@ -1,7 +1,7 @@
 name: Vercel Prebuilt Preview Deployments
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -33,8 +33,8 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node .github/scripts/select-vercel-preview-projects.mjs "$BASE_SHA" "$HEAD_SHA"
 
-  deploy-preview:
-    name: Preview (${{ matrix.app }})
+  build-preview:
+    name: Build preview (${{ matrix.app }})
     needs: detect-affected-projects
     if: needs.detect-affected-projects.outputs.has_projects == 'true'
     runs-on: ubuntu-latest
@@ -44,11 +44,11 @@ jobs:
       matrix:
         include: ${{ fromJson(needs.detect-affected-projects.outputs.matrix) }}
     concurrency:
-      group: vercel-preview-${{ github.event.pull_request.number }}-${{ matrix.app }}
+      group: vercel-preview-build-${{ github.event.pull_request.number }}-${{ matrix.app }}
       cancel-in-progress: true
     env:
       VERCEL_ORG_ID: team_VbdXYd5XY8pvEMjsWODHQhgD
-      VERCEL_PROJECT_ID: ${{ matrix.project_id }}
+      VERCEL_PROJECT_ID: ${{ fromJSON('{"docs":"prj_TjmKPgxU8po3FDjQVkprdIRGgXa4","agent":"prj_XpSk71L2P6VCrZNA1P34hlTIWajc","web":"prj_EDu0GMa3fKaInW6f3MBiLCiewi6O","app":"prj_IOf5cRl1rkbc6SfSMzLsKsneYPdb"}')[matrix.app] }}
       VERCEL_ENV: preview
       VERCEL_GIT_PROVIDER: github
       VERCEL_GIT_REPO_OWNER: deessejs
@@ -72,13 +72,75 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@64.7.0
 
+      # The token is scoped to this step, which runs before PR-controlled build code.
       - name: Pull preview environment and project settings
         run: vercel pull --yes --environment=preview --git-branch="$GITHUB_HEAD_REF"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
+      # Keep the trusted project link separate from the PR-controlled output.
+      - name: Upload Vercel project link
+        uses: actions/upload-artifact@v7
+        with:
+          name: vercel-project-${{ github.event.pull_request.number }}-${{ matrix.app }}
+          path: .vercel/project.json
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Build preview from the monorepo root
         run: vercel build
+
+      - name: Upload prebuilt output
+        uses: actions/upload-artifact@v7
+        with:
+          name: vercel-output-${{ github.event.pull_request.number }}-${{ matrix.app }}
+          path: .vercel/output
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy-preview:
+    name: Deploy preview (${{ matrix.app }})
+    needs: [detect-affected-projects, build-preview]
+    if: needs.detect-affected-projects.outputs.has_projects == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.detect-affected-projects.outputs.matrix) }}
+    concurrency:
+      group: vercel-preview-deploy-${{ github.event.pull_request.number }}-${{ matrix.app }}
+      cancel-in-progress: true
+    env:
+      VERCEL_ORG_ID: team_VbdXYd5XY8pvEMjsWODHQhgD
+      VERCEL_PROJECT_ID: ${{ fromJSON('{"docs":"prj_TjmKPgxU8po3FDjQVkprdIRGgXa4","agent":"prj_XpSk71L2P6VCrZNA1P34hlTIWajc","web":"prj_EDu0GMa3fKaInW6f3MBiLCiewi6O","app":"prj_IOf5cRl1rkbc6SfSMzLsKsneYPdb"}')[matrix.app] }}
+      VERCEL_ENV: preview
+      VERCEL_GIT_PROVIDER: github
+      VERCEL_GIT_REPO_OWNER: deessejs
+      VERCEL_GIT_REPO_SLUG: deessejs
+      VERCEL_GIT_COMMIT_REF: ${{ github.event.pull_request.head.ref }}
+      VERCEL_GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+      VERCEL_GIT_PULL_REQUEST_ID: ${{ github.event.pull_request.number }}
+    steps:
+      # A clean runner deploys the artifact; it never checks out PR code.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@64.7.0
+
+      - name: Download trusted Vercel project link
+        uses: actions/download-artifact@v8
+        with:
+          name: vercel-project-${{ github.event.pull_request.number }}-${{ matrix.app }}
+          path: .vercel
+
+      - name: Download prebuilt output
+        uses: actions/download-artifact@v8
+        with:
+          name: vercel-output-${{ github.event.pull_request.number }}-${{ matrix.app }}
+          path: .vercel/output
 
       - name: Deploy prebuilt preview
         run: |
