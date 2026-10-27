@@ -118,9 +118,13 @@ function parseGitHubBlockUrl(
   let path = ""
   let urlRef: string | undefined
   if (segments.length > 2) {
-    if (segments[2] !== "tree" || !segments[3]) return null
-    urlRef = segments[3]
-    path = segments.slice(4).join("/")
+    if (segments[2] === "tree") {
+      if (!segments[3]) return null
+      urlRef = segments[3]
+      path = segments.slice(4).join("/")
+    } else {
+      path = segments.slice(2).join("/")
+    }
     if (path && !isSafeRelativePath(path)) return null
   }
 
