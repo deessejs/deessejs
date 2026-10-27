@@ -27,6 +27,7 @@ vi.mock("../../src/core/templates/index.js", () => ({
 
 import { call } from "@orpc/server"
 import { appRouter } from "../../src/orpc/index.js"
+import { enrich } from "../../src/core/templates/index.js"
 import type { TemplatesListResponseV1 } from "@workspace/contracts/v1"
 
 describe("templates.list", () => {
@@ -47,5 +48,46 @@ describe("templates.list", () => {
         }),
       ]),
     })
+  })
+})
+
+describe("templates.resolve", () => {
+  it("returns only the catalog source identity without enriching GitHub data", async () => {
+    const result = await call(
+      appRouter.templates.resolve,
+      { slug: "package-starter" },
+      {
+        context: {
+          headers: new Headers(),
+          user: null,
+          session: null,
+          requestId: "test-request-id",
+        },
+      }
+    )
+
+    expect(result).toEqual({
+      slug: "package-starter",
+      owner: "deessejs",
+      repo: "package-template",
+    })
+    expect(vi.mocked(enrich)).not.toHaveBeenCalled()
+  })
+
+  it("returns null for an unknown catalog slug", async () => {
+    const result = await call(
+      appRouter.templates.resolve,
+      { slug: "not-a-template" },
+      {
+        context: {
+          headers: new Headers(),
+          user: null,
+          session: null,
+          requestId: "test-request-id",
+        },
+      }
+    )
+
+    expect(result).toBeNull()
   })
 })

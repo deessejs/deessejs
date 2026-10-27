@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  createTemplateDescriptorInfo,
   createTemplateInstallationPlan,
 } from "../../src/v1/installation-plan.js"
 import type {
@@ -25,7 +26,7 @@ const descriptor = {
 
 function createAdapter(
   entries: TemplateSourceEntry[],
-  fileContents: Record<string, Uint8Array>,
+  fileContents: Record<string, Uint8Array>
 ): TemplateSourceAdapter {
   const snapshot: TemplateSourceSnapshot = {
     repository: "deessejs/fixture",
@@ -42,13 +43,25 @@ function createAdapter(
     async resolve() {
       return snapshot
     },
+    async resolveDescriptor() {
+      const contents = fileContents["deesse-template.json"]
+      if (!contents) throw new Error("Missing fixture descriptor")
+      return {
+        repository: snapshot.repository,
+        contents,
+      }
+    },
     async resolveRevision() {
       return REVISION
     },
   }
 }
 
-function blob(path: string, contents: Uint8Array, mode = "100644"): TemplateSourceEntry {
+function blob(
+  path: string,
+  contents: Uint8Array,
+  mode = "100644"
+): TemplateSourceEntry {
   return {
     path,
     mode,
@@ -70,13 +83,15 @@ describe("createTemplateInstallationPlan", () => {
       "private/credentials.txt": new TextEncoder().encode("secret"),
     }
     const adapter = createAdapter(
-      Object.entries(fileContents).map(([path, contents]) => blob(path, contents)),
-      fileContents,
+      Object.entries(fileContents).map(([path, contents]) =>
+        blob(path, contents)
+      ),
+      fileContents
     )
 
     const result = await createTemplateInstallationPlan(
       { repository: "deessejs/fixture", ref: "v1.0.0" },
-      adapter,
+      adapter
     )
 
     expect(result.success).toBe(true)
@@ -101,12 +116,12 @@ describe("createTemplateInstallationPlan", () => {
         blob("deesse-template.json", descriptorBytes),
         { ...blob("src/link", new Uint8Array()), mode: "120000" },
       ],
-      fileContents,
+      fileContents
     )
 
     const result = await createTemplateInstallationPlan(
       { repository: "deessejs/fixture" },
-      adapter,
+      adapter
     )
 
     expect(result).toMatchObject({
@@ -123,18 +138,21 @@ describe("createTemplateInstallationPlan", () => {
     const descriptorBytes = new TextEncoder().encode(JSON.stringify(input))
     const adapter = createAdapter(
       [blob("deesse-template.json", descriptorBytes)],
-      { "deesse-template.json": descriptorBytes },
+      { "deesse-template.json": descriptorBytes }
     )
-    adapter.resolveRevision = async () => "fedcba9876543210fedcba9876543210fedcba98"
+    adapter.resolveRevision = async () =>
+      "fedcba9876543210fedcba9876543210fedcba98"
 
     const result = await createTemplateInstallationPlan(
       { repository: "deessejs/fixture", ref: "v1.0.0" },
-      adapter,
+      adapter
     )
 
     expect(result).toMatchObject({
       success: false,
-      diagnostics: [{ code: "descriptor.source_ref_mismatch", path: ["source", "ref"] }],
+      diagnostics: [
+        { code: "descriptor.source_ref_mismatch", path: ["source", "ref"] },
+      ],
     })
   })
 
@@ -152,17 +170,62 @@ describe("createTemplateInstallationPlan", () => {
       "src/other.ts": new TextEncoder().encode("export {}"),
     }
     const adapter = createAdapter(
-      Object.entries(fileContents).map(([path, contents]) => blob(path, contents)),
-      fileContents,
+      Object.entries(fileContents).map(([path, contents]) =>
+        blob(path, contents)
+      ),
+      fileContents
     )
 
     const result = await createTemplateInstallationPlan(
       { repository: "deessejs/fixture" },
-      adapter,
+      adapter
     )
 
     expect(result.success).toBe(true)
     if (!result.success) return
     expect(result.plan.files.map((file) => file.path)).toEqual(["src/index.ts"])
+  })
+})
+
+describe("createTemplateDescriptorInfo", () => {
+  it("validates the manifest and source identity without making an installation plan", async () => {
+    const descriptorBytes = new TextEncoder().encode(JSON.stringify(descriptor))
+    const adapter = createAdapter(
+      [blob("deesse-template.json", descriptorBytes)],
+      { "deesse-template.json": descriptorBytes }
+    )
+
+    const result = await createTemplateDescriptorInfo(
+      { repository: "deessejs/fixture", ref: "v1.0.0" },
+      adapter
+    )
+
+    expect(result).toEqual({
+      success: true,
+      info: {
+        source: { repository: "deessejs/fixture" },
+        descriptor: { ...descriptor, includes: ["**/*"] },
+      },
+    })
+  })
+
+  it("rejects source metadata that does not match the selected repository", async () => {
+    const descriptorBytes = new TextEncoder().encode(
+      JSON.stringify({ ...descriptor, source: { repo: "deessejs/other" } })
+    )
+    const adapter = createAdapter(
+      [blob("deesse-template.json", descriptorBytes)],
+      { "deesse-template.json": descriptorBytes }
+    )
+
+    const result = await createTemplateDescriptorInfo(
+      { repository: "deessejs/fixture" },
+      adapter
+    )
+
+    expect(result).toMatchObject({
+      success: false,
+      diagnostics: [{ code: "descriptor.source_mismatch" }],
+    })
   })
 })

@@ -27,8 +27,16 @@ export type TemplateSourceSnapshot = {
   readFile(path: string): Promise<Uint8Array>
 }
 
+export type TemplateDescriptorSourceSnapshot = {
+  repository: string
+  contents: Uint8Array
+}
+
 export type TemplateSourceAdapter = {
   resolve(source: TemplateSourceRequest): Promise<TemplateSourceSnapshot>
+  resolveDescriptor(
+    source: TemplateSourceRequest
+  ): Promise<TemplateDescriptorSourceSnapshot>
   resolveRevision(repository: string, ref: string): Promise<string>
 }
 
@@ -36,6 +44,7 @@ export type TemplateSourceDiagnosticCode =
   | "source.invalid_repository"
   | "source.unavailable"
   | "source.invalid_response"
+  | "source.repository_not_found"
   | "source.incomplete_inventory"
   | "source.inventory_limit_exceeded"
   | "source.file_not_found"
@@ -86,6 +95,7 @@ const DEFAULT_RETRY_COUNT = 2
 const DEFAULT_MAX_INVENTORY_ENTRIES = 10_000
 const MAX_ARCHIVE_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_ARCHIVE_EXPANDED_SIZE_BYTES = 200 * 1024 * 1024
+const MAX_DESCRIPTOR_SIZE_BYTES = 10 * 1024 * 1024
 
 type GitHubCommitResponse = {
   sha?: unknown
@@ -425,8 +435,8 @@ function isSha(value: unknown): value is string {
 }
 
 /**
- * Resolve public GitHub repositories into immutable commit snapshots by
- * downloading one commit archive and applying descriptor patterns locally.
+ * Resolve public GitHub sources for archive-based installation or read only
+ * the root descriptor for quick inspection.
  */
 export function createGitHubTemplateSourceAdapter(
   options: GitHubTemplateSourceOptions = {}
@@ -525,8 +535,181 @@ export function createGitHubTemplateSourceAdapter(
     return response.default_branch
   }
 
+  async function repositoryExists(repository: string): Promise<boolean> {
+    const { owner, name } = parseRepository(repository)
+    const url = `${apiBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), requestTimeoutMs)
+
+    try {
+      const response = await request(url, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": GITHUB_API_VERSION,
+        },
+        signal: controller.signal,
+      })
+      if (response.status === 404) return false
+      if (!response.ok) {
+        throw createTemplateSourceError(
+          "source.unavailable",
+          `GitHub returned HTTP ${response.status} while checking ${repository}.`
+        )
+      }
+      return true
+    } finally {
+      clearTimeout(timeout)
+    }
+  }
+
+  async function readRemoteDescriptor(
+    repository: string,
+    ref: string | undefined
+  ): Promise<Uint8Array> {
+    const { owner, name } = parseRepository(repository)
+    const refQuery = ref ? `?ref=${encodeURIComponent(ref)}` : ""
+    const url = `${apiBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/contents/deesse-template.json${refQuery}`
+    let lastError: unknown
+
+    for (let attempt = 0; attempt <= retryCount; attempt += 1) {
+      try {
+        return await fetchRemoteDescriptor(
+          url,
+          repository,
+          request,
+          requestTimeoutMs
+        )
+      } catch (error) {
+        if (isTemplateSourceError(error)) {
+          if (error.code !== "source.unavailable") throw error
+          const retryableHttpError =
+            error.message.includes("HTTP 429") ||
+            /HTTP 5\d\d/.test(error.message)
+          if (!retryableHttpError || attempt === retryCount) throw error
+          lastError = error
+        } else {
+          lastError = error
+          if (attempt === retryCount) break
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200 * 2 ** attempt))
+    }
+
+    throw createTemplateSourceError(
+      "source.unavailable",
+      `GitHub could not read the root descriptor from ${repository}${ref ? ` at ref ${ref}` : ""}: ${String(lastError)}.`
+    )
+  }
+
+  async function fetchRemoteDescriptor(
+    url: string,
+    repository: string,
+    fetcher: typeof fetch,
+    timeoutMs: number
+  ): Promise<Uint8Array> {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const response = await fetcher(url, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": GITHUB_API_VERSION,
+        },
+        signal: controller.signal,
+      })
+      if (response.status === 404) {
+        throw createTemplateSourceError(
+          "source.file_not_found",
+          `File "deesse-template.json" is not present in ${repository}.`,
+          "deesse-template.json"
+        )
+      }
+      if (!response.ok) {
+        throw createTemplateSourceError(
+          "source.unavailable",
+          `GitHub returned HTTP ${response.status} while reading ${url}.`
+        )
+      }
+      const file = (await response.json()) as {
+        type?: unknown
+        encoding?: unknown
+        content?: unknown
+        size?: unknown
+      }
+      if (file.type !== "file") {
+        throw createTemplateSourceError(
+          "source.invalid_response",
+          `The root deesse-template.json in ${repository} must be a regular file.`,
+          "deesse-template.json"
+        )
+      }
+      if (
+        typeof file.size === "number" &&
+        file.size > MAX_DESCRIPTOR_SIZE_BYTES
+      ) {
+        throw createTemplateSourceError(
+          "source.file_too_large",
+          `The root deesse-template.json exceeds the ${MAX_DESCRIPTOR_SIZE_BYTES} byte limit.`,
+          "deesse-template.json"
+        )
+      }
+      if (file.encoding !== "base64" || typeof file.content !== "string") {
+        throw createTemplateSourceError(
+          "source.invalid_response",
+          "GitHub did not return base64-encoded root descriptor contents.",
+          "deesse-template.json"
+        )
+      }
+      const encoded = file.content.replace(/\s/g, "")
+      if (
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
+          encoded
+        )
+      ) {
+        throw createTemplateSourceError(
+          "source.invalid_response",
+          "GitHub returned invalid base64 contents for the root descriptor.",
+          "deesse-template.json"
+        )
+      }
+      const contents = new Uint8Array(Buffer.from(encoded, "base64"))
+      if (contents.byteLength > MAX_DESCRIPTOR_SIZE_BYTES) {
+        throw createTemplateSourceError(
+          "source.file_too_large",
+          `The root deesse-template.json exceeds the ${MAX_DESCRIPTOR_SIZE_BYTES} byte limit.`,
+          "deesse-template.json"
+        )
+      }
+      return contents
+    } finally {
+      clearTimeout(timeout)
+    }
+  }
+
   return {
     resolveRevision,
+    async resolveDescriptor(source) {
+      const { canonical } = parseRepository(source.repository)
+      try {
+        const contents = await readRemoteDescriptor(canonical, source.ref)
+        return { repository: canonical, contents }
+      } catch (error) {
+        if (
+          !isTemplateSourceError(error) ||
+          error.code !== "source.file_not_found"
+        ) {
+          throw error
+        }
+
+        if (!(await repositoryExists(canonical))) {
+          throw createTemplateSourceError(
+            "source.repository_not_found",
+            `GitHub repository "${canonical}" does not exist or is not publicly accessible.`
+          )
+        }
+        throw error
+      }
+    },
     async resolve(source) {
       const { owner, name, canonical } = parseRepository(source.repository)
       const ref = source.ref ?? (await resolveDefaultBranch(source.repository))

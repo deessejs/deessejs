@@ -2,15 +2,7 @@ import { relative, resolve } from "node:path"
 import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
-import { fetchTemplates } from "../api/index.js"
-import type { Template } from "../api/index.js"
-import {
-  installFailed,
-  internal,
-  notFound,
-  networkError,
-  templateInvalid,
-} from "../errors/index.js"
+import { installFailed, internal } from "../errors/index.js"
 import { printError, printJson } from "../output/index.js"
 import {
   detectPackageManager,
@@ -20,57 +12,16 @@ import {
 import { spawn } from "../utils/spawn.js"
 import { materializeTemplatePlan } from "../utils/materialize.js"
 import {
-  looksLikeUrl,
-  parseGitHubRepositoryUrl,
-} from "../utils/github-repository.js"
-import {
-  createGitHubTemplateSourceAdapter,
-  createTemplateInstallationPlan,
-} from "@workspace/registry/v1"
+  resolveTemplateSource,
+  type TemplateSource,
+} from "../utils/resolve-template.js"
+import { resolveTemplateInstallationPlan } from "../utils/template-plan.js"
 
-type TemplateSource = Pick<Template, "slug" | "owner" | "repo">
 const VALID_PACKAGE_MANAGERS = ["pnpm", "npm", "yarn", "bun"] as const
 type ValidPackageManager = (typeof VALID_PACKAGE_MANAGERS)[number]
 
-type ResolvedTemplate = {
-  template: TemplateSource
-  directRepository: ReturnType<typeof parseGitHubRepositoryUrl>
-}
-
 function logVerbose(enabled: boolean, message: string): void {
   if (enabled) process.stderr.write(`[verbose] ${message}\n`)
-}
-
-async function resolveTemplateSource(
-  slugOrUrl: string
-): Promise<ResolvedTemplate> {
-  const directRepository = parseGitHubRepositoryUrl(slugOrUrl)
-  if (looksLikeUrl(slugOrUrl) && !directRepository) {
-    throw templateInvalid(
-      slugOrUrl,
-      "expected an HTTPS URL to a GitHub repository root, such as https://github.com/owner/repository"
-    )
-  }
-
-  if (directRepository) {
-    return {
-      directRepository,
-      template: {
-        slug: directRepository.repo,
-        owner: directRepository.owner,
-        repo: directRepository.repo,
-      },
-    }
-  }
-
-  const templates = await fetchTemplates()
-  const template = templates.find((item) => item.slug === slugOrUrl)
-  if (!template)
-    throw notFound(
-      slugOrUrl,
-      templates.map((item) => item.slug)
-    )
-  return { template, directRepository: null }
 }
 
 function resolvePackageManager(
@@ -173,77 +124,36 @@ async function createTemplateProject(
   const downloadSpinner = showProgress
     ? ora(`Downloading template from ${pc.cyan(repository)}…`).start()
     : undefined
-  let planResult
+  let plan
   try {
-    planResult = await createTemplateInstallationPlan(
-      { repository, ...(ref ? { ref } : {}) },
-      createGitHubTemplateSourceAdapter()
-    )
+    plan = await resolveTemplateInstallationPlan(repository, ref)
   } catch (error) {
     downloadSpinner?.fail("Template download failed")
     throw error
   }
 
-  if (planResult.success) {
-    downloadSpinner?.succeed("Template downloaded")
-    logVerbose(verbose, `Resolved commit: ${planResult.plan.source.revision}`)
-    logVerbose(
-      verbose,
-      `Files selected by deesse-template.json: ${planResult.plan.files.length}`
-    )
-    if (showProgress) {
-      console.log(
-        pc.dim(
-          `  ${repository} · ${planResult.plan.source.revision.slice(0, 7)}`
-        )
-      )
-    }
-
-    const createSpinner = showProgress
-      ? ora("Creating project files…").start()
-      : undefined
-    try {
-      await materializeTemplatePlan(planResult.plan, dir, { force })
-      const revision = planResult.plan.source.revision
-      createSpinner?.succeed("Project files created")
-      return revision
-    } catch (error) {
-      createSpinner?.fail("Project file creation failed")
-      throw error
-    }
+  downloadSpinner?.succeed("Template downloaded")
+  logVerbose(verbose, `Resolved commit: ${plan.source.revision}`)
+  logVerbose(
+    verbose,
+    `Files selected by deesse-template.json: ${plan.files.length}`
+  )
+  if (showProgress) {
+    console.log(pc.dim(`  ${repository} · ${plan.source.revision.slice(0, 7)}`))
   }
 
-  downloadSpinner?.fail("Template download failed")
-
-  const isMissingDescriptor =
-    planResult.diagnostics.length === 1 &&
-    planResult.diagnostics[0]?.code === "descriptor.missing"
-  if (isMissingDescriptor) {
-    throw templateInvalid(
-      repository,
-      'this GitHub repository does not contain a "deesse-template.json" file at its root'
-    )
+  const createSpinner = showProgress
+    ? ora("Creating project files…").start()
+    : undefined
+  try {
+    await materializeTemplatePlan(plan, dir, { force })
+    const revision = plan.source.revision
+    createSpinner?.succeed("Project files created")
+    return revision
+  } catch (error) {
+    createSpinner?.fail("Project file creation failed")
+    throw error
   }
-
-  const detail = planResult.diagnostics
-    .map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`)
-    .join("\n")
-  const networkCodes = [
-    "source.unavailable",
-    "source.invalid_response",
-    "source.incomplete_inventory",
-    "source.inventory_limit_exceeded",
-    "source.file_not_found",
-    "source.file_read_failed",
-  ]
-  if (
-    planResult.diagnostics.some((diagnostic) =>
-      networkCodes.includes(diagnostic.code)
-    )
-  ) {
-    throw networkError(detail)
-  }
-  throw templateInvalid(repository, detail)
 }
 
 export const initCommand = new Command("init")
@@ -263,10 +173,7 @@ export const initCommand = new Command("init")
   )
   .option("--no-install", "skip the install step")
   .option("--force", "allow an existing empty target directory")
-  .option(
-    "--verbose",
-    "show initialization details and package manager output"
-  )
+  .option("--verbose", "show initialization details and package manager output")
   .option("--json", "JSON output for scripting")
   .action(
     async (

@@ -5,14 +5,21 @@ import { URL } from "node:url"
 const revision = "0123456789abcdef0123456789abcdef01234567"
 const missingDescriptorRevision = "9876543210abcdef9876543210abcdef98765432"
 const archivePath = process.env.DEESSEJS_INIT_FIXTURE_ARCHIVE
+const descriptorPath = process.env.DEESSEJS_INIT_FIXTURE_DESCRIPTOR
 const missingDescriptorArchivePath =
   process.env.DEESSEJS_INIT_MISSING_DESCRIPTOR_ARCHIVE
 const tracePath = process.env.DEESSEJS_INIT_FETCH_TRACE
 
-if (!archivePath || !missingDescriptorArchivePath || !tracePath) {
+if (
+  !archivePath ||
+  !descriptorPath ||
+  !missingDescriptorArchivePath ||
+  !tracePath
+) {
   throw new Error("init E2E fixture environment is incomplete")
 }
 const archive = readFileSync(archivePath)
+const descriptor = readFileSync(descriptorPath)
 const missingDescriptorArchive = readFileSync(missingDescriptorArchivePath)
 
 const jsonResponse = (body) =>
@@ -43,7 +50,7 @@ const legacyCatalogTemplate = {
 }
 
 const githubRepositories = new Map([
-  ["deessejs/init-regression-fixture", { revision, archive }],
+  ["deessejs/init-regression-fixture", { revision, archive, descriptor }],
   [
     "deessejs/legacy-template",
     {
@@ -60,7 +67,7 @@ const githubResponse = (pathname) => {
   const fixture = repository ? githubRepositories.get(repository) : undefined
   if (!fixture) return null
   if (!subpath) return jsonResponse({ default_branch: "main" })
-  if (subpath === "commits/main") {
+  if (subpath === "commits/main" || subpath === "commits/HEAD") {
     return jsonResponse({ sha: fixture.revision })
   }
 
@@ -92,6 +99,14 @@ globalThis.fetch = async (input, init) => {
 
   if (
     requestUrl.hostname === "app.deessejs.com" &&
+    requestUrl.pathname === "/api/v1/rpc/templates/resolve" &&
+    method === "POST"
+  ) {
+    return new globalThis.Response(null, { status: 404 })
+  }
+
+  if (
+    requestUrl.hostname === "app.deessejs.com" &&
     requestUrl.pathname === "/api/v1/rpc/templates/list" &&
     method === "POST"
   ) {
@@ -103,6 +118,28 @@ globalThis.fetch = async (input, init) => {
   if (requestUrl.hostname === "api.github.com") {
     const response = githubResponse(requestUrl.pathname)
     if (response) return response
+  }
+
+  if (requestUrl.hostname === "api.github.com") {
+    const match =
+      /^\/repos\/([^/]+\/[^/]+)\/contents\/deesse-template\.json$/.exec(
+        requestUrl.pathname
+      )
+    const repository = match?.[1]
+    const fixture = repository ? githubRepositories.get(repository) : undefined
+    if (fixture?.descriptor) {
+      return jsonResponse({
+        type: "file",
+        encoding: "base64",
+        content: fixture.descriptor.toString("base64"),
+        size: fixture.descriptor.byteLength,
+      })
+    }
+    if (fixture) return new globalThis.Response(null, { status: 404 })
+    if (match) return new globalThis.Response(null, { status: 404 })
+    if (/^\/repos\/[^/]+\/[^/]+$/.test(requestUrl.pathname)) {
+      return new globalThis.Response(null, { status: 404 })
+    }
   }
 
   throw new Error(

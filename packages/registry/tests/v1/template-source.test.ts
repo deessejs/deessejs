@@ -120,11 +120,13 @@ describe("createGitHubTemplateSourceAdapter", () => {
   })
 
   it("rejects an archive whose short commit SHA does not match the resolved revision", async () => {
-    const archive = await createArchive("deessejs-different-repository", "ffffffff")
+    const archive = await createArchive(
+      "deessejs-different-repository",
+      "ffffffff"
+    )
     const fetchMock = vi.fn<typeof fetch>(async (input) => {
       const url = String(input)
-      if (url.endsWith("/commits/main"))
-        return jsonResponse({ sha: REVISION })
+      if (url.endsWith("/commits/main")) return jsonResponse({ sha: REVISION })
       if (url.endsWith(`/tarball/${REVISION}`)) return new Response(archive)
       return new Response(null, { status: 404 })
     })
@@ -183,5 +185,98 @@ describe("createGitHubTemplateSourceAdapter", () => {
 
     expect(snapshot.revision).toBe(REVISION)
     expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it("resolves only the root descriptor in one request without downloading the repository archive", async () => {
+    const descriptor = JSON.stringify({
+      $schema: "https://app.deessejs.com/schema/template/v1.json",
+      formatVersion: 1,
+      name: "fixture",
+      title: "Fixture",
+      description: "Fixture template",
+      type: "template:app",
+      version: "1.0.0",
+      source: { repo: "deessejs/fixture" },
+      excludes: [],
+    })
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input)
+      if (
+        url ===
+        "https://api.github.com/repos/deessejs/fixture/contents/deesse-template.json"
+      ) {
+        return jsonResponse({
+          type: "file",
+          encoding: "base64",
+          content: Buffer.from(descriptor).toString("base64"),
+          size: Buffer.byteLength(descriptor),
+        })
+      }
+      return new Response(null, { status: 404 })
+    })
+    const adapter = createGitHubTemplateSourceAdapter({
+      fetch: fetchMock,
+      retryCount: 0,
+    })
+
+    const snapshot = await adapter.resolveDescriptor({
+      repository: "deessejs/fixture",
+    })
+
+    expect(snapshot.repository).toBe("deessejs/fixture")
+    expect(new TextDecoder().decode(snapshot.contents)).toBe(descriptor)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).includes("/tarball/")
+      )
+    ).toBe(false)
+  })
+
+  it("reports a missing root descriptor without fetching an archive", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input)
+      if (url.endsWith("/contents/deesse-template.json")) {
+        return new Response(null, { status: 404 })
+      }
+      if (url.endsWith("/repos/deessejs/fixture")) {
+        return jsonResponse({ default_branch: "main" })
+      }
+      return new Response(null, { status: 404 })
+    })
+    const adapter = createGitHubTemplateSourceAdapter({
+      fetch: fetchMock,
+      retryCount: 0,
+    })
+
+    await expect(
+      adapter.resolveDescriptor({ repository: "deessejs/fixture" })
+    ).rejects.toMatchObject({
+      code: "source.file_not_found",
+      path: "deesse-template.json",
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).includes("/tarball/")
+      )
+    ).toBe(false)
+  })
+
+  it("distinguishes a missing repository from a missing descriptor", async () => {
+    const fetchMock = vi.fn<typeof fetch>(
+      async () => new Response(null, { status: 404 })
+    )
+    const adapter = createGitHubTemplateSourceAdapter({
+      fetch: fetchMock,
+      retryCount: 0,
+    })
+
+    await expect(
+      adapter.resolveDescriptor({ repository: "deessejs/missing" })
+    ).rejects.toMatchObject({
+      code: "source.repository_not_found",
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

@@ -72,7 +72,7 @@ const writeExecutable = (path: string, contents: string): void => {
 }
 
 describe.skipIf(process.platform !== "linux")(
-  "@deessejs/cli: packed init regression (Linux consumer)",
+  "@deessejs/cli: packed init and info regressions (Linux consumer)",
   () => {
     let workDirectory = ""
     let consumerDirectory = ""
@@ -191,6 +191,10 @@ describe.skipIf(process.platform !== "linux")(
         const env = {
           ...process.env,
           DEESSEJS_INIT_FIXTURE_ARCHIVE: templateArchivePath,
+          DEESSEJS_INIT_FIXTURE_DESCRIPTOR: join(
+            templateFixtureDirectory,
+            "deesse-template.json"
+          ),
           DEESSEJS_INIT_MISSING_DESCRIPTOR_ARCHIVE:
             missingDescriptorArchivePath,
           DEESSEJS_INIT_FETCH_TRACE: fetchTracePath,
@@ -234,6 +238,87 @@ describe.skipIf(process.platform !== "linux")(
           ref: expectedRevision,
           installed: false,
         })
+
+        const catalogInfoResult = await runCommand(
+          cliExecutable,
+          ["info", "init-regression-fixture"],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(
+          catalogInfoResult.exitCode,
+          `${catalogInfoResult.stdout}\n${catalogInfoResult.stderr}`
+        ).toBe(0)
+        expect(catalogInfoResult.stdout).not.toContain("Catalog")
+        expect(catalogInfoResult.stdout).toContain("Template descriptor")
+        expect(catalogInfoResult.stdout).toContain("template:app")
+        expect(catalogInfoResult.stdout).toContain("1.0.0")
+
+        const catalogJsonInfoResult = await runCommand(
+          cliExecutable,
+          ["info", "init-regression-fixture", "--json"],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(catalogJsonInfoResult.exitCode).toBe(0)
+        expect(catalogInfoResult.stdout).toContain(
+          "Install: deessejs init init-regression-fixture"
+        )
+
+        const unknownCatalogInfoResult = await runCommand(
+          cliExecutable,
+          ["info", "test", "--json"],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(unknownCatalogInfoResult.exitCode).not.toBe(0)
+        const unknownCatalogInfo = JSON.parse(unknownCatalogInfoResult.stdout)
+        expect(unknownCatalogInfo).toMatchObject({
+          ok: false,
+          code: "not_found",
+        })
+        expect(unknownCatalogInfo.message).toContain(
+          'template "test" not found'
+        )
+
+        const directInfoResult = await runCommand(
+          cliExecutable,
+          [
+            "info",
+            "https://github.com/deessejs/init-regression-fixture",
+            "--json",
+          ],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(
+          directInfoResult.exitCode,
+          `${directInfoResult.stdout}\n${directInfoResult.stderr}`
+        ).toBe(0)
+        const directInfo = JSON.parse(directInfoResult.stdout)
+        expect(directInfo).toMatchObject({
+          descriptor: {
+            name: "CLI init regression fixture",
+            type: "template:app",
+            version: "1.0.0",
+          },
+          source: {
+            repository: "deessejs/init-regression-fixture",
+          },
+        })
+        expect(directInfo).toEqual(JSON.parse(catalogJsonInfoResult.stdout))
+
+        const directHumanInfoResult = await runCommand(
+          cliExecutable,
+          [
+            "info",
+            "https://github.com/deessejs/init-regression-fixture",
+            "--ref",
+            "main",
+          ],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(directHumanInfoResult.exitCode).toBe(0)
+        expect(directHumanInfoResult.stdout).not.toContain("Catalog")
+        expect(directHumanInfoResult.stdout.split("\n\nInstall:")[0]).toBe(
+          catalogInfoResult.stdout.split("\n\nInstall:")[0]
+        )
 
         expect(readFileSync(join(projectDirectory, ".gitignore"), "utf8")).toBe(
           "node_modules\n.env\n"
@@ -314,8 +399,7 @@ describe.skipIf(process.platform !== "linux")(
           ],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
-        const noInstallVerboseOutput =
-          `${noInstallVerboseResult.stdout}\n${noInstallVerboseResult.stderr}`
+        const noInstallVerboseOutput = `${noInstallVerboseResult.stdout}\n${noInstallVerboseResult.stderr}`
         expect(noInstallVerboseResult.exitCode).toBe(0)
         expect(noInstallVerboseOutput).toContain("[verbose] Template source:")
         expect(noInstallVerboseOutput).toContain(
@@ -434,6 +518,34 @@ describe.skipIf(process.platform !== "linux")(
           "deesse-template.json"
         )
 
+        const unsupportedInfoResult = await runCommand(
+          cliExecutable,
+          ["info", "legacy-starter", "--json"],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(unsupportedInfoResult.exitCode).not.toBe(0)
+        expect(JSON.parse(unsupportedInfoResult.stdout)).toMatchObject({
+          ok: false,
+          code: "template_invalid",
+        })
+        expect(unsupportedInfoResult.stdout).toContain("deesse-template.json")
+
+        const missingRepositoryInfoResult = await runCommand(
+          cliExecutable,
+          [
+            "info",
+            "https://github.com/deessejs/missing-template-repository",
+            "--json",
+          ],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(missingRepositoryInfoResult.exitCode).not.toBe(0)
+        expect(JSON.parse(missingRepositoryInfoResult.stdout)).toMatchObject({
+          ok: false,
+          code: "not_found",
+        })
+        expect(missingRepositoryInfoResult.stdout).toContain("was not found")
+
         const unsupportedUrlResult = await runCommand(
           cliExecutable,
           [
@@ -457,6 +569,11 @@ describe.skipIf(process.platform !== "linux")(
         expect(requests).toContain(
           "GET https://app.deessejs.com/api/v1/version"
         )
+        expect(
+          requests.filter((request) =>
+            request.startsWith("GET https://app.deessejs.com/api/v1/version")
+          )
+        ).toHaveLength(7)
         expect(requests).toContain(
           "POST https://app.deessejs.com/api/v1/rpc/templates/list"
         )
@@ -484,7 +601,14 @@ describe.skipIf(process.platform !== "linux")(
               "POST https://app.deessejs.com/api/v1/rpc/templates/list"
             )
           ).length
-        ).toBe(7)
+        ).toBe(11)
+        expect(
+          requests.filter((request) =>
+            request.startsWith(
+              "POST https://app.deessejs.com/api/v1/rpc/templates/resolve"
+            )
+          )
+        ).toHaveLength(4)
         expect(requests).toContain(
           `GET https://api.github.com/repos/deessejs/legacy-template/tarball/${missingDescriptorRevision}`
         )
@@ -495,6 +619,16 @@ describe.skipIf(process.platform !== "linux")(
             )
           )
         ).toHaveLength(2)
+        expect(
+          requests.filter((request) =>
+            request.startsWith(
+              "GET https://api.github.com/repos/deessejs/init-regression-fixture/contents/deesse-template.json"
+            )
+          )
+        ).toHaveLength(4)
+        expect(requests).toContain(
+          "GET https://api.github.com/repos/deessejs/legacy-template/contents/deesse-template.json"
+        )
       },
       3 * 60_000
     )

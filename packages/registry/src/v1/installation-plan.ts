@@ -9,6 +9,7 @@ import {
   type TemplateSourceAdapter,
   type TemplateSourceDiagnosticCode,
   type TemplateSourceEntry,
+  type TemplateDescriptorSourceSnapshot,
   type TemplateSourceRequest,
   type TemplateSourceSnapshot,
 } from "./template-source.js"
@@ -55,21 +56,32 @@ export type CreateTemplateInstallationPlanResult =
   | { success: true; plan: TemplateInstallationPlan }
   | { success: false; diagnostics: TemplateInstallationDiagnostic[] }
 
+export type TemplateDescriptorInfo = {
+  source: { repository: string }
+  descriptor: NormalizedTemplateDescriptorV1
+}
+
+export type CreateTemplateDescriptorInfoResult =
+  | { success: true; info: TemplateDescriptorInfo }
+  | { success: false; diagnostics: TemplateInstallationDiagnostic[] }
+
 function diagnostic(
   code: TemplateInstallationDiagnosticCode,
   message: string,
-  path: string[] = [],
+  path: string[] = []
 ): TemplateInstallationDiagnostic {
   return { code, message, path }
 }
 
 function compareDiagnostics(
   left: TemplateInstallationDiagnostic,
-  right: TemplateInstallationDiagnostic,
+  right: TemplateInstallationDiagnostic
 ): number {
   const leftPath = left.path.join("/")
   const rightPath = right.path.join("/")
-  return compareStrings(leftPath, rightPath) || compareStrings(left.code, right.code)
+  return (
+    compareStrings(leftPath, rightPath) || compareStrings(left.code, right.code)
+  )
 }
 
 function compareStrings(left: string, right: string): number {
@@ -90,7 +102,9 @@ function isSafeRelativePath(path: string): boolean {
   }
 
   const segments = path.split("/")
-  return segments.every((segment) => segment.length > 0 && segment !== "." && segment !== "..")
+  return segments.every(
+    (segment) => segment.length > 0 && segment !== "." && segment !== ".."
+  )
 }
 
 function isSafePattern(pattern: string): boolean {
@@ -119,8 +133,8 @@ function makeMatchers(patterns: string[]): {
         diagnostic(
           "selection.invalid_pattern",
           `The selection pattern "${pattern}" must be a non-empty relative glob without traversal segments.`,
-          [pattern],
-        ),
+          [pattern]
+        )
       )
       continue
     }
@@ -132,8 +146,8 @@ function makeMatchers(patterns: string[]): {
         diagnostic(
           "selection.invalid_pattern",
           `The selection pattern "${pattern}" is not a valid Picomatch glob.`,
-          [pattern],
-        ),
+          [pattern]
+        )
       )
     }
   }
@@ -143,14 +157,16 @@ function makeMatchers(patterns: string[]): {
 
 function matchesAny(
   matchers: Array<(path: string) => boolean>,
-  path: string,
+  path: string
 ): boolean {
   return matchers.some((matches) => matches(path))
 }
 
-function findDescriptor(snapshot: TemplateSourceSnapshot): TemplateSourceEntry | undefined {
+function findDescriptor(
+  snapshot: TemplateSourceSnapshot
+): TemplateSourceEntry | undefined {
   return snapshot.entries.find(
-    (entry) => entry.path === DESCRIPTOR_PATH && entry.type === "blob",
+    (entry) => entry.path === DESCRIPTOR_PATH && entry.type === "blob"
   )
 }
 
@@ -158,7 +174,8 @@ function normalizeRepository(repository: string): string | null {
   const match = /^([A-Za-z0-9-]+)\/([A-Za-z0-9_.-]+)$/.exec(repository)
   const owner = match?.[1]
   const name = match?.[2]
-  if (!owner || !name || owner === "." || name === "." || name === "..") return null
+  if (!owner || !name || owner === "." || name === "." || name === "..")
+    return null
   return `${owner.toLowerCase()}/${name.toLowerCase()}`
 }
 
@@ -167,7 +184,7 @@ type ReadDescriptorResult =
   | { success: false; diagnostic: TemplateInstallationDiagnostic }
 
 async function readDescriptor(
-  snapshot: TemplateSourceSnapshot,
+  snapshot: TemplateSourceSnapshot
 ): Promise<ReadDescriptorResult> {
   const entry = findDescriptor(snapshot)
   if (!entry) {
@@ -176,7 +193,7 @@ async function readDescriptor(
       diagnostic: diagnostic(
         "descriptor.missing",
         `The source snapshot does not contain a root ${DESCRIPTOR_PATH}.`,
-        [DESCRIPTOR_PATH],
+        [DESCRIPTOR_PATH]
       ),
     }
   }
@@ -186,15 +203,14 @@ async function readDescriptor(
       diagnostic: diagnostic(
         "source.symlink",
         `The root ${DESCRIPTOR_PATH} must be a regular file, not a symbolic link.`,
-        [DESCRIPTOR_PATH],
+        [DESCRIPTOR_PATH]
       ),
     }
   }
 
   try {
     const bytes = await snapshot.readFile(DESCRIPTOR_PATH)
-    const json = new TextDecoder("utf-8", { fatal: true }).decode(bytes)
-    return { success: true, input: JSON.parse(json) as unknown }
+    return parseDescriptorBytes(bytes)
   } catch (error) {
     if (isTemplateSourceError(error)) throw error
     return {
@@ -202,7 +218,23 @@ async function readDescriptor(
       diagnostic: diagnostic(
         "descriptor.invalid_json",
         `The root ${DESCRIPTOR_PATH} is not valid UTF-8 JSON: ${String(error)}.`,
-        [DESCRIPTOR_PATH],
+        [DESCRIPTOR_PATH]
+      ),
+    }
+  }
+}
+
+function parseDescriptorBytes(bytes: Uint8Array): ReadDescriptorResult {
+  try {
+    const json = new TextDecoder("utf-8", { fatal: true }).decode(bytes)
+    return { success: true, input: JSON.parse(json) as unknown }
+  } catch (error) {
+    return {
+      success: false,
+      diagnostic: diagnostic(
+        "descriptor.invalid_json",
+        `The root ${DESCRIPTOR_PATH} is not valid UTF-8 JSON: ${String(error)}.`,
+        [DESCRIPTOR_PATH]
       ),
     }
   }
@@ -211,7 +243,7 @@ async function readDescriptor(
 function validateDescriptorSource(
   descriptor: NormalizedTemplateDescriptorV1,
   request: TemplateSourceRequest,
-  snapshot: TemplateSourceSnapshot,
+  snapshot: Pick<TemplateSourceSnapshot, "repository">
 ): TemplateInstallationDiagnostic[] {
   const diagnostics: TemplateInstallationDiagnostic[] = []
   const expectedRepository = normalizeRepository(request.repository)
@@ -227,24 +259,58 @@ function validateDescriptorSource(
       diagnostic(
         "descriptor.source_mismatch",
         `The descriptor declares source repository "${descriptor.source.repo}", but the selected source is "${snapshot.repository}".`,
-        ["source", "repo"],
-      ),
+        ["source", "repo"]
+      )
     )
   }
 
   return diagnostics
 }
 
+async function validateDescriptorRef(
+  descriptor: NormalizedTemplateDescriptorV1,
+  snapshot: Pick<TemplateSourceSnapshot, "repository" | "revision">,
+  resolveRevision: (repository: string, ref: string) => Promise<string>
+): Promise<TemplateInstallationDiagnostic[]> {
+  if (!descriptor.source?.ref) return []
+
+  try {
+    const descriptorRevision = await resolveRevision(
+      snapshot.repository,
+      descriptor.source.ref
+    )
+    if (descriptorRevision === snapshot.revision) return []
+    return [
+      diagnostic(
+        "descriptor.source_ref_mismatch",
+        `The descriptor ref "${descriptor.source.ref}" resolves to ${descriptorRevision}, while the selected source resolves to ${snapshot.revision}.`,
+        ["source", "ref"]
+      ),
+    ]
+  } catch (error) {
+    return [
+      diagnostic(
+        "descriptor.source_ref_mismatch",
+        `The descriptor ref "${descriptor.source.ref}" could not be resolved against the selected repository: ${String(error)}.`,
+        ["source", "ref"]
+      ),
+    ]
+  }
+}
+
 function selectEntries(
   descriptor: NormalizedTemplateDescriptorV1,
-  entries: readonly TemplateSourceEntry[],
+  entries: readonly TemplateSourceEntry[]
 ): {
   selected: TemplateSourceEntry[]
   diagnostics: TemplateInstallationDiagnostic[]
 } {
   const includeResult = makeMatchers(descriptor.includes)
   const excludeResult = makeMatchers(descriptor.excludes)
-  const diagnostics = [...includeResult.diagnostics, ...excludeResult.diagnostics]
+  const diagnostics = [
+    ...includeResult.diagnostics,
+    ...excludeResult.diagnostics,
+  ]
   if (diagnostics.length > 0) return { selected: [], diagnostics }
 
   const selected: TemplateSourceEntry[] = []
@@ -258,8 +324,8 @@ function selectEntries(
         diagnostic(
           "source.unsafe_path",
           `Selected source path "${entry.path}" is not a safe relative file path.`,
-          [entry.path],
-        ),
+          [entry.path]
+        )
       )
       continue
     }
@@ -268,8 +334,8 @@ function selectEntries(
         diagnostic(
           "source.symlink",
           `Selected source path "${entry.path}" is a symbolic link.`,
-          [entry.path],
-        ),
+          [entry.path]
+        )
       )
       continue
     }
@@ -278,8 +344,8 @@ function selectEntries(
         diagnostic(
           "source.unsupported_entry",
           `Selected source path "${entry.path}" is a Git submodule, which V1 does not copy.`,
-          [entry.path],
-        ),
+          [entry.path]
+        )
       )
       continue
     }
@@ -288,8 +354,8 @@ function selectEntries(
         diagnostic(
           "source.unsupported_entry",
           `Selected source path "${entry.path}" uses unsupported Git mode "${entry.mode}".`,
-          [entry.path],
-        ),
+          [entry.path]
+        )
       )
       continue
     }
@@ -298,8 +364,8 @@ function selectEntries(
         diagnostic(
           "source.file_too_large",
           `Selected source path "${entry.path}" exceeds the 10 MiB file limit.`,
-          [entry.path],
-        ),
+          [entry.path]
+        )
       )
       continue
     }
@@ -311,18 +377,21 @@ function selectEntries(
     diagnostics.push(
       diagnostic(
         "selection.empty",
-        "The includes and excludes patterns selected no source files.",
-      ),
+        "The includes and excludes patterns selected no source files."
+      )
     )
   }
 
-  const knownTotalSize = selected.reduce((total, entry) => total + (entry.size ?? 0), 0)
+  const knownTotalSize = selected.reduce(
+    (total, entry) => total + (entry.size ?? 0),
+    0
+  )
   if (knownTotalSize > MAX_TOTAL_SIZE_BYTES) {
     diagnostics.push(
       diagnostic(
         "source.total_size_exceeded",
-        "The selected files exceed the 50 MiB total source size limit.",
-      ),
+        "The selected files exceed the 50 MiB total source size limit."
+      )
     )
   }
 
@@ -335,8 +404,87 @@ function toDiagnostic(error: unknown): TemplateInstallationDiagnostic {
   }
   return diagnostic(
     "source.unavailable",
-    `The template source could not be resolved: ${String(error)}.`,
+    `The template source could not be resolved: ${String(error)}.`
   )
+}
+
+async function validateDescriptorSnapshot(
+  request: TemplateSourceRequest,
+  snapshot: TemplateDescriptorSourceSnapshot
+): Promise<
+  | { success: true; descriptor: NormalizedTemplateDescriptorV1 }
+  | { success: false; diagnostics: TemplateInstallationDiagnostic[] }
+> {
+  const readResult = parseDescriptorBytes(snapshot.contents)
+  if (!readResult.success) {
+    return { success: false, diagnostics: [readResult.diagnostic] }
+  }
+
+  const parsed = parseTemplateDescriptor(readResult.input)
+  if (!parsed.success) {
+    return {
+      success: false,
+      diagnostics: parsed.diagnostics.map((item) => ({
+        code: item.code,
+        message: item.message,
+        path: item.path,
+      })),
+    }
+  }
+
+  const diagnostics = [
+    ...validateDescriptorSource(parsed.data, request, snapshot),
+    ...makeMatchers(parsed.data.includes).diagnostics,
+    ...makeMatchers(parsed.data.excludes).diagnostics,
+  ].sort(compareDiagnostics)
+
+  return diagnostics.length > 0
+    ? { success: false, diagnostics }
+    : { success: true, descriptor: parsed.data }
+}
+
+/**
+ * Read and validate only the root descriptor for display. Unlike an
+ * installation plan, this does not download or inventory the repository.
+ */
+export async function createTemplateDescriptorInfo(
+  request: TemplateSourceRequest,
+  adapter: TemplateSourceAdapter
+): Promise<CreateTemplateDescriptorInfoResult> {
+  let snapshot: TemplateDescriptorSourceSnapshot
+  try {
+    snapshot = await adapter.resolveDescriptor(request)
+  } catch (error) {
+    if (
+      isTemplateSourceError(error) &&
+      error.code === "source.file_not_found" &&
+      error.path === DESCRIPTOR_PATH
+    ) {
+      return {
+        success: false,
+        diagnostics: [
+          diagnostic(
+            "descriptor.missing",
+            `The source repository does not contain a root ${DESCRIPTOR_PATH}.`,
+            [DESCRIPTOR_PATH]
+          ),
+        ],
+      }
+    }
+    return { success: false, diagnostics: [toDiagnostic(error)] }
+  }
+
+  const validated = await validateDescriptorSnapshot(request, snapshot)
+  if (!validated.success) return validated
+  return {
+    success: true,
+    info: {
+      source: {
+        repository: snapshot.repository,
+      },
+      descriptor: validated.descriptor,
+    },
+  }
 }
 
 /**
@@ -345,7 +493,7 @@ function toDiagnostic(error: unknown): TemplateInstallationDiagnostic {
  */
 export async function createTemplateInstallationPlan(
   request: TemplateSourceRequest,
-  adapter: TemplateSourceAdapter,
+  adapter: TemplateSourceAdapter
 ): Promise<CreateTemplateInstallationPlanResult> {
   let snapshot: TemplateSourceSnapshot
   try {
@@ -376,32 +524,12 @@ export async function createTemplateInstallationPlan(
     }
   }
 
-  const diagnostics = validateDescriptorSource(parsed.data, request, snapshot)
-  if (parsed.data.source?.ref) {
-    try {
-      const descriptorRevision = await adapter.resolveRevision(
-        snapshot.repository,
-        parsed.data.source.ref,
-      )
-      if (descriptorRevision !== snapshot.revision) {
-        diagnostics.push(
-          diagnostic(
-            "descriptor.source_ref_mismatch",
-            `The descriptor ref "${parsed.data.source.ref}" resolves to ${descriptorRevision}, while the selected source resolves to ${snapshot.revision}.`,
-            ["source", "ref"],
-          ),
-        )
-      }
-    } catch (error) {
-      diagnostics.push(
-        diagnostic(
-          "descriptor.source_ref_mismatch",
-          `The descriptor ref "${parsed.data.source.ref}" could not be resolved against the selected repository: ${String(error)}.`,
-          ["source", "ref"],
-        ),
-      )
-    }
-  }
+  const diagnostics = [
+    ...validateDescriptorSource(parsed.data, request, snapshot),
+    ...(await validateDescriptorRef(parsed.data, snapshot, (repository, ref) =>
+      adapter.resolveRevision(repository, ref)
+    )),
+  ]
   if (diagnostics.length > 0) {
     return { success: false, diagnostics: diagnostics.sort(compareDiagnostics) }
   }
@@ -426,7 +554,7 @@ export async function createTemplateInstallationPlan(
             diagnostic(
               "source.file_too_large",
               `Selected source path "${entry.path}" exceeds the 10 MiB file limit.`,
-              [entry.path],
+              [entry.path]
             ),
           ],
         }
@@ -438,7 +566,7 @@ export async function createTemplateInstallationPlan(
           diagnostics: [
             diagnostic(
               "source.total_size_exceeded",
-              "The selected files exceed the 50 MiB total source size limit.",
+              "The selected files exceed the 50 MiB total source size limit."
             ),
           ],
         }

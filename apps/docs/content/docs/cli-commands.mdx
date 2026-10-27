@@ -43,12 +43,13 @@ deessejs list --json | jq '.templates[].slug'
 
 ---
 
-## `deessejs info <slug>`
+## `deessejs info <slug-or-github-url>`
 
-Show metadata for a single template and print the install line.
+Show validated fields from a template's `deesse-template.json`, then print the install command.
 
 ```bash
 deessejs info next-app-starter
+deessejs info https://github.com/owner/repository --ref main
 ```
 
 ### Arguments
@@ -61,21 +62,26 @@ deessejs info next-app-starter
 
 | Flag | Effect |
 | --- | --- |
-| `--json` | Emit `{ template: TemplateV1 }` instead of the formatted view. |
+| `--ref <branch>` | Inspect a branch or other Git ref. Defaults to the repository's default branch. |
+| `--json` | Emit `{ descriptor, source }` for either input form. |
 
 ### Output
 
-A formatted block with the template's fields (slug, owner, repo, optional `image`, optional `cloneUrl`, optional `readme`, `updatedAt`, `stars`) followed by:
+A catalog slug and a direct GitHub URL show the same descriptor fields. The output includes its title, name, description, project type, version, optional author/license/category/labels, and source repository. The complete normalized descriptor is available in JSON output.
+
+Both input forms require a valid root `deesse-template.json`. Slugs use a lightweight catalog lookup instead of fetching the GitHub-enriched template listing. `info` then reads only the descriptor through GitHub's Contents API, without downloading or inventorying the full repository. It validates the descriptor schema, declared repository, and include/exclude patterns. Repositories with a missing or invalid descriptor are rejected. `init` separately resolves an immutable commit and validates any declared source ref before copying files.
+
+The formatted view ends with the matching install command:
 
 ```
 Install: deessejs init next-app-starter
-deessejs init https://github.com/owner/repository
+Install: deessejs init https://github.com/owner/repository
 ```
 
 ### Exit codes
 
 - `0`: success.
-- `1`: `not_found` (slug doesn't exist in the registry. The error hints at the closest matches), `network_error`, `parse_error`, `internal`.
+- `1`: `not_found` (slug doesn't exist in the registry. The error hints at the closest matches), `network_error`, `parse_error`, `template_invalid`, `internal`.
 
 ---
 
