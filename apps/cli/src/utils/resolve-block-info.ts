@@ -538,30 +538,17 @@ export async function resolveBlockDescriptorInfo(
   }
 }
 
-export async function checkBlockSource(
-  input = ".",
-  options: { ref?: string } = {}
+async function validateBlockDescriptorWithReader(
+  reader: BlockSourceReader,
+  descriptor: BlockDescriptorV1
 ): Promise<BlockCheckResult> {
-  const loaded = await loadBlockDescriptor(input, options)
-  if (!("descriptor" in loaded)) {
-    return {
-      source: loaded.reader.source,
-      descriptor: null,
-      filesDeclared: 0,
-      filesChecked: 0,
-      packages: [],
-      diagnostics: loaded.diagnostics,
-    }
-  }
-
-  const descriptor = loaded.descriptor
   const fileResults = await Promise.all(
     descriptor.install.files.map(async (file, index) => {
       try {
         return {
           success: true as const,
           path: file.from,
-          contents: await loaded.reader.read(file.from),
+          contents: await reader.read(file.from),
         }
       } catch (error) {
         return {
@@ -597,9 +584,9 @@ export async function checkBlockSource(
     if (manifestText === undefined) continue
 
     const source =
-      loaded.reader.source.type === "local"
-        ? loaded.reader.source.path
-        : loaded.reader.source.repository
+      reader.source.type === "local"
+        ? reader.source.path
+        : reader.source.repository
     try {
       packages.push(
         parsePackageInfo(
@@ -620,11 +607,52 @@ export async function checkBlockSource(
   }
 
   return {
-    source: loaded.reader.source,
+    source: reader.source,
     descriptor,
     filesDeclared: descriptor.install.files.length,
     filesChecked: assetContents.size,
     packages,
     diagnostics,
   }
+}
+
+export async function checkBlockDescriptorCandidate(
+  directory: string,
+  candidate: unknown
+): Promise<BlockCheckResult> {
+  const reader = await createLocalBlockReader(directory)
+  const parsed = parseBlockDescriptor(candidate)
+  if (!parsed.success) {
+    return {
+      source: reader.source,
+      descriptor: null,
+      filesDeclared: 0,
+      filesChecked: 0,
+      packages: [],
+      diagnostics: parsed.diagnostics.map((diagnostic) => ({
+        code: diagnostic.code,
+        message: diagnostic.message,
+        path: diagnostic.path,
+      })),
+    }
+  }
+  return validateBlockDescriptorWithReader(reader, parsed.data)
+}
+
+export async function checkBlockSource(
+  input = ".",
+  options: { ref?: string } = {}
+): Promise<BlockCheckResult> {
+  const loaded = await loadBlockDescriptor(input, options)
+  if (!("descriptor" in loaded)) {
+    return {
+      source: loaded.reader.source,
+      descriptor: null,
+      filesDeclared: 0,
+      filesChecked: 0,
+      packages: [],
+      diagnostics: loaded.diagnostics,
+    }
+  }
+  return validateBlockDescriptorWithReader(loaded.reader, loaded.descriptor)
 }

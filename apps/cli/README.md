@@ -22,6 +22,7 @@ Other release channels:
 | `deessejs init <slug-or-github-url>` | Create a project from a catalog template or a GitHub repository |
 | `deessejs list`                      | List available templates                                        |
 | `deessejs info <slug-or-github-url>` | Show validated descriptor details for a template                |
+| `deessejs block init [directory]`     | Create a validated block descriptor                              |
 | `deessejs block info <source>`       | Show a validated block descriptor summary                       |
 | `deessejs block check [source]`      | Validate a block descriptor and its referenced assets            |
 
@@ -32,6 +33,8 @@ deessejs list
 deessejs list --category saas --json
 deessejs info saas-starter --json
 deessejs info https://github.com/owner/repository --ref main
+deessejs block init ./blocks/my-block
+deessejs block init ./blocks/my-block --input ./descriptor-draft.json --json
 deessejs block info ./blocks/upstash-redis
 deessejs block info https://github.com/deessejs/blocks/tree/main/upstash-redis --json
 deessejs block check ./blocks/upstash-redis
@@ -45,6 +48,8 @@ deessejs init saas-starter --verbose
 `init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. Both forms use the repository's root `deesse-template.json` to select the files to create. The descriptor must be present and valid; there is no Git clone fallback. `--ref` selects a branch or other Git ref. `--force` allows an existing empty target directory; it never removes existing files.
 
 `info` accepts a catalog slug or GitHub repository URL and shows the same descriptor fields for both. Slugs are mapped to repositories through a lightweight catalog lookup; `info` does not fetch the GitHub-enriched listing. It then reads only the root `deesse-template.json` through GitHub's Contents API, without downloading or inventorying the full repository. `--ref` inspects a specific branch or other Git ref. With `--json`, the result contains the validated `descriptor` and source repository.
+
+`block init` creates a V1 `deesse-block.json` in an existing local block directory. In a terminal it guides the author through package outputs, capability declarations, file mappings, environment variables and manual steps. It validates the draft and every referenced source asset before creating the descriptor, and never overwrites an existing descriptor. For non-interactive use, pass `--input <file>` with a candidate using the same V1 descriptor shape; add `--json` for one machine-readable result on stdout. The input file is not modified.
 
 `block info` accepts a local block directory, a public HTTPS GitHub repository URL, a shorthand GitHub directory URL such as `https://github.com/owner/repository/block`, or a canonical `/tree/<ref>/<block-path>` URL. It resolves a remote ref to a commit before reading the root `deesse-block.json` and the package manifests declared by its file mappings. It does not modify a project, install dependencies or execute package scripts. `--json` returns the descriptor, package summaries and source identity.
 
