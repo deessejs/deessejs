@@ -559,11 +559,13 @@ export async function checkBlockSource(
     descriptor.install.files.map(async (file, index) => {
       try {
         return {
+          success: true as const,
           path: file.from,
           contents: await loaded.reader.read(file.from),
         }
       } catch (error) {
         return {
+          success: false as const,
           diagnostic: {
             code: "asset.unreadable" as const,
             message: getErrorDetail(error),
@@ -576,7 +578,7 @@ export async function checkBlockSource(
   const assetContents = new Map<string, string>()
   const diagnostics: BlockCheckDiagnostic[] = []
   for (const result of fileResults) {
-    if ("contents" in result) {
+    if (result.success) {
       assetContents.set(result.path, result.contents)
     } else {
       diagnostics.push(result.diagnostic)
