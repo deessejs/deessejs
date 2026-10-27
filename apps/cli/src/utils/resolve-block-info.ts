@@ -2,6 +2,7 @@ import { lstat, readFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import {
   parseBlockDescriptor,
+  type BlockDescriptorDiagnosticCode,
   type BlockDescriptorV1,
 } from "@workspace/registry/v1"
 
@@ -48,6 +49,21 @@ export type BlockDescriptorInfo = {
   descriptor: BlockDescriptorV1
   source: BlockInfoSource
   packages: BlockInfoPackage[]
+}
+
+export type BlockCheckDiagnostic = {
+  code: BlockDescriptorDiagnosticCode | "asset.unreadable" | "package_manifest.invalid"
+  message: string
+  path: string[]
+}
+
+export type BlockCheckResult = {
+  source: BlockInfoSource
+  descriptor: BlockDescriptorV1 | null
+  filesDeclared: number
+  filesChecked: number
+  packages: BlockInfoPackage[]
+  diagnostics: BlockCheckDiagnostic[]
 }
 
 type BlockSourceReader = {
@@ -353,6 +369,27 @@ async function createLocalBlockReader(input: string): Promise<BlockSourceReader>
   }
 }
 
+async function createReaderForSource(
+  source: BlockInfoSource
+): Promise<BlockSourceReader> {
+  if (source.type === "local") {
+    return createLocalBlockReader(source.path)
+  }
+
+  const blockPath = source.path === "." ? "" : source.path
+  return {
+    source,
+    read: (path) =>
+      fetchRawFile(
+        source.repository,
+        source.revision,
+        blockPath,
+        path,
+        source.repository
+      ),
+  }
+}
+
 function parseJson(text: string, path: string, source: string): unknown {
   try {
     return JSON.parse(text) as unknown
@@ -378,33 +415,19 @@ function readDependencyMap(
   return Object.fromEntries(entries) as Record<string, string>
 }
 
-async function readPackageInfo(
-  reader: BlockSourceReader,
-  descriptor: BlockDescriptorV1,
+function parsePackageInfo(
+  manifestText: string,
+  manifestPath: string,
+  source: string,
   id: string,
   path: string
-): Promise<BlockInfoPackage> {
-  const packageManifest = descriptor.install.files.find(
-    (file) => file.to.package === id && file.to.path === "package.json"
-  )
-  if (!packageManifest) {
-    throw blockInvalid(
-      reader.source.type === "local" ? reader.source.path : reader.source.repository,
-      `package "${id}" does not map a package.json asset`
-    )
-  }
-
-  const source = reader.source.type === "local" ? reader.source.path : reader.source.repository
-  const manifest = parseJson(
-    await reader.read(packageManifest.from),
-    packageManifest.from,
-    source
-  )
+): BlockInfoPackage {
+  const manifest = parseJson(manifestText, manifestPath, source)
   if (!isRecord(manifest) || typeof manifest.name !== "string" || !manifest.name) {
-    throw blockInvalid(source, `"${packageManifest.from}" must declare a package name`)
+    throw blockInvalid(source, '"' + manifestPath + '" must declare a package name')
   }
   if (manifest.version !== undefined && typeof manifest.version !== "string") {
-    throw blockInvalid(source, `"${packageManifest.from}" has an invalid version`)
+    throw blockInvalid(source, '"' + manifestPath + '" has an invalid version')
   }
 
   return {
@@ -421,10 +444,55 @@ async function readPackageInfo(
   }
 }
 
-export async function resolveBlockDescriptorInfo(
+async function readPackageInfo(
+  reader: BlockSourceReader,
+  descriptor: BlockDescriptorV1,
+  id: string,
+  path: string
+): Promise<BlockInfoPackage> {
+  const packageManifest = descriptor.install.files.find(
+    (file) => file.to.package === id && file.to.path === "package.json"
+  )
+  if (!packageManifest) {
+    throw blockInvalid(
+      reader.source.type === "local" ? reader.source.path : reader.source.repository,
+      'package "' + id + '" does not map a package.json asset'
+    )
+  }
+
+  const source =
+    reader.source.type === "local" ? reader.source.path : reader.source.repository
+  const manifestText = await reader.read(packageManifest.from)
+  return parsePackageInfo(
+    manifestText,
+    packageManifest.from,
+    source,
+    id,
+    path
+  )
+}
+
+function getErrorDetail(error: unknown): string {
+  if (error instanceof Error && error.name === "CliError") {
+    const hint = (error as { hint?: string }).hint
+    if (hint) return hint
+  }
+  return error instanceof Error ? error.message : String(error)
+}
+
+async function loadBlockDescriptor(
   input: string,
-  options: { ref?: string } = {}
-): Promise<BlockDescriptorInfo> {
+  options: { ref?: string }
+): Promise<
+  | {
+      reader: BlockSourceReader
+      descriptor: BlockDescriptorV1
+    }
+  | {
+      reader: BlockSourceReader
+      diagnostics: BlockCheckDiagnostic[]
+    }
+> {
   const reader = looksLikeUrl(input)
     ? await createGitHubBlockReader(input, options.ref)
     : await createLocalBlockReader(input)
@@ -433,24 +501,144 @@ export async function resolveBlockDescriptorInfo(
   const descriptorValue = parseJson(descriptorText, "deesse-block.json", input)
   const result = parseBlockDescriptor(descriptorValue)
   if (!result.success) {
-    const detail = result.diagnostics
-      .map((diagnostic) => {
-        const path = diagnostic.path.length ? ` at ${diagnostic.path.join(".")}` : ""
-        return `${diagnostic.code}${path}: ${diagnostic.message}`
-      })
-      .join("\n")
-    throw blockInvalid(input, detail)
+    return {
+      reader,
+      diagnostics: result.diagnostics.map((diagnostic) => ({
+        code: diagnostic.code,
+        message: diagnostic.message,
+        path: diagnostic.path,
+      })),
+    }
+  }
+
+  return { reader, descriptor: result.data }
+}
+
+function formatDescriptorDiagnostics(
+  diagnostics: BlockCheckDiagnostic[]
+): string {
+  return diagnostics
+    .map((diagnostic) => {
+      const path = diagnostic.path.length
+        ? " at " + diagnostic.path.join(".")
+        : ""
+      return diagnostic.code + path + ": " + diagnostic.message
+    })
+    .join("\n")
+}
+
+export async function resolveBlockDescriptorInfo(
+  input: string,
+  options: { ref?: string } = {}
+): Promise<BlockDescriptorInfo> {
+  const loaded = await loadBlockDescriptor(input, options)
+  if (!("descriptor" in loaded)) {
+    throw blockInvalid(input, formatDescriptorDiagnostics(loaded.diagnostics))
   }
 
   const packages = await Promise.all(
-    result.data.install.packages.map((output) =>
-      readPackageInfo(reader, result.data, output.id, output.path)
+    loaded.descriptor.install.packages.map((output) =>
+      readPackageInfo(
+        loaded.reader,
+        loaded.descriptor,
+        output.id,
+        output.path
+      )
     )
   )
 
   return {
-    descriptor: result.data,
-    source: reader.source,
+    descriptor: loaded.descriptor,
+    source: loaded.reader.source,
     packages,
+  }
+}
+
+export async function checkBlockSource(
+  input = ".",
+  options: { ref?: string } = {}
+): Promise<BlockCheckResult> {
+  const loaded = await loadBlockDescriptor(input, options)
+  if (!("descriptor" in loaded)) {
+    return {
+      source: loaded.reader.source,
+      descriptor: null,
+      filesDeclared: 0,
+      filesChecked: 0,
+      packages: [],
+      diagnostics: loaded.diagnostics,
+    }
+  }
+
+  const descriptor = loaded.descriptor
+  const fileResults = await Promise.all(
+    descriptor.install.files.map(async (file, index) => {
+      try {
+        return {
+          path: file.from,
+          contents: await loaded.reader.read(file.from),
+        }
+      } catch (error) {
+        return {
+          diagnostic: {
+            code: "asset.unreadable" as const,
+            message: getErrorDetail(error),
+            path: ["install", "files", String(index), "from"],
+          },
+        }
+      }
+    })
+  )
+  const assetContents = new Map<string, string>()
+  const diagnostics: BlockCheckDiagnostic[] = []
+  for (const result of fileResults) {
+    if ("contents" in result) {
+      assetContents.set(result.path, result.contents)
+    } else {
+      diagnostics.push(result.diagnostic)
+    }
+  }
+
+  const packages: BlockInfoPackage[] = []
+  for (const [index, output] of descriptor.install.packages.entries()) {
+    const manifestIndex = descriptor.install.files.findIndex(
+      (file) => file.to.package === output.id && file.to.path === "package.json"
+    )
+    const manifestFile = descriptor.install.files[manifestIndex]
+    if (!manifestFile) continue
+
+    const manifestText = assetContents.get(manifestFile.from)
+    if (manifestText === undefined) continue
+
+    const source =
+      loaded.reader.source.type === "local"
+        ? loaded.reader.source.path
+        : loaded.reader.source.repository
+    try {
+      packages.push(
+        parsePackageInfo(
+          manifestText,
+          manifestFile.from,
+          source,
+          output.id,
+          output.path
+        )
+      )
+    } catch (error) {
+      diagnostics.push({
+        code: "package_manifest.invalid",
+        message: getErrorDetail(error),
+        path: ["install", "packages", String(index)],
+      })
+    }
+  }
+
+  return {
+    source: loaded.reader.source,
+    descriptor,
+    filesDeclared: descriptor.install.files.length,
+    filesChecked: assetContents.size,
+    packages,
+    diagnostics,
   }
 }
