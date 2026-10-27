@@ -1,11 +1,10 @@
 # `@workspace/registry`
 
-Shared descriptor validation and template planning for DeesseJS consumers.
-The package resolves a source snapshot, validates the root
-`deesse-template.json`, selects files, and returns their bytes in a stable
-installation plan. It does not write to the destination or run commands.
+Shared descriptor validation and planning for DeesseJS consumers. The package
+validates whole-project template descriptors and copy-first block descriptors.
+It does not write to a destination or execute block code.
 
-## Build a plan from GitHub
+## Template planning
 
 ```ts
 import {
@@ -34,7 +33,30 @@ include and exclude patterns determine which files enter the installation
 plan. The descriptor's optional `source` fields are checked against the
 selected source; they cannot redirect it.
 
-## V1 selection behavior
+## Block descriptors
+
+Use `parseBlockDescriptor` from `@workspace/registry/v1` to validate a
+`deesse-block.json` value. Format version 1 describes output packages,
+copy mappings, capability metadata and environment requirements. Package
+manifests are block assets and remain the source of truth for npm package
+names and dependencies.
+
+```ts
+import { parseBlockDescriptor } from "@workspace/registry/v1"
+
+const result = parseBlockDescriptor(JSON.parse(descriptorText))
+if (!result.success) {
+  console.error(result.diagnostics)
+}
+```
+
+The block parser performs structural and path-reference validation only. It
+does not inspect source assets, resolve capabilities, plan against a project,
+write files or execute package scripts. The JSON Schema is available at
+`@workspace/registry/schema/block/v1.json` and is generated from the runtime
+schema with `block-schema:generate`.
+
+## Template V1 selection behavior
 
 - Picomatch applies `includes` first and `excludes` last, with case-sensitive
   matching and dotfiles enabled.
