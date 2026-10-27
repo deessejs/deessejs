@@ -1,11 +1,11 @@
 /**
- * P0 e2e suite for the /templates index page.
+ * P0 e2e suite for /templates index.
  *
  *   P0-1 — populated catalog renders the templates grid.
  *   P0-2 — empty catalog renders the documented empty state.
  *
- * No header injection here; the tests hit the real upstream
- * via the Vercel preview.
+ * P0-2 uses a test-only header that is accepted only on a
+ * protected Vercel preview with the automation bypass.
  */
 import { expect, test } from "@playwright/test"
 
@@ -46,6 +46,11 @@ test.describe("P0 /templates index", () => {
     page,
     context,
   }) => {
+    test.skip(
+      !process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+      "The forced empty state is enabled only on protected Vercel previews.",
+    )
+
     // Set the test-only header to force an empty catalog from
     // the oRPC handler. The header is scoped to this browser
     // context only.

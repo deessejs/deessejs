@@ -9,12 +9,9 @@ import playwrightConfig from "./playwright.config.js"
  *
  *  - No `BASE_URL` env: the local preset spins up its own
  *    `pnpm dev` server on port 3000.
- *  - No `VERCEL_AUTOMATION_BYPASS_SECRET`: the local dev
- *    server runs without Deployment Protection, so the
- *    guard on the oRPC handler is closed-by-default. Tests
- *    that depend on the bypass header (P0-3, P0-6, forced-cache-poison)
- *    are expected to skip or fail under this preset; they
- *    only run against the Vercel preview CI preset.
+ *  - No `VERCEL_AUTOMATION_BYPASS_SECRET`: local runs omit
+ *    the bypass headers. Tests that depend on Vercel's
+ *    preview-only forced failure path are skipped.
  */
 export default defineConfig({
   ...playwrightConfig,
