@@ -84,17 +84,40 @@ jobs:
         with:
           name: vercel-project-${{ github.event.pull_request.number }}-${{ matrix.app }}
           path: .vercel/project.json
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
 
       - name: Build preview from the monorepo root
         run: vercel build
 
+      - name: Run local Playwright suite
+        if: matrix.app == 'web'
+        run: |
+          pnpm --filter web exec playwright install --with-deps chromium
+          pnpm --filter web test:e2e:local
+        env:
+          CI: "1"
+
+      - name: Upload Playwright diagnostics
+        if: failure() && matrix.app == 'web'
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-preview-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: |
+            apps/web/playwright-report/
+            apps/web/tests/e2e/test-results/
+          if-no-files-found: warn
+          retention-days: 3
+
       - name: Upload prebuilt output
         uses: actions/upload-artifact@v7
         with:
           name: vercel-output-${{ github.event.pull_request.number }}-${{ matrix.app }}
-          path: .vercel/output
+          path: |
+            .vercel/output
+            !.vercel/output/**/.env*
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
 
