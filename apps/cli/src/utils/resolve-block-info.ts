@@ -472,7 +472,12 @@ async function loadBlockDescriptor(
       diagnostics: BlockCheckDiagnostic[]
     }
 > {
-  const reader = looksLikeUrl(input)
+  const isRemoteSource = looksLikeUrl(input)
+  if (options.ref && !isRemoteSource) {
+    throw blockInvalid(input, "--ref can only be used with a GitHub block source")
+  }
+
+  const reader = isRemoteSource
     ? await createGitHubBlockReader(input, options.ref)
     : await createLocalBlockReader(input)
 
