@@ -10,6 +10,8 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | ---------------------- | ---------------------------------------------------------------- |
 | `deessejs list`        | Lists the registry templates. Accepts `--category`, `--json`.    |
 | `deessejs info <slug-or-github-url>` | Validated descriptor details for a template.             |
+| `deessejs block info <source>`      | Read-only summary for a local or GitHub block.     |
+| `deessejs block check [source]`     | Validates a block descriptor and its source assets. |
 | `deessejs init <slug-or-github-url>` | Creates a project from a catalog template or a GitHub repository. |
 | `deessejs auth login`  | Runs the device-authorization flow against the server.           |
 | `deessejs auth status` | Prints the identity stored on this machine.                      |
@@ -21,6 +23,7 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 
 `init` options: `--pm`, `--dir`, `--ref`, `--no-install`, `--force`, `--json`, `--verbose`.
 `info` options: `--ref`, `--json`.
+`block info` and `block check` options: `--ref`, `--json`.
 
 ## Key files
 

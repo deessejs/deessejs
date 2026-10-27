@@ -2,7 +2,10 @@ import pc from "picocolors"
 import type { NormalizedTemplateDescriptorV1 } from "@workspace/registry/v1"
 
 import type { Template } from "../api/index.js"
-import type { BlockDescriptorInfo } from "../utils/resolve-block-info.js"
+import type {
+  BlockCheckResult,
+  BlockDescriptorInfo,
+} from "../utils/resolve-block-info.js"
 
 export const printTemplatesTable = (templates: Template[]): void => {
   if (templates.length === 0) {
@@ -114,6 +117,36 @@ export const printBlockInfo = (info: BlockDescriptorInfo): void => {
     printKeyValueSection(
       "Manual steps",
       manualSteps.map((step, index) => [index === 0 ? "step" : "", step])
+    )
+  }
+}
+
+export const printBlockCheck = (result: BlockCheckResult): void => {
+  const source =
+    result.source.type === "local"
+      ? result.source.path
+      : `${result.source.repository}/${result.source.path}@${result.source.revision}`
+  const summary: Array<[string, string]> = [
+    ["source", source],
+    ["files", `${result.filesChecked}/${result.filesDeclared} checked`],
+    ["packages", String(result.packages.length)],
+    ["result", result.diagnostics.length === 0 ? "valid" : "invalid"],
+  ]
+  if (result.descriptor) {
+    summary.unshift(["name", result.descriptor.name])
+  }
+  printKeyValueSection("Block source check", summary)
+
+  if (result.diagnostics.length > 0) {
+    console.log()
+    printKeyValueSection(
+      "Diagnostics",
+      result.diagnostics.map((diagnostic, index) => [
+        String(index + 1) + ". " + diagnostic.code,
+        (diagnostic.path.length > 0
+          ? diagnostic.path.join(".") + ": "
+          : "") + diagnostic.message,
+      ])
     )
   }
 }

@@ -14,4 +14,9 @@ export const printError = (err: CliError): void => {
   )
 }
 
-export { printTemplatesTable, printTemplateInfo, printBlockInfo } from "./table.js"
+export {
+  printTemplatesTable,
+  printTemplateInfo,
+  printBlockInfo,
+  printBlockCheck,
+} from "./table.js"
