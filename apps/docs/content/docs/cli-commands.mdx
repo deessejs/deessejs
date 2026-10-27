@@ -43,12 +43,13 @@ deessejs list --json | jq '.templates[].slug'
 
 ---
 
-## `deessejs info <slug>`
+## `deessejs info <slug-or-github-url>`
 
-Show metadata for a single template and print the install line.
+Show catalog metadata and validated fields from a template's `deesse-template.json`, then print the install command.
 
 ```bash
 deessejs info next-app-starter
+deessejs info https://github.com/owner/repository --ref main
 ```
 
 ### Arguments
@@ -61,21 +62,26 @@ deessejs info next-app-starter
 
 | Flag | Effect |
 | --- | --- |
-| `--json` | Emit `{ template: TemplateV1 }` instead of the formatted view. |
+| `--ref <branch>` | Inspect a branch or other Git ref. Defaults to the repository's default branch. |
+| `--json` | Emit `{ template, descriptor, source }`. `template` is `null` for a direct GitHub URL. |
 
 ### Output
 
-A formatted block with the template's fields (slug, owner, repo, optional `image`, optional `cloneUrl`, optional `readme`, `updatedAt`, `stars`) followed by:
+A catalog slug shows its catalog metadata separately from the validated descriptor fields. A direct GitHub URL shows descriptor fields only. The descriptor output includes its title, name, description, project type, version, optional author/license/category/labels, source repository, and resolved commit. The complete normalized descriptor is available in JSON output.
+
+Both input forms require a valid root `deesse-template.json`. `info` uses the same installation-plan validation as `init`; repositories with a missing or invalid descriptor are rejected.
+
+The formatted view ends with the matching install command:
 
 ```
 Install: deessejs init next-app-starter
-deessejs init https://github.com/owner/repository
+Install: deessejs init https://github.com/owner/repository
 ```
 
 ### Exit codes
 
 - `0`: success.
-- `1`: `not_found` (slug doesn't exist in the registry. The error hints at the closest matches), `network_error`, `parse_error`, `internal`.
+- `1`: `not_found` (slug doesn't exist in the registry. The error hints at the closest matches), `network_error`, `parse_error`, `template_invalid`, `internal`.
 
 ---
 

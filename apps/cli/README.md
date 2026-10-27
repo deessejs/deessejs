@@ -21,7 +21,7 @@ Other release channels:
 | ------------------------------------ | --------------------------------------------------------------- |
 | `deessejs init <slug-or-github-url>` | Create a project from a catalog template or a GitHub repository |
 | `deessejs list`                      | List available templates                                        |
-| `deessejs info <slug>`               | Show details for one template                                   |
+| `deessejs info <slug-or-github-url>` | Show catalog and descriptor details for a template              |
 
 ## Examples
 
@@ -29,6 +29,7 @@ Other release channels:
 deessejs list
 deessejs list --category saas --json
 deessejs info saas-starter --json
+deessejs info https://github.com/owner/repository --ref main
 deessejs init saas-starter
 deessejs init saas-starter --ref develop --no-install
 deessejs init https://github.com/owner/repository
@@ -36,6 +37,8 @@ deessejs init saas-starter --verbose
 ```
 
 `init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. Both forms use the repository's root `deesse-template.json` to select the files to create. The descriptor must be present and valid; there is no Git clone fallback. `--ref` selects a branch or other Git ref. `--force` allows an existing empty target directory; it never removes existing files.
+
+`info` accepts the same catalog slugs and GitHub repository URLs. It validates the repository's `deesse-template.json` with the same installation-plan logic as `init`, then shows catalog metadata separately from descriptor fields. `--ref` inspects a specific branch or other Git ref. With `--json`, the result includes `template` (or `null` for a direct URL), the validated `descriptor`, and the resolved source repository and commit.
 
 By default, `init` hides package manager logs and shows a concise progress summary. Pass `--verbose` to print the resolved template source, ref, destination, commit, and selected file count, as well as the full package manager output when installation runs. Verbose details go to stderr so `--json` keeps stdout machine-readable. The details are also shown with `--no-install`.
 

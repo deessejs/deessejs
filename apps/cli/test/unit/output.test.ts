@@ -7,6 +7,7 @@ import {
 } from "../../src/output/index.js"
 import type { Template } from "../../src/api/index.js"
 import { CliError } from "../../src/errors/index.js"
+import type { NormalizedTemplateDescriptorV1 } from "@workspace/registry/v1"
 
 const sampleTemplate: Template = {
   slug: "saas-starter",
@@ -17,6 +18,28 @@ const sampleTemplate: Template = {
   license: "MIT",
   category: "saas",
   labels: ["nextjs", "saas"],
+}
+
+const sampleDescriptor: NormalizedTemplateDescriptorV1 = {
+  $schema: "https://app.deessejs.com/schema/template/v1.json",
+  formatVersion: 1,
+  name: "saas-template",
+  title: "SaaS Template",
+  description: "Manifest description.",
+  type: "template:app",
+  version: "1.2.3",
+  source: { repo: "acme/saas-starter" },
+  includes: ["**/*"],
+  excludes: ["deesse-template.json"],
+  author: "Acme",
+  license: "MIT",
+  category: "saas",
+  labels: ["nextjs", "auth"],
+}
+
+const sampleSource = {
+  repository: "acme/saas-starter",
+  revision: "0123456789abcdef0123456789abcdef01234567",
 }
 
 describe("print", () => {
@@ -86,14 +109,28 @@ describe("print", () => {
     expect(joined).toContain("No templates available")
   })
 
-  it("printTemplateInfo prints all fields", () => {
-    printTemplateInfo(sampleTemplate)
+  it("printTemplateInfo separates catalog metadata from descriptor fields", () => {
+    printTemplateInfo(sampleTemplate, sampleDescriptor, sampleSource)
     const joined = stdoutWrites.join("")
+    expect(joined).toContain("Catalog")
     expect(joined).toContain("saas-starter")
     expect(joined).toContain("SaaS Starter")
-    expect(joined).toContain("Production-ready")
+    expect(joined).toContain("Template descriptor")
+    expect(joined).toContain("SaaS Template")
+    expect(joined).toContain("Manifest description.")
+    expect(joined).toContain("template:app")
+    expect(joined).toContain("1.2.3")
     expect(joined).toContain("MIT")
     expect(joined).toContain("acme/saas-starter")
-    expect(joined).toContain("nextjs, saas")
+    expect(joined).toContain("0123456789abcdef0123456789abcdef01234567")
+  })
+
+  it("printTemplateInfo supports a GitHub repository outside the catalog", () => {
+    printTemplateInfo(null, sampleDescriptor, sampleSource)
+    const joined = stdoutWrites.join("")
+    expect(joined).not.toContain("Catalog")
+    expect(joined).toContain("Template descriptor")
+    expect(joined).toContain("SaaS Template")
+    expect(joined).toContain("acme/saas-starter")
   })
 })

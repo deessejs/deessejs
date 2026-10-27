@@ -9,7 +9,7 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | Command                | What it does                                                     |
 | ---------------------- | ---------------------------------------------------------------- |
 | `deessejs list`        | Lists the registry templates. Accepts `--category`, `--json`.    |
-| `deessejs info <slug>` | The detail of one template.                                      |
+| `deessejs info <slug-or-github-url>` | Catalog and descriptor details for a template.           |
 | `deessejs init <slug-or-github-url>` | Creates a project from a catalog template or a GitHub repository. |
 | `deessejs auth login`  | Runs the device-authorization flow against the server.           |
 | `deessejs auth status` | Prints the identity stored on this machine.                      |
@@ -17,7 +17,10 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 
 `init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. Both forms require a valid root `deesse-template.json` and use it to select files. There is no Git clone fallback. `--force` permits an existing empty target directory and never deletes existing files.
 
-`init` options: `--pm`, `--dir`, `--ref`, `--no-install`, `--force`, `--json`.
+`info` accepts a catalog slug or a GitHub repository URL and validates the same root descriptor through the shared installation-plan logic.
+
+`init` options: `--pm`, `--dir`, `--ref`, `--no-install`, `--force`, `--json`, `--verbose`.
+`info` options: `--ref`, `--json`.
 
 ## Key files
 
