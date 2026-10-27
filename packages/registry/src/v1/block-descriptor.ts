@@ -149,7 +149,7 @@ function getSchemaDiagnostics(
       diagnostics.push(
         ...issue.keys.map((key) => ({
           code: "descriptor.unknown_field" as const,
-          message: \`Unknown field "\${key}".\`,
+          message: `Unknown field "${key}".`,
           path: [...issue.path.map(String), key],
         }))
       )
@@ -186,7 +186,7 @@ function validatePackages(
     if (packageIds.has(output.id)) {
       diagnostics.push({
         code: "descriptor.duplicate_package_id",
-        message: \`Package id "\${output.id}" is declared more than once.\`,
+        message: `Package id "${output.id}" is declared more than once.`,
         path: ["install", "packages", String(index), "id"],
       })
     }
@@ -195,14 +195,14 @@ function validatePackages(
     if (!isSafeRelativePath(output.path)) {
       diagnostics.push({
         code: "descriptor.invalid_path",
-        message: \`Package path "\${output.path}" must be a safe relative path.\`,
+        message: `Package path "${output.path}" must be a safe relative path.`,
         path: ["install", "packages", String(index), "path"],
       })
     }
     if (packagePaths.has(output.path)) {
       diagnostics.push({
         code: "descriptor.duplicate_package_path",
-        message: \`Package path "\${output.path}" is declared more than once.\`,
+        message: `Package path "${output.path}" is declared more than once.`,
         path: ["install", "packages", String(index), "path"],
       })
     }
@@ -224,14 +224,14 @@ function validateFiles(
     if (!isSafeRelativePath(file.from)) {
       diagnostics.push({
         code: "descriptor.invalid_path",
-        message: \`Source path "\${file.from}" must be a safe relative path.\`,
+        message: `Source path "${file.from}" must be a safe relative path.`,
         path: ["install", "files", String(index), "from"],
       })
     }
     if (sourceFiles.has(file.from)) {
       diagnostics.push({
         code: "descriptor.duplicate_file_source",
-        message: \`Source file "\${file.from}" is declared more than once.\`,
+        message: `Source file "${file.from}" is declared more than once.`,
         path: ["install", "files", String(index), "from"],
       })
     }
@@ -240,14 +240,14 @@ function validateFiles(
     if (!packageIds.has(file.to.package)) {
       diagnostics.push({
         code: "descriptor.unresolved_package",
-        message: \`File target references undeclared package "\${file.to.package}".\`,
+        message: `File target references undeclared package "${file.to.package}".`,
         path: ["install", "files", String(index), "to", "package"],
       })
     }
     if (!isSafeRelativePath(file.to.path)) {
       diagnostics.push({
         code: "descriptor.invalid_path",
-        message: \`Destination path "\${file.to.path}" must be a safe relative path.\`,
+        message: `Destination path "${file.to.path}" must be a safe relative path.`,
         path: ["install", "files", String(index), "to", "path"],
       })
     }
@@ -256,7 +256,7 @@ function validateFiles(
     if (destinations.has(destination)) {
       diagnostics.push({
         code: "descriptor.duplicate_destination",
-        message: \`Destination "\${destination}" is declared more than once.\`,
+        message: `Destination "${destination}" is declared more than once.`,
         path: ["install", "files", String(index), "to"],
       })
     }
@@ -275,7 +275,7 @@ function validatePackageManifests(
     if (!hasManifest) {
       diagnostics.push({
         code: "descriptor.missing_package_manifest",
-        message: \`Package "\${output.id}" must copy a package.json file.\`,
+        message: `Package "${output.id}" must copy a package.json file.`,
         path: ["install", "packages", String(index)],
       })
     }
@@ -293,7 +293,7 @@ function validateCapabilities(
     if (!packageIds.has(item.package)) {
       diagnostics.push({
         code: "descriptor.unresolved_package",
-        message: \`Capability declaration references undeclared package "\${item.package}".\`,
+        message: `Capability declaration references undeclared package "${item.package}".`,
         path: ["provides", String(index), "package"],
       })
     }
@@ -302,7 +302,7 @@ function validateCapabilities(
     if (capabilities.has(key)) {
       diagnostics.push({
         code: "descriptor.duplicate_capability",
-        message: \`Capability "\${item.capability}" from "\${item.provider}" is declared more than once for package "\${item.package}".\`,
+        message: `Capability "${item.capability}" from "${item.provider}" is declared more than once for package "${item.package}".`,
         path: ["provides", String(index)],
       })
     }
@@ -322,14 +322,14 @@ function validateEnvironment(
     if (!/^[A-Z_][A-Z0-9_]*$/.test(variable.name)) {
       diagnostics.push({
         code: "descriptor.invalid_field",
-        message: \`Environment variable "\${variable.name}" must use uppercase letters, numbers and underscores.\`,
+        message: `Environment variable "${variable.name}" must use uppercase letters, numbers and underscores.`,
         path: ["install", "environment", String(index), "name"],
       })
     }
     if (environmentNames.has(variable.name)) {
       diagnostics.push({
         code: "descriptor.duplicate_environment_name",
-        message: \`Environment variable "\${variable.name}" is declared more than once.\`,
+        message: `Environment variable "${variable.name}" is declared more than once.`,
         path: ["install", "environment", String(index), "name"],
       })
     }
