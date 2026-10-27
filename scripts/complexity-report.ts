@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Aggregate per-package ESLint JSON reports into a single complexity summary.
+ * Aggregate per-package Oxlint JSON reports into a single complexity summary.
  *
  * Each package's `complexity-report` Turbo task writes its own JSON file under
  * `reports/complexity/<package>.json`. This script walks that directory, keeps
@@ -21,21 +21,20 @@ import { join } from "node:path"
 const REPORTS_DIR = "reports/complexity"
 const TOP_N = 10
 
-interface EslintMessage {
-  ruleId: string | null
-  severity: number
+interface OxlintDiagnostic {
+  code: string
+  severity: string
   message: string
-  line: number
-  column: number
-  filePath?: string
+  labels?: {
+    span: { offset: number; length: number; line: number; column: number }
+    message?: string
+  }[]
+  filename: string
 }
 
-interface EslintFileReport {
-  filePath: string
-  messages: EslintMessage[]
+interface OxlintRunReport {
+  diagnostics?: OxlintDiagnostic[]
 }
-
-type EslintRunReport = EslintFileReport[] | { results: EslintFileReport[]; errorCount: number; warningCount: number }
 
 interface ComplexityFinding {
   package: string
@@ -79,42 +78,43 @@ function extractContext(message: string): string {
   const trimmed = message
     .replace(/\s*\(allowed \d+\)\.?$/i, "")
     .replace(/\s*from \d+ to the \d+ allowed\.?$/i, "")
-    .replace(/\s*to reduce its Cognitive Complexity from \d+ to the \d+ allowed\.?$/i, "")
+    .replace(
+      /\s*to reduce its Cognitive Complexity from \d+ to the \d+ allowed\.?$/i,
+      ""
+    )
     .trim()
   return trimmed.slice(0, 200)
 }
 
-async function parsePackageReport(packageName: string, file: string): Promise<ComplexityFinding[]> {
+async function parsePackageReport(
+  packageName: string,
+  file: string
+): Promise<ComplexityFinding[]> {
   const raw = await readFile(file, "utf8")
-  let parsed: EslintRunReport
+  let parsed: OxlintRunReport
   try {
     parsed = JSON.parse(raw)
   } catch {
-    console.warn(`[complexity-report] skipping ${packageName} — invalid JSON in ${file}`)
+    console.warn(
+      `[complexity-report] skipping ${packageName}: invalid JSON in ${file}`
+    )
     return []
   }
 
-  const reports: EslintFileReport[] = Array.isArray(parsed)
-    ? parsed
-    : Array.isArray(parsed?.results)
-      ? parsed.results
-      : []
-
   const findings: ComplexityFinding[] = []
-  for (const fileReport of reports) {
-    for (const message of fileReport.messages ?? []) {
-      if (message.ruleId !== "sonarjs/cognitive-complexity") continue
-      const score = extractScore(message.message)
-      if (!Number.isFinite(score)) continue
-      findings.push({
-        package: packageName,
-        file: fileReport.filePath,
-        line: message.line,
-        column: message.column,
-        score,
-        context: extractContext(message.message),
-      })
-    }
+  for (const diagnostic of parsed.diagnostics ?? []) {
+    if (diagnostic.code !== "sonarjs(cognitive-complexity)") continue
+    const score = extractScore(diagnostic.message)
+    if (!Number.isFinite(score)) continue
+    const position = diagnostic.labels?.[0]?.span
+    findings.push({
+      package: packageName,
+      file: diagnostic.filename,
+      line: position?.line ?? 1,
+      column: position?.column ?? 1,
+      score,
+      context: extractContext(diagnostic.message),
+    })
   }
   return findings
 }
@@ -163,7 +163,7 @@ function renderMarkdown(summary: Summary): string {
   lines.push(`### 🟡 Complexity report — top ${summary.top.length} findings`)
   lines.push("")
   lines.push(
-    `Generated at \`${summary.generatedAt}\`. ${summary.totals.findings} function(s) currently exceed the target threshold (see rollout plan).`,
+    `Generated at \`${summary.generatedAt}\`. ${summary.totals.findings} function(s) currently exceed the target threshold (see rollout plan).`
   )
   lines.push("")
   lines.push("| Rank | Score | Package | File | Line | Context |")
@@ -171,12 +171,12 @@ function renderMarkdown(summary: Summary): string {
   summary.top.forEach((finding, index) => {
     const fileCell = finding.file.replace(/\\/g, "/")
     lines.push(
-      `| ${index + 1} | ${finding.score} | \`${finding.package}\` | \`${fileCell}\` | ${finding.line} | ${finding.context} |`,
+      `| ${index + 1} | ${finding.score} | \`${finding.package}\` | \`${fileCell}\` | ${finding.line} | ${finding.context} |`
     )
   })
   lines.push("")
   lines.push(
-    "Each `sonarjs/cognitive-complexity` violation also surfaces locally via `pnpm lint`. See [cognitive complexity](https://www.sonarsource.com/resources/cognitive-complexity/) for why scores rank the way they do, and [`sonarjs/cognitive-complexity`](https://github.com/SonarSource/eslint-plugin-sonarjs/blob/master/docs/rules/cognitive-complexity.md) for the rule mechanics. Thresholds live in `packages/eslint-config/base.js`.",
+    "Each `sonarjs/cognitive-complexity` violation also surfaces locally via `pnpm lint`. See [cognitive complexity](https://www.sonarsource.com/resources/cognitive-complexity/) for why scores rank the way they do, and [`sonarjs/cognitive-complexity`](https://github.com/SonarSource/eslint-plugin-sonarjs/blob/master/docs/rules/cognitive-complexity.md) for the rule mechanics. Thresholds live in `.oxlintrc.json`."
   )
   return lines.join("\n")
 }
@@ -188,7 +188,9 @@ async function main(): Promise<void> {
   try {
     entries = await readdir(REPORTS_DIR)
   } catch {
-    console.error(`[complexity-report] reports directory ${REPORTS_DIR} not found — run turbo run complexity-report first`)
+    console.error(
+      `[complexity-report] reports directory ${REPORTS_DIR} not found — run turbo run complexity-report first`
+    )
     process.exit(2)
   }
 
@@ -208,7 +210,9 @@ async function main(): Promise<void> {
   await writeFile(summaryJson, `${JSON.stringify(summary, null, 2)}\n`, "utf8")
   await writeFile(summaryMd, `${renderMarkdown(summary)}\n`, "utf8")
 
-  console.log(`[complexity-report] aggregated ${summary.totals.findings} finding(s) across ${summary.packages.length} package(s)`)
+  console.log(
+    `[complexity-report] aggregated ${summary.totals.findings} finding(s) across ${summary.packages.length} package(s)`
+  )
   console.log(`[complexity-report] wrote ${summaryJson}`)
   console.log(`[complexity-report] wrote ${summaryMd}`)
 

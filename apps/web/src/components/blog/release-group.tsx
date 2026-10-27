@@ -75,13 +75,13 @@ function ReleaseTimelineRow({
     <li
       className={
         "col-span-full grid grid-cols-subgrid items-baseline gap-6 " +
-        "lg:col-start-4 lg:col-span-8 relative " +
-        "before:content-[''] before:block before:h-[calc(100%+1px)] " +
-        "before:w-px before:bg-border before:rounded-sm " +
+        "relative lg:col-span-8 lg:col-start-4 " +
+        "before:block before:h-[calc(100%+1px)] before:content-[''] " +
+        "before:w-px before:rounded-sm before:bg-border " +
         "before:absolute before:top-[25px] " +
-        "after:content-[''] after:absolute after:block after:h-px " +
-        "after:w-3 after:bg-border after:rounded-sm after:top-[25px] " +
-        (isLast ? "after:hidden " : "")
+        "after:absolute after:block after:h-px after:content-[''] " +
+        "after:top-[25px] after:w-3 after:rounded-sm after:bg-border " +
+        (isLast ? "after:hidden" : "")
       }
     >
       <div className="col-span-1 lg:col-span-2">
@@ -95,9 +95,9 @@ function ReleaseTimelineRow({
       <article className="col-span-3 lg:col-span-6">
         <Link
           href={release.url}
-          className="-ml-6 -mt-6 mb-6 flex cursor-pointer flex-col gap-5 rounded-sm p-6 pr-0 transition-all duration-200 ease-in-out hover:bg-accent/30 focus-visible:bg-accent/30 focus-visible:outline-none"
+          className="-mt-6 mb-6 -ml-6 flex cursor-pointer flex-col gap-5 rounded-sm p-6 pr-0 transition-all duration-200 ease-in-out hover:bg-accent/30 focus-visible:bg-accent/30 focus-visible:outline-none"
         >
-          <h2 className="pr-6 text-balance text-[28px] font-medium leading-9 tracking-tight text-foreground lg:text-[32px]">
+          <h2 className="pr-6 text-[28px] leading-9 font-medium tracking-tight text-balance text-foreground lg:text-[32px]">
             {release.title}
           </h2>
           <div className="pr-6 text-base leading-relaxed text-foreground/90">
@@ -108,7 +108,7 @@ function ReleaseTimelineRow({
               <Badge
                 key={cat}
                 variant={CATEGORY_VARIANT[cat]}
-                className="text-[10px] font-medium uppercase tracking-wider"
+                className="text-[10px] font-medium tracking-wider uppercase"
               >
                 {RELEASE_CATEGORY_LABELS[cat]}
               </Badge>
@@ -153,7 +153,7 @@ export function ReleaseTimeline({ releases }: { releases: Release[] }) {
   if (releases.length === 0) return null
 
   return (
-    <div className="border border-border bg-background rounded-none py-6">
+    <div className="rounded-none border border-border bg-background py-6">
       <ul className="m-0 grid list-none grid-cols-4 gap-x-6 gap-y-0 py-6 lg:grid-cols-12 [&>li:last-of-type]:before:h-0">
         {releases.map((release, i) => (
           <ReleaseTimelineRow

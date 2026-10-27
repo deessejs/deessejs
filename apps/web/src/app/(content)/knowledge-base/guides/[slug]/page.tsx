@@ -69,7 +69,7 @@ export default async function KnowledgeGuidePage({
     throw new Error(
       `Guide "${guide.slug}" references unknown topic "${guide.topic}". ` +
         `Add content/knowledge-base/topics/${guide.topic}.mdx or fix ` +
-        `the guide's topic field.`,
+        `the guide's topic field.`
     )
   }
 
@@ -77,13 +77,13 @@ export default async function KnowledgeGuidePage({
   // value is not on its topic's `tags` is a build error.
   const topicTagSet = new Set(topic.tags)
   const offendingProduct = guide.products.find(
-    (product) => !topicTagSet.has(product),
+    (product) => !topicTagSet.has(product)
   )
   if (offendingProduct) {
     throw new Error(
       `Guide "${guide.slug}" declares product "${offendingProduct}" ` +
         `which is not on topic "${guide.topic}". Add it to the topic's ` +
-        `tags, or remove it from the guide's products.`,
+        `tags, or remove it from the guide's products.`
     )
   }
 
@@ -91,7 +91,7 @@ export default async function KnowledgeGuidePage({
 
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-      <article className="mx-auto flex min-w-0 max-w-4xl flex-col gap-10 overflow-x-clip">
+      <article className="mx-auto flex max-w-4xl min-w-0 flex-col gap-10 overflow-x-clip">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -118,17 +118,21 @@ export default async function KnowledgeGuidePage({
               <GuideProductPill key={product}>{product}</GuideProductPill>
             ))}
           </div>
-          <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
+          <h1 className="text-4xl font-bold tracking-tighter text-balance sm:text-5xl">
             {guide.title}
           </h1>
-          <p className="mt-4 text-pretty text-lg text-muted-foreground">
+          <p className="mt-4 text-lg text-pretty text-muted-foreground">
             {guide.description}
           </p>
         </header>
 
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_180px] lg:gap-12">
           <div className="min-w-0">
-            <MdxRenderer id="guide-prose" className="mt-2" code={guide.mdxCode} />
+            <MdxRenderer
+              id="guide-prose"
+              className="mt-2"
+              code={guide.mdxCode}
+            />
           </div>
           <aside aria-label="Table of contents" className="hidden lg:block">
             <TableOfContents targetId="guide-prose" />
@@ -141,7 +145,7 @@ export default async function KnowledgeGuidePage({
         >
           <h2
             id="similar-guides-heading"
-            className="text-balance text-3xl font-semibold tracking-tight first:mt-0"
+            className="text-3xl font-semibold tracking-tight text-balance first:mt-0"
           >
             Similar guides
           </h2>
@@ -154,7 +158,7 @@ export default async function KnowledgeGuidePage({
               ))}
             </KbCardGrid>
           ) : (
-            <p className="text-copy-14 text-muted-foreground leading-7">
+            <p className="text-copy-14 leading-7 text-muted-foreground">
               No similar guides in the {topic.title} topic yet.
             </p>
           )}

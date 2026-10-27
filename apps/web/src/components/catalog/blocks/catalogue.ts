@@ -38,60 +38,67 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
   {
     slug: "hero-centered",
     name: "Hero — centered",
-    description: "Centered headline, lead, and a single CTA. The default landing surface.",
+    description:
+      "Centered headline, lead, and a single CTA. The default landing surface.",
     category: "hero",
     layout: "centered",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "hero-split-image",
     name: "Hero — split with image",
-    description: "Two-column hero: copy on the left, image or screenshot on the right.",
+    description:
+      "Two-column hero: copy on the left, image or screenshot on the right.",
     category: "hero",
     layout: "split",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "hero-with-mockup",
     name: "Hero — with mockup",
-    description: "Headline above an embedded product mockup. The surface that anchors product demos.",
+    description:
+      "Headline above an embedded product mockup. The surface that anchors product demos.",
     category: "hero",
     layout: "stacked",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "hero-with-cta-banner",
     name: "Hero — with announcement banner",
-    description: "Centered hero with an inline announcement chip above the headline.",
+    description:
+      "Centered hero with an inline announcement chip above the headline.",
     category: "hero",
     layout: "centered",
-  tier: "free",
+    tier: "free",
   },
 
   // CTA
   {
     slug: "cta-banner",
     name: "CTA — banner",
-    description: "Slim banner strip between sections. Single sentence plus one button.",
+    description:
+      "Slim banner strip between sections. Single sentence plus one button.",
     category: "cta",
     layout: "centered",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "cta-final",
     name: "CTA — final",
-    description: "Full-bleed closer at the bottom of the page. Last chance to convert.",
+    description:
+      "Full-bleed closer at the bottom of the page. Last chance to convert.",
     category: "cta",
     layout: "centered",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "cta-repeating",
     name: "CTA — repeating",
-    description: "Three-column variant with install / ship / manifesto as parallel affordances.",
+    description:
+      "Three-column variant with install / ship / manifesto as parallel affordances.",
     category: "cta",
     layout: "split",
-  tier: "free",
+    tier: "free",
   },
 
   // Feature
@@ -101,7 +108,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Asymmetric bento grid for an uneven catalog of features.",
     category: "feature",
     layout: "bento",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "feature-list",
@@ -109,15 +116,16 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Vertical list of features with icons. Long-form density.",
     category: "feature",
     layout: "stacked",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "feature-comparison",
     name: "Feature — comparison",
-    description: "Side-by-side comparison of two or three options. For buyers who triage.",
+    description:
+      "Side-by-side comparison of two or three options. For buyers who triage.",
     category: "feature",
     layout: "split",
-  tier: "free",
+    tier: "free",
   },
 
   // Pricing
@@ -127,7 +135,7 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Three-card pricing tiers with one primary CTA per card.",
     category: "pricing",
     layout: "stacked",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "pricing-comparison-table",
@@ -135,25 +143,27 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Attribute-by-attribute comparison across the three layers.",
     category: "pricing",
     layout: "stacked",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "pricing-faq",
     name: "Pricing — combined with FAQ",
-    description: "Pricing cards stacked above the pricing FAQ. The complete buy decision on one page.",
+    description:
+      "Pricing cards stacked above the pricing FAQ. The complete buy decision on one page.",
     category: "pricing",
     layout: "stacked",
-  tier: "free",
+    tier: "free",
   },
 
   // Testimonial
   {
     slug: "testimonial-pair",
     name: "Testimonial — pair",
-    description: "Two quotes side by side, each with avatar, name, role, company.",
+    description:
+      "Two quotes side by side, each with avatar, name, role, company.",
     category: "testimonial",
     layout: "split",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "testimonial-wall",
@@ -161,25 +171,27 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "A wall of customer quotes. For social proof at scale.",
     category: "testimonial",
     layout: "bento",
-  tier: "free",
+    tier: "free",
   },
 
   // Stats
   {
     slug: "stats-four-cells",
     name: "Stats — four cells",
-    description: "Four large numbers in a row. Mix of internal KPIs and tier-1 third-party metrics.",
+    description:
+      "Four large numbers in a row. Mix of internal KPIs and tier-1 third-party metrics.",
     category: "stats",
     layout: "split",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "stats-tier",
     name: "Stats — tier breakdown",
-    description: "Stats grouped by tier (free / pro / enterprise) with per-tier counts.",
+    description:
+      "Stats grouped by tier (free / pro / enterprise) with per-tier counts.",
     category: "stats",
     layout: "stacked",
-  tier: "free",
+    tier: "free",
   },
 
   // FAQ
@@ -189,33 +201,36 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
     description: "Vertical accordion of questions. The default FAQ surface.",
     category: "faq",
     layout: "stacked",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "faq-split",
     name: "FAQ — split layout",
-    description: "Heading and lead on the left, accordion on the right. For FAQs that need more than a sentence.",
+    description:
+      "Heading and lead on the left, accordion on the right. For FAQs that need more than a sentence.",
     category: "faq",
     layout: "split",
-  tier: "free",
+    tier: "free",
   },
 
   // Footer
   {
     slug: "footer-column-rich",
     name: "Footer — column rich",
-    description: "Multi-column footer with link groups, legal, status badge, social.",
+    description:
+      "Multi-column footer with link groups, legal, status badge, social.",
     category: "footer",
     layout: "stacked",
-  tier: "free",
+    tier: "free",
   },
   {
     slug: "footer-minimal",
     name: "Footer — minimal",
-    description: "Single-row footer with brand, legal links, and a CTA. For single-page sites.",
+    description:
+      "Single-row footer with brand, legal links, and a CTA. For single-page sites.",
     category: "footer",
     layout: "centered",
-  tier: "free",
+    tier: "free",
   },
 ]
 

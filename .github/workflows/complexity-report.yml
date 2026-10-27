@@ -4,7 +4,7 @@ name: Complexity report
 # across all workspaces, uploads them as an artifact, and posts a top-10
 # summary as a PR comment (no-op on push events). Hard-blocking on findings
 # is intentionally disabled. The current phase and threshold live in
-# `packages/eslint-config/base.js` (see the inline comment block at the
+# `.oxlintrc.json` (see the inline comment block at the
 # top of the cognitive-complexity rule). Background on the metric:
 # https://www.sonarsource.com/resources/cognitive-complexity/
 
@@ -43,10 +43,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Produce per-package JSON reports under reports/complexity/<pkg>.json.
-      # `turbo` runs the new `complexity:json` script in each workspace and
-      # then the aggregator script via the `complex:report` root script.
       - name: Generate per-package JSON
-        run: pnpm turbo run complexity:json --force --concurrency=4 --ui=stream
+        run: pnpm complex:collect
 
       - name: Aggregate into summary
         run: pnpm complex:report

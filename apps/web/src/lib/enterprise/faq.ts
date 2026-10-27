@@ -35,12 +35,14 @@ export const ENTERPRISE_FAQ: ReadonlyArray<EnterpriseFaqItem> = [
       "Most engagements span 4 to 12 weeks. Single-template scaffolding fits in two to four weeks; multi-template bundles and full-stack migrations sit at the upper end. We will scope a timeline during the first call.",
   },
   {
-    question: "How do we migrate off a custom engagement when the contract ends?",
+    question:
+      "How do we migrate off a custom engagement when the contract ends?",
     answer:
       "You own every line of code from day one. The Pro subscription keeps the source in your repository throughout the engagement and after, and projects already in production stay covered if you cancel. There is no lock-in.",
   },
   {
-    question: "Where is the data hosted, and which providers do you ship against?",
+    question:
+      "Where is the data hosted, and which providers do you ship against?",
     answer:
       "Pro templates default to Postgres on Neon or Supabase, with Cloudflare for object storage and edge runtime. We deploy against any provider you bring (Vercel, AWS, GCP, Fly, or self-hosted). Data residency is configurable per region.",
   },

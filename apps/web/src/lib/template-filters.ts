@@ -40,7 +40,7 @@ const toArray = (value: string | string[] | undefined): string[] =>
  */
 const dedupe = <T extends string>(
   values: ReadonlyArray<string>,
-  allowed: ReadonlyArray<T>,
+  allowed: ReadonlyArray<T>
 ): T[] => {
   const set = new Set<T>(allowed)
   const out: T[] = []
@@ -57,7 +57,7 @@ const dedupe = <T extends string>(
  * Next.js hands the page, where a repeated key arrives as an array.
  */
 export const resolveTemplateFilter = (
-  params: TemplateFilterParams,
+  params: TemplateFilterParams
 ): TemplateFilter => ({
   activeTypes: dedupe(toArray(params.type), KNOWN_TYPES),
   activeFrameworks: dedupe(toArray(params.framework), KNOWN_FRAMEWORKS),
@@ -69,7 +69,7 @@ export const resolveTemplateFilter = (
  */
 export const filterTemplates = (
   templates: ReadonlyArray<TemplateV1>,
-  filter: TemplateFilter,
+  filter: TemplateFilter
 ): TemplateV1[] => {
   const activeTypeSet = new Set<string>(filter.activeTypes)
   return templates.filter((template) => {
@@ -78,7 +78,7 @@ export const filterTemplates = (
     const matchesFramework =
       filter.activeFrameworks.length === 0 ||
       filter.activeFrameworks.some((framework) =>
-        template.labels.includes(framework),
+        template.labels.includes(framework)
       )
     return matchesType && matchesFramework
   })

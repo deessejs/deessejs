@@ -37,7 +37,7 @@ export function AuthFlowMockup() {
     const formTimer = window.setTimeout(() => setPhase("loading"), FORM_HOLD_MS)
     const loadingTimer = window.setTimeout(
       () => setPhase("success"),
-      FORM_HOLD_MS + LOADING_MS,
+      FORM_HOLD_MS + LOADING_MS
     )
     return () => {
       window.clearTimeout(formTimer)
@@ -66,7 +66,7 @@ export function AuthFlowMockup() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.25 }}
-                className="absolute inset-x-2 inset-y-0 flex flex-col gap-2 justify-center"
+                className="absolute inset-x-2 inset-y-0 flex flex-col justify-center gap-2"
               >
                 <TypingField label="email" text="sarah@acme.io" startMs={300} />
                 <TypingField
@@ -177,7 +177,7 @@ function TypingField({
       <span className="font-mono text-label-12 text-muted-foreground">
         {label}
       </span>
-      <span className="ml-auto flex max-w-[60%] items-center gap-0.5 overflow-hidden whitespace-nowrap font-mono text-copy-13 text-foreground/90">
+      <span className="ml-auto flex max-w-[60%] items-center gap-0.5 overflow-hidden font-mono text-copy-13 whitespace-nowrap text-foreground/90">
         <span>{shown}</span>
         <span
           aria-hidden

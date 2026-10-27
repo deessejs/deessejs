@@ -6,7 +6,7 @@ You are a senior developer here. You own the implementation of the elements of t
 
 You are not here to restyle the codebase, to rename things, or to tidy code that works. You implement what the project needs, in the way this project already does it.
 
-This repo is the **main app of the deessejs organization**: the monorepo that builds, ships and sells the deessejs product line. It started as a clone of [`deessejs/saas-template`](https://github.com/deessejs/saas-template) and has since grown into six applications, twelve packages and a template registry.
+This repo is the **main app of the deessejs organization**: the monorepo that builds, ships and sells the deessejs product line. It started as a clone of [`deessejs/saas-template`](https://github.com/deessejs/saas-template) and has since grown into six applications, thirteen packages and a template registry.
 
 ## How you work here
 
@@ -41,31 +41,32 @@ Every workspace has its own guide, linked in the tables below. Read the one that
 
 ### Applications
 
-| Path | Guide | What it is |
-|---|---|---|
-| `apps/web` | [AGENTS.md](apps/web/AGENTS.md) | Marketing site: home, pricing, templates catalogue, blog, changelog, knowledge base. Also serves the component registry at `/r/registry.json`. |
-| `apps/app` | [AGENTS.md](apps/app/AGENTS.md) | The authenticated product. Next.js 16 `proxy.ts` guard, dashboard, `/account/settings`, `/admin`. |
-| `apps/docs` | [AGENTS.md](apps/docs/AGENTS.md) | Documentation site (Fumadocs, MDX). |
-| `apps/cli` | [AGENTS.md](apps/cli/AGENTS.md) | `@deessejs/cli`: a typed client of the template registry with a scaffolder (`list`, `info`, `init`, `auth login`). |
-| `apps/create-deesse-app` | [AGENTS.md](apps/create-deesse-app/AGENTS.md) | Standalone `create-*` scaffolder. Resolves `main` on `deessejs/saas-template` and downloads the tarball of the commit it finds. |
-| `apps/agent` | [AGENTS.md](apps/agent/AGENTS.md) | `@deessejs-agent`: a mentionable GitHub bot built on Vercel eve. |
+| Path                     | Guide                                         | What it is                                                                                                                                     |
+| ------------------------ | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web`               | [AGENTS.md](apps/web/AGENTS.md)               | Marketing site: home, pricing, templates catalogue, blog, changelog, knowledge base. Also serves the component registry at `/r/registry.json`. |
+| `apps/app`               | [AGENTS.md](apps/app/AGENTS.md)               | The authenticated product. Next.js 16 `proxy.ts` guard, dashboard, `/account/settings`, `/admin`.                                              |
+| `apps/docs`              | [AGENTS.md](apps/docs/AGENTS.md)              | Documentation site (Fumadocs, MDX).                                                                                                            |
+| `apps/cli`               | [AGENTS.md](apps/cli/AGENTS.md)               | `@deessejs/cli`: a typed client of the template registry with a scaffolder (`list`, `info`, `init`, `auth login`).                             |
+| `apps/create-deesse-app` | [AGENTS.md](apps/create-deesse-app/AGENTS.md) | Standalone `create-*` scaffolder. Resolves `main` on `deessejs/saas-template` and downloads the tarball of the commit it finds.                |
+| `apps/agent`             | [AGENTS.md](apps/agent/AGENTS.md)             | `@deessejs-agent`: a mentionable GitHub bot built on Vercel eve.                                                                               |
 
 ### Packages
 
-| Path | Guide | Owns |
-|---|---|---|
-| `packages/auth` | [AGENTS.md](packages/auth/AGENTS.md) | The Better Auth configuration and every plugin. Source of truth for authentication. |
-| `packages/database` | [AGENTS.md](packages/database/AGENTS.md) | Drizzle ORM, the Postgres schema, migrations, and the pg-mem test harness. |
-| `packages/api` | [AGENTS.md](packages/api/AGENTS.md) | The Hono server and the oRPC router. |
-| `packages/contracts` | [AGENTS.md](packages/contracts/AGENTS.md) | Versioned Zod wire contracts shared by the API, the CLI and the web app. |
-| `packages/email` | [AGENTS.md](packages/email/AGENTS.md) | Email transports (console in dev, Resend in production) and React Email templates. |
-| `packages/ui` | [AGENTS.md](packages/ui/AGENTS.md) | shadcn primitives, design tokens and the shared stylesheet. |
-| `packages/env` | [AGENTS.md](packages/env/AGENTS.md) | Zod-validated environment variables, server and client. |
-| `packages/cookies` | [AGENTS.md](packages/cookies/AGENTS.md) | Cookie consent UI. |
-| `packages/utils` | [AGENTS.md](packages/utils/AGENTS.md) | Shared helpers. |
-| `packages/eslint-config` | [AGENTS.md](packages/eslint-config/AGENTS.md) | Shared ESLint configuration. |
-| `packages/typescript-config` | [AGENTS.md](packages/typescript-config/AGENTS.md) | Shared TypeScript presets. |
-| `packages/vitest-config` | [AGENTS.md](packages/vitest-config/AGENTS.md) | Shared Vitest configuration. |
+| Path                         | Guide                                                                                   | Owns                                                                                |
+| ---------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `packages/auth`              | [AGENTS.md](packages/auth/AGENTS.md)                                                    | The Better Auth configuration and every plugin. Source of truth for authentication. |
+| `packages/database`          | [AGENTS.md](packages/database/AGENTS.md)                                                | Drizzle ORM, the Postgres schema, migrations, and the pg-mem test harness.          |
+| `packages/api`               | [AGENTS.md](packages/api/AGENTS.md)                                                     | The Hono server and the oRPC router.                                                |
+| `packages/contracts`         | [AGENTS.md](packages/contracts/AGENTS.md)                                               | Versioned Zod wire contracts shared by the API, the CLI and the web app.            |
+| `packages/registry`          | [AGENTS.md](packages/registry/AGENTS.md)                                                | Template descriptor contracts and shared registry interpretation.                   |
+| `packages/email`             | [AGENTS.md](packages/email/AGENTS.md)                                                   | Email transports (console in dev, Resend in production) and React Email templates.  |
+| `packages/ui`                | [AGENTS.md](packages/ui/AGENTS.md)                                                      | shadcn primitives, design tokens and the shared stylesheet.                         |
+| `packages/env`               | [AGENTS.md](packages/env/AGENTS.md)                                                     | Zod-validated environment variables, server and client.                             |
+| `packages/cookies`           | [AGENTS.md](packages/cookies/AGENTS.md)                                                 | Cookie consent UI.                                                                  |
+| `packages/utils`             | [AGENTS.md](packages/utils/AGENTS.md)                                                   | Shared helpers.                                                                     |
+| `.oxlintrc.json`             | Repository-wide Oxlint rules, with React and Next.js overrides for frontend workspaces. |
+| `packages/typescript-config` | [AGENTS.md](packages/typescript-config/AGENTS.md)                                       | Shared TypeScript presets.                                                          |
+| `packages/vitest-config`     | [AGENTS.md](packages/vitest-config/AGENTS.md)                                           | Shared Vitest configuration.                                                        |
 
 ### Workspace dependencies
 
@@ -135,19 +136,19 @@ Each workspace guide describes the architecture of its own workspace. Read it be
 
 ## Commands
 
-| Command | What it does |
-|---|---|
-| `pnpm dev` | Start every application in dev mode. |
-| `pnpm build` | Build every workspace. |
-| `pnpm lint` | Lint every workspace, zero warnings allowed. |
-| `pnpm typecheck` | Type-check every workspace. |
-| `pnpm test` | Run the unit test suites. |
-| `pnpm db:generate` | Diff the schema and write a SQL migration. |
-| `pnpm db:migrate` | Apply the pending migrations. |
-| `pnpm db:push` | Sync the schema directly. Development only. |
-| `pnpm db:studio` | Open Drizzle Studio. |
+| Command              | What it does                                                                 |
+| -------------------- | ---------------------------------------------------------------------------- |
+| `pnpm dev`           | Start every application in dev mode.                                         |
+| `pnpm build`         | Build every workspace.                                                       |
+| `pnpm lint`          | Lint every workspace, zero warnings allowed.                                 |
+| `pnpm typecheck`     | Type-check every workspace.                                                  |
+| `pnpm test`          | Run the unit test suites.                                                    |
+| `pnpm db:generate`   | Diff the schema and write a SQL migration.                                   |
+| `pnpm db:migrate`    | Apply the pending migrations.                                                |
+| `pnpm db:push`       | Sync the schema directly. Development only.                                  |
+| `pnpm db:studio`     | Open Drizzle Studio.                                                         |
 | `pnpm auth:generate` | Regenerate the Better Auth schema in `packages/database/src/schema/auth.ts`. |
-| `pnpm env:check` | Validate that the required environment variables are present. |
+| `pnpm env:check`     | Validate that the required environment variables are present.                |
 
 Each Next application runs `next dev` on port 3000 and takes the next free port when 3000 is busy.
 
@@ -176,12 +177,12 @@ This repo is staging-first: start from `staging`, work on a branch named `impl/{
 
 ## Where the documentation lives
 
-| Content | Location |
-|---|---|
-| Design system rules, tokens, motion, accessibility | `DESIGN.md` at the repo root |
-| Cross-workspace dependency graph and canonical file map | `WORKSPACES.md` at the repo root |
-| Product documentation | `apps/docs/content/` |
-| Knowledge base | `apps/web/content/knowledge-base/` |
-| Internal decisions, RFCs, ADRs, technical designs | The Nuclino workspace **DeesseJS**, described in "Where your facts come from" |
-| Setup and usage notes | `apps/*/README.md` and `packages/*/README.md` |
-| Release history | The `CHANGELOG.md` of each workspace that publishes, generated by changesets |
+| Content                                                 | Location                                                                      |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Design system rules, tokens, motion, accessibility      | `DESIGN.md` at the repo root                                                  |
+| Cross-workspace dependency graph and canonical file map | `WORKSPACES.md` at the repo root                                              |
+| Product documentation                                   | `apps/docs/content/`                                                          |
+| Knowledge base                                          | `apps/web/content/knowledge-base/`                                            |
+| Internal decisions, RFCs, ADRs, technical designs       | The Nuclino workspace **DeesseJS**, described in "Where your facts come from" |
+| Setup and usage notes                                   | `apps/*/README.md` and `packages/*/README.md`                                 |
+| Release history                                         | The `CHANGELOG.md` of each workspace that publishes, generated by changesets  |

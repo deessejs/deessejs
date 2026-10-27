@@ -27,7 +27,7 @@ export function CliInActionStatic({
   return (
     <div className="flex flex-col border border-border bg-background">
       <div className="flex flex-col gap-2 border-b border-border p-6">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
           What this command does
         </p>
         <code className="font-mono text-copy-14 leading-6 text-foreground">
@@ -37,7 +37,7 @@ export function CliInActionStatic({
 
       <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-[2fr_3fr_5fr] md:divide-x md:divide-y-0">
         <div className="flex flex-col gap-3 p-6">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Template
           </p>
           <p className="font-mono text-copy-14 leading-6 text-foreground">
@@ -45,7 +45,7 @@ export function CliInActionStatic({
           </p>
         </div>
         <div className="flex flex-col gap-3 p-6">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Init does
           </p>
           <ol className="flex flex-col gap-2 text-copy-14 leading-6 text-foreground">
@@ -55,7 +55,7 @@ export function CliInActionStatic({
           </ol>
         </div>
         <div className="flex flex-col gap-3 p-6">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Project
           </p>
           <pre className="overflow-x-auto font-mono text-copy-13 leading-6 text-foreground">
@@ -71,11 +71,14 @@ export function CliInActionStatic({
 
       <div className="flex items-center justify-between gap-4 border-t border-border p-6">
         <p className="text-label-13 text-muted-foreground">
-          Inspect: <span className="font-mono text-foreground">deessejs info saas-starter</span>
+          Inspect:{" "}
+          <span className="font-mono text-foreground">
+            deessejs info saas-starter
+          </span>
         </p>
         <Link
           href={installGuideHref}
-          className="inline-flex items-center gap-1.5 text-label-13 font-medium text-foreground hover:underline underline-offset-4"
+          className="inline-flex items-center gap-1.5 text-label-13 font-medium text-foreground underline-offset-4 hover:underline"
         >
           Read the CLI guide
           <ArrowRight className="size-3" aria-hidden />

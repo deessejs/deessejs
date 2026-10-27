@@ -8,9 +8,8 @@
  *          /templates document response.
  *
  * Both tests use the per-context `x-e2e-force-fail` header
- * to drive the handler's failure path. The x-vercel-protection-bypass
- * + x-vercel-set-bypass-cookie headers are set globally in
- * playwright.config.ts.
+ * to drive the handler's failure path. The protected-preview
+ * bypass header is set globally in playwright.config.ts.
  */
 import { expect, test } from "@playwright/test"
 
@@ -25,6 +24,11 @@ test.describe("P0 /templates error + cache", () => {
     page,
     context,
   }) => {
+    test.skip(
+      !process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+      "The forced failure path is enabled only on protected Vercel previews.",
+    )
+
     // Drive the failure path: the handler throws ORPCError
     // "TEMPLATES_FETCH_FAILED" with status 502.
     await context.setExtraHTTPHeaders({ "x-e2e-force-fail": "1" })
@@ -36,16 +40,14 @@ test.describe("P0 /templates error + cache", () => {
       // boundary catches the thrown ORPCError and renders the
       // client-side fallback.
       await expect(errorHeading(page)).toBeVisible()
-      await expect(
-        page.getByText(/Check your connection/i),
-      ).toBeVisible()
+      await expect(page.getByText(/Check your connection/i)).toBeVisible()
       await expect(tryAgainButton(page)).toBeVisible()
 
       // Clear the force-fail header so the recovery request
       // reaches the real upstream.
       await context.setExtraHTTPHeaders({ "x-e2e-force-fail": "" })
 
-      // Click "Try again" — calls `reset()` which re-runs
+      // Click "Try again" — calls reset() which re-runs
       // the parent RSC. The second render must reach the
       // populated state.
       await tryAgainButton(page).click()
@@ -94,7 +96,7 @@ test.describe("P0 /templates error + cache", () => {
     const hits = responses.filter((r) => r.cacheState === "HIT")
     expect(
       hits,
-      `x-nextjs-cache: HIT observed on /templates — issue #81 regression. Responses: ${JSON.stringify(responses)}`,
+      `x-nextjs-cache: HIT observed on /templates — issue #81 regression. Responses: ${JSON.stringify(responses)}`
     ).toHaveLength(0)
   })
 })

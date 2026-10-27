@@ -16,7 +16,7 @@ export type PackageManagerInfo = {
  *   3. Returns null if nothing matches (caller decides whether to fail)
  */
 export const detectPackageManager = (
-  cwd: string,
+  cwd: string
 ): PackageManagerInfo | null => {
   const pkg = readPackageJson(cwd)
   if (pkg?.packageManager) {
@@ -45,9 +45,7 @@ export const getInstallCommand = (info: PackageManagerInfo): string => {
   }
 }
 
-const readPackageJson = (
-  cwd: string,
-): { packageManager?: string } | null => {
+const readPackageJson = (cwd: string): { packageManager?: string } | null => {
   const path = join(cwd, "package.json")
   if (!existsSync(path)) return null
   try {
@@ -60,7 +58,7 @@ const readPackageJson = (
 }
 
 export const parsePackageManagerField = (
-  raw: string,
+  raw: string
 ): PackageManagerInfo | null => {
   // Format: "<name>@<version>" or just "<name>". Common names: pnpm, npm, yarn, bun.
   const name = raw.split("@")[0]?.trim().toLowerCase()

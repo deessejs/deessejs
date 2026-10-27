@@ -49,8 +49,7 @@ const compareSemver = (a: string, b: string): number => {
 export const maybeWarnAboutOutdatedCli = async (): Promise<void> => {
   let bodyText: string
   try {
-    const raw =
-      process.env.DEESSEJS_API_URL ?? "https://app.deessejs.com"
+    const raw = process.env.DEESSEJS_API_URL ?? "https://app.deessejs.com"
     const versionUrl = new URL(`${API_BASE_PATH}/version`, raw).toString()
     const res = await fetch(versionUrl)
     if (res.status !== 200) return
@@ -76,7 +75,7 @@ export const maybeWarnAboutOutdatedCli = async (): Promise<void> => {
   if (compareSemver(localVersion, parsed.minSupported) < 0) {
     process.stderr.write(
       `\n⚠ deessejs-cli ${localVersion} is below the minimum supported version (${parsed.minSupported}).\n` +
-        `  Upgrade: pnpm dlx @deessejs/cli@latest\n\n`,
+        `  Upgrade: pnpm dlx @deessejs/cli@latest\n\n`
     )
   }
 }

@@ -30,12 +30,14 @@ export const TRUST_BADGES: ReadonlyArray<TrustBadge> = [
   },
   {
     label: "Security questionnaires",
-    detail: "Turnaround in under 5 business days. No legalese, no redirect to a portal.",
+    detail:
+      "Turnaround in under 5 business days. No legalese, no redirect to a portal.",
     href: "mailto:support@deessejs.com?subject=Security%20questionnaire",
   },
   {
     label: "Mutual NDA on first contact",
-    detail: "Send yours. We countersign within one business day, before the intro call.",
+    detail:
+      "Send yours. We countersign within one business day, before the intro call.",
     href: "mailto:support@deessejs.com?subject=NDA",
   },
 ]

@@ -47,10 +47,13 @@ describe("buildFetchIsrInit (issue #81 contract)", () => {
   })
 
   it("translates `liveCache` to revalidate: 0, single namespaced tag", () => {
-    const result = buildFetchIsrInit({}, {
-      revalidate: 0,
-      tag: "templates:live",
-    })
+    const result = buildFetchIsrInit(
+      {},
+      {
+        revalidate: 0,
+        tag: "templates:live",
+      }
+    )
 
     expect(result.next).toEqual({
       revalidate: 0,
@@ -59,10 +62,13 @@ describe("buildFetchIsrInit (issue #81 contract)", () => {
   })
 
   it("translates `staticParamsCache` to revalidate: 600, namespaced tag", () => {
-    const result = buildFetchIsrInit({}, {
-      revalidate: 600,
-      tag: "templates:static",
-    })
+    const result = buildFetchIsrInit(
+      {},
+      {
+        revalidate: 600,
+        tag: "templates:static",
+      }
+    )
 
     expect(result.next).toEqual({
       revalidate: 600,

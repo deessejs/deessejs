@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://app.deessejs.com/schema/template/v1.json"
+    },
+    "formatVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "template:app",
+        "template:package",
+        "template:cli",
+        "template:mobile",
+        "template:desktop",
+        "template:agent",
+        "template:landing",
+        "template:starter"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "repo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "repo"
+      ],
+      "additionalProperties": false
+    },
+    "includes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "excludes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "labels": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "$schema",
+    "formatVersion",
+    "name",
+    "title",
+    "description",
+    "type",
+    "version",
+    "excludes"
+  ],
+  "additionalProperties": false,
+  "$id": "https://app.deessejs.com/schema/template/v1.json",
+  "title": "DeesseJS template descriptor, format version 1"
+}

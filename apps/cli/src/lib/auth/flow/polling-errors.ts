@@ -1,4 +1,8 @@
-import { cliDeviceExpired, cliDeviceDenied, CliError } from "../../../errors/index.js"
+import {
+  cliDeviceExpired,
+  cliDeviceDenied,
+  CliError,
+} from "../../../errors/index.js"
 
 /**
  * Polling-protocol error mapper.
@@ -38,7 +42,7 @@ export type BetterAuthDeviceErrorCode =
   | "invalid_client"
 
 export const mapPollingError = (
-  code: BetterAuthDeviceErrorCode | string,
+  code: BetterAuthDeviceErrorCode | string
 ): CliError | null => {
   switch (code) {
     case "authorization_pending":

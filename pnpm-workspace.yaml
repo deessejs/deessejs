@@ -52,6 +52,7 @@ catalog:
 
   # Types
   "@types/node": ^24
+  "@types/picomatch": ^4.0.3
   "@types/pg": ^8.20.0
   "@types/react": ^19.2.17
   "@types/react-dom": ^19.2.3
@@ -70,10 +71,15 @@ catalog:
   drizzle-kit: ^0.31.10
   drizzle-orm: ^0.45.2
 
+  # Code quality
+  oxlint: ^1.90.0
+  oxfmt: ^0.75.0
+  oxlint-plugin-eslint: ^1.90.0
+  eslint-plugin-sonarjs: ^3.0.7
+  ts-api-utils: ^2.5.0
+
   # UI
   embla-carousel-react: ^8.6.0
-  eslint: ^9.39.4
-  "eslint-config-next": ^16.2.10
   eve: ^0.60.0
   fuse.js: ^7.4.2
 
@@ -89,6 +95,7 @@ catalog:
   "next": ^16.2.10
   open: ^11.0.1
   pg: ^8.22.0
+  picomatch: ^4.0.7
 
   # CI tooling
   pkg-pr-new: ^0.0.88
@@ -130,6 +137,47 @@ minimumReleaseAgeExclude:
   # on docs builds. See `temp/audit/tech-lead-deletion/README.md` §6.
   - rolldown
   - "@rolldown/*"
+  - '@oxfmt/binding-android-arm-eabi@0.75.0'
+  - '@oxfmt/binding-android-arm64@0.75.0'
+  - '@oxfmt/binding-darwin-arm64@0.75.0'
+  - '@oxfmt/binding-darwin-x64@0.75.0'
+  - '@oxfmt/binding-freebsd-x64@0.75.0'
+  - '@oxfmt/binding-linux-arm-gnueabihf@0.75.0'
+  - '@oxfmt/binding-linux-arm-musleabihf@0.75.0'
+  - '@oxfmt/binding-linux-arm64-gnu@0.75.0'
+  - '@oxfmt/binding-linux-arm64-musl@0.75.0'
+  - '@oxfmt/binding-linux-ppc64-gnu@0.75.0'
+  - '@oxfmt/binding-linux-riscv64-gnu@0.75.0'
+  - '@oxfmt/binding-linux-riscv64-musl@0.75.0'
+  - '@oxfmt/binding-linux-s390x-gnu@0.75.0'
+  - '@oxfmt/binding-linux-x64-gnu@0.75.0'
+  - '@oxfmt/binding-linux-x64-musl@0.75.0'
+  - '@oxfmt/binding-openharmony-arm64@0.75.0'
+  - '@oxfmt/binding-win32-arm64-msvc@0.75.0'
+  - '@oxfmt/binding-win32-ia32-msvc@0.75.0'
+  - '@oxfmt/binding-win32-x64-msvc@0.75.0'
+  - '@oxlint/binding-android-arm-eabi@1.90.0'
+  - '@oxlint/binding-android-arm64@1.90.0'
+  - '@oxlint/binding-darwin-arm64@1.90.0'
+  - '@oxlint/binding-darwin-x64@1.90.0'
+  - '@oxlint/binding-freebsd-x64@1.90.0'
+  - '@oxlint/binding-linux-arm-gnueabihf@1.90.0'
+  - '@oxlint/binding-linux-arm-musleabihf@1.90.0'
+  - '@oxlint/binding-linux-arm64-gnu@1.90.0'
+  - '@oxlint/binding-linux-arm64-musl@1.90.0'
+  - '@oxlint/binding-linux-ppc64-gnu@1.90.0'
+  - '@oxlint/binding-linux-riscv64-gnu@1.90.0'
+  - '@oxlint/binding-linux-riscv64-musl@1.90.0'
+  - '@oxlint/binding-linux-s390x-gnu@1.90.0'
+  - '@oxlint/binding-linux-x64-gnu@1.90.0'
+  - '@oxlint/binding-linux-x64-musl@1.90.0'
+  - '@oxlint/binding-openharmony-arm64@1.90.0'
+  - '@oxlint/binding-win32-arm64-msvc@1.90.0'
+  - '@oxlint/binding-win32-ia32-msvc@1.90.0'
+  - '@oxlint/binding-win32-x64-msvc@1.90.0'
+  - oxfmt@0.75.0
+  - oxlint-plugin-eslint@1.90.0
+  - oxlint@1.90.0
 
 # Force single version of @types/react across the tree to avoid duplicate-type errors
 overrides:

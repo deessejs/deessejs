@@ -14,7 +14,7 @@ import { serverEnv } from "@workspace/env/server"
 // Database instances
 let _sql: ReturnType<typeof postgres> | null = null
 let _testDb: ReturnType<typeof drizzle> | null = null
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 let _pgMemDb: any = null
 
 // Initialize pg-mem for schema tests
@@ -110,7 +110,7 @@ export const testDb = {
     if (_pgMemDb) {
       // Return pg-mem adapter (limited functionality)
       return {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         execute: (strings: TemplateStringsArray, ...values: any[]) => {
           return _pgMemDb.public.all(
             strings.reduce((acc, str, i) => acc + str + (values[i] ?? ""), ""),

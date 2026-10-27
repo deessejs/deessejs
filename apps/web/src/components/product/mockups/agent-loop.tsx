@@ -79,7 +79,7 @@ export function AgentLoopMockup() {
   return (
     <MockupMotionBoundary>
       <div className="flex flex-col gap-3 p-4 font-mono text-copy-13">
-        <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-muted-foreground">
+        <div className="flex items-center justify-between text-label-12 tracking-wider text-muted-foreground uppercase">
           <span>Agent run</span>
           <span className="flex items-center gap-1.5">
             <Sparkles className="size-3 text-violet-500" aria-hidden />
@@ -98,14 +98,14 @@ export function AgentLoopMockup() {
                 transition={{ delay: step.delayMs / 1000, duration: 0.3 }}
                 className={cn(
                   "flex items-start gap-2 rounded-sm border px-3 py-2",
-                  styles.row,
+                  styles.row
                 )}
               >
                 <span
                   aria-hidden
                   className={cn(
                     "mt-1.5 size-1.5 shrink-0 rounded-full",
-                    styles.dot,
+                    styles.dot
                   )}
                 />
                 <span className={cn("shrink-0 text-label-12", styles.label)}>

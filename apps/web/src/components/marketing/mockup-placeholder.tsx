@@ -22,11 +22,7 @@ import { DotGrid } from "./dot-grid"
  * used by SurfacesTabs and EcosystemTabs; reuse rather than
  * drift.
  */
-export function MockupPlaceholder({
-  className,
-}: {
-  className?: string
-}) {
+export function MockupPlaceholder({ className }: { className?: string }) {
   return (
     <div
       aria-hidden

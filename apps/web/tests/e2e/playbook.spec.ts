@@ -23,11 +23,13 @@ test.describe("/playbook", () => {
       page.getByRole("heading", {
         name: "From AI-Generated Code to Production Software",
         level: 1,
-      }),
+      })
     ).toBeVisible()
-    await expect(page.getByRole("textbox", { name: "Email address" })).toBeVisible()
     await expect(
-      page.getByRole("button", { name: "Get the free playbook" }),
+      page.getByRole("textbox", { name: "Email address" })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: "Get the free playbook" })
     ).toBeVisible()
   })
 

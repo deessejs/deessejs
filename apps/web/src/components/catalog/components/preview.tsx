@@ -1,14 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import {
-  Bell,
-  Check,
-  CircleAlert,
-  Plus,
-  Search,
-  X,
-} from "lucide-react"
+import { Bell, Check, CircleAlert, Plus, Search, X } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -157,7 +150,10 @@ function renderPreview(slug: CatalogueComponent["slug"]) {
       return (
         <div className="flex flex-wrap gap-2">
           <Badge variant="success">
-            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
+            <span
+              className="size-1.5 rounded-full bg-emerald-500"
+              aria-hidden
+            />
             Online
           </Badge>
           <Badge variant="destructive">
@@ -249,7 +245,7 @@ function SearchPreview() {
     <div className="flex w-full max-w-sm flex-col gap-1">
       <div className="relative">
         <Search
-          className="text-muted-foreground pointer-events-none absolute left-2.5 top-2.5 size-4"
+          className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground"
           aria-hidden
         />
         <Input
@@ -257,7 +253,7 @@ function SearchPreview() {
           placeholder="Search components…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="pl-8 pr-8"
+          className="pr-8 pl-8"
         />
         {query ? (
           <Button
@@ -266,15 +262,14 @@ function SearchPreview() {
             size="icon-sm"
             onClick={() => setQuery("")}
             aria-label="Clear search"
-            className="text-muted-foreground hover:text-foreground absolute right-2 top-2"
+            className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
           >
             <X className="size-4" aria-hidden />
           </Button>
         ) : null}
       </div>
       <p className="text-copy-13 text-muted-foreground">
-        Debounced:{" "}
-        <span className="font-mono">{debounced || "—"}</span>
+        Debounced: <span className="font-mono">{debounced || "—"}</span>
       </p>
     </div>
   )
@@ -287,9 +282,12 @@ function OtpPreview() {
   // does not allow numeric index access on .current. Cast
   // through unknown to a plain mutable array so we can do
   // refs.current[i] = el in the ref callback below.
-  const refs: { current: (HTMLInputElement | null)[]; [k: number]: HTMLInputElement | null } = { current: [] }
+  const refs: {
+    current: (HTMLInputElement | null)[]
+    [k: number]: HTMLInputElement | null
+  } = { current: [] }
   const [values, setValues] = useState<string[]>(
-    Array.from({ length: CELLS }).map(() => ""),
+    Array.from({ length: CELLS }).map(() => "")
   )
 
   const focusNext = (i: number) => {

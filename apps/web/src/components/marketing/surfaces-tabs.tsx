@@ -81,8 +81,7 @@ const SURFACE_TABS: ReadonlyArray<SurfaceTab> = [
   {
     slug: "desktop",
     name: "Desktop",
-    description:
-      "Electron or Tauri shells wired against the shared backend.",
+    description: "Electron or Tauri shells wired against the shared backend.",
     href: "/templates?surface=desktop",
     icon: Boxes,
   },
@@ -99,7 +98,7 @@ export function SurfacesTabs() {
     >
       <TabsList
         aria-label="Surfaces"
-        className="flex flex-col divide-y divide-border lg:border-r bg-transparent p-0 h-auto w-full"
+        className="flex h-auto w-full flex-col divide-y divide-border bg-transparent p-0 lg:border-r"
       >
         {SURFACE_TABS.map((tab) => {
           const Icon = tab.icon
@@ -107,24 +106,20 @@ export function SurfacesTabs() {
             <TabsTrigger
               key={tab.slug}
               value={tab.slug}
-              className="group flex flex-col items-start gap-2 rounded-none bg-transparent p-6 text-left h-auto w-full shadow-none border-0 border-l-2 border-transparent
-                text-foreground/60 hover:text-foreground hover:bg-accent/40
-                data-[state=active]:bg-accent/40 data-[state=active]:text-foreground data-[state=active]:border-l-foreground
-                [&:after]:hidden"
+              className="group flex h-auto w-full flex-col items-start gap-2 rounded-none border-0 border-l-2 border-transparent bg-transparent p-6 text-left text-foreground/60 shadow-none hover:bg-accent/40 hover:text-foreground data-[state=active]:border-l-foreground data-[state=active]:bg-accent/40 data-[state=active]:text-foreground [&:after]:hidden"
             >
               <div className="flex items-center gap-2">
-                <Icon
-                  className="text-foreground size-4 shrink-0"
-                  aria-hidden
-                />
-                <h3 className="text-heading-20 tracking-tight !m-0">{tab.name}</h3>
+                <Icon className="size-4 shrink-0 text-foreground" aria-hidden />
+                <h3 className="!m-0 text-heading-20 tracking-tight">
+                  {tab.name}
+                </h3>
               </div>
-              <p className="text-copy-14 text-muted-foreground leading-6 !m-0 text-balance">
+              <p className="!m-0 text-copy-14 leading-6 text-balance text-muted-foreground">
                 {tab.description}
               </p>
               <Link
                 href={tab.href}
-                className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4 pt-1"
+                className="inline-flex items-center gap-1 pt-1 text-label-13 text-foreground underline-offset-4 hover:underline"
                 onClick={(event) => event.stopPropagation()}
               >
                 Learn more
@@ -139,7 +134,7 @@ export function SurfacesTabs() {
         <TabsContent
           key={tab.slug}
           value={tab.slug}
-          className="relative outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden"
+          className="relative mt-0 min-h-[320px] overflow-hidden outline-none lg:min-h-[480px]"
         >
           {/* Right column: placeholder mockup, anchored to the
               bottom-right and translated 25% right + 25% down so the
@@ -149,7 +144,7 @@ export function SurfacesTabs() {
               is clipped by the column edges. */}
           <div
             aria-hidden
-            className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] bg-muted/40 border border-border overflow-hidden"
+            className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] overflow-hidden border border-border bg-muted/40"
           >
             <DotGrid className="absolute inset-0" />
           </div>

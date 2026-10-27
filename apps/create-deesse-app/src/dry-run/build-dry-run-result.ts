@@ -51,7 +51,9 @@ type BuildDryRunResultInput = {
  *    `CreateFailure` with the same code the real-create path
  *    would emit.
  */
-export const buildDryRunResult = (input: BuildDryRunResultInput): CreateDryRunResult => {
+export const buildDryRunResult = (
+  input: BuildDryRunResultInput
+): CreateDryRunResult => {
   const {
     sha,
     destination,
@@ -76,7 +78,9 @@ export const buildDryRunResult = (input: BuildDryRunResultInput): CreateDryRunRe
       installCommand === undefined ||
       input.pnpmVersion === undefined)
   ) {
-    throw internal("dry-run with install requested but prereq metadata is missing")
+    throw internal(
+      "dry-run with install requested but prereq metadata is missing"
+    )
   }
   // Under `--no-install` we do NOT read the version from
   // the staged package.json: the plan does not include a
@@ -99,7 +103,11 @@ export const buildDryRunResult = (input: BuildDryRunResultInput): CreateDryRunRe
           skipped: false as const,
           strategy: strategy as "corepack" | "npm-exec" | "pnpm-direct",
           command: installCommand as { bin: string; args: string[] },
-          prereqs: prereqs as { corepack: boolean; npm: boolean; pnpm: boolean },
+          prereqs: prereqs as {
+            corepack: boolean
+            npm: boolean
+            pnpm: boolean
+          },
         }
       })()
     : { skipped: true as const }

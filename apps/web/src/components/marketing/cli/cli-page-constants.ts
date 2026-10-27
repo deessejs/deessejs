@@ -4,4 +4,5 @@
  * truth for both. Update this file in lockstep if either changes.
  */
 export const CLI_COMMAND = "deessejs init saas-starter"
-export const CLI_INSTALL_GUIDE_HREF = "/knowledge-base/guides/install-deessejs-cli"
+export const CLI_INSTALL_GUIDE_HREF =
+  "/knowledge-base/guides/install-deessejs-cli"

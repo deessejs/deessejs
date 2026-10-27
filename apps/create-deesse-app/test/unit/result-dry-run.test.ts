@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { buildDryRunResult } from "../../src/dry-run/build-dry-run-result.js"
-import type {
-  CreateDryRunResult,
-  DryRunInstall,
-} from "../../src/result.js"
+import type { CreateDryRunResult, DryRunInstall } from "../../src/result.js"
 
 const sha = "abcdef0123456789abcdef0123456789abcdef01"
 const destination = "/tmp/cda-dry"
@@ -37,7 +34,7 @@ describe("buildDryRunResult", () => {
     expect(result.packageName).toEqual(packageName)
     expect(result.packageManager).toBe("pnpm")
     expect(result.documentation).toBe(
-      "https://docs.deessejs.com/getting-started",
+      "https://docs.deessejs.com/getting-started"
     )
     expect(result.recovery).toBeNull()
     expect(result.plannedFiles).toEqual(entries)
@@ -112,7 +109,7 @@ describe("buildDryRunResult", () => {
         strategy: undefined,
         installCommand: undefined,
         pnpmVersion: undefined,
-      }),
+      })
     ).toThrow(/dry-run with install requested but prereq metadata is missing/)
   })
 })

@@ -210,12 +210,12 @@ export const sendWelcome = (user: { email: string; name: string }) =>
 }
 
 export const SAAS_SNIPPETS: Record<SaasPillarSlug, SaasPillarTool> = {
-  auth:     { files: [authFile] },
-  billing:  { files: [billingFile] },
-  admin:    { files: [adminFile] },
+  auth: { files: [authFile] },
+  billing: { files: [billingFile] },
+  admin: { files: [adminFile] },
   database: { files: [databaseFile] },
-  api:      { files: [apiFile] },
-  mcp:      { files: [mcpFile] },
-  jobs:     { files: [jobsFile] },
-  mail:     { files: [mailFile] },
+  api: { files: [apiFile] },
+  mcp: { files: [mcpFile] },
+  jobs: { files: [jobsFile] },
+  mail: { files: [mailFile] },
 }

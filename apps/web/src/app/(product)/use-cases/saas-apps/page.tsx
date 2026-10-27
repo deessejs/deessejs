@@ -52,14 +52,14 @@ export const metadata: Metadata = {
  * page use) so every brand display on the site stays in lockstep.
  */
 const STACK = [
-  { name: "Next.js",     logo: "vercel" },
+  { name: "Next.js", logo: "vercel" },
   { name: "Better Auth", logo: "betterauth" },
-  { name: "Drizzle",     logo: "drizzle" },
-  { name: "Postgres",    logo: "postgresql" },
-  { name: "Stripe",      logo: "stripe" },
-  { name: "Cloudflare",  logo: "cloudflare" },
-  { name: "Resend",      logo: "resend" },
-  { name: "OpenAI",      logo: "openai" },
+  { name: "Drizzle", logo: "drizzle" },
+  { name: "Postgres", logo: "postgresql" },
+  { name: "Stripe", logo: "stripe" },
+  { name: "Cloudflare", logo: "cloudflare" },
+  { name: "Resend", logo: "resend" },
+  { name: "OpenAI", logo: "openai" },
 ] as const
 
 const STEPS = [
@@ -105,10 +105,26 @@ const RELATED = [
  * output without requiring links that don't resolve yet.
  */
 const BUILT_TEMPLATES = [
-  { slug: "saas-starter",  title: "saas-starter",  body: "B2B SaaS scaffold with orgs, billing, dashboard." },
-  { slug: "ops-console",   title: "ops-console",   body: "Operator console wired on the same Better Auth and Drizzle schema." },
-  { slug: "billing-portal", title: "billing-portal", body: "Stripe customer portal preconfigured for usage metering." },
-  { slug: "team-onboarding", title: "team-onboarding", body: "Workspace invite flow with email verify and role assignment." },
+  {
+    slug: "saas-starter",
+    title: "saas-starter",
+    body: "B2B SaaS scaffold with orgs, billing, dashboard.",
+  },
+  {
+    slug: "ops-console",
+    title: "ops-console",
+    body: "Operator console wired on the same Better Auth and Drizzle schema.",
+  },
+  {
+    slug: "billing-portal",
+    title: "billing-portal",
+    body: "Stripe customer portal preconfigured for usage metering.",
+  },
+  {
+    slug: "team-onboarding",
+    title: "team-onboarding",
+    body: "Workspace invite flow with email verify and role assignment.",
+  },
 ] as const
 
 /**
@@ -195,11 +211,15 @@ const PILLAR_ENTRIES: ReadonlyArray<PillarEntry> = [
 ]
 
 const PILLARS_GROUP_1: ReadonlyArray<UseCaseTab> = PILLAR_ENTRIES.filter(
-  (p) => p.id === "auth" || p.id === "billing" || p.id === "admin" || p.id === "database",
+  (p) =>
+    p.id === "auth" ||
+    p.id === "billing" ||
+    p.id === "admin" ||
+    p.id === "database"
 )
 
 const PILLARS_GROUP_2: ReadonlyArray<UseCaseTab> = PILLAR_ENTRIES.filter(
-  (p) => p.id === "api" || p.id === "mcp" || p.id === "jobs" || p.id === "mail",
+  (p) => p.id === "api" || p.id === "mcp" || p.id === "jobs" || p.id === "mail"
 )
 
 /**
@@ -216,8 +236,14 @@ export default async function SaasAppsPage() {
   // as children of Client Components). Same pattern as the homepage
   // Ecosystem section and the /cli CliStart section.
   const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
-    auth: [], billing: [], admin: [], database: [],
-    api: [], mcp: [], jobs: [], mail: [],
+    auth: [],
+    billing: [],
+    admin: [],
+    database: [],
+    api: [],
+    mcp: [],
+    jobs: [],
+    mail: [],
   }
 
   await Promise.all(
@@ -229,9 +255,9 @@ export default async function SaasAppsPage() {
           defaultColor: false,
         }).then((html) => {
           htmlBySlug[slug]?.push({ tabName: file.tabName, html })
-        }),
-      ),
-    ),
+        })
+      )
+    )
   )
 
   return (
@@ -267,10 +293,7 @@ export default async function SaasAppsPage() {
           subtitle="The sub-systems every SaaS needs, wired against the same contract before the first commit. Two halves: what your customers see, and what keeps it running."
           bordered={true}
         />
-        <UseCaseTabs
-          pillars={PILLARS_GROUP_1}
-          htmlBySlug={htmlBySlug}
-        />
+        <UseCaseTabs pillars={PILLARS_GROUP_1} htmlBySlug={htmlBySlug} />
       </Section>
 
       <Section>
@@ -305,20 +328,17 @@ export default async function SaasAppsPage() {
 
       {/* 4. Process */}
       <div className="grid grid-cols-1 border-t border-border lg:grid-cols-12 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-3 lg:p-10">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col justify-center gap-3 p-6 lg:col-span-3 lg:p-10">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Process
           </p>
           <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             How a SaaS ships.
           </h2>
         </div>
-        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-9 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
+        <ol className="grid grid-cols-1 divide-y divide-border border-0 !p-0 md:grid-cols-3 md:divide-x md:divide-y-0 lg:col-span-9">
           {STEPS.map((step, idx) => (
-            <li
-              key={step.heading}
-              className="flex flex-col gap-3 p-6 lg:p-8"
-            >
+            <li key={step.heading} className="flex flex-col gap-3 p-6 lg:p-8">
               <span className="font-mono text-copy-13 text-muted-foreground">
                 Step {String(idx + 1).padStart(2, "0")}
               </span>
@@ -344,19 +364,19 @@ export default async function SaasAppsPage() {
            below) so the section reads as 4 product surfaces
            waiting to render. */}
       <section className="flex flex-col border-t border-border">
-        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Built on this
           </p>
           <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             Four templates, each on its own surface.
           </h2>
           <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Production-ready starter templates, each deployed at its own
-            URL. Used as the reference set for what the registry can ship.
+            Production-ready starter templates, each deployed at its own URL.
+            Used as the reference set for what the registry can ship.
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y divide-border sm:divide-y-0 sm:divide-x sm:divide-border">
+        <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 sm:divide-border lg:grid-cols-4">
           {BUILT_TEMPLATES.map((tpl) => (
             <Link
               key={tpl.slug}

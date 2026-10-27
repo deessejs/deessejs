@@ -12,5 +12,5 @@ import open from "open"
  * browser, the poll loop in the caller resolves.
  */
 export const openVerificationUrl = async (url: string): Promise<void> => {
-	await open(url, { wait: false })
+  await open(url, { wait: false })
 }

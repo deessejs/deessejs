@@ -10,8 +10,13 @@ export const printError = (err: CliError): void => {
   process.stderr.write(
     `${pc.red("Error")}: ${err.message}\n` +
       (err.hint ? `${pc.dim("Hint")}: ${err.hint}\n` : "") +
-      `${pc.dim("Code")}: ${err.code}\n`,
+      `${pc.dim("Code")}: ${err.code}\n`
   )
 }
 
-export { printTemplatesTable, printTemplateInfo } from "./table.js"
+export {
+  printTemplatesTable,
+  printTemplateInfo,
+  printBlockInfo,
+  printBlockCheck,
+} from "./table.js"

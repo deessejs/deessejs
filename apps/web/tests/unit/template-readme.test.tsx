@@ -32,7 +32,7 @@ describe("TemplateReadme", () => {
 
   it("renders the section when readme is provided", async () => {
     const html = await renderToString(
-      <TemplateReadme readme={"# Hello\n\nWorld."} />,
+      <TemplateReadme readme={"# Hello\n\nWorld."} />
     )
     expect(html).toContain('data-testid="template-readme"')
     expect(html).toContain("Hello")

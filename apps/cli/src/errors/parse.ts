@@ -8,5 +8,5 @@ import { CliError } from "./index.js"
  */
 export const parseError = (
   detail: string,
-  message: string = "templates endpoint returned malformed data",
+  message: string = "templates endpoint returned malformed data"
 ): CliError => new CliError("parse_error", message, detail)

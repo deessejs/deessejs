@@ -20,12 +20,12 @@ const VERCEL_AVATAR_BASE = "https://vercel.com/api/www/avatar"
  * line 46.
  */
 export function getInitials(name: string | null | undefined): string {
-	const safe = (name ?? "").trim()
-	if (safe.length === 0) return "?"
-	const parts = safe.split(/\s+/).filter(Boolean)
-	if (parts.length === 0) return "?"
-	if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
-	return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase()
+  const safe = (name ?? "").trim()
+  if (safe.length === 0) return "?"
+  const parts = safe.split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return "?"
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase()
 }
 
 /**
@@ -37,6 +37,6 @@ export function getInitials(name: string | null | undefined): string {
  * (line 53-56).
  */
 export function getAvatarUrl(email: string, image?: string | null): string {
-	if (image) return image
-	return `${VERCEL_AVATAR_BASE}?s=40&u=${encodeURIComponent(email)}`
+  if (image) return image
+  return `${VERCEL_AVATAR_BASE}?s=40&u=${encodeURIComponent(email)}`
 }

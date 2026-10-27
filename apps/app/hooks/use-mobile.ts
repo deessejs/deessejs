@@ -12,7 +12,7 @@ export function useIsMobile() {
     }
     mql.addEventListener("change", onChange)
     // Initialize isMobile on mount (client-side only, SSR returns undefined)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // oxlint-disable-next-line react-hooks/set-state-in-effect
     setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     return () => mql.removeEventListener("change", onChange)
   }, [])

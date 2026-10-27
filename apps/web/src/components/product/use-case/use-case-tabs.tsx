@@ -148,7 +148,7 @@ export function UseCaseTabs({
       orientation="vertical"
       className={cn(
         "grid grid-cols-1 lg:grid-cols-[minmax(320px,28rem)_1fr]",
-        className,
+        className
       )}
     >
       <TabsList
@@ -159,10 +159,10 @@ export function UseCaseTabs({
           // 28rem / 1fr split. Force it into the leftmost (default)
           // or rightmost (reverse) column at lg+ via explicit grid
           // placement. The border swaps sides to match.
-          "flex flex-col divide-y divide-border border-b border-border bg-transparent p-0 h-auto w-full rounded-none!",
+          "flex h-auto w-full flex-col divide-y divide-border rounded-none! border-b border-border bg-transparent p-0",
           reverse
-            ? "lg:border-b-0 lg:border-l lg:col-start-2 lg:row-start-1"
-            : "lg:border-b-0 lg:border-r lg:col-start-1 lg:row-start-1",
+            ? "lg:col-start-2 lg:row-start-1 lg:border-b-0 lg:border-l"
+            : "lg:col-start-1 lg:row-start-1 lg:border-r lg:border-b-0"
         )}
       >
         {pillars.map((tab) => {
@@ -172,29 +172,29 @@ export function UseCaseTabs({
               key={tab.slug}
               value={tab.slug}
               className={cn(
-                "group flex flex-col items-start gap-2 rounded-none bg-transparent p-6 text-left h-auto w-full shadow-none border-0",
-                "text-foreground/60 hover:text-foreground hover:bg-accent/40",
+                "group flex h-auto w-full flex-col items-start gap-2 rounded-none border-0 bg-transparent p-6 text-left shadow-none",
+                "text-foreground/60 hover:bg-accent/40 hover:text-foreground",
                 "data-[state=active]:bg-accent/40 data-[state=active]:text-foreground",
-                "[&:after]:hidden",
+                "[&:after]:hidden"
               )}
             >
               <div className="flex w-full items-center gap-2">
                 {Icon ? (
                   <Icon
-                    className="text-foreground size-4 shrink-0"
+                    className="size-4 shrink-0 text-foreground"
                     aria-hidden
                   />
                 ) : null}
-                <h3 className="text-heading-20 tracking-tight !m-0 truncate">
+                <h3 className="!m-0 truncate text-heading-20 tracking-tight">
                   {tab.title}
                 </h3>
               </div>
-              <p className="text-copy-14 text-muted-foreground leading-6 !m-0 text-balance">
+              <p className="!m-0 text-copy-14 leading-6 text-balance text-muted-foreground">
                 {tab.description}
               </p>
               <Link
                 href={`#pillar-${tab.slug}`}
-                className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4 pt-1"
+                className="inline-flex items-center gap-1 pt-1 text-label-13 text-foreground underline-offset-4 hover:underline"
                 onClick={(event) => event.stopPropagation()}
               >
                 Read the pillar
@@ -213,10 +213,10 @@ export function UseCaseTabs({
           // (mockup on the right). When `reverse`, swap to column 1
           // so the mockup lives on the left side instead.
           className={cn(
-            "relative outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden",
+            "relative mt-0 min-h-[320px] overflow-hidden outline-none lg:min-h-[480px]",
             reverse
               ? "lg:col-start-1 lg:row-start-1"
-              : "lg:col-start-2 lg:row-start-1",
+              : "lg:col-start-2 lg:row-start-1"
           )}
         >
           <DotGrid className="absolute inset-0" />
@@ -225,7 +225,7 @@ export function UseCaseTabs({
               "absolute bottom-0 h-[110%] w-[110%] translate-y-[25%] overflow-hidden",
               reverse
                 ? "left-0 -translate-x-[25%]"
-                : "right-0 translate-x-[25%]",
+                : "right-0 translate-x-[25%]"
             )}
           >
             <EcosystemCodeMockup

@@ -1,4 +1,11 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs"
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs"
 import { dirname } from "node:path"
 
 import { cachePath } from "../../../cache/location.js"
@@ -39,32 +46,32 @@ const resolveAuthPath = (): string => AUTH_PATH()
 
 /** Stored session shape. JSON-serialisable. */
 export interface StoredAuth {
-	access_token: string
-	user: { id: string; email?: string; name?: string }
-	fetchedAt: string
+  access_token: string
+  user: { id: string; email?: string; name?: string }
+  fetchedAt: string
 }
 
 const ensureDir = (path: string): void => {
-	if (!existsSync(dirname(path))) {
-		mkdirSync(dirname(path), { recursive: true })
-	}
+  if (!existsSync(dirname(path))) {
+    mkdirSync(dirname(path), { recursive: true })
+  }
 }
 
 const chmodOwnerOnly = (path: string): void => {
-	// fs.writeFile's `mode` is masked by the process umask, so
-	// the explicit chmod after the write is the authoritative
-	// step. Without it, a default umask of 022 leaves the file
-	// world-readable on Linux/macOS. The mode 0o600 means
-	// read/write for the owner only.
-	try {
-		chmodSync(path, 0o600)
-	} catch {
-		// chmod may fail on Windows in tests; the writeAuth
-		// caller treats chmod failure as a write failure (the
-		// CLI exits through CliError). Silent here means we
-		// only fall through if chmod itself is unsupported on
-		// the platform, which is rare on Node targets.
-	}
+  // fs.writeFile's `mode` is masked by the process umask, so
+  // the explicit chmod after the write is the authoritative
+  // step. Without it, a default umask of 022 leaves the file
+  // world-readable on Linux/macOS. The mode 0o600 means
+  // read/write for the owner only.
+  try {
+    chmodSync(path, 0o600)
+  } catch {
+    // chmod may fail on Windows in tests; the writeAuth
+    // caller treats chmod failure as a write failure (the
+    // CLI exits through CliError). Silent here means we
+    // only fall through if chmod itself is unsupported on
+    // the platform, which is rare on Node targets.
+  }
 }
 
 /**
@@ -75,16 +82,16 @@ const chmodOwnerOnly = (path: string): void => {
  * explicitly via the CLI error path.
  */
 export const readAuth = (): StoredAuth | null => {
-	const path = resolveAuthPath()
-	if (!existsSync(path)) return null
-	try {
-		const text = readFileSync(path, "utf8")
-		const parsed = JSON.parse(text) as StoredAuth
-		if (typeof parsed.access_token !== "string") return null
-		return parsed
-	} catch {
-		return null
-	}
+  const path = resolveAuthPath()
+  if (!existsSync(path)) return null
+  try {
+    const text = readFileSync(path, "utf8")
+    const parsed = JSON.parse(text) as StoredAuth
+    if (typeof parsed.access_token !== "string") return null
+    return parsed
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -92,11 +99,11 @@ export const readAuth = (): StoredAuth | null => {
  * throws on filesystem failure (caller decides how to surface).
  */
 export const writeAuth = (auth: StoredAuth): void => {
-	const path = resolveAuthPath()
-	ensureDir(path)
-	const text = JSON.stringify(auth, null, 2)
-	writeFileSync(path, text, { mode: 0o600 })
-	chmodOwnerOnly(path)
+  const path = resolveAuthPath()
+  ensureDir(path)
+  const text = JSON.stringify(auth, null, 2)
+  writeFileSync(path, text, { mode: 0o600 })
+  chmodOwnerOnly(path)
 }
 
 /**
@@ -105,9 +112,9 @@ export const writeAuth = (auth: StoredAuth): void => {
  * server-side session invalidation.
  */
 export const clearAuth = (): void => {
-	const path = resolveAuthPath()
-	if (!existsSync(path)) return
-	unlinkSync(path)
+  const path = resolveAuthPath()
+  if (!existsSync(path)) return
+  unlinkSync(path)
 }
 
 // Exposed for the rare caller that needs the resolved path

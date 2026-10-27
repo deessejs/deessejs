@@ -19,15 +19,14 @@ export function EngagementModels() {
     <div className="border-b border-border">
       <div className="flex flex-col gap-6 p-6 lg:p-10">
         <header className="flex flex-col gap-2">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Engagement models
           </p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
-            Three structured formats. Pick the one that matches
-            where you are.
+          <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40 [&:not(:first-child)]:mt-0">
+            Three structured formats. Pick the one that matches where you are.
           </h2>
         </header>
-        <ul className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-border md:divide-y divide-border">
+        <ul className="grid grid-cols-1 gap-0 divide-border border border-border md:grid-cols-3 md:divide-y">
           {ENGAGEMENT_MODELS.map((model, index) => (
             <EngagementCard
               key={model.id}
@@ -52,16 +51,16 @@ function EngagementCard({
     <li
       className={cn(
         "flex flex-col gap-4 p-6 lg:p-8",
-        !isLast && "md:border-r md:border-border",
+        !isLast && "md:border-r md:border-border"
       )}
     >
-      <span className="font-mono text-copy-13 uppercase tracking-wider text-muted-foreground">
+      <span className="font-mono text-copy-13 tracking-wider text-muted-foreground uppercase">
         {model.name} · {model.duration}
       </span>
       <p className="text-copy-14 text-foreground [&:not(:first-child)]:mt-0">
         {model.audience}
       </p>
-      <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+      <p className="text-copy-14 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
         {model.scope}
       </p>
       <p className="text-copy-14 font-medium text-foreground [&:not(:first-child)]:mt-0">

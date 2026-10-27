@@ -9,9 +9,7 @@ import { expect, test } from "@playwright/test"
 import { templatesHeading } from "./helpers/selectors.js"
 
 test.describe("P1 /templates navigation", () => {
-  test("P1-11: /templates is reachable from the site nav", async ({
-    page,
-  }) => {
+  test("P1-11: /templates is reachable from the site nav", async ({ page }) => {
     await page.goto("/")
 
     // The site header has a "Templates" link in the footer.
@@ -46,9 +44,7 @@ test.describe("P1 /templates navigation", () => {
 
     // After the filter click, aria-current=page should be on
     // the clicked link (the sidebar marks the active state).
-    await expect(
-      page.locator('a[aria-current="page"]').first(),
-    ).toBeVisible()
+    await expect(page.locator('a[aria-current="page"]').first()).toBeVisible()
 
     // The catalog heading remains (the page didn't navigate
     // away from /templates).

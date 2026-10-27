@@ -43,11 +43,7 @@ export const SearchableTemplateGrid = ({
   const filtered = useMemo(() => {
     if (normalized.length === 0) return templates
     return templates.filter((template) => {
-      const haystack = [
-        template.name,
-        template.description,
-        ...template.labels,
-      ]
+      const haystack = [template.name, template.description, ...template.labels]
         .join(" ")
         .toLowerCase()
       return haystack.includes(normalized)
@@ -56,41 +52,42 @@ export const SearchableTemplateGrid = ({
 
   return (
     <div className={cn("flex flex-col", className)}>
-    <div className="p-4 border-b border-border">
-      <div className="relative ">
-        <Search
-          aria-hidden
-          className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2"
-        />
-        <Input
-          id={inputId}
-          type="search"
-          data-testid="templates-search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search templates…"
-          aria-label={`Search templates in ${categoryLabel}`}
-          className="pl-9 pr-10"
-        />
-        {query.length > 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Clear search"
-            onClick={() => setQuery("")}
-            className="absolute right-1 top-1/2 size-7 -translate-y-1/2"
-          >
-            <X className="size-4" />
-          </Button>
-        ) : null}
-      </div>
+      <div className="border-b border-border p-4">
+        <div className="relative">
+          <Search
+            aria-hidden
+            className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            id={inputId}
+            type="search"
+            data-testid="templates-search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search templates…"
+            aria-label={`Search templates in ${categoryLabel}`}
+            className="pr-10 pl-9"
+          />
+          {query.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Clear search"
+              onClick={() => setQuery("")}
+              className="absolute top-1/2 right-1 size-7 -translate-y-1/2"
+            >
+              <X className="size-4" />
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
         <p className="text-copy-16 text-muted-foreground">
           No templates match{" "}
-          <span className="text-copy-14-mono">&quot;{deferred}&quot;</span> in {categoryLabel}.
+          <span className="text-copy-14-mono">&quot;{deferred}&quot;</span> in{" "}
+          {categoryLabel}.
         </p>
       ) : (
         <TemplateGrid templates={filtered} />

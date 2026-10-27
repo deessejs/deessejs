@@ -39,7 +39,8 @@ export function ComponentCategoryBrowserClient({
   const filtered = useMemo(() => {
     if (normalizedQuery.length === 0) return components
     return components.filter((component) => {
-      const haystack = `${component.name} ${component.description}`.toLowerCase()
+      const haystack =
+        `${component.name} ${component.description}`.toLowerCase()
       return haystack.includes(normalizedQuery)
     })
   }, [components, normalizedQuery])

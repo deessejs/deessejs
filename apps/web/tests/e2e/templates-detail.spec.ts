@@ -32,7 +32,7 @@ test.describe("P0 /templates/[slug]", () => {
 
   test("P0-5: unknown slug renders not-found.tsx", async ({ page }) => {
     const response = await page.goto(
-      "/templates/this-template-does-not-exist-xyz",
+      "/templates/this-template-does-not-exist-xyz"
     )
 
     // The HTTP status is 404 (Next notFound()).
@@ -42,7 +42,7 @@ test.describe("P0 /templates/[slug]", () => {
     await expect(browseAllTemplatesLink(page)).toBeVisible()
     await expect(browseAllTemplatesLink(page)).toHaveAttribute(
       "href",
-      "/templates",
+      "/templates"
     )
   })
 })

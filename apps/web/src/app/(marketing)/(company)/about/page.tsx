@@ -5,8 +5,7 @@ import { About } from "@/components/pages/about"
 
 export const metadata: Metadata = {
   title: "About",
-  description:
-    "What DeesseJS is, who edits it, and how to get in touch.",
+  description: "What DeesseJS is, who edits it, and how to get in touch.",
 }
 
 /**

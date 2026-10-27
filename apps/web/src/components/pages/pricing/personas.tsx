@@ -15,38 +15,34 @@ const PERSONAS = [
   {
     label: "Primary",
     title: "Freelance engineer or boutique studio",
-    body:
-      "You bill clients $20k–$80k per project. You don't get paid to wire auth, billing webhooks, and audit logs from scratch. Use Professional to eliminate low-margin plumbing and ship production-grade architectures under your client's brand.",
+    body: "You bill clients $20k–$80k per project. You don't get paid to wire auth, billing webhooks, and audit logs from scratch. Use Professional to eliminate low-margin plumbing and ship production-grade architectures under your client's brand.",
   },
   {
     label: "Secondary",
     title: "In-house team at a startup past the weekend stage",
-    body:
-      "You charge Professional subscriptions against engineering time saved, the same way you buy Vercel or Linear. Switch to annual when your team is shipping actively and you want every new template the day it lands.",
+    body: "You charge Professional subscriptions against engineering time saved, the same way you buy Vercel or Linear. Switch to annual when your team is shipping actively and you want every new template the day it lands.",
   },
   {
     label: "Tertiary",
     title: "Engineering team delivering client work",
-    body:
-      "You need 5 seats under a single organization key, the Commercial Extended License, and the Figma source file. Agency is built for this. Layer an engagement contract for procurement and dedicated support when your client is regulated.",
+    body: "You need 5 seats under a single organization key, the Commercial Extended License, and the Figma source file. Agency is built for this. Layer an engagement contract for procurement and dedicated support when your client is regulated.",
   },
   {
     label: "Floor",
     title: "Solo builder shipping a weekend project",
-    body:
-      "You use the Community templates for free, MIT-licensed. Cloning a Community template is the fastest way to see how a Professional codebase is structured before you commit.",
+    body: "You use the Community templates for free, MIT-licensed. Cloning a Community template is the fastest way to see how a Professional codebase is structured before you commit.",
   },
 ] as const
 
 export function Personas() {
   return (
     <div className="border-b border-border">
-      <Cell className="!p-0 border-0">
-        <div className="flex flex-col gap-2 p-6 border-b border-border">
+      <Cell className="border-0 !p-0">
+        <div className="flex flex-col gap-2 border-b border-border p-6">
           <p className="text-label-13 text-muted-foreground">Who buys what</p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
-            The four buyers we built the licensing model around. Find
-            the one closest to you.
+          <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40">
+            The four buyers we built the licensing model around. Find the one
+            closest to you.
           </h2>
         </div>
         <KbCardGrid className="md:grid-cols-2">
@@ -55,13 +51,13 @@ export function Personas() {
               key={persona.label}
               className="group gap-3 transition-colors hover:bg-accent/40"
             >
-              <span className="text-label-13 font-mono text-muted-foreground">
+              <span className="font-mono text-label-13 text-muted-foreground">
                 {persona.label}
               </span>
-              <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+              <h3 className="!m-0 text-heading-20 tracking-tight text-foreground">
                 {persona.title}
               </h3>
-              <p className="text-copy-14 text-muted-foreground leading-7 line-clamp-4 [&:not(:first-child)]:mt-0">
+              <p className="line-clamp-4 text-copy-14 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {persona.body}
               </p>
             </Cell>

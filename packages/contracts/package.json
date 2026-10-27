@@ -17,7 +17,7 @@
   },
   "types": "./dist/index.d.ts",
   "scripts": {
-    "lint": "eslint --max-warnings=0",
+    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json packages/contracts --deny-warnings",
     "build": "tsc",
     "test": "vitest",
     "test:run": "vitest run",
@@ -28,10 +28,9 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
-    "eslint": "catalog:",
     "vitest": "catalog:",
-    "@workspace/vitest-config": "workspace:*"
+    "@workspace/vitest-config": "workspace:*",
+    "oxlint": "catalog:"
   }
 }

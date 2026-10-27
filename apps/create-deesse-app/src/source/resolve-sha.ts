@@ -38,7 +38,7 @@ class AbortError extends Error {
 const execFileP = (
   cmd: string,
   args: string[],
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<string> =>
   new Promise<string>((resolveFn, rejectFn) => {
     // execFile resolves the command via PATH, which is the documented
@@ -51,7 +51,7 @@ const execFileP = (
       (err, out) => {
         if (err) rejectFn(err)
         else resolveFn(out)
-      },
+      }
     )
     if (signal !== undefined) {
       const onAbort = (): void => {
@@ -73,7 +73,7 @@ const execFileP = (
  * reported in the JSON result.
  */
 export const resolveTemplateSha = async (
-  args: ResolveTemplateShaArgs,
+  args: ResolveTemplateShaArgs
 ): Promise<string> => {
   const { owner, repo, ref, signal } = args
   const url = `https://github.com/${owner}/${repo}`
@@ -88,14 +88,12 @@ export const resolveTemplateSha = async (
     } catch {
       throw gitNotInstalled()
     }
-    throw sourceFailed(
-      `git ls-remote returned no lines for ${url} ${ref}`,
-    )
+    throw sourceFailed(`git ls-remote returned no lines for ${url} ${ref}`)
   }
 
   if (!SHA_REGEX.test(sha)) {
     throw sourceFailed(
-      `git ls-remote returned a malformed SHA for ${url} ${ref}: ${sha}`,
+      `git ls-remote returned a malformed SHA for ${url} ${ref}: ${sha}`
     )
   }
   return sha

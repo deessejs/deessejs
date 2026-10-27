@@ -103,10 +103,13 @@ const posts = defineCollection({
     title: z.string().min(1).max(120),
     description: z.string().min(1).max(280),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    updated: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    updated: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
     tags: z
       .array(
-        z.enum(["engineering", "community", "news", "customers", "security"]),
+        z.enum(["engineering", "community", "news", "customers", "security"])
       )
       .default([]),
     author: z.string().min(1).optional(),
@@ -125,34 +128,27 @@ const posts = defineCollection({
       return context.skip(`scheduled for ${post.scheduled}`)
     }
 
-    const handles = post.authors.length > 0
-      ? post.authors
-      : post.author
-        ? [post.author]
-        : []
+    const handles =
+      post.authors.length > 0 ? post.authors : post.author ? [post.author] : []
     if (handles.length === 0) {
       throw new Error(
         `Post "${post.title}" has no author. Add \`author: <handle>\` or ` +
-          `\`authors: [handle, ...]\` to its frontmatter.`,
+          `\`authors: [handle, ...]\` to its frontmatter.`
       )
     }
 
     const resolvedAuthors = handles.map((handle) => {
-      const author = context.documents(authors).find(
-        (a) => a.handle === handle,
-      )
+      const author = context.documents(authors).find((a) => a.handle === handle)
       if (!author) {
         throw new Error(
           `Post "${post.title}" references unknown author "${handle}". ` +
-            `Add content/authors/${handle}.md or fix the frontmatter.`,
+            `Add content/authors/${handle}.md or fix the frontmatter.`
         )
       }
       return author
     })
 
-    const slug = post._meta.filePath
-      .replace(/^.*\//, "")
-      .replace(/\.mdx$/, "")
+    const slug = post._meta.filePath.replace(/^.*\//, "").replace(/\.mdx$/, "")
 
     const mdxCode = await compileMDX(context, post, {
       rehypePlugins: [
@@ -164,7 +160,13 @@ const posts = defineCollection({
         // border/overflow chrome — no runtime shiki, no client
         // bundling, no async boundary.
         [rehypeHeadingIds],
-        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
+        [
+          rehypeShiki,
+          {
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          },
+        ],
       ],
     })
 
@@ -201,7 +203,7 @@ const releases = defineCollection({
           "removed",
           "deprecated",
           "security",
-        ]),
+        ])
       )
       .default([]),
     cover: z.string().optional(),
@@ -213,18 +215,16 @@ const releases = defineCollection({
     if (handles.length === 0) {
       throw new Error(
         `Release "${release.title}" has no author. Add ` +
-          "`authors: [<handle>]` to its frontmatter.",
+          "`authors: [<handle>]` to its frontmatter."
       )
     }
 
     const resolvedAuthors = handles.map((handle) => {
-      const author = context.documents(authors).find(
-        (a) => a.handle === handle,
-      )
+      const author = context.documents(authors).find((a) => a.handle === handle)
       if (!author) {
         throw new Error(
           `Release "${release.title}" references unknown author "${handle}". ` +
-            `Add content/authors/${handle}.md or fix the frontmatter.`,
+            `Add content/authors/${handle}.md or fix the frontmatter.`
         )
       }
       return author
@@ -237,7 +237,13 @@ const releases = defineCollection({
     const mdxCode = await compileMDX(context, release, {
       rehypePlugins: [
         [rehypeHeadingIds],
-        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
+        [
+          rehypeShiki,
+          {
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          },
+        ],
       ],
     })
 
@@ -263,14 +269,18 @@ const kbTopics = defineCollection({
     content: z.string(),
   }),
   transform: async (topic, context) => {
-    const slug = topic._meta.filePath
-      .replace(/^.*\//, "")
-      .replace(/\.mdx$/, "")
+    const slug = topic._meta.filePath.replace(/^.*\//, "").replace(/\.mdx$/, "")
 
     const mdxCode = await compileMDX(context, topic, {
       rehypePlugins: [
         [rehypeHeadingIds],
-        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
+        [
+          rehypeShiki,
+          {
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          },
+        ],
       ],
     })
 
@@ -306,9 +316,7 @@ const kbGuides = defineCollection({
       return context.skip("document is a draft")
     }
 
-    const slug = guide._meta.filePath
-      .replace(/^.*\//, "")
-      .replace(/\.mdx$/, "")
+    const slug = guide._meta.filePath.replace(/^.*\//, "").replace(/\.mdx$/, "")
 
     const author = guide.author
       ? context.documents(authors).find((a) => a.handle === guide.author)
@@ -316,7 +324,7 @@ const kbGuides = defineCollection({
     if (guide.author && !author) {
       throw new Error(
         `Guide "${guide.title}" references unknown author "${guide.author}". ` +
-          `Add content/authors/${guide.author}.md or fix the frontmatter.`,
+          `Add content/authors/${guide.author}.md or fix the frontmatter.`
       )
     }
 
@@ -325,7 +333,13 @@ const kbGuides = defineCollection({
     const mdxCode = await compileMDX(context, guide, {
       rehypePlugins: [
         [rehypeHeadingIds],
-        [rehypeShiki, { themes: { light: "github-light", dark: "github-dark" }, defaultColor: false }],
+        [
+          rehypeShiki,
+          {
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          },
+        ],
       ],
     })
 

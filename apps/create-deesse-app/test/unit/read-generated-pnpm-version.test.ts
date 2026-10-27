@@ -17,7 +17,7 @@ afterEach(() => {
 const writePackageJson = (content: object | string): void => {
   writeFileSync(
     join(dir, "package.json"),
-    typeof content === "string" ? content : JSON.stringify(content),
+    typeof content === "string" ? content : JSON.stringify(content)
   )
 }
 
@@ -64,7 +64,7 @@ describe("readGeneratedPnpmVersion", () => {
       writePackageJson({ packageManager: bad })
       expect(
         () => readGeneratedPnpmVersion(dir),
-        `expected reject for ${JSON.stringify(bad)}`,
+        `expected reject for ${JSON.stringify(bad)}`
       ).toThrow(/expected "pnpm@<version>"/)
     }
   })
@@ -82,21 +82,21 @@ describe("readGeneratedPnpmVersion", () => {
   it("throws source_failed when the packageManager field is missing", () => {
     writePackageJson({ name: "saas-template" })
     expect(() => readGeneratedPnpmVersion(dir)).toThrow(
-      /no packageManager field/,
+      /no packageManager field/
     )
   })
 
   it("throws source_failed when the packageManager field is not pnpm", () => {
     writePackageJson({ packageManager: "yarn@4.0.0" })
     expect(() => readGeneratedPnpmVersion(dir)).toThrow(
-      /expected "pnpm@<version>"/,
+      /expected "pnpm@<version>"/
     )
   })
 
   it("throws source_failed when the packageManager field is malformed", () => {
     writePackageJson({ packageManager: "" })
     expect(() => readGeneratedPnpmVersion(dir)).toThrow(
-      /no packageManager field/,
+      /no packageManager field/
     )
   })
 

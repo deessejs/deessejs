@@ -1,40 +1,46 @@
 {
   "name": "@deessejs/cli",
   "version": "2.1.0",
-  "description": "CLI for the DeesseJS template registry.",
-  "type": "module",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/deessejs/deessejs.git"
-  },
+  "private": false,
+  "description": "CLI for the DeesseJS template registry and blocks.",
   "keywords": [
     "cli",
     "deessejs",
     "deessejs-main-app",
     "scaffolding"
   ],
-  "private": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deessejs/deessejs.git"
+  },
   "bin": {
     "deessejs": "./dist/index.js"
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
   "files": [
     "dist",
     "README.md",
     "../../LICENSE"
   ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
-    "prebuild": "pnpm --filter @workspace/contracts build",
+    "prebuild": "pnpm --filter @workspace/contracts build && pnpm --filter @workspace/registry build",
     "build": "tsup",
-    "predev": "pnpm --filter @workspace/contracts build",
+    "predev": "pnpm --filter @workspace/contracts build && pnpm --filter @workspace/registry build",
     "dev": "tsup --watch",
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json apps/cli",
+    "format": "oxfmt --config ../../.oxfmtrc.json --ignore-path ../../.oxfmtignore \"**/*.{ts,tsx,json,md}\"",
     "typecheck": "tsc --noEmit",
+    "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json",
     "pretest": "pnpm turbo build --filter=@deessejs/cli && tsup",
     "test": "vitest run",
+    "test:e2e": "vitest run --config test/e2e/vitest.e2e.config.ts",
     "test:watch": "vitest",
     "start": "node ./dist/index.js"
   },
@@ -54,20 +60,16 @@
     "@types/node": "catalog:",
     "@workspace/api": "workspace:*",
     "@workspace/contracts": "workspace:*",
-    "@workspace/eslint-config": "workspace:*",
+    "@workspace/registry": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
-    "eslint": "^9",
-    "prettier": "^3.9.4",
-    "prettier-plugin-tailwindcss": "^0.8.0",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "tar": "catalog:",
     "tsup": "^8.3.5",
     "typescript": "catalog:",
     "vitest": "^2.1.5"
   },
   "engines": {
     "node": ">=20.0.0"
-  },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
   }
 }

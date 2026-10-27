@@ -19,7 +19,10 @@ import {
 import { runInstall } from "./install/run.js"
 import { warnInstallBootstrap } from "./install/warn-install-bootstrap.js"
 import { validateProjectName } from "./name/validate.js"
-import { pickInstallStrategy, type InstallStrategy } from "./pm/install-strategy.js"
+import {
+  pickInstallStrategy,
+  type InstallStrategy,
+} from "./pm/install-strategy.js"
 import { pnpm } from "./pm/pnpm.js"
 import { probeInstallPrereqs } from "./pm/probe-paths.js"
 import type { Logger } from "./output/logger.js"
@@ -228,12 +231,12 @@ const resolvePrereqs = (state: RunState): void => {
     npmAvailable: state.prereqs.npm,
     pnpmAvailable: state.prereqs.pnpm,
   })
-  state.installCommand = pnpm.installCommand(
-    state.strategy,
-    state.pnpmVersion,
-  )
+  state.installCommand = pnpm.installCommand(state.strategy, state.pnpmVersion)
   state.logger.info("install strategy chosen", { strategy: state.strategy })
-  warnInstallBootstrap(state.strategy, state.input.dryRun ? "dry-run" : "create")
+  warnInstallBootstrap(
+    state.strategy,
+    state.input.dryRun ? "dry-run" : "create"
+  )
 }
 
 // Same as readGeneratedPnpmVersion, but translates
@@ -292,7 +295,7 @@ const buildNoInstallResult = (state: RunState): CreateResult => {
 
 // 5b. Run install, return success / install-failure.
 const runInstallAndBuildResult = async (
-  state: RunState,
+  state: RunState
 ): Promise<CreateResult> => {
   if (
     !state.sha ||
@@ -342,7 +345,8 @@ const runInstallAndBuildResult = async (
     // Surface the killed status as a string the human
     // reader can act on; downstream tooling reads
     // `error.code: "aborted"` and ignores the field.
-    const codeLabel = installResult.code === null ? "killed" : installResult.code
+    const codeLabel =
+      installResult.code === null ? "killed" : installResult.code
     state.logger.error("cancelled", { code: codeLabel })
     const failure: CreateFailure = {
       ok: false,
@@ -405,10 +409,11 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
     signal: abortController.signal,
     logger: input.verbose ? stderrLogger() : nullLogger,
   }
-  state.logger.info(
-    input.dryRun ? "starting dry-run" : "starting create",
-    { project: input.projectName, dir: input.dir, install: input.install },
-  )
+  state.logger.info(input.dryRun ? "starting dry-run" : "starting create", {
+    project: input.projectName,
+    dir: input.dir,
+    install: input.install,
+  })
 
   // The first SIGINT aborts in-flight IO and triggers the
   // cleanup path. The second SIGINT (the user's "I really
@@ -460,7 +465,9 @@ export const run = async (input: RunInput): Promise<CreateResult> => {
         pnpmVersion: state.pnpmVersion,
       })
       cleanupState(state)
-      state.logger.info("dry-run plan ready", { files: result.plannedFiles.length })
+      state.logger.info("dry-run plan ready", {
+        files: result.plannedFiles.length,
+      })
       return result
     }
 
@@ -538,7 +545,7 @@ const buildAbortFailure = (state: RunState): CreateFailure => {
 // user gets no recovery (no command would help).
 const buildCliErrorFailure = (
   state: RunState,
-  err: CliError,
+  err: CliError
 ): CreateFailure => {
   const published = isProjectPublished(state)
   state.logger.error("error", { code: err.code, message: err.message })
@@ -563,10 +570,7 @@ const buildCliErrorFailure = (
       cwd: state.input.dir,
     })
   } catch (readErr) {
-    if (
-      readErr instanceof CliError &&
-      readErr.code === "source_failed"
-    ) {
+    if (readErr instanceof CliError && readErr.code === "source_failed") {
       return failure
     }
     throw readErr

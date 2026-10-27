@@ -29,20 +29,20 @@ import { resolveBaseURL } from "./better-auth-client.js"
  * silent failure.
  */
 function authUrl(path: string): string {
-	const normalised = path.startsWith("/") ? path.slice(1) : path
-	return `${resolveBaseURL()}${API_AUTH_PATH}/${normalised}`
+  const normalised = path.startsWith("/") ? path.slice(1) : path
+  return `${resolveBaseURL()}${API_AUTH_PATH}/${normalised}`
 }
 
 export function bearerFetch(
-	path: string,
-	accessToken: string,
-	init?: RequestInit,
+  path: string,
+  accessToken: string,
+  init?: RequestInit
 ): Promise<Response> {
-	const headers = new Headers(init?.headers)
-	headers.set("user-agent", `DeesseJS CLI/${readPackageVersion()}`)
-	headers.set("authorization", `Bearer ${accessToken}`)
-	return fetch(authUrl(path), {
-		...init,
-		headers,
-	})
+  const headers = new Headers(init?.headers)
+  headers.set("user-agent", `DeesseJS CLI/${readPackageVersion()}`)
+  headers.set("authorization", `Bearer ${accessToken}`)
+  return fetch(authUrl(path), {
+    ...init,
+    headers,
+  })
 }

@@ -61,7 +61,7 @@ export function BlocksCategoryBrowserClient({
 
   const pinnedCategoryData = useMemo(
     () => categories.find((c) => c.id === pinnedCategory),
-    [categories, pinnedCategory],
+    [categories, pinnedCategory]
   )
 
   const filtered = useMemo(() => {

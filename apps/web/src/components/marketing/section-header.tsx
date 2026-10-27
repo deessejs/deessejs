@@ -37,22 +37,20 @@ export function SectionHeader({
   eyebrow: string
   title: string
   subtitle?: string
-  action?:
-    | { href: string; label: string }
-    | React.ReactNode
+  action?: { href: string; label: string } | React.ReactNode
   bordered?: boolean
   className?: string
 }) {
   function isLinkAction(
-  action: unknown,
-): action is { href: string; label: string } {
-  return (
-    typeof action === "object" &&
-    action !== null &&
-    "href" in action &&
-    "label" in action
-  )
-}
+    action: unknown
+  ): action is { href: string; label: string } {
+    return (
+      typeof action === "object" &&
+      action !== null &&
+      "href" in action &&
+      "label" in action
+    )
+  }
 
   const renderLinkAction = action && isLinkAction(action)
 
@@ -61,16 +59,16 @@ export function SectionHeader({
       className={cn(
         "flex flex-col gap-4 p-6 md:p-8 lg:p-10",
         bordered && "border-b border-border",
-        className,
+        className
       )}
     >
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center">
           <div
             aria-hidden
-            className="mr-4 shrink-0 w-[1.7px] h-[13.5px] bg-foreground"
+            className="mr-4 h-[13.5px] w-[1.7px] shrink-0 bg-foreground"
           />
-          <span className="font-mono uppercase text-[0.8125rem] leading-[1.2] text-foreground opacity-64 font-medium tracking-[-0.01em]">
+          <span className="font-mono text-[0.8125rem] leading-[1.2] font-medium tracking-[-0.01em] text-foreground uppercase opacity-64">
             {eyebrow}
           </span>
         </div>
@@ -78,7 +76,7 @@ export function SectionHeader({
           renderLinkAction ? (
             <Link
               href={action.href}
-              className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4 shrink-0"
+              className="inline-flex shrink-0 items-center gap-1 text-label-13 text-foreground underline-offset-4 hover:underline"
             >
               {action.label}
               <ChevronRight className="size-3" aria-hidden />
@@ -88,11 +86,11 @@ export function SectionHeader({
           )
         ) : null}
       </div>
-      <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
+      <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40 [&:not(:first-child)]:mt-0">
         {title}
       </h2>
       {subtitle ? (
-        <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
+        <p className="max-w-2xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
           {subtitle}
         </p>
       ) : null}

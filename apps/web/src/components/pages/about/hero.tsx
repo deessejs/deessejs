@@ -42,13 +42,13 @@ export function Hero() {
   return (
     <section className="flex flex-col items-center gap-6 border-b border-border px-6 py-16 text-center sm:py-20 lg:py-24">
       <div className="flex max-w-3xl flex-col items-center gap-6">
-        <h1 className="text-heading-40 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance">
+        <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
           Templates that ship themselves.
         </h1>
-        <p className="text-muted-foreground text-copy-18 sm:text-copy-20 leading-7 max-w-2xl text-balance [&:not(:first-child)]:mt-0">
-          DeesseJS is the open template ecosystem for agent-aware
-          apps. Built by the team behind the engine, every template
-          ships MIT and is runnable from the first commit.
+        <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground sm:text-copy-20 [&:not(:first-child)]:mt-0">
+          DeesseJS is the open template ecosystem for agent-aware apps. Built by
+          the team behind the engine, every template ships MIT and is runnable
+          from the first commit.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2 [&:not(:first-child)]:mt-0">
           <Button asChild size="lg">

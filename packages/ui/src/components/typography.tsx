@@ -41,9 +41,7 @@ export function P({ children }: { children: React.ReactNode }) {
 export function Blockquote({ children }: { children: React.ReactNode }) {
   // The wrapper's space-y-* handles vertical rhythm. Inside, the
   // <blockquote> still carries its left-border and italic style.
-  return (
-    <blockquote className="border-l-2 pl-6 italic">{children}</blockquote>
-  )
+  return <blockquote className="border-l-2 pl-6 italic">{children}</blockquote>
 }
 
 export function List({ children }: { children: React.ReactNode }) {
@@ -51,41 +49,31 @@ export function List({ children }: { children: React.ReactNode }) {
   // is applied by the article wrapper via [&_ul]:space-y-2, so the
   // [&>li]:mt-2 override is no longer needed (it would double the
   // gap now that the parent space-y-* governs).
-  return (
-    <ul className="ml-6 list-disc">{children}</ul>
-  )
+  return <ul className="ml-6 list-disc">{children}</ul>
 }
 
 export function InlineCode({ children }: { children: React.ReactNode }) {
   return (
-    <code className="bg-muted relative rounded px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
+    <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
       {children}
     </code>
   )
 }
 
 export function Lead({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-muted-foreground text-xl">{children}</p>
-  )
+  return <p className="text-xl text-muted-foreground">{children}</p>
 }
 
 export function Large({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-lg font-semibold">{children}</div>
-  )
+  return <div className="text-lg font-semibold">{children}</div>
 }
 
 export function Small({ children }: { children: React.ReactNode }) {
-  return (
-    <small className="text-sm font-medium leading-none">{children}</small>
-  )
+  return <small className="text-sm leading-none font-medium">{children}</small>
 }
 
 export function Muted({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-muted-foreground text-sm">{children}</p>
-  )
+  return <p className="text-sm text-muted-foreground">{children}</p>
 }
 
 export function Link({
@@ -96,10 +84,7 @@ export function Link({
   href: string
 }) {
   return (
-    <a
-      href={href}
-      className="font-medium underline underline-offset-4"
-    >
+    <a href={href} className="font-medium underline underline-offset-4">
       {children}
     </a>
   )
@@ -132,8 +117,8 @@ export function Img({
       src={src}
       alt={alt ?? ""}
       className={cn(
-        "rounded-lg border border-border/40 max-w-full h-auto",
-        className,
+        "h-auto max-w-full rounded-lg border border-border/40",
+        className
       )}
     />
   )

@@ -39,13 +39,13 @@ export function NineTenets() {
         {PRINCIPLES.map((principle) => (
           <li key={principle.number} className="list-none">
             <Card className="flex h-full flex-col p-6">
-              <span className="text-label-13 font-mono text-muted-foreground">
+              <span className="font-mono text-label-13 text-muted-foreground">
                 {principle.number}
               </span>
               <h3 className="text-heading-20 tracking-tight text-foreground">
                 {principle.title}
               </h3>
-              <p className="text-copy-14 text-foreground leading-7">
+              <p className="text-copy-14 leading-7 text-foreground">
                 {principle.body}
               </p>
             </Card>

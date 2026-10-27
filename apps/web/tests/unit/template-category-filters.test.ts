@@ -87,7 +87,7 @@ describe("filterTemplates", () => {
       const rows = filterTemplates(CATALOG, filter)
       expect(rows.every((row) => row.category === category)).toBe(true)
       expect(rows.length).toBeGreaterThan(0)
-    },
+    }
   )
 
   it("keeps only the rows matching both axes", () => {

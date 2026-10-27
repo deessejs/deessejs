@@ -1,5 +1,7 @@
 "use client"
 
+/* oxlint-disable next/no-img-element */
+
 import { ArrowUpRight } from "lucide-react"
 import * as motion from "motion/react-client"
 import Link from "next/link"
@@ -82,7 +84,11 @@ const BENTO_SPAN: Record<
     rowSpan?: string
   }
 > = {
-  Database: { col: "lg:col-span-6", rowSpan: "lg:row-span-2", rowStart: "lg:row-start-1" },
+  Database: {
+    col: "lg:col-span-6",
+    rowSpan: "lg:row-span-2",
+    rowStart: "lg:row-start-1",
+  },
   Auth: { col: "lg:col-span-3", rowStart: "lg:row-start-1" },
   Storage: { col: "lg:col-span-6", rowStart: "lg:row-start-4" },
   Billing: { col: "lg:col-span-12", rowStart: "lg:row-start-3" },
@@ -102,7 +108,7 @@ export function ContractsGrid({
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.2 }}
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 lg:grid-rows-4 lg:auto-rows-min gap-px bg-border"
+      className="grid grid-cols-1 gap-px bg-border sm:grid-cols-2 lg:auto-rows-min lg:grid-cols-12 lg:grid-rows-4"
     >
       {contracts.map((contract) => {
         const Icon = ICON_MAP[contract.icon]
@@ -121,7 +127,7 @@ export function ContractsGrid({
               "group relative flex flex-col gap-4 bg-background p-6",
               span.col,
               span.rowStart,
-              span.rowSpan,
+              span.rowSpan
             )}
           >
             <Link
@@ -129,6 +135,7 @@ export function ContractsGrid({
               aria-label={`Browse all ${contract.title} templates`}
               className="absolute inset-0 z-0"
             />
+            {/* oxlint-disable-next-line react/forbid-elements */}
             <button
               type="button"
               aria-label={`Open ${contract.title} templates in a new tab`}
@@ -137,7 +144,7 @@ export function ContractsGrid({
                 window.open(
                   `/templates?tags=["${contract.title.toLowerCase()}"]`,
                   "_blank",
-                  "noopener,noreferrer",
+                  "noopener,noreferrer"
                 )
               }}
               className="absolute top-3 right-3 z-20 flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
@@ -147,16 +154,16 @@ export function ContractsGrid({
             <div className="relative z-10 flex flex-col gap-4">
               <div className="flex items-center gap-2">
                 <span className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40">
-                  <Icon className="text-foreground size-4" aria-hidden />
+                  <Icon className="size-4 text-foreground" aria-hidden />
                 </span>
-                <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                <h3 className="!m-0 text-heading-20 tracking-tight text-foreground">
                   {contract.title}
                 </h3>
               </div>
 
               <MockupPlaceholder />
 
-              <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+              <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {contract.description}
               </p>
 

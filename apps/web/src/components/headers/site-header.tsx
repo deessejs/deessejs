@@ -4,7 +4,11 @@ import Link from "next/link"
 import type { ReactNode } from "react"
 import { usePathname } from "next/navigation"
 import { Menu, Search } from "lucide-react"
-import { Sheet, SheetContent, SheetTrigger } from "@workspace/ui/components/sheet"
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@workspace/ui/components/sheet"
 import { Button } from "@workspace/ui/components/button"
 import { APP_NAME } from "@/lib/app-config"
 
@@ -47,7 +51,7 @@ export function SiteHeader({
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="flex items-center gap-2 font-semibold text-lg"
+            className="flex items-center gap-2 text-lg font-semibold"
             aria-label={`${APP_NAME} home`}
           >
             <svg
@@ -110,13 +114,11 @@ export function SiteHeader({
           >
             <Search className="size-4 text-muted-foreground" />
             <span className="text-muted-foreground">Search content</span>
-            <kbd className="ml-2 hidden text-[10px] font-mono text-muted-foreground/60 md:inline">
+            <kbd className="ml-2 hidden font-mono text-[10px] text-muted-foreground/60 md:inline">
               ⌘K
             </kbd>
           </Button>
-          <div className="hidden items-center gap-2 sm:flex">
-            {rightSlot}
-          </div>
+          <div className="hidden items-center gap-2 sm:flex">{rightSlot}</div>
           <Sheet>
             <SheetTrigger asChild className="sm:hidden">
               <Button
@@ -132,12 +134,10 @@ export function SiteHeader({
               className="flex flex-col gap-6 bg-background p-6"
               style={{ width: "100vw", maxWidth: "100vw" }}
             >
-              <Link href="/" className="font-semibold text-lg">
+              <Link href="/" className="text-lg font-semibold">
                 {APP_NAME}
               </Link>
-              <div className="flex flex-col gap-2">
-                {mobileMenuSlot}
-              </div>
+              <div className="flex flex-col gap-2">{mobileMenuSlot}</div>
               <NavSections pathname={pathname} variant="mobile" />
             </SheetContent>
           </Sheet>

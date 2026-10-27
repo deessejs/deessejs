@@ -52,7 +52,7 @@ export type ValidateEntriesResult = {
  * information is reconstructed on disk by `extractTarball`).
  */
 export const validateEntries = async (
-  args: ValidateEntriesArgs,
+  args: ValidateEntriesArgs
 ): Promise<ValidateEntriesResult> => {
   const { tarballPath, sha, repo, signal } = args
   const expectedPrefix = `${repo}-${sha}/`

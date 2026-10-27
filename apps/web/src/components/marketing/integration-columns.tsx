@@ -21,10 +21,10 @@ export function IntegrationColumns({
   groups?: ReadonlyArray<{ key: string; label: string }>
 }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-border divide-y divide-border md:divide-y-0 md:divide-x">
+    <div className="grid grid-cols-1 gap-0 divide-y divide-border border border-border md:grid-cols-3 md:divide-x md:divide-y-0">
       {groups.map((group) => (
         <div key={group.key} className="flex flex-col gap-4 p-5 lg:p-6">
-          <p className="text-label-13 text-muted-foreground uppercase tracking-wide">
+          <p className="text-label-13 tracking-wide text-muted-foreground uppercase">
             {group.label}
           </p>
           <ul className="flex flex-col gap-3">
@@ -35,7 +35,7 @@ export function IntegrationColumns({
                   key={`${integration.group}-${integration.name}`}
                   className="inline-flex items-center gap-3 text-copy-14 text-foreground"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img
                     src={`/logos/${integration.logo}.svg`}
                     alt=""

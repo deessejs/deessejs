@@ -36,9 +36,7 @@ export async function LatestGuides() {
 
   const guides = await Promise.all(
     featuredGuides.map(async (guide) => {
-      const snippet = LATEST_GUIDES_SNIPPETS[
-        guide.slug as LatestGuidesSlug
-      ]
+      const snippet = LATEST_GUIDES_SNIPPETS[guide.slug as LatestGuidesSlug]
       const html = snippet
         ? await codeToHtml(snippet.code, {
             lang: "typescript",
@@ -71,7 +69,7 @@ export async function LatestGuides() {
         return { ...payload, author }
       }
       return payload
-    }),
+    })
   )
 
   return (

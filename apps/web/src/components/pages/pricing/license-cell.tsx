@@ -44,20 +44,20 @@ export function LicenseCell({
         // Vertical separators on md+: every cell gets a right border
         // except the last one. This replaces the grid's divide-x so
         // Pro's ring doesn't double up on the divider.
-        "border-b last:border-b-0 md:border-b-0 md:border-r",
+        "border-b last:border-b-0 md:border-r md:border-b-0",
         isLast && "md:border-r-0",
         isRecommended &&
-          "bg-background md:-my-px md:border md:border-border md:shadow-[0_8px_24px_-12px_rgb(0_0_0_/0.15)]",
+          "bg-background md:-my-px md:border md:border-border md:shadow-[0_8px_24px_-12px_rgb(0_0_0_/0.15)]"
       )}
     >
-      <Cell className="gap-5 h-full">
+      <Cell className="h-full gap-5">
         <header className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-label-13 text-muted-foreground">
               {LICENSE_KICKER[license.id]}
             </span>
             {isRecommended ? (
-              <Badge variant="success" className="text-label-12 gap-1.5">
+              <Badge variant="success" className="gap-1.5 text-label-12">
                 <span
                   aria-hidden
                   className="size-1.5 rounded-full bg-emerald-500"
@@ -66,12 +66,14 @@ export function LicenseCell({
               </Badge>
             ) : null}
           </div>
-          <h3 className="text-heading-24 tracking-tight text-foreground !m-0">
+          <h3 className="!m-0 text-heading-24 tracking-tight text-foreground">
             {license.name}
           </h3>
           <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
             {isSubscription ? (
-              <TierTagline tier={license.id === "professional" ? "professional" : "agency"} />
+              <TierTagline
+                tier={license.id === "professional" ? "professional" : "agency"}
+              />
             ) : (
               license.tagline
             )}
@@ -133,4 +135,3 @@ function NonSubscriptionLicenseBody({ license }: { license: LicenseType }) {
     </>
   )
 }
-

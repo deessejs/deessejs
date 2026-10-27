@@ -15,7 +15,7 @@ import type { Stat } from "@/lib/marketing/home-data"
  */
 export function StatsStrip({ stats }: { stats: ReadonlyArray<Stat> }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 divide-y divide-border md:divide-y-0 md:divide-x divide-border">
+    <div className="grid grid-cols-2 divide-y divide-border md:grid-cols-4 md:divide-x md:divide-y-0">
       {stats.map((stat) => (
         <StatCell key={stat.label} {...stat} />
       ))}
@@ -27,10 +27,10 @@ function StatCell({ label, value }: Stat) {
   return (
     <div
       className={cn(
-        "flex flex-col p-6 items-center justify-center text-center gap-1",
+        "flex flex-col items-center justify-center gap-1 p-6 text-center"
       )}
     >
-      <span className="text-heading-32 lg:text-heading-40 tracking-tight text-foreground">
+      <span className="text-heading-32 tracking-tight text-foreground lg:text-heading-40">
         {value}
       </span>
       <span className="text-label-13 text-muted-foreground">{label}</span>

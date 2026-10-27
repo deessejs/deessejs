@@ -55,12 +55,17 @@ function project(guide: TopicGuide): GuideCardGuide {
       handle: guide.author.handle,
     }
     if (guide.author.role !== undefined) base.author.role = guide.author.role
-    if (guide.author.avatar !== undefined) base.author.avatar = guide.author.avatar
+    if (guide.author.avatar !== undefined)
+      base.author.avatar = guide.author.avatar
   }
   return base
 }
 
-export function TopicGuideList({ guides }: { guides: ReadonlyArray<TopicGuide> }) {
+export function TopicGuideList({
+  guides,
+}: {
+  guides: ReadonlyArray<TopicGuide>
+}) {
   if (guides.length === 0) {
     return null
   }

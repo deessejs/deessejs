@@ -41,21 +41,19 @@ export function CliStartMockup({
   return (
     <div
       data-slug={slug}
-      className="bg-background border border-border overflow-hidden rounded-none h-full w-full"
+      className="h-full w-full overflow-hidden rounded-none border border-border bg-background"
     >
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-background/40 shrink-0">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-background/40 px-4 py-2">
         <span aria-hidden className="block size-3 rounded-full bg-[#ff5f57]" />
         <span aria-hidden className="block size-3 rounded-full bg-[#febc2e]" />
         <span aria-hidden className="block size-3 rounded-full bg-[#28c840]" />
         {isMulti ? null : (
-          <span className="ml-3 font-mono text-[11px] text-muted-foreground truncate">
+          <span className="ml-3 truncate font-mono text-[11px] text-muted-foreground">
             {activeFile.tabName}
           </span>
         )}
       </div>
-      {isMulti && files.length > 1 ? (
-        <MockupFileTabs files={files} />
-      ) : null}
+      {isMulti && files.length > 1 ? <MockupFileTabs files={files} /> : null}
       <div
         role={isMulti ? "tabpanel" : undefined}
         className="overflow-x-auto p-4 text-sm leading-6"
@@ -69,7 +67,7 @@ function MockupFileTabs({ files }: { files: ReadonlyArray<MockupFile> }) {
   return (
     <div
       role="tablist"
-      className="flex items-center gap-0 overflow-x-auto border-b border-border bg-background shrink-0"
+      className="flex shrink-0 items-center gap-0 overflow-x-auto border-b border-border bg-background"
     >
       {files.map((file, idx) => {
         const isActive = idx === 0
@@ -82,7 +80,7 @@ function MockupFileTabs({ files }: { files: ReadonlyArray<MockupFile> }) {
             size="xs"
             aria-selected={isActive}
             className={
-              "group/tab h-auto rounded-none border-0 border-r border-border font-mono text-label-12 px-4 py-2 hover:bg-accent/40" +
+              "group/tab h-auto rounded-none border-0 border-r border-border px-4 py-2 font-mono text-label-12 hover:bg-accent/40" +
               (isActive
                 ? " -mb-px border-b border-b-background bg-background text-foreground"
                 : " text-muted-foreground")

@@ -1,7 +1,4 @@
-import {
-  ClientRetryPlugin,
-  RetryAfterPlugin,
-} from "@orpc/client/plugins"
+import { ClientRetryPlugin, RetryAfterPlugin } from "@orpc/client/plugins"
 import { RPCLink } from "@orpc/client/fetch"
 import { createORPCClient } from "@orpc/client"
 import type { RouterClient } from "@orpc/server"
@@ -64,22 +61,22 @@ export const DEFAULT_API_URL = "https://app.deessejs.com"
  * single env var and there is no loader to alias it through.
  */
 export function resolveBaseURL(): string {
-	const raw = process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL
-	try {
-		const parsed = new URL(raw)
-		if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-			throw new Error(
-				`DEESSEJS_API_URL must use http or https (got ${parsed.protocol ?? "no protocol"})`,
-			)
-		}
-		return parsed.toString().replace(/\/$/, "")
-	} catch (e) {
-		const detail = e instanceof Error ? e.message : String(e)
-		throw new Error(
-			`DEESSEJS_API_URL is malformed: ${detail}. ` +
-				`Expected a full URL like https://api.example.com.`,
-		)
-	}
+  const raw = process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL
+  try {
+    const parsed = new URL(raw)
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error(
+        `DEESSEJS_API_URL must use http or https (got ${parsed.protocol ?? "no protocol"})`
+      )
+    }
+    return parsed.toString().replace(/\/$/, "")
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e)
+    throw new Error(
+      `DEESSEJS_API_URL is malformed: ${detail}. ` +
+        `Expected a full URL like https://api.example.com.`
+    )
+  }
 }
 
 /**
@@ -87,8 +84,7 @@ export function resolveBaseURL(): string {
  * error (DNS failure, TCP reset, timeout). These are worth retrying;
  * typed ORPCError and other application errors are not.
  */
-const isTransientNetworkError = (e: unknown): boolean =>
-  e instanceof TypeError
+const isTransientNetworkError = (e: unknown): boolean => e instanceof TypeError
 
 /**
  * RPCLink URL must be absolute in a Node CLI context.

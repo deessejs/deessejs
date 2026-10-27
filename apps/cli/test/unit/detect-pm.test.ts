@@ -47,7 +47,7 @@ describe("detectPackageManager", () => {
     dir = mkdtempSync(join(tmpdir(), "detpm-"))
     writeFileSync(
       join(dir, "package.json"),
-      JSON.stringify({ packageManager: "pnpm@9.0.0" }),
+      JSON.stringify({ packageManager: "pnpm@9.0.0" })
     )
     const result = await detectPackageManager(dir)
     expect(result).toEqual({ pm: "pnpm", raw: "pnpm@9.0.0" })

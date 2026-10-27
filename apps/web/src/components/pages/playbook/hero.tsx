@@ -103,7 +103,7 @@ export function Hero() {
                 and read as packed; at 32 it holds three and the cover
                 plus the form come back above the fold. `sm` still
                 starts at 48, so the jump only shows below 640px. */}
-            <h1 className="text-heading-32 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance">
+            <h1 className="text-heading-32 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
               From AI-Generated Code to Production Software
             </h1>
             {/* Steps with the H1 below `sm`. `leading-6` comes down alongside
@@ -111,7 +111,7 @@ export function Hero() {
                 16px it would open the lead to a 1.75 ratio and the
                 body copy would read looser than the H1 above it.
                 `leading-6` puts both on 1.5. */}
-            <p className="text-muted-foreground text-copy-16 leading-6 sm:text-copy-20 sm:leading-7 max-w-xl text-balance [&:not(:first-child)]:mt-0">
+            <p className="max-w-xl text-copy-16 leading-6 text-balance text-muted-foreground sm:text-copy-20 sm:leading-7 [&:not(:first-child)]:mt-0">
               {LEAD}
             </p>
           </div>
@@ -119,7 +119,7 @@ export function Hero() {
         </div>
         <div className="flex items-center justify-center p-6 lg:py-20 lg:pl-12">
           <div
-            className="relative w-full overflow-hidden max-w-[300px] sm:max-w-[340px] lg:max-w-[380px]"
+            className="relative w-full max-w-[300px] overflow-hidden sm:max-w-[340px] lg:max-w-[380px]"
             style={{ aspectRatio: "797 / 1086" }}
           >
             <Image

@@ -25,12 +25,13 @@ import {
  * rhythm used by every other section on the homepage.
  */
 export async function Ecosystem() {
-  const htmlBySlug: Record<EcosystemSlug, { tabName: string; html: string }[]> = {
-    errors: [],
-    fp: [],
-    drpc: [],
-    collections: [],
-  }
+  const htmlBySlug: Record<EcosystemSlug, { tabName: string; html: string }[]> =
+    {
+      errors: [],
+      fp: [],
+      drpc: [],
+      collections: [],
+    }
 
   await Promise.all(
     (Object.keys(ECOSYSTEM_SNIPPETS) as EcosystemSlug[]).flatMap((slug) =>
@@ -41,9 +42,9 @@ export async function Ecosystem() {
           defaultColor: false,
         }).then((html) => {
           htmlBySlug[slug].push({ tabName: file.tabName, html })
-        }),
-      ),
-    ),
+        })
+      )
+    )
   )
 
   return (

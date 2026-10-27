@@ -91,7 +91,7 @@ export function PostMeta({ post }: { post: Post }) {
       </div>
       {post.tags.length > 0 ? (
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             Tags
           </span>
           <TagList tags={post.tags} />

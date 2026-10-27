@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -55,7 +62,7 @@ const buildFixtureTarball = (): { tarPath: string; stageDir: string } => {
   writeFileSync(join(inner, "LICENSE"), "MIT")
   writeFileSync(
     join(inner, "package.json"),
-    '{"name":"x","packageManager":"pnpm@11.0.0"}',
+    '{"name":"x","packageManager":"pnpm@11.0.0"}'
   )
   const tarPath = join(stageDir, "fixture.tgz")
   tar.c({ gzip: true, file: tarPath, cwd: stageDir, sync: true }, [PREFIX_DIR])
@@ -102,7 +109,7 @@ describe("run() — real-create cancel handling", () => {
 
     // BOUNDARY: the destination is not on disk.
     expect(existsSync(dir), "destination must not be created on cancel").toBe(
-      false,
+      false
     )
 
     // BOUNDARY: the staging tempdir is cleaned. The
@@ -110,9 +117,12 @@ describe("run() — real-create cancel handling", () => {
     // validateAndStage and removes it in the catch arm.
     const siblings = readdirSync(workRoot)
     const stagingLeftover = siblings.find((n) =>
-      n.toLowerCase().startsWith("my-app-real-cancel.staging."),
+      n.toLowerCase().startsWith("my-app-real-cancel.staging.")
     )
-    expect(stagingLeftover, "staging tempdir must be cleaned on cancel").toBeUndefined()
+    expect(
+      stagingLeftover,
+      "staging tempdir must be cleaned on cancel"
+    ).toBeUndefined()
 
     // The recovery command is the re-run form: a
     // launcher-agnostic `create-deesse-app@latest
@@ -124,7 +134,7 @@ describe("run() — real-create cancel handling", () => {
     expect(result.recovery).toBeDefined()
     if (!result.recovery) return
     expect(result.recovery).toMatch(
-      /^create-deesse-app@latest my-app-real-cancel --dir /,
+      /^create-deesse-app@latest my-app-real-cancel --dir /
     )
     // The recovery must NOT contain a `cd` prefix (the
     // destination may not exist yet on this path) and

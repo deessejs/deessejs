@@ -4,10 +4,7 @@ import { ArrowRight, Clock } from "lucide-react"
 import { allKbGuides, allKbTopics } from "content-collections"
 
 import { Card } from "@workspace/ui/components/card"
-import {
-  CardDescription,
-  CardHeader,
-} from "@workspace/ui/components/card"
+import { CardDescription, CardHeader } from "@workspace/ui/components/card"
 
 import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 import { KbCardGrid } from "@/components/knowledge-base/kb-card-grid"
@@ -39,12 +36,12 @@ const GUIDES_PER_TOPIC = new Map<string, number>()
 for (const guide of GUIDES) {
   GUIDES_PER_TOPIC.set(
     guide.topic,
-    (GUIDES_PER_TOPIC.get(guide.topic) ?? 0) + 1,
+    (GUIDES_PER_TOPIC.get(guide.topic) ?? 0) + 1
   )
 }
 
 const ALL_PRODUCTS = Array.from(
-  new Set(GUIDES.flatMap((guide) => guide.products)),
+  new Set(GUIDES.flatMap((guide) => guide.products))
 ).sort()
 
 function SectionHeading({
@@ -59,10 +56,10 @@ function SectionHeading({
   return (
     <header className="flex flex-col gap-2 p-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="flex flex-col gap-2">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
           {eyebrow}
         </p>
-        <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+        <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
           {title}
         </h2>
       </div>
@@ -85,14 +82,14 @@ function TopicCard({
       <Link
         href={`/knowledge-base/topics/${topic.slug}`}
         aria-label={`Browse the ${topic.title} topic`}
-        className="group flex h-full flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="group flex h-full flex-col focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
       >
-        <Card className="flex w-full flex-1 flex-col rounded-none border-0 bg-background ring-0 transition-colors group-hover:bg-accent/30 group-focus-within:bg-accent/30">
+        <Card className="flex w-full flex-1 flex-col rounded-none border-0 bg-background ring-0 transition-colors group-focus-within:bg-accent/30 group-hover:bg-accent/30">
           <CardHeader className="gap-3">
-            <h3 className="text-balance text-xl font-medium tracking-tight text-foreground">
+            <h3 className="text-xl font-medium tracking-tight text-balance text-foreground">
               {topic.title}
             </h3>
-            <CardDescription className="text-sm text-muted-foreground text-pretty">
+            <CardDescription className="text-sm text-pretty text-muted-foreground">
               {topic.description}
             </CardDescription>
           </CardHeader>
@@ -111,19 +108,15 @@ function TopicCard({
   )
 }
 
-function GuideCardCompact({
-  guide,
-}: {
-  guide: (typeof GUIDES)[number]
-}) {
+function GuideCardCompact({ guide }: { guide: (typeof GUIDES)[number] }) {
   return (
     <li className="h-full">
       <Link
         href={`/knowledge-base/guides/${guide.slug}`}
         aria-label={`Read the ${guide.title} guide`}
-        className="group flex h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="group flex h-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
       >
-        <Card className="flex w-full flex-1 flex-col rounded-none border-0 bg-background ring-0 transition-colors group-hover:bg-accent/30 group-focus-within:bg-accent/30">
+        <Card className="flex w-full flex-1 flex-col rounded-none border-0 bg-background ring-0 transition-colors group-focus-within:bg-accent/30 group-hover:bg-accent/30">
           <CardHeader className="gap-3">
             <div className="flex items-start justify-between gap-3">
               {guide.date ? (
@@ -136,14 +129,12 @@ function GuideCardCompact({
               {guide.products.length > 0 ? (
                 <div className="relative z-10 flex flex-wrap justify-end gap-1.5">
                   {guide.products.slice(0, 3).map((product) => (
-                    <GuideProductPill key={product}>
-                      {product}
-                    </GuideProductPill>
+                    <GuideProductPill key={product}>{product}</GuideProductPill>
                   ))}
                 </div>
               ) : null}
             </div>
-            <h3 className="mt-1 text-balance text-xl font-medium tracking-tight text-foreground">
+            <h3 className="mt-1 text-xl font-medium tracking-tight text-balance text-foreground">
               {guide.title}
             </h3>
             <CardDescription className="mt-2 line-clamp-3 text-sm text-muted-foreground">
@@ -190,7 +181,7 @@ function GuideCardCompact({
 export default function KnowledgeBasePage() {
   return (
     <section>
-      <div className="border border-border bg-background rounded-none">
+      <div className="rounded-none border border-border bg-background">
         <header className="relative overflow-hidden border-b border-border">
           <FlickeringGrid
             className="absolute inset-0 z-0 opacity-60"
@@ -201,25 +192,22 @@ export default function KnowledgeBasePage() {
             color="rgb(120, 120, 120)"
           />
           <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
               Knowledge base
             </p>
             <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
               Knowledge Base
             </h1>
-            <p className="max-w-2xl text-copy-18 leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
-              In-depth guides, tutorials, and explainers for the
-              DeesseJS ecosystem.
+            <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
+              In-depth guides, tutorials, and explainers for the DeesseJS
+              ecosystem.
             </p>
           </div>
         </header>
 
         <div className="border-b border-border">
           <div className="flex flex-col divide-y border-border">
-            <SectionHeading
-              eyebrow="Featured"
-              title="Featured Guides"
-            />
+            <SectionHeading eyebrow="Featured" title="Featured Guides" />
             <KbCardGrid>
               {FEATURED_GUIDES.map((guide) => (
                 <GuideCardCompact key={guide.slug} guide={guide} />

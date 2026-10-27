@@ -26,9 +26,7 @@ describe("recoveryCommand (POSIX host)", () => {
       cwd: "/tmp/my project",
     })
 
-    expect(command).toBe(
-      "cd '/tmp/my project' && 'corepack' 'pnpm' 'install'",
-    )
+    expect(command).toBe("cd '/tmp/my project' && 'corepack' 'pnpm' 'install'")
   })
 
   it("escapes embedded apostrophes and shell metacharacters", () => {
@@ -39,7 +37,7 @@ describe("recoveryCommand (POSIX host)", () => {
     })
 
     expect(command).toBe(
-      "cd '/tmp/dave'\\''s $folder' && 'corepack' 'pnpm' 'install'",
+      "cd '/tmp/dave'\\''s $folder' && 'corepack' 'pnpm' 'install'"
     )
   })
 })
@@ -53,7 +51,7 @@ describe("recoveryCommand (Windows PowerShell host)", () => {
     })
 
     expect(command).toBe(
-      "Set-Location -LiteralPath 'C:\\Users\\foo\\my-project'; & 'corepack' 'pnpm' 'install'",
+      "Set-Location -LiteralPath 'C:\\Users\\foo\\my-project'; & 'corepack' 'pnpm' 'install'"
     )
   })
 
@@ -65,7 +63,7 @@ describe("recoveryCommand (Windows PowerShell host)", () => {
     })
 
     expect(command).toBe(
-      "Set-Location -LiteralPath 'C:\\Users\\Dave''s folder\\100%done & forever^oops'; & 'corepack' 'pnpm' 'install'",
+      "Set-Location -LiteralPath 'C:\\Users\\Dave''s folder\\100%done & forever^oops'; & 'corepack' 'pnpm' 'install'"
     )
   })
 
@@ -77,7 +75,7 @@ describe("recoveryCommand (Windows PowerShell host)", () => {
     })
 
     expect(command).toBe(
-      "Set-Location -LiteralPath 'C:\\Users\\foo'; & 'npm' 'exec' '--yes' '--' 'pnpm@11.0.0' 'install'",
+      "Set-Location -LiteralPath 'C:\\Users\\foo'; & 'npm' 'exec' '--yes' '--' 'pnpm@11.0.0' 'install'"
     )
   })
 })
@@ -91,7 +89,7 @@ describe("recoveryCommandForNoInstall (POSIX host)", () => {
     })
 
     expect(command).toBe(
-      "cd '/tmp/my project' && 'npm' 'exec' '--yes' '--' 'pnpm@11.0.0' 'install'",
+      "cd '/tmp/my project' && 'npm' 'exec' '--yes' '--' 'pnpm@11.0.0' 'install'"
     )
   })
 })

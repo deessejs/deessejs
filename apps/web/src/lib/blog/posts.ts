@@ -24,7 +24,7 @@ export function getRelatedPosts(currentSlug: string, limit = 3): Post[] {
     .sort(
       (a, b) =>
         b.score - a.score ||
-        new Date(b.post.date).getTime() - new Date(a.post.date).getTime(),
+        new Date(b.post.date).getTime() - new Date(a.post.date).getTime()
     )
     .slice(0, limit)
     .map((r) => r.post)

@@ -25,11 +25,8 @@ type Props = {
 export function CatalogCode({ snippet }: Props) {
   return (
     <div className="relative">
-      <CopyButton
-        text={snippet}
-        className="absolute right-2 top-2"
-      />
-      <pre className="overflow-x-auto bg-muted/40 p-4 pr-12 text-copy-13 font-mono leading-6 text-foreground">
+      <CopyButton text={snippet} className="absolute top-2 right-2" />
+      <pre className="overflow-x-auto bg-muted/40 p-4 pr-12 font-mono text-copy-13 leading-6 text-foreground">
         <code>{snippet}</code>
       </pre>
     </div>

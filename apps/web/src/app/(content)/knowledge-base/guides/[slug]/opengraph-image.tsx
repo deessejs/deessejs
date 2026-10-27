@@ -21,71 +21,69 @@ export default async function Image({
   const topicTitle = topic?.title ?? ""
 
   return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          padding: 64,
-          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-          color: "white",
-          fontFamily: "sans-serif",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            style={{
-              width: 12,
-              height: 12,
-              borderRadius: 9999,
-              background: "white",
-            }}
-          />
-          <div style={{ fontSize: 20, opacity: 0.8 }}>
-            {APP_NAME} Knowledge Base
-          </div>
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        padding: 64,
+        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+        color: "white",
+        fontFamily: "sans-serif",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div
+          style={{
+            width: 12,
+            height: 12,
+            borderRadius: 9999,
+            background: "white",
+          }}
+        />
+        <div style={{ fontSize: 20, opacity: 0.8 }}>
+          {APP_NAME} Knowledge Base
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {topicTitle ? (
-            <div
-              style={{
-                fontSize: 18,
-                opacity: 0.6,
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                display: "flex",
-              }}
-            >
-              {topicTitle}
-            </div>
-          ) : null}
-          <div
-            style={{
-              fontSize: 48,
-              fontWeight: 700,
-              lineHeight: 1.1,
-              letterSpacing: "-0.02em",
-              display: "flex",
-            }}
-          >
-            {title}
-          </div>
-          <div
-            style={{
-              fontSize: 20,
-              opacity: 0.7,
-              display: "flex",
-            }}
-          >
-            {description}
-          </div>
-        </div>
-        <div style={{ fontSize: 16, opacity: 0.5 }}>{WEB_URL}</div>
       </div>
-    ),
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {topicTitle ? (
+          <div
+            style={{
+              fontSize: 18,
+              opacity: 0.6,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              display: "flex",
+            }}
+          >
+            {topicTitle}
+          </div>
+        ) : null}
+        <div
+          style={{
+            fontSize: 48,
+            fontWeight: 700,
+            lineHeight: 1.1,
+            letterSpacing: "-0.02em",
+            display: "flex",
+          }}
+        >
+          {title}
+        </div>
+        <div
+          style={{
+            fontSize: 20,
+            opacity: 0.7,
+            display: "flex",
+          }}
+        >
+          {description}
+        </div>
+      </div>
+      <div style={{ fontSize: 16, opacity: 0.5 }}>{WEB_URL}</div>
+    </div>,
     { ...size }
   )
 }

@@ -39,22 +39,22 @@ import { readPackageVersion } from "../../../api/self-version.js"
 export const DEFAULT_API_URL = "https://app.deessejs.com"
 
 export function resolveBaseURL(): string {
-	const raw = process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL
-	try {
-		const parsed = new URL(raw)
-		if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-			throw new Error(
-				`DEESSEJS_API_URL must use http or https (got ${parsed.protocol ?? "no protocol"})`,
-			)
-		}
-		return parsed.toString().replace(/\/$/, "")
-	} catch (e) {
-		const detail = e instanceof Error ? e.message : String(e)
-		throw new Error(
-			`DEESSEJS_API_URL is malformed: ${detail}. ` +
-				`Expected a full URL like https://api.example.com.`,
-		)
-	}
+  const raw = process.env.DEESSEJS_API_URL ?? DEFAULT_API_URL
+  try {
+    const parsed = new URL(raw)
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error(
+        `DEESSEJS_API_URL must use http or https (got ${parsed.protocol ?? "no protocol"})`
+      )
+    }
+    return parsed.toString().replace(/\/$/, "")
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e)
+    throw new Error(
+      `DEESSEJS_API_URL is malformed: ${detail}. ` +
+        `Expected a full URL like https://api.example.com.`
+    )
+  }
 }
 
 /**
@@ -84,26 +84,26 @@ export function resolveBaseURL(): string {
  * sessions correctly.
  */
 const cliAuthClientOptions = {
-	// baseURL is read **inside** `createCliAuthClient`, not
-	// here, so tests can override `DEESSEJS_API_URL` in
-	// `beforeEach` and have the new value picked up. Reading
-	// it at module-load time freezes the value at import and
-	// tests (and any other runtime that mutates the env
-	// between import and call) silently hit the production
-	// API. See test/integration/auth/login.test.ts.
-	basePath: API_AUTH_PATH,
-	plugins: [deviceAuthorizationClient()],
-	disableDefaultFetchPlugins: true,
-	fetchOptions: {
-		headers: {
-			"user-agent": `DeesseJS CLI/${readPackageVersion()}`,
-		},
-	},
+  // baseURL is read **inside** `createCliAuthClient`, not
+  // here, so tests can override `DEESSEJS_API_URL` in
+  // `beforeEach` and have the new value picked up. Reading
+  // it at module-load time freezes the value at import and
+  // tests (and any other runtime that mutates the env
+  // between import and call) silently hit the production
+  // API. See test/integration/auth/login.test.ts.
+  basePath: API_AUTH_PATH,
+  plugins: [deviceAuthorizationClient()],
+  disableDefaultFetchPlugins: true,
+  fetchOptions: {
+    headers: {
+      "user-agent": `DeesseJS CLI/${readPackageVersion()}`,
+    },
+  },
 } satisfies BetterAuthClientOptions
 
 export function createCliAuthClient() {
-	return createAuthClient({
-		...cliAuthClientOptions,
-		baseURL: resolveBaseURL(),
-	})
+  return createAuthClient({
+    ...cliAuthClientOptions,
+    baseURL: resolveBaseURL(),
+  })
 }

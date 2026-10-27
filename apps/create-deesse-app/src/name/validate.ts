@@ -14,10 +14,15 @@ const NAME_REGEX = /^(?:@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/
 // users see in error messages.
 const RULES: ReadonlyArray<(name: string) => string | null> = [
   (n) => (n.length === 0 ? "empty name" : null),
-  (n) => (n.length > NAME_MAX_LEN ? `longer than ${NAME_MAX_LEN} characters` : null),
-  (n) => (n.startsWith(".") || n.startsWith("_") ? "leading dot or underscore" : null),
+  (n) =>
+    n.length > NAME_MAX_LEN ? `longer than ${NAME_MAX_LEN} characters` : null,
+  (n) =>
+    n.startsWith(".") || n.startsWith("_") ? "leading dot or underscore" : null,
   // Reject scoped names explicitly (even though the regex would match them).
-  (n) => (n.startsWith("@") ? "scoped names are not accepted in this increment" : null),
+  (n) =>
+    n.startsWith("@")
+      ? "scoped names are not accepted in this increment"
+      : null,
   (n) => (n !== n.trim() ? "leading or trailing whitespace" : null),
   (n) => (!NAME_REGEX.test(n) ? "contains illegal characters" : null),
 ]

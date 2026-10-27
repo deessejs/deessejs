@@ -7,9 +7,7 @@ import {
   getAllComponentParams,
   getComponent,
 } from "@/components/catalog/components/catalogue"
-import {
-  getCategory,
-} from "@/components/catalog/components/categories"
+import { getCategory } from "@/components/catalog/components/categories"
 import { getComponentSnippet } from "@/components/catalog/components/snippets"
 
 const COMPONENTS_REPO_URL =
@@ -70,13 +68,13 @@ export default async function ComponentRoute({
     <>
       <header className="border-b border-border px-6 py-16 lg:px-10 lg:py-20">
         <div className="flex flex-col gap-3">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             {categoryMatch.name}
           </p>
           <h1 className="text-heading-40 font-medium tracking-tight text-balance">
             {match.name}.
           </h1>
-          <p className="max-w-2xl text-copy-18 text-pretty leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
+          <p className="max-w-2xl text-copy-18 leading-7 text-balance text-pretty text-muted-foreground [&:not(:first-child)]:mt-0">
             {match.description}
           </p>
         </div>

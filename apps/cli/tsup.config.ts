@@ -48,10 +48,11 @@ export default defineConfig({
   // Bundle workspace-only packages into the published tarball so that
   // `npm install @deessejs/cli@1.1.2` does not try to resolve them from
   // the public npm registry (where they don't exist — 404 on install).
-  // `@workspace/contracts` is the Zod schema shared by server, CLI, and
-  // web; it's safe to bundle because it's tiny and rarely changes.
-  // See PR that introduced this for the trade-off analysis.
-  noExternal: [/^@workspace\//],
+  // Workspace packages are bundled so the published CLI does not depend on
+  // private packages that are unavailable from the public npm registry.
+  // The registry's runtime dependencies are bundled for the same reason:
+  // they are reached through its source and are not CLI runtime dependencies.
+  noExternal: [/^@workspace\//, /^picomatch$/, /^tar$/, /^zod$/],
   define: {
     "process.env.CLI_PACKAGE_VERSION": JSON.stringify(pkg.version),
   },

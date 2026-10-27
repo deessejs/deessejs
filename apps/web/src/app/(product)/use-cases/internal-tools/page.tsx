@@ -11,15 +11,17 @@ import { SectionHeader } from "@/components/marketing/section-header"
 import { UseCaseHero } from "@/components/product/use-case/use-case-page"
 import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
-import { INTERNAL_TOOLS_SNIPPETS, type InternalToolsPillarSlug } from "@/components/product/use-case/internal-tools-snippets"
+import {
+  INTERNAL_TOOLS_SNIPPETS,
+  type InternalToolsPillarSlug,
+} from "@/components/product/use-case/internal-tools-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 import { GROUP_1, GROUP_2 } from "./internal-tools-tabs"
 
 export const metadata: Metadata = {
   title: "Internal tools | DeesseJS",
-  description:
-    "Admin dashboards and operator consoles that work behind SSO.",
+  description: "Admin dashboards and operator consoles that work behind SSO.",
 }
 
 /**
@@ -27,31 +29,28 @@ export const metadata: Metadata = {
  * the other use-case pages so the brand display stays uniform.
  */
 const STACK = [
-  { name: "Next.js",     logo: "vercel" },
+  { name: "Next.js", logo: "vercel" },
   { name: "Better Auth", logo: "betterauth" },
-  { name: "TanStack",    logo: "cloudflare" },
-  { name: "shadcn/ui",   logo: "shadcnui" },
-  { name: "Drizzle",     logo: "drizzle" },
-  { name: "Postgres",    logo: "postgresql" },
-  { name: "Turborepo",   logo: "vercel" },
-  { name: "Resend",      logo: "resend" },
+  { name: "TanStack", logo: "cloudflare" },
+  { name: "shadcn/ui", logo: "shadcnui" },
+  { name: "Drizzle", logo: "drizzle" },
+  { name: "Postgres", logo: "postgresql" },
+  { name: "Turborepo", logo: "vercel" },
+  { name: "Resend", logo: "resend" },
 ] as const
 
 const STEPS = [
   {
     heading: "Auth behind the same wall",
-    body:
-      "Better Auth on the admin subdomain. SSO and roles wired against your existing user table.",
+    body: "Better Auth on the admin subdomain. SSO and roles wired against your existing user table.",
   },
   {
     heading: "Operators see what they should",
-    body:
-      "Scoped roles, audit log, and rate limits. The contract that gates your customer app gates your support console too.",
+    body: "Scoped roles, audit log, and rate limits. The contract that gates your customer app gates your support console too.",
   },
   {
     heading: "No second codebase to maintain",
-    body:
-      "The operator console consumes the same Drizzle schema and the same Better Auth sessions as the customer surface. One type system, one deploy.",
+    body: "The operator console consumes the same Drizzle schema and the same Better Auth sessions as the customer surface. One type system, one deploy.",
   },
 ] as const
 
@@ -77,30 +76,53 @@ const RELATED = [
 ] as const satisfies ReadonlyArray<RelatedUseCaseItem>
 
 const BUILT_TEMPLATES = [
-  { slug: "admin-console",  title: "admin-console",  body: "KPI roll-ups, user table, bulk actions." },
-  { slug: "audit-explorer", title: "audit-explorer", body: "Search and replay every cross-org call." },
-  { slug: "feature-flags",  title: "feature-flags",  body: "Per-org, per-plan flag targeting + history." },
-  { slug: "support-inbox",  title: "support-inbox",  body: "Tickets land in the same DB the customer uses." },
+  {
+    slug: "admin-console",
+    title: "admin-console",
+    body: "KPI roll-ups, user table, bulk actions.",
+  },
+  {
+    slug: "audit-explorer",
+    title: "audit-explorer",
+    body: "Search and replay every cross-org call.",
+  },
+  {
+    slug: "feature-flags",
+    title: "feature-flags",
+    body: "Per-org, per-plan flag targeting + history.",
+  },
+  {
+    slug: "support-inbox",
+    title: "support-inbox",
+    body: "Tickets land in the same DB the customer uses.",
+  },
 ] as const
 
 export default async function InternalToolsPage() {
   const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
-    "better-auth-rbac": [], "admin-table": [], "ticket-in-context": [], "feature-flag": [],
-    "impersonate": [], "audit-replay": [], "csat-tracker": [], "scheduled-job": [],
+    "better-auth-rbac": [],
+    "admin-table": [],
+    "ticket-in-context": [],
+    "feature-flag": [],
+    impersonate: [],
+    "audit-replay": [],
+    "csat-tracker": [],
+    "scheduled-job": [],
   }
 
   await Promise.all(
-    (Object.keys(INTERNAL_TOOLS_SNIPPETS) as InternalToolsPillarSlug[]).flatMap((slug) =>
-      INTERNAL_TOOLS_SNIPPETS[slug].files.map((file) =>
-        codeToHtml(file.code, {
-          lang: file.lang,
-          themes: { light: "github-light", dark: "github-dark" },
-          defaultColor: false,
-        }).then((html) => {
-          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
-        }),
-      ),
-    ),
+    (Object.keys(INTERNAL_TOOLS_SNIPPETS) as InternalToolsPillarSlug[]).flatMap(
+      (slug) =>
+        INTERNAL_TOOLS_SNIPPETS[slug].files.map((file) =>
+          codeToHtml(file.code, {
+            lang: file.lang,
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          }).then((html) => {
+            htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+          })
+        )
+    )
   )
 
   return (
@@ -161,20 +183,17 @@ export default async function InternalToolsPage() {
 
       {/* 4. Process */}
       <div className="grid grid-cols-1 border-t border-border lg:grid-cols-12 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-3 lg:p-10">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col justify-center gap-3 p-6 lg:col-span-3 lg:p-10">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Process
           </p>
           <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             How an internal tool ships.
           </h2>
         </div>
-        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-9 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
+        <ol className="grid grid-cols-1 divide-y divide-border border-0 !p-0 md:grid-cols-3 md:divide-x md:divide-y-0 lg:col-span-9">
           {STEPS.map((step, idx) => (
-            <li
-              key={step.heading}
-              className="flex flex-col gap-3 p-6 lg:p-8"
-            >
+            <li key={step.heading} className="flex flex-col gap-3 p-6 lg:p-8">
               <span className="font-mono text-copy-13 text-muted-foreground">
                 Step {String(idx + 1).padStart(2, "0")}
               </span>
@@ -191,20 +210,19 @@ export default async function InternalToolsPage() {
 
       {/* 5. Built on this */}
       <section className="flex flex-col border-t border-border">
-        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Built on this
           </p>
           <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             Four templates, each on its own surface.
           </h2>
           <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Production-ready starter templates, each deployed at its
-            own URL. Used as the reference set for what the registry
-            can ship.
+            Production-ready starter templates, each deployed at its own URL.
+            Used as the reference set for what the registry can ship.
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y divide-border sm:divide-y-0 sm:divide-x sm:divide-border">
+        <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 sm:divide-border lg:grid-cols-4">
           {BUILT_TEMPLATES.map((tpl) => (
             <Link
               key={tpl.slug}

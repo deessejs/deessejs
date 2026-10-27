@@ -122,13 +122,13 @@ export function Form() {
         }
         if (err.code === "RATE_LIMITED") {
           toast.error(
-            "You've sent a few signups recently. Please wait a minute and try again.",
+            "You've sent a few signups recently. Please wait a minute and try again."
           )
           return
         }
         if (err.code === "EMAIL_SEND_FAILED") {
           toast.error(
-            "Couldn't send the email right now. Try again in a few minutes or email support@deessejs.com.",
+            "Couldn't send the email right now. Try again in a few minutes or email support@deessejs.com."
           )
           return
         }
@@ -138,7 +138,7 @@ export function Form() {
         }
       }
       toast.error(
-        "Something went wrong. Try again, or email support@deessejs.com.",
+        "Something went wrong. Try again, or email support@deessejs.com."
       )
     }
   }
@@ -192,19 +192,17 @@ export function Form() {
                 id={consentId}
                 aria-invalid={!!errors.consentMarketing}
                 checked={field.value === true}
-                onCheckedChange={(value) =>
-                  field.onChange(value === true)
-                }
+                onCheckedChange={(value) => field.onChange(value === true)}
                 className="mt-1"
               />
             )}
           />
           <FieldLabel
             htmlFor={consentId}
-            className="cursor-pointer text-copy-14 font-normal leading-6 text-foreground"
+            className="cursor-pointer text-copy-14 leading-6 font-normal text-foreground"
           >
-            I want occasional updates about DeesseJS and offers
-            relevant to the topic. Unsubscribe anytime.
+            I want occasional updates about DeesseJS and offers relevant to the
+            topic. Unsubscribe anytime.
           </FieldLabel>
         </div>
         <FieldDescription>

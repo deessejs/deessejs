@@ -51,7 +51,8 @@ export const BLOCK_CATEGORIES: ReadonlyArray<BlockCategory> = [
     name: "Hero",
     description:
       "The first scroll. Headline, lead, primary CTA. Variants for split layouts, embedded mockups, and announcement banners.",
-    blockNames: "hero-centered, hero-split-image, hero-with-mockup, hero-with-cta-banner",
+    blockNames:
+      "hero-centered, hero-split-image, hero-with-mockup, hero-with-cta-banner",
   },
   {
     id: "cta",
@@ -111,8 +112,6 @@ export const BLOCK_CATEGORIES: ReadonlyArray<BlockCategory> = [
   },
 ]
 
-export function getBlockCategory(
-  id: string,
-): BlockCategory | undefined {
+export function getBlockCategory(id: string): BlockCategory | undefined {
   return BLOCK_CATEGORIES.find((category) => category.slug === id)
 }

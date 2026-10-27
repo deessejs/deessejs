@@ -81,11 +81,11 @@ export function SettingsRail() {
   // Top-level hook call: component top-level is a valid hook context per
   // React's rules. The audit §3.5 bug was calling useSession() inside an
   // async callback (useCallback body), which IS a violation. Here at
-  // top-level, useSession() is correct. The workspace-wide ESLint rule
-  // in `packages/eslint-config/base.js` flags every `authClient.useSession`
+  // top-level, useSession() is correct. The workspace-wide Oxlint rule
+  // in `.oxlintrc.json` flags every `authClient.useSession`
   // call regardless of context — see the same disable comment in
   // `apps/app/components/sidebars/nav-user.tsx`.
-  // eslint-disable-next-line no-restricted-syntax
+  // oxlint-disable-next-line eslint-js/no-restricted-syntax
   const { data: session } = authClient.useSession()
   const isAdmin = session?.user?.role === "admin"
 

@@ -10,10 +10,10 @@ import { ComparisonGroup } from "./comparison-group"
 export function Comparison() {
   return (
     <div className="border-b border-border">
-      <Cell className="!p-0 border-0">
-        <div className="flex flex-col gap-2 p-6 border-b border-border">
+      <Cell className="border-0 !p-0">
+        <div className="flex flex-col gap-2 border-b border-border p-6">
           <p className="text-label-13 text-muted-foreground">Side by side</p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+          <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40">
             Side by side.
           </h2>
         </div>

@@ -4,8 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json packages/cookies",
+    "format": "oxfmt --config ../../.oxfmtrc.json --ignore-path ../../.oxfmtignore \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -20,10 +20,10 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
-    "eslint": "^9",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "oxlint": "catalog:",
+    "oxfmt": "catalog:"
   },
   "exports": {
     "./store": "./src/store/cookie-consent.ts",

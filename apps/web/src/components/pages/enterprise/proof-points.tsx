@@ -20,7 +20,7 @@ import { PROOF_POINTS } from "@/lib/enterprise/proof-points"
 export function ProofPoints() {
   return (
     <div className="border-b border-border">
-      <KbCardGrid className="md:grid-cols-2 lg:!grid-cols-2 border-none">
+      <KbCardGrid className="border-none md:grid-cols-2 lg:!grid-cols-2">
         {PROOF_POINTS.map((point) => (
           <div
             key={point.title}
@@ -34,7 +34,7 @@ export function ProofPoints() {
               <h3 className="text-heading-16 font-semibold tracking-tight text-foreground [&:not(:first-child)]:mt-0">
                 {point.title}
               </h3>
-              <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+              <p className="text-copy-14 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {point.body}
               </p>
             </div>

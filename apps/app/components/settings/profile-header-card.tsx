@@ -34,7 +34,7 @@ function getAvatarUrl(email: string, image?: string | null): string {
  * changes.
  */
 export function ProfileHeaderCard() {
-	// eslint-disable-next-line no-restricted-syntax
+	// oxlint-disable-next-line eslint-js/no-restricted-syntax
 	const { data: session } = authClient.useSession()
 	const user = session?.user
 	const [displayName, setDisplayName] = useState(user?.name ?? "")

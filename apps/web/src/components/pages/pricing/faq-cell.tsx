@@ -30,7 +30,7 @@ function Cell({
 export function FAQCell({ group }: { group: FaqGroup }) {
   return (
     <Cell className="gap-4">
-      <h3 className="text-label-13 uppercase tracking-wider text-muted-foreground">
+      <h3 className="text-label-13 tracking-wider text-muted-foreground uppercase">
         {group.heading}
       </h3>
       <Accordion type="single" collapsible className="w-full">

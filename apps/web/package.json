@@ -7,8 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json apps/web",
+    "format": "oxfmt --config ../../.oxfmtrc.json --ignore-path ../../.oxfmtignore \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test --config playwright.config.ts",
@@ -56,14 +56,14 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "@workspace/vitest-config": "workspace:*",
-    "eslint": "^9",
     "reading-time": "catalog:",
     "typescript": "catalog:",
     "unist-util-visit": "catalog:",
     "vitest": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "oxlint": "catalog:",
+    "oxfmt": "catalog:"
   }
 }

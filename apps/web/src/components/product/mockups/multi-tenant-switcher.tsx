@@ -29,9 +29,28 @@ type Org = {
 }
 
 const ORGS: ReadonlyArray<Org> = [
-  { id: "org_2nK9xR", name: "Acme Labs", slug: "acme-labs", plan: "pro", members: 8, current: true },
-  { id: "org_3pQ7mT", name: "Pilot Co", slug: "pilot-co", plan: "free", members: 3 },
-  { id: "org_4rW1kZ", name: "Stealth B2B", slug: "stealth-b2b", plan: "enterprise", members: 24 },
+  {
+    id: "org_2nK9xR",
+    name: "Acme Labs",
+    slug: "acme-labs",
+    plan: "pro",
+    members: 8,
+    current: true,
+  },
+  {
+    id: "org_3pQ7mT",
+    name: "Pilot Co",
+    slug: "pilot-co",
+    plan: "free",
+    members: 3,
+  },
+  {
+    id: "org_4rW1kZ",
+    name: "Stealth B2B",
+    slug: "stealth-b2b",
+    plan: "enterprise",
+    members: 24,
+  },
 ]
 
 const PLAN_STYLES: Record<Org["plan"], string> = {
@@ -44,7 +63,7 @@ export function MultiTenantSwitcherMockup() {
   return (
     <MockupMotionBoundary>
       <div className="flex flex-col gap-3 p-4">
-        <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-muted-foreground">
+        <div className="flex items-center justify-between text-label-12 tracking-wider text-muted-foreground uppercase">
           <span>Switch workspace</span>
           <span className="font-mono">org.list()</span>
         </div>
@@ -58,7 +77,7 @@ export function MultiTenantSwitcherMockup() {
               transition={{ delay: 0.2 + i * 0.15, duration: 0.3 }}
               className={cn(
                 "flex items-center gap-3 border-b border-border px-3 py-2.5 last:border-b-0",
-                org.current && "bg-accent/40",
+                org.current && "bg-accent/40"
               )}
             >
               <span
@@ -84,7 +103,7 @@ export function MultiTenantSwitcherMockup() {
               <span
                 className={cn(
                   "rounded-sm border px-1.5 py-0.5 font-mono text-label-12",
-                  PLAN_STYLES[org.plan],
+                  PLAN_STYLES[org.plan]
                 )}
               >
                 {org.plan}
@@ -95,7 +114,10 @@ export function MultiTenantSwitcherMockup() {
             initial={{ opacity: 0, y: 4 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.2 + ORGS.length * 0.15 + 0.1, duration: 0.3 }}
+            transition={{
+              delay: 0.2 + ORGS.length * 0.15 + 0.1,
+              duration: 0.3,
+            }}
             className="flex items-center gap-2 px-3 py-2 text-copy-13 text-foreground"
           >
             <Plus className="size-3" aria-hidden /> Create workspace

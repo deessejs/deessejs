@@ -12,7 +12,6 @@ import { ITEMS } from "./items"
  */
 export function isShipped(slug: string): boolean {
   return (
-    Object.hasOwn(ITEMS.components, slug) ||
-    Object.hasOwn(ITEMS.blocks, slug)
+    Object.hasOwn(ITEMS.components, slug) || Object.hasOwn(ITEMS.blocks, slug)
   )
 }

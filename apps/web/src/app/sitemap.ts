@@ -1,6 +1,12 @@
 import type { MetadataRoute } from "next"
 import { WEB_URL } from "@/lib/app-config"
-import { allPosts, allReleases, allAuthors, allKbTopics, allKbGuides } from "content-collections"
+import {
+  allPosts,
+  allReleases,
+  allAuthors,
+  allKbTopics,
+  allKbGuides,
+} from "content-collections"
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
@@ -145,12 +151,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: post.tags.length > 0 ? 0.7 : 0.6,
   }))
 
-  const changelogEntries: MetadataRoute.Sitemap = allReleases.map((release) => ({
-    url: `${WEB_URL}${release.url}`,
-    lastModified: release.date,
-    changeFrequency: "monthly" as const,
-    priority: 0.6,
-  }))
+  const changelogEntries: MetadataRoute.Sitemap = allReleases.map(
+    (release) => ({
+      url: `${WEB_URL}${release.url}`,
+      lastModified: release.date,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })
+  )
 
   const authorPages: MetadataRoute.Sitemap = allAuthors.map((author) => ({
     url: `${WEB_URL}/blog/author/${encodeURIComponent(author.handle)}`,

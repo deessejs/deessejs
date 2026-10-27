@@ -26,7 +26,7 @@ import { getAuthBaseUrl } from "./auth-base-url"
 const AUTH_PATH_PREFIX = `${API_AUTH_PATH}/`
 
 declare global {
-  // eslint-disable-next-line no-var
+  // oxlint-disable-next-line no-var
   var __deessejsAuthFetchInstalled: boolean | undefined
 }
 

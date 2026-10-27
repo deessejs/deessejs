@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -13,7 +19,7 @@ const SHA = "abcdef0123456789abcdef0123456789abcdef01"
 const PREFIX_DIR = `${REPO}-${SHA}`
 
 const buildFixtureTarball = (
-  entries: Array<{ name: string; content: string }>,
+  entries: Array<{ name: string; content: string }>
 ): { tarPath: string; stageDir: string } => {
   const stageDir = mkdtempSync(join(tmpdir(), "cda-stage-"))
   const inner = join(stageDir, PREFIX_DIR)
@@ -71,8 +77,10 @@ describe("validateEntries (pass 1)", () => {
     const { tarPath, stageDir } = buildBadPrefixTarball()
     try {
       await expect(
-        validateEntries({ tarballPath: tarPath, sha: SHA, repo: REPO }),
-      ).rejects.toThrowError(expect.objectContaining({ code: "unsafe_archive" }) as unknown as Error)
+        validateEntries({ tarballPath: tarPath, sha: SHA, repo: REPO })
+      ).rejects.toThrowError(
+        expect.objectContaining({ code: "unsafe_archive" }) as unknown as Error
+      )
     } finally {
       cleanup(stageDir)
     }

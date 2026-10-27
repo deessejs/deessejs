@@ -12,11 +12,12 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { MessageScroller } from "@shadcn/react/message-scroller"
 
-import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
 import {
-  Bubble,
-  BubbleContent,
-} from "@workspace/ui/components/bubble"
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@workspace/ui/components/avatar"
+import { Bubble, BubbleContent } from "@workspace/ui/components/bubble"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -100,7 +101,8 @@ const SCENARIOS: ReadonlyArray<Scenario> = [
   {
     id: "initialize",
     title: "Initialize a template",
-    summary: "The agent reads AGENTS.md at the root, picks the right template, and runs the init for you. You start the dev server from a clean checkout.",
+    summary:
+      "The agent reads AGENTS.md at the root, picks the right template, and runs the init for you. You start the dev server from a clean checkout.",
     turns: [
       {
         id: "initialize-user-1",
@@ -135,7 +137,8 @@ const SCENARIOS: ReadonlyArray<Scenario> = [
   {
     id: "observability",
     title: "Add observability",
-    summary: "Ask for traces, logs, and metrics in plain language. The agent wires the contract end-to-end without you touching a config file.",
+    summary:
+      "Ask for traces, logs, and metrics in plain language. The agent wires the contract end-to-end without you touching a config file.",
     turns: [
       {
         id: "observability-user-1",
@@ -170,7 +173,8 @@ const SCENARIOS: ReadonlyArray<Scenario> = [
   {
     id: "swap-contract",
     title: "Swap a contract",
-    summary: "Migrate off Better Auth to Clerk mid-project without rewriting call sites. The agent reads the contract, verifies the new provider, and swaps the adapter.",
+    summary:
+      "Migrate off Better Auth to Clerk mid-project without rewriting call sites. The agent reads the contract, verifies the new provider, and swaps the adapter.",
     turns: [
       {
         id: "swap-user-1",
@@ -206,19 +210,14 @@ const SCENARIOS: ReadonlyArray<Scenario> = [
 ]
 
 const VERCEL_AVATAR_BASE = "https://vercel.com/api/www/avatar"
-const VERCEL_AVATAR_DPL =
-  "dpl_AS99V7XmtTzE4xdb72tYFtNTVV48" as const
+const VERCEL_AVATAR_DPL = "dpl_AS99V7XmtTzE4xdb72tYFtNTVV48" as const
 
 function UserAvatar() {
   const handle = "sarah@example.com"
   const src = `${VERCEL_AVATAR_BASE}?s=64&u=${encodeURIComponent(handle)}&dpl=${VERCEL_AVATAR_DPL}`
   return (
     <Avatar className="bg-muted">
-      <AvatarImage
-        src={src}
-        alt=""
-        className="rounded-full dark:invert"
-      />
+      <AvatarImage src={src} alt="" className="rounded-full dark:invert" />
       <AvatarFallback className="bg-muted text-label-12 text-muted-foreground">
         S
       </AvatarFallback>
@@ -230,7 +229,7 @@ function AgentAvatar() {
   return (
     <Avatar className="bg-muted">
       <AvatarFallback className="bg-muted">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* oxlint-disable-next-line nextjs/no-img-element */}
         <img
           src="/logos/codex.svg"
           alt=""
@@ -252,9 +251,7 @@ function ChatMessage({ turn }: { turn: MessageTurn }) {
 
   return (
     <Message align={isUser ? "end" : "start"}>
-      <MessageAvatar>
-        {isUser ? <UserAvatar /> : <AgentAvatar />}
-      </MessageAvatar>
+      <MessageAvatar>{isUser ? <UserAvatar /> : <AgentAvatar />}</MessageAvatar>
       <MessageContent>
         <Bubble variant="outline" className={BUBBLE_CLASS}>
           <BubbleContent className={BUBBLE_CONTENT_CLASS}>
@@ -272,19 +269,16 @@ function CliCard({ turn }: { turn: CliTurn }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-background">
       <div className="border-b border-border px-4 py-2">
-        <p className="text-label-12 uppercase tracking-wider text-muted-foreground">
+        <p className="text-label-12 tracking-wider text-muted-foreground uppercase">
           CLI &middot; Command
         </p>
       </div>
-      <pre className="overflow-x-auto px-4 py-3 font-mono text-copy-12 leading-6 text-foreground">
+      <pre className="text-copy-12 overflow-x-auto px-4 py-3 font-mono leading-6 text-foreground">
         <code>$ {turn.command}</code>
       </pre>
       <ul className="flex flex-col gap-1 border-t border-border px-4 py-3 font-mono text-label-12 leading-6">
         {turn.output.map((line) => (
-          <li
-            key={line}
-            className="text-emerald-600 dark:text-emerald-400"
-          >
+          <li key={line} className="text-emerald-600 dark:text-emerald-400">
             &#10003; {line}
           </li>
         ))}
@@ -327,7 +321,7 @@ export function CodingAgentsDemo() {
       <div
         role="img"
         aria-label={`Chat thread showing the ${scenario.title} scenario.`}
-        className="flex h-full flex-col gap-4 p-4 lg:p-6 text-copy-13 leading-6 text-foreground"
+        className="flex h-full flex-col gap-4 p-4 text-copy-13 leading-6 text-foreground lg:p-6"
       >
         <MessageScroller.Provider defaultScrollPosition="end">
           <MessageScroller.Root className="relative flex flex-1 flex-col">
@@ -336,9 +330,7 @@ export function CodingAgentsDemo() {
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
                     key={scenario.id}
-                    initial={
-                      reduceMotion ? false : { opacity: 0, y: 8 }
-                    }
+                    initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -4 }}
                     transition={{ duration: 0.25 }}
@@ -349,7 +341,7 @@ export function CodingAgentsDemo() {
                         <CliCard key={turn.id} turn={turn} />
                       ) : (
                         <ChatMessage key={turn.id} turn={turn} />
-                      ),
+                      )
                     )}
                   </motion.div>
                 </AnimatePresence>
@@ -361,7 +353,7 @@ export function CodingAgentsDemo() {
           </MessageScroller.Root>
         </MessageScroller.Provider>
 
-        <InputGroup className="mt-1 border-t border-border rounded-none bg-background">
+        <InputGroup className="mt-1 rounded-none border-t border-border bg-background">
           <InputGroupTextarea
             rows={1}
             readOnly
@@ -384,11 +376,7 @@ export function CodingAgentsDemo() {
                   <Plus aria-hidden />
                 </InputGroupButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                side="top"
-                className="w-44"
-              >
+              <DropdownMenuContent align="start" side="top" className="w-44">
                 <DropdownMenuItem>
                   <Paperclip aria-hidden />
                   Add Photos &amp; Files
@@ -413,7 +401,7 @@ export function CodingAgentsDemo() {
               variant="default"
               size="icon-sm"
               tabIndex={-1}
-              className="ml-auto pointer-events-none opacity-50"
+              className="pointer-events-none ml-auto opacity-50"
               aria-label="Send message"
             >
               <ArrowUp aria-hidden />
@@ -425,13 +413,13 @@ export function CodingAgentsDemo() {
 
       <div className="flex flex-col gap-5 p-6 lg:p-10">
         <div className="flex flex-col gap-3">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Coding agents
           </p>
           <h2 className="text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             Works with any coding agent.
           </h2>
-          <p className="text-copy-16 leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
+          <p className="text-copy-16 leading-7 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
             Every template ships with the contracts your coding agent reads,
             typed at every boundary, AGENTS.md at the monorepo root, an MCP
             manifest for the tools. Pick the CLI; the contracts stay the same.
@@ -464,7 +452,7 @@ export function CodingAgentsDemo() {
                   }
                 }}
                 tabIndex={0}
-                className="relative flex cursor-pointer items-stretch gap-4 overflow-hidden rounded-lg p-4 text-left transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="relative flex cursor-pointer items-stretch gap-4 overflow-hidden rounded-lg p-4 text-left transition-colors hover:bg-accent/30 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
               >
                 <span
                   role="progressbar"

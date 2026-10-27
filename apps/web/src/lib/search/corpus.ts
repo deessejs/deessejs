@@ -1,4 +1,9 @@
-import { allPosts, allReleases, allKbTopics, allKbGuides } from "content-collections"
+import {
+  allPosts,
+  allReleases,
+  allKbTopics,
+  allKbGuides,
+} from "content-collections"
 
 export type SearchItem = {
   title: string

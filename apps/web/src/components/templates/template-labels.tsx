@@ -34,7 +34,7 @@ export const TemplateLabels = ({
     <ul
       className={cn(
         "flex flex-nowrap items-center gap-1.5 overflow-hidden",
-        className,
+        className
       )}
     >
       {visible.map((label) => (

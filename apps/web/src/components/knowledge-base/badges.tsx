@@ -20,14 +20,62 @@ import { cn } from "@workspace/ui/lib/utils"
  */
 
 const PALETTE = [
-  { name: "rose",     bg: "bg-rose-500/10",     border: "border-rose-500/40",     text: "text-rose-700 dark:text-rose-400",     borderDark: "dark:border-rose-500/30" },
-  { name: "amber",    bg: "bg-amber-500/10",    border: "border-amber-500/40",    text: "text-amber-700 dark:text-amber-400",    borderDark: "dark:border-amber-500/30" },
-  { name: "emerald",  bg: "bg-emerald-500/10",  border: "border-emerald-500/40",  text: "text-emerald-700 dark:text-emerald-400",  borderDark: "dark:border-emerald-500/30" },
-  { name: "sky",      bg: "bg-sky-500/10",      border: "border-sky-500/40",      text: "text-sky-700 dark:text-sky-400",      borderDark: "dark:border-sky-500/30" },
-  { name: "violet",   bg: "bg-violet-500/10",   border: "border-violet-500/40",   text: "text-violet-700 dark:text-violet-400",   borderDark: "dark:border-violet-500/30" },
-  { name: "fuchsia", bg: "bg-fuchsia-500/10",  border: "border-fuchsia-500/40",  text: "text-fuchsia-700 dark:text-fuchsia-400",  borderDark: "dark:border-fuchsia-500/30" },
-  { name: "teal",     bg: "bg-teal-500/10",     border: "border-teal-500/40",     text: "text-teal-700 dark:text-teal-400",     borderDark: "dark:border-teal-500/30" },
-  { name: "orange",   bg: "bg-orange-500/10",   border: "border-orange-500/40",   text: "text-orange-700 dark:text-orange-400",   borderDark: "dark:border-orange-500/30" },
+  {
+    name: "rose",
+    bg: "bg-rose-500/10",
+    border: "border-rose-500/40",
+    text: "text-rose-700 dark:text-rose-400",
+    borderDark: "dark:border-rose-500/30",
+  },
+  {
+    name: "amber",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/40",
+    text: "text-amber-700 dark:text-amber-400",
+    borderDark: "dark:border-amber-500/30",
+  },
+  {
+    name: "emerald",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/40",
+    text: "text-emerald-700 dark:text-emerald-400",
+    borderDark: "dark:border-emerald-500/30",
+  },
+  {
+    name: "sky",
+    bg: "bg-sky-500/10",
+    border: "border-sky-500/40",
+    text: "text-sky-700 dark:text-sky-400",
+    borderDark: "dark:border-sky-500/30",
+  },
+  {
+    name: "violet",
+    bg: "bg-violet-500/10",
+    border: "border-violet-500/40",
+    text: "text-violet-700 dark:text-violet-400",
+    borderDark: "dark:border-violet-500/30",
+  },
+  {
+    name: "fuchsia",
+    bg: "bg-fuchsia-500/10",
+    border: "border-fuchsia-500/40",
+    text: "text-fuchsia-700 dark:text-fuchsia-400",
+    borderDark: "dark:border-fuchsia-500/30",
+  },
+  {
+    name: "teal",
+    bg: "bg-teal-500/10",
+    border: "border-teal-500/40",
+    text: "text-teal-700 dark:text-teal-400",
+    borderDark: "dark:border-teal-500/30",
+  },
+  {
+    name: "orange",
+    bg: "bg-orange-500/10",
+    border: "border-orange-500/40",
+    text: "text-orange-700 dark:text-orange-400",
+    borderDark: "dark:border-orange-500/30",
+  },
 ] as const
 
 /**
@@ -79,7 +127,7 @@ export function ColoredPill({ children, color, className }: PillProps) {
         entry.border,
         entry.borderDark,
         entry.text,
-        className,
+        className
       )}
     >
       {children}
@@ -94,9 +142,7 @@ export function TopicTagPill({
   children: React.ReactNode
   className?: string | undefined
 }) {
-  return (
-    <ColoredPill className={className}>{children}</ColoredPill>
-  )
+  return <ColoredPill className={className}>{children}</ColoredPill>
 }
 
 /**
@@ -113,7 +159,5 @@ export function GuideProductPill({
   children: React.ReactNode
   className?: string | undefined
 }) {
-  return (
-    <ColoredPill className={className}>{children}</ColoredPill>
-  )
+  return <ColoredPill className={className}>{children}</ColoredPill>
 }

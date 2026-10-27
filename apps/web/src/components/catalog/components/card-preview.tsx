@@ -41,7 +41,12 @@ function renderPreview(slug: string) {
           <Button size="icon" variant="outline" aria-label="Add" tabIndex={-1}>
             +
           </Button>
-          <Button size="icon" variant="default" aria-label="Notifications" tabIndex={-1}>
+          <Button
+            size="icon"
+            variant="default"
+            aria-label="Notifications"
+            tabIndex={-1}
+          >
             N
           </Button>
           <Button size="icon" variant="ghost" aria-label="Close" tabIndex={-1}>
@@ -76,7 +81,7 @@ function renderPreview(slug: string) {
     if (slug === "input-search") {
       return (
         <div className="flex max-w-xs items-center gap-2 rounded-md border border-border bg-background px-3 py-2">
-          <span className="text-muted-foreground text-sm">🔎</span>
+          <span className="text-sm text-muted-foreground">🔎</span>
           <Input
             type="search"
             placeholder="Search…"
@@ -106,9 +111,15 @@ function renderPreview(slug: string) {
     if (slug === "input-tags") {
       return (
         <div className="flex max-w-xs flex-wrap items-center gap-1">
-          <Badge variant="secondary" tabIndex={-1}>react</Badge>
-          <Badge variant="secondary" tabIndex={-1}>next</Badge>
-          <Badge variant="secondary" tabIndex={-1}>shadcn</Badge>
+          <Badge variant="secondary" tabIndex={-1}>
+            react
+          </Badge>
+          <Badge variant="secondary" tabIndex={-1}>
+            next
+          </Badge>
+          <Badge variant="secondary" tabIndex={-1}>
+            shadcn
+          </Badge>
           <Input
             placeholder="Add…"
             className="h-6 w-16 border-0 p-0 focus-visible:ring-0"
@@ -130,7 +141,10 @@ function renderPreview(slug: string) {
       return (
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="success" tabIndex={-1}>
-            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
+            <span
+              className="size-1.5 rounded-full bg-emerald-500"
+              aria-hidden
+            />
             Online
           </Badge>
           <Badge variant="destructive" tabIndex={-1}>
@@ -187,15 +201,23 @@ function renderPreview(slug: string) {
         <div className="flex items-center gap-2">
           <Badge tabIndex={-1}>3</Badge>
           <Badge tabIndex={-1}>42</Badge>
-          <Badge variant="destructive" tabIndex={-1}>99+</Badge>
+          <Badge variant="destructive" tabIndex={-1}>
+            99+
+          </Badge>
         </div>
       )
     }
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="success" tabIndex={-1}>Fixed</Badge>
-        <Badge variant="warning" tabIndex={-1}>In review</Badge>
-        <Badge variant="destructive" tabIndex={-1}>Blocked</Badge>
+        <Badge variant="success" tabIndex={-1}>
+          Fixed
+        </Badge>
+        <Badge variant="warning" tabIndex={-1}>
+          In review
+        </Badge>
+        <Badge variant="destructive" tabIndex={-1}>
+          Blocked
+        </Badge>
       </div>
     )
   }

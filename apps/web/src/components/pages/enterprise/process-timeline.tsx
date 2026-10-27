@@ -1,9 +1,6 @@
 import { cn } from "@workspace/ui/lib/utils"
 
-import {
-  PROCESS_STEPS,
-  type ProcessStep,
-} from "@/lib/enterprise/process-steps"
+import { PROCESS_STEPS, type ProcessStep } from "@/lib/enterprise/process-steps"
 
 /**
  * Three-step horizontal timeline for the /enterprise page.
@@ -25,10 +22,10 @@ export function ProcessTimeline() {
     <div className="border-b border-border">
       <div className="flex flex-col gap-6 p-6 lg:p-10">
         <header className="flex flex-col gap-2">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             How it works
           </p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
+          <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40 [&:not(:first-child)]:mt-0">
             Three steps from inquiry to handover.
           </h2>
         </header>
@@ -57,14 +54,16 @@ function ProcessStepCell({
     <li
       className={cn(
         "flex flex-col gap-3 md:px-6 lg:px-8",
-        !isLast && "md:border-r md:border-border/0",
+        !isLast && "md:border-r md:border-border/0"
       )}
     >
-      <span className="text-copy-13-mono text-muted-foreground">{step.step}</span>
+      <span className="text-copy-13-mono text-muted-foreground">
+        {step.step}
+      </span>
       <h3 className="text-heading-20 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
         {step.title}
       </h3>
-      <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+      <p className="text-copy-14 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
         {step.body}
       </p>
     </li>

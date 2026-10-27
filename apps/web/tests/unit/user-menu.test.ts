@@ -17,43 +17,46 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { getAvatarUrl, getInitials } from "../../src/components/headers/user-menu-helpers.js"
+import {
+  getAvatarUrl,
+  getInitials,
+} from "../../src/components/headers/user-menu-helpers.js"
 
 describe("getInitials", () => {
-	it("returns '?' for empty or null input", () => {
-		expect(getInitials("")).toBe("?")
-		expect(getInitials("   ")).toBe("?")
-		expect(getInitials(null)).toBe("?")
-		expect(getInitials(undefined)).toBe("?")
-	})
+  it("returns '?' for empty or null input", () => {
+    expect(getInitials("")).toBe("?")
+    expect(getInitials("   ")).toBe("?")
+    expect(getInitials(null)).toBe("?")
+    expect(getInitials(undefined)).toBe("?")
+  })
 
-	it("takes the first two characters when there is one word", () => {
-		expect(getInitials("Alice")).toBe("AL")
-		expect(getInitials("a")).toBe("A")
-	})
+  it("takes the first two characters when there is one word", () => {
+    expect(getInitials("Alice")).toBe("AL")
+    expect(getInitials("a")).toBe("A")
+  })
 
-	it("takes first letter of first and last word for multi-word names", () => {
-		expect(getInitials("Alice Martin")).toBe("AM")
-		expect(getInitials("  Alice   Martin  ")).toBe("AM")
-		expect(getInitials("Jean-Pierre Dupont")).toBe("JD")
-	})
+  it("takes first letter of first and last word for multi-word names", () => {
+    expect(getInitials("Alice Martin")).toBe("AM")
+    expect(getInitials("  Alice   Martin  ")).toBe("AM")
+    expect(getInitials("Jean-Pierre Dupont")).toBe("JD")
+  })
 })
 
 describe("getAvatarUrl", () => {
-	it("returns the explicit image when present", () => {
-		expect(getAvatarUrl("alice@example.com", "https://example.com/me.png")).toBe(
-			"https://example.com/me.png",
-		)
-	})
+  it("returns the explicit image when present", () => {
+    expect(
+      getAvatarUrl("alice@example.com", "https://example.com/me.png")
+    ).toBe("https://example.com/me.png")
+  })
 
-	it("falls back to the Vercel avatar endpoint otherwise", () => {
-		const url = getAvatarUrl("alice@example.com", null)
-		expect(url).toContain("vercel.com/api/www/avatar")
-		expect(url).toContain("alice%40example.com")
-	})
+  it("falls back to the Vercel avatar endpoint otherwise", () => {
+    const url = getAvatarUrl("alice@example.com", null)
+    expect(url).toContain("vercel.com/api/www/avatar")
+    expect(url).toContain("alice%40example.com")
+  })
 
-	it("falls back when image is the empty string (treated as falsy)", () => {
-		const url = getAvatarUrl("bob@example.com", "")
-		expect(url).toContain("vercel.com/api/www/avatar")
-	})
+  it("falls back when image is the empty string (treated as falsy)", () => {
+    const url = getAvatarUrl("bob@example.com", "")
+    expect(url).toContain("vercel.com/api/www/avatar")
+  })
 })

@@ -6,7 +6,6 @@ import { Card } from "@workspace/ui/components/card"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 
-
 export const metadata: Metadata = {
   title: "Ecosystem",
   description:
@@ -58,8 +57,7 @@ const SUB_DOMAINS: ReadonlyArray<SubDomain> = [
     url: "https://drpc.deessejs.com",
     name: "DRPC",
     initials: "DRPC",
-    blurb:
-      "Durable RPC primitives for long-running agent workflows.",
+    blurb: "Durable RPC primitives for long-running agent workflows.",
     status: "In beta",
   },
   {
@@ -103,8 +101,7 @@ const SUB_DOMAINS: ReadonlyArray<SubDomain> = [
     url: "https://cloud.deessejs.com",
     name: "Cloud",
     initials: "CL",
-    blurb:
-      "Hosted runtime for the templates. Preview, deploy, observe, scale.",
+    blurb: "Hosted runtime for the templates. Preview, deploy, observe, scale.",
     status: "Coming soon",
   },
   {
@@ -121,36 +118,32 @@ const SUB_DOMAINS: ReadonlyArray<SubDomain> = [
 const SHARED_VALUES: ReadonlyArray<{ title: string; body: string }> = [
   {
     title: "One contract, every surface",
-    body:
-      "Errors, Collections, and FP all speak the same Zod shape. A change in the contract propagates to every consumer on publish, same as the templates.",
+    body: "Errors, Collections, and FP all speak the same Zod shape. A change in the contract propagates to every consumer on publish, same as the templates.",
   },
   {
     title: "Open source by default",
-    body:
-      "Every sub-domain ships MIT when it's stable enough. The brand, the marketplace, and the curated registry stay ours. The source-code ecosystem is shared.",
+    body: "Every sub-domain ships MIT when it's stable enough. The brand, the marketplace, and the curated registry stay ours. The source-code ecosystem is shared.",
   },
   {
     title: "Smallest useful version first",
-    body:
-      "Each sub-domain enters the ecosystem in alpha, stays in beta until it earns a production install, and only then opens to third-party contributors.",
+    body: "Each sub-domain enters the ecosystem in alpha, stays in beta until it earns a production install, and only then opens to third-party contributors.",
   },
 ] as const
 
 export default function EcosystemPage() {
   return (
-      <div className="mx-auto max-w-4xl py-16">
-        {/* Hero */}
-        <header className="flex flex-col gap-6">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+    <div className="mx-auto max-w-4xl py-16">
+      {/* Hero */}
+      <header className="flex flex-col gap-6">
+        <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
           The ecosystem
         </p>
         <H1>The DeesseJS ecosystem.</H1>
-        <p className="text-muted-foreground text-copy-20 leading-7 max-w-3xl [&:not(:first-child)]:mt-0">
-          DeesseJS is more than a templates registry. It&apos;s a
-          stack of small apps, SDKs, and shared contracts that ship
-          together. Each sub-domain earns its place by solving one
-          problem end to end, and they all talk to each other
-          through the same contracts.
+        <p className="max-w-3xl text-copy-20 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+          DeesseJS is more than a templates registry. It&apos;s a stack of small
+          apps, SDKs, and shared contracts that ship together. Each sub-domain
+          earns its place by solving one problem end to end, and they all talk
+          to each other through the same contracts.
         </p>
       </header>
 
@@ -158,9 +151,9 @@ export default function EcosystemPage() {
       <section className="flex flex-col gap-6">
         <header className="flex flex-col gap-2">
           <H2>Sub-domains</H2>
-          <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0 max-w-2xl">
-            Click any to open in a new tab. Each product lives at
-            its own URL, alongside this site.
+          <p className="max-w-2xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+            Click any to open in a new tab. Each product lives at its own URL,
+            alongside this site.
           </p>
         </header>
 
@@ -186,14 +179,14 @@ export default function EcosystemPage() {
                   </span>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+                  <h3 className="!m-0 text-heading-20 tracking-tight text-foreground">
                     {product.name}
                   </h3>
-                  <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+                  <p className="text-copy-14 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
                     {product.blurb}
                   </p>
                 </div>
-                <code className="text-copy-13-mono text-muted-foreground/70 mt-auto truncate">
+                <code className="text-copy-13-mono mt-auto truncate text-muted-foreground/70">
                   {product.url.replace("https://", "")}
                 </code>
               </Card>
@@ -213,10 +206,10 @@ export default function EcosystemPage() {
               key={value.title}
               className="flex flex-col gap-2 border-l-2 border-border pl-4"
             >
-              <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+              <h3 className="!m-0 text-heading-20 tracking-tight text-foreground">
                 {value.title}
               </h3>
-              <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+              <p className="text-copy-14 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {value.body}
               </p>
             </article>
@@ -227,10 +220,7 @@ export default function EcosystemPage() {
       <Separator />
 
       {/* Cross-link CTA */}
-      <nav
-        aria-label="Related pages"
-        className="flex flex-col gap-6"
-      >
+      <nav aria-label="Related pages" className="flex flex-col gap-6">
         <H2>Read next</H2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Link
@@ -283,15 +273,11 @@ export default function EcosystemPage() {
       <Separator />
 
       {/* Action CTA */}
-      <nav
-        aria-label="Get started"
-        className="flex flex-col items-start gap-6"
-      >
+      <nav aria-label="Get started" className="flex flex-col items-start gap-6">
         <H2>Start here</H2>
-        <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0 max-w-xl">
-          The fastest way into the ecosystem is a template. It
-          pulls the same contract and the same defaults as the
-          apps above.
+        <p className="max-w-xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+          The fastest way into the ecosystem is a template. It pulls the same
+          contract and the same defaults as the apps above.
         </p>
         <div className="flex flex-wrap gap-3">
           <Button asChild>
@@ -302,6 +288,6 @@ export default function EcosystemPage() {
           </Button>
         </div>
       </nav>
-      </div>
+    </div>
   )
 }

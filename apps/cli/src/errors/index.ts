@@ -17,10 +17,14 @@ export type CliErrorCode =
   | "cli_device_expired"
 
 // Internal codes, used only inside the CLI. Not surfaced as a public
-// pattern-match surface. Adding a code here is non-breaking.
+// pattern-match surface. Adding code here is non-breaking.
 export type InternalCliErrorCode =
-  | "git_not_installed"
   | "target_exists"
+  | "target_not_empty"
+  | "invalid_target"
+  | "template_invalid"
+  | "block_invalid"
+  | "materialize_failed"
   | "install_failed"
   | "internal"
 
@@ -49,30 +53,61 @@ export { cliDeviceDenied } from "./device-denied.js"
 export { cliDeviceExpired } from "./device-expired.js"
 
 // Internal factories, kept in this file because they are not part of
-// the public surface: internal error codes are not surfaced to the
-// user.
-export const gitNotInstalled = (): CliError =>
-  new CliError(
-    "git_not_installed",
-    "`git` is not installed or not on PATH",
-    "install git from https://git-scm.com and try again",
-  )
-
+// the public error surface.
 export const targetExists = (dir: string): CliError =>
   new CliError(
     "target_exists",
     `target directory "${dir}" already exists`,
-    "remove the directory or pass --force to overwrite",
+    "choose an unused directory, or pass --force if the target already exists and is empty"
+  )
+
+export const targetNotEmpty = (dir: string): CliError =>
+  new CliError(
+    "target_not_empty",
+    `target directory "${dir}" is not empty`,
+    "choose an empty directory; --force only allows an existing empty directory"
+  )
+
+export const invalidTarget = (dir: string, detail: string): CliError =>
+  new CliError(
+    "invalid_target",
+    `target path "${dir}" cannot be used safely`,
+    detail
+  )
+
+export const templateInvalid = (repository: string, detail: string): CliError =>
+  new CliError(
+    "template_invalid",
+    `template source "${repository}" cannot be installed`,
+    detail
+  )
+
+export const blockInvalid = (source: string, detail: string): CliError =>
+  new CliError("block_invalid", `block source "${source}" is invalid`, detail)
+
+export const repositoryNotFound = (repository: string): CliError =>
+  new CliError(
+    "not_found",
+    `GitHub repository "${repository}" was not found`,
+    "check the owner and repository name, and make sure the repository is public"
+  )
+
+export const materializeFailed = (dir: string, detail: string): CliError =>
+  new CliError(
+    "materialize_failed",
+    `failed to create the project in "${dir}"`,
+    detail
   )
 
 export const installFailed = (
   pm: string,
   code: number | null,
+  dir: string
 ): CliError =>
   new CliError(
     "install_failed",
     `${pm} install exited with code ${code ?? "unknown"}`,
-    "check the output above, then run the install command manually inside the cloned directory",
+    `Run "${pm} install" from "${dir}" to retry after fixing the installation issue.`
   )
 
 export const internal = (detail: string): CliError =>

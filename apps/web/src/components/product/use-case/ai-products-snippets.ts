@@ -161,13 +161,16 @@ export const replayFromTrace = async (traceId: string) => {
 }`,
 }
 
-export const AI_PRODUCTS_SNIPPETS: Record<AiProductsPillarSlug, AiProductsPillarTool> = {
-  "agent-loop":         { files: [agentLoopFile] },
-  "typed-tools":        { files: [typedToolsFile] },
-  "pgvector-search":    { files: [pgvectorSearchFile] },
-  "otel-trace":         { files: [otelTraceFile] },
-  "streaming-cancel":   { files: [streamingCancelFile] },
-  "citation-prompt":    { files: [citationPromptFile] },
-  "eval-scoring":       { files: [evalScoringFile] },
-  "replay-console":     { files: [replayConsoleFile] },
+export const AI_PRODUCTS_SNIPPETS: Record<
+  AiProductsPillarSlug,
+  AiProductsPillarTool
+> = {
+  "agent-loop": { files: [agentLoopFile] },
+  "typed-tools": { files: [typedToolsFile] },
+  "pgvector-search": { files: [pgvectorSearchFile] },
+  "otel-trace": { files: [otelTraceFile] },
+  "streaming-cancel": { files: [streamingCancelFile] },
+  "citation-prompt": { files: [citationPromptFile] },
+  "eval-scoring": { files: [evalScoringFile] },
+  "replay-console": { files: [replayConsoleFile] },
 }

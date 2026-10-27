@@ -32,7 +32,7 @@ export default function ComponentsPage() {
     COMPONENT_CATEGORIES.map((category) => [
       category.id,
       CATALOGUE_COMPONENTS.find((c) => c.category === category.id),
-    ]),
+    ])
   ) as Record<
     (typeof COMPONENT_CATEGORIES)[number]["id"],
     (typeof CATALOGUE_COMPONENTS)[number]
@@ -41,7 +41,7 @@ export default function ComponentsPage() {
   // Number of components per category — drives the sidebar count badge.
   const counts = calculateCatalogCounts(
     CATALOGUE_COMPONENTS,
-    (component) => component.category,
+    (component) => component.category
   )
 
   return (
@@ -49,15 +49,15 @@ export default function ComponentsPage() {
       {/* Hero */}
       <header className="relative overflow-hidden border-b border-border">
         <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Components
           </p>
           <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
             The design system, browsable.
           </h1>
-          <p className="max-w-2xl text-copy-18 text-pretty leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
-            Buttons, inputs, badges — the primitives every DeesseJS
-            template ships with. Click any card for the detail page.
+          <p className="max-w-2xl text-copy-18 leading-7 text-balance text-pretty text-muted-foreground [&:not(:first-child)]:mt-0">
+            Buttons, inputs, badges — the primitives every DeesseJS template
+            ships with. Click any card for the detail page.
           </p>
         </div>
       </header>
@@ -91,7 +91,7 @@ export default function ComponentsPage() {
                   <div className="flex items-start gap-3">
                     <Icon
                       aria-hidden
-                      className="text-muted-foreground mt-0.5 size-4 shrink-0"
+                      className="mt-0.5 size-4 shrink-0 text-muted-foreground"
                     />
                     <span>{category.name}</span>
                   </div>

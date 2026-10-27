@@ -159,13 +159,16 @@ const numberedStepsFile: LandingPagesPillarSnippet = {
 )`,
 }
 
-export const LANDING_PAGES_SNIPPETS: Record<LandingPagesPillarSlug, LandingPagesPillarTool> = {
-  "hero-block":        { files: [heroBlockFile] },
-  "surface-grid":      { files: [surfaceGridFile] },
-  "authority-block":   { files: [authorityBlockFile] },
-  "process-cta":       { files: [processCtaFile] },
-  "headline-spec":     { files: [headlineSpecFile] },
-  "tabbed-explorer":   { files: [tabbedExplorerFile] },
-  "kb-link":           { files: [kbLinkFile] },
-  "numbered-steps":    { files: [numberedStepsFile] },
+export const LANDING_PAGES_SNIPPETS: Record<
+  LandingPagesPillarSlug,
+  LandingPagesPillarTool
+> = {
+  "hero-block": { files: [heroBlockFile] },
+  "surface-grid": { files: [surfaceGridFile] },
+  "authority-block": { files: [authorityBlockFile] },
+  "process-cta": { files: [processCtaFile] },
+  "headline-spec": { files: [headlineSpecFile] },
+  "tabbed-explorer": { files: [tabbedExplorerFile] },
+  "kb-link": { files: [kbLinkFile] },
+  "numbered-steps": { files: [numberedStepsFile] },
 }

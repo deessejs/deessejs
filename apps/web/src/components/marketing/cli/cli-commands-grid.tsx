@@ -33,13 +33,13 @@ export function CliCommandsGrid() {
               <span className="font-mono text-copy-13 text-muted-foreground">
                 Command
               </span>
-              <h3 className="font-mono text-copy-16 font-medium text-foreground !m-0">
+              <h3 className="!m-0 font-mono text-copy-16 font-medium text-foreground">
                 {command.name}
               </h3>
               <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {command.body}
               </p>
-              <code className="mt-1 rounded bg-muted px-2 py-1 font-mono text-copy-12 text-foreground/90">
+              <code className="text-copy-12 mt-1 rounded bg-muted px-2 py-1 font-mono text-foreground/90">
                 $ {command.example}
               </code>
             </div>
@@ -52,20 +52,17 @@ export function CliCommandsGrid() {
         {flags.map((cell, idx) => {
           const flag = cell as Extract<typeof cell, { kind: "flag" }>
           return (
-            <div
-              key={`flag-${idx}`}
-              className="flex flex-col gap-3 p-6 lg:p-8"
-            >
+            <div key={`flag-${idx}`} className="flex flex-col gap-3 p-6 lg:p-8">
               <span className="font-mono text-copy-13 text-muted-foreground">
                 Flag
               </span>
-              <h3 className="text-heading-20 tracking-tight text-foreground !m-0">
+              <h3 className="!m-0 text-heading-20 tracking-tight text-foreground">
                 {flag.title}
               </h3>
               <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {flag.body}
               </p>
-              <code className="mt-1 rounded bg-muted px-2 py-1 font-mono text-copy-12 text-foreground/90">
+              <code className="text-copy-12 mt-1 rounded bg-muted px-2 py-1 font-mono text-foreground/90">
                 $ {flag.example}
               </code>
             </div>

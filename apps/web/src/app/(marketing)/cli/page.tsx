@@ -68,7 +68,7 @@ export default async function CliPage() {
         defaultColor: false,
       })
       return [tab.id, html] as const
-    }),
+    })
   )
   const editorHtml = Object.fromEntries(highlightedHtml) as Record<
     (typeof EDITOR_TABS)[number]["id"],

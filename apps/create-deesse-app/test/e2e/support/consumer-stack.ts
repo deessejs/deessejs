@@ -66,9 +66,9 @@ const sha256 = (path: string): string => {
  * a truthy value, which would let every entry through.
  */
 const readManifestFromTarball = async (
-  tgzPath: string,
+  tgzPath: string
 ): Promise<PackedArtifact["manifest"]> => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // oxlint-disable-next-line typescript/no-require-imports
   const tar = require("tar") as typeof import("tar")
   const tmp = mkdtempSync(join(tmpdir(), "cda-manifest-"))
   await tar.x({
@@ -78,7 +78,7 @@ const readManifestFromTarball = async (
   })
   const manifestJson = readFileSync(
     join(tmp, "package", "package.json"),
-    "utf8",
+    "utf8"
   )
   return JSON.parse(manifestJson) as PackedArtifact["manifest"]
 }
@@ -101,7 +101,7 @@ const readManifestFromTarball = async (
  */
 export const packCli = async (
   testVersion: string,
-  packTimeoutMs = 5 * 60_000,
+  packTimeoutMs = 5 * 60_000
 ): Promise<PackedArtifact> => {
   const pkgPath = join(CLI_DIR, "package.json")
   const originalPkg = readFileSync(pkgPath, "utf8")
@@ -134,18 +134,12 @@ export const packCli = async (
 
     const buildResult = await runCommand(
       pnpmCmd,
-      [
-        "--filter",
-        parsedPkg.name,
-        "--fail-if-no-match",
-        "run",
-        "build",
-      ],
-      { cwd: join(CLI_DIR, "..", ".."), timeoutMs: packTimeoutMs },
+      ["--filter", parsedPkg.name, "--fail-if-no-match", "run", "build"],
+      { cwd: join(CLI_DIR, "..", ".."), timeoutMs: packTimeoutMs }
     )
     if (buildResult.exitCode !== 0) {
       throw new Error(
-        `build failed before pack: exit=${buildResult.exitCode}\nstdout: ${buildResult.stdout}\nstderr: ${buildResult.stderr}`,
+        `build failed before pack: exit=${buildResult.exitCode}\nstdout: ${buildResult.stdout}\nstderr: ${buildResult.stderr}`
       )
     }
 
@@ -160,7 +154,7 @@ export const packCli = async (
         "--pack-destination",
         stageDir,
       ],
-      { cwd: join(CLI_DIR, "..", ".."), timeoutMs: packTimeoutMs },
+      { cwd: join(CLI_DIR, "..", ".."), timeoutMs: packTimeoutMs }
     )
     if (packResult.exitCode !== 0) {
       // The pnpm output is the only way to know why pack failed;
@@ -173,7 +167,7 @@ export const packCli = async (
           `command: pnpm --filter ${parsedPkg.name} --fail-if-no-match pack --pack-destination ${stageDir}`,
           `stdout: ${packResult.stdout}`,
           `stderr: ${packResult.stderr}`,
-        ].join("\n"),
+        ].join("\n")
       )
     }
 
@@ -185,7 +179,7 @@ export const packCli = async (
           `entries: [${entries.join(", ")}]`,
           `cwd: ${join(CLI_DIR, "..", "..")}`,
           `command: pnpm --filter ${parsedPkg.name} --fail-if-no-match pack --pack-destination ${stageDir}`,
-        ].join("\n"),
+        ].join("\n")
       )
     }
     const tgzName = entries[0] as string
@@ -215,13 +209,13 @@ export const packCli = async (
  * without any harness orchestration.
  */
 export const verifyPackageShape = async (
-  artifact: PackedArtifact,
+  artifact: PackedArtifact
 ): Promise<void> => {
   // The manifest version is the bumped one and matches what
   // pnpm pack wrote into the tarball.
   if (artifact.manifest.version !== artifact.testVersion) {
     throw new Error(
-      `manifest version mismatch: expected ${artifact.testVersion}, got ${artifact.manifest.version}`,
+      `manifest version mismatch: expected ${artifact.testVersion}, got ${artifact.manifest.version}`
     )
   }
   // The bin map must contain at least one executable so the
@@ -231,7 +225,9 @@ export const verifyPackageShape = async (
     !artifact.manifest.bin ||
     Object.keys(artifact.manifest.bin).length === 0
   ) {
-    throw new Error(`manifest has no bin entry: ${JSON.stringify(artifact.manifest)}`)
+    throw new Error(
+      `manifest has no bin entry: ${JSON.stringify(artifact.manifest)}`
+    )
   }
   // The dependency map must contain only concrete version
   // ranges, never workspace: or catalog: protocols. pnpm
@@ -241,22 +237,18 @@ export const verifyPackageShape = async (
   // would make the published tarball unresolvable by an
   // external user).
   for (const [name, range] of Object.entries(
-    artifact.manifest.dependencies ?? {},
+    artifact.manifest.dependencies ?? {}
   )) {
     if (typeof range !== "string") {
       throw new Error(
-        `dependency ${name} is not a string range: ${JSON.stringify(range)}`,
+        `dependency ${name} is not a string range: ${JSON.stringify(range)}`
       )
     }
     if (range.startsWith("workspace:")) {
-      throw new Error(
-        `dependency ${name} leaked workspace: protocol: ${range}`,
-      )
+      throw new Error(`dependency ${name} leaked workspace: protocol: ${range}`)
     }
     if (range.startsWith("catalog:")) {
-      throw new Error(
-        `dependency ${name} leaked catalog: protocol: ${range}`,
-      )
+      throw new Error(`dependency ${name} leaked catalog: protocol: ${range}`)
     }
   }
 
@@ -266,7 +258,7 @@ export const verifyPackageShape = async (
   // runtime dependency closure. The manifest checks above
   // cover the dep closure; here we cover bin and license.
   //
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // oxlint-disable-next-line typescript/no-require-imports
   const tar = require("tar") as typeof import("tar")
   const entryPaths: string[] = []
   await tar.t({
@@ -279,7 +271,7 @@ export const verifyPackageShape = async (
   const licenseEntry = entryPaths.find((p) => /\/LICENSE$/.test(p))
   if (!licenseEntry) {
     throw new Error(
-      `LICENSE missing from tarball; entries: [${entryPaths.join(", ")}]`,
+      `LICENSE missing from tarball; entries: [${entryPaths.join(", ")}]`
     )
   }
   // Pick the first bin target declared in the manifest and
@@ -295,7 +287,7 @@ export const verifyPackageShape = async (
   const binEntry = entryPaths.find((p) => p.endsWith(`/${binBasename}`))
   if (!binEntry) {
     throw new Error(
-      `bin entry ${binBasename} missing from tarball; entries: [${entryPaths.join(", ")}]`,
+      `bin entry ${binBasename} missing from tarball; entries: [${entryPaths.join(", ")}]`
     )
   }
   // Extract just the bin file (cheap; one file) and read
@@ -311,7 +303,7 @@ export const verifyPackageShape = async (
   const firstLine = readFileSync(binPath, "utf8").split("\n", 1)[0] as string
   if (!firstLine.startsWith("#!")) {
     throw new Error(
-      `bin entry ${binBasename} missing shebang: ${JSON.stringify(firstLine)}`,
+      `bin entry ${binBasename} missing shebang: ${JSON.stringify(firstLine)}`
     )
   }
 }
@@ -350,7 +342,7 @@ const startConsumer = async (opts: {
   if (setup.exitCode !== 0) {
     await container.stop()
     throw new Error(
-      `failed to bootstrap consumer: exit=${setup.exitCode}\nstdout: ${setup.output}\nstderr: ${setup.output}`,
+      `failed to bootstrap consumer: exit=${setup.exitCode}\nstdout: ${setup.output}\nstderr: ${setup.output}`
     )
   }
   return container
@@ -368,7 +360,7 @@ export type Consumer = {
    */
   installFromArchive: (
     archivePathInHost: string,
-    timeoutMs: number,
+    timeoutMs: number
   ) => Promise<CommandResult>
   /**
    * Run the package via `pnpm dlx`. This is the path used by the
@@ -381,7 +373,7 @@ export type Consumer = {
     packageName: string,
     version: string,
     args: readonly string[],
-    timeoutMs: number,
+    timeoutMs: number
   ) => Promise<CommandResult>
 }
 
@@ -402,7 +394,7 @@ const buildConsumerNpmrc = (): string =>
  */
 const buildConsumerWorkspaceYaml = (
   packageName: string,
-  version: string,
+  version: string
 ): string =>
   [
     "packages: []",
@@ -422,7 +414,7 @@ const buildConsumerWorkspaceYaml = (
 const writeFileToContainer = async (
   container: StartedTestContainer,
   hostPath: string,
-  containerPath: string,
+  containerPath: string
 ): Promise<void> => {
   await container.copyContentToContainer([
     { content: readFileSync(hostPath), target: containerPath },
@@ -430,7 +422,7 @@ const writeFileToContainer = async (
 }
 
 export const startConsumerForStack = async (
-  stack: StartedStack,
+  stack: StartedStack
 ): Promise<Consumer> => {
   const container = await startConsumer({ network: stack.network })
   const installDir = "/tmp/install"
@@ -484,11 +476,11 @@ export const startConsumerForStack = async (
       void _timeoutMs
       const wsHostPath = join(
         tmpdir(),
-        `cda-ws-${Date.now().toString(36)}.yaml`,
+        `cda-ws-${Date.now().toString(36)}.yaml`
       )
       writeFileSync(
         wsHostPath,
-        buildConsumerWorkspaceYaml(packageName, version),
+        buildConsumerWorkspaceYaml(packageName, version)
       )
       const wsContainerPath = join(installDir, "pnpm-workspace.yaml")
       await writeFileToContainer(container, wsHostPath, wsContainerPath)

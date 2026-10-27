@@ -37,7 +37,7 @@ export function Beliefs() {
           className="space-y-3 p-6"
         >
           <div className="flex items-baseline gap-4">
-            <span className="text-label-16 font-mono text-muted-foreground">
+            <span className="font-mono text-label-16 text-muted-foreground">
               {belief.number}
             </span>
             <h2 className="text-heading-24 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
@@ -45,11 +45,11 @@ export function Beliefs() {
             </h2>
           </div>
           {belief.pullQuote ? (
-            <blockquote className="border-l-4 border-primary pl-6 italic text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0 max-w-3xl">
+            <blockquote className="max-w-3xl border-l-4 border-primary pl-6 text-copy-16 leading-7 text-muted-foreground italic [&:not(:first-child)]:mt-0">
               {belief.body}
             </blockquote>
           ) : (
-            <p className="text-copy-16 text-foreground leading-7 [&:not(:first-child)]:mt-0 max-w-3xl">
+            <p className="max-w-3xl text-copy-16 leading-7 text-foreground [&:not(:first-child)]:mt-0">
               {belief.body}
             </p>
           )}
