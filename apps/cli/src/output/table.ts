@@ -107,6 +107,15 @@ export const printBlockInfo = (info: BlockDescriptorInfo): void => {
       ])
     )
   }
+
+  const manualSteps = info.descriptor.install.manualSteps ?? []
+  if (manualSteps.length > 0) {
+    console.log()
+    printKeyValueSection(
+      "Manual steps",
+      manualSteps.map((step, index) => [index === 0 ? "step" : "", step])
+    )
+  }
 }
 
 function formatDependencies(
