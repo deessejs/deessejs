@@ -18,11 +18,27 @@ type InitOptions = {
 }
 
 function suggestedName(directory: string): string {
-  const value = basename(resolve(directory))
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-  return /^[a-z]/.test(value) ? value : `block-${value || "new"}`
+  const raw = basename(resolve(directory)).toLowerCase()
+  let value = ""
+  let previousCharacterWasDash = false
+
+  for (const character of raw) {
+    const isLetter = character >= "a" && character <= "z"
+    const isNumber = character >= "0" && character <= "9"
+    if (isLetter || isNumber || character === "-") {
+      value += character
+      previousCharacterWasDash = character === "-"
+    } else if (value && !previousCharacterWasDash) {
+      value += "-"
+      previousCharacterWasDash = true
+    }
+  }
+
+  if (value.endsWith("-")) value = value.slice(0, -1)
+  const firstCharacter = value.charAt(0)
+  return firstCharacter >= "a" && firstCharacter <= "z"
+    ? value
+    : `block-${value || "new"}`
 }
 
 async function promptValue(
