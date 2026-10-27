@@ -1,0 +1,76 @@
+name: Vercel Prebuilt Preview Deployments
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-preview:
+    name: Preview (${{ matrix.app }})
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: docs
+            directory: apps/docs
+            project_id: prj_TjmKPgxU8po3FDjQVkprdIRGgXa4
+          - app: agent
+            directory: apps/agent
+            project_id: prj_XpSk71L2P6VCrZNA1P34hlTIWajc
+          - app: web
+            directory: apps/web
+            project_id: prj_EDu0GMa3fKaInW6f3MBiLCiewi6O
+          - app: app
+            directory: apps/app
+            project_id: prj_IOf5cRl1rkbc6SfSMzLsKsneYPdb
+    concurrency:
+      group: vercel-preview-${{ github.event.pull_request.number }}-${{ matrix.app }}
+      cancel-in-progress: true
+    env:
+      VERCEL_ORG_ID: team_VbdXYd5XY8pvEMjsWODHQhgD
+      VERCEL_PROJECT_ID: ${{ matrix.project_id }}
+      VERCEL_ENV: preview
+      VERCEL_GIT_PROVIDER: github
+      VERCEL_GIT_REPO_OWNER: deessejs
+      VERCEL_GIT_REPO_SLUG: deessejs
+      VERCEL_GIT_COMMIT_REF: ${{ github.event.pull_request.head.ref }}
+      VERCEL_GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+      VERCEL_GIT_PULL_REQUEST_ID: ${{ github.event.pull_request.number }}
+      VERCEL_CWD: ${{ matrix.directory }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@64.7.0
+
+      - name: Pull preview environment and project settings
+        run: vercel pull --yes --environment=preview --git-branch="$GITHUB_HEAD_REF" --cwd="$VERCEL_CWD"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build preview
+        run: vercel build --cwd="$VERCEL_CWD"
+
+      - name: Deploy prebuilt preview
+        id: deploy
+        run: |
+          deployment_url="$(vercel deploy --prebuilt --yes --cwd="$VERCEL_CWD")"
+          printf 'Preview deployment: %s\n' "$deployment_url" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
