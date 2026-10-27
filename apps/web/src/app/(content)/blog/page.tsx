@@ -42,12 +42,12 @@ export default function BlogPage() {
           </h1>
           <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
             Subscribe via{" "}
-            <a
+            <Link
               href="/blog/feed.xml"
               className="underline underline-offset-4 hover:text-foreground"
             >
               RSS
-            </a>
+            </Link>
             , or browse the latest from the team: posts on the stack, the
             contracts, and the registry.
           </p>

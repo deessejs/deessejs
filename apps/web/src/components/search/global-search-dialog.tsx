@@ -62,7 +62,7 @@ export function GlobalSearchDialog() {
   useEffect(() => {
     // Reset selection when results change (e.g., new search query)
     // This is intentional - we want to clear selection on new results
-    // oxlint-disable-next-line react-hooks/set-state-in-effect
+    // oxlint-disable-next-line react/set-state-in-effect
     setSelectedIndex(-1)
   }, [results])
 
@@ -73,7 +73,7 @@ export function GlobalSearchDialog() {
       // Reset state when the dialog closes so the next open starts fresh.
       // This is intentional - cascading render is fine here because close
       // is a user action, not a render-driven one.
-      // oxlint-disable-next-line react-hooks/set-state-in-effect
+      // oxlint-disable-next-line react/set-state-in-effect
       setQuery("")
       setSelectedIndex(-1)
     }

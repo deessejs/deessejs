@@ -1,5 +1,7 @@
 "use client"
 
+/* oxlint-disable next/no-img-element */
+
 import { ArrowUpRight } from "lucide-react"
 import * as motion from "motion/react-client"
 import Link from "next/link"
@@ -133,6 +135,7 @@ export function ContractsGrid({
               aria-label={`Browse all ${contract.title} templates`}
               className="absolute inset-0 z-0"
             />
+            {/* oxlint-disable-next-line react/forbid-elements */}
             <button
               type="button"
               aria-label={`Open ${contract.title} templates in a new tab`}

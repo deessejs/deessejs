@@ -87,12 +87,12 @@ export default async function TagPage({ params }: { params: Promise<Params> }) {
           <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
             {posts.length} {posts.length === 1 ? "post" : "posts"} tagged with
             this topic. Subscribe via{" "}
-            <a
+            <Link
               href="/blog/feed.xml"
               className="underline underline-offset-4 hover:text-foreground"
             >
               RSS
-            </a>{" "}
+            </Link>{" "}
             for the full feed.
           </p>
         </div>

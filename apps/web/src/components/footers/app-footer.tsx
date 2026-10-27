@@ -5,6 +5,8 @@ import { CookiePreferencesButton } from "@workspace/cookies"
 import { ConwayBand } from "./conway-grid"
 import { FooterColumn, type FooterLink } from "./footer-column"
 
+const currentYear = new Date().getFullYear()
+
 const footerSections: ReadonlyArray<{
   heading: string
   links: ReadonlyArray<FooterLink>
@@ -126,7 +128,7 @@ export function AppFooter() {
         {/* Bottom bar */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
           <span className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} DeesseJS. All rights reserved.
+            © {currentYear} DeesseJS. All rights reserved.
           </span>
           <div className="flex items-center gap-4">
             <a

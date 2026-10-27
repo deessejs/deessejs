@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 import { ReleaseTimeline } from "@/components/blog/release-group"
 import { getAllReleases } from "@/lib/blog/releases"
@@ -38,12 +39,12 @@ export default function ChangelogPage() {
           </h1>
           <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
             Subscribe via{" "}
-            <a
+            <Link
               href="/changelog/feed.xml"
               className="underline underline-offset-4 hover:text-foreground"
             >
               RSS
-            </a>
+            </Link>
             , or browse the latest releases by version and date.
           </p>
         </div>

@@ -97,7 +97,7 @@ export function TechStackGrid({
     // intended pattern: we want the initial state to reflect the OS
     // preference on mount. Cascading setState is acceptable here
     // because nothing else has rendered yet.
-    // oxlint-disable-next-line react-hooks/set-state-in-effect
+    // oxlint-disable-next-line react/set-state-in-effect
     setReducedMotion(mql.matches)
     const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
     mql.addEventListener("change", onChange)

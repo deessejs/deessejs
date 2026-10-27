@@ -30,7 +30,7 @@ export function TableOfContents({ targetId }: { targetId: string }) {
 
     // Intentionally updating state after DOM query to populate the table of contents.
     // This is a valid use case that requires extracting headings from the DOM.
-    // oxlint-disable-next-line react-hooks/set-state-in-effect
+    // oxlint-disable-next-line react/set-state-in-effect
     setItems(next)
   }, [targetId])
 
