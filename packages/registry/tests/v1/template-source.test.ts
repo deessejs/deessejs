@@ -201,7 +201,10 @@ describe("createGitHubTemplateSourceAdapter", () => {
     })
     const fetchMock = vi.fn<typeof fetch>(async (input) => {
       const url = String(input)
-      if (url === "https://api.github.com/repos/deessejs/fixture/contents/deesse-template.json") {
+      if (
+        url ===
+        "https://api.github.com/repos/deessejs/fixture/contents/deesse-template.json"
+      ) {
         return jsonResponse({
           type: "file",
           encoding: "base64",
@@ -236,6 +239,9 @@ describe("createGitHubTemplateSourceAdapter", () => {
       if (url.endsWith("/contents/deesse-template.json")) {
         return new Response(null, { status: 404 })
       }
+      if (url.endsWith("/repos/deessejs/fixture")) {
+        return jsonResponse({ default_branch: "main" })
+      }
       return new Response(null, { status: 404 })
     })
     const adapter = createGitHubTemplateSourceAdapter({
@@ -249,11 +255,28 @@ describe("createGitHubTemplateSourceAdapter", () => {
       code: "source.file_not_found",
       path: "deesse-template.json",
     })
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(
       fetchMock.mock.calls.some(([input]) =>
         String(input).includes("/tarball/")
       )
     ).toBe(false)
+  })
+
+  it("distinguishes a missing repository from a missing descriptor", async () => {
+    const fetchMock = vi.fn<typeof fetch>(
+      async () => new Response(null, { status: 404 })
+    )
+    const adapter = createGitHubTemplateSourceAdapter({
+      fetch: fetchMock,
+      retryCount: 0,
+    })
+
+    await expect(
+      adapter.resolveDescriptor({ repository: "deessejs/missing" })
+    ).rejects.toMatchObject({
+      code: "source.repository_not_found",
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

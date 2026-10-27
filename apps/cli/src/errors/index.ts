@@ -82,6 +82,13 @@ export const templateInvalid = (repository: string, detail: string): CliError =>
     detail
   )
 
+export const repositoryNotFound = (repository: string): CliError =>
+  new CliError(
+    "not_found",
+    `GitHub repository "${repository}" was not found`,
+    "check the owner and repository name, and make sure the repository is public"
+  )
+
 export const materializeFailed = (dir: string, detail: string): CliError =>
   new CliError(
     "materialize_failed",

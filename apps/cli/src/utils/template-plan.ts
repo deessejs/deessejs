@@ -5,7 +5,11 @@ import {
   type TemplateDescriptorInfo,
   type TemplateInstallationPlan,
 } from "@workspace/registry/v1"
-import { networkError, templateInvalid } from "../errors/index.js"
+import {
+  networkError,
+  repositoryNotFound,
+  templateInvalid,
+} from "../errors/index.js"
 
 const NETWORK_DIAGNOSTIC_CODES = [
   "source.unavailable",
@@ -25,6 +29,14 @@ export async function resolveTemplateDescriptorInfo(
     createGitHubTemplateSourceAdapter()
   )
   if (result.success) return result.info
+
+  if (
+    result.diagnostics.some(
+      (diagnostic) => diagnostic.code === "source.repository_not_found"
+    )
+  ) {
+    throw repositoryNotFound(repository)
+  }
 
   const missingDescriptor =
     result.diagnostics.length === 1 &&
@@ -58,6 +70,14 @@ export async function resolveTemplateInstallationPlan(
     createGitHubTemplateSourceAdapter()
   )
   if (result.success) return result.plan
+
+  if (
+    result.diagnostics.some(
+      (diagnostic) => diagnostic.code === "source.repository_not_found"
+    )
+  ) {
+    throw repositoryNotFound(repository)
+  }
 
   const missingDescriptor =
     result.diagnostics.length === 1 &&

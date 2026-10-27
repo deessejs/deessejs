@@ -44,6 +44,7 @@ export type TemplateSourceDiagnosticCode =
   | "source.invalid_repository"
   | "source.unavailable"
   | "source.invalid_response"
+  | "source.repository_not_found"
   | "source.incomplete_inventory"
   | "source.inventory_limit_exceeded"
   | "source.file_not_found"
@@ -534,6 +535,33 @@ export function createGitHubTemplateSourceAdapter(
     return response.default_branch
   }
 
+  async function repositoryExists(repository: string): Promise<boolean> {
+    const { owner, name } = parseRepository(repository)
+    const url = `${apiBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), requestTimeoutMs)
+
+    try {
+      const response = await request(url, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": GITHUB_API_VERSION,
+        },
+        signal: controller.signal,
+      })
+      if (response.status === 404) return false
+      if (!response.ok) {
+        throw createTemplateSourceError(
+          "source.unavailable",
+          `GitHub returned HTTP ${response.status} while checking ${repository}.`
+        )
+      }
+      return true
+    } finally {
+      clearTimeout(timeout)
+    }
+  }
+
   async function readRemoteDescriptor(
     repository: string,
     ref: string | undefined
@@ -615,7 +643,10 @@ export function createGitHubTemplateSourceAdapter(
           "deesse-template.json"
         )
       }
-      if (typeof file.size === "number" && file.size > MAX_DESCRIPTOR_SIZE_BYTES) {
+      if (
+        typeof file.size === "number" &&
+        file.size > MAX_DESCRIPTOR_SIZE_BYTES
+      ) {
         throw createTemplateSourceError(
           "source.file_too_large",
           `The root deesse-template.json exceeds the ${MAX_DESCRIPTOR_SIZE_BYTES} byte limit.`,
@@ -630,7 +661,11 @@ export function createGitHubTemplateSourceAdapter(
         )
       }
       const encoded = file.content.replace(/\s/g, "")
-      if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) {
+      if (
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
+          encoded
+        )
+      ) {
         throw createTemplateSourceError(
           "source.invalid_response",
           "GitHub returned invalid base64 contents for the root descriptor.",
@@ -655,8 +690,25 @@ export function createGitHubTemplateSourceAdapter(
     resolveRevision,
     async resolveDescriptor(source) {
       const { canonical } = parseRepository(source.repository)
-      const contents = await readRemoteDescriptor(canonical, source.ref)
-      return { repository: canonical, contents }
+      try {
+        const contents = await readRemoteDescriptor(canonical, source.ref)
+        return { repository: canonical, contents }
+      } catch (error) {
+        if (
+          !isTemplateSourceError(error) ||
+          error.code !== "source.file_not_found"
+        ) {
+          throw error
+        }
+
+        if (!(await repositoryExists(canonical))) {
+          throw createTemplateSourceError(
+            "source.repository_not_found",
+            `GitHub repository "${canonical}" does not exist or is not publicly accessible.`
+          )
+        }
+        throw error
+      }
     },
     async resolve(source) {
       const { owner, name, canonical } = parseRepository(source.repository)

@@ -102,17 +102,7 @@ globalThis.fetch = async (input, init) => {
     requestUrl.pathname === "/api/v1/rpc/templates/resolve" &&
     method === "POST"
   ) {
-    const requestBody =
-      init?.body ??
-      (input instanceof globalThis.Request ? await input.clone().text() : "")
-    const legacy = String(requestBody).includes("legacy-starter")
-    return jsonResponse({
-      json: {
-        slug: legacy ? "legacy-starter" : "init-regression-fixture",
-        owner: "deessejs",
-        repo: legacy ? "legacy-template" : "init-regression-fixture",
-      },
-    })
+    return new globalThis.Response(null, { status: 404 })
   }
 
   if (
@@ -131,9 +121,10 @@ globalThis.fetch = async (input, init) => {
   }
 
   if (requestUrl.hostname === "api.github.com") {
-    const match = /^\/repos\/([^/]+\/[^/]+)\/contents\/deesse-template\.json$/.exec(
-      requestUrl.pathname
-    )
+    const match =
+      /^\/repos\/([^/]+\/[^/]+)\/contents\/deesse-template\.json$/.exec(
+        requestUrl.pathname
+      )
     const repository = match?.[1]
     const fixture = repository ? githubRepositories.get(repository) : undefined
     if (fixture?.descriptor) {
@@ -145,6 +136,10 @@ globalThis.fetch = async (input, init) => {
       })
     }
     if (fixture) return new globalThis.Response(null, { status: 404 })
+    if (match) return new globalThis.Response(null, { status: 404 })
+    if (/^\/repos\/[^/]+\/[^/]+$/.test(requestUrl.pathname)) {
+      return new globalThis.Response(null, { status: 404 })
+    }
   }
 
   throw new Error(

@@ -263,6 +263,21 @@ describe.skipIf(process.platform !== "linux")(
           "Install: deessejs init init-regression-fixture"
         )
 
+        const unknownCatalogInfoResult = await runCommand(
+          cliExecutable,
+          ["info", "test", "--json"],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(unknownCatalogInfoResult.exitCode).not.toBe(0)
+        const unknownCatalogInfo = JSON.parse(unknownCatalogInfoResult.stdout)
+        expect(unknownCatalogInfo).toMatchObject({
+          ok: false,
+          code: "not_found",
+        })
+        expect(unknownCatalogInfo.message).toContain(
+          'template "test" not found'
+        )
+
         const directInfoResult = await runCommand(
           cliExecutable,
           [
@@ -515,6 +530,22 @@ describe.skipIf(process.platform !== "linux")(
         })
         expect(unsupportedInfoResult.stdout).toContain("deesse-template.json")
 
+        const missingRepositoryInfoResult = await runCommand(
+          cliExecutable,
+          [
+            "info",
+            "https://github.com/deessejs/missing-template-repository",
+            "--json",
+          ],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(missingRepositoryInfoResult.exitCode).not.toBe(0)
+        expect(JSON.parse(missingRepositoryInfoResult.stdout)).toMatchObject({
+          ok: false,
+          code: "not_found",
+        })
+        expect(missingRepositoryInfoResult.stdout).toContain("was not found")
+
         const unsupportedUrlResult = await runCommand(
           cliExecutable,
           [
@@ -570,14 +601,14 @@ describe.skipIf(process.platform !== "linux")(
               "POST https://app.deessejs.com/api/v1/rpc/templates/list"
             )
           ).length
-        ).toBe(7)
+        ).toBe(11)
         expect(
           requests.filter((request) =>
             request.startsWith(
               "POST https://app.deessejs.com/api/v1/rpc/templates/resolve"
             )
           )
-        ).toHaveLength(3)
+        ).toHaveLength(4)
         expect(requests).toContain(
           `GET https://api.github.com/repos/deessejs/legacy-template/tarball/${missingDescriptorRevision}`
         )
