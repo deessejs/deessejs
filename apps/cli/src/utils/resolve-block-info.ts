@@ -369,27 +369,6 @@ async function createLocalBlockReader(input: string): Promise<BlockSourceReader>
   }
 }
 
-async function createReaderForSource(
-  source: BlockInfoSource
-): Promise<BlockSourceReader> {
-  if (source.type === "local") {
-    return createLocalBlockReader(source.path)
-  }
-
-  const blockPath = source.path === "." ? "" : source.path
-  return {
-    source,
-    read: (path) =>
-      fetchRawFile(
-        source.repository,
-        source.revision,
-        blockPath,
-        path,
-        source.repository
-      ),
-  }
-}
-
 function parseJson(text: string, path: string, source: string): unknown {
   try {
     return JSON.parse(text) as unknown
