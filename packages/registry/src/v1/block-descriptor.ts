@@ -4,7 +4,7 @@ export const BLOCK_DESCRIPTOR_SCHEMA_URL =
   "https://app.deessejs.com/schema/block/v1.json"
 
 const SEMVER_PATTERN =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/
+  /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 const IDENTIFIER_PATTERN = /^[a-z][a-z0-9-]*$/
 
 const PackageOutputV1Schema = z.strictObject({
@@ -103,63 +103,90 @@ function isSafeRelativePath(value: string): boolean {
     .every((segment) => segment !== "" && segment !== "." && segment !== "..")
 }
 
-/**
- * Validate a parsed JSON value and reject paths that can escape the block
- * source or a declared package destination.
- */
-export function parseBlockDescriptor(
-  input: unknown
-): ParseBlockDescriptorResult {
-  const result = BlockDescriptorV1Schema.safeParse(input)
+function areValidIdentifiers(value: string, disallowLeadingZeroes: boolean): boolean {
+  return value.split(".").every((identifier) => {
+    if (!identifier || !/^[0-9A-Za-z-]+$/.test(identifier)) return false
+    const numeric = /^\d+$/.test(identifier)
+    return !(
+      disallowLeadingZeroes &&
+      numeric &&
+      identifier.length > 1 &&
+      identifier.startsWith("0")
+    )
+  })
+}
 
-  if (!result.success) {
-    const diagnostics: BlockDescriptorDiagnostic[] = []
+function isValidSemver(value: string): boolean {
+  const parts = value.split("+")
+  if (parts.length > 2) return false
 
-    for (const issue of result.error.issues) {
-      if (issue.code === "unrecognized_keys") {
-        diagnostics.push(
-          ...issue.keys.map((key) => ({
-            code: "descriptor.unknown_field" as const,
-            message: `Unknown field "${key}".`,
-            path: [...issue.path.map(String), key],
-          }))
-        )
-        continue
-      }
+  const version = parts[0] ?? ""
+  const build = parts[1]
+  if (build !== undefined && !areValidIdentifiers(build, false)) return false
 
-      const unsupportedFormat =
-        issue.path.length === 1 &&
-        issue.path[0] === "formatVersion" &&
-        isRecord(input) &&
-        typeof input.formatVersion === "number" &&
-        input.formatVersion !== 1
-
-      diagnostics.push({
-        code: unsupportedFormat
-          ? "descriptor.unsupported_format_version"
-          : "descriptor.invalid_field",
-        message: issue.message,
-        path: issue.path.map(String),
-      })
-    }
-
-    return { success: false, diagnostics }
+  const versionParts = version.split("-")
+  const core = versionParts[0] ?? ""
+  const prerelease = versionParts.slice(1).join("-")
+  if (versionParts.length > 1 && !areValidIdentifiers(prerelease, true)) {
+    return false
   }
 
-  const descriptor = result.data
+  const numbers = core.split(".")
+  return (
+    numbers.length === 3 &&
+    numbers.every((number) => /^(0|[1-9]\d*)$/.test(number))
+  )
+}
+
+function getSchemaDiagnostics(
+  input: unknown,
+  error: z.ZodError
+): BlockDescriptorDiagnostic[] {
   const diagnostics: BlockDescriptorDiagnostic[] = []
+
+  for (const issue of error.issues) {
+    if (issue.code === "unrecognized_keys") {
+      diagnostics.push(
+        ...issue.keys.map((key) => ({
+          code: "descriptor.unknown_field" as const,
+          message: \`Unknown field "\${key}".\`,
+          path: [...issue.path.map(String), key],
+        }))
+      )
+      continue
+    }
+
+    const unsupportedFormat =
+      issue.path.length === 1 &&
+      issue.path[0] === "formatVersion" &&
+      isRecord(input) &&
+      typeof input.formatVersion === "number" &&
+      input.formatVersion !== 1
+
+    diagnostics.push({
+      code: unsupportedFormat
+        ? "descriptor.unsupported_format_version"
+        : "descriptor.invalid_field",
+      message: issue.message,
+      path: issue.path.map(String),
+    })
+  }
+
+  return diagnostics
+}
+
+function validatePackages(
+  descriptor: BlockDescriptorV1,
+  diagnostics: BlockDescriptorDiagnostic[]
+): Set<string> {
   const packageIds = new Set<string>()
   const packagePaths = new Set<string>()
-  const sourceFiles = new Set<string>()
-  const destinations = new Set<string>()
-  const capabilities = new Set<string>()
-  const environmentNames = new Set<string>()
 
   for (const [index, output] of descriptor.install.packages.entries()) {
     if (packageIds.has(output.id)) {
       diagnostics.push({
         code: "descriptor.duplicate_package_id",
-        message: `Package id "${output.id}" is declared more than once.`,
+        message: \`Package id "\${output.id}" is declared more than once.\`,
         path: ["install", "packages", String(index), "id"],
       })
     }
@@ -168,96 +195,126 @@ export function parseBlockDescriptor(
     if (!isSafeRelativePath(output.path)) {
       diagnostics.push({
         code: "descriptor.invalid_path",
-        message: `Package path "${output.path}" must be a safe relative path.`,
+        message: \`Package path "\${output.path}" must be a safe relative path.\`,
         path: ["install", "packages", String(index), "path"],
       })
     }
     if (packagePaths.has(output.path)) {
       diagnostics.push({
         code: "descriptor.duplicate_package_path",
-        message: `Package path "${output.path}" is declared more than once.`,
+        message: \`Package path "\${output.path}" is declared more than once.\`,
         path: ["install", "packages", String(index), "path"],
       })
     }
     packagePaths.add(output.path)
   }
 
+  return packageIds
+}
+
+function validateFiles(
+  descriptor: BlockDescriptorV1,
+  packageIds: Set<string>,
+  diagnostics: BlockDescriptorDiagnostic[]
+): void {
+  const sourceFiles = new Set<string>()
+  const destinations = new Set<string>()
+
   for (const [index, file] of descriptor.install.files.entries()) {
     if (!isSafeRelativePath(file.from)) {
       diagnostics.push({
         code: "descriptor.invalid_path",
-        message: `Source path "${file.from}" must be a safe relative path.`,
+        message: \`Source path "\${file.from}" must be a safe relative path.\`,
         path: ["install", "files", String(index), "from"],
       })
     }
     if (sourceFiles.has(file.from)) {
       diagnostics.push({
         code: "descriptor.duplicate_file_source",
-        message: `Source file "${file.from}" is declared more than once.`,
+        message: \`Source file "\${file.from}" is declared more than once.\`,
         path: ["install", "files", String(index), "from"],
       })
     }
     sourceFiles.add(file.from)
 
-    if (!packageIds.has(file.to.package) && !descriptor.install.packages.some(
-      (output) => output.id === file.to.package
-    )) {
+    if (!packageIds.has(file.to.package)) {
       diagnostics.push({
         code: "descriptor.unresolved_package",
-        message: `File target references undeclared package "${file.to.package}".`,
+        message: \`File target references undeclared package "\${file.to.package}".\`,
         path: ["install", "files", String(index), "to", "package"],
       })
     }
     if (!isSafeRelativePath(file.to.path)) {
       diagnostics.push({
         code: "descriptor.invalid_path",
-        message: `Destination path "${file.to.path}" must be a safe relative path.`,
+        message: \`Destination path "\${file.to.path}" must be a safe relative path.\`,
         path: ["install", "files", String(index), "to", "path"],
       })
     }
-    const destination = `${file.to.package}/${file.to.path}`
+
+    const destination = file.to.package + "/" + file.to.path
     if (destinations.has(destination)) {
       diagnostics.push({
         code: "descriptor.duplicate_destination",
-        message: `Destination "${destination}" is declared more than once.`,
+        message: \`Destination "\${destination}" is declared more than once.\`,
         path: ["install", "files", String(index), "to"],
       })
     }
     destinations.add(destination)
   }
+}
 
+function validatePackageManifests(
+  descriptor: BlockDescriptorV1,
+  diagnostics: BlockDescriptorDiagnostic[]
+): void {
   for (const [index, output] of descriptor.install.packages.entries()) {
-    if (
-      !descriptor.install.files.some(
-        (file) => file.to.package === output.id && file.to.path === "package.json"
-      )
-    ) {
+    const hasManifest = descriptor.install.files.some(
+      (file) => file.to.package === output.id && file.to.path === "package.json"
+    )
+    if (!hasManifest) {
       diagnostics.push({
         code: "descriptor.missing_package_manifest",
-        message: `Package "${output.id}" must copy a package.json file.`,
+        message: \`Package "\${output.id}" must copy a package.json file.\`,
         path: ["install", "packages", String(index)],
       })
     }
   }
+}
+
+function validateCapabilities(
+  descriptor: BlockDescriptorV1,
+  packageIds: Set<string>,
+  diagnostics: BlockDescriptorDiagnostic[]
+): void {
+  const capabilities = new Set<string>()
 
   for (const [index, item] of descriptor.provides.entries()) {
     if (!packageIds.has(item.package)) {
       diagnostics.push({
         code: "descriptor.unresolved_package",
-        message: `Capability declaration references undeclared package "${item.package}".`,
+        message: \`Capability declaration references undeclared package "\${item.package}".\`,
         path: ["provides", String(index), "package"],
       })
     }
-    const key = `${item.capability}\0${item.provider}\0${item.package}`
+
+    const key = item.capability + "\0" + item.provider + "\0" + item.package
     if (capabilities.has(key)) {
       diagnostics.push({
         code: "descriptor.duplicate_capability",
-        message: `Capability "${item.capability}" from "${item.provider}" is declared more than once for package "${item.package}".`,
+        message: \`Capability "\${item.capability}" from "\${item.provider}" is declared more than once for package "\${item.package}".\`,
         path: ["provides", String(index)],
       })
     }
     capabilities.add(key)
   }
+}
+
+function validateEnvironment(
+  descriptor: BlockDescriptorV1,
+  diagnostics: BlockDescriptorDiagnostic[]
+): void {
+  const environmentNames = new Set<string>()
 
   for (const [index, variable] of (
     descriptor.install.environment ?? []
@@ -265,19 +322,51 @@ export function parseBlockDescriptor(
     if (!/^[A-Z_][A-Z0-9_]*$/.test(variable.name)) {
       diagnostics.push({
         code: "descriptor.invalid_field",
-        message: `Environment variable "${variable.name}" must use uppercase letters, numbers and underscores.`,
+        message: \`Environment variable "\${variable.name}" must use uppercase letters, numbers and underscores.\`,
         path: ["install", "environment", String(index), "name"],
       })
     }
     if (environmentNames.has(variable.name)) {
       diagnostics.push({
         code: "descriptor.duplicate_environment_name",
-        message: `Environment variable "${variable.name}" is declared more than once.`,
+        message: \`Environment variable "\${variable.name}" is declared more than once.\`,
         path: ["install", "environment", String(index), "name"],
       })
     }
     environmentNames.add(variable.name)
   }
+}
+
+/**
+ * Validate a parsed JSON value and reject paths that can escape the block
+ * source or a declared package destination.
+ */
+export function parseBlockDescriptor(
+  input: unknown
+): ParseBlockDescriptorResult {
+  const result = BlockDescriptorV1Schema.safeParse(input)
+  if (!result.success) {
+    return {
+      success: false,
+      diagnostics: getSchemaDiagnostics(input, result.error),
+    }
+  }
+
+  const descriptor = result.data
+  const diagnostics: BlockDescriptorDiagnostic[] = []
+  if (!isValidSemver(descriptor.version)) {
+    diagnostics.push({
+      code: "descriptor.invalid_field",
+      message: "Version must be a valid SemVer version.",
+      path: ["version"],
+    })
+  }
+
+  const packageIds = validatePackages(descriptor, diagnostics)
+  validateFiles(descriptor, packageIds, diagnostics)
+  validatePackageManifests(descriptor, diagnostics)
+  validateCapabilities(descriptor, packageIds, diagnostics)
+  validateEnvironment(descriptor, diagnostics)
 
   return diagnostics.length > 0
     ? { success: false, diagnostics }
