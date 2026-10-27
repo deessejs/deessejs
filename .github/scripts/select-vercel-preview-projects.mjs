@@ -109,11 +109,13 @@ async function main() {
   }
 
   const mergeBase = git(["merge-base", baseSha, headSha]);
+  // Walk only the PR's first-parent line, but include merge commits. Comparing
+  // each commit with its first parent captures merged branch changes and the
+  // final conflict resolution while excluding changes already present on base.
   const commits = git([
     "rev-list",
     "--first-parent",
     "--reverse",
-    "--no-merges",
     mergeBase + ".." + headSha,
   ])
     .split(/\r?\n/)
