@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
@@ -33,40 +33,51 @@ export function ConnectedAccountsList() {
 	const [accounts, setAccounts] = useState<LinkedAccount[]>([])
 	const [loading, setLoading] = useState(true)
 	const [unlinkingId, setUnlinkingId] = useState<string | null>(null)
-	const [unlinkConfirm, setUnlinkConfirm] = useState<{ id: string; provider: string } | null>(null)
+	const [unlinkConfirm, setUnlinkConfirm] = useState<{
+		id: string
+		provider: string
+	} | null>(null)
 	const [linking, setLinking] = useState<string | null>(null)
 
-	const loadAccounts = useCallback(async () => {
-		setLoading(true)
-		const { data, error } = await authClient.listAccounts()
-		setLoading(false)
-
-		if (error || !data) {
-			setAccounts([])
-			return
-		}
-
-		setAccounts(
-			data.map((a) => ({
-				id: a.id,
-				providerId: a.providerId,
-				accountId: a.accountId,
-			})),
-		)
-	}, [])
-
 	useEffect(() => {
-		// Valid: loading data on mount requires setState
-		// oxlint-disable-next-line react-hooks/set-state-in-effect
-		loadAccounts()
-	}, [loadAccounts])
+		let active = true
+		authClient
+			.listAccounts()
+			.then(({ data, error }) => {
+				if (!active) return
+				setAccounts(
+					error || !data
+						? []
+						: data.map((account) => ({
+								id: account.id,
+								providerId: account.providerId,
+								accountId: account.accountId,
+							}))
+				)
+				setLoading(false)
+			})
+			.catch((error: unknown) => {
+				if (!active) return
+				setAccounts([])
+				setLoading(false)
+				toast.error(
+					error instanceof Error
+						? error.message
+						: "Failed to load linked accounts"
+				)
+			})
+		return () => {
+			active = false
+		}
+	}, [])
 
 	async function handleLink(provider: string) {
 		setLinking(provider)
 		try {
 			await authClient.linkSocial({ provider })
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Failed to link account"
+			const message =
+				error instanceof Error ? error.message : "Failed to link account"
 			toast.error(message)
 		} finally {
 			setLinking(null)
@@ -94,7 +105,9 @@ export function ConnectedAccountsList() {
 	return (
 		<div className="flex flex-col gap-4">
 			{loading && accounts.length === 0 && (
-				<p className="text-sm text-muted-foreground">Loading linked accounts…</p>
+				<p className="text-sm text-muted-foreground">
+					Loading linked accounts…
+				</p>
 			)}
 			{!loading && accounts.length > 0 && (
 				<div className="flex flex-col gap-2">
@@ -102,7 +115,11 @@ export function ConnectedAccountsList() {
 					{accounts.map((account) => {
 						const info = PROVIDER_INFO[account.providerId] ?? {
 							name: account.providerId,
-							Icon: () => <span className="text-xs font-bold">{account.providerId.slice(0, 2).toUpperCase()}</span>,
+							Icon: () => (
+								<span className="text-xs font-bold">
+									{account.providerId.slice(0, 2).toUpperCase()}
+								</span>
+							),
 						}
 						return (
 							<div
@@ -115,13 +132,20 @@ export function ConnectedAccountsList() {
 									</div>
 									<div>
 										<p className="text-sm font-medium">{info.name}</p>
-										<p className="text-xs text-muted-foreground">{account.accountId}</p>
+										<p className="text-xs text-muted-foreground">
+											{account.accountId}
+										</p>
 									</div>
 								</div>
 								<Button
 									variant="ghost"
 									size="sm"
-									onClick={() => setUnlinkConfirm({ id: account.id, provider: account.providerId })}
+									onClick={() =>
+										setUnlinkConfirm({
+											id: account.id,
+											provider: account.providerId,
+										})
+									}
 									disabled={unlinkingId === account.id}
 								>
 									{unlinkingId === account.id ? "Unlinking…" : "Unlink"}
@@ -146,7 +170,9 @@ export function ConnectedAccountsList() {
 								onClick={() => handleLink(provider)}
 								disabled={isLinked || linking === provider}
 							>
-								{linking === provider ? "Linking…" : `Link ${info?.name ?? provider}`}
+								{linking === provider
+									? "Linking…"
+									: `Link ${info?.name ?? provider}`}
 							</Button>
 						)
 					})}
@@ -159,7 +185,14 @@ export function ConnectedAccountsList() {
 			>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Unlink {unlinkConfirm ? PROVIDER_INFO[unlinkConfirm.provider]?.name ?? unlinkConfirm.provider : ""}?</DialogTitle>
+						<DialogTitle>
+							Unlink{" "}
+							{unlinkConfirm
+								? (PROVIDER_INFO[unlinkConfirm.provider]?.name ??
+									unlinkConfirm.provider)
+								: ""}
+							?
+						</DialogTitle>
 						<DialogDescription>
 							You will no longer be able to sign in with this account.
 						</DialogDescription>
@@ -168,7 +201,11 @@ export function ConnectedAccountsList() {
 						<Button variant="outline" onClick={() => setUnlinkConfirm(null)}>
 							Cancel
 						</Button>
-						<Button variant="destructive" onClick={handleUnlink} disabled={!!unlinkingId}>
+						<Button
+							variant="destructive"
+							onClick={handleUnlink}
+							disabled={!!unlinkingId}
+						>
 							{unlinkingId ? "Unlinking…" : "Unlink"}
 						</Button>
 					</DialogFooter>

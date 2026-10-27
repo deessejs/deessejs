@@ -68,7 +68,6 @@ export function UserMenu({
   baseUrl: string
 }) {
   const authClient = useAuthClient()
-  // oxlint-disable-next-line eslint-js/no-restricted-syntax
   const { data: session, isPending } = authClient.useSession()
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)

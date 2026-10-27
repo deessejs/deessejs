@@ -1,3 +1,4 @@
+import Image from "next/image"
 import * as React from "react"
 import Link from "next/link"
 
@@ -72,8 +73,7 @@ export function UseCaseStack({
             className="group flex items-center gap-3 p-5 transition-colors hover:bg-accent/40"
           >
             {slug ? (
-              // oxlint-disable-next-line nextjs/no-img-element
-              <img
+              <Image
                 src={`/logos/${slug}.svg`}
                 alt=""
                 width={20}

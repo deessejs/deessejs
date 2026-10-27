@@ -50,9 +50,7 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
-      // Test setup: fire-and-forget is fine for test isolation.
-      // oxlint-disable-next-line eslint-js/no-restricted-syntax
-      void sendAuthEmail({
+      await sendAuthEmail({
         to: user.email,
         subject: "Reset your password",
         react: templates.ResetPassword({ url, userEmail: user.email }),
@@ -62,9 +60,7 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
-      // Test setup: fire-and-forget is fine for test isolation.
-      // oxlint-disable-next-line eslint-js/no-restricted-syntax
-      void sendAuthEmail({
+      await sendAuthEmail({
         to: user.email,
         subject: "Verify your email",
         react: templates.VerifyEmail({ url, userEmail: user.email }),
@@ -72,9 +68,7 @@ export const auth = betterAuth({
       })
     },
   },
-  plugins: [
-    testUtils(),
-  ],
+  plugins: [testUtils()],
 })
 
 // Export types

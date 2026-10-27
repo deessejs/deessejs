@@ -32,7 +32,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Verify generated template descriptor schema
         run: pnpm --filter @workspace/registry schema:check
-      - run: pnpm turbo lint --force
+      - name: Reject inline lint suppressions
+        run: pnpm lint:directives
+      - name: Lint suppression guard
+        run: pnpm lint:guard
+      - run: pnpm turbo lint --force -- --max-warnings=0
 
   typecheck:
     name: Type Check

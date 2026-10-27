@@ -32,14 +32,7 @@ import { TagList } from "./tag-list"
 // the title size, the cover treatment, and the hover behaviour are
 // uniform across the catalog — so the prop is read by the type
 // signature only and intentionally not consumed here.
-export function PostCard({
-  post,
-  // oxlint-disable-next-line no-unused-vars
-  featured,
-}: {
-  post: Post
-  featured?: boolean
-}) {
+export function PostCard({ post }: { post: Post; featured?: boolean }) {
   const hasCover = Boolean(post.cover)
   const authors = post.authors?.length
     ? post.authors
