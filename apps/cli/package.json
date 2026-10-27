@@ -28,6 +28,8 @@
   "scripts": {
     "prebuild": "pnpm --filter @workspace/contracts build && pnpm --filter @workspace/registry build",
     "build": "tsup",
+    "predev": "pnpm --filter @workspace/contracts build && pnpm --filter @workspace/registry build",
+    "dev": "tsup --watch",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "typecheck": "tsc --noEmit",
