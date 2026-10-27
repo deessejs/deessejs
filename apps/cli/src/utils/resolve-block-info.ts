@@ -132,9 +132,6 @@ function parseGitHubBlockUrl(
   }
 }
 
-function encodePath(path: string): string {
-  return path.split("/").map(encodeURIComponent).join("/")
-}
 
 async function fetchJson<T>(
   url: string,
