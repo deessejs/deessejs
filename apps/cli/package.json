@@ -1,7 +1,7 @@
 {
   "name": "@deessejs/cli",
   "version": "2.1.0",
-  "description": "CLI for the DeesseJS template registry.",
+  "description": "CLI for the DeesseJS template registry and blocks.",
   "type": "module",
   "license": "MIT",
   "repository": {

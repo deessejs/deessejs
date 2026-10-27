@@ -14,7 +14,8 @@
       "import": "./dist/v1/index.js",
       "default": "./dist/v1/index.js"
     },
-    "./schema/template/v1.json": "./schema/template/v1.json"
+    "./schema/template/v1.json": "./schema/template/v1.json",
+    "./schema/block/v1.json": "./schema/block/v1.json"
   },
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -22,6 +23,8 @@
     "build": "tsc",
     "schema:generate": "node --experimental-strip-types scripts/generate-template-schema.mjs",
     "schema:check": "node --experimental-strip-types scripts/generate-template-schema.mjs --check",
+    "block-schema:generate": "node --experimental-strip-types scripts/generate-block-schema.mjs",
+    "block-schema:check": "node --experimental-strip-types scripts/generate-block-schema.mjs --check",
     "test": "vitest",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit"

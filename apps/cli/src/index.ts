@@ -6,6 +6,7 @@ import {
   logoutCommand,
   statusCommand,
 } from "./commands/auth/index.js"
+import { blockCommand } from "./commands/block.js"
 import { initCommand } from "./commands/init.js"
 import { listCommand } from "./commands/list.js"
 import { infoCommand } from "./commands/info.js"
@@ -15,12 +16,13 @@ const program = new Command()
 
 program
   .name("deessejs")
-  .description("CLI for the DeesseJS template registry")
+  .description("CLI for the DeesseJS template registry and blocks")
   .version(readPackageVersion())
 
 program.addCommand(listCommand)
 program.addCommand(infoCommand)
 program.addCommand(initCommand)
+program.addCommand(blockCommand)
 
 // auth subcommand (the device-authorization flow). Three children: login (request
 // device code, open browser, poll), status (print stored

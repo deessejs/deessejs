@@ -17,12 +17,13 @@ export type CliErrorCode =
   | "cli_device_expired"
 
 // Internal codes, used only inside the CLI. Not surfaced as a public
-// pattern-match surface. Adding a code here is non-breaking.
+// pattern-match surface. Adding code here is non-breaking.
 export type InternalCliErrorCode =
   | "target_exists"
   | "target_not_empty"
   | "invalid_target"
   | "template_invalid"
+  | "block_invalid"
   | "materialize_failed"
   | "install_failed"
   | "internal"
@@ -52,8 +53,7 @@ export { cliDeviceDenied } from "./device-denied.js"
 export { cliDeviceExpired } from "./device-expired.js"
 
 // Internal factories, kept in this file because they are not part of
-// the public surface: internal error codes are not surfaced to the
-// user.
+// the public error surface.
 export const targetExists = (dir: string): CliError =>
   new CliError(
     "target_exists",
@@ -79,6 +79,13 @@ export const templateInvalid = (repository: string, detail: string): CliError =>
   new CliError(
     "template_invalid",
     `template source "${repository}" cannot be installed`,
+    detail
+  )
+
+export const blockInvalid = (source: string, detail: string): CliError =>
+  new CliError(
+    "block_invalid",
+    `block source "${source}" is invalid`,
     detail
   )
 
