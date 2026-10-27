@@ -39,7 +39,6 @@ const sampleDescriptor: NormalizedTemplateDescriptorV1 = {
 
 const sampleSource = {
   repository: "acme/saas-starter",
-  revision: "0123456789abcdef0123456789abcdef01234567",
 }
 
 describe("print", () => {
@@ -109,12 +108,9 @@ describe("print", () => {
     expect(joined).toContain("No templates available")
   })
 
-  it("printTemplateInfo separates catalog metadata from descriptor fields", () => {
-    printTemplateInfo(sampleTemplate, sampleDescriptor, sampleSource)
+  it("printTemplateInfo only prints validated descriptor fields", () => {
+    printTemplateInfo(sampleDescriptor, sampleSource)
     const joined = stdoutWrites.join("")
-    expect(joined).toContain("Catalog")
-    expect(joined).toContain("saas-starter")
-    expect(joined).toContain("SaaS Starter")
     expect(joined).toContain("Template descriptor")
     expect(joined).toContain("SaaS Template")
     expect(joined).toContain("Manifest description.")
@@ -122,13 +118,12 @@ describe("print", () => {
     expect(joined).toContain("1.2.3")
     expect(joined).toContain("MIT")
     expect(joined).toContain("acme/saas-starter")
-    expect(joined).toContain("0123456789abcdef0123456789abcdef01234567")
+    expect(joined).toContain("source")
   })
 
-  it("printTemplateInfo supports a GitHub repository outside the catalog", () => {
-    printTemplateInfo(null, sampleDescriptor, sampleSource)
+  it("prints the same descriptor output regardless of catalog membership", () => {
+    printTemplateInfo(sampleDescriptor, sampleSource)
     const joined = stdoutWrites.join("")
-    expect(joined).not.toContain("Catalog")
     expect(joined).toContain("Template descriptor")
     expect(joined).toContain("SaaS Template")
     expect(joined).toContain("acme/saas-starter")

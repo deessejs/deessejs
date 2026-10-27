@@ -1,4 +1,8 @@
-import { fetchTemplates, type Template } from "../api/index.js"
+import {
+  fetchTemplates,
+  resolveTemplateBySlug,
+  type Template,
+} from "../api/index.js"
 import { notFound, templateInvalid } from "../errors/index.js"
 import { looksLikeUrl, parseGitHubRepositoryUrl } from "./github-repository.js"
 
@@ -6,12 +10,12 @@ export type TemplateSource = Pick<Template, "slug" | "owner" | "repo">
 
 export type ResolvedTemplateSource = {
   template: TemplateSource
-  catalogTemplate: Template | null
   directRepository: ReturnType<typeof parseGitHubRepositoryUrl>
 }
 
 export async function resolveTemplateSource(
-  slugOrUrl: string
+  slugOrUrl: string,
+  options: { skipVersionCheck?: boolean; fastCatalogLookup?: boolean } = {}
 ): Promise<ResolvedTemplateSource> {
   const directRepository = parseGitHubRepositoryUrl(slugOrUrl)
   if (looksLikeUrl(slugOrUrl) && !directRepository) {
@@ -24,7 +28,6 @@ export async function resolveTemplateSource(
   if (directRepository) {
     return {
       directRepository,
-      catalogTemplate: null,
       template: {
         slug: directRepository.repo,
         owner: directRepository.owner,
@@ -33,18 +36,28 @@ export async function resolveTemplateSource(
     }
   }
 
-  const templates = await fetchTemplates()
-  const template = templates.find((item) => item.slug === slugOrUrl)
-  if (!template) {
-    throw notFound(
-      slugOrUrl,
-      templates.map((item) => item.slug)
-    )
+  let template: TemplateSource | undefined
+  if (options.fastCatalogLookup) {
+    template = (await resolveTemplateBySlug(slugOrUrl)) ?? undefined
+    if (!template) {
+      const templates = await fetchTemplates({ skipVersionCheck: true })
+      throw notFound(slugOrUrl, templates.map((item) => item.slug))
+    }
+  } else {
+    const templates = await fetchTemplates({
+      skipVersionCheck: options.skipVersionCheck ?? false,
+    })
+    template = templates.find((item) => item.slug === slugOrUrl)
+    if (!template) {
+      throw notFound(
+        slugOrUrl,
+        templates.map((item) => item.slug)
+      )
+    }
   }
 
   return {
     template,
-    catalogTemplate: template,
     directRepository: null,
   }
 }

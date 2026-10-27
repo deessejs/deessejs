@@ -1,4 +1,5 @@
 import { ORPCError } from "@orpc/server"
+import { z } from "zod"
 import { TemplatesListResponseV1 } from "@workspace/contracts/v1"
 import { base } from "../base.js"
 import { TEMPLATES } from "../../templates.js"
@@ -126,6 +127,29 @@ export const list = base
     }
   })
 
+/** Resolve a catalog slug to its source without enriching the full catalog. */
+export const resolve = base
+  .input(z.object({ slug: z.string().min(1) }))
+  .output(
+    z
+      .object({
+        slug: z.string(),
+        owner: z.string(),
+        repo: z.string(),
+      })
+      .nullable()
+  )
+  .handler(({ input }) => {
+    const template = TEMPLATES.find((item) => item.slug === input.slug)
+    if (!template) return null
+    return {
+      slug: template.slug,
+      owner: template.owner,
+      repo: template.repo,
+    }
+  })
+
 export const templatesRouter = {
   list,
+  resolve,
 }

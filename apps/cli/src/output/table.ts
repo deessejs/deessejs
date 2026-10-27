@@ -14,26 +14,9 @@ export const printTemplatesTable = (templates: Template[]): void => {
 }
 
 export const printTemplateInfo = (
-  catalogTemplate: Template | null,
   descriptor: NormalizedTemplateDescriptorV1,
-  source: { repository: string; revision: string }
+  source: { repository: string }
 ): void => {
-  if (catalogTemplate) {
-    const catalogLines: Array<[string, string]> = [
-      ["slug", catalogTemplate.slug],
-      ["name", catalogTemplate.name],
-      ["description", catalogTemplate.description],
-      ["category", catalogTemplate.category],
-      ["license", catalogTemplate.license],
-      ["repo", `${catalogTemplate.owner}/${catalogTemplate.repo}`],
-      ["labels", catalogTemplate.labels.join(", ") || "(none)"],
-    ]
-    if (catalogTemplate.image)
-      catalogLines.push(["image", catalogTemplate.image])
-    printKeyValueSection("Catalog", catalogLines)
-    process.stdout.write("\n")
-  }
-
   const descriptorLines: Array<[string, string]> = [
     ["name", descriptor.name],
     ["title", descriptor.title],
@@ -41,7 +24,6 @@ export const printTemplateInfo = (
     ["type", descriptor.type],
     ["version", descriptor.version],
     ["source", source.repository],
-    ["revision", source.revision],
   ]
   if (descriptor.author) descriptorLines.push(["author", descriptor.author])
   if (descriptor.license) descriptorLines.push(["license", descriptor.license])

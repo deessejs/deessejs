@@ -3,7 +3,7 @@ import ora from "ora"
 import { internal } from "../errors/index.js"
 import { printError, printJson, printTemplateInfo } from "../output/index.js"
 import { resolveTemplateSource } from "../utils/resolve-template.js"
-import { resolveTemplateInstallationPlan } from "../utils/template-plan.js"
+import { resolveTemplateDescriptorInfo } from "../utils/template-plan.js"
 
 export const infoCommand = new Command("info")
   .description("Show details for one template")
@@ -22,9 +22,12 @@ export const infoCommand = new Command("info")
       : ora("Fetching template details...").start()
 
     try {
-      const resolved = await resolveTemplateSource(slugOrUrl)
+      const resolved = await resolveTemplateSource(slugOrUrl, {
+        skipVersionCheck: true,
+        fastCatalogLookup: true,
+      })
       const repository = `${resolved.template.owner}/${resolved.template.repo}`
-      const plan = await resolveTemplateInstallationPlan(repository, opts.ref)
+      const info = await resolveTemplateDescriptorInfo(repository, opts.ref)
       spinner?.succeed("Template details loaded")
 
       const installSource = resolved.directRepository
@@ -35,16 +38,11 @@ export const infoCommand = new Command("info")
 
       if (opts.json) {
         printJson({
-          template: resolved.catalogTemplate,
-          descriptor: plan.descriptor,
-          source: plan.source,
+          descriptor: info.descriptor,
+          source: info.source,
         })
       } else {
-        printTemplateInfo(
-          resolved.catalogTemplate,
-          plan.descriptor,
-          plan.source
-        )
+        printTemplateInfo(info.descriptor, info.source)
         console.log()
         console.log(`Install: ${installCommand}`)
       }

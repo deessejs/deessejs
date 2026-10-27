@@ -10,9 +10,12 @@ export {
   type TemplateDescriptorV1,
 } from "./template-descriptor.js"
 export {
+  createTemplateDescriptorInfo,
   createTemplateInstallationPlan,
+  type CreateTemplateDescriptorInfoResult,
   type CreateTemplateInstallationPlanResult,
   type PlannedTemplateFile,
+  type TemplateDescriptorInfo,
   type TemplateInstallationDiagnostic,
   type TemplateInstallationDiagnosticCode,
   type TemplateInstallationPlan,
@@ -26,6 +29,7 @@ export {
   type TemplateSourceDiagnosticCode,
   type TemplateSourceError,
   type TemplateSourceEntry,
+  type TemplateDescriptorSourceSnapshot,
   type TemplateSourceRequest,
   type TemplateSourceSnapshot,
 } from "./template-source.js"

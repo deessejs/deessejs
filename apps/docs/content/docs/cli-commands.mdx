@@ -45,7 +45,7 @@ deessejs list --json | jq '.templates[].slug'
 
 ## `deessejs info <slug-or-github-url>`
 
-Show catalog metadata and validated fields from a template's `deesse-template.json`, then print the install command.
+Show validated fields from a template's `deesse-template.json`, then print the install command.
 
 ```bash
 deessejs info next-app-starter
@@ -63,13 +63,13 @@ deessejs info https://github.com/owner/repository --ref main
 | Flag | Effect |
 | --- | --- |
 | `--ref <branch>` | Inspect a branch or other Git ref. Defaults to the repository's default branch. |
-| `--json` | Emit `{ template, descriptor, source }`. `template` is `null` for a direct GitHub URL. |
+| `--json` | Emit `{ descriptor, source }` for either input form. |
 
 ### Output
 
-A catalog slug shows its catalog metadata separately from the validated descriptor fields. A direct GitHub URL shows descriptor fields only. The descriptor output includes its title, name, description, project type, version, optional author/license/category/labels, source repository, and resolved commit. The complete normalized descriptor is available in JSON output.
+A catalog slug and a direct GitHub URL show the same descriptor fields. The output includes its title, name, description, project type, version, optional author/license/category/labels, and source repository. The complete normalized descriptor is available in JSON output.
 
-Both input forms require a valid root `deesse-template.json`. `info` uses the same installation-plan validation as `init`; repositories with a missing or invalid descriptor are rejected.
+Both input forms require a valid root `deesse-template.json`. Slugs use a lightweight catalog lookup instead of fetching the GitHub-enriched template listing. `info` then reads only the descriptor through GitHub's Contents API, without downloading or inventorying the full repository. It validates the descriptor schema, declared repository, and include/exclude patterns. Repositories with a missing or invalid descriptor are rejected. `init` separately resolves an immutable commit and validates any declared source ref before copying files.
 
 The formatted view ends with the matching install command:
 

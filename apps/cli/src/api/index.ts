@@ -8,7 +8,7 @@ import { orpc } from "./client.js"
 export type Template = TemplatesListResponseV1["templates"][number]
 
 export type FetchOptions = {
-  /** Skip the version probe. Used by tests and by the version probe itself. */
+  /** Skip the version probe. Used by info and by the version probe itself. */
   skipVersionCheck?: boolean
 }
 
@@ -68,6 +68,17 @@ export const fetchTemplates = async (
   try {
     const result = await orpc.templates.list()
     return result.templates
+  } catch (e) {
+    throw normaliseError(e)
+  }
+}
+
+/** Resolve a catalog slug without requesting the GitHub-enriched listing. */
+export const resolveTemplateBySlug = async (
+  slug: string
+): Promise<Pick<Template, "slug" | "owner" | "repo"> | null> => {
+  try {
+    return await orpc.templates.resolve({ slug })
   } catch (e) {
     throw normaliseError(e)
   }
