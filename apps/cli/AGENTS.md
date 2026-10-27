@@ -10,12 +10,12 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | ---------------------- | ---------------------------------------------------------------- |
 | `deessejs list`        | Lists the registry templates. Accepts `--category`, `--json`.    |
 | `deessejs info <slug>` | The detail of one template.                                      |
-| `deessejs init <slug>` | Creates a project from a template and installs its dependencies. |
+| `deessejs init <slug-or-github-url>` | Creates a project from a catalog template or a GitHub repository. |
 | `deessejs auth login`  | Runs the device-authorization flow against the server.           |
 | `deessejs auth status` | Prints the identity stored on this machine.                      |
 | `deessejs auth logout` | Signs out and clears the stored token.                           |
 
-`init` uses `deesse-template.json` when present and falls back to Git cloning only when the descriptor is absent. A present invalid descriptor is an error. `--force` permits an existing empty target directory and never deletes existing files.
+`init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. Both forms require a valid root `deesse-template.json` and use it to select files. There is no Git clone fallback. `--force` permits an existing empty target directory and never deletes existing files.
 
 `init` options: `--pm`, `--dir`, `--ref`, `--no-install`, `--force`, `--json`.
 
@@ -30,11 +30,11 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | `src/cache/`    | The on-disk cache under `~/.deessejs/`.                                      |
 | `src/errors/`   | The typed errors and their exit codes.                                       |
 | `src/output/`   | The human output and the JSON output.                                        |
-| `src/utils/`    | Package manager detection, git, spawn, safe template materialization, sleep. |
+| `src/utils/`    | Package manager detection, spawn, safe template materialization, sleep. |
 
 ## Conventions
 
-- **The public error codes are a closed list.** `CliErrorCode` in `src/errors/index.ts` is the surface downstream tooling pattern-matches against. Adding a code there is a breaking change. Internal codes such as `git_not_installed`, `target_exists`, `target_not_empty`, `invalid_target`, `template_invalid`, `materialize_failed`, `install_failed` and `internal` are free to grow.
+- **The public error codes are a closed list.** `CliErrorCode` in `src/errors/index.ts` is the surface downstream tooling pattern-matches against. Adding a code there is a breaking change. Internal codes such as `target_exists`, `target_not_empty`, `invalid_target`, `template_invalid`, `materialize_failed`, `install_failed` and `internal` are free to grow.
 - **Every command catches `CliError` and exits with the matching code.** The handler at the bottom of `src/index.ts` is the last resort for an uncaught bug, not the normal path.
 - **The version comes from the bundle, not from the file system.** `readPackageVersion` reads a literal injected by tsup at build time from `package.json`. Do not resolve the version at runtime.
 - **The cache holds the body and the ETag.** The server decides freshness: a cache entry is valid when the server answers 304, or in offline mode when any previous response beats nothing. A malformed cache file is a cache miss, never an overwrite.

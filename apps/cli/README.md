@@ -17,11 +17,11 @@ Other release channels:
 
 ## Commands
 
-| Command                | Role                                                      |
-| ---------------------- | --------------------------------------------------------- |
-| `deessejs init <slug>` | Create a project from a template and install dependencies |
-| `deessejs list`        | List available templates                                  |
-| `deessejs info <slug>` | Show details for one template                             |
+| Command                              | Role                                                            |
+| ------------------------------------ | --------------------------------------------------------------- |
+| `deessejs init <slug-or-github-url>` | Create a project from a catalog template or a GitHub repository |
+| `deessejs list`                      | List available templates                                        |
+| `deessejs info <slug>`               | Show details for one template                                   |
 
 ## Examples
 
@@ -31,9 +31,13 @@ deessejs list --category saas --json
 deessejs info saas-starter --json
 deessejs init saas-starter
 deessejs init saas-starter --ref develop --no-install
+deessejs init https://github.com/owner/repository
+deessejs init saas-starter --verbose
 ```
 
-Templates with a valid `deesse-template.json` are created from the files selected by that descriptor. Templates without a descriptor continue to use the Git clone flow. A descriptor that is present but invalid stops initialization with a diagnostic. `--force` allows an existing empty target directory; it never removes existing files.
+`init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. Both forms use the repository's root `deesse-template.json` to select the files to create. The descriptor must be present and valid; there is no Git clone fallback. `--ref` selects a branch or other Git ref. `--force` allows an existing empty target directory; it never removes existing files.
+
+By default, `init` hides package manager logs and shows a concise progress summary. Pass `--verbose` to print the resolved template source, ref, destination, commit, and selected file count, as well as the full package manager output when installation runs. Verbose details go to stderr so `--json` keeps stdout machine-readable. The details are also shown with `--no-install`.
 
 ## Global flags
 

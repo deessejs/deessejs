@@ -227,7 +227,7 @@ async function readArchiveSnapshot(
   root: string,
   repository: string,
   revision: string,
-  expectedArchiveRoot: string,
+  expectedArchivePrefix: string,
   maxInventoryEntries: number
 ): Promise<TemplateSourceSnapshot> {
   const entries: TemplateSourceEntry[] = []
@@ -266,7 +266,15 @@ async function readArchiveSnapshot(
         )
         return
       }
-      if (currentRoot !== expectedArchiveRoot) {
+      const archiveRevision = currentRoot
+        .toLowerCase()
+        .startsWith(expectedArchivePrefix.toLowerCase())
+        ? currentRoot.slice(expectedArchivePrefix.length)
+        : ""
+      if (
+        !/^[a-f0-9]{7,40}$/i.test(archiveRevision) ||
+        !revision.toLowerCase().startsWith(archiveRevision.toLowerCase())
+      ) {
         failInventory(
           createTemplateSourceError(
             "source.invalid_response",
@@ -561,7 +569,7 @@ export function createGitHubTemplateSourceAdapter(
           tempDirectory,
           canonical,
           revision,
-          `${name}-${revision}`,
+          `${owner}-${name}-`,
           maxInventoryEntries
         )
       } finally {

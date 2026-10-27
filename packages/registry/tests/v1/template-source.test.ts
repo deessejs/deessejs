@@ -9,7 +9,10 @@ import type { TemplateSourceError } from "../../src/v1/template-source.js"
 const REVISION = "0123456789abcdef0123456789abcdef01234567"
 const temporaryDirectories: string[] = []
 
-async function createArchive(): Promise<Buffer> {
+async function createArchive(
+  archiveName = "deessejs-fixture",
+  archiveRevision = REVISION.slice(0, 7)
+): Promise<Buffer> {
   const root = await mkdtemp(join(tmpdir(), "registry-source-test-"))
   temporaryDirectories.push(root)
   const source = join(root, "source")
@@ -28,7 +31,7 @@ async function createArchive(): Promise<Buffer> {
       cwd: source,
       file: archivePath,
       gzip: true,
-      prefix: `fixture-${REVISION}`,
+      prefix: `${archiveName}-${archiveRevision}`,
     },
     ["deesse-template.json", "README.md", "assets", "private"]
   )
@@ -91,6 +94,53 @@ describe("createGitHubTemplateSourceAdapter", () => {
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
       `/tarball/${REVISION}`
     )
+  })
+
+  it("accepts repository URLs whose casing differs from GitHub's archive name", async () => {
+    const archive = await createArchive("deessejs-fixture")
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input)
+      if (url.endsWith(`/commits/${REVISION}`))
+        return jsonResponse({ sha: REVISION })
+      if (url.endsWith(`/tarball/${REVISION}`)) return new Response(archive)
+      return new Response(null, { status: 404 })
+    })
+    const adapter = createGitHubTemplateSourceAdapter({
+      fetch: fetchMock,
+      retryCount: 0,
+    })
+
+    const snapshot = await adapter.resolve({
+      repository: "DeesseJS/FIXTURE",
+      ref: REVISION,
+    })
+
+    expect(snapshot.repository).toBe("deessejs/fixture")
+    expect(snapshot.revision).toBe(REVISION)
+  })
+
+  it("rejects an archive whose short commit SHA does not match the resolved revision", async () => {
+    const archive = await createArchive("deessejs-different-repository", "ffffffff")
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input)
+      if (url.endsWith("/commits/main"))
+        return jsonResponse({ sha: REVISION })
+      if (url.endsWith(`/tarball/${REVISION}`)) return new Response(archive)
+      return new Response(null, { status: 404 })
+    })
+    const adapter = createGitHubTemplateSourceAdapter({
+      fetch: fetchMock,
+      retryCount: 0,
+    })
+
+    await expect(
+      adapter.resolve({
+        repository: "deessejs/different-repository",
+        ref: "main",
+      })
+    ).rejects.toMatchObject({
+      code: "source.invalid_response",
+    } satisfies Partial<TemplateSourceError>)
   })
 
   it("fails explicitly when the archive inventory exceeds its configured limit", async () => {

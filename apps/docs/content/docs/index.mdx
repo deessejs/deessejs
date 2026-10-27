@@ -12,13 +12,14 @@ DeesseJS ships a curated registry of starter projects (web apps, mobile apps, ed
 npx deessejs@latest init <slug>
 ```
 
-Replace `<slug>` with any template identifier from the [Templates](/docs/cli-commands#deessejs-list) list. The CLI clones the template repo into `./<slug>`, detects your package manager from the lockfile or `packageManager` field, then installs dependencies.
+Replace `<slug>` with any template identifier from the [Templates](/docs/cli-commands#deessejs-list) list, or pass a GitHub repository URL. Both forms require a valid root `deesse-template.json`, which selects the files copied into the project. The CLI creates the project in `./<slug>` for catalog entries, detects your package manager from the lockfile or `packageManager` field, then installs dependencies.
 
 ## Common workflows
 
 <Cards>
   <Card title="Browse templates" href="/docs/cli-commands#deessejs-list">
-    `deessejs list` shows every template, filters by category, or pipes to scripts.
+    `deessejs list` shows every template, filters by category, or pipes to
+    scripts.
   </Card>
   <Card title="Sign in from the CLI" href="/docs/cli-auth">
     `deessejs auth login` walks you through a browser-based device flow.
@@ -34,7 +35,7 @@ Replace `<slug>` with any template identifier from the [Templates](/docs/cli-com
 ## Requirements
 
 - **Node.js 20.0.0 or newer**: the CLI's `engines` field enforces this. Older versions fail fast at install time.
-- **Git**: every `init` clones a GitHub repo. `git` must be on `PATH`.
-- **A package manager**: `pnpm`, `npm`, `yarn`, or `bun`. The CLI picks one based on the cloned repo's lockfile or `packageManager` field; pass `--pm <name>` to override.
+- **GitHub access**: every `init` downloads the selected GitHub repository archive.
+- **A package manager**: `pnpm`, `npm`, `yarn`, or `bun`. The CLI picks one based on the generated project's lockfile or `packageManager` field; pass `--pm <name>` to override.
 
 No account is required for `init`. Authentication only matters if you publish templates, leave reviews, or use features that hit the DeesseJS API. See [CLI: Authentication](/docs/cli-auth).

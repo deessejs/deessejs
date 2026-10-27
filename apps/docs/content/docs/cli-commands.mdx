@@ -55,7 +55,7 @@ deessejs info next-app-starter
 
 | Argument | Description |
 | --- | --- |
-| `<slug>` | Template identifier. Must match a `slug` in the registry. |
+| `<slug-or-github-url>` | Catalog template identifier, or HTTPS URL to a GitHub repository root. |
 
 ### Flags
 
@@ -69,6 +69,7 @@ A formatted block with the template's fields (slug, owner, repo, optional `image
 
 ```
 Install: deessejs init next-app-starter
+deessejs init https://github.com/owner/repository
 ```
 
 ### Exit codes
@@ -78,19 +79,20 @@ Install: deessejs init next-app-starter
 
 ---
 
-## `deessejs init <slug>`
+## `deessejs init <slug-or-github-url>`
 
-Clone a template repository, detect the package manager, and install dependencies.
+Create a project from a template descriptor, detect the package manager, and install dependencies.
 
 ```bash
 deessejs init next-app-starter
+deessejs init https://github.com/owner/repository
 ```
 
 ### Arguments
 
 | Argument | Description |
 | --- | --- |
-| `<slug>` | Template identifier. Must match a `slug` in the registry. |
+| `<slug-or-github-url>` | Catalog template identifier, or HTTPS URL to a GitHub repository root. |
 
 ### Flags
 
@@ -98,14 +100,15 @@ deessejs init next-app-starter
 | --- | --- |
 | `--pm <name>` | Override detected package manager. One of `pnpm`, `npm`, `yarn`, `bun`. |
 | `--dir <path>` | Target directory. Resolves relative to the current working directory. Default: `./<slug>`. |
-| `--ref <branch>` | Git ref to clone. Default: tries `main`, falls back to `master`. |
+| `--ref <branch>` | Git ref to use. Default: the repository's default branch. |
 | `--no-install` | Skip the install step. Useful for CI or pre-baked Docker images. |
-| `--force` | Overwrite the target directory if it exists. Default: abort. |
+| `--force` | Allow an existing empty target directory. Existing files are never removed. |
+| `--verbose` | Show template resolution details and the package manager's full output during installation. |
 | `--json` | Emit `{ ok, slug, dir, ref, installed }` on success or `{ ok: false, code, message, hint }` on failure. |
 
 ### Package manager detection
 
-If `--pm` isn't passed, the CLI looks at the cloned repo in this order:
+If `--pm` isn't passed, the CLI looks at the generated project in this order:
 
 1. The `packageManager` field in `package.json` (Corepack convention, like `pnpm@9.0.0` or `bun@1.1.0`). The CLI extracts the leading tool name; the version gets ignored.
 2. Lockfile presence: `pnpm-lock.yaml` → pnpm, `bun.lockb` → bun, `yarn.lock` → yarn, `package-lock.json` → npm.
@@ -114,18 +117,18 @@ If neither matches, the CLI aborts with `internal` and asks you to pass `--pm` e
 
 ### Behaviour
 
-1. Fetch the registry, resolve the slug, and look up the template record.
-2. Compute the target directory (`./<slug>` unless `--dir` got passed).
-3. If the directory exists and `--force` wasn't passed, abort with `target_exists` (an internal code, not surfaced as a public error).
-4. Compute the repo URL: `template.cloneUrl` if set, otherwise `https://github.com/<owner>/<repo>`.
-5. `git clone` the repo at the requested ref. Spinner shown unless `--json`.
-6. Detect the package manager and run the install command (`pnpm install`, `npm install`, `yarn install`, `bun install`). Skipped if `--no-install`.
+1. Resolve a catalog slug through the registry, or parse a GitHub repository URL directly.
+2. Resolve the requested ref to an immutable GitHub commit and download its source archive.
+3. Require and validate `deesse-template.json`, then use its include and exclude patterns to select project files. Both input forms follow this same path; there is no clone fallback.
+4. Compute the target directory (`./<slug>` for catalog entries, or `./<repository>` for direct URLs, unless `--dir` was passed).
+5. Materialize the selected files. If the directory exists and `--force` wasn't passed, abort with `target_exists`.
+6. Detect the package manager and run the install command (`pnpm install`, `npm install`, `yarn install`, `bun install`). Its output is hidden by default and can be shown with `--verbose`. `--verbose` also reports the resolved source, ref, target directory, commit, and number of selected files, including when installation is skipped with `--no-install`.
 
 ### Exit codes
 
-- `0`: success (cloned + installed, or cloned only if `--no-install`).
+- `0`: success (created + installed, or created only if `--no-install`).
 - `1`: public codes (`not_found`, `network_error`, `parse_error`).
-- `1`: internal codes (still exit 1, but with a different `code` field if you pass `--json`): `git_not_installed`, `target_exists`, `install_failed`, `internal`.
+- `1`: internal codes (still exit 1, but with a different `code` field if you pass `--json`): `template_invalid`, `invalid_target`, `target_exists`, `target_not_empty`, `install_failed`, `internal`.
 
 ### Examples
 
@@ -139,7 +142,7 @@ deessejs init next-app-starter --dir ./apps/web
 # Force pnpm even if the template ships yarn.lock
 deessejs init next-app-starter --pm pnpm
 
-# Clone a feature branch without installing
+# Use a feature branch without installing
 deessejs init next-app-starter --ref feat/new-thing --no-install
 
 # CI usage
@@ -207,7 +210,7 @@ The CLI's error surface forms a closed list: only the codes documented below are
 | `cli_device_denied` | You denied the device-flow request in the browser | Re-run `deessejs auth login` and select Approve |
 | `cli_device_expired` | The 30-minute device-code window elapsed | Re-run `deessejs auth login` |
 
-Internal codes (`git_not_installed`, `target_exists`, `install_failed`, `internal`) may also appear under `code` when you pass `--json`, but they aren't part of the public surface and may change without notice.
+Internal codes (`template_invalid`, `invalid_target`, `target_exists`, `target_not_empty`, `install_failed`, `internal`) may also appear under `code` when you pass `--json`, but they aren't part of the public surface and may change without notice.
 
 Every error response on `--json` carries a `hint` field with a human-readable remediation hint. Print it before exiting.
 
