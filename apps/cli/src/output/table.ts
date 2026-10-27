@@ -56,8 +56,8 @@ export const printBlockInfo = (info: BlockDescriptorInfo): void => {
   console.log()
   printKeyValueSection(
     "Capabilities",
-    info.descriptor.provides.map((item, index) => [
-      index === 0 ? item.capability : "",
+    info.descriptor.provides.map((item) => [
+      item.capability,
       `${item.provider} -> package ${item.package}`,
     ])
   )
