@@ -128,11 +128,12 @@ function parseGitHubBlockUrl(
     if (path && !isSafeRelativePath(path)) return null
   }
 
+  const ref = refOverride ?? urlRef
   return {
     owner,
     repo,
     path,
-    ...(refOverride ?? urlRef ? { ref: refOverride ?? urlRef } : {}),
+    ...(ref ? { ref } : {}),
   }
 }
 
