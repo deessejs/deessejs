@@ -1,5 +1,6 @@
 import { Command } from "commander"
 import ora from "ora"
+import { blockInitCommand } from "./block-init.js"
 
 import { internal } from "../errors/index.js"
 import {
@@ -133,5 +134,6 @@ const blockCheckCommand = new Command("check")
     }
   )
 
+blockCommand.addCommand(blockInitCommand)
 blockCommand.addCommand(blockInfoCommand)
 blockCommand.addCommand(blockCheckCommand)
