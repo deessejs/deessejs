@@ -39,7 +39,7 @@
     as a runtime dependency, but `@workspace/*` packages are workspace-only
     and never published to npm. `npx @deessejs/cli@1.1.1` would install
     the tarball successfully but then fail with `404 Not Found - GET
-https://registry.npmjs.org/@workspace%2fcontracts` when npm tried
+    https://registry.npmjs.org/@workspace%2fcontracts` when npm tried
     to resolve that dependency. The CLI itself was unused because the
     install errored out.
   - `apps/cli/tsup.config.ts` now sets `noExternal: [/^@workspace\//]`,
@@ -78,12 +78,12 @@ https://registry.npmjs.org/@workspace%2fcontracts` when npm tried
     `@workspace/contracts`) between the version bump and the
     `pnpm changeset publish` step. The 1.1.0 release shipped without
     the `dist/` directory in the published tarball, so `npx
-@deessejs/cli` and `pnpm dlx @deessejs/cli` both failed with
+    @deessejs/cli` and `pnpm dlx @deessejs/cli` both failed with
     "'deessejs' is not recognized" — the bin target pointed at a
     file that didn't exist in the package.
   - The version-check warning (`apps/cli/src/version-check.ts`) now
     prints `pnpm dlx @deessejs/cli@latest` instead of `pnpm dlx
-deessejs@latest`. The unscoped `deessejs` name on npm belongs to
+    deessejs@latest`. The unscoped `deessejs` name on npm belongs to
     an unrelated package, so the old hint pointed users at the
     wrong install command.
 

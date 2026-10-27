@@ -30,7 +30,7 @@ export type DownloadTarballArgs = {
  * downstream code can carry the same value into the final result.
  */
 export const downloadTarball = async (
-  args: DownloadTarballArgs,
+  args: DownloadTarballArgs
 ): Promise<{ path: string; sha: string }> => {
   const { owner, repo, sha, signal } = args
   const url = `https://codeload.github.com/${owner}/${repo}/tar.gz/${sha}`
@@ -38,17 +38,15 @@ export const downloadTarball = async (
   const response = await fetch(url, {
     redirect: "follow",
     ...(signal !== undefined ? { signal } : {}),
-  }).catch(
-    (err: unknown) => {
-      throw networkError(
-        `fetch failed: ${err instanceof Error ? err.message : String(err)}`,
-      )
-    },
-  )
+  }).catch((err: unknown) => {
+    throw networkError(
+      `fetch failed: ${err instanceof Error ? err.message : String(err)}`
+    )
+  })
 
   if (!response.ok) {
     throw networkError(
-      `GET ${url} returned status ${response.status} ${response.statusText}`,
+      `GET ${url} returned status ${response.status} ${response.statusText}`
     )
   }
 

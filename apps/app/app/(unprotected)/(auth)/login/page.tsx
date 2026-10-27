@@ -18,8 +18,8 @@ import { AuthContainer, LoginForm } from "@/components/auth"
  * The resolved target is passed down to `<LoginForm redirectTo />`,
  * which threads it into the email `onSuccess` navigation and the
  * OAuth `callbackURL` prop. The form does its own `safeRedirect`
- * pass to satisfy the workspace ESLint guard
- * (`packages/eslint-config/base.js`).
+ * pass to satisfy the workspace Oxlint guard
+ * (`.oxlintrc.json`).
  */
 export default async function LoginPage({
   searchParams,

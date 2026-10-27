@@ -37,7 +37,7 @@ export function ProductHero({
   secondaryCta?: Cta
 }) {
   return (
-    <div className="relative border-b border-border overflow-hidden">
+    <div className="relative overflow-hidden border-b border-border">
       <FlickeringGrid
         className="absolute inset-0 z-0 opacity-60"
         squareSize={3}
@@ -48,7 +48,7 @@ export function ProductHero({
       />
 
       <div className="relative z-10 flex flex-col items-center gap-6 px-6 py-16 text-center sm:py-20 lg:py-24">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
           {eyebrow}
         </p>
 

@@ -23,7 +23,7 @@ export const MIN_NODE_22_MINOR = 13
  * so a null here would itself be a startup error).
  */
 const parseVersion = (
-  version: string,
+  version: string
 ): { major: number; minor: number } | null => {
   // Accept an optional leading `v` to cover both `process.version`
   // ("v22.22.2") and `process.versions.node` ("22.22.2").
@@ -50,15 +50,9 @@ export const assertSupportedNode = (version: string): void => {
   }
   const { major, minor } = parsed
   if (major < MIN_NODE_MAJOR) {
-    throw unsupportedNode(
-      version,
-      `${MIN_NODE_MAJOR}.${MIN_NODE_22_MINOR}`,
-    )
+    throw unsupportedNode(version, `${MIN_NODE_MAJOR}.${MIN_NODE_22_MINOR}`)
   }
   if (major === MIN_NODE_MAJOR && minor < MIN_NODE_22_MINOR) {
-    throw unsupportedNode(
-      version,
-      `${MIN_NODE_MAJOR}.${MIN_NODE_22_MINOR}`,
-    )
+    throw unsupportedNode(version, `${MIN_NODE_MAJOR}.${MIN_NODE_22_MINOR}`)
   }
 }

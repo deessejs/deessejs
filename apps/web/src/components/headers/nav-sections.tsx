@@ -189,7 +189,8 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
           {
             label: "Stack",
             href: "/stack",
-            description: "The hosting, database, auth, and billing providers we ship against",
+            description:
+              "The hosting, database, auth, and billing providers we ship against",
           },
         ],
       },
@@ -242,26 +243,30 @@ export function NavSections({
                 section={section}
                 pathname={pathname}
               />
-            ),
+            )
           )}
         </NavigationMenuList>
       </NavigationMenu>
     )
   }
 
-  const productsSection = NAV_SECTIONS.find((section) => section.label === "Products")
-  const resourcesSection = NAV_SECTIONS.find((section) => section.label === "Resources")
+  const productsSection = NAV_SECTIONS.find(
+    (section) => section.label === "Products"
+  )
+  const resourcesSection = NAV_SECTIONS.find(
+    (section) => section.label === "Resources"
+  )
   const generalLinks = NAV_SECTIONS.filter(
     (section) =>
       section.label !== "Products" &&
       section.label !== "Resources" &&
-      Boolean(section.href),
+      Boolean(section.href)
   )
 
   return (
     <nav aria-label="Primary mobile" className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <h3 className="text-label-13 font-semibold uppercase tracking-wider text-muted-foreground">
+        <h3 className="text-label-13 font-semibold tracking-wider text-muted-foreground uppercase">
           General
         </h3>
         <ul className="flex flex-col gap-3">
@@ -273,7 +278,7 @@ export function NavSections({
                   "text-sm font-medium",
                   isNavActive(pathname, section.href ?? "")
                     ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {section.label}
@@ -285,7 +290,7 @@ export function NavSections({
 
       {productsSection?.categories ? (
         <div className="flex flex-col gap-3">
-          <h3 className="text-label-13 font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="text-label-13 font-semibold tracking-wider text-muted-foreground uppercase">
             Products
           </h3>
           <Accordion type="multiple" className="w-full">
@@ -295,7 +300,7 @@ export function NavSections({
                 value={`products-${category.label}`}
                 className="border-border"
               >
-                <AccordionTrigger className="text-sm font-medium hover:no-underline py-2">
+                <AccordionTrigger className="py-2 text-sm font-medium hover:no-underline">
                   {category.label}
                 </AccordionTrigger>
                 <AccordionContent>
@@ -321,7 +326,7 @@ export function NavSections({
 
       {resourcesSection?.categories ? (
         <div className="flex flex-col gap-3">
-          <h3 className="text-label-13 font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="text-label-13 font-semibold tracking-wider text-muted-foreground uppercase">
             Resources
           </h3>
           <Accordion type="multiple" className="w-full">
@@ -331,7 +336,7 @@ export function NavSections({
                 value={`resources-${category.label}`}
                 className="border-border"
               >
-                <AccordionTrigger className="text-sm font-medium hover:no-underline py-2">
+                <AccordionTrigger className="py-2 text-sm font-medium hover:no-underline">
                   {category.label}
                 </AccordionTrigger>
                 <AccordionContent>
@@ -384,7 +389,7 @@ function DesktopLink({
           navigationMenuTriggerStyle(),
           "px-2.5",
           "text-muted-foreground hover:text-foreground focus-visible:text-foreground",
-          active && "text-foreground",
+          active && "text-foreground"
         )}
       >
         {section.label}
@@ -398,7 +403,11 @@ function DesktopDropdown({ section }: { section: NavSection }) {
   const columnCount = section.categories?.length ?? 1
   // Wider panel when there are more columns.
   const widthClass =
-    columnCount >= 3 ? "w-[640px]" : columnCount === 2 ? "w-[480px]" : "w-[280px]"
+    columnCount >= 3
+      ? "w-[640px]"
+      : columnCount === 2
+        ? "w-[480px]"
+        : "w-[280px]"
 
   return (
     <NavigationMenuItem>
@@ -406,7 +415,7 @@ function DesktopDropdown({ section }: { section: NavSection }) {
         className={cn(
           navigationMenuTriggerStyle(),
           "px-2.5",
-          "text-muted-foreground hover:text-foreground data-[state=open]:text-foreground",
+          "text-muted-foreground hover:text-foreground data-[state=open]:text-foreground"
         )}
       >
         {section.label}
@@ -418,7 +427,7 @@ function DesktopDropdown({ section }: { section: NavSection }) {
               "grid gap-6",
               columnCount === 1 && "grid-cols-1",
               columnCount === 2 && "grid-cols-2",
-              columnCount >= 3 && "grid-cols-3",
+              columnCount >= 3 && "grid-cols-3"
             )}
           >
             {section.categories?.map((category) => (
@@ -437,7 +446,7 @@ function DesktopDropdown({ section }: { section: NavSection }) {
 function DesktopCategoryColumn({ category }: { category: NavCategory }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-label-13 font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-label-13 font-semibold tracking-wider text-muted-foreground uppercase">
         {category.label}
       </span>
       <ul className="flex flex-col gap-1">

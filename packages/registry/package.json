@@ -19,7 +19,7 @@
   },
   "types": "./dist/index.d.ts",
   "scripts": {
-    "lint": "eslint --max-warnings=0",
+    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json packages/registry --deny-warnings",
     "build": "tsc",
     "schema:generate": "node --experimental-strip-types scripts/generate-template-schema.mjs",
     "schema:check": "node --experimental-strip-types scripts/generate-template-schema.mjs --check",
@@ -37,11 +37,10 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/picomatch": "catalog:",
-    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
-    "eslint": "catalog:",
     "vitest": "catalog:",
     "@workspace/vitest-config": "workspace:*",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "oxlint": "catalog:"
   }
 }

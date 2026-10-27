@@ -51,7 +51,10 @@ export type TemplateDetailProps = {
  * title on lg. On smaller viewports `flex-col` keeps the CTAs
  * stacked below the description.
  */
-export const TemplateDetail = ({ template, className }: TemplateDetailProps) => {
+export const TemplateDetail = ({
+  template,
+  className,
+}: TemplateDetailProps) => {
   const installCommand = `deessejs init ${template.slug}`
   const sourceUrl = `https://github.com/${template.owner}/${template.repo}`
   // Demo URL is derived from the template slug. Each template ships
@@ -77,17 +80,13 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
       <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
         <div className="flex min-w-0 flex-col gap-3">
           <h1 className="text-heading-56 tracking-tight">{template.name}</h1>
-          <p className="text-copy-18 text-muted-foreground max-w-3xl">
+          <p className="max-w-3xl text-copy-18 text-muted-foreground">
             {template.description}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 lg:shrink-0">
           <Button asChild>
-            <a
-              href={demoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href={demoUrl} target="_blank" rel="noopener noreferrer">
               View demo
             </a>
           </Button>
@@ -127,10 +126,13 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
           <section className="flex flex-col gap-3">
             <h2 className="text-label-14 text-muted-foreground">Install</h2>
             <Card className="flex items-center justify-between gap-3 p-4">
-              <code className="text-copy-14-mono text-foreground truncate">
+              <code className="text-copy-14-mono truncate text-foreground">
                 {installCommand}
               </code>
-              <CopyButton value={installCommand} ariaLabel="Copy install command" />
+              <CopyButton
+                value={installCommand}
+                ariaLabel="Copy install command"
+              />
             </Card>
           </section>
 
@@ -172,11 +174,11 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
                 Ship your template to the registry
               </span>
               <span className="text-copy-13 text-muted-foreground">
-                Open a PR on deessejs/deessejs. Slug, category,
-                and labels are collected via the form.
+                Open a PR on deessejs/deessejs. Slug, category, and labels are
+                collected via the form.
               </span>
             </div>
-            <span className="text-label-14 text-foreground underline-offset-4 whitespace-nowrap group-hover:underline">
+            <span className="text-label-14 whitespace-nowrap text-foreground underline-offset-4 group-hover:underline">
               Submit your template →
             </span>
           </a>
@@ -187,7 +189,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
             <h3 className="text-label-13 font-semibold tracking-tight text-foreground">
               Quick start
             </h3>
-            <code className="text-copy-14-mono text-foreground break-all bg-muted px-3 py-2 rounded-md">
+            <code className="text-copy-14-mono rounded-md bg-muted px-3 py-2 break-all text-foreground">
               {installCommand}
             </code>
             <CopyButton
@@ -203,7 +205,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
             <dl className="flex flex-col gap-3 text-copy-13">
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground">Owner</dt>
-                <dd className="text-foreground truncate">
+                <dd className="truncate text-foreground">
                   <a
                     href={`https://github.com/${template.owner}`}
                     target="_blank"
@@ -216,7 +218,7 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground">Repo</dt>
-                <dd className="text-foreground truncate">
+                <dd className="truncate text-foreground">
                   <a
                     href={sourceUrl}
                     target="_blank"
@@ -229,11 +231,13 @@ export const TemplateDetail = ({ template, className }: TemplateDetailProps) => 
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground">License</dt>
-                <dd className="text-foreground truncate">{template.license}</dd>
+                <dd className="truncate text-foreground">{template.license}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground">Category</dt>
-                <dd className="text-foreground truncate">{template.category}</dd>
+                <dd className="truncate text-foreground">
+                  {template.category}
+                </dd>
               </div>
             </dl>
           </section>

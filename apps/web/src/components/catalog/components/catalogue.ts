@@ -45,8 +45,7 @@ export const CATALOGUE_COMPONENTS: ReadonlyArray<CatalogueComponent> = [
   {
     slug: "button",
     name: "Button",
-    description:
-      "The base interactive primitive. Variants, sizes, and states.",
+    description: "The base interactive primitive. Variants, sizes, and states.",
     category: "button",
     tier: "free",
   },
@@ -95,24 +94,21 @@ export const CATALOGUE_COMPONENTS: ReadonlyArray<CatalogueComponent> = [
   {
     slug: "input-search",
     name: "SearchInput",
-    description:
-      "Search bar with debounce and a one-click clear button.",
+    description: "Search bar with debounce and a one-click clear button.",
     category: "input",
     tier: "free",
   },
   {
     slug: "input-otp",
     name: "OtpInput",
-    description:
-      "One-time-code input with auto-advance and paste support.",
+    description: "One-time-code input with auto-advance and paste support.",
     category: "input",
     tier: "free",
   },
   {
     slug: "input-tags",
     name: "TagsInput",
-    description:
-      "Tag input with chips. Add with Enter, remove with Backspace.",
+    description: "Tag input with chips. Add with Enter, remove with Backspace.",
     category: "input",
     tier: "free",
   },
@@ -135,7 +131,8 @@ export const CATALOGUE_COMPONENTS: ReadonlyArray<CatalogueComponent> = [
   {
     slug: "badge-dot",
     name: "DotBadge",
-    description: "Badge with a leading status dot. Online, offline, sync states.",
+    description:
+      "Badge with a leading status dot. Online, offline, sync states.",
     category: "badge",
     tier: "free",
   },

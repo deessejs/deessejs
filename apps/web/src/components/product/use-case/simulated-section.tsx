@@ -39,10 +39,10 @@ export function SimulatedSection({
           // Mobile: copy sits below the mockup
           "order-2 flex flex-col gap-4 p-6 lg:p-10",
           // Desktop: copy on the left by default, on the right when reversed
-          reverse ? "lg:order-2" : "lg:order-1",
+          reverse ? "lg:order-2" : "lg:order-1"
         )}
       >
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
           {eyebrow}
         </p>
         <h2 className="max-w-xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
@@ -69,9 +69,9 @@ export function SimulatedSection({
       <div
         className={cn(
           // Mobile: mockup first
-          "order-1 !p-0 border-0",
+          "order-1 border-0 !p-0",
           // Desktop: mockup on the right by default, on the left when reversed
-          reverse ? "lg:order-1" : "lg:order-2",
+          reverse ? "lg:order-1" : "lg:order-2"
         )}
       >
         <div className="relative m-4 overflow-hidden rounded-none border border-border bg-background lg:m-6">
@@ -102,7 +102,7 @@ export function AndMoreSection({ tiles }: { tiles: ReadonlyArray<MoreTile> }) {
   return (
     <div className="border-t border-border">
       <div className="flex flex-col gap-3 border-b border-border p-6 lg:p-10">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
           And more
         </p>
         <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
@@ -113,10 +113,7 @@ export function AndMoreSection({ tiles }: { tiles: ReadonlyArray<MoreTile> }) {
         {tiles.map((tile) => {
           const Icon = tile.icon
           return (
-            <div
-              key={tile.id}
-              className="flex flex-col gap-3 p-6 lg:p-8"
-            >
+            <div key={tile.id} className="flex flex-col gap-3 p-6 lg:p-8">
               <span className="flex size-7 w-fit items-center justify-center rounded-md border border-border bg-muted/40 p-1.5">
                 <Icon className="size-4 text-foreground" aria-hidden />
               </span>

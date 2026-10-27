@@ -15,18 +15,15 @@ const mockedExecFile = vi.mocked(execFile)
 const mockExecFile = (
   fn: (
     cmd: string,
-    args: string[],
+    args: string[]
   ) =>
     | { kind: "ok"; stdout: string }
     | { kind: "err"; message: string }
-    | { kind: "throw"; err: Error },
+    | { kind: "throw"; err: Error }
 ): void => {
   mockedExecFile.mockImplementation((cmd, args, _opts, cb) => {
     const result = fn(cmd as string, args as string[])
-    const callback = cb as unknown as (
-      err: Error | null,
-      out: string,
-    ) => void
+    const callback = cb as unknown as (err: Error | null, out: string) => void
     if (result.kind === "ok") {
       callback(null, result.stdout)
     } else if (result.kind === "err") {
@@ -78,7 +75,7 @@ describe("resolveTemplateSha", () => {
         owner: "deessejs",
         repo: "saas-template",
         ref: "main",
-      }),
+      })
     ).rejects.toThrow(/could not resolve template source/)
   })
 
@@ -98,7 +95,7 @@ describe("resolveTemplateSha", () => {
         owner: "deessejs",
         repo: "saas-template",
         ref: "main",
-      }),
+      })
     ).rejects.toThrow(/not installed or not on PATH/)
   })
 
@@ -115,7 +112,7 @@ describe("resolveTemplateSha", () => {
         owner: "deessejs",
         repo: "saas-template",
         ref: "main",
-      }),
+      })
     ).rejects.toThrow(/malformed SHA/)
   })
 })

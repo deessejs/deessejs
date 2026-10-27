@@ -62,7 +62,7 @@ export function GlobalSearchDialog() {
   useEffect(() => {
     // Reset selection when results change (e.g., new search query)
     // This is intentional - we want to clear selection on new results
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // oxlint-disable-next-line react/set-state-in-effect
     setSelectedIndex(-1)
   }, [results])
 
@@ -73,7 +73,7 @@ export function GlobalSearchDialog() {
       // Reset state when the dialog closes so the next open starts fresh.
       // This is intentional - cascading render is fine here because close
       // is a user action, not a render-driven one.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // oxlint-disable-next-line react/set-state-in-effect
       setQuery("")
       setSelectedIndex(-1)
     }
@@ -99,10 +99,12 @@ export function GlobalSearchDialog() {
         showCloseButton={false}
         className="flex max-w-lg flex-col gap-0 p-0 sm:max-w-lg"
       >
-        <DialogTitle className="sr-only">Search the DeesseJS ecosystem</DialogTitle>
+        <DialogTitle className="sr-only">
+          Search the DeesseJS ecosystem
+        </DialogTitle>
         <DialogDescription className="sr-only">
-          Press Escape to close, arrow keys to navigate results,
-          Enter to open the selected item.
+          Press Escape to close, arrow keys to navigate results, Enter to open
+          the selected item.
         </DialogDescription>
 
         <div className="flex items-center gap-3 border-b border-border/40 px-4 py-3">
@@ -155,27 +157,27 @@ export function GlobalSearchDialog() {
                     }}
                     className={cn(
                       "flex w-full flex-col items-start gap-0.5 px-4 py-2 text-left",
-                      selectedIndex === i
-                        ? "bg-muted"
-                        : "hover:bg-muted/50",
+                      selectedIndex === i ? "bg-muted" : "hover:bg-muted/50"
                     )}
                   >
                     <span className="flex items-center gap-2">
                       <span
                         className={cn(
-                          "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+                          "rounded px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase",
                           result.item.type === "post"
                             ? "bg-primary/10 text-primary"
                             : result.item.type === "kb-topic"
                               ? "bg-violet-500/10 text-violet-600 dark:text-violet-400"
                               : result.item.type === "kb-guide"
                                 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                         )}
                       >
                         {result.item.type}
                       </span>
-                      <span className="text-sm font-medium">{result.item.title}</span>
+                      <span className="text-sm font-medium">
+                        {result.item.title}
+                      </span>
                     </span>
                     <span className="line-clamp-2 text-xs text-muted-foreground">
                       {result.item.description}

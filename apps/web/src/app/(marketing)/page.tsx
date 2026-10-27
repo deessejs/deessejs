@@ -1,6 +1,5 @@
 import { Home } from "@/components/pages/homepage"
 
-
 export default function HomePage() {
   return (
     <>
@@ -9,7 +8,7 @@ export default function HomePage() {
       <Home.Surfaces />
       <Home.ForWho />
       <Home.DiagonalStripDivider />
-      { /*<Home.Contracts /> */}
+      {/*<Home.Contracts /> */}
       <Home.CliInAction />
       <Home.Ecosystem />
       {/* Hidden until real testimonials come in: the 12 quotes are

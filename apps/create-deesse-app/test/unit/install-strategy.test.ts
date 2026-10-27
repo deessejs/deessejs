@@ -9,7 +9,7 @@ describe("pickInstallStrategy", () => {
         corepackAvailable: true,
         npmAvailable: true,
         pnpmAvailable: true,
-      }),
+      })
     ).toBe("corepack")
   })
 
@@ -19,7 +19,7 @@ describe("pickInstallStrategy", () => {
         corepackAvailable: false,
         npmAvailable: true,
         pnpmAvailable: true,
-      }),
+      })
     ).toBe("npm-exec")
   })
 
@@ -29,7 +29,7 @@ describe("pickInstallStrategy", () => {
         corepackAvailable: false,
         npmAvailable: false,
         pnpmAvailable: true,
-      }),
+      })
     ).toBe("pnpm-direct")
   })
 
@@ -39,7 +39,7 @@ describe("pickInstallStrategy", () => {
         corepackAvailable: false,
         npmAvailable: false,
         pnpmAvailable: false,
-      }),
+      })
     ).toThrow(/not a supported invocation manager/)
   })
 
@@ -51,7 +51,7 @@ describe("pickInstallStrategy", () => {
         corepackAvailable: true,
         npmAvailable: false,
         pnpmAvailable: true,
-      }),
+      })
     ).toBe("corepack")
   })
 

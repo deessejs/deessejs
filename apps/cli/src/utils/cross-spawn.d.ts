@@ -10,25 +10,25 @@
 //
 // See `apps/cli/src/utils/spawn.ts` for the call site.
 declare module "cross-spawn" {
-	import { ChildProcess, SpawnOptions } from "node:child_process"
+  import { ChildProcess, SpawnOptions } from "node:child_process"
 
-	export function spawn(
-		command: string,
-		args?: readonly string[],
-		options?: SpawnOptions,
-	): ChildProcess
+  export function spawn(
+    command: string,
+    args?: readonly string[],
+    options?: SpawnOptions
+  ): ChildProcess
 
-	export function sync(
-		command: string,
-		args?: readonly string[],
-		options?: SpawnOptions,
-	): {
-		status: number | null
-		signal: NodeJS.Signals | null
-		output: Array<Buffer | string | null>
-		stdout: Buffer | string
-		stderr: Buffer | string
-		pid: number
-		error: Error | null
-	}
+  export function sync(
+    command: string,
+    args?: readonly string[],
+    options?: SpawnOptions
+  ): {
+    status: number | null
+    signal: NodeJS.Signals | null
+    output: Array<Buffer | string | null>
+    stdout: Buffer | string
+    stderr: Buffer | string
+    pid: number
+    error: Error | null
+  }
 }

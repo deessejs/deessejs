@@ -2,9 +2,7 @@ import Link from "next/link"
 
 import { Button } from "@workspace/ui/components/button"
 
-export type NotFoundAction =
-  | { label: string; href: string }
-  | null
+export type NotFoundAction = { label: string; href: string } | null
 
 /**
  * Shared 404 panel. Server component (no client state).
@@ -29,7 +27,7 @@ export function NotFoundPanel({
     <section className="mx-auto max-w-md px-6 py-24 text-center">
       <h1 className="text-heading-32 tracking-tight">{title}</h1>
       {body ? (
-        <p className="text-copy-16 text-muted-foreground mt-4">{body}</p>
+        <p className="mt-4 text-copy-16 text-muted-foreground">{body}</p>
       ) : null}
       {action ? (
         <Button asChild className="mt-8">

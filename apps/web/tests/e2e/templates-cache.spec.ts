@@ -40,9 +40,7 @@ test.describe("P0 /templates error + cache", () => {
       // boundary catches the thrown ORPCError and renders the
       // client-side fallback.
       await expect(errorHeading(page)).toBeVisible()
-      await expect(
-        page.getByText(/Check your connection/i),
-      ).toBeVisible()
+      await expect(page.getByText(/Check your connection/i)).toBeVisible()
       await expect(tryAgainButton(page)).toBeVisible()
 
       // Clear the force-fail header so the recovery request
@@ -98,7 +96,7 @@ test.describe("P0 /templates error + cache", () => {
     const hits = responses.filter((r) => r.cacheState === "HIT")
     expect(
       hits,
-      `x-nextjs-cache: HIT observed on /templates — issue #81 regression. Responses: ${JSON.stringify(responses)}`,
+      `x-nextjs-cache: HIT observed on /templates — issue #81 regression. Responses: ${JSON.stringify(responses)}`
     ).toHaveLength(0)
   })
 })

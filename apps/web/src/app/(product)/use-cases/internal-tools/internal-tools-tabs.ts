@@ -35,8 +35,7 @@ export const GROUP_1: ReadonlyArray<UseCaseTab> = [
     slug: "feature-flag",
     iconName: "Workflow",
     title: "Automation",
-    description:
-      "Background work the operator team sets up once and forgets.",
+    description: "Background work the operator team sets up once and forgets.",
   },
 ]
 

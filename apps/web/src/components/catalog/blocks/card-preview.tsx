@@ -28,7 +28,7 @@ function renderMock(block: CatalogueBlock) {
   const { layout } = block
   return (
     <div className="flex w-full max-w-full flex-col gap-1 text-label-13 text-muted-foreground">
-      <span className="font-mono uppercase tracking-wider">
+      <span className="font-mono tracking-wider uppercase">
         {layout} layout
       </span>
       <div

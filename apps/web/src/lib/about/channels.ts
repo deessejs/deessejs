@@ -17,19 +17,16 @@ export const CHANNELS: ReadonlyArray<Channel> = [
   {
     label: "GitHub",
     href: "https://github.com/deessejs",
-    body:
-      "Issues, PRs, and discussions live on the deessejs org. The Add Template Issue Template is the entry point for contributing a starter to the registry.",
+    body: "Issues, PRs, and discussions live on the deessejs org. The Add Template Issue Template is the entry point for contributing a starter to the registry.",
   },
   {
     label: "Security",
     href: "mailto:support@deessejs.com",
-    body:
-      "Report a vulnerability privately to support@deessejs.com. Sensitive issues stay out of the public tracker until a fix is ready.",
+    body: "Report a vulnerability privately to support@deessejs.com. Sensitive issues stay out of the public tracker until a fix is ready.",
   },
   {
     label: "Press & partnerships",
     href: "mailto:support@deessejs.com",
-    body:
-      "For press, conference talks, sponsorship, or anything else where an email beats an issue.",
+    body: "For press, conference talks, sponsorship, or anything else where an email beats an issue.",
   },
 ] as const

@@ -55,7 +55,7 @@ const buildHref = (
   target: string | null,
   paramKey: "type" | "framework",
   otherKey: "type" | "framework",
-  otherValues: ReadonlyArray<string>,
+  otherValues: ReadonlyArray<string>
 ): string => {
   const params = new URLSearchParams()
   for (const v of otherValues) {
@@ -113,7 +113,7 @@ const FilterGroup = ({
   const activeSet = new Set(activeValues)
   return (
     <div data-testid={dataTestId}>
-      <h3 className="text-label-13 mb-3 font-semibold tracking-tight text-foreground">
+      <h3 className="mb-3 text-label-13 font-semibold tracking-tight text-foreground">
         {title}
       </h3>
       <ul className="flex flex-col gap-1">
@@ -124,7 +124,7 @@ const FilterGroup = ({
             entry.slug,
             paramKey,
             otherKey,
-            otherActiveValues,
+            otherActiveValues
           )
           const count = countFor(entry.slug)
           return (
@@ -133,10 +133,10 @@ const FilterGroup = ({
                 href={href}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "text-label-13 flex w-full items-center justify-between gap-3 rounded-md px-3 py-1.5 text-left transition-colors hover:bg-accent hover:text-foreground",
+                  "flex w-full items-center justify-between gap-3 rounded-md px-3 py-1.5 text-left text-label-13 transition-colors hover:bg-accent hover:text-foreground",
                   isActive
                     ? "bg-accent text-foreground"
-                    : "text-muted-foreground",
+                    : "text-muted-foreground"
                 )}
               >
                 <span className="flex items-center gap-2.5">
@@ -170,11 +170,13 @@ export const CategorySidebar = ({
 }: CategorySidebarProps) => {
   // Hide framework entries that no template carries.
   const visibleFrameworks = FRAMEWORKS.filter(({ slug }) =>
-    templates.some((t) => t.labels.includes(slug)),
+    templates.some((t) => t.labels.includes(slug))
   )
   const totalShown = templates.length
   return (
-    <aside className={cn("w-full lg:sticky lg:top-20 lg:self-start", className)}>
+    <aside
+      className={cn("w-full lg:sticky lg:top-20 lg:self-start", className)}
+    >
       <div className="flex flex-col gap-6">
         <FilterGroup
           title="Type"

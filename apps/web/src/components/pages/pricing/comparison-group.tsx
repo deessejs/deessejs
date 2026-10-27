@@ -15,18 +15,14 @@ import { ComparisonStatusIcon } from "./comparison-status-icon"
  * visual choice, not a vocabulary of "per-project" tiers (the
  * vocabulary now is monthly or annual subscriptions).
  */
-export function ComparisonGroup({
-  group,
-}: {
-  group: ComparisonGroupData
-}) {
+export function ComparisonGroup({ group }: { group: ComparisonGroupData }) {
   return (
     <>
       <tr className="border-b border-border/60 bg-muted/30">
         <th
           scope="colgroup"
           colSpan={1 + COMPARISON_LAYERS.length}
-          className="py-2 pr-4 pl-6 text-left text-label-13 uppercase tracking-wider text-muted-foreground"
+          className="py-2 pr-4 pl-6 text-left text-label-13 tracking-wider text-muted-foreground uppercase"
         >
           {group.heading}
         </th>
@@ -57,8 +53,8 @@ export function ComparisonGroup({
               <td
                 key={`${row.attribute}-${layer.id}`}
                 className={cn(
-                  "py-3 px-4 align-top text-muted-foreground",
-                  isRecommended && "bg-muted/30",
+                  "px-4 py-3 align-top text-muted-foreground",
+                  isRecommended && "bg-muted/30"
                 )}
               >
                 <span className="flex items-start gap-2">

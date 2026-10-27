@@ -64,19 +64,19 @@ export function FinalCta({
   return (
     <div
       className={cn(
-        "grid grid-cols-1 lg:grid-cols-2 divide-y border-t divide-border lg:divide-y-0 lg:divide-x",
-        noBorderB ? "border-b-0" : "border-b border-border",
+        "grid grid-cols-1 divide-y divide-border border-t lg:grid-cols-2 lg:divide-x lg:divide-y-0",
+        noBorderB ? "border-b-0" : "border-b border-border"
       )}
     >
       <div className="flex flex-col gap-4 p-6 lg:p-10">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
           {eyebrow}
         </p>
-        <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
+        <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40 [&:not(:first-child)]:mt-0">
           {title}
         </h2>
         {body ? (
-          <p className="text-copy-16 text-muted-foreground leading-7 max-w-md [&:not(:first-child)]:mt-0">
+          <p className="max-w-md text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
             {body}
           </p>
         ) : null}

@@ -13,13 +13,15 @@ function rfc822(date: string): string {
   return new Date(date + "T00:00:00Z").toUTCString()
 }
 
-function buildItems(items: Array<{
-  title: string
-  link: string
-  description: string
-  pubDate: string
-  guid: string
-}>): string {
+function buildItems(
+  items: Array<{
+    title: string
+    link: string
+    description: string
+    pubDate: string
+    guid: string
+  }>
+): string {
   return items
     .map(
       (item) => `    <item>
@@ -28,7 +30,7 @@ function buildItems(items: Array<{
       <guid isPermaLink="true">${escapeXml(item.guid)}</guid>
       <pubDate>${item.pubDate}</pubDate>
       <description>${escapeXml(item.description)}</description>
-    </item>`,
+    </item>`
     )
     .join("\n")
 }
@@ -37,7 +39,7 @@ function wrapChannel(
   title: string,
   description: string,
   link: string,
-  items: string,
+  items: string
 ): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -63,13 +65,13 @@ export function buildBlogFeed(posts: Post[], siteOrigin: string): string {
     "Blog",
     "Articles and updates.",
     `${siteOrigin}/blog`,
-    buildItems(items),
+    buildItems(items)
   )
 }
 
 export function buildChangelogFeed(
   releases: Release[],
-  siteOrigin: string,
+  siteOrigin: string
 ): string {
   const items = releases.map((release) => ({
     title: `${release.version} — ${release.title}`,
@@ -82,6 +84,6 @@ export function buildChangelogFeed(
     "Changelog",
     "Public release notes.",
     `${siteOrigin}/changelog`,
-    buildItems(items),
+    buildItems(items)
   )
 }

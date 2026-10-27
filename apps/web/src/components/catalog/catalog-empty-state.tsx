@@ -24,11 +24,9 @@ export function CatalogEmptyState({ title, description }: Props) {
       aria-live="polite"
       className="flex min-h-64 flex-col items-center justify-center gap-4 border border-dashed border-border bg-muted/20 p-12 text-center"
     >
-      <p className="text-heading-24 tracking-tight text-foreground">
-        {title}
-      </p>
+      <p className="text-heading-24 tracking-tight text-foreground">{title}</p>
       {description ? (
-        <p className="text-copy-14 text-muted-foreground max-w-sm">
+        <p className="max-w-sm text-copy-14 text-muted-foreground">
           {description}
         </p>
       ) : null}

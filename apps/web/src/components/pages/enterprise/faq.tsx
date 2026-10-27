@@ -21,10 +21,7 @@ export function EnterpriseFaq() {
   return (
     <Accordion type="single" collapsible className="w-full">
       {ENTERPRISE_FAQ.map((item, index) => (
-        <AccordionItem
-          key={item.question}
-          value={`enterprise-faq-${index}`}
-        >
+        <AccordionItem key={item.question} value={`enterprise-faq-${index}`}>
           <AccordionTrigger>{item.question}</AccordionTrigger>
           <AccordionContent>{item.answer}</AccordionContent>
         </AccordionItem>

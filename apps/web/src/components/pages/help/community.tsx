@@ -14,9 +14,9 @@ export function Community() {
       <h2 className="text-heading-24 tracking-tight text-foreground">
         Community
       </h2>
-      <p className="text-copy-16 text-muted-foreground [&:not(:first-child)]:mt-0 max-w-2xl">
-        Discussions and announcements live on the channels below. Use the
-        one that fits the topic.
+      <p className="max-w-2xl text-copy-16 text-muted-foreground [&:not(:first-child)]:mt-0">
+        Discussions and announcements live on the channels below. Use the one
+        that fits the topic.
       </p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card className="p-5">

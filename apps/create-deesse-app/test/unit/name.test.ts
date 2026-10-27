@@ -10,7 +10,9 @@ describe("validateProjectName", () => {
   const fails = (name: string, code: string = "invalid_name") => {
     try {
       validateProjectName(name)
-      throw new Error(`expected validateProjectName(${JSON.stringify(name)}) to throw`)
+      throw new Error(
+        `expected validateProjectName(${JSON.stringify(name)}) to throw`
+      )
     } catch (err) {
       expect(err).toBeInstanceOf(CliError)
       expect((err as CliError).code).toBe(code)

@@ -11,7 +11,9 @@ const DEFAULT_CONSENT: CookieConsentData = {
   marketing: false,
 }
 
-export const useCookieConsentStore = create<import("../types").CookieConsentStore>()(
+export const useCookieConsentStore = create<
+  import("../types").CookieConsentStore
+>()(
   persist(
     (set, get) => ({
       consent: DEFAULT_CONSENT,
@@ -20,12 +22,20 @@ export const useCookieConsentStore = create<import("../types").CookieConsentStor
       preferencesOpen: false,
 
       acceptAll: () => {
-        const full: CookieConsentData = { functional: true, analytics: true, marketing: true }
+        const full: CookieConsentData = {
+          functional: true,
+          analytics: true,
+          marketing: true,
+        }
         set({ consent: full, hasDecided: true })
       },
 
       declineAll: () => {
-        const minimal: CookieConsentData = { functional: true, analytics: false, marketing: false }
+        const minimal: CookieConsentData = {
+          functional: true,
+          analytics: false,
+          marketing: false,
+        }
         set({ consent: minimal, hasDecided: true })
       },
 

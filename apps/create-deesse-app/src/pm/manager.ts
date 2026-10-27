@@ -17,10 +17,7 @@ export type PackageManager = {
    * the pnpm version to use, and returns a `bin` + `args` pair
    * ready for `spawn`.
    */
-  installCommand(
-    strategy: InstallStrategy,
-    version: string,
-  ): InstallCommand
+  installCommand(strategy: InstallStrategy, version: string): InstallCommand
   readonly lockfileName: string
   /**
    * `requiresCorepack` today means "the install command needs

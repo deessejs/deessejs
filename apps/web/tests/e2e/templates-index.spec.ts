@@ -63,10 +63,12 @@ test.describe("P0 /templates index", () => {
       // sidebar, search input are NOT rendered (per the
       // branch in page.tsx).
       await expect(
-        page.getByRole("heading", { name: "Templates" }),
+        page.getByRole("heading", { name: "Templates" })
       ).toBeVisible()
       await expect(emptyCatalog(page)).toBeVisible()
-      await expect(page.getByText("No templates available right now.")).toBeVisible()
+      await expect(
+        page.getByText("No templates available right now.")
+      ).toBeVisible()
       await expect(page.getByText("deessejs list")).toBeVisible()
 
       await expect(templatesGrid(page)).toHaveCount(0)

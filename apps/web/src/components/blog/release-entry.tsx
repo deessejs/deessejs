@@ -1,11 +1,19 @@
 import Link from "next/link"
 import { Calendar } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
-import { Card, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
 import type { Release, ReleaseCategory } from "@/lib/blog/types"
 import { RELEASE_CATEGORY_LABELS } from "@/lib/blog/types"
 
-const CATEGORY_VARIANT: Record<ReleaseCategory, "default" | "secondary" | "outline"> = {
+const CATEGORY_VARIANT: Record<
+  ReleaseCategory,
+  "default" | "secondary" | "outline"
+> = {
   added: "default",
   changed: "secondary",
   fixed: "secondary",
@@ -32,7 +40,7 @@ export function ReleaseEntry({ release }: { release: Release }) {
             </Badge>
           ))}
         </div>
-        <CardTitle className="text-balance text-xl tracking-tight">
+        <CardTitle className="text-xl tracking-tight text-balance">
           <Link
             href={release.url}
             className="transition-colors hover:text-foreground"

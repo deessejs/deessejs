@@ -23,7 +23,7 @@ const PERSONA_ICONS = {
  */
 export function Personas() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border">
+    <div className="grid grid-cols-1 divide-y divide-border border-b border-border md:grid-cols-2 md:divide-x md:divide-y-0">
       {PERSONA_ROUTES.map((persona) => (
         <PersonaCell key={persona.label} persona={persona} />
       ))}
@@ -35,14 +35,14 @@ function PersonaCell({ persona }: { persona: PersonaRoute }) {
   const Icon = PERSONA_ICONS[persona.icon]
   return (
     <div className="flex flex-col gap-4 p-6 lg:p-10">
-      <header className="flex items-center gap-2 text-label-13 uppercase tracking-wider text-muted-foreground">
+      <header className="flex items-center gap-2 text-label-13 tracking-wider text-muted-foreground uppercase">
         <Icon className="size-3.5" aria-hidden />
         {persona.label}
       </header>
-      <h3 className="text-heading-24 tracking-tight text-foreground text-balance [&:not(:first-child)]:mt-0">
+      <h3 className="text-heading-24 tracking-tight text-balance text-foreground [&:not(:first-child)]:mt-0">
         {persona.title}
       </h3>
-      <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+      <p className="text-copy-14 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
         {persona.body}
       </p>
       <div className="pt-1">

@@ -78,12 +78,11 @@ export function CliWorkbench({
   terminalLines?: readonly [string, ReadonlyArray<string>, string]
 }) {
   const reduceMotion = useReducedMotion()
-  const lines =
-    terminalLines ?? [
-      "$ deessejs init saas-starter",
-      DEFAULT_INIT_OUTPUT_LINES,
-      DEFAULT_DEV_OUTPUT_LINE,
-    ]
+  const lines = terminalLines ?? [
+    "$ deessejs init saas-starter",
+    DEFAULT_INIT_OUTPUT_LINES,
+    DEFAULT_DEV_OUTPUT_LINE,
+  ]
 
   if (reduceMotion) {
     return <StaticWorkbench editorHtml={editorHtml} terminalLines={lines} />
@@ -195,17 +194,13 @@ function ExplorerNodeView({
           aria-hidden
           className={cn(
             "size-3 shrink-0",
-            isFolder ? "text-foreground" : "text-muted-foreground",
+            isFolder ? "text-foreground" : "text-muted-foreground"
           )}
         />
         <span>{node.name}</span>
       </div>
       {node.children?.map((child, i) => (
-        <ExplorerNodeView
-          key={child.name + i}
-          node={child}
-          depth={depth + 1}
-        />
+        <ExplorerNodeView key={child.name + i} node={child} depth={depth + 1} />
       ))}
     </m.div>
   )
@@ -260,7 +255,7 @@ function EditorTabs({
               "group/tab h-auto rounded-none! border-r border-border px-4 py-2 font-mono text-label-12 hover:bg-accent/40",
               isActive
                 ? "-mb-px border-b border-b-background bg-background text-foreground"
-                : "text-muted-foreground",
+                : "text-muted-foreground"
             )}
           >
             <File aria-hidden className="size-3 shrink-0" />
@@ -297,7 +292,7 @@ function PaneHeader({
 }) {
   return (
     <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
-      <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+      <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
         {title}
       </p>
       {actions ? (
@@ -315,7 +310,7 @@ function TerminalPane({
   const [firstCommand, outputLines, secondCommand] = terminalLines
   return (
     <div className="flex flex-col gap-2 border-t border-border p-4">
-      <p className="flex items-center gap-1.5 text-label-13 uppercase tracking-wider text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-label-13 tracking-wider text-muted-foreground uppercase">
         <TerminalSquare aria-hidden className="size-3" />
         Terminal
       </p>
@@ -431,7 +426,7 @@ function StaticWorkbench({
         <EditorPane editorHtml={editorHtml} />
       </div>
       <div className="flex flex-col gap-2 border-t border-border p-4">
-        <p className="flex items-center gap-1.5 text-label-13 uppercase tracking-wider text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-label-13 tracking-wider text-muted-foreground uppercase">
           <TerminalSquare aria-hidden className="size-3" />
           Terminal
         </p>
@@ -468,17 +463,13 @@ function StaticExplorer({
           aria-hidden
           className={cn(
             "size-3 shrink-0",
-            isFolder ? "text-foreground" : "text-muted-foreground",
+            isFolder ? "text-foreground" : "text-muted-foreground"
           )}
         />
         <span>{node.name}</span>
       </div>
       {node.children?.map((child, i) => (
-        <StaticExplorer
-          key={child.name + i}
-          node={child}
-          depth={depth + 1}
-        />
+        <StaticExplorer key={child.name + i} node={child} depth={depth + 1} />
       ))}
     </div>
   )

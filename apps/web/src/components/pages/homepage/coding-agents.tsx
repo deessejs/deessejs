@@ -44,7 +44,7 @@ export function CodingAgents() {
               key={agent.name}
               className={cn(
                 "border-0 p-0",
-                "border-l border-border first:border-l-0",
+                "border-l border-border first:border-l-0"
               )}
             >
               <a
@@ -54,7 +54,7 @@ export function CodingAgents() {
                 aria-label={`${agent.name}, open the docs.deessejs.com onboarding guide in a new tab`}
                 className="group/card flex h-full items-center justify-center gap-3 p-6 text-copy-14 font-medium text-foreground transition-colors hover:bg-accent/40 lg:p-8"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* oxlint-disable-next-line nextjs/no-img-element */}
                 <img
                   src={`/logos/${agent.logo}.svg`}
                   alt=""

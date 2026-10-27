@@ -15,8 +15,8 @@ import { CLI_FAQ } from "./cli-faq-data"
 export function CliFaqSection() {
   return (
     <div className="grid grid-cols-1 border-t border-border lg:grid-cols-6 lg:divide-x lg:divide-border">
-      <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-2 lg:p-10">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+      <div className="flex flex-col justify-center gap-3 p-6 lg:col-span-2 lg:p-10">
+        <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
           Before you start
         </p>
         <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
@@ -29,7 +29,7 @@ export function CliFaqSection() {
       <Accordion
         type="single"
         collapsible
-        className="lg:col-span-4 border-0 !p-0"
+        className="border-0 !p-0 lg:col-span-4"
       >
         {CLI_FAQ.map((item, idx) => (
           <AccordionItem
@@ -37,10 +37,10 @@ export function CliFaqSection() {
             value={`item-${idx}`}
             className="border-b border-border last:border-b-0"
           >
-            <AccordionTrigger className="px-6 py-5 lg:px-8 text-copy-16 font-medium text-foreground hover:no-underline">
+            <AccordionTrigger className="px-6 py-5 text-copy-16 font-medium text-foreground hover:no-underline lg:px-8">
               {item.question}
             </AccordionTrigger>
-            <AccordionContent className="px-6 pb-5 lg:px-8 text-copy-14 leading-6 text-muted-foreground">
+            <AccordionContent className="px-6 pb-5 text-copy-14 leading-6 text-muted-foreground lg:px-8">
               {item.answer}
             </AccordionContent>
           </AccordionItem>

@@ -1,4 +1,7 @@
-export { useCookieConsentStore, rehydrateCookieConsent } from "./store/cookie-consent"
+export {
+  useCookieConsentStore,
+  rehydrateCookieConsent,
+} from "./store/cookie-consent"
 export type {
   ConsentCategory,
   CookieConsentData,

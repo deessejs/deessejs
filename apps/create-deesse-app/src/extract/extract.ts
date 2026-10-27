@@ -37,7 +37,7 @@ export type ExtractTarballArgs = {
  * The function does NOT call `fs.rmSync` itself.
  */
 export const extractTarball = async (
-  args: ExtractTarballArgs,
+  args: ExtractTarballArgs
 ): Promise<void> => {
   const { tarballPath, tempDir, sha, repo, signal } = args
   const expectedPrefix = `${repo}-${sha}/`

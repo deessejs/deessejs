@@ -12,7 +12,7 @@ const TemplateNotFound = () => {
   return (
     <section className="mx-auto max-w-md px-6 py-24 text-center">
       <h1 className="text-heading-32 tracking-tight">Template not found</h1>
-      <p className="text-copy-16 text-muted-foreground mt-4">
+      <p className="mt-4 text-copy-16 text-muted-foreground">
         The template you requested is not in the catalog. It may have been
         renamed or removed.
       </p>

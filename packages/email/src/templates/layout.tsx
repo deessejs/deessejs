@@ -19,6 +19,8 @@ interface BaseLayoutProps {
   children: ReactNode
 }
 
+const currentYear = new Date().getFullYear()
+
 export function BaseLayout({ preview, children }: BaseLayoutProps) {
   return (
     <Html lang="en">
@@ -48,7 +50,7 @@ export function BaseLayout({ preview, children }: BaseLayoutProps) {
             <Hr className="my-4 border-gray-200" />
             <Section>
               <Text className="text-xs text-gray-500">
-                © {new Date().getFullYear()} DeesseJS. All rights reserved.
+                © {currentYear} DeesseJS. All rights reserved.
               </Text>
             </Section>
           </Container>

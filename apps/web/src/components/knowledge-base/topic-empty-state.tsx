@@ -24,12 +24,12 @@ export function TopicEmptyState({
 }) {
   return (
     <div className="border border-dashed border-border bg-background p-6 text-center sm:p-8">
-      <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+      <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
         No guides in {topicTitle} yet
       </p>
-      <p className="mt-3 max-w-md mx-auto text-pretty text-sm text-muted-foreground">
-        We are still drafting content for this topic. Check back soon, or
-        browse the rest of the knowledge base.
+      <p className="mx-auto mt-3 max-w-md text-sm text-pretty text-muted-foreground">
+        We are still drafting content for this topic. Check back soon, or browse
+        the rest of the knowledge base.
       </p>
       {action ? <div className="mt-4">{action}</div> : null}
     </div>

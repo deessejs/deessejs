@@ -1,7 +1,12 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Clock } from "lucide-react"
-import { Card, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
 import type { Post } from "@/lib/blog/types"
 
 import { AuthorAvatarLink } from "./author-avatar"
@@ -27,13 +32,23 @@ import { TagList } from "./tag-list"
 // the title size, the cover treatment, and the hover behaviour are
 // uniform across the catalog — so the prop is read by the type
 // signature only and intentionally not consumed here.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function PostCard({ post, featured }: { post: Post; featured?: boolean }) {
+export function PostCard({
+  post,
+  // oxlint-disable-next-line no-unused-vars
+  featured,
+}: {
+  post: Post
+  featured?: boolean
+}) {
   const hasCover = Boolean(post.cover)
-  const authors = post.authors?.length ? post.authors : post.author ? [post.author] : []
+  const authors = post.authors?.length
+    ? post.authors
+    : post.author
+      ? [post.author]
+      : []
 
   return (
-    <Card className="group relative flex h-full flex-col overflow-hidden rounded-none border-0 ring-0 bg-background transition-colors hover:bg-accent/30">
+    <Card className="group relative flex h-full flex-col overflow-hidden rounded-none border-0 bg-background ring-0 transition-colors hover:bg-accent/30">
       {hasCover ? (
         <div className="relative block aspect-video w-full overflow-hidden bg-muted">
           <Image
@@ -63,7 +78,7 @@ export function PostCard({ post, featured }: { post: Post; featured?: boolean })
             </>
           ) : null}
         </div>
-        <CardTitle className="mt-1 text-balance text-2xl tracking-tight">
+        <CardTitle className="mt-1 text-2xl tracking-tight text-balance">
           {post.title}
         </CardTitle>
         <CardDescription className="mt-2 line-clamp-3 text-sm text-muted-foreground">
@@ -75,10 +90,7 @@ export function PostCard({ post, featured }: { post: Post; featured?: boolean })
         <div className="flex items-center justify-between gap-3">
           <div className="relative z-10 flex flex-wrap items-center gap-x-3 gap-y-1">
             {authors.map((a) => (
-              <span
-                key={a.handle}
-                className="inline-flex items-center gap-2"
-              >
+              <span key={a.handle} className="inline-flex items-center gap-2">
                 <AuthorAvatarLink author={a} size={20} asLink={false} />
                 <span className="text-xs text-foreground">{a.name}</span>
                 {a.role ? (

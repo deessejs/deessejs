@@ -29,7 +29,9 @@ import {
 } from "./helpers/selectors.js"
 
 test.describe("Session-aware header", () => {
-  test("anonymous visitor on / sees Log in and Get started", async ({ page }) => {
+  test("anonymous visitor on / sees Log in and Get started", async ({
+    page,
+  }) => {
     await page.goto("/")
 
     // The right-side header control is always present (the

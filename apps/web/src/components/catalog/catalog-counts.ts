@@ -25,7 +25,7 @@
  */
 export function calculateCatalogCounts<Id extends string, Item>(
   items: ReadonlyArray<Item>,
-  getCategoryId: (item: Item) => Id,
+  getCategoryId: (item: Item) => Id
 ): Record<Id, number> {
   const counts = {} as Record<Id, number>
   for (const item of items) {

@@ -42,15 +42,15 @@
 
 ## What's included
 
-| Layer | What you get | Why it matters |
-|---|---|---|
-| **Apps** | `apps/web` (marketing), `apps/app` (authenticated product), `apps/docs` (Fumadocs) | Three deployable surfaces, each with its own purpose. |
-| **Auth** | `packages/auth` (server-side Better Auth configuration and plugins), accessed by applications through configured auth clients and API endpoints | Production auth flows with email verification and password reset. |
-| **API** | Hono and oRPC in `packages/api` | Type-safe RPC without GraphQL. |
-| **Database** | Drizzle ORM, Postgres and pg-mem in `packages/database` | Single source of truth for schema; tests run without a DB. |
-| **UI** | `packages/ui` ( shadcn/ui + Tailwind v4, centralized design tokens | One component library, every app reuses it. |
-| **Tooling** | pnpm 11 workspaces, Turbo v2, strict catalogs, shared ESLint + TS configs | One command rebuilds, lints, types, tests the whole monorepo. |
-| **Organizations** | Better Auth organization plugin, organization/member/invitation schema and invitation delivery | Organization support is wired in; the member-management UI is not shipped yet. |
+| Layer             | What you get                                                                                                                                    | Why it matters                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **Apps**          | `apps/web` (marketing), `apps/app` (authenticated product), `apps/docs` (Fumadocs)                                                              | Three deployable surfaces, each with its own purpose.                          |
+| **Auth**          | `packages/auth` (server-side Better Auth configuration and plugins), accessed by applications through configured auth clients and API endpoints | Production auth flows with email verification and password reset.              |
+| **API**           | Hono and oRPC in `packages/api`                                                                                                                 | Type-safe RPC without GraphQL.                                                 |
+| **Database**      | Drizzle ORM, Postgres and pg-mem in `packages/database`                                                                                         | Single source of truth for schema; tests run without a DB.                     |
+| **UI**            | `packages/ui` ( shadcn/ui + Tailwind v4, centralized design tokens                                                                              | One component library, every app reuses it.                                    |
+| **Tooling**       | pnpm 11 workspaces, Turbo v2, strict catalogs, shared Oxlint + TS configs                                                                       | One command rebuilds, lints, types, tests the whole monorepo.                  |
+| **Organizations** | Better Auth organization plugin, organization/member/invitation schema and invitation delivery                                                  | Organization support is wired in; the member-management UI is not shipped yet. |
 
 ## Why this stack
 
@@ -96,34 +96,34 @@ Each app's default port is in its own `README.md` (under `apps/*/`). `apps/app` 
 
 ## Available commands
 
-| Command | What it does |
-|---|---|
-| `pnpm dev` | Start every app in dev mode |
-| `pnpm build` | Build every workspace |
-| `pnpm lint` | Lint every workspace |
-| `pnpm typecheck` | Type-check every workspace |
-| `pnpm test` | Run unit tests (pg-mem, no DB needed) |
-| `pnpm db:generate` | Diff schema → write SQL migration |
-| `pnpm db:migrate` | Apply pending migrations |
-| `pnpm db:push` | Sync schema directly (dev only. Never in prod) |
-| `pnpm db:studio` | Open Drizzle Studio in the browser |
+| Command              | What it does                                                            |
+| -------------------- | ----------------------------------------------------------------------- |
+| `pnpm dev`           | Start every app in dev mode                                             |
+| `pnpm build`         | Build every workspace                                                   |
+| `pnpm lint`          | Lint every workspace                                                    |
+| `pnpm typecheck`     | Type-check every workspace                                              |
+| `pnpm test`          | Run unit tests (pg-mem, no DB needed)                                   |
+| `pnpm db:generate`   | Diff schema → write SQL migration                                       |
+| `pnpm db:migrate`    | Apply pending migrations                                                |
+| `pnpm db:push`       | Sync schema directly (dev only. Never in prod)                          |
+| `pnpm db:studio`     | Open Drizzle Studio in the browser                                      |
 | `pnpm auth:generate` | Regenerate Better Auth schema in `packages/database/src/schema/auth.ts` |
-| `pnpm env:check` | Validate that all required env vars are present |
-| `pnpm dedupe:check` | Detect duplicated dependencies |
+| `pnpm env:check`     | Validate that all required env vars are present                         |
+| `pnpm dedupe:check`  | Detect duplicated dependencies                                          |
 
 ## Environment variables
 
-| Variable | Required | Where | Purpose |
-|---|---|---|---|
-| `BETTER_AUTH_URL` | Yes | server | Public URL where auth runs |
-| `BETTER_AUTH_SECRET` | Yes | server | Min 32 chars. Generate: `openssl rand -base64 32` |
-| `DATABASE_URL` | Yes | server | Postgres connection string |
-| `ALLOWED_ORIGINS` | No | server | CSV of trusted origins for CSRF |
-| `MAIL_TRANSPORT` | No | server | `console` (default) or `resend` |
-| `RESEND_API_KEY` | Prod only | server | Required when `MAIL_TRANSPORT=resend` |
-| `RESEND_FROM_EMAIL` | Prod only | server | Verified sender on Resend |
-| `NEXT_PUBLIC_APP_NAME` | No | client | Marketing site brand |
-| `NEXT_PUBLIC_APP_URL` | No | client | Public URL of `apps/app` |
+| Variable               | Required  | Where  | Purpose                                           |
+| ---------------------- | --------- | ------ | ------------------------------------------------- |
+| `BETTER_AUTH_URL`      | Yes       | server | Public URL where auth runs                        |
+| `BETTER_AUTH_SECRET`   | Yes       | server | Min 32 chars. Generate: `openssl rand -base64 32` |
+| `DATABASE_URL`         | Yes       | server | Postgres connection string                        |
+| `ALLOWED_ORIGINS`      | No        | server | CSV of trusted origins for CSRF                   |
+| `MAIL_TRANSPORT`       | No        | server | `console` (default) or `resend`                   |
+| `RESEND_API_KEY`       | Prod only | server | Required when `MAIL_TRANSPORT=resend`             |
+| `RESEND_FROM_EMAIL`    | Prod only | server | Verified sender on Resend                         |
+| `NEXT_PUBLIC_APP_NAME` | No        | client | Marketing site brand                              |
+| `NEXT_PUBLIC_APP_URL`  | No        | client | Public URL of `apps/app`                          |
 
 Copy `.env.example` to `.env.local` to start; defaults work for local Docker Postgres.
 
@@ -131,6 +131,8 @@ Copy `.env.example` to `.env.local` to start; defaults work for local Docker Pos
 
 ```
 .
+├── .oxlintrc.json  # Oxlint rules
+├── .oxfmtrc.json   # Oxfmt style
 ├── apps/
 │   ├── web/        # Next.js 16 (marketing site) (public, no auth)
 │   ├── app/        # Next.js 16 (authenticated product) (proxy.ts guard)
@@ -144,7 +146,6 @@ Copy `.env.example` to `.env.local` to start; defaults work for local Docker Pos
 │   ├── env/        # Zod-validated env (server + client)
 │   ├── cookies/    # Cookie consent UI
 │   ├── utils/      # General utilities
-│   ├── eslint-config/
 │   └── typescript-config/
 ├── pnpm-workspace.yaml  # catalogs (strict)
 ├── turbo.json           # pipelines
@@ -159,10 +160,10 @@ Click the **Deploy with Vercel** button at the top. The monorepo is detected aut
 
 ### Per-app mapping
 
-| App | Production URL |
-|---|---|
-| `apps/web` | `https://yourdomain.com` |
-| `apps/app` | `https://app.yourdomain.com` |
+| App         | Production URL                |
+| ----------- | ----------------------------- |
+| `apps/web`  | `https://yourdomain.com`      |
+| `apps/app`  | `https://app.yourdomain.com`  |
 | `apps/docs` | `https://docs.yourdomain.com` |
 
 ## Organizations

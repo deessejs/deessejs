@@ -69,10 +69,7 @@ const CLI_START_TABS: ReadonlyArray<CliStartTab> = [
 export function CliStartTabs({
   htmlBySlug,
 }: {
-  htmlBySlug: Record<
-    CliStartSlug,
-    { tabName: string; html: string }[]
-  >
+  htmlBySlug: Record<CliStartSlug, { tabName: string; html: string }[]>
 }) {
   const firstSlug = CLI_START_TABS[0]?.slug ?? "install"
 
@@ -84,7 +81,7 @@ export function CliStartTabs({
     >
       <TabsList
         aria-label="Get started"
-        className="flex flex-col divide-y divide-border border-b border-border lg:border-b-0 lg:border-r bg-transparent p-0 h-auto w-full rounded-none!"
+        className="flex h-auto w-full flex-col divide-y divide-border rounded-none! border-b border-border bg-transparent p-0 lg:border-r lg:border-b-0"
       >
         {CLI_START_TABS.map((tab) => {
           return (
@@ -92,19 +89,19 @@ export function CliStartTabs({
               key={tab.slug}
               value={tab.slug}
               className={cn(
-                "group flex flex-col items-start gap-2 rounded-none bg-transparent p-6 text-left h-auto w-full shadow-none border-0",
-                "text-foreground/60 hover:text-foreground hover:bg-accent/40",
+                "group flex h-auto w-full flex-col items-start gap-2 rounded-none border-0 bg-transparent p-6 text-left shadow-none",
+                "text-foreground/60 hover:bg-accent/40 hover:text-foreground",
                 "data-[state=active]:bg-accent/40 data-[state=active]:text-foreground",
-                "[&:after]:hidden",
+                "[&:after]:hidden"
               )}
             >
-              <h3 className="text-heading-20 tracking-tight !m-0">
+              <h3 className="!m-0 text-heading-20 tracking-tight">
                 {tab.name}
               </h3>
-              <p className="text-copy-14 text-muted-foreground leading-6 !m-0 text-balance">
+              <p className="!m-0 text-copy-14 leading-6 text-balance text-muted-foreground">
                 {tab.description}
               </p>
-              <span className="inline-flex items-center gap-1 text-label-13 text-foreground pt-1">
+              <span className="inline-flex items-center gap-1 pt-1 text-label-13 text-foreground">
                 View command
                 <ArrowRight className="size-3" aria-hidden />
               </span>
@@ -117,13 +114,10 @@ export function CliStartTabs({
         <TabsContent
           key={tab.slug}
           value={tab.slug}
-          className="relative outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden p-0"
+          className="relative mt-0 min-h-[320px] overflow-hidden p-0 outline-none lg:min-h-[480px]"
         >
           <div className="h-full w-full p-6">
-            <CliStartMockup
-              slug={tab.slug}
-              files={htmlBySlug[tab.slug]}
-            />
+            <CliStartMockup slug={tab.slug} files={htmlBySlug[tab.slug]} />
           </div>
         </TabsContent>
       ))}

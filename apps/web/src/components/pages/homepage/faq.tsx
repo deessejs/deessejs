@@ -26,9 +26,9 @@ export function FAQ() {
         <AccordionItem
           key={item.value}
           value={item.value}
-          className="last:border-b-0 border-b border-border py-4 first:pt-0"
+          className="border-b border-border py-4 first:pt-0 last:border-b-0"
         >
-          <AccordionTrigger className="text-left no-underline hover:no-underline py-0 text-base font-medium">
+          <AccordionTrigger className="py-0 text-left text-base font-medium no-underline hover:no-underline">
             {item.question}
           </AccordionTrigger>
           <AccordionContent>{item.answer}</AccordionContent>

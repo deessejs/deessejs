@@ -47,15 +47,15 @@ function getServerEnv(): Readonly<ServerEnv> {
     runtimeEnv: snapshot,
     emptyStringAsUndefined: true,
     onValidationError: (issues) => {
-      // eslint-disable-next-line no-console
+      // oxlint-disable-next-line no-console
       console.error("\n[env] Invalid environment variables:")
       for (const issue of issues) {
-        // eslint-disable-next-line no-console
+        // oxlint-disable-next-line no-console
         console.error(
           `  - ${issue.path?.join(".") ?? "(root)"}: ${issue.message}`
         )
       }
-      // eslint-disable-next-line no-console
+      // oxlint-disable-next-line no-console
       console.error(
         "\nCopy .env.example to .env at the repo root and fill in the values.\n"
       )

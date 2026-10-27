@@ -52,7 +52,7 @@ describe("recoveryCommandForReRun", () => {
       defaultDir: defaultDirFor("my-app"),
     })
     expect(cmd).toBe(
-      "create-deesse-app@latest my-app --dir /tmp/custom --no-install",
+      "create-deesse-app@latest my-app --dir /tmp/custom --no-install"
     )
   })
 

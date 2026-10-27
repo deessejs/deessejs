@@ -13,11 +13,15 @@ beforeEach(() => {
   stdoutChunks = []
   stderrChunks = []
   process.stdout.write = ((chunk: string | Uint8Array): boolean => {
-    stdoutChunks.push(typeof chunk === "string" ? chunk : chunk.toString("utf8"))
+    stdoutChunks.push(
+      typeof chunk === "string" ? chunk : chunk.toString("utf8")
+    )
     return true
   }) as typeof process.stdout.write
   process.stderr.write = ((chunk: string | Uint8Array): boolean => {
-    stderrChunks.push(typeof chunk === "string" ? chunk : chunk.toString("utf8"))
+    stderrChunks.push(
+      typeof chunk === "string" ? chunk : chunk.toString("utf8")
+    )
     return true
   }) as typeof process.stderr.write
 })

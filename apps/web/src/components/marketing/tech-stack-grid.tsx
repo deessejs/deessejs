@@ -46,8 +46,7 @@ const TRANSITION_MS = 0.35
 
 function randomCycleMs() {
   return (
-    MIN_CYCLE_MS +
-    Math.floor(Math.random() * (MAX_CYCLE_MS - MIN_CYCLE_MS))
+    MIN_CYCLE_MS + Math.floor(Math.random() * (MAX_CYCLE_MS - MIN_CYCLE_MS))
   )
 }
 
@@ -98,7 +97,7 @@ export function TechStackGrid({
     // intended pattern: we want the initial state to reflect the OS
     // preference on mount. Cascading setState is acceptable here
     // because nothing else has rendered yet.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // oxlint-disable-next-line react/set-state-in-effect
     setReducedMotion(mql.matches)
     const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
     mql.addEventListener("change", onChange)
@@ -138,12 +137,11 @@ export function TechStackGrid({
     }
   }, [techs, reducedMotion])
 
-
   return (
     <div
       className={cn(
         "grid grid-cols-2 gap-px bg-border sm:grid-cols-4 xl:grid-cols-8",
-        className,
+        className
       )}
     >
       {techs.map((slot, slotIdx) => {
@@ -151,7 +149,7 @@ export function TechStackGrid({
         return (
           <div
             key={slotIdx}
-            className="group relative flex h-20 items-center justify-center gap-2 bg-background px-4 py-6 text-copy-13 text-muted-foreground transition-colors hover:bg-accent/40 overflow-hidden"
+            className="group relative flex h-20 items-center justify-center gap-2 overflow-hidden bg-background px-4 py-6 text-copy-13 text-muted-foreground transition-colors hover:bg-accent/40"
           >
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
@@ -165,7 +163,7 @@ export function TechStackGrid({
                 }}
                 className="flex items-center justify-center gap-2"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* oxlint-disable-next-line nextjs/no-img-element */}
                 <img
                   src={`/logos/${tech.logo}.svg`}
                   alt=""

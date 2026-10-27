@@ -30,19 +30,18 @@ export function Intake() {
   return (
     <div
       id="intake"
-      className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,520px)] divide-y divide-border md:divide-y-0 md:divide-x divide-border border-b border-border"
+      className="grid grid-cols-1 divide-y divide-border border-b border-border md:grid-cols-[minmax(0,1fr)_minmax(0,520px)] md:divide-x md:divide-y-0"
     >
       <Cell className="gap-4 lg:!p-10">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
           Intake
         </p>
-        <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
+        <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40 [&:not(:first-child)]:mt-0">
           Tell us what you are building.
         </h2>
-        <p className="text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-          Five fields, zero sales friction. Submitting immediately
-          opens our engineering calendar to pick a 20-minute
-          technical scoping call.
+        <p className="text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+          Five fields, zero sales friction. Submitting immediately opens our
+          engineering calendar to pick a 20-minute technical scoping call.
         </p>
         <ul className="flex flex-col gap-2 text-copy-13 text-muted-foreground">
           {INTAKE_NOTES.map((note) => (
@@ -55,7 +54,7 @@ export function Intake() {
           ))}
         </ul>
       </Cell>
-      <Cell className="lg:!p-10 md:sticky md:top-20 md:self-start">
+      <Cell className="md:sticky md:top-20 md:self-start lg:!p-10">
         <IntakeForm />
       </Cell>
     </div>

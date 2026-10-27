@@ -4,7 +4,7 @@ import { PasswordInput } from "./password-input"
 
 type FieldProps = {
 	// Loose typing — all auth forms use string-only fields, so this is safe.
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// oxlint-disable-next-line typescript/no-explicit-any
 	form: any
 	name: string
 	label: string
@@ -17,7 +17,7 @@ export function Field({ form, name, label, type = "text", autoComplete, autoFocu
 	return (
 		<form.Field name={name}>
 			{
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				// oxlint-disable-next-line typescript/no-explicit-any
 				(field: any) => (
 					<div className="flex flex-col gap-2">
 						<label htmlFor={field.name} className="text-sm font-medium">
@@ -34,7 +34,7 @@ export function Field({ form, name, label, type = "text", autoComplete, autoFocu
 							aria-invalid={!!field.state.meta.errors.length}
 						/>
 						{field.state.meta.errors.map(
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							// oxlint-disable-next-line typescript/no-explicit-any
 							(err: any) => (
 								<p key={err?.message} className="text-sm text-destructive" role="alert">
 									{err?.message}
@@ -49,7 +49,7 @@ export function Field({ form, name, label, type = "text", autoComplete, autoFocu
 }
 
 type PasswordFieldProps = {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// oxlint-disable-next-line typescript/no-explicit-any
 	form: any
 	name: string
 	label: string
@@ -62,7 +62,7 @@ export function PasswordField({ form, name, label, autoComplete, labelAside, chi
 	return (
 		<form.Field name={name}>
 			{
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				// oxlint-disable-next-line typescript/no-explicit-any
 				(field: any) => (
 					<div className="flex flex-col gap-2">
 						<div className="flex items-center justify-between">
@@ -81,7 +81,7 @@ export function PasswordField({ form, name, label, autoComplete, labelAside, chi
 						/>
 						{children?.(field.state.value)}
 						{field.state.meta.errors.map(
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							// oxlint-disable-next-line typescript/no-explicit-any
 							(err: any) => (
 								<p key={err?.message} className="text-sm text-destructive" role="alert">
 									{err?.message}

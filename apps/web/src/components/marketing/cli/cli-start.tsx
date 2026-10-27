@@ -4,10 +4,7 @@ import { Section } from "@/components/marketing/section"
 import { SectionHeader } from "@/components/marketing/section-header"
 
 import { CliStartTabs } from "./cli-start-tabs"
-import {
-  CLI_START_SNIPPETS,
-  type CliStartSlug,
-} from "./cli-start-snippets"
+import { CLI_START_SNIPPETS, type CliStartSlug } from "./cli-start-snippets"
 
 /**
  * The "Get started" section. Same visual rhythm as the homepage
@@ -43,9 +40,9 @@ export async function CliStart({ id }: { id?: string } = {}) {
           defaultColor: false,
         }).then((html) => {
           htmlBySlug[slug].push({ tabName: file.tabName, html })
-        }),
-      ),
-    ),
+        })
+      )
+    )
   )
 
   return (

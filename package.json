@@ -20,29 +20,31 @@
     "complex:collect": "node --experimental-strip-types scripts/complexity-collect.ts",
     "complex:report": "node --experimental-strip-types scripts/complexity-report.ts"
   },
+  "dependencies": {
+    "@tanstack/react-form": "catalog:"
+  },
   "devDependencies": {
     "@changesets/changelog-git": "catalog:",
     "@changesets/cli": "catalog:",
-    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
+    "eslint-plugin-sonarjs": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-plugin-eslint": "catalog:",
     "pkg-pr-new": "catalog:",
-    "prettier": "^3.9.4",
-    "prettier-plugin-tailwindcss": "^0.8.0",
+    "ts-api-utils": "catalog:",
     "turbo": "^2.10.4",
     "typescript": "catalog:",
     "zod": "catalog:"
   },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@11.0.0",
   "pnpm": {
     "overrides": {
       "@types/react": "^19.2.17",
       "@types/react-dom": "^19.2.3"
     }
-  },
-  "packageManager": "pnpm@11.0.0",
-  "engines": {
-    "node": ">=22.12.0"
-  },
-  "dependencies": {
-    "@tanstack/react-form": "catalog:"
   }
 }

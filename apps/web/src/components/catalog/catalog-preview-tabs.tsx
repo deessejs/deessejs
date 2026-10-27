@@ -115,7 +115,7 @@ export function CatalogPreviewTabs({
       </div>
       <TabsContent
         value="preview"
-        className="mt-4 border border-border bg-background rounded-none"
+        className="mt-4 rounded-none border border-border bg-background"
       >
         {preview}
       </TabsContent>

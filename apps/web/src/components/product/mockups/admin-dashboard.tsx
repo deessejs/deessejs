@@ -57,7 +57,7 @@ export function AdminDashboardMockup() {
               transition={{ delay: 0.1 + i * 0.1, duration: 0.3 }}
               className="flex flex-col gap-1 p-4"
             >
-              <span className="text-label-12 uppercase tracking-wider text-muted-foreground">
+              <span className="text-label-12 tracking-wider text-muted-foreground uppercase">
                 {kpi.label}
               </span>
               <span className="text-heading-20 font-medium tracking-tight text-foreground">
@@ -72,7 +72,7 @@ export function AdminDashboardMockup() {
 
         {/* Users table */}
         <div className="flex flex-col">
-          <div className="flex items-center justify-between px-4 py-2 text-label-12 uppercase tracking-wider text-muted-foreground">
+          <div className="flex items-center justify-between px-4 py-2 text-label-12 tracking-wider text-muted-foreground uppercase">
             <span>Users</span>
             <span className="font-mono">{USERS.length} rows</span>
           </div>

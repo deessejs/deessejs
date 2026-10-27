@@ -29,15 +29,13 @@ type PkgJson = { packageManager?: string }
  * staging tempdir) call this helper. The contract is the
  * same: a directory containing the renamed `package.json`.
  */
-export const readGeneratedPnpmVersion = (
-  packageJsonDir: string,
-): string => {
+export const readGeneratedPnpmVersion = (packageJsonDir: string): string => {
   const raw = readFileSync(join(packageJsonDir, "package.json"), "utf8")
   const parsed = JSON.parse(raw) as PkgJson
   const field = parsed.packageManager
   if (typeof field !== "string" || field.length === 0) {
     throw sourceFailed(
-      "generated project's package.json has no packageManager field",
+      "generated project's package.json has no packageManager field"
     )
   }
   // Accept "pnpm@<version>" with the standard semver core
@@ -83,7 +81,7 @@ export const readGeneratedPnpmVersion = (
   const m = new RegExp(`^pnpm@(\\d+\\.\\d+\\.\\d+${semverSuffix})$`).exec(field)
   if (!m || m[1] === undefined) {
     throw sourceFailed(
-      `generated project's packageManager field is "${field}"; expected "pnpm@<version>"`,
+      `generated project's packageManager field is "${field}"; expected "pnpm@<version>"`
     )
   }
   return m[1]

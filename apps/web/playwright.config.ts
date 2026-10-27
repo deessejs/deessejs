@@ -17,7 +17,7 @@ const BYPASS_SECRET = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
 
 if (process.env.BASE_URL && !BYPASS_SECRET) {
   throw new Error(
-    "VERCEL_AUTOMATION_BYPASS_SECRET is required to run tests against protected deployments.",
+    "VERCEL_AUTOMATION_BYPASS_SECRET is required to run tests against protected deployments."
   )
 }
 

@@ -16,7 +16,7 @@ import { allKbGuides } from "content-collections"
 
 export function getRelatedGuides(
   slug: string,
-  limit = 3,
+  limit = 3
 ): Array<{
   slug: string
   title: string

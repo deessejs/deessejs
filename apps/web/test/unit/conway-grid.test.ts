@@ -180,7 +180,9 @@ describe("pickInjection", () => {
     const pick = pickInjection(grid, 30, 12, rng)
     expect(pick).not.toBeNull()
     if (!pick) return
-    expect(canPlaceEmpty(grid, 30, 12, pick.x, pick.y, pick.pattern, 2)).toBe(true)
+    expect(canPlaceEmpty(grid, 30, 12, pick.x, pick.y, pick.pattern, 2)).toBe(
+      true
+    )
   })
 
   it("the picker visits all three patterns within 1000 deterministic draws", () => {
@@ -462,8 +464,24 @@ describe("pointerToCell", () => {
   })
 
   it("returns null when the rectangle has zero width or height", () => {
-    expect(pointerToCell(100, 200, { left: 100, top: 200, width: 0, height: 80 }, 5, 5)).toBeNull()
-    expect(pointerToCell(100, 200, { left: 100, top: 200, width: 160, height: 0 }, 5, 5)).toBeNull()
+    expect(
+      pointerToCell(
+        100,
+        200,
+        { left: 100, top: 200, width: 0, height: 80 },
+        5,
+        5
+      )
+    ).toBeNull()
+    expect(
+      pointerToCell(
+        100,
+        200,
+        { left: 100, top: 200, width: 160, height: 0 },
+        5,
+        5
+      )
+    ).toBeNull()
   })
 
   it("returns null for a pointer outside the rectangle", () => {

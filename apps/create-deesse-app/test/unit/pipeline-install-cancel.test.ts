@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -45,7 +51,7 @@ const buildFixtureTarball = (): { tarPath: string; stageDir: string } => {
   writeFileSync(join(inner, "LICENSE"), "MIT")
   writeFileSync(
     join(inner, "package.json"),
-    '{"name":"next-monorepo","packageManager":"pnpm@11.0.0"}',
+    '{"name":"next-monorepo","packageManager":"pnpm@11.0.0"}'
   )
   const tarPath = join(stageDir, "fixture.tgz")
   tar.c({ gzip: true, file: tarPath, cwd: stageDir, sync: true }, [PREFIX_DIR])

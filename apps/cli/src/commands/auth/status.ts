@@ -31,77 +31,77 @@ import { printJson } from "../../output/index.js"
 type StoredUser = StoredAuth["user"]
 
 const formatStored = (stored: StoredAuth): string => {
-	const userBits: string[] = []
-	if (stored.user.email) userBits.push(stored.user.email)
-	if (stored.user.name) userBits.push(stored.user.name)
-	if (stored.user.id) userBits.push(`(${stored.user.id})`)
-	const who = userBits.length > 0 ? userBits.join(" ") : "unknown user"
-	const when = new Date(stored.fetchedAt).toLocaleString()
-	return `${who} — token fetched ${when}`
+  const userBits: string[] = []
+  if (stored.user.email) userBits.push(stored.user.email)
+  if (stored.user.name) userBits.push(stored.user.name)
+  if (stored.user.id) userBits.push(`(${stored.user.id})`)
+  const who = userBits.length > 0 ? userBits.join(" ") : "unknown user"
+  const when = new Date(stored.fetchedAt).toLocaleString()
+  return `${who} — token fetched ${when}`
 }
 
 const validateSession = async (
-	accessToken: string,
+  accessToken: string
 ): Promise<StoredUser | null> => {
-	const res = await bearerFetch("get-session", accessToken, { method: "GET" })
-	if (res.status !== 200) return null
-	const body = (await res.json()) as { user?: StoredUser } | null
-	return body?.user ?? null
+  const res = await bearerFetch("get-session", accessToken, { method: "GET" })
+  if (res.status !== 200) return null
+  const body = (await res.json()) as { user?: StoredUser } | null
+  return body?.user ?? null
 }
 
 export const statusCommand = new Command("status")
-	.description("Show the current CLI auth session")
-	.option("--json", "JSON output for scripting")
-	.action(async (opts: { json?: boolean }) => {
-		const stored = readAuth()
-		if (!stored) {
-			if (opts.json) {
-				printJson({ ok: false, reason: "no_session" })
-			} else {
-				console.error(
-					pc.yellow(
-						"no active session. Run `deesse auth login` to authorise this machine.",
-					),
-				)
-			}
-			return
-		}
+  .description("Show the current CLI auth session")
+  .option("--json", "JSON output for scripting")
+  .action(async (opts: { json?: boolean }) => {
+    const stored = readAuth()
+    if (!stored) {
+      if (opts.json) {
+        printJson({ ok: false, reason: "no_session" })
+      } else {
+        console.error(
+          pc.yellow(
+            "no active session. Run `deesse auth login` to authorise this machine."
+          )
+        )
+      }
+      return
+    }
 
-		const spinner = opts.json ? null : ora("Checking session...").start()
-		try {
-			const user = await validateSession(stored.access_token)
-			if (!user) {
-				spinner?.stop()
-				if (opts.json) {
-					printJson({
-						ok: false,
-						reason: "session_invalid",
-						stored: {
-							user: stored.user,
-							fetchedAt: stored.fetchedAt,
-						},
-					})
-				} else {
-					console.log()
-					console.log(
-						pc.yellow(
-							"The stored token no longer matches an active session on the server. Run `deesse auth login` again.",
-						),
-					)
-					console.log(pc.dim(formatStored(stored)))
-				}
-				return
-			}
-			spinner?.stop()
-			if (opts.json) {
-				printJson({ ok: true, user, fetchedAt: stored.fetchedAt })
-			} else {
-				console.log()
-				console.log(pc.green("✓ active session"))
-				console.log(pc.dim(formatStored({ ...stored, user })))
-			}
-		} catch (e) {
-			spinner?.stop()
-			throw internal(e instanceof Error ? e.message : String(e))
-		}
-	})
+    const spinner = opts.json ? null : ora("Checking session...").start()
+    try {
+      const user = await validateSession(stored.access_token)
+      if (!user) {
+        spinner?.stop()
+        if (opts.json) {
+          printJson({
+            ok: false,
+            reason: "session_invalid",
+            stored: {
+              user: stored.user,
+              fetchedAt: stored.fetchedAt,
+            },
+          })
+        } else {
+          console.log()
+          console.log(
+            pc.yellow(
+              "The stored token no longer matches an active session on the server. Run `deesse auth login` again."
+            )
+          )
+          console.log(pc.dim(formatStored(stored)))
+        }
+        return
+      }
+      spinner?.stop()
+      if (opts.json) {
+        printJson({ ok: true, user, fetchedAt: stored.fetchedAt })
+      } else {
+        console.log()
+        console.log(pc.green("✓ active session"))
+        console.log(pc.dim(formatStored({ ...stored, user })))
+      }
+    } catch (e) {
+      spinner?.stop()
+      throw internal(e instanceof Error ? e.message : String(e))
+    }
+  })

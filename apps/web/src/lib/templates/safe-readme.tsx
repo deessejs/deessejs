@@ -1,7 +1,9 @@
 import { isValidElement } from "react"
 import type { Components, Options } from "react-markdown"
 
-import rehypePrettyCode, { type Options as CodeOptions } from "rehype-pretty-code"
+import rehypePrettyCode, {
+  type Options as CodeOptions,
+} from "rehype-pretty-code"
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize"
 import remarkGfm from "remark-gfm"
 
@@ -82,7 +84,7 @@ type TreeElement = { props?: { children?: unknown } }
  */
 export const collectStrings = (
   node: unknown,
-  isTreeElement: (value: unknown) => value is TreeElement,
+  isTreeElement: (value: unknown) => value is TreeElement
 ): string => {
   if (node == null || typeof node === "boolean") return ""
   if (typeof node === "string" || typeof node === "number") return String(node)
@@ -127,12 +129,7 @@ const codeblockOptions: CodeOptions = {
 
 const components: Components = {
   a: ({ href, children, ...rest }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      {...rest}
-    >
+    <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
       {children}
     </a>
   ),
@@ -144,7 +141,7 @@ const components: Components = {
   // Cell-level styling (padding, borders, alignment) lives in Prose via
   // Tailwind arbitrary variants — we do not re-style here.
   table: ({ children }) => (
-    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0 my-6">
+    <div className="-mx-4 my-6 overflow-x-auto px-4 sm:mx-0 sm:px-0">
       {children}
     </div>
   ),
@@ -159,7 +156,7 @@ const components: Components = {
     return (
       <div className="group/codeblock relative">
         <pre {...rest}>{children}</pre>
-        <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover/codeblock:opacity-100">
+        <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover/codeblock:opacity-100">
           <CopyButton
             value={codeText}
             variant="ghost"

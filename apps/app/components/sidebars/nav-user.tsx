@@ -45,7 +45,7 @@ export function NavUser() {
 	// React's rules. The audit §3.5 bug was calling useSession() inside an
 	// async callback (useCallback body), which IS a violation. Here at
 	// top-level, useSession() is correct.
-	// eslint-disable-next-line no-restricted-syntax
+	// oxlint-disable-next-line eslint-js/no-restricted-syntax
 	const { data: session } = authClient.useSession()
 	const [loggingOut, setLoggingOut] = useState(false)
 	const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)

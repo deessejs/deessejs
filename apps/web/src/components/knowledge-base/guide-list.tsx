@@ -52,9 +52,7 @@ export function GuideList({
     const matchTag = (guide: GuideListItem) =>
       tagFilter === "__all__" || guide.products.includes(tagFilter)
 
-    return guides.filter(
-      (guide) => matchText(guide) && matchTag(guide),
-    )
+    return guides.filter((guide) => matchText(guide) && matchTag(guide))
   }, [guides, deferred, tagFilter])
 
   const hasFilters = query.length > 0 || tagFilter !== "__all__"
@@ -62,9 +60,9 @@ export function GuideList({
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between border-y border-border">
+      <div className="flex flex-col gap-3 border-y border-border p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
             Filter
           </span>
           <Select value={tagFilter} onValueChange={setTagFilter}>
@@ -84,7 +82,7 @@ export function GuideList({
 
         <div className="relative w-full sm:max-w-sm">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
           />
           <Input
@@ -93,7 +91,7 @@ export function GuideList({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search guides…"
             aria-label="Search guides"
-            className="pl-9 pr-9"
+            className="pr-9 pl-9"
           />
           {query.length > 0 ? (
             <Button
@@ -102,7 +100,7 @@ export function GuideList({
               size="icon-sm"
               onClick={() => setQuery("")}
               aria-label="Clear search"
-              className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X className="size-4" aria-hidden />
             </Button>
@@ -112,16 +110,16 @@ export function GuideList({
 
       {showEmpty ? (
         <div className="border border-dashed border-border px-6 py-10 text-center">
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+          <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
             No guides match
           </p>
-          <p className="mt-2 text-copy-14 text-muted-foreground text-pretty">
+          <p className="mt-2 text-copy-14 text-pretty text-muted-foreground">
             Try a different keyword or clear the active filters.
           </p>
         </div>
       ) : (
         <ul
-          className="m-0 flex flex-col list-none divide-y divide-border p-0"
+          className="m-0 flex list-none flex-col divide-y divide-border p-0"
           data-guide-list-count={filtered.length}
         >
           {filtered.map((guide) => (
@@ -132,7 +130,7 @@ export function GuideList({
                 className="group flex flex-col gap-2 px-6 py-4 transition-colors hover:bg-accent/30 focus-visible:bg-accent/30 focus-visible:outline-none"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-balance text-base font-medium tracking-tight text-foreground underline-offset-4 group-hover:underline">
+                  <span className="text-base font-medium tracking-tight text-balance text-foreground underline-offset-4 group-hover:underline">
                     {guide.title}
                   </span>
                   <div className="flex flex-wrap gap-1.5">
@@ -143,7 +141,7 @@ export function GuideList({
                     ))}
                   </div>
                 </div>
-                <span className="text-copy-14 text-muted-foreground leading-6 text-pretty">
+                <span className="text-copy-14 leading-6 text-pretty text-muted-foreground">
                   {guide.description}
                 </span>
               </Link>

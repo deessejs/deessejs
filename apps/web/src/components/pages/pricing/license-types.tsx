@@ -9,7 +9,7 @@ import { LicenseCell } from "./license-cell"
  */
 export function LicenseTypes() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border-b border-border md:divide-y-0">
+    <div className="grid grid-cols-1 border-b border-border md:grid-cols-2 md:divide-y-0 lg:grid-cols-3">
       {LICENSE_TYPES.map((license, index, arr) => (
         <LicenseCell
           key={license.id}

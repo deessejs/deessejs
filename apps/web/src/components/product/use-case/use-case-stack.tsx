@@ -17,9 +17,7 @@ import { cn } from "@workspace/ui/lib/utils"
  * with siblings through `divide-x divide-y divide-border` on the parent.
  */
 
-type StackItem =
-  | string
-  | { name: string; logo?: string }
+type StackItem = string | { name: string; logo?: string }
 
 const FALLBACK_LOGOS: Record<string, string> = {
   "Next.js": "vercel",
@@ -60,8 +58,8 @@ export function UseCaseStack({
   return (
     <div
       className={cn(
-        "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 divide-x divide-y divide-border",
-        className,
+        "grid grid-cols-2 divide-x divide-y divide-border md:grid-cols-3 lg:grid-cols-4",
+        className
       )}
     >
       {items.map((item) => {
@@ -74,7 +72,7 @@ export function UseCaseStack({
             className="group flex items-center gap-3 p-5 transition-colors hover:bg-accent/40"
           >
             {slug ? (
-              // eslint-disable-next-line @next/next/no-img-element
+              // oxlint-disable-next-line nextjs/no-img-element
               <img
                 src={`/logos/${slug}.svg`}
                 alt=""

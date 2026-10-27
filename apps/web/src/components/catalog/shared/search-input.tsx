@@ -31,12 +31,7 @@ export function SearchInput({
   "aria-label": ariaLabel = "Search",
 }: Props) {
   return (
-    <div
-      className={cn(
-        "relative flex w-full items-center",
-        className,
-      )}
-    >
+    <div className={cn("relative flex w-full items-center", className)}>
       <Search
         className="pointer-events-none absolute left-2.5 size-3.5 text-muted-foreground"
         aria-hidden
@@ -47,7 +42,7 @@ export function SearchInput({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={ariaLabel}
-        className="h-8 w-full pl-7 pr-8 text-sm"
+        className="h-8 w-full pr-8 pl-7 text-sm"
       />
       {value.length > 0 ? (
         <Button

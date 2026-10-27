@@ -54,7 +54,7 @@ const buildFixtureTarball = (): { tarPath: string; stageDir: string } => {
   writeFileSync(join(inner, "LICENSE"), "MIT")
   writeFileSync(
     join(inner, "package.json"),
-    '{"name":"x","packageManager":"pnpm@11.0.0"}',
+    '{"name":"x","packageManager":"pnpm@11.0.0"}'
   )
   const tarPath = join(stageDir, "fixture.tgz")
   tar.c({ gzip: true, file: tarPath, cwd: stageDir, sync: true }, [PREFIX_DIR])
@@ -106,7 +106,7 @@ describe("run() — dry-run cancel handling", () => {
     // BOUNDARY: the destination is not on disk.
     expect(
       (await import("node:fs")).existsSync(dir),
-      "destination must not be created on cancel",
+      "destination must not be created on cancel"
     ).toBe(false)
 
     // BOUNDARY: the staging tempdir is cleaned. The
@@ -114,9 +114,12 @@ describe("run() — dry-run cancel handling", () => {
     // validateAndStage and removes it in the catch arm.
     const siblings = (await import("node:fs")).readdirSync(workRoot)
     const stagingLeftover = siblings.find((n) =>
-      n.toLowerCase().startsWith("my-app-cancel.staging."),
+      n.toLowerCase().startsWith("my-app-cancel.staging.")
     )
-    expect(stagingLeftover, "staging tempdir must be cleaned on cancel").toBeUndefined()
+    expect(
+      stagingLeftover,
+      "staging tempdir must be cleaned on cancel"
+    ).toBeUndefined()
 
     // BOUNDARY: runInstall is never called.
     expect(vi.mocked(runInstall)).not.toHaveBeenCalled()

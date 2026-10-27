@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export default function PrinciplesPage() {
   return (
     <>
-      <div className="mx-auto max-w-5xl px-4 md:px-6 py-16">
+      <div className="mx-auto max-w-5xl px-4 py-16 md:px-6">
         <div className="border-b border-border pb-16 md:pb-20 lg:pb-24">
           <Principles.Hero />
         </div>

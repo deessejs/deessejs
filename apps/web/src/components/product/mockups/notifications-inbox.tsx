@@ -18,25 +18,25 @@
 const ITEMS = [
   {
     title: "New customer signed up",
-    body:  "Hooli upgraded to the Pro plan.",
+    body: "Hooli upgraded to the Pro plan.",
     channel: "in-app",
     severity: "success",
   },
   {
     title: "Invoice paid",
-    body:  "Globex Inc paid invoice #2041 ($640).",
+    body: "Globex Inc paid invoice #2041 ($640).",
     channel: "email",
     severity: "info",
   },
   {
     title: "Quota alert",
-    body:  "Acme Corp hit 80% of API quota.",
+    body: "Acme Corp hit 80% of API quota.",
     channel: "email",
     severity: "warning",
   },
   {
     title: "Weekly digest",
-    body:  "12 new signups, 3 upgrades, 0 cancellations.",
+    body: "12 new signups, 3 upgrades, 0 cancellations.",
     channel: "batch",
     severity: "info",
   },
@@ -44,7 +44,7 @@ const ITEMS = [
 
 const DOT: Record<string, string> = {
   success: "bg-emerald-500",
-  info:    "bg-zinc-400",
+  info: "bg-zinc-400",
   warning: "bg-amber-500",
 }
 

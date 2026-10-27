@@ -47,100 +47,102 @@ const POLL_INTERVAL_WITH_BACKOFF_MS = 10_000
 const TOTAL_TIMEOUT_MS = 30 * 60 * 1_000 // 30 minutes per device-code TTL
 
 export type IssuedDeviceCode = {
-	url: string
-	deviceCode: string
-	expiresBy: number
+  url: string
+  deviceCode: string
+  expiresBy: number
 }
 
 export type ResolvedToken = {
-	accessToken: string
+  accessToken: string
 }
 
 export type UserIdentity = {
-	id: string
-	email?: string
-	name?: string
+  id: string
+  email?: string
+  name?: string
 }
 
 export const requestDeviceCode = async (): Promise<IssuedDeviceCode> => {
-	const authClient = createCliAuthClient()
-	const { data, error } = await authClient.device.code({
-		client_id: "deessejs-cli",
-	})
-	if (error || !data) {
-		const description =
-			(error as { error_description?: string } | null)?.error_description ??
-			"unknown error"
-		throw cliDeviceExpired(`could not obtain a device code: ${description}`)
-	}
-	return {
-		url: data.verification_uri_complete,
-		deviceCode: data.device_code,
-		expiresBy: Date.now() + TOTAL_TIMEOUT_MS,
-	}
+  const authClient = createCliAuthClient()
+  const { data, error } = await authClient.device.code({
+    client_id: "deessejs-cli",
+  })
+  if (error || !data) {
+    const description =
+      (error as { error_description?: string } | null)?.error_description ??
+      "unknown error"
+    throw cliDeviceExpired(`could not obtain a device code: ${description}`)
+  }
+  return {
+    url: data.verification_uri_complete,
+    deviceCode: data.device_code,
+    expiresBy: Date.now() + TOTAL_TIMEOUT_MS,
+  }
 }
 
 export const pollForToken = async (
-	deviceCode: string,
-	expiresBy: number,
+  deviceCode: string,
+  expiresBy: number
 ): Promise<ResolvedToken> => {
-	let interval = POLL_INTERVAL_MS
-	for (;;) {
-		if (Date.now() >= expiresBy) {
-			throw cliDeviceExpired("device flow timed out after 30 minutes")
-		}
-		await sleep(interval)
-		const authClient = createCliAuthClient()
-		const { data, error } = await authClient.device.token({
-			grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-			device_code: deviceCode,
-			client_id: "deessejs-cli",
-		})
-		if (data) {
-			// The plugin types `data` as `unknown` in some
-			// Better Auth 1.6.x minor versions; the access
-			// token field is stable across versions.
-			const token = (data as { access_token: string }).access_token
-			return { accessToken: token }
-		}
-		// The plugin's error envelope is
-		//   { error: "access_denied", error_description: "..." }
-		// (per better-auth/dist/plugins/device-authorization/
-		// routes.mjs deviceTokenErrorSchema). The field name is
-		// `error`, not `code`. Reading `code` here silently
-		// yields undefined and the polling loop falls through
-		// to the "no error code" guard below, which throws
-		// cliDeviceExpired instead of the actual reason.
-		const code = (error as { error?: string } | null)?.error
-		if (!code) {
-			throw cliDeviceExpired(
-				"token endpoint returned no data and no error code",
-			)
-		}
-		const mapped = mapPollingError(code)
-		if (mapped !== null) {
-			throw mapped
-		}
-		// slow_down: bump the local interval for the next poll.
-		// slow_down and authorization_pending stay silent.
-		interval = POLL_INTERVAL_WITH_BACKOFF_MS
-	}
+  let interval = POLL_INTERVAL_MS
+  for (;;) {
+    if (Date.now() >= expiresBy) {
+      throw cliDeviceExpired("device flow timed out after 30 minutes")
+    }
+    await sleep(interval)
+    const authClient = createCliAuthClient()
+    const { data, error } = await authClient.device.token({
+      grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+      device_code: deviceCode,
+      client_id: "deessejs-cli",
+    })
+    if (data) {
+      // The plugin types `data` as `unknown` in some
+      // Better Auth 1.6.x minor versions; the access
+      // token field is stable across versions.
+      const token = (data as { access_token: string }).access_token
+      return { accessToken: token }
+    }
+    // The plugin's error envelope is
+    //   { error: "access_denied", error_description: "..." }
+    // (per better-auth/dist/plugins/device-authorization/
+    // routes.mjs deviceTokenErrorSchema). The field name is
+    // `error`, not `code`. Reading `code` here silently
+    // yields undefined and the polling loop falls through
+    // to the "no error code" guard below, which throws
+    // cliDeviceExpired instead of the actual reason.
+    const code = (error as { error?: string } | null)?.error
+    if (!code) {
+      throw cliDeviceExpired(
+        "token endpoint returned no data and no error code"
+      )
+    }
+    const mapped = mapPollingError(code)
+    if (mapped !== null) {
+      throw mapped
+    }
+    // slow_down: bump the local interval for the next poll.
+    // slow_down and authorization_pending stay silent.
+    interval = POLL_INTERVAL_WITH_BACKOFF_MS
+  }
 }
 
 export const fetchUserIdentity = async (
-	accessToken: string,
+  accessToken: string
 ): Promise<UserIdentity> => {
-	const response = await bearerFetch("get-session", accessToken, { method: "GET" })
-	if (!response.ok) {
-		throw cliDeviceExpired(
-			`server issued a session token but /get-session rejected it (HTTP ${response.status})`,
-		)
-	}
-	const body = (await response.json()) as { user?: UserIdentity }
-	if (!body.user) {
-		throw cliDeviceExpired(
-			"server issued a session token but no user identity was attached",
-		)
-	}
-	return body.user
+  const response = await bearerFetch("get-session", accessToken, {
+    method: "GET",
+  })
+  if (!response.ok) {
+    throw cliDeviceExpired(
+      `server issued a session token but /get-session rejected it (HTTP ${response.status})`
+    )
+  }
+  const body = (await response.json()) as { user?: UserIdentity }
+  if (!body.user) {
+    throw cliDeviceExpired(
+      "server issued a session token but no user identity was attached"
+    )
+  }
+  return body.user
 }

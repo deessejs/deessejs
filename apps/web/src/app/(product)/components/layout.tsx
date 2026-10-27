@@ -27,18 +27,16 @@ export default function ComponentsLayout({
       {/* Final CTA — same 2-col shared-border grid as the homepage
           hero. Copy on the left, two actions on the right. Generic
           across /components and its sub-pages. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
+      <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
         <div className="flex flex-col gap-4 p-6 lg:p-10">
-          <p className="text-label-13 text-muted-foreground">
-            Ready to ship?
-          </p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+          <p className="text-label-13 text-muted-foreground">Ready to ship?</p>
+          <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40">
             Browse the registry, or ship with us.
           </h2>
-          <p className="text-copy-16 text-muted-foreground text-pretty leading-7 max-w-xl [&:not(:first-child)]:mt-0">
-            Install the CLI to scaffold a project in under five
-            minutes, or talk to our delivery team if you need a hand.
-            Same templates, same contracts, same guarantees.
+          <p className="max-w-xl text-copy-16 leading-7 text-pretty text-muted-foreground [&:not(:first-child)]:mt-0">
+            Install the CLI to scaffold a project in under five minutes, or talk
+            to our delivery team if you need a hand. Same templates, same
+            contracts, same guarantees.
           </p>
         </div>
         <div className="flex flex-col items-stretch justify-center gap-4 p-6 lg:p-10">

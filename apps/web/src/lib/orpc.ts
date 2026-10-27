@@ -51,7 +51,7 @@ export type FetchCacheOptions = {
  */
 export const buildFetchIsrInit = (
   init: RequestInit | undefined,
-  cacheDirective: FetchCacheOptions["cache"],
+  cacheDirective: FetchCacheOptions["cache"]
 ): RequestInit => {
   const revalidate = cacheDirective?.revalidate ?? 600
   const tags = cacheDirective?.tag ? [cacheDirective.tag] : ["templates"]

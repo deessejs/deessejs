@@ -96,7 +96,7 @@ export function pointerToCell(
   clientY: number,
   rect: { left: number; top: number; width: number; height: number },
   cols: number,
-  rows: number,
+  rows: number
 ): { col: number; row: number } | null {
   if (cols <= 0 || rows <= 0) return null
   if (rect.width <= 0 || rect.height <= 0) return null
@@ -120,7 +120,7 @@ export function drawLine(
   x0: number,
   y0: number,
   x1: number,
-  y1: number,
+  y1: number
 ): Array<[number, number]> {
   if (x0 === x1 && y0 === y1) return [[x0, y0]]
   const cells: Array<[number, number]> = [[x0, y0]]
@@ -159,7 +159,7 @@ export function drawLine(
 export function seedGrid(
   cols: number,
   rows: number,
-  rng: () => number,
+  rng: () => number
 ): Uint8Array {
   const grid = new Uint8Array(cols * rows)
   const centerCol = cols > 0 ? (cols - 1) / 2 : 0
@@ -192,7 +192,7 @@ export function seedGrid(
 export function stepGrid(
   grid: Uint8Array,
   cols: number,
-  rows: number,
+  rows: number
 ): Uint8Array {
   return stepWithTopology(grid, createTopology(cols, rows)).grid
 }
@@ -244,7 +244,7 @@ export function createTopology(cols: number, rows: number): ConwayTopology {
  */
 export function stepWithTopology(
   grid: Uint8Array,
-  topology: ConwayTopology,
+  topology: ConwayTopology
 ): { grid: Uint8Array; changed: boolean } {
   const { cols, rows, left, right, above, below } = topology
   const next = new Uint8Array(grid.length)
@@ -316,8 +316,12 @@ const PATTERN_META: Readonly<
   >
 > = (() => {
   const build = (
-    cells: ReadonlyArray<readonly [number, number]>,
-  ): { cells: ReadonlyArray<readonly [number, number]>; width: number; height: number } => {
+    cells: ReadonlyArray<readonly [number, number]>
+  ): {
+    cells: ReadonlyArray<readonly [number, number]>
+    width: number
+    height: number
+  } => {
     let width = 0
     let height = 0
     for (const [c, r] of cells) {
@@ -356,7 +360,7 @@ const PATTERN_META: Readonly<
 })()
 
 export function patternCells(
-  pattern: ConwayPattern,
+  pattern: ConwayPattern
 ): ReadonlyArray<readonly [number, number]> {
   return PATTERN_META[pattern].cells
 }
@@ -381,7 +385,7 @@ export function canPlaceEmpty(
   x: number,
   y: number,
   pattern: ConwayPattern,
-  margin: number,
+  margin: number
 ): boolean {
   const meta = PATTERN_META[pattern]
   const x0 = x - margin
@@ -409,7 +413,7 @@ export function injectPattern(
   rows: number,
   x: number,
   y: number,
-  pattern: ConwayPattern,
+  pattern: ConwayPattern
 ): Uint8Array {
   const next = new Uint8Array(grid)
   for (const [dc, dr] of PATTERN_META[pattern].cells) {
@@ -438,7 +442,7 @@ export function pickInjection(
   cols: number,
   rows: number,
   rng: () => number,
-  maxAttempts: number = INJECTION_ATTEMPTS,
+  maxAttempts: number = INJECTION_ATTEMPTS
 ): { pattern: ConwayPattern; x: number; y: number } | null {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const pattern = PATTERN_KEYS[Math.floor(rng() * PATTERN_KEYS.length)]
@@ -510,7 +514,7 @@ function simReducer(state: SimState, action: SimAction): SimState {
           action.x,
           action.y,
           action.pattern,
-          INJECTION_MARGIN,
+          INJECTION_MARGIN
         )
       ) {
         return state
@@ -521,7 +525,7 @@ function simReducer(state: SimState, action: SimAction): SimState {
         state.rows,
         action.x,
         action.y,
-        action.pattern,
+        action.pattern
       )
       if (gridsEqual(state.grid, next)) {
         // No cells were added (or the pattern was a subset of an existing
@@ -542,12 +546,7 @@ function simReducer(state: SimState, action: SimAction): SimState {
         const col = cell[0]
         const row = cell[1]
         if (!Number.isInteger(col) || !Number.isInteger(row)) continue
-        if (
-          col < 0 ||
-          col >= state.cols ||
-          row < 0 ||
-          row >= state.rows
-        )
+        if (col < 0 || col >= state.cols || row < 0 || row >= state.rows)
           continue
         const idx = row * state.cols + col
         if (state.grid[idx] === 1) continue
@@ -601,7 +600,8 @@ const LiveCells = React.memo(function LiveCells({
   columnOpacity,
 }: LiveCellsProps) {
   const paths = useMemo(() => {
-    if (cols === 0 || rows === 0 || grid.length !== cols * rows) return [] as Array<{ col: number; d: string }>
+    if (cols === 0 || rows === 0 || grid.length !== cols * rows)
+      return [] as Array<{ col: number; d: string }>
     const out: Array<{ col: number; d: string }> = []
     for (let c = 0; c < cols; c++) {
       const x = c * CELL_SIZE
@@ -640,7 +640,7 @@ export function ConwayGrid({ className }: { className?: string }) {
   const [docVisible, setDocVisible] = useState<boolean>(
     typeof document === "undefined"
       ? true
-      : document.visibilityState === "visible",
+      : document.visibilityState === "visible"
   )
 
   // Refs that mirror the reducer's state and the injection countdown so
@@ -730,7 +730,7 @@ export function ConwayGrid({ className }: { className?: string }) {
       countdownRef.current = randomInRange(
         FIRST_INJECTION_TICKS_MIN,
         FIRST_INJECTION_TICKS_MAX,
-        Math.random,
+        Math.random
       )
     }
   }, [])
@@ -760,15 +760,12 @@ export function ConwayGrid({ className }: { className?: string }) {
         countdownRef.current = randomInRange(
           FIRST_INJECTION_TICKS_MIN,
           FIRST_INJECTION_TICKS_MAX,
-          Math.random,
+          Math.random
         )
         // Keep the cursor inside the new grid bounds.
         setCursor((cur) => {
           if (!cur) return cur
-          return [
-            Math.min(cur[0], measured - 1),
-            Math.min(cur[1], ROWS - 1),
-          ]
+          return [Math.min(cur[0], measured - 1), Math.min(cur[1], ROWS - 1)]
         })
       } else {
         // Below the safe dimension — suspend by zeroing out cols. The
@@ -789,7 +786,7 @@ export function ConwayGrid({ className }: { className?: string }) {
         const entry = entries[0]
         if (entry) setIsInView(entry.isIntersecting)
       },
-      { threshold: 0 },
+      { threshold: 0 }
     )
     observer.observe(el)
     return () => observer.disconnect()
@@ -852,7 +849,7 @@ export function ConwayGrid({ className }: { className?: string }) {
       countdownRef.current = randomInRange(
         NEXT_INJECTION_TICKS_MIN,
         NEXT_INJECTION_TICKS_MAX,
-        Math.random,
+        Math.random
       )
     }, TICK_MS)
 
@@ -878,8 +875,8 @@ export function ConwayGrid({ className }: { className?: string }) {
         handleKeyDown(e, cols, rows, cursor, setCursor, dispatch)
       }
       className={cn(
-        "relative h-60 overflow-hidden touch-none focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-        className,
+        "relative h-60 touch-none overflow-hidden focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+        className
       )}
     >
       {cols > 0 && grid.length === cols * rows && (
@@ -899,7 +896,7 @@ export function ConwayGrid({ className }: { className?: string }) {
               lastCellRef,
               pointerIdRef,
               svgRef,
-              dispatch,
+              dispatch
             )
           }
           onPointerMove={(e) =>
@@ -910,7 +907,7 @@ export function ConwayGrid({ className }: { className?: string }) {
               isDrawingRef,
               lastCellRef,
               pointerIdRef,
-              dispatch,
+              dispatch
             )
           }
           onPointerUp={(e) =>
@@ -964,7 +961,7 @@ const handlePointerDown = (
   lastCellRef: React.MutableRefObject<[number, number] | null>,
   pointerIdRef: React.MutableRefObject<number | null>,
   svgRef: React.RefObject<SVGSVGElement | null>,
-  dispatch: React.Dispatch<SimAction>,
+  dispatch: React.Dispatch<SimAction>
 ) => {
   if (pointerIdRef.current !== null) return
   // Reject non-primary buttons on mouse pointers. PointerType "mouse"
@@ -993,7 +990,7 @@ const handlePointerMove = (
   isDrawingRef: React.MutableRefObject<boolean>,
   lastCellRef: React.MutableRefObject<[number, number] | null>,
   pointerIdRef: React.MutableRefObject<number | null>,
-  dispatch: React.Dispatch<SimAction>,
+  dispatch: React.Dispatch<SimAction>
 ) => {
   if (!isDrawingRef.current) return
   if (pointerIdRef.current !== e.pointerId) return
@@ -1030,7 +1027,7 @@ const handlePointerEnd = (
   isDrawingRef: React.MutableRefObject<boolean>,
   lastCellRef: React.MutableRefObject<[number, number] | null>,
   pointerIdRef: React.MutableRefObject<number | null>,
-  svgRef: React.RefObject<SVGSVGElement | null>,
+  svgRef: React.RefObject<SVGSVGElement | null>
 ) => {
   if (pointerIdRef.current !== e.pointerId) return
   const svg = svgRef.current
@@ -1058,7 +1055,7 @@ const handleKeyDown = (
   rows: number,
   cursor: [number, number] | null,
   setCursor: React.Dispatch<React.SetStateAction<[number, number] | null>>,
-  dispatch: React.Dispatch<SimAction>,
+  dispatch: React.Dispatch<SimAction>
 ) => {
   if (cols < 3 || rows < 1) return
   const isArrow =

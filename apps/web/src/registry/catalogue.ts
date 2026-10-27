@@ -22,8 +22,5 @@ export const CATALOGUE = {
   $schema: "https://ui.shadcn.com/schema/registry.json",
   name: "deessejs",
   homepage: "https://deessejs.com",
-  items: [
-    ...Object.values(ITEMS.components),
-    ...Object.values(ITEMS.blocks),
-  ],
+  items: [...Object.values(ITEMS.components), ...Object.values(ITEMS.blocks)],
 } as const

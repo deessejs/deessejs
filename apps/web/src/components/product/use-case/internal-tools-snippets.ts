@@ -141,13 +141,16 @@ export const dailyDigest = schedule({
 })`,
 }
 
-export const INTERNAL_TOOLS_SNIPPETS: Record<InternalToolsPillarSlug, InternalToolsPillarTool> = {
-  "better-auth-rbac":   { files: [betterAuthRbacFile] },
-  "admin-table":        { files: [adminTableFile] },
-  "ticket-in-context":  { files: [ticketInContextFile] },
-  "feature-flag":       { files: [featureFlagFile] },
-  "impersonate":        { files: [impersonateFile] },
-  "audit-replay":       { files: [auditReplayFile] },
-  "csat-tracker":       { files: [csatTrackerFile] },
-  "scheduled-job":      { files: [scheduledJobFile] },
+export const INTERNAL_TOOLS_SNIPPETS: Record<
+  InternalToolsPillarSlug,
+  InternalToolsPillarTool
+> = {
+  "better-auth-rbac": { files: [betterAuthRbacFile] },
+  "admin-table": { files: [adminTableFile] },
+  "ticket-in-context": { files: [ticketInContextFile] },
+  "feature-flag": { files: [featureFlagFile] },
+  impersonate: { files: [impersonateFile] },
+  "audit-replay": { files: [auditReplayFile] },
+  "csat-tracker": { files: [csatTrackerFile] },
+  "scheduled-job": { files: [scheduledJobFile] },
 }

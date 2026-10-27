@@ -23,7 +23,7 @@ Other release channels:
 | `deessejs list`                      | List available templates                                        |
 | `deessejs info <slug-or-github-url>` | Show validated descriptor details for a template                |
 | `deessejs block info <source>`       | Show a validated block descriptor summary                       |
-| `deessejs block check [source]`      | Validate a block descriptor and its referenced assets            |
+| `deessejs block check [source]`      | Validate a block descriptor and its referenced assets           |
 
 ## Examples
 

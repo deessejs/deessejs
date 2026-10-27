@@ -11,7 +11,10 @@ import { SectionHeader } from "@/components/marketing/section-header"
 import { UseCaseHero } from "@/components/product/use-case/use-case-page"
 import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
-import { LANDING_PAGES_SNIPPETS, type LandingPagesPillarSlug } from "@/components/product/use-case/landing-pages-snippets"
+import {
+  LANDING_PAGES_SNIPPETS,
+  type LandingPagesPillarSlug,
+} from "@/components/product/use-case/landing-pages-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 import { GROUP_1, GROUP_2 } from "./landing-pages-tabs"
@@ -23,31 +26,28 @@ export const metadata: Metadata = {
 }
 
 const STACK = [
-  { name: "Astro",         logo: "astro" },
-  { name: "Tailwind",      logo: "tailwindcss" },
+  { name: "Astro", logo: "astro" },
+  { name: "Tailwind", logo: "tailwindcss" },
   { name: "shadcn blocks", logo: "shadcnui" },
-  { name: "MDX",           logo: "shadcnui" },
-  { name: "RSS",           logo: "shadcnui" },
-  { name: "Sitemap",       logo: "shadcnui" },
-  { name: "Open Graph",    logo: "shadcnui" },
-  { name: "Analytics",     logo: "cloudflare" },
+  { name: "MDX", logo: "shadcnui" },
+  { name: "RSS", logo: "shadcnui" },
+  { name: "Sitemap", logo: "shadcnui" },
+  { name: "Open Graph", logo: "shadcnui" },
+  { name: "Analytics", logo: "cloudflare" },
 ] as const
 
 const STEPS = [
   {
     heading: "Scaffold the page",
-    body:
-      "The landing template ships with the same hero, surface grid, process, and FAQ recipe that ships on the marketing site you're reading.",
+    body: "The landing template ships with the same hero, surface grid, process, and FAQ recipe that ships on the marketing site you're reading.",
   },
   {
     heading: "Drop in your content",
-    body:
-      "Replace the placeholder copy with your product, your surfaces, your social proof. The conversion-tested structure stays.",
+    body: "Replace the placeholder copy with your product, your surfaces, your social proof. The conversion-tested structure stays.",
   },
   {
     heading: "Ship and measure",
-    body:
-      "Lighthouse score ships green by default. Static output, no hydration cost on the parts you don't need.",
+    body: "Lighthouse score ships green by default. Static output, no hydration cost on the parts you don't need.",
   },
 ] as const
 
@@ -67,36 +67,58 @@ const RELATED = [
   {
     slug: "internal-tools",
     title: "Internal tools",
-    tagline:
-      "Admin dashboards and operator consoles that work behind SSO.",
+    tagline: "Admin dashboards and operator consoles that work behind SSO.",
   },
 ] as const satisfies ReadonlyArray<RelatedUseCaseItem>
 
 const BUILT_TEMPLATES = [
-  { slug: "landing-page",     title: "landing-page",     body: "Marketing-ready hero, surfaces, FAQ, two-door CTA." },
-  { slug: "pricing-template", title: "pricing-template", body: "Tier matrix + plan comparison + signup CTA." },
-  { slug: "blog-template",   title: "blog-template",    body: "MDX + taxonomy + author pages, ready to ship." },
-  { slug: "changelog",        title: "changelog",        body: "Tagged entries + author credits + RSS feed." },
+  {
+    slug: "landing-page",
+    title: "landing-page",
+    body: "Marketing-ready hero, surfaces, FAQ, two-door CTA.",
+  },
+  {
+    slug: "pricing-template",
+    title: "pricing-template",
+    body: "Tier matrix + plan comparison + signup CTA.",
+  },
+  {
+    slug: "blog-template",
+    title: "blog-template",
+    body: "MDX + taxonomy + author pages, ready to ship.",
+  },
+  {
+    slug: "changelog",
+    title: "changelog",
+    body: "Tagged entries + author credits + RSS feed.",
+  },
 ] as const
 
 export default async function LandingPagesPage() {
   const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
-    "hero-block": [], "surface-grid": [], "authority-block": [], "process-cta": [],
-    "headline-spec": [], "tabbed-explorer": [], "kb-link": [], "numbered-steps": [],
+    "hero-block": [],
+    "surface-grid": [],
+    "authority-block": [],
+    "process-cta": [],
+    "headline-spec": [],
+    "tabbed-explorer": [],
+    "kb-link": [],
+    "numbered-steps": [],
   }
 
   await Promise.all(
-    (Object.keys(LANDING_PAGES_SNIPPETS) as LandingPagesPillarSlug[]).flatMap((slug) =>
-      LANDING_PAGES_SNIPPETS[slug].files.map((file) =>
-        codeToHtml(file.code, {
-          lang: file.lang,
-          themes: { light: "github-light", dark: "github-dark" },
-          defaultColor: false,
-        }).then((html) => {
-          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
-        }),
-      ),
-    ),
+    (Object.keys(LANDING_PAGES_SNIPPETS) as LandingPagesPillarSlug[]).flatMap(
+      (slug) =>
+        LANDING_PAGES_SNIPPETS[slug].files.map((file) =>
+          codeToHtml(file.code, {
+            lang: file.lang,
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          }).then((html) => {
+            htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+          })
+        )
+    )
   )
 
   return (
@@ -157,20 +179,17 @@ export default async function LandingPagesPage() {
 
       {/* 5. Process */}
       <div className="grid grid-cols-1 border-t border-border lg:grid-cols-12 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-3 lg:p-10">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col justify-center gap-3 p-6 lg:col-span-3 lg:p-10">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Process
           </p>
           <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             How a landing page ships.
           </h2>
         </div>
-        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-9 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
+        <ol className="grid grid-cols-1 divide-y divide-border border-0 !p-0 md:grid-cols-3 md:divide-x md:divide-y-0 lg:col-span-9">
           {STEPS.map((step, idx) => (
-            <li
-              key={step.heading}
-              className="flex flex-col gap-3 p-6 lg:p-8"
-            >
+            <li key={step.heading} className="flex flex-col gap-3 p-6 lg:p-8">
               <span className="font-mono text-copy-13 text-muted-foreground">
                 Step {String(idx + 1).padStart(2, "0")}
               </span>
@@ -187,20 +206,19 @@ export default async function LandingPagesPage() {
 
       {/* 6. Built on this */}
       <section className="flex flex-col border-t border-border">
-        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Built on this
           </p>
           <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             Four templates, each on its own surface.
           </h2>
           <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Production-ready starter templates, each deployed at its
-            own URL. Used as the reference set for what the registry
-            can ship.
+            Production-ready starter templates, each deployed at its own URL.
+            Used as the reference set for what the registry can ship.
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y divide-border sm:divide-y-0 sm:divide-x sm:divide-border">
+        <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 sm:divide-border lg:grid-cols-4">
           {BUILT_TEMPLATES.map((tpl) => (
             <Link
               key={tpl.slug}

@@ -32,10 +32,10 @@ export default function BlocksPage() {
   const categoryToBlock = Object.fromEntries(
     BLOCK_CATEGORIES.map((category) => {
       const firstBlock = BLOCK_CATALOGUE.find(
-        (block) => block.category === category.id,
+        (block) => block.category === category.id
       )
       return [category.id, firstBlock]
-    }).filter(([, block]) => Boolean(block)),
+    }).filter(([, block]) => Boolean(block))
   ) as Record<
     (typeof BLOCK_CATEGORIES)[number]["id"],
     (typeof BLOCK_CATALOGUE)[number]
@@ -44,7 +44,7 @@ export default function BlocksPage() {
   // Per-category counts.
   const counts = calculateCatalogCounts(
     BLOCK_CATALOGUE,
-    (block) => block.category,
+    (block) => block.category
   )
 
   return (
@@ -52,16 +52,15 @@ export default function BlocksPage() {
       {/* Hero */}
       <header className="relative overflow-hidden border-b border-border">
         <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Blocks
           </p>
           <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
             Marketing sections, ready to drop in.
           </h1>
-          <p className="max-w-2xl text-copy-18 text-pretty leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
-            The marketing sections every DeesseJS template ships
-            with. Browse a category, click any card for the detail
-            page.
+          <p className="max-w-2xl text-copy-18 leading-7 text-balance text-pretty text-muted-foreground [&:not(:first-child)]:mt-0">
+            The marketing sections every DeesseJS template ships with. Browse a
+            category, click any card for the detail page.
           </p>
         </div>
       </header>
@@ -92,7 +91,7 @@ export default function BlocksPage() {
                 title: category.name,
                 description: category.description,
                 footer: (
-                  <span className="text-label-13 text-muted-foreground font-mono">
+                  <span className="font-mono text-label-13 text-muted-foreground">
                     {category.blockNames.split(",")[0]?.trim()}
                   </span>
                 ),

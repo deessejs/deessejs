@@ -14,16 +14,16 @@
  * sort icons, plug in status badges.
  */
 const ROWS = [
-  { id: "01HFA", label: "Acme Corp",     value: "$2,400",  status: "active"  },
-  { id: "02KTB", label: "Globex Inc",    value: "$1,180",  status: "active"  },
-  { id: "03MPL", label: "Initech LLC",   value: "$640",    status: "trial"   },
-  { id: "04NRP", label: "Umbrella Co",   value: "$3,920",  status: "active"  },
-  { id: "05QVX", label: "Hooli",         value: "$0",      status: "paused"  },
+  { id: "01HFA", label: "Acme Corp", value: "$2,400", status: "active" },
+  { id: "02KTB", label: "Globex Inc", value: "$1,180", status: "active" },
+  { id: "03MPL", label: "Initech LLC", value: "$640", status: "trial" },
+  { id: "04NRP", label: "Umbrella Co", value: "$3,920", status: "active" },
+  { id: "05QVX", label: "Hooli", value: "$0", status: "paused" },
 ] as const
 
 const STATUS_COLOR: Record<string, string> = {
   active: "text-emerald-700 dark:text-emerald-400",
-  trial:  "text-amber-700 dark:text-amber-400",
+  trial: "text-amber-700 dark:text-amber-400",
   paused: "text-zinc-500",
 }
 
@@ -40,7 +40,9 @@ export function ProductTableMockup() {
             key={row.id}
             className="flex items-center gap-2 py-1.5 font-mono text-copy-13"
           >
-            <span className="w-12 shrink-0 text-muted-foreground">{row.id}</span>
+            <span className="w-12 shrink-0 text-muted-foreground">
+              {row.id}
+            </span>
             <span className="flex-1 truncate text-foreground">{row.label}</span>
             <span className="w-16 shrink-0 text-right text-foreground">
               {row.value}

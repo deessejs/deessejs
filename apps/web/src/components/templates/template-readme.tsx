@@ -56,7 +56,7 @@ export const TemplateReadme = async ({ readme }: TemplateReadmeProps) => {
       <h2 className="text-label-14 text-muted-foreground">Overview</h2>
       <article
         id="template-readme"
-        className="text-base leading-7 text-pretty [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-border/40 [&_pre]:bg-muted/30 [&_pre]:overflow-x-auto [&_pre]:my-6 [&_pre]:p-4 [&_pre]:text-copy-14 [&_pre]:font-mono [&_pre_code]:block [&_pre_code]:bg-transparent [&_pre_code]:px-0 [&_pre_code]:py-0 [&_[data-highlighted-line]]:bg-foreground/5 [&_[data-highlighted-line]]:relative [&_[data-highlighted-chars]]:bg-foreground/10 [&_[data-highlighted-chars]]:rounded"
+        className="text-base leading-7 text-pretty [&_[data-highlighted-chars]]:rounded [&_[data-highlighted-chars]]:bg-foreground/10 [&_[data-highlighted-line]]:relative [&_[data-highlighted-line]]:bg-foreground/5 [&_pre]:my-6 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-border/40 [&_pre]:bg-muted/30 [&_pre]:p-4 [&_pre]:font-mono [&_pre]:text-copy-14 [&_pre_code]:block [&_pre_code]:bg-transparent [&_pre_code]:px-0 [&_pre_code]:py-0"
       >
         {rendered}
       </article>

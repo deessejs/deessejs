@@ -56,7 +56,7 @@ export function CatalogCard({
     <Link
       href={href}
       aria-label={ariaLabel}
-      className="group flex h-full flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group flex h-full flex-col focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
     >
       <div className="flex h-full flex-col bg-background transition-colors group-hover:bg-accent/30">
         {preview}
@@ -64,7 +64,7 @@ export function CatalogCard({
           <h2 className="text-label-16 leading-snug font-semibold tracking-tight text-balance">
             {title}
           </h2>
-          <p className="text-copy-14 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+          <p className="text-copy-14 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
             {description}
           </p>
           {footer}

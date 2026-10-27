@@ -17,7 +17,10 @@ export default function PricingPage() {
   // defaults to `http://localhost:3001/signup` in dev and
   // `https://app.deessejs.com/signup` in prod; previews can be
   // overridden via Vercel-related-projects wiring.
-  const signupHref = new URL("/signup", clientEnv.NEXT_PUBLIC_APP_URL).toString()
+  const signupHref = new URL(
+    "/signup",
+    clientEnv.NEXT_PUBLIC_APP_URL
+  ).toString()
 
   return (
     <PricingCadenceProvider>

@@ -23,9 +23,11 @@ export function generateStaticParams(): Array<Params> {
   return allReleases.map((release) => ({ slug: release.slug }))
 }
 
-export async function generateMetadata(
-  { params }: { params: Promise<Params> },
-): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<Params>
+}): Promise<Metadata> {
   const { slug } = await params
   const release = getReleaseBySlug(slug)
   if (!release) return {}
@@ -50,9 +52,11 @@ export async function generateMetadata(
   }
 }
 
-export default async function ReleasePage(
-  { params }: { params: Promise<Params> },
-) {
+export default async function ReleasePage({
+  params,
+}: {
+  params: Promise<Params>
+}) {
   const { slug } = await params
   const release = getReleaseBySlug(slug)
   if (!release) notFound()
@@ -100,10 +104,10 @@ export default async function ReleasePage(
       </Link>
 
       <header className="mb-10">
-        <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
+        <h1 className="text-4xl font-bold tracking-tighter text-balance sm:text-5xl">
           {release.title}
         </h1>
-        <p className="mt-4 text-pretty text-lg text-muted-foreground">
+        <p className="mt-4 text-lg text-pretty text-muted-foreground">
           {release.description}
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
@@ -113,7 +117,11 @@ export default async function ReleasePage(
 
       <div className="lg:grid lg:grid-cols-[1fr_180px] lg:gap-12">
         <div className="min-w-0">
-          <MdxRenderer id="article-prose" className="mt-10" code={release.mdxCode} />
+          <MdxRenderer
+            id="article-prose"
+            className="mt-10"
+            code={release.mdxCode}
+          />
         </div>
         <aside className="hidden lg:block">
           <TableOfContents targetId="article-prose" />
@@ -168,7 +176,7 @@ export default async function ReleasePage(
           <h2 className="mb-6 text-2xl font-semibold tracking-tight">
             Related reading
           </h2>
-          <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-2 lg:grid-cols-3 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:nth-child(3n)]:lg:border-r-0 [&>li:nth-last-child(-n+2)]:md:border-b-0 [&>li:nth-last-child(-n+3)]:lg:border-b-0 [&>li:first-child]:border-t">
+          <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-2 lg:grid-cols-3 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:first-child]:border-t [&>li:nth-child(2n)]:md:border-r-0 [&>li:nth-child(3n)]:lg:border-r-0 [&>li:nth-last-child(-n+2)]:md:border-b-0 [&>li:nth-last-child(-n+3)]:lg:border-b-0">
             {relatedPosts.map((post: Post) => (
               <li key={post.slug}>
                 <PostCard post={post} />

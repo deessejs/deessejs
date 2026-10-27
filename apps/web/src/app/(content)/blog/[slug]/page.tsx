@@ -24,9 +24,11 @@ export function generateStaticParams(): Array<Params> {
   return allPosts.map((post) => ({ slug: post.slug }))
 }
 
-export async function generateMetadata(
-  { params }: { params: Promise<Params> },
-): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<Params>
+}): Promise<Metadata> {
   const { slug } = await params
   const post = getPostBySlug(slug)
   if (!post) return {}
@@ -55,9 +57,11 @@ export async function generateMetadata(
   }
 }
 
-export default async function PostPage(
-  { params }: { params: Promise<Params> },
-) {
+export default async function PostPage({
+  params,
+}: {
+  params: Promise<Params>
+}) {
   const { slug } = await params
   const post = getPostBySlug(slug)
   if (!post) notFound()
@@ -133,10 +137,10 @@ export default async function PostPage(
       ) : null}
 
       <header className="mb-10">
-        <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
+        <h1 className="text-4xl font-bold tracking-tighter text-balance sm:text-5xl">
           {post.title}
         </h1>
-        <p className="mt-4 text-pretty text-lg text-muted-foreground">
+        <p className="mt-4 text-lg text-pretty text-muted-foreground">
           {post.description}
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
@@ -146,7 +150,11 @@ export default async function PostPage(
 
       <div className="lg:grid lg:grid-cols-[1fr_180px] lg:gap-12">
         <div className="min-w-0">
-          <MdxRenderer id="article-prose" className="mt-10" code={post.mdxCode} />
+          <MdxRenderer
+            id="article-prose"
+            className="mt-10"
+            code={post.mdxCode}
+          />
         </div>
         <aside className="hidden lg:block">
           <TableOfContents targetId="article-prose" />
@@ -163,7 +171,10 @@ export default async function PostPage(
       {(prev || next) && (
         <>
           <Separator className="my-12" />
-          <nav className="grid gap-4 sm:grid-cols-2" aria-label="Post navigation">
+          <nav
+            className="grid gap-4 sm:grid-cols-2"
+            aria-label="Post navigation"
+          >
             {prev ? (
               <Link
                 href={prev.url}

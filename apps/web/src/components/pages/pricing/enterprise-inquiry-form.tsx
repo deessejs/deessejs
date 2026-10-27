@@ -74,8 +74,7 @@ export function EnterpriseInquiryForm() {
 
     setSubmittedEmail(data.email)
 
-    window.location.href =
-      `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    window.location.href = `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
   }
 
   const onSubmitEvent = (event: FormEvent<HTMLFormElement>) => {
@@ -153,7 +152,7 @@ export function EnterpriseInquiryForm() {
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="shrink-0 sm:self-auto self-start"
+          className="shrink-0 self-start sm:self-auto"
         >
           {isSubmitting ? "Opening mail client…" : "Email us about Enterprise"}
         </Button>

@@ -151,13 +151,16 @@ export const withTrace = <T>(name: string, fn: () => Promise<T>) =>
   })`,
 }
 
-export const API_BACKENDS_SNIPPETS: Record<ApiBackendsPillarSlug, ApiBackendsPillarTool> = {
-  "orpc-router":      { files: [orpcRouterFile] },
-  "drizzle-schema":   { files: [drizzleSchemaFile] },
-  "rate-limit":       { files: [rateLimitFile] },
-  "audit-log":        { files: [auditLogFile] },
-  "openapi-gen":      { files: [openapiGenFile] },
-  "pgmem-test":       { files: [pgmemTestFile] },
-  "service-token":    { files: [serviceTokenFile] },
-  "otel-waterfall":   { files: [otelWaterfallFile] },
+export const API_BACKENDS_SNIPPETS: Record<
+  ApiBackendsPillarSlug,
+  ApiBackendsPillarTool
+> = {
+  "orpc-router": { files: [orpcRouterFile] },
+  "drizzle-schema": { files: [drizzleSchemaFile] },
+  "rate-limit": { files: [rateLimitFile] },
+  "audit-log": { files: [auditLogFile] },
+  "openapi-gen": { files: [openapiGenFile] },
+  "pgmem-test": { files: [pgmemTestFile] },
+  "service-token": { files: [serviceTokenFile] },
+  "otel-waterfall": { files: [otelWaterfallFile] },
 }

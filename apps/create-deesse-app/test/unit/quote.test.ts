@@ -16,17 +16,17 @@ describe("quoteForPowerShell", () => {
   it("quotes a literal argument and preserves metacharacters", () => {
     expect(quoteForPowerShell("")).toBe("''")
     expect(quoteForPowerShell("C:\\Users\\100%done & forever^oops")).toBe(
-      "'C:\\Users\\100%done & forever^oops'",
+      "'C:\\Users\\100%done & forever^oops'"
     )
     expect(quoteForPowerShell("$env:HOME; Get-ChildItem")).toBe(
-      "'$env:HOME; Get-ChildItem'",
+      "'$env:HOME; Get-ChildItem'"
     )
   })
 
   it("escapes embedded apostrophes by doubling them", () => {
     expect(quoteForPowerShell("O'Brien")).toBe("'O''Brien'")
     expect(quoteForPowerShell("C:\\Users\\Dave's folder")).toBe(
-      "'C:\\Users\\Dave''s folder'",
+      "'C:\\Users\\Dave''s folder'"
     )
   })
 })

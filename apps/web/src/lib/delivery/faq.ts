@@ -14,7 +14,8 @@ export type DeliveryFaqItem = {
 
 export const DELIVERY_FAQ: ReadonlyArray<DeliveryFaqItem> = [
   {
-    question: "Can you take over an existing codebase, or only greenfield projects?",
+    question:
+      "Can you take over an existing codebase, or only greenfield projects?",
     answer:
       "Both. Through our CLI (deessejs add) and the modular overlay system, we can inject new production modules (a new dashboard, a billing portal, multi-tenant auth) into an existing Next.js repository without breaking the current architecture. Sprint Kickstart is greenfield-first; Custom Architecture is typically an integration or refactor of an existing codebase.",
   },

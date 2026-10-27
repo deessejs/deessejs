@@ -64,7 +64,7 @@ log:
  */
 const waitForHttp2xx = async (
   url: string,
-  timeoutMs: number,
+  timeoutMs: number
 ): Promise<void> => {
   const deadline = Date.now() + timeoutMs
   let lastErr: unknown
@@ -81,7 +81,7 @@ const waitForHttp2xx = async (
   throw new Error(
     `HTTP probe ${url} did not return 2xx within ${timeoutMs} ms: ${
       lastErr instanceof Error ? lastErr.message : String(lastErr)
-    }`,
+    }`
   )
 }
 
@@ -101,7 +101,7 @@ export type StartedStack = {
 }
 
 const startServiceStack = async (
-  network: StartedNetwork,
+  network: StartedNetwork
 ): Promise<{
   registryHostUrl: string
   started: StartedTestContainer[]
@@ -136,11 +136,9 @@ const startServiceStack = async (
     .withExposedPorts(VERDACCIO_PORT)
     .withNetwork(network)
     .withNetworkAliases(VERDACCIO_ALIAS)
-    .withBindMounts([
-      { source: configDir, target: "/verdaccio/conf" },
-    ])
+    .withBindMounts([{ source: configDir, target: "/verdaccio/conf" }])
     .withWaitStrategy(
-      Wait.forHttp("/-/ping", VERDACCIO_PORT).forStatusCode(200),
+      Wait.forHttp("/-/ping", VERDACCIO_PORT).forStatusCode(200)
     )
     .start()
 

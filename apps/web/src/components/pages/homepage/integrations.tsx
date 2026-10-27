@@ -115,19 +115,19 @@ export function Integrations() {
                 className="mt-0.5 flex h-6 shrink-0 items-center -space-x-3"
               >
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 4 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/github.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 3 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/gitlab.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 2 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/atlassian.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 1 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/azuredevops.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
               </span>
@@ -142,19 +142,19 @@ export function Integrations() {
                 className="mt-0.5 flex h-6 shrink-0 items-center -space-x-3"
               >
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 4 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/nextdotjs.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 3 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/astro.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 2 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/vercel.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 1 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/cloudflare.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
               </span>
@@ -169,19 +169,19 @@ export function Integrations() {
                 className="mt-0.5 flex h-6 shrink-0 items-center -space-x-3"
               >
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 4 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/claudecode.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 3 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/codex.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 2 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/cursor.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 1 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/opencode.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
               </span>
@@ -196,19 +196,19 @@ export function Integrations() {
                 className="mt-0.5 flex h-6 shrink-0 items-center -space-x-3"
               >
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 4 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/betterauth.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 3 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/clerk.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 2 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/auth0.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
                 <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 1 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
                   <img src="/logos/lucia.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
                 </span>
               </span>
@@ -241,7 +241,7 @@ export function Integrations() {
                 className="absolute right-4 top-4 size-4 shrink-0 text-muted-foreground transition-colors group-hover/tech:text-foreground lg:right-6 lg:top-6"
               />
               <h3 className="flex items-center gap-2 pr-6 text-heading-20 font-medium tracking-tight text-foreground">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* oxlint-disable-next-line nextjs/no-img-element */}
                 <img
                   src={`/logos/${tech.logo}.svg`}
                   alt=""

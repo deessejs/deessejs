@@ -72,14 +72,8 @@ export const printBlockInfo = (info: BlockDescriptorInfo): void => {
       ["name", output.name],
       ["path", output.path],
       ["version", output.version ?? "(not set)"],
-      [
-        "dependencies",
-        formatDependencies(output.dependencies),
-      ],
-      [
-        "devDependencies",
-        formatDependencies(output.devDependencies),
-      ],
+      ["dependencies", formatDependencies(output.dependencies)],
+      ["devDependencies", formatDependencies(output.devDependencies)],
     ])
   }
 
@@ -143,17 +137,14 @@ export const printBlockCheck = (result: BlockCheckResult): void => {
       "Diagnostics",
       result.diagnostics.map((diagnostic, index) => [
         String(index + 1) + ". " + diagnostic.code,
-        (diagnostic.path.length > 0
-          ? diagnostic.path.join(".") + ": "
-          : "") + diagnostic.message,
+        (diagnostic.path.length > 0 ? diagnostic.path.join(".") + ": " : "") +
+          diagnostic.message,
       ])
     )
   }
 }
 
-function formatDependencies(
-  dependencies: Record<string, string>
-): string {
+function formatDependencies(dependencies: Record<string, string>): string {
   const entries = Object.entries(dependencies)
   return entries.length
     ? entries.map(([name, version]) => `${name}@${version}`).join(", ")

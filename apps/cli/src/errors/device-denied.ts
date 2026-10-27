@@ -5,8 +5,8 @@ import { CliError } from "./index.js"
  * browser (Better Auth `access_denied` → cli_device_denied).
  */
 export const cliDeviceDenied = (): CliError =>
-	new CliError(
-		"cli_device_denied",
-		"authorization was denied in the browser",
-		"run `deesse auth login` again if this was a mistake",
-	)
+  new CliError(
+    "cli_device_denied",
+    "authorization was denied in the browser",
+    "run `deesse auth login` again if this was a mistake"
+  )

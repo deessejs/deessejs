@@ -1,8 +1,8 @@
 {
   "name": "fixture-template",
   "private": true,
-  "packageManager": "pnpm@11.0.0",
   "scripts": {
     "test:generated": "node src/index.js"
-  }
+  },
+  "packageManager": "pnpm@11.0.0"
 }

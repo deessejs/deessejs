@@ -151,13 +151,16 @@ export const reportCrash = (input: {
   })`,
 }
 
-export const MOBILE_BACKEND_SNIPPETS: Record<MobileBackendPillarSlug, MobileBackendPillarTool> = {
-  "better-auth-session":  { files: [betterAuthSessionFile] },
-  "drizzle-offline-queue":{ files: [drizzleOfflineQueueFile] },
-  "expo-push-relay":      { files: [expoPushRelayFile] },
-  "otel-client-span":     { files: [otelClientSpanFile] },
-  "app-attest":           { files: [appAttestFile] },
-  "conflict-resolve":     { files: [conflictResolveFile] },
-  "targeting-query":      { files: [targetingQueryFile] },
-  "crash-correlate":      { files: [crashCorrelateFile] },
+export const MOBILE_BACKEND_SNIPPETS: Record<
+  MobileBackendPillarSlug,
+  MobileBackendPillarTool
+> = {
+  "better-auth-session": { files: [betterAuthSessionFile] },
+  "drizzle-offline-queue": { files: [drizzleOfflineQueueFile] },
+  "expo-push-relay": { files: [expoPushRelayFile] },
+  "otel-client-span": { files: [otelClientSpanFile] },
+  "app-attest": { files: [appAttestFile] },
+  "conflict-resolve": { files: [conflictResolveFile] },
+  "targeting-query": { files: [targetingQueryFile] },
+  "crash-correlate": { files: [crashCorrelateFile] },
 }

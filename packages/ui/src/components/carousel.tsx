@@ -126,13 +126,11 @@ function Carousel({
       scrollNext,
       canScrollPrev,
       canScrollNext,
-    ],
+    ]
   )
 
   return (
-    <CarouselContext.Provider
-      value={contextValue}
-    >
+    <CarouselContext.Provider value={contextValue}>
       <div
         onKeyDownCapture={handleKeyDown}
         className={cn("relative", className)}

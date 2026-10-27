@@ -15,10 +15,10 @@ export function Process() {
     <div className="border-b border-border">
       <div className="flex flex-col gap-6 p-6 lg:p-10">
         <header className="flex flex-col gap-2">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             How we work
           </p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
+          <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40 [&:not(:first-child)]:mt-0">
             Four engineering protocols, zero agency theater.
           </h2>
         </header>
@@ -36,18 +36,12 @@ export function Process() {
   )
 }
 
-function ProcessCell({
-  step,
-  isLast,
-}: {
-  step: ProcessStep
-  isLast: boolean
-}) {
+function ProcessCell({ step, isLast }: { step: ProcessStep; isLast: boolean }) {
   return (
     <li
       className={cn(
         "flex flex-col gap-3 md:px-6 lg:px-8",
-        !isLast && "md:border-r md:border-border/0",
+        !isLast && "md:border-r md:border-border/0"
       )}
     >
       <span className="font-mono text-copy-13 text-muted-foreground">
@@ -56,7 +50,7 @@ function ProcessCell({
       <h3 className="text-heading-20 tracking-tight text-foreground [&:not(:first-child)]:mt-0">
         {step.title}
       </h3>
-      <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+      <p className="text-copy-14 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
         {step.body}
       </p>
     </li>

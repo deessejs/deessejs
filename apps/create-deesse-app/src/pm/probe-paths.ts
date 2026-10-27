@@ -30,7 +30,7 @@ export type SyncRunnerResult = {
  */
 export type SyncRunner = (
   command: string,
-  args: readonly string[],
+  args: readonly string[]
 ) => SyncRunnerResult
 
 const defaultRunner: SyncRunner = (command, args) => {
@@ -51,10 +51,7 @@ export type InstallPrereqs = {
   pnpm: boolean
 }
 
-const probe = (
-  bin: string,
-  runner: SyncRunner,
-): boolean => {
+const probe = (bin: string, runner: SyncRunner): boolean => {
   const which = process.platform === "win32" ? "where" : "which"
   const r = runner(which, [bin])
   return r.status === 0
@@ -71,7 +68,7 @@ const probe = (
  * `where` on Windows. Tests inject a stubbed runner.
  */
 export const probeInstallPrereqs = (
-  runner: SyncRunner = defaultRunner,
+  runner: SyncRunner = defaultRunner
 ): InstallPrereqs => ({
   corepack: probe("corepack", runner),
   npm: probe("npm", runner),

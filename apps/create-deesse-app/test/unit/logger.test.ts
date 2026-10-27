@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { nullLogger, stderrLogger, type Logger } from "../../src/output/logger.js"
+import {
+  nullLogger,
+  stderrLogger,
+  type Logger,
+} from "../../src/output/logger.js"
 
 // The strict `tsconfig.unit.json` (run by `typecheck:unit`)
 // cannot type the `process.stdout.write.bind(process.stdout)`

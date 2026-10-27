@@ -15,9 +15,8 @@ vi.mock("node:os", async (importOriginal) => {
   }
 })
 
-const { readDiskCache, writeDiskCache } = await import(
-  "../../src/cache/index.js"
-)
+const { readDiskCache, writeDiskCache } =
+  await import("../../src/cache/index.js")
 const { cacheDir } = await import("../../src/cache/location.js")
 const CACHE_DIR = cacheDir()
 

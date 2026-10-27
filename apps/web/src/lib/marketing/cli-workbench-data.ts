@@ -34,7 +34,7 @@ export type ExplorerNode = {
  *
  * Reflects the real monorepo layout: Turborepo with `apps/`
  * (app / docs / web) and `packages/` (api / auth / cookies /
- * database / email / env / eslint-config / typescript-config /
+ * database / email / env / oxlint-config / typescript-config /
  * ui / utils), plus the root `AGENTS.md`, `README.md`,
  * `package.json` (named `next-monorepo`), `pnpm-workspace.yaml`
  * and `turbo.json`.
@@ -51,11 +51,7 @@ export const SAAS_STARTER_FILES: ReadonlyArray<ExplorerNode> = [
       { name: "package.json" },
       {
         name: "apps",
-        children: [
-          { name: "app" },
-          { name: "docs" },
-          { name: "web" },
-        ],
+        children: [{ name: "app" }, { name: "docs" }, { name: "web" }],
       },
       {
         name: "packages",
@@ -168,5 +164,4 @@ export const DEFAULT_INIT_OUTPUT_LINES = [
  * server. `pnpm dev` is the conventional Next.js dev script the
  * template exposes via its `package.json`.
  */
-export const DEFAULT_DEV_OUTPUT_LINE =
-  "$ pnpm dev"
+export const DEFAULT_DEV_OUTPUT_LINE = "$ pnpm dev"

@@ -17,15 +17,15 @@
 export function Hero() {
   return (
     <header className="flex flex-col gap-6">
-      <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+      <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
         The DeesseJS Manifesto
       </p>
-      <h1 className="text-heading-40 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance">
+      <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
         Software that builds software.
       </h1>
-      <p className="text-muted-foreground text-copy-18 sm:text-copy-20 leading-7 max-w-2xl text-balance [&:not(:first-child)]:mt-0">
-        Six beliefs that shape how we design templates, ship
-        defaults, and think about the agentic era.
+      <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground sm:text-copy-20 [&:not(:first-child)]:mt-0">
+        Six beliefs that shape how we design templates, ship defaults, and think
+        about the agentic era.
       </p>
       <dl className="flex flex-wrap items-center gap-x-6 gap-y-2 text-copy-13 text-muted-foreground [&:not(:first-child)]:mt-0">
         <div className="flex items-center gap-1.5">

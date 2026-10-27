@@ -30,15 +30,15 @@ export function RelatedUseCases({
 }) {
   return (
     <div className="grid grid-cols-1 border-t border-border lg:grid-cols-12 lg:divide-x lg:divide-border">
-      <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-3 lg:p-10">
-        <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+      <div className="flex flex-col justify-center gap-3 p-6 lg:col-span-3 lg:p-10">
+        <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
           Explore
         </p>
         <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
           Related use cases.
         </h2>
       </div>
-      <div className="grid grid-cols-1 divide-y divide-border lg:col-span-9 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
+      <div className="grid grid-cols-1 divide-y divide-border border-0 !p-0 md:grid-cols-3 md:divide-x md:divide-y-0 lg:col-span-9">
         {items.map((item) => (
           <Link
             key={item.slug}

@@ -18,26 +18,26 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 
 ## Options
 
-| Option | Effect |
-|---|---|
-| `--dir <path>` | Where to create the project. |
-| `--no-install` | Stop after the extraction. |
-| `--dry-run` | Print the plan, change nothing. |
-| `--verbose` | Narrate every step on stderr. |
+| Option         | Effect                          |
+| -------------- | ------------------------------- |
+| `--dir <path>` | Where to create the project.    |
+| `--no-install` | Stop after the extraction.      |
+| `--dry-run`    | Print the plan, change nothing. |
+| `--verbose`    | Narrate every step on stderr.   |
 
 ## Key files
 
-| Path | Owns |
-|---|---|
-| `src/index.ts` | The Commander program. |
-| `src/pipeline.ts` | The ordered steps and where each one fails. |
-| `src/source/` | Resolving the SHA and downloading the tarball. |
-| `src/extract/` | Validation, extraction and the atomic publish. |
-| `src/install/` | The install strategy, the bootstrap and the recovery. |
-| `src/pm/` | Package manager detection and the install strategy. |
-| `src/dry-run/` | The dry-run plan. |
-| `src/output/` | The logger and the install log. |
-| `src/result.ts` | The shape of the result the command returns. |
+| Path              | Owns                                                  |
+| ----------------- | ----------------------------------------------------- |
+| `src/index.ts`    | The Commander program.                                |
+| `src/pipeline.ts` | The ordered steps and where each one fails.           |
+| `src/source/`     | Resolving the SHA and downloading the tarball.        |
+| `src/extract/`    | Validation, extraction and the atomic publish.        |
+| `src/install/`    | The install strategy, the bootstrap and the recovery. |
+| `src/pm/`         | Package manager detection and the install strategy.   |
+| `src/dry-run/`    | The dry-run plan.                                     |
+| `src/output/`     | The logger and the install log.                       |
+| `src/result.ts`   | The shape of the result the command returns.          |
 
 ## Conventions
 

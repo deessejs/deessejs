@@ -6,11 +6,7 @@ import { TestimonialsMarquee } from "@/components/marketing/testimonials-marquee
 export function Testimonials() {
   return (
     <Section>
-      <SectionHeader
-        eyebrow="What customers say"
-        title=""
-        bordered={false}
-      />
+      <SectionHeader eyebrow="What customers say" title="" bordered={false} />
       <TestimonialsMarquee />
     </Section>
   )

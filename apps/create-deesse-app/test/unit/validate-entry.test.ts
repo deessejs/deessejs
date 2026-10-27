@@ -47,10 +47,7 @@ describe("validateEntry", () => {
   })
 
   it("rejects path traversal", () => {
-    fails(
-      { path: "../../etc/passwd", type: "File" },
-      /traversal|absolute/i,
-    )
+    fails({ path: "../../etc/passwd", type: "File" }, /traversal|absolute/i)
   })
 
   it("rejects empty path segments", () => {
@@ -58,10 +55,22 @@ describe("validateEntry", () => {
   })
 
   it("rejects block devices, FIFOs, char devices, contiguous files", () => {
-    fails({ path: "dev", type: "BlockDevice" }, /unsupported entry type|absolute path/)
-    fails({ path: "pipe", type: "FIFO" }, /unsupported entry type|absolute path/)
-    fails({ path: "chr", type: "CharacterDevice" }, /unsupported entry type|absolute path/)
-    fails({ path: "ctg", type: "ContiguousFile" }, /unsupported entry type|absolute path/)
+    fails(
+      { path: "dev", type: "BlockDevice" },
+      /unsupported entry type|absolute path/
+    )
+    fails(
+      { path: "pipe", type: "FIFO" },
+      /unsupported entry type|absolute path/
+    )
+    fails(
+      { path: "chr", type: "CharacterDevice" },
+      /unsupported entry type|absolute path/
+    )
+    fails(
+      { path: "ctg", type: "ContiguousFile" },
+      /unsupported entry type|absolute path/
+    )
   })
 
   it("accepts a path that just happens to normalize to itself", () => {
