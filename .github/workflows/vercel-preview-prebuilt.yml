@@ -22,8 +22,6 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: pnpm/action-setup@v6
-
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -33,90 +31,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-
-          all_projects='[
-            {"app":"docs","directory":"apps/docs","package":"@workspace/docs","project_id":"prj_TjmKPgxU8po3FDjQVkprdIRGgXa4"},
-            {"app":"agent","directory":"apps/agent","package":"agent","project_id":"prj_XpSk71L2P6VCrZNA1P34hlTIWajc"},
-            {"app":"web","directory":"apps/web","package":"web","project_id":"prj_EDu0GMa3fKaInW6f3MBiLCiewi6O"},
-            {"app":"app","directory":"apps/app","package":"app","project_id":"prj_IOf5cRl1rkbc6SfSMzLsKsneYPdb"}
-          ]'
-
-          matrix='[]'
-          global_change=false
-          workspace_change=false
-          changed_files="$RUNNER_TEMP/changed-files.txt"
-
-          if ! git diff --name-only --no-renames "$BASE_SHA" "$HEAD_SHA" > "$changed_files"; then
-            echo "::warning::Could not compare the PR commits; deploying all Vercel projects."
-            global_change=true
-          else
-            while IFS= read -r path; do
-              [[ -n "$path" ]] || continue
-
-              case "$path" in
-                apps/*|packages/*)
-                  workspace_change=true
-                  ;;
-                package.json|pnpm-workspace.yaml|turbo.json|.npmrc|.node-version|.nvmrc)
-                  global_change=true
-                  ;;
-                pnpm-lock.yaml)
-                  # Let Turbo identify which workspace packages are affected by lockfile changes.
-                  workspace_change=true
-                  ;;
-                .github/*|.changeset/*|docs/*|README*|LICENSE*|CONTRIBUTING*|CODE_OF_CONDUCT*|.gitignore|.gitattributes|.editorconfig|.prettierignore|.prettierrc*)
-                  # Repository metadata and internal documentation do not change deployed app output.
-                  ;;
-                *)
-                  # Unknown root-level files may affect every app's build; fail closed.
-                  global_change=true
-                  ;;
-              esac
-            done < "$changed_files"
-          fi
-
-          if [[ "$global_change" == "true" ]]; then
-            matrix="$(jq -c . <<< "$all_projects")"
-          elif [[ "$workspace_change" == "true" ]]; then
-            if affected_json="$(pnpm dlx --silent turbo@2.10.4 query affected \
-              --base="$BASE_SHA" \
-              --head="$HEAD_SHA" \
-              --packages '@workspace/docs' agent web app \
-              2>"$RUNNER_TEMP/turbo-query.log")"; then
-              if jq -e '.data.affectedPackages.items | type == "array"' >/dev/null <<< "$affected_json"; then
-                affected_packages="$(jq -c '[.data.affectedPackages.items[].name]' <<< "$affected_json")"
-                matrix="$(jq -cn \
-                  --argjson projects "$all_projects" \
-                  --argjson affected "$affected_packages" \
-                  '$projects | map(select(.package as $name | ($affected | index($name)) != null))')"
-              else
-                echo "::warning::Turbo returned an unexpected result; deploying all Vercel projects."
-                matrix="$(jq -c . <<< "$all_projects")"
-              fi
-            else
-              cat "$RUNNER_TEMP/turbo-query.log"
-              echo "::warning::Turbo affected-project detection failed; deploying all Vercel projects."
-              matrix="$(jq -c . <<< "$all_projects")"
-            fi
-          fi
-
-          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
-          if [[ "$(jq 'length' <<< "$matrix")" -gt 0 ]]; then
-            echo "has_projects=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_projects=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          {
-            echo "### Vercel preview selection"
-            if [[ "$(jq 'length' <<< "$matrix")" -eq 0 ]]; then
-              echo "No Vercel project is affected by this change."
-            else
-              jq -r '.[].app | "- " + .' <<< "$matrix"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: node .github/scripts/select-vercel-preview-projects.mjs "$BASE_SHA" "$HEAD_SHA"
 
   deploy-preview:
     name: Preview (${{ matrix.app }})
@@ -141,7 +56,6 @@ jobs:
       VERCEL_GIT_COMMIT_REF: ${{ github.event.pull_request.head.ref }}
       VERCEL_GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
       VERCEL_GIT_PULL_REQUEST_ID: ${{ github.event.pull_request.number }}
-      VERCEL_CWD: ${{ matrix.directory }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -159,17 +73,16 @@ jobs:
         run: npm install --global vercel@64.7.0
 
       - name: Pull preview environment and project settings
-        run: vercel pull --yes --environment=preview --git-branch="$GITHUB_HEAD_REF" --cwd="$VERCEL_CWD"
+        run: vercel pull --yes --environment=preview --git-branch="$GITHUB_HEAD_REF"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
-      - name: Build preview
-        run: vercel build --cwd="$VERCEL_CWD"
+      - name: Build preview from the monorepo root
+        run: vercel build
 
       - name: Deploy prebuilt preview
-        id: deploy
         run: |
-          deployment_url="$(vercel deploy --prebuilt --yes --cwd="$VERCEL_CWD")"
+          deployment_url="$(vercel deploy --prebuilt --yes)"
           printf 'Preview deployment: %s\n' "$deployment_url" >> "$GITHUB_STEP_SUMMARY"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
