@@ -208,14 +208,34 @@ async function fetchRawFile(
     )
   }
 
-  const text = await response.text()
-  if (Buffer.byteLength(text, "utf8") > MAX_BLOCK_JSON_BYTES) {
+  const contentLength = Number(response.headers.get("content-length"))
+  if (Number.isFinite(contentLength) && contentLength > MAX_BLOCK_JSON_BYTES) {
     throw blockInvalid(
       sourceLabel,
       `source file "${filePath}" exceeds the ${MAX_BLOCK_JSON_BYTES} byte limit`
     )
   }
-  return text
+  if (!response.body) {
+    throw networkError(`GitHub returned an empty response body for ${filePath}.`)
+  }
+
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let byteLength = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    byteLength += value.byteLength
+    if (byteLength > MAX_BLOCK_JSON_BYTES) {
+      await reader.cancel()
+      throw blockInvalid(
+        sourceLabel,
+        `source file "${filePath}" exceeds the ${MAX_BLOCK_JSON_BYTES} byte limit`
+      )
+    }
+    chunks.push(value)
+  }
+  return Buffer.concat(chunks).toString("utf8")
 }
 
 async function createGitHubBlockReader(
@@ -284,6 +304,12 @@ async function readSafeLocalFile(root: string, path: string, label: string) {
       throw blockInvalid(label, `source file "${path}" traverses a symbolic link`)
     }
     const isLast = index === segments.length - 1
+    if (isLast && entry.size > MAX_BLOCK_JSON_BYTES) {
+      throw blockInvalid(
+        label,
+        `source file "${path}" exceeds the ${MAX_BLOCK_JSON_BYTES} byte limit`
+      )
+    }
     if ((!isLast && !entry.isDirectory()) || (isLast && !entry.isFile())) {
       throw blockInvalid(label, `source path "${path}" is not a regular file`)
     }
