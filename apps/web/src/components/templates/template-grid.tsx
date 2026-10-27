@@ -40,12 +40,12 @@ export const TemplateGrid = ({ templates, className }: TemplateGridProps) => {
     <div
       className={cn(
         "min-w-0 overflow-hidden rounded-none bg-background",
-        className,
+        className
       )}
     >
       <ul
         data-testid="templates-grid"
-        className="-mr-px -mb-px grid auto-rows-fr list-none grid-cols-1 gap-0 p-0 md:grid-cols-2 lg:grid-cols-3"
+        className="-mr-px -mb-px grid list-none auto-rows-fr grid-cols-1 gap-0 p-0 md:grid-cols-2 lg:grid-cols-3"
       >
         {templates.map((template) => (
           <li

@@ -57,7 +57,7 @@ export function ConnectedAccountsList() {
 
 	useEffect(() => {
 		// Valid: loading data on mount requires setState
-		// eslint-disable-next-line react-hooks/set-state-in-effect
+		// oxlint-disable-next-line react-hooks/set-state-in-effect
 		loadAccounts()
 	}, [loadAccounts])
 

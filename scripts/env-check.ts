@@ -65,19 +65,19 @@ if (NODE_ENV === "production") {
 }
 
 if (errors.length > 0) {
-  // eslint-disable-next-line no-console
+  // oxlint-disable-next-line no-console
   console.error(`\n[env-check] ✗ Invalid environment for NODE_ENV=${NODE_ENV}:\n`)
   for (const e of errors) {
-    // eslint-disable-next-line no-console
+    // oxlint-disable-next-line no-console
     console.error(`  - ${e}`)
   }
-  // eslint-disable-next-line no-console
+  // oxlint-disable-next-line no-console
   console.error(
     "\nCopy .env.example to .env at the repo root and fill in the values.\n",
   )
   process.exit(1)
 }
 
-// eslint-disable-next-line no-console
+// oxlint-disable-next-line no-console
 console.log(`[env-check] ✓ ${NODE_ENV} environment valid`)
 process.exit(0)

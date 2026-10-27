@@ -29,12 +29,12 @@ export const metadata: Metadata = {
 export default function VisionPage() {
   return (
     <>
-      <div className="mx-auto max-w-5xl px-4 md:px-6 py-16">
+      <div className="mx-auto max-w-5xl px-4 py-16 md:px-6">
         <div className="border-b border-border pb-16 md:pb-20 lg:pb-24">
           <Vision.Hero />
         </div>
 
-        <div className="grid grid-cols-1 gap-12 border-b border-border py-16 md:py-20 lg:py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,16rem)]">
+        <div className="grid grid-cols-1 gap-12 border-b border-border py-16 md:py-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,16rem)] lg:py-24">
           <div id="vision-body" className="max-w-3xl space-y-12">
             <Vision.Horizons />
           </div>

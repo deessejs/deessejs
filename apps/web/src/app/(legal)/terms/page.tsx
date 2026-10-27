@@ -60,17 +60,17 @@ export default function TermsPage() {
 
       <H2>Disclaimer</H2>
       <P>
-        The service is provided &ldquo;as is&rdquo; without warranties of any kind, either
-        express or implied. DeesseJS is not liable for any indirect,
-        incidental, special, consequential, or punitive damages arising from
-        use of the service.
+        The service is provided &ldquo;as is&rdquo; without warranties of any
+        kind, either express or implied. DeesseJS is not liable for any
+        indirect, incidental, special, consequential, or punitive damages
+        arising from use of the service.
       </P>
 
       <H2>Changes</H2>
       <P>
         We may update these Terms from time to time. Material changes will be
-        announced on the changelog. Continued use of the service after a
-        change constitutes acceptance of the updated terms.
+        announced on the changelog. Continued use of the service after a change
+        constitutes acceptance of the updated terms.
       </P>
 
       <H2>Contact</H2>

@@ -18,7 +18,7 @@ declare module "cross-spawn" {
   export function spawn(
     command: string,
     args: readonly string[],
-    options?: SpawnOptions,
+    options?: SpawnOptions
   ): ChildProcess
   const _default: typeof spawn
   export default _default

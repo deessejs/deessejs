@@ -37,12 +37,10 @@ import {
 const intakeSchema = z.object({
   name: z.string().min(1, "Your name is required."),
   email: z.string().email("Use a valid work email."),
-  repo: z
-    .string()
-    .url("Paste a valid URL to your repo or current site."),
+  repo: z.string().url("Paste a valid URL to your repo or current site."),
   base: z.enum(
     ["saas-multi-tenant", "e-commerce", "internal-portal", "top-of-funnel"],
-    { message: "Pick the architecture closest to your project." },
+    { message: "Pick the architecture closest to your project." }
   ),
   target: z.string().min(1, "Tell us the database and cloud you ship against."),
   deadline: z.enum(["under-2-weeks", "1-month", "flexible"], {
@@ -125,8 +123,8 @@ export function IntakeForm() {
           {...register("repo")}
         />
         <FieldDescription>
-          GitHub, GitLab, or your live site. Anything that shows the
-          current state.
+          GitHub, GitLab, or your live site. Anything that shows the current
+          state.
         </FieldDescription>
         <FieldError errors={[errors.repo]} />
       </Field>
@@ -144,10 +142,14 @@ export function IntakeForm() {
                 <SelectValue placeholder="Select an architecture…" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="saas-multi-tenant">SaaS multi-tenant</SelectItem>
+                <SelectItem value="saas-multi-tenant">
+                  SaaS multi-tenant
+                </SelectItem>
                 <SelectItem value="e-commerce">E-commerce</SelectItem>
                 <SelectItem value="internal-portal">Internal portal</SelectItem>
-                <SelectItem value="top-of-funnel">Top-of-funnel site</SelectItem>
+                <SelectItem value="top-of-funnel">
+                  Top-of-funnel site
+                </SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -169,9 +171,7 @@ export function IntakeForm() {
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="delivery-deadline">
-          Production deadline
-        </FieldLabel>
+        <FieldLabel htmlFor="delivery-deadline">Production deadline</FieldLabel>
         <Controller
           control={control}
           name="deadline"
@@ -207,9 +207,11 @@ export function IntakeForm() {
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="shrink-0 sm:self-auto self-start"
+          className="shrink-0 self-start sm:self-auto"
         >
-          {isSubmitting ? "Submitting…" : "Submit & Book Engineering Call (20 min)"}
+          {isSubmitting
+            ? "Submitting…"
+            : "Submit & Book Engineering Call (20 min)"}
         </Button>
       </div>
     </form>

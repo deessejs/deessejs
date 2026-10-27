@@ -26,8 +26,8 @@ export function LoginForm({ redirectTo = "/home" }: { redirectTo?: string } = {}
 		},
 		onSubmit: async ({ value }) => {
 			// The page already passed `redirectTo` through `safeRedirect`,
-			// but the workspace ESLint rule
-			// (`packages/eslint-config/base.js`) flags any
+			// but the workspace Oxlint rule
+			// (`.oxlintrc.json`) flags any
 			// `router.push` whose target originates from a
 			// search-param-adjacent flow. Re-running the helper
 			// here is idempotent and keeps the call site

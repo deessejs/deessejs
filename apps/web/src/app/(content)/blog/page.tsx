@@ -34,13 +34,13 @@ export default function BlogPage() {
           color="rgb(120, 120, 120)"
         />
         <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Blog
           </p>
           <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
             Articles and updates.
           </h1>
-          <p className="max-w-2xl text-copy-18 leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
+          <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
             Subscribe via{" "}
             <a
               href="/blog/feed.xml"
@@ -48,8 +48,8 @@ export default function BlogPage() {
             >
               RSS
             </a>
-            , or browse the latest from the team: posts on the
-            stack, the contracts, and the registry.
+            , or browse the latest from the team: posts on the stack, the
+            contracts, and the registry.
           </p>
         </div>
       </header>
@@ -59,23 +59,20 @@ export default function BlogPage() {
           posts={posts}
           featured={featured}
           topics={
-            <nav aria-label="Filter by tag" className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <nav
+              aria-label="Filter by tag"
+              className="flex flex-wrap items-center gap-2"
+            >
+              <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
                 Topics
               </span>
               <Link href="/blog" aria-current="page">
-                <Badge
-                  variant="default"
-                  className="cursor-pointer"
-                >
+                <Badge variant="default" className="cursor-pointer">
                   All topics
                 </Badge>
               </Link>
               {tags.map((tag) => (
-                <Link
-                  key={tag}
-                  href={`/blog/tag/${encodeURIComponent(tag)}`}
-                >
+                <Link key={tag} href={`/blog/tag/${encodeURIComponent(tag)}`}>
                   <Badge
                     variant="outline"
                     className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
@@ -100,15 +97,15 @@ export default function BlogPage() {
           posts={posts}
           featured={featured}
           topics={
-            <nav aria-label="Related sections" className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <nav
+              aria-label="Related sections"
+              className="flex flex-wrap items-center gap-2"
+            >
+              <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
                 Topics
               </span>
               <Link href="/blog" aria-current="page">
-                <Badge
-                  variant="default"
-                  className="cursor-pointer"
-                >
+                <Badge variant="default" className="cursor-pointer">
                   All topics
                 </Badge>
               </Link>

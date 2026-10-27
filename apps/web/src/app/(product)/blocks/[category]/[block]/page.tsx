@@ -73,12 +73,12 @@ export default async function BlockRoute({
       </div>
 
       {/* Hero */}
-      <header className="px-6 pb-12 pt-6 lg:px-10">
+      <header className="px-6 pt-6 pb-12 lg:px-10">
         <div className="flex flex-col gap-3">
           <h1 className="text-4xl font-bold tracking-tighter text-balance sm:text-5xl">
             {match.name}.
           </h1>
-          <p className="max-w-2xl text-pretty text-lg text-muted-foreground [&:not(:first-child)]:mt-0">
+          <p className="max-w-2xl text-lg text-pretty text-muted-foreground [&:not(:first-child)]:mt-0">
             {match.description}
           </p>
         </div>

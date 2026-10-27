@@ -30,8 +30,7 @@ export const HORIZONS: ReadonlyArray<Horizon> = [
   {
     label: "Now",
     status: "Shipping today",
-    tagline:
-      "What you can pull from the registry and the CLI today.",
+    tagline: "What you can pull from the registry and the CLI today.",
     items: [
       {
         title: "Curated template registry",
@@ -58,8 +57,7 @@ export const HORIZONS: ReadonlyArray<Horizon> = [
   {
     label: "Next",
     status: "In flight this quarter",
-    tagline:
-      "What we are actively building toward. Subject to revision.",
+    tagline: "What we are actively building toward. Subject to revision.",
     items: [
       {
         title: "Agent-aware template metadata",
@@ -86,8 +84,7 @@ export const HORIZONS: ReadonlyArray<Horizon> = [
   {
     label: "Beyond",
     status: "Aspirational",
-    tagline:
-      "Where we are heading if everything else goes well. No dates.",
+    tagline: "Where we are heading if everything else goes well. No dates.",
     items: [
       {
         title: "Templates that ship themselves",

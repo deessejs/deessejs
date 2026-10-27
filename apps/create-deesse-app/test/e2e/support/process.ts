@@ -38,7 +38,7 @@ export type RunCommandOptions = {
 export const runCommand = async (
   command: string,
   args: readonly string[],
-  options: RunCommandOptions,
+  options: RunCommandOptions
 ): Promise<CommandResult> => {
   const startedAt = new Date()
   // On Windows, .cmd / .bat shims (e.g. pnpm.cmd) cannot be spawned
@@ -102,29 +102,31 @@ export const runCommand = async (
     })
   })
 
-  const timeout = new Promise<{ code: number | null; signal: NodeJS.Signals | null; spawnError: Error | null }>(
-    (resolveFn) => {
+  const timeout = new Promise<{
+    code: number | null
+    signal: NodeJS.Signals | null
+    spawnError: Error | null
+  }>((resolveFn) => {
+    setTimeout(() => {
+      // SIGTERM, then SIGKILL after 5s. The exit handler above
+      // will then settle the `exited` promise with the actual
+      // code, but we resolve the race here with a conventional
+      // timeout exit code so the caller can react quickly.
+      try {
+        child.kill("SIGTERM")
+      } catch {
+        // already dead
+      }
       setTimeout(() => {
-        // SIGTERM, then SIGKILL after 5s. The exit handler above
-        // will then settle the `exited` promise with the actual
-        // code, but we resolve the race here with a conventional
-        // timeout exit code so the caller can react quickly.
         try {
-          child.kill("SIGTERM")
+          child.kill("SIGKILL")
         } catch {
           // already dead
         }
-        setTimeout(() => {
-          try {
-            child.kill("SIGKILL")
-          } catch {
-            // already dead
-          }
-        }, 5_000).unref()
-        resolveFn({ code: 124, signal: "SIGKILL", spawnError: null })
-      }, options.timeoutMs).unref()
-    },
-  )
+      }, 5_000).unref()
+      resolveFn({ code: 124, signal: "SIGKILL", spawnError: null })
+    }, options.timeoutMs).unref()
+  })
 
   const t0 = Date.now()
   const winner = await Promise.race([exited, timeout])

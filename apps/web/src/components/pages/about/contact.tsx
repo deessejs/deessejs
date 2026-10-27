@@ -19,23 +19,21 @@ import { CHANNELS } from "@/lib/about/channels"
  */
 export function Contact() {
   return (
-    <section className="grid grid-cols-1 gap-8 border-b border-border py-16 md:py-20 lg:py-24 lg:grid-cols-[12rem_minmax(0,1fr)]">
+    <section className="grid grid-cols-1 gap-8 border-b border-border py-16 md:py-20 lg:grid-cols-[12rem_minmax(0,1fr)] lg:py-24">
       <h2 className="text-heading-24 tracking-tight text-foreground lg:pt-1">
         Get in touch
       </h2>
       <div className="space-y-4">
-        <p className="max-w-3xl text-copy-16 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
-          Three channels, by purpose. Pick the one that matches
-          what you&apos;re bringing.
+        <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+          Three channels, by purpose. Pick the one that matches what you&apos;re
+          bringing.
         </p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {CHANNELS.map((channel) => (
             <a
               key={channel.label}
               href={channel.href}
-              target={
-                channel.href.startsWith("http") ? "_blank" : undefined
-              }
+              target={channel.href.startsWith("http") ? "_blank" : undefined}
               rel={
                 channel.href.startsWith("http")
                   ? "noopener noreferrer"
@@ -46,7 +44,7 @@ export function Contact() {
               <span className="text-label-14 font-semibold tracking-tight text-foreground">
                 {channel.label}
               </span>
-              <span className="text-copy-13 text-muted-foreground leading-5 [&:not(:first-child)]:mt-0">
+              <span className="text-copy-13 leading-5 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {channel.body}
               </span>
             </a>

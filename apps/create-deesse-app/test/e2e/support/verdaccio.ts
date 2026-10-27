@@ -54,7 +54,7 @@ export const publishToVerdaccio = async (opts: {
       "-c",
       `pnpm publish ${containerArchivePath} --registry ${registryUrl} --no-git-checks`,
     ],
-    execOpts,
+    execOpts
   )
   return {
     exitCode: result.exitCode,

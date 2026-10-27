@@ -36,7 +36,7 @@ export function PriceBlock({
     return (
       <p className="text-heading-32 tracking-tight text-foreground">
         Custom
-        <span className="text-copy-14 ml-2 font-normal text-muted-foreground">
+        <span className="ml-2 text-copy-14 font-normal text-muted-foreground">
           per engagement
         </span>
       </p>
@@ -50,7 +50,7 @@ export function PriceBlock({
         <p className="text-heading-32 tracking-tight text-foreground">
           {currencySymbol}
           {price.monthly.amount}
-          <span className="text-copy-14 ml-2 font-normal text-muted-foreground">
+          <span className="ml-2 text-copy-14 font-normal text-muted-foreground">
             / month, cancel any time
           </span>
         </p>
@@ -68,14 +68,14 @@ export function PriceBlock({
       <p className="text-heading-32 tracking-tight text-foreground">
         {currencySymbol}
         {price.annual.amount}
-        <span className="text-copy-14 ml-2 font-normal text-muted-foreground">
+        <span className="ml-2 text-copy-14 font-normal text-muted-foreground">
           / year
         </span>
       </p>
       <p className="text-copy-13 text-muted-foreground [&:not(:first-child)]:mt-0">
         Equivalent to {currencySymbol}
-        {monthlyEquivalentDisplay} / month. Saves {savingsPercent}% vs
-        monthly. Taxes included.
+        {monthlyEquivalentDisplay} / month. Saves {savingsPercent}% vs monthly.
+        Taxes included.
       </p>
     </div>
   )

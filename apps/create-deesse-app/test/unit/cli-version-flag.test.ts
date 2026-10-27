@@ -21,7 +21,9 @@ beforeEach(() => {
   exitCode = undefined
   exitCalled = false
   process.stdout.write = ((chunk: string | Uint8Array): boolean => {
-    stdoutChunks.push(typeof chunk === "string" ? chunk : chunk.toString("utf8"))
+    stdoutChunks.push(
+      typeof chunk === "string" ? chunk : chunk.toString("utf8")
+    )
     return true
   }) as typeof process.stdout.write
   process.exit = ((code?: number) => {

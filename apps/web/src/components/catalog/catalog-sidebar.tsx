@@ -51,10 +51,10 @@ export function CatalogSidebar<Id extends string>({
     <aside
       className={cn(
         "flex w-full flex-col gap-3 p-6 lg:sticky lg:top-20 lg:self-start",
-        className,
+        className
       )}
     >
-      <h2 className="text-label-13 uppercase tracking-wider text-muted-foreground">
+      <h2 className="text-label-13 tracking-wider text-muted-foreground uppercase">
         {heading}
       </h2>
       <ul className="flex flex-col gap-1">
@@ -69,8 +69,8 @@ export function CatalogSidebar<Id extends string>({
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-copy-14 font-medium transition-colors",
                   "hover:bg-accent/30",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  "aria-[current=page]:bg-accent/30",
+                  "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none",
+                  "aria-[current=page]:bg-accent/30"
                 )}
               >
                 <span className="flex-1 truncate text-left text-foreground">

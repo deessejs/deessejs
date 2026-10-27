@@ -32,7 +32,7 @@
   },
   "types": "./dist/index.d.ts",
   "scripts": {
-    "lint": "eslint --max-warnings=0",
+    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json packages/api --deny-warnings",
     "build": "tsc",
     "test": "vitest",
     "test:run": "vitest run",
@@ -56,11 +56,10 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
-    "eslint": "catalog:",
     "vitest": "catalog:",
     "@workspace/vitest-config": "workspace:*",
-    "@vitest/coverage-v8": "catalog:"
+    "@vitest/coverage-v8": "catalog:",
+    "oxlint": "catalog:"
   }
 }

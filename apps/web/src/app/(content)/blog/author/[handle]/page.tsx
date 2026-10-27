@@ -11,9 +11,11 @@ export function generateStaticParams(): Array<Params> {
   return allAuthors.map((author) => ({ handle: author.handle }))
 }
 
-export async function generateMetadata(
-  { params }: { params: Promise<Params> },
-): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<Params>
+}): Promise<Metadata> {
   const { handle } = await params
   const author = allAuthors.find((a) => a.handle === handle)
   if (!author) return {}
@@ -82,14 +84,14 @@ export default async function AuthorPage({
           {initials || author.name[0]}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <p className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
             Author
           </p>
-          <h1 className="mt-1 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-balance sm:text-4xl">
             {author.name}
           </h1>
           {author.bio ? (
-            <p className="mt-3 max-w-2xl text-pretty text-base text-muted-foreground">
+            <p className="mt-3 max-w-2xl text-base text-pretty text-muted-foreground">
               {author.bio}
             </p>
           ) : null}

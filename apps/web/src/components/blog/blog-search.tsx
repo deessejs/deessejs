@@ -47,10 +47,12 @@ export function BlogSearch({
     <div className="flex flex-col" data-blog-search-query={query}>
       {topics ? (
         <div className="flex flex-col gap-4 border-x border-t border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6">
-          <div className="flex flex-1 flex-wrap items-center gap-2">{topics}</div>
+          <div className="flex flex-1 flex-wrap items-center gap-2">
+            {topics}
+          </div>
           <div className="relative w-full shrink-0 sm:w-72">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden
             />
             <Input
@@ -59,7 +61,7 @@ export function BlogSearch({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search posts…"
               aria-label="Search posts"
-              className="pl-9 pr-9"
+              className="pr-9 pl-9"
             />
             {query.length > 0 ? (
               <Button
@@ -68,7 +70,7 @@ export function BlogSearch({
                 size="icon-sm"
                 onClick={() => setQuery("")}
                 aria-label="Clear search"
-                className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="size-4" aria-hidden />
               </Button>
@@ -79,10 +81,10 @@ export function BlogSearch({
 
       {showEmpty ? (
         <div className="flex flex-col items-center justify-center border border-dashed border-border px-6 py-16 text-center">
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+          <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
             No results
           </p>
-          <p className="mt-3 max-w-md text-pretty text-base text-muted-foreground">
+          <p className="mt-3 max-w-md text-base text-pretty text-muted-foreground">
             No posts match{" "}
             <span className="font-mono text-foreground">
               &ldquo;{deferred.trim()}&rdquo;

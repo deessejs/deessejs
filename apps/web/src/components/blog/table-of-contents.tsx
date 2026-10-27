@@ -30,7 +30,7 @@ export function TableOfContents({ targetId }: { targetId: string }) {
 
     // Intentionally updating state after DOM query to populate the table of contents.
     // This is a valid use case that requires extracting headings from the DOM.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // oxlint-disable-next-line react-hooks/set-state-in-effect
     setItems(next)
   }, [targetId])
 
@@ -56,7 +56,7 @@ export function TableOfContents({ targetId }: { targetId: string }) {
         const ordered = items.map((i) => i.id).filter((id) => visible.has(id))
         setActiveId(ordered[0] ?? null)
       },
-      { rootMargin: "-15% 0px -70% 0px", threshold: 0 },
+      { rootMargin: "-15% 0px -70% 0px", threshold: 0 }
     )
 
     headings.forEach((h) => observer.observe(h))
@@ -70,7 +70,7 @@ export function TableOfContents({ targetId }: { targetId: string }) {
       aria-label="Table of contents"
       className="sticky top-[calc(theme(spacing.14)+theme(spacing.6))] max-h-[calc(100dvh-calc(theme(spacing.14)+theme(spacing.8)))] overflow-y-auto"
     >
-      <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      <p className="mb-3 font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
         On this page
       </p>
       <ul className="space-y-1 border-l border-border/40">
@@ -83,7 +83,7 @@ export function TableOfContents({ targetId }: { targetId: string }) {
                 item.level === 3 && "pl-6",
                 activeId === item.id
                   ? "border-foreground text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
               {item.text}

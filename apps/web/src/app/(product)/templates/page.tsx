@@ -101,15 +101,15 @@ const TemplatesIndexPage = async ({
             color="rgb(120, 120, 120)"
           />
           <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
               Templates
             </p>
             <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
               Production-ready starters.
             </h1>
-            <p className="max-w-2xl text-copy-18 leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
-              Click any card to view details, or install from the CLI
-              with <code>deessejs init &lt;slug&gt;</code>.
+            <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
+              Click any card to view details, or install from the CLI with{" "}
+              <code>deessejs init &lt;slug&gt;</code>.
             </p>
           </div>
         </header>
@@ -118,10 +118,10 @@ const TemplatesIndexPage = async ({
           data-testid="templates-empty"
           className="flex flex-col items-center justify-center border border-dashed border-border px-6 py-16 text-center"
         >
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+          <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
             No templates
           </p>
-          <p className="mt-3 max-w-md text-pretty text-base text-muted-foreground">
+          <p className="mt-3 max-w-md text-base text-pretty text-muted-foreground">
             The registry is empty right now. Try the CLI:{" "}
             <code className="text-copy-14-mono text-foreground">
               deessejs list
@@ -154,15 +154,15 @@ const TemplatesIndexPage = async ({
           color="rgb(120, 120, 120)"
         />
         <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Templates
           </p>
           <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
             Production-ready starters.
           </h1>
-          <p className="max-w-2xl text-copy-18 leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
-            Click any card to view details, or install from the CLI
-            with <code>deessejs init &lt;slug&gt;</code>.
+          <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
+            Click any card to view details, or install from the CLI with{" "}
+            <code>deessejs init &lt;slug&gt;</code>.
           </p>
         </div>
       </header>
@@ -206,13 +206,16 @@ const TemplatesIndexPage = async ({
                       Ship your template to the registry
                     </span>
                     <span className="text-copy-13 text-muted-foreground">
-                      Open a PR on deessejs/deessejs. Slug, category,
-                      and labels are collected via the form.
+                      Open a PR on deessejs/deessejs. Slug, category, and labels
+                      are collected via the form.
                     </span>
                   </div>
-                  <span className="text-label-14 text-foreground underline-offset-4 whitespace-nowrap group-hover:underline">
+                  <span className="text-label-14 whitespace-nowrap text-foreground underline-offset-4 group-hover:underline">
                     Submit your template
-                    <ChevronRight className="ml-1 inline-block size-3" aria-hidden />
+                    <ChevronRight
+                      className="ml-1 inline-block size-3"
+                      aria-hidden
+                    />
                   </span>
                 </a>
               </>
@@ -226,18 +229,16 @@ const TemplatesIndexPage = async ({
           the `(content)` layout's final block, so visitors hit the
           same conversion lever regardless of which surface they
           arrived on. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
+      <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
         <div className="flex flex-col gap-4 p-6 lg:p-10">
-          <p className="text-label-13 text-muted-foreground">
-            Ready to ship?
-          </p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+          <p className="text-label-13 text-muted-foreground">Ready to ship?</p>
+          <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40">
             Browse the registry. Or ship with us.
           </h2>
-          <p className="text-copy-16 text-muted-foreground leading-7 max-w-xl [&:not(:first-child)]:mt-0">
-            Install the CLI to scaffold a project in under five
-            minutes, or talk to our delivery team if you need a
-            hand. Same templates, same contracts, same guarantees.
+          <p className="max-w-xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+            Install the CLI to scaffold a project in under five minutes, or talk
+            to our delivery team if you need a hand. Same templates, same
+            contracts, same guarantees.
           </p>
         </div>
         <div className="flex flex-col items-stretch justify-center gap-4 p-6 lg:p-10">

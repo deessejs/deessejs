@@ -21,7 +21,13 @@ export type RunInstallResult =
    * `aborted: false` so the union narrows cleanly on
    * `if (installResult.aborted)` checks.
    */
-  | { ok: false; aborted: true; code: number | null; stderr: string; stdout: string }
+  | {
+      ok: false
+      aborted: true
+      code: number | null
+      stderr: string
+      stdout: string
+    }
 
 export type RunInstallArgs = {
   /** The install command to run, produced by the strategy factory. */
@@ -92,7 +98,9 @@ const KILL_GRACE_MS = 5_000
  * paired: the caller catches the throw, then prints its
  * JSON with `projectCreated: true` + `recovery`.
  */
-export const runInstall = async (args: RunInstallArgs): Promise<RunInstallResult> => {
+export const runInstall = async (
+  args: RunInstallArgs
+): Promise<RunInstallResult> => {
   const { command, managerId, cwd, signal } = args
   const cmd = command
 

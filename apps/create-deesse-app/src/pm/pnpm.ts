@@ -3,7 +3,10 @@ import type { InstallCommand, PackageManager } from "./manager.js"
 
 export const pnpm: PackageManager = {
   id: "pnpm",
-  installCommand: (strategy: InstallStrategy, version: string): InstallCommand => {
+  installCommand: (
+    strategy: InstallStrategy,
+    version: string
+  ): InstallCommand => {
     switch (strategy) {
       case "corepack":
         // Corepack reads the generated project's
@@ -17,7 +20,10 @@ export const pnpm: PackageManager = {
         // contexts npm's default is to install silently, but
         // `--yes` is the documented way to make the behavior
         // explicit and consistent.
-        return { bin: "npm", args: ["exec", "--yes", "--", `pnpm@${version}`, "install"] }
+        return {
+          bin: "npm",
+          args: ["exec", "--yes", "--", `pnpm@${version}`, "install"],
+        }
       case "pnpm-direct":
         return { bin: "pnpm", args: ["install"] }
     }

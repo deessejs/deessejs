@@ -8,7 +8,7 @@
     "dev": "eve dev",
     "build": "eve build",
     "start": "eve start",
-    "lint": "eslint",
+    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json apps/agent",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -19,10 +19,9 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
-    "eslint": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "oxlint": "catalog:"
   },
   "engines": {
     "node": ">=24.0.0"

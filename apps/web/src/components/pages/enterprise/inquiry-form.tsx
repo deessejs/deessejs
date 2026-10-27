@@ -77,8 +77,7 @@ export function InquiryForm() {
 
     setSubmittedEmail(data.email)
 
-    window.location.href =
-      `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    window.location.href = `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
   }
 
   const onSubmitEvent = (event: FormEvent<HTMLFormElement>) => {
@@ -128,7 +127,9 @@ export function InquiryForm() {
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="enterprise-message">What are you building?</FieldLabel>
+        <FieldLabel htmlFor="enterprise-message">
+          What are you building?
+        </FieldLabel>
         <Textarea
           id="enterprise-message"
           rows={5}
@@ -151,7 +152,11 @@ export function InquiryForm() {
             ? `Opening your mail client addressed to ${RECIPIENT}. We reply within two business days.`
             : `Submitting opens your mail client addressed to ${RECIPIENT}. We reply within two business days.`}
         </p>
-        <Button type="submit" disabled={isSubmitting} className="shrink-0 sm:self-auto self-start">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="shrink-0 self-start sm:self-auto"
+        >
           {isSubmitting ? "Opening mail client…" : "Email us about Enterprise"}
         </Button>
       </div>

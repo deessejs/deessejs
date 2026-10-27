@@ -41,9 +41,9 @@ export const HOME_FAQ: ReadonlyArray<FaqItem> = [
         free. The Professional plan unlocks the full Pro catalog for $29 / month
         or $299 / year, every project you ship while subscribed. The Agency
         &amp; Team plan covers 5 seats and adds a Commercial Extended License
-        that lets you re-sell to your clients without attribution. The
-        delivery service (we ship it with you) is a separate engagement
-        scoped per project.
+        that lets you re-sell to your clients without attribution. The delivery
+        service (we ship it with you) is a separate engagement scoped per
+        project.
       </>
     ),
   },
@@ -52,9 +52,9 @@ export const HOME_FAQ: ReadonlyArray<FaqItem> = [
     question: "How does the CLI work?",
     answer: (
       <>
-        Install it globally with <code>npm install -g deessejs</code> and
-        run <code>deessejs init &lt;template-slug&gt;</code> to scaffold.
-        The full walkthrough (install, authenticate, list, init) lives in{" "}
+        Install it globally with <code>npm install -g deessejs</code> and run{" "}
+        <code>deessejs init &lt;template-slug&gt;</code> to scaffold. The full
+        walkthrough (install, authenticate, list, init) lives in{" "}
         <Link
           href="/knowledge-base/guides/install-deessejs-cli"
           className="font-medium text-foreground underline-offset-4 hover:underline"
@@ -73,7 +73,7 @@ export const HOME_FAQ: ReadonlyArray<FaqItem> = [
   },
   {
     value: "ship-with-us",
-    question: "What does \"ship with us\" mean?",
+    question: 'What does "ship with us" mean?',
     answer:
       "Same templates, same contracts, same guarantees as the self-service path, applied to a specific customer outcome. Our delivery team runs the build with you, you ship to your customers. You keep the code and the contracts at the end.",
   },

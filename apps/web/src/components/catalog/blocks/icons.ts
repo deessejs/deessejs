@@ -65,7 +65,7 @@ export const BLOCK_ICONS = {
 // union of 21 string-literal keys resolves to `never` even when
 // both sides match. The runtime `as Record<...>` access in
 // `getBlockIcon` is the source of truth.
-const _exhaustive = (null as unknown) as boolean
+const _exhaustive = null as unknown as boolean
 void _exhaustive
 
 export function getBlockIcon(slug: CatalogueBlock["slug"]): LucideIcon {

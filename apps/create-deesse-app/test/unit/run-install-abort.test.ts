@@ -150,7 +150,7 @@ describe("runInstall — AbortSignal handling", () => {
   it("kills the descendant tree on abort (POSIX: process group; Windows: taskkill /T /F)", async () => {
     const pidFile = join(
       tmpdir(),
-      `cda-pidfile-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`,
+      `cda-pidfile-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`
     )
     // The parent mirrors what corepack/npm-exec do in
     // production: it spawns a grandchild WITHOUT
@@ -259,7 +259,7 @@ describe("runInstall — AbortSignal handling", () => {
     }
     expect(
       isProcessAlive(grandchildPid),
-      `grandchild pid ${grandchildPid} is still alive after abort`,
+      `grandchild pid ${grandchildPid} is still alive after abort`
     ).toBe(false)
 
     // Cleanup.
@@ -291,7 +291,7 @@ describe("runInstall — AbortSignal handling", () => {
     // exists on the runner.
     const ghostPath = join(
       tmpdir(),
-      `cda-ghost-bin-${Date.now()}-${Math.random().toString(36).slice(2)}.cmd`,
+      `cda-ghost-bin-${Date.now()}-${Math.random().toString(36).slice(2)}.cmd`
     )
     const command = {
       bin: ghostPath,

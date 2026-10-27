@@ -121,7 +121,7 @@ export function EcosystemTabs({
     >
       <TabsList
         aria-label="Ecosystem"
-        className="flex flex-col divide-y divide-border border-b border-border lg:border-b-0 lg:border-r bg-transparent p-0 h-auto w-full rounded-none!"
+        className="flex h-auto w-full flex-col divide-y divide-border rounded-none! border-b border-border bg-transparent p-0 lg:border-r lg:border-b-0"
       >
         {ECOSYSTEM_TABS.map((tab) => {
           const Icon = tab.icon
@@ -132,39 +132,42 @@ export function EcosystemTabs({
               disabled={tab.comingSoon}
               aria-disabled={tab.comingSoon || undefined}
               className={cn(
-                "group flex flex-col items-start gap-2 rounded-none bg-transparent p-6 text-left h-auto w-full shadow-none border-0",
-                "text-foreground/60 hover:text-foreground hover:bg-accent/40",
+                "group flex h-auto w-full flex-col items-start gap-2 rounded-none border-0 bg-transparent p-6 text-left shadow-none",
+                "text-foreground/60 hover:bg-accent/40 hover:text-foreground",
                 "data-[state=active]:bg-accent/40 data-[state=active]:text-foreground",
                 "[&:after]:hidden",
                 tab.comingSoon &&
-                  "opacity-60 cursor-not-allowed hover:bg-transparent hover:text-foreground/60",
+                  "cursor-not-allowed opacity-60 hover:bg-transparent hover:text-foreground/60"
               )}
             >
               <div className="flex w-full items-start justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
                   <Icon
-                    className="text-foreground size-4 shrink-0"
+                    className="size-4 shrink-0 text-foreground"
                     aria-hidden
                   />
-                  <h3 className="text-heading-20 tracking-tight !m-0 truncate">
+                  <h3 className="!m-0 truncate text-heading-20 tracking-tight">
                     {tab.name}
                   </h3>
                 </div>
                 {tab.comingSoon ? (
                   <span
                     aria-label={`${tab.name} is coming soon`}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider leading-[1.6] text-foreground"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] leading-[1.6] tracking-wider text-foreground uppercase"
                   >
-                    <span aria-hidden className="size-1.5 rounded-full bg-foreground" />
+                    <span
+                      aria-hidden
+                      className="size-1.5 rounded-full bg-foreground"
+                    />
                     Coming soon
                   </span>
                 ) : null}
               </div>
-              <p className="text-copy-14 text-muted-foreground leading-6 !m-0 text-balance">
+              <p className="!m-0 text-copy-14 leading-6 text-balance text-muted-foreground">
                 {tab.description}
               </p>
               {tab.comingSoon ? (
-                <span className="inline-flex items-center gap-1 text-label-13 text-muted-foreground/60 pt-1">
+                <span className="inline-flex items-center gap-1 pt-1 text-label-13 text-muted-foreground/60">
                   Coming soon
                 </span>
               ) : (
@@ -172,7 +175,7 @@ export function EcosystemTabs({
                   href={tab.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4 pt-1"
+                  className="inline-flex items-center gap-1 pt-1 text-label-13 text-foreground underline-offset-4 hover:underline"
                   onClick={(event) => event.stopPropagation()}
                 >
                   Learn more
@@ -188,15 +191,12 @@ export function EcosystemTabs({
         <TabsContent
           key={tab.slug}
           value={tab.slug}
-          className="relative outline-none min-h-[320px] lg:min-h-[480px] mt-0 overflow-hidden"
+          className="relative mt-0 min-h-[320px] overflow-hidden outline-none lg:min-h-[480px]"
         >
           <DotGrid className="absolute inset-0" />
 
           <div className="absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] overflow-hidden">
-              <EcosystemCodeMockup
-                slug={tab.slug}
-                files={htmlBySlug[tab.slug]}
-              />
+            <EcosystemCodeMockup slug={tab.slug} files={htmlBySlug[tab.slug]} />
           </div>
         </TabsContent>
       ))}

@@ -37,9 +37,9 @@ const RENDERED = (
       Ship from contracts, not scratch
     </h3>
     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-      Your agent navigates the same contracts the registry ships. The
-      template doesn&rsquo;t just scaffold — it locks the surface so the model
-      cannot drift.
+      Your agent navigates the same contracts the registry ships. The template
+      doesn&rsquo;t just scaffold — it locks the surface so the model cannot
+      drift.
     </p>
     <div className="mt-3 flex flex-wrap items-center gap-1.5">
       {["saas", "agents", "registry"].map((tag) => (
@@ -60,7 +60,7 @@ export function CmsEditorMockup() {
       <div className="flex flex-col gap-0 divide-y divide-border lg:grid lg:grid-cols-2 lg:divide-x lg:divide-y-0">
         {/* Source pane */}
         <div className="flex flex-col gap-3 bg-zinc-950 p-4 font-mono text-copy-13">
-          <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-zinc-500">
+          <div className="flex items-center justify-between text-label-12 tracking-wider text-zinc-500 uppercase">
             <span>Source</span>
             <span>post.mdx</span>
           </div>
@@ -93,7 +93,7 @@ export function CmsEditorMockup() {
 
         {/* Preview pane */}
         <div className="flex flex-col gap-3 bg-background p-4">
-          <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-muted-foreground">
+          <div className="flex items-center justify-between text-label-12 tracking-wider text-muted-foreground uppercase">
             <span>Preview</span>
             <m.span
               initial={{ opacity: 0, scale: 0.9 }}

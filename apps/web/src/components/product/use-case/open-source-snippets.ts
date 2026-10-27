@@ -123,13 +123,16 @@ export const next = (current: string, kind: "major" | "minor" | "patch") =>
   bumpVersion(current, kind, { allowBreaking: kind === "major" })`,
 }
 
-export const OPEN_SOURCE_SNIPPETS: Record<OpenSourcePillarSlug, OpenSourcePillarTool> = {
+export const OPEN_SOURCE_SNIPPETS: Record<
+  OpenSourcePillarSlug,
+  OpenSourcePillarTool
+> = {
   "conventional-commits": { files: [conventionalCommitsFile] },
-  "deessejs-init":        { files: [deessejsInitFile] },
-  "agents-md":            { files: [agentsMdFile] },
-  "changeset-release":    { files: [changesetReleaseFile] },
-  "license-check":        { files: [licenseCheckFile] },
-  "deessejs-update":      { files: [deessejsUpdateFile] },
-  "codeowners-route":     { files: [codeownersRouteFile] },
-  "semver-bump":          { files: [semverBumpFile] },
+  "deessejs-init": { files: [deessejsInitFile] },
+  "agents-md": { files: [agentsMdFile] },
+  "changeset-release": { files: [changesetReleaseFile] },
+  "license-check": { files: [licenseCheckFile] },
+  "deessejs-update": { files: [deessejsUpdateFile] },
+  "codeowners-route": { files: [codeownersRouteFile] },
+  "semver-bump": { files: [semverBumpFile] },
 }

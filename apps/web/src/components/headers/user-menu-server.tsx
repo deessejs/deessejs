@@ -22,11 +22,7 @@ import { appUrl, apiBaseUrl } from "@/lib/preview-urls"
 import { AuthClientProvider } from "./auth-client-provider"
 import { UserMenu } from "./user-menu"
 
-export function UserMenuServer({
-  variant,
-}: {
-  variant: "desktop" | "mobile"
-}) {
+export function UserMenuServer({ variant }: { variant: "desktop" | "mobile" }) {
   return (
     <AuthClientProvider apiBaseUrl={apiBaseUrl}>
       <UserMenu variant={variant} baseUrl={appUrl} />

@@ -16,7 +16,8 @@ import * as m from "motion/react-m"
 
 import { MockupMotionBoundary } from "./motion-boundary"
 
-const PROMPT = "What's our MRR this month, and how does it compare to last month?"
+const PROMPT =
+  "What's our MRR this month, and how does it compare to last month?"
 
 const RESPONSE =
   "Your MRR this month is $11,270 across 8 active workspaces, up from $9,840 last month - that's a 14.5% increase. The biggest contributors were the Pilot Co and Acme Labs upgrades."
@@ -49,7 +50,7 @@ export function StreamingChatMockup() {
   return (
     <MockupMotionBoundary>
       <div className="flex flex-col gap-3 p-4">
-        <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-muted-foreground">
+        <div className="flex items-center justify-between text-label-12 tracking-wider text-muted-foreground uppercase">
           <span>Thread</span>
           <span className="font-mono text-label-12 text-violet-600 dark:text-violet-400">
             streaming
@@ -64,7 +65,7 @@ export function StreamingChatMockup() {
           transition={{ duration: 0.3 }}
           className="flex flex-col gap-1.5 rounded-sm border border-border bg-muted/40 p-3"
         >
-          <span className="text-label-12 uppercase tracking-wider text-muted-foreground">
+          <span className="text-label-12 tracking-wider text-muted-foreground uppercase">
             you
           </span>
           <p className="text-copy-13 text-foreground">{PROMPT}</p>
@@ -78,7 +79,7 @@ export function StreamingChatMockup() {
           transition={{ delay: 0.4, duration: 0.3 }}
           className="flex flex-col gap-1.5 rounded-sm border border-violet-500/30 bg-violet-500/5 p-3"
         >
-          <span className="text-label-12 uppercase tracking-wider text-violet-600 dark:text-violet-400">
+          <span className="text-label-12 tracking-wider text-violet-600 uppercase dark:text-violet-400">
             agent
           </span>
           <p className="text-copy-13 leading-6 text-foreground">

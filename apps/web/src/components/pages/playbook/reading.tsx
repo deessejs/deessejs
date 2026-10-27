@@ -35,16 +35,16 @@ export function Reading() {
   if (posts.length === 0) return null
 
   return (
-    <Section className="grid grid-cols-1 md:grid-cols-3 divide-y divide-border md:divide-y-0 md:divide-x divide-border">
-      <div className="flex flex-col col-span-1 md:col-span-3 border-0">
-        <div className="flex flex-col gap-2 p-6 border-b border-border">
+    <Section className="grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+      <div className="col-span-1 flex flex-col border-0 md:col-span-3">
+        <div className="flex flex-col gap-2 border-b border-border p-6">
           <p className="text-label-13 text-muted-foreground">From the blog</p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+          <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40">
             More on the same problem
           </h2>
-          <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-            Three articles on keeping agent-written code readable,
-            testable, and maintainable after the first commit.
+          <p className="max-w-2xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+            Three articles on keeping agent-written code readable, testable, and
+            maintainable after the first commit.
           </p>
         </div>
       </div>

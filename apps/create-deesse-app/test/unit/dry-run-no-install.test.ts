@@ -46,7 +46,7 @@ const buildFixtureTarball = (): { tarPath: string; stageDir: string } => {
   writeFileSync(join(inner, "LICENSE"), "MIT")
   writeFileSync(
     join(inner, "package.json"),
-    '{"name":"x","packageManager":"pnpm@11.0.0"}',
+    '{"name":"x","packageManager":"pnpm@11.0.0"}'
   )
   const tarPath = join(stageDir, "fixture.tgz")
   tar.c({ gzip: true, file: tarPath, cwd: stageDir, sync: true }, [PREFIX_DIR])
@@ -94,7 +94,7 @@ describe("run() — --dry-run --no-install", () => {
     // BOUNDARY: the destination is not on disk.
     expect(
       (await import("node:fs")).existsSync(dir),
-      "destination must not be created",
+      "destination must not be created"
     ).toBe(false)
 
     // The plan still includes the source SHA and the

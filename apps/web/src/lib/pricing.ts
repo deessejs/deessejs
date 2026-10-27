@@ -56,7 +56,9 @@ export type PlanPricing =
  * percent versus paying monthly for a year. Both are derived from
  * the configuration, never stored.
  */
-export function annualBreakdown(price: Extract<PlanPricing, { kind: "subscription" }>): {
+export function annualBreakdown(
+  price: Extract<PlanPricing, { kind: "subscription" }>
+): {
   monthlyEquivalent: number
   savingsPercent: number
 } {
@@ -100,8 +102,7 @@ export const LICENSE_TYPES: ReadonlyArray<LicenseType> = [
     id: "open-community",
     name: "Community",
     tagline: "Free forever · MIT License",
-    forWho:
-      "For solo builders, weekend hacks, and open-source projects.",
+    forWho: "For solo builders, weekend hacks, and open-source projects.",
     price: { kind: "free" },
     positioning:
       "The open-source foundation of DeesseJS. Clean, modular building blocks and essential starters to scaffold your ideas in seconds with zero friction.",
@@ -215,7 +216,8 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
     rows: [
       {
         attribute: "Price",
-        tooltip: "What you pay. All amounts are in USD and include taxes. Switch the cadence toggle at the top of the page to see monthly and annual pricing side by side.",
+        tooltip:
+          "What you pay. All amounts are in USD and include taxes. Switch the cadence toggle at the top of the page to see monthly and annual pricing side by side.",
         values: {
           "open-community": "Free",
           professional: "$29 / month or $299 / year, taxes included",
@@ -229,16 +231,20 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "License",
-        tooltip: "The legal terms that come with the templates. MIT = permissive open-source. Professional = commercial subscription for every project you ship while subscribed. Agency = Commercial Extended License: re-sell to your clients without citing DeesseJS.",
+        tooltip:
+          "The legal terms that come with the templates. MIT = permissive open-source. Professional = commercial subscription for every project you ship while subscribed. Agency = Commercial Extended License: re-sell to your clients without citing DeesseJS.",
         values: {
           "open-community": "MIT",
-          professional: "Commercial subscription, every project you ship while subscribed",
-          agency: "Commercial Extended License: re-sell to clients, no attribution required",
+          professional:
+            "Commercial subscription, every project you ship while subscribed",
+          agency:
+            "Commercial Extended License: re-sell to clients, no attribution required",
         },
       },
       {
         attribute: "Source code",
-        tooltip: "Whether the underlying source code ships with the plan. Source code lives in your repo, deployable on your infra, with no telemetry or kill switch.",
+        tooltip:
+          "Whether the underlying source code ships with the plan. Source code lives in your repo, deployable on your infra, with no telemetry or kill switch.",
         values: {
           "open-community": "Included",
           professional: "Included from day one",
@@ -247,16 +253,19 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Project scope",
-        tooltip: "How many projects one subscription covers. No project cap on Professional: every project you ship under the same active subscription, internal or commercial.",
+        tooltip:
+          "How many projects one subscription covers. No project cap on Professional: every project you ship under the same active subscription, internal or commercial.",
         values: {
           "open-community": "Unlimited",
-          professional: "Unlimited. Every project you ship under one active subscription.",
+          professional:
+            "Unlimited. Every project you ship under one active subscription.",
           agency: "Unlimited, across up to 5 developers in your team",
         },
       },
       {
         attribute: "Templates included",
-        tooltip: "How many templates your plan unlocks. Open Community ships with a curated starter set; Pro and Agency unlock the full catalog as long as the subscription is active.",
+        tooltip:
+          "How many templates your plan unlocks. Open Community ships with a curated starter set; Pro and Agency unlock the full catalog as long as the subscription is active.",
         values: {
           "open-community": "1 starter template",
           professional: "Full Pro catalog, current and new",
@@ -265,7 +274,8 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Documentation depth",
-        tooltip: "How deep the template-level documentation goes. All plans ship with the same public KB articles; there is no gated documentation by tier.",
+        tooltip:
+          "How deep the template-level documentation goes. All plans ship with the same public KB articles; there is no gated documentation by tier.",
         values: {
           "open-community": "Complete",
           professional: "Complete",
@@ -274,7 +284,8 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Quality bar",
-        tooltip: "What 'done' means for templates in this tier. Open Community = ships end-to-end. Pro = production patterns a CISO expects, audited before release.",
+        tooltip:
+          "What 'done' means for templates in this tier. Open Community = ships end-to-end. Pro = production patterns a CISO expects, audited before release.",
         values: {
           "open-community": "Does it ship end-to-end?",
           professional: "Production patterns a CISO expects",
@@ -293,7 +304,8 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
     rows: [
       {
         attribute: "Updates",
-        tooltip: "How often templates are kept current with the ecosystem (Next.js, Better Auth, Drizzle, providers). Community = anyone can PR. Pro and Agency = ongoing maintenance by the team while the subscription is active.",
+        tooltip:
+          "How often templates are kept current with the ecosystem (Next.js, Better Auth, Drizzle, providers). Community = anyone can PR. Pro and Agency = ongoing maintenance by the team while the subscription is active.",
         values: {
           "open-community": "Community-driven, always current",
           professional: "Ongoing, by the DeesseJS team",
@@ -302,7 +314,8 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "New templates",
-        tooltip: "Whether new templates released during your active subscription are added to your access.",
+        tooltip:
+          "Whether new templates released during your active subscription are added to your access.",
         values: {
           "open-community": "Open to anyone in the catalog",
           professional: "Every new Pro template, included while subscribed",
@@ -311,7 +324,8 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Security patches",
-        tooltip: "Who patches CVEs and security issues when they surface. Pro and Agency = patched by the DeesseJS team as long as the subscription is active.",
+        tooltip:
+          "Who patches CVEs and security issues when they surface. Pro and Agency = patched by the DeesseJS team as long as the subscription is active.",
         values: {
           "open-community": "Community-driven",
           professional: "Patched by the DeesseJS team, while subscribed",
@@ -325,7 +339,8 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
     rows: [
       {
         attribute: "Deployment targets",
-        tooltip: "Where you can host the templates you ship. All templates are platform-agnostic and run anywhere Node runs.",
+        tooltip:
+          "Where you can host the templates you ship. All templates are platform-agnostic and run anywhere Node runs.",
         values: {
           "open-community": "Vercel, Netlify, self-host",
           professional: "Vercel, Netlify, AWS, GCP, self-host",
@@ -334,7 +349,8 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "CI/CD templates",
-        tooltip: "Pre-built CI/CD workflows shipped with each template. Open Community has community-contributed ones; Pro and Agency ship curated GitHub Actions files.",
+        tooltip:
+          "Pre-built CI/CD workflows shipped with each template. Open Community has community-contributed ones; Pro and Agency ship curated GitHub Actions files.",
         values: {
           "open-community": "Community-contributed",
           professional: "Curated GitHub Actions",
@@ -348,7 +364,8 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
     rows: [
       {
         attribute: "Community access",
-        tooltip: "Where you can ask questions and follow releases. GitHub Discussions is the primary channel for all tiers.",
+        tooltip:
+          "Where you can ask questions and follow releases. GitHub Discussions is the primary channel for all tiers.",
         values: {
           "open-community": "GitHub Discussions",
           professional: "GitHub Discussions",
@@ -357,7 +374,8 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Email support",
-        tooltip: "Direct email channel for support questions. SLAs below are business hours (Monday-Friday, CET).",
+        tooltip:
+          "Direct email channel for support questions. SLAs below are business hours (Monday-Friday, CET).",
         values: {
           "open-community": "Not included",
           professional: "Best effort, 48h first reply",
@@ -371,7 +389,8 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Onboarding session",
-        tooltip: "Optional call with the DeesseJS team to scope your first project. Available for Professional and Agency.",
+        tooltip:
+          "Optional call with the DeesseJS team to scope your first project. Available for Professional and Agency.",
         values: {
           "open-community": "Not included",
           professional: "1-hour call, on request",
@@ -404,20 +423,26 @@ export const COMPARISON_GROUPS: ReadonlyArray<ComparisonGroup> = [
       },
       {
         attribute: "Re-sell rights",
-        tooltip: "Whether you can resell templates to a client or in another catalog. The Commercial Extended License on Agency explicitly covers re-sale to clients without attribution; Pro covers re-sale to one client at a time while subscribed.",
+        tooltip:
+          "Whether you can resell templates to a client or in another catalog. The Commercial Extended License on Agency explicitly covers re-sale to clients without attribution; Pro covers re-sale to one client at a time while subscribed.",
         values: {
           "open-community": "MIT allows re-use",
-          professional: "Re-sell to a client OK while subscribed; unmodified template may not appear in another catalog",
-          agency: "Commercial Extended License: re-sell to your clients without citing DeesseJS",
+          professional:
+            "Re-sell to a client OK while subscribed; unmodified template may not appear in another catalog",
+          agency:
+            "Commercial Extended License: re-sell to your clients without citing DeesseJS",
         },
       },
       {
         attribute: "After cancellation",
-        tooltip: "What keeps working if you cancel. Projects already in production stay covered; new projects started after cancellation require a resubscription. Code already cloned into your repositories stays there.",
+        tooltip:
+          "What keeps working if you cancel. Projects already in production stay covered; new projects started after cancellation require a resubscription. Code already cloned into your repositories stays there.",
         values: {
           "open-community": "N/A",
-          professional: "Projects in production at cancellation stay covered; new projects require a resubscription",
-          agency: "Projects in production at cancellation stay covered, including the Figma source; new projects require a resubscription",
+          professional:
+            "Projects in production at cancellation stay covered; new projects require a resubscription",
+          agency:
+            "Projects in production at cancellation stay covered, including the Figma source; new projects require a resubscription",
         },
         status: {
           "open-community": "na",
@@ -555,5 +580,5 @@ export const PRICING_FAQ_GROUPS: ReadonlyArray<FaqGroup> = [
  * sequence (search, JSON-LD structured data, etc.).
  */
 export const PRICING_FAQ: ReadonlyArray<FaqItem> = PRICING_FAQ_GROUPS.flatMap(
-  (group) => group.items,
+  (group) => group.items
 )

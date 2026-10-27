@@ -5,7 +5,11 @@ import { Section } from "@/components/marketing/section"
 import { SectionHeader } from "@/components/marketing/section-header"
 import { FinalCta } from "@/components/pages/_shared/final-cta"
 
-import { APPLY_STEPS, ELIGIBILITY, WHAT_YOU_GET } from "@/components/marketing/oss/oss-content"
+import {
+  APPLY_STEPS,
+  ELIGIBILITY,
+  WHAT_YOU_GET,
+} from "@/components/marketing/oss/oss-content"
 import { OssApplicationForm } from "@/components/marketing/oss/oss-application-form"
 
 export const metadata: Metadata = {
@@ -71,18 +75,18 @@ export default function OssPage() {
             color="rgb(120, 120, 120)"
           />
           <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
               Open source
             </p>
             <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
               DeesseJS Pro for the project you maintain.
             </h1>
-            <p className="max-w-2xl text-copy-18 leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
-              Public open source projects can get a DeesseJS Pro license
-              under the same terms as verified students. The license binds
-              to the project, not the maintainer. A maintainer change does
-              not invalidate the license, and the license does not
-              transfer to non-contributors.
+            <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
+              Public open source projects can get a DeesseJS Pro license under
+              the same terms as verified students. The license binds to the
+              project, not the maintainer. A maintainer change does not
+              invalidate the license, and the license does not transfer to
+              non-contributors.
             </p>
           </div>
         </header>
@@ -97,10 +101,7 @@ export default function OssPage() {
         />
         <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
           {WHAT_YOU_GET.map((item) => (
-            <div
-              key={item.title}
-              className="flex flex-col gap-3 p-6 lg:p-8"
-            >
+            <div key={item.title} className="flex flex-col gap-3 p-6 lg:p-8">
               <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
                 {item.title}
               </h3>
@@ -121,10 +122,7 @@ export default function OssPage() {
         />
         <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
           {ELIGIBILITY.map((rule) => (
-            <div
-              key={rule.title}
-              className="flex flex-col gap-3 p-6 lg:p-8"
-            >
+            <div key={rule.title} className="flex flex-col gap-3 p-6 lg:p-8">
               <h3 className="text-heading-20 font-medium tracking-tight text-foreground">
                 {rule.title}
               </h3>
@@ -145,10 +143,7 @@ export default function OssPage() {
         />
         <ol className="grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
           {APPLY_STEPS.map((step, idx) => (
-            <li
-              key={step.heading}
-              className="flex flex-col gap-3 p-6 lg:p-8"
-            >
+            <li key={step.heading} className="flex flex-col gap-3 p-6 lg:p-8">
               <span className="font-mono text-copy-13 text-muted-foreground">
                 Step {String(idx + 1).padStart(2, "0")}
               </span>
@@ -171,15 +166,15 @@ export default function OssPage() {
       <Section>
         <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
           <div className="flex flex-col gap-4 p-6 lg:p-10">
-            <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+            <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
               Apply now
             </p>
             <h2 className="text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
               Tell us about the project.
             </h2>
             <p className="max-w-md text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-              Five fields. We reply within five business days with a
-              license file scoped to the project.
+              Five fields. We reply within five business days with a license
+              file scoped to the project.
             </p>
             <ul className="mt-2 flex flex-col gap-2 text-copy-14 text-muted-foreground">
               <li className="flex gap-2">
@@ -187,16 +182,16 @@ export default function OssPage() {
                   aria-hidden
                   className="mt-1 inline-block size-1.5 shrink-0 rounded-full bg-foreground/40"
                 />
-                The repo must satisfy the four eligibility rules
-                (public, active, listed in maintainer file, scoped).
+                The repo must satisfy the four eligibility rules (public,
+                active, listed in maintainer file, scoped).
               </li>
               <li className="flex gap-2">
                 <span
                   aria-hidden
                   className="mt-1 inline-block size-1.5 shrink-0 rounded-full bg-foreground/40"
                 />
-                The license binds to the project. A maintainer change
-                does not invalidate it.
+                The license binds to the project. A maintainer change does not
+                invalidate it.
               </li>
               <li className="flex gap-2">
                 <span

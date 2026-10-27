@@ -53,10 +53,10 @@ export default async function KnowledgeTopicPage({
       </Breadcrumb>
 
       <header className="mt-6 flex flex-col gap-3">
-        <h1 className="text-balance text-4xl font-bold tracking-tighter sm:text-5xl">
+        <h1 className="text-4xl font-bold tracking-tighter text-balance sm:text-5xl">
           {topicDoc.title}
         </h1>
-        <p className="text-pretty text-base text-muted-foreground sm:text-lg">
+        <p className="text-base text-pretty text-muted-foreground sm:text-lg">
           {topicDoc.description}
         </p>
         {topicDoc.tags.length > 0 ? (

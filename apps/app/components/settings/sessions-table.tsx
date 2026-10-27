@@ -70,7 +70,7 @@ export function SessionsTable() {
 
 	useEffect(() => {
 		// Valid: loading data on mount requires setState
-		// eslint-disable-next-line react-hooks/set-state-in-effect
+		// oxlint-disable-next-line react-hooks/set-state-in-effect
 		loadSessions()
 	}, [loadSessions])
 

@@ -52,7 +52,10 @@ export type BlockDescriptorInfo = {
 }
 
 export type BlockCheckDiagnostic = {
-  code: BlockDescriptorDiagnosticCode | "asset.unreadable" | "package_manifest.invalid"
+  code:
+    | BlockDescriptorDiagnosticCode
+    | "asset.unreadable"
+    | "package_manifest.invalid"
   message: string
   path: string[]
 }
@@ -153,7 +156,6 @@ function parseGitHubBlockUrl(
   }
 }
 
-
 async function fetchJson<T>(
   url: string,
   source: string,
@@ -169,9 +171,7 @@ async function fetchJson<T>(
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     })
   } catch (error) {
-    throw networkError(
-      error instanceof Error ? error.message : String(error)
-    )
+    throw networkError(error instanceof Error ? error.message : String(error))
   }
 
   if (response.status === 404) {
@@ -212,9 +212,7 @@ async function fetchRawFile(
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     })
   } catch (error) {
-    throw networkError(
-      error instanceof Error ? error.message : String(error)
-    )
+    throw networkError(error instanceof Error ? error.message : String(error))
   }
 
   if (response.status === 404) {
@@ -237,7 +235,9 @@ async function fetchRawFile(
     )
   }
   if (!response.body) {
-    throw networkError(`GitHub returned an empty response body for ${filePath}.`)
+    throw networkError(
+      `GitHub returned an empty response body for ${filePath}.`
+    )
   }
 
   const reader = response.body.getReader()
@@ -322,7 +322,10 @@ async function readSafeLocalFile(root: string, path: string, label: string) {
       throw blockInvalid(label, `source file "${path}" was not found`)
     }
     if (entry.isSymbolicLink()) {
-      throw blockInvalid(label, `source file "${path}" traverses a symbolic link`)
+      throw blockInvalid(
+        label,
+        `source file "${path}" traverses a symbolic link`
+      )
     }
     const isLast = index === segments.length - 1
     if (isLast && entry.size > MAX_BLOCK_JSON_BYTES) {
@@ -351,7 +354,9 @@ async function readSafeLocalFile(root: string, path: string, label: string) {
   }
 }
 
-async function createLocalBlockReader(input: string): Promise<BlockSourceReader> {
+async function createLocalBlockReader(
+  input: string
+): Promise<BlockSourceReader> {
   const root = resolve(input)
   let entry
   try {
@@ -360,7 +365,10 @@ async function createLocalBlockReader(input: string): Promise<BlockSourceReader>
     throw blockInvalid(input, "local block directory was not found")
   }
   if (!entry.isDirectory() || entry.isSymbolicLink()) {
-    throw blockInvalid(input, "local block source must be a directory, not a symlink")
+    throw blockInvalid(
+      input,
+      "local block source must be a directory, not a symlink"
+    )
   }
 
   return {
@@ -402,8 +410,15 @@ function parsePackageInfo(
   path: string
 ): BlockInfoPackage {
   const manifest = parseJson(manifestText, manifestPath, source)
-  if (!isRecord(manifest) || typeof manifest.name !== "string" || !manifest.name) {
-    throw blockInvalid(source, '"' + manifestPath + '" must declare a package name')
+  if (
+    !isRecord(manifest) ||
+    typeof manifest.name !== "string" ||
+    !manifest.name
+  ) {
+    throw blockInvalid(
+      source,
+      '"' + manifestPath + '" must declare a package name'
+    )
   }
   if (manifest.version !== undefined && typeof manifest.version !== "string") {
     throw blockInvalid(source, '"' + manifestPath + '" has an invalid version')
@@ -413,8 +428,14 @@ function parsePackageInfo(
     id,
     path,
     name: manifest.name,
-    ...(typeof manifest.version === "string" ? { version: manifest.version } : {}),
-    dependencies: readDependencyMap(manifest.dependencies, "dependencies", source),
+    ...(typeof manifest.version === "string"
+      ? { version: manifest.version }
+      : {}),
+    dependencies: readDependencyMap(
+      manifest.dependencies,
+      "dependencies",
+      source
+    ),
     devDependencies: readDependencyMap(
       manifest.devDependencies,
       "devDependencies",
@@ -434,21 +455,19 @@ async function readPackageInfo(
   )
   if (!packageManifest) {
     throw blockInvalid(
-      reader.source.type === "local" ? reader.source.path : reader.source.repository,
+      reader.source.type === "local"
+        ? reader.source.path
+        : reader.source.repository,
       'package "' + id + '" does not map a package.json asset'
     )
   }
 
   const source =
-    reader.source.type === "local" ? reader.source.path : reader.source.repository
+    reader.source.type === "local"
+      ? reader.source.path
+      : reader.source.repository
   const manifestText = await reader.read(packageManifest.from)
-  return parsePackageInfo(
-    manifestText,
-    packageManifest.from,
-    source,
-    id,
-    path
-  )
+  return parsePackageInfo(manifestText, packageManifest.from, source, id, path)
 }
 
 function getErrorDetail(error: unknown): string {
@@ -474,7 +493,10 @@ async function loadBlockDescriptor(
 > {
   const isRemoteSource = looksLikeUrl(input)
   if (options.ref && !isRemoteSource) {
-    throw blockInvalid(input, "--ref can only be used with a GitHub block source")
+    throw blockInvalid(
+      input,
+      "--ref can only be used with a GitHub block source"
+    )
   }
 
   const reader = isRemoteSource
@@ -522,12 +544,7 @@ export async function resolveBlockDescriptorInfo(
 
   const packages = await Promise.all(
     loaded.descriptor.install.packages.map((output) =>
-      readPackageInfo(
-        loaded.reader,
-        loaded.descriptor,
-        output.id,
-        output.path
-      )
+      readPackageInfo(loaded.reader, loaded.descriptor, output.id, output.path)
     )
   )
 

@@ -28,19 +28,16 @@ export default function BlocksLayout({
           don't promise a copy-paste install. Once the first
           block lands, swap this copy for the shadcn install
           flow used by /components. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y divide-border lg:divide-y-0 lg:divide-x divide-border">
+      <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
         <div className="flex flex-col gap-4 p-6 lg:p-10">
-          <p className="text-label-13 text-muted-foreground">
-            Ready to ship?
-          </p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+          <p className="text-label-13 text-muted-foreground">Ready to ship?</p>
+          <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40">
             Need a section we don&apos;t ship yet?
           </h2>
-          <p className="text-copy-16 text-muted-foreground text-pretty leading-7 max-w-xl [&:not(:first-child)]:mt-0">
-            Blocks are still being carved out of the marketing
-            pages. Until they land in the registry, talk to our
-            delivery team if you need a hand porting a layout
-            into your project. Same templates, same contracts,
+          <p className="max-w-xl text-copy-16 leading-7 text-pretty text-muted-foreground [&:not(:first-child)]:mt-0">
+            Blocks are still being carved out of the marketing pages. Until they
+            land in the registry, talk to our delivery team if you need a hand
+            porting a layout into your project. Same templates, same contracts,
             same guarantees.
           </p>
         </div>

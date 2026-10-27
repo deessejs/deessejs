@@ -66,7 +66,7 @@ export function ApiEndpointMockup() {
       <div className="flex flex-col gap-0 divide-y divide-border lg:grid lg:grid-cols-2 lg:divide-x lg:divide-y-0">
         {/* Request pane */}
         <div className="flex flex-col gap-3 bg-zinc-950 p-4 font-mono text-copy-13">
-          <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-zinc-500">
+          <div className="flex items-center justify-between text-label-12 tracking-wider text-zinc-500 uppercase">
             <span>Request</span>
             <span>oRPC</span>
           </div>
@@ -88,7 +88,10 @@ export function ApiEndpointMockup() {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: REQUEST_DURATION_MS / 1000 + 0.6, duration: 0.3 }}
+            transition={{
+              delay: REQUEST_DURATION_MS / 1000 + 0.6,
+              duration: 0.3,
+            }}
             className="flex items-center gap-2 text-label-12 text-zinc-500"
           >
             <Check className="size-3 text-emerald-400" aria-hidden />
@@ -100,7 +103,7 @@ export function ApiEndpointMockup() {
 
         {/* Response pane */}
         <div className="flex flex-col gap-3 bg-zinc-950 p-4 font-mono text-copy-13">
-          <div className="flex items-center justify-between text-label-12 uppercase tracking-wider text-zinc-500">
+          <div className="flex items-center justify-between text-label-12 tracking-wider text-zinc-500 uppercase">
             <span>Response</span>
             <ResponseStatusBadge status={status} />
           </div>
@@ -125,12 +128,16 @@ function ResponseStatusBadge({ status }: { status: Status }) {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         className={cn(
-          "flex items-center gap-1 rounded-sm bg-emerald-500/20 px-1.5 py-0.5 text-emerald-300",
+          "flex items-center gap-1 rounded-sm bg-emerald-500/20 px-1.5 py-0.5 text-emerald-300"
         )}
       >
         200 OK
       </m.span>
     )
   }
-  return <span className="rounded-sm bg-zinc-800 px-1.5 py-0.5 text-zinc-400">...</span>
+  return (
+    <span className="rounded-sm bg-zinc-800 px-1.5 py-0.5 text-zinc-400">
+      ...
+    </span>
+  )
 }

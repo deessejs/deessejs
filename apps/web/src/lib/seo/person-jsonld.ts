@@ -45,7 +45,7 @@ export const personIdFor = (handle: string): string =>
 
 export function buildPersonJsonLd(author: Author): PersonNode {
   const sameAs = [author.twitter, author.github, author.website].filter(
-    (value): value is string => typeof value === "string" && value.length > 0,
+    (value): value is string => typeof value === "string" && value.length > 0
   )
 
   const node: PersonNode = {

@@ -5,7 +5,12 @@ import { Badge } from "@workspace/ui/components/badge"
 import { BlogSearch } from "@/components/blog/blog-search"
 import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 import { getPostsByTag } from "@/lib/blog/posts"
-import { BLOG_TAG_LABELS, BLOG_TAGS, type BlogTag, getAllTags } from "@/lib/blog/types"
+import {
+  BLOG_TAG_LABELS,
+  BLOG_TAGS,
+  type BlogTag,
+  getAllTags,
+} from "@/lib/blog/types"
 
 type Params = { tag: string }
 
@@ -13,9 +18,11 @@ export function generateStaticParams(): Array<Params> {
   return getAllTags().map((tag) => ({ tag: encodeURIComponent(tag) }))
 }
 
-export async function generateMetadata(
-  { params }: { params: Promise<Params> },
-): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<Params>
+}): Promise<Metadata> {
   const { tag } = await params
   const decoded = decodeURIComponent(tag)
   const blogTag = decoded as BlogTag
@@ -44,9 +51,7 @@ export async function generateMetadata(
   }
 }
 
-export default async function TagPage(
-  { params }: { params: Promise<Params> },
-) {
+export default async function TagPage({ params }: { params: Promise<Params> }) {
   const { tag } = await params
   const decoded = decodeURIComponent(tag)
   // Refuse unknown tags: they're not part of our closed set, so a
@@ -73,15 +78,15 @@ export default async function TagPage(
           color="rgb(120, 120, 120)"
         />
         <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Tag
           </p>
           <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
             {label}
           </h1>
-          <p className="max-w-2xl text-copy-18 leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
-            {posts.length} {posts.length === 1 ? "post" : "posts"} tagged
-            with this topic. Subscribe via{" "}
+          <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
+            {posts.length} {posts.length === 1 ? "post" : "posts"} tagged with
+            this topic. Subscribe via{" "}
             <a
               href="/blog/feed.xml"
               className="underline underline-offset-4 hover:text-foreground"
@@ -101,7 +106,7 @@ export default async function TagPage(
             aria-label="Filter by tag"
             className="flex flex-wrap items-center gap-2"
           >
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
               Topics
             </span>
             <Link href="/blog">

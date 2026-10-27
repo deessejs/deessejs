@@ -66,16 +66,19 @@ describe("validateDestination", () => {
     rmSync(base, { recursive: true, force: true })
   })
 
-  skipOnWindows("rejects a dangling symlink (symlink target does not exist)", () => {
-    const base = mkdtempSync(join(tmpdir(), "cda-dest-"))
-    const link = join(base, "dangling")
-    // Target intentionally does not exist. `lstat` sees the symlink itself,
-    // so validateDestination must reject even though `stat` would follow
-    // the link and fail with ENOENT (which would look like "no entry").
-    symlinkSync(join(base, "nonexistent-target"), link)
-    expect(() => validateDestination(link)).toThrow(/already exists/)
-    rmSync(base, { recursive: true, force: true })
-  })
+  skipOnWindows(
+    "rejects a dangling symlink (symlink target does not exist)",
+    () => {
+      const base = mkdtempSync(join(tmpdir(), "cda-dest-"))
+      const link = join(base, "dangling")
+      // Target intentionally does not exist. `lstat` sees the symlink itself,
+      // so validateDestination must reject even though `stat` would follow
+      // the link and fail with ENOENT (which would look like "no entry").
+      symlinkSync(join(base, "nonexistent-target"), link)
+      expect(() => validateDestination(link)).toThrow(/already exists/)
+      rmSync(base, { recursive: true, force: true })
+    }
+  )
 
   skipOnWindows("rejects a symlink that points at an existing entry", () => {
     const base = mkdtempSync(join(tmpdir(), "cda-dest-"))

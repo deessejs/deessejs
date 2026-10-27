@@ -30,18 +30,18 @@ const program = new Command()
 program
   .name("create-deesse-app")
   .description(
-    "Initialize a new DeesseJS project from the current main of deessejs/saas-template. See https://docs.deessejs.com/getting-started",
+    "Initialize a new DeesseJS project from the current main of deessejs/saas-template. See https://docs.deessejs.com/getting-started"
   )
   .argument("<project-name>", "project name (lowercase, dash-separated)")
   .option("--dir <path>", "target directory (default: ./<project-name>)")
   .option("--no-install", "skip the install step")
   .option(
     "--dry-run",
-    "plan the create without writing files, running install, or executing template code",
+    "plan the create without writing files, running install, or executing template code"
   )
   .option(
     "--verbose",
-    "print human-readable progress to stderr (does not change JSON or exit semantics)",
+    "print human-readable progress to stderr (does not change JSON or exit semantics)"
   )
   .version(readPackageVersion())
   .allowExcessArguments(false)
@@ -53,7 +53,7 @@ program
         install: boolean
         dryRun: boolean
         verbose: boolean
-      },
+      }
     ) => {
       try {
         const dir = resolve(process.cwd(), opts.dir ?? `./${projectName}`)
@@ -94,8 +94,8 @@ program
               new CliError(
                 result.error.code as CreateAppErrorCode,
                 result.error.message,
-                result.error.hint,
-              ),
+                result.error.hint
+              )
             )
           }
         }
@@ -125,7 +125,7 @@ program
         printResult(failure)
         process.exitCode = 1
       }
-    },
+    }
   )
 
 program.parseAsync(process.argv).catch((err) => {

@@ -28,10 +28,10 @@ export function TrustAndCompliance() {
     <div className="border-b border-border">
       <div className="flex flex-col gap-6 p-6 lg:p-10">
         <header className="flex flex-col gap-2">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Trust and compliance
           </p>
-          <h2 className="text-heading-24 lg:text-heading-32 tracking-tight text-balance [&:not(:first-child)]:mt-0">
+          <h2 className="text-heading-24 tracking-tight text-balance lg:text-heading-32 [&:not(:first-child)]:mt-0">
             Procurement paperwork fast-tracked, not stalled.
           </h2>
         </header>
@@ -44,7 +44,7 @@ export function TrustAndCompliance() {
               <span className="text-heading-16 font-semibold tracking-tight text-foreground">
                 {badge.label}
               </span>
-              <p className="text-copy-14 text-muted-foreground leading-7 [&:not(:first-child)]:mt-0">
+              <p className="text-copy-14 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {badge.detail}{" "}
                 <Link
                   href={badge.href}

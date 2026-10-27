@@ -17,12 +17,10 @@ export const templatesHeading = (page: Page) =>
   page.getByRole("heading", { name: "Templates", level: 1 })
 
 /** Each template card on the index grid. */
-export const templatesCard = (page: Page) =>
-  page.getByTestId("templates-card")
+export const templatesCard = (page: Page) => page.getByTestId("templates-card")
 
 /** The grid container that wraps the cards. */
-export const templatesGrid = (page: Page) =>
-  page.getByTestId("templates-grid")
+export const templatesGrid = (page: Page) => page.getByTestId("templates-grid")
 
 /** Sidebar Type filter group. */
 export const sidebarType = (page: Page) =>
@@ -37,12 +35,10 @@ export const sidebarCount = (page: Page) =>
   page.getByTestId("templates-sidebar-count")
 
 /** Search input in the live-search bar. */
-export const searchInput = (page: Page) =>
-  page.getByTestId("templates-search")
+export const searchInput = (page: Page) => page.getByTestId("templates-search")
 
 /** Empty-catalog block (the "No templates available right now" branch). */
-export const emptyCatalog = (page: Page) =>
-  page.getByTestId("templates-empty")
+export const emptyCatalog = (page: Page) => page.getByTestId("templates-empty")
 
 /** Loading skeleton, present during initial RSC streaming. */
 export const loadingSkeleton = (page: Page) =>

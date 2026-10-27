@@ -17,14 +17,20 @@ const QUERY = "how does billing handle dunning"
 const CHUNKS = [
   { id: "kb_8821", snippet: "dunning sequence runs every 48h...", score: 0.94 },
   { id: "kb_8810", snippet: "Failed charges retry after 24h...", score: 0.78 },
-  { id: "kb_8798", snippet: "Customer portal shows invoice history.", score: 0.61 },
-  { id: "kb_8754", snippet: "Webhook fires on subscription.cancel.", score: 0.42 },
+  {
+    id: "kb_8798",
+    snippet: "Customer portal shows invoice history.",
+    score: 0.61,
+  },
+  {
+    id: "kb_8754",
+    snippet: "Webhook fires on subscription.cancel.",
+    score: 0.42,
+  },
 ] as const
 
 const SCORE_COLOR = (s: number) =>
-  s >= 0.9
-    ? "text-emerald-700 dark:text-emerald-400"
-    : "text-muted-foreground"
+  s >= 0.9 ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"
 
 export function KnowledgeRetrievalMockup() {
   return (
@@ -37,7 +43,7 @@ export function KnowledgeRetrievalMockup() {
         {CHUNKS.map((chunk) => (
           <li
             key={chunk.id}
-            className="flex items-start gap-2 py-2 leading-5 font-mono text-[11px]"
+            className="flex items-start gap-2 py-2 font-mono text-[11px] leading-5"
           >
             <span className="w-14 shrink-0 text-muted-foreground">
               {chunk.id}

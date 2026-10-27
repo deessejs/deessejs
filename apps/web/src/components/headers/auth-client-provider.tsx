@@ -40,7 +40,7 @@ export function useAuthClient(): AuthClient {
   if (!ctx) {
     throw new Error(
       "useAuthClient() must be called inside <AuthClientProvider>. " +
-        "Wrap your component in <UserMenuServer> or another provider.",
+        "Wrap your component in <UserMenuServer> or another provider."
     )
   }
   return ctx

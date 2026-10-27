@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Walk every workspace under apps/* and packages/* and run ESLint with the
+ * Walk every workspace under apps/* and packages/* and run Oxlint with its
  * JSON formatter, writing `reports/complexity/<pkg>.json`.
  *
  * Run via `pnpm complex:collect`. The aggregator `scripts/complexity-report.ts`
@@ -56,21 +56,49 @@ async function resolveWorkspaces(): Promise<Workspace[]> {
   return found
 }
 
-function runEslintJson(workspace: Workspace, outFile: string): Promise<number> {
+function runOxlintJson(workspace: Workspace, outFile: string): Promise<number> {
   return new Promise((resolveRun, rejectRun) => {
+    let stdout = ""
     const child = spawn(
       "pnpm",
-      ["exec", "eslint", "--format", "json", "--output-file", outFile, "."],
+      [
+        "exec",
+        "oxlint",
+        "--config",
+        ".oxlintrc.json",
+        "--format",
+        "json",
+        workspace.path,
+      ],
       {
-        cwd: workspace.path,
-        stdio: ["ignore", "inherit", "inherit"],
+        cwd: process.cwd(),
+        stdio: ["ignore", "pipe", "inherit"],
         env: { ...process.env, NODE_ENV: "production" },
-      },
+      }
     )
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString()
+    })
     child.on("error", rejectRun)
-    child.on("exit", (code) => {
-      // ESLint exits 0=clean, 1=internal error, 2=findings. We accept 0 and 2.
-      resolveRun(code ?? 0)
+    child.on("close", async (code) => {
+      try {
+        let report: {
+          diagnostics?: { filename: string }[]
+          number_of_files?: number
+          number_of_rules?: number
+        }
+        try {
+          report = JSON.parse(stdout)
+        } catch (error) {
+          if (!stdout.includes("No files found to lint")) throw error
+          report = { diagnostics: [], number_of_files: 0, number_of_rules: 0 }
+        }
+        await writeFile(outFile, `${JSON.stringify(report, null, 2)}\n`, "utf8")
+        // Oxlint exits 1 when it reports lint findings; the JSON remains valid.
+        resolveRun(code === 0 || code === 1 ? 0 : (code ?? 0))
+      } catch (error) {
+        rejectRun(error)
+      }
     })
   })
 }
@@ -79,7 +107,9 @@ async function main(): Promise<void> {
   await mkdir(REPORTS_DIR, { recursive: true })
   const workspaces = await resolveWorkspaces()
   if (workspaces.length === 0) {
-    console.error("[complexity-collect] no workspaces found under apps/* or packages/*")
+    console.error(
+      "[complexity-collect] no workspaces found under apps/* or packages/*"
+    )
     process.exit(2)
   }
 
@@ -88,13 +118,15 @@ async function main(): Promise<void> {
     const slug = packageSlug(workspace.name)
     const outFile = resolve(REPORTS_DIR, `${slug}.json`)
     try {
-      const code = await runEslintJson(workspace, outFile)
+      const code = await runOxlintJson(workspace, outFile)
       if (code !== 0 && code !== 2) {
         failures.push(`${workspace.name} (exit ${code})`)
         continue
       }
-      // ESLint may write `[]` for clean runs; tolerate both empty and populated.
-      console.log(`[complexity-collect] wrote ${dirname(outFile)}/${slug}.json (workspace=${workspace.name})`)
+      // Oxlint writes a JSON object for clean and populated runs.
+      console.log(
+        `[complexity-collect] wrote ${dirname(outFile)}/${slug}.json (workspace=${workspace.name})`
+      )
     } catch (error) {
       failures.push(`${workspace.name} (${(error as Error).message})`)
     }
@@ -106,12 +138,15 @@ async function main(): Promise<void> {
     await writeFile(
       join(REPORTS_DIR, "collector-errors.json"),
       `${JSON.stringify({ failures }, null, 2)}\n`,
-      "utf8",
+      "utf8"
     )
   }
 
   if (failures.length > 0) {
-    console.error("[complexity-collect] failed to report in:", failures.join(", "))
+    console.error(
+      "[complexity-collect] failed to report in:",
+      failures.join(", ")
+    )
     process.exit(1)
   }
 }

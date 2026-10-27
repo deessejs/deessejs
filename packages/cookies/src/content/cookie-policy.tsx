@@ -37,19 +37,19 @@ export function CookiePolicy() {
 
       <H3>Analytics</H3>
       <P>
-        Optional. If you opt in, we use Vercel Analytics to record
-        anonymized page views with no cross-site correlation. The script
-        is loaded first-party from the same domain and does not set any
-        cookie. We do not use Google Analytics, Plausible, PostHog, or
-        any third-party analytics service.
+        Optional. If you opt in, we use Vercel Analytics to record anonymized
+        page views with no cross-site correlation. The script is loaded
+        first-party from the same domain and does not set any cookie. We do not
+        use Google Analytics, Plausible, PostHog, or any third-party analytics
+        service.
       </P>
 
       <H3>Marketing</H3>
       <P>
-        Optional. We do not use Google Ads, Meta Pixel, LinkedIn Insight Tag,
-        or any third-party advertising tracker. If you opt in to the marketing
-        category, it would be reserved for first-party reminders (for example
-        a banner that announces a new guide you might find useful).
+        Optional. We do not use Google Ads, Meta Pixel, LinkedIn Insight Tag, or
+        any third-party advertising tracker. If you opt in to the marketing
+        category, it would be reserved for first-party reminders (for example a
+        banner that announces a new guide you might find useful).
       </P>
 
       <H2>Your choices</H2>
@@ -59,17 +59,17 @@ export function CookiePolicy() {
         via the cookie settings in the page footer.
       </P>
       <P>
-        You can also manage cookies via your browser settings to block or
-        delete them. Blocking strictly necessary cookies will sign you out and
-        may break form-protected actions on the site.
+        You can also manage cookies via your browser settings to block or delete
+        them. Blocking strictly necessary cookies will sign you out and may
+        break form-protected actions on the site.
       </P>
 
       <H2>Third-party cookies</H2>
       <P>
         We do not set third-party cookies. The service does not embed Google
-        Analytics, Google Ads, Meta Pixel, or any other advertising tracker.
-        If you opt in to a category above, the cookies we describe are first
-        party to the domain you visited.
+        Analytics, Google Ads, Meta Pixel, or any other advertising tracker. If
+        you opt in to a category above, the cookies we describe are first party
+        to the domain you visited.
       </P>
 
       <H2>Updates</H2>

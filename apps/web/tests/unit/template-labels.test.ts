@@ -23,8 +23,8 @@ import { TemplateLabels } from "../../src/components/templates/template-labels.j
 describe("TemplateLabels", () => {
   it("renders badges for valid labels", () => {
     const html = renderToStaticMarkup(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      TemplateLabels({ labels: ["nextjs", "saas"] } as any),
+      // oxlint-disable-next-line typescript/no-explicit-any
+      TemplateLabels({ labels: ["nextjs", "saas"] } as any)
     )
     expect(html).toContain("nextjs")
     expect(html).toContain("saas")
@@ -34,8 +34,8 @@ describe("TemplateLabels", () => {
     let caught: unknown
     try {
       renderToStaticMarkup(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        TemplateLabels({ labels: undefined } as any),
+        // oxlint-disable-next-line typescript/no-explicit-any
+        TemplateLabels({ labels: undefined } as any)
       )
     } catch (e) {
       caught = e
@@ -45,8 +45,8 @@ describe("TemplateLabels", () => {
 
   it("returns null when labels is empty", () => {
     const html = renderToStaticMarkup(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      TemplateLabels({ labels: [] } as any),
+      // oxlint-disable-next-line typescript/no-explicit-any
+      TemplateLabels({ labels: [] } as any)
     )
     expect(html).toBe("")
   })

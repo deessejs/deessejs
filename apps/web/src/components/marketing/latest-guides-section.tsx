@@ -100,15 +100,15 @@ function ChevronButton({
 }) {
   const Icon = direction === "prev" ? ArrowLeft : ArrowRight
   return (
-    // eslint-disable-next-line react/forbid-elements
+    // oxlint-disable-next-line react/forbid-elements
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
       className={cn(
-        "inline-flex size-8 items-center justify-center border border-border bg-background text-foreground transition-colors rounded-md",
+        "inline-flex size-8 items-center justify-center rounded-md border border-border bg-background text-foreground transition-colors",
         "hover:bg-accent/40",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+        "focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
       )}
     >
       <Icon className="size-4" aria-hidden />
@@ -149,7 +149,7 @@ export function LatestGuidesSection({
   const rightAction = (
     <Link
       href="/knowledge-base"
-      className="inline-flex items-center gap-1 text-label-13 text-foreground hover:underline underline-offset-4"
+      className="inline-flex items-center gap-1 text-label-13 text-foreground underline-offset-4 hover:underline"
     >
       See all guides
       <ChevronRight className="size-3" aria-hidden />
@@ -182,7 +182,7 @@ export function LatestGuidesSection({
                 href={guide.url}
                 className={cn(
                   "group flex h-full flex-col overflow-hidden border-r border-border transition-colors hover:bg-accent/40",
-                  idx === 0 && "border-l",
+                  idx === 0 && "border-l"
                 )}
               >
                 {/* Rotated Shiki hero */}
@@ -191,8 +191,8 @@ export function LatestGuidesSection({
                     aria-hidden
                     data-slot={`hero-${guide.slug}`}
                     className={cn(
-                      "-rotate-3 origin-bottom-right translate-x-[10%] translate-y-[10%]",
-                      "aspect-video overflow-hidden rounded-md border bg-background",
+                      "origin-bottom-right translate-x-[10%] translate-y-[10%] -rotate-3",
+                      "aspect-video overflow-hidden rounded-md border bg-background"
                     )}
                   >
                     {guide.hasSnippet ? (
@@ -202,16 +202,18 @@ export function LatestGuidesSection({
                       />
                     ) : (
                       <div className="grid h-full place-items-center text-xs text-muted-foreground">
-                        <span className="font-mono">{"// preview unavailable"}</span>
+                        <span className="font-mono">
+                          {"// preview unavailable"}
+                        </span>
                       </div>
                     )}
                   </div>
                 </div>
                 <div className="relative z-10 flex flex-1 flex-col gap-2 border-t border-border bg-background p-6 lg:p-8">
-                  <h3 className="text-heading-20 tracking-tight text-foreground !m-0 text-balance lg:text-heading-24">
+                  <h3 className="!m-0 text-heading-20 tracking-tight text-balance text-foreground lg:text-heading-24">
                     {guide.title}
                   </h3>
-                  <p className="text-copy-14 text-muted-foreground leading-6 !m-0 text-balance">
+                  <p className="!m-0 text-copy-14 leading-6 text-balance text-muted-foreground">
                     {guide.description}
                   </p>
                   {/* Author + reading time — same footer row as

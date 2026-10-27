@@ -93,17 +93,11 @@ export function OssApplicationForm() {
       aria-label="Open source license application"
     >
       {FIELDS.map((field) => (
-        <div
-          key={field.name}
-          className="flex flex-col gap-2"
-        >
+        <div key={field.name} className="flex flex-col gap-2">
           <Label htmlFor={`oss-${field.name}`}>
             {field.label}
             {field.required ? (
-              <span
-                aria-hidden
-                className="ml-1 text-muted-foreground"
-              >
+              <span aria-hidden className="ml-1 text-muted-foreground">
                 *
               </span>
             ) : null}
@@ -131,8 +125,7 @@ export function OssApplicationForm() {
 
       <div className="flex items-center justify-between gap-4 pt-2">
         <p className="text-copy-13 text-muted-foreground">
-          Reply within five business days. License file scoped to the
-          project.
+          Reply within five business days. License file scoped to the project.
         </p>
         <Button
           type="submit"

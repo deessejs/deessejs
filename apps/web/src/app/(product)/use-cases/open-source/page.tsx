@@ -11,7 +11,10 @@ import { SectionHeader } from "@/components/marketing/section-header"
 import { UseCaseHero } from "@/components/product/use-case/use-case-page"
 import { UseCaseStack } from "@/components/product/use-case/use-case-stack"
 import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
-import { OPEN_SOURCE_SNIPPETS, type OpenSourcePillarSlug } from "@/components/product/use-case/open-source-snippets"
+import {
+  OPEN_SOURCE_SNIPPETS,
+  type OpenSourcePillarSlug,
+} from "@/components/product/use-case/open-source-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 import { GROUP_1, GROUP_2 } from "./open-source-tabs"
@@ -43,18 +46,15 @@ const STACK = [
 const STEPS = [
   {
     heading: "License and changelog, day one",
-    body:
-      "MIT license baked into every template. Changelog-driven releases, public roadmap. The boring things that make a project real.",
+    body: "MIT license baked into every template. Changelog-driven releases, public roadmap. The boring things that make a project real.",
   },
   {
     heading: "Install with the public CLI",
-    body:
-      "Users run deessejs init. They do not need to know your internal toolchain. Updates flow back through the same registry.",
+    body: "Users run deessejs init. They do not need to know your internal toolchain. Updates flow back through the same registry.",
   },
   {
     heading: "Community contributions, same shape",
-    body:
-      "Templates ship with the same AGENTS.md and conventions. A contribution from outside your team lands in the same shape as one from inside.",
+    body: "Templates ship with the same AGENTS.md and conventions. A contribution from outside your team lands in the same shape as one from inside.",
   },
 ] as const
 
@@ -85,30 +85,53 @@ const RELATED = [
  * other migrated pages.
  */
 const BUILT_TEMPLATES = [
-  { slug: "oss-starter",      title: "oss-starter",      body: "MIT-licensed starter, branded README + CONTRIBUTING." },
-  { slug: "changelog-driven", title: "changelog-driven", body: "Conventional commits → CHANGELOG → GitHub release, automated." },
-  { slug: "registry-submit",  title: "registry-submit",  body: "PR flow to add a new template to the public registry." },
-  { slug: "versioning-rules", title: "versioning-rules", body: "Semver + changesets, enforced at the registry level." },
+  {
+    slug: "oss-starter",
+    title: "oss-starter",
+    body: "MIT-licensed starter, branded README + CONTRIBUTING.",
+  },
+  {
+    slug: "changelog-driven",
+    title: "changelog-driven",
+    body: "Conventional commits → CHANGELOG → GitHub release, automated.",
+  },
+  {
+    slug: "registry-submit",
+    title: "registry-submit",
+    body: "PR flow to add a new template to the public registry.",
+  },
+  {
+    slug: "versioning-rules",
+    title: "versioning-rules",
+    body: "Semver + changesets, enforced at the registry level.",
+  },
 ] as const
 
 export default async function OpenSourcePage() {
   const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
-    "conventional-commits": [], "deessejs-init": [], "agents-md": [], "changeset-release": [],
-    "license-check": [], "deessejs-update": [], "codeowners-route": [], "semver-bump": [],
+    "conventional-commits": [],
+    "deessejs-init": [],
+    "agents-md": [],
+    "changeset-release": [],
+    "license-check": [],
+    "deessejs-update": [],
+    "codeowners-route": [],
+    "semver-bump": [],
   }
 
   await Promise.all(
-    (Object.keys(OPEN_SOURCE_SNIPPETS) as OpenSourcePillarSlug[]).flatMap((slug) =>
-      OPEN_SOURCE_SNIPPETS[slug].files.map((file) =>
-        codeToHtml(file.code, {
-          lang: file.lang,
-          themes: { light: "github-light", dark: "github-dark" },
-          defaultColor: false,
-        }).then((html) => {
-          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
-        }),
-      ),
-    ),
+    (Object.keys(OPEN_SOURCE_SNIPPETS) as OpenSourcePillarSlug[]).flatMap(
+      (slug) =>
+        OPEN_SOURCE_SNIPPETS[slug].files.map((file) =>
+          codeToHtml(file.code, {
+            lang: file.lang,
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          }).then((html) => {
+            htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+          })
+        )
+    )
   )
 
   return (
@@ -168,20 +191,17 @@ export default async function OpenSourcePage() {
 
       {/* 5. Process */}
       <div className="grid grid-cols-1 border-t border-border lg:grid-cols-12 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-3 lg:p-10">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col justify-center gap-3 p-6 lg:col-span-3 lg:p-10">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Process
           </p>
           <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             How an OSS project ships.
           </h2>
         </div>
-        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-9 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
+        <ol className="grid grid-cols-1 divide-y divide-border border-0 !p-0 md:grid-cols-3 md:divide-x md:divide-y-0 lg:col-span-9">
           {STEPS.map((step, idx) => (
-            <li
-              key={step.heading}
-              className="flex flex-col gap-3 p-6 lg:p-8"
-            >
+            <li key={step.heading} className="flex flex-col gap-3 p-6 lg:p-8">
               <span className="font-mono text-copy-13 text-muted-foreground">
                 Step {String(idx + 1).padStart(2, "0")}
               </span>
@@ -198,19 +218,19 @@ export default async function OpenSourcePage() {
 
       {/* 6. Built on this */}
       <section className="flex flex-col border-t border-border">
-        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Built on this
           </p>
           <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             Four templates, each on its own surface.
           </h2>
           <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Production-ready starter templates, each deployed at its own
-            URL. Used as the reference set for what the registry can ship.
+            Production-ready starter templates, each deployed at its own URL.
+            Used as the reference set for what the registry can ship.
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y divide-border sm:divide-y-0 sm:divide-x sm:divide-border">
+        <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 sm:divide-border lg:grid-cols-4">
           {BUILT_TEMPLATES.map((tpl) => (
             <Link
               key={tpl.slug}

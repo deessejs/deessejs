@@ -31,10 +31,7 @@ const FORCE_FAIL_HEADER = "x-e2e-force-fail"
  * The header is cleared by Playwright when the browser
  * context closes (i.e. between tests in the same worker).
  */
-export const setForceFail = async (
-  page: Page,
-  value: E2eForceFail,
-) => {
+export const setForceFail = async (page: Page, value: E2eForceFail) => {
   await page.setExtraHTTPHeaders({ [FORCE_FAIL_HEADER]: value })
 }
 

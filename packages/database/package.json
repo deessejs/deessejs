@@ -17,7 +17,7 @@
   },
   "types": "./dist/index.d.ts",
   "scripts": {
-    "lint": "eslint --max-warnings=0",
+    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json packages/database --deny-warnings",
     "build": "tsc",
     "test": "vitest",
     "test:run": "vitest run",
@@ -36,14 +36,13 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "dotenv": "catalog:",
     "drizzle-kit": "catalog:",
-    "eslint": "catalog:",
     "pg-mem": "^3.0.0",
     "vitest": "catalog:",
     "@workspace/vitest-config": "workspace:*",
-    "@vitest/coverage-v8": "catalog:"
+    "@vitest/coverage-v8": "catalog:",
+    "oxlint": "catalog:"
   }
 }

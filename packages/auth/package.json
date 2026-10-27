@@ -52,7 +52,7 @@
   },
   "types": "./dist/auth.d.ts",
   "scripts": {
-    "lint": "eslint --max-warnings=0",
+    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json packages/auth --deny-warnings",
     "build": "tsc",
     "test": "vitest",
     "test:run": "vitest run",
@@ -73,11 +73,10 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
-    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "@workspace/vitest-config": "workspace:*",
     "auth": "catalog:",
-    "eslint": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "oxlint": "catalog:"
   }
 }

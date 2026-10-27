@@ -37,11 +37,11 @@ export async function GET(
     params,
   }: {
     params: Promise<Record<string, string | string[]>>
-  },
+  }
 ) {
   const resolved = await params
   const rawName = resolved["name"]
-  const name = Array.isArray(rawName) ? rawName[0] ?? "" : rawName ?? ""
+  const name = Array.isArray(rawName) ? (rawName[0] ?? "") : (rawName ?? "")
   const raw = name.endsWith(".json") ? name.slice(0, -5) : name
   const [maybeNamespace, slug] = raw.split("/")
   const namespace =

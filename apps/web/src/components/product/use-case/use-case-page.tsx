@@ -47,7 +47,7 @@ export function UseCaseHero({
   const isDark = variant === "dark"
 
   return (
-    <div className="relative border-b border-border overflow-hidden">
+    <div className="relative overflow-hidden border-b border-border">
       <FlickeringGrid
         className="absolute inset-0 z-0 opacity-60"
         squareSize={3}
@@ -60,14 +60,14 @@ export function UseCaseHero({
       <div
         className={cn(
           "relative z-10 flex flex-col items-center gap-6 px-6 py-16 text-center sm:py-20 lg:py-24",
-          isDark && "text-zinc-100",
+          isDark && "text-zinc-100"
         )}
       >
         <div className="flex flex-wrap items-center justify-center gap-3">
           <p
             className={cn(
-              "text-label-13 uppercase tracking-wider",
-              isDark ? "text-zinc-400" : "text-muted-foreground",
+              "text-label-13 tracking-wider uppercase",
+              isDark ? "text-zinc-400" : "text-muted-foreground"
             )}
           >
             Use case · {category}
@@ -77,7 +77,7 @@ export function UseCaseHero({
         <h1
           className={cn(
             "max-w-4xl text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56 [&:not(:first-child)]:mt-0",
-            isDark ? "text-zinc-50" : "text-foreground",
+            isDark ? "text-zinc-50" : "text-foreground"
           )}
         >
           {title}
@@ -87,7 +87,7 @@ export function UseCaseHero({
           <p
             className={cn(
               "max-w-2xl text-copy-18 leading-7 text-balance [&:not(:first-child)]:mt-0",
-              isDark ? "text-zinc-300" : "text-muted-foreground",
+              isDark ? "text-zinc-300" : "text-muted-foreground"
             )}
           >
             {body}

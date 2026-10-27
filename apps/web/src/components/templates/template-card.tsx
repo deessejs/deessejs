@@ -63,13 +63,13 @@ export const TemplateCard = ({ template, className }: TemplateCardProps) => {
     <Card
       className={cn(
         "group relative isolate h-full w-full min-w-0 gap-0 overflow-hidden rounded-none border-0 bg-background py-0 ring-0 transition-colors hover:bg-accent/40",
-        className,
+        className
       )}
     >
       <Link
         href={`/templates/${template.slug}`}
         aria-label={`View ${template.name} template`}
-        className="flex h-full min-w-0 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="flex h-full min-w-0 flex-col focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
       >
         {/* Hero — opaque panel (no border; the separator above the
             content is drawn by the content panel's own `border-t`
@@ -79,8 +79,8 @@ export const TemplateCard = ({ template, className }: TemplateCardProps) => {
           <div
             aria-hidden
             className={cn(
-              "-rotate-3 origin-bottom-right translate-x-[10%] translate-y-[10%]",
-              "relative aspect-video overflow-hidden rounded-md border border-border bg-background",
+              "origin-bottom-right translate-x-[10%] translate-y-[10%] -rotate-3",
+              "relative aspect-video overflow-hidden rounded-md border border-border bg-background"
             )}
           >
             {template.image ? (
@@ -104,14 +104,14 @@ export const TemplateCard = ({ template, className }: TemplateCardProps) => {
             pin to the bottom via `mt-auto`. */}
         <div className="relative z-10 flex min-h-40 flex-1 flex-col gap-4 border-t border-border bg-background p-6">
           <div className="flex items-start justify-between gap-3">
-            <h2 className="text-heading-20 tracking-tight !m-0 text-balance lg:text-heading-24">
+            <h2 className="!m-0 text-heading-20 tracking-tight text-balance lg:text-heading-24">
               {template.name}
             </h2>
             <Badge variant="outline" className="shrink-0">
               {template.category}
             </Badge>
           </div>
-          <p className="text-copy-14 text-muted-foreground leading-6 !m-0 text-balance">
+          <p className="!m-0 text-copy-14 leading-6 text-balance text-muted-foreground">
             {template.description}
           </p>
           <div className="mt-auto">

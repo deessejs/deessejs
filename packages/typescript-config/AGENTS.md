@@ -44,4 +44,3 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 ## Related guides
 
 - [Root guide](../../AGENTS.md)
-- [packages/eslint-config](../eslint-config/AGENTS.md)

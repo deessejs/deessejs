@@ -25,7 +25,7 @@ const readPackageJson = (dir: string): Record<string, unknown> => {
     parsed = JSON.parse(readFileSync(path, "utf8"))
   } catch (err) {
     throw new Error(
-      `template package.json is not valid JSON: ${err instanceof Error ? err.message : String(err)}`,
+      `template package.json is not valid JSON: ${err instanceof Error ? err.message : String(err)}`
     )
   }
   if (
@@ -49,7 +49,7 @@ const readPackageJson = (dir: string): Record<string, unknown> => {
  * Workspace packages keep their original workspace-prefixed names.
  */
 export const renameRootPackage = (
-  args: RenameRootPackageArgs,
+  args: RenameRootPackageArgs
 ): RenameRootPackageResult => {
   const { tempDir, newName } = args
   validateProjectName(newName)

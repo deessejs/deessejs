@@ -46,7 +46,7 @@ export function Horizons() {
               </h2>
               <Badge variant="secondary">{horizon.status}</Badge>
             </div>
-            <p className="text-copy-16 text-foreground leading-7 max-w-3xl">
+            <p className="max-w-3xl text-copy-16 leading-7 text-foreground">
               {horizon.tagline}
             </p>
           </header>
@@ -62,11 +62,11 @@ export function Horizons() {
                     {item.title}
                   </h3>
                   {item.pullQuote ? (
-                    <blockquote className="border-l-4 border-primary pl-6 italic text-copy-14 text-foreground leading-7">
+                    <blockquote className="border-l-4 border-primary pl-6 text-copy-14 leading-7 text-foreground italic">
                       {item.description}
                     </blockquote>
                   ) : (
-                    <p className="text-copy-14 text-foreground leading-7">
+                    <p className="text-copy-14 leading-7 text-foreground">
                       {item.description}
                     </p>
                   )}

@@ -31,15 +31,13 @@ export const ENGAGEMENT_MODELS: ReadonlyArray<EngagementModel> = [
       "Founders under deadline, startups raising, and teams launching a new product.",
     scope:
       "Deploy a Pro template (SaaS, E-commerce, or Top-of-Funnel) adapted to your brand, integrate your custom database schema, wire auth and Stripe, and deploy directly to your cloud provider.",
-    deliverable:
-      "Complete production MVP, ready for your first users.",
+    deliverable: "Complete production MVP, ready for your first users.",
   },
   {
     id: "custom-enterprise",
     name: "Custom Architecture",
     duration: "3 to 5 weeks",
-    audience:
-      "Mid-market and enterprise teams with complex domain logic.",
+    audience: "Mid-market and enterprise teams with complex domain logic.",
     scope:
       "Architect custom data models, integrate your internal APIs and legacy systems, configure advanced multi-tenant RBAC, build administrative dashboards, and wire OpenTelemetry instrumentation.",
     deliverable:

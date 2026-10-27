@@ -24,7 +24,6 @@ import {
 } from "@/lib/seo/stack"
 import { buildStackItemListJsonLd } from "@/lib/seo/stack-jsonld"
 
-
 export const metadata: Metadata = {
   title: "Stack",
   description:
@@ -76,7 +75,7 @@ export default function StackPage() {
   const grouped = STACK_CATEGORY_ORDER.map((category) => ({
     category,
     providers: STACK_PROVIDERS.filter(
-      (provider) => provider.category === category,
+      (provider) => provider.category === category
     ),
   })).filter((group) => group.providers.length > 0)
 
@@ -106,16 +105,15 @@ export default function StackPage() {
 
       <div className="mx-auto max-w-4xl py-16">
         <header className="flex flex-col gap-4">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Stack
           </p>
           <H1>The providers that ship with every DeesseJS app.</H1>
-          <p className="text-muted-foreground text-copy-20 leading-7 max-w-3xl [&:not(:first-child)]:mt-0">
-            Hosting, database, auth, queue, billing, observability,
-            email, and ORM. Every template wires these in. None of
-            them are locked in: each contract ships with a typed
-            layer, so the same app runs against a different provider
-            if you bring your own.
+          <p className="max-w-3xl text-copy-20 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+            Hosting, database, auth, queue, billing, observability, email, and
+            ORM. Every template wires these in. None of them are locked in: each
+            contract ships with a typed layer, so the same app runs against a
+            different provider if you bring your own.
           </p>
         </header>
 
@@ -164,8 +162,7 @@ export default function StackPage() {
                 Ecosystem
               </span>
               <span className="text-copy-13 text-muted-foreground">
-                The apps, SDKs, and shared contracts that ship
-                together.
+                The apps, SDKs, and shared contracts that ship together.
               </span>
             </Link>
           </div>
@@ -223,7 +220,7 @@ function StackProviderCard({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Visit ${provider.name} homepage (opens in a new tab)`}
-      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group block focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
     >
       <Card className="flex h-full flex-col gap-3 p-5 transition-colors group-hover:bg-accent/30 group-focus-visible:bg-accent/30">
         <header className="flex items-center gap-3">
@@ -248,7 +245,7 @@ function StackProviderCard({
             </span>
           </div>
         </header>
-        <p className="text-copy-13 text-muted-foreground leading-6 [&:not(:first-child)]:mt-0">
+        <p className="text-copy-13 leading-6 text-muted-foreground [&:not(:first-child)]:mt-0">
           {provider.blurb}
         </p>
         <span className="mt-auto inline-flex items-center gap-1 text-label-13 text-muted-foreground transition-colors group-hover:text-foreground">

@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -38,7 +44,8 @@ vi.mock("../../src/install/run.js", () => ({
 // and `stderrLogger` returns a Logger whose three methods
 // are spies that record every call into a shared `lineLog`.
 // The tests assert on the recorded events.
-const lineLog: { factory: "null" | "stderr"; level: string; event: string }[] = []
+const lineLog: { factory: "null" | "stderr"; level: string; event: string }[] =
+  []
 const resetLog = (): void => {
   lineLog.length = 0
 }
@@ -46,9 +53,9 @@ const resetLog = (): void => {
 const stderrFactoryCalls = vi.fn()
 
 vi.mock("../../src/output/logger.js", async () => {
-  const actual = await vi.importActual<typeof import("../../src/output/logger.js")>(
-    "../../src/output/logger.js",
-  )
+  const actual = await vi.importActual<
+    typeof import("../../src/output/logger.js")
+  >("../../src/output/logger.js")
   return {
     ...actual,
     // Keep `nullLogger` as a true no-op so the verbose:false
@@ -57,7 +64,8 @@ vi.mock("../../src/output/logger.js", async () => {
     nullLogger: actual.nullLogger,
     stderrLogger: () => {
       stderrFactoryCalls()
-      const record = (level: "info" | "warn" | "error") =>
+      const record =
+        (level: "info" | "warn" | "error") =>
         (event: string): void => {
           lineLog.push({ factory: "stderr", level, event })
         }
@@ -81,7 +89,7 @@ const buildFixtureTarball = (): { tarPath: string; stageDir: string } => {
   writeFileSync(join(inner, "LICENSE"), "MIT")
   writeFileSync(
     join(inner, "package.json"),
-    '{"name":"next-monorepo","packageManager":"pnpm@11.0.0"}',
+    '{"name":"next-monorepo","packageManager":"pnpm@11.0.0"}'
   )
   writeFileSync(join(inner, "README.md"), "# DeesseJS\n")
   const tarPath = join(stageDir, "fixture.tgz")
@@ -169,13 +177,13 @@ describe("run() — --verbose narration", () => {
     const findEvent = (needle: string): number =>
       events.findIndex((e) => e === needle)
     expect(findEvent("resolved source SHA")).toBeLessThan(
-      findEvent("downloaded archive"),
+      findEvent("downloaded archive")
     )
     expect(findEvent("published project")).toBeLessThan(
-      findEvent("running install"),
+      findEvent("running install")
     )
     expect(findEvent("running install")).toBeLessThan(
-      findEvent("install completed"),
+      findEvent("install completed")
     )
     expect(findEvent("starting create")).toBe(0)
   })

@@ -61,16 +61,16 @@ export function GuideCard({
     <Link
       href={guide.url}
       aria-label={`Read the ${guide.title} guide`}
-      className="group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
     >
-      <Card className="flex w-full flex-1 flex-col rounded-none border-0 bg-background ring-0 transition-colors group-hover:bg-accent/30 group-focus-within:bg-accent/30">
+      <Card className="flex w-full flex-1 flex-col rounded-none border-0 bg-background ring-0 transition-colors group-focus-within:bg-accent/30 group-hover:bg-accent/30">
         <CardHeader className="gap-3">
           {guide.date ? (
             <div className="relative z-10 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               <time dateTime={guide.date}>{guide.date}</time>
             </div>
           ) : null}
-          <h3 className="mt-1 text-balance text-xl font-medium tracking-tight text-foreground">
+          <h3 className="mt-1 text-xl font-medium tracking-tight text-balance text-foreground">
             {guide.title}
           </h3>
           <CardDescription className="mt-2 line-clamp-3 text-sm text-muted-foreground">

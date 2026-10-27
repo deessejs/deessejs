@@ -2,7 +2,8 @@ import pc from "picocolors"
 
 import type { InstallStrategy } from "../pm/install-strategy.js"
 
-const dim = (s: string): string => (pc.isColorSupported ? `\x1b[2m${s}\x1b[22m` : s)
+const dim = (s: string): string =>
+  pc.isColorSupported ? `\x1b[2m${s}\x1b[22m` : s
 
 const PREFIX = "create-deesse-app:"
 
@@ -34,7 +35,7 @@ const PREFIX = "create-deesse-app:"
 export const warnInstallBootstrap = (
   bootstrap: InstallStrategy,
   mode: "create" | "dry-run" = "create",
-  writer: (s: string) => void = process.stderr.write.bind(process.stderr),
+  writer: (s: string) => void = process.stderr.write.bind(process.stderr)
 ): void => {
   let line: string
   if (mode === "dry-run") {

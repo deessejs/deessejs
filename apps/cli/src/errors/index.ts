@@ -83,11 +83,7 @@ export const templateInvalid = (repository: string, detail: string): CliError =>
   )
 
 export const blockInvalid = (source: string, detail: string): CliError =>
-  new CliError(
-    "block_invalid",
-    `block source "${source}" is invalid`,
-    detail
-  )
+  new CliError("block_invalid", `block source "${source}" is invalid`, detail)
 
 export const repositoryNotFound = (repository: string): CliError =>
   new CliError(

@@ -16,7 +16,7 @@
  *
  * Implementation notes:
  * - The previous version used `.replace(/[^a-z0-9]+/g, "-")`
- *   which `eslint` `sonarjs/slow-regex` flagged as a potential
+ *   which the previous SonarJS setup flagged as a potential
  *   super-linear backtracking surface. The character-by-character
  *   loop is O(n) and has no backtracking, so it cleanly avoids
  *   the rule.

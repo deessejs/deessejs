@@ -23,7 +23,7 @@ export const readDiskCache = <T>(name: string): CacheEntry<T> | null => {
 export const writeDiskCache = <T>(
   name: string,
   body: T,
-  etag: string | null,
+  etag: string | null
 ): void => {
   ensureCacheDir()
   const entry: CacheEntry<T> = {

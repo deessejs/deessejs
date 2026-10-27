@@ -28,49 +28,44 @@ const blockInfoCommand = new Command("info")
     "Git ref to inspect (defaults to the URL ref or repository default branch)"
   )
   .option("--json", "JSON output for scripting")
-  .action(
-    async (
-      source: string,
-      options: { ref?: string; json?: boolean }
-    ) => {
-      const spinner = options.json
-        ? null
-        : ora("Reading block details...").start()
+  .action(async (source: string, options: { ref?: string; json?: boolean }) => {
+    const spinner = options.json
+      ? null
+      : ora("Reading block details...").start()
 
-      try {
-        const info = await resolveBlockDescriptorInfo(source, {
-          ...(options.ref ? { ref: options.ref } : {}),
+    try {
+      const info = await resolveBlockDescriptorInfo(source, {
+        ...(options.ref ? { ref: options.ref } : {}),
+      })
+      spinner?.succeed("Block details loaded")
+
+      if (options.json) {
+        printJson({
+          ok: true,
+          command: "block info",
+          ...info,
         })
-        spinner?.succeed("Block details loaded")
-
+      } else {
+        printBlockInfo(info)
+      }
+    } catch (error) {
+      spinner?.fail("Failed to read block details")
+      if (error instanceof Error && error.name === "CliError") {
         if (options.json) {
           printJson({
-            ok: true,
-            command: "block info",
-            ...info,
+            ok: false,
+            code: (error as { code?: string }).code,
+            message: error.message,
+            hint: (error as { hint?: string }).hint,
           })
         } else {
-          printBlockInfo(info)
+          printError(error as Parameters<typeof printError>[0])
         }
-      } catch (error) {
-        spinner?.fail("Failed to read block details")
-        if (error instanceof Error && error.name === "CliError") {
-          if (options.json) {
-            printJson({
-              ok: false,
-              code: (error as { code?: string }).code,
-              message: error.message,
-              hint: (error as { hint?: string }).hint,
-            })
-          } else {
-            printError(error as Parameters<typeof printError>[0])
-          }
-          process.exit((error as { exitCode?: () => number }).exitCode?.() ?? 1)
-        }
-        throw internal(error instanceof Error ? error.message : String(error))
+        process.exit((error as { exitCode?: () => number }).exitCode?.() ?? 1)
       }
+      throw internal(error instanceof Error ? error.message : String(error))
     }
-  )
+  })
 
 const blockCheckCommand = new Command("check")
   .description("Validate a block descriptor and all referenced source files")
@@ -84,54 +79,49 @@ const blockCheckCommand = new Command("check")
     "Git ref to check (defaults to the URL ref or repository default branch)"
   )
   .option("--json", "JSON output for scripting")
-  .action(
-    async (
-      source: string,
-      options: { ref?: string; json?: boolean }
-    ) => {
-      const spinner = options.json
-        ? null
-        : ora("Checking block source...").start()
+  .action(async (source: string, options: { ref?: string; json?: boolean }) => {
+    const spinner = options.json
+      ? null
+      : ora("Checking block source...").start()
 
-      try {
-        const result = await checkBlockSource(source, {
-          ...(options.ref ? { ref: options.ref } : {}),
+    try {
+      const result = await checkBlockSource(source, {
+        ...(options.ref ? { ref: options.ref } : {}),
+      })
+      const valid = result.diagnostics.length === 0
+
+      if (options.json) {
+        printJson({
+          ok: valid,
+          command: "block check",
+          ...result,
         })
-        const valid = result.diagnostics.length === 0
+      } else {
+        if (valid) spinner?.succeed("Block source is valid")
+        else spinner?.fail("Block source validation failed")
+        printBlockCheck(result)
+      }
 
+      if (!valid) process.exitCode = 1
+    } catch (error) {
+      spinner?.fail("Failed to check block source")
+      if (error instanceof Error && error.name === "CliError") {
         if (options.json) {
           printJson({
-            ok: valid,
+            ok: false,
             command: "block check",
-            ...result,
+            code: (error as { code?: string }).code,
+            message: error.message,
+            hint: (error as { hint?: string }).hint,
           })
         } else {
-          if (valid) spinner?.succeed("Block source is valid")
-          else spinner?.fail("Block source validation failed")
-          printBlockCheck(result)
+          printError(error as Parameters<typeof printError>[0])
         }
-
-        if (!valid) process.exitCode = 1
-      } catch (error) {
-        spinner?.fail("Failed to check block source")
-        if (error instanceof Error && error.name === "CliError") {
-          if (options.json) {
-            printJson({
-              ok: false,
-              command: "block check",
-              code: (error as { code?: string }).code,
-              message: error.message,
-              hint: (error as { hint?: string }).hint,
-            })
-          } else {
-            printError(error as Parameters<typeof printError>[0])
-          }
-          process.exit((error as { exitCode?: () => number }).exitCode?.() ?? 1)
-        }
-        throw internal(error instanceof Error ? error.message : String(error))
+        process.exit((error as { exitCode?: () => number }).exitCode?.() ?? 1)
       }
+      throw internal(error instanceof Error ? error.message : String(error))
     }
-  )
+  })
 
 blockCommand.addCommand(blockInfoCommand)
 blockCommand.addCommand(blockCheckCommand)

@@ -26,11 +26,35 @@ type OtelRowSpec = {
 }
 
 const otelRows: ReadonlyArray<OtelRowSpec> = [
-  { indent: 0, label: "GET /checkout", duration: "142ms", branch: null, level: "info" },
-  { indent: 1, label: "auth.verify", duration: "12ms", branch: "|", level: "info" },
+  {
+    indent: 0,
+    label: "GET /checkout",
+    duration: "142ms",
+    branch: null,
+    level: "info",
+  },
+  {
+    indent: 1,
+    label: "auth.verify",
+    duration: "12ms",
+    branch: "|",
+    level: "info",
+  },
   { indent: 1, label: "fetch", duration: "45ms", branch: "|", level: "info" },
-  { indent: 1, label: "db.query", duration: "62ms", branch: "|", level: "warn" },
-  { indent: 1, label: "cache.set", duration: "23ms", branch: "-", level: "error" },
+  {
+    indent: 1,
+    label: "db.query",
+    duration: "62ms",
+    branch: "|",
+    level: "warn",
+  },
+  {
+    indent: 1,
+    label: "cache.set",
+    duration: "23ms",
+    branch: "-",
+    level: "error",
+  },
 ]
 
 const LEVEL_COLOR = {
@@ -71,7 +95,11 @@ export function OtelWaterfallMockup() {
               whileInView={{ scaleX: 1 }}
               style={{ transformOrigin: "left center" }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              transition={{
+                duration: 0.4,
+                delay: 0.3,
+                ease: [0.16, 1, 0.3, 1],
+              }}
               className="h-full w-[32%] bg-zinc-400"
             />
             <m.div
@@ -80,7 +108,11 @@ export function OtelWaterfallMockup() {
               whileInView={{ scaleX: 1 }}
               style={{ transformOrigin: "left center" }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              transition={{
+                duration: 0.4,
+                delay: 0.6,
+                ease: [0.16, 1, 0.3, 1],
+              }}
               className="h-full w-[44%] bg-amber-500"
             />
             <m.div
@@ -89,7 +121,11 @@ export function OtelWaterfallMockup() {
               whileInView={{ scaleX: 1 }}
               style={{ transformOrigin: "left center" }}
               viewport={{ once: true }}
-              transition={{ duration: 0.3, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              transition={{
+                duration: 0.3,
+                delay: 0.9,
+                ease: [0.16, 1, 0.3, 1],
+              }}
               className="h-full w-[12%] bg-red-500"
             />
           </div>

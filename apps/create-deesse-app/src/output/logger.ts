@@ -40,7 +40,8 @@ const MARKER: Record<Level, string> = {
   error: " (x)",
 }
 
-const dim = (s: string): string => (pc.isColorSupported ? `\x1b[2m${s}\x1b[22m` : s)
+const dim = (s: string): string =>
+  pc.isColorSupported ? `\x1b[2m${s}\x1b[22m` : s
 
 const renderFields = (fields: LogFields): string => {
   const parts: string[] = []
@@ -68,8 +69,11 @@ export const nullLogger: Logger = {
  * unit tests can capture lines without redirecting
  * `process.stderr` globally.
  */
-export const stderrLogger = (writer: (s: string) => void = process.stderr.write.bind(process.stderr)): Logger => {
-  const make = (level: Level) =>
+export const stderrLogger = (
+  writer: (s: string) => void = process.stderr.write.bind(process.stderr)
+): Logger => {
+  const make =
+    (level: Level) =>
     (event: string, fields?: LogFields): void => {
       const rendered = fields ? renderFields(fields) : ""
       const marker = MARKER[level]

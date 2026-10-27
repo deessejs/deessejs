@@ -115,7 +115,7 @@ const TESTIMONIALS: ReadonlyArray<Testimonial> = [
 function TestimonialCard({ t }: { t: Testimonial }): ReactNode {
   return (
     <figure className="flex w-72 shrink-0 flex-col gap-3 border border-border bg-background p-6">
-      <blockquote className="text-copy-14 text-foreground leading-6 text-balance [&:not(:first-child)]:mt-0">
+      <blockquote className="text-copy-14 leading-6 text-balance text-foreground [&:not(:first-child)]:mt-0">
         &ldquo;{t.quote}&rdquo;
       </blockquote>
       <figcaption className="flex items-center gap-3 pt-2">
@@ -162,7 +162,7 @@ function Marquee({
       className={cn(
         "flex w-max gap-[var(--gap)]",
         pauseOnHover && "group-hover:[animation-play-state:paused]",
-        className,
+        className
       )}
       style={animationStyle}
       aria-hidden
@@ -182,7 +182,7 @@ export function TestimonialsMarquee() {
   const secondRow = TESTIMONIALS.slice(6, 12)
 
   return (
-    <div className="relative flex w-full flex-col items-center justify-center overflow-hidden [--duration:60s] [--gap:1rem] py-6 space-y-4">
+    <div className="relative flex w-full flex-col items-center justify-center space-y-4 overflow-hidden py-6 [--duration:60s] [--gap:1rem]">
       <style>
         {`@keyframes marquee {
           0%   { transform: translateX(0); }
@@ -199,8 +199,8 @@ export function TestimonialsMarquee() {
           <TestimonialCard key={`bottom-${t.initials}-${i}`} t={t} />
         ))}
       </Marquee>
-      <div className="from-background pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r" />
-      <div className="from-background pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background" />
     </div>
   )
 }

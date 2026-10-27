@@ -60,14 +60,16 @@ describe("publishOrRollback", () => {
     writeFileSync(tarball, "x")
 
     await expect(
-      publishOrRollback({ tempDir, destination, tarballPath: tarball }),
+      publishOrRollback({ tempDir, destination, tarballPath: tarball })
     ).rejects.toThrowError(
-      expect.objectContaining({ code: "destination_exists" }) as unknown as Error,
+      expect.objectContaining({
+        code: "destination_exists",
+      }) as unknown as Error
     )
 
     // Destination content is intact.
     expect(readFileSync(join(destination, "USER_DATA.txt"), "utf8")).toBe(
-      "important",
+      "important"
     )
     // tempDir is cleaned up.
     expect(existsSync(tempDir)).toBe(false)
@@ -98,9 +100,11 @@ describe("publishOrRollback", () => {
     writeFileSync(tarball, "x")
 
     await expect(
-      publishOrRollback({ tempDir, destination, tarballPath: tarball }),
+      publishOrRollback({ tempDir, destination, tarballPath: tarball })
     ).rejects.toThrowError(
-      expect.objectContaining({ code: "destination_exists" }) as unknown as Error,
+      expect.objectContaining({
+        code: "destination_exists",
+      }) as unknown as Error
     )
     // tempDir is cleaned up by the rollback path.
     expect(existsSync(tempDir)).toBe(false)
@@ -130,9 +134,10 @@ describe("publishOrRollback", () => {
     writeFileSync(tarball, "x")
 
     // Wrap node:fs/promises so we can hook between the close() and rename().
-    const realFs = await vi.importActual<typeof import("node:fs/promises")>(
-      "node:fs/promises",
-    )
+    const realFs =
+      await vi.importActual<typeof import("node:fs/promises")>(
+        "node:fs/promises"
+      )
     const racer = {
       ...realFs,
       rename: vi.fn(async (src: string, dst: string) => {
@@ -147,19 +152,20 @@ describe("publishOrRollback", () => {
 
     // Re-import so the publish-or-rollback module picks up the mock.
     vi.resetModules()
-    const { publishOrRollback: publishWithMock } = await import(
-      "../../src/extract/publish-or-rollback.js"
-    )
+    const { publishOrRollback: publishWithMock } =
+      await import("../../src/extract/publish-or-rollback.js")
 
     await expect(
-      publishWithMock({ tempDir, destination, tarballPath: tarball }),
+      publishWithMock({ tempDir, destination, tarballPath: tarball })
     ).rejects.toThrowError(
-      expect.objectContaining({ code: "destination_exists" }) as unknown as Error,
+      expect.objectContaining({
+        code: "destination_exists",
+      }) as unknown as Error
     )
 
     // The user's pre-existing content is intact.
     expect(readFileSync(join(destination, "USER_DATA.txt"), "utf8")).toBe(
-      "important",
+      "important"
     )
     // The LICENSE from the staged tempDir was NOT copied over.
     expect(existsSync(join(destination, "LICENSE"))).toBe(false)

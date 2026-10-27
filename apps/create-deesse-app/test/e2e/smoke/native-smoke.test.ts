@@ -25,7 +25,14 @@ import { runCommand } from "../support/process.js"
  * only for operating-system support promised by the CLI contract."
  */
 describe("create-deesse-app: native smoke (Windows / macOS)", () => {
-  const cliPath = join(import.meta.dirname, "..", "..", "..", "dist", "index.js")
+  const cliPath = join(
+    import.meta.dirname,
+    "..",
+    "..",
+    "..",
+    "dist",
+    "index.js"
+  )
 
   it("--version prints a non-empty version", async () => {
     const result = await runCommand("node", [cliPath, "--version"], {
@@ -45,7 +52,7 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
       const result = await runCommand(
         "node",
         [cliPath, "smoke-project", "--no-install", "--dir", dest],
-        { timeoutMs: 60_000 },
+        { timeoutMs: 60_000 }
       )
       expect(result.exitCode, result.stderr).toBe(0)
       const trimmed = result.stdout.trim()
@@ -69,14 +76,14 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
       const first = await runCommand(
         "node",
         [cliPath, "smoke-project", "--no-install", "--dir", dest],
-        { timeoutMs: 60_000 },
+        { timeoutMs: 60_000 }
       )
       expect(first.exitCode, first.stderr).toBe(0)
       // Re-run with the same destination; should fail.
       const second = await runCommand(
         "node",
         [cliPath, "smoke-project", "--no-install", "--dir", dest],
-        { timeoutMs: 60_000 },
+        { timeoutMs: 60_000 }
       )
       expect(second.exitCode).toBe(1)
       const parsed = JSON.parse(second.stdout.trim()) as {
@@ -115,7 +122,7 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
         {
           timeoutMs: 30_000,
           env,
-        },
+        }
       )
       // The CLI accepts the npm invocation. The result is
       // either ok:true (install skipped, project on disk) or
@@ -143,14 +150,14 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
             [
               `Set-Location -LiteralPath '${dest}'; &`,
               "'npm' 'exec' '--yes' '--' 'pnpm@11.0.0' 'install'",
-            ].join(" "),
+            ].join(" ")
           )
         } else {
           expect(parsed.recovery).toBe(
             [
               `cd '${dest}' &&`,
               "'npm' 'exec' '--yes' '--' 'pnpm@11.0.0' 'install'",
-            ].join(" "),
+            ].join(" ")
           )
         }
       } else {
@@ -181,7 +188,7 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
       const result = await runCommand(
         "node",
         [cliPath, "smoke-project", "--dry-run", "--dir", dest],
-        { timeoutMs: 60_000 },
+        { timeoutMs: 60_000 }
       )
       // The dry-run always exits 0 on the supported Node
       // range. On a Node <22.13 runner it returns the same
@@ -209,14 +216,14 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
         expect(parsed.install.skipped).toBe(false)
         expect(parsed.plannedFiles.length).toBeGreaterThan(0)
         expect(parsed.documentation).toBe(
-          "https://docs.deessejs.com/getting-started",
+          "https://docs.deessejs.com/getting-started"
         )
         expect(parsed.recovery).toBeNull()
 
         // BOUNDARY: the destination must NOT exist on disk.
         const fs = await import("node:fs")
         expect(fs.existsSync(dest), "destination must not be created").toBe(
-          false,
+          false
         )
       } else {
         const parsed = JSON.parse(result.stdout.trim()) as {
@@ -238,7 +245,7 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
       const result = await runCommand(
         "node",
         [cliPath, "smoke-project", "--dry-run", "--no-install", "--dir", dest],
-        { timeoutMs: 60_000 },
+        { timeoutMs: 60_000 }
       )
       if (result.exitCode === 0) {
         const parsed = JSON.parse(result.stdout.trim()) as {
@@ -253,7 +260,7 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
         // BOUNDARY: destination not on disk.
         const fs = await import("node:fs")
         expect(fs.existsSync(dest), "destination must not be created").toBe(
-          false,
+          false
         )
       } else {
         const parsed = JSON.parse(result.stdout.trim()) as {
@@ -281,7 +288,7 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
       const result = await runCommand(
         "node",
         [cliPath, "smoke-project", "--dry-run", "--verbose", "--dir", dest],
-        { timeoutMs: 60_000 },
+        { timeoutMs: 60_000 }
       )
       // The dry-run path on a supported Node always exits
       // 0; the unsupported_node branch is the same as
@@ -330,7 +337,7 @@ describe("create-deesse-app: native smoke (Windows / macOS)", () => {
       const result = await runCommand(
         "node",
         [cliPath, "smoke-project", "--dry-run", "--no-install", "--dir", dest],
-        { timeoutMs: 60_000 },
+        { timeoutMs: 60_000 }
       )
       if (result.exitCode === 0) {
         // No narration prefix should appear on stderr.

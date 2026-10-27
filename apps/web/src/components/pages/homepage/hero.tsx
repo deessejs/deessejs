@@ -23,7 +23,7 @@ import { DotGrid } from "@/components/marketing/dot-grid"
  */
 export function Hero() {
   return (
-    <div className="relative border-b border-border overflow-hidden">
+    <div className="relative overflow-hidden border-b border-border">
       <FlickeringGrid
         className="absolute inset-0 z-0 opacity-60"
         squareSize={3}
@@ -33,14 +33,14 @@ export function Hero() {
         color="rgb(120, 120, 120)"
       />
 
-      <div className="relative max-w-7xl mx-auto z-10 flex flex-col gap-6 lg:gap-8 px-8 py-12 lg:px-12 lg:py-16">
+      <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-6 px-8 py-12 lg:gap-8 lg:px-12 lg:py-16">
         {/* Top: H1 with the badge pill above it, left-aligned, full width */}
         <div className="flex flex-col items-start gap-5 lg:gap-6">
           <Link
             href="/blog/getting-started"
             className="inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-background px-4 py-1.5 shadow-sm transition-colors hover:bg-accent/40"
           >
-            <Layers className="text-foreground size-4 shrink-0" aria-hidden />
+            <Layers className="size-4 shrink-0 text-foreground" aria-hidden />
             <span className="truncate text-sm font-normal text-foreground">
               Introducing intelligent code generation
             </span>
@@ -49,19 +49,19 @@ export function Hero() {
               aria-hidden
             />
           </Link>
-          <h1 className="max-w-5xl text-heading-40 sm:text-heading-48 lg:text-heading-56 font-medium tracking-tight text-balance [&:not(:first-child)]:mt-0">
+          <h1 className="max-w-5xl text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56 [&:not(:first-child)]:mt-0">
             The registry that shortens your time to production.
           </h1>
         </div>
 
         {/* Row: subtitle (left, ~4/7), spacer, CTAs (right, ~2/7) */}
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,_4fr)_minmax(0,_1fr)_minmax(0,_2fr)] items-end gap-6">
-          <p className="text-muted-foreground text-copy-16 sm:text-copy-18 leading-7 max-w-2xl text-balance [&:not(:first-child)]:mt-0">
-            Stop spending the first ten weeks rebuilding the same six
-            services. Start where the actual product begins.
+        <div className="grid grid-cols-1 items-end gap-6 md:grid-cols-[minmax(0,_4fr)_minmax(0,_1fr)_minmax(0,_2fr)]">
+          <p className="max-w-2xl text-copy-16 leading-7 text-balance text-muted-foreground sm:text-copy-18 [&:not(:first-child)]:mt-0">
+            Stop spending the first ten weeks rebuilding the same six services.
+            Start where the actual product begins.
           </p>
           <div aria-hidden />
-          <div className="flex flex-wrap items-center justify-start md:justify-end gap-3">
+          <div className="flex flex-wrap items-center justify-start gap-3 md:justify-end">
             <Button asChild size="lg">
               <Link href="/templates">Browse templates</Link>
             </Button>
@@ -84,7 +84,7 @@ export function Hero() {
             to a final design. */}
         <div
           aria-hidden
-          className="relative w-full aspect-[2/1] border border-border bg-muted/40 overflow-hidden"
+          className="relative aspect-[2/1] w-full overflow-hidden border border-border bg-muted/40"
         >
           <DotGrid className="absolute inset-0" />
         </div>

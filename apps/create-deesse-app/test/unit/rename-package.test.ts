@@ -12,7 +12,7 @@ describe("renameRootPackage", () => {
     const dir = mkdtempSync(join(tmpdir(), "cda-rename-"))
     writeFileSync(
       join(dir, "package.json"),
-      JSON.stringify({ name: originalName, version: "1.0.0" }, null, 2) + "\n",
+      JSON.stringify({ name: originalName, version: "1.0.0" }, null, 2) + "\n"
     )
     return dir
   }
@@ -38,8 +38,8 @@ describe("renameRootPackage", () => {
           dependencies: { next: "^1.0.0" },
         },
         null,
-        2,
-      ) + "\n",
+        2
+      ) + "\n"
     )
     renameRootPackage({ tempDir: dir, newName: "new" })
     const updated = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"))
@@ -59,10 +59,10 @@ describe("renameRootPackage", () => {
     const dir = mkdtempSync(join(tmpdir(), "cda-rename-"))
     try {
       expect(() => renameRootPackage({ tempDir: dir, newName: "foo" })).toThrow(
-        Error,
+        Error
       )
       expect(() => renameRootPackage({ tempDir: dir, newName: "foo" })).toThrow(
-        /template is missing root package\.json/,
+        /template is missing root package\.json/
       )
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -74,7 +74,7 @@ describe("renameRootPackage", () => {
     writeFileSync(join(dir, "package.json"), "{not valid")
     try {
       expect(() => renameRootPackage({ tempDir: dir, newName: "foo" })).toThrow(
-        /template package\.json is not valid JSON/,
+        /template package\.json is not valid JSON/
       )
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -86,7 +86,7 @@ describe("renameRootPackage", () => {
     writeFileSync(join(dir, "package.json"), JSON.stringify({ version: "1" }))
     try {
       expect(() => renameRootPackage({ tempDir: dir, newName: "foo" })).toThrow(
-        /no string `name`/,
+        /no string `name`/
       )
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -97,7 +97,7 @@ describe("renameRootPackage", () => {
     const dir = makeTempDirWithPkg("old")
     try {
       expect(() =>
-        renameRootPackage({ tempDir: dir, newName: "Bad..Name" }),
+        renameRootPackage({ tempDir: dir, newName: "Bad..Name" })
       ).toThrow(/Bad\.\.Name/)
       try {
         renameRootPackage({ tempDir: dir, newName: "Bad..Name" })

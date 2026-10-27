@@ -29,13 +29,13 @@ export function CliInActionEditorial({
 }) {
   return (
     <div className="flex flex-col gap-4 p-6 lg:p-10">
-      <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+      <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
         {eyebrow}
       </p>
       <h2 className="text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
         {heading}
       </h2>
-      <p className="text-copy-14 leading-6 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
+      <p className="text-copy-14 leading-6 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
         {body}
       </p>
       {afterBody ? (
@@ -43,7 +43,7 @@ export function CliInActionEditorial({
           {afterBody}
         </p>
       ) : null}
-      <p className="text-copy-14 text-muted-foreground mt-2">
+      <p className="mt-2 text-copy-14 text-muted-foreground">
         Run{}
         <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-copy-13 text-foreground/90">
           $ {command}
@@ -52,7 +52,7 @@ export function CliInActionEditorial({
       </p>
       <Link
         href={cta.href}
-        className="inline-flex w-fit items-center gap-1 self-start text-label-13 text-foreground hover:underline underline-offset-4"
+        className="inline-flex w-fit items-center gap-1 self-start text-label-13 text-foreground underline-offset-4 hover:underline"
       >
         {cta.label}
         <ArrowUpRight aria-hidden className="size-3" />

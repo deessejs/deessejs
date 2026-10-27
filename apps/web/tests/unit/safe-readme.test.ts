@@ -38,20 +38,18 @@ const safeUrlTransform = (url: string): string | undefined => {
 
 describe("safeUrlTransform", () => {
   it("accepts https URLs", () => {
-    expect(
-      safeUrlTransform("https://github.com/deessejs/saas-template"),
-    ).toBe("https://github.com/deessejs/saas-template")
+    expect(safeUrlTransform("https://github.com/deessejs/saas-template")).toBe(
+      "https://github.com/deessejs/saas-template"
+    )
   })
 
   it("accepts http URLs", () => {
-    expect(safeUrlTransform("http://example.com")).toBe(
-      "http://example.com",
-    )
+    expect(safeUrlTransform("http://example.com")).toBe("http://example.com")
   })
 
   it("accepts mailto URLs", () => {
     expect(safeUrlTransform("mailto:hello@deessejs.com")).toBe(
-      "mailto:hello@deessejs.com",
+      "mailto:hello@deessejs.com"
     )
   })
 
@@ -73,7 +71,7 @@ describe("safeUrlTransform", () => {
 
   it("rejects data: URLs", () => {
     expect(
-      safeUrlTransform("data:text/html,<script>alert(1)</script>"),
+      safeUrlTransform("data:text/html,<script>alert(1)</script>")
     ).toBeUndefined()
   })
 
@@ -87,7 +85,7 @@ describe("safeUrlTransform", () => {
 
   it("returns the URL for unparseable-but-safe relative refs", () => {
     expect(safeUrlTransform("not a url at all :::")).toBe(
-      "not a url at all :::",
+      "not a url at all :::"
     )
   })
 
@@ -96,8 +94,6 @@ describe("safeUrlTransform", () => {
   })
 
   it("never throws on adversarial whitespace / control characters", () => {
-    expect(() =>
-      safeUrlTransform("\t\n javascript:alert(1)"),
-    ).not.toThrow()
+    expect(() => safeUrlTransform("\t\n javascript:alert(1)")).not.toThrow()
   })
 })

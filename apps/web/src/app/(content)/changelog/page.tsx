@@ -30,13 +30,13 @@ export default function ChangelogPage() {
           color="rgb(120, 120, 120)"
         />
         <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Changelog
           </p>
           <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
             Public release notes.
           </h1>
-          <p className="max-w-2xl text-copy-18 leading-7 text-muted-foreground text-balance [&:not(:first-child)]:mt-0">
+          <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
             Subscribe via{" "}
             <a
               href="/changelog/feed.xml"
@@ -50,7 +50,7 @@ export default function ChangelogPage() {
       </header>
 
       {releases.length === 0 ? (
-        <p className="text-muted-foreground px-6 py-16 text-center">
+        <p className="px-6 py-16 text-center text-muted-foreground">
           No releases yet.
         </p>
       ) : (

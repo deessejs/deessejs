@@ -15,7 +15,7 @@ export const TEMPLATE_PROJECT_TYPES = [
 ] as const
 
 const SEMVER_PATTERN =
-  // eslint-disable-next-line sonarjs/regex-complexity -- SemVer 2.0 needs the full JSON-Schema-compatible grammar.
+  // oxlint-disable-next-line sonarjs/regex-complexity -- SemVer 2.0 needs the full JSON-Schema-compatible grammar.
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/
 
 const TemplateSourceV1Schema = z.strictObject({

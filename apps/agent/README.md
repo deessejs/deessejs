@@ -146,7 +146,7 @@ apps/agent/
 ├── README.md                    this file
 ├── package.json                 name: "agent", engines.node >=24
 ├── tsconfig.json                extends @workspace/typescript-config/base
-├── eslint.config.mjs            extends @workspace/eslint-config/base
+├── package.json                 linted with the root Oxlint config
 ├── .env.example                 template for required env vars
 ├── .gitignore
 └── agent/

@@ -6,16 +6,16 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 
 ## Commands
 
-| Command                | What it does                                                     |
-| ---------------------- | ---------------------------------------------------------------- |
-| `deessejs list`        | Lists the registry templates. Accepts `--category`, `--json`.    |
-| `deessejs info <slug-or-github-url>` | Validated descriptor details for a template.             |
-| `deessejs block info <source>`      | Read-only summary for a local or GitHub block.     |
-| `deessejs block check [source]`     | Validates a block descriptor and its source assets. |
+| Command                              | What it does                                                      |
+| ------------------------------------ | ----------------------------------------------------------------- |
+| `deessejs list`                      | Lists the registry templates. Accepts `--category`, `--json`.     |
+| `deessejs info <slug-or-github-url>` | Validated descriptor details for a template.                      |
+| `deessejs block info <source>`       | Read-only summary for a local or GitHub block.                    |
+| `deessejs block check [source]`      | Validates a block descriptor and its source assets.               |
 | `deessejs init <slug-or-github-url>` | Creates a project from a catalog template or a GitHub repository. |
-| `deessejs auth login`  | Runs the device-authorization flow against the server.           |
-| `deessejs auth status` | Prints the identity stored on this machine.                      |
-| `deessejs auth logout` | Signs out and clears the stored token.                           |
+| `deessejs auth login`                | Runs the device-authorization flow against the server.            |
+| `deessejs auth status`               | Prints the identity stored on this machine.                       |
+| `deessejs auth logout`               | Signs out and clears the stored token.                            |
 
 `init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. Both forms require a valid root `deesse-template.json` and use it to select files. There is no Git clone fallback. `--force` permits an existing empty target directory and never deletes existing files.
 
@@ -27,15 +27,15 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 
 ## Key files
 
-| Path            | Owns                                                                         |
-| --------------- | ---------------------------------------------------------------------------- |
-| `src/index.ts`  | The Commander program. Every command is registered here.                     |
-| `src/commands/` | One file per command.                                                        |
-| `src/api/`      | The typed oRPC client and the response cache.                                |
-| `src/lib/auth/` | The device flow, the token store and the bearer fetch.                       |
-| `src/cache/`    | The on-disk cache under `~/.deessejs/`.                                      |
-| `src/errors/`   | The typed errors and their exit codes.                                       |
-| `src/output/`   | The human output and the JSON output.                                        |
+| Path            | Owns                                                                    |
+| --------------- | ----------------------------------------------------------------------- |
+| `src/index.ts`  | The Commander program. Every command is registered here.                |
+| `src/commands/` | One file per command.                                                   |
+| `src/api/`      | The typed oRPC client and the response cache.                           |
+| `src/lib/auth/` | The device flow, the token store and the bearer fetch.                  |
+| `src/cache/`    | The on-disk cache under `~/.deessejs/`.                                 |
+| `src/errors/`   | The typed errors and their exit codes.                                  |
+| `src/output/`   | The human output and the JSON output.                                   |
 | `src/utils/`    | Package manager detection, spawn, safe template materialization, sleep. |
 
 ## Conventions

@@ -7,7 +7,7 @@
     "./safe-redirect": "./src/safe-redirect.ts"
   },
   "scripts": {
-    "lint": "eslint --max-warnings=0",
+    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json packages/utils --deny-warnings",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -15,9 +15,8 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
-    "eslint": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "oxlint": "catalog:"
   }
 }

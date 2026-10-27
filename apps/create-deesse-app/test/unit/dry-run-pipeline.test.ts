@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -50,7 +58,7 @@ const buildFixtureTarball = (): { tarPath: string; stageDir: string } => {
   writeFileSync(join(inner, "LICENSE"), "MIT")
   writeFileSync(
     join(inner, "package.json"),
-    '{"name":"next-monorepo","packageManager":"pnpm@11.0.0"}',
+    '{"name":"next-monorepo","packageManager":"pnpm@11.0.0"}'
   )
   writeFileSync(join(inner, "README.md"), "# DeesseJS\n")
   const tarPath = join(stageDir, "fixture.tgz")
@@ -77,7 +85,7 @@ afterEach(() => {
 })
 
 describe("run() — dry-run pipeline", () => {
-  it("returns mode:\"dry-run\" with the actual resolved SHA, no destination, no install", async () => {
+  it('returns mode:"dry-run" with the actual resolved SHA, no destination, no install', async () => {
     const dir = join(workRoot, "my-app")
     const result = await run({
       projectName: "my-app",
@@ -99,7 +107,7 @@ describe("run() — dry-run pipeline", () => {
     expect(result.packageName.current).toBe("my-app")
     expect(result.packageManager).toBe("pnpm")
     expect(result.documentation).toBe(
-      "https://docs.deessejs.com/getting-started",
+      "https://docs.deessejs.com/getting-started"
     )
     expect(result.recovery).toBeNull()
 
@@ -174,7 +182,7 @@ describe("run() — dry-run pipeline", () => {
     writeFileSync(join(inner, "LICENSE"), "MIT")
     writeFileSync(
       join(inner, "package.json"),
-      '{"name":"x","packageManager":"pnpm@11.0.0"}',
+      '{"name":"x","packageManager":"pnpm@11.0.0"}'
     )
     // Path-traversal entry. tar may not preserve the
     // exact `..` segment depending on the producer, so we
@@ -193,10 +201,9 @@ describe("run() — dry-run pipeline", () => {
       return
     }
     const tarPath = join(badStage, "fixture.tgz")
-    tar.c(
-      { gzip: true, file: tarPath, cwd: badStage, sync: true },
-      [PREFIX_DIR],
-    )
+    tar.c({ gzip: true, file: tarPath, cwd: badStage, sync: true }, [
+      PREFIX_DIR,
+    ])
     vi.mocked(downloadTarball).mockResolvedValue({ path: tarPath, sha: SHA })
 
     const dir = join(workRoot, "my-app-bad")

@@ -59,7 +59,7 @@ export const normaliseError = (e: unknown): Error => {
  *     `appRouter.templates.list()` directly, no HTTP.
  */
 export const fetchTemplates = async (
-  options: FetchOptions = {},
+  options: FetchOptions = {}
 ): Promise<Template[]> => {
   if (!options.skipVersionCheck) {
     await maybeWarnAboutOutdatedCli()

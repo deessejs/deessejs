@@ -10,7 +10,8 @@
 /packages/auth/      @codewizdave
 /packages/api/       @codewizdave
 /packages/utils/      @codewizdave
-/packages/eslint-config/  @codewizdave
+/.oxlintrc.json  @codewizdave
+/.oxfmtrc.json   @codewizdave
 /packages/typescript-config/  @codewizdave
 
 # Infrastructure

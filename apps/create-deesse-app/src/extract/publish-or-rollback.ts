@@ -56,7 +56,7 @@ export type PublishOrRollbackArgs = {
  *   objection to the previous behaviour).
  */
 export const publishOrRollback = async (
-  args: PublishOrRollbackArgs,
+  args: PublishOrRollbackArgs
 ): Promise<void> => {
   const { tempDir, destination, tarballPath } = args
 

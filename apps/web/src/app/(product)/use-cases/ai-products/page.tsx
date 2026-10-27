@@ -11,7 +11,10 @@ import { SectionHeader } from "@/components/marketing/section-header"
 import { UseCaseHero } from "@/components/product/use-case/use-case-page"
 import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
-import { AI_PRODUCTS_SNIPPETS, type AiProductsPillarSlug } from "@/components/product/use-case/ai-products-snippets"
+import {
+  AI_PRODUCTS_SNIPPETS,
+  type AiProductsPillarSlug,
+} from "@/components/product/use-case/ai-products-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 import { GROUP_1, GROUP_2 } from "./ai-products-tabs"
@@ -28,31 +31,28 @@ export const metadata: Metadata = {
  * surface, just with the AI-relevant technologies.
  */
 const STACK = [
-  { name: "Next.js",     logo: "vercel" },
-  { name: "AI SDK",      logo: "openai" },
-  { name: "OpenAI",      logo: "openai" },
-  { name: "pgvector",    logo: "postgresql" },
-  { name: "Drizzle",     logo: "drizzle" },
-  { name: "Better Auth",  logo: "betterauth" },
-  { name: "Cloudflare",  logo: "cloudflare" },
-  { name: "Resend",      logo: "resend" },
+  { name: "Next.js", logo: "vercel" },
+  { name: "AI SDK", logo: "openai" },
+  { name: "OpenAI", logo: "openai" },
+  { name: "pgvector", logo: "postgresql" },
+  { name: "Drizzle", logo: "drizzle" },
+  { name: "Better Auth", logo: "betterauth" },
+  { name: "Cloudflare", logo: "cloudflare" },
+  { name: "Resend", logo: "resend" },
 ] as const
 
 const STEPS = [
   {
     heading: "Define the agent in TypeScript",
-    body:
-      "Tools, memory, and routing live in the same source as the rest of your app. The AI SDK reads them and wires the runtime.",
+    body: "Tools, memory, and routing live in the same source as the rest of your app. The AI SDK reads them and wires the runtime.",
   },
   {
     heading: "Index what the agent should know",
-    body:
-      "Docs, KB articles, product data — pgvector indexes them in one query. No second database, no second dashboard.",
+    body: "Docs, KB articles, product data — pgvector indexes them in one query. No second database, no second dashboard.",
   },
   {
     heading: "Ship. Every tool call is on the trace.",
-    body:
-      "Tool calls stream into the same observability contract as your HTTP routes. Replay any run from the trace ID.",
+    body: "Tool calls stream into the same observability contract as your HTTP routes. Replay any run from the trace ID.",
   },
 ] as const
 
@@ -84,10 +84,26 @@ const RELATED = [
  * output without requiring links that don't resolve yet.
  */
 const BUILT_TEMPLATES = [
-  { slug: "agent-runtime", title: "agent-runtime", body: "Streaming chat and tool-call loop, against the AI SDK." },
-  { slug: "kb-search",     title: "kb-search",     body: "pgvector-backed RAG over docs, KB articles, product schema." },
-  { slug: "trace-replay",  title: "trace-replay",  body: "Replay any agent run from the OpenTelemetry trace ID." },
-  { slug: "evals",         title: "evals",         body: "Score + rerank, with per-run cost and token budgets." },
+  {
+    slug: "agent-runtime",
+    title: "agent-runtime",
+    body: "Streaming chat and tool-call loop, against the AI SDK.",
+  },
+  {
+    slug: "kb-search",
+    title: "kb-search",
+    body: "pgvector-backed RAG over docs, KB articles, product schema.",
+  },
+  {
+    slug: "trace-replay",
+    title: "trace-replay",
+    body: "Replay any agent run from the OpenTelemetry trace ID.",
+  },
+  {
+    slug: "evals",
+    title: "evals",
+    body: "Score + rerank, with per-run cost and token budgets.",
+  },
 ] as const
 
 /**
@@ -103,22 +119,29 @@ export default async function AiProductsPage() {
   // pattern, and the saas-apps use case. Strings travel through the
   // Client Component boundary as plain HTML.
   const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
-    "agent-loop": [], "typed-tools": [], "pgvector-search": [], "otel-trace": [],
-    "streaming-cancel": [], "citation-prompt": [], "eval-scoring": [], "replay-console": [],
+    "agent-loop": [],
+    "typed-tools": [],
+    "pgvector-search": [],
+    "otel-trace": [],
+    "streaming-cancel": [],
+    "citation-prompt": [],
+    "eval-scoring": [],
+    "replay-console": [],
   }
 
   await Promise.all(
-    (Object.keys(AI_PRODUCTS_SNIPPETS) as AiProductsPillarSlug[]).flatMap((slug) =>
-      AI_PRODUCTS_SNIPPETS[slug].files.map((file) =>
-        codeToHtml(file.code, {
-          lang: file.lang,
-          themes: { light: "github-light", dark: "github-dark" },
-          defaultColor: false,
-        }).then((html) => {
-          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
-        }),
-      ),
-    ),
+    (Object.keys(AI_PRODUCTS_SNIPPETS) as AiProductsPillarSlug[]).flatMap(
+      (slug) =>
+        AI_PRODUCTS_SNIPPETS[slug].files.map((file) =>
+          codeToHtml(file.code, {
+            lang: file.lang,
+            themes: { light: "github-light", dark: "github-dark" },
+            defaultColor: false,
+          }).then((html) => {
+            htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+          })
+        )
+    )
   )
 
   return (
@@ -181,20 +204,17 @@ export default async function AiProductsPage() {
 
       {/* 4. Process */}
       <div className="grid grid-cols-1 border-t border-border lg:grid-cols-12 lg:divide-x lg:divide-border">
-        <div className="flex flex-col gap-3 justify-center p-6 lg:col-span-3 lg:p-10">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col justify-center gap-3 p-6 lg:col-span-3 lg:p-10">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Process
           </p>
           <h2 className="max-w-2xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             How an AI product ships.
           </h2>
         </div>
-        <ol className="grid grid-cols-1 divide-y divide-border lg:col-span-9 !p-0 border-0 md:grid-cols-3 md:divide-x md:divide-y-0">
+        <ol className="grid grid-cols-1 divide-y divide-border border-0 !p-0 md:grid-cols-3 md:divide-x md:divide-y-0 lg:col-span-9">
           {STEPS.map((step, idx) => (
-            <li
-              key={step.heading}
-              className="flex flex-col gap-3 p-6 lg:p-8"
-            >
+            <li key={step.heading} className="flex flex-col gap-3 p-6 lg:p-8">
               <span className="font-mono text-copy-13 text-muted-foreground">
                 Step {String(idx + 1).padStart(2, "0")}
               </span>
@@ -220,19 +240,19 @@ export default async function AiProductsPage() {
            label, no CTA below) so the section reads as 4 AI
            surfaces waiting to render. */}
       <section className="flex flex-col border-t border-border">
-        <div className="flex flex-col gap-3 px-6 py-10 lg:px-10 lg:py-12 border-b border-border">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-col gap-3 border-b border-border px-6 py-10 lg:px-10 lg:py-12">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Built on this
           </p>
           <h2 className="max-w-3xl text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             Four templates, each on its own surface.
           </h2>
           <p className="max-w-3xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Production-ready starter templates, each deployed at its own
-            URL. Used as the reference set for what the registry can ship.
+            Production-ready starter templates, each deployed at its own URL.
+            Used as the reference set for what the registry can ship.
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y divide-border sm:divide-y-0 sm:divide-x sm:divide-border">
+        <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 sm:divide-border lg:grid-cols-4">
           {BUILT_TEMPLATES.map((tpl) => (
             <Link
               key={tpl.slug}

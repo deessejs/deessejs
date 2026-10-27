@@ -40,8 +40,7 @@ export async function CodeBlock({
   })
 
   return (
-    <div className="bg-background w-full overflow-hidden rounded-none border border-border">
-
+    <div className="w-full overflow-hidden rounded-none border border-border bg-background">
       <div
         className={`overflow-x-auto ${sizeClasses[size]}`}
         dangerouslySetInnerHTML={{ __html: html }}

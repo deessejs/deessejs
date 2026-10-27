@@ -57,12 +57,11 @@ const bubbleVariants = cva(
     defaultVariants: {
       variant: "default",
     },
-  },
+  }
 )
 
 export interface BubbleProps
-  extends React.ComponentProps<"div">,
-    VariantProps<typeof bubbleVariants> {}
+  extends React.ComponentProps<"div">, VariantProps<typeof bubbleVariants> {}
 
 function Bubble({ variant = "default", className, ...props }: BubbleProps) {
   return (
@@ -96,7 +95,7 @@ function BubbleContent({
       data-slot="bubble-content"
       className={cn(
         "w-fit max-w-full min-w-0 overflow-hidden rounded-xl border border-transparent px-3 py-2 text-sm leading-relaxed wrap-break-word group-data-[align=end]/bubble:self-end [button]:text-left [button,a]:transition-colors [button,a]:outline-none [button,a]:focus-visible:border-ring [button,a]:focus-visible:ring-3 [button,a]:focus-visible:ring-ring/50",
-        className,
+        className
       )}
       {...props}
     />
@@ -120,7 +119,7 @@ const bubbleReactionsVariants = cva(
       side: "bottom",
       align: "end",
     },
-  },
+  }
 )
 
 interface BubbleReactionsProps extends React.ComponentProps<"div"> {
@@ -157,10 +156,4 @@ function BubbleGroup({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-export {
-  Bubble,
-  BubbleContent,
-  BubbleReactions,
-  BubbleGroup,
-  bubbleVariants,
-}
+export { Bubble, BubbleContent, BubbleReactions, BubbleGroup, bubbleVariants }

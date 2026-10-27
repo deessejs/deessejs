@@ -36,8 +36,8 @@ export function TestMockup({ reverse = false }: { reverse?: boolean }) {
         // other way so the visible portion sits in the corner the
         // reader is looking at.
         reverse
-          ? "absolute bottom-0 left-0 h-[110%] w-[110%] -translate-x-[25%] translate-y-[25%] bg-muted/40 border border-border overflow-hidden"
-          : "absolute bottom-0 right-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] bg-muted/40 border border-border overflow-hidden"
+          ? "absolute bottom-0 left-0 h-[110%] w-[110%] -translate-x-[25%] translate-y-[25%] overflow-hidden border border-border bg-muted/40"
+          : "absolute right-0 bottom-0 h-[110%] w-[110%] translate-x-[25%] translate-y-[25%] overflow-hidden border border-border bg-muted/40"
       }
     >
       <div className="flex items-center justify-start gap-2 border-b border-border bg-background/40 px-4 py-3">

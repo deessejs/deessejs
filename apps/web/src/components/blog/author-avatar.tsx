@@ -10,14 +10,13 @@ import type { Author } from "@/lib/blog/types"
  * no PII required.
  */
 const VERCEL_AVATAR_BASE = "https://vercel.com/api/www/avatar"
-const VERCEL_AVATAR_DPL =
-  "dpl_AS99V7XmtTzE4xdb72tYFtNTVV48" as const
+const VERCEL_AVATAR_DPL = "dpl_AS99V7XmtTzE4xdb72tYFtNTVV48" as const
 
 /** Build the avatar URL for an author. Prefers `author.avatar` from
  *  the frontmatter; falls back to a Vercel SVG identicon keyed on the
  *  author's handle. */
 export function authorAvatarUrl(
-  author: Pick<Author, "handle" | "avatar">,
+  author: Pick<Author, "handle" | "avatar">
 ): string {
   if (author.avatar) return author.avatar
   return `${VERCEL_AVATAR_BASE}?s=64&u=${encodeURIComponent(author.handle)}&dpl=${VERCEL_AVATAR_DPL}`

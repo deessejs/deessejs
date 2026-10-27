@@ -10,14 +10,14 @@ Most DeesseJS users arrive from one of three starting points: `create-t3-app`, t
 
 `create-t3-app` is a single CLI that scaffolds **one** thing: a Next.js app with the t3 stack (Prisma, NextAuth, tRPC). DeesseJS sits closer to a curated marketplace than to a single scaffolder.
 
-| | `create-t3-app` | DeesseJS |
-| --- | --- | --- |
-| Scope | One app, one stack | Many surfaces (web, mobile, edge, AI), one contract family |
-| Stack | t3 conventions (drizzle + tRPC + NextAuth) | drizzle + oRPC + Better Auth (similar shape, modernized choices) |
-| Output | A repo on disk | A repo on disk, plus a CLI you can re-run |
-| Auth | NextAuth only | Better Auth + device-flow CLI login |
-| Updates | Re-run the CLI, accept new defaults | `deessejs list` to see new templates, fork the new repo |
-| Lock-in | Zero (no runtime service) | Zero (templates fork cleanly) |
+|         | `create-t3-app`                            | DeesseJS                                                         |
+| ------- | ------------------------------------------ | ---------------------------------------------------------------- |
+| Scope   | One app, one stack                         | Many surfaces (web, mobile, edge, AI), one contract family       |
+| Stack   | t3 conventions (drizzle + tRPC + NextAuth) | drizzle + oRPC + Better Auth (similar shape, modernized choices) |
+| Output  | A repo on disk                             | A repo on disk, plus a CLI you can re-run                        |
+| Auth    | NextAuth only                              | Better Auth + device-flow CLI login                              |
+| Updates | Re-run the CLI, accept new defaults        | `deessejs list` to see new templates, fork the new repo          |
+| Lock-in | Zero (no runtime service)                  | Zero (templates fork cleanly)                                    |
 
 If you only need one Next.js app with the t3 stack, `create-t3-app` is the right tool. If you want consistent contracts across many apps and surfaces (web + mobile + AI assistant, all signing in against the same Better Auth instance) that's what DeesseJS optimises for.
 

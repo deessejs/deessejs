@@ -45,16 +45,15 @@ export function Comparison() {
     <div className="border-b border-border">
       <div className="flex flex-col gap-6 p-6 lg:p-10">
         <header className="flex flex-col gap-2">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Why delivery, not an agency
           </p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance [&:not(:first-child)]:mt-0">
+          <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40 [&:not(:first-child)]:mt-0">
             The engineering services you actually want to buy.
           </h2>
-          <p className="text-copy-16 text-muted-foreground leading-7 max-w-2xl [&:not(:first-child)]:mt-0">
-            Side-by-side: a traditional web agency versus DeesseJS
-            Delivery. The difference is engineering, not agency
-            theater.
+          <p className="max-w-2xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
+            Side-by-side: a traditional web agency versus DeesseJS Delivery. The
+            difference is engineering, not agency theater.
           </p>
         </header>
         <div className="overflow-x-auto">
@@ -86,10 +85,10 @@ export function Comparison() {
                   >
                     {row.criterion}
                   </th>
-                  <td className="py-3 px-4 align-top text-muted-foreground">
+                  <td className="px-4 py-3 align-top text-muted-foreground">
                     {row.agency}
                   </td>
-                  <td className="py-3 px-4 align-top font-semibold text-foreground">
+                  <td className="px-4 py-3 align-top font-semibold text-foreground">
                     {row.delivery}
                   </td>
                 </tr>

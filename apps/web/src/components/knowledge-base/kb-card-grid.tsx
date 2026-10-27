@@ -46,8 +46,8 @@ export function KbCardGrid({
   return (
     <ul
       className={cn(
-        "m-0 grid list-none gap-px border border-border bg-border p-0 md:grid-cols-2 md:[&>li]:bg-background lg:grid-cols-3",
-        className,
+        "m-0 grid list-none gap-px border border-border bg-border p-0 md:grid-cols-2 lg:grid-cols-3 md:[&>li]:bg-background",
+        className
       )}
     >
       {children}

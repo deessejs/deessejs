@@ -25,12 +25,12 @@ function Cell({
 export function FAQ() {
   return (
     <div className="border-b border-border">
-      <Cell className="!p-0 border-0">
-        <div className="flex flex-col gap-2 p-6 border-b border-border">
+      <Cell className="border-0 !p-0">
+        <div className="flex flex-col gap-2 border-b border-border p-6">
           <p className="text-label-13 text-muted-foreground">
             Frequently asked
           </p>
-          <h2 className="text-heading-32 lg:text-heading-40 tracking-tight text-balance">
+          <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40">
             Grouped by topic. Skip to what you need.
           </h2>
         </div>

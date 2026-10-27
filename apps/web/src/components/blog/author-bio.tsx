@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
 import { AvatarNextImage } from "./avatar-image"
 import type { Author } from "@/lib/blog/types"
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// oxlint-disable-next-line no-unused-vars
 function SingleAuthorBlock({ author }: { author: Author }) {
   const fallback = author.name
     .split(" ")
@@ -17,7 +17,11 @@ function SingleAuthorBlock({ author }: { author: Author }) {
 
   return (
     <div className="flex items-start gap-4">
-      <Link href={authorUrl} aria-label={`More from ${author.name}`} className="shrink-0">
+      <Link
+        href={authorUrl}
+        aria-label={`More from ${author.name}`}
+        className="shrink-0"
+      >
         <Avatar className="size-12 overflow-hidden rounded-full">
           {author.avatar ? (
             <AvatarNextImage src={author.avatar} alt={author.name} />

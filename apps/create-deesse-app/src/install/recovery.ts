@@ -5,13 +5,13 @@ const isWindows = (): boolean => process.platform === "win32"
 
 const commandString = (
   command: InstallCommand,
-  quote: (value: string) => string,
+  quote: (value: string) => string
 ): string => [command.bin, ...command.args].map(quote).join(" ")
 
 const changeDirectory = (
   cwd: string,
   isWindowsHost: boolean,
-  quote: (value: string) => string,
+  quote: (value: string) => string
 ): string =>
   isWindowsHost
     ? `Set-Location -LiteralPath ${quote(cwd)}; &`

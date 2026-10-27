@@ -10,9 +10,8 @@ import { CliError } from "./index.js"
  * approval.
  */
 export const cliDeviceExpired = (reason?: string): CliError =>
-	new CliError(
-		"cli_device_expired",
-		reason ??
-			"the device code expired before it was approved",
-		"run `deesse auth login` again to obtain a fresh device code",
-	)
+  new CliError(
+    "cli_device_expired",
+    reason ?? "the device code expired before it was approved",
+    "run `deesse auth login` again to obtain a fresh device code"
+  )

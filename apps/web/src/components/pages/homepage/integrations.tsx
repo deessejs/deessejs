@@ -44,49 +44,57 @@ const TECHS: ReadonlyArray<Tech> = [
   {
     logo: "nextdotjs",
     name: "Next.js",
-    description: "The default surface for every Pro template, with server components, App Router, and the edge runtime.",
+    description:
+      "The default surface for every Pro template, with server components, App Router, and the edge runtime.",
     slug: "nextjs",
   },
   {
     logo: "astro",
     name: "Astro",
-    description: "Island architecture for marketing surfaces and docs sites that ship near-zero JS by default.",
+    description:
+      "Island architecture for marketing surfaces and docs sites that ship near-zero JS by default.",
     slug: "astro",
   },
   {
     logo: "react",
     name: "React",
-    description: "The contract layer is React-typed. Any React-compatible framework consumes the same templates.",
+    description:
+      "The contract layer is React-typed. Any React-compatible framework consumes the same templates.",
     slug: "react",
   },
   {
     logo: "vuedotjs",
     name: "Vue",
-    description: "Supported via the same oRPC procedure types. Bind the same contracts from a Vue front-end.",
+    description:
+      "Supported via the same oRPC procedure types. Bind the same contracts from a Vue front-end.",
     slug: "vue",
   },
   {
     logo: "vercel",
     name: "Vercel",
-    description: "Default deploy target. Edge functions, ISR, and preview deployments out of the box.",
+    description:
+      "Default deploy target. Edge functions, ISR, and preview deployments out of the box.",
     slug: "vercel",
   },
   {
     logo: "cloudflare",
     name: "Cloudflare",
-    description: "Workers, R2, Queues, D1. The templates deploy to Cloudflare without code changes.",
+    description:
+      "Workers, R2, Queues, D1. The templates deploy to Cloudflare without code changes.",
     slug: "cloudflare",
   },
   {
     logo: "postgresql",
     name: "Postgres",
-    description: "Any wire-compatible host works. The Drizzle schema is the source of truth, ported anywhere.",
+    description:
+      "Any wire-compatible host works. The Drizzle schema is the source of truth, ported anywhere.",
     slug: "postgres",
   },
   {
     logo: "stripe",
     name: "Stripe",
-    description: "Default billing provider. Subscriptions, usage metering, and webhooks via the Billing contract.",
+    description:
+      "Default billing provider. Subscriptions, usage metering, and webhooks via the Billing contract.",
     slug: "stripe",
   },
 ]
@@ -94,19 +102,19 @@ const TECHS: ReadonlyArray<Tech> = [
 export function Integrations() {
   return (
     <Section>
-      <div className="grid grid-cols-1 md:grid-cols-[3fr_7fr] divide-y divide-border md:divide-y-0 md:divide-x">
+      <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-[3fr_7fr] md:divide-x md:divide-y-0">
         {/* Left column: copy + bullets */}
         <div className="flex flex-col justify-start gap-4 p-6 lg:gap-6 lg:p-10">
-          <p className="text-label-13 uppercase tracking-wider text-muted-foreground">
+          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
             Plays well with
           </p>
           <h2 className="max-w-md text-heading-32 font-medium tracking-tight text-balance lg:text-heading-40">
             Bring the stack you already use.
           </h2>
           <p className="max-w-md text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Every template is wired against the 6 contracts, not a
-            fixed set of brands. Run the frameworks, hosts, and
-            providers your team already knows.
+            Every template is wired against the 6 contracts, not a fixed set of
+            brands. Run the frameworks, hosts, and providers your team already
+            knows.
           </p>
           <ul className="flex flex-col gap-3 pt-2">
             <li className="flex items-start gap-3 text-copy-14 leading-6 text-foreground">
@@ -114,26 +122,62 @@ export function Integrations() {
                 aria-hidden
                 className="mt-0.5 flex h-6 shrink-0 items-center -space-x-3"
               >
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 4 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/github.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 4 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/github.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 3 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/gitlab.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 3 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/gitlab.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 2 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/atlassian.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 2 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/atlassian.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 1 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/azuredevops.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 1 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/azuredevops.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
               </span>
               <span>
-                <strong>Deploy automatically</strong> from git or with
-                the CLI. No extra config.
+                <strong>Deploy automatically</strong> from git or with the CLI.
+                No extra config.
               </span>
             </li>
             <li className="flex items-start gap-3 text-copy-14 leading-6 text-foreground">
@@ -141,26 +185,62 @@ export function Integrations() {
                 aria-hidden
                 className="mt-0.5 flex h-6 shrink-0 items-center -space-x-3"
               >
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 4 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/nextdotjs.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 4 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/nextdotjs.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 3 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/astro.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 3 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/astro.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 2 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/vercel.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 2 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/vercel.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 1 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/cloudflare.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 1 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/cloudflare.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
               </span>
               <span>
-                <strong>Wide range</strong> support for the most
-                popular frameworks and hosts.
+                <strong>Wide range</strong> support for the most popular
+                frameworks and hosts.
               </span>
             </li>
             <li className="flex items-start gap-3 text-copy-14 leading-6 text-foreground">
@@ -168,26 +248,62 @@ export function Integrations() {
                 aria-hidden
                 className="mt-0.5 flex h-6 shrink-0 items-center -space-x-3"
               >
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 4 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/claudecode.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 4 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/claudecode.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 3 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/codex.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 3 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/codex.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 2 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/cursor.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 2 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/cursor.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 1 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/opencode.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 1 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/opencode.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
               </span>
               <span>
-                <strong>Typed contracts</strong> at every boundary, so
-                your agent and your IDE stay in sync.
+                <strong>Typed contracts</strong> at every boundary, so your
+                agent and your IDE stay in sync.
               </span>
             </li>
             <li className="flex items-start gap-3 text-copy-14 leading-6 text-foreground">
@@ -195,33 +311,69 @@ export function Integrations() {
                 aria-hidden
                 className="mt-0.5 flex h-6 shrink-0 items-center -space-x-3"
               >
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 4 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/betterauth.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 4 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/betterauth.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 3 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/clerk.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 3 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/clerk.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 2 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/auth0.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 2 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/auth0.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
-                <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]" style={{ zIndex: 1 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logos/lucia.svg" alt="" width={14} height={14} className="size-3.5 dark:invert" />
+                <span
+                  className="relative inline-flex size-6 items-center justify-center rounded-full border border-border bg-background shadow-[0_0_0_1px_var(--background)]"
+                  style={{ zIndex: 1 }}
+                >
+                  {/* oxlint-disable-next-line nextjs/no-img-element */}
+                  <img
+                    src="/logos/lucia.svg"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 dark:invert"
+                  />
                 </span>
               </span>
               <span>
-                <strong>Bring your own auth</strong>: Better Auth,
-                Clerk, Auth0, Lucia, or your own provider.
+                <strong>Bring your own auth</strong>: Better Auth, Clerk, Auth0,
+                Lucia, or your own provider.
               </span>
             </li>
           </ul>
 
           <Link
             href="/stack"
-            className="mt-2 inline-flex items-center gap-1 self-start text-label-13 text-foreground hover:underline underline-offset-4"
+            className="mt-2 inline-flex items-center gap-1 self-start text-label-13 text-foreground underline-offset-4 hover:underline"
           >
             Browse the stack
             <ArrowUpRight aria-hidden className="size-3" />
@@ -229,19 +381,19 @@ export function Integrations() {
         </div>
 
         {/* Right column: 8-tech grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 border-t border-border md:border-t-0">
+        <div className="grid grid-cols-1 border-t border-border md:grid-cols-2 md:border-t-0">
           {TECHS.map((tech) => (
             <Link
               key={tech.slug}
               href={`/stack/${tech.slug}`}
-              className="group/tech relative flex flex-col gap-3 border-b border-r border-border p-6 transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 lg:p-8"
+              className="group/tech relative flex flex-col gap-3 border-r border-b border-border p-6 transition-colors hover:bg-accent/30 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none lg:p-8"
             >
               <ArrowUpRight
                 aria-hidden
-                className="absolute right-4 top-4 size-4 shrink-0 text-muted-foreground transition-colors group-hover/tech:text-foreground lg:right-6 lg:top-6"
+                className="absolute top-4 right-4 size-4 shrink-0 text-muted-foreground transition-colors group-hover/tech:text-foreground lg:top-6 lg:right-6"
               />
               <h3 className="flex items-center gap-2 pr-6 text-heading-20 font-medium tracking-tight text-foreground">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* oxlint-disable-next-line nextjs/no-img-element */}
                 <img
                   src={`/logos/${tech.logo}.svg`}
                   alt=""

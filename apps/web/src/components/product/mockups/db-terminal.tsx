@@ -55,11 +55,7 @@ export function DbTerminalMockup() {
           viewport={{ once: true }}
           transition={{
             delay:
-              0.05 +
-              line1.length * 0.025 +
-              0.35 +
-              line2.length * 0.025 +
-              0.35,
+              0.05 + line1.length * 0.025 + 0.35 + line2.length * 0.025 + 0.35,
             duration: 0.35,
           }}
           className="text-zinc-400"

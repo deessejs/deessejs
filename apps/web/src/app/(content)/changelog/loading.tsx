@@ -8,19 +8,19 @@ export default function ChangelogLoading() {
         <Skeleton className="h-5 w-80" />
       </div>
 
-      <div className="border border-border bg-background rounded-none">
+      <div className="rounded-none border border-border bg-background">
         <ul className="m-0 grid list-none grid-cols-4 gap-x-6 gap-y-0 p-0 lg:grid-cols-12 [&>li:last-of-type]:before:h-0">
           {Array.from({ length: 5 }).map((_, i) => (
             <li
               key={i}
               className={
                 "col-span-full grid grid-cols-subgrid items-baseline gap-6 " +
-                "lg:col-start-4 lg:col-span-8 relative " +
-                "before:content-[''] before:block before:h-[calc(100%+1px)] " +
-                "before:w-px before:bg-border before:rounded-sm " +
+                "relative lg:col-span-8 lg:col-start-4 " +
+                "before:block before:h-[calc(100%+1px)] before:content-[''] " +
+                "before:w-px before:rounded-sm before:bg-border " +
                 "before:absolute before:top-[25px] " +
-                "after:content-[''] after:absolute after:block after:h-px " +
-                "after:w-3 after:bg-border after:rounded-sm after:top-[25px]"
+                "after:absolute after:block after:h-px after:content-[''] " +
+                "after:top-[25px] after:w-3 after:rounded-sm after:bg-border"
               }
             >
               <div className="col-span-1 lg:col-span-2">

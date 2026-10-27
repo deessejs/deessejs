@@ -31,52 +31,50 @@ import { printJson } from "../../output/index.js"
  */
 
 export const logoutCommand = new Command("logout")
-	.description("Sign out this machine and remove the stored token")
-	.option("--json", "JSON output for scripting")
-	.action(async (opts: { json?: boolean }) => {
-		const stored = readAuth()
-		if (!stored) {
-			if (opts.json) {
-				printJson({ ok: true, reason: "no_session" })
-			}
-			return
-		}
+  .description("Sign out this machine and remove the stored token")
+  .option("--json", "JSON output for scripting")
+  .action(async (opts: { json?: boolean }) => {
+    const stored = readAuth()
+    if (!stored) {
+      if (opts.json) {
+        printJson({ ok: true, reason: "no_session" })
+      }
+      return
+    }
 
-		const spinner = opts.json
-			? null
-			: ora("Signing out...").start()
-		try {
-			const res = await bearerFetch("sign-out", stored.access_token, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-			})
-			// We deliberately do NOT throw on a non-2xx here:
-			// the local cache cleanup is the user-facing
-			// outcome. A server-side failure (e.g. token
-			// already revoked) is logged but the local file
-			// is cleared regardless. The user's machine is
-			// now in a "no session" state either way.
-			if (res.status !== 200 && res.status !== 204) {
-				spinner?.stop()
-				if (!opts.json) {
-					console.log(
-						pc.yellow(
-							`Server returned HTTP ${res.status} on sign-out; clearing the local token file anyway.`,
-						),
-					)
-				}
-			} else {
-				spinner?.stop()
-			}
-			clearAuth()
-			if (opts.json) {
-				printJson({ ok: true })
-			} else {
-				console.log(pc.green("✓ signed out"))
-			}
-		} catch (e) {
-			spinner?.stop()
-			clearAuth()
-			throw internal(e instanceof Error ? e.message : String(e))
-		}
-	})
+    const spinner = opts.json ? null : ora("Signing out...").start()
+    try {
+      const res = await bearerFetch("sign-out", stored.access_token, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+      })
+      // We deliberately do NOT throw on a non-2xx here:
+      // the local cache cleanup is the user-facing
+      // outcome. A server-side failure (e.g. token
+      // already revoked) is logged but the local file
+      // is cleared regardless. The user's machine is
+      // now in a "no session" state either way.
+      if (res.status !== 200 && res.status !== 204) {
+        spinner?.stop()
+        if (!opts.json) {
+          console.log(
+            pc.yellow(
+              `Server returned HTTP ${res.status} on sign-out; clearing the local token file anyway.`
+            )
+          )
+        }
+      } else {
+        spinner?.stop()
+      }
+      clearAuth()
+      if (opts.json) {
+        printJson({ ok: true })
+      } else {
+        console.log(pc.green("✓ signed out"))
+      }
+    } catch (e) {
+      spinner?.stop()
+      clearAuth()
+      throw internal(e instanceof Error ? e.message : String(e))
+    }
+  })
