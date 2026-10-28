@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import Link from "next/link"
 import { Button } from "@workspace/ui/components/button"
 
@@ -12,24 +13,40 @@ import { NavUser } from "@/components/sidebars/nav-user"
  * workspace, the account settings and the administration area each
  * mount it, so the chrome reads the same from one surface to the
  * next.
+ *
+ * Two slots make it fit the surfaces that need more or less. The
+ * `leading` slot renders before the brand, which is where the
+ * workspace puts the button that opens the rail. The `user` flag
+ * decides whether the account menu is in the header: the workspace
+ * shows it in the rail's footer instead, and a viewport with the same
+ * menu twice is a redundancy the product does not need.
  */
-export function AppHeader() {
+export function AppHeader({
+  leading,
+  user = true,
+}: {
+  leading?: ReactNode
+  user?: boolean
+}) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
-      <Link
-        href={WEB_URL}
-        aria-label={`${APP_NAME}: back to home`}
-        className="text-xl font-semibold tracking-tight hover:opacity-80"
-      >
-        {APP_NAME}
-      </Link>
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
+        {leading}
+        <Link
+          href={WEB_URL}
+          aria-label={`${APP_NAME}: back to home`}
+          className="min-w-0 truncate text-xl font-semibold tracking-tight hover:opacity-80"
+        >
+          {APP_NAME}
+        </Link>
+      </div>
+      <div className="flex min-w-0 items-center gap-2">
         {/* V1 placeholder: the real action (mailto: or external helpdesk
             URL) ships in a follow-up change. */}
         <Button variant="outline" size="default" type="button" disabled>
           Contact us
         </Button>
-        <NavUser />
+        {user && <NavUser />}
       </div>
     </header>
   )

@@ -11,7 +11,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@workspace/ui/components/dialog"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -38,6 +37,13 @@ const REFUSALS: Record<string, string> = {
   ORGANIZATION_CREATE_FAILED: CREATE_FAILED_MESSAGE,
 }
 
+/** The organization a creation produced, as the callers see it. */
+export type CreatedOrganization = {
+  id: string
+  slug: string
+  name: string
+}
+
 /**
  * Creates an organization.
  *
@@ -49,13 +55,41 @@ const REFUSALS: Record<string, string> = {
  * The caller gives a name and nothing else. The slug is the
  * server's, and the organization the server created is the one the
  * caller lands in.
+ *
+ * The open state belongs to the caller, and the two props come as a
+ * pair: a controlled dialog that cannot report its closure is a
+ * dialog the caller cannot get out of. The dialog renders no trigger
+ * of its own, so the two callers own theirs.
+ *
+ * `onCreated` is called after a successful creation and before the
+ * navigation, so a caller whose list of organizations comes from the
+ * browser can refresh it.
  */
-export function CreateOrganizationDialog() {
+export function CreateOrganizationDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onCreated?: (organization: CreatedOrganization) => void
+}) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+
+  function handleOpenChange(next: boolean) {
+    if (next) {
+      onOpenChange(true)
+      return
+    }
+    // Closing clears the transient state. The name stays: a caller who
+    // cancelled did not mean to throw it away.
+    setError(null)
+    setCreating(false)
+    onOpenChange(false)
+  }
 
   async function handleCreate() {
     if (name.trim().length === 0) return
@@ -63,7 +97,9 @@ export function CreateOrganizationDialog() {
     setError(null)
     try {
       const created = await orpcBrowser.organization.create({ name })
-      setOpen(false)
+      setName("")
+      handleOpenChange(false)
+      onCreated?.(created)
       router.push(workspaceHomePath(created.slug))
     } catch (failure) {
       setCreating(false)
@@ -76,10 +112,7 @@ export function CreateOrganizationDialog() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>Create an organization</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create an organization</DialogTitle>
@@ -105,13 +138,7 @@ export function CreateOrganizationDialog() {
           </p>
         )}
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setOpen(false)
-              setError(null)
-            }}
-          >
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
           <Button

@@ -6,9 +6,12 @@ import { describe, expect, it } from "vitest"
 import { RESERVED_SLUGS } from "@workspace/auth/organization/reserved-slugs"
 
 import {
-  NO_ORGANIZATION_PATH,
+  ORGANIZATIONS_PATH,
+  organizationSlugFromPathname,
   workspaceHomePath,
+  workspaceOrganizationSettingsPath,
   workspacePath,
+  workspaceSettingsPath,
 } from "../lib/workspace-paths"
 
 /**
@@ -51,13 +54,33 @@ function addPageSegment(
 }
 
 describe("the workspace paths", () => {
-  it("names the empty state", () => {
-    expect(NO_ORGANIZATION_PATH).toBe("/no-organization")
+  it("names the organizations page", () => {
+    expect(ORGANIZATIONS_PATH).toBe("/organizations")
   })
 
   it("builds the workspace of an organization", () => {
     expect(workspacePath("acme")).toBe("/acme")
     expect(workspaceHomePath("acme")).toBe("/acme/home")
+  })
+
+  it("builds the organization's settings", () => {
+    expect(workspaceSettingsPath("acme")).toBe("/acme/settings")
+    expect(workspaceOrganizationSettingsPath("acme")).toBe(
+      "/acme/settings/organization",
+    )
+  })
+})
+
+describe("the slug in a pathname", () => {
+  it("reads the first segment of a workspace path", () => {
+    expect(organizationSlugFromPathname("/acme/home")).toBe("acme")
+    expect(organizationSlugFromPathname("/acme/settings/organization")).toBe(
+      "acme",
+    )
+  })
+
+  it("reads nothing from a path without a segment", () => {
+    expect(organizationSlugFromPathname("/")).toBeNull()
   })
 })
 
@@ -72,7 +95,7 @@ describe("the reserved slug set", () => {
 
   it("holds the segments the workspace introduced", () => {
     expect(RESERVED_SLUGS.has("home")).toBe(true)
-    expect(RESERVED_SLUGS.has("no-organization")).toBe(true)
+    expect(RESERVED_SLUGS.has("organizations")).toBe(true)
   })
 
   it("holds the segments the application already owned", () => {
@@ -104,5 +127,17 @@ describe("the application route tree", () => {
       )
     )
     expect(existsSync(settings)).toBe(true)
+  })
+
+  it("serves the organization's general page under its slug", () => {
+    // The organization's settings live under the organization they
+    // belong to, and the shell's navigation links to that one page.
+    const page = fileURLToPath(
+      new URL(
+        "../app/(protected)/(workspace)/[organization_slug]/settings/organization/page.tsx",
+        import.meta.url,
+      ),
+    )
+    expect(existsSync(page)).toBe(true)
   })
 })
