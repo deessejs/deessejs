@@ -11,6 +11,8 @@
     "typecheck": "fumadocs-mdx && next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@workspace/analytics": "workspace:*",
+    "@workspace/cookies": "workspace:*",
     "@workspace/ui": "workspace:*",
     "cnfast": "^0.0.8",
     "fumadocs-core": "^16.14.5",
@@ -20,9 +22,7 @@
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "zod": "catalog:",
-    "@workspace/analytics": "workspace:*",
-    "@workspace/cookies": "workspace:*"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "catalog:",
@@ -31,10 +31,10 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@workspace/typescript-config": "workspace:*",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
     "postcss": "^8.5.15",
     "tailwindcss": "^4",
-    "typescript": "catalog:",
-    "oxlint": "catalog:",
-    "oxfmt": "catalog:"
+    "typescript": "catalog:"
   }
 }

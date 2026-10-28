@@ -22,8 +22,10 @@
     "@orpc/server": "catalog:",
     "@shadcn/react": "catalog:",
     "@vercel/related-projects": "catalog:",
+    "@workspace/analytics": "workspace:*",
     "@workspace/api": "workspace:*",
     "@workspace/contracts": "workspace:*",
+    "@workspace/cookies": "workspace:*",
     "@workspace/env": "workspace:*",
     "@workspace/ui": "workspace:*",
     "better-auth": "catalog:",
@@ -41,9 +43,7 @@
     "remark-gfm": "catalog:",
     "shiki": "catalog:",
     "sonner": "catalog:",
-    "zustand": "catalog:",
-    "@workspace/analytics": "workspace:*",
-    "@workspace/cookies": "workspace:*"
+    "zustand": "catalog:"
   },
   "devDependencies": {
     "@content-collections/cli": "catalog:",
@@ -60,12 +60,12 @@
     "@vitest/coverage-v8": "catalog:",
     "@workspace/typescript-config": "workspace:*",
     "@workspace/vitest-config": "workspace:*",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
     "reading-time": "catalog:",
     "typescript": "catalog:",
     "unist-util-visit": "catalog:",
     "vitest": "catalog:",
-    "zod": "catalog:",
-    "oxlint": "catalog:",
-    "oxfmt": "catalog:"
+    "zod": "catalog:"
   }
 }

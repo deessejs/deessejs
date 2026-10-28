@@ -21,7 +21,11 @@ function ConsentGatedVercelScripts() {
   if (!hasHydrated || !analyticsAllowed) return null
   return (
     <>
-      <Analytics />
+      <Analytics
+        beforeSend={(event) =>
+          useCookieConsentStore.getState().consent.analytics ? event : null
+        }
+      />
       <SpeedInsights />
     </>
   )
