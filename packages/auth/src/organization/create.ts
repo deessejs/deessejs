@@ -58,6 +58,8 @@ type OrganizationPluginApi = {
 // module exists to hold, and the answers are checked against the
 // declared shape below, so an upgrade that changes an endpoint's shape
 // fails here rather than producing a lie.
+// lint exception: Better Auth loses the plugin API augmentation through the shared options type; answers are validated below.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
 const pluginApi = auth.api as unknown as OrganizationPluginApi
 
 /** Whether the value is a plain object. */
@@ -72,7 +74,7 @@ const toDate = (value: unknown): Date => {
     if (!Number.isNaN(parsed.getTime())) return parsed
   }
   throw new Error(
-    "The organization creation answer carried no usable creation date.",
+    "The organization creation answer carried no usable creation date."
   )
 }
 
@@ -90,20 +92,24 @@ const toCreatedOrganization = (answer: unknown): CreatedOrganization => {
     throw new Error("The organization creation answer was not an object.")
   }
   const { id, name, slug, createdAt, members } = answer
-  if (typeof id !== "string" || typeof name !== "string" || typeof slug !== "string") {
+  if (
+    typeof id !== "string" ||
+    typeof name !== "string" ||
+    typeof slug !== "string"
+  ) {
     throw new Error(
-      "The organization creation answer carried no usable identity.",
+      "The organization creation answer carried no usable identity."
     )
   }
   if (!Array.isArray(members) || members.length === 0) {
     throw new Error(
-      "The organization creation answer carried no membership for the creator.",
+      "The organization creation answer carried no membership for the creator."
     )
   }
   const first = members[0]
   if (!isRecord(first) || typeof first.role !== "string") {
     throw new Error(
-      "The organization creation answer carried no role for the creator.",
+      "The organization creation answer carried no role for the creator."
     )
   }
   return { id, name, slug, createdAt: toDate(createdAt), role: first.role }

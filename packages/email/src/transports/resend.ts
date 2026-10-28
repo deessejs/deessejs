@@ -19,7 +19,7 @@ export class ResendTransport implements MailerTransport {
       subject: args.subject,
       ...(args.html ? { html: args.html } : {}),
       ...(args.text ? { text: args.text } : {}),
-      ...(args.react ? { react: args.react as React.ReactElement } : {}),
+      ...(args.react ? { react: args.react } : {}),
       ...(args.replyTo ? { replyTo: args.replyTo } : {}),
       ...(args.tags ? { tags: args.tags } : {}),
       ...(args.idempotencyKey
@@ -28,6 +28,7 @@ export class ResendTransport implements MailerTransport {
     })
 
     if (error) return { error: error.message }
-    return { id: data!.id }
+    if (!data) return { error: "Resend returned no message data" }
+    return { id: data.id }
   }
 }

@@ -82,6 +82,57 @@ const githubResponse = (pathname) => {
   })
 }
 
+function appResponse(requestUrl, method) {
+  if (requestUrl.hostname !== "app.deessejs.com") return null
+  if (requestUrl.pathname === "/api/v1/version") {
+    return jsonResponse({ version: "2.1.0", minSupported: "1.0.0" })
+  }
+  if (
+    requestUrl.pathname === "/api/v1/rpc/templates/resolve" &&
+    method === "POST"
+  ) {
+    return new globalThis.Response(null, { status: 404 })
+  }
+  if (
+    requestUrl.pathname === "/api/v1/rpc/templates/list" &&
+    method === "POST"
+  ) {
+    return jsonResponse({
+      json: { templates: [template, legacyCatalogTemplate] },
+    })
+  }
+  return null
+}
+
+function githubContentsResponse(requestUrl) {
+  const match =
+    /^\/repos\/([^/]+\/[^/]+)\/contents\/deesse-template\.json$/.exec(
+      requestUrl.pathname
+    )
+  if (!match) return null
+  const fixture = githubRepositories.get(match[1])
+  if (fixture?.descriptor) {
+    return jsonResponse({
+      type: "file",
+      encoding: "base64",
+      content: fixture.descriptor.toString("base64"),
+      size: fixture.descriptor.byteLength,
+    })
+  }
+  return new globalThis.Response(null, { status: 404 })
+}
+
+function githubApiResponse(requestUrl) {
+  if (requestUrl.hostname !== "api.github.com") return null
+  const response =
+    githubResponse(requestUrl.pathname) ?? githubContentsResponse(requestUrl)
+  if (response) return response
+  if (/^\/repos\/[^/]+\/[^/]+$/.test(requestUrl.pathname)) {
+    return new globalThis.Response(null, { status: 404 })
+  }
+  return null
+}
+
 globalThis.fetch = async (input, init) => {
   const requestUrl = new URL(
     input instanceof globalThis.Request ? input.url : String(input)
@@ -90,58 +141,9 @@ globalThis.fetch = async (input, init) => {
     init?.method ?? (input instanceof globalThis.Request ? input.method : "GET")
   appendFileSync(tracePath, `${method.toUpperCase()} ${requestUrl.href}\n`)
 
-  if (
-    requestUrl.hostname === "app.deessejs.com" &&
-    requestUrl.pathname === "/api/v1/version"
-  ) {
-    return jsonResponse({ version: "2.1.0", minSupported: "1.0.0" })
-  }
-
-  if (
-    requestUrl.hostname === "app.deessejs.com" &&
-    requestUrl.pathname === "/api/v1/rpc/templates/resolve" &&
-    method === "POST"
-  ) {
-    return new globalThis.Response(null, { status: 404 })
-  }
-
-  if (
-    requestUrl.hostname === "app.deessejs.com" &&
-    requestUrl.pathname === "/api/v1/rpc/templates/list" &&
-    method === "POST"
-  ) {
-    return jsonResponse({
-      json: { templates: [template, legacyCatalogTemplate] },
-    })
-  }
-
-  if (requestUrl.hostname === "api.github.com") {
-    const response = githubResponse(requestUrl.pathname)
-    if (response) return response
-  }
-
-  if (requestUrl.hostname === "api.github.com") {
-    const match =
-      /^\/repos\/([^/]+\/[^/]+)\/contents\/deesse-template\.json$/.exec(
-        requestUrl.pathname
-      )
-    const repository = match?.[1]
-    const fixture = repository ? githubRepositories.get(repository) : undefined
-    if (fixture?.descriptor) {
-      return jsonResponse({
-        type: "file",
-        encoding: "base64",
-        content: fixture.descriptor.toString("base64"),
-        size: fixture.descriptor.byteLength,
-      })
-    }
-    if (fixture) return new globalThis.Response(null, { status: 404 })
-    if (match) return new globalThis.Response(null, { status: 404 })
-    if (/^\/repos\/[^/]+\/[^/]+$/.test(requestUrl.pathname)) {
-      return new globalThis.Response(null, { status: 404 })
-    }
-  }
-
+  const response =
+    appResponse(requestUrl, method) ?? githubApiResponse(requestUrl)
+  if (response) return response
   throw new Error(
     `Unexpected network request from the CLI init E2E test: ${method} ${requestUrl.href}`
   )

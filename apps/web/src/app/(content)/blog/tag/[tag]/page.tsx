@@ -5,12 +5,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { BlogSearch } from "@/components/blog/blog-search"
 import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 import { getPostsByTag } from "@/lib/blog/posts"
-import {
-  BLOG_TAG_LABELS,
-  BLOG_TAGS,
-  type BlogTag,
-  getAllTags,
-} from "@/lib/blog/types"
+import { BLOG_TAG_LABELS, getAllTags, isBlogTag } from "@/lib/blog/types"
 
 type Params = { tag: string }
 
@@ -25,7 +20,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { tag } = await params
   const decoded = decodeURIComponent(tag)
-  const blogTag = decoded as BlogTag
+  if (!isBlogTag(decoded)) notFound()
+  const blogTag = decoded
   const label = BLOG_TAG_LABELS[blogTag]
   const postCount = getPostsByTag(blogTag).length
   const path = `/blog/tag/${encodeURIComponent(decoded)}`
@@ -54,13 +50,8 @@ export async function generateMetadata({
 export default async function TagPage({ params }: { params: Promise<Params> }) {
   const { tag } = await params
   const decoded = decodeURIComponent(tag)
-  // Refuse unknown tags: they're not part of our closed set, so a
-  // 404 is more honest than rendering an empty index. Casting the
-  // string to `BlogTag` would skip this check and lie to callers.
-  if (!BLOG_TAGS.includes(decoded as BlogTag)) {
-    notFound()
-  }
-  const blogTag = decoded as BlogTag
+  if (!isBlogTag(decoded)) notFound()
+  const blogTag = decoded
   const label = BLOG_TAG_LABELS[blogTag]
   const posts = getPostsByTag(blogTag)
   const tags = getAllTags()

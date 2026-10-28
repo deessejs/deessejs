@@ -260,11 +260,7 @@ export const runInstall = async (
         // = assume non-empty so we keep waiting. Better
         // to wait too long than to resolve with a live
         // grandchild.
-        if (
-          err instanceof Error &&
-          "code" in err &&
-          (err as NodeJS.ErrnoException).code === "ESRCH"
-        ) {
+        if (err instanceof Error && "code" in err && err.code === "ESRCH") {
           return true
         }
       }

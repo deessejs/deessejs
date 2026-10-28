@@ -2,10 +2,7 @@
 
 import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
 
-import {
-  usePricingCadence,
-  type PricingCadence,
-} from "./pricing-cadence-context"
+import { usePricingCadence } from "./pricing-cadence-context"
 
 /**
  * Client-only cadence toggle rendered in the hero. Reads and writes
@@ -20,7 +17,9 @@ export function PricingHeroTabs() {
   return (
     <Tabs
       value={cadence}
-      onValueChange={(v) => setCadence(v as PricingCadence)}
+      onValueChange={(value) => {
+        if (value === "monthly" || value === "annual") setCadence(value)
+      }}
       className="mt-1"
     >
       <TabsList variant="line" className="inline-flex">

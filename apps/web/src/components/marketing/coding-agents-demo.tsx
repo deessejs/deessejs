@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useState } from "react"
 import {
   ArrowUp,
@@ -229,8 +230,7 @@ function AgentAvatar() {
   return (
     <Avatar className="bg-muted">
       <AvatarFallback className="bg-muted">
-        {/* oxlint-disable-next-line nextjs/no-img-element */}
-        <img
+        <Image
           src="/logos/codex.svg"
           alt=""
           width={16}
@@ -309,7 +309,8 @@ export function CodingAgentsDemo() {
     return () => window.clearInterval(intervalId)
   }, [activeIndex, reduceMotion])
 
-  const scenario = SCENARIOS[activeIndex] ?? SCENARIOS[0]!
+  const scenario = SCENARIOS[activeIndex] ?? SCENARIOS.at(0)
+  if (!scenario) return null
 
   function selectScenario(index: number) {
     setActiveIndex(index)

@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { CodingAgentsDemo } from "@/components/marketing/coding-agents-demo"
 import { Section } from "@/components/marketing/section"
 import { cn } from "@workspace/ui/lib/utils"
@@ -54,8 +55,7 @@ export function CodingAgents() {
                 aria-label={`${agent.name}, open the docs.deessejs.com onboarding guide in a new tab`}
                 className="group/card flex h-full items-center justify-center gap-3 p-6 text-copy-14 font-medium text-foreground transition-colors hover:bg-accent/40 lg:p-8"
               >
-                {/* oxlint-disable-next-line nextjs/no-img-element */}
-                <img
+                <Image
                   src={`/logos/${agent.logo}.svg`}
                   alt=""
                   width={20}

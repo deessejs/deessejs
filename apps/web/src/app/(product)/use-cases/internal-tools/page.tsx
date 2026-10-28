@@ -11,10 +11,7 @@ import { SectionHeader } from "@/components/marketing/section-header"
 import { UseCaseHero } from "@/components/product/use-case/use-case-page"
 import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
-import {
-  INTERNAL_TOOLS_SNIPPETS,
-  type InternalToolsPillarSlug,
-} from "@/components/product/use-case/internal-tools-snippets"
+import { INTERNAL_TOOLS_SNIPPETS } from "@/components/product/use-case/internal-tools-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 import { GROUP_1, GROUP_2 } from "./internal-tools-tabs"
@@ -111,17 +108,16 @@ export default async function InternalToolsPage() {
   }
 
   await Promise.all(
-    (Object.keys(INTERNAL_TOOLS_SNIPPETS) as InternalToolsPillarSlug[]).flatMap(
-      (slug) =>
-        INTERNAL_TOOLS_SNIPPETS[slug].files.map((file) =>
-          codeToHtml(file.code, {
-            lang: file.lang,
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          }).then((html) => {
-            htmlBySlug[slug]?.push({ tabName: file.tabName, html })
-          })
-        )
+    Object.entries(INTERNAL_TOOLS_SNIPPETS).flatMap(([slug, snippet]) =>
+      snippet.files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        })
+      )
     )
   )
 

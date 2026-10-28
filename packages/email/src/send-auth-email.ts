@@ -25,7 +25,7 @@ export type SendEmailResult = { ok: true } | { ok: false; error: string }
 export async function sendAuthEmail(opts: {
   to: string
   subject: string
-  react: React.ReactNode
+  react: React.ReactElement
   tags?: Array<{ name: string; value: string }>
   idempotencyKey?: string
 }): Promise<SendEmailResult> {
@@ -42,11 +42,19 @@ export async function sendAuthEmail(opts: {
     })
     // ResendTransport returns `{ data, error }`; ConsoleTransport returns
     // the data directly. Normalize to the discriminated union.
-    if (result && typeof result === "object" && "error" in result && result.error) {
+    if (
+      result &&
+      typeof result === "object" &&
+      "error" in result &&
+      result.error
+    ) {
       return { ok: false, error: String(result.error) }
     }
     return { ok: true }
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    }
   }
 }

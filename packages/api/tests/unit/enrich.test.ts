@@ -20,9 +20,9 @@ import { resolveLabels } from "../../src/core/templates/enrich.js"
 
 describe("resolveLabels", () => {
   it("returns repo topics when present and non-empty", () => {
-    expect(resolveLabels(["drizzle", "postgres"], ["registry-fallback"])).toEqual(
-      ["drizzle", "postgres"],
-    )
+    expect(
+      resolveLabels(["drizzle", "postgres"], ["registry-fallback"])
+    ).toEqual(["drizzle", "postgres"])
   })
 
   it("falls back to entry labels when repo topics is undefined", () => {
@@ -52,11 +52,11 @@ describe("resolveLabels", () => {
     // theoretically carry anything. We rely on `Array.isArray` as
     // the gate so a malformed payload still resolves to the entry
     // labels rather than crashing the resolver.
-    // @ts-expect-error — intentional adversarial input
+    // @ts-expect-error: Deliberately malformed input must be rejected.
     expect(resolveLabels("not-an-array", ["nextjs"])).toEqual(["nextjs"])
-    // @ts-expect-error — intentional
+    // @ts-expect-error: This unsupported input is rejected by the runtime schema.
     expect(resolveLabels(null, ["nextjs"])).toEqual(["nextjs"])
-    // @ts-expect-error — intentional
+    // @ts-expect-error: This unsupported input is rejected by the runtime schema.
     expect(resolveLabels({ length: 0 }, ["nextjs"])).toEqual(["nextjs"])
   })
 })

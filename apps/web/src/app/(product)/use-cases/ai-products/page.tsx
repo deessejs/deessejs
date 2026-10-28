@@ -11,10 +11,7 @@ import { SectionHeader } from "@/components/marketing/section-header"
 import { UseCaseHero } from "@/components/product/use-case/use-case-page"
 import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
-import {
-  AI_PRODUCTS_SNIPPETS,
-  type AiProductsPillarSlug,
-} from "@/components/product/use-case/ai-products-snippets"
+import { AI_PRODUCTS_SNIPPETS } from "@/components/product/use-case/ai-products-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 import { GROUP_1, GROUP_2 } from "./ai-products-tabs"
@@ -130,17 +127,16 @@ export default async function AiProductsPage() {
   }
 
   await Promise.all(
-    (Object.keys(AI_PRODUCTS_SNIPPETS) as AiProductsPillarSlug[]).flatMap(
-      (slug) =>
-        AI_PRODUCTS_SNIPPETS[slug].files.map((file) =>
-          codeToHtml(file.code, {
-            lang: file.lang,
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          }).then((html) => {
-            htmlBySlug[slug]?.push({ tabName: file.tabName, html })
-          })
-        )
+    Object.entries(AI_PRODUCTS_SNIPPETS).flatMap(([slug, snippet]) =>
+      snippet.files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        })
+      )
     )
   )
 

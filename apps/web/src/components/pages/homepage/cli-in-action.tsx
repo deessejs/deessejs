@@ -30,20 +30,20 @@ import {
  * page. The `/cli` product page does the same with its own copy.
  */
 export async function CliInAction() {
-  const highlightedHtml = await Promise.all(
+  const editorHtml: Record<(typeof EDITOR_TABS)[number]["id"], string> = {
+    "AGENTS.md": "",
+    "package.json": "",
+  }
+  await Promise.all(
     EDITOR_TABS.map(async (tab) => {
       const html = await codeToHtml(EDITOR_TAB_CONTENT[tab.id], {
         lang: EDITOR_TAB_LANG[tab.id],
         themes: { light: "github-light", dark: "github-dark" },
         defaultColor: false,
       })
-      return [tab.id, html] as const
+      editorHtml[tab.id] = html
     })
   )
-  const editorHtml = Object.fromEntries(highlightedHtml) as Record<
-    (typeof EDITOR_TABS)[number]["id"],
-    string
-  >
 
   return (
     <Section className="border-t border-border">

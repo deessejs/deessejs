@@ -7,11 +7,22 @@ import { defineConfig } from "vitest/config"
 // real process.env does not carry the field — it is a build-time
 // substitution) and any version-reading helper would return undefined.
 const require = createRequire(import.meta.url)
-const pkg = require("./package.json") as { version: string }
+const packageJson: unknown = require("./package.json")
+const packageVersion = readPackageVersion(packageJson)
+
+function readPackageVersion(value: unknown): string {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("package.json must contain a string version")
+  }
+  if (!("version" in value) || typeof value.version !== "string") {
+    throw new Error("package.json must contain a string version")
+  }
+  return value.version
+}
 
 export default defineConfig({
   define: {
-    "process.env.CREATE_DEESSE_APP_VERSION": JSON.stringify(pkg.version),
+    "process.env.CREATE_DEESSE_APP_VERSION": JSON.stringify(packageVersion),
   },
   test: {
     environment: "node",

@@ -40,13 +40,27 @@ const formatStored = (stored: StoredAuth): string => {
   return `${who} — token fetched ${when}`
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+
 const validateSession = async (
   accessToken: string
 ): Promise<StoredUser | null> => {
   const res = await bearerFetch("get-session", accessToken, { method: "GET" })
   if (res.status !== 200) return null
-  const body = (await res.json()) as { user?: StoredUser } | null
-  return body?.user ?? null
+  const body: unknown = await res.json()
+  if (!isRecord(body) || !isRecord(body.user)) {
+    return null
+  }
+  const user = body.user
+  if (typeof user.id !== "string") return null
+  if ("email" in user && typeof user.email !== "string") return null
+  if ("name" in user && typeof user.name !== "string") return null
+  return {
+    id: user.id,
+    ...(typeof user.email === "string" ? { email: user.email } : {}),
+    ...(typeof user.name === "string" ? { name: user.name } : {}),
+  }
 }
 
 export const statusCommand = new Command("status")

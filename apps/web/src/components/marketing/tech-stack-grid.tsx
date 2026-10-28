@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import Image from "next/image"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import { AnimatePresence, motion } from "motion/react"
 
 import { cn } from "@workspace/ui/lib/utils"
@@ -50,6 +51,16 @@ function randomCycleMs() {
   )
 }
 
+function subscribeToReducedMotion(onChange: () => void) {
+  const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+  mediaQuery.addEventListener("change", onChange)
+  return () => mediaQuery.removeEventListener("change", onChange)
+}
+
+function getReducedMotionSnapshot() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+}
+
 /**
  * Pick a random index in `length` that differs from `exclude`.
  * Retries up to 10 times to avoid the same-index collision; falls back
@@ -89,20 +100,11 @@ export function TechStackGrid({
   className?: string
 }) {
   const [order, setOrder] = useState<ReadonlyArray<Tech>>(techs)
-  const [reducedMotion, setReducedMotion] = useState(false)
-
-  useEffect(() => {
-    const mql = window.matchMedia("(prefers-reduced-motion: reduce)")
-    // Reading the media query synchronously inside an effect is the
-    // intended pattern: we want the initial state to reflect the OS
-    // preference on mount. Cascading setState is acceptable here
-    // because nothing else has rendered yet.
-    // oxlint-disable-next-line react/set-state-in-effect
-    setReducedMotion(mql.matches)
-    const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
-    mql.addEventListener("change", onChange)
-    return () => mql.removeEventListener("change", onChange)
-  }, [])
+  const reducedMotion = useSyncExternalStore(
+    subscribeToReducedMotion,
+    getReducedMotionSnapshot,
+    () => false
+  )
 
   // Each slot has its own timer. When it fires, it picks a random *other*
   // slot and swaps the two technologies. This keeps every tech present
@@ -163,8 +165,7 @@ export function TechStackGrid({
                 }}
                 className="flex items-center justify-center gap-2"
               >
-                {/* oxlint-disable-next-line nextjs/no-img-element */}
-                <img
+                <Image
                   src={`/logos/${tech.logo}.svg`}
                   alt=""
                   width={20}

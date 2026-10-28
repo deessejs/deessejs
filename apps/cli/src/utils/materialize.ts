@@ -33,15 +33,9 @@ function isExistsPathError(error: unknown): boolean {
 }
 
 function getSafeRelativePath(path: string): string[] | null {
-  if (
-    path.length === 0 ||
-    path.startsWith("/") ||
-    path.includes("\\") ||
-    path.includes("\0") ||
-    /^[a-z]:/i.test(path)
-  ) {
-    return null
-  }
+  if (path.length === 0) return null
+  if (path.startsWith("/") || /^[a-z]:/i.test(path)) return null
+  if (path.includes("\\") || path.includes("\0")) return null
 
   const segments = path.split("/")
   if (
@@ -85,49 +79,7 @@ function validatePlannedPaths(
     process.platform === "win32" ? value.toLowerCase() : value
 
   for (const file of plan.files) {
-    const segments = getSafeRelativePath(file.path)
-    if (!segments || !(file.contents instanceof Uint8Array)) {
-      throw invalidTarget(
-        target,
-        `unsafe file entry "${file.path}" in the template plan`
-      )
-    }
-
-    const relativePath = segments.join(sep)
-    const outputPath = resolve(target, relativePath)
-    const outputRelativePath = relative(target, outputPath)
-    if (
-      outputRelativePath === ".." ||
-      outputRelativePath.startsWith(`..${sep}`) ||
-      parse(outputRelativePath).root.length > 0
-    ) {
-      throw invalidTarget(
-        target,
-        `file entry "${file.path}" escapes the target directory`
-      )
-    }
-
-    const key = pathKey(relativePath)
-    if (files.has(key) || directories.has(key)) {
-      throw invalidTarget(
-        target,
-        `multiple template entries collide at "${file.path}"`
-      )
-    }
-    files.add(key)
-
-    let parent = ""
-    for (const segment of segments.slice(0, -1)) {
-      parent = parent ? join(parent, segment) : segment
-      const parentKey = pathKey(parent)
-      if (files.has(parentKey)) {
-        throw invalidTarget(
-          target,
-          `file and directory entries collide at "${parent}"`
-        )
-      }
-      directories.add(parentKey)
-    }
+    registerPlannedFile(file, target, files, directories, pathKey)
   }
 
   for (const directory of directories) {
@@ -137,6 +89,66 @@ function validatePlannedPaths(
         `file and directory entries collide at "${directory}"`
       )
     }
+  }
+}
+
+function registerPlannedFile(
+  file: TemplateInstallationPlan["files"][number],
+  target: string,
+  files: Set<string>,
+  directories: Set<string>,
+  pathKey: (value: string) => string
+): void {
+  const segments = getSafeRelativePath(file.path)
+  if (!segments || !(file.contents instanceof Uint8Array)) {
+    throw invalidTarget(
+      target,
+      `unsafe file entry "${file.path}" in the template plan`
+    )
+  }
+
+  const relativePath = segments.join(sep)
+  assertContainedPath(file.path, target, relativePath)
+
+  const key = pathKey(relativePath)
+  if (files.has(key) || directories.has(key)) {
+    throw invalidTarget(
+      target,
+      `multiple template entries collide at "${file.path}"`
+    )
+  }
+  files.add(key)
+
+  let parent = ""
+  for (const segment of segments.slice(0, -1)) {
+    parent = parent ? join(parent, segment) : segment
+    const parentKey = pathKey(parent)
+    if (files.has(parentKey)) {
+      throw invalidTarget(
+        target,
+        `file and directory entries collide at "${parent}"`
+      )
+    }
+    directories.add(parentKey)
+  }
+}
+
+function assertContainedPath(
+  filePath: string,
+  target: string,
+  relativePath: string
+) {
+  const outputPath = resolve(target, relativePath)
+  const outputRelativePath = relative(target, outputPath)
+  if (
+    outputRelativePath === ".." ||
+    outputRelativePath.startsWith(`..${sep}`) ||
+    parse(outputRelativePath).root.length > 0
+  ) {
+    throw invalidTarget(
+      target,
+      `file entry "${filePath}" escapes the target directory`
+    )
   }
 }
 
@@ -228,34 +240,48 @@ async function ensureDirectoryHierarchy(
 
   for (const segment of segments) {
     current = join(current, segment)
-    let details
-    try {
-      details = await lstat(current)
-    } catch (error) {
-      if (!isMissingPathError(error)) throw error
-      try {
-        await mkdir(current)
-        await trackDirectory(current, createdDirectories)
-        continue
-      } catch (mkdirError) {
-        if (!isExistsPathError(mkdirError)) throw mkdirError
-        details = await lstat(current)
-      }
-    }
+    await ensureDirectoryAtPath(
+      current,
+      target,
+      targetState,
+      createdDirectories
+    )
+  }
+}
 
-    if (details.isSymbolicLink() || !details.isDirectory()) {
-      throw invalidTarget(
-        target,
-        `path component "${current}" is not a regular directory`
-      )
+async function ensureDirectoryAtPath(
+  current: string,
+  target: string,
+  targetState: TargetState,
+  createdDirectories: TrackedPath[]
+): Promise<void> {
+  let details
+  try {
+    details = await lstat(current)
+  } catch (error) {
+    if (!isMissingPathError(error)) throw error
+    try {
+      await mkdir(current)
+      await trackDirectory(current, createdDirectories)
+      return
+    } catch (mkdirError) {
+      if (!isExistsPathError(mkdirError)) throw mkdirError
+      details = await lstat(current)
     }
-    if (
-      current === target &&
-      !targetState.existed &&
-      !isTrackedDirectory(current, details, createdDirectories)
-    ) {
-      throw targetExists(target)
-    }
+  }
+
+  if (details.isSymbolicLink() || !details.isDirectory()) {
+    throw invalidTarget(
+      target,
+      `path component "${current}" is not a regular directory`
+    )
+  }
+  if (
+    current === target &&
+    !targetState.existed &&
+    !isTrackedDirectory(current, details, createdDirectories)
+  ) {
+    throw targetExists(target)
   }
 }
 

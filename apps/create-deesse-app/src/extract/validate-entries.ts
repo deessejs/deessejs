@@ -65,7 +65,12 @@ export const validateEntries = async (
     file: tarballPath,
     ...(signal !== undefined ? { signal } : {}),
     onentry: (entry) => {
-      const e = entry as unknown as Entry
+      const e: Entry = {
+        path: entry.path,
+        type: entry.type,
+        ...(entry.mode !== undefined ? { mode: entry.mode } : {}),
+        size: entry.size,
+      }
       // Prefix deviation.
       if (!e.path.startsWith(expectedPrefix)) {
         failures.push({
@@ -110,8 +115,7 @@ export const validateEntries = async (
       // `plannedFiles` count without telling the user
       // anything actionable.
       const isDirectory =
-        (e as { typeflag?: string }).typeflag === "5" ||
-        ((e.mode ?? 0) & 0o170000) === 0o040000
+        e.type === "Directory" || ((e.mode ?? 0) & 0o170000) === 0o040000
       if (isDirectory) {
         return
       }

@@ -2,7 +2,39 @@ import "server-only"
 
 import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
-import { auth, type AuthSession } from "@workspace/auth"
+import { auth } from "@workspace/auth"
+
+type AdminSession = {
+  session: { id: string }
+  user: { id: string; role: string | null }
+}
+
+function isAdminSession(value: unknown): value is AdminSession {
+  if (typeof value !== "object" || value === null) return false
+  if (!("session" in value) || !("user" in value)) return false
+  if (!isAdminSessionDetails(value.session) || !isAdminUser(value.user)) {
+    return false
+  }
+  return true
+}
+
+function isAdminSessionDetails(value: unknown): value is { id: string } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof value.id === "string"
+  )
+}
+
+function isAdminUser(
+  value: unknown
+): value is { id: string; role: string | null } {
+  if (typeof value !== "object" || value === null) return false
+  if (!("id" in value) || !("role" in value)) return false
+  if (typeof value.id !== "string") return false
+  return typeof value.role === "string" || value.role === null
+}
 
 /**
  * Server-only guard for the `/admin/*` route area.
@@ -39,23 +71,17 @@ import { auth, type AuthSession } from "@workspace/auth"
  * from the DB rather than trusting the cached session payload.
  */
 export async function requireAdmin(): Promise<{ userId: string }> {
-  // The `AuthSession` annotation re-augments the `user` shape with the
-  // admin plugin's `role` field. The base `auth.api.getSession` return
-  // type is widened by the TS2883 workaround in `packages/auth/src/auth.ts`
-  // (see the `authConfig: BetterAuthOptions` annotation); the explicit
-  // cast here is the matching fix at the consumer site so the role
-  // check is type-safe end to end.
-  const data = (await auth.api.getSession({
+  const result: unknown = await auth.api.getSession({
     headers: await headers(),
-  })) as AuthSession | null
+  })
 
-  if (!data?.session || !data.user) {
+  if (!isAdminSession(result)) {
     redirect("/login?redirect=%2Fadmin%2Fhome")
   }
 
-  if (data.user.role !== "admin") {
+  if (result.user.role !== "admin") {
     notFound()
   }
 
-  return { userId: data.user.id }
+  return { userId: result.user.id }
 }

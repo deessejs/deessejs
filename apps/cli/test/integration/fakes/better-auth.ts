@@ -100,6 +100,166 @@ function readBody(req: http.IncomingMessage): Promise<string> {
   })
 }
 
+const AUTH_PATH = "/api/v1/auth/"
+
+async function handleFakeAuthRequest(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  url: URL,
+  state: State
+): Promise<void> {
+  const method = req.method ?? "GET"
+  const endpoint = `${method} ${url.pathname}`
+  switch (endpoint) {
+    case `POST ${AUTH_PATH}device/code`:
+      return handleDeviceCode(res, state)
+    case `POST ${AUTH_PATH}device/token`:
+      return handleDeviceToken(req, res, state)
+    case `GET ${AUTH_PATH}device`:
+      return handleDeviceStatus(res, url)
+    case `POST ${AUTH_PATH}sign-out`:
+      return handleSignOut(res, state)
+    case `GET ${AUTH_PATH}get-session`:
+      return handleGetSession(req, res, state)
+    case `POST ${AUTH_PATH}device/approve`:
+    case `POST ${AUTH_PATH}device/deny`:
+      jsonResponse(res, 200, { success: true })
+      return
+    default:
+      jsonResponse(res, 404, { error: "not_found" })
+  }
+}
+
+function handleDeviceCode(res: http.ServerResponse, state: State): void {
+  state.counters.deviceCodeRequests += 1
+  if (state.behaviour.serverErrors) {
+    jsonResponse(res, 500, { error: "server_error" })
+    return
+  }
+  state.deviceCode = randomDeviceCode()
+  state.userCode = randomUserCode()
+  state.accessToken = null
+  state.issuedAt = Date.now()
+  jsonResponse(res, 200, {
+    device_code: state.deviceCode,
+    user_code: state.userCode,
+    verification_uri: "/device",
+    verification_uri_complete: `/device?user_code=${state.userCode}`,
+    expires_in: 1800,
+    interval: 5,
+  })
+}
+
+async function handleDeviceToken(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  state: State
+): Promise<void> {
+  state.counters.deviceTokenRequests += 1
+  if (!state.deviceCode) {
+    jsonResponse(res, 400, {
+      error: "invalid_grant",
+      error_description: "no device code issued",
+    })
+    return
+  }
+  const body = await readBody(req)
+  const payload = parseDeviceTokenPayload(body)
+  if (payload.device_code !== state.deviceCode) {
+    jsonResponse(res, 400, { error: "invalid_grant" })
+    return
+  }
+  const response = deviceTokenResponse(state)
+  jsonResponse(res, response.status, response.body)
+}
+
+function parseDeviceTokenPayload(body: string): { device_code?: string } {
+  try {
+    const parsed: unknown = JSON.parse(body)
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "device_code" in parsed &&
+      typeof parsed.device_code === "string"
+    ) {
+      return { device_code: parsed.device_code }
+    }
+  } catch {
+    // Treat malformed JSON as a missing device code.
+  }
+  return {}
+}
+
+function deviceTokenResponse(state: State): { status: number; body: unknown } {
+  switch (state.behaviour.deviceCode) {
+    case "slow_down":
+      return { status: 400, body: { error: "slow_down" } }
+    case "expire":
+      return { status: 400, body: { error: "expired_token" } }
+    case "deny":
+      return { status: 400, body: { error: "access_denied" } }
+    default:
+      state.accessToken = `tok_${Math.random().toString(36).slice(2)}`
+      return {
+        status: 200,
+        body: {
+          access_token: state.accessToken,
+          token_type: "Bearer",
+          expires_in: 604800,
+          userId: null,
+        },
+      }
+  }
+}
+
+function handleDeviceStatus(res: http.ServerResponse, url: URL): void {
+  const userCode = url.searchParams.get("user_code")
+  if (!userCode) {
+    jsonResponse(res, 400, {
+      error: "invalid_request",
+      error_description: "user_code required",
+    })
+    return
+  }
+  jsonResponse(res, 200, { user_code: userCode, status: "pending" })
+}
+
+function handleSignOut(res: http.ServerResponse, state: State): void {
+  state.counters.signOutRequests += 1
+  if (state.behaviour.serverErrors) {
+    jsonResponse(res, 500, { error: "server_error" })
+    return
+  }
+  state.accessToken = null
+  jsonResponse(res, 200, { success: true })
+}
+
+function handleGetSession(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  state: State
+): void {
+  state.counters.getSessionRequests += 1
+  const authHeader = req.headers.authorization ?? null
+  state.lastGetSessionAuthHeader = authHeader
+  if (
+    state.behaviour.serverErrors ||
+    !state.accessToken ||
+    authHeader !== `Bearer ${state.accessToken}`
+  ) {
+    res.writeHead(401, { "content-type": "application/json" })
+    res.end("null")
+    return
+  }
+  jsonResponse(res, 200, {
+    user: { id: "user_test_1", email: "[email protected]", name: "Test User" },
+    session: {
+      token: state.accessToken,
+      expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    },
+  })
+}
+
 export type FakeAuthServer = {
   url: string
   state: State
@@ -133,150 +293,11 @@ export async function startFakeAuthServer(
     lastGetSessionAuthHeader: null,
   }
 
-  const server = http.createServer(async (req, res) => {
+  const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost")
-    const path = url.pathname
-    const method = req.method ?? "GET"
-
-    // POST /api/v1/auth/device/code
-    if (method === "POST" && path === "/api/v1/auth/device/code") {
-      state.counters.deviceCodeRequests += 1
-      if (state.behaviour.serverErrors) {
-        return jsonResponse(res, 500, { error: "server_error" })
-      }
-      state.deviceCode = randomDeviceCode()
-      state.userCode = randomUserCode()
-      state.accessToken = null
-      state.issuedAt = Date.now()
-      return jsonResponse(res, 200, {
-        device_code: state.deviceCode,
-        user_code: state.userCode,
-        verification_uri: "/device",
-        verification_uri_complete: `/device?user_code=${state.userCode}`,
-        expires_in: 1800,
-        interval: 5,
-      })
-    }
-
-    // POST /api/v1/auth/device/token
-    if (method === "POST" && path === "/api/v1/auth/device/token") {
-      state.counters.deviceTokenRequests += 1
-      if (!state.deviceCode) {
-        return jsonResponse(res, 400, {
-          error: "invalid_grant",
-          error_description: "no device code issued",
-        })
-      }
-      const body = (await readBody(req)) as string
-      let payload: { device_code?: string } = {}
-      try {
-        payload = JSON.parse(body)
-      } catch {
-        // ignore parse errors: treat as missing device_code
-      }
-      if (payload.device_code !== state.deviceCode) {
-        return jsonResponse(res, 400, { error: "invalid_grant" })
-      }
-      switch (state.behaviour.deviceCode) {
-        case "slow_down":
-          return jsonResponse(res, 400, { error: "slow_down" })
-        case "expire":
-          return jsonResponse(res, 400, { error: "expired_token" })
-        case "deny":
-          return jsonResponse(res, 400, { error: "access_denied" })
-        case "approve":
-        default: {
-          state.accessToken = `tok_${Math.random().toString(36).slice(2)}`
-          return jsonResponse(res, 200, {
-            access_token: state.accessToken,
-            token_type: "Bearer",
-            expires_in: 604800,
-            userId: null,
-          })
-        }
-      }
-    }
-
-    // GET /api/v1/auth/device?user_code=X
-    if (method === "GET" && path === "/api/v1/auth/device") {
-      const userCode = url.searchParams.get("user_code")
-      if (!userCode) {
-        return jsonResponse(res, 400, {
-          error: "invalid_request",
-          error_description: "user_code required",
-        })
-      }
-      return jsonResponse(res, 200, {
-        user_code: userCode,
-        status: "pending",
-      })
-    }
-
-    // POST /api/v1/auth/sign-out
-    if (method === "POST" && path === "/api/v1/auth/sign-out") {
-      state.counters.signOutRequests += 1
-      if (state.behaviour.serverErrors) {
-        return jsonResponse(res, 500, { error: "server_error" })
-      }
-      state.accessToken = null
-      return jsonResponse(res, 200, { success: true })
-    }
-
-    // GET /api/v1/auth/get-session
-    //
-    // The real Better Auth `bearer()` plugin resolves
-    // the session from an `Authorization: Bearer <token>` header
-    // (or a cookie). The fake used to accept any request that
-    // arrived after a /device/token success — which let the CLI
-    // bug (no Authorization header) pass through the test
-    // undetected. The fake now honours the same contract:
-    //   - No Bearer header OR wrong token → 401 (matches the
-    //     real `bearer()` plugin's silent rejection).
-    //   - Bearer token matches `state.accessToken` → 200 with
-    //     the test user.
-    // The header is also captured into
-    // `state.lastGetSessionAuthHeader` so the CLI test can
-    // assert the CLI actually sent a Bearer header.
-    if (method === "GET" && path === "/api/v1/auth/get-session") {
-      state.counters.getSessionRequests += 1
-      const authHeader = req.headers.authorization ?? null
-      state.lastGetSessionAuthHeader = authHeader
-      if (
-        state.behaviour.serverErrors ||
-        !state.accessToken ||
-        authHeader !== `Bearer ${state.accessToken}`
-      ) {
-        // Better Auth returns 401 when there is no valid
-        // session. The body shape is null on this path.
-        res.writeHead(401, { "content-type": "application/json" })
-        res.end("null")
-        return
-      }
-      return jsonResponse(res, 200, {
-        user: {
-          id: "user_test_1",
-          email: "[email protected]",
-          name: "Test User",
-        },
-        session: {
-          token: state.accessToken,
-          expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
-        },
-      })
-    }
-
-    // /device/approve and /device/deny are present but
-    // the CLI tests do not exercise the web side; we
-    // accept and return 200 so the server matches the
-    // documented envelope shape if a test ever probes them.
-    if (method === "POST" && path === "/api/v1/auth/device/approve") {
-      return jsonResponse(res, 200, { success: true })
-    }
-    if (method === "POST" && path === "/api/v1/auth/device/deny") {
-      return jsonResponse(res, 200, { success: true })
-    }
-
-    jsonResponse(res, 404, { error: "not_found" })
+    void handleFakeAuthRequest(req, res, url, state).catch(() => {
+      jsonResponse(res, 500, { error: "server_error" })
+    })
   })
 
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
