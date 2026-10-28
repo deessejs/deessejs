@@ -110,6 +110,25 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
+      - name: Checkout trusted prebuilt context packager
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .trusted-tools
+          sparse-checkout: .github/scripts/package-vercel-prebuilt-context.mjs
+          persist-credentials: false
+
+      - name: Package traced files required by prebuilt deployment
+        run: node .trusted-tools/.github/scripts/package-vercel-prebuilt-context.mjs
+
+      - name: Upload traced prebuilt context
+        uses: actions/upload-artifact@v7
+        with:
+          name: vercel-context-${{ github.event.pull_request.number }}-${{ matrix.app }}
+          path: .vercel/prebuilt-context.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Upload prebuilt output
         uses: actions/upload-artifact@v7
         with:
