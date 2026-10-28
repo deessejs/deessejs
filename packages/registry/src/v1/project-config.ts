@@ -5,13 +5,12 @@ export const PROJECT_CONFIG_SCHEMA_URL =
 
 const ROLE_IDENTIFIER_PATTERN = /^[a-z][a-z0-9-]{0,63}$/
 const ROLE_IDENTIFIER_SCHEMA = z.string().regex(ROLE_IDENTIFIER_PATTERN)
-const IMPORT_ROOT_PATTERN = new RegExp("^[^\\u0000-\\u001F\\u007F]+$")
+const IMPORT_ROOT_SCHEMA = z.string().min(1).regex(/^\\P{Cc}+$/u)
 
 const ProjectPathsV1Schema = z.record(
   ROLE_IDENTIFIER_SCHEMA,
   z.string().min(1)
 )
-const IMPORT_ROOT_SCHEMA = z.string().min(1).regex(IMPORT_ROOT_PATTERN)
 const ProjectAliasesV1Schema = z.record(
   ROLE_IDENTIFIER_SCHEMA,
   IMPORT_ROOT_SCHEMA
