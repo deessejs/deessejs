@@ -5,15 +5,13 @@ export const PROJECT_CONFIG_SCHEMA_URL =
 
 const ROLE_IDENTIFIER_PATTERN = /^[a-z][a-z0-9-]{0,63}$/
 const ROLE_IDENTIFIER_SCHEMA = z.string().regex(ROLE_IDENTIFIER_PATTERN)
+const IMPORT_ROOT_PATTERN = new RegExp("^[^\\u0000-\\u001F\\u007F]+$")
 
 const ProjectPathsV1Schema = z.record(
   ROLE_IDENTIFIER_SCHEMA,
   z.string().min(1)
 )
-const IMPORT_ROOT_SCHEMA = z
-  .string()
-  .min(1)
-  .regex(/^[^\u0000-\u001F\u007F]+$/)
+const IMPORT_ROOT_SCHEMA = z.string().min(1).regex(IMPORT_ROOT_PATTERN)
 const ProjectAliasesV1Schema = z.record(
   ROLE_IDENTIFIER_SCHEMA,
   IMPORT_ROOT_SCHEMA
@@ -52,6 +50,8 @@ export type ParseProjectConfigResult =
   | { success: true; data: ProjectConfigV1 }
   | { success: false; diagnostics: ProjectConfigDiagnostic[] }
 
+type ProjectConfigSchemaIssue = z.ZodError["issues"][number]
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -64,22 +64,25 @@ function isUnsupportedFormatVersion(input: unknown): boolean {
   )
 }
 
+function hasGlobSyntax(value: string): boolean {
+  const globTokens = ["*", "?", "[", "]", "{", "}"]
+  return globTokens.some((token) => value.includes(token))
+}
+
+function hasUnsafeProjectPathSyntax(value: string): boolean {
+  const unsafeChecks = [
+    value.length === 0,
+    value.startsWith("/"),
+    /^[A-Za-z]:/.test(value),
+    value.includes("\\"),
+    value.includes("\0"),
+    hasGlobSyntax(value),
+  ]
+  return unsafeChecks.some((isUnsafe) => isUnsafe)
+}
+
 function normalizeProjectPath(value: string): string | null {
-  if (
-    value.length === 0 ||
-    value.startsWith("/") ||
-    /^[A-Za-z]:/.test(value) ||
-    value.includes("\\") ||
-    value.includes("\0") ||
-    value.includes("*") ||
-    value.includes("?") ||
-    value.includes("[") ||
-    value.includes("]") ||
-    value.includes("{") ||
-    value.includes("}")
-  ) {
-    return null
-  }
+  if (hasUnsafeProjectPathSyntax(value)) return null
 
   const segments = value.split("/").filter((segment) => {
     return segment.length > 0 && segment !== "."
@@ -102,56 +105,76 @@ function compareDiagnostics(
   return 0
 }
 
-/**
- * Validate a parsed JSON value and normalize configured project paths.
- * This function does not access the filesystem, network or process environment.
- */
-export function parseProjectConfig(
+function isUnsupportedRegistryField(
+  issue: ProjectConfigSchemaIssue,
+  key: string
+): boolean {
+  return issue.path.length === 0 && key === "registries"
+}
+
+function diagnosticForUnknownKey(
+  issue: ProjectConfigSchemaIssue,
+  key: string
+): ProjectConfigDiagnostic {
+  const unsupported = isUnsupportedRegistryField(issue, key)
+  return {
+    code: unsupported
+      ? "project_config.unsupported_field"
+      : "project_config.unknown_field",
+    message: unsupported
+      ? 'The "registries" field is not supported by project config V1.'
+      : 'Unknown field "' + key + '".',
+    path: [...issue.path.map(String), key],
+  }
+}
+
+function isUnsupportedFormatVersionIssue(
+  issue: ProjectConfigSchemaIssue,
   input: unknown
-): ParseProjectConfigResult {
-  const result = ProjectConfigV1Schema.safeParse(input)
+): boolean {
+  return (
+    issue.path.length === 1 &&
+    issue.path[0] === "formatVersion" &&
+    isUnsupportedFormatVersion(input)
+  )
+}
 
-  if (!result.success) {
-    const diagnostics: ProjectConfigDiagnostic[] = []
-
-    for (const issue of result.error.issues) {
-      if (issue.code === "unrecognized_keys") {
-        for (const key of issue.keys) {
-          const unsupportedRegistryField =
-            issue.path.length === 0 && key === "registries"
-          diagnostics.push({
-            code: unsupportedRegistryField
-              ? "project_config.unsupported_field"
-              : "project_config.unknown_field",
-            message: unsupportedRegistryField
-              ? 'The "registries" field is not supported by project config V1.'
-              : 'Unknown field "' + key + '".',
-            path: [...issue.path.map(String), key],
-          })
-        }
-        continue
-      }
-
-      diagnostics.push({
-        code:
-          issue.path.length === 1 &&
-          issue.path[0] === "formatVersion" &&
-          isUnsupportedFormatVersion(input)
-            ? "project_config.unsupported_format_version"
-            : "project_config.invalid_field",
-        message: issue.message,
-        path: issue.path.map(String),
-      })
-    }
-
-    diagnostics.sort(compareDiagnostics)
-    return { success: false, diagnostics }
+function diagnosticForSchemaIssue(
+  issue: ProjectConfigSchemaIssue,
+  input: unknown
+): ProjectConfigDiagnostic[] {
+  if (issue.code === "unrecognized_keys") {
+    return issue.keys.map((key) => diagnosticForUnknownKey(issue, key))
   }
 
+  return [
+    {
+      code: isUnsupportedFormatVersionIssue(issue, input)
+        ? "project_config.unsupported_format_version"
+        : "project_config.invalid_field",
+      message: issue.message,
+      path: issue.path.map(String),
+    },
+  ]
+}
+
+function diagnosticsForSchemaIssues(
+  issues: ProjectConfigSchemaIssue[],
+  input: unknown
+): ProjectConfigDiagnostic[] {
+  return issues
+    .flatMap((issue) => diagnosticForSchemaIssue(issue, input))
+    .sort(compareDiagnostics)
+}
+
+function normalizeProjectPaths(paths: Record<string, string>): {
+  diagnostics: ProjectConfigDiagnostic[]
+  normalizedPaths: Record<string, string>
+} {
   const diagnostics: ProjectConfigDiagnostic[] = []
   const normalizedPaths: Record<string, string> = {}
 
-  for (const [role, path] of Object.entries(result.data.paths ?? {})) {
+  for (const [role, path] of Object.entries(paths)) {
     const normalized = normalizeProjectPath(path)
     if (normalized === null) {
       diagnostics.push({
@@ -167,8 +190,17 @@ export function parseProjectConfig(
     normalizedPaths[role] = normalized
   }
 
-  for (const role of Object.keys(result.data.aliases ?? {})) {
-    if (!Object.hasOwn(result.data.paths ?? {}, role)) {
+  return { diagnostics, normalizedPaths }
+}
+
+function diagnosticsForAliases(
+  aliases: Record<string, string>,
+  paths: Record<string, string>
+): ProjectConfigDiagnostic[] {
+  const diagnostics: ProjectConfigDiagnostic[] = []
+
+  for (const role of Object.keys(aliases)) {
+    if (!Object.hasOwn(paths, role)) {
       diagnostics.push({
         code: "project_config.alias_without_path",
         message:
@@ -178,12 +210,40 @@ export function parseProjectConfig(
     }
   }
 
+  return diagnostics
+}
+
+/**
+ * Validate a parsed JSON value and normalize configured project paths.
+ * This function does not access the filesystem, network or process environment.
+ */
+export function parseProjectConfig(
+  input: unknown
+): ParseProjectConfigResult {
+  const result = ProjectConfigV1Schema.safeParse(input)
+
+  if (!result.success) {
+    return {
+      success: false,
+      diagnostics: diagnosticsForSchemaIssues(result.error.issues, input),
+    }
+  }
+
+  const paths = result.data.paths ?? {}
+  const aliases = result.data.aliases ?? {}
+  const normalized = normalizeProjectPaths(paths)
+  const diagnostics = [
+    ...normalized.diagnostics,
+    ...diagnosticsForAliases(aliases, paths),
+  ].sort(compareDiagnostics)
+
   if (diagnostics.length > 0) {
-    diagnostics.sort(compareDiagnostics)
     return { success: false, diagnostics }
   }
 
   const data: ProjectConfigV1 = { ...result.data }
-  if (result.data.paths !== undefined) data.paths = normalizedPaths
+  if (result.data.paths !== undefined) {
+    data.paths = normalized.normalizedPaths
+  }
   return { success: true, data }
 }
