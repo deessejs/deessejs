@@ -133,6 +133,12 @@ catalog:
   "@tanstack/eslint-plugin-query": ^5.105.0
   eslint-plugin-react-you-might-not-need-an-effect: ^1.0.2
 
+  '@storybook/addon-docs': ^10.6.5
+  '@storybook/mcp': ^10.6.5
+  '@storybook/react-vite': ^10.6.5
+  storybook: ^10.6.5
+  vite: ^8.3.5
+
 # Strict mode: all dependencies MUST come from a catalog
 catalogMode: strict
 
@@ -183,6 +189,14 @@ minimumReleaseAgeExclude:
   - oxfmt@0.75.0
   - oxlint-plugin-eslint@1.90.0
   - oxlint@1.90.0
+
+  - '@storybook/addon-docs@10.6.5'
+  - '@storybook/builder-vite@10.6.5'
+  - '@storybook/mcp@10.6.5'
+  - '@storybook/react-dom-shim@10.6.5'
+  - '@storybook/react-vite@10.6.5'
+  - '@storybook/react@10.6.5'
+  - storybook@10.6.5
 
 # Force single version of @types/react across the tree to avoid duplicate-type errors
 overrides:

@@ -46,6 +46,7 @@ Every workspace has its own guide, linked in the tables below. Read the one that
 | `apps/web`               | [AGENTS.md](apps/web/AGENTS.md)               | Marketing site: home, pricing, templates catalogue, blog, changelog, knowledge base. Also serves the component registry at `/r/registry.json`. |
 | `apps/app`               | [AGENTS.md](apps/app/AGENTS.md)               | The authenticated product. Next.js 16 `proxy.ts` guard, dashboard, `/account/settings`, `/admin`.                                              |
 | `apps/docs`              | [AGENTS.md](apps/docs/AGENTS.md)              | Documentation site (Fumadocs, MDX).                                                                                                            |
+| `apps/storybook`         | [AGENTS.md](apps/storybook/AGENTS.md)         | Public Storybook catalogue for `@workspace/ui` and read-only remote MCP endpoint.                                                               |
 | `apps/cli`               | [AGENTS.md](apps/cli/AGENTS.md)               | `@deessejs/cli`: a typed client of the template registry with a scaffolder (`list`, `info`, `init`, `auth login`).                             |
 | `apps/create-deesse-app` | [AGENTS.md](apps/create-deesse-app/AGENTS.md) | Standalone `create-*` scaffolder. Resolves `main` on `deessejs/saas-template` and downloads the tarball of the commit it finds.                |
 | `apps/agent`             | [AGENTS.md](apps/agent/AGENTS.md)             | `@deessejs-agent`: a mentionable GitHub bot built on Vercel eve.                                                                               |
@@ -97,6 +98,8 @@ Each of these has already cost a production bug. Breaking one is not a style que
 10. **The API catch-all must export OPTIONS.** Next.js auto-implements OPTIONS for a route handler that does not export one, and it answers the preflight with a bare 204 that carries no CORS headers, before the request reaches the Hono app. The browser then blocks every cross-origin call to the API that carries a non-simple content type. `apps/app/app/api/[[...route]]/route.ts` exports `OPTIONS` so the preflight reaches the CORS middleware in `packages/api/src/index.ts`.
 
 ## Conventions
+
+When working with `@workspace/ui`, consult the public Storybook and its remote documentation MCP at `https://storybook.deessejs.com` when available. Treat the package source and `DESIGN.md` as authoritative if Storybook is unavailable or its documentation differs from the implementation.
 
 ### Next.js 16
 
