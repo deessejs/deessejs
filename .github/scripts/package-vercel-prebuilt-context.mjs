@@ -29,7 +29,8 @@ function isSensitivePath(relativePath) {
   return segments.some((segment) =>
     segment.startsWith(".env") ||
     [".vercel", ".git", ".npmrc", ".netrc"].includes(segment) ||
-    /(^|\.)[^/]*(secret|credential|private[-_]?key)[^/]*\.(json|pem|key|p12|pfx)$/i.test(segment)
+    /\.(pem|key|p12|pfx)$/i.test(segment) ||
+    /(^|[-_.])(secret|credential|private[-_]?key)([-_.]|$)/i.test(segment)
   );
 }
 
