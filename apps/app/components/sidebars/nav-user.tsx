@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import { LogOutIcon } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 import { authClient } from "@/lib/auth-client"
 
 const VERCEL_AVATAR_BASE = "https://vercel.com/api/www/avatar"
@@ -43,6 +44,7 @@ function getAvatarUrl(email: string, image?: string | null): string {
 
 export function NavUser() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   // Top-level hook call: component top-level is a valid hook context per
   // React's rules. The audit §3.5 bug was calling useSession() inside an
   // async callback (useCallback body), which IS a violation. Here at
@@ -58,7 +60,10 @@ export function NavUser() {
     setLogoutDialogOpen(false)
     await authClient.signOut({
       fetchOptions: {
-        onSuccess: () => router.push("/login"),
+        onSuccess: () => {
+          queryClient.clear()
+          router.push("/login")
+        },
       },
     })
   }

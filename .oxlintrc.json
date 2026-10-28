@@ -6,7 +6,9 @@
       "name": "eslint-js",
       "specifier": "oxlint-plugin-eslint"
     },
-    "eslint-plugin-sonarjs"
+    "eslint-plugin-sonarjs",
+    "@tanstack/eslint-plugin-query",
+    "eslint-plugin-react-you-might-not-need-an-effect"
   ],
   "categories": {
     "correctness": "error"
@@ -488,6 +490,22 @@
       "files": ["apps/app/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"],
       "rules": {
         "react/no-children-prop": "off"
+      }
+    },
+    {
+      "files": ["apps/app/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"],
+      "rules": {
+        "@tanstack/query/exhaustive-deps": "error",
+        "@tanstack/query/mutation-property-order": "error",
+        "@tanstack/query/no-rest-destructuring": "error",
+        "@tanstack/query/no-unstable-deps": "error",
+        "@tanstack/query/prefer-query-options": "error",
+        "@tanstack/query/stable-query-client": "error",
+        "react-you-might-not-need-an-effect/no-adjust-state-on-prop-change": "error",
+        "react-you-might-not-need-an-effect/no-chain-state-updates": "error",
+        "react-you-might-not-need-an-effect/no-derived-state": "error",
+        "react-you-might-not-need-an-effect/no-event-handler": "error",
+        "react-you-might-not-need-an-effect/no-reset-all-state-on-prop-change": "error"
       }
     },
     {

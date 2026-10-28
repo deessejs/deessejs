@@ -29,7 +29,9 @@
   "devDependencies": {
     "@changesets/changelog-git": "catalog:",
     "@changesets/cli": "catalog:",
+    "@tanstack/eslint-plugin-query": "catalog:",
     "@workspace/typescript-config": "workspace:*",
+    "eslint-plugin-react-you-might-not-need-an-effect": "catalog:",
     "eslint-plugin-sonarjs": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
