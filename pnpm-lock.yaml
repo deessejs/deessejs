@@ -369,6 +369,9 @@ importers:
       '@workspace/env':
         specifier: workspace:*
         version: link:../../packages/env
+      '@workspace/registry':
+        specifier: workspace:*
+        version: link:../../packages/registry
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
