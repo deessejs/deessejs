@@ -70,12 +70,12 @@ export function assertOrganizationName(name: unknown): asserts name is string {
   //    (U+0000–U+001F), DEL (U+007F), C1 (U+0080–U+009F). `for…of`
   //    iterates code points so surrogate pairs are handled correctly.
   for (const ch of name) {
-    const cp = ch.codePointAt(0)!
-    if (
-      (cp >= 0x00 && cp <= 0x1f) ||
-      cp === 0x7f ||
-      (cp >= 0x80 && cp <= 0x9f)
-    ) {
+    const cp = ch.codePointAt(0)
+    if (cp === undefined) continue
+    const isC0Control = cp >= 0x00 && cp <= 0x1f
+    const isDelete = cp === 0x7f
+    const isC1Control = cp >= 0x80 && cp <= 0x9f
+    if (isC0Control || isDelete || isC1Control) {
       throw new APIError("BAD_REQUEST", {
         code: "invalid_name",
         message: "Organization name contains control characters",
@@ -176,7 +176,11 @@ export function organizationSlugCandidates(name: string): string[] {
   const base = slugifyOrganizationName(name)
   const candidates: string[] = []
 
-  for (let attempt = 1; attempt <= ORGANIZATION_SLUG_CANDIDATE_LIMIT; attempt++) {
+  for (
+    let attempt = 1;
+    attempt <= ORGANIZATION_SLUG_CANDIDATE_LIMIT;
+    attempt++
+  ) {
     const suffix = attempt === 1 ? "" : `-${attempt}`
     const candidate = suffix
       ? `${withoutTrailingHyphen(base.slice(0, SLUG_MAX_LENGTH - suffix.length))}${suffix}`

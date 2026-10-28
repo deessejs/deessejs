@@ -30,9 +30,10 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "reset-password",
   "verify-email",
   "device",
-  // The workspace entry point and the empty state
+  "cookies",
+  // The workspace entry point and the organizations page
   "home",
-  "no-organization",
+  "organizations",
   // Reserved by product / templates
   "deessejs",
   "nesalia",

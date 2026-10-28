@@ -28,8 +28,32 @@
  * of that contract: every category a template uses has a label, and the
  * keys no template uses are listed.
  */
-export type CategorySlug = keyof typeof CATEGORY_LABELS
-export type FrameworkSlug = keyof typeof FRAMEWORK_LABELS
+export const CATEGORY_SLUGS = [
+  "saas",
+  "ai",
+  "landing",
+  "desktop",
+  "docs",
+  "marketing",
+  "content",
+  "library",
+  "ai-agent",
+] as const
+export type CategorySlug = (typeof CATEGORY_SLUGS)[number]
+
+export const FRAMEWORK_SLUGS = [
+  "nextjs",
+  "astro",
+  "tailwind",
+  "shadcn",
+  "drizzle",
+  "postgres",
+  "stripe",
+  "tanstack-table",
+  "openai",
+  "react-hook-form",
+] as const
+export type FrameworkSlug = (typeof FRAMEWORK_SLUGS)[number]
 
 /**
  * Categories — coarse surface grouping used by the registry index page
@@ -52,7 +76,7 @@ export const CATEGORY_LABELS = {
   content: "Content",
   library: "Libraries",
   "ai-agent": "AI agents",
-} as const
+} as const satisfies Record<CategorySlug, string>
 
 /**
  * Frameworks — technical labels surfaced in the registry sidebar as
@@ -73,4 +97,4 @@ export const FRAMEWORK_LABELS = {
   "tanstack-table": "TanStack Table",
   openai: "OpenAI",
   "react-hook-form": "React Hook Form",
-} as const
+} as const satisfies Record<FrameworkSlug, string>

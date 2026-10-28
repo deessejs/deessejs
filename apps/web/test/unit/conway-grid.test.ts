@@ -530,8 +530,11 @@ describe("simReducer DRAW (indirect)", () => {
     const rows = 5
     const rect = { left: 0, top: 0, width: 160, height: 80 }
     // Two interior points.
-    const c1 = pointerToCell(40, 10, rect, cols, rows)!
-    const c2 = pointerToCell(120, 70, rect, cols, rows)!
+    const c1 = pointerToCell(40, 10, rect, cols, rows)
+    const c2 = pointerToCell(120, 70, rect, cols, rows)
+    expect(c1).not.toBeNull()
+    expect(c2).not.toBeNull()
+    if (!c1 || !c2) return
     // The Bresenham segment must include both endpoints.
     const line = drawLine(c1.col, c1.row, c2.col, c2.row)
     expect(line[0]).toEqual([c1.col, c1.row])

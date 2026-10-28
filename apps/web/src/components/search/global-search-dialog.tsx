@@ -60,24 +60,16 @@ export function GlobalSearchDialog() {
   }, [query, fuse])
 
   useEffect(() => {
-    // Reset selection when results change (e.g., new search query)
-    // This is intentional - we want to clear selection on new results
-    // oxlint-disable-next-line react/set-state-in-effect
-    setSelectedIndex(-1)
-  }, [results])
-
-  useEffect(() => {
     if (isOpen) {
       inputRef.current?.focus()
-    } else {
-      // Reset state when the dialog closes so the next open starts fresh.
-      // This is intentional - cascading render is fine here because close
-      // is a user action, not a render-driven one.
-      // oxlint-disable-next-line react/set-state-in-effect
-      setQuery("")
-      setSelectedIndex(-1)
     }
   }, [isOpen])
+
+  const handleClose = () => {
+    setQuery("")
+    setSelectedIndex(-1)
+    close()
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
@@ -88,13 +80,15 @@ export function GlobalSearchDialog() {
       setSelectedIndex((i) => Math.max(i - 1, -1))
     } else if (e.key === "Enter" && selectedIndex >= 0) {
       e.preventDefault()
-      router.push(results[selectedIndex]!.item.url)
-      close()
+      const result = results[selectedIndex]
+      if (!result) return
+      router.push(result.item.url)
+      handleClose()
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
         showCloseButton={false}
         className="flex max-w-lg flex-col gap-0 p-0 sm:max-w-lg"
@@ -114,7 +108,10 @@ export function GlobalSearchDialog() {
             type="text"
             placeholder="Search the DeesseJS ecosystem..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setSelectedIndex(-1)
+            }}
             onKeyDown={handleKeyDown}
             aria-label="Search query"
             className="flex-1 border-0 bg-transparent p-0 text-sm shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0"
@@ -122,7 +119,7 @@ export function GlobalSearchDialog() {
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => close()}
+            onClick={handleClose}
             aria-label="Close search"
             className="text-muted-foreground hover:text-foreground"
           >
@@ -153,7 +150,7 @@ export function GlobalSearchDialog() {
                     variant="ghost"
                     onClick={() => {
                       router.push(result.item.url)
-                      close()
+                      handleClose()
                     }}
                     className={cn(
                       "flex w-full flex-col items-start gap-0.5 px-4 py-2 text-left",

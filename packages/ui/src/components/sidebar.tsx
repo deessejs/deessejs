@@ -5,7 +5,8 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { Slot } from "radix-ui"
 
 import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
-import { cn } from "@workspace/ui/lib/utils"
+import { SIDEBAR_COOKIE_NAME } from "@workspace/ui/lib/sidebar"
+import { cn, cssVariables } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Separator } from "@workspace/ui/components/separator"
@@ -24,7 +25,6 @@ import {
 } from "@workspace/ui/components/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
@@ -43,8 +43,20 @@ type SidebarContextProps = {
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
 
+/**
+ * The sidebar's context, or null when there is none.
+ *
+ * A component that can be mounted outside a rail reads the context
+ * through this and falls back to the defaults. `useSidebar` throws
+ * instead, because a component that reads the open state has nothing
+ * to fall back to: outside a rail there is no open state.
+ */
+function useSidebarContext(): SidebarContextProps | null {
+  return React.useContext(SidebarContext)
+}
+
 function useSidebar() {
-  const context = React.useContext(SidebarContext)
+  const context = useSidebarContext()
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.")
   }
@@ -129,13 +141,13 @@ function SidebarProvider({
     <SidebarContext.Provider value={contextValue}>
       <div
         data-slot="sidebar-wrapper"
-        style={
-          {
+        style={{
+          ...cssVariables({
             "--sidebar-width": SIDEBAR_WIDTH,
             "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-            ...style,
-          } as React.CSSProperties
-        }
+          }),
+          ...style,
+        }}
         className={cn(
           "group/sidebar-wrapper flex min-h-svh w-full has-data-[variant=inset]:bg-sidebar",
           className
@@ -187,11 +199,7 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
+          style={cssVariables({ "--sidebar-width": SIDEBAR_WIDTH_MOBILE })}
           side={side}
         >
           <SheetHeader className="sr-only">
@@ -501,7 +509,12 @@ function SidebarMenuButton({
   tooltip?: string | React.ComponentProps<typeof TooltipContent>
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot.Root : "button"
-  const { isMobile, state } = useSidebar()
+  // The button is mounted outside a rail too, in the header of the
+  // surfaces that have no rail, so the context is read safely and the
+  // defaults stand in when there is none.
+  const sidebar = useSidebarContext()
+  const isMobile = sidebar?.isMobile ?? false
+  const state = sidebar?.state ?? "expanded"
 
   const button = (
     <Comp
@@ -608,11 +621,7 @@ function SidebarMenuSkeleton({
       <Skeleton
         className="h-4 max-w-(--skeleton-width) flex-1"
         data-sidebar="menu-skeleton-text"
-        style={
-          {
-            "--skeleton-width": width,
-          } as React.CSSProperties
-        }
+        style={cssVariables({ "--skeleton-width": width })}
       />
     </div>
   )

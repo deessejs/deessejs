@@ -28,15 +28,17 @@ export const metadata: Metadata = {
  */
 export default function ComponentsPage() {
   // First component of each category drives the index card preview.
-  const componentByCategory = Object.fromEntries(
-    COMPONENT_CATEGORIES.map((category) => [
-      category.id,
-      CATALOGUE_COMPONENTS.find((c) => c.category === category.id),
-    ])
-  ) as Record<
-    (typeof COMPONENT_CATEGORIES)[number]["id"],
-    (typeof CATALOGUE_COMPONENTS)[number]
-  >
+  const componentByCategory = new Map(
+    COMPONENT_CATEGORIES.map(
+      (category) =>
+        [
+          category.id,
+          CATALOGUE_COMPONENTS.find(
+            (component) => component.category === category.id
+          ),
+        ] as const
+    )
+  )
 
   // Number of components per category — drives the sidebar count badge.
   const counts = calculateCatalogCounts(
@@ -78,7 +80,7 @@ export default function ComponentsPage() {
         <CatalogCategoryGrid
           columns={3}
           entries={COMPONENT_CATEGORIES.flatMap((category) => {
-            const component = componentByCategory[category.id]
+            const component = componentByCategory.get(category.id)
             if (!component) return []
             const Icon = getComponentIcon(component.slug)
             return [

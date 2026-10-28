@@ -6,9 +6,12 @@ import { describe, expect, it } from "vitest"
 import { RESERVED_SLUGS } from "@workspace/auth/organization/reserved-slugs"
 
 import {
-  NO_ORGANIZATION_PATH,
+  ORGANIZATIONS_PATH,
+  organizationSlugFromPathname,
   workspaceHomePath,
+  workspaceOrganizationSettingsPath,
   workspacePath,
+  workspaceSettingsPath,
 } from "../lib/workspace-paths"
 
 /**
@@ -27,17 +30,10 @@ const applicationSegments = (): string[] => {
   const walk = (directory: string, prefix: string[]): void => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       if (entry.isFile()) {
-        if (entry.name === "page.tsx") {
-          const segment = prefix[0]
-          if (segment !== undefined && !segment.startsWith("[")) {
-            found.add(segment)
-          }
-        }
+        addPageSegment(entry.name, prefix, found)
         continue
       }
-      if (!entry.isDirectory()) continue
-      // A parallel route is a slot, not a segment.
-      if (entry.name.startsWith("@")) continue
+      if (!entry.isDirectory() || entry.name.startsWith("@")) continue
       const next = entry.name.startsWith("(") ? prefix : [...prefix, entry.name]
       walk(join(directory, entry.name), next)
     }
@@ -47,14 +43,44 @@ const applicationSegments = (): string[] => {
   return [...found].sort()
 }
 
+function addPageSegment(
+  filename: string,
+  prefix: string[],
+  found: Set<string>
+): void {
+  if (filename !== "page.tsx") return
+  const segment = prefix[0]
+  if (segment !== undefined && !segment.startsWith("[")) found.add(segment)
+}
+
 describe("the workspace paths", () => {
-  it("names the empty state", () => {
-    expect(NO_ORGANIZATION_PATH).toBe("/no-organization")
+  it("names the organizations page", () => {
+    expect(ORGANIZATIONS_PATH).toBe("/organizations")
   })
 
   it("builds the workspace of an organization", () => {
     expect(workspacePath("acme")).toBe("/acme")
     expect(workspaceHomePath("acme")).toBe("/acme/home")
+  })
+
+  it("builds the organization's settings", () => {
+    expect(workspaceSettingsPath("acme")).toBe("/acme/settings")
+    expect(workspaceOrganizationSettingsPath("acme")).toBe(
+      "/acme/settings/organization",
+    )
+  })
+})
+
+describe("the slug in a pathname", () => {
+  it("reads the first segment of a workspace path", () => {
+    expect(organizationSlugFromPathname("/acme/home")).toBe("acme")
+    expect(organizationSlugFromPathname("/acme/settings/organization")).toBe(
+      "acme",
+    )
+  })
+
+  it("reads nothing from a path without a segment", () => {
+    expect(organizationSlugFromPathname("/")).toBeNull()
   })
 })
 
@@ -69,7 +95,7 @@ describe("the reserved slug set", () => {
 
   it("holds the segments the workspace introduced", () => {
     expect(RESERVED_SLUGS.has("home")).toBe(true)
-    expect(RESERVED_SLUGS.has("no-organization")).toBe(true)
+    expect(RESERVED_SLUGS.has("organizations")).toBe(true)
   })
 
   it("holds the segments the application already owned", () => {
@@ -95,8 +121,23 @@ describe("the application route tree", () => {
     // says so is a directory, not a group: a group is transparent and
     // would move them to `/settings/*`.
     const settings = fileURLToPath(
-      new URL("../app/(protected)/account/settings/profile/page.tsx", import.meta.url),
+      new URL(
+        "../app/(protected)/account/settings/profile/page.tsx",
+        import.meta.url
+      )
     )
     expect(existsSync(settings)).toBe(true)
+  })
+
+  it("serves the organization's general page under its slug", () => {
+    // The organization's settings live under the organization they
+    // belong to, and the shell's navigation links to that one page.
+    const page = fileURLToPath(
+      new URL(
+        "../app/(protected)/(workspace)/[organization_slug]/settings/organization/page.tsx",
+        import.meta.url,
+      ),
+    )
+    expect(existsSync(page)).toBe(true)
   })
 })

@@ -85,7 +85,6 @@ export function SettingsRail() {
   // in `.oxlintrc.json` flags every `authClient.useSession`
   // call regardless of context — see the same disable comment in
   // `apps/app/components/sidebars/nav-user.tsx`.
-  // oxlint-disable-next-line eslint-js/no-restricted-syntax
   const { data: session } = authClient.useSession()
   const isAdmin = session?.user?.role === "admin"
 

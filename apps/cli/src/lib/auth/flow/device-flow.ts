@@ -46,6 +46,16 @@ const POLL_INTERVAL_MS = 5_000
 const POLL_INTERVAL_WITH_BACKOFF_MS = 10_000
 const TOTAL_TIMEOUT_MS = 30 * 60 * 1_000 // 30 minutes per device-code TTL
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function readStringProperty(value: unknown, key: string): string | undefined {
+  return isRecord(value) && typeof value[key] === "string"
+    ? value[key]
+    : undefined
+}
+
 export type IssuedDeviceCode = {
   url: string
   deviceCode: string
@@ -69,8 +79,7 @@ export const requestDeviceCode = async (): Promise<IssuedDeviceCode> => {
   })
   if (error || !data) {
     const description =
-      (error as { error_description?: string } | null)?.error_description ??
-      "unknown error"
+      readStringProperty(error, "error_description") ?? "unknown error"
     throw cliDeviceExpired(`could not obtain a device code: ${description}`)
   }
   return {
@@ -97,10 +106,12 @@ export const pollForToken = async (
       client_id: "deessejs-cli",
     })
     if (data) {
-      // The plugin types `data` as `unknown` in some
-      // Better Auth 1.6.x minor versions; the access
-      // token field is stable across versions.
-      const token = (data as { access_token: string }).access_token
+      const token = readStringProperty(data, "access_token")
+      if (!token) {
+        throw cliDeviceExpired(
+          "token endpoint returned an invalid access token"
+        )
+      }
       return { accessToken: token }
     }
     // The plugin's error envelope is
@@ -111,7 +122,7 @@ export const pollForToken = async (
     // yields undefined and the polling loop falls through
     // to the "no error code" guard below, which throws
     // cliDeviceExpired instead of the actual reason.
-    const code = (error as { error?: string } | null)?.error
+    const code = readStringProperty(error, "error")
     if (!code) {
       throw cliDeviceExpired(
         "token endpoint returned no data and no error code"
@@ -138,11 +149,30 @@ export const fetchUserIdentity = async (
       `server issued a session token but /get-session rejected it (HTTP ${response.status})`
     )
   }
-  const body = (await response.json()) as { user?: UserIdentity }
-  if (!body.user) {
+  const body: unknown = await response.json()
+  const user = isRecord(body) ? body.user : undefined
+  if (!isRecord(user)) {
     throw cliDeviceExpired(
       "server issued a session token but no user identity was attached"
     )
   }
-  return body.user
+  if (typeof user.id !== "string") {
+    throw cliDeviceExpired(
+      "server issued a session token but no user identity was attached"
+    )
+  }
+  if ("email" in user && typeof user.email !== "string") {
+    throw cliDeviceExpired(
+      "server issued a session token but no user identity was attached"
+    )
+  }
+  if ("name" in user && typeof user.name !== "string") {
+    throw cliDeviceExpired(
+      "server issued a session token but no user identity was attached"
+    )
+  }
+  const identity: UserIdentity = { id: user.id }
+  if (typeof user.email === "string") identity.email = user.email
+  if (typeof user.name === "string") identity.name = user.name
+  return identity
 }

@@ -51,6 +51,25 @@ export interface StoredAuth {
   fetchedAt: string
 }
 
+function isStoredAuth(value: unknown): value is StoredAuth {
+  if (typeof value !== "object" || value === null) return false
+  if (
+    !("access_token" in value) ||
+    !("fetchedAt" in value) ||
+    !("user" in value)
+  ) {
+    return false
+  }
+  if (typeof value.access_token !== "string") return false
+  if (typeof value.fetchedAt !== "string") return false
+  if (typeof value.user !== "object" || value.user === null) return false
+  if (!("id" in value.user) || typeof value.user.id !== "string") return false
+  if ("email" in value.user && typeof value.user.email !== "string")
+    return false
+  if ("name" in value.user && typeof value.user.name !== "string") return false
+  return true
+}
+
 const ensureDir = (path: string): void => {
   if (!existsSync(dirname(path))) {
     mkdirSync(dirname(path), { recursive: true })
@@ -86,9 +105,8 @@ export const readAuth = (): StoredAuth | null => {
   if (!existsSync(path)) return null
   try {
     const text = readFileSync(path, "utf8")
-    const parsed = JSON.parse(text) as StoredAuth
-    if (typeof parsed.access_token !== "string") return null
-    return parsed
+    const parsed: unknown = JSON.parse(text)
+    return isStoredAuth(parsed) ? parsed : null
   } catch {
     return null
   }

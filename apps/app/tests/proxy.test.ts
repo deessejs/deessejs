@@ -2,7 +2,7 @@ import { NextRequest } from "next/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { SETTINGS_PATHS, SETTINGS_PREFIX } from "../lib/settings-paths"
-import { NO_ORGANIZATION_PATH } from "../lib/workspace-paths"
+import { ORGANIZATIONS_PATH } from "../lib/workspace-paths"
 import { config, proxy } from "../proxy"
 
 const ORIGIN = "https://app.deessejs.com"
@@ -116,12 +116,34 @@ describe("proxy: the workspace is protected", () => {
     expect(target.searchParams.get("redirect")).toBe("/acme/home")
   })
 
-  it("protects the empty state", async () => {
+  it("protects the organizations page", async () => {
     stubSession({ signedIn: false })
-    const response = await proxy(request(NO_ORGANIZATION_PATH))
+    const response = await proxy(request(ORGANIZATIONS_PATH))
 
     expect(response.status).toBe(307)
     expect(locationOf(response).pathname).toBe("/login")
+  })
+
+  it("protects a workspace settings path", async () => {
+    // The classification is what protects it: the first segment is an
+    // organization slug, so the whole tree under it needs a session.
+    stubSession({ signedIn: false })
+    const response = await proxy(request("/acme/settings/organization"))
+
+    expect(response.status).toBe(307)
+    const target = locationOf(response)
+    expect(target.pathname).toBe("/login")
+    expect(target.searchParams.get("redirect")).toBe(
+      "/acme/settings/organization",
+    )
+  })
+
+  it("lets a signed-in visitor into a workspace settings path", async () => {
+    stubSession()
+    const response = await proxy(request("/acme/settings/organization"))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
   })
 
   it("lets a signed-in visitor into the workspace", async () => {

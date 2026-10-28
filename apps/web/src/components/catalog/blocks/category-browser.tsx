@@ -34,12 +34,8 @@ type Props = {
 // Module-level icon map. Looked up by slug and rendered via
 // `createElement` to satisfy the react-hooks/static-components
 // rule (a `const Icon = ...` inside the render body would
-// trigger it). Cast widens the `as const satisfies Record<...>`
-// exact type to a plain indexable map.
-const ICON_BY_SLUG = BLOCK_ICONS as unknown as Record<
-  string,
-  React.ComponentType<{ "aria-hidden"?: boolean; className?: string }>
->
+// trigger it).
+const ICON_BY_SLUG = new Map(Object.entries(BLOCK_ICONS))
 
 export function BlocksCategoryBrowserClient({
   blocks,
@@ -51,10 +47,11 @@ export function BlocksCategoryBrowserClient({
   const normalizedQuery = deferredQuery.trim().toLowerCase()
 
   const counts = useMemo(() => {
-    const out = {} as Record<BlockCategory["id"], number>
-    for (const category of categories) out[category.id] = 0
+    const out = new Map<BlockCategory["id"], number>(
+      categories.map((category) => [category.id, 0] as const)
+    )
     for (const block of blocks) {
-      out[block.category] = (out[block.category] ?? 0) + 1
+      out.set(block.category, (out.get(block.category) ?? 0) + 1)
     }
     return out
   }, [blocks, categories])
@@ -111,7 +108,7 @@ export function BlocksCategoryBrowserClient({
                   preview={<BlockCardPreview block={block} />}
                   title={
                     <div className="flex items-start gap-3">
-                      {createElement(ICON_BY_SLUG[block.slug] ?? Wrench, {
+                      {createElement(ICON_BY_SLUG.get(block.slug) ?? Wrench, {
                         "aria-hidden": true,
                         className:
                           "text-muted-foreground mt-0.5 size-4 shrink-0",

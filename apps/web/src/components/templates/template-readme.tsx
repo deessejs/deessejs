@@ -1,6 +1,4 @@
 import { MarkdownAsync } from "react-markdown"
-
-import { mdxComponents } from "@/components/blog/mdx-components"
 import { safeReadmeOptions } from "@/lib/templates/safe-readme"
 
 export type TemplateReadmeProps = {
@@ -42,10 +40,16 @@ export const TemplateReadme = async ({ readme }: TemplateReadmeProps) => {
   const rendered = await MarkdownAsync({
     ...safeReadmeOptions,
     children: readme,
-    // react-markdown's Components type expects optional `href`
-    // on `a`; our shared `Link` types `href` as required. The
-    // runtime is happy with either — cast to bridge the gap.
-    components: mdxComponents as never,
+    components: {
+      a: ({ href, children, ...props }) =>
+        href ? (
+          <a href={href} {...props}>
+            {children}
+          </a>
+        ) : (
+          <a {...props}>{children}</a>
+        ),
+    },
   })
   return (
     <section

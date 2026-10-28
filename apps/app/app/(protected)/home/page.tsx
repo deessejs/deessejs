@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { connection } from "next/server"
 
 import { orpc } from "@/lib/orpc"
-import { NO_ORGANIZATION_PATH, workspaceHomePath } from "@/lib/workspace-paths"
+import { ORGANIZATIONS_PATH, workspaceHomePath } from "@/lib/workspace-paths"
 
 /**
  * The `/home` entry point.
@@ -10,7 +10,7 @@ import { NO_ORGANIZATION_PATH, workspaceHomePath } from "@/lib/workspace-paths"
  * The URL the application sends people to does not say which
  * organization they are in, so this page resolves it and sends them
  * where they belong: the workspace of their active organization, or
- * the empty state when they have none.
+ * the organizations page when they have none.
  *
  * The query string survives the hop. A deep link into the workspace
  * is a real thing, so the parameters the request had are carried into
@@ -43,5 +43,5 @@ export default async function HomeRedirect({
     redirect(`${workspaceHomePath(state.organization.slug)}${suffix}`)
   }
 
-  redirect(`${NO_ORGANIZATION_PATH}${suffix}`)
+  redirect(`${ORGANIZATIONS_PATH}${suffix}`)
 }

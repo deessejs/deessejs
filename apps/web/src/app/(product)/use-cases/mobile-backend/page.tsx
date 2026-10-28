@@ -11,10 +11,7 @@ import { SectionHeader } from "@/components/marketing/section-header"
 import { UseCaseHero } from "@/components/product/use-case/use-case-page"
 import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
-import {
-  MOBILE_BACKEND_SNIPPETS,
-  type MobileBackendPillarSlug,
-} from "@/components/product/use-case/mobile-backend-snippets"
+import { MOBILE_BACKEND_SNIPPETS } from "@/components/product/use-case/mobile-backend-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 import { GROUP_1, GROUP_2 } from "./mobile-backend-tabs"
@@ -116,17 +113,16 @@ export default async function MobileBackendPage() {
   }
 
   await Promise.all(
-    (Object.keys(MOBILE_BACKEND_SNIPPETS) as MobileBackendPillarSlug[]).flatMap(
-      (slug) =>
-        MOBILE_BACKEND_SNIPPETS[slug].files.map((file) =>
-          codeToHtml(file.code, {
-            lang: file.lang,
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          }).then((html) => {
-            htmlBySlug[slug]?.push({ tabName: file.tabName, html })
-          })
-        )
+    Object.entries(MOBILE_BACKEND_SNIPPETS).flatMap(([slug, snippet]) =>
+      snippet.files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        })
+      )
     )
   )
 

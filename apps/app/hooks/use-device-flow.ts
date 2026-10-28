@@ -1,6 +1,12 @@
 "use client"
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
+import { z } from "zod"
 import { authClient } from "@/lib/auth-client"
 
 /**
@@ -31,83 +37,86 @@ import { authClient } from "@/lib/auth-client"
  * provider tree through `lib/`.
  */
 
-type DeviceClaimStatus = "pending" | "approved" | "denied"
+const deviceClaimSchema = z.object({
+  user_code: z.string(),
+  status: z.enum(["pending", "approved", "denied"]),
+})
 
-interface DeviceClaim {
-	user_code: string
-	status: DeviceClaimStatus
-}
+type DeviceClaim = z.infer<typeof deviceClaimSchema>
 
 function getErrorDescription(
-	error: { error_description?: string } | null | undefined,
-	fallback: string,
+  error: { error_description?: string } | null | undefined,
+  fallback: string
 ): string {
-	return error?.error_description ?? fallback
+  return error?.error_description ?? fallback
+}
+
+function deviceClaimQueryOptions(userCode: string | null) {
+  return queryOptions({
+    queryKey: ["device", "claim", userCode],
+    queryFn: async (): Promise<DeviceClaim> => {
+      if (!userCode) throw new Error("missing user_code")
+      const res = await authClient.device({
+        query: { user_code: userCode },
+      })
+      if (res.error) {
+        throw new Error(getErrorDescription(res.error, "device claim failed"))
+      }
+      return deviceClaimSchema.parse(res.data)
+    },
+    enabled: userCode !== null,
+    retry: false,
+  })
 }
 
 export function useDeviceClaim(userCode: string | null) {
-	const queryClient = useQueryClient()
+  const queryClient = useQueryClient()
+  const claim = useQuery(deviceClaimQueryOptions(userCode))
 
-	const claim = useQuery({
-		queryKey: ["device", "claim", userCode],
-		queryFn: async (): Promise<DeviceClaim> => {
-			if (!userCode) throw new Error("missing user_code")
-			const res = await authClient.device({
-				query: { user_code: userCode },
-			})
-			if (res.error) {
-				throw new Error(getErrorDescription(res.error, "device claim failed"))
-			}
-			return res.data as DeviceClaim
-		},
-		enabled: userCode !== null,
-		retry: false,
-	})
+  const approve = useMutation({
+    mutationFn: async () => {
+      if (!userCode) throw new Error("missing user_code")
+      const res = await authClient.device.approve({
+        userCode,
+      })
+      if (res.error) {
+        throw new Error(getErrorDescription(res.error, "approve failed"))
+      }
+      return res.data
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: deviceClaimQueryOptions(userCode).queryKey,
+      })
+    },
+  })
 
-	const approve = useMutation({
-		mutationFn: async () => {
-			if (!userCode) throw new Error("missing user_code")
-			const res = await authClient.device.approve({
-				userCode,
-			})
-			if (res.error) {
-				throw new Error(getErrorDescription(res.error, "approve failed"))
-			}
-			return res.data
-		},
-		onSuccess: () => {
-			void queryClient.invalidateQueries({
-				queryKey: ["device", "claim", userCode],
-			})
-		},
-	})
+  const deny = useMutation({
+    mutationFn: async () => {
+      if (!userCode) throw new Error("missing user_code")
+      const res = await authClient.device.deny({
+        userCode,
+      })
+      if (res.error) {
+        throw new Error(getErrorDescription(res.error, "deny failed"))
+      }
+      return res.data
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: deviceClaimQueryOptions(userCode).queryKey,
+      })
+    },
+  })
 
-	const deny = useMutation({
-		mutationFn: async () => {
-			if (!userCode) throw new Error("missing user_code")
-			const res = await authClient.device.deny({
-				userCode,
-			})
-			if (res.error) {
-				throw new Error(getErrorDescription(res.error, "deny failed"))
-			}
-			return res.data
-		},
-		onSuccess: () => {
-			void queryClient.invalidateQueries({
-				queryKey: ["device", "claim", userCode],
-			})
-		},
-	})
-
-	return {
-		status: claim.data?.status,
-		isLoading: claim.isLoading,
-		isError: claim.isError,
-		error: claim.error,
-		approve,
-		deny,
-	}
+  return {
+    status: claim.data?.status,
+    isLoading: claim.isLoading,
+    isError: claim.isError,
+    error: claim.error,
+    approve,
+    deny,
+  }
 }
 
 /**
@@ -119,25 +128,24 @@ export function useDeviceClaim(userCode: string | null) {
  * touches one file.
  */
 const DEVICE_ERROR_MESSAGES: Record<string, string> = {
-	invalid_request: "The device request was malformed. Try again.",
-	expired_token: "This device code has expired. Run `deesse auth login` again.",
-	authorization_pending:
-		"The user has not yet approved the request. Keep waiting.",
-	slow_down:
-		"You are polling too quickly. Slow down and try again in a few seconds.",
-	access_denied: "The user denied the device request.",
-	device_code_already_processed:
-		"This device code has already been approved or denied.",
-	unauthorized: "You are not signed in.",
-	invalid_grant:
-		"The device code is invalid or has already been used.",
-	invalid_client:
-		"The CLI is not a registered device client. Check the install.",
-	server_error:
-		"The device-flow server encountered an internal error. Try again later.",
+  invalid_request: "The device request was malformed. Try again.",
+  expired_token: "This device code has expired. Run `deesse auth login` again.",
+  authorization_pending:
+    "The user has not yet approved the request. Keep waiting.",
+  slow_down:
+    "You are polling too quickly. Slow down and try again in a few seconds.",
+  access_denied: "The user denied the device request.",
+  device_code_already_processed:
+    "This device code has already been approved or denied.",
+  unauthorized: "You are not signed in.",
+  invalid_grant: "The device code is invalid or has already been used.",
+  invalid_client:
+    "The CLI is not a registered device client. Check the install.",
+  server_error:
+    "The device-flow server encountered an internal error. Try again later.",
 }
 
 export function useDeviceErrorMessage(code: string | undefined | null) {
-	if (!code) return null
-	return DEVICE_ERROR_MESSAGES[code] ?? null
+  if (!code) return null
+  return DEVICE_ERROR_MESSAGES[code] ?? null
 }

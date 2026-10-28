@@ -3,10 +3,7 @@ import { allKbGuides } from "content-collections"
 
 import { Section } from "@/components/marketing/section"
 import { LatestGuidesSection } from "@/components/marketing/latest-guides-section"
-import {
-  LATEST_GUIDES_SNIPPETS,
-  type LatestGuidesSlug,
-} from "@/components/marketing/latest-guides-snippets"
+import { LATEST_GUIDES_SNIPPETS } from "@/components/marketing/latest-guides-snippets"
 
 /**
  * Latest guides — 8 featured KB articles, navigated via a shadcn
@@ -28,15 +25,11 @@ import {
  */
 export async function LatestGuides() {
   const featuredGuides = allKbGuides.slice(0, 8)
-
-  const htmlBySlug: Record<LatestGuidesSlug, string> = {} as Record<
-    LatestGuidesSlug,
-    string
-  >
+  const snippetsBySlug = new Map(Object.entries(LATEST_GUIDES_SNIPPETS))
 
   const guides = await Promise.all(
     featuredGuides.map(async (guide) => {
-      const snippet = LATEST_GUIDES_SNIPPETS[guide.slug as LatestGuidesSlug]
+      const snippet = snippetsBySlug.get(guide.slug)
       const html = snippet
         ? await codeToHtml(snippet.code, {
             lang: "typescript",
@@ -44,7 +37,6 @@ export async function LatestGuides() {
             defaultColor: false,
           })
         : ""
-      htmlBySlug[guide.slug as LatestGuidesSlug] = html
       const payload = {
         slug: guide.slug,
         title: guide.title,

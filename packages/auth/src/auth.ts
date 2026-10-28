@@ -57,10 +57,10 @@ const AUTH_BASE_PATH = "/api/v1/auth"
  * config stays pure and the observability layer is swappable.
  */
 function logEmailFailure(flow: string, userId: string, error: string): void {
-	console.error(
-		`[auth] ${flow} email failed`,
-		JSON.stringify({ userId, flow, error }),
-	)
+  console.error(
+    `[auth] ${flow} email failed`,
+    JSON.stringify({ userId, flow, error })
+  )
 }
 
 // `authConfig` is annotated with `BetterAuthOptions` *and* validated
@@ -107,7 +107,9 @@ const authConfig: BetterAuthOptions = {
   trustedOrigins:
     process.env.NODE_ENV === "development"
       ? serverEnv.ALLOWED_ORIGINS
-      : serverEnv.ALLOWED_ORIGINS.filter((origin) => !origin.includes("localhost")),
+      : serverEnv.ALLOWED_ORIGINS.filter(
+          (origin) => !origin.includes("localhost")
+        ),
 
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -211,10 +213,14 @@ const authConfig: BetterAuthOptions = {
   },
 
   socialProviders: {
-    github: {
-      clientId: serverEnv.GITHUB_CLIENT_ID!,
-      clientSecret: serverEnv.GITHUB_CLIENT_SECRET!,
-    },
+    ...(serverEnv.GITHUB_CLIENT_ID && serverEnv.GITHUB_CLIENT_SECRET
+      ? {
+          github: {
+            clientId: serverEnv.GITHUB_CLIENT_ID,
+            clientSecret: serverEnv.GITHUB_CLIENT_SECRET,
+          },
+        }
+      : {}),
   },
 
   account: {
@@ -324,9 +330,9 @@ const authConfig: BetterAuthOptions = {
 // (`role`, `banned`, `banReason`, `banExpires`) so consumers
 // (`apps/app/lib/admin-auth.ts`, the settings rail) keep
 // end-to-end type safety on `user.role`.
-export const auth = betterAuth(
-  authConfig,
-) as ReturnType<typeof betterAuth<typeof authConfig>>
+export const auth = betterAuth(authConfig) as ReturnType<
+  typeof betterAuth<typeof authConfig>
+>
 
 // Type exports for consumers
 //

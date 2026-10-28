@@ -46,13 +46,10 @@ const SNIPPETS = {
   "faq-split": PREVIEW_PLACEHOLDER,
   "footer-column-rich": PREVIEW_PLACEHOLDER,
   "footer-minimal": PREVIEW_PLACEHOLDER,
-} as const satisfies Record<CatalogueBlock["slug"], string>
+} satisfies Record<CatalogueBlock["slug"], string>
+
+const SNIPPET_BY_SLUG = new Map(Object.entries(SNIPPETS))
 
 export function getBlockSnippet(slug: CatalogueBlock["slug"]): string {
-  // `as const satisfies Record<...>` makes the type exact with no
-  // index signature, so a direct `SNIPPETS[slug]` access fails type
-  // check. Cast through `unknown` first so we keep the function's
-  // `string` return type without an `| undefined` widening.
-  const map = SNIPPETS as unknown as Record<string, string>
-  return map[slug]!
+  return SNIPPET_BY_SLUG.get(slug) ?? PREVIEW_PLACEHOLDER
 }

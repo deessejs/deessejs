@@ -53,13 +53,16 @@ export function CookieConsent() {
               <Settings className="size-4 text-muted-foreground" />
               <CardTitle className="text-lg">Cookie Preferences</CardTitle>
             </div>
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
               onClick={() => setPreferencesOpen(false)}
               className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
               aria-label="Close preferences"
             >
               <X className="size-4" />
-            </button>
+            </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             <CardDescription>

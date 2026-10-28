@@ -44,7 +44,7 @@ export function SignupForm() {
 				},
 				{
 					onSuccess: () => router.push("/verify-email"),
-				},
+				}
 			)
 			if (error) {
 				toast.error(error.message ?? "Could not create account")
@@ -62,45 +62,58 @@ export function SignupForm() {
 				noValidate
 				className="flex flex-col gap-4"
 			>
-				<Field
-					form={form}
-					name="name"
-					label="Name"
-					autoComplete="name"
-					autoFocus
-				/>
+				<form.Field name="name">
+					{(field) => (
+						<Field field={field} label="Name" autoComplete="name" autoFocus />
+					)}
+				</form.Field>
 
-				<Field
-					form={form}
-					name="email"
-					label="Email"
-					type="email"
-					autoComplete="email"
-				/>
+				<form.Field name="email">
+					{(field) => (
+						<Field
+							field={field}
+							label="Email"
+							type="email"
+							autoComplete="email"
+						/>
+					)}
+				</form.Field>
 
-				<PasswordField
-					form={form}
-					name="password"
-					label="Password"
-					autoComplete="new-password"
-				>
-					{(value) => <PasswordStrength password={value} />}
-				</PasswordField>
+				<form.Field name="password">
+					{(field) => (
+						<PasswordField
+							field={field}
+							label="Password"
+							autoComplete="new-password"
+						>
+							{(value) => <PasswordStrength password={value} />}
+						</PasswordField>
+					)}
+				</form.Field>
 
-				<PasswordField
-					form={form}
-					name="confirmPassword"
-					label="Confirm password"
-					autoComplete="new-password"
-				/>
+				<form.Field name="confirmPassword">
+					{(field) => (
+						<PasswordField
+							field={field}
+							label="Confirm password"
+							autoComplete="new-password"
+						/>
+					)}
+				</form.Field>
 
 				<p className="text-xs text-muted-foreground">
 					By creating an account, you agree to our{" "}
-					<Link href="/terms" className="text-primary underline-offset-4 hover:underline">
+					<Link
+						href="/terms"
+						className="text-primary underline-offset-4 hover:underline"
+					>
 						Terms of Service
 					</Link>{" "}
 					and{" "}
-					<Link href="/privacy" className="text-primary underline-offset-4 hover:underline">
+					<Link
+						href="/privacy"
+						className="text-primary underline-offset-4 hover:underline"
+					>
 						Privacy Policy
 					</Link>
 					.
@@ -108,12 +121,17 @@ export function SignupForm() {
 
 				<form.Subscribe
 					selector={(state) => [state.canSubmit, state.isSubmitting] as const}
-					children={([canSubmit, isSubmitting]) => (
-						<Button type="submit" disabled={!canSubmit} aria-busy={isSubmitting}>
+				>
+					{([canSubmit, isSubmitting]) => (
+						<Button
+							type="submit"
+							disabled={!canSubmit}
+							aria-busy={isSubmitting}
+						>
 							{isSubmitting ? "Creating account…" : "Create account"}
 						</Button>
 					)}
-				/>
+				</form.Subscribe>
 			</form>
 
 			<div className="relative">
@@ -131,7 +149,10 @@ export function SignupForm() {
 
 			<p className="text-center text-sm text-muted-foreground">
 				Already have an account?{" "}
-				<Link href="/login" className="text-primary underline-offset-4 hover:underline">
+				<Link
+					href="/login"
+					className="text-primary underline-offset-4 hover:underline"
+				>
 					Log in
 				</Link>
 			</p>

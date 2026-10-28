@@ -11,10 +11,7 @@ import { SectionHeader } from "@/components/marketing/section-header"
 import { UseCaseHero } from "@/components/product/use-case/use-case-page"
 import { UseCaseStack } from "@/components/product/use-case/use-case-stack"
 import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
-import {
-  OPEN_SOURCE_SNIPPETS,
-  type OpenSourcePillarSlug,
-} from "@/components/product/use-case/open-source-snippets"
+import { OPEN_SOURCE_SNIPPETS } from "@/components/product/use-case/open-source-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 import { GROUP_1, GROUP_2 } from "./open-source-tabs"
@@ -120,17 +117,16 @@ export default async function OpenSourcePage() {
   }
 
   await Promise.all(
-    (Object.keys(OPEN_SOURCE_SNIPPETS) as OpenSourcePillarSlug[]).flatMap(
-      (slug) =>
-        OPEN_SOURCE_SNIPPETS[slug].files.map((file) =>
-          codeToHtml(file.code, {
-            lang: file.lang,
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          }).then((html) => {
-            htmlBySlug[slug]?.push({ tabName: file.tabName, html })
-          })
-        )
+    Object.entries(OPEN_SOURCE_SNIPPETS).flatMap(([slug, snippet]) =>
+      snippet.files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        })
+      )
     )
   )
 

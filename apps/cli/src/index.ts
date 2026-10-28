@@ -11,6 +11,7 @@ import { initCommand } from "./commands/init.js"
 import { listCommand } from "./commands/list.js"
 import { infoCommand } from "./commands/info.js"
 import { printError } from "./output/index.js"
+import { CliError } from "./errors/index.js"
 
 const program = new Command()
 
@@ -35,10 +36,10 @@ authCommand.addCommand(statusCommand)
 authCommand.addCommand(logoutCommand)
 program.addCommand(authCommand)
 
-program.parseAsync(process.argv).catch((err) => {
-  if (err instanceof Error && err.name === "CliError") {
-    printError(err as Parameters<typeof printError>[0])
-    process.exit((err as { exitCode?: () => number }).exitCode?.() ?? 1)
+program.parseAsync(process.argv).catch((err: unknown) => {
+  if (err instanceof CliError) {
+    printError(err)
+    process.exit(err.exitCode())
   }
   // Last-resort error handler. Per-command handlers catch CliError and exit
   // cleanly with the right code. Anything that lands here is an uncaught bug.

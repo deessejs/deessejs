@@ -14,8 +14,7 @@ import { serverEnv } from "@workspace/env/server"
 // Database instances
 let _sql: ReturnType<typeof postgres> | null = null
 let _testDb: ReturnType<typeof drizzle> | null = null
-// oxlint-disable-next-line typescript/no-explicit-any
-let _pgMemDb: any = null
+let _pgMemDb: Awaited<ReturnType<typeof initPgMem>> = null
 
 // Initialize pg-mem for schema tests
 async function initPgMem() {
@@ -110,10 +109,12 @@ export const testDb = {
     if (_pgMemDb) {
       // Return pg-mem adapter (limited functionality)
       return {
-        // oxlint-disable-next-line typescript/no-explicit-any
-        execute: (strings: TemplateStringsArray, ...values: any[]) => {
+        execute: (strings: TemplateStringsArray, ...values: unknown[]) => {
           return _pgMemDb.public.all(
-            strings.reduce((acc, str, i) => acc + str + (values[i] ?? ""), ""),
+            strings.reduce(
+              (acc, str, i) => acc + str + String(values[i] ?? ""),
+              ""
+            )
           )
         },
         select: () => _pgMemDb.public,

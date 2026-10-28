@@ -51,23 +51,8 @@ const COMPONENT_ICONS = {
   "badge-numeric": Circle,
 } as const satisfies Record<CatalogueComponent["slug"], LucideIcon>
 
-// Compile-time exhaustiveness: any new CatalogueComponent slug
-// without an icon entry becomes a TS error here.
-type ExhaustiveCheck =
-  keyof typeof COMPONENT_ICONS extends CatalogueComponent["slug"]
-    ? CatalogueComponent["slug"] extends keyof typeof COMPONENT_ICONS
-      ? true
-      : never
-    : never
-const _exhaustive: ExhaustiveCheck = null as unknown as ExhaustiveCheck
-void _exhaustive
+const ICON_BY_SLUG = new Map(Object.entries(COMPONENT_ICONS))
 
 export function getComponentIcon(slug: CatalogueComponent["slug"]): LucideIcon {
-  // `as const satisfies Record<...>` gives the icon map an exact
-  // type with no index signature, so `COMPONENT_ICONS[slug]`
-  // widens the return to `LucideIcon | undefined`. Cast through
-  // `unknown` first to keep the `LucideIcon` return type and
-  // pair the `?? Wrench` fallback with a non-null assertion.
-  const map = COMPONENT_ICONS as unknown as Record<string, LucideIcon>
-  return map[slug] ?? Wrench
+  return ICON_BY_SLUG.get(slug) ?? Wrench
 }

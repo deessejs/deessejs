@@ -88,22 +88,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isSafeRelativePath(value: string): boolean {
-  if (
-    !value ||
-    value.startsWith("/") ||
-    /^[A-Za-z]:/.test(value) ||
-    value.includes("\\") ||
-    value.includes("\0")
-  ) {
-    return false
-  }
+  if (!value) return false
+  if (value.startsWith("/") || /^[A-Za-z]:/.test(value)) return false
+  if (value.includes("\\") || value.includes("\0")) return false
 
   return value
     .split("/")
     .every((segment) => segment !== "" && segment !== "." && segment !== "..")
 }
 
-function areValidIdentifiers(value: string, disallowLeadingZeroes: boolean): boolean {
+function areValidIdentifiers(
+  value: string,
+  disallowLeadingZeroes: boolean
+): boolean {
   return value.split(".").every((identifier) => {
     if (!identifier || !/^[0-9A-Za-z-]+$/.test(identifier)) return false
     const numeric = /^\d+$/.test(identifier)
@@ -156,12 +153,7 @@ function getSchemaDiagnostics(
       continue
     }
 
-    const unsupportedFormat =
-      issue.path.length === 1 &&
-      issue.path[0] === "formatVersion" &&
-      isRecord(input) &&
-      typeof input.formatVersion === "number" &&
-      input.formatVersion !== 1
+    const unsupportedFormat = isUnsupportedFormatVersion(issue.path, input)
 
     diagnostics.push({
       code: unsupportedFormat
@@ -173,6 +165,16 @@ function getSchemaDiagnostics(
   }
 
   return diagnostics
+}
+
+function isUnsupportedFormatVersion(
+  path: PropertyKey[],
+  input: unknown
+): boolean {
+  if (path.length !== 1 || path[0] !== "formatVersion") return false
+  if (!isRecord(input)) return false
+  if (typeof input.formatVersion !== "number") return false
+  return input.formatVersion !== 1
 }
 
 function validatePackages(

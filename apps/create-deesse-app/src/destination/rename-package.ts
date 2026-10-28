@@ -15,7 +15,9 @@ export type RenameRootPackageResult = {
 
 const TMP_SUFFIX = ".tmp"
 
-const readPackageJson = (dir: string): Record<string, unknown> => {
+type PackageJson = Record<string, unknown> & { name: string }
+
+const readPackageJson = (dir: string): PackageJson => {
   const path = join(dir, "package.json")
   if (!existsSync(path)) {
     throw new Error(`template is missing root package.json at ${path}`)
@@ -31,11 +33,12 @@ const readPackageJson = (dir: string): Record<string, unknown> => {
   if (
     typeof parsed !== "object" ||
     parsed === null ||
-    typeof (parsed as { name?: unknown }).name !== "string"
+    !("name" in parsed) ||
+    typeof parsed.name !== "string"
   ) {
     throw new Error("template package.json has no string `name` field")
   }
-  return parsed as Record<string, unknown>
+  return { ...parsed, name: parsed.name }
 }
 
 /**
@@ -56,7 +59,7 @@ export const renameRootPackage = (
 
   const path = join(tempDir, "package.json")
   const pkg = readPackageJson(tempDir)
-  const previousName = pkg.name as string
+  const previousName = pkg.name
 
   if (previousName === newName) {
     return { previous: previousName, current: newName }

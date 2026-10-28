@@ -1,11 +1,12 @@
 "use client"
 
-/* oxlint-disable next/no-img-element */
+import Image from "next/image"
 
 import { ArrowUpRight } from "lucide-react"
 import * as motion from "motion/react-client"
 import Link from "next/link"
 
+import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { MockupPlaceholder } from "./mockup-placeholder"
@@ -135,9 +136,10 @@ export function ContractsGrid({
               aria-label={`Browse all ${contract.title} templates`}
               className="absolute inset-0 z-0"
             />
-            {/* oxlint-disable-next-line react/forbid-elements */}
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="icon-sm"
               aria-label={`Open ${contract.title} templates in a new tab`}
               onClick={(e) => {
                 e.stopPropagation()
@@ -150,7 +152,7 @@ export function ContractsGrid({
               className="absolute top-3 right-3 z-20 flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
             >
               <ArrowUpRight className="size-3.5" aria-hidden />
-            </button>
+            </Button>
             <div className="relative z-10 flex flex-col gap-4">
               <div className="flex items-center gap-2">
                 <span className="flex size-7 items-center justify-center rounded-md border border-border bg-muted/40">
@@ -174,7 +176,7 @@ export function ContractsGrid({
                     className="inline-flex items-center gap-1.5 text-label-12 text-muted-foreground"
                   >
                     {provider.logo.endsWith("-missing") ? null : (
-                      <img
+                      <Image
                         src={`/logos/${provider.logo}.svg`}
                         alt=""
                         width={12}

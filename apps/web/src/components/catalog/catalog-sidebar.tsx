@@ -17,7 +17,7 @@ type Props<Id extends string> = {
   }>
   /** Active entry id, if any. Marked with `aria-current="page"`. */
   pinned?: Id
-  counts?: Record<Id, number>
+  counts?: ReadonlyMap<Id, number>
   /** Optional extra classes on the wrapping `<aside>`. */
   className?: string
 }
@@ -60,7 +60,7 @@ export function CatalogSidebar<Id extends string>({
       <ul className="flex flex-col gap-1">
         {entries.map((entry) => {
           const isActive = pinned === entry.id
-          const count = counts?.[entry.id]
+          const count = counts?.get(entry.id)
           return (
             <li key={entry.id}>
               <Link

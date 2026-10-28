@@ -16,9 +16,11 @@
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "@workspace/analytics": "workspace:*",
     "@workspace/api": "workspace:*",
     "@workspace/auth": "workspace:*",
     "@workspace/contracts": "workspace:*",
+    "@workspace/cookies": "workspace:*",
     "@workspace/env": "workspace:*",
     "@workspace/ui": "workspace:*",
     "@workspace/utils": "workspace:*",
@@ -38,9 +40,9 @@
     "@types/react-dom": "catalog:",
     "@workspace/typescript-config": "workspace:*",
     "@workspace/vitest-config": "workspace:*",
+    "oxlint": "catalog:",
     "tailwindcss": "^4",
     "typescript": "catalog:",
-    "vitest": "catalog:",
-    "oxlint": "catalog:"
+    "vitest": "catalog:"
   }
 }

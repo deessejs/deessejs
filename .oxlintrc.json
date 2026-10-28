@@ -6,10 +6,12 @@
       "name": "eslint-js",
       "specifier": "oxlint-plugin-eslint"
     },
-    "eslint-plugin-sonarjs"
+    "eslint-plugin-sonarjs",
+    "@tanstack/eslint-plugin-query",
+    "eslint-plugin-react-you-might-not-need-an-effect"
   ],
   "categories": {
-    "correctness": "off"
+    "correctness": "error"
   },
   "env": {
     "builtin": true
@@ -20,14 +22,14 @@
     }
   },
   "ignorePatterns": [
-    "dist/**",
-    ".next/**",
+    "**/dist/**",
+    "**/.next/**",
     "**/.turbo/**",
     "**/coverage/**",
     "**/node_modules/**",
     ".eve/**",
-    "apps/docs/.source/**",
-    "apps/web/.content-collections/**"
+    "**/.source/**",
+    "**/.content-collections/**"
   ],
   "rules": {
     "constructor-super": "error",
@@ -165,7 +167,8 @@
     "sonarjs/no-redundant-jump": "error",
     "sonarjs/inconsistent-function-call": "error",
     "sonarjs/no-use-of-empty-return-value": "error",
-    "sonarjs/cognitive-complexity": ["warn", 30],
+    "sonarjs/cognitive-complexity": ["error", 15],
+    "sonarjs/expression-complexity": ["error", { "max": 3 }],
     "sonarjs/argument-type": "error",
     "sonarjs/in-operator-type-error": "error",
     "sonarjs/array-callback-without-return": "error",
@@ -283,7 +286,16 @@
     "sonarjs/dynamically-constructed-templates": "error",
     "sonarjs/no-collapsible-if": "error",
     "sonarjs/no-nested-switch": "error",
-    "typescript/ban-ts-comment": "error",
+    "typescript/ban-ts-comment": [
+      "error",
+      {
+        "ts-expect-error": "allow-with-description",
+        "ts-ignore": true,
+        "ts-nocheck": true,
+        "ts-check": false,
+        "minimumDescriptionLength": 12
+      }
+    ],
     "typescript/no-duplicate-enum-values": "error",
     "typescript/no-empty-object-type": "error",
     "typescript/no-explicit-any": "error",
@@ -291,11 +303,13 @@
     "typescript/no-misused-new": "error",
     "typescript/no-namespace": "error",
     "typescript/no-non-null-asserted-optional-chain": "error",
+    "typescript/no-non-null-assertion": "error",
     "typescript/no-require-imports": "error",
     "typescript/no-this-alias": "error",
     "typescript/no-unnecessary-type-constraint": "error",
     "typescript/no-unsafe-declaration-merging": "error",
     "typescript/no-unsafe-function-type": "error",
+    "typescript/no-unsafe-type-assertion": "error",
     "typescript/no-wrapper-object-types": "error",
     "typescript/prefer-as-const": "error",
     "typescript/prefer-namespace-keyword": "error",
@@ -315,7 +329,7 @@
         "message": "bare `void` on a top-level function call drops error handling. Use `.then(result => ...)` / `.catch(...)` or a named helper that inspects the result. (Method chains like `void obj.method()` are valid \u2014 the void there only applies to the outer expression.)"
       },
       {
-        "selector": "CallExpression[callee.object.name='authClient'][callee.property.name='useSession']",
+        "selector": ":matches(ArrowFunctionExpression[async=true], FunctionExpression[async=true], FunctionDeclaration[async=true]) CallExpression[callee.object.name='authClient'][callee.property.name='useSession']",
         "message": "authClient.useSession() is a React hook (returns a cached signal value). Calling it inside an async callback is a Rules of Hooks violation and returns a stale value. For one-shot reads, use authClient.getSession() instead."
       }
     ]
@@ -364,7 +378,7 @@
             "message": "bare `void` on a top-level function call drops error handling. Use `.then(result => ...)` / `.catch(...)` or a named helper that inspects the result. (Method chains like `void obj.method()` are valid; the void there only applies to the outer expression.)"
           },
           {
-            "selector": "CallExpression[callee.object.name='authClient'][callee.property.name='useSession']",
+            "selector": ":matches(ArrowFunctionExpression[async=true], FunctionExpression[async=true], FunctionDeclaration[async=true]) CallExpression[callee.object.name='authClient'][callee.property.name='useSession']",
             "message": "authClient.useSession() is a React hook (returns a cached signal value). Calling it inside an async callback is a Rules of Hooks violation and returns a stale value. For one-shot reads, use authClient.getSession() instead."
           }
         ]
@@ -375,7 +389,9 @@
         "apps/app/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
         "apps/web/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
         "apps/docs/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
-        "packages/email/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
+        "packages/email/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
+        "packages/cookies/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
+        "packages/ui/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
       ],
       "plugins": ["typescript", "react"],
       "rules": {
@@ -394,7 +410,7 @@
         "react/no-unescaped-entities": "error",
         "react/no-unknown-property": "error",
         "react/forbid-elements": [
-          "warn",
+          "error",
           {
             "forbid": [
               {
@@ -433,6 +449,13 @@
       }
     },
     {
+      "files": ["packages/ui/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"],
+      "plugins": ["typescript", "react"],
+      "rules": {
+        "react/forbid-elements": "off"
+      }
+    },
+    {
       "files": [
         "apps/app/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
         "apps/web/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
@@ -448,7 +471,7 @@
         "nextjs/no-css-tags": "warn",
         "nextjs/no-head-element": "warn",
         "nextjs/no-html-link-for-pages": "error",
-        "nextjs/no-img-element": "warn",
+        "nextjs/no-img-element": "error",
         "nextjs/no-page-custom-font": "warn",
         "nextjs/no-styled-jsx-in-document": "warn",
         "nextjs/no-sync-scripts": "error",
@@ -467,6 +490,22 @@
       "files": ["apps/app/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"],
       "rules": {
         "react/no-children-prop": "off"
+      }
+    },
+    {
+      "files": ["apps/app/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"],
+      "rules": {
+        "@tanstack/query/exhaustive-deps": "error",
+        "@tanstack/query/mutation-property-order": "error",
+        "@tanstack/query/no-rest-destructuring": "error",
+        "@tanstack/query/no-unstable-deps": "error",
+        "@tanstack/query/prefer-query-options": "error",
+        "@tanstack/query/stable-query-client": "error",
+        "react-you-might-not-need-an-effect/no-adjust-state-on-prop-change": "error",
+        "react-you-might-not-need-an-effect/no-chain-state-updates": "error",
+        "react-you-might-not-need-an-effect/no-derived-state": "error",
+        "react-you-might-not-need-an-effect/no-event-handler": "error",
+        "react-you-might-not-need-an-effect/no-reset-all-state-on-prop-change": "error"
       }
     },
     {

@@ -4,10 +4,7 @@ import { Section } from "@/components/marketing/section"
 import { SectionHeader } from "@/components/marketing/section-header"
 import { EcosystemTabs } from "@/components/marketing/ecosystem-tabs"
 
-import {
-  ECOSYSTEM_SNIPPETS,
-  type EcosystemSlug,
-} from "@/components/marketing/ecosystem-snippets"
+import { ECOSYSTEM_SNIPPETS } from "@/components/marketing/ecosystem-snippets"
 
 /**
  * Ecosystem section on the marketing homepage.
@@ -25,23 +22,22 @@ import {
  * rhythm used by every other section on the homepage.
  */
 export async function Ecosystem() {
-  const htmlBySlug: Record<EcosystemSlug, { tabName: string; html: string }[]> =
-    {
-      errors: [],
-      fp: [],
-      drpc: [],
-      collections: [],
-    }
+  const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
+    errors: [],
+    fp: [],
+    drpc: [],
+    collections: [],
+  }
 
   await Promise.all(
-    (Object.keys(ECOSYSTEM_SNIPPETS) as EcosystemSlug[]).flatMap((slug) =>
-      ECOSYSTEM_SNIPPETS[slug].files.map((file) =>
+    Object.entries(ECOSYSTEM_SNIPPETS).flatMap(([slug, snippet]) =>
+      snippet.files.map((file) =>
         codeToHtml(file.code, {
           lang: file.lang,
           themes: { light: "github-light", dark: "github-dark" },
           defaultColor: false,
         }).then((html) => {
-          htmlBySlug[slug].push({ tabName: file.tabName, html })
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
         })
       )
     )

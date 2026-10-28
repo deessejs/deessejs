@@ -12,7 +12,18 @@ import { defineConfig } from "tsup"
 // predate import attributes. This is a build-time read; the runtime
 // never executes it.
 const require = createRequire(import.meta.url)
-const pkg = require("./package.json") as { version: string }
+const packageJson: unknown = require("./package.json")
+const packageVersion = readPackageVersion(packageJson)
+
+function readPackageVersion(value: unknown): string {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("package.json must contain a string version")
+  }
+  if (!("version" in value) || typeof value.version !== "string") {
+    throw new Error("package.json must contain a string version")
+  }
+  return value.version
+}
 
 export default defineConfig({
   entry: ["src/index.ts"],
@@ -31,6 +42,6 @@ export default defineConfig({
   dts: false,
   noExternal: [/^@workspace\//],
   define: {
-    "process.env.CREATE_DEESSE_APP_VERSION": JSON.stringify(pkg.version),
+    "process.env.CREATE_DEESSE_APP_VERSION": JSON.stringify(packageVersion),
   },
 })

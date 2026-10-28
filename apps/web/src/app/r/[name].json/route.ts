@@ -55,7 +55,10 @@ export async function GET(
       : namespace === "blocks"
         ? ITEMS.blocks
         : ITEMS.components
-  const item = collection[lookup as keyof typeof collection]
+  const item =
+    typeof lookup === "string"
+      ? Object.entries(collection).find(([key]) => key === lookup)?.[1]
+      : undefined
   if (!item) {
     return new NextResponse("Not found", { status: 404 })
   }

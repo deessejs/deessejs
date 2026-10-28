@@ -8,14 +8,13 @@ import type { Context } from "hono"
  *
  * Per https://orpc.dev/docs/adapters/hono — "Body Already Used".
  */
-const BODY_PARSER_METHODS = new Set([
+const BODY_PARSER_METHODS = [
   "arrayBuffer",
   "blob",
   "formData",
   "json",
   "text",
-] as const)
-type BodyParserMethod = (typeof BODY_PARSER_METHODS extends Set<infer T> ? T : never)
+] as const
 
 /**
  * Wrap `c.req.raw` in a Proxy that delegates body-parser methods
@@ -25,13 +24,22 @@ type BodyParserMethod = (typeof BODY_PARSER_METHODS extends Set<infer T> ? T : n
 export const wrapForOrpc = (c: Context): Request =>
   new Proxy(c.req.raw, {
     get(target, prop) {
-      if (typeof prop === "string" && BODY_PARSER_METHODS.has(prop as BodyParserMethod)) {
-        switch (prop) {
-          case "arrayBuffer": return () => c.req.arrayBuffer()
-          case "blob":        return () => c.req.blob()
-          case "formData":    return () => c.req.formData()
-          case "json":        return () => c.req.json()
-          case "text":        return () => c.req.text()
+      const method =
+        typeof prop === "string"
+          ? BODY_PARSER_METHODS.find((candidate) => candidate === prop)
+          : undefined
+      if (method) {
+        switch (method) {
+          case "arrayBuffer":
+            return () => c.req.arrayBuffer()
+          case "blob":
+            return () => c.req.blob()
+          case "formData":
+            return () => c.req.formData()
+          case "json":
+            return () => c.req.json()
+          case "text":
+            return () => c.req.text()
         }
       }
       return Reflect.get(target, prop, target)
