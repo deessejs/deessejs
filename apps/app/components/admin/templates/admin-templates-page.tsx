@@ -1,7 +1,15 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useLegacyTable } from "@tanstack/react-table/legacy"
+import {
+  createColumnHelper,
+  createSortedRowModel,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  sortFn_basic,
+  tableFeatures,
+  useTable,
+} from "@tanstack/react-table"
 import type { RouterClient } from "@orpc/server"
 import type { appRouter } from "@workspace/api/router"
 import { Button } from "@workspace/ui/components/button"
@@ -10,7 +18,13 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@workspace/ui/components/input-group"
-import { PlusIcon, SearchIcon } from "lucide-react"
+import {
+  ArrowDownIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
+  PlusIcon,
+  SearchIcon,
+} from "lucide-react"
 import { CreateTemplateDialog } from "./create-template-dialog"
 
 type AdminClient = RouterClient<typeof appRouter>
@@ -22,6 +36,79 @@ const fetchedAtFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
   timeZone: "UTC",
 })
+const features = tableFeatures({
+  rowSortingFeature,
+  sortedRowModel: createSortedRowModel(),
+  sortFns: {
+    alphanumeric: sortFn_alphanumeric,
+    basic: sortFn_basic,
+  },
+})
+const column = createColumnHelper<typeof features, AdminTemplate>()
+const columns = column.columns([
+  column.accessor("name", {
+    id: "template",
+    header: "Template",
+    sortFn: "alphanumeric",
+    cell: ({ row }) => (
+      <>
+        <a
+          className="font-medium underline-offset-4 hover:underline"
+          href={row.original.canonicalUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {row.original.name}
+        </a>
+        <div className="mt-1 truncate text-xs text-muted-foreground">
+          {row.original.slug} · {row.original.owner}/{row.original.repo}
+        </div>
+      </>
+    ),
+  }),
+  column.accessor("category", {
+    header: "Category",
+    sortFn: "alphanumeric",
+    cell: ({ getValue }) => <span className="capitalize">{getValue()}</span>,
+  }),
+  column.accessor("labels", {
+    header: "Labels",
+    enableSorting: false,
+    cell: ({ getValue }) => (
+      <span className="text-muted-foreground">
+        {getValue().length ? getValue().join(", ") : "—"}
+      </span>
+    ),
+  }),
+  column.accessor("access", {
+    header: "Access",
+    sortFn: "alphanumeric",
+    cell: ({ getValue }) => <span className="capitalize">{getValue()}</span>,
+  }),
+  column.accessor((template) => template.stars ?? undefined, {
+    id: "stars",
+    header: "Stars",
+    sortFn: "basic",
+    sortUndefined: "last",
+    cell: ({ getValue }) => (
+      <span className="block text-right tabular-nums">
+        {getValue()?.toLocaleString("en-US") ?? "—"}
+      </span>
+    ),
+  }),
+  column.accessor("fetchedAt", {
+    header: "Last fetched",
+    sortFn: "alphanumeric",
+    cell: ({ getValue }) => (
+      <time
+        className="whitespace-nowrap text-muted-foreground"
+        dateTime={getValue()}
+      >
+        {fetchedAtFormatter.format(new Date(getValue()))}
+      </time>
+    ),
+  }),
+])
 
 export function AdminTemplatesPage({
   templates,
@@ -30,6 +117,7 @@ export function AdminTemplatesPage({
 }) {
   const [query, setQuery] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([])
   const needle = query.trim().toLocaleLowerCase()
   const filtered = useMemo(
     () =>
@@ -43,9 +131,12 @@ export function AdminTemplatesPage({
         : templates,
     [needle, templates]
   )
-  const table = useLegacyTable({
+  const table = useTable({
+    features,
+    columns,
     data: filtered,
-    columns: [{ accessorKey: "id" }],
+    state: { sorting },
+    onSortingChange: setSorting,
   })
 
   return (
@@ -101,56 +192,49 @@ export function AdminTemplatesPage({
           <table className="w-full caption-bottom text-sm">
             <caption className="sr-only">Official templates</caption>
             <thead className="border-b bg-muted/50 text-left text-muted-foreground">
-              <tr>
-                <th scope="col" className="h-11 px-4 font-medium">
-                  Template
-                </th>
-                <th scope="col" className="h-11 px-4 font-medium">
-                  Category
-                </th>
-                <th scope="col" className="h-11 px-4 font-medium">
-                  Labels
-                </th>
-                <th scope="col" className="h-11 px-4 font-medium">
-                  Access
-                </th>
-                <th scope="col" className="h-11 px-4 text-right font-medium">
-                  Stars
-                </th>
-                <th scope="col" className="h-11 px-4 font-medium">
-                  Last fetched
-                </th>
-              </tr>
+              {table.getHeaderGroups().map((group) => (
+                <tr key={group.id}>
+                  {group.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      scope="col"
+                      className="h-11 px-4 font-medium"
+                    >
+                      {header.isPlaceholder ? null : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-auto gap-2 px-0 font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
+                          disabled={!header.column.getCanSort()}
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          <table.FlexRender header={header} />
+                          {header.column.getCanSort() &&
+                            (header.column.getIsSorted() === "asc" ? (
+                              <ArrowUpIcon aria-hidden className="size-3.5" />
+                            ) : header.column.getIsSorted() === "desc" ? (
+                              <ArrowDownIcon aria-hidden className="size-3.5" />
+                            ) : (
+                              <ArrowUpDownIcon
+                                aria-hidden
+                                className="size-3.5 opacity-50"
+                              />
+                            ))}
+                        </Button>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
             </thead>
             <tbody>
-              {table.getRowModel().rows.map(({ original: template }) => (
-                <tr key={template.id} className="border-b last:border-0">
-                  <td className="max-w-80 px-4 py-3">
-                    <a
-                      className="font-medium underline-offset-4 hover:underline"
-                      href={template.canonicalUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {template.name}
-                    </a>
-                    <div className="mt-1 truncate text-xs text-muted-foreground">
-                      {template.slug} · {template.owner}/{template.repo}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 capitalize">{template.category}</td>
-                  <td className="max-w-64 px-4 py-3 text-muted-foreground">
-                    {template.labels.length ? template.labels.join(", ") : "—"}
-                  </td>
-                  <td className="px-4 py-3 capitalize">{template.access}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {template.stars?.toLocaleString() ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                    <time dateTime={template.fetchedAt}>
-                      {fetchedAtFormatter.format(new Date(template.fetchedAt))}
-                    </time>
-                  </td>
+              {table.getRowModel().rows.map((row) => (
+                <tr key={row.id} className="border-b last:border-0">
+                  {row.getAllCells().map((cell) => (
+                    <td key={cell.id} className="max-w-80 px-4 py-3">
+                      <table.FlexRender cell={cell} />
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
