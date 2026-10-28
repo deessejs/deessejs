@@ -127,6 +127,8 @@ jobs:
         with:
           name: vercel-context-${{ github.event.pull_request.number }}-${{ matrix.app }}
           path: .vercel/prebuilt-context.tar.gz
+          # The archive is under .vercel; upload-artifact excludes hidden paths by default.
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
 
@@ -192,18 +194,32 @@ jobs:
           path: .
 
       # The clean deploy runner intentionally does not check out PR source.
-      # Recreate the configured monorepo root so Vercel CLI can resolve the
-      # project's Root Directory and traced files from the uploaded context.
-      - name: Recreate configured project root directory
+      # Restore the trusted archive of project-root files packaged by the build job.
+      - name: Restore traced files and verify Next runtime
         env:
+          APP: ${{ matrix.app }}
           PROJECT_ROOT: ${{ fromJSON('{"docs":"apps/docs","agent":"apps/agent","web":"apps/web","app":"apps/app"}')[matrix.app] }}
         run: |
-          if [ -z "$PROJECT_ROOT" ]; then
+          set -euo pipefail
+          if [[ -z "$PROJECT_ROOT" ]]; then
             echo "::error::Unknown Vercel project root."
             exit 1
           fi
+          if [[ ! -f prebuilt-context.tar.gz ]]; then
+            echo "::error::The traced prebuilt context artifact was not downloaded."
+            exit 1
+          fi
           mkdir -p -- "$PROJECT_ROOT"
-          tar -xzf prebuilt-context.tar.gz -C .
+          tar --list --gzip --file=prebuilt-context.tar.gz >/dev/null
+          tar --extract --gzip --file=prebuilt-context.tar.gz --directory=. --no-same-owner --no-same-permissions
+
+          if [[ "$APP" == "app" || "$APP" == "web" ]]; then
+            runtime_file="$PROJECT_ROOT/node_modules/next/dist/build/adapter/setup-node-env.external.js"
+            if [[ ! -f "$runtime_file" ]]; then
+              echo "::error::Prebuilt context is missing $runtime_file"
+              exit 1
+            fi
+          fi
 
       - name: Deploy prebuilt preview
         run: |
