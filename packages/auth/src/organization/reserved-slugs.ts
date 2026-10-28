@@ -30,6 +30,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "reset-password",
   "verify-email",
   "device",
+  "cookies",
   // The workspace entry point and the empty state
   "home",
   "no-organization",
