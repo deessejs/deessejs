@@ -12,6 +12,7 @@ graph TD
     WEB["apps/web<br/>marketing, catalogue, knowledge base"]
     APPAPP["apps/app<br/>authenticated product"]
     DOCS["apps/docs<br/>documentation site"]
+    STORYBOOK["apps/storybook<br/>shared UI catalogue and remote MCP"]
     CLI["apps/cli<br/>@deessejs/cli"]
     CDA["apps/create-deesse-app<br/>standalone scaffolder"]
     AGENT["apps/agent<br/>GitHub bot"]
@@ -44,6 +45,7 @@ graph TD
   APPAPP --> UTILS
 
   DOCS --> UI
+  STORYBOOK --> UI
 
   CLI -. "bundled at build time" .-> API
   CLI -. "bundled at build time" .-> CONTRACTS

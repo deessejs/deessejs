@@ -1,0 +1,13 @@
+{
+  "extends": "../../packages/typescript-config/react-library.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node", "vite/client"],
+    "noEmit": true
+  },
+  "include": [".storybook", "api", "scripts", "stories", "vite.config.ts"],
+  "exclude": ["node_modules", "storybook-static"]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@workspace/storybook",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "storybook dev --host 0.0.0.0 --port 6006",
+    "build": "storybook build --output-dir storybook-static && node scripts/check-storybook-output.mjs",
+    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json apps/storybook",
+    "format": "oxfmt --config ../../.oxfmtrc.json --ignore-path ../../.oxfmtignore \"**/*.{ts,tsx,mdx}\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@storybook/mcp": "catalog:",
+    "@workspace/ui": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "sonner": "catalog:"
+  },
+  "devDependencies": {
+    "@storybook/addon-docs": "catalog:",
+    "@storybook/react-vite": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "storybook": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}
