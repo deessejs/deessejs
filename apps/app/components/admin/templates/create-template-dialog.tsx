@@ -227,9 +227,8 @@ export function CreateTemplateDialog({
               <Select
                 value={access}
                 onValueChange={(value) => {
-                  const nextAccess = ["free", "paid"].find(
-                    (access) => access === value
-                  )
+                  const nextAccess =
+                    value === "free" || value === "paid" ? value : undefined
                   if (nextAccess)
                     setValue("access", nextAccess, {
                       shouldDirty: true,
