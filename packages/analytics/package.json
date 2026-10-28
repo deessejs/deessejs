@@ -20,9 +20,7 @@
   "devDependencies": {
     "@types/react": "catalog:",
     "@workspace/typescript-config": "workspace:*",
-    "typescript": "catalog:",
-    "oxlint": "catalog:",
-    "oxfmt": "catalog:"
+    "typescript": "catalog:"
   },
   "exports": {
     ".": "./src/index.ts"
