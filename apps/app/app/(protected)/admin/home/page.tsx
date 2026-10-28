@@ -1,4 +1,6 @@
 import { requireAdmin } from "@/lib/admin-auth"
+import Link from "next/link"
+import { Button } from "@workspace/ui/components/button"
 
 /**
  * Initial `/admin/home` page (RFC: "DeesseJS Administration Routes —
@@ -25,6 +27,11 @@ export default async function AdminHomePage() {
       <p className="text-sm text-muted-foreground">
         DeesseJS administration area.
       </p>
+      <div>
+        <Button asChild variant="outline">
+          <Link href="/admin/templates">Manage templates</Link>
+        </Button>
+      </div>
     </div>
   )
 }
