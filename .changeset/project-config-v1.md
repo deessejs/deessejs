@@ -1,6 +1,7 @@
 ---
+"@workspace/api": minor
 "@workspace/registry": minor
-app: minor
+app: patch
 ---
 
-Add V1 project configuration parsing and publish its JSON Schema from the app domain.
+Add V1 project configuration parsing and serve its JSON Schema through the API.
