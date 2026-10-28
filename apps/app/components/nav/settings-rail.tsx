@@ -91,7 +91,11 @@ export function SettingsRail() {
   const items: RailItem[] = isAdmin
     ? [
         ...ACCOUNT_RAIL,
-        { label: "Administration", href: "/admin/home", icon: ShieldIcon },
+        {
+          label: "Administration",
+          href: "/admin/templates",
+          icon: ShieldIcon,
+        },
       ]
     : ACCOUNT_RAIL
 
@@ -116,7 +120,7 @@ export function SettingsRail() {
                   "hover:bg-muted hover:text-foreground",
                   isActive
                     ? "bg-muted font-medium text-foreground"
-                    : "text-muted-foreground",
+                    : "text-muted-foreground"
                 )}
               >
                 <Icon className="size-4 shrink-0" aria-hidden />

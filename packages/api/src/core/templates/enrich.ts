@@ -46,7 +46,7 @@ export type EnrichedTemplate = TemplateV1
  */
 export const resolveLabels = (
   repoTopics: string[] | undefined,
-  entryLabels: string[] | undefined,
+  entryLabels: string[] | undefined
 ): string[] => {
   if (Array.isArray(repoTopics) && repoTopics.length > 0) return repoTopics
   if (Array.isArray(entryLabels)) return entryLabels
@@ -59,7 +59,7 @@ export const resolveLabels = (
  * expected to translate that into a 503 response.
  */
 export async function enrich(
-  registry: ReadonlyArray<TemplateV1>,
+  registry: ReadonlyArray<TemplateV1>
 ): Promise<EnrichedTemplate[]> {
   const token = serverEnv.GITHUB_TOKEN
 
@@ -77,17 +77,14 @@ export async function enrich(
         ...entry,
         name: repo.name,
         description: repo.description ?? entry.description,
-        license:
-          repo.license?.spdx_id ??
-          repo.license?.name ??
-          entry.license,
+        license: repo.license?.spdx_id ?? repo.license?.name ?? entry.license,
         labels: resolveLabels(repo.topics, entry.labels),
-        updatedAt: repo.pushed_at,
+        updatedAt: repo.pushed_at ?? undefined,
         stars: repo.stargazers_count,
         readme,
         cloneUrl: repo.html_url,
       }
-    }),
+    })
   )
 
   return enriched
