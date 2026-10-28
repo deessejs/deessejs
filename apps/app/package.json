@@ -16,7 +16,6 @@
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
     "@tanstack/react-query": "catalog:",
-    "@vercel/speed-insights": "catalog:",
     "@workspace/analytics": "workspace:*",
     "@workspace/api": "workspace:*",
     "@workspace/auth": "workspace:*",
