@@ -11,17 +11,42 @@
 // hardcode one.
 
 /**
- * The path of the empty state.
+ * The path of the organizations page.
  *
- * A caller with no organization, or with a selection that is no
- * longer valid, lands here. It is a top-level segment, so the
- * reserved slug set holds it: an organization cannot take it and
- * shadow the page.
+ * The page lists the organizations the caller belongs to. A caller
+ * with no organization, or with a selection that is no longer valid,
+ * lands here. It is a top-level segment, so the reserved slug set
+ * holds it: an organization cannot take it and shadow the page.
  */
-export const NO_ORGANIZATION_PATH = "/no-organization"
+export const ORGANIZATIONS_PATH = "/organizations"
 
 /** The root of the workspace, for the organization with this slug. */
 export const workspacePath = (slug: string): string => `/${slug}`
 
 /** The workspace home, for the organization with this slug. */
 export const workspaceHomePath = (slug: string): string => `/${slug}/home`
+
+/** The organization's own settings, for the organization with this slug. */
+export const workspaceSettingsPath = (slug: string): string =>
+  `/${slug}/settings`
+
+/** The organization's general page, for the organization with this slug. */
+export const workspaceOrganizationSettingsPath = (slug: string): string =>
+  `/${slug}/settings/organization`
+
+/**
+ * The organization's slug in a workspace path, or null when the path
+ * names none.
+ *
+ * A workspace path is always `/{slug}/...`: the route group is
+ * transparent and the dynamic segment is the first one under it, so
+ * the first segment of the pathname is the slug. The shell reads it
+ * there, because the layout that mounts the shell sits above the
+ * segment and never sees it.
+ */
+export const organizationSlugFromPathname = (
+  pathname: string,
+): string | null => {
+  const segment = pathname.split("/")[1] ?? ""
+  return segment.length > 0 ? segment : null
+}
