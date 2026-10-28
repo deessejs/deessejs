@@ -194,25 +194,7 @@ jobs:
           path: .
 
       # The clean deploy runner intentionally does not check out PR source.
-      # Recreate the configured monorepo root so Vercel CLI can resolve the
-      # project's Root Directory and traced files from the uploaded context.
-      - name: Recreate configured project root directory
-        env:
-          PROJECT_ROOT: ${{ fromJSON('{"docs":"apps/docs","agent":"apps/agent","web":"apps/web","app":"apps/app"}')[matrix.app] }}
-        run: |
-          if [ -z "$PROJECT_ROOT" ]; then
-            echo "::error::Unknown Vercel project root."
-            exit 1
-          fi
-          mkdir -p -- "$PROJECT_ROOT"
-          tar -xzf prebuilt-context.tar.gz -C .
-
-      - name: Download traced prebuilt context
-        uses: actions/download-artifact@v8
-        with:
-          name: vercel-context-${{ github.event.pull_request.number }}-${{ matrix.app }}
-          path: .
-
+      # Restore the trusted archive of project-root files packaged by the build job.
       - name: Restore traced files and verify Next runtime
         env:
           APP: ${{ matrix.app }}
