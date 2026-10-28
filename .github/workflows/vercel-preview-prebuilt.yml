@@ -113,9 +113,9 @@ jobs:
       - name: Checkout trusted prebuilt context packager
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.sha }}
           path: .trusted-tools
-          sparse-checkout: .github/scripts/package-vercel-prebuilt-context.mjs
+          sparse-checkout: .github/scripts
           persist-credentials: false
 
       - name: Package traced files required by prebuilt deployment
