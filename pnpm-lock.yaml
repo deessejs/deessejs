@@ -731,6 +731,9 @@ importers:
       '@vercel/analytics':
         specifier: 'catalog:'
         version: 2.0.1(react@19.3.0)
+      '@vercel/speed-insights':
+        specifier: 'catalog:'
+        version: 2.0.0(react@19.3.0)
       '@workspace/cookies':
         specifier: workspace:*
         version: link:../cookies
@@ -749,7 +752,7 @@ importers:
     devDependencies:
       '@types/react':
         specifier: ^19.3.0
-        version: 19.2.17
+        version: 19.3.0
       '@workspace/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
