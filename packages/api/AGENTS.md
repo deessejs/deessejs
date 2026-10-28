@@ -28,6 +28,7 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | `API_AUTH_PATH` | `/api/v1/auth` | The Better Auth handler. |
 | `API_HEALTH_PATH` | `/api/v1/health` | The liveness route. |
 | `API_READY_PATH` | `/api/v1/ready` | The readiness route, which fails with 503 when the database is unreachable. |
+| `/api/v1/schema/project/v1.json` | The project configuration schema, also exposed at the canonical app-domain URL by a Next.js rewrite. |
 
 The Hono routes are written relative to the base path, so `/health` in the code becomes `/api/v1/health` on the wire. The oRPC client targets `API_RPC_PATH`.
 
