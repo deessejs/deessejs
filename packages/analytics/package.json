@@ -1,0 +1,28 @@
+{
+  "name": "@workspace/analytics",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json packages/analytics",
+    "format": "oxfmt --config ../../.oxfmtrc.json --ignore-path ../../.oxfmtignore \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@vercel/analytics": "catalog:",
+    "@vercel/speed-insights": "catalog:",
+    "@workspace/cookies": "workspace:*",
+    "@workspace/env": "workspace:*",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@workspace/typescript-config": "workspace:*",
+    "typescript": "catalog:"
+  },
+  "exports": {
+    ".": "./src/index.tsx"
+  }
+}

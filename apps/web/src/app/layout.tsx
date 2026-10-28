@@ -9,7 +9,7 @@ import { SiteHeaderServer } from "@/components/headers/site-header-server"
 import { GlobalSearchDialog } from "@/components/search/global-search-dialog"
 import { GlobalSearchShortcut } from "@/components/search/global-search-shortcut"
 import { GlobalLayout } from "@/components/layouts/global-layout"
-import { CookieConsent } from "@workspace/cookies"
+import { AnalyticsConsent } from "@workspace/analytics"
 import { Toaster } from "@workspace/ui/components/sonner"
 import { cn } from "@workspace/ui/lib/utils"
 import {
@@ -109,7 +109,7 @@ export default function RootLayout({
                 <GlobalLayout>{children}</GlobalLayout>
               </main>
               <AppFooter />
-              <CookieConsent />
+              <AnalyticsConsent />
               <Toaster />
             </div>
             <GlobalSearchShortcut />

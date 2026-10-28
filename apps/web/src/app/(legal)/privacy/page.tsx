@@ -30,7 +30,8 @@ export default function PrivacyPage() {
       <H1>Privacy Policy</H1>
       <P>
         DeesseJS only stores the data needed to operate the service. We do not
-        use third-party analytics, advertising trackers, or social pixels.
+        use third-party advertising trackers or social pixels. Optional Vercel Analytics
+        and Speed Insights load only after you opt in via the cookie consent banner.
         Review this section with your counsel before going to production in
         jurisdictions with specific privacy regulations (GDPR, CCPA, LGPD, ...).
       </P>
@@ -41,10 +42,9 @@ export default function PrivacyPage() {
         better-auth session cookie). Optional GitHub or GitLab username (only if
         you apply for the Open Source or Pro Education programs). Billing data
         for active Pro subscriptions is handled by Stripe and never stored on
-        our servers beyond a subscription reference. Page-view analytics via
-        Vercel Analytics (anonymized page views, no cross-site correlation,
-        opt-in only via the cookie consent banner). We do not log IPs in a way
-        that can identify a user across sessions.
+        our servers beyond a subscription reference. Optional page-view analytics via Vercel Analytics and aggregated performance
+        metrics via Vercel Speed Insights, both enabled only after consent. We do
+        not log IPs in a way that can identify a user across sessions.
       </P>
 
       <H2>How we use data</H2>
