@@ -172,7 +172,7 @@ function LinkAccountButtons({
             >
               {linkingProvider === provider
                 ? "Linking…"
-                : `Link ${info.name}`}
+                : `Link ${info?.name ?? provider}`}
             </Button>
           )
         })}
