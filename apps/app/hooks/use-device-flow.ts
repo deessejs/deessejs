@@ -1,6 +1,11 @@
 "use client"
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { z } from "zod"
 import { authClient } from "@/lib/auth-client"
 
@@ -46,10 +51,8 @@ function getErrorDescription(
   return error?.error_description ?? fallback
 }
 
-export function useDeviceClaim(userCode: string | null) {
-  const queryClient = useQueryClient()
-
-  const claim = useQuery({
+function deviceClaimQueryOptions(userCode: string | null) {
+  return queryOptions({
     queryKey: ["device", "claim", userCode],
     queryFn: async (): Promise<DeviceClaim> => {
       if (!userCode) throw new Error("missing user_code")
@@ -64,6 +67,11 @@ export function useDeviceClaim(userCode: string | null) {
     enabled: userCode !== null,
     retry: false,
   })
+}
+
+export function useDeviceClaim(userCode: string | null) {
+  const queryClient = useQueryClient()
+  const claim = useQuery(deviceClaimQueryOptions(userCode))
 
   const approve = useMutation({
     mutationFn: async () => {
@@ -78,7 +86,7 @@ export function useDeviceClaim(userCode: string | null) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: ["device", "claim", userCode],
+        queryKey: deviceClaimQueryOptions(userCode).queryKey,
       })
     },
   })
@@ -96,7 +104,7 @@ export function useDeviceClaim(userCode: string | null) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: ["device", "claim", userCode],
+        queryKey: deviceClaimQueryOptions(userCode).queryKey,
       })
     },
   })

@@ -128,6 +128,8 @@ catalog:
   vitest: ^4.1.10
   zod: ^4.4.3
   zustand: ^5.0.14
+  "@tanstack/eslint-plugin-query": ^5.105.0
+  eslint-plugin-react-you-might-not-need-an-effect: ^1.0.2
 
 # Strict mode: all dependencies MUST come from a catalog
 catalogMode: strict
