@@ -49,6 +49,7 @@ jobs:
     env:
       VERCEL_ORG_ID: team_VbdXYd5XY8pvEMjsWODHQhgD
       VERCEL_PROJECT_ID: ${{ fromJSON('{"docs":"prj_TjmKPgxU8po3FDjQVkprdIRGgXa4","agent":"prj_XpSk71L2P6VCrZNA1P34hlTIWajc","web":"prj_EDu0GMa3fKaInW6f3MBiLCiewi6O","app":"prj_IOf5cRl1rkbc6SfSMzLsKsneYPdb"}')[matrix.app] }}
+      VERCEL_PROJECT_ROOT: ${{ fromJSON('{"docs":"apps/docs","agent":"apps/agent","web":"apps/web","app":"apps/app"}')[matrix.app] }}
       VERCEL_ENV: preview
       VERCEL_GIT_PROVIDER: github
       VERCEL_GIT_REPO_OWNER: deessejs

@@ -146,6 +146,21 @@ async function walk(directory) {
 }
 
 await walk(outputRoot);
+
+// Next.js output traces do not include every file needed by Vercel's runtime
+// launcher. Preserve the full Next package at the configured project root.
+const projectRoot = process.env.VERCEL_PROJECT_ROOT;
+const allowedProjectRoots = new Set([
+  "apps/docs",
+  "apps/agent",
+  "apps/web",
+  "apps/app",
+]);
+if (!allowedProjectRoots.has(projectRoot ?? "")) {
+  throw new Error("VERCEL_PROJECT_ROOT must name a configured Vercel app root.");
+}
+await addReferencedPath(`${projectRoot}/node_modules/next`);
+
 if (relativeFiles.size === 0) {
   throw new Error("No project-root files were found in Vercel function filePathMap entries.");
 }
