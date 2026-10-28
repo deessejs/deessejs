@@ -18,6 +18,11 @@ type AdminTemplate = Awaited<
   ReturnType<AdminClient["admin"]["templates"]["list"]>
 >["templates"][number]
 
+const fetchedAtFormatter = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeZone: "UTC",
+})
+
 export function AdminTemplatesPage({
   templates,
 }: {
@@ -143,9 +148,7 @@ export function AdminTemplatesPage({
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
                     <time dateTime={template.fetchedAt}>
-                      {new Intl.DateTimeFormat(undefined, {
-                        dateStyle: "medium",
-                      }).format(new Date(template.fetchedAt))}
+                      {fetchedAtFormatter.format(new Date(template.fetchedAt))}
                     </time>
                   </td>
                 </tr>
