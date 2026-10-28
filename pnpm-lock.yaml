@@ -300,10 +300,10 @@ importers:
       '@vercel/speed-insights':
         specifier: 'catalog:'
         version: 2.0.0(react@19.2.7)
-      @workspace/cookies:
+      '@workspace/cookies':
         specifier: workspace:*
         version: link:../../packages/cookies
-      @workspace/analytics:
+      '@workspace/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
       '@nanostores/react':
@@ -507,10 +507,10 @@ importers:
       '@vercel/speed-insights':
         specifier: 'catalog:'
         version: 2.0.0(react@19.2.7)
-      @workspace/cookies:
+      '@workspace/cookies':
         specifier: workspace:*
         version: link:../../packages/cookies
-      @workspace/analytics:
+      '@workspace/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
       '@workspace/ui':
@@ -583,10 +583,10 @@ importers:
       '@vercel/speed-insights':
         specifier: 'catalog:'
         version: 2.0.0(react@19.2.7)
-      @workspace/cookies:
+      '@workspace/cookies':
         specifier: workspace:*
         version: link:../../packages/cookies
-      @workspace/analytics:
+      '@workspace/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
       '@hookform/resolvers':

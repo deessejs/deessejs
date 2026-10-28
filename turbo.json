@@ -1,25 +1,11 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalEnv": [
-    "CI",
-    "NODE_ENV"
-  ],
-  "globalPassThroughEnv": [
-    "TURBO_TOKEN",
-    "TURBO_TEAM",
-    "GITHUB_ACTIONS",
-    "VERCEL_URL",
-    "VERCEL_ENV",
-    "VERCEL_BRANCH_URL",
-    "VERCEL_PROJECT_PRODUCTION_URL",
-    "VERCEL_RELATED_PROJECTS"
-  ],
+  "globalEnv": ["CI", "NODE_ENV"],
+  "globalPassThroughEnv": ["TURBO_TOKEN", "TURBO_TEAM", "GITHUB_ACTIONS", "VERCEL_URL", "VERCEL_ENV", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL", "VERCEL_RELATED_PROJECTS"],
   "tasks": {
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "env": [
         "DATABASE_URL",
         "TEST_DATABASE_URL",
@@ -45,44 +31,24 @@
         "NEXT_PUBLIC_ANALYTICS_PROVIDER",
         "NEXT_PUBLIC_VERCEL_ANALYTICS_ID"
       ],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        ".env",
-        ".env.local",
-        ".env.production",
-        ".env.production.local"
-      ],
-      "outputs": [
-        ".next/**",
-        "!.next/cache/**",
-        "!.next/dev/**",
-        "dist/**"
-      ]
+      "inputs": ["$TURBO_DEFAULT$", ".env", ".env.local", ".env.production", ".env.production.local"],
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"]
     },
     "lint": {
-      "dependsOn": [
-        "^lint"
-      ]
+      "dependsOn": ["^lint"]
     },
     "format": {
-      "dependsOn": [
-        "^format"
-      ]
+      "dependsOn": ["^format"]
     },
     "typecheck": {
-      "dependsOn": [
-        "^build",
-        "^typecheck"
-      ]
+      "dependsOn": ["^build", "^typecheck"]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "test": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "env": [
         "DATABASE_URL",
         "TEST_DATABASE_URL",
@@ -97,28 +63,16 @@
         "MAIL_TRANSPORT",
         "GITHUB_TOKEN"
       ],
-      "outputs": [
-        "coverage/**"
-      ]
+      "outputs": ["coverage/**"]
     },
     "complexity:json": {
       "dependsOn": [],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        ".env",
-        ".env.local"
-      ],
-      "outputs": [
-        "reports/complexity/**"
-      ]
+      "inputs": ["$TURBO_DEFAULT$", ".env", ".env.local"],
+      "outputs": ["reports/complexity/**"]
     },
     "complexity-report": {
-      "dependsOn": [
-        "complexity:json"
-      ],
-      "outputs": [
-        "reports/complexity/**"
-      ]
+      "dependsOn": ["complexity:json"],
+      "outputs": ["reports/complexity/**"]
     }
   }
 }
