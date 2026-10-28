@@ -507,9 +507,6 @@ importers:
 
   apps/docs:
     dependencies:
-      '@vercel/speed-insights':
-        specifier: 'catalog:'
-        version: 2.0.0(react@19.2.7)
       '@workspace/cookies':
         specifier: workspace:*
         version: link:../../packages/cookies
@@ -583,9 +580,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@vercel/speed-insights':
-        specifier: 'catalog:'
-        version: 2.0.0(react@19.2.7)
       '@workspace/cookies':
         specifier: workspace:*
         version: link:../../packages/cookies
@@ -736,10 +730,7 @@ importers:
     dependencies:
       '@vercel/analytics':
         specifier: 'catalog:'
-        version: 2.0.1(react@19.2.7)
-      '@vercel/speed-insights':
-        specifier: 'catalog:'
-        version: 2.0.0(react@19.2.7)
+        version: 2.0.1(react@19.3.0)
       '@workspace/cookies':
         specifier: workspace:*
         version: link:../cookies
@@ -748,16 +739,16 @@ importers:
         version: link:../env
       next:
         specifier: 'catalog:'
-        version: 16.2.10(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.62.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.4.3(@babel/core@7.29.7)(@playwright/test@1.62.1)(@types/node@24.13.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react:
         specifier: 'catalog:'
-        version: 19.2.7
+        version: 19.3.0
       react-dom:
         specifier: 'catalog:'
-        version: 19.2.7(react@19.2.7)
+        version: 19.3.0(react@19.3.0)
     devDependencies:
       '@types/react':
-        specifier: ^19.2.17
+        specifier: ^19.3.0
         version: 19.2.17
       '@workspace/typescript-config':
         specifier: workspace:*
@@ -9968,6 +9959,15 @@ packages:
 
 
 snapshots:
+
+  '@vercel/analytics@2.0.1(react@19.3.0)':
+    optionalDependencies:
+      react: 19.3.0
+
+  '@vercel/speed-insights@2.0.0(react@19.3.0)':
+    optionalDependencies:
+      react: 19.3.0
+
   '@vercel/analytics@2.0.1(react@19.2.7)':
     optionalDependencies:
       react: 19.2.7
