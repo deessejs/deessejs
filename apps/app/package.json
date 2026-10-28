@@ -36,7 +36,6 @@
     "react-hook-form": "catalog:",
     "sonner": "catalog:",
     "zod": "catalog:",
-    "@workspace/registry": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "catalog:",
