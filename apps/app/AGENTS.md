@@ -23,6 +23,7 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | `lib/workspace-paths.ts` | The workspace paths, and the organizations page's path. |
 | `lib/workspace-organization.ts` | The organization a workspace page belongs to, read once per request. |
 | `lib/admin-auth.ts` | The `role` check behind the `/admin` area. |
+| `app/schema/project/v1.json/route.ts` | Public project configuration JSON Schema endpoint. |
 | `app/api/[[...route]]/route.ts` | The catch-all that exposes the API under the active base path. |
 | `components/` | The auth forms, the settings panels, the sidebars, the providers. |
 
