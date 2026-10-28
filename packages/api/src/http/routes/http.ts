@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm"
 import { auth } from "@workspace/auth"
 import { db } from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
+import projectSchema from "@workspace/registry/schema/project/v1.json"
 import type { Hono } from "hono"
 import { VERSION, MIN_SUPPORTED_VERSION } from "../../constants/version.js"
 import type { ApiEnv } from "../env.js"
@@ -23,6 +24,16 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
   api.get("/health", (c) =>
     c.json({ status: "ok", timestamp: new Date().toISOString() }),
   )
+
+  // Public project configuration schema. The app domain rewrites the
+  // canonical root URL to this API route.
+  api.get("/schema/project/v1.json", (c) => {
+    c.header(
+      "Cache-Control",
+      "public, max-age=3600, stale-while-revalidate=86400",
+    )
+    return c.json(projectSchema)
+  })
 
   // Server version probe — public, no auth, rate-limited. Cached
   // for 10 minutes because the values change only at release time.
