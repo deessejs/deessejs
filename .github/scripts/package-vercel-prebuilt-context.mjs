@@ -34,6 +34,101 @@ function isSensitivePath(relativePath) {
   );
 }
 
+function isInsideRepository(absolutePath) {
+  const relativePath = path.relative(repoRoot, absolutePath);
+  return !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
+}
+
+function isBuildDirectory(relativePath) {
+  const segments = relativePath.split("/");
+  return segments.includes("node_modules") || segments.includes(".next");
+}
+
+async function addDirectoryFiles(aliasPath, absolutePath, ancestors = new Set()) {
+  const resolvedPath = await realpath(absolutePath);
+  if (!isInsideRepository(resolvedPath)) {
+    throw new Error("Refusing to package a directory outside the repository: " + aliasPath);
+  }
+
+  const resolvedRelativePath = path.relative(repoRoot, resolvedPath).split(path.sep).join("/");
+  if (isSensitivePath(aliasPath) || isSensitivePath(resolvedRelativePath)) return;
+  if (ancestors.has(resolvedPath)) return;
+
+  const nextAncestors = new Set(ancestors);
+  nextAncestors.add(resolvedPath);
+
+  for (const entry of await readdir(absolutePath, { withFileTypes: true })) {
+    const childPath = path.posix.join(aliasPath, entry.name);
+    const childAbsolutePath = path.resolve(repoRoot, childPath);
+    if (isSensitivePath(childPath)) continue;
+
+    try {
+      const childInfo = await stat(childAbsolutePath);
+      const childResolvedPath = await realpath(childAbsolutePath);
+      if (!isInsideRepository(childResolvedPath)) {
+        throw new Error("Refusing to package a path outside the repository: " + childPath);
+      }
+
+      const childResolvedRelativePath = path.relative(repoRoot, childResolvedPath).split(path.sep).join("/");
+      if (isSensitivePath(childResolvedRelativePath)) continue;
+
+      if (childInfo.isFile()) {
+        relativeFiles.add(childPath);
+      } else if (childInfo.isDirectory()) {
+        await addDirectoryFiles(childPath, childAbsolutePath, nextAncestors);
+      }
+    } catch (error) {
+      if (error?.code === "ENOENT" || error?.code === "ENOTDIR") continue;
+      throw error;
+    }
+  }
+}
+
+async function addReferencedPath(candidate) {
+  const portable = candidate.replaceAll("\\", "/").replace(/^\.\//, "");
+  if (
+    !portable ||
+    portable.startsWith("/") ||
+    /^[a-zA-Z]:\//.test(portable) ||
+    portable.split("/").includes("..") ||
+    /[\0\r\n]/.test(portable)
+  ) {
+    return;
+  }
+  if (portable === ".vercel/output" || portable.startsWith(".vercel/output/")) return;
+
+  const absolutePath = path.resolve(repoRoot, portable);
+  const relativeToRoot = path.relative(repoRoot, absolutePath).split(path.sep).join("/");
+  if (!isInsideRepository(absolutePath)) return;
+  if (isSensitivePath(relativeToRoot)) {
+    throw new Error("Refusing to package a sensitive file path from filePathMap: " + relativeToRoot);
+  }
+
+  try {
+    const fileInfo = await stat(absolutePath);
+    const resolvedPath = await realpath(absolutePath);
+    if (!isInsideRepository(resolvedPath)) {
+      throw new Error("Refusing to package a path outside the repository: " + relativeToRoot);
+    }
+
+    const resolvedRelativePath = path.relative(repoRoot, resolvedPath).split(path.sep).join("/");
+    if (isSensitivePath(resolvedRelativePath)) {
+      throw new Error("Refusing to package a sensitive or external file: " + relativeToRoot);
+    }
+
+    if (fileInfo.isFile()) {
+      relativeFiles.add(relativeToRoot);
+    } else if (fileInfo.isDirectory() && isBuildDirectory(relativeToRoot)) {
+      // filePathMap may name a package directory rather than individual files.
+      // Expand it into filtered files so pnpm package links exist on the clean runner.
+      await addDirectoryFiles(relativeToRoot, absolutePath);
+    }
+  } catch (error) {
+    if (error?.code === "ENOENT" || error?.code === "ENOTDIR") return;
+    throw error;
+  }
+}
+
 async function walk(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const fullPath = path.join(directory, entry.name);
@@ -43,50 +138,7 @@ async function walk(directory) {
       const config = JSON.parse(await readFile(fullPath, "utf8"));
       if (config.filePathMap && typeof config.filePathMap === "object") {
         for (const candidate of collectStrings(config.filePathMap)) {
-          const portable = candidate.replaceAll("\\", "/").replace(/^\.\//, "");
-          if (
-            !portable ||
-            portable.startsWith("/") ||
-            /^[a-zA-Z]:\//.test(portable) ||
-            portable.split("/").includes("..") ||
-            /[\0\r\n]/.test(portable)
-          ) {
-            continue;
-          }
-          if (portable === ".vercel/output" || portable.startsWith(".vercel/output/")) {
-            continue;
-          }
-
-          const absolutePath = path.resolve(repoRoot, portable);
-          const relativeToRoot = path.relative(repoRoot, absolutePath);
-          if (
-            relativeToRoot.startsWith("..") ||
-            path.isAbsolute(relativeToRoot) ||
-            isSensitivePath(relativeToRoot)
-          ) {
-            if (isSensitivePath(relativeToRoot)) {
-              throw new Error("Refusing to package a sensitive file path from filePathMap: " + relativeToRoot);
-            }
-            continue;
-          }
-
-          try {
-            const fileInfo = await stat(absolutePath);
-            if (!fileInfo.isFile()) continue;
-            const resolvedPath = await realpath(absolutePath);
-            const resolvedRelativePath = path.relative(repoRoot, resolvedPath);
-            if (
-              resolvedRelativePath.startsWith("..") ||
-              path.isAbsolute(resolvedRelativePath) ||
-              isSensitivePath(resolvedRelativePath)
-            ) {
-              throw new Error("Refusing to package a sensitive or external file: " + relativeToRoot);
-            }
-            relativeFiles.add(relativeToRoot.split(path.sep).join("/"));
-          } catch (error) {
-            if (error?.code === "ENOENT" || error?.code === "ENOTDIR") continue;
-            throw error;
-          }
+          await addReferencedPath(candidate);
         }
       }
     }
@@ -109,11 +161,8 @@ const tar = spawnSync(
 if (tar.error) throw tar.error;
 if (tar.status !== 0) process.exit(tar.status ?? 1);
 
-let totalBytes = 0;
-for (const file of sortedFiles) {
-  totalBytes += (await stat(path.resolve(repoRoot, file))).size;
-}
+const archiveSize = (await stat(archivePath)).size;
 console.log(
-  "Packaged " + sortedFiles.length + " Vercel filePathMap files (" +
-  (totalBytes / 1024 / 1024).toFixed(1) + " MiB uncompressed).",
+  "Packaged " + sortedFiles.length + " Vercel filePathMap files, including referenced directories (" +
+  (archiveSize / 1024 / 1024).toFixed(1) + " MiB compressed).",
 );
