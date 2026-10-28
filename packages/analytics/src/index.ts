@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { Analytics, type BeforeSendEvent } from "@vercel/analytics/next"
 import { track } from "@vercel/analytics"
-import { SpeedInsights } from "@vercel/speed-insights/next"
+import { SpeedInsights } from "@vercel/speed-insights/react"
 import { clientEnv } from "@workspace/env/client"
 import {
   CookieConsent,
@@ -65,6 +65,29 @@ function sanitizeAnalyticsEvent(
   }
 }
 
+function sanitizeSpeedInsightsEvent(
+  event: { url: string; route?: string },
+  isProductApp: boolean
+) {
+  if (!useCookieConsentStore.getState().consent.analytics) return null
+
+  try {
+    const url = new URL(event.url, window.location.origin)
+    const pathname = sanitizePath(url.pathname, isProductApp)
+    if (!pathname) return null
+    url.pathname = pathname
+    url.search = ""
+    url.hash = ""
+    const route = event.route
+      ? sanitizePath(event.route, isProductApp)
+      : pathname
+    if (!route) return null
+    return { ...event, url: url.toString(), route }
+  } catch {
+    return null
+  }
+}
+
 function sanitizeEventProperties(
   properties: Record<string, string | number | boolean> = {}
 ) {
@@ -99,7 +122,15 @@ function ConsentGatedVercelScripts({ isProductApp }: { isProductApp: boolean }) 
         id={clientEnv.NEXT_PUBLIC_VERCEL_ANALYTICS_ID}
         beforeSend={(event) => sanitizeAnalyticsEvent(event, isProductApp)}
       />
-      {safePath ? <SpeedInsights route={safePath} /> : null}
+      {safePath ? (
+        <SpeedInsights
+          framework="next"
+          route={safePath}
+          beforeSend={(event) =>
+            sanitizeSpeedInsightsEvent(event, isProductApp)
+          }
+        />
+      ) : null}
     </>
   )
 }
