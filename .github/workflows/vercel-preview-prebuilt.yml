@@ -165,6 +165,19 @@ jobs:
           name: vercel-output-${{ github.event.pull_request.number }}-${{ matrix.app }}
           path: .vercel/output
 
+      # The clean deploy runner intentionally does not check out PR source.
+      # Recreate the configured monorepo root so Vercel CLI can resolve the
+      # project's Root Directory while deploying the uploaded .vercel/output.
+      - name: Recreate configured project root directory
+        env:
+          PROJECT_ROOT: ${{ fromJSON('{"docs":"apps/docs","agent":"apps/agent","web":"apps/web","app":"apps/app"}')[matrix.app] }}
+        run: |
+          if [ -z "$PROJECT_ROOT" ]; then
+            echo "::error::Unknown Vercel project root."
+            exit 1
+          fi
+          mkdir -p -- "$PROJECT_ROOT"
+
       - name: Deploy prebuilt preview
         run: |
           deployment_url="$(vercel deploy --prebuilt --yes)"
