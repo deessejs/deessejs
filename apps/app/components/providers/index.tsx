@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 import { QueryClientProvider } from "./query-client-provider"
 import { ThemeProvider } from "./theme-provider"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
+import { AnalyticsConsent } from "@workspace/analytics"
 
 /**
  * Root provider stack for `apps/app`.
@@ -27,7 +28,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
 	return (
 		<QueryClientProvider>
 			<ThemeProvider>
-				<TooltipProvider>{children}</TooltipProvider>
+				<TooltipProvider>
+					{children}
+					<AnalyticsConsent showPreferences />
+				</TooltipProvider>
 			</ThemeProvider>
 		</QueryClientProvider>
 	)

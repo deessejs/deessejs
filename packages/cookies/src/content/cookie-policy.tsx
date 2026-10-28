@@ -37,11 +37,11 @@ export function CookiePolicy() {
 
       <H3>Analytics</H3>
       <P>
-        Optional. If you opt in, we use Vercel Analytics to record anonymized
-        page views with no cross-site correlation. The script is loaded
-        first-party from the same domain and does not set any cookie. We do not
-        use Google Analytics, Plausible, PostHog, or any third-party analytics
-        service.
+        Optional. If you opt in, we use Vercel Analytics to record anonymized page
+        views and Vercel Speed Insights to measure real-world page performance
+        (including Core Web Vitals). Both scripts load only after consent.
+        Vercel Analytics is served first-party and does not set any cookie. We do
+        not use Google Analytics, Plausible, PostHog, or advertising trackers.
       </P>
 
       <H3>Marketing</H3>

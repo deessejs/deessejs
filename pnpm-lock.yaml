@@ -78,9 +78,15 @@ catalogs:
     '@types/picomatch':
       specifier: ^4.0.3
       version: 4.0.3
+    '@vercel/analytics':
+      specifier: ^2.0.1
+      version: 2.0.1
     '@vercel/related-projects':
       specifier: ^1.1.1
       version: 1.1.1
+    '@vercel/speed-insights':
+      specifier: ^2.0.0
+      version: 2.0.0
     '@vitest/coverage-v8':
       specifier: ^4.1.10
       version: 4.1.10
@@ -291,6 +297,12 @@ importers:
 
   apps/app:
     dependencies:
+      @workspace/cookies:
+        specifier: workspace:*
+        version: link:../../packages/cookies
+      @workspace/analytics:
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@nanostores/react':
         specifier: ^1.0.0
         version: 1.1.0(nanostores@1.4.0)(react@19.2.7)
@@ -489,6 +501,12 @@ importers:
 
   apps/docs:
     dependencies:
+      @workspace/cookies:
+        specifier: workspace:*
+        version: link:../../packages/cookies
+      @workspace/analytics:
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -556,6 +574,12 @@ importers:
 
   apps/web:
     dependencies:
+      @workspace/cookies:
+        specifier: workspace:*
+        version: link:../../packages/cookies
+      @workspace/analytics:
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@hookform/resolvers':
         specifier: 'catalog:'
         version: 5.9.1(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.88.0(react@19.2.7))(zod@4.4.3)
@@ -695,6 +719,43 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.4.3
+
+  packages/analytics:
+    dependencies:
+      '@vercel/analytics':
+        specifier: 'catalog:'
+        version: 2.0.1(react@19.2.7)
+      '@vercel/speed-insights':
+        specifier: 'catalog:'
+        version: 2.0.0(react@19.2.7)
+      '@workspace/cookies':
+        specifier: workspace:*
+        version: link:../cookies
+      next:
+        specifier: 'catalog:'
+        version: 16.2.10(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.62.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      react:
+        specifier: 'catalog:'
+        version: 19.2.7
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.7(react@19.2.7)
+    devDependencies:
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.17
+      '@workspace/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.75.0
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.90.0
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
 
   packages/api:
     dependencies:
@@ -9633,8 +9694,71 @@ packages:
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
+  '@vercel/analytics@2.0.1':
+    resolution: {integrity: sha512-MTQG6V9qQrt1tsDeF+2Uoo5aPjqbVPys1xvnIftXSJYG2SrwXRHnqEvVoYID7BTruDz4lCd2Z7rM1BdkUehk2g==}
+    peerDependencies:
+      '@remix-run/react': ^2
+      '@sveltejs/kit': ^1 || ^2
+      next: '>= 13'
+      nuxt: '>= 3'
+      react: ^18 || ^19 || ^19.0.0-rc
+      svelte: '>= 4'
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      '@remix-run/react':
+        optional: true
+      '@sveltejs/kit':
+        optional: true
+      next:
+        optional: true
+      nuxt:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
+        optional: true
+
+  '@vercel/speed-insights@2.0.0':
+    resolution: {integrity: sha512-jwkNcrTeafWxjmWq4AHBaptSqZiJkYU5adLC9QBSqeim0GcqDMgN5Ievh8OG1rJ6W3A4l1oiP7qr9CWxGuzu3w==}
+    peerDependencies:
+      '@sveltejs/kit': ^1 || ^2
+      next: '>= 13'
+      nuxt: '>= 3'
+      react: ^18 || ^19 || ^19.0.0-rc
+      svelte: '>= 4'
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      '@sveltejs/kit':
+        optional: true
+      next:
+        optional: true
+      nuxt:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
+        optional: true
+
 
 snapshots:
+  '@vercel/analytics@2.0.1(react@19.2.7)':
+    optionalDependencies:
+      react: 19.2.7
+
+  '@vercel/speed-insights@2.0.0(react@19.2.7)':
+    optionalDependencies:
+      react: 19.2.7
+
 
   '@ai-sdk/anthropic@3.0.6(zod@4.4.3)':
     dependencies:
