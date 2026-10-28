@@ -30,7 +30,7 @@
       "additionalProperties": {
         "type": "string",
         "minLength": 1,
-        "pattern": "^\\\\P{Cc}+$"
+        "pattern": "^\\P{Cc}+$"
       }
     }
   },
