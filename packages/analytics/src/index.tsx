@@ -126,7 +126,9 @@ function ConsentGatedVercelScripts({ isProductApp }: { isProductApp: boolean }) 
   return (
     <>
       <Analytics
-        dsn={clientEnv.NEXT_PUBLIC_VERCEL_ANALYTICS_DSN}
+        {...(clientEnv.NEXT_PUBLIC_VERCEL_ANALYTICS_DSN
+          ? { dsn: clientEnv.NEXT_PUBLIC_VERCEL_ANALYTICS_DSN }
+          : {})}
         beforeSend={(event) => sanitizeAnalyticsEvent(event, isProductApp)}
       />
       {safePath ? (
