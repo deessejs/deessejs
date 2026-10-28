@@ -22,6 +22,7 @@
     "@orpc/server": "catalog:",
     "@shadcn/react": "catalog:",
     "@vercel/related-projects": "catalog:",
+    "@vercel/speed-insights": "catalog:",
     "@workspace/analytics": "workspace:*",
     "@workspace/api": "workspace:*",
     "@workspace/contracts": "workspace:*",

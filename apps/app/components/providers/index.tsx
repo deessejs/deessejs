@@ -30,7 +30,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
 			<ThemeProvider>
 				<TooltipProvider>
 					{children}
-					<AnalyticsConsent showPreferences />
+					<AnalyticsConsent isProductApp showPreferences />
 				</TooltipProvider>
 			</ThemeProvider>
 		</QueryClientProvider>

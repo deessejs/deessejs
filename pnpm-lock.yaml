@@ -297,6 +297,9 @@ importers:
 
   apps/app:
     dependencies:
+      '@vercel/speed-insights':
+        specifier: 'catalog:'
+        version: 2.0.0(react@19.2.7)
       @workspace/cookies:
         specifier: workspace:*
         version: link:../../packages/cookies
@@ -501,6 +504,9 @@ importers:
 
   apps/docs:
     dependencies:
+      '@vercel/speed-insights':
+        specifier: 'catalog:'
+        version: 2.0.0(react@19.2.7)
       @workspace/cookies:
         specifier: workspace:*
         version: link:../../packages/cookies
@@ -574,6 +580,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@vercel/speed-insights':
+        specifier: 'catalog:'
+        version: 2.0.0(react@19.2.7)
       @workspace/cookies:
         specifier: workspace:*
         version: link:../../packages/cookies
@@ -731,6 +740,9 @@ importers:
       '@workspace/cookies':
         specifier: workspace:*
         version: link:../cookies
+      '@workspace/env':
+        specifier: workspace:*
+        version: link:../env
       next:
         specifier: 'catalog:'
         version: 16.2.10(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.62.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
