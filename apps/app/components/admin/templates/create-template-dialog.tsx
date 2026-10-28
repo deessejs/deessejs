@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { z } from "zod"
 import { orpcBrowser } from "@/lib/orpc-browser"
 
@@ -84,7 +84,10 @@ export function CreateTemplateDialog({
     resolver: zodResolver(formSchema),
     defaultValues: defaults,
   })
-  const { register, handleSubmit, formState, setValue, watch, reset } = form
+  const { register, handleSubmit, formState, setValue, reset } = form
+  const category = useWatch({ control: form.control, name: "category" })
+  const access = useWatch({ control: form.control, name: "access" })
+  const imageName = useWatch({ control: form.control, name: "imageName" })
 
   function handleOpenChange(next: boolean) {
     if (!next && !formState.isSubmitting) {
@@ -110,9 +113,9 @@ export function CreateTemplateDialog({
         licenseFallback: values.licenseFallback.trim() || null,
         access: values.access,
         imageName:
-          values.imageName === "none"
-            ? null
-            : (values.imageName as (typeof TEMPLATE_IMAGE_FILENAMES)[number]),
+          TEMPLATE_IMAGE_FILENAMES.find(
+            (imageName) => imageName === values.imageName
+          ) ?? null,
       })
       reset(defaults)
       onOpenChange(false)
@@ -175,10 +178,13 @@ export function CreateTemplateDialog({
             </Field>
             <Field label="Category" controlId="template-category">
               <Select
-                value={watch("category")}
+                value={category}
                 onValueChange={(value) => {
-                  if (value)
-                    setValue("category", value as FormValues["category"], {
+                  const nextCategory = CATEGORY_SLUGS.find(
+                    (category) => category === value
+                  )
+                  if (nextCategory)
+                    setValue("category", nextCategory, {
                       shouldDirty: true,
                     })
                 }}
@@ -219,10 +225,13 @@ export function CreateTemplateDialog({
             </Field>
             <Field label="Access" controlId="template-access">
               <Select
-                value={watch("access")}
+                value={access}
                 onValueChange={(value) => {
-                  if (value)
-                    setValue("access", value as FormValues["access"], {
+                  const nextAccess = ["free", "paid"].find(
+                    (access) => access === value
+                  )
+                  if (nextAccess)
+                    setValue("access", nextAccess, {
                       shouldDirty: true,
                     })
                 }}
@@ -242,7 +251,7 @@ export function CreateTemplateDialog({
               hint="Optional deployed image"
             >
               <Select
-                value={watch("imageName")}
+                value={imageName}
                 onValueChange={(value) => {
                   if (value) setValue("imageName", value, { shouldDirty: true })
                 }}
