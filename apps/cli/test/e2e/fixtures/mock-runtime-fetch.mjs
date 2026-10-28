@@ -124,9 +124,13 @@ function githubContentsResponse(requestUrl) {
 
 function githubApiResponse(requestUrl) {
   if (requestUrl.hostname !== "api.github.com") return null
-  return (
+  const response =
     githubResponse(requestUrl.pathname) ?? githubContentsResponse(requestUrl)
-  )
+  if (response) return response
+  if (/^\/repos\/[^/]+\/[^/]+$/.test(requestUrl.pathname)) {
+    return new globalThis.Response(null, { status: 404 })
+  }
+  return null
 }
 
 globalThis.fetch = async (input, init) => {

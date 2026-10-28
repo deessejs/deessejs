@@ -42,9 +42,14 @@ const dedupe = <T extends string>(
   values: ReadonlyArray<string>,
   allowed: ReadonlyArray<T>
 ): T[] => {
+  const allowedByValue = new Map<string, T>()
+  for (const allowedValue of allowed) {
+    allowedByValue.set(allowedValue, allowedValue)
+  }
+
   const out: T[] = []
   for (const value of values) {
-    const match = allowed.find((candidate) => candidate === value)
+    const match = allowedByValue.get(value)
     if (match !== undefined) out.push(match)
   }
   return Array.from(new Set(out))
