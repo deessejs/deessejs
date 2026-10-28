@@ -110,6 +110,25 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
+      - name: Checkout trusted prebuilt context packager
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .trusted-tools
+          sparse-checkout: .github/scripts/package-vercel-prebuilt-context.mjs
+          persist-credentials: false
+
+      - name: Package traced files required by prebuilt deployment
+        run: node .trusted-tools/.github/scripts/package-vercel-prebuilt-context.mjs
+
+      - name: Upload traced prebuilt context
+        uses: actions/upload-artifact@v7
+        with:
+          name: vercel-context-${{ github.event.pull_request.number }}-${{ matrix.app }}
+          path: .vercel/prebuilt-context.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Upload prebuilt output
         uses: actions/upload-artifact@v7
         with:
@@ -165,9 +184,15 @@ jobs:
           name: vercel-output-${{ github.event.pull_request.number }}-${{ matrix.app }}
           path: .vercel/output
 
+      - name: Download traced prebuilt context
+        uses: actions/download-artifact@v8
+        with:
+          name: vercel-context-${{ github.event.pull_request.number }}-${{ matrix.app }}
+          path: .
+
       # The clean deploy runner intentionally does not check out PR source.
       # Recreate the configured monorepo root so Vercel CLI can resolve the
-      # project's Root Directory while deploying the uploaded .vercel/output.
+      # project's Root Directory and traced files from the uploaded context.
       - name: Recreate configured project root directory
         env:
           PROJECT_ROOT: ${{ fromJSON('{"docs":"apps/docs","agent":"apps/agent","web":"apps/web","app":"apps/app"}')[matrix.app] }}
@@ -177,6 +202,7 @@ jobs:
             exit 1
           fi
           mkdir -p -- "$PROJECT_ROOT"
+          tar -xzf prebuilt-context.tar.gz -C .
 
       - name: Deploy prebuilt preview
         run: |
