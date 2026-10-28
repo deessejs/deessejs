@@ -247,8 +247,8 @@ export default async function SaasAppsPage() {
   }
 
   await Promise.all(
-    (Object.keys(SAAS_SNIPPETS) as SaasPillarSlug[]).flatMap((slug) =>
-      SAAS_SNIPPETS[slug].files.map((file) =>
+    Object.entries(SAAS_SNIPPETS).flatMap(([slug, snippet]) =>
+      snippet.files.map((file) =>
         codeToHtml(file.code, {
           lang: file.lang,
           themes: { light: "github-light", dark: "github-dark" },

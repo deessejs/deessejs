@@ -47,15 +47,12 @@ function getServerEnv(): Readonly<ServerEnv> {
     runtimeEnv: snapshot,
     emptyStringAsUndefined: true,
     onValidationError: (issues) => {
-      // oxlint-disable-next-line no-console
       console.error("\n[env] Invalid environment variables:")
       for (const issue of issues) {
-        // oxlint-disable-next-line no-console
         console.error(
           `  - ${issue.path?.join(".") ?? "(root)"}: ${issue.message}`
         )
       }
-      // oxlint-disable-next-line no-console
       console.error(
         "\nCopy .env.example to .env at the repo root and fill in the values.\n"
       )
@@ -98,7 +95,7 @@ function getServerEnv(): Readonly<ServerEnv> {
     // ("true") is applied by the schema when the env var is absent.
     REQUIRE_EMAIL_VERIFICATION_ON_INVITATION:
       env.REQUIRE_EMAIL_VERIFICATION_ON_INVITATION,
-  } as ServerEnv) as Readonly<ServerEnv>
+  }) satisfies Readonly<ServerEnv>
 
   // Runtime assertion: no NEXT_PUBLIC_* may leak through the server face.
   // The previous hand-rolled Proxy trap list ran on every access; this
@@ -132,27 +129,26 @@ function getServerEnv(): Readonly<ServerEnv> {
  *   const env = getServerEnv()
  */
 export const serverEnv: Readonly<ServerEnv> = new Proxy(
+  // lint exception: this empty target preserves lazy validation while the proxy supplies each property.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   {} as Readonly<ServerEnv>,
   {
     get(_target, prop) {
       if (typeof prop === "symbol") return undefined
       const env = getServerEnv()
-      const value = (env as unknown as Record<string, unknown>)[prop]
+      const value = Reflect.get(env, prop)
       return value === undefined ? undefined : value
     },
     has(_target, prop) {
       if (typeof prop === "symbol") return false
-      return prop in (getServerEnv() as unknown as Record<string, unknown>)
+      return Reflect.has(getServerEnv(), prop)
     },
     ownKeys() {
-      return Reflect.ownKeys(
-        getServerEnv() as unknown as Record<string, unknown>
-      )
+      return Reflect.ownKeys(getServerEnv())
     },
     getOwnPropertyDescriptor(_target, prop) {
-      const env = getServerEnv() as unknown as Record<string, unknown>
       if (typeof prop === "symbol") return undefined
-      const descriptor = Object.getOwnPropertyDescriptor(env, prop)
+      const descriptor = Object.getOwnPropertyDescriptor(getServerEnv(), prop)
       if (!descriptor) return undefined
       // The proxy target is an empty, extensible object, so the
       // invariant requires reporting `configurable: true` for every

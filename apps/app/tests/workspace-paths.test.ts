@@ -27,17 +27,10 @@ const applicationSegments = (): string[] => {
   const walk = (directory: string, prefix: string[]): void => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       if (entry.isFile()) {
-        if (entry.name === "page.tsx") {
-          const segment = prefix[0]
-          if (segment !== undefined && !segment.startsWith("[")) {
-            found.add(segment)
-          }
-        }
+        addPageSegment(entry.name, prefix, found)
         continue
       }
-      if (!entry.isDirectory()) continue
-      // A parallel route is a slot, not a segment.
-      if (entry.name.startsWith("@")) continue
+      if (!entry.isDirectory() || entry.name.startsWith("@")) continue
       const next = entry.name.startsWith("(") ? prefix : [...prefix, entry.name]
       walk(join(directory, entry.name), next)
     }
@@ -45,6 +38,16 @@ const applicationSegments = (): string[] => {
 
   walk(appDir, [])
   return [...found].sort()
+}
+
+function addPageSegment(
+  filename: string,
+  prefix: string[],
+  found: Set<string>
+): void {
+  if (filename !== "page.tsx") return
+  const segment = prefix[0]
+  if (segment !== undefined && !segment.startsWith("[")) found.add(segment)
 }
 
 describe("the workspace paths", () => {
@@ -95,7 +98,10 @@ describe("the application route tree", () => {
     // says so is a directory, not a group: a group is transparent and
     // would move them to `/settings/*`.
     const settings = fileURLToPath(
-      new URL("../app/(protected)/account/settings/profile/page.tsx", import.meta.url),
+      new URL(
+        "../app/(protected)/account/settings/profile/page.tsx",
+        import.meta.url
+      )
     )
     expect(existsSync(settings)).toBe(true)
   })

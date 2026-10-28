@@ -143,6 +143,9 @@ function ExplorerActionButton({
 }
 
 function ExplorerPane() {
+  const firstFile = SAAS_STARTER_FILES.at(0)
+  if (!firstFile) return null
+
   return (
     <div className="flex flex-col">
       <PaneHeader
@@ -155,7 +158,7 @@ function ExplorerPane() {
         }
       />
       <div className="flex-1 overflow-hidden p-4 pt-2">
-        <ExplorerNodeView node={SAAS_STARTER_FILES[0]!} depth={0} />
+        <ExplorerNodeView node={firstFile} depth={0} />
       </div>
     </div>
   )
@@ -211,7 +214,11 @@ function EditorPane({
 }: {
   editorHtml: Record<EditorTabId, string>
 }) {
-  const [activeTab, setActiveTab] = useState<EditorTabId>(EDITOR_TABS[0]!.id)
+  const firstTab = EDITOR_TABS.at(0)
+  const [activeTab, setActiveTab] = useState<EditorTabId | undefined>(
+    firstTab?.id
+  )
+  if (!activeTab) return null
 
   return (
     <div className="flex flex-col">
@@ -386,6 +393,8 @@ function StaticWorkbench({
   terminalLines: readonly [string, ReadonlyArray<string>, string]
 }) {
   const [firstCommand, outputLines, secondCommand] = terminalLines
+  const firstFile = SAAS_STARTER_FILES.at(0)
+  if (!firstFile) return null
   return (
     <div
       role="img"
@@ -420,7 +429,7 @@ function StaticWorkbench({
             }
           />
           <div className="flex-1 overflow-hidden p-4 pt-2">
-            <StaticExplorer node={SAAS_STARTER_FILES[0]!} depth={0} />
+            <StaticExplorer node={firstFile} depth={0} />
           </div>
         </div>
         <EditorPane editorHtml={editorHtml} />

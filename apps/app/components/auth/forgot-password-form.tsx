@@ -35,7 +35,10 @@ export function ForgotPasswordForm() {
 			<div className="flex flex-col gap-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200">
 				<p className="font-medium">Email sent</p>
 				<p>Check your email for a reset link.</p>
-				<Link href="/login" className="text-primary underline-offset-4 hover:underline">
+				<Link
+					href="/login"
+					className="text-primary underline-offset-4 hover:underline"
+				>
 					Back to login
 				</Link>
 			</div>
@@ -52,28 +55,39 @@ export function ForgotPasswordForm() {
 				noValidate
 				className="flex flex-col gap-4"
 			>
-				<Field
-					form={form}
-					name="email"
-					label="Email"
-					type="email"
-					autoComplete="email"
-					autoFocus
-				/>
+				<form.Field name="email">
+					{(field) => (
+						<Field
+							field={field}
+							label="Email"
+							type="email"
+							autoComplete="email"
+							autoFocus
+						/>
+					)}
+				</form.Field>
 
 				<form.Subscribe
 					selector={(state) => [state.canSubmit, state.isSubmitting] as const}
-					children={([canSubmit, isSubmitting]) => (
-						<Button type="submit" disabled={!canSubmit} aria-busy={isSubmitting}>
+				>
+					{([canSubmit, isSubmitting]) => (
+						<Button
+							type="submit"
+							disabled={!canSubmit}
+							aria-busy={isSubmitting}
+						>
 							{isSubmitting ? "Sending…" : "Send reset link"}
 						</Button>
 					)}
-				/>
+				</form.Subscribe>
 			</form>
 
 			<p className="text-center text-sm text-muted-foreground">
 				Remember your password?{" "}
-				<Link href="/login" className="text-primary underline-offset-4 hover:underline">
+				<Link
+					href="/login"
+					className="text-primary underline-offset-4 hover:underline"
+				>
 					Log in
 				</Link>
 			</p>

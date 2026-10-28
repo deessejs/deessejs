@@ -41,8 +41,10 @@ function getDb(): ReturnType<typeof drizzle> {
 
 // Accessor — consumers use `db`, never `_db`. The Proxy defers pool creation
 // until a property is actually accessed (e.g. by drizzle queries at runtime).
+// lint exception: the proxy target stays empty so database initialization remains lazy.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion
 export const db = new Proxy({} as ReturnType<typeof drizzle>, {
   get(_target, prop) {
-    return getDb()[prop as keyof ReturnType<typeof drizzle>]
+    return Reflect.get(getDb(), prop)
   },
 })

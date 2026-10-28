@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useCallback, useRef } from "react"
 import { ArrowLeft, ArrowRight, ChevronRight, Clock } from "lucide-react"
 
+import { Button } from "@workspace/ui/components/button"
 import {
   Carousel,
   CarouselContent,
@@ -100,9 +101,10 @@ function ChevronButton({
 }) {
   const Icon = direction === "prev" ? ArrowLeft : ArrowRight
   return (
-    // oxlint-disable-next-line react/forbid-elements
-    <button
+    <Button
       type="button"
+      variant="outline"
+      size="icon-sm"
       onClick={onClick}
       aria-label={label}
       className={cn(
@@ -112,7 +114,7 @@ function ChevronButton({
       )}
     >
       <Icon className="size-4" aria-hidden />
-    </button>
+    </Button>
   )
 }
 

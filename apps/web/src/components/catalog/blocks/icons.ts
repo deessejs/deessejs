@@ -60,21 +60,8 @@ export const BLOCK_ICONS = {
   "footer-minimal": PanelBottom,
 } as const satisfies Record<CatalogueBlock["slug"], LucideIcon>
 
-// Compile-time exhaustiveness. Cast through `boolean` to
-// sidestep a TS 6.x quirk where the chained `extends` over a
-// union of 21 string-literal keys resolves to `never` even when
-// both sides match. The runtime `as Record<...>` access in
-// `getBlockIcon` is the source of truth.
-const _exhaustive = null as unknown as boolean
-void _exhaustive
+const ICON_BY_SLUG = new Map(Object.entries(BLOCK_ICONS))
 
 export function getBlockIcon(slug: CatalogueBlock["slug"]): LucideIcon {
-  // `as const satisfies Record<...>` gives the map an exact type
-  // with no index signature, so `BLOCK_ICONS[slug]` widens the
-  // return to `LucideIcon | undefined`. Cast through `unknown` to
-  // keep the function's `LucideIcon` return type and pair the
-  // `?? Wrench` fallback with a non-null assertion. Sound at
-  // runtime because the slug is constrained to the known keys.
-  const map = BLOCK_ICONS as unknown as Record<string, LucideIcon>
-  return map[slug] ?? Wrench
+  return ICON_BY_SLUG.get(slug) ?? Wrench
 }

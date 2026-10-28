@@ -6,7 +6,7 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
-    "lint": "turbo lint -- --max-warnings=0",
+    "lint": "pnpm lint:directives && pnpm lint:type-assertions && pnpm lint:guard && turbo lint -- --max-warnings=0",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
@@ -16,6 +16,9 @@
     "db:studio": "pnpm --filter @workspace/database db:studio",
     "auth:generate": "pnpm --filter @workspace/auth auth:generate",
     "env:check": "node --experimental-strip-types scripts/env-check.ts",
+    "lint:directives": "node scripts/check-lint-directives.mjs",
+    "lint:type-assertions": "node scripts/lint-type-assertions.mjs",
+    "lint:guard": "pnpm exec oxlint --config .oxlintrc.json scripts/check-lint-directives.mjs --max-warnings=0",
     "dedupe:check": "pnpm dedupe --check",
     "complex:collect": "node --experimental-strip-types scripts/complexity-collect.ts",
     "complex:report": "node --experimental-strip-types scripts/complexity-report.ts"
@@ -31,6 +34,7 @@
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "oxlint-plugin-eslint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "pkg-pr-new": "catalog:",
     "ts-api-utils": "catalog:",
     "turbo": "^2.10.4",

@@ -77,7 +77,8 @@ describe("POST /api/v1/rpc/templates/list", () => {
       ])
 
       const bySlug = new Map(templates.map((t) => [t.slug, t]))
-      const template = bySlug.get("saas-starter")!
+      const template = bySlug.get("saas-starter")
+      if (!template) throw new Error("Expected the saas-starter template")
       // Pin the editorial fields from `packages/api/src/templates.ts`.
       // These are the values `enrich()` does not overwrite (or
       // overwrites with the same value).
@@ -87,7 +88,7 @@ describe("POST /api/v1/rpc/templates/list", () => {
       // Pin the GitHub-derived fields that are stable across runs.
       expect(template.license).toBe("MIT")
       expect(template.cloneUrl).toBe(
-        "https://github.com/deessejs/saas-template",
+        "https://github.com/deessejs/saas-template"
       )
       // Pin the type shape of fields that vary in value but
       // not in type. A future contract change (e.g. GitHub
@@ -202,7 +203,11 @@ describe("POST /api/v1/rpc/templates/list", () => {
  */
 import type { TemplateV1 } from "@workspace/contracts/v1"
 
-import { describe as describeUnit, expect as expectUnit, it as itUnit } from "vitest"
+import {
+  describe as describeUnit,
+  expect as expectUnit,
+  it as itUnit,
+} from "vitest"
 
 import { ORPCError } from "@orpc/server"
 
@@ -221,17 +226,20 @@ describeUnit("enrich() failure surface (issue #81 wire-code)", () => {
     await expectUnit(enrich(brokenRegistry)).rejects.toBeInstanceOf(Error)
   })
 
-  itUnit("does not translate errors itself — translation lives in the handler", async () => {
-    // The core layer surfaces raw errors. The handler in
-    // `packages/api/src/orpc/routes/templates.ts` is the single
-    // place the code is promoted to `TEMPLATES_FETCH_FAILED`.
-    // A regression here (e.g. someone wraps `enrich()` in a
-    // try/catch and throws an ORPCError from the core) would
-    // break the layered separation.
-    await expectUnit(enrich(brokenRegistry)).rejects.not.toBeInstanceOf(
-      ORPCError,
-    )
-  })
+  itUnit(
+    "does not translate errors itself — translation lives in the handler",
+    async () => {
+      // The core layer surfaces raw errors. The handler in
+      // `packages/api/src/orpc/routes/templates.ts` is the single
+      // place the code is promoted to `TEMPLATES_FETCH_FAILED`.
+      // A regression here (e.g. someone wraps `enrich()` in a
+      // try/catch and throws an ORPCError from the core) would
+      // break the layered separation.
+      await expectUnit(enrich(brokenRegistry)).rejects.not.toBeInstanceOf(
+        ORPCError
+      )
+    }
+  )
 })
 
 /**
@@ -260,7 +268,7 @@ describeUnit("templates.list e2e guard", () => {
    */
   const withEnv = (
     values: Record<string, string | undefined>,
-    run: () => void,
+    run: () => void
   ): void => {
     const saved = new Map<string, string | undefined>()
     for (const [key, value] of Object.entries(values)) {
@@ -291,7 +299,7 @@ describeUnit("templates.list e2e guard", () => {
       withEnv({ VERCEL_AUTOMATION_BYPASS_SECRET: undefined }, () => {
         expect(e2eForceFail(headersFor())).toBeNull()
       })
-    },
+    }
   )
 
   itUnit(
@@ -301,9 +309,9 @@ describeUnit("templates.list e2e guard", () => {
         { VERCEL_AUTOMATION_BYPASS_SECRET: SECRET, NODE_ENV: "production" },
         () => {
           expect(e2eForceFail(headersFor())).toBeNull()
-        },
+        }
       )
-    },
+    }
   )
 
   itUnit(
@@ -314,12 +322,12 @@ describeUnit("templates.list e2e guard", () => {
         () => {
           expect(
             e2eForceFail(
-              headersFor({ "x-vercel-protection-bypass": "wrong-secret" }),
-            ),
+              headersFor({ "x-vercel-protection-bypass": "wrong-secret" })
+            )
           ).toBeNull()
-        },
+        }
       )
-    },
+    }
   )
 
   itUnit("fires the failure when the secret matches and it is forced", () => {
@@ -330,9 +338,9 @@ describeUnit("templates.list e2e guard", () => {
 
   itUnit("returns an empty catalog when the empty path is forced", () => {
     withEnv({ VERCEL_AUTOMATION_BYPASS_SECRET: SECRET }, () => {
-      expect(
-        e2eForceFail(headersFor({ "x-e2e-force-fail": "2" })),
-      ).toEqual({ templates: [] })
+      expect(e2eForceFail(headersFor({ "x-e2e-force-fail": "2" }))).toEqual({
+        templates: [],
+      })
     })
   })
 })

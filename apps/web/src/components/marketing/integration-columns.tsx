@@ -1,3 +1,4 @@
+import Image from "next/image"
 import {
   INTEGRATION_GROUP_LABELS,
   type Integration,
@@ -35,8 +36,7 @@ export function IntegrationColumns({
                   key={`${integration.group}-${integration.name}`}
                   className="inline-flex items-center gap-3 text-copy-14 text-foreground"
                 >
-                  {/* oxlint-disable-next-line nextjs/no-img-element */}
-                  <img
+                  <Image
                     src={`/logos/${integration.logo}.svg`}
                     alt=""
                     width={20}

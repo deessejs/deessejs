@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript"],
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "rules": {
+    "typescript/no-non-null-assertion": "error",
+    "typescript/no-unsafe-type-assertion": "error"
+  }
+}

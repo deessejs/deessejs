@@ -1,7 +1,7 @@
 import { Command } from "commander"
 import ora from "ora"
 
-import { internal } from "../errors/index.js"
+import { CliError, internal } from "../errors/index.js"
 import {
   printBlockInfo,
   printBlockCheck,
@@ -50,18 +50,18 @@ const blockInfoCommand = new Command("info")
       }
     } catch (error) {
       spinner?.fail("Failed to read block details")
-      if (error instanceof Error && error.name === "CliError") {
+      if (error instanceof CliError) {
         if (options.json) {
           printJson({
             ok: false,
-            code: (error as { code?: string }).code,
+            code: error.code,
             message: error.message,
-            hint: (error as { hint?: string }).hint,
+            hint: error.hint,
           })
         } else {
-          printError(error as Parameters<typeof printError>[0])
+          printError(error)
         }
-        process.exit((error as { exitCode?: () => number }).exitCode?.() ?? 1)
+        process.exit(error.exitCode())
       }
       throw internal(error instanceof Error ? error.message : String(error))
     }
@@ -79,49 +79,66 @@ const blockCheckCommand = new Command("check")
     "Git ref to check (defaults to the URL ref or repository default branch)"
   )
   .option("--json", "JSON output for scripting")
-  .action(async (source: string, options: { ref?: string; json?: boolean }) => {
-    const spinner = options.json
-      ? null
-      : ora("Checking block source...").start()
-
-    try {
-      const result = await checkBlockSource(source, {
-        ...(options.ref ? { ref: options.ref } : {}),
-      })
-      const valid = result.diagnostics.length === 0
-
-      if (options.json) {
-        printJson({
-          ok: valid,
-          command: "block check",
-          ...result,
-        })
-      } else {
-        if (valid) spinner?.succeed("Block source is valid")
-        else spinner?.fail("Block source validation failed")
-        printBlockCheck(result)
-      }
-
-      if (!valid) process.exitCode = 1
-    } catch (error) {
-      spinner?.fail("Failed to check block source")
-      if (error instanceof Error && error.name === "CliError") {
-        if (options.json) {
-          printJson({
-            ok: false,
-            command: "block check",
-            code: (error as { code?: string }).code,
-            message: error.message,
-            hint: (error as { hint?: string }).hint,
-          })
-        } else {
-          printError(error as Parameters<typeof printError>[0])
-        }
-        process.exit((error as { exitCode?: () => number }).exitCode?.() ?? 1)
-      }
-      throw internal(error instanceof Error ? error.message : String(error))
-    }
-  })
+  .action((source: string, options: BlockCommandOptions) =>
+    runBlockCheck(source, options)
+  )
 
 blockCommand.addCommand(blockInfoCommand)
 blockCommand.addCommand(blockCheckCommand)
+
+type BlockCommandOptions = { ref?: string; json?: boolean }
+type BlockSpinner = ReturnType<typeof ora> | null
+
+async function runBlockCheck(
+  source: string,
+  options: BlockCommandOptions
+): Promise<void> {
+  const spinner = options.json ? null : ora("Checking block source...").start()
+  try {
+    const result = await checkBlockSource(source, {
+      ...(options.ref ? { ref: options.ref } : {}),
+    })
+    reportBlockCheck(result, options.json ?? false, spinner)
+  } catch (error) {
+    handleBlockCheckError(error, options.json ?? false, spinner)
+  }
+}
+
+function reportBlockCheck(
+  result: Awaited<ReturnType<typeof checkBlockSource>>,
+  json: boolean,
+  spinner: BlockSpinner
+): void {
+  const valid = result.diagnostics.length === 0
+  if (json) {
+    printJson({ ok: valid, command: "block check", ...result })
+  } else {
+    if (valid) spinner?.succeed("Block source is valid")
+    else spinner?.fail("Block source validation failed")
+    printBlockCheck(result)
+  }
+  if (!valid) process.exitCode = 1
+}
+
+function handleBlockCheckError(
+  error: unknown,
+  json: boolean,
+  spinner: BlockSpinner
+): never {
+  spinner?.fail("Failed to check block source")
+  if (!(error instanceof CliError)) {
+    throw internal(error instanceof Error ? error.message : String(error))
+  }
+  if (json) {
+    printJson({
+      ok: false,
+      command: "block check",
+      code: error.code,
+      message: error.message,
+      hint: error.hint,
+    })
+  } else {
+    printError(error)
+  }
+  process.exit(error.exitCode())
+}

@@ -11,10 +11,7 @@ import { SectionHeader } from "@/components/marketing/section-header"
 import { UseCaseHero } from "@/components/product/use-case/use-case-page"
 import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
-import {
-  API_BACKENDS_SNIPPETS,
-  type ApiBackendsPillarSlug,
-} from "@/components/product/use-case/api-backends-snippets"
+import { API_BACKENDS_SNIPPETS } from "@/components/product/use-case/api-backends-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 import { GROUP_1, GROUP_2 } from "./api-backends-tabs"
@@ -116,17 +113,16 @@ export default async function ApiBackendsPage() {
   }
 
   await Promise.all(
-    (Object.keys(API_BACKENDS_SNIPPETS) as ApiBackendsPillarSlug[]).flatMap(
-      (slug) =>
-        API_BACKENDS_SNIPPETS[slug].files.map((file) =>
-          codeToHtml(file.code, {
-            lang: file.lang,
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          }).then((html) => {
-            htmlBySlug[slug]?.push({ tabName: file.tabName, html })
-          })
-        )
+    Object.entries(API_BACKENDS_SNIPPETS).flatMap(([slug, snippet]) =>
+      snippet.files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        })
+      )
     )
   )
 

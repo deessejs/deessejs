@@ -3,7 +3,9 @@ import Link from "next/link"
 import type { TemplateV1 as Template } from "@workspace/contracts/v1"
 import {
   CATEGORY_LABELS,
+  CATEGORY_SLUGS,
   FRAMEWORK_LABELS,
+  FRAMEWORK_SLUGS,
   type CategorySlug,
   type FrameworkSlug,
 } from "@workspace/api/templates-labels"
@@ -23,15 +25,15 @@ import { cn } from "@workspace/ui/lib/utils"
  * new template slug flows into the sidebar without manual sync.
  */
 
-const CATEGORIES = Object.entries(CATEGORY_LABELS).map(([slug, label]) => ({
-  slug: slug as CategorySlug,
-  label,
-})) as ReadonlyArray<{ slug: CategorySlug; label: string }>
+const CATEGORIES = CATEGORY_SLUGS.map((slug) => ({
+  slug,
+  label: CATEGORY_LABELS[slug],
+})) satisfies ReadonlyArray<{ slug: CategorySlug; label: string }>
 
-const FRAMEWORKS = Object.entries(FRAMEWORK_LABELS).map(([slug, label]) => ({
-  slug: slug as FrameworkSlug,
-  label,
-})) as ReadonlyArray<{ slug: FrameworkSlug; label: string }>
+const FRAMEWORKS = FRAMEWORK_SLUGS.map((slug) => ({
+  slug,
+  label: FRAMEWORK_LABELS[slug],
+})) satisfies ReadonlyArray<{ slug: FrameworkSlug; label: string }>
 
 export type CategorySidebarProps = {
   templates: Template[]

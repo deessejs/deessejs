@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import * as tar from "tar"
 
 import {
   GenericContainer,
@@ -68,8 +69,6 @@ const sha256 = (path: string): string => {
 const readManifestFromTarball = async (
   tgzPath: string
 ): Promise<PackedArtifact["manifest"]> => {
-  // oxlint-disable-next-line typescript/no-require-imports
-  const tar = require("tar") as typeof import("tar")
   const tmp = mkdtempSync(join(tmpdir(), "cda-manifest-"))
   await tar.x({
     file: tgzPath,
@@ -258,8 +257,6 @@ export const verifyPackageShape = async (
   // runtime dependency closure. The manifest checks above
   // cover the dep closure; here we cover bin and license.
   //
-  // oxlint-disable-next-line typescript/no-require-imports
-  const tar = require("tar") as typeof import("tar")
   const entryPaths: string[] = []
   await tar.t({
     file: artifact.path,

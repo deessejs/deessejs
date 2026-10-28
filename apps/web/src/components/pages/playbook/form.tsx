@@ -105,41 +105,9 @@ export function Form() {
         email: data.email,
         consentMarketing: data.consentMarketing,
       })
-      if (ok) {
-        deliveredRef.current = true
-        toast.success("Check your inbox. The PDF is on the way.")
-      }
+      if (ok) markPlaybookDelivered(deliveredRef)
     } catch (err) {
-      if (err instanceof ORPCError) {
-        if (err.code === "DUPLICATE_SIGNUP") {
-          // Same outcome as success: the email was already sent.
-          // Show the same green toast; no need for a destructive one.
-          if (!deliveredRef.current) {
-            deliveredRef.current = true
-            toast.success("Check your inbox. The PDF is on the way.")
-          }
-          return
-        }
-        if (err.code === "RATE_LIMITED") {
-          toast.error(
-            "You've sent a few signups recently. Please wait a minute and try again."
-          )
-          return
-        }
-        if (err.code === "EMAIL_SEND_FAILED") {
-          toast.error(
-            "Couldn't send the email right now. Try again in a few minutes or email support@deessejs.com."
-          )
-          return
-        }
-        if (err.code === "BAD_REQUEST" || err.code === "INVALID_EMAIL") {
-          toast.error("That email looks off. Please double-check it.")
-          return
-        }
-      }
-      toast.error(
-        "Something went wrong. Try again, or email support@deessejs.com."
-      )
+      handlePlaybookSignupError(err, deliveredRef)
     }
   }
 
@@ -216,4 +184,45 @@ export function Form() {
       </Field>
     </form>
   )
+}
+
+function markPlaybookDelivered(delivered: { current: boolean }): void {
+  delivered.current = true
+  toast.success("Check your inbox. The PDF is on the way.")
+}
+
+function handlePlaybookSignupError(
+  error: unknown,
+  delivered: { current: boolean }
+): void {
+  if (!(error instanceof ORPCError)) {
+    toast.error(
+      "Something went wrong. Try again, or email support@deessejs.com."
+    )
+    return
+  }
+
+  switch (error.code) {
+    case "DUPLICATE_SIGNUP":
+      if (!delivered.current) markPlaybookDelivered(delivered)
+      return
+    case "RATE_LIMITED":
+      toast.error(
+        "You've sent a few signups recently. Please wait a minute and try again."
+      )
+      return
+    case "EMAIL_SEND_FAILED":
+      toast.error(
+        "Couldn't send the email right now. Try again in a few minutes or email support@deessejs.com."
+      )
+      return
+    case "BAD_REQUEST":
+    case "INVALID_EMAIL":
+      toast.error("That email looks off. Please double-check it.")
+      return
+    default:
+      toast.error(
+        "Something went wrong. Try again, or email support@deessejs.com."
+      )
+  }
 }

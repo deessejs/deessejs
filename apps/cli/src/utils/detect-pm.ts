@@ -49,9 +49,12 @@ const readPackageJson = (cwd: string): { packageManager?: string } | null => {
   const path = join(cwd, "package.json")
   if (!existsSync(path)) return null
   try {
-    return JSON.parse(readFileSync(path, "utf8")) as {
-      packageManager?: string
-    }
+    const value: unknown = JSON.parse(readFileSync(path, "utf8"))
+    if (typeof value !== "object" || value === null) return null
+    if (!("packageManager" in value)) return {}
+    return typeof value.packageManager === "string"
+      ? { packageManager: value.packageManager }
+      : null
   } catch {
     return null
   }

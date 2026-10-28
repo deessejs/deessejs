@@ -4,7 +4,7 @@ import { Section } from "@/components/marketing/section"
 import { SectionHeader } from "@/components/marketing/section-header"
 
 import { CliStartTabs } from "./cli-start-tabs"
-import { CLI_START_SNIPPETS, type CliStartSlug } from "./cli-start-snippets"
+import { CLI_START_SNIPPETS } from "./cli-start-snippets"
 
 /**
  * The "Get started" section. Same visual rhythm as the homepage
@@ -23,23 +23,22 @@ import { CLI_START_SNIPPETS, type CliStartSlug } from "./cli-start-snippets"
  * `globals.css` and dark-mode flipping breaks.
  */
 export async function CliStart({ id }: { id?: string } = {}) {
-  const htmlBySlug: Record<CliStartSlug, { tabName: string; html: string }[]> =
-    {
-      install: [],
-      list: [],
-      info: [],
-      init: [],
-    }
+  const htmlBySlug: Record<string, { tabName: string; html: string }[]> = {
+    install: [],
+    list: [],
+    info: [],
+    init: [],
+  }
 
   await Promise.all(
-    (Object.keys(CLI_START_SNIPPETS) as CliStartSlug[]).flatMap((slug) =>
-      CLI_START_SNIPPETS[slug].files.map((file) =>
+    Object.entries(CLI_START_SNIPPETS).flatMap(([slug, snippet]) =>
+      snippet.files.map((file) =>
         codeToHtml(file.code, {
           lang: file.lang,
           themes: { light: "github-light", dark: "github-dark" },
           defaultColor: false,
         }).then((html) => {
-          htmlBySlug[slug].push({ tabName: file.tabName, html })
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
         })
       )
     )

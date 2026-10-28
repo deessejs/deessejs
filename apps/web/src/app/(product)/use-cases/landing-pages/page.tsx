@@ -11,10 +11,7 @@ import { SectionHeader } from "@/components/marketing/section-header"
 import { UseCaseHero } from "@/components/product/use-case/use-case-page"
 import { TechStackGrid } from "@/components/marketing/tech-stack-grid"
 import { UseCaseTabs } from "@/components/product/use-case/use-case-tabs"
-import {
-  LANDING_PAGES_SNIPPETS,
-  type LandingPagesPillarSlug,
-} from "@/components/product/use-case/landing-pages-snippets"
+import { LANDING_PAGES_SNIPPETS } from "@/components/product/use-case/landing-pages-snippets"
 import { FinalCta } from "@/components/pages/use-cases/final-cta"
 
 import { GROUP_1, GROUP_2 } from "./landing-pages-tabs"
@@ -107,17 +104,16 @@ export default async function LandingPagesPage() {
   }
 
   await Promise.all(
-    (Object.keys(LANDING_PAGES_SNIPPETS) as LandingPagesPillarSlug[]).flatMap(
-      (slug) =>
-        LANDING_PAGES_SNIPPETS[slug].files.map((file) =>
-          codeToHtml(file.code, {
-            lang: file.lang,
-            themes: { light: "github-light", dark: "github-dark" },
-            defaultColor: false,
-          }).then((html) => {
-            htmlBySlug[slug]?.push({ tabName: file.tabName, html })
-          })
-        )
+    Object.entries(LANDING_PAGES_SNIPPETS).flatMap(([slug, snippet]) =>
+      snippet.files.map((file) =>
+        codeToHtml(file.code, {
+          lang: file.lang,
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((html) => {
+          htmlBySlug[slug]?.push({ tabName: file.tabName, html })
+        })
+      )
     )
   )
 

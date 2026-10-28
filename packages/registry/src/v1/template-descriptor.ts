@@ -14,9 +14,12 @@ export const TEMPLATE_PROJECT_TYPES = [
   "template:starter",
 ] as const
 
-const SEMVER_PATTERN =
-  // oxlint-disable-next-line sonarjs/regex-complexity -- SemVer 2.0 needs the full JSON-Schema-compatible grammar.
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/
+const NUMERIC_IDENTIFIER = String.raw`(0|[1-9]\d*)`
+const PRERELEASE_IDENTIFIER = String.raw`(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)`
+const BUILD_IDENTIFIER = String.raw`[0-9A-Za-z-]+`
+const SEMVER_PATTERN = new RegExp(
+  `^${NUMERIC_IDENTIFIER}\\.${NUMERIC_IDENTIFIER}\\.${NUMERIC_IDENTIFIER}(?:-(${PRERELEASE_IDENTIFIER}(?:\\.${PRERELEASE_IDENTIFIER})*))?(?:\\+(${BUILD_IDENTIFIER}(?:\\.${BUILD_IDENTIFIER})*))?$`
+)
 
 const TemplateSourceV1Schema = z.strictObject({
   repo: z.string().min(1),
@@ -81,7 +84,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * JSON Schema describes the author input accurately: includes remains optional.
  */
 export function parseTemplateDescriptor(
-  input: unknown,
+  input: unknown
 ): ParseTemplateDescriptorResult {
   const result = TemplateDescriptorV1Schema.safeParse(input)
 
@@ -95,17 +98,15 @@ export function parseTemplateDescriptor(
             code: "descriptor.unknown_field" as const,
             message: `Unknown field "${key}".`,
             path: [...issue.path.map(String), key],
-          })),
+          }))
         )
         continue
       }
 
-      const isUnsupportedFormatVersion =
-        issue.path.length === 1 &&
-        issue.path[0] === "formatVersion" &&
-        isRecord(input) &&
-        typeof input.formatVersion === "number" &&
-        input.formatVersion !== 1
+      const isUnsupportedFormatVersion = isUnsupportedFormatVersionIssue(
+        issue.path,
+        input
+      )
 
       diagnostics.push({
         code: isUnsupportedFormatVersion
@@ -126,4 +127,14 @@ export function parseTemplateDescriptor(
       includes: result.data.includes ?? ["**/*"],
     },
   }
+}
+
+function isUnsupportedFormatVersionIssue(
+  path: PropertyKey[],
+  input: unknown
+): boolean {
+  if (path.length !== 1 || path[0] !== "formatVersion") return false
+  if (!isRecord(input)) return false
+  if (typeof input.formatVersion !== "number") return false
+  return input.formatVersion !== 1
 }

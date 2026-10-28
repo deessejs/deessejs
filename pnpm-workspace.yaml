@@ -4,8 +4,8 @@ packages:
 
 # pnpm 11: explicit allowlist for build scripts
 allowBuilds:
-  '@mongodb-js/zstd': true
-  '@prisma/client': true
+  "@mongodb-js/zstd": true
+  "@prisma/client": true
   better-sqlite3: true
   cpu-features: true
   esbuild: true
@@ -23,30 +23,30 @@ catalog:
 
   # Auth
   "@better-auth/drizzle-adapter": ^1.7.7
-  '@changesets/changelog-git': ^0.2.1
-  '@changesets/cli': ^2.31.0
-  '@content-collections/cli': ^0.1.9
-  '@content-collections/core': ^0.15.2
-  '@content-collections/mdx': ^0.2.2
-  '@content-collections/next': ^0.2.11
-  '@deessejs/errors': ^1.1.1
-  '@deessejs/fp': ^1.0.0
+  "@changesets/changelog-git": ^0.2.1
+  "@changesets/cli": ^2.31.0
+  "@content-collections/cli": ^0.1.9
+  "@content-collections/core": ^0.15.2
+  "@content-collections/mdx": ^0.2.2
+  "@content-collections/next": ^0.2.11
+  "@deessejs/errors": ^1.1.1
+  "@deessejs/fp": ^1.0.0
   "@hookform/resolvers": ^5.0.0
 
   # Next.js
-  '@orpc/client': ^1.14.7
+  "@orpc/client": ^1.14.7
   "@orpc/server": ^1.14.7
   "@playwright/test": ^1.51.1
   "@react-email/components": ^1.0.12
   "@react-email/render": ^2.0.6
-  '@shadcn/react': 0.3.1
-  '@shikijs/rehype': ^4.3.1
+  "@shadcn/react": 0.3.1
+  "@shikijs/rehype": ^4.3.1
   "@t3-oss/env-core": ^0.13.0
 
   # Shared tooling
   "@tailwindcss/postcss": ^4.3.2
-  '@tanstack/react-form': ^1.33.0
-  '@tanstack/react-query': ^5.101.4
+  "@tanstack/react-form": ^1.33.0
+  "@tanstack/react-query": ^5.101.4
   "@turbo/gen": ^2.10.4
   "@types/hast": ^3.0.4
 
@@ -73,6 +73,7 @@ catalog:
 
   # Code quality
   oxlint: ^1.90.0
+  oxlint-tsgolint: ^7.0.2005
   oxfmt: ^0.75.0
   oxlint-plugin-eslint: ^1.90.0
   eslint-plugin-sonarjs: ^3.0.7
@@ -121,7 +122,7 @@ catalog:
   tsup: ^8.3.5
   typescript: ^6.0.3
   unist-util-visit: ^5.1.0
-  'vercel-minimax-ai-provider': ^0.0.2
+  "vercel-minimax-ai-provider": ^0.0.2
 
   # Testing
   vitest: ^4.1.10
@@ -137,44 +138,44 @@ minimumReleaseAgeExclude:
   # on docs builds. See `temp/audit/tech-lead-deletion/README.md` §6.
   - rolldown
   - "@rolldown/*"
-  - '@oxfmt/binding-android-arm-eabi@0.75.0'
-  - '@oxfmt/binding-android-arm64@0.75.0'
-  - '@oxfmt/binding-darwin-arm64@0.75.0'
-  - '@oxfmt/binding-darwin-x64@0.75.0'
-  - '@oxfmt/binding-freebsd-x64@0.75.0'
-  - '@oxfmt/binding-linux-arm-gnueabihf@0.75.0'
-  - '@oxfmt/binding-linux-arm-musleabihf@0.75.0'
-  - '@oxfmt/binding-linux-arm64-gnu@0.75.0'
-  - '@oxfmt/binding-linux-arm64-musl@0.75.0'
-  - '@oxfmt/binding-linux-ppc64-gnu@0.75.0'
-  - '@oxfmt/binding-linux-riscv64-gnu@0.75.0'
-  - '@oxfmt/binding-linux-riscv64-musl@0.75.0'
-  - '@oxfmt/binding-linux-s390x-gnu@0.75.0'
-  - '@oxfmt/binding-linux-x64-gnu@0.75.0'
-  - '@oxfmt/binding-linux-x64-musl@0.75.0'
-  - '@oxfmt/binding-openharmony-arm64@0.75.0'
-  - '@oxfmt/binding-win32-arm64-msvc@0.75.0'
-  - '@oxfmt/binding-win32-ia32-msvc@0.75.0'
-  - '@oxfmt/binding-win32-x64-msvc@0.75.0'
-  - '@oxlint/binding-android-arm-eabi@1.90.0'
-  - '@oxlint/binding-android-arm64@1.90.0'
-  - '@oxlint/binding-darwin-arm64@1.90.0'
-  - '@oxlint/binding-darwin-x64@1.90.0'
-  - '@oxlint/binding-freebsd-x64@1.90.0'
-  - '@oxlint/binding-linux-arm-gnueabihf@1.90.0'
-  - '@oxlint/binding-linux-arm-musleabihf@1.90.0'
-  - '@oxlint/binding-linux-arm64-gnu@1.90.0'
-  - '@oxlint/binding-linux-arm64-musl@1.90.0'
-  - '@oxlint/binding-linux-ppc64-gnu@1.90.0'
-  - '@oxlint/binding-linux-riscv64-gnu@1.90.0'
-  - '@oxlint/binding-linux-riscv64-musl@1.90.0'
-  - '@oxlint/binding-linux-s390x-gnu@1.90.0'
-  - '@oxlint/binding-linux-x64-gnu@1.90.0'
-  - '@oxlint/binding-linux-x64-musl@1.90.0'
-  - '@oxlint/binding-openharmony-arm64@1.90.0'
-  - '@oxlint/binding-win32-arm64-msvc@1.90.0'
-  - '@oxlint/binding-win32-ia32-msvc@1.90.0'
-  - '@oxlint/binding-win32-x64-msvc@1.90.0'
+  - "@oxfmt/binding-android-arm-eabi@0.75.0"
+  - "@oxfmt/binding-android-arm64@0.75.0"
+  - "@oxfmt/binding-darwin-arm64@0.75.0"
+  - "@oxfmt/binding-darwin-x64@0.75.0"
+  - "@oxfmt/binding-freebsd-x64@0.75.0"
+  - "@oxfmt/binding-linux-arm-gnueabihf@0.75.0"
+  - "@oxfmt/binding-linux-arm-musleabihf@0.75.0"
+  - "@oxfmt/binding-linux-arm64-gnu@0.75.0"
+  - "@oxfmt/binding-linux-arm64-musl@0.75.0"
+  - "@oxfmt/binding-linux-ppc64-gnu@0.75.0"
+  - "@oxfmt/binding-linux-riscv64-gnu@0.75.0"
+  - "@oxfmt/binding-linux-riscv64-musl@0.75.0"
+  - "@oxfmt/binding-linux-s390x-gnu@0.75.0"
+  - "@oxfmt/binding-linux-x64-gnu@0.75.0"
+  - "@oxfmt/binding-linux-x64-musl@0.75.0"
+  - "@oxfmt/binding-openharmony-arm64@0.75.0"
+  - "@oxfmt/binding-win32-arm64-msvc@0.75.0"
+  - "@oxfmt/binding-win32-ia32-msvc@0.75.0"
+  - "@oxfmt/binding-win32-x64-msvc@0.75.0"
+  - "@oxlint/binding-android-arm-eabi@1.90.0"
+  - "@oxlint/binding-android-arm64@1.90.0"
+  - "@oxlint/binding-darwin-arm64@1.90.0"
+  - "@oxlint/binding-darwin-x64@1.90.0"
+  - "@oxlint/binding-freebsd-x64@1.90.0"
+  - "@oxlint/binding-linux-arm-gnueabihf@1.90.0"
+  - "@oxlint/binding-linux-arm-musleabihf@1.90.0"
+  - "@oxlint/binding-linux-arm64-gnu@1.90.0"
+  - "@oxlint/binding-linux-arm64-musl@1.90.0"
+  - "@oxlint/binding-linux-ppc64-gnu@1.90.0"
+  - "@oxlint/binding-linux-riscv64-gnu@1.90.0"
+  - "@oxlint/binding-linux-riscv64-musl@1.90.0"
+  - "@oxlint/binding-linux-s390x-gnu@1.90.0"
+  - "@oxlint/binding-linux-x64-gnu@1.90.0"
+  - "@oxlint/binding-linux-x64-musl@1.90.0"
+  - "@oxlint/binding-openharmony-arm64@1.90.0"
+  - "@oxlint/binding-win32-arm64-msvc@1.90.0"
+  - "@oxlint/binding-win32-ia32-msvc@1.90.0"
+  - "@oxlint/binding-win32-x64-msvc@1.90.0"
   - oxfmt@0.75.0
   - oxlint-plugin-eslint@1.90.0
   - oxlint@1.90.0

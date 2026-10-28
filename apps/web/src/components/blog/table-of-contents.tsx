@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 
 interface TocItem {
@@ -9,30 +9,27 @@ interface TocItem {
   level: 2 | 3
 }
 
+function parseTocItems(serialized: string): TocItem[] {
+  const parsed: unknown = JSON.parse(serialized)
+  if (!Array.isArray(parsed)) return []
+  return parsed.filter(isTocItem)
+}
+
+function isTocItem(item: unknown): item is TocItem {
+  if (typeof item !== "object" || item === null) return false
+  if (!("id" in item) || !("text" in item) || !("level" in item)) return false
+  if (typeof item.id !== "string" || typeof item.text !== "string") return false
+  return item.level === 2 || item.level === 3
+}
+
 export function TableOfContents({ targetId }: { targetId: string }) {
-  const [items, setItems] = useState<TocItem[]>([])
+  const serializedItems = useSyncExternalStore(
+    (onChange) => subscribeToHeadings(targetId, onChange),
+    () => getSerializedHeadings(targetId),
+    () => "[]"
+  )
+  const items = useMemo(() => parseTocItems(serializedItems), [serializedItems])
   const [activeId, setActiveId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const target = document.getElementById(targetId)
-    if (!target) return
-
-    const headings = target.querySelectorAll<HTMLHeadingElement>("h2, h3")
-    const next: TocItem[] = []
-
-    headings.forEach((h) => {
-      if (!h.id) {
-        h.id = slugify(h.textContent || "")
-      }
-      const level = h.tagName === "H3" ? 3 : 2
-      next.push({ id: h.id, text: h.textContent || "", level })
-    })
-
-    // Intentionally updating state after DOM query to populate the table of contents.
-    // This is a valid use case that requires extracting headings from the DOM.
-    // oxlint-disable-next-line react/set-state-in-effect
-    setItems(next)
-  }, [targetId])
 
   useEffect(() => {
     if (items.length === 0) return
@@ -93,6 +90,40 @@ export function TableOfContents({ targetId }: { targetId: string }) {
       </ul>
     </nav>
   )
+}
+
+function getSerializedHeadings(targetId: string): string {
+  const target = document.getElementById(targetId)
+  if (!target) return "[]"
+
+  const items: TocItem[] = Array.from(
+    target.querySelectorAll<HTMLHeadingElement>("h2, h3")
+  ).map((heading) => ({
+    id: heading.id || slugify(heading.textContent || ""),
+    text: heading.textContent || "",
+    level: heading.tagName === "H3" ? 3 : 2,
+  }))
+
+  return JSON.stringify(items)
+}
+
+function subscribeToHeadings(targetId: string, onChange: () => void) {
+  const target = document.getElementById(targetId)
+  if (!target) return () => undefined
+
+  target.querySelectorAll<HTMLHeadingElement>("h2, h3").forEach((heading) => {
+    if (!heading.id) heading.id = slugify(heading.textContent || "")
+  })
+
+  const observer = new MutationObserver(onChange)
+  observer.observe(target, {
+    attributes: true,
+    attributeFilter: ["id"],
+    characterData: true,
+    childList: true,
+    subtree: true,
+  })
+  return () => observer.disconnect()
 }
 
 function slugify(text: string): string {

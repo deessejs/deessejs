@@ -17,6 +17,12 @@ export const BLOG_TAGS = [
 
 export type BlogTag = (typeof BLOG_TAGS)[number]
 
+const BLOG_TAG_SET: ReadonlySet<string> = new Set(BLOG_TAGS)
+
+export function isBlogTag(value: string): value is BlogTag {
+  return BLOG_TAG_SET.has(value)
+}
+
 /** Display label per closed-set tag. The slug stays lowercase
  *  (BLOG_TAGS) — this map is what surfaces render in H1, eyebrows,
  *  titles, and OG metadata. Same shape as RELEASE_CATEGORY_LABELS

@@ -91,15 +91,9 @@ function compareStrings(left: string, right: string): number {
 }
 
 function isSafeRelativePath(path: string): boolean {
-  if (
-    path.length === 0 ||
-    path.startsWith("/") ||
-    path.includes("\\") ||
-    path.includes("\0") ||
-    /^[a-z]:/i.test(path)
-  ) {
-    return false
-  }
+  if (path.length === 0) return false
+  if (path.startsWith("/") || /^[a-z]:/i.test(path)) return false
+  if (path.includes("\\") || path.includes("\0")) return false
 
   const segments = path.split("/")
   return segments.every(
@@ -174,8 +168,8 @@ function normalizeRepository(repository: string): string | null {
   const match = /^([A-Za-z0-9-]+)\/([A-Za-z0-9_.-]+)$/.exec(repository)
   const owner = match?.[1]
   const name = match?.[2]
-  if (!owner || !name || owner === "." || name === "." || name === "..")
-    return null
+  if (!owner || !name) return null
+  if (owner === "." || name === "." || name === "..") return null
   return `${owner.toLowerCase()}/${name.toLowerCase()}`
 }
 
@@ -319,54 +313,9 @@ function selectEntries(
     if (!matchesAny(includeResult.matchers, entry.path)) continue
     if (matchesAny(excludeResult.matchers, entry.path)) continue
 
-    if (!isSafeRelativePath(entry.path)) {
-      diagnostics.push(
-        diagnostic(
-          "source.unsafe_path",
-          `Selected source path "${entry.path}" is not a safe relative file path.`,
-          [entry.path]
-        )
-      )
-      continue
-    }
-    if (entry.mode === "120000") {
-      diagnostics.push(
-        diagnostic(
-          "source.symlink",
-          `Selected source path "${entry.path}" is a symbolic link.`,
-          [entry.path]
-        )
-      )
-      continue
-    }
-    if (entry.type === "commit") {
-      diagnostics.push(
-        diagnostic(
-          "source.unsupported_entry",
-          `Selected source path "${entry.path}" is a Git submodule, which V1 does not copy.`,
-          [entry.path]
-        )
-      )
-      continue
-    }
-    if (entry.mode !== "100644" && entry.mode !== "100755") {
-      diagnostics.push(
-        diagnostic(
-          "source.unsupported_entry",
-          `Selected source path "${entry.path}" uses unsupported Git mode "${entry.mode}".`,
-          [entry.path]
-        )
-      )
-      continue
-    }
-    if (entry.size !== undefined && entry.size > MAX_FILE_SIZE_BYTES) {
-      diagnostics.push(
-        diagnostic(
-          "source.file_too_large",
-          `Selected source path "${entry.path}" exceeds the 10 MiB file limit.`,
-          [entry.path]
-        )
-      )
+    const entryDiagnostic = validateSelectedEntry(entry)
+    if (entryDiagnostic) {
+      diagnostics.push(entryDiagnostic)
       continue
     }
     selected.push(entry)
@@ -396,6 +345,47 @@ function selectEntries(
   }
 
   return { selected, diagnostics }
+}
+
+function validateSelectedEntry(
+  entry: TemplateSourceEntry
+): TemplateInstallationDiagnostic | null {
+  if (!isSafeRelativePath(entry.path)) {
+    return diagnostic(
+      "source.unsafe_path",
+      `Selected source path "${entry.path}" is not a safe relative file path.`,
+      [entry.path]
+    )
+  }
+  if (entry.mode === "120000") {
+    return diagnostic(
+      "source.symlink",
+      `Selected source path "${entry.path}" is a symbolic link.`,
+      [entry.path]
+    )
+  }
+  if (entry.type === "commit") {
+    return diagnostic(
+      "source.unsupported_entry",
+      `Selected source path "${entry.path}" is a Git submodule, which V1 does not copy.`,
+      [entry.path]
+    )
+  }
+  if (entry.mode !== "100644" && entry.mode !== "100755") {
+    return diagnostic(
+      "source.unsupported_entry",
+      `Selected source path "${entry.path}" uses unsupported Git mode "${entry.mode}".`,
+      [entry.path]
+    )
+  }
+  if (entry.size !== undefined && entry.size > MAX_FILE_SIZE_BYTES) {
+    return diagnostic(
+      "source.file_too_large",
+      `Selected source path "${entry.path}" exceeds the 10 MiB file limit.`,
+      [entry.path]
+    )
+  }
+  return null
 }
 
 function toDiagnostic(error: unknown): TemplateInstallationDiagnostic {

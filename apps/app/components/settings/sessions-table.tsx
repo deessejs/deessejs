@@ -38,41 +38,52 @@ export function SessionsTable() {
 	// (typically the value from a previous render). For the same reason
 	// `revokeOtherSessions` was operating on a stale "current" token,
 	// risking self-logout.
-	const loadSessions = useCallback(async () => {
-		setLoading(true)
-		const [{ data: sessionList }, { data: currentSession }] = await Promise.all([
-			authClient.listSessions(),
-			authClient.getSession(),
-		])
-		setLoading(false)
+	const fetchSessions = useCallback(async (): Promise<Session[]> => {
+		const [{ data: sessionList }, { data: currentSession }] = await Promise.all(
+			[authClient.listSessions(), authClient.getSession()]
+		)
 
 		if (!sessionList || !currentSession) {
-			setSessions([])
-			return
+			return []
 		}
 
 		// Audit §3.4: currentSession.session.token is the cookie value. Cast
 		// to branded type at the trust boundary; revoking "this device" by
 		// its id would be a no-op since `revokeSession` looks up by token.
-		const currentToken = asCurrentSessionToken(currentSession.session?.token ?? "")
-
-		setSessions(
-			sessionList.map((s) => ({
-				id: s.id,
-				token: s.token,
-				userAgent: s.userAgent ?? "Unknown",
-				ipAddress: s.ipAddress ?? "—",
-				expiresAt: s.expiresAt,
-				isCurrent: s.token === currentToken,
-			})),
+		const currentToken = asCurrentSessionToken(
+			currentSession.session?.token ?? ""
 		)
+
+		return sessionList.map((s) => ({
+			id: s.id,
+			token: s.token,
+			userAgent: s.userAgent ?? "Unknown",
+			ipAddress: s.ipAddress ?? "—",
+			expiresAt: s.expiresAt,
+			isCurrent: s.token === currentToken,
+		}))
 	}, [])
 
 	useEffect(() => {
-		// Valid: loading data on mount requires setState
-		// oxlint-disable-next-line react-hooks/set-state-in-effect
-		loadSessions()
-	}, [loadSessions])
+		let active = true
+		fetchSessions()
+			.then((nextSessions) => {
+				if (active) setSessions(nextSessions)
+			})
+			.catch((error: unknown) => {
+				if (active) {
+					toast.error(
+						error instanceof Error ? error.message : "Failed to load sessions"
+					)
+				}
+			})
+			.finally(() => {
+				if (active) setLoading(false)
+			})
+		return () => {
+			active = false
+		}
+	}, [fetchSessions])
 
 	// Audit §3.4: was passing `id` (row id) as `token` (cookie value). The
 	// server lookup `WHERE token = ?` found nothing, the call returned
@@ -81,7 +92,9 @@ export function SessionsTable() {
 	// is branded at the boundary so a future id/token swap is a TS error.
 	async function handleRevoke(token: string) {
 		setRevoking(token)
-		const { error } = await authClient.revokeSession({ token: asSessionToken(token) })
+		const { error } = await authClient.revokeSession({
+			token: asSessionToken(token),
+		})
 
 		// Audit §3.5 sibling: do not mutate local state when the call
 		// failed. The previous code filtered the row out regardless of
@@ -108,7 +121,7 @@ export function SessionsTable() {
 			// After `revokeOtherSessions`, the server has deleted all
 			// sessions except the current one. We re-fetch to refresh the
 			// list rather than trust the locally-stale `isCurrent` flag.
-			await loadSessions()
+			setSessions(await fetchSessions())
 		}
 	}
 
@@ -125,15 +138,19 @@ export function SessionsTable() {
 						<DialogHeader>
 							<DialogTitle>Sign out of other sessions?</DialogTitle>
 							<DialogDescription>
-								You will be signed out of all other devices and browsers.
-								Only your current session will remain active.
+								You will be signed out of all other devices and browsers. Only
+								your current session will remain active.
 							</DialogDescription>
 						</DialogHeader>
 						<DialogFooter>
 							<Button variant="outline" onClick={() => setRevokeAllOpen(false)}>
 								Cancel
 							</Button>
-							<Button variant="destructive" onClick={handleRevokeAll} disabled={revokingAll}>
+							<Button
+								variant="destructive"
+								onClick={handleRevokeAll}
+								disabled={revokingAll}
+							>
 								{revokingAll ? "Signing out…" : "Sign out everywhere"}
 							</Button>
 						</DialogFooter>
@@ -146,7 +163,9 @@ export function SessionsTable() {
 					<p className="text-sm text-muted-foreground">Loading sessions…</p>
 				)}
 				{!loading && sessions.length === 0 && (
-					<p className="text-sm text-muted-foreground">No other active sessions.</p>
+					<p className="text-sm text-muted-foreground">
+						No other active sessions.
+					</p>
 				)}
 				{sessions.map((session) => (
 					<div
@@ -163,7 +182,8 @@ export function SessionsTable() {
 								)}
 							</div>
 							<p className="text-xs text-muted-foreground">
-								{session.ipAddress} · Expires {new Date(session.expiresAt).toLocaleDateString()}
+								{session.ipAddress} · Expires{" "}
+								{new Date(session.expiresAt).toLocaleDateString()}
 							</p>
 						</div>
 						{!session.isCurrent && (

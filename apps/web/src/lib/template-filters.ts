@@ -12,14 +12,14 @@
  */
 import type { TemplateV1 } from "@workspace/contracts/v1"
 import {
-  CATEGORY_LABELS,
-  FRAMEWORK_LABELS,
+  CATEGORY_SLUGS,
+  FRAMEWORK_SLUGS,
   type CategorySlug,
   type FrameworkSlug,
 } from "@workspace/api/templates-labels"
 
-const KNOWN_TYPES = Object.keys(CATEGORY_LABELS) as CategorySlug[]
-const KNOWN_FRAMEWORKS = Object.keys(FRAMEWORK_LABELS) as FrameworkSlug[]
+const KNOWN_TYPES = CATEGORY_SLUGS
+const KNOWN_FRAMEWORKS = FRAMEWORK_SLUGS
 
 export type TemplateFilterParams = {
   type?: string | string[] | undefined
@@ -42,12 +42,15 @@ const dedupe = <T extends string>(
   values: ReadonlyArray<string>,
   allowed: ReadonlyArray<T>
 ): T[] => {
-  const set = new Set<T>(allowed)
+  const allowedByValue = new Map<string, T>()
+  for (const allowedValue of allowed) {
+    allowedByValue.set(allowedValue, allowedValue)
+  }
+
   const out: T[] = []
   for (const value of values) {
-    if (set.has(value as T)) {
-      out.push(value as T)
-    }
+    const match = allowedByValue.get(value)
+    if (match !== undefined) out.push(match)
   }
   return Array.from(new Set(out))
 }
