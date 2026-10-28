@@ -10,9 +10,13 @@ const ProjectPathsV1Schema = z.record(
   ROLE_IDENTIFIER_SCHEMA,
   z.string().min(1)
 )
+const IMPORT_ROOT_SCHEMA = z
+  .string()
+  .min(1)
+  .regex(/^[^\u0000-\u001F\u007F]+$/)
 const ProjectAliasesV1Schema = z.record(
   ROLE_IDENTIFIER_SCHEMA,
-  z.string().min(1)
+  IMPORT_ROOT_SCHEMA
 )
 
 /**
