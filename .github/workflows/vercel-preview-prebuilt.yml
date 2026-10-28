@@ -146,7 +146,7 @@ jobs:
     needs: [detect-affected-projects, build-preview]
     if: needs.detect-affected-projects.outputs.has_projects == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
