@@ -12,17 +12,14 @@ interface TocItem {
 function parseTocItems(serialized: string): TocItem[] {
   const parsed: unknown = JSON.parse(serialized)
   if (!Array.isArray(parsed)) return []
-  return parsed.filter(
-    (item): item is TocItem =>
-      typeof item === "object" &&
-      item !== null &&
-      "id" in item &&
-      typeof item.id === "string" &&
-      "text" in item &&
-      typeof item.text === "string" &&
-      "level" in item &&
-      (item.level === 2 || item.level === 3)
-  )
+  return parsed.filter(isTocItem)
+}
+
+function isTocItem(item: unknown): item is TocItem {
+  if (typeof item !== "object" || item === null) return false
+  if (!("id" in item) || !("text" in item) || !("level" in item)) return false
+  if (typeof item.id !== "string" || typeof item.text !== "string") return false
+  return item.level === 2 || item.level === 3
 }
 
 export function TableOfContents({ targetId }: { targetId: string }) {

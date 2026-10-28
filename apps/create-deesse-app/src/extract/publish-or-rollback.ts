@@ -5,6 +5,14 @@ import { randomUUID } from "node:crypto"
 
 import { destinationExists } from "../errors/index.js"
 
+const DESTINATION_EXISTS_CODES = new Set([
+  "EEXIST",
+  "ENOTEMPTY",
+  "ENOTDIR",
+  "EACCES",
+  "EPERM",
+])
+
 export type PublishOrRollbackArgs = {
   tempDir: string
   destination: string
@@ -65,23 +73,13 @@ export const publishOrRollback = async (
 
   let probeFd: Awaited<ReturnType<typeof open>> | undefined
   try {
-    // Step 1: O_EXCL probe. Fails with EEXIST if anything is at `destination`,
-    // ENOENT if the parent is missing. Anything else is a real I/O error.
-    try {
-      probeFd = await open(probe, "wx")
-    } catch (err) {
-      const code = err instanceof Error && "code" in err ? err.code : undefined
-      if (code === "EEXIST") {
-        cleanup(tempDir, tarballPath)
-        throw destinationExists(destination)
-      }
-      if (code === "ENOENT") {
-        cleanup(tempDir, tarballPath)
-        throw new Error(`parent directory does not exist: ${parent}`)
-      }
-      cleanup(tempDir, tarballPath)
-      throw err
-    }
+    probeFd = await openDestinationProbe(
+      probe,
+      parent,
+      destination,
+      tempDir,
+      tarballPath
+    )
 
     // Step 2: probe succeeded — destination path is free AT THIS INSTANT.
     // Close the fd and unlink the probe so the parent stays clean.
@@ -101,23 +99,7 @@ export const publishOrRollback = async (
     //   - Windows: EPERM (when the existing entry is a directory — even
     //     an empty one) or EACCES
     // We map all of these to destination_exists.
-    try {
-      await rename(tempDir, destination)
-    } catch (err) {
-      const code = err instanceof Error && "code" in err ? err.code : undefined
-      if (
-        code === "EEXIST" ||
-        code === "ENOTEMPTY" ||
-        code === "ENOTDIR" ||
-        code === "EACCES" ||
-        code === "EPERM"
-      ) {
-        cleanup(tempDir, tarballPath)
-        throw destinationExists(destination)
-      }
-      cleanup(tempDir, tarballPath)
-      throw err
-    }
+    await renameDestination(tempDir, destination, tarballPath)
   } catch (err) {
     if (probeFd) {
       try {
@@ -142,6 +124,47 @@ export const publishOrRollback = async (
       // ignore — tmpdir will eventually be cleaned by the OS
     }
   }
+}
+
+async function openDestinationProbe(
+  probe: string,
+  parent: string,
+  destination: string,
+  tempDir: string,
+  tarballPath?: string
+): Promise<Awaited<ReturnType<typeof open>>> {
+  try {
+    return await open(probe, "wx")
+  } catch (error) {
+    const code = getErrorCode(error)
+    cleanup(tempDir, tarballPath)
+    if (code === "EEXIST") throw destinationExists(destination)
+    if (code === "ENOENT") {
+      throw new Error(`parent directory does not exist: ${parent}`)
+    }
+    throw error
+  }
+}
+
+async function renameDestination(
+  tempDir: string,
+  destination: string,
+  tarballPath?: string
+): Promise<void> {
+  try {
+    await rename(tempDir, destination)
+  } catch (error) {
+    const code = getErrorCode(error)
+    cleanup(tempDir, tarballPath)
+    if (typeof code === "string" && DESTINATION_EXISTS_CODES.has(code)) {
+      throw destinationExists(destination)
+    }
+    throw error
+  }
+}
+
+function getErrorCode(error: unknown): unknown {
+  return error instanceof Error && "code" in error ? error.code : undefined
 }
 
 const cleanup = (tempDir: string, tarballPath?: string): void => {

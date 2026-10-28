@@ -25,37 +25,44 @@ function packageSlug(name: string): string {
 }
 
 async function resolveWorkspaces(): Promise<Workspace[]> {
-  const found: Workspace[] = []
-  for (const root of ENTRY_GLOBS) {
-    let entries: string[]
-    try {
-      entries = await readdir(root, { withFileTypes: false })
-    } catch {
-      continue
-    }
-    for (const entry of entries) {
-      const path = join(root, entry)
-      const manifest = join(path, "package.json")
-      let raw: string
-      try {
-        raw = await readFile(manifest, "utf8")
-      } catch {
-        continue
-      }
-      let parsed: { name?: unknown }
-      try {
-        const value: unknown = JSON.parse(raw)
-        if (typeof value !== "object" || value === null) continue
-        parsed = value
-      } catch {
-        continue
-      }
-      const name = parsed.name
-      if (typeof name !== "string") continue
-      found.push({ name, path })
-    }
+  const workspaces = await Promise.all(ENTRY_GLOBS.map(resolveRootWorkspaces))
+  return workspaces.flat()
+}
+
+async function resolveRootWorkspaces(root: string): Promise<Workspace[]> {
+  let entries: string[]
+  try {
+    entries = await readdir(root, { withFileTypes: false })
+  } catch {
+    return []
   }
-  return found
+
+  const workspaces: Workspace[] = []
+  for (const entry of entries) {
+    const workspace = await readWorkspaceManifest(join(root, entry))
+    if (workspace) workspaces.push(workspace)
+  }
+  return workspaces
+}
+
+async function readWorkspaceManifest(path: string): Promise<Workspace | null> {
+  let raw: string
+  try {
+    raw = await readFile(join(path, "package.json"), "utf8")
+  } catch {
+    return null
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (typeof parsed !== "object" || parsed === null || !("name" in parsed)) {
+    return null
+  }
+  return typeof parsed.name === "string" ? { name: parsed.name, path } : null
 }
 
 function runOxlintJson(workspace: Workspace, outFile: string): Promise<number> {

@@ -13,15 +13,17 @@ import { defineConfig } from "tsup"
 // never executes it.
 const require = createRequire(import.meta.url)
 const packageJson: unknown = require("./package.json")
-const packageVersion =
-  typeof packageJson === "object" &&
-  packageJson !== null &&
-  "version" in packageJson &&
-  typeof packageJson.version === "string"
-    ? packageJson.version
-    : (() => {
-        throw new Error("package.json must contain a string version")
-      })()
+const packageVersion = readPackageVersion(packageJson)
+
+function readPackageVersion(value: unknown): string {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("package.json must contain a string version")
+  }
+  if (!("version" in value) || typeof value.version !== "string") {
+    throw new Error("package.json must contain a string version")
+  }
+  return value.version
+}
 
 export default defineConfig({
   entry: ["src/index.ts"],

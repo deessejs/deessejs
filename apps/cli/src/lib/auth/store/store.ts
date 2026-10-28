@@ -55,21 +55,19 @@ function isStoredAuth(value: unknown): value is StoredAuth {
   if (typeof value !== "object" || value === null) return false
   if (
     !("access_token" in value) ||
-    typeof value.access_token !== "string" ||
     !("fetchedAt" in value) ||
-    typeof value.fetchedAt !== "string" ||
-    !("user" in value) ||
-    typeof value.user !== "object" ||
-    value.user === null ||
-    !("id" in value.user) ||
-    typeof value.user.id !== "string"
+    !("user" in value)
   ) {
     return false
   }
-  return (
-    (!("email" in value.user) || typeof value.user.email === "string") &&
-    (!("name" in value.user) || typeof value.user.name === "string")
-  )
+  if (typeof value.access_token !== "string") return false
+  if (typeof value.fetchedAt !== "string") return false
+  if (typeof value.user !== "object" || value.user === null) return false
+  if (!("id" in value.user) || typeof value.user.id !== "string") return false
+  if ("email" in value.user && typeof value.user.email !== "string")
+    return false
+  if ("name" in value.user && typeof value.user.name !== "string") return false
+  return true
 }
 
 const ensureDir = (path: string): void => {

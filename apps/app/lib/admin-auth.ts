@@ -10,22 +10,30 @@ type AdminSession = {
 }
 
 function isAdminSession(value: unknown): value is AdminSession {
+  if (typeof value !== "object" || value === null) return false
+  if (!("session" in value) || !("user" in value)) return false
+  if (!isAdminSessionDetails(value.session) || !isAdminUser(value.user)) {
+    return false
+  }
+  return true
+}
+
+function isAdminSessionDetails(value: unknown): value is { id: string } {
   return (
     typeof value === "object" &&
     value !== null &&
-    "session" in value &&
-    typeof value.session === "object" &&
-    value.session !== null &&
-    "id" in value.session &&
-    typeof value.session.id === "string" &&
-    "user" in value &&
-    typeof value.user === "object" &&
-    value.user !== null &&
-    "id" in value.user &&
-    typeof value.user.id === "string" &&
-    "role" in value.user &&
-    (typeof value.user.role === "string" || value.user.role === null)
+    "id" in value &&
+    typeof value.id === "string"
   )
+}
+
+function isAdminUser(
+  value: unknown
+): value is { id: string; role: string | null } {
+  if (typeof value !== "object" || value === null) return false
+  if (!("id" in value) || !("role" in value)) return false
+  if (typeof value.id !== "string") return false
+  return typeof value.role === "string" || value.role === null
 }
 
 /**

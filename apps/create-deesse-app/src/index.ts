@@ -59,64 +59,55 @@ program
           dryRun: opts.dryRun,
           verbose: opts.verbose,
         })
-
-        // Mirror the human message to stderr BEFORE the JSON result.
-        // For success this is a no-op. For install-failure, the
-        // install-log mirror is emitted here. For other failures
-        // (destination_exists, invalid_name, etc.) we surface the
-        // CliError via printError. This guarantees a human at the
-        // terminal always sees *something* on stderr explaining the
-        // failure, in addition to the structured JSON on stdout.
-        if (!result.ok) {
-          if (
-            result.error.code === "install_failed" &&
-            "installOutput" in result
-          ) {
-            printInstallLog({
-              code: result.installOutput.code,
-              stderr: result.installOutput.stderr,
-              stdout: result.installOutput.stdout,
-              recovery: result.recovery,
-              destination: result.destination,
-            })
-          } else {
-            printError(
-              new CliError(
-                result.error.code,
-                result.error.message,
-                result.error.hint
-              )
-            )
-          }
-        }
-
-        printResult(result)
-        // Set exit code via process.exitCode (no process.exit call — lets stdio drain).
-        process.exitCode = result.ok ? 0 : 1
+        reportCreateResult(result)
       } catch (err) {
-        // Last-resort: any error that escaped the pipeline's own catch.
-        const e = err instanceof Error ? err : new Error(String(err))
-        const code =
-          e instanceof CliError ? e.code : sourceFailed(e.message).code
-        const failure: CreateResult = {
-          ok: false,
-          mode: opts.dryRun ? "dry-run" : "create",
-          projectCreated: false,
-          error: {
-            code,
-            message: e.message,
-            hint:
-              e instanceof CliError
-                ? e.hint
-                : "unexpected internal error — check the output above",
-          },
-        }
-        printError(e instanceof CliError ? e : internal(e.message))
-        printResult(failure)
-        process.exitCode = 1
+        reportUnexpectedError(err, opts.dryRun)
       }
     }
   )
+
+function reportCreateResult(result: CreateResult): void {
+  if (!result.ok) {
+    if (result.error.code === "install_failed" && "installOutput" in result) {
+      printInstallLog({
+        code: result.installOutput.code,
+        stderr: result.installOutput.stderr,
+        stdout: result.installOutput.stdout,
+        recovery: result.recovery,
+        destination: result.destination,
+      })
+    } else {
+      printError(
+        new CliError(result.error.code, result.error.message, result.error.hint)
+      )
+    }
+  }
+
+  printResult(result)
+  process.exitCode = result.ok ? 0 : 1
+}
+
+function reportUnexpectedError(err: unknown, dryRun: boolean): void {
+  const error = err instanceof Error ? err : new Error(String(err))
+  const code =
+    error instanceof CliError ? error.code : sourceFailed(error.message).code
+  const failure: CreateResult = {
+    ok: false,
+    mode: dryRun ? "dry-run" : "create",
+    projectCreated: false,
+    error: {
+      code,
+      message: error.message,
+      hint:
+        error instanceof CliError
+          ? error.hint
+          : "unexpected internal error — check the output above",
+    },
+  }
+  printError(error instanceof CliError ? error : internal(error.message))
+  printResult(failure)
+  process.exitCode = 1
+}
 
 program.parseAsync(process.argv).catch((err) => {
   // Top-level safety net for anything commander didn't route.

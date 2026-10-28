@@ -71,13 +71,12 @@ export const buildDryRunResult = (
     sha,
   }
 
-  if (
-    install &&
-    (prereqs === undefined ||
-      strategy === undefined ||
-      installCommand === undefined ||
-      input.pnpmVersion === undefined)
-  ) {
+  const installMetadataMissing =
+    prereqs === undefined ||
+    strategy === undefined ||
+    installCommand === undefined ||
+    input.pnpmVersion === undefined
+  if (install && installMetadataMissing) {
     throw internal(
       "dry-run with install requested but prereq metadata is missing"
     )

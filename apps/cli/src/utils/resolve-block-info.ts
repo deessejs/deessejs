@@ -12,7 +12,7 @@ import {
   networkError,
   repositoryNotFound,
 } from "../errors/index.js"
-import { looksLikeUrl } from "./github-repository.js"
+import { isCanonicalGitHubUrl, looksLikeUrl } from "./github-repository.js"
 
 const GITHUB_API_BASE_URL = "https://api.github.com"
 const MAX_BLOCK_JSON_BYTES = 1024 * 1024
@@ -72,15 +72,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isSafeRelativePath(value: string): boolean {
-  if (
-    !value ||
-    value.startsWith("/") ||
-    /^[A-Za-z]:/.test(value) ||
-    value.includes("\\") ||
-    value.includes("\0")
-  ) {
-    return false
-  }
+  if (!value) return false
+  if (value.startsWith("/") || /^[A-Za-z]:/.test(value)) return false
+  if (value.includes("\\") || value.includes("\0")) return false
   return value
     .split("/")
     .every((segment) => segment !== "" && segment !== "." && segment !== "..")
@@ -97,27 +91,10 @@ function parseGitHubBlockUrl(
     return null
   }
 
-  if (
-    url.protocol !== "https:" ||
-    url.hostname !== "github.com" ||
-    url.port ||
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash
-  ) {
-    return null
-  }
+  if (!isCanonicalGitHubUrl(url)) return null
 
-  let segments: string[]
-  try {
-    segments = url.pathname
-      .split("/")
-      .filter(Boolean)
-      .map((segment) => decodeURIComponent(segment))
-  } catch {
-    return null
-  }
+  const segments = decodePathSegments(url.pathname)
+  if (!segments) return null
 
   const owner = segments[0]
   const rawRepo = segments[1]
@@ -127,18 +104,10 @@ function parseGitHubBlockUrl(
     return null
   }
 
-  let path = ""
-  let urlRef: string | undefined
-  if (segments.length > 2) {
-    if (segments[2] === "tree") {
-      if (!segments[3]) return null
-      urlRef = segments[3]
-      path = segments.slice(4).join("/")
-    } else {
-      path = segments.slice(2).join("/")
-    }
-    if (path && !isSafeRelativePath(path)) return null
-  }
+  const parsedPath = parseBlockPathSegments(segments)
+  if (!parsedPath) return null
+  const { path, ref: urlRef } = parsedPath
+  if (path && !isSafeRelativePath(path)) return null
 
   const ref = refOverride ?? urlRef
   return {
@@ -147,6 +116,27 @@ function parseGitHubBlockUrl(
     path,
     ...(ref ? { ref } : {}),
   }
+}
+
+function decodePathSegments(pathname: string): string[] | null {
+  try {
+    return pathname
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => decodeURIComponent(segment))
+  } catch {
+    return null
+  }
+}
+
+function parseBlockPathSegments(
+  segments: string[]
+): { path: string; ref?: string } | null {
+  if (segments.length <= 2) return { path: "" }
+  if (segments[2] !== "tree") return { path: segments.slice(2).join("/") }
+  const ref = segments[3]
+  if (!ref) return null
+  return { ref, path: segments.slice(4).join("/") }
 }
 
 async function fetchJson(
@@ -307,34 +297,7 @@ async function readSafeLocalFile(root: string, path: string, label: string) {
     throw blockInvalid(label, `unsafe source path "${path}"`)
   }
 
-  let current = root
-  const segments = path.split("/")
-  for (const [index, segment] of segments.entries()) {
-    current = join(current, segment)
-    let entry
-    try {
-      entry = await lstat(current)
-    } catch {
-      throw blockInvalid(label, `source file "${path}" was not found`)
-    }
-    if (entry.isSymbolicLink()) {
-      throw blockInvalid(
-        label,
-        `source file "${path}" traverses a symbolic link`
-      )
-    }
-    const isLast = index === segments.length - 1
-    if (isLast && entry.size > MAX_BLOCK_JSON_BYTES) {
-      throw blockInvalid(
-        label,
-        `source file "${path}" exceeds the ${MAX_BLOCK_JSON_BYTES} byte limit`
-      )
-    }
-    if ((!isLast && !entry.isDirectory()) || (isLast && !entry.isFile())) {
-      throw blockInvalid(label, `source path "${path}" is not a regular file`)
-    }
-  }
-
+  const current = await resolveSafeLocalFile(root, path, label)
   try {
     const contents = await readFile(current)
     if (contents.byteLength > MAX_BLOCK_JSON_BYTES) {
@@ -347,6 +310,49 @@ async function readSafeLocalFile(root: string, path: string, label: string) {
   } catch (error) {
     if (error instanceof Error && error.name === "CliError") throw error
     throw blockInvalid(label, `source file "${path}" could not be read`)
+  }
+}
+
+async function resolveSafeLocalFile(
+  root: string,
+  path: string,
+  label: string
+): Promise<string> {
+  let current = root
+  const segments = path.split("/")
+  for (const [index, segment] of segments.entries()) {
+    current = join(current, segment)
+    const entry = await readLocalEntry(current, path, label)
+    validateLocalEntry(entry, path, label, index === segments.length - 1)
+  }
+  return current
+}
+
+async function readLocalEntry(current: string, path: string, label: string) {
+  try {
+    return await lstat(current)
+  } catch {
+    throw blockInvalid(label, `source file "${path}" was not found`)
+  }
+}
+
+function validateLocalEntry(
+  entry: Awaited<ReturnType<typeof lstat>>,
+  path: string,
+  label: string,
+  isLast: boolean
+): void {
+  if (entry.isSymbolicLink()) {
+    throw blockInvalid(label, `source file "${path}" traverses a symbolic link`)
+  }
+  if (isLast && entry.size > MAX_BLOCK_JSON_BYTES) {
+    throw blockInvalid(
+      label,
+      `source file "${path}" exceeds the ${MAX_BLOCK_JSON_BYTES} byte limit`
+    )
+  }
+  if ((!isLast && !entry.isDirectory()) || (isLast && !entry.isFile())) {
+    throw blockInvalid(label, `source path "${path}" is not a regular file`)
   }
 }
 

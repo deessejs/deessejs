@@ -6,36 +6,39 @@ const VALID_BUMPS = new Set(["patch", "minor", "major"])
 
 function workspacePackages(rootDir) {
   const packages = new Set()
-
   for (const workspaceDir of ["apps", "packages"]) {
-    const parent = join(rootDir, workspaceDir)
-    let entries
-    try {
-      entries = readdirSync(parent, { withFileTypes: true })
-    } catch (error) {
-      if (error.code === "ENOENT") continue
-      throw error
-    }
+    collectWorkspacePackages(join(rootDir, workspaceDir), packages)
+  }
+  return packages
+}
 
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue
-
-      const packageJsonPath = join(parent, entry.name, "package.json")
-      let packageJson
-      try {
-        packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"))
-      } catch (error) {
-        if (error.code === "ENOENT") continue
-        throw new Error(`Could not read ${packageJsonPath}: ${error.message}`)
-      }
-
-      if (typeof packageJson.name === "string") {
-        packages.add(packageJson.name)
-      }
-    }
+function collectWorkspacePackages(parent, packages) {
+  let entries
+  try {
+    entries = readdirSync(parent, { withFileTypes: true })
+  } catch (error) {
+    if (error.code === "ENOENT") return
+    throw error
   }
 
-  return packages
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    const packageName = readWorkspacePackageName(
+      join(parent, entry.name, "package.json")
+    )
+    if (packageName) packages.add(packageName)
+  }
+}
+
+function readWorkspacePackageName(packageJsonPath) {
+  let packageJson
+  try {
+    packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"))
+  } catch (error) {
+    if (error.code === "ENOENT") return undefined
+    throw new Error(`Could not read ${packageJsonPath}: ${error.message}`)
+  }
+  return typeof packageJson.name === "string" ? packageJson.name : undefined
 }
 
 function parseYamlKey(source) {
@@ -85,19 +88,28 @@ function parseFrontmatter(body, filename, knownPackages, errors) {
     }
 
     if (seen.has(packageName)) {
-      errors.push(`${filename}:${index + 1}: duplicate package entry for ${packageName}`)
+      errors.push(
+        `${filename}:${index + 1}: duplicate package entry for ${packageName}`
+      )
       continue
     }
     seen.add(packageName)
 
     if (!knownPackages.has(packageName)) {
-      errors.push(`${filename}:${index + 1}: unknown workspace package ${packageName}`)
+      errors.push(
+        `${filename}:${index + 1}: unknown workspace package ${packageName}`
+      )
       continue
     }
 
-    const value = rawLine.slice(colonAt + 1).trim().replace(/\s+#.*$/, "")
+    const value = rawLine
+      .slice(colonAt + 1)
+      .trim()
+      .replace(/\s+#.*$/, "")
     if (!VALID_BUMPS.has(value)) {
-      errors.push(`${filename}:${index + 1}: invalid bump for ${packageName}; expected patch, minor, or major`)
+      errors.push(
+        `${filename}:${index + 1}: invalid bump for ${packageName}; expected patch, minor, or major`
+      )
       continue
     }
   }
@@ -140,7 +152,7 @@ function main() {
   const changedFiles = process.argv.slice(2)
   const { errors, files } = validateChangesets(
     process.cwd(),
-    changedFiles.length ? changedFiles : undefined,
+    changedFiles.length ? changedFiles : undefined
   )
   if (errors.length > 0) {
     console.error("Changeset validation failed:")

@@ -107,44 +107,48 @@ interface GetSessionResponse {
 function parseGetSessionResponse(value: unknown): GetSessionResponse | null {
   if (typeof value !== "object" || value === null) return null
 
-  let session: GetSessionResponse["session"]
+  let session: { id: string } | undefined
   if ("session" in value) {
-    const candidate = value.session
-    if (
-      typeof candidate !== "object" ||
-      candidate === null ||
-      !("id" in candidate) ||
-      typeof candidate.id !== "string"
-    ) {
-      return null
-    }
-    session = { id: candidate.id }
+    const parsedSession = parseSession(value.session)
+    if (!parsedSession) return null
+    session = parsedSession
   }
 
-  let user: GetSessionResponse["user"]
+  let user: { emailVerified?: boolean; role?: string | null } | undefined
   if ("user" in value) {
-    const candidate = value.user
-    if (typeof candidate !== "object" || candidate === null) return null
-
-    const emailVerified =
-      "emailVerified" in candidate ? candidate.emailVerified : undefined
-    const role = "role" in candidate ? candidate.role : undefined
-    if (
-      (emailVerified !== undefined && typeof emailVerified !== "boolean") ||
-      (role !== undefined && typeof role !== "string" && role !== null)
-    ) {
-      return null
-    }
-
-    user = {
-      ...(typeof emailVerified === "boolean" ? { emailVerified } : {}),
-      ...(typeof role === "string" || role === null ? { role } : {}),
-    }
+    const parsedUser = parseSessionUser(value.user)
+    if (!parsedUser) return null
+    user = parsedUser
   }
 
   return {
     ...(session ? { session } : {}),
     ...(user ? { user } : {}),
+  }
+}
+
+function parseSession(value: unknown): { id: string } | null {
+  if (typeof value !== "object" || value === null) return null
+  if (!("id" in value) || typeof value.id !== "string") return null
+  return { id: value.id }
+}
+
+function parseSessionUser(
+  value: unknown
+): { emailVerified?: boolean; role?: string | null } | null {
+  if (typeof value !== "object" || value === null) return null
+  const emailVerified =
+    "emailVerified" in value ? value.emailVerified : undefined
+  const role = "role" in value ? value.role : undefined
+  if (emailVerified !== undefined && typeof emailVerified !== "boolean") {
+    return null
+  }
+  if (role !== undefined && typeof role !== "string" && role !== null) {
+    return null
+  }
+  return {
+    ...(typeof emailVerified === "boolean" ? { emailVerified } : {}),
+    ...(typeof role === "string" || role === null ? { role } : {}),
   }
 }
 

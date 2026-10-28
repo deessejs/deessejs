@@ -64,16 +64,10 @@ export const maybeWarnAboutOutdatedCli = async (): Promise<void> => {
   } catch {
     return
   }
-  if (
-    typeof parsed !== "object" ||
-    parsed === null ||
-    !("version" in parsed) ||
-    typeof parsed.version !== "string" ||
-    !("minSupported" in parsed) ||
-    typeof parsed.minSupported !== "string"
-  ) {
-    return
-  }
+  if (typeof parsed !== "object" || parsed === null) return
+  if (!("version" in parsed) || !("minSupported" in parsed)) return
+  if (typeof parsed.version !== "string") return
+  if (typeof parsed.minSupported !== "string") return
 
   const localVersion = readPackageVersion()
   if (compareSemver(localVersion, parsed.minSupported) < 0) {

@@ -103,12 +103,10 @@ export function parseTemplateDescriptor(
         continue
       }
 
-      const isUnsupportedFormatVersion =
-        issue.path.length === 1 &&
-        issue.path[0] === "formatVersion" &&
-        isRecord(input) &&
-        typeof input.formatVersion === "number" &&
-        input.formatVersion !== 1
+      const isUnsupportedFormatVersion = isUnsupportedFormatVersionIssue(
+        issue.path,
+        input
+      )
 
       diagnostics.push({
         code: isUnsupportedFormatVersion
@@ -129,4 +127,14 @@ export function parseTemplateDescriptor(
       includes: result.data.includes ?? ["**/*"],
     },
   }
+}
+
+function isUnsupportedFormatVersionIssue(
+  path: PropertyKey[],
+  input: unknown
+): boolean {
+  if (path.length !== 1 || path[0] !== "formatVersion") return false
+  if (!isRecord(input)) return false
+  if (typeof input.formatVersion !== "number") return false
+  return input.formatVersion !== 1
 }

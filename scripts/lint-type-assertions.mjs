@@ -85,48 +85,13 @@ function hasTypeAssertions(file, source) {
 
 async function main() {
   const files = (await Promise.all(ROOTS.map(sourceFiles))).flat()
-  const candidates = []
-
-  for (const file of files) {
-    const source = await readFile(file, "utf8")
-    if (hasTypeAssertions(file, source)) candidates.push(file)
-  }
-
+  const candidates = await findCandidates(files)
   const findings = []
   for (const [index, file] of candidates.entries()) {
-    const result = spawnSync(
-      OXLINT,
-      ["--config", CONFIG, "--format", "json", file],
-      {
-        cwd: ROOT,
-        encoding: "utf8",
-        maxBuffer: 16 * 1024 * 1024,
-        shell: process.platform === "win32",
-      }
-    )
-    if (result.error) throw result.error
-
-    let report
-    try {
-      report = JSON.parse(result.stdout)
-    } catch {
-      throw new Error(
-        `Oxlint failed while checking ${file}:\n${result.stderr || result.stdout}`
-      )
-    }
-
-    for (const diagnostic of report.diagnostics ?? []) {
-      if (RULE_CODES.has(diagnostic.code)) findings.push(diagnostic)
-    }
+    findings.push(...(await lintFile(file)))
 
     if ((index + 1) % 25 === 0 || index + 1 === candidates.length) {
       console.log(`Checked ${index + 1}/${candidates.length} TypeScript files.`)
-    }
-
-    if (result.status !== 0 && (report.diagnostics ?? []).length === 0) {
-      throw new Error(
-        `Oxlint exited with ${result.status} while checking ${file}:\n${result.stderr}`
-      )
     }
   }
 
@@ -147,6 +112,48 @@ async function main() {
   console.log(
     `Type-aware assertion lint passed (${candidates.length} TypeScript file(s) checked).`
   )
+}
+
+async function findCandidates(files) {
+  const candidates = []
+  for (const file of files) {
+    const source = await readFile(file, "utf8")
+    if (hasTypeAssertions(file, source)) candidates.push(file)
+  }
+  return candidates
+}
+
+async function lintFile(file) {
+  const result = spawnSync(
+    OXLINT,
+    ["--config", CONFIG, "--format", "json", file],
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      maxBuffer: 16 * 1024 * 1024,
+      shell: process.platform === "win32",
+    }
+  )
+  if (result.error) throw result.error
+
+  let report
+  try {
+    report = JSON.parse(result.stdout)
+  } catch {
+    throw new Error(
+      `Oxlint failed while checking ${file}:\n${result.stderr || result.stdout}`
+    )
+  }
+
+  const findings = (report.diagnostics ?? []).filter((diagnostic) =>
+    RULE_CODES.has(diagnostic.code)
+  )
+  if (result.status !== 0 && (report.diagnostics ?? []).length === 0) {
+    throw new Error(
+      `Oxlint exited with ${result.status} while checking ${file}:\n${result.stderr}`
+    )
+  }
+  return findings
 }
 
 main().catch((error) => {

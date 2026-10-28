@@ -483,80 +483,82 @@ type SimAction =
 function simReducer(state: SimState, action: SimAction): SimState {
   switch (action.type) {
     case "SEED":
-      return {
-        cols: action.cols,
-        rows: action.rows,
-        grid: action.grid,
-        mode: "active",
-        topology: createTopology(action.cols, action.rows),
-      }
-    case "STEP": {
-      if (state.mode !== "active") return state
-      if (state.cols < 3 || state.rows < 3) return state
-      const result = stepWithTopology(state.grid, state.topology)
-      if (!result.changed) {
-        // Grid reached a fixed point — flip to stable without
-        // allocating a new Uint8Array (the reference is unchanged).
-        return { ...state, mode: "stable" }
-      }
-      return { ...state, grid: result.grid }
-    }
-    case "INJECT": {
-      // Belt-and-braces: even though `pickInjection` only returns
-      // placements with empty margins, the grid might have changed
-      // between the picker call and the dispatch (a render-delay race).
-      // Reject if the rectangle around (x, y) is no longer empty.
-      if (
-        !canPlaceEmpty(
-          state.grid,
-          state.cols,
-          state.rows,
-          action.x,
-          action.y,
-          action.pattern,
-          INJECTION_MARGIN
-        )
-      ) {
-        return state
-      }
-      const next = injectPattern(
-        state.grid,
-        state.cols,
-        state.rows,
-        action.x,
-        action.y,
-        action.pattern
-      )
-      if (gridsEqual(state.grid, next)) {
-        // No cells were added (or the pattern was a subset of an existing
-        // still life). Do not flip mode — avoids reactivating Conway for
-        // nothing.
-        return state
-      }
-      return { ...state, grid: next, mode: "active" }
-    }
-    case "DRAW": {
-      // Allocate the next Uint8Array lazily — only when at least one
-      // cell actually changes (0 -> 1). Cells already alive are
-      // skipped, so repainting the same cell is idempotent. The mode
-      // flips to "active" because the user just drew something: a
-      // stable grid should wake up and run again.
-      let next: Uint8Array | null = null
-      for (const cell of action.cells) {
-        const col = cell[0]
-        const row = cell[1]
-        if (!Number.isInteger(col) || !Number.isInteger(row)) continue
-        if (col < 0 || col >= state.cols || row < 0 || row >= state.rows)
-          continue
-        const idx = row * state.cols + col
-        if (state.grid[idx] === 1) continue
-        if (next === null) next = new Uint8Array(state.grid)
-        next[idx] = 1
-      }
-      if (next === null) return state
-      return { ...state, grid: next, mode: "active" }
-    }
+      return seedSimulation(action)
+    case "STEP":
+      return stepSimulation(state)
+    case "INJECT":
+      return injectSimulation(state, action)
+    case "DRAW":
+      return drawSimulation(state, action.cells)
   }
+}
+
+function seedSimulation(
+  action: Extract<SimAction, { type: "SEED" }>
+): SimState {
+  return {
+    cols: action.cols,
+    rows: action.rows,
+    grid: action.grid,
+    mode: "active",
+    topology: createTopology(action.cols, action.rows),
+  }
+}
+
+function stepSimulation(state: SimState): SimState {
+  if (state.mode !== "active" || state.cols < 3 || state.rows < 3) return state
+  const result = stepWithTopology(state.grid, state.topology)
+  if (!result.changed) return { ...state, mode: "stable" }
+  return { ...state, grid: result.grid }
+}
+
+function injectSimulation(
+  state: SimState,
+  action: Extract<SimAction, { type: "INJECT" }>
+): SimState {
+  // Recheck the empty margins because the grid may have changed since the
+  // picker returned this placement.
+  if (
+    !canPlaceEmpty(
+      state.grid,
+      state.cols,
+      state.rows,
+      action.x,
+      action.y,
+      action.pattern,
+      INJECTION_MARGIN
+    )
+  ) {
+    return state
+  }
+  const next = injectPattern(
+    state.grid,
+    state.cols,
+    state.rows,
+    action.x,
+    action.y,
+    action.pattern
+  )
+  if (gridsEqual(state.grid, next)) return state
+  return { ...state, grid: next, mode: "active" }
+}
+
+function drawSimulation(
+  state: SimState,
+  cells: ReadonlyArray<readonly [number, number]>
+): SimState {
+  // Copy lazily so drawing an already-live cell stays idempotent.
+  let next: Uint8Array | null = null
+  for (const [col, row] of cells) {
+    if (!Number.isInteger(col) || !Number.isInteger(row)) continue
+    if (col < 0 || col >= state.cols || row < 0 || row >= state.rows) continue
+    const index = row * state.cols + col
+    if (state.grid[index] === 1) continue
+    if (next === null) next = new Uint8Array(state.grid)
+    next[index] = 1
+  }
+  if (next === null) return state
+  return { ...state, grid: next, mode: "active" }
 }
 
 const INITIAL_SIM: SimState = {

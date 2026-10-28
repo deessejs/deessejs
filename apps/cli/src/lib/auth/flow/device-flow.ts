@@ -151,32 +151,28 @@ export const fetchUserIdentity = async (
   }
   const body: unknown = await response.json()
   const user = isRecord(body) ? body.user : undefined
-  if (
-    !isRecord(user) ||
-    typeof user.id !== "string" ||
-    ("email" in user && typeof user.email !== "string") ||
-    ("name" in user && typeof user.name !== "string")
-  ) {
+  if (!isRecord(user)) {
+    throw cliDeviceExpired(
+      "server issued a session token but no user identity was attached"
+    )
+  }
+  if (typeof user.id !== "string") {
+    throw cliDeviceExpired(
+      "server issued a session token but no user identity was attached"
+    )
+  }
+  if ("email" in user && typeof user.email !== "string") {
+    throw cliDeviceExpired(
+      "server issued a session token but no user identity was attached"
+    )
+  }
+  if ("name" in user && typeof user.name !== "string") {
     throw cliDeviceExpired(
       "server issued a session token but no user identity was attached"
     )
   }
   const identity: UserIdentity = { id: user.id }
-  if ("email" in user) {
-    if (typeof user.email !== "string") {
-      throw cliDeviceExpired(
-        "server issued a session token but no user identity was attached"
-      )
-    }
-    identity.email = user.email
-  }
-  if ("name" in user) {
-    if (typeof user.name !== "string") {
-      throw cliDeviceExpired(
-        "server issued a session token but no user identity was attached"
-      )
-    }
-    identity.name = user.name
-  }
+  if (typeof user.email === "string") identity.email = user.email
+  if (typeof user.name === "string") identity.name = user.name
   return identity
 }

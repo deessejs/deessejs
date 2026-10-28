@@ -176,102 +176,119 @@ export const initCommand = new Command("init")
   .option("--force", "allow an existing empty target directory")
   .option("--verbose", "show initialization details and package manager output")
   .option("--json", "JSON output for scripting")
-  .action(
-    async (
-      slugOrUrl: string,
-      opts: {
-        pm?: string
-        dir?: string
-        ref?: string
-        install: boolean
-        force?: boolean
-        verbose?: boolean
-        json?: boolean
-      }
-    ) => {
-      try {
-        const { template, directRepository } =
-          await resolveTemplateSource(slugOrUrl)
-
-        const projectName = directRepository?.repo ?? template.slug
-        const dir = resolve(process.cwd(), opts.dir ?? `./${projectName}`)
-        if (!opts.json) {
-          console.log()
-          console.log(pc.bold(`Initializing ${projectName}`))
-          console.log()
-        }
-        logVerbose(
-          opts.verbose ?? false,
-          `Template source: ${directRepository ? "GitHub URL" : "catalog slug"}`
-        )
-        const revision = await createTemplateProject(
-          template,
-          dir,
-          opts.ref,
-          opts.force ?? false,
-          !opts.json,
-          opts.verbose ?? false
-        )
-
-        const pmInfo = resolvePackageManager(opts.pm, dir)
-
-        if (!opts.install) {
-          logVerbose(
-            opts.verbose ?? false,
-            "Dependency installation skipped (--no-install)"
-          )
-          if (opts.json) {
-            printJson({
-              ok: true,
-              slug: template.slug,
-              dir,
-              ref: revision,
-              installed: false,
-            })
-          } else {
-            printNextSteps(dir, pmInfo, true)
-          }
-          return
-        }
-
-        if (!pmInfo) {
-          if (!opts.json) printMissingPackageManagerNotice()
-        } else {
-          await installDependencies(
-            pmInfo,
-            dir,
-            opts.verbose ?? false,
-            !!opts.json
-          )
-        }
-
-        if (opts.json) {
-          printJson({
-            ok: true,
-            slug: template.slug,
-            dir,
-            ref: revision,
-            installed: pmInfo !== null,
-            packageManager: pmInfo?.pm ?? null,
-          })
-        } else {
-          printNextSteps(dir, pmInfo, false)
-        }
-      } catch (err) {
-        if (err instanceof CliError) {
-          if (opts.json) {
-            printJson({
-              ok: false,
-              code: err.code,
-              message: err.message,
-              hint: err.hint,
-            })
-          } else {
-            printError(err)
-          }
-          process.exit(err.exitCode())
-        }
-        throw internal(err instanceof Error ? err.message : String(err))
-      }
-    }
+  .action((slugOrUrl: string, options: InitCommandOptions) =>
+    runInitCommand(slugOrUrl, options)
   )
+
+type InitCommandOptions = {
+  pm?: string
+  dir?: string
+  ref?: string
+  install: boolean
+  force?: boolean
+  verbose?: boolean
+  json?: boolean
+}
+
+async function runInitCommand(
+  slugOrUrl: string,
+  options: InitCommandOptions
+): Promise<void> {
+  try {
+    const state = await prepareTemplate(slugOrUrl, options)
+    await installAndReport(state, options)
+  } catch (error) {
+    reportInitError(error, options.json ?? false)
+  }
+}
+
+async function prepareTemplate(slugOrUrl: string, options: InitCommandOptions) {
+  const { template, directRepository } = await resolveTemplateSource(slugOrUrl)
+  const projectName = directRepository?.repo ?? template.slug
+  const dir = resolve(process.cwd(), options.dir ?? `./${projectName}`)
+  if (!options.json) {
+    console.log()
+    console.log(pc.bold(`Initializing ${projectName}`))
+    console.log()
+  }
+  logVerbose(
+    options.verbose ?? false,
+    `Template source: ${directRepository ? "GitHub URL" : "catalog slug"}`
+  )
+  const revision = await createTemplateProject(
+    template,
+    dir,
+    options.ref,
+    options.force ?? false,
+    !options.json,
+    options.verbose ?? false
+  )
+  return { template, dir, revision }
+}
+
+async function installAndReport(
+  state: Awaited<ReturnType<typeof prepareTemplate>>,
+  options: InitCommandOptions
+): Promise<void> {
+  const { template, dir, revision } = state
+  const packageManager = resolvePackageManager(options.pm, dir)
+
+  if (!options.install) {
+    logVerbose(
+      options.verbose ?? false,
+      "Dependency installation skipped (--no-install)"
+    )
+    if (options.json) {
+      printJson({
+        ok: true,
+        slug: template.slug,
+        dir,
+        ref: revision,
+        installed: false,
+      })
+    } else {
+      printNextSteps(dir, packageManager, true)
+    }
+    return
+  }
+
+  if (!packageManager && !options.json) printMissingPackageManagerNotice()
+  if (packageManager) {
+    await installDependencies(
+      packageManager,
+      dir,
+      options.verbose ?? false,
+      !!options.json
+    )
+  }
+
+  if (options.json) {
+    printJson({
+      ok: true,
+      slug: template.slug,
+      dir,
+      ref: revision,
+      installed: packageManager !== null,
+      packageManager: packageManager?.pm ?? null,
+    })
+  } else {
+    printNextSteps(dir, packageManager, false)
+  }
+}
+
+function reportInitError(error: unknown, json: boolean): never {
+  if (!(error instanceof CliError)) {
+    throw internal(error instanceof Error ? error.message : String(error))
+  }
+  if (json) {
+    printJson({
+      ok: false,
+      code: error.code,
+      message: error.message,
+      hint: error.hint,
+    })
+  } else {
+    printError(error)
+  }
+  process.exit(error.exitCode())
+}

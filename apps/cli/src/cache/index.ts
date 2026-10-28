@@ -14,17 +14,16 @@ export const readDiskCache = (name: string): CacheEntry<unknown> | null => {
   try {
     const raw = readFileSync(path, "utf8")
     const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== "object" || parsed === null) return null
     if (
-      typeof parsed !== "object" ||
-      parsed === null ||
       !("etag" in parsed) ||
       !("fetchedAt" in parsed) ||
-      !("body" in parsed) ||
-      (typeof parsed.etag !== "string" && parsed.etag !== null) ||
-      typeof parsed.fetchedAt !== "string"
+      !("body" in parsed)
     ) {
       return null
     }
+    if (typeof parsed.etag !== "string" && parsed.etag !== null) return null
+    if (typeof parsed.fetchedAt !== "string") return null
     return {
       etag: parsed.etag,
       fetchedAt: parsed.fetchedAt,

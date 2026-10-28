@@ -53,13 +53,9 @@ const validateSession = async (
     return null
   }
   const user = body.user
-  if (
-    typeof user.id !== "string" ||
-    ("email" in user && typeof user.email !== "string") ||
-    ("name" in user && typeof user.name !== "string")
-  ) {
-    return null
-  }
+  if (typeof user.id !== "string") return null
+  if ("email" in user && typeof user.email !== "string") return null
+  if ("name" in user && typeof user.name !== "string") return null
   return {
     id: user.id,
     ...(typeof user.email === "string" ? { email: user.email } : {}),

@@ -72,11 +72,10 @@ export function assertOrganizationName(name: unknown): asserts name is string {
   for (const ch of name) {
     const cp = ch.codePointAt(0)
     if (cp === undefined) continue
-    if (
-      (cp >= 0x00 && cp <= 0x1f) ||
-      cp === 0x7f ||
-      (cp >= 0x80 && cp <= 0x9f)
-    ) {
+    const isC0Control = cp >= 0x00 && cp <= 0x1f
+    const isDelete = cp === 0x7f
+    const isC1Control = cp >= 0x80 && cp <= 0x9f
+    if (isC0Control || isDelete || isC1Control) {
       throw new APIError("BAD_REQUEST", {
         code: "invalid_name",
         message: "Organization name contains control characters",

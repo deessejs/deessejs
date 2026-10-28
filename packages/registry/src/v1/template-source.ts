@@ -97,6 +97,26 @@ const MAX_ARCHIVE_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_ARCHIVE_EXPANDED_SIZE_BYTES = 200 * 1024 * 1024
 const MAX_DESCRIPTOR_SIZE_BYTES = 10 * 1024 * 1024
 
+async function retryWithBackoff<T>(options: {
+  retryCount: number
+  operation: (attempt: number) => Promise<T>
+  shouldRetry: (error: unknown, attempt: number) => boolean
+  failure: (error: unknown) => TemplateSourceError
+}): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 0; attempt <= options.retryCount; attempt += 1) {
+    try {
+      return await options.operation(attempt)
+    } catch (error) {
+      lastError = error
+      if (!options.shouldRetry(error, attempt)) throw error
+      if (attempt === options.retryCount) throw options.failure(error)
+      await new Promise((resolve) => setTimeout(resolve, 200 * 2 ** attempt))
+    }
+  }
+  throw options.failure(lastError)
+}
+
 function safeArchivePath(path: string): boolean {
   if (
     !path ||
@@ -263,14 +283,12 @@ async function readArchiveSnapshot(
         )
         return
       }
-      const archiveRevision = currentRoot
-        .toLowerCase()
-        .startsWith(expectedArchivePrefix.toLowerCase())
-        ? currentRoot.slice(expectedArchivePrefix.length)
-        : ""
       if (
-        !/^[a-f0-9]{7,40}$/i.test(archiveRevision) ||
-        !revision.toLowerCase().startsWith(archiveRevision.toLowerCase())
+        !matchesRequestedArchiveRevision(
+          currentRoot,
+          expectedArchivePrefix,
+          revision
+        )
       ) {
         failInventory(
           createTemplateSourceError(
@@ -395,6 +413,21 @@ async function readArchiveSnapshot(
   }
 }
 
+function matchesRequestedArchiveRevision(
+  archiveRoot: string,
+  expectedPrefix: string,
+  revision: string
+): boolean {
+  if (!archiveRoot.toLowerCase().startsWith(expectedPrefix.toLowerCase())) {
+    return false
+  }
+  const archiveRevision = archiveRoot.slice(expectedPrefix.length)
+  return (
+    /^[a-f0-9]{7,40}$/i.test(archiveRevision) &&
+    revision.toLowerCase().startsWith(archiveRevision.toLowerCase())
+  )
+}
+
 function parseRepository(repository: string): {
   owner: string
   name: string
@@ -403,7 +436,13 @@ function parseRepository(repository: string): {
   const match = /^([A-Za-z0-9-]+)\/([A-Za-z0-9_.-]+)$/.exec(repository)
   const owner = match?.[1]
   const name = match?.[2]
-  if (!owner || !name || owner === "." || name === "." || name === "..") {
+  if (!owner || !name) {
+    throw createTemplateSourceError(
+      "source.invalid_repository",
+      `Expected a GitHub repository in owner/repository form, received "${repository}".`
+    )
+  }
+  if (owner === "." || name === "." || name === "..") {
     throw createTemplateSourceError(
       "source.invalid_repository",
       `Expected a GitHub repository in owner/repository form, received "${repository}".`
@@ -419,6 +458,45 @@ function parseRepository(repository: string): {
 
 function isSha(value: unknown): value is string {
   return typeof value === "string" && /^[a-f0-9]{40}$/i.test(value)
+}
+
+function shouldRetryJsonRequest(error: unknown): boolean {
+  if (!isTemplateSourceError(error)) return true
+  return error.message.includes("HTTP 429") || /HTTP 5\d\d/.test(error.message)
+}
+
+function shouldRetryDescriptorRequest(error: unknown): boolean {
+  if (!isTemplateSourceError(error)) return true
+  return (
+    error.code === "source.unavailable" &&
+    (error.message.includes("HTTP 429") || /HTTP 5\d\d/.test(error.message))
+  )
+}
+
+async function requestJson(
+  url: string,
+  request: typeof fetch,
+  timeoutMs: number,
+  _attempt: number
+): Promise<unknown> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await request(url, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": GITHUB_API_VERSION,
+      },
+      signal: controller.signal,
+    })
+    if (response.ok) return await response.json()
+    throw createTemplateSourceError(
+      "source.unavailable",
+      `GitHub returned HTTP ${response.status} while reading ${url}.`
+    )
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 /**
@@ -440,54 +518,19 @@ export function createGitHubTemplateSourceAdapter(
     options.maxInventoryEntries ?? DEFAULT_MAX_INVENTORY_ENTRIES
 
   async function getJson(url: string): Promise<unknown> {
-    let lastError: unknown
-
-    for (let attempt = 0; attempt <= retryCount; attempt += 1) {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), requestTimeoutMs)
-
-      try {
-        const response = await request(url, {
-          headers: {
-            Accept: "application/vnd.github+json",
-            "X-GitHub-Api-Version": GITHUB_API_VERSION,
-          },
-          signal: controller.signal,
-        })
-
-        if (response.ok) return await response.json()
-
-        const retryable = response.status === 429 || response.status >= 500
-        const error = createTemplateSourceError(
-          "source.unavailable",
-          `GitHub returned HTTP ${response.status} while reading ${url}.`
-        )
-        if (!retryable || attempt === retryCount) throw error
-        lastError = error
-      } catch (error) {
-        if (isTemplateSourceError(error)) {
-          if (
-            !error.message.includes("HTTP 429") &&
-            !error.message.includes("HTTP 5")
-          ) {
-            throw error
-          }
-          lastError = error
-          if (attempt === retryCount) throw error
-        } else {
-          lastError = error
-          if (attempt === retryCount) break
-        }
-      } finally {
-        clearTimeout(timeout)
-      }
-      await new Promise((resolve) => setTimeout(resolve, 200 * 2 ** attempt))
-    }
-
-    throw createTemplateSourceError(
-      "source.unavailable",
-      `GitHub could not be reached after ${retryCount + 1} attempts: ${String(lastError)}.`
-    )
+    return retryWithBackoff({
+      retryCount,
+      operation: (attempt) =>
+        requestJson(url, request, requestTimeoutMs, attempt),
+      shouldRetry: shouldRetryJsonRequest,
+      failure: (error) =>
+        isTemplateSourceError(error)
+          ? error
+          : createTemplateSourceError(
+              "source.unavailable",
+              `GitHub could not be reached after ${retryCount + 1} attempts: ${String(error)}.`
+            ),
+    })
   }
 
   async function resolveRevision(
@@ -563,36 +606,19 @@ export function createGitHubTemplateSourceAdapter(
     const { owner, name } = parseRepository(repository)
     const refQuery = ref ? `?ref=${encodeURIComponent(ref)}` : ""
     const url = `${apiBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/contents/deesse-template.json${refQuery}`
-    let lastError: unknown
-
-    for (let attempt = 0; attempt <= retryCount; attempt += 1) {
-      try {
-        return await fetchRemoteDescriptor(
-          url,
-          repository,
-          request,
-          requestTimeoutMs
-        )
-      } catch (error) {
-        if (isTemplateSourceError(error)) {
-          if (error.code !== "source.unavailable") throw error
-          const retryableHttpError =
-            error.message.includes("HTTP 429") ||
-            /HTTP 5\d\d/.test(error.message)
-          if (!retryableHttpError || attempt === retryCount) throw error
-          lastError = error
-        } else {
-          lastError = error
-          if (attempt === retryCount) break
-        }
-      }
-      await new Promise((resolve) => setTimeout(resolve, 200 * 2 ** attempt))
-    }
-
-    throw createTemplateSourceError(
-      "source.unavailable",
-      `GitHub could not read the root descriptor from ${repository}${ref ? ` at ref ${ref}` : ""}: ${String(lastError)}.`
-    )
+    return retryWithBackoff({
+      retryCount,
+      operation: () =>
+        fetchRemoteDescriptor(url, repository, request, requestTimeoutMs),
+      shouldRetry: shouldRetryDescriptorRequest,
+      failure: (error) =>
+        isTemplateSourceError(error)
+          ? error
+          : createTemplateSourceError(
+              "source.unavailable",
+              `GitHub could not read the root descriptor from ${repository}${ref ? ` at ref ${ref}` : ""}: ${String(error)}.`
+            ),
+    })
   }
 
   async function fetchRemoteDescriptor(

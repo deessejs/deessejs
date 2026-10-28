@@ -19,22 +19,32 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 function isGitHubRepo(value: unknown): value is GitHubRepo {
   if (!isRecord(value)) return false
-  const license = value.license
-  return (
-    typeof value.name === "string" &&
-    typeof value.full_name === "string" &&
-    (typeof value.description === "string" || value.description === null) &&
-    (license === null ||
-      (isRecord(license) &&
-        (typeof license.spdx_id === "string" || license.spdx_id === null) &&
-        typeof license.name === "string")) &&
-    typeof value.stargazers_count === "number" &&
-    typeof value.pushed_at === "string" &&
-    (value.topics === undefined ||
-      (Array.isArray(value.topics) &&
-        value.topics.every((topic) => typeof topic === "string"))) &&
-    typeof value.html_url === "string"
-  )
+  if (typeof value.name !== "string" || typeof value.full_name !== "string") {
+    return false
+  }
+  if (typeof value.description !== "string" && value.description !== null) {
+    return false
+  }
+  if (!isGitHubLicense(value.license)) return false
+  if (
+    typeof value.stargazers_count !== "number" ||
+    typeof value.pushed_at !== "string"
+  ) {
+    return false
+  }
+  if (value.topics !== undefined && !isStringArray(value.topics)) return false
+  return typeof value.html_url === "string"
+}
+
+function isGitHubLicense(value: unknown): boolean {
+  if (value === null) return true
+  if (!isRecord(value)) return false
+  if (typeof value.spdx_id !== "string" && value.spdx_id !== null) return false
+  return typeof value.name === "string"
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string")
 }
 
 function isGitHubReadme(value: unknown): value is GitHubReadme {
