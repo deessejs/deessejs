@@ -321,6 +321,9 @@ importers:
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.101.4(react@19.3.0)
+      '@workspace/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@workspace/api':
         specifier: workspace:*
         version: link:../../packages/api
@@ -330,6 +333,9 @@ importers:
       '@workspace/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@workspace/cookies':
+        specifier: workspace:*
+        version: link:../../packages/cookies
       '@workspace/env':
         specifier: workspace:*
         version: link:../../packages/env
