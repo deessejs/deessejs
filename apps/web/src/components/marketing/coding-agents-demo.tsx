@@ -309,7 +309,8 @@ export function CodingAgentsDemo() {
     return () => window.clearInterval(intervalId)
   }, [activeIndex, reduceMotion])
 
-  const scenario = SCENARIOS[activeIndex] ?? SCENARIOS[0]!
+  const scenario = SCENARIOS[activeIndex] ?? SCENARIOS.at(0)
+  if (!scenario) return null
 
   function selectScenario(index: number) {
     setActiveIndex(index)

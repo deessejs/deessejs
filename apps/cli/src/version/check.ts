@@ -58,14 +58,18 @@ export const maybeWarnAboutOutdatedCli = async (): Promise<void> => {
     return
   }
 
-  let parsed: CliVersionResponse
+  let parsed: unknown
   try {
-    parsed = JSON.parse(bodyText) as CliVersionResponse
+    parsed = JSON.parse(bodyText)
   } catch {
     return
   }
   if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("version" in parsed) ||
     typeof parsed.version !== "string" ||
+    !("minSupported" in parsed) ||
     typeof parsed.minSupported !== "string"
   ) {
     return

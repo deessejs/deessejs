@@ -23,6 +23,9 @@ const IGNORED_DIRECTORIES = new Set([
   "node_modules",
 ])
 const DISABLE_DIRECTIVE = /\b(?:oxlint|eslint)-disable(?:-next-line|-line)?\b/
+const ALLOWED_RULE_EXCEPTION =
+  /^\/\/\s*oxlint-disable-next-line typescript\/(?:no-unsafe-type-assertion|no-non-null-assertion)\s*$/
+const EXCEPTION_REASON = /^\/\/\s*lint exception:\s+/i
 
 async function sourceFiles(directory) {
   let entries
@@ -52,6 +55,7 @@ async function main() {
 
   for (const file of files) {
     const source = await readFile(file, "utf8")
+    const lines = source.split(/\r?\n/)
     const languageVariant = /\.[jt]sx$/.test(file)
       ? ts.LanguageVariant.JSX
       : ts.LanguageVariant.Standard
@@ -79,6 +83,14 @@ async function main() {
       if (!match) continue
 
       const line = source.slice(0, scanner.getTokenPos()).split("\n").length
+      const previousLine = lines[line - 2]?.trim() ?? ""
+      if (
+        ALLOWED_RULE_EXCEPTION.test(comment.trim()) &&
+        EXCEPTION_REASON.test(previousLine) &&
+        previousLine.length >= 40
+      ) {
+        continue
+      }
       findings.push(`${file}:${line}: ${match[0]}`)
     }
   }

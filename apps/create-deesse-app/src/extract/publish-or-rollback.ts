@@ -70,7 +70,7 @@ export const publishOrRollback = async (
     try {
       probeFd = await open(probe, "wx")
     } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code
+      const code = err instanceof Error && "code" in err ? err.code : undefined
       if (code === "EEXIST") {
         cleanup(tempDir, tarballPath)
         throw destinationExists(destination)
@@ -104,7 +104,7 @@ export const publishOrRollback = async (
     try {
       await rename(tempDir, destination)
     } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code
+      const code = err instanceof Error && "code" in err ? err.code : undefined
       if (
         code === "EEXIST" ||
         code === "ENOTEMPTY" ||

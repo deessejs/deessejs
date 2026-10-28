@@ -1,7 +1,7 @@
 import { Command } from "commander"
 import ora from "ora"
 
-import { internal } from "../errors/index.js"
+import { CliError, internal } from "../errors/index.js"
 import {
   printBlockInfo,
   printBlockCheck,
@@ -50,18 +50,18 @@ const blockInfoCommand = new Command("info")
       }
     } catch (error) {
       spinner?.fail("Failed to read block details")
-      if (error instanceof Error && error.name === "CliError") {
+      if (error instanceof CliError) {
         if (options.json) {
           printJson({
             ok: false,
-            code: (error as { code?: string }).code,
+            code: error.code,
             message: error.message,
-            hint: (error as { hint?: string }).hint,
+            hint: error.hint,
           })
         } else {
-          printError(error as Parameters<typeof printError>[0])
+          printError(error)
         }
-        process.exit((error as { exitCode?: () => number }).exitCode?.() ?? 1)
+        process.exit(error.exitCode())
       }
       throw internal(error instanceof Error ? error.message : String(error))
     }
@@ -105,19 +105,19 @@ const blockCheckCommand = new Command("check")
       if (!valid) process.exitCode = 1
     } catch (error) {
       spinner?.fail("Failed to check block source")
-      if (error instanceof Error && error.name === "CliError") {
+      if (error instanceof CliError) {
         if (options.json) {
           printJson({
             ok: false,
             command: "block check",
-            code: (error as { code?: string }).code,
+            code: error.code,
             message: error.message,
-            hint: (error as { hint?: string }).hint,
+            hint: error.hint,
           })
         } else {
-          printError(error as Parameters<typeof printError>[0])
+          printError(error)
         }
-        process.exit((error as { exitCode?: () => number }).exitCode?.() ?? 1)
+        process.exit(error.exitCode())
       }
       throw internal(error instanceof Error ? error.message : String(error))
     }

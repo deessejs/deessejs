@@ -99,15 +99,18 @@ export const buildDryRunResult = (
   // without a cast.
   const installSection: DryRunInstall = install
     ? (() => {
+        if (
+          prereqs === undefined ||
+          strategy === undefined ||
+          installCommand === undefined
+        ) {
+          throw internal("dry-run install metadata is missing")
+        }
         return {
           skipped: false as const,
-          strategy: strategy as "corepack" | "npm-exec" | "pnpm-direct",
-          command: installCommand as { bin: string; args: string[] },
-          prereqs: prereqs as {
-            corepack: boolean
-            npm: boolean
-            pnpm: boolean
-          },
+          strategy,
+          command: installCommand,
+          prereqs,
         }
       })()
     : { skipped: true as const }

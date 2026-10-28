@@ -9,7 +9,7 @@ import {
   requestDeviceCode,
 } from "../../lib/auth/flow/index.js"
 import { writeAuth } from "../../lib/auth/store/store.js"
-import { type CliError } from "../../errors/index.js"
+import { CliError } from "../../errors/index.js"
 import { printError, printJson } from "../../output/index.js"
 
 /**
@@ -85,8 +85,8 @@ export const loginCommand = new Command("login")
       }
     } catch (e) {
       spinner?.stop()
-      if (e instanceof Error && "code" in e && "exitCode" in e) {
-        const err = e as CliError
+      if (e instanceof CliError) {
+        const err = e
         if (opts.json) {
           printJson({ ok: false, code: err.code, message: err.message })
         } else {

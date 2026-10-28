@@ -8,12 +8,28 @@ export type CacheEntry<T = unknown> = {
   body: T
 }
 
-export const readDiskCache = <T>(name: string): CacheEntry<T> | null => {
+export const readDiskCache = (name: string): CacheEntry<unknown> | null => {
   const path = cachePath(name)
   if (!existsSync(path)) return null
   try {
     const raw = readFileSync(path, "utf8")
-    return JSON.parse(raw) as CacheEntry<T>
+    const parsed: unknown = JSON.parse(raw)
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      !("etag" in parsed) ||
+      !("fetchedAt" in parsed) ||
+      !("body" in parsed) ||
+      (typeof parsed.etag !== "string" && parsed.etag !== null) ||
+      typeof parsed.fetchedAt !== "string"
+    ) {
+      return null
+    }
+    return {
+      etag: parsed.etag,
+      fetchedAt: parsed.fetchedAt,
+      body: parsed.body,
+    }
   } catch {
     // Corrupt or unreadable. Caller logs a warning; we don't overwrite.
     return null

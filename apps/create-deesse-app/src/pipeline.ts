@@ -31,6 +31,7 @@ import type {
   CreateFailure,
   CreateInstallFailure,
   CreateResult,
+  ResultSource,
   ResultSourceMaybeSha,
 } from "./result.js"
 import { downloadTarball } from "./source/download-tarball.js"
@@ -40,11 +41,15 @@ const REPO_OWNER = "deessejs"
 const REPO_NAME = "saas-template"
 const REPO_REF = "main"
 
-const buildSource = (sha?: string): ResultSourceMaybeSha => ({
-  repo: `${REPO_OWNER}/${REPO_NAME}`,
-  ref: REPO_REF,
-  sha,
-})
+function buildSource(sha: string): ResultSource
+function buildSource(sha?: undefined): ResultSourceMaybeSha
+function buildSource(sha?: string): ResultSourceMaybeSha {
+  return {
+    repo: `${REPO_OWNER}/${REPO_NAME}`,
+    ref: REPO_REF,
+    sha,
+  }
+}
 
 export type RunInput = {
   projectName: string
@@ -285,7 +290,7 @@ const buildNoInstallResult = (state: RunState): CreateResult => {
     mode: "create",
     projectCreated: true,
     installed: false,
-    source: buildSource(state.sha) as ResultSourceMaybeSha & { sha: string },
+    source: buildSource(state.sha),
     destination: state.input.dir,
     packageName: state.packageName,
     packageManager: "pnpm",
@@ -320,7 +325,7 @@ const runInstallAndBuildResult = async (
       mode: "create",
       projectCreated: true,
       installed: true,
-      source: buildSource(state.sha) as ResultSourceMaybeSha & { sha: string },
+      source: buildSource(state.sha),
       destination: state.input.dir,
       packageName: state.packageName,
       packageManager: "pnpm",
@@ -374,7 +379,7 @@ const runInstallAndBuildResult = async (
     mode: "create",
     projectCreated: true,
     installed: false,
-    source: buildSource(state.sha),
+    source: state.sha === undefined ? buildSource() : buildSource(state.sha),
     destination: state.input.dir,
     error: {
       code: "install_failed",
@@ -517,7 +522,7 @@ const buildAbortFailure = (state: RunState): CreateFailure => {
     ok: false,
     mode: state.input.dryRun ? "dry-run" : "create",
     projectCreated: published,
-    source: buildSource(state.sha),
+    source: state.sha === undefined ? buildSource() : buildSource(state.sha),
     error: aborted(),
     ...(published ? { destination: state.input.dir } : {}),
   }
@@ -553,7 +558,7 @@ const buildCliErrorFailure = (
     ok: false,
     mode: state.input.dryRun ? "dry-run" : "create",
     projectCreated: published,
-    source: buildSource(state.sha),
+    source: state.sha === undefined ? buildSource() : buildSource(state.sha),
     error: { code: err.code, message: err.message, hint: err.hint },
     ...(published ? { destination: state.input.dir } : {}),
   }

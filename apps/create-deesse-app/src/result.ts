@@ -1,3 +1,5 @@
+import type { CreateAppErrorCode } from "./errors/index.js"
+
 export type ResultMode = "create" | "dry-run"
 
 export type ResultSource = {
@@ -143,7 +145,7 @@ export type CreateFailure = {
   source?: ResultSourceMaybeSha
   destination?: string
   error: {
-    code: string
+    code: CreateAppErrorCode
     message: string
     hint: string | undefined
   }

@@ -7,7 +7,8 @@ import { TagList } from "./tag-list"
 function formatAuthorNames(authors: Post["authors"]): React.ReactNode {
   if (authors.length === 0) return null
   if (authors.length === 1) {
-    const first = authors[0]!
+    const first = authors.at(0)
+    if (!first) return null
     return (
       <Link
         href={`/blog/author/${encodeURIComponent(first.handle)}`}
@@ -18,8 +19,9 @@ function formatAuthorNames(authors: Post["authors"]): React.ReactNode {
     )
   }
   if (authors.length === 2) {
-    const a0 = authors[0]!
-    const a1 = authors[1]!
+    const a0 = authors.at(0)
+    const a1 = authors.at(1)
+    if (!a0 || !a1) return null
     return (
       <>
         <Link
@@ -38,6 +40,8 @@ function formatAuthorNames(authors: Post["authors"]): React.ReactNode {
       </>
     )
   }
+  const last = authors.at(-1)
+  if (!last) return null
   return (
     <>
       {authors.slice(0, -1).map((a, i) => (
@@ -53,10 +57,10 @@ function formatAuthorNames(authors: Post["authors"]): React.ReactNode {
       ))}
       {", and "}
       <Link
-        href={`/blog/author/${encodeURIComponent(authors[authors.length - 1]!.handle)}`}
+        href={`/blog/author/${encodeURIComponent(last.handle)}`}
         className="transition-colors hover:text-foreground"
       >
-        {authors[authors.length - 1]!.name}
+        {last.name}
       </Link>
     </>
   )

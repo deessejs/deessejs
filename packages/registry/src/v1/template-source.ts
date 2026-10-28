@@ -97,22 +97,6 @@ const MAX_ARCHIVE_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_ARCHIVE_EXPANDED_SIZE_BYTES = 200 * 1024 * 1024
 const MAX_DESCRIPTOR_SIZE_BYTES = 10 * 1024 * 1024
 
-type GitHubCommitResponse = {
-  sha?: unknown
-}
-
-type GitHubRepositoryResponse = {
-  default_branch?: unknown
-}
-
-type TarEntry = {
-  path: string
-  type?: string
-  typeflag?: string
-  mode?: number
-  size?: number
-}
-
 function safeArchivePath(path: string): boolean {
   if (
     !path ||
@@ -127,18 +111,21 @@ function safeArchivePath(path: string): boolean {
     .every((segment) => segment !== "" && segment !== "." && segment !== "..")
 }
 
-function entryType(
-  entry: TarEntry
-): "file" | "directory" | "symlink" | "unsupported" {
-  if (entry.type === "Directory" || entry.typeflag === "5") return "directory"
-  if (entry.type === "SymbolicLink" || entry.typeflag === "2") return "symlink"
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+
+function entryType(entry: {
+  type?: string
+  mode?: number
+}): "file" | "directory" | "symlink" | "unsupported" {
   if (
-    entry.type === "File" ||
-    entry.type === "OldFile" ||
-    entry.typeflag === "0" ||
-    entry.typeflag === "\0"
-  )
-    return "file"
+    entry.type === "Directory" ||
+    ((entry.mode ?? 0) & 0o170000) === 0o040000
+  ) {
+    return "directory"
+  }
+  if (entry.type === "SymbolicLink") return "symlink"
+  if (entry.type === "File" || entry.type === "OldFile") return "file"
   return "unsupported"
 }
 
@@ -253,7 +240,7 @@ async function readArchiveSnapshot(
     file: tarPath,
     onentry: (rawEntry) => {
       if (inventoryError) return
-      const entry = rawEntry as unknown as TarEntry
+      const entry = rawEntry
       const rawPath = entry.path.replace(/\/$/, "")
       const segments = rawPath.split("/")
       const currentRoot = segments[0]
@@ -368,7 +355,7 @@ async function readArchiveSnapshot(
     cwd: extractedDir,
     strip: 1,
     filter: (path, rawEntry) => {
-      const entry = rawEntry as unknown as TarEntry
+      const entry = rawEntry
       return safeArchivePath(path) && entryType(entry) === "file"
     },
     maxMetaEntrySize: 1024 * 1024,
@@ -452,7 +439,7 @@ export function createGitHubTemplateSourceAdapter(
   const maxInventoryEntries =
     options.maxInventoryEntries ?? DEFAULT_MAX_INVENTORY_ENTRIES
 
-  async function getJson<T>(url: string): Promise<T> {
+  async function getJson(url: string): Promise<unknown> {
     let lastError: unknown
 
     for (let attempt = 0; attempt <= retryCount; attempt += 1) {
@@ -468,7 +455,7 @@ export function createGitHubTemplateSourceAdapter(
           signal: controller.signal,
         })
 
-        if (response.ok) return (await response.json()) as T
+        if (response.ok) return await response.json()
 
         const retryable = response.status === 429 || response.status >= 500
         const error = createTemplateSourceError(
@@ -509,30 +496,37 @@ export function createGitHubTemplateSourceAdapter(
   ): Promise<string> {
     const { owner, name } = parseRepository(repository)
     const url = `${apiBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/commits/${encodeURIComponent(ref)}`
-    const response = await getJson<GitHubCommitResponse>(url)
-    if (!isSha(response.sha)) {
+    const response = await getJson(url)
+    const sha =
+      typeof response === "object" && response !== null && "sha" in response
+        ? response.sha
+        : undefined
+    if (!isSha(sha)) {
       throw createTemplateSourceError(
         "source.invalid_response",
         `GitHub returned an invalid commit identity for ${repository}@${ref}.`
       )
     }
-    return response.sha.toLowerCase()
+    return sha.toLowerCase()
   }
 
   async function resolveDefaultBranch(repository: string): Promise<string> {
     const { owner, name } = parseRepository(repository)
     const url = `${apiBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`
-    const response = await getJson<GitHubRepositoryResponse>(url)
-    if (
-      typeof response.default_branch !== "string" ||
-      response.default_branch.length === 0
-    ) {
+    const response = await getJson(url)
+    const defaultBranch =
+      typeof response === "object" &&
+      response !== null &&
+      "default_branch" in response
+        ? response.default_branch
+        : undefined
+    if (typeof defaultBranch !== "string" || defaultBranch.length === 0) {
       throw createTemplateSourceError(
         "source.invalid_response",
         `GitHub did not return a default branch for ${repository}.`
       )
     }
-    return response.default_branch
+    return defaultBranch
   }
 
   async function repositoryExists(repository: string): Promise<boolean> {
@@ -630,12 +624,15 @@ export function createGitHubTemplateSourceAdapter(
           `GitHub returned HTTP ${response.status} while reading ${url}.`
         )
       }
-      const file = (await response.json()) as {
-        type?: unknown
-        encoding?: unknown
-        content?: unknown
-        size?: unknown
+      const payload: unknown = await response.json()
+      if (!isRecord(payload)) {
+        throw createTemplateSourceError(
+          "source.invalid_response",
+          "GitHub returned an invalid deesse-template.json response.",
+          "deesse-template.json"
+        )
       }
+      const file = payload
       if (file.type !== "file") {
         throw createTemplateSourceError(
           "source.invalid_response",

@@ -19,8 +19,13 @@ export function createMailer(): MailerTransport {
 
   switch (serverEnv.MAIL_TRANSPORT) {
     case "resend":
+      if (!serverEnv.RESEND_API_KEY) {
+        throw new Error(
+          "RESEND_API_KEY is required to use the Resend transport"
+        )
+      }
       return new ResendTransport({
-        apiKey: serverEnv.RESEND_API_KEY!,
+        apiKey: serverEnv.RESEND_API_KEY,
         from,
       })
     case "console":

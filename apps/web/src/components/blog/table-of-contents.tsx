@@ -9,16 +9,29 @@ interface TocItem {
   level: 2 | 3
 }
 
+function parseTocItems(serialized: string): TocItem[] {
+  const parsed: unknown = JSON.parse(serialized)
+  if (!Array.isArray(parsed)) return []
+  return parsed.filter(
+    (item): item is TocItem =>
+      typeof item === "object" &&
+      item !== null &&
+      "id" in item &&
+      typeof item.id === "string" &&
+      "text" in item &&
+      typeof item.text === "string" &&
+      "level" in item &&
+      (item.level === 2 || item.level === 3)
+  )
+}
+
 export function TableOfContents({ targetId }: { targetId: string }) {
   const serializedItems = useSyncExternalStore(
     (onChange) => subscribeToHeadings(targetId, onChange),
     () => getSerializedHeadings(targetId),
     () => "[]"
   )
-  const items = useMemo(
-    () => JSON.parse(serializedItems) as TocItem[],
-    [serializedItems]
-  )
+  const items = useMemo(() => parseTocItems(serializedItems), [serializedItems])
   const [activeId, setActiveId] = useState<string | null>(null)
 
   useEffect(() => {

@@ -2,7 +2,31 @@ import "server-only"
 
 import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
-import { auth, type AuthSession } from "@workspace/auth"
+import { auth } from "@workspace/auth"
+
+type AdminSession = {
+  session: { id: string }
+  user: { id: string; role: string | null }
+}
+
+function isAdminSession(value: unknown): value is AdminSession {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "session" in value &&
+    typeof value.session === "object" &&
+    value.session !== null &&
+    "id" in value.session &&
+    typeof value.session.id === "string" &&
+    "user" in value &&
+    typeof value.user === "object" &&
+    value.user !== null &&
+    "id" in value.user &&
+    typeof value.user.id === "string" &&
+    "role" in value.user &&
+    (typeof value.user.role === "string" || value.user.role === null)
+  )
+}
 
 /**
  * Server-only guard for the `/admin/*` route area.
@@ -39,23 +63,17 @@ import { auth, type AuthSession } from "@workspace/auth"
  * from the DB rather than trusting the cached session payload.
  */
 export async function requireAdmin(): Promise<{ userId: string }> {
-  // The `AuthSession` annotation re-augments the `user` shape with the
-  // admin plugin's `role` field. The base `auth.api.getSession` return
-  // type is widened by the TS2883 workaround in `packages/auth/src/auth.ts`
-  // (see the `authConfig: BetterAuthOptions` annotation); the explicit
-  // cast here is the matching fix at the consumer site so the role
-  // check is type-safe end to end.
-  const data = (await auth.api.getSession({
+  const result: unknown = await auth.api.getSession({
     headers: await headers(),
-  })) as AuthSession | null
+  })
 
-  if (!data?.session || !data.user) {
+  if (!isAdminSession(result)) {
     redirect("/login?redirect=%2Fadmin%2Fhome")
   }
 
-  if (data.user.role !== "admin") {
+  if (result.user.role !== "admin") {
     notFound()
   }
 
-  return { userId: data.user.id }
+  return { userId: result.user.id }
 }

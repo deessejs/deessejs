@@ -70,7 +70,8 @@ export function assertOrganizationName(name: unknown): asserts name is string {
   //    (U+0000–U+001F), DEL (U+007F), C1 (U+0080–U+009F). `for…of`
   //    iterates code points so surrogate pairs are handled correctly.
   for (const ch of name) {
-    const cp = ch.codePointAt(0)!
+    const cp = ch.codePointAt(0)
+    if (cp === undefined) continue
     if (
       (cp >= 0x00 && cp <= 0x1f) ||
       cp === 0x7f ||
@@ -176,7 +177,11 @@ export function organizationSlugCandidates(name: string): string[] {
   const base = slugifyOrganizationName(name)
   const candidates: string[] = []
 
-  for (let attempt = 1; attempt <= ORGANIZATION_SLUG_CANDIDATE_LIMIT; attempt++) {
+  for (
+    let attempt = 1;
+    attempt <= ORGANIZATION_SLUG_CANDIDATE_LIMIT;
+    attempt++
+  ) {
     const suffix = attempt === 1 ? "" : `-${attempt}`
     const candidate = suffix
       ? `${withoutTrailingHyphen(base.slice(0, SLUG_MAX_LENGTH - suffix.length))}${suffix}`

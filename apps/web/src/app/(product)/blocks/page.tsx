@@ -29,17 +29,14 @@ export const metadata: Metadata = {
  */
 export default function BlocksPage() {
   // Map each category to a representative block.
-  const categoryToBlock = Object.fromEntries(
-    BLOCK_CATEGORIES.map((category) => {
+  const categoryToBlock = new Map(
+    BLOCK_CATEGORIES.flatMap((category) => {
       const firstBlock = BLOCK_CATALOGUE.find(
         (block) => block.category === category.id
       )
-      return [category.id, firstBlock]
-    }).filter(([, block]) => Boolean(block))
-  ) as Record<
-    (typeof BLOCK_CATEGORIES)[number]["id"],
-    (typeof BLOCK_CATALOGUE)[number]
-  >
+      return firstBlock ? [[category.id, firstBlock] as const] : []
+    })
+  )
 
   // Per-category counts.
   const counts = calculateCatalogCounts(
@@ -80,7 +77,7 @@ export default function BlocksPage() {
         <CatalogCategoryGrid
           columns={4}
           entries={BLOCK_CATEGORIES.flatMap((category) => {
-            const block = categoryToBlock[category.id]
+            const block = categoryToBlock.get(category.id)
             if (!block) return []
             return [
               {

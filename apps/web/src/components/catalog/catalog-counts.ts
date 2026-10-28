@@ -1,7 +1,7 @@
 /**
  * Catalog chrome helper: counts.
  *
- * Builds the `Record<CategoryId, number>` sidebar badges by
+ * Builds the category-count map used for sidebar badges by
  * walking an item array and tallying items per category. The
  * `getCategoryId` callback reads the category identifier off each
  * item so this helper works for both `CatalogueComponent` (whose
@@ -26,11 +26,11 @@
 export function calculateCatalogCounts<Id extends string, Item>(
   items: ReadonlyArray<Item>,
   getCategoryId: (item: Item) => Id
-): Record<Id, number> {
-  const counts = {} as Record<Id, number>
+): ReadonlyMap<Id, number> {
+  const counts = new Map<Id, number>()
   for (const item of items) {
     const id = getCategoryId(item)
-    counts[id] = (counts[id] ?? 0) + 1
+    counts.set(id, (counts.get(id) ?? 0) + 1)
   }
   return counts
 }

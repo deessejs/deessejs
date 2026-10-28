@@ -20,6 +20,14 @@
 declare const __brand: unique symbol
 type Brand<K, T> = K & { readonly [__brand]: T }
 
+function brandSessionValue<SessionBrand extends string>(
+  value: string
+): SessionBrand {
+  // lint exception: TypeScript brands have no runtime representation; this is the explicit boundary constructor.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return value as SessionBrand
+}
+
 /** The session cookie value — what `revokeSession` and `getSession` use. */
 export type SessionToken = Brand<string, "SessionToken">
 
@@ -34,7 +42,9 @@ export type CurrentSessionToken = Brand<string, "CurrentSessionToken">
  * our domain (API response, query param, env var). Do NOT use inside UI code
  * to silence the type checker.
  */
-export const asSessionToken = (s: string): SessionToken => s as SessionToken
-export const asSessionRowId = (s: string): SessionRowId => s as SessionRowId
+export const asSessionToken = (s: string): SessionToken =>
+  brandSessionValue<SessionToken>(s)
+export const asSessionRowId = (s: string): SessionRowId =>
+  brandSessionValue<SessionRowId>(s)
 export const asCurrentSessionToken = (s: string): CurrentSessionToken =>
-	s as CurrentSessionToken
+  brandSessionValue<CurrentSessionToken>(s)

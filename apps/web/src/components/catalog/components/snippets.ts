@@ -84,13 +84,10 @@ export function Example() {
   "badge-icon": PREVIEW_PLACEHOLDER,
 
   "badge-numeric": PREVIEW_PLACEHOLDER,
-} as const satisfies Record<CatalogueComponent["slug"], string>
+} satisfies Record<CatalogueComponent["slug"], string>
+
+const SNIPPET_BY_SLUG = new Map(Object.entries(SNIPPETS))
 
 export function getComponentSnippet(slug: CatalogueComponent["slug"]): string {
-  // `as const satisfies Record<...>` makes the type exact with no
-  // index signature, so a direct `SNIPPETS[slug]` access fails type
-  // check. Cast through `unknown` first so we keep the function's
-  // `string` return type without an `| undefined` widening.
-  const map = SNIPPETS as unknown as Record<string, string>
-  return map[slug]!
+  return SNIPPET_BY_SLUG.get(slug) ?? PREVIEW_PLACEHOLDER
 }

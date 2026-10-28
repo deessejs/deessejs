@@ -80,7 +80,9 @@ export function GlobalSearchDialog() {
       setSelectedIndex((i) => Math.max(i - 1, -1))
     } else if (e.key === "Enter" && selectedIndex >= 0) {
       e.preventDefault()
-      router.push(results[selectedIndex]!.item.url)
+      const result = results[selectedIndex]
+      if (!result) return
+      router.push(result.item.url)
       handleClose()
     }
   }

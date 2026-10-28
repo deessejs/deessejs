@@ -2,12 +2,7 @@ import { resolve } from "node:path"
 
 import { Command } from "commander"
 
-import {
-  CliError,
-  type CreateAppErrorCode,
-  internal,
-  sourceFailed,
-} from "./errors/index.js"
+import { CliError, internal, sourceFailed } from "./errors/index.js"
 import { printError, printResult } from "./output/index.js"
 import { printInstallLog } from "./output/print-install-log.js"
 import { run } from "./pipeline.js"
@@ -73,26 +68,21 @@ program
         // terminal always sees *something* on stderr explaining the
         // failure, in addition to the structured JSON on stdout.
         if (!result.ok) {
-          if (result.error.code === "install_failed") {
-            // The CreateInstallFailure variant carries installOutput,
-            // recovery, and destination as required fields. Narrowing
-            // here requires a cast because `error.code` is `string`,
-            // not a strict literal type on the union.
-            const installFailure = result as Extract<
-              typeof result,
-              { error: { code: "install_failed" } }
-            >
+          if (
+            result.error.code === "install_failed" &&
+            "installOutput" in result
+          ) {
             printInstallLog({
-              code: installFailure.installOutput.code,
-              stderr: installFailure.installOutput.stderr,
-              stdout: installFailure.installOutput.stdout,
-              recovery: installFailure.recovery,
-              destination: installFailure.destination,
+              code: result.installOutput.code,
+              stderr: result.installOutput.stderr,
+              stdout: result.installOutput.stdout,
+              recovery: result.recovery,
+              destination: result.destination,
             })
           } else {
             printError(
               new CliError(
-                result.error.code as CreateAppErrorCode,
+                result.error.code,
                 result.error.message,
                 result.error.hint
               )

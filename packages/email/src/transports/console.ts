@@ -22,7 +22,12 @@ export class ConsoleTransport implements MailerTransport {
   constructor(private readonly opts: { from: string }) {}
 
   async send(args: SendArgs): Promise<{ id: string }> {
-    console.log("[DEBUG] ConsoleTransport.send() called — subject:", args.subject, "| has react:", !!args.react)
+    console.log(
+      "[DEBUG] ConsoleTransport.send() called — subject:",
+      args.subject,
+      "| has react:",
+      !!args.react
+    )
     const to = Array.isArray(args.to) ? args.to.join(", ") : args.to
     const tagStr = args.tags?.map((t) => `${t.name}=${t.value}`).join(" ") ?? ""
 
@@ -38,7 +43,10 @@ export class ConsoleTransport implements MailerTransport {
       plainText = args.text ?? args.html ?? ""
     }
 
-    console.log("[DEBUG] ConsoleTransport.render() completed, plainText length:", plainText.length)
+    console.log(
+      "[DEBUG] ConsoleTransport.render() completed, plainText length:",
+      plainText.length
+    )
     // Extract the first URL from the rendered text. For the 2 templates we
     // ship (verify-email, reset-password), the magic link is the primary
     // CTA button href, which appears first in the plain-text output.
@@ -54,12 +62,10 @@ export class ConsoleTransport implements MailerTransport {
         ? `[mailer] │ idempotent: ${args.idempotencyKey}`
         : null,
       tagStr ? `[mailer] │ tags:      ${tagStr}` : null,
-      primaryLink
-        ? `[mailer] │ link:      ${primaryLink}   ← copy me`
-        : null,
+      primaryLink ? `[mailer] │ link:      ${primaryLink}   ← copy me` : null,
       `[mailer] │`,
       `[mailer] │ preview (first ${PREVIEW_LIMIT} lines):`,
-    ].filter(Boolean) as string[]
+    ].filter((line): line is string => line !== null)
 
     const previewLines = plainText
       .split("\n")

@@ -44,7 +44,9 @@ async function resolveWorkspaces(): Promise<Workspace[]> {
       }
       let parsed: { name?: unknown }
       try {
-        parsed = JSON.parse(raw) as { name?: unknown }
+        const value: unknown = JSON.parse(raw)
+        if (typeof value !== "object" || value === null) continue
+        parsed = value
       } catch {
         continue
       }
@@ -128,7 +130,9 @@ async function main(): Promise<void> {
         `[complexity-collect] wrote ${dirname(outFile)}/${slug}.json (workspace=${workspace.name})`
       )
     } catch (error) {
-      failures.push(`${workspace.name} (${(error as Error).message})`)
+      failures.push(
+        `${workspace.name} (${error instanceof Error ? error.message : String(error)})`
+      )
     }
   }
 

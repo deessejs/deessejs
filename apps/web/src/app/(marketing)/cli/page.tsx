@@ -60,20 +60,20 @@ export const metadata: Metadata = {
  * `globals.css` and dark-mode flipping breaks).
  */
 export default async function CliPage() {
-  const highlightedHtml = await Promise.all(
+  const editorHtml: Record<(typeof EDITOR_TABS)[number]["id"], string> = {
+    "AGENTS.md": "",
+    "package.json": "",
+  }
+  await Promise.all(
     EDITOR_TABS.map(async (tab) => {
       const html = await codeToHtml(EDITOR_TAB_CONTENT[tab.id], {
         lang: EDITOR_TAB_LANG[tab.id],
         themes: { light: "github-light", dark: "github-dark" },
         defaultColor: false,
       })
-      return [tab.id, html] as const
+      editorHtml[tab.id] = html
     })
   )
-  const editorHtml = Object.fromEntries(highlightedHtml) as Record<
-    (typeof EDITOR_TABS)[number]["id"],
-    string
-  >
 
   // Real terminal lines for the /cli demo, mirroring what
   // `apps/cli/src/commands/init.ts` prints. Includes the

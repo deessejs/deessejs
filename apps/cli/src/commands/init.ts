@@ -2,7 +2,7 @@ import { relative, resolve } from "node:path"
 import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
-import { installFailed, internal } from "../errors/index.js"
+import { CliError, installFailed, internal } from "../errors/index.js"
 import { printError, printJson } from "../output/index.js"
 import {
   detectPackageManager,
@@ -20,6 +20,10 @@ import { resolveTemplateInstallationPlan } from "../utils/template-plan.js"
 const VALID_PACKAGE_MANAGERS = ["pnpm", "npm", "yarn", "bun"] as const
 type ValidPackageManager = (typeof VALID_PACKAGE_MANAGERS)[number]
 
+function isValidPackageManager(value: string): value is ValidPackageManager {
+  return VALID_PACKAGE_MANAGERS.some((pm) => pm === value)
+}
+
 function logVerbose(enabled: boolean, message: string): void {
   if (enabled) process.stderr.write(`[verbose] ${message}\n`)
 }
@@ -28,11 +32,8 @@ function resolvePackageManager(
   requestedPm: string | undefined,
   dir: string
 ): PackageManagerInfo | null {
-  if (
-    requestedPm &&
-    (VALID_PACKAGE_MANAGERS as readonly string[]).includes(requestedPm)
-  ) {
-    return { pm: requestedPm as ValidPackageManager }
+  if (requestedPm && isValidPackageManager(requestedPm)) {
+    return { pm: requestedPm }
   }
   return detectPackageManager(dir)
 }
@@ -257,18 +258,18 @@ export const initCommand = new Command("init")
           printNextSteps(dir, pmInfo, false)
         }
       } catch (err) {
-        if (err instanceof Error && err.name === "CliError") {
+        if (err instanceof CliError) {
           if (opts.json) {
             printJson({
               ok: false,
-              code: (err as { code?: string }).code,
+              code: err.code,
               message: err.message,
-              hint: (err as { hint?: string }).hint,
+              hint: err.hint,
             })
           } else {
-            printError(err as Parameters<typeof printError>[0])
+            printError(err)
           }
-          process.exit((err as { exitCode?: () => number }).exitCode?.() ?? 1)
+          process.exit(err.exitCode())
         }
         throw internal(err instanceof Error ? err.message : String(err))
       }

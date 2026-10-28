@@ -10,8 +10,6 @@ import { sourceFailed } from "../errors/index.js"
  * document; the helper below extracts the only field we
  * need.
  */
-type PkgJson = { packageManager?: string }
-
 /**
  * Read the generated project's `packageManager` field and
  * return the pnpm version it declares. The field has the
@@ -31,8 +29,11 @@ type PkgJson = { packageManager?: string }
  */
 export const readGeneratedPnpmVersion = (packageJsonDir: string): string => {
   const raw = readFileSync(join(packageJsonDir, "package.json"), "utf8")
-  const parsed = JSON.parse(raw) as PkgJson
-  const field = parsed.packageManager
+  const parsed: unknown = JSON.parse(raw)
+  const field =
+    typeof parsed === "object" && parsed !== null && "packageManager" in parsed
+      ? parsed.packageManager
+      : undefined
   if (typeof field !== "string" || field.length === 0) {
     throw sourceFailed(
       "generated project's package.json has no packageManager field"

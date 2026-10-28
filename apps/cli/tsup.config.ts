@@ -12,7 +12,16 @@ import { defineConfig } from "tsup"
 // predate import attributes. This is a build-time read; the runtime
 // never executes it.
 const require = createRequire(import.meta.url)
-const pkg = require("./package.json") as { version: string }
+const packageJson: unknown = require("./package.json")
+const packageVersion =
+  typeof packageJson === "object" &&
+  packageJson !== null &&
+  "version" in packageJson &&
+  typeof packageJson.version === "string"
+    ? packageJson.version
+    : (() => {
+        throw new Error("package.json must contain a string version")
+      })()
 
 export default defineConfig({
   entry: ["src/index.ts"],
@@ -54,6 +63,6 @@ export default defineConfig({
   // they are reached through its source and are not CLI runtime dependencies.
   noExternal: [/^@workspace\//, /^picomatch$/, /^tar$/, /^zod$/],
   define: {
-    "process.env.CLI_PACKAGE_VERSION": JSON.stringify(pkg.version),
+    "process.env.CLI_PACKAGE_VERSION": JSON.stringify(packageVersion),
   },
 })

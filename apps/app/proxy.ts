@@ -68,7 +68,7 @@ const isProtectedPath = (pathname: string): boolean => {
   if (first === "") return false
   if (RESERVED_SLUGS.has(first)) {
     return PROTECTED_PREFIXES.some(
-      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     )
   }
   return true
@@ -104,6 +104,50 @@ interface GetSessionResponse {
   user?: { emailVerified?: boolean; role?: string | null }
 }
 
+function parseGetSessionResponse(value: unknown): GetSessionResponse | null {
+  if (typeof value !== "object" || value === null) return null
+
+  let session: GetSessionResponse["session"]
+  if ("session" in value) {
+    const candidate = value.session
+    if (
+      typeof candidate !== "object" ||
+      candidate === null ||
+      !("id" in candidate) ||
+      typeof candidate.id !== "string"
+    ) {
+      return null
+    }
+    session = { id: candidate.id }
+  }
+
+  let user: GetSessionResponse["user"]
+  if ("user" in value) {
+    const candidate = value.user
+    if (typeof candidate !== "object" || candidate === null) return null
+
+    const emailVerified =
+      "emailVerified" in candidate ? candidate.emailVerified : undefined
+    const role = "role" in candidate ? candidate.role : undefined
+    if (
+      (emailVerified !== undefined && typeof emailVerified !== "boolean") ||
+      (role !== undefined && typeof role !== "string" && role !== null)
+    ) {
+      return null
+    }
+
+    user = {
+      ...(typeof emailVerified === "boolean" ? { emailVerified } : {}),
+      ...(typeof role === "string" || role === null ? { role } : {}),
+    }
+  }
+
+  return {
+    ...(session ? { session } : {}),
+    ...(user ? { user } : {}),
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   // Segment-aware prefix match. The previous `startsWith(prefix)` form
@@ -114,7 +158,7 @@ export async function proxy(request: NextRequest) {
   // (which already used this shape).
   const isProtected = isProtectedPath(pathname)
   const isAuthPage = AUTH_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
   )
 
   // Only call getSession when the route actually needs the gate decision.
@@ -144,15 +188,15 @@ export async function proxy(request: NextRequest) {
   // `serverEnv.API_BASE_URL` for the same caveat.
   const getSessionUrl = new URL(
     `${API_AUTH_PATH}/get-session`,
-    request.nextUrl.origin,
+    request.nextUrl.origin
   )
   const response = await fetch(getSessionUrl, {
     headers: { cookie: request.headers.get("cookie") ?? "" },
     cache: "no-store",
   })
-  const session = (response.ok
-    ? ((await response.json()) as GetSessionResponse | null)
-    : null)
+  const session = response.ok
+    ? parseGetSessionResponse(await response.json())
+    : null
 
   if (isProtected && !session?.session) {
     const loginUrl = new URL("/login", request.url)
