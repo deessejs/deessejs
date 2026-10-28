@@ -26,7 +26,7 @@ The route guard is `proxy.ts`. It resolves the session through the API and appli
 - `app/api/[[...route]]/route.ts` exposes the shared Hono API from `@workspace/api`.
 - `lib/orpc.ts` creates the typed client for API procedures.
 - `lib/auth-client.ts` configures the browser Better Auth client and its plugins.
-- `lib/fetch-auth-interceptor.ts` handles auth requests on Vercel preview deployments.
+- `lib/auth-base-url.ts` resolves the auth endpoint to the active app origin.
 - `lib/settings-paths.ts` owns the account settings route constants.
 - `lib/admin-auth.ts` owns the role check used by the administration area.
 

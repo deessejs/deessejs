@@ -26,14 +26,15 @@ import { APP_URL } from "@/lib/app-config"
 // out of this module entirely, so the API's server-only dependencies can
 // never travel into the app's client bundle through the client type.
 //
-// The link URL is absolute, composed from `APP_URL` (the apps/app host,
-// declared in `@workspace/env`) and `API_RPC_PATH`. The same convention
-// for cross-app URLs is applied here for the same-app, server-side case:
-// RSC fetch needs an absolute URL to resolve, while a relative path
-// (`url: API_RPC_PATH` alone) raises "Invalid URL" on the Node runtime.
-// The apps/app host is `appURL()` from `@workspace/env/client`.
+// Server-side fetch needs an absolute URL. On Vercel, use the deployment
+// host supplied at runtime so a custom environment never falls back to a
+// build-time localhost or production URL. Local development uses APP_URL.
+const appOrigin = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : APP_URL
+
 const link = new RPCLink({
-  url: new URL(API_RPC_PATH, APP_URL).toString(),
+  url: () => new URL(API_RPC_PATH, appOrigin).toString(),
   // The session travels in the cookie, so the cookie is what the link
   // forwards. Without it a server-side call reaches the API as an
   // anonymous request, and a procedure that reads the session sees no

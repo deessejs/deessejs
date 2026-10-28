@@ -7,15 +7,8 @@ import {
   deviceAuthorizationClient,
   organizationClient,
 } from "better-auth/client/plugins"
-import { clientEnv } from "@workspace/env/client"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
-
-// Side-effect import: installs a `window.fetch` interceptor that
-// rewrites `/api/v1/auth/*` requests to the page's origin on
-// Vercel previews. See `./fetch-auth-interceptor.ts` for the
-// rationale — `baseURL` here is build-time inlined and would
-// otherwise point at production on every preview.
-import "./fetch-auth-interceptor"
+import { getAuthBaseUrl } from "./auth-base-url"
 
 /**
  * Better Auth is mounted on Hono at `${API_BASE_PATH}/auth/*` (see
@@ -52,12 +45,9 @@ import "./fetch-auth-interceptor"
  * shell sidebar switcher; wiring the plugin here keeps the typed
  * `authClient.organization.*` surface coherent from the start.
  *
- * The `baseURL` here uses `clientEnv.NEXT_PUBLIC_APP_URL`, the
- * build-time env var. On Vercel previews this resolves to the
- * production apex (`app.deessejs.com`); the fetch interceptor
- * installed via the side-effect import above rewrites the URL to
- * the page origin at request time. The same preview-rewriting
- * rationale is documented on `auth-base-url.ts`.
+ * Resolve the origin at runtime in the browser so auth requests always
+ * use the same deployment that served the page. The environment URL is
+ * only a server-rendering fallback; it is not a browser API target.
  *
  * The `as ReturnType<typeof createAuthClient<typeof authClientOptions>>`
  * cast on the export below is the matching fix for the TS2883
@@ -69,7 +59,7 @@ import "./fetch-auth-interceptor"
  * plugin-augmented `user.role` surface flows through).
  */
 const authClientOptions = {
-  baseURL: clientEnv.NEXT_PUBLIC_APP_URL,
+  baseURL: getAuthBaseUrl(),
   basePath: API_AUTH_PATH,
   plugins: [
     deviceAuthorizationClient(),
