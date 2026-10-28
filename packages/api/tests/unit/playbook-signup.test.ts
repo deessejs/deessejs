@@ -125,4 +125,24 @@ describe("playbook signup: consent and delivery are independent", () => {
     expect(args.react.pdfUrl).toBe("https://deessejs.com/playbook.pdf")
     expect(args.react.consentMarketing).toBe(false)
   })
+
+  it("tags the send with a name and a value the Resend API accepts", async () => {
+    await signupWith({
+      email: "tagged@example.com",
+      consentMarketing: false,
+    })
+
+    const args = mailerSend.mock.calls[0]?.[0] as {
+      tags: Array<{ name: string; value: string }>
+    }
+
+    // Resend accepts only ASCII letters, numbers, underscores and
+    // dashes in a tag name and value, and rejects the whole send
+    // with a 422 that names a field index and nothing else.
+    expect(args.tags.length).toBeGreaterThan(0)
+    for (const tag of args.tags) {
+      expect(tag.name).toMatch(/^[A-Za-z0-9_-]+$/)
+      expect(tag.value).toMatch(/^[A-Za-z0-9_-]+$/)
+    }
+  })
 })

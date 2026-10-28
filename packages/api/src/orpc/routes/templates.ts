@@ -116,9 +116,8 @@ export const list = base
       // genuine server bugs).
       const message =
         error instanceof Error ? error.message : "Upstream fetch failed"
-      logger.error("templates_fetch_failed", {
+      logger.error("templates_fetch_failed", error, {
         requestId: context.requestId,
-        message,
       })
       throw new ORPCError("TEMPLATES_FETCH_FAILED", {
         status: 502,

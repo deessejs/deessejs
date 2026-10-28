@@ -131,13 +131,19 @@ export const signup = base
         pdfUrl,
         consentMarketing: input.consentMarketing,
       }),
-      tags: [{ name: "playbook", value: "v0.1" }],
+      // Resend accepts only ASCII letters, numbers, underscores and
+      // dashes in a tag name and value. A dot is rejected by the API
+      // with an opaque 422, so the version separator is a dash.
+      tags: [{ name: "playbook", value: "v0-1" }],
     })
 
     if ("error" in sendResult) {
-      logger.error("playbook_email_send_failed", {
+      // The logger takes the error as its second argument and the
+      // context as its third one. Passing the context second would
+      // stringify the whole object into "[object Object]" and lose
+      // the message the transport returned.
+      logger.error("playbook_email_send_failed", sendResult.error, {
         requestId,
-        error: sendResult.error,
       })
       throw new ORPCError("EMAIL_SEND_FAILED", { status: 502 })
     }
