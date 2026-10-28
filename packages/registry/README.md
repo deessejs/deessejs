@@ -1,8 +1,28 @@
 # `@workspace/registry`
 
 Shared descriptor validation and planning for DeesseJS consumers. The package
-validates whole-project template descriptors and copy-first block descriptors.
+validates project configuration, whole-project template descriptors and copy-first block descriptors.
 It does not write to a destination or execute block code.
+
+## Project configuration
+
+Use `parseProjectConfig` from `@workspace/registry/v1` to validate a parsed
+`deesse.json` value. The parser validates the strict V1 structure, normalizes
+safe relative paths, and returns stable diagnostic codes and paths. It does not
+read the filesystem or fetch the optional `$schema` URL.
+
+```ts
+import { parseProjectConfig } from "@workspace/registry/v1"
+
+const result = parseProjectConfig(JSON.parse(configText))
+if (!result.success) {
+  console.error(result.diagnostics)
+}
+```
+
+The generated JSON Schema is available at
+`@workspace/registry/schema/project/v1.json` and is served publicly at
+`https://app.deessejs.com/schema/project/v1.json`.
 
 ## Template planning
 
