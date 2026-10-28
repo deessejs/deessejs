@@ -252,7 +252,7 @@ export const clientSchema = z.object({
   NEXT_PUBLIC_DOCS_URL: canonicalUrl.default("http://localhost:3002"),
   NEXT_PUBLIC_API_BASE_URL: canonicalUrl.default("http://localhost:3001"),
   NEXT_PUBLIC_ANALYTICS_PROVIDER: z.enum(["none", "vercel"]).default("none"),
-  NEXT_PUBLIC_VERCEL_ANALYTICS_ID: z.string().optional(),
+  NEXT_PUBLIC_VERCEL_ANALYTICS_DSN: z.string().optional(),
 })
 
 export type ServerEnv = z.infer<typeof serverSchema>

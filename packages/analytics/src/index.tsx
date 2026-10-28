@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, type ComponentProps } from "react"
 import { usePathname } from "next/navigation"
 import { Analytics, type BeforeSendEvent } from "@vercel/analytics/next"
 import { track } from "@vercel/analytics"
@@ -27,6 +27,13 @@ const STATIC_APP_ROUTES = new Set([
   "signup",
   "verify-email",
 ])
+
+type AnalyticsPropertyValue = string | number | boolean
+type AnalyticsProperties = Record<string, AnalyticsPropertyValue>
+type SpeedInsightsBeforeSend = NonNullable<
+  ComponentProps<typeof SpeedInsights>["beforeSend"]
+>
+type SpeedInsightsEvent = Parameters<SpeedInsightsBeforeSend>[0]
 
 function sanitizePath(pathname: string, isProductApp: boolean) {
   const path = pathname.split(/[?#]/, 1)[0] || "/"
@@ -66,7 +73,7 @@ function sanitizeAnalyticsEvent(
 }
 
 function sanitizeSpeedInsightsEvent(
-  event: { url: string; route?: string },
+  event: SpeedInsightsEvent,
   isProductApp: boolean
 ) {
   if (!useCookieConsentStore.getState().consent.analytics) return null
@@ -89,7 +96,7 @@ function sanitizeSpeedInsightsEvent(
 }
 
 function sanitizeEventProperties(
-  properties: Record<string, string | number | boolean> = {}
+  properties: AnalyticsProperties = {}
 ) {
   return Object.fromEntries(
     Object.entries(properties).filter(
@@ -119,7 +126,7 @@ function ConsentGatedVercelScripts({ isProductApp }: { isProductApp: boolean }) 
   return (
     <>
       <Analytics
-        id={clientEnv.NEXT_PUBLIC_VERCEL_ANALYTICS_ID}
+        dsn={clientEnv.NEXT_PUBLIC_VERCEL_ANALYTICS_DSN}
         beforeSend={(event) => sanitizeAnalyticsEvent(event, isProductApp)}
       />
       {safePath ? (
@@ -143,7 +150,7 @@ function ConsentGatedVercelScripts({ isProductApp }: { isProductApp: boolean }) 
 export const analytics = {
   capture(
     name: string,
-    properties?: Record<string, string | number | boolean>
+    properties?: AnalyticsProperties
   ) {
     if (
       clientEnv.NEXT_PUBLIC_ANALYTICS_PROVIDER !== "vercel" ||
@@ -160,7 +167,7 @@ export const analytics = {
       // Analytics is best-effort and must never affect the application.
     }
   },
-  identify(_userId: string, _traits?: Record<string, string | number | boolean>) {},
+  identify(_userId: string, _traits?: AnalyticsProperties) {},
   page(_path?: string) {},
   reset() {},
 }
