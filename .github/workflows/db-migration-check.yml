@@ -68,10 +68,10 @@ jobs:
       - name: Apply migrations
         run: pnpm --filter @workspace/database db:migrate
 
-      # Canonical table check: count must be 13 and the names must
+      # Canonical table check: count must be 16 and the names must
       # match the Better Auth + organization plugin output, the
       # organization provisioning table, the template catalog and
-      # publication tables, and the two GitHub App connection tables
+      # publication tables, and the GitHub App connection and project tables
       # (device_code is snake_case in the regenerated schema: see PR #239
       # for the rationale).
       #
@@ -82,7 +82,7 @@ jobs:
       - name: Verify table set
         run: |
           set -euo pipefail
-          EXPECTED='account|device_code|github_app_installation|github_user_connection|invitation|member|organization|organization_provisioning|session|template_publications|template_repository_snapshots|templates|user|verification'
+          EXPECTED='account|device_code|github_app_installation|github_project|github_project_check|github_user_connection|invitation|member|organization|organization_provisioning|session|template_publications|template_repository_snapshots|templates|user|verification'
           ACTUAL=$(psql "$DATABASE_URL" -tA -c "SELECT string_agg(table_name, '|' ORDER BY table_name COLLATE \"C\") FROM information_schema.tables WHERE table_schema = 'public'")
           if [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "Expected: $EXPECTED"
@@ -90,6 +90,24 @@ jobs:
             exit 1
           fi
           echo "Table set matches: $ACTUAL"
+
+      - name: Verify GitHub project import tables
+        run: |
+          set -euo pipefail
+          PROJECT_COLS=$(psql "$DATABASE_URL" -tA -c "SELECT string_agg(column_name, ',' ORDER BY column_name) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'github_project'")
+          for required in id organization_id repository_id repository_full_name repository_url is_private default_branch configuration_path imported_by_user_id imported_at; do
+            if ! echo ",$PROJECT_COLS," | grep -q ",$required,"; then
+              echo "Missing github_project column: $required"
+              exit 1
+            fi
+          done
+          CHECK_COLS=$(psql "$DATABASE_URL" -tA -c "SELECT string_agg(column_name, ',' ORDER BY column_name) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'github_project_check'")
+          for required in id project_id status commit_sha format_version path_count alias_count checked_at; do
+            if ! echo ",$CHECK_COLS," | grep -q ",$required,"; then
+              echo "Missing github_project_check column: $required"
+              exit 1
+            fi
+          done
 
       # Schema spot-checks: every table the regeneration pins must
       # exist with its canonical column shape. Drift here means the

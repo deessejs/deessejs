@@ -18,6 +18,7 @@ const organizationSummary = z.object({
   id: z.string(),
   slug: z.string(),
   name: z.string(),
+  logo: z.string().nullable(),
   role: z.string(),
 })
 
@@ -273,6 +274,7 @@ export const create = base
     id: context.organization.id,
     slug: context.organization.slug,
     name: context.organization.name,
+    logo: null,
     role: context.organization.role,
   }))
 

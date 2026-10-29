@@ -458,6 +458,7 @@ describe("organization procedures", () => {
         id: org.id,
         slug: org.slug,
         name: "Acme",
+        logo: null,
         role: "owner",
       })
     })

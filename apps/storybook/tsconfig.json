@@ -6,7 +6,10 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "types": ["node", "vite/client"],
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@/*": ["../web/src/*"]
+    }
   },
   "include": [".storybook", "api", "scripts", "stories", "vite.config.ts"],
   "exclude": ["node_modules", "storybook-static"]

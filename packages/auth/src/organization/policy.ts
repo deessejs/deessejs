@@ -103,6 +103,40 @@ export function assertOrganizationName(name: unknown): asserts name is string {
   }
 }
 
+/** Validate an optional organization logo URL without fetching it. */
+export function assertOrganizationLogoUrl(logo: unknown): void {
+  if (logo === null) return
+  if (typeof logo !== "string" || logo.length > 2048) {
+    throw new APIError("BAD_REQUEST", {
+      code: "invalid_logo_url",
+      message:
+        "Organization logo must be an HTTPS URL no longer than 2048 characters.",
+    })
+  }
+
+  let url: URL
+  try {
+    url = new URL(logo)
+  } catch {
+    throw new APIError("BAD_REQUEST", {
+      code: "invalid_logo_url",
+      message: "Organization logo must be an HTTPS URL.",
+    })
+  }
+
+  if (
+    url.protocol !== "https:" ||
+    !url.hostname ||
+    url.username ||
+    url.password
+  ) {
+    throw new APIError("BAD_REQUEST", {
+      code: "invalid_logo_url",
+      message: "Organization logo must be an HTTPS URL without credentials.",
+    })
+  }
+}
+
 /**
  * The token a name falls back to when it normalizes to nothing
  * usable.
