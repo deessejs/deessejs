@@ -21,11 +21,36 @@ Open a reviewable pull request for completed work. This skill does not implement
 
 6. **Create the PR against `staging`.** Use `gh pr create --base staging`. Never target `main` and never merge the PR.
 
-7. **Link the issue.** For an issue-driven PR, create a manual linked closing reference with GitHub's GraphQL `addCloseIssueReferences` mutation, using the issue and pull request node IDs. The PR targets `staging`, so do not rely on `Closes #N` in the body: GitHub only interprets closing keywords for PRs targeting the default branch. If the API link cannot be created, report that a maintainer can link it from the PR's **Development** section. Do not claim the issue is linked unless the API confirms it.
+7. **Link the issue in Development.** For an issue-driven PR, use GitHub GraphQL's `addCloseIssueReferences` mutation to link the PR to the issue. Get the issue and PR node IDs with:
 
-8. **Apply labels.** Apply only existing, relevant classification or area labels to the PR. Do not copy `status:*` workflow labels from the issue. Do not invent labels.
+   ```bash
+   gh api graphql -F owner=deessejs -F name=deessejs -F issueNumber="$ISSUE_NUMBER" -F prNumber="$PR_NUMBER" -f query='query($owner: String!, $name: String!, $issueNumber: Int!, $prNumber: Int!) { repository(owner: $owner, name: $name) { issue(number: $issueNumber) { id } pullRequest(number: $prNumber) { id } } }'
+   ```
 
-9. **Report the result.** Give the PR URL, confirm its base is `staging`, report whether the issue link and labels were applied, and state which verification commands were run or skipped.
+   Read `.data.repository.issue.id` and `.data.repository.pullRequest.id` from the response as `ISSUE_ID` and `PR_ID`, then call:
+
+   ```bash
+   gh api graphql -F issueId="$ISSUE_ID" -F "pullRequestIds[]=$PR_ID" -f query='mutation($issueId: ID!, $pullRequestIds: [ID!]!) { addCloseIssueReferences(input: {issueId: $issueId, pullRequestIds: $pullRequestIds}) { issue { number } } }'
+   ```
+
+   Verify the mutation succeeds before reporting the issue linked. The `Closes #N` body keyword does not create a link for this repo's PRs to `staging`, because GitHub only interprets closing keywords when the PR targets the default branch. A manual Development link is visible on the issue; a PR merged to `staging` does not itself close the issue.
+
+8. **Apply the right labels to the PR.** Inspect the issue and diff, then compare relevant issue labels against labels that currently exist in the repository:
+
+   ```bash
+   gh api repos/deessejs/deessejs/issues/$ISSUE_NUMBER --jq '[.labels[].name]'
+   gh api --paginate repos/deessejs/deessejs/labels --jq '.[].name'
+   ```
+
+   Apply only labels that accurately describe the PR, such as an applicable `area:*`, `bug`, `enhancement`, `documentation`, `dependencies`, `security`, or `template` label. Never copy `status:*` or issue priority labels onto the PR, and never invent labels. Add the selected labels to the PR with GitHub CLI's REST API command:
+
+   ```bash
+   gh api --method POST repos/deessejs/deessejs/issues/$PR_NUMBER/labels -f 'labels[]=area:auth' -f 'labels[]=bug'
+   ```
+
+   Replace the example labels with the exact existing labels selected for this PR. If no labels apply, add none. Report which labels were applied.
+
+9. **Report the result.** Give the PR URL, confirm its base is `staging`, report whether the Development link and labels were applied, and state which verification commands were run or skipped.
 
 ## Boundaries
 
