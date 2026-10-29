@@ -14,6 +14,8 @@
   "scripts": {
     "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json packages/storage --deny-warnings",
     "build": "tsc",
+    "test": "vitest",
+    "test:run": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -24,7 +26,9 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@workspace/typescript-config": "workspace:*",
+    "@workspace/vitest-config": "workspace:*",
     "oxlint": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

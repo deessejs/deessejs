@@ -36,9 +36,10 @@ The bucket is fixed when the storage instance is created. Create separate instan
 ## Commands
 
 ```bash
-pnpm build
-pnpm typecheck
-pnpm lint
+pnpm --filter @workspace/storage build
+pnpm --filter @workspace/storage typecheck
+pnpm --filter @workspace/storage lint
+pnpm exec turbo run test --filter=@workspace/storage
 ```
 
 ## Related
