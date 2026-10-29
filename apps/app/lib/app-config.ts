@@ -7,13 +7,14 @@
 // single-sourced. `apps/app` self-references via `appURL()` and
 // links back to marketing via `webURL()`.
 
-import { appURL, webURL } from "@workspace/env/client"
+import { appURL, docsURL, webURL } from "@workspace/env/client"
 
 export const APP_CONFIG = {
   name: "DeesseJS",
   description:
     "SaaS application built with Next.js and shared UI components",
   appURL: appURL(),
+  docsURL: docsURL(),
   webURL: webURL(),
   // Dashboard nav links (relative paths under the apps/app host).
   // There is no settings hub page: consumers link directly to a
@@ -28,6 +29,7 @@ export const APP_CONFIG = {
 
 export const APP_NAME = APP_CONFIG.name
 export const APP_URL = APP_CONFIG.appURL
+export const DOCS_URL = APP_CONFIG.docsURL
 export const WEB_URL = APP_CONFIG.webURL
 
 export type AppConfig = typeof APP_CONFIG

@@ -32,12 +32,23 @@ import {
   SidebarMenuItem,
 } from "@workspace/ui/components/sidebar"
 import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
-import { BadgeCheckIcon, ChevronsUpDownIcon, LogOutIcon } from "lucide-react"
+import {
+  BadgeCheckIcon,
+  BookOpenIcon,
+  ChevronsUpDownIcon,
+  CircleHelpIcon,
+  HistoryIcon,
+  HouseIcon,
+  LogOutIcon,
+} from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { authClient } from "@/lib/auth-client"
 import { SETTINGS_PATHS } from "@/lib/settings-paths"
+import { APP_URL, DOCS_URL, WEB_URL } from "@/lib/app-config"
 
 const VERCEL_AVATAR_BASE = "https://vercel.com/api/www/avatar"
+const HELP_URL = new URL("/help", WEB_URL).toString()
+const CHANGELOG_URL = new URL("/changelog", WEB_URL).toString()
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -159,6 +170,30 @@ export function NavUser() {
                     <BadgeCheckIcon />
                     Account settings
                   </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={DOCS_URL} target="_blank" rel="noreferrer">
+                    <BookOpenIcon />
+                    Docs
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={HELP_URL} target="_blank" rel="noreferrer">
+                    <CircleHelpIcon />
+                    Help
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={CHANGELOG_URL} target="_blank" rel="noreferrer">
+                    <HistoryIcon />
+                    Changelog
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={APP_URL} target="_blank" rel="noreferrer">
+                    <HouseIcon />
+                    Homepage
+                  </a>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
