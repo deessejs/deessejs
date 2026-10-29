@@ -44,6 +44,10 @@ const installationResponseSchema = z.object({
     type: z.string().min(1),
   }),
 })
+const installationListResponseSchema = z.object({
+  total_count: z.number().int().nonnegative(),
+  installations: z.array(installationResponseSchema),
+})
 
 type Workspace = { id: string; slug: string; role: string }
 
@@ -278,10 +282,12 @@ async function finishInstallationCallback(
   } catch {
     return done("githubAccountRequired")
   }
-  const installation = await fetchGitHubInstallation(
-    installationId,
-    accessToken
-  )
+  let installation: Awaited<ReturnType<typeof fetchGitHubInstallation>>
+  try {
+    installation = await fetchGitHubInstallation(installationId, accessToken)
+  } catch {
+    return done("installationCheckFailed")
+  }
   if (!installation) return done("installationNotAccessible")
 
   const now = new Date()
@@ -312,27 +318,39 @@ async function finishInstallationCallback(
   return done("connected")
 }
 
-async function fetchGitHubInstallation(installationId: string, token: string) {
-  try {
-    const response = await fetch(
-      `https://api.github.com/user/installations/${installationId}`,
-      {
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${token}`,
-          "X-GitHub-Api-Version": GITHUB_API_VERSION,
-        },
-        cache: "no-store",
-      }
+async function fetchGitHubInstallation(
+  installationId: string,
+  token: string
+): Promise<z.infer<typeof installationResponseSchema> | null> {
+  const url = new URL("https://api.github.com/user/installations")
+  url.searchParams.set("per_page", "100")
+  let page = 1
+  let totalPages = 1
+
+  do {
+    url.searchParams.set("page", String(page))
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": GITHUB_API_VERSION,
+      },
+      cache: "no-store",
+    })
+    if (!response.ok) {
+      throw new Error(`GitHub installations request failed: ${response.status}`)
+    }
+
+    const parsed = installationListResponseSchema.parse(await response.json())
+    totalPages = Math.ceil(parsed.total_count / 100)
+    const installation = parsed.installations.find(
+      (item) => String(item.id) === installationId
     )
-    if (!response.ok) return null
-    const parsed = installationResponseSchema.safeParse(await response.json())
-    if (!parsed.success || String(parsed.data.id) !== installationId)
-      return null
-    return parsed.data
-  } catch {
-    return null
-  }
+    if (installation) return installation
+    page += 1
+  } while (page <= totalPages)
+
+  return null
 }
 
 export const mountGitHubAppSetup = (api: Hono<ApiEnv>): void => {
