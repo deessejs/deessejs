@@ -4,6 +4,8 @@ import { HomeIcon, SettingsIcon, FilesIcon } from "lucide-react"
 import {
   workspaceHomePath,
   workspaceOrganizationSettingsPath,
+  workspaceProjectImportPath,
+  workspaceProjectsPath,
   workspaceTemplatesPath,
 } from "@/lib/workspace-paths"
 
@@ -46,6 +48,11 @@ export const workspaceNavGroups = (slug: string): WorkspaceNavGroup[] => [
       {
         label: "Templates",
         href: workspaceTemplatesPath(slug),
+        icon: FilesIcon,
+      },
+      {
+        label: "Projects",
+        href: workspaceProjectsPath(slug),
         icon: FilesIcon,
       },
     ],
