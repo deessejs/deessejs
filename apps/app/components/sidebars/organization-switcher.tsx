@@ -30,6 +30,7 @@ import {
   ORGANIZATIONS_PATH,
   organizationSlugFromPathname,
   workspaceHomePath,
+  workspaceSettingsPath,
 } from "@/lib/workspace-paths"
 import { CreateOrganizationDialog } from "@/components/organizations/create-organization-dialog"
 
@@ -63,8 +64,10 @@ const SWITCH_FAILED_MESSAGE = "The organization could not be selected."
  */
 export function OrganizationSwitcher({
   activeOrganization = false,
+  preserveSettingsPath = false,
 }: {
   activeOrganization?: boolean
+  preserveSettingsPath?: boolean
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -103,7 +106,18 @@ export function OrganizationSwitcher({
       return
     }
     setOpenMobile(false)
-    router.push(workspaceHomePath(organization.slug))
+    const settingsPath =
+      preserveSettingsPath && slug ? workspaceSettingsPath(slug) : null
+    const settingsSuffix =
+      settingsPath &&
+      (pathname === settingsPath || pathname.startsWith(`${settingsPath}/`))
+        ? pathname.slice(settingsPath.length)
+        : null
+    router.push(
+      settingsSuffix === null
+        ? workspaceHomePath(organization.slug)
+        : `${workspaceSettingsPath(organization.slug)}${settingsSuffix}`
+    )
   }
 
   return (
