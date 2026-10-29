@@ -5,7 +5,11 @@ import { Card } from "@workspace/ui/components/card"
 import { Badge } from "@workspace/ui/components/badge"
 import { cn } from "@workspace/ui/lib/utils"
 
-import type { TemplateV1 as Template } from "@workspace/contracts/v1"
+import type { CatalogTemplate as Template } from "@/lib/templates/catalog"
+import {
+  isCommunityTemplate,
+  templateDetailHref,
+} from "@/lib/templates/catalog"
 import { TemplateLabels } from "./template-labels"
 
 export type TemplateCardProps = {
@@ -59,6 +63,7 @@ export type TemplateCardProps = {
  * rotated hero's visual overflow inside the card surface.
  */
 export const TemplateCard = ({ template, className }: TemplateCardProps) => {
+  const isCommunity = isCommunityTemplate(template)
   return (
     <Card
       className={cn(
@@ -67,7 +72,7 @@ export const TemplateCard = ({ template, className }: TemplateCardProps) => {
       )}
     >
       <Link
-        href={`/templates/${template.slug}`}
+        href={templateDetailHref(template)}
         aria-label={`View ${template.name} template`}
         className="flex h-full min-w-0 flex-col focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
       >
@@ -107,9 +112,12 @@ export const TemplateCard = ({ template, className }: TemplateCardProps) => {
             <h2 className="!m-0 text-heading-20 tracking-tight text-balance lg:text-heading-24">
               {template.name}
             </h2>
-            <Badge variant="outline" className="shrink-0">
-              {template.category}
-            </Badge>
+            <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+              {isCommunity ? (
+                <Badge variant="secondary">Community</Badge>
+              ) : null}
+              <Badge variant="outline">{template.category}</Badge>
+            </div>
           </div>
           <p className="!m-0 text-copy-14 leading-6 text-balance text-muted-foreground">
             {template.description}

@@ -10,7 +10,7 @@
  * limit from 60 req/h to 5000 req/h. In production on Vercel, set
  * this as a project secret.
  */
-import type { GitHubReadme, GitHubRepo } from "./types.js"
+import type { GitHubCommit, GitHubReadme, GitHubRepo } from "./types.js"
 
 const GITHUB_API = "https://api.github.com"
 
@@ -37,7 +37,21 @@ function isGitHubRepo(value: unknown): value is GitHubRepo {
     return false
   }
   if (value.topics !== undefined && !isStringArray(value.topics)) return false
+  if (
+    value.default_branch !== undefined &&
+    typeof value.default_branch !== "string"
+  ) {
+    return false
+  }
   return typeof value.html_url === "string"
+}
+
+function isGitHubCommit(value: unknown): value is GitHubCommit {
+  return (
+    isRecord(value) &&
+    typeof value.sha === "string" &&
+    /^[a-f0-9]{40}$/i.test(value.sha)
+  )
 }
 
 function isGitHubLicense(value: unknown): boolean {
@@ -92,15 +106,41 @@ export const fetchRepo = async (
   return payload
 }
 
+export const fetchCommit = async (
+  owner: string,
+  repo: string,
+  ref: string,
+  token: string | undefined
+): Promise<GitHubCommit> => {
+  const response = await fetch(
+    `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits/${encodeURIComponent(ref)}`,
+    { headers: headers(token) }
+  )
+  if (!response.ok) {
+    throw new Error(
+      `GitHub /repos/${owner}/${repo}/commits/${ref} returned ${response.status}`
+    )
+  }
+  const payload: unknown = await response.json()
+  if (!isGitHubCommit(payload)) {
+    throw new Error(
+      `GitHub /repos/${owner}/${repo}/commits/${ref} returned an invalid response`
+    )
+  }
+  return payload
+}
+
 export const fetchReadme = async (
   owner: string,
   repo: string,
-  token: string | undefined
+  token: string | undefined,
+  ref?: string
 ): Promise<string | undefined> => {
-  const response = await fetch(
-    `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/readme`,
-    { headers: headers(token) }
+  const url = new URL(
+    `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/readme`
   )
+  if (ref) url.searchParams.set("ref", ref)
+  const response = await fetch(url, { headers: headers(token) })
   if (response.status === 404) return undefined
   if (!response.ok) {
     throw new Error(

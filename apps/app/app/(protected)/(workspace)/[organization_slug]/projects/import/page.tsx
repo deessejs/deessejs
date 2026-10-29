@@ -25,6 +25,9 @@ export default async function OrganizationProjectImportRoute({
       organizationName={organization.name}
       canManage={canManage}
       installation={githubStatusResult.status?.installation ?? null}
+      githubAccountLinked={
+        githubStatusResult.status?.githubAccountLinked ?? false
+      }
       githubStatusUnavailable={githubStatusResult.unavailable}
     />
   )

@@ -8,7 +8,10 @@ export type GitHubRepo = {
   pushed_at: string | null
   topics?: string[]
   html_url: string
+  default_branch?: string
 }
+
+export type GitHubCommit = { sha: string }
 
 export type GitHubReadme = {
   content: string

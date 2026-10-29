@@ -1,4 +1,4 @@
-import { fetchReadme, fetchRepo } from "../github/client.js"
+import { fetchCommit, fetchReadme, fetchRepo } from "../github/client.js"
 import type { GitHubRepo } from "../github/types.js"
 import { serverEnv } from "@workspace/env/server"
 
@@ -112,6 +112,76 @@ export async function acquireTemplateRepository(sourceUrl: string) {
     return {
       owner,
       repo,
+      snapshot: {
+        repositoryName: repository.name,
+        repositoryDescription: repository.description,
+        canonicalUrl: repository.html_url,
+        license:
+          repository.license?.spdx_id ?? repository.license?.name ?? null,
+        topics: repository.topics ?? [],
+        readme: readme ?? null,
+        repositoryUpdatedAt,
+        stars: repository.stargazers_count,
+        fetchedAt: new Date(),
+      },
+    }
+  } catch (error) {
+    if (error instanceof InvalidTemplateSourceError) throw error
+    throw new TemplateSourceFetchError(error)
+  }
+}
+
+/** Resolve and capture one immutable GitHub revision for public review. */
+export async function acquireTemplateRepositoryRevision(sourceUrl: string) {
+  const source = parseGitHubRepositoryUrl(sourceUrl)
+  if (!source) throw new InvalidTemplateSourceError()
+
+  const token = serverEnv.GITHUB_TOKEN
+  try {
+    const repository = await fetchRepo(source.owner, source.repo, token)
+    if (!isCanonicalGitHubRepository(repository)) {
+      throw new InvalidTemplateSourceError(
+        "The URL must resolve to a public GitHub repository."
+      )
+    }
+    if (!repository.default_branch) {
+      throw new Error("GitHub did not return the repository's default branch.")
+    }
+
+    const commit = await fetchCommit(
+      source.owner,
+      source.repo,
+      repository.default_branch,
+      token
+    )
+    const sourceCommit = commit.sha.toLowerCase()
+    const readme = await fetchReadme(
+      source.owner,
+      source.repo,
+      token,
+      sourceCommit
+    )
+    const [owner, repo] = repository.full_name.split("/")
+    if (!owner || !repo) {
+      throw new InvalidTemplateSourceError(
+        "GitHub returned an invalid repository name."
+      )
+    }
+
+    const repositoryUpdatedAt = repository.pushed_at
+      ? new Date(repository.pushed_at)
+      : null
+    if (
+      repositoryUpdatedAt &&
+      !Number.isFinite(repositoryUpdatedAt.getTime())
+    ) {
+      throw new Error("GitHub returned an invalid repository update time.")
+    }
+
+    return {
+      owner,
+      repo,
+      sourceCommit,
       snapshot: {
         repositoryName: repository.name,
         repositoryDescription: repository.description,

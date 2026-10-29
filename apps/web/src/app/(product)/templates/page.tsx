@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowRight, ChevronRight } from "lucide-react"
 
-import type { TemplateV1 } from "@workspace/contracts/v1"
+import type { CatalogTemplate } from "@/lib/templates/catalog"
 import { Button } from "@workspace/ui/components/button"
 
 import { FlickeringGrid } from "@/components/marketing/flickering-grid"
@@ -62,16 +62,22 @@ const TemplatesIndexPage = async ({
     framework?: string | string[]
   }>
 }) => {
-  let templates: TemplateV1[] = []
+  let templates: CatalogTemplate[] = []
   try {
-    const result = await orpc.templates.list(undefined, liveCache)
+    const [result, communityResult] = await Promise.all([
+      orpc.templates.list(undefined, liveCache),
+      orpc.templates.community.list(undefined, liveCache),
+    ])
     // Defensive: `result.templates` may be undefined if the upstream
     // returns a malformed payload (the oRPC route handler already
     // defaults to `[]` in templates.ts, but the wire contract does
     // not enforce non-undefined). Coalesce here so the page never
     // blows up on `templates.length`. Matches the same defensive
     // pattern used in TemplateLabels (digest `551940582`).
-    templates = result.templates ?? []
+    templates = [
+      ...(result.templates ?? []),
+      ...(communityResult.templates ?? []),
+    ]
   } catch (error) {
     // Build-time fallback: when the build worker has no network
     // access to the API, swallow the error so the page can still be

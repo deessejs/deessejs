@@ -48,6 +48,7 @@
     "@workspace/database": "workspace:*",
     "@workspace/email": "workspace:*",
     "@workspace/env": "workspace:*",
+    "@workspace/registry": "workspace:*",
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",
