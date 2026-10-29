@@ -140,7 +140,7 @@ function ProjectDetail({
   children,
 }: {
   label: string
-    children: ReactNode
+  children: ReactNode
 }) {
   return (
     <div className="flex flex-col gap-1">
