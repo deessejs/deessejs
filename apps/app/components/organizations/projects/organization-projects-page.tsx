@@ -64,7 +64,8 @@ export function OrganizationProjectsPage({
 }) {
   const projectsQuery = useQuery({
     ...organizationProjectsQueryOptions(organizationSlug),
-    initialData: projects ? { projects } : undefined,
+    initialData: { projects: projects ?? [] },
+    initialDataUpdatedAt: projects === null ? 0 : Date.now(),
   })
 
   return (
@@ -86,7 +87,8 @@ export function OrganizationProjectsPage({
         ) : null}
       </header>
 
-      {projectsQuery.isPending ? (
+      {projectsQuery.isPending ||
+      (projects === null && projectsQuery.isFetching) ? (
         <p className="rounded-md border p-4 text-sm text-muted-foreground">
           Loading projects…
         </p>
