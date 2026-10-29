@@ -1,93 +1,135 @@
 /**
- * Contract test for the `templates.list` procedure.
+ * Contract tests for the public templates procedures.
  *
- * Per the test-strategy rule and the contract-layer pattern, this
- * is the contract layer:
- *   - Fast (no network, no DB)
- *   - Exercises the procedure handler in isolation
- *   - Asserts the wire shape matches the declared contract
- *   - Mocks only the external dependencies (GitHub fetch)
+ * These tests exercise the route handlers without a network or database
+ * connection and pin the projection from editorial and repository fields
+ * onto the existing V1 wire shape.
  */
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("../../src/core/templates/index.js", () => ({
-  enrich: vi.fn(async () => [
-    {
-      slug: "saas-starter",
-      name: "SaaS Starter",
-      description: "Production-ready Next.js + Better Auth + Postgres boilerplate.",
-      owner: "deessejs",
-      repo: "saas-template",
-      license: "MIT",
-      category: "saas",
-      labels: ["nextjs", "saas", "auth", "postgres"],
-    },
-  ]),
-}))
+const { selectMock } = vi.hoisted(() => ({ selectMock: vi.fn() }))
+
+vi.mock("@workspace/database", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@workspace/database")>()
+  return { ...actual, db: { select: selectMock } }
+})
 
 import { call } from "@orpc/server"
 import { appRouter } from "../../src/orpc/index.js"
-import { enrich } from "../../src/core/templates/index.js"
-import type { TemplatesListResponseV1 } from "@workspace/contracts/v1"
+
+const context = {
+  headers: new Headers(),
+  user: null,
+  session: null,
+  requestId: "test-request-id",
+}
+
+const templateRow = {
+  slug: "saas-starter",
+  name: "SaaS Starter",
+  descriptionOverride: null,
+  owner: "deessejs",
+  repo: "saas-template",
+  category: "saas",
+  labels: ["nextjs", "saas", "auth"],
+  licenseFallback: "MIT",
+  imageName: "ship-your-saas.png",
+  repositoryDescription: "A repository description",
+  canonicalUrl: "https://github.com/deessejs/saas-template",
+  license: "Apache-2.0",
+  readme: "# SaaS Starter",
+  repositoryUpdatedAt: new Date("2026-01-02T03:04:05.000Z"),
+  stars: 42,
+}
+
+const mockQuery = (rows: typeof templateRow[]) => {
+  const query = {
+    from: vi.fn(),
+    innerJoin: vi.fn(),
+    orderBy: vi.fn(),
+    where: vi.fn(),
+    limit: vi.fn(),
+  }
+  query.from.mockReturnValue(query)
+  query.innerJoin.mockReturnValue(query)
+  query.orderBy.mockResolvedValue(rows)
+  query.where.mockReturnValue(query)
+  query.limit.mockResolvedValue(rows)
+  selectMock.mockReturnValue(query)
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 describe("templates.list", () => {
-  it("returns the declared wire shape", async () => {
-    const result = await call(appRouter.templates.list, undefined, {
-      context: {
-        headers: new Headers(),
-        user: null,
-        session: null,
-        requestId: "test-request-id",
+  it("projects the database catalog into the declared V1 wire shape", async () => {
+    mockQuery([templateRow])
+
+    const result = await call(appRouter.templates.list, undefined, { context })
+
+    expect(result).toEqual({
+      templates: [
+        {
+          slug: "saas-starter",
+          name: "SaaS Starter",
+          description: "A repository description",
+          owner: "deessejs",
+          repo: "saas-template",
+          license: "MIT",
+          category: "saas",
+          labels: ["nextjs", "saas", "auth"],
+          image: "/ship-your-saas.png",
+          cloneUrl: "https://github.com/deessejs/saas-template",
+          readme: "# SaaS Starter",
+          updatedAt: "2026-01-02T03:04:05.000Z",
+          stars: 42,
+        },
+      ],
+    })
+  })
+
+  it("uses editorial overrides and allows an empty catalog", async () => {
+    mockQuery([
+      {
+        ...templateRow,
+        descriptionOverride: "Curated description",
+        licenseFallback: "BSD-3-Clause",
       },
+    ])
+
+    const result = await call(appRouter.templates.list, undefined, { context })
+    expect(result.templates[0]).toMatchObject({
+      description: "Curated description",
+      license: "BSD-3-Clause",
     })
 
-    expect(result).toMatchObject<TemplatesListResponseV1>({
-      templates: expect.arrayContaining([
-        expect.objectContaining({
-          slug: "saas-starter",
-        }),
-      ]),
-    })
+    mockQuery([])
+    await expect(
+      call(appRouter.templates.list, undefined, { context })
+    ).resolves.toEqual({ templates: [] })
   })
 })
 
 describe("templates.resolve", () => {
-  it("returns only the catalog source identity without enriching GitHub data", async () => {
-    const result = await call(
-      appRouter.templates.resolve,
-      { slug: "package-starter" },
-      {
-        context: {
-          headers: new Headers(),
-          user: null,
-          session: null,
-          requestId: "test-request-id",
-        },
-      }
-    )
+  it("resolves the repository identity from a stored catalog row", async () => {
+    mockQuery([templateRow])
 
-    expect(result).toEqual({
-      slug: "package-starter",
+    await expect(
+      call(appRouter.templates.resolve, { slug: "saas-starter" }, { context })
+    ).resolves.toEqual({
+      slug: "saas-starter",
       owner: "deessejs",
-      repo: "package-template",
+      repo: "saas-template",
     })
-    expect(vi.mocked(enrich)).not.toHaveBeenCalled()
   })
 
   it("returns null for an unknown catalog slug", async () => {
-    const result = await call(
-      appRouter.templates.resolve,
-      { slug: "not-a-template" },
-      {
-        context: {
-          headers: new Headers(),
-          user: null,
-          session: null,
-          requestId: "test-request-id",
-        },
-      }
-    )
+    mockQuery([])
 
-    expect(result).toBeNull()
+    await expect(
+      call(appRouter.templates.resolve, { slug: "not-a-template" }, { context })
+    ).resolves.toBeNull()
   })
 })

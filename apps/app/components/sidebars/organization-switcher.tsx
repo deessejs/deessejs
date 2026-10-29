@@ -45,6 +45,8 @@ const SWITCH_FAILED_MESSAGE = "The organization could not be selected."
 
 /**
  * The organization the page belongs to, and the way to another one.
+ * Account settings have no organization slug in the URL, so that shell
+ * can opt into naming the session's active organization instead.
  *
  * The switcher names the organization of the page, not the session's
  * active organization: the rail says what the caller is looking at.
@@ -59,17 +61,29 @@ const SWITCH_FAILED_MESSAGE = "The organization could not be selected."
  * `/home` reads. A refused write leaves the caller where they are and
  * says so in the rail.
  */
-export function OrganizationSwitcher() {
+export function OrganizationSwitcher({
+  activeOrganization = false,
+}: {
+  activeOrganization?: boolean
+}) {
   const pathname = usePathname()
   const router = useRouter()
   const { setOpenMobile } = useSidebar()
-  const slug = organizationSlugFromPathname(pathname)
+  const { data: session } = authClient.useSession()
+  const slug = activeOrganization ? null : organizationSlugFromPathname(pathname)
   const organizations = authClient.useListOrganizations()
   const [failure, setFailure] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const list = organizations.data ?? []
-  const current = list.find((organization) => organization.slug === slug)
+  const activeOrganizationId = session?.session?.activeOrganizationId
+  const current = activeOrganization
+    ? list.find((organization) => organization.id === activeOrganizationId)
+    : list.find((organization) => organization.slug === slug)
+  const currentLabel =
+    current?.name ??
+    (activeOrganization ? "Select an organization" : slug ?? "Organization")
+  const currentSlug = current?.slug ?? slug
 
   async function switchTo(organization: { id: string; slug: string }) {
     setFailure(null)
@@ -102,10 +116,10 @@ export function OrganizationSwitcher() {
                 <Building2Icon className="size-4 shrink-0" aria-hidden />
                 <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
                   <span className="truncate font-medium">
-                    {current?.name ?? slug ?? "Organization"}
+                    {currentLabel}
                   </span>
                   <span className="truncate text-xs text-sidebar-foreground/70">
-                    /{slug ?? ""}
+                    {currentSlug ? `/${currentSlug}` : "Choose a workspace"}
                   </span>
                 </span>
                 <ChevronsUpDownIcon
@@ -128,7 +142,9 @@ export function OrganizationSwitcher() {
               {!organizations.isPending &&
                 !organizations.error &&
                 list.map((organization) => {
-                  const isCurrent = organization.slug === slug
+                  const isCurrent = activeOrganization
+                    ? organization.id === activeOrganizationId
+                    : organization.slug === slug
                   return (
                     <DropdownMenuItem
                       key={organization.id}

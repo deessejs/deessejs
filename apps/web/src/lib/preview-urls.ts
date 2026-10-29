@@ -1,37 +1,39 @@
 // Preview-aware URL helpers for `apps/web`.
 //
-// `withRelatedProject` from `@vercel/related-projects` reads
+// `withRelatedProject` reads
 // `VERCEL_RELATED_PROJECTS` (auto-injected by Vercel when
 // `relatedProjects` is declared in `apps/web/vercel.json`) and
-// returns the linked sibling project's preview URL when
-// `VERCEL_ENV === "preview"`, the production alias/url when
-// `VERCEL_ENV === "production"`, or the env var fallback otherwise
-// (development, missing link, malformed payload — the four
-// `defaultHost` cases).
+// returns the linked sibling project's deployment URL for previews,
+// or its production URL in production.
 //
-// `projectName` matches the Vercel project slug as shown in the
-// dashboard (Settings → General → Project Name) and embedded in the
-// preview URL (`<slug>-git-<branch>.vercel.app`). NOT the
-// workspace-internal `package.json` `name` and NOT the Vercel
-// Project ID (`prj_xxx`) — those are different identifiers. As of
-// this commit, the slugs are `deessejs-app` and `deessejs-web`.
+// The custom staging environment has public domains for both apps.
+// Its related-project URL is the generated `.vercel.app` alias, which
+// is behind Vercel Deployment Protection. Use the app's custom staging
+// domain for API calls from both the browser and server-side rendering.
 
 import { withRelatedProject } from "@vercel/related-projects"
 import { clientEnv } from "@workspace/env/client"
 
-/** API backend origin — used by the oRPC link and the Better Auth client. */
-export const apiBaseUrl = withRelatedProject({
-  projectName: "deessejs-app",
-  defaultHost: clientEnv.NEXT_PUBLIC_API_BASE_URL,
-})
+const STAGING_APP_URL = "https://staging-app.deessejs.com"
 
-/** apps/app origin — used by the header cross-app links. */
-export const appUrl = withRelatedProject({
-  projectName: "deessejs-app",
-  defaultHost: clientEnv.NEXT_PUBLIC_APP_URL,
-})
+function resolveAppUrl(defaultHost: string): string {
+  if (process.env.VERCEL_TARGET_ENV === "staging") {
+    return STAGING_APP_URL
+  }
 
-/** Marketing origin — used by apps/app when linking back to web. */
+  return withRelatedProject({
+    projectName: "deessejs-app",
+    defaultHost,
+  })
+}
+
+/** API backend origin used by the oRPC link and the Better Auth client. */
+export const apiBaseUrl = resolveAppUrl(clientEnv.NEXT_PUBLIC_API_BASE_URL)
+
+/** apps/app origin used by the header cross-app links. */
+export const appUrl = resolveAppUrl(clientEnv.NEXT_PUBLIC_APP_URL)
+
+/** Marketing origin used by apps/app when linking back to web. */
 export const webUrl = withRelatedProject({
   projectName: "deessejs-web",
   defaultHost: clientEnv.NEXT_PUBLIC_WEB_URL,

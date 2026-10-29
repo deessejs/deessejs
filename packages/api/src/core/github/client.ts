@@ -25,11 +25,15 @@ function isGitHubRepo(value: unknown): value is GitHubRepo {
   if (typeof value.description !== "string" && value.description !== null) {
     return false
   }
+  if (value.private !== undefined && typeof value.private !== "boolean") {
+    return false
+  }
   if (!isGitHubLicense(value.license)) return false
-  if (
-    typeof value.stargazers_count !== "number" ||
-    typeof value.pushed_at !== "string"
-  ) {
+  if (typeof value.stargazers_count !== "number") return false
+  if (!Number.isInteger(value.stargazers_count) || value.stargazers_count < 0) {
+    return false
+  }
+  if (typeof value.pushed_at !== "string" && value.pushed_at !== null) {
     return false
   }
   if (value.topics !== undefined && !isStringArray(value.topics)) return false
@@ -70,9 +74,10 @@ export const fetchRepo = async (
   repo: string,
   token: string | undefined
 ): Promise<GitHubRepo> => {
-  const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, {
-    headers: headers(token),
-  })
+  const response = await fetch(
+    `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+    { headers: headers(token) }
+  )
   if (!response.ok) {
     throw new Error(
       `GitHub /repos/${owner}/${repo} returned ${response.status}`
@@ -92,9 +97,10 @@ export const fetchReadme = async (
   repo: string,
   token: string | undefined
 ): Promise<string | undefined> => {
-  const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/readme`, {
-    headers: headers(token),
-  })
+  const response = await fetch(
+    `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/readme`,
+    { headers: headers(token) }
+  )
   if (response.status === 404) return undefined
   if (!response.ok) {
     throw new Error(
@@ -102,7 +108,11 @@ export const fetchReadme = async (
     )
   }
   const payload: unknown = await response.json()
-  if (!isGitHubReadme(payload)) return undefined
+  if (!isGitHubReadme(payload)) {
+    throw new Error(
+      `GitHub /repos/${owner}/${repo}/readme returned an invalid response`
+    )
+  }
   // GitHub returns base64 with embedded newlines every 60 chars.
   return Buffer.from(payload.content, "base64").toString("utf8")
 }
