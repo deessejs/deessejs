@@ -26,6 +26,10 @@ export const workspacePath = (slug: string): string => `/${slug}`
 /** The workspace home, for the organization with this slug. */
 export const workspaceHomePath = (slug: string): string => `/${slug}/home`
 
+/** The organization's private template library. */
+export const workspaceTemplatesPath = (slug: string): string =>
+  `/${slug}/templates`
+
 /** The organization's own settings, for the organization with this slug. */
 export const workspaceSettingsPath = (slug: string): string =>
   `/${slug}/settings`
@@ -45,7 +49,7 @@ export const workspaceOrganizationSettingsPath = (slug: string): string =>
  * segment and never sees it.
  */
 export const organizationSlugFromPathname = (
-  pathname: string,
+  pathname: string
 ): string | null => {
   const segment = pathname.split("/")[1] ?? ""
   return segment.length > 0 ? segment : null

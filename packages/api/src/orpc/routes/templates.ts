@@ -1,12 +1,11 @@
 import { ORPCError } from "@orpc/server"
 import { z } from "zod"
-import { asc, eq } from "drizzle-orm"
-import type { TemplateV1, TemplatesListResponseV1 } from "@workspace/contracts/v1"
-import {
-  db,
-  templateRepositorySnapshots,
-  templates,
-} from "@workspace/database"
+import { and, asc, eq } from "drizzle-orm"
+import type {
+  TemplateV1,
+  TemplatesListResponseV1,
+} from "@workspace/contracts/v1"
+import { db, templateRepositorySnapshots, templates } from "@workspace/database"
 import { base } from "../base.js"
 import { logger } from "../../constants/logger.js"
 
@@ -98,7 +97,8 @@ export const e2eForceFail = (
 export const list = base
   .errors({
     TEMPLATES_FETCH_FAILED: {
-      message: "Failed to load the templates catalog. Try again in a few minutes.",
+      message:
+        "Failed to load the templates catalog. Try again in a few minutes.",
     },
   })
   .handler(async ({ context }): Promise<TemplatesListResponseV1> => {
@@ -113,6 +113,7 @@ export const list = base
           templateRepositorySnapshots,
           eq(templates.id, templateRepositorySnapshots.templateId)
         )
+        .where(eq(templates.ownerType, "platform"))
         .orderBy(asc(templates.sortOrder), asc(templates.slug))
 
       return { templates: rows.map(toPublicTemplate) }
@@ -154,7 +155,9 @@ export const resolve = base
         templateRepositorySnapshots,
         eq(templates.id, templateRepositorySnapshots.templateId)
       )
-      .where(eq(templates.slug, input.slug))
+      .where(
+        and(eq(templates.slug, input.slug), eq(templates.ownerType, "platform"))
+      )
       .limit(1)
 
     if (!template) return null
