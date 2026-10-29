@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import {
   queryOptions,
   useMutation,
+  useQueryClient,
   useQuery,
 } from "@tanstack/react-query"
 import type { UseQueryResult } from "@tanstack/react-query"
@@ -23,6 +24,7 @@ import {
 } from "@workspace/ui/components/card"
 
 import { GitHubProjectConfigReview } from "@/components/organizations/projects/github-project-config-review"
+import { organizationProjectsQueryKey } from "@/lib/github-projects-query"
 import { orpcBrowser } from "@/lib/orpc-browser"
 import type { ORPCBrowserClient } from "@/lib/orpc-browser"
 import { workspaceProjectsPath } from "@/lib/workspace-paths"
@@ -87,6 +89,7 @@ export function GitHubRepositoryBrowser({
   settingsPath: string
 }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [selection, setSelection] = useState<RepositorySelection | null>(null)
   const repositories = useQuery(
@@ -115,7 +118,12 @@ export function GitHubRepositoryBrowser({
         expectedCommitSha: inspection.commitSha,
       })
     },
-    onSuccess: () => router.push(workspaceProjectsPath(organizationSlug)),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: organizationProjectsQueryKey(organizationSlug),
+      })
+      router.push(workspaceProjectsPath(organizationSlug))
+    },
   })
 
   return (

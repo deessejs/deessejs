@@ -1,5 +1,8 @@
+"use client"
+
 import Link from "next/link"
 import { FolderGit2Icon, PlusIcon } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -12,12 +15,14 @@ import {
 } from "@workspace/ui/components/card"
 
 import { workspaceProjectImportPath } from "@/lib/workspace-paths"
+import { organizationProjectsQueryOptions } from "@/lib/github-projects-query"
 
 export type OrganizationProject = {
   id: string
   name: string
   repositoryFullName: string
   repositoryUrl: string
+  repositoryId: string
   isPrivate: boolean
   configurationPath: string
   defaultBranch: string
@@ -51,14 +56,17 @@ export function OrganizationProjectsPage({
   organizationName,
   canManage,
   projects,
-  projectsUnavailable,
 }: {
   organizationSlug: string
   organizationName: string
   canManage: boolean
-  projects: OrganizationProject[]
-  projectsUnavailable: boolean
+  projects: OrganizationProject[] | null
 }) {
+  const projectsQuery = useQuery({
+    ...organizationProjectsQueryOptions(organizationSlug),
+    initialData: projects ? { projects } : undefined,
+  })
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
@@ -78,20 +86,24 @@ export function OrganizationProjectsPage({
         ) : null}
       </header>
 
-      {projectsUnavailable ? (
+      {projectsQuery.isPending ? (
+        <p className="rounded-md border p-4 text-sm text-muted-foreground">
+          Loading projects…
+        </p>
+      ) : projectsQuery.isError ? (
         <p
           className="rounded-md border border-destructive/30 p-4 text-sm text-destructive"
           role="alert"
         >
           Projects could not be loaded. Refresh this page to try again.
         </p>
-      ) : projects.length === 0 ? (
+      ) : projectsQuery.data.projects.length === 0 ? (
         <EmptyProjects
           organizationSlug={organizationSlug}
           canManage={canManage}
         />
       ) : (
-        <ProjectList projects={projects} />
+        <ProjectList projects={projectsQuery.data.projects} />
       )}
     </div>
   )

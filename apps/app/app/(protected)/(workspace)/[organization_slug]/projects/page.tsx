@@ -10,22 +10,20 @@ export default async function OrganizationProjectsRoute({
   params: Promise<{ organization_slug: string }>
 }) {
   const { organization_slug } = await params
-  const organization = await readWorkspaceOrganization(organization_slug)
-  const projectResult = await orpc.githubApp.projects
-    .list({ slug: organization_slug })
-    .then((result) => ({
-      projects: result.projects,
-      unavailable: false as const,
-    }))
-    .catch(() => ({ projects: [], unavailable: true as const }))
+  const [organization, projects] = await Promise.all([
+    readWorkspaceOrganization(organization_slug),
+    orpc.githubApp.projects
+      .list({ slug: organization_slug })
+      .then((result) => result.projects)
+      .catch(() => null),
+  ])
 
   return (
     <OrganizationProjectsPage
       organizationSlug={organization_slug}
       organizationName={organization.name}
       canManage={hasManagingRole(organization.role)}
-      projects={projectResult.projects}
-      projectsUnavailable={projectResult.unavailable}
+      projects={projects}
     />
   )
 }
