@@ -8,15 +8,16 @@ import {
 import { SIDEBAR_COOKIE_NAME } from "@workspace/ui/lib/sidebar"
 
 import { AppHeader } from "@/components/headers/app-header"
-import { AppSidebar } from "@/components/sidebars/app-sidebar"
+import { WorkspaceSidebar } from "@/components/sidebars/workspace-sidebar"
 
 /**
  * Chrome for the workspace pages.
  *
  * The workspace is `/[organization_slug]/*`: the URL says which
- * organization the page belongs to. The organization's own navigation
- * arrives with the workspace shell, so this layout carries the rail,
- * the header the authenticated surfaces share, and nothing else.
+ * organization the page belongs to. WorkspaceSidebar selects the
+ * workspace or organization-settings navigation from the current route.
+ * The layout carries the rail, the shared authenticated header, and
+ * nothing else.
  *
  * The rail's open state is read from the cookie the sidebar writes.
  * The component only writes it, so without this read the preference
@@ -36,7 +37,7 @@ export default async function WorkspaceLayout({
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
-      <AppSidebar />
+      <WorkspaceSidebar />
       <SidebarInset>
         <AppHeader leading={<SidebarTrigger />} user={false} />
         <div className="flex-1 p-6">{children}</div>
