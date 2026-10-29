@@ -7,6 +7,7 @@ import type { UseQueryResult } from "@tanstack/react-query"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import { CardGridSkeleton } from "@/components/loading/page-skeleton"
 import {
   Card,
   CardContent,
@@ -46,11 +47,17 @@ type OrganizationProjectsResult = Awaited<
 
 const projectStatus: Record<
   OrganizationProject["status"],
-  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+  {
+    label: string
+    variant: "default" | "secondary" | "destructive" | "outline"
+  }
 > = {
   valid: { label: "Valid", variant: "secondary" },
   needs_revalidation: { label: "Needs revalidation", variant: "outline" },
-  configuration_invalid: { label: "Configuration invalid", variant: "destructive" },
+  configuration_invalid: {
+    label: "Configuration invalid",
+    variant: "destructive",
+  },
   access_unavailable: { label: "Access unavailable", variant: "outline" },
   check_failed: { label: "Check failed", variant: "outline" },
 }
@@ -118,11 +125,7 @@ function ProjectsQueryState({
   canManage: boolean
 }) {
   if (query.isPending || (initialLoad && query.isFetching)) {
-    return (
-      <p className="rounded-md border p-4 text-sm text-muted-foreground">
-        Loading projects…
-      </p>
-    )
+    return <CardGridSkeleton label="Loading projects" count={3} />
   }
   if (query.isError) {
     return (
@@ -159,10 +162,7 @@ function EmptyProjects({
 }) {
   return (
     <section className="flex flex-col items-center gap-3 rounded-lg border border-dashed px-6 py-16 text-center">
-      <FolderGit2Icon
-        className="size-8 text-muted-foreground"
-        aria-hidden
-      />
+      <FolderGit2Icon className="size-8 text-muted-foreground" aria-hidden />
       <h2 className="text-lg font-semibold">No projects yet</h2>
       <p className="max-w-md text-sm text-muted-foreground">
         {canManage

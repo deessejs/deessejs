@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@workspace/ui/components/button"
+import { CardGridSkeleton } from "@/components/loading/page-skeleton"
 import {
   InputGroup,
   InputGroupAddon,
@@ -42,7 +43,7 @@ export function OrganizationList() {
       : list.filter(
           (organization) =>
             organization.name.toLowerCase().includes(needle) ||
-            organization.slug.toLowerCase().includes(needle),
+            organization.slug.toLowerCase().includes(needle)
         )
 
   async function choose(organizationId: string, slug: string) {
@@ -93,7 +94,7 @@ export function OrganizationList() {
         )}
 
         {organizations.isPending && (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <CardGridSkeleton label="Loading organizations" count={3} />
         )}
 
         {organizations.error && (
