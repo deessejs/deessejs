@@ -9,6 +9,9 @@ Materialization remains the responsibility of the CLI.
 
 | Path | Owns |
 |---|---|
+| `src/v1/project-config.ts` | Strict V1 project structure, path normalization and stable diagnostics. |
+| `schema/project/v1.json` | Generated editor schema for project configuration V1. |
+| `scripts/generate-project-schema.mjs` | Generate or check the committed project JSON Schema. |
 | `src/v1/template-descriptor.ts` | Strict V1 structure, normalized parse result and stable diagnostics. |
 | `src/v1/template-source.ts` | GitHub source resolution, complete inventory and byte reads. |
 | `src/v1/installation-plan.ts` | Descriptor validation, file selection and deterministic plans. |
@@ -21,6 +24,8 @@ Materialization remains the responsibility of the CLI.
 - V1 rejects unknown fields at every object level.
 - Runtime validation uses the bundled Zod contract. It does not fetch the
   public schema URL.
+- Project configuration parsing is pure. It normalizes safe relative paths and
+  checks alias-to-path relationships without filesystem or network access.
 - An omitted `includes` defaults to `["**/*"]`; an explicitly empty array is
   invalid.
 - Structural validation does not inspect a repository or execute template
@@ -37,6 +42,8 @@ Materialization remains the responsibility of the CLI.
 ```bash
 pnpm --filter @workspace/registry schema:generate
 pnpm --filter @workspace/registry schema:check
+pnpm --filter @workspace/registry project-schema:generate
+pnpm --filter @workspace/registry project-schema:check
 pnpm --filter @workspace/registry build
 pnpm --filter @workspace/registry typecheck
 pnpm --filter @workspace/registry lint

@@ -15,7 +15,8 @@
       "default": "./dist/v1/index.js"
     },
     "./schema/template/v1.json": "./schema/template/v1.json",
-    "./schema/block/v1.json": "./schema/block/v1.json"
+    "./schema/block/v1.json": "./schema/block/v1.json",
+    "./schema/project/v1.json": "./schema/project/v1.json"
   },
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -27,7 +28,9 @@
     "block-schema:check": "node --experimental-strip-types scripts/generate-block-schema.mjs --check",
     "test": "vitest",
     "test:run": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "project-schema:generate": "node --experimental-strip-types scripts/generate-project-schema.mjs",
+    "project-schema:check": "node --experimental-strip-types scripts/generate-project-schema.mjs --check"
   },
   "dependencies": {
     "picomatch": "catalog:",

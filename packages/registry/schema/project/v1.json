@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://app.deessejs.com/schema/project/v1.json"
+    },
+    "formatVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "paths": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,63}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "aliases": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,63}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^\\P{Cc}+$"
+      }
+    }
+  },
+  "required": [
+    "formatVersion"
+  ],
+  "additionalProperties": false,
+  "$id": "https://app.deessejs.com/schema/project/v1.json",
+  "title": "DeesseJS project configuration, format version 1"
+}

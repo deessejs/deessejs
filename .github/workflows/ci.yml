@@ -32,6 +32,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Verify generated template descriptor schema
         run: pnpm --filter @workspace/registry schema:check
+      - name: Verify generated project configuration schema
+        run: pnpm --filter @workspace/registry project-schema:check
       - name: Reject inline lint suppressions
         run: pnpm lint:directives
       - name: Lint suppression guard
