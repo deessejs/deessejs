@@ -52,7 +52,11 @@ export function WorkspaceNav() {
               const isActive = active === entry.href
               return (
                 <SidebarMenuItem key={entry.href}>
-                  <SidebarMenuButton asChild isActive={isActive}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive}
+                    tooltip={entry.label}
+                  >
                     <Link
                       href={entry.href}
                       aria-current={isActive ? "page" : undefined}

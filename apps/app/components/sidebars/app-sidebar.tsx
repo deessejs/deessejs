@@ -5,6 +5,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarRail,
 } from "@workspace/ui/components/sidebar"
 
 import { NavUser } from "@/components/sidebars/nav-user"
@@ -30,7 +31,7 @@ import { WorkspaceNav } from "@/components/sidebars/workspace-nav"
  */
 export function AppSidebar() {
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="icon">
       <SidebarHeader className="h-14 justify-center border-b bg-background px-2 py-1">
         <OrganizationSwitcher />
       </SidebarHeader>
@@ -40,6 +41,7 @@ export function AppSidebar() {
       <SidebarFooter className="border-t bg-background">
         <NavUser />
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }

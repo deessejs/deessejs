@@ -126,7 +126,7 @@ export function OrganizationSwitcher({
         <SidebarMenuItem>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <SidebarMenuButton size="lg">
+              <SidebarMenuButton size="lg" tooltip={currentLabel}>
                 <Building2Icon className="size-4 shrink-0" aria-hidden />
                 <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
                   <span className="truncate font-medium">
