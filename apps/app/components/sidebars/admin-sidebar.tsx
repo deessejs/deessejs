@@ -12,6 +12,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
   useSidebar,
 } from "@workspace/ui/components/sidebar"
 import { ClipboardCheckIcon, LayoutTemplateIcon } from "lucide-react"
@@ -30,7 +31,7 @@ export function AdminSidebar() {
       !pathname.startsWith(SUBMISSIONS_HREF))
 
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="icon">
       <SidebarHeader className="h-14 justify-center border-b bg-background px-4">
         <span className="text-sm font-semibold">Administration</span>
       </SidebarHeader>
@@ -39,7 +40,11 @@ export function AdminSidebar() {
           <SidebarGroupLabel>Catalog</SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isTemplatesActive}>
+              <SidebarMenuButton
+                asChild
+                isActive={isTemplatesActive}
+                tooltip="Templates"
+              >
                 <Link
                   href={TEMPLATES_HREF}
                   aria-current={isTemplatesActive ? "page" : undefined}
@@ -54,6 +59,7 @@ export function AdminSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={pathname === SUBMISSIONS_HREF}
+                tooltip="Publication requests"
               >
                 <Link
                   href={SUBMISSIONS_HREF}
@@ -73,6 +79,7 @@ export function AdminSidebar() {
       <SidebarFooter className="border-t bg-background">
         <NavUser />
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }

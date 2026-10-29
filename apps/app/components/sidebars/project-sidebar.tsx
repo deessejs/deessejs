@@ -42,11 +42,11 @@ export function ProjectSidebar({
     pathname === homeHref || pathname.startsWith(`${homeHref}/`)
 
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="icon">
       <SidebarHeader className="h-14 justify-center border-b bg-background px-2 py-1">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild size="lg">
+            <SidebarMenuButton asChild size="lg" tooltip="All projects">
               <Link
                 href={workspaceProjectsPath(organizationSlug)}
                 onClick={() => setOpenMobile(false)}
@@ -65,7 +65,11 @@ export function ProjectSidebar({
           </SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isHomeActive}>
+              <SidebarMenuButton
+                asChild
+                isActive={isHomeActive}
+                tooltip="Home"
+              >
                 <Link
                   href={homeHref}
                   aria-current={isHomeActive ? "page" : undefined}

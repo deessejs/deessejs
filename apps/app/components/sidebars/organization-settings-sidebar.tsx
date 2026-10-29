@@ -38,7 +38,7 @@ export function OrganizationSettingsSidebar() {
     pathname === generalHref || pathname.startsWith(`${generalHref}/`)
 
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="icon">
       <SidebarHeader className="h-14 justify-center border-b bg-background px-2 py-1">
         <OrganizationSwitcher preserveSettingsPath />
       </SidebarHeader>
@@ -47,7 +47,7 @@ export function OrganizationSettingsSidebar() {
           <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
+              <SidebarMenuButton asChild tooltip="Home">
                 <Link href={homeHref} onClick={() => setOpenMobile(false)}>
                   <HomeIcon className="size-4" aria-hidden />
                   <span>Home</span>
@@ -60,7 +60,11 @@ export function OrganizationSettingsSidebar() {
           <SidebarGroupLabel>Settings</SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isGeneralActive}>
+              <SidebarMenuButton
+                asChild
+                isActive={isGeneralActive}
+                tooltip="General"
+              >
                 <Link
                   href={generalHref}
                   aria-current={isGeneralActive ? "page" : undefined}
