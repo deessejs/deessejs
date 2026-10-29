@@ -2,18 +2,6 @@
 
 <!-- What problem does this change address, and what changed? -->
 
-## Related issue
-
-<!-- Use "Closes #123" when this PR closes an issue. -->
-
-## Type of change
-
-- [ ] Bug fix
-- [ ] Feature
-- [ ] Refactor
-- [ ] Documentation
-- [ ] Chore or CI
-
 ## Verification
 
 <!-- List the checks or manual steps used to verify this change. Explain any checks that were not run. -->
