@@ -18,6 +18,7 @@ import {
 } from "@workspace/ui/components/dialog"
 import { GoogleIcon } from "@/components/auth/icons/google-icon"
 import { GitHubIcon } from "@/components/auth/icons/github-icon"
+import { RowsSkeleton } from "@/components/loading/page-skeleton"
 
 interface LinkedAccount {
   id: string
@@ -52,11 +53,7 @@ function LinkedAccountsStatus({
   onRetry: () => void
 }) {
   if (loading) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Loading linked accounts…
-      </p>
-    )
+    return <RowsSkeleton label="Loading linked accounts" count={2} />
   }
 
   if (!error) return null
@@ -197,7 +194,10 @@ function UnlinkAccountDialog({
     : ""
 
   return (
-    <Dialog open={confirmation !== null} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={confirmation !== null}
+      onOpenChange={(open) => !open && onClose()}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Unlink {providerName}?</DialogTitle>
@@ -209,11 +209,7 @@ function UnlinkAccountDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            variant="destructive"
-            onClick={onConfirm}
-            disabled={pending}
-          >
+          <Button variant="destructive" onClick={onConfirm} disabled={pending}>
             {pending ? "Unlinking…" : "Unlink"}
           </Button>
         </DialogFooter>
@@ -234,8 +230,9 @@ export function ConnectedAccountsList() {
     !sessionPending && !session?.user
       ? "Your session is unavailable. Sign in again to view linked accounts."
       : accountsQuery.error?.message
-  const [unlinkConfirm, setUnlinkConfirm] =
-    useState<UnlinkConfirmation | null>(null)
+  const [unlinkConfirm, setUnlinkConfirm] = useState<UnlinkConfirmation | null>(
+    null
+  )
   const [linking, setLinking] = useState<string | null>(null)
 
   async function startAccountLink(provider: string) {

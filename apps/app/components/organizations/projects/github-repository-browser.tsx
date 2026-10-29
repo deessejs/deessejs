@@ -15,6 +15,7 @@ import { CheckIcon, ExternalLinkIcon } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import { RowsSkeleton } from "@/components/loading/page-skeleton"
 import {
   Card,
   CardContent,
@@ -37,7 +38,10 @@ type GitHubRepository = GitHubRepositoryPage["repositories"][number]
 type RepositorySelection = { repository: GitHubRepository; page: number }
 type RepositoryQuery = UseQueryResult<GitHubRepositoryPage, Error>
 
-function githubRepositoriesQueryOptions(organizationSlug: string, page: number) {
+function githubRepositoriesQueryOptions(
+  organizationSlug: string,
+  page: number
+) {
   return queryOptions({
     queryKey: ["github-app", "repositories", organizationSlug, page],
     queryFn: () =>
@@ -138,31 +142,33 @@ export function GitHubRepositoryBrowser({
         }
       />
       <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <CardTitle>Choose a GitHub Repository</CardTitle>
-            <CardDescription>
-              These repositories are available to your GitHub account through
-              the connected installation.
-            </CardDescription>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <CardTitle>Choose a GitHub Repository</CardTitle>
+              <CardDescription>
+                These repositories are available to your GitHub account through
+                the connected installation.
+              </CardDescription>
+            </div>
+            <Badge variant="secondary">
+              Connected to {installationAccount}
+            </Badge>
           </div>
-          <Badge variant="secondary">Connected to {installationAccount}</Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <RepositoryQueryState
-          query={repositories}
-          page={page}
-          onPageChange={setPage}
-          selectedRepository={selection?.repository ?? null}
-          onSelectRepository={(repository) => {
-            importProject.reset()
-            setSelection({ repository, page })
-          }}
-          settingsPath={settingsPath}
-        />
-      </CardContent>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <RepositoryQueryState
+            query={repositories}
+            page={page}
+            onPageChange={setPage}
+            selectedRepository={selection?.repository ?? null}
+            onSelectRepository={(repository) => {
+              importProject.reset()
+              setSelection({ repository, page })
+            }}
+            settingsPath={settingsPath}
+          />
+        </CardContent>
       </Card>
       <GitHubProjectConfigReview
         repositoryName={selection?.repository.fullName ?? null}
@@ -188,10 +194,7 @@ function ImportSteps({ currentStep }: { currentStep: 1 | 2 | 3 }) {
   ]
 
   return (
-    <ol
-      className="grid gap-3 sm:grid-cols-3"
-      aria-label="Project import steps"
-    >
+    <ol className="grid gap-3 sm:grid-cols-3" aria-label="Project import steps">
       {steps.map((step) => {
         const isCurrentStep = step.number === currentStep
         return (
@@ -256,14 +259,7 @@ function RepositoryQueryState({
 }
 
 function RepositoryLoadingState() {
-  return (
-    <p
-      className="rounded-lg border px-4 py-8 text-center text-sm text-muted-foreground"
-      aria-live="polite"
-    >
-      Loading repositories from GitHub…
-    </p>
-  )
+  return <RowsSkeleton label="Loading repositories from GitHub" count={5} />
 }
 
 function RepositoryErrorState({
@@ -335,8 +331,8 @@ function RepositoryResults({
 function RepositoryEmptyState() {
   return (
     <p className="rounded-lg border border-dashed px-4 py-12 text-center text-sm text-muted-foreground">
-      No repositories are available to this GitHub account through the
-      connected installation.
+      No repositories are available to this GitHub account through the connected
+      installation.
     </p>
   )
 }
@@ -410,8 +406,8 @@ function SelectedRepositoryMessage({
       className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm"
       role="status"
     >
-      <span className="font-medium">{repository.fullName}</span>{" "}
-      is selected. Its configuration appears below.
+      <span className="font-medium">{repository.fullName}</span> is selected.
+      Its configuration appears below.
     </p>
   )
 }

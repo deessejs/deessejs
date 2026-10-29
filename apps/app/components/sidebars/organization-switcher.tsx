@@ -17,6 +17,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@workspace/ui/components/sidebar"
+import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Building2Icon,
   BoxesIcon,
@@ -73,7 +74,9 @@ export function OrganizationSwitcher({
   const router = useRouter()
   const { setOpenMobile } = useSidebar()
   const { data: session } = authClient.useSession()
-  const slug = activeOrganization ? null : organizationSlugFromPathname(pathname)
+  const slug = activeOrganization
+    ? null
+    : organizationSlugFromPathname(pathname)
   const organizations = authClient.useListOrganizations()
   const [failure, setFailure] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -85,7 +88,7 @@ export function OrganizationSwitcher({
     : list.find((organization) => organization.slug === slug)
   const currentLabel =
     current?.name ??
-    (activeOrganization ? "Select an organization" : slug ?? "Organization")
+    (activeOrganization ? "Select an organization" : (slug ?? "Organization"))
   const currentSlug = current?.slug ?? slug
 
   async function switchTo(organization: { id: string; slug: string }) {
@@ -126,12 +129,10 @@ export function OrganizationSwitcher({
         <SidebarMenuItem>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <SidebarMenuButton size="lg">
+              <SidebarMenuButton size="lg" tooltip={currentLabel}>
                 <Building2Icon className="size-4 shrink-0" aria-hidden />
                 <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
-                  <span className="truncate font-medium">
-                    {currentLabel}
-                  </span>
+                  <span className="truncate font-medium">{currentLabel}</span>
                   <span className="truncate text-xs text-sidebar-foreground/70">
                     {currentSlug ? `/${currentSlug}` : "Choose a workspace"}
                   </span>
@@ -146,7 +147,10 @@ export function OrganizationSwitcher({
               <DropdownMenuLabel>Organizations</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {organizations.isPending && (
-                <DropdownMenuItem disabled>Loading…</DropdownMenuItem>
+                <DropdownMenuItem disabled aria-busy="true">
+                  <Skeleton className="h-4 w-32" />
+                  <span className="sr-only">Loading organizations</span>
+                </DropdownMenuItem>
               )}
               {organizations.error && (
                 <DropdownMenuItem disabled>

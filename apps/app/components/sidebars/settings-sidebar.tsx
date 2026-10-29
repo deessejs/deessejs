@@ -45,7 +45,7 @@ export function SettingsSidebar() {
   const { setOpenMobile } = useSidebar()
 
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="icon">
       <SidebarHeader className="h-14 justify-center border-b bg-background px-2 py-1">
         <OrganizationSwitcher activeOrganization />
       </SidebarHeader>
@@ -60,7 +60,11 @@ export function SettingsSidebar() {
 
               return (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={isActive}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive}
+                    tooltip={item.label}
+                  >
                     <Link
                       href={item.href}
                       aria-current={isActive ? "page" : undefined}

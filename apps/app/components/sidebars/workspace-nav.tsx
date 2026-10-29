@@ -44,7 +44,10 @@ export function WorkspaceNav() {
   return (
     <>
       {groups.map((group) => (
-        <SidebarGroup key={group.label}>
+        <SidebarGroup
+          key={group.label}
+          className={group.label === "Settings" ? "mt-auto" : undefined}
+        >
           <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
           <SidebarMenu>
             {group.entries.map((entry) => {
@@ -52,7 +55,11 @@ export function WorkspaceNav() {
               const isActive = active === entry.href
               return (
                 <SidebarMenuItem key={entry.href}>
-                  <SidebarMenuButton asChild isActive={isActive}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive}
+                    tooltip={entry.label}
+                  >
                     <Link
                       href={entry.href}
                       aria-current={isActive ? "page" : undefined}

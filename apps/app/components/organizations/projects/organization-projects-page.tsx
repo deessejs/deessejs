@@ -7,6 +7,7 @@ import type { UseQueryResult } from "@tanstack/react-query"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import { CardGridSkeleton } from "@/components/loading/page-skeleton"
 import {
   Card,
   CardContent,
@@ -15,7 +16,10 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card"
 
-import { workspaceProjectImportPath } from "@/lib/workspace-paths"
+import {
+  workspaceProjectHomePath,
+  workspaceProjectImportPath,
+} from "@/lib/workspace-paths"
 import { organizationProjectsQueryOptions } from "@/lib/github-projects-query"
 import type { ORPCBrowserClient } from "@/lib/orpc-browser"
 
@@ -43,11 +47,17 @@ type OrganizationProjectsResult = Awaited<
 
 const projectStatus: Record<
   OrganizationProject["status"],
-  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+  {
+    label: string
+    variant: "default" | "secondary" | "destructive" | "outline"
+  }
 > = {
   valid: { label: "Valid", variant: "secondary" },
   needs_revalidation: { label: "Needs revalidation", variant: "outline" },
-  configuration_invalid: { label: "Configuration invalid", variant: "destructive" },
+  configuration_invalid: {
+    label: "Configuration invalid",
+    variant: "destructive",
+  },
   access_unavailable: { label: "Access unavailable", variant: "outline" },
   check_failed: { label: "Check failed", variant: "outline" },
 }
@@ -115,11 +125,7 @@ function ProjectsQueryState({
   canManage: boolean
 }) {
   if (query.isPending || (initialLoad && query.isFetching)) {
-    return (
-      <p className="rounded-md border p-4 text-sm text-muted-foreground">
-        Loading projects…
-      </p>
-    )
+    return <CardGridSkeleton label="Loading projects" count={3} />
   }
   if (query.isError) {
     return (
@@ -139,7 +145,12 @@ function ProjectsQueryState({
       />
     )
   }
-  return <ProjectList projects={query.data.projects} />
+  return (
+    <ProjectList
+      organizationSlug={organizationSlug}
+      projects={query.data.projects}
+    />
+  )
 }
 
 function EmptyProjects({
@@ -151,10 +162,7 @@ function EmptyProjects({
 }) {
   return (
     <section className="flex flex-col items-center gap-3 rounded-lg border border-dashed px-6 py-16 text-center">
-      <FolderGit2Icon
-        className="size-8 text-muted-foreground"
-        aria-hidden
-      />
+      <FolderGit2Icon className="size-8 text-muted-foreground" aria-hidden />
       <h2 className="text-lg font-semibold">No projects yet</h2>
       <p className="max-w-md text-sm text-muted-foreground">
         {canManage
@@ -173,7 +181,13 @@ function EmptyProjects({
   )
 }
 
-function ProjectList({ projects }: { projects: OrganizationProject[] }) {
+function ProjectList({
+  organizationSlug,
+  projects,
+}: {
+  organizationSlug: string
+  projects: OrganizationProject[]
+}) {
   return (
     <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {projects.map((project) => {
@@ -184,7 +198,17 @@ function ProjectList({ projects }: { projects: OrganizationProject[] }) {
               <CardHeader>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <CardTitle className="truncate">{project.name}</CardTitle>
+                    <CardTitle className="truncate">
+                      <Link
+                        className="underline-offset-4 hover:underline"
+                        href={workspaceProjectHomePath(
+                          organizationSlug,
+                          project.id
+                        )}
+                      >
+                        {project.name}
+                      </Link>
+                    </CardTitle>
                     <CardDescription className="mt-1 truncate">
                       <a
                         className="underline-offset-4 hover:underline"

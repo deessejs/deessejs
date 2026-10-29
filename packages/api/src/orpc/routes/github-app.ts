@@ -430,6 +430,75 @@ const listProjects = base
     }
   })
 
+const getProject = base
+  .input(
+    z.object({ slug: z.string().min(1), projectId: z.string().uuid() })
+  )
+  .errors({
+    ...deniedErrors,
+    PROJECT_NOT_FOUND: {
+      status: 404,
+      message: "This project was not found in this organization.",
+    },
+  })
+  .use(authGuard)
+  .handler(async ({ context, input, errors }) => {
+    const organization = await findOrganizationForMember(
+      context.user.id,
+      input.slug
+    )
+    if (!organization) throw errors.ORGANIZATION_ACCESS_DENIED()
+
+    const [project] = await db
+      .select({
+        id: githubProject.id,
+        repositoryFullName: githubProject.repositoryFullName,
+        repositoryUrl: githubProject.repositoryUrl,
+        isPrivate: githubProject.isPrivate,
+        defaultBranch: githubProject.defaultBranch,
+        configurationPath: githubProject.configurationPath,
+      })
+      .from(githubProject)
+      .where(
+        and(
+          eq(githubProject.id, input.projectId),
+          eq(githubProject.organizationId, organization.id)
+        )
+      )
+      .limit(1)
+
+    if (!project) throw errors.PROJECT_NOT_FOUND()
+
+    const [check] = await db
+      .select({
+        status: githubProjectCheck.status,
+        commitSha: githubProjectCheck.commitSha,
+        formatVersion: githubProjectCheck.formatVersion,
+        pathCount: githubProjectCheck.pathCount,
+        aliasCount: githubProjectCheck.aliasCount,
+        checkedAt: githubProjectCheck.checkedAt,
+      })
+      .from(githubProjectCheck)
+      .where(eq(githubProjectCheck.projectId, project.id))
+      .orderBy(desc(githubProjectCheck.checkedAt))
+      .limit(1)
+
+    return {
+      project: {
+        ...project,
+        name:
+          project.repositoryFullName.split("/").at(-1) ??
+          project.repositoryFullName,
+        status: check?.status ?? ("needs_revalidation" as const),
+        lastCheckedAt: check?.checkedAt.toISOString() ?? null,
+        commitSha: check?.commitSha ?? null,
+        formatVersion: check?.formatVersion ?? null,
+        pathCount: check?.pathCount ?? null,
+        aliasCount: check?.aliasCount ?? null,
+      },
+    }
+  })
+
 const importProject = base
   .input(
     z.object({
@@ -592,5 +661,6 @@ export const githubAppRouter = {
   },
   projects: {
     list: listProjects,
+    get: getProject,
   },
 }
