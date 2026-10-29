@@ -481,14 +481,15 @@ const importProject = base
       (candidate) => candidate.id === input.repositoryId
     )
     if (!repository) throw errors.GITHUB_REPOSITORY_NOT_ACCESSIBLE()
-    if (!repository.defaultBranch) {
+    const defaultBranch = repository.defaultBranch
+    if (!defaultBranch) {
       throw errors.GITHUB_PROJECT_NO_DEFAULT_BRANCH()
     }
 
     const inspection = await inspectProjectConfigOrThrow(
       {
         fullName: repository.fullName,
-        defaultBranch: repository.defaultBranch,
+        defaultBranch,
         accessToken,
       },
       {
@@ -502,7 +503,8 @@ const importProject = base
     if (inspection.commitSha !== input.expectedCommitSha) {
       throw errors.GITHUB_PROJECT_CONFIG_CHANGED()
     }
-    if (inspection.configuration.status !== "valid") {
+    const configuration = inspection.configuration
+    if (configuration.status !== "valid") {
       throw errors.GITHUB_PROJECT_CONFIG_NOT_VALID()
     }
 
@@ -518,7 +520,7 @@ const importProject = base
           repositoryFullName: repository.fullName,
           repositoryUrl: repository.htmlUrl,
           isPrivate: repository.isPrivate,
-          defaultBranch: repository.defaultBranch,
+          defaultBranch,
           configurationPath: "deesse.json",
           importedByUserId: context.user.id,
           importedAt: checkedAt,
@@ -549,9 +551,9 @@ const importProject = base
         projectId,
         status: "valid",
         commitSha: inspection.commitSha,
-        formatVersion: inspection.configuration.formatVersion,
-        pathCount: Object.keys(inspection.configuration.paths ?? {}).length,
-        aliasCount: Object.keys(inspection.configuration.aliases ?? {}).length,
+        formatVersion: configuration.formatVersion,
+        pathCount: Object.keys(configuration.paths ?? {}).length,
+        aliasCount: Object.keys(configuration.aliases ?? {}).length,
         checkedAt,
       })
 
