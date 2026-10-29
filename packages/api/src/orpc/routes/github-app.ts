@@ -1,9 +1,12 @@
-import { and, eq } from "drizzle-orm"
+import { randomUUID } from "node:crypto"
+import { and, asc, desc, eq, inArray } from "drizzle-orm"
 import { z } from "zod"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 import {
   db,
   githubAppInstallation,
+  githubProject,
+  githubProjectCheck,
   githubUserConnection,
 } from "@workspace/database"
 import { member, organization } from "@workspace/database/schema"
@@ -48,15 +51,31 @@ const repositoryErrors = {
   },
   GITHUB_REPOSITORY_NOT_ACCESSIBLE: {
     status: 404,
-    message: "This repository is not available through your GitHub installation.",
+    message:
+      "This repository is not available through your GitHub installation.",
   },
   GITHUB_REPOSITORY_CONTENTS_FORBIDDEN: {
     status: 403,
-    message: "GitHub denied access to this repository. The app needs Contents read-only permission.",
+    message:
+      "GitHub denied access to this repository. The app needs Contents read-only permission.",
   },
   GITHUB_PROJECT_CONFIG_UNAVAILABLE: {
     status: 502,
     message: "The repository configuration could not be inspected. Try again.",
+  },
+  GITHUB_PROJECT_CONFIG_CHANGED: {
+    status: 409,
+    message:
+      "The default branch changed. Review the configuration again before importing.",
+  },
+  GITHUB_PROJECT_CONFIG_NOT_VALID: {
+    status: 409,
+    message:
+      "The repository configuration is not valid and cannot be imported.",
+  },
+  GITHUB_PROJECT_NO_DEFAULT_BRANCH: {
+    status: 409,
+    message: "This repository does not have a default branch to import.",
   },
 }
 
@@ -210,10 +229,7 @@ async function getRepositoryPageForInspection(
   try {
     return await listGitHubInstallationRepositories(input)
   } catch (error) {
-    if (
-      error instanceof GitHubRepositoryRequestError &&
-      error.status === 401
-    ) {
+    if (error instanceof GitHubRepositoryRequestError && error.status === 401) {
       throw errors.accountRequired()
     }
     if (
@@ -344,6 +360,209 @@ const inspectConfiguration = base
     }
   })
 
+const listProjects = base
+  .input(z.object({ slug: z.string().min(1) }))
+  .errors(deniedErrors)
+  .use(authGuard)
+  .handler(async ({ context, input, errors }) => {
+    const organization = await findOrganizationForMember(
+      context.user.id,
+      input.slug
+    )
+    if (!organization) throw errors.ORGANIZATION_ACCESS_DENIED()
+
+    const projects = await db
+      .select({
+        id: githubProject.id,
+        repositoryId: githubProject.repositoryId,
+        repositoryFullName: githubProject.repositoryFullName,
+        repositoryUrl: githubProject.repositoryUrl,
+        isPrivate: githubProject.isPrivate,
+        defaultBranch: githubProject.defaultBranch,
+        configurationPath: githubProject.configurationPath,
+      })
+      .from(githubProject)
+      .where(eq(githubProject.organizationId, organization.id))
+      .orderBy(asc(githubProject.repositoryFullName))
+
+    if (projects.length === 0) return { projects: [] }
+
+    const checks = await db
+      .select({
+        projectId: githubProjectCheck.projectId,
+        status: githubProjectCheck.status,
+        checkedAt: githubProjectCheck.checkedAt,
+      })
+      .from(githubProjectCheck)
+      .where(
+        inArray(
+          githubProjectCheck.projectId,
+          projects.map((project) => project.id)
+        )
+      )
+      .orderBy(desc(githubProjectCheck.checkedAt))
+
+    const latestChecks = new Map<string, (typeof checks)[number]>()
+    for (const check of checks) {
+      if (!latestChecks.has(check.projectId)) {
+        latestChecks.set(check.projectId, check)
+      }
+    }
+
+    return {
+      projects: projects.map((project) => {
+        const check = latestChecks.get(project.id)
+        return {
+          id: project.id,
+          name:
+            project.repositoryFullName.split("/").at(-1) ??
+            project.repositoryFullName,
+          repositoryId: project.repositoryId,
+          repositoryFullName: project.repositoryFullName,
+          repositoryUrl: project.repositoryUrl,
+          isPrivate: project.isPrivate,
+          defaultBranch: project.defaultBranch,
+          configurationPath: project.configurationPath,
+          status: check?.status ?? ("needs_revalidation" as const),
+          lastCheckedAt: check?.checkedAt.toISOString() ?? null,
+        }
+      }),
+    }
+  })
+
+const importProject = base
+  .input(
+    z.object({
+      slug: z.string().min(1),
+      repositoryId: z.number().int().positive(),
+      page: z.number().int().min(1).max(10_000),
+      expectedCommitSha: z.string().regex(/^[a-f0-9]{40,64}$/i),
+    })
+  )
+  .errors(repositoryErrors)
+  .use(authGuard)
+  .handler(async ({ context, input, errors }) => {
+    const organization = await findOrganizationForMember(
+      context.user.id,
+      input.slug
+    )
+    if (!organization || !hasManagingRole(organization.role)) {
+      throw errors.ORGANIZATION_ACCESS_DENIED()
+    }
+
+    const [installation] = await db
+      .select({ installationId: githubAppInstallation.installationId })
+      .from(githubAppInstallation)
+      .where(eq(githubAppInstallation.organizationId, organization.id))
+      .limit(1)
+    if (!installation) throw errors.GITHUB_INSTALLATION_NOT_CONNECTED()
+
+    let accessToken: string
+    try {
+      accessToken = await getGitHubUserAccessToken(context.user.id)
+    } catch {
+      throw errors.GITHUB_ACCOUNT_REQUIRED()
+    }
+
+    const repositoryPage = await getRepositoryPageForInspection(
+      {
+        installationId: installation.installationId,
+        accessToken,
+        page: input.page,
+      },
+      {
+        accountRequired: () => errors.GITHUB_ACCOUNT_REQUIRED(),
+        installationAccessDenied: () =>
+          errors.GITHUB_INSTALLATION_ACCESS_DENIED(),
+        repositoriesUnavailable: () => errors.GITHUB_REPOSITORIES_UNAVAILABLE(),
+      }
+    )
+    const repository = repositoryPage.repositories.find(
+      (candidate) => candidate.id === input.repositoryId
+    )
+    if (!repository) throw errors.GITHUB_REPOSITORY_NOT_ACCESSIBLE()
+    const defaultBranch = repository.defaultBranch
+    if (!defaultBranch) {
+      throw errors.GITHUB_PROJECT_NO_DEFAULT_BRANCH()
+    }
+
+    const inspection = await inspectProjectConfigOrThrow(
+      {
+        fullName: repository.fullName,
+        defaultBranch,
+        accessToken,
+      },
+      {
+        accountRequired: () => errors.GITHUB_ACCOUNT_REQUIRED(),
+        contentsForbidden: () => errors.GITHUB_REPOSITORY_CONTENTS_FORBIDDEN(),
+        configurationUnavailable: () =>
+          errors.GITHUB_PROJECT_CONFIG_UNAVAILABLE(),
+      }
+    )
+
+    if (inspection.commitSha !== input.expectedCommitSha) {
+      throw errors.GITHUB_PROJECT_CONFIG_CHANGED()
+    }
+    const configuration = inspection.configuration
+    if (configuration.status !== "valid") {
+      throw errors.GITHUB_PROJECT_CONFIG_NOT_VALID()
+    }
+
+    const projectId = randomUUID()
+    const checkedAt = new Date()
+    const result = await db.transaction(async (tx) => {
+      const [createdProject] = await tx
+        .insert(githubProject)
+        .values({
+          id: projectId,
+          organizationId: organization.id,
+          repositoryId: String(repository.id),
+          repositoryFullName: repository.fullName,
+          repositoryUrl: repository.htmlUrl,
+          isPrivate: repository.isPrivate,
+          defaultBranch,
+          configurationPath: "deesse.json",
+          importedByUserId: context.user.id,
+          importedAt: checkedAt,
+        })
+        .onConflictDoNothing()
+        .returning({ id: githubProject.id })
+
+      if (!createdProject) {
+        const [existingProject] = await tx
+          .select({ id: githubProject.id })
+          .from(githubProject)
+          .where(
+            and(
+              eq(githubProject.organizationId, organization.id),
+              eq(githubProject.repositoryId, String(repository.id)),
+              eq(githubProject.configurationPath, "deesse.json")
+            )
+          )
+          .limit(1)
+        return {
+          projectId: existingProject?.id ?? projectId,
+          alreadyImported: true,
+        }
+      }
+
+      await tx.insert(githubProjectCheck).values({
+        id: randomUUID(),
+        projectId,
+        status: "valid",
+        commitSha: inspection.commitSha,
+        formatVersion: configuration.formatVersion,
+        pathCount: configuration.pathCount,
+        aliasCount: configuration.aliasCount,
+        checkedAt,
+      })
+
+      return { projectId, alreadyImported: false }
+    })
+
+    return result
+  })
+
 export const disconnect = base
   .input(z.object({ slug: z.string() }))
   .errors(deniedErrors)
@@ -369,5 +588,9 @@ export const githubAppRouter = {
   repositories: {
     list: listRepositories,
     inspectConfiguration,
+    import: importProject,
+  },
+  projects: {
+    list: listProjects,
   },
 }

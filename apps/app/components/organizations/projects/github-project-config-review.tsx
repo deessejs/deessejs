@@ -30,12 +30,20 @@ type ProjectConfigInspectionQuery = UseQueryResult<
 
 export function GitHubProjectConfigReview({
   repositoryName,
+  isPrivate,
   query,
   onRetry,
+  onImport,
+  importPending,
+  importError,
 }: {
   repositoryName: string | null
+  isPrivate: boolean
   query: ProjectConfigInspectionQuery
   onRetry: () => void
+  onImport: () => void
+  importPending: boolean
+  importError: string | null
 }) {
   if (!repositoryName) return null
 
@@ -50,7 +58,14 @@ export function GitHubProjectConfigReview({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ProjectConfigInspectionState query={query} onRetry={onRetry} />
+        <ProjectConfigInspectionState
+          query={query}
+          onRetry={onRetry}
+          isPrivate={isPrivate}
+          onImport={onImport}
+          importPending={importPending}
+          importError={importError}
+        />
       </CardContent>
     </Card>
   )
@@ -59,13 +74,24 @@ export function GitHubProjectConfigReview({
 function ProjectConfigInspectionState({
   query,
   onRetry,
+  isPrivate,
+  onImport,
+  importPending,
+  importError,
 }: {
   query: ProjectConfigInspectionQuery
   onRetry: () => void
+  isPrivate: boolean
+  onImport: () => void
+  importPending: boolean
+  importError: string | null
 }) {
   if (query.isPending) {
     return (
-      <p className="rounded-lg border px-4 py-6 text-sm text-muted-foreground" aria-live="polite">
+      <p
+        className="rounded-lg border px-4 py-6 text-sm text-muted-foreground"
+        aria-live="polite"
+      >
         Reading and validating deesse.json…
       </p>
     )
@@ -86,17 +112,45 @@ function ProjectConfigInspectionState({
   }
 
   if (!query.data) return null
-  return <ProjectConfigInspectionResult result={query.data} />
+  return (
+    <ProjectConfigInspectionResult
+      result={query.data}
+      isPrivate={isPrivate}
+      onImport={onImport}
+      importPending={importPending}
+      importError={importError}
+      onRetry={onRetry}
+    />
+  )
 }
 
 function ProjectConfigInspectionResult({
   result,
+  isPrivate,
+  onImport,
+  importPending,
+  importError,
+  onRetry,
 }: {
   result: ProjectConfigInspection
+  isPrivate: boolean
+  onImport: () => void
+  importPending: boolean
+  importError: string | null
+  onRetry: () => void
 }) {
   switch (result.configuration.status) {
     case "valid":
-      return <ValidConfigurationResult result={result} />
+      return (
+        <ValidConfigurationResult
+          result={result}
+          isPrivate={isPrivate}
+          onImport={onImport}
+          importPending={importPending}
+          importError={importError}
+          onRetry={onRetry}
+        />
+      )
     case "invalid":
       return (
         <InvalidConfigurationResult
@@ -145,8 +199,18 @@ function ProjectConfigInspectionResult({
 
 function ValidConfigurationResult({
   result,
+  isPrivate,
+  onImport,
+  importPending,
+  importError,
+  onRetry,
 }: {
   result: ProjectConfigInspection
+  isPrivate: boolean
+  onImport: () => void
+  importPending: boolean
+  importError: string | null
+  onRetry: () => void
 }) {
   if (result.configuration.status !== "valid") return null
 
@@ -184,9 +248,30 @@ function ValidConfigurationResult({
         </p>
       ) : null}
       <p className="border-t pt-3 text-sm text-muted-foreground">
-        Configuration review is complete. The repository has not been imported
-        yet.
+        Importing shares the repository name, link, configuration path, default
+        branch, commit, and validation summary with members of this DeesseJS
+        organization. Repository files and raw configuration contents stay on
+        GitHub.
       </p>
+      {isPrivate ? (
+        <p className="text-sm text-muted-foreground">
+          This is a private repository. Members will see its project metadata;
+          GitHub still controls who can open the repository.
+        </p>
+      ) : null}
+      {importError ? (
+        <div className="flex flex-col items-start gap-3" role="alert">
+          <p className="text-sm text-destructive">{importError}</p>
+          <Button variant="outline" onClick={onRetry} disabled={importPending}>
+            Review latest configuration
+          </Button>
+        </div>
+      ) : null}
+      <div className="flex justify-end border-t pt-3">
+        <Button onClick={onImport} disabled={importPending}>
+          {importPending ? "Importing project…" : "Confirm Import"}
+        </Button>
+      </div>
     </div>
   )
 }
@@ -206,7 +291,9 @@ function InvalidConfigurationResult({
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="destructive">Invalid configuration</Badge>
         {commitSha ? (
-          <code className="break-all text-xs text-muted-foreground">{commitSha}</code>
+          <code className="text-xs break-all text-muted-foreground">
+            {commitSha}
+          </code>
         ) : null}
       </div>
       <p className="text-sm text-muted-foreground">
@@ -249,7 +336,7 @@ function ConfigurationMessage({
           {title}
         </Badge>
         {commitSha ? (
-          <code className="break-all text-xs text-muted-foreground">
+          <code className="text-xs break-all text-muted-foreground">
             {commitSha}
           </code>
         ) : null}

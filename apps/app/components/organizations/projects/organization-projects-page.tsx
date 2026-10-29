@@ -1,5 +1,9 @@
+"use client"
+
 import Link from "next/link"
 import { FolderGit2Icon, PlusIcon } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import type { UseQueryResult } from "@tanstack/react-query"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -12,12 +16,16 @@ import {
 } from "@workspace/ui/components/card"
 
 import { workspaceProjectImportPath } from "@/lib/workspace-paths"
+import { organizationProjectsQueryOptions } from "@/lib/github-projects-query"
+import type { ORPCBrowserClient } from "@/lib/orpc-browser"
 
 export type OrganizationProject = {
   id: string
   name: string
   repositoryFullName: string
   repositoryUrl: string
+  repositoryId: string
+  isPrivate: boolean
   configurationPath: string
   defaultBranch: string
   status:
@@ -28,6 +36,10 @@ export type OrganizationProject = {
     | "check_failed"
   lastCheckedAt: string | null
 }
+
+type OrganizationProjectsResult = Awaited<
+  ReturnType<ORPCBrowserClient["githubApp"]["projects"]["list"]>
+>
 
 const projectStatus: Record<
   OrganizationProject["status"],
@@ -54,8 +66,14 @@ export function OrganizationProjectsPage({
   organizationSlug: string
   organizationName: string
   canManage: boolean
-  projects: OrganizationProject[]
+  projects: OrganizationProject[] | null
 }) {
+  const projectsQuery = useQuery({
+    ...organizationProjectsQueryOptions(organizationSlug),
+    initialData: { projects: projects ?? [] },
+    initialDataUpdatedAt: 0,
+  })
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
@@ -75,16 +93,53 @@ export function OrganizationProjectsPage({
         ) : null}
       </header>
 
-      {projects.length === 0 ? (
-        <EmptyProjects
-          organizationSlug={organizationSlug}
-          canManage={canManage}
-        />
-      ) : (
-        <ProjectList projects={projects} />
-      )}
+      <ProjectsQueryState
+        query={projectsQuery}
+        initialLoad={projects === null}
+        organizationSlug={organizationSlug}
+        canManage={canManage}
+      />
     </div>
   )
+}
+
+function ProjectsQueryState({
+  query,
+  initialLoad,
+  organizationSlug,
+  canManage,
+}: {
+  query: UseQueryResult<OrganizationProjectsResult, Error>
+  initialLoad: boolean
+  organizationSlug: string
+  canManage: boolean
+}) {
+  if (query.isPending || (initialLoad && query.isFetching)) {
+    return (
+      <p className="rounded-md border p-4 text-sm text-muted-foreground">
+        Loading projects…
+      </p>
+    )
+  }
+  if (query.isError) {
+    return (
+      <p
+        className="rounded-md border border-destructive/30 p-4 text-sm text-destructive"
+        role="alert"
+      >
+        Projects could not be loaded. Refresh this page to try again.
+      </p>
+    )
+  }
+  if (query.data.projects.length === 0) {
+    return (
+      <EmptyProjects
+        organizationSlug={organizationSlug}
+        canManage={canManage}
+      />
+    )
+  }
+  return <ProjectList projects={query.data.projects} />
 }
 
 function EmptyProjects({
@@ -140,6 +195,11 @@ function ProjectList({ projects }: { projects: OrganizationProject[] }) {
                         {project.repositoryFullName}
                       </a>
                     </CardDescription>
+                    {project.isPrivate ? (
+                      <Badge variant="outline" className="mt-2">
+                        Private repository
+                      </Badge>
+                    ) : null}
                   </div>
                   <Badge variant={status.variant}>{status.label}</Badge>
                 </div>
