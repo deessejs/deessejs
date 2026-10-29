@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 import { APIError } from "better-auth/api"
-import { assertOrganizationName, assertOrganizationSlug } from "../../src/organization/policy.js"
+import {
+  assertOrganizationLogoUrl,
+  assertOrganizationName,
+  assertOrganizationSlug,
+} from "../../src/organization/policy.js"
 
 describe("assertOrganizationSlug", () => {
   it("accepts well-formed slugs", () => {
@@ -105,5 +109,29 @@ describe("assertOrganizationName", () => {
       // expected
     }
     expect(original).toBe(" Acme ")
+  })
+})
+
+describe("assertOrganizationLogoUrl", () => {
+  it("accepts an HTTPS URL or a removed logo", () => {
+    expect(() =>
+      assertOrganizationLogoUrl("https://cdn.example.com/logo.png")
+    ).not.toThrow()
+    expect(() => assertOrganizationLogoUrl(null)).not.toThrow()
+  })
+
+  it("rejects non-HTTPS URLs, credentials, and oversized values", () => {
+    expect(() =>
+      assertOrganizationLogoUrl("http://cdn.example.com/logo.png")
+    ).toThrow(APIError)
+    expect(() => assertOrganizationLogoUrl("javascript:alert(1)")).toThrow(
+      APIError
+    )
+    expect(() =>
+      assertOrganizationLogoUrl("https://user:pass@example.com/logo.png")
+    ).toThrow(APIError)
+    expect(() =>
+      assertOrganizationLogoUrl(`https://example.com/${"a".repeat(2048)}`)
+    ).toThrow(APIError)
   })
 })

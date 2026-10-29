@@ -7,6 +7,7 @@ export type OrganizationForMember = {
   id: string
   slug: string
   name: string
+  logo: string | null
   /** The caller's role in it. A comma-separated string, as Better Auth stores it. */
   role: string
 }
@@ -15,6 +16,7 @@ const selection = {
   id: organization.id,
   slug: organization.slug,
   name: organization.name,
+  logo: organization.logo,
   role: member.role,
 }
 
