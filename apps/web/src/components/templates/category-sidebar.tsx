@@ -1,6 +1,6 @@
 import Link from "next/link"
 
-import type { TemplateV1 as Template } from "@workspace/contracts/v1"
+import type { CatalogTemplate as Template } from "@/lib/templates/catalog"
 import {
   CATEGORY_LABELS,
   CATEGORY_SLUGS,

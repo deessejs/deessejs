@@ -7,11 +7,13 @@ import {
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
 import { Button } from "@workspace/ui/components/button"
+import { Badge } from "@workspace/ui/components/badge"
 import { Card } from "@workspace/ui/components/card"
 import { Separator } from "@workspace/ui/components/separator"
 import { cn } from "@workspace/ui/lib/utils"
 
-import type { TemplateV1 as Template } from "@workspace/contracts/v1"
+import type { CatalogTemplate as Template } from "@/lib/templates/catalog"
+import { isCommunityTemplate } from "@/lib/templates/catalog"
 import { SUBMIT_TEMPLATE_URL } from "@/lib/templates/urls"
 import Image from "next/image"
 import { TemplateLabels } from "./template-labels"
@@ -55,13 +57,14 @@ export const TemplateDetail = ({
   template,
   className,
 }: TemplateDetailProps) => {
+  const isCommunity = isCommunityTemplate(template)
   const installCommand = `deessejs init ${template.slug}`
   const sourceUrl = `https://github.com/${template.owner}/${template.repo}`
   // Demo URL is derived from the template slug. Each template ships
   // its own preview deployment under {slug}.deessejs.com. The URL is
   // computed here (not stored on the contract) so the convention
   // stays implicit and adding a new template auto-exposes its demo.
-  const demoUrl = `https://${template.slug}.deessejs.com`
+  const demoUrl = isCommunity ? null : `https://${template.slug}.deessejs.com`
 
   return (
     <article className={cn("mx-auto flex max-w-4xl flex-col gap-8", className)}>
@@ -79,17 +82,24 @@ export const TemplateDetail = ({
 
       <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
         <div className="flex min-w-0 flex-col gap-3">
+          {isCommunity ? (
+            <Badge variant="secondary" className="w-fit">
+              Community template
+            </Badge>
+          ) : null}
           <h1 className="text-heading-56 tracking-tight">{template.name}</h1>
           <p className="max-w-3xl text-copy-18 text-muted-foreground">
             {template.description}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 lg:shrink-0">
-          <Button asChild>
-            <a href={demoUrl} target="_blank" rel="noopener noreferrer">
-              View demo
-            </a>
-          </Button>
+          {demoUrl ? (
+            <Button asChild>
+              <a href={demoUrl} target="_blank" rel="noopener noreferrer">
+                View demo
+              </a>
+            </Button>
+          ) : null}
           <Button variant="outline" asChild>
             <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
               View source
@@ -162,26 +172,28 @@ export const TemplateDetail = ({
               templates index page (clickable `<a>`, copy left + arrow
               right on sm+, hover state). The whole surface is the
               link target, not just the trailing label. */}
-          <a
-            href={SUBMIT_TEMPLATE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Submit your template to the registry"
-            className="flex flex-col items-start gap-3 rounded-none border-t border-border bg-background p-4 transition-colors hover:bg-accent/30 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="flex flex-col gap-1">
-              <span className="text-label-14 font-semibold tracking-tight text-foreground">
-                Ship your template to the registry
+          {!isCommunity ? (
+            <a
+              href={SUBMIT_TEMPLATE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Submit your template to the registry"
+              className="flex flex-col items-start gap-3 rounded-none border-t border-border bg-background p-4 transition-colors hover:bg-accent/30 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex flex-col gap-1">
+                <span className="text-label-14 font-semibold tracking-tight text-foreground">
+                  Ship your template to the registry
+                </span>
+                <span className="text-copy-13 text-muted-foreground">
+                  Open a PR on deessejs/deessejs. Slug, category, and labels are
+                  collected via the form.
+                </span>
+              </div>
+              <span className="text-label-14 whitespace-nowrap text-foreground underline-offset-4 group-hover:underline">
+                Submit your template →
               </span>
-              <span className="text-copy-13 text-muted-foreground">
-                Open a PR on deessejs/deessejs. Slug, category, and labels are
-                collected via the form.
-              </span>
-            </div>
-            <span className="text-label-14 whitespace-nowrap text-foreground underline-offset-4 group-hover:underline">
-              Submit your template →
-            </span>
-          </a>
+            </a>
+          ) : null}
         </div>
 
         <aside className="flex flex-col gap-6">
@@ -203,6 +215,14 @@ export const TemplateDetail = ({
               Details
             </h3>
             <dl className="flex flex-col gap-3 text-copy-13">
+              {isCommunity ? (
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">Publisher</dt>
+                  <dd className="truncate text-foreground">
+                    {template.organizationName}
+                  </dd>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground">Owner</dt>
                 <dd className="truncate text-foreground">

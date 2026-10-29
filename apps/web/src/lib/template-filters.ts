@@ -10,7 +10,7 @@
  * The known slugs come from the canonical label maps, so the two axes
  * cannot drift apart from what the sidebar renders.
  */
-import type { TemplateV1 } from "@workspace/contracts/v1"
+import type { CatalogTemplate } from "./templates/catalog"
 import {
   CATEGORY_SLUGS,
   FRAMEWORK_SLUGS,
@@ -71,9 +71,9 @@ export const resolveTemplateFilter = (
  * page with no filter shows the whole catalogue.
  */
 export const filterTemplates = (
-  templates: ReadonlyArray<TemplateV1>,
+  templates: ReadonlyArray<CatalogTemplate>,
   filter: TemplateFilter
-): TemplateV1[] => {
+): CatalogTemplate[] => {
   const activeTypeSet = new Set<string>(filter.activeTypes)
   return templates.filter((template) => {
     const matchesType =

@@ -1,11 +1,11 @@
 import { toORPCError } from "@orpc/client"
-import { TemplatesListResponseV1 } from "@workspace/contracts/v1"
+import type { CommunityTemplateV1, TemplateV1 } from "@workspace/contracts/v1"
 
 import { networkError } from "../errors/index.js"
 import { maybeWarnAboutOutdatedCli } from "../version/check.js"
 import { orpc } from "./client.js"
 
-export type Template = TemplatesListResponseV1["templates"][number]
+export type Template = TemplateV1 | CommunityTemplateV1
 
 export type FetchOptions = {
   /** Skip the version probe. Used by info and by the version probe itself. */
@@ -66,8 +66,11 @@ export const fetchTemplates = async (
   }
 
   try {
-    const result = await orpc.templates.list()
-    return result.templates
+    const [result, communityResult] = await Promise.all([
+      orpc.templates.list(),
+      orpc.templates.community.list(),
+    ])
+    return [...result.templates, ...communityResult.templates]
   } catch (e) {
     throw normaliseError(e)
   }

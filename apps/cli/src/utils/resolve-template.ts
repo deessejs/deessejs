@@ -6,7 +6,11 @@ import {
 import { networkError, notFound, templateInvalid } from "../errors/index.js"
 import { looksLikeUrl, parseGitHubRepositoryUrl } from "./github-repository.js"
 
-export type TemplateSource = Pick<Template, "slug" | "owner" | "repo">
+export type TemplateSource = Pick<Template, "slug" | "owner" | "repo"> & {
+  community?: true
+  sourceCommit?: string
+  templateSlug?: string
+}
 
 export type ResolvedTemplateSource = {
   template: TemplateSource
@@ -52,7 +56,7 @@ export async function resolveTemplateSource(
   }
 
   let template: TemplateSource | undefined
-  if (options.fastCatalogLookup) {
+  if (options.fastCatalogLookup && !slugOrUrl.startsWith("@")) {
     let catalogTemplates: Template[] | undefined
     try {
       template = (await resolveTemplateBySlug(slugOrUrl)) ?? undefined

@@ -106,6 +106,7 @@ export const list = adminProcedure
         templateRepositorySnapshots,
         eq(templates.id, templateRepositorySnapshots.templateId)
       )
+      .where(eq(templates.ownerType, "platform"))
       .orderBy(asc(templates.sortOrder), asc(templates.slug))
 
     return {
@@ -124,7 +125,9 @@ export const create = adminProcedure
     const [existing] = await db
       .select({ id: templates.id })
       .from(templates)
-      .where(eq(templates.slug, input.slug))
+      .where(
+        and(eq(templates.slug, input.slug), eq(templates.ownerType, "platform"))
+      )
       .limit(1)
 
     if (existing) throw errors.TEMPLATE_SLUG_CONFLICT()
@@ -157,17 +160,24 @@ export const create = adminProcedure
         const [duplicate] = await tx
           .select({ id: templates.id })
           .from(templates)
-          .where(eq(templates.slug, input.slug))
+          .where(
+            and(
+              eq(templates.slug, input.slug),
+              eq(templates.ownerType, "platform")
+            )
+          )
           .limit(1)
         if (duplicate) throw errors.TEMPLATE_SLUG_CONFLICT()
 
         const [order] = await tx
           .select({ maximum: max(templates.sortOrder) })
           .from(templates)
+          .where(eq(templates.ownerType, "platform"))
         const sortOrder = (order?.maximum ?? -1) + 1
 
         const values: NewTemplateRow = {
           slug: input.slug,
+          ownerType: "platform",
           name: input.name,
           descriptionOverride: input.descriptionOverride || null,
           owner: acquired.owner,
@@ -180,14 +190,11 @@ export const create = adminProcedure
           sortOrder,
         }
 
-        const [template] = await tx
-          .insert(templates)
-          .values(values)
-          .returning({
-            id: templates.id,
-            slug: templates.slug,
-            name: templates.name,
-          })
+        const [template] = await tx.insert(templates).values(values).returning({
+          id: templates.id,
+          slug: templates.slug,
+          name: templates.name,
+        })
 
         if (!template) throw new Error("Template insert returned no row.")
 
