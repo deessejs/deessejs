@@ -13,7 +13,11 @@ import type {
   OrganizationProvisioningStatus,
 } from "@workspace/database/schema"
 
-import { assertOrganizationName, assertOrganizationSlug } from "./policy.js"
+import {
+  assertOrganizationLogoUrl,
+  assertOrganizationName,
+  assertOrganizationSlug,
+} from "./policy.js"
 
 /**
  * The provisioning of an organization.
@@ -457,10 +461,24 @@ export const beforeUpdateOrganizationProtectingMarker = async ({
   organization: input,
   member: membership,
 }: {
-  organization: { metadata?: unknown }
+  organization: {
+    metadata?: unknown
+    name?: unknown
+    slug?: unknown
+    logo?: unknown
+  }
   member: { organizationId: string }
   user: { id: string }
 }) => {
+  if (input.slug !== undefined) {
+    throw new APIError("FORBIDDEN", {
+      code: "organization_slug_immutable",
+      message: "Organization slugs cannot be changed.",
+    })
+  }
+  if (input.name !== undefined) assertOrganizationName(input.name)
+  if (input.logo !== undefined) assertOrganizationLogoUrl(input.logo)
+
   // An update that carries no metadata cannot change the marker.
   if (input.metadata === undefined) return
 

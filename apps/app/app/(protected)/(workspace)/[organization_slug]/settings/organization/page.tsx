@@ -9,6 +9,7 @@ import {
 import { readWorkspaceOrganization } from "@/lib/workspace-organization"
 import { orpc } from "@/lib/orpc"
 import { GitHubAppIntegration } from "@/components/settings/github-app-integration"
+import { OrganizationProfile } from "@/components/settings/organization-profile"
 
 /**
  * The organization's general page.
@@ -18,9 +19,8 @@ import { GitHubAppIntegration } from "@/components/settings/github-app-integrati
  * belong to the organization got the not-found page and never reached
  * this one. The page does not authorize.
  *
- * The view is read-only, and it says so. Editing the profile arrives
- * with the organization management, and the route does not change when
- * it lands, so the navigation stays the same.
+ * Members can read the profile. Better Auth and the organization
+ * update hook authorize and validate edits for owners and admins.
  */
 export default async function OrganizationSettingsPage({
   params,
@@ -29,7 +29,10 @@ export default async function OrganizationSettingsPage({
   params: Promise<{ organization_slug: string }>
   searchParams: Promise<{ githubApp?: string }>
 }) {
-  const [{ organization_slug }, query] = await Promise.all([params, searchParams])
+  const [{ organization_slug }, query] = await Promise.all([
+    params,
+    searchParams,
+  ])
   const [organization, githubAppStatus] = await Promise.all([
     readWorkspaceOrganization(organization_slug),
     orpc.githubApp.status({ slug: organization_slug }),
@@ -42,36 +45,20 @@ export default async function OrganizationSettingsPage({
           {organization.name}
         </h1>
         <p className="text-sm text-muted-foreground">
-          How this organization is identified. The name and the role are yours
-          to change, the address and the identifier are the server&apos;s.
+          Manage this organization&apos;s display name and logo. The workspace
+          address and identifier stay fixed.
         </p>
       </header>
 
       <Card>
         <CardHeader>
-          <CardTitle>Details</CardTitle>
+          <CardTitle>Organization profile</CardTitle>
           <CardDescription>
-            These details are read-only for now. Editing them arrives with the
-            organization management.
+            Manage the display name and logo for this workspace.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-3">
-            <div className="flex flex-col gap-1">
-              <dt className="text-sm text-muted-foreground">Address</dt>
-              <dd className="text-sm font-medium">/{organization.slug}</dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="text-sm text-muted-foreground">Identifier</dt>
-              <dd className="break-all font-mono text-xs">
-                {organization.id}
-              </dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="text-sm text-muted-foreground">Your role</dt>
-              <dd className="text-sm font-medium">{organization.role}</dd>
-            </div>
-          </dl>
+          <OrganizationProfile organization={organization} />
         </CardContent>
       </Card>
 

@@ -4,6 +4,7 @@ import { APIError } from "better-auth/api"
 import {
   assertCreatableOrganization,
   beforeCreateOrganizationWithMarker,
+  beforeUpdateOrganizationProtectingMarker,
 } from "../../src/organization/provisioning.js"
 
 const verifiedUser = { id: "user-1", emailVerified: true }
@@ -100,5 +101,24 @@ describe("beforeCreateOrganizationWithMarker", () => {
         unverifiedUser,
       ),
     ).rejects.toThrow(APIError)
+  })
+})
+
+describe("beforeUpdateOrganizationProtectingMarker", () => {
+  const update = (organization: { name?: unknown; slug?: unknown; logo?: unknown }) =>
+    beforeUpdateOrganizationProtectingMarker({
+      organization,
+      member: { organizationId: "org-1" },
+      user: { id: "user-1" },
+    })
+
+  it("validates names and HTTPS logo URLs before allowing an update", async () => {
+    await expect(update({ name: "Acme", logo: "https://cdn.example.com/logo.png" })).resolves.toBeUndefined()
+    await expect(update({ name: " Acme" })).rejects.toThrow(APIError)
+    await expect(update({ logo: "http://cdn.example.com/logo.png" })).rejects.toThrow(APIError)
+  })
+
+  it("refuses any attempt to change the organization slug", async () => {
+    await expect(update({ slug: "new-slug" })).rejects.toThrow(APIError)
   })
 })
