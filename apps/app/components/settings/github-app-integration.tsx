@@ -39,6 +39,8 @@ const resultMessages: Record<string, string> = {
     "GitHub App credentials are not configured on this environment.",
   installationNotAccessible:
     "This GitHub account cannot access the selected installation.",
+  installationCheckFailed:
+    "GitHub could not verify this installation. Try again in a moment.",
   error: "GitHub installation could not be completed. Try again.",
 }
 
