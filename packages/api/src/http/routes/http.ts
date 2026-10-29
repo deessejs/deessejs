@@ -6,6 +6,7 @@ import type { Hono } from "hono"
 import { VERSION, MIN_SUPPORTED_VERSION } from "../../constants/version.js"
 import type { ApiEnv } from "../env.js"
 import { rateLimit } from "../middleware/rate-limit.js"
+import { mountGitHubAppSetup } from "./github-app.js"
 
 /**
  * Direct HTTP routes that do not go through oRPC:
@@ -13,6 +14,7 @@ import { rateLimit } from "../middleware/rate-limit.js"
  *   - `GET /version`   — server version probe. Cached aggressively.
  *   - `GET /ready`     — readiness probe, pings Postgres.
  *   - `*  /auth/*`     — Better Auth handler (login, signup, ...).
+ *   - `GET /github-app/*`: GitHub App OAuth and installation callbacks.
  *
  * The oRPC router handles everything under `/rpc/*`. Adding a new
  * direct HTTP route is a deliberate choice (a non-RPC endpoint);
@@ -55,4 +57,6 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
 
   // Better Auth — login, signup, session, etc.
   api.on(["POST", "GET"], "/auth/*", (c) => auth.handler(c.req.raw))
+
+  mountGitHubAppSetup(api)
 }

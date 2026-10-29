@@ -29,6 +29,13 @@
       "when": 1792973148772,
       "tag": "0003_organization_provisioning_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793232679866,
+      "tag": "0004_stale_sumo",
+      "breakpoints": true
     }
   ]
 }

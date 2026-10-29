@@ -135,6 +135,17 @@ export const serverInputShape = {
   GITHUB_CLIENT_ID: z.string().min(1).optional(),
   GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
 
+  // GitHub App OAuth credentials are separate from the OAuth App used for
+  // "Continue with GitHub". The user connection tokens are encrypted with
+  // the dedicated 32-byte key below.
+  GITHUB_APP_CLIENT_ID: z.string().min(1).optional(),
+  GITHUB_APP_CLIENT_SECRET: z.string().min(1).optional(),
+  GITHUB_APP_SLUG: z.string().regex(/^[a-z0-9-]+$/).optional(),
+  GITHUB_APP_TOKEN_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[A-Za-z0-9+/]{43}=$/)
+    .optional(),
+
   // Inter-app URL configuration. Server-side mirrors of the
   // NEXT_PUBLIC_* fields on clientSchema. Used by server-side
   // fetchers (apps/app's proxy, apps/cli's RPCLink, RSC fetches in
@@ -167,6 +178,24 @@ export const serverInputShape = {
 
 export const serverSchema = z.object(serverInputShape).superRefine(
   (data, ctx) => {
+    const githubAppConfiguration = [
+      data.GITHUB_APP_CLIENT_ID,
+      data.GITHUB_APP_CLIENT_SECRET,
+      data.GITHUB_APP_SLUG,
+      data.GITHUB_APP_TOKEN_ENCRYPTION_KEY,
+    ]
+    if (
+      githubAppConfiguration.some(Boolean) &&
+      !githubAppConfiguration.every(Boolean)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "GitHub App client ID, client secret, slug, and token encryption key must be configured together.",
+        path: ["GITHUB_APP_CLIENT_ID"],
+      })
+    }
+
     // Production-only invariants. Skipped in dev/test so contributors don't
     // need a full .env to start the app. Enforced in prod because each of these
     // silently degrades to a stub (e.g. dummy `{}` DB, default localhost URL,
