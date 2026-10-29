@@ -1,9 +1,10 @@
 import type { ComponentType } from "react"
-import { HomeIcon, SettingsIcon } from "lucide-react"
+import { HomeIcon, SettingsIcon, FilesIcon } from "lucide-react"
 
 import {
   workspaceHomePath,
   workspaceOrganizationSettingsPath,
+  workspaceTemplatesPath,
 } from "@/lib/workspace-paths"
 
 /**
@@ -42,6 +43,11 @@ export const workspaceNavGroups = (slug: string): WorkspaceNavGroup[] => [
     label: "Workspace",
     entries: [
       { label: "Home", href: workspaceHomePath(slug), icon: HomeIcon },
+      {
+        label: "Templates",
+        href: workspaceTemplatesPath(slug),
+        icon: FilesIcon,
+      },
     ],
   },
   {
@@ -71,7 +77,7 @@ export const workspaceNavEntries = (slug: string): WorkspaceNavEntry[] =>
  */
 export const activeWorkspaceHref = (
   pathname: string,
-  entries: WorkspaceNavEntry[],
+  entries: WorkspaceNavEntry[]
 ): string => {
   let best = ""
   for (const entry of entries) {
