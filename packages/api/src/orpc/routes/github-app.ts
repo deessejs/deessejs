@@ -234,11 +234,17 @@ const inspectConfiguration = base
         page: input.page,
       })
     } catch (error) {
-      if (error instanceof GitHubRepositoryRequestError) {
-        if (error.status === 401) throw errors.GITHUB_ACCOUNT_REQUIRED()
-        if (error.status === 403 || error.status === 404) {
-          throw errors.GITHUB_INSTALLATION_ACCESS_DENIED()
-        }
+      if (
+        error instanceof GitHubRepositoryRequestError &&
+        error.status === 401
+      ) {
+        throw errors.GITHUB_ACCOUNT_REQUIRED()
+      }
+      if (
+        error instanceof GitHubRepositoryRequestError &&
+        [403, 404].includes(error.status)
+      ) {
+        throw errors.GITHUB_INSTALLATION_ACCESS_DENIED()
       }
       throw errors.GITHUB_REPOSITORIES_UNAVAILABLE()
     }
@@ -275,11 +281,17 @@ const inspectConfiguration = base
         ...inspection,
       }
     } catch (error) {
-      if (error instanceof GitHubProjectConfigRequestError) {
-        if (error.status === 401) throw errors.GITHUB_ACCOUNT_REQUIRED()
-        if (error.status === 403) {
-          throw errors.GITHUB_REPOSITORY_CONTENTS_FORBIDDEN()
-        }
+      if (
+        error instanceof GitHubProjectConfigRequestError &&
+        error.status === 401
+      ) {
+        throw errors.GITHUB_ACCOUNT_REQUIRED()
+      }
+      if (
+        error instanceof GitHubProjectConfigRequestError &&
+        error.status === 403
+      ) {
+        throw errors.GITHUB_REPOSITORY_CONTENTS_FORBIDDEN()
       }
       throw errors.GITHUB_PROJECT_CONFIG_UNAVAILABLE()
     }
