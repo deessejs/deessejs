@@ -3,7 +3,12 @@
 import { useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
 import Link from "next/link"
-import { queryOptions, useQuery } from "@tanstack/react-query"
+import { useRouter } from "next/navigation"
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+} from "@tanstack/react-query"
 import type { UseQueryResult } from "@tanstack/react-query"
 import { CheckIcon, ExternalLinkIcon } from "lucide-react"
 
@@ -20,6 +25,7 @@ import {
 import { GitHubProjectConfigReview } from "@/components/organizations/projects/github-project-config-review"
 import { orpcBrowser } from "@/lib/orpc-browser"
 import type { ORPCBrowserClient } from "@/lib/orpc-browser"
+import { workspaceProjectsPath } from "@/lib/workspace-paths"
 
 type GitHubRepositoryPage = Awaited<
   ReturnType<ORPCBrowserClient["githubApp"]["repositories"]["list"]>
@@ -80,6 +86,7 @@ export function GitHubRepositoryBrowser({
   installationAccount: string
   settingsPath: string
 }) {
+  const router = useRouter()
   const [page, setPage] = useState(1)
   const [selection, setSelection] = useState<RepositorySelection | null>(null)
   const repositories = useQuery(
@@ -88,10 +95,40 @@ export function GitHubRepositoryBrowser({
   const configuration = useQuery(
     githubRepositoryConfigQueryOptions(organizationSlug, selection)
   )
+  const importProject = useMutation({
+    mutationFn: () => {
+      const inspection = configuration.data
+      if (
+        !selection ||
+        !inspection ||
+        inspection.configuration.status !== "valid" ||
+        !inspection.commitSha
+      ) {
+        throw new Error(
+          "Review a valid project configuration before importing."
+        )
+      }
+      return orpcBrowser.githubApp.repositories.import({
+        slug: organizationSlug,
+        repositoryId: selection.repository.id,
+        page: selection.page,
+        expectedCommitSha: inspection.commitSha,
+      })
+    },
+    onSuccess: () => router.push(workspaceProjectsPath(organizationSlug)),
+  })
 
   return (
     <div className="flex flex-col gap-6">
-      <ImportSteps currentStep={selection ? 2 : 1} />
+      <ImportSteps
+        currentStep={
+          configuration.data?.configuration.status === "valid"
+            ? 3
+            : selection
+              ? 2
+              : 1
+        }
+      />
       <Card>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -111,23 +148,31 @@ export function GitHubRepositoryBrowser({
           page={page}
           onPageChange={setPage}
           selectedRepository={selection?.repository ?? null}
-          onSelectRepository={(repository) =>
+          onSelectRepository={(repository) => {
+            importProject.reset()
             setSelection({ repository, page })
-          }
+          }}
           settingsPath={settingsPath}
         />
       </CardContent>
       </Card>
       <GitHubProjectConfigReview
         repositoryName={selection?.repository.fullName ?? null}
+        isPrivate={selection?.repository.isPrivate ?? false}
         query={configuration}
-        onRetry={() => void configuration.refetch()}
+        onRetry={() => {
+          importProject.reset()
+          void configuration.refetch()
+        }}
+        onImport={() => importProject.mutate()}
+        importPending={importProject.isPending}
+        importError={importProject.error?.message ?? null}
       />
     </div>
   )
 }
 
-function ImportSteps({ currentStep }: { currentStep: 1 | 2 }) {
+function ImportSteps({ currentStep }: { currentStep: 1 | 2 | 3 }) {
   const steps = [
     { label: "Choose Repository", number: 1 },
     { label: "Review Configuration", number: 2 },
@@ -358,8 +403,7 @@ function SelectedRepositoryMessage({
       role="status"
     >
       <span className="font-medium">{repository.fullName}</span>{" "}
-      is selected. Its configuration appears below. This repository has not been
-      imported.
+      is selected. Its configuration appears below.
     </p>
   )
 }

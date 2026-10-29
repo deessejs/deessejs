@@ -18,6 +18,7 @@ export type OrganizationProject = {
   name: string
   repositoryFullName: string
   repositoryUrl: string
+  isPrivate: boolean
   configurationPath: string
   defaultBranch: string
   status:
@@ -50,11 +51,13 @@ export function OrganizationProjectsPage({
   organizationName,
   canManage,
   projects,
+  projectsUnavailable,
 }: {
   organizationSlug: string
   organizationName: string
   canManage: boolean
   projects: OrganizationProject[]
+  projectsUnavailable: boolean
 }) {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -75,7 +78,14 @@ export function OrganizationProjectsPage({
         ) : null}
       </header>
 
-      {projects.length === 0 ? (
+      {projectsUnavailable ? (
+        <p
+          className="rounded-md border border-destructive/30 p-4 text-sm text-destructive"
+          role="alert"
+        >
+          Projects could not be loaded. Refresh this page to try again.
+        </p>
+      ) : projects.length === 0 ? (
         <EmptyProjects
           organizationSlug={organizationSlug}
           canManage={canManage}
@@ -140,6 +150,11 @@ function ProjectList({ projects }: { projects: OrganizationProject[] }) {
                         {project.repositoryFullName}
                       </a>
                     </CardDescription>
+                    {project.isPrivate ? (
+                      <Badge variant="outline" className="mt-2">
+                        Private repository
+                      </Badge>
+                    ) : null}
                   </div>
                   <Badge variant={status.variant}>{status.label}</Badge>
                 </div>
