@@ -40,7 +40,7 @@ export default async function AdminLayout({
     <SidebarProvider defaultOpen={defaultOpen}>
       <AdminSidebar />
       <SidebarInset>
-        <AppHeader leading={<SidebarTrigger />} user={false} />
+        <AppHeader leading={<SidebarTrigger />} user={false} surface="admin" />
         <main className="flex-1 p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
