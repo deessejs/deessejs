@@ -19,6 +19,8 @@ Open a reviewable pull request for completed work. This skill does not implement
 
    Use fenced code blocks for concrete examples that make the change easier to understand, such as commands, API requests, configuration, or before/after behavior. Add a `mermaid` fenced block when a non-trivial flow or architecture benefits from a diagram. Use GitHub Markdown callouts such as `> [!NOTE]`, `> [!WARNING]`, or `> [!IMPORTANT]` for key caveats or decisions. Keep all three purposeful, and omit them when they do not clarify the PR. GitHub renders [Mermaid diagrams](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams) and [Markdown alerts](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#alerts) in pull request descriptions.
 
+   Add the template's optional `## References` footer when links help reviewers verify the change or understand its context. Link directly to relevant source files, ADRs/RFCs, official documentation, or useful technical articles. Prefer authoritative, specific links, and remove the section when there are no useful references. Do not duplicate the issue relationship maintained in **Development**.
+
 5. **Create the PR against `staging`.** Use `gh pr create --base staging`. Never target `main` and never merge the PR.
 
 6. **Link the issue in Development.** For an issue-driven PR, use GitHub GraphQL's `addCloseIssueReferences` mutation to link the PR to the issue. Get the issue and PR node IDs with:
