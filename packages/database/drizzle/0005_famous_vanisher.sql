@@ -1,6 +1,6 @@
 CREATE TYPE "public"."template_owner_type" AS ENUM('platform', 'organization');--> statement-breakpoint
--- squawk-ignore ban-drop-constraint
 -- Replaced by platform-global and organization-scoped unique indexes below.
+-- squawk-ignore ban-drop-constraint
 ALTER TABLE "templates" DROP CONSTRAINT "templates_slug_unique";--> statement-breakpoint
 ALTER TABLE "templates" ADD COLUMN "owner_type" "template_owner_type" DEFAULT 'platform' NOT NULL;--> statement-breakpoint
 ALTER TABLE "templates" ADD COLUMN "organization_id" text;--> statement-breakpoint
