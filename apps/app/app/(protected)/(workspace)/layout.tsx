@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { Suspense } from "react"
 import { cookies } from "next/headers"
 import {
   SidebarInset,
@@ -8,6 +9,7 @@ import {
 import { SIDEBAR_COOKIE_NAME } from "@workspace/ui/lib/sidebar"
 
 import { AppHeader } from "@/components/headers/app-header"
+import { PageSkeleton } from "@/components/loading/page-skeleton"
 import { WorkspaceSidebar } from "@/components/sidebars/workspace-sidebar"
 
 /**
@@ -40,7 +42,17 @@ export default async function WorkspaceLayout({
       <WorkspaceSidebar />
       <SidebarInset>
         <AppHeader leading={<SidebarTrigger />} user={false} />
-        <div className="flex-1 p-6">{children}</div>
+        <div className="flex-1 p-6">
+          {/* The organization layout can await an access check. Keep the
+              shared chrome visible while that request resolves. */}
+          <Suspense
+            fallback={
+              <PageSkeleton label="Loading workspace page" variant="cards" />
+            }
+          >
+            {children}
+          </Suspense>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )

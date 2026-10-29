@@ -4,6 +4,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
+import { RowsSkeleton } from "@/components/loading/page-skeleton"
 import {
   useRevokeOtherSessions,
   useRevokeSession,
@@ -19,7 +20,9 @@ import {
   DialogTrigger,
 } from "@workspace/ui/components/dialog"
 
-type AccountSession = NonNullable<ReturnType<typeof useSessions>["data"]>[number]
+type AccountSession = NonNullable<
+  ReturnType<typeof useSessions>["data"]
+>[number]
 
 function RevokeOtherSessionsDialog({
   open,
@@ -82,9 +85,7 @@ function SessionsStatus({
   onRetry: () => void
 }) {
   if (loading && !hasSessions) {
-    return (
-      <p className="text-sm text-muted-foreground">Loading sessions…</p>
-    )
+    return <RowsSkeleton label="Loading sessions" count={3} />
   }
 
   if (error) {
@@ -102,9 +103,7 @@ function SessionsStatus({
 
   if (!loading && !hasSessions) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No other active sessions.
-      </p>
+      <p className="text-sm text-muted-foreground">No other active sessions.</p>
     )
   }
 
