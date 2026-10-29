@@ -31,7 +31,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@workspace/ui/components/sidebar"
-import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
 import {
   BadgeCheckIcon,
   BookOpenIcon,
@@ -83,7 +82,6 @@ function getAvatarUrl(email: string, image?: string | null): string {
  */
 export function NavUser() {
   const router = useRouter()
-  const isMobile = useIsMobile()
   const queryClient = useQueryClient()
   // Top-level hook call: component top-level is a valid hook context per
   // React's rules. The audit §3.5 bug was calling useSession() inside an
@@ -145,7 +143,7 @@ export function NavUser() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-              side={isMobile ? "bottom" : "right"}
+              side="top"
               align="end"
               sideOffset={4}
             >
