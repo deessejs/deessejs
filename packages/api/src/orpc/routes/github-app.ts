@@ -193,6 +193,70 @@ const listRepositories = base
     }
   })
 
+type GitHubInspectionErrorFactory = () => unknown
+
+async function getRepositoryPageForInspection(
+  input: {
+    installationId: string
+    accessToken: string
+    page: number
+  },
+  errors: {
+    accountRequired: GitHubInspectionErrorFactory
+    installationAccessDenied: GitHubInspectionErrorFactory
+    repositoriesUnavailable: GitHubInspectionErrorFactory
+  }
+) {
+  try {
+    return await listGitHubInstallationRepositories(input)
+  } catch (error) {
+    if (
+      error instanceof GitHubRepositoryRequestError &&
+      error.status === 401
+    ) {
+      throw errors.accountRequired()
+    }
+    if (
+      error instanceof GitHubRepositoryRequestError &&
+      [403, 404].includes(error.status)
+    ) {
+      throw errors.installationAccessDenied()
+    }
+    throw errors.repositoriesUnavailable()
+  }
+}
+
+async function inspectProjectConfigOrThrow(
+  input: {
+    fullName: string
+    defaultBranch: string
+    accessToken: string
+  },
+  errors: {
+    accountRequired: GitHubInspectionErrorFactory
+    contentsForbidden: GitHubInspectionErrorFactory
+    configurationUnavailable: GitHubInspectionErrorFactory
+  }
+) {
+  try {
+    return await inspectGitHubProjectConfig(input)
+  } catch (error) {
+    if (
+      error instanceof GitHubProjectConfigRequestError &&
+      error.status === 401
+    ) {
+      throw errors.accountRequired()
+    }
+    if (
+      error instanceof GitHubProjectConfigRequestError &&
+      error.status === 403
+    ) {
+      throw errors.contentsForbidden()
+    }
+    throw errors.configurationUnavailable()
+  }
+}
+
 const inspectConfiguration = base
   .input(
     z.object({
@@ -226,28 +290,19 @@ const inspectConfiguration = base
       throw errors.GITHUB_ACCOUNT_REQUIRED()
     }
 
-    let repositoryPage
-    try {
-      repositoryPage = await listGitHubInstallationRepositories({
+    const repositoryPage = await getRepositoryPageForInspection(
+      {
         installationId: installation.installationId,
         accessToken,
         page: input.page,
-      })
-    } catch (error) {
-      if (
-        error instanceof GitHubRepositoryRequestError &&
-        error.status === 401
-      ) {
-        throw errors.GITHUB_ACCOUNT_REQUIRED()
+      },
+      {
+        accountRequired: () => errors.GITHUB_ACCOUNT_REQUIRED(),
+        installationAccessDenied: () =>
+          errors.GITHUB_INSTALLATION_ACCESS_DENIED(),
+        repositoriesUnavailable: () => errors.GITHUB_REPOSITORIES_UNAVAILABLE(),
       }
-      if (
-        error instanceof GitHubRepositoryRequestError &&
-        [403, 404].includes(error.status)
-      ) {
-        throw errors.GITHUB_INSTALLATION_ACCESS_DENIED()
-      }
-      throw errors.GITHUB_REPOSITORIES_UNAVAILABLE()
-    }
+    )
 
     const repository = repositoryPage.repositories.find(
       (candidate) => candidate.id === input.repositoryId
@@ -266,34 +321,26 @@ const inspectConfiguration = base
       }
     }
 
-    try {
-      const inspection = await inspectGitHubProjectConfig({
+    const inspection = await inspectProjectConfigOrThrow(
+      {
         fullName: repository.fullName,
         defaultBranch: repository.defaultBranch,
         accessToken,
-      })
-      return {
-        repository: {
-          id: repository.id,
-          fullName: repository.fullName,
-          defaultBranch: repository.defaultBranch,
-        },
-        ...inspection,
+      },
+      {
+        accountRequired: () => errors.GITHUB_ACCOUNT_REQUIRED(),
+        contentsForbidden: () => errors.GITHUB_REPOSITORY_CONTENTS_FORBIDDEN(),
+        configurationUnavailable: () =>
+          errors.GITHUB_PROJECT_CONFIG_UNAVAILABLE(),
       }
-    } catch (error) {
-      if (
-        error instanceof GitHubProjectConfigRequestError &&
-        error.status === 401
-      ) {
-        throw errors.GITHUB_ACCOUNT_REQUIRED()
-      }
-      if (
-        error instanceof GitHubProjectConfigRequestError &&
-        error.status === 403
-      ) {
-        throw errors.GITHUB_REPOSITORY_CONTENTS_FORBIDDEN()
-      }
-      throw errors.GITHUB_PROJECT_CONFIG_UNAVAILABLE()
+    )
+    return {
+      repository: {
+        id: repository.id,
+        fullName: repository.fullName,
+        defaultBranch: repository.defaultBranch,
+      },
+      ...inspection,
     }
   })
 
