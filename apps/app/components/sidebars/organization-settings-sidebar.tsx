@@ -15,13 +15,14 @@ import {
   SidebarRail,
   useSidebar,
 } from "@workspace/ui/components/sidebar"
-import { HomeIcon, SettingsIcon } from "lucide-react"
+import { HomeIcon, SettingsIcon, UsersIcon } from "lucide-react"
 
 import { NavUser } from "@/components/sidebars/nav-user"
 import { OrganizationSwitcher } from "@/components/sidebars/organization-switcher"
 import {
   organizationSlugFromPathname,
   workspaceHomePath,
+  workspaceMembersPath,
   workspaceOrganizationSettingsPath,
 } from "@/lib/workspace-paths"
 
@@ -34,6 +35,7 @@ export function OrganizationSettingsSidebar() {
 
   const homeHref = workspaceHomePath(slug)
   const generalHref = workspaceOrganizationSettingsPath(slug)
+  const membersHref = workspaceMembersPath(slug)
   const isGeneralActive =
     pathname === generalHref || pathname.startsWith(`${generalHref}/`)
 
@@ -72,6 +74,27 @@ export function OrganizationSettingsSidebar() {
                 >
                   <SettingsIcon className="size-4" aria-hidden />
                   <span>General</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Organization</SidebarGroupLabel>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === membersHref}
+                tooltip="Members"
+              >
+                <Link
+                  href={membersHref}
+                  aria-current={pathname === membersHref ? "page" : undefined}
+                  onClick={() => setOpenMobile(false)}
+                >
+                  <UsersIcon className="size-4" aria-hidden />
+                  <span>Members</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

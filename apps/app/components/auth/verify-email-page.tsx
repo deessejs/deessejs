@@ -23,7 +23,10 @@ function VerifyEmailPageContent() {
     setResending(true)
     const email = searchParams.get("email")
     if (email) {
-      await authClient.sendVerificationEmail({ email })
+      await authClient.sendVerificationEmail({
+        email,
+        callbackURL: searchParams.get("redirectTo") ?? "/home",
+      })
     }
     setResending(false)
     setResent(true)

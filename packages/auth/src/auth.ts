@@ -260,6 +260,7 @@ const authConfig: BetterAuthOptions = {
     "/organization/get-organization",
     "/organization/get-full-organization",
     "/organization/create",
+    "/organization/list-invitations",
   ],
 
   plugins: [

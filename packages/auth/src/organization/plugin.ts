@@ -63,10 +63,15 @@ export function createOrganizationPlugin(
     creatorRole: "owner",
     requireEmailVerificationOnInvitation,
     invitationExpiresIn: 60 * 60 * 48,
+    membershipLimit: 100,
+    invitationLimit: 100,
     disableOrganizationDeletion: false,
     organizationHooks: {
       beforeCreateOrganization: beforeCreateOrganizationWithMarker,
       beforeUpdateOrganization: beforeUpdateOrganizationProtectingMarker,
+      beforeCreateInvitation: async ({ invitation }) => ({
+        data: { ...invitation, role: "member" },
+      }),
     },
     // The invitation delivery callback. `sendInvitationEmail` is the
     // Better Auth callback: it awaits the transport and is the

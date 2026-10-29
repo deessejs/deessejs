@@ -72,6 +72,10 @@ export const workspaceSettingsPath = (slug: string): string =>
 export const workspaceOrganizationSettingsPath = (slug: string): string =>
   `/${slug}/settings/organization`
 
+/** The organization's member and invitation management page. */
+export const workspaceMembersPath = (slug: string): string =>
+  `/${slug}/settings/members`
+
 /**
  * The organization's slug in a workspace path, or null when the path
  * names none.
