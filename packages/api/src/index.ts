@@ -47,7 +47,12 @@ api.use(
   }),
 )
 api.use("*", honoLogger())
-api.use("*", session())
+// Resolve the caller only for routes that consume session context.
+// Better Auth owns session lookup for /auth/*, and public HTTP routes
+// do not need an authenticated context. Scoping this avoids a duplicate
+// session lookup on /auth/get-session and unnecessary reads on public routes.
+api.use("/rpc/*", session())
+api.use("/github-app/*", session())
 
 mountHttp(api)
 mountRpc(api)
