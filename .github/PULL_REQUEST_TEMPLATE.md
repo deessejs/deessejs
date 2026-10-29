@@ -14,3 +14,7 @@
 
 - [ ] Updated documentation where needed.
 - [ ] If this changes the published CLI surface in `apps/cli/**`, added a changeset.
+
+## References
+
+<!-- Link relevant source files, ADRs/RFCs, documentation, or articles that help reviewers understand the change. Remove this section if there are none. -->
