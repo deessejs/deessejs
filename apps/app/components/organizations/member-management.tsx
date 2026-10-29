@@ -226,7 +226,7 @@ export function MemberManagement({
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{invitation.email}</p>
                       <p className="text-sm text-muted-foreground">
-                        Invited by {invitation.inviterName} · Expires {new Date(invitation.expiresAt).toLocaleDateString()}
+                        Invited by {invitation.inviterName} · Expires {new Date(invitation.expiresAt).toLocaleDateString("en-US", { timeZone: "UTC" })}
                       </p>
                     </div>
                     <div className="flex gap-2">
