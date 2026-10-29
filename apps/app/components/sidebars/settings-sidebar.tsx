@@ -6,7 +6,6 @@ import {
   BadgeCheckIcon,
   HomeIcon,
   LinkIcon,
-  ShieldIcon,
   SmartphoneIcon,
   UserIcon,
 } from "lucide-react"
@@ -21,12 +20,13 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
   useSidebar,
 } from "@workspace/ui/components/sidebar"
 
 import { NavUser } from "@/components/sidebars/nav-user"
+import { OrganizationSwitcher } from "@/components/sidebars/organization-switcher"
 import { APP_CONFIG } from "@/lib/app-config"
-import { authClient } from "@/lib/auth-client"
 import { SETTINGS_PATHS } from "@/lib/settings-paths"
 
 const MAIN_NAV = [
@@ -43,29 +43,17 @@ const SETTINGS_NAV = [
 export function SettingsSidebar() {
   const pathname = usePathname()
   const { setOpenMobile } = useSidebar()
-  const { data: session } = authClient.useSession()
-  const isAdmin = session?.user?.role === "admin"
-  const mainNav = isAdmin
-    ? [
-        ...MAIN_NAV,
-        {
-          label: "Administration",
-          href: "/admin/templates",
-          icon: ShieldIcon,
-        },
-      ]
-    : MAIN_NAV
 
   return (
     <Sidebar collapsible="offcanvas">
-      <SidebarHeader className="h-14 justify-center border-b bg-background px-4">
-        <span className="text-sm font-semibold">Account settings</span>
+      <SidebarHeader className="h-14 justify-center border-b bg-background px-2 py-1">
+        <OrganizationSwitcher activeOrganization />
       </SidebarHeader>
       <SidebarContent className="bg-background">
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarMenu>
-            {mainNav.map((item) => {
+            {MAIN_NAV.map((item) => {
               const Icon = item.icon
               const isActive =
                 pathname === item.href || pathname.startsWith(`${item.href}/`)
@@ -116,6 +104,7 @@ export function SettingsSidebar() {
       <SidebarFooter className="border-t bg-background">
         <NavUser />
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }
