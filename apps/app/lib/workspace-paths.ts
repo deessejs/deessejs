@@ -30,6 +30,14 @@ export const workspaceHomePath = (slug: string): string => `/${slug}/home`
 export const workspaceTemplatesPath = (slug: string): string =>
   `/${slug}/templates`
 
+/** The organization's imported projects. */
+export const workspaceProjectsPath = (slug: string): string =>
+  `/${slug}/projects`
+
+/** The GitHub project import flow for the organization. */
+export const workspaceProjectImportPath = (slug: string): string =>
+  `${workspaceProjectsPath(slug)}/import`
+
 /** The organization's own settings, for the organization with this slug. */
 export const workspaceSettingsPath = (slug: string): string =>
   `/${slug}/settings`
