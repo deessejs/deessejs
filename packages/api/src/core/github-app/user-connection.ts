@@ -8,7 +8,6 @@ import { and, eq } from "drizzle-orm"
 import { db, githubUserConnection } from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import { z } from "zod"
-
 const githubTokenResponse = z.object({
   access_token: z.string().min(1),
   refresh_token: z.string().min(1).optional(),
@@ -24,6 +23,56 @@ const githubUserProfile = z.object({
 
 const GITHUB_API_VERSION = "2022-11-28"
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 8 * 60 * 60
+
+export type GitHubUserAccessTokenErrorCode =
+  | "ACCOUNT_REQUIRED"
+  | "TOKEN_DECRYPTION_FAILED"
+  | "TOKEN_REFRESH_FAILED"
+  | "TOKEN_PERSISTENCE_FAILED"
+
+export class GitHubUserAccessTokenError extends Error {
+  constructor(
+    readonly code: GitHubUserAccessTokenErrorCode,
+    message: string,
+    options?: ErrorOptions
+  ) {
+    super(message, options)
+    this.name = "GitHubUserAccessTokenError"
+  }
+}
+
+function decryptStoredToken(encrypted: string): string {
+  try {
+    return decryptGitHubToken(encrypted)
+  } catch (cause) {
+    throw new GitHubUserAccessTokenError(
+      "TOKEN_DECRYPTION_FAILED",
+      "Stored GitHub authorization could not be decrypted",
+      { cause }
+    )
+  }
+}
+
+function readRefreshTokenResponse(response: Response, payload: unknown) {
+  const parsed = githubTokenResponse.safeParse(payload)
+  if (!response.ok || !parsed.success || !parsed.data.access_token) {
+    const errorCode =
+      typeof payload === "object" && payload !== null && "error" in payload
+        ? payload.error
+        : undefined
+    if (errorCode === "bad_refresh_token") {
+      throw new GitHubUserAccessTokenError(
+        "ACCOUNT_REQUIRED",
+        "GitHub authorization expired. Reconnect your GitHub account."
+      )
+    }
+    throw new GitHubUserAccessTokenError(
+      "TOKEN_REFRESH_FAILED",
+      "GitHub authorization could not be refreshed"
+    )
+  }
+  return parsed.data
+}
 
 function encryptionKey(): Buffer {
   const value = serverEnv.GITHUB_APP_TOKEN_ENCRYPTION_KEY
@@ -71,8 +120,8 @@ export function decryptGitHubToken(encrypted: string): string {
   ]).toString("utf8")
 }
 
-async function readTokenResponse(response: Response) {
-  const parsed = githubTokenResponse.safeParse(await response.json())
+function readTokenResponse(response: Response, payload: unknown) {
+  const parsed = githubTokenResponse.safeParse(payload)
   if (!response.ok || !parsed.success || !parsed.data.access_token) {
     throw new Error("GitHub OAuth token request failed")
   }
@@ -103,7 +152,7 @@ export async function exchangeGitHubAuthorizationCode(input: {
     body,
     cache: "no-store",
   })
-  return readTokenResponse(response)
+  return readTokenResponse(response, await response.json())
 }
 
 export async function fetchGitHubUser(accessToken: string) {
@@ -172,14 +221,19 @@ export async function getGitHubUserAccessToken(
     .from(githubUserConnection)
     .where(eq(githubUserConnection.userId, userId))
     .limit(1)
-  if (!connection) throw new Error("GitHub account is not connected")
+  if (!connection) {
+    throw new GitHubUserAccessTokenError(
+      "ACCOUNT_REQUIRED",
+      "GitHub account is not connected"
+    )
+  }
 
   const now = Date.now()
   if (
     !connection.accessTokenExpiresAt ||
     connection.accessTokenExpiresAt.getTime() > now + 60_000
   ) {
-    return decryptGitHubToken(connection.accessTokenEncrypted)
+    return decryptStoredToken(connection.accessTokenEncrypted)
   }
   const refreshTokenEncrypted = connection.refreshTokenEncrypted
   const existingRefreshExpiresAt = connection.refreshTokenExpiresAt
@@ -191,12 +245,14 @@ export async function getGitHubUserAccessToken(
     !clientId ||
     !clientSecret
   ) {
-    throw new Error(
+    throw new GitHubUserAccessTokenError(
+      "ACCOUNT_REQUIRED",
       "GitHub authorization expired. Reconnect your GitHub account."
     )
   }
   if (existingRefreshExpiresAt.getTime() <= now) {
-    throw new Error(
+    throw new GitHubUserAccessTokenError(
+      "ACCOUNT_REQUIRED",
       "GitHub authorization expired. Reconnect your GitHub account."
     )
   }
@@ -205,18 +261,29 @@ export async function getGitHubUserAccessToken(
     client_id: clientId,
     client_secret: clientSecret,
     grant_type: "refresh_token",
-    refresh_token: decryptGitHubToken(refreshTokenEncrypted),
+    refresh_token: decryptStoredToken(refreshTokenEncrypted),
   })
-  const response = await fetch("https://github.com/login/oauth/access_token", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
-    cache: "no-store",
-  })
-  const refreshed = await readTokenResponse(response)
+  let response: Response
+  let payload: unknown
+  try {
+    response = await fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+      cache: "no-store",
+    })
+    payload = await response.json()
+  } catch (cause) {
+    throw new GitHubUserAccessTokenError(
+      "TOKEN_REFRESH_FAILED",
+      "GitHub authorization could not be refreshed",
+      { cause }
+    )
+  }
+  const refreshed = readRefreshTokenResponse(response, payload)
   const accessTokenExpiresAt = new Date(
     Date.now() +
       (refreshed.expires_in ?? DEFAULT_ACCESS_TOKEN_TTL_SECONDS) * 1000
@@ -228,20 +295,28 @@ export async function getGitHubUserAccessToken(
     ? new Date(Date.now() + refreshed.refresh_token_expires_in * 1000)
     : connection.refreshTokenExpiresAt
 
-  await db
-    .update(githubUserConnection)
-    .set({
-      accessTokenEncrypted: encryptGitHubToken(refreshed.access_token),
-      refreshTokenEncrypted: refreshToken,
-      accessTokenExpiresAt,
-      refreshTokenExpiresAt,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(githubUserConnection.id, connection.id),
-        eq(githubUserConnection.userId, userId)
+  try {
+    await db
+      .update(githubUserConnection)
+      .set({
+        accessTokenEncrypted: encryptGitHubToken(refreshed.access_token),
+        refreshTokenEncrypted: refreshToken,
+        accessTokenExpiresAt,
+        refreshTokenExpiresAt,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(githubUserConnection.id, connection.id),
+          eq(githubUserConnection.userId, userId)
+        )
       )
+  } catch (cause) {
+    throw new GitHubUserAccessTokenError(
+      "TOKEN_PERSISTENCE_FAILED",
+      "Refreshed GitHub authorization could not be saved",
+      { cause }
     )
+  }
   return refreshed.access_token
 }
