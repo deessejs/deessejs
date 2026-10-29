@@ -14,17 +14,20 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@workspace/ui/components/sidebar"
-import { LayoutTemplateIcon } from "lucide-react"
+import { ClipboardCheckIcon, LayoutTemplateIcon } from "lucide-react"
 
 import { NavUser } from "@/components/sidebars/nav-user"
 
 const TEMPLATES_HREF = "/admin/templates"
+const SUBMISSIONS_HREF = "/admin/templates/submissions"
 
 export function AdminSidebar() {
   const pathname = usePathname()
   const { setOpenMobile } = useSidebar()
   const isTemplatesActive =
-    pathname === TEMPLATES_HREF || pathname.startsWith(`${TEMPLATES_HREF}/`)
+    pathname === TEMPLATES_HREF ||
+    (pathname.startsWith(`${TEMPLATES_HREF}/`) &&
+      !pathname.startsWith(SUBMISSIONS_HREF))
 
   return (
     <Sidebar collapsible="offcanvas">
@@ -44,6 +47,23 @@ export function AdminSidebar() {
                 >
                   <LayoutTemplateIcon className="size-4" aria-hidden />
                   <span>Templates</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === SUBMISSIONS_HREF}
+              >
+                <Link
+                  href={SUBMISSIONS_HREF}
+                  aria-current={
+                    pathname === SUBMISSIONS_HREF ? "page" : undefined
+                  }
+                  onClick={() => setOpenMobile(false)}
+                >
+                  <ClipboardCheckIcon className="size-4" aria-hidden />
+                  <span>Publication requests</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

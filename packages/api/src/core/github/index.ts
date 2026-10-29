@@ -1,2 +1,2 @@
-export { fetchReadme, fetchRepo } from "./client.js"
-export type { GitHubReadme, GitHubRepo } from "./types.js"
+export { fetchCommit, fetchReadme, fetchRepo } from "./client.js"
+export type { GitHubCommit, GitHubReadme, GitHubRepo } from "./types.js"

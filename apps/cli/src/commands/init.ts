@@ -2,7 +2,12 @@ import { relative, resolve } from "node:path"
 import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
-import { CliError, installFailed, internal } from "../errors/index.js"
+import {
+  CliError,
+  installFailed,
+  internal,
+  templateInvalid,
+} from "../errors/index.js"
 import { printError, printJson } from "../output/index.js"
 import {
   detectPackageManager,
@@ -119,15 +124,22 @@ async function createTemplateProject(
   verbose: boolean
 ): Promise<string> {
   const repository = `${template.owner}/${template.repo}`
+  if (template.community && ref) {
+    throw templateInvalid(
+      template.slug,
+      "published community templates use their approved revision; remove --ref"
+    )
+  }
+  const resolvedRef = template.community ? template.sourceCommit : ref
   logVerbose(verbose, `Source repository: https://github.com/${repository}`)
-  logVerbose(verbose, `Requested ref: ${ref ?? "default branch"}`)
+  logVerbose(verbose, `Requested ref: ${resolvedRef ?? "default branch"}`)
   logVerbose(verbose, `Target directory: ${dir}`)
   const downloadSpinner = showProgress
     ? ora(`Downloading template from ${pc.cyan(repository)}…`).start()
     : undefined
   let plan
   try {
-    plan = await resolveTemplateInstallationPlan(repository, ref)
+    plan = await resolveTemplateInstallationPlan(repository, resolvedRef)
   } catch (error) {
     downloadSpinner?.fail("Template download failed")
     throw error
@@ -204,7 +216,8 @@ async function runInitCommand(
 
 async function prepareTemplate(slugOrUrl: string, options: InitCommandOptions) {
   const { template, directRepository } = await resolveTemplateSource(slugOrUrl)
-  const projectName = directRepository?.repo ?? template.slug
+  const projectName =
+    directRepository?.repo ?? template.templateSlug ?? template.slug
   const dir = resolve(process.cwd(), options.dir ?? `./${projectName}`)
   if (!options.json) {
     console.log()

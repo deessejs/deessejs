@@ -1,9 +1,23 @@
 import { Command } from "commander"
 import ora from "ora"
-import { CliError, internal } from "../errors/index.js"
+import { CliError, internal, templateInvalid } from "../errors/index.js"
 import { printError, printJson, printTemplateInfo } from "../output/index.js"
 import { resolveTemplateSource } from "../utils/resolve-template.js"
 import { resolveTemplateDescriptorInfo } from "../utils/template-plan.js"
+import type { TemplateSource } from "../utils/resolve-template.js"
+
+function getTemplateRef(
+  template: TemplateSource,
+  requestedRef: string | undefined
+): string | undefined {
+  if (template.community && requestedRef) {
+    throw templateInvalid(
+      template.slug,
+      "published community templates use their approved revision; remove --ref"
+    )
+  }
+  return template.community ? template.sourceCommit : requestedRef
+}
 
 export const infoCommand = new Command("info")
   .description("Show details for one template")
@@ -27,13 +41,17 @@ export const infoCommand = new Command("info")
         fastCatalogLookup: true,
       })
       const repository = `${resolved.template.owner}/${resolved.template.repo}`
-      const info = await resolveTemplateDescriptorInfo(repository, opts.ref)
+      const info = await resolveTemplateDescriptorInfo(
+        repository,
+        getTemplateRef(resolved.template, opts.ref)
+      )
       spinner?.succeed("Template details loaded")
 
       const installSource = resolved.directRepository
         ? `https://github.com/${resolved.directRepository.fullName}`
         : resolved.template.slug
-      const refOption = opts.ref ? ` --ref ${opts.ref}` : ""
+      const refOption =
+        opts.ref && !resolved.template.community ? ` --ref ${opts.ref}` : ""
       const installCommand = `deessejs init ${installSource}${refOption}`
 
       if (opts.json) {

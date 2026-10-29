@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next"
 import { WEB_URL } from "@/lib/app-config"
+import { orpc, staticParamsCache } from "@/lib/orpc"
 import {
   allPosts,
   allReleases,
@@ -8,7 +9,7 @@ import {
   allKbGuides,
 } from "content-collections"
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: WEB_URL,
@@ -213,6 +214,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.5,
   }))
 
+  let communityTemplatePages: MetadataRoute.Sitemap = []
+  try {
+    const { templates } = await orpc.templates.community.list(
+      undefined,
+      staticParamsCache
+    )
+    communityTemplatePages = templates.map((template) => ({
+      url: `${WEB_URL}/templates/community/${encodeURIComponent(template.organizationSlug)}/${encodeURIComponent(template.templateSlug)}`,
+      lastModified: template.updatedAt
+        ? new Date(template.updatedAt)
+        : new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    }))
+  } catch {
+    // The API can be unavailable during a build; generated detail pages
+    // remain reachable on demand and can be added to a later sitemap.
+  }
+
   return [
     ...staticPages,
     ...blogPosts,
@@ -222,5 +242,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...kbTopicPages,
     ...kbGuidePages,
     ...useCasePages,
+    ...communityTemplatePages,
   ]
 }
