@@ -1,6 +1,10 @@
+## Why
+
+<!-- What problem, user need, or constraint motivates this change? Give reviewers the necessary context. -->
+
 ## Summary
 
-<!-- What problem does this change address, and what changed? -->
+<!-- What changed to address it? Describe the outcome, not the motivation. -->
 
 ## Verification
 
