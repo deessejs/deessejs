@@ -68,11 +68,11 @@ jobs:
       - name: Apply migrations
         run: pnpm --filter @workspace/database db:migrate
 
-      # Canonical table check: count must be 11 and the names must
+      # Canonical table check: count must be 13 and the names must
       # match the Better Auth + organization plugin output, the
-      # organization provisioning table, plus the two template catalog
-      # tables (device_code is snake_case in the regenerated schema:
-      # see PR #239 for the rationale).
+      # organization provisioning table, the two template catalog tables,
+      # and the two GitHub App connection tables (device_code is snake_case
+      # in the regenerated schema: see PR #239 for the rationale).
       #
       # The ORDER BY pins COLLATE "C" so the expected string is byte
       # order and does not depend on the collation the server was
@@ -81,7 +81,7 @@ jobs:
       - name: Verify table set
         run: |
           set -euo pipefail
-          EXPECTED='account|device_code|invitation|member|organization|organization_provisioning|session|template_repository_snapshots|templates|user|verification'
+          EXPECTED='account|device_code|github_app_installation|github_user_connection|invitation|member|organization|organization_provisioning|session|template_repository_snapshots|templates|user|verification'
           ACTUAL=$(psql "$DATABASE_URL" -tA -c "SELECT string_agg(table_name, '|' ORDER BY table_name COLLATE \"C\") FROM information_schema.tables WHERE table_schema = 'public'")
           if [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "Expected: $EXPECTED"

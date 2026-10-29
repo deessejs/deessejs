@@ -7,6 +7,8 @@ import {
 } from "@workspace/ui/components/card"
 
 import { readWorkspaceOrganization } from "@/lib/workspace-organization"
+import { orpc } from "@/lib/orpc"
+import { GitHubAppIntegration } from "@/components/settings/github-app-integration"
 
 /**
  * The organization's general page.
@@ -22,11 +24,16 @@ import { readWorkspaceOrganization } from "@/lib/workspace-organization"
  */
 export default async function OrganizationSettingsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ organization_slug: string }>
+  searchParams: Promise<{ githubApp?: string }>
 }) {
-  const { organization_slug } = await params
-  const organization = await readWorkspaceOrganization(organization_slug)
+  const [{ organization_slug }, query] = await Promise.all([params, searchParams])
+  const [organization, githubAppStatus] = await Promise.all([
+    readWorkspaceOrganization(organization_slug),
+    orpc.githubApp.status({ slug: organization_slug }),
+  ])
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,6 +74,12 @@ export default async function OrganizationSettingsPage({
           </dl>
         </CardContent>
       </Card>
+
+      <GitHubAppIntegration
+        slug={organization_slug}
+        status={githubAppStatus}
+        result={query.githubApp}
+      />
     </div>
   )
 }
