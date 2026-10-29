@@ -9,6 +9,11 @@ import {
 import { member, organization } from "@workspace/database/schema"
 import { serverEnv } from "@workspace/env/server"
 
+import { getGitHubUserAccessToken } from "../../core/github-app/user-connection.js"
+import {
+  GitHubRepositoryRequestError,
+  listGitHubInstallationRepositories,
+} from "../../core/github-app/repositories.js"
 import { base } from "../base.js"
 import { authGuard } from "../auth-middleware.js"
 
@@ -16,6 +21,26 @@ const deniedErrors = {
   ORGANIZATION_ACCESS_DENIED: {
     status: 403,
     message: "You cannot access this organization.",
+  },
+}
+
+const repositoryErrors = {
+  ...deniedErrors,
+  GITHUB_INSTALLATION_NOT_CONNECTED: {
+    status: 409,
+    message: "Connect a GitHub App installation to this organization first.",
+  },
+  GITHUB_ACCOUNT_REQUIRED: {
+    status: 409,
+    message: "Connect or reconnect your GitHub account to list repositories.",
+  },
+  GITHUB_INSTALLATION_ACCESS_DENIED: {
+    status: 403,
+    message: "Your GitHub account cannot access this installation.",
+  },
+  GITHUB_REPOSITORIES_UNAVAILABLE: {
+    status: 502,
+    message: "GitHub repositories could not be loaded. Try again.",
   },
 }
 
@@ -103,6 +128,55 @@ export const status = base
     }
   })
 
+const listRepositories = base
+  .input(
+    z.object({
+      slug: z.string().min(1),
+      page: z.number().int().min(1).max(10_000),
+    })
+  )
+  .errors(repositoryErrors)
+  .use(authGuard)
+  .handler(async ({ context, input, errors }) => {
+    const organization = await findOrganizationForMember(
+      context.user.id,
+      input.slug
+    )
+    if (!organization || !hasManagingRole(organization.role)) {
+      throw errors.ORGANIZATION_ACCESS_DENIED()
+    }
+
+    const [installation] = await db
+      .select({ installationId: githubAppInstallation.installationId })
+      .from(githubAppInstallation)
+      .where(eq(githubAppInstallation.organizationId, organization.id))
+      .limit(1)
+    if (!installation) throw errors.GITHUB_INSTALLATION_NOT_CONNECTED()
+
+    let accessToken: string
+    try {
+      accessToken = await getGitHubUserAccessToken(context.user.id)
+    } catch {
+      throw errors.GITHUB_ACCOUNT_REQUIRED()
+    }
+
+    try {
+      return await listGitHubInstallationRepositories({
+        installationId: installation.installationId,
+        accessToken,
+        page: input.page,
+      })
+    } catch (error) {
+      if (error instanceof GitHubRepositoryRequestError) {
+        if (error.status === 401) throw errors.GITHUB_ACCOUNT_REQUIRED()
+        if (error.status === 403 || error.status === 404) {
+          throw errors.GITHUB_INSTALLATION_ACCESS_DENIED()
+        }
+      }
+      throw errors.GITHUB_REPOSITORIES_UNAVAILABLE()
+    }
+  })
+
 export const disconnect = base
   .input(z.object({ slug: z.string() }))
   .errors(deniedErrors)
@@ -122,4 +196,8 @@ export const disconnect = base
     return { success: true as const }
   })
 
-export const githubAppRouter = { status, disconnect }
+export const githubAppRouter = {
+  status,
+  disconnect,
+  repositories: { list: listRepositories },
+}
