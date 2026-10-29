@@ -42,3 +42,12 @@ export {
   type TemplateSourceRequest,
   type TemplateSourceSnapshot,
 } from "./template-source.js"
+export {
+  PROJECT_CONFIG_SCHEMA_URL,
+  ProjectConfigV1Schema,
+  parseProjectConfig,
+  type ProjectConfigV1,
+  type ProjectConfigDiagnostic,
+  type ProjectConfigDiagnosticCode,
+  type ParseProjectConfigResult,
+} from "./project-config.js"
