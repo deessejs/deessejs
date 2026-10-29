@@ -11,17 +11,15 @@ Open a reviewable pull request for completed work. This skill does not implement
 
 1. **Gather context.** For an issue-driven request, read the issue title, description, labels, and relevant comments with `gh`. Read an approved implementation plan if one is available on the implementation branch. Use the issue and branch context to write the PR title and summary.
 
-2. **Check the branch.** Confirm the implementation is committed and the branch is pushed to `origin`. Use the existing implementation branch, normally `impl/{n}-{slug}`. Do not reset, delete, or recreate it. Do not create the PR if the working tree contains uncommitted implementation changes; report what needs committing first.
+2. **Check for an existing PR.** Look for an open PR from this branch targeting `staging`, and for an open PR already associated with the issue. If one exists, report its URL and ask before editing it. Do not create a duplicate.
 
-3. **Check for an existing PR.** Look for an open PR from this branch targeting `staging`, and for an open PR already associated with the issue. If one exists, report its URL and ask before editing it. Do not create a duplicate.
+3. **Check the changeset requirement.** If the diff changes the published surface of `apps/cli/**`, confirm a `.changeset/*.md` file is present. If it is required but missing, stop and ask for the bump type and consumer-facing summary before creating the PR. Other changes do not need a changeset. Follow `CONTRIBUTING.md` and `.changeset/README.md`.
 
-4. **Check the changeset requirement.** If the diff changes the published surface of `apps/cli/**`, confirm a `.changeset/*.md` file is present. If it is required but missing, stop and ask for the bump type and consumer-facing summary before creating the PR. Other changes do not need a changeset. Follow `CONTRIBUTING.md` and `.changeset/README.md`.
+4. **Prepare the PR body.** Follow `.github/PULL_REQUEST_TEMPLATE.md` when available. Include a concise summary, relevant changed areas, and verification that was actually performed. Leave checks unchecked unless they have passed. Do not add separate "Related issue" or "Type of change" sections: track issue relationships and change classification as GitHub metadata.
 
-5. **Prepare the PR body.** Follow `.github/PULL_REQUEST_TEMPLATE.md` when available. Include a concise summary, relevant changed areas, and verification that was actually performed. Leave checks unchecked unless they have passed. Do not add separate "Related issue" or "Type of change" sections: track issue relationships and change classification as GitHub metadata.
+5. **Create the PR against `staging`.** Use `gh pr create --base staging`. Never target `main` and never merge the PR.
 
-6. **Create the PR against `staging`.** Use `gh pr create --base staging`. Never target `main` and never merge the PR.
-
-7. **Link the issue in Development.** For an issue-driven PR, use GitHub GraphQL's `addCloseIssueReferences` mutation to link the PR to the issue. Get the issue and PR node IDs with:
+6. **Link the issue in Development.** For an issue-driven PR, use GitHub GraphQL's `addCloseIssueReferences` mutation to link the PR to the issue. Get the issue and PR node IDs with:
 
    ```bash
    gh api graphql -F owner=deessejs -F name=deessejs -F issueNumber="$ISSUE_NUMBER" -F prNumber="$PR_NUMBER" -f query='query($owner: String!, $name: String!, $issueNumber: Int!, $prNumber: Int!) { repository(owner: $owner, name: $name) { issue(number: $issueNumber) { id } pullRequest(number: $prNumber) { id } } }'
@@ -35,7 +33,7 @@ Open a reviewable pull request for completed work. This skill does not implement
 
    Verify the mutation succeeds before reporting the issue linked. The `Closes #N` body keyword does not create a link for this repo's PRs to `staging`, because GitHub only interprets closing keywords when the PR targets the default branch. A manual Development link is visible on the issue; a PR merged to `staging` does not itself close the issue.
 
-8. **Apply the right labels to the PR.** Inspect the issue and diff, then compare relevant issue labels against labels that currently exist in the repository:
+7. **Apply the right labels to the PR.** Inspect the issue and diff, then compare relevant issue labels against labels that currently exist in the repository:
 
    ```bash
    gh api repos/deessejs/deessejs/issues/$ISSUE_NUMBER --jq '[.labels[].name]'
@@ -50,7 +48,7 @@ Open a reviewable pull request for completed work. This skill does not implement
 
    Replace the example labels with the exact existing labels selected for this PR. If no labels apply, add none. Report which labels were applied.
 
-9. **Report the result.** Give the PR URL, confirm its base is `staging`, report whether the Development link and labels were applied, and state which verification commands were run or skipped.
+8. **Report the result.** Give the PR URL, confirm its base is `staging`, report whether the Development link and labels were applied, and state which verification commands were run or skipped.
 
 ## Boundaries
 
