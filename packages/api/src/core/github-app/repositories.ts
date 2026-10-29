@@ -10,7 +10,7 @@ const githubRepositorySchema = z.object({
   private: z.boolean(),
   description: z.string().nullable(),
   html_url: z.string().url(),
-  default_branch: z.string().min(1),
+  default_branch: z.string().min(1).nullable(),
 })
 
 const repositoryPageSchema = z.object({

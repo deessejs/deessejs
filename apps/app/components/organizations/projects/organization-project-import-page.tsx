@@ -20,12 +20,6 @@ type GitHubInstallation = {
   accountLogin: string
 }
 
-const steps = [
-  { label: "Choose Repository", number: 1 },
-  { label: "Review Configuration", number: 2 },
-  { label: "Confirm Import", number: 3 },
-]
-
 export function OrganizationProjectImportPage({
   organizationSlug,
   organizationName,
@@ -69,7 +63,6 @@ export function OrganizationProjectImportPage({
         </p>
       ) : (
         <>
-          <ImportSteps />
           <ImportContent
             organizationSlug={organizationSlug}
             installation={installation}
@@ -129,32 +122,6 @@ function ImportContent({
       installationAccount={installation.accountLogin}
       settingsPath={settingsPath}
     />
-  )
-}
-
-function ImportSteps() {
-  return (
-    <ol
-      className="grid gap-3 sm:grid-cols-3"
-      aria-label="Project import steps"
-    >
-      {steps.map((step) => (
-        <li
-          key={step.number}
-          aria-current={step.number === 1 ? "step" : undefined}
-          className={
-            step.number === 1
-              ? "flex items-center gap-3 rounded-lg border border-primary bg-primary/5 p-4"
-              : "flex items-center gap-3 rounded-lg border p-4 text-muted-foreground"
-          }
-        >
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border text-sm font-medium">
-            {step.number}
-          </span>
-          <span className="text-sm font-medium">{step.label}</span>
-        </li>
-      ))}
-    </ol>
   )
 }
 
