@@ -15,8 +15,8 @@
  *
  * A template is readable only through a route authorized for its owner and
  * when both rows exist. The snapshot's primary key is the foreign key, so
- * there is at most one current snapshot per template. Deleting an
- * organization removes its private templates and their snapshots.
+ * there is at most one current snapshot per template. Foreign keys preserve
+ * template records and snapshots until an explicit deletion policy exists.
  *
  * The shape deliberately departs from `auth.ts`, which is Better Auth
  * generated output with text IDs and naive timestamps. This table is
@@ -57,7 +57,7 @@ export const templates = pgTable(
     slug: text("slug").notNull(),
     ownerType: templateOwnerType("owner_type").notNull().default("platform"),
     organizationId: text("organization_id").references(() => organization.id, {
-      onDelete: "cascade",
+      onDelete: "restrict",
     }),
     name: text("name").notNull(),
     descriptionOverride: text("description_override"),
@@ -111,7 +111,7 @@ export const templateRepositorySnapshots = pgTable(
     // one current snapshot per template.
     templateId: uuid("template_id")
       .primaryKey()
-      .references(() => templates.id, { onDelete: "cascade" }),
+      .references(() => templates.id, { onDelete: "restrict" }),
     repositoryName: text("repository_name").notNull(),
     repositoryDescription: text("repository_description"),
     canonicalUrl: text("canonical_url").notNull(),
